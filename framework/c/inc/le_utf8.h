@@ -1,0 +1,279 @@
+/**
+ * @page c_utf8 UTF-8 String Handling API
+ *
+ * @ref le_utf8.h "Click here for the API Reference documentation."
+ *
+ * <HR>
+ *
+ * @ref utf8_encoding <br>
+ * @ref utf8_copy <br>
+ * @ref utf8_trunc <br>
+ * @ref utf8_length <br>
+ * @ref utf8_format <br>
+ *
+ *
+ * This module implements safe and easy to use string handling functions for null-terminated strings
+ * with UTF-8 encoding.
+ *
+ * UTF-8 is a variable length character encoding that supports every character in the Unicode
+ * character set. UTF-8 has become the dominant character encoding because it is self synchronizing,
+ * compatible with ASCII, and avoids the endian issues that other encodings face.
+ *
+ * @section utf8_encoding UTF-8 Encoding
+ *
+ * UTF-8 uses between one and four bytes to encode a character as illustrated in the following
+ * table.
+ *
+ * <table>
+ * <tr> <th> Byte 1   </th> <th> Byte 2   </th> <th> Byte 3   </th> <th> Byte 4   </th> </tr>
+ * <tr> <td> 0xxxxxxx </td> <td>          </td> <td>          </td> <td>          </td> </tr>
+ * <tr> <td> 110xxxxx </td> <td> 10xxxxxx </td> <td>          </td> <td>          </td> </tr>
+ * <tr> <td> 1110xxxx </td> <td> 10xxxxxx </td> <td> 10xxxxxx </td> <td>          </td> </tr>
+ * <tr> <td> 11110xxx </td> <td> 10xxxxxx </td> <td> 10xxxxxx </td> <td> 10xxxxxx </td> </tr>
+ * </table>
+ *
+ * Single byte codes are used only for the ASCII values 0 through 127.  In this case, UTF-8 has the
+ * same binary value as ASCII, making ASCII text valid UTF-8 encoded Unicode.  All ASCII
+ * strings are UTF-8 compatible.
+ *
+ * Character codes larger than 127 have a multi-byte encoding consisting of a leading byte and one
+ * or more continuation bytes.
+ *
+ * The leading byte has two or more high-order 1's followed by a 0 that can be used to determine
+ * the number bytes in the character without examining the continuation bytes.
+ *
+ * The continuation bytes have '10' in the high-order position.
+ *
+ * Single bytes, leading bytes and continuation bytes can't have the
+ * same values. This means that UTF-8 strings are self-synchronized, allowing the start of a
+ * character to be found by backing up at most three bytes.
+ *
+ *
+ * @section utf8_copy Copy and Append
+ *
+ *  @c le_utf8_Copy() copies a string to a specified buffer location.
+ *
+ * @c le_utf8_Append() appends a string to the end of another string by copying
+ * the source string to the destination string's buffer starting at the null-terminator of the
+ * destination string.
+ *
+ * The @c le_uft8_CopyUpToSubStr() function is like le_utf8_Copy() except it copies only up to, but not
+ * including, a specified string.
+ *
+ * @section utf8_trunc Truncation
+ *
+ * Because UTF-8 is a variable length encoding, the number of characters in a string is
+ * not necessarily the same as the number bytes in the string.  When using functions like
+ * le_utf8_Copy() and le_utf8_Append(), the size of the destination buffer, in bytes, must be
+ * provided to avoid buffer overruns.  
+ * 
+ * The copied string is truncated because of limited space in the
+ * destination buffer, and the destination buffer may not be
+ * completely filled.  This can occur during the copy processf the last character to copy is more 
+ * than one byte long and will not fit within the buffer.  
+ * 
+ * The character is not copied and a null-terminator is added.  
+ * Even though we have not filled the destination buffer,we have truncated the copied string. Essentially,  functions like
+ * le_utf8_Copy() and le_utf8_Append() only copy complete characters, not partial characters.
+ *
+ * For le_utf8_Copy(), the number of bytes actually copied is returned in the numBytesPtr parameter.
+ * This parameter can be set to NULL if the number of bytes copied is not needed.  le_utf8_Append()
+ * and le_utf8_CopyUpToAsciiChar() work similarly.
+ *
+ * @code
+ * // In this code sample, we need the number of bytes actually copied:
+ * size_t numBytes;
+ *
+ * if (le_utf8_Copy(destStr, srcStr, sizeof(destStr), &numBytes) == LE_OVERFLOW)
+ * {
+ *     LE_WARN("'%s' was truncated when copied.  Only %d bytes were copied.", srcStr, numBytes);
+ * }
+ *
+ * // In this code sample, we don't care about the number of bytes copied:
+ * LE_ASSERT(le_utf8_Copy(destStr, srcStr, sizeof(destStr), NULL) != LE_OVERFLOW);
+ * @endcode
+ *
+ * @section utf8_length String Lengths
+ *
+ * String length may mean either the number of characters in the string or the number of bytes in
+ * the string.  These two meanings are often used interchangeably because in ASCII-only encodings
+ * the number of characters in a string is equal to the number of bytes in a string. But this
+ * is not necessarily true with variable length encodings such as UTF-8. Legato provides both
+ * a le_utf8_NumChars() function and a le_utf8_NumBytes() function.
+ *
+ * @c le_utf8_NumBytes() must be used when determining the memory size of a string.
+ * @c le_utf8_NumChars() is useful for counting the number of characters in a string (ie. for display
+ * purposes).
+ *
+ * @section utf8_format Checking UTF-8 Format
+ *
+ * As can be seen in the @ref utf8_encoding section, UTF-8 strings have a specific
+ * byte sequence. The @c le_utf8_IsFormatCorrect() function can be used to check if a string conforms
+ * to UTF-8 encoding. Not all valid UTF-8 characters are valid for a given character set; 
+ *  le_utf8_IsFormatCorrect() does not check for this.
+ *
+ * Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+*/
+
+//--------------------------------------------------------------------------------------------------
+/** @file le_utf8.h
+ *
+ * Legato @ref c_utf8 include file.
+ *
+ * Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+ *
+ */
+
+#ifndef LEGATO_UTF8_INCLUDE_GUARD
+#define LEGATO_UTF8_INCLUDE_GUARD
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Returns the number of characters in string.
+ *
+ * UTF-8 encoded characters may be larger than 1 byte so the number of characters is not necessarily
+ * equal to the the number of bytes in the string.
+ *
+ * @return
+ *      Number of characters in string if successful.
+ *      LE_FORMAT_ERROR if the string is not UTF-8.
+ */
+//--------------------------------------------------------------------------------------------------
+ssize_t le_utf8_NumChars
+(
+    const char* string      ///< [IN] Pointer to the string.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Returns the number of bytes in string (not including the null-terminator).
+ *
+ * @return
+ *      Number of bytes in string (not including the null-terminator).
+ */
+//--------------------------------------------------------------------------------------------------
+size_t le_utf8_NumBytes
+(
+    const char* string      ///< [IN] The string.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Copies the string in srcStr to the start of destStr and returns the number of bytes
+ * copied (not including the NULL-terminator) in numBytesPtr.  Null can be passed into numBytesPtr
+ * if the number of bytes copied is not needed.  The srcStr must be in UTF-8 format.
+ *
+ * If the size of srcStr is less than or equal to the destination buffer size then the entire srcStr
+ * will be copied including the null-character.  The rest of the destination buffer is not modified.
+ *
+ * If the size of srcStr is larger than the destination buffer then the maximum number of characters
+ * (from srcStr) plus a null-character that will fit in the destination buffer is copied.
+ *
+ * UTF-8 characters may be more than one byte long and this function will only copy whole characters
+ * not partial characters. Even if srcStr is larger than the destination buffer ,the
+ * copied characters may not fill the entire destination buffer because the last character copied
+ * may not align exactly with the end of the destination buffer.
+ *
+ * The destination string will always be Null-terminated, unless destSize is zero.
+ *
+ * If destStr and srcStr overlap the behaviour of this function is undefined.
+ *
+ * @return
+ *      LE_OK if srcStr was completely copied to the destStr.
+ *      LE_OVERFLOW if srcStr was truncated when it was copied to destStr.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_utf8_Copy
+(
+    char* destStr,          ///< [IN] Destination where the srcStr is to be copied.
+    const char* srcStr,     ///< [IN] UTF-8 source string.
+    const size_t destSize,  ///< [IN] Size of the destination buffer in bytes.
+    size_t* numBytesPtr     ///< [OUT] Number of bytes copied not including the NULL-terminator.
+                            ///        [Parameter can be set to NULL if the number of bytes
+                            ///        copied is not needed.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Appends srcStr to destStr by copying characters from srcStr to the end of destStr.
+ * The srcStr must be in UTF-8 format.  The number of bytes in the resultant destStr (not including
+ * the NULL-terminator) is returned in destStrLenPtr.
+ *
+ * A null-character is always added to the end of destStr after all srcStr characters have been
+ * copied.
+ *
+ * This function will copy as many characters as possible from srcStr to destStr while ensuring that
+ * the resultant string (including the null-character) will fit within the destination buffer.
+ *
+ * UTF-8 characters may be more than one byte long and this function will only copy whole characters
+ * not partial characters.
+ *
+ * The destination string will always be Null-terminated, unless destSize is zero.
+ *
+ * If destStr and srcStr overlap the behaviour of this function is undefined.
+ *
+ * @return
+ *      LE_OK if srcStr was completely copied to the destStr.
+ *      LE_OVERFLOW if srcStr was truncated when it was copied to destStr.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_utf8_Append
+(
+    char* destStr,          ///< [IN] Destination string.
+    const char* srcStr,     ///< [IN] UTF-8 source string.
+    const size_t destSize,  ///< [IN] Size of the destination buffer in bytes.
+    size_t* destStrLenPtr   ///< [OUT] Number of bytes in the resultant destination string (not
+                            ///        including the NULL-terminator).  Parameter can be set to
+                            ///        NULL if the destination string size is not needed.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Copies all characters from the srcStr to destStr up to the first occurrence of
+ * subStr.  The subStr is not copied and instead a null-terminator is added to the destStr.
+ * The number of bytes copied (not including the null-terminator) is returned in numBytesPtr.
+ *
+ * The srcStr and subStr must be in null-terminated UTF-8 strings.
+ *
+ * The destination string will always be null-terminated.
+ *
+ * If subStr is not found in the srcStr then this function behaves just like le_utf8_Copy().
+ *
+ * @return
+ *      LE_OK if srcStr was completely copied to the destStr.
+ *      LE_OVERFLOW if srcStr was truncated when it was copied to destStr.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_utf8_CopyUpToSubStr
+(
+    char* destStr,          ///< [IN] Destination where the srcStr is to be copied.
+    const char* srcStr,     ///< [IN] UTF-8 source string.
+    const char* subStr,     ///< [IN] Sub-string to copy up to.
+    const size_t destSize,  ///< [IN] Size of the destination buffer in bytes.
+    size_t* numBytesPtr     ///< [OUT] Number of bytes copied not including the NULL-terminator.
+                            ///        Parameter can be set to NULL if the number of bytes
+                            ///        copied is not needed.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Checks to see if the string is indeed a UTF-8 encoded, null-terminated string.
+ *
+ * @return
+ *      true if the format is correct.
+ *      false if the format is incorrect.
+ */
+//--------------------------------------------------------------------------------------------------
+bool le_utf8_IsFormatCorrect
+(
+    const char* string      ///< [IN] The string.
+);
+
+
+#endif  // LEGATO_UTF8_INCLUDE_GUARD

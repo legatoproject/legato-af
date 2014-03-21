@@ -1,0 +1,38 @@
+#!/bin/sh
+
+case $# in
+2)	fn="$1"
+	fntmp="$2";;
+*)	echo "luacdbmake-12: usage: luacdbmake-12 f ftmp" >&2
+	exit 111;;
+esac
+
+(sed '/^#/d'; echo) |
+
+exec lua -e "
+
+local cdb_make = require('cdb_make')
+
+local function fatal(msg)
+	io.stderr:write('luacdbmake-12: fatal: ' .. (msg or '') .. '\n')
+	os.exit(111)
+end
+
+local t, errno = cdb_make.start('"$fn"', '"$fntmp"')
+if errno then fatal('cdb_make.start: errno=' .. errno) end
+
+while 1 do
+	local line = io.read('*l')
+	if line == nil then break end
+	local _, last, key = line:find('%s*([^%s]+)')
+	if last == nil then break end
+	local _, _, data = line:find('%s*([^%s]+)', last+1)
+	data = data or ''
+	errno = t:add(key, data)
+	if errno then fatal('cdb_make.add: errno=' .. errno) end
+end
+
+errno = t:finish()
+if errno then fatal('cdb_make.finish: errno=' .. errno) end
+
+"

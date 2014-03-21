@@ -1,0 +1,62 @@
+/** @page componentWriting Write Components
+
+@ref basicComponents  <br>
+@ref componentWhatsNext
+
+
+@section basicComponents Legato Components
+
+Software components are collections of functionally related software that communicate with
+other components via well-defined interfaces. See @ref componentBased for more background
+on component-based software.
+
+In the Legato framework, each component is kept in <b> its own directory</b> and must contain
+a file called @b Component.cdef that describes its contents.  The name of the directory is
+the name that is used to refer to the component when including it in executables and applications.
+
+Components can be implemented in any supported programming language.
+
+@note Only C is supported right now.
+
+Components built using a compiled language, like C or Java, get built into libraries that
+can be placed into executables.  Source files for interpreted languages don't get compiled,
+but can also be placed into exectutables, in which case, the appropriate interpreter gets
+included in the executable too.
+
+When multiple components written in the same programming language get included in the same
+executable together, they can call each other's exported API functions, just as one library
+can call another library's API functions in a normal program.  However, the real power of
+component-based development is unleashed when components make use of language-independent
+IPC instead.  This allows interfaces to be implemented in one language and used in another,
+which
+ - opens up opportunities for code reuse from projects written in different languages and
+ - frees developers to use the language that is best suited for any given task.
+
+But, even when a whole project is written in the same language, using language-independent IPC
+
+ - makes the component inherently more reusable for future projects,
+ - creates opportunities for isolation of functions in different processes or even different
+application sandboxes,
+ - automatically creates debugging trace points
+
+
+@section componentWhatsNext What's Next?
+
+Other component writing topics:
+
+@subpage componentBasicComp  <br> 
+@subpage componenthelloIPC  <br>
+@subpage componentPuttingIntoApp  <br>
+@subpage componentmultiComponentExe
+
+Or move to the <b>next level</b>: 
+
+ @ref componentCatalog   <br>
+ @ref legatoAPIs
+
+<HR>
+
+Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+
+**/
+

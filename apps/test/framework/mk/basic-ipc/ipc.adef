@@ -1,0 +1,9 @@
+executables:
+
+  server (greetServer)
+  client (greetClient)
+
+processes:
+
+  run: greet (client)
+  run: (server "Greetings, World!" blah)

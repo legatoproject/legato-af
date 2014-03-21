@@ -1,0 +1,47 @@
+@import url('http://eclipse.org/mihini/css/bootstrap.min.css');
+@import url('http://eclipse.org/mihini/css/style.css');
+@import url('http://eclipse.org/mihini/css/theme.css');
+
+body {
+	margin:1em;
+}
+
+code {
+color: #161726;
+font-weight:bold
+}
+
+blockquote {
+border: 1px solid #c5d7e0;
+margin: 1ex 0;
+padding: 5px;
+background-repeat: no-repeat;
+background-position: 10px center;
+color: #00529B;
+background-color: #def3fe
+}
+
+table {
+font-family: verdana,arial,sans-serif;
+font-size:11px;
+color:#333333;
+border-width: 1px;
+border-color: #999999;
+border-collapse: collapse;
+}
+
+th {
+background-color:#c3dde0;
+border-width: 1px;
+padding: 8px;
+border-style: solid;
+border-color: #a9c6c9;
+text-align: center;
+}
+
+td {
+border-width: 1px;
+padding: 8px;
+border-style: solid;
+border-color: #a9c6c9;
+}

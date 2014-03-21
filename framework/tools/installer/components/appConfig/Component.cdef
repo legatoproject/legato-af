@@ -1,0 +1,12 @@
+/**
+    Application configuration installer.
+
+    This component knows how to install and uninstall application configuration settings
+    in the configuration tree.
+
+    Copyright 2013, Sierra Wireless Inc., all rights reserved.
+*/
+
+sources:
+    src/configInstaller.c
+

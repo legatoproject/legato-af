@@ -1,0 +1,82 @@
+#!/bin/bash
+
+# Generates a key pair, configures the local user's account to use that key to talk to the
+# specified IP address, and installs the public key in that target device's root account's
+# list of authorized keys.
+
+PRIVATE_KEY_FILE=~/.ssh/id_rsa.legatoTarget
+PUBLIC_KEY_FILE=$PRIVATE_KEY_FILE.pub
+
+TARGET_IP=$1
+
+# Check command-line args.
+
+function PrintUsage()
+{
+    echo "Usage: $(basename $0) TARGET_IP_ADDR"
+}
+
+
+# Did they ask for help?
+if [ "$1" = "-h" -o "$1" = "--help" -o "$1" = "help" ]
+then
+    PrintUsage
+    exit 0
+fi
+
+# Did they specify too many arguments?
+if [ $# -gt 1 ]
+then
+    echo "***ERROR: Too many arguments."
+    PrintUsage
+    exit 1
+fi
+
+# Make sure they gave us a target IP address.
+if ! [ $TARGET_IP ]
+then
+    echo "***ERROR: Target IP address not provided."
+    PrintUsage
+    exit 1
+fi
+
+# If there isn't already a key file for Legato targets, create one.
+if ! [ -e  $PRIVATE_KEY_FILE ]
+then
+    echo "Generating new key pair... --->>> LEAVE THE PASSPHRASE EMPTY <<<---"
+    ssh-keygen -t rsa -f $PRIVATE_KEY_FILE -C "$USER's key for Legato target devices."
+fi
+
+# Create an SSH configuration file for the user, if there isn't already one.
+touch ~/.ssh/config
+
+# Make sure the SSH configuration file is only readable and writeable by the current user.
+chmod 600 ~/.ssh/config
+
+# If the Legato targets key file isn't already listed in the user's SSH configuration,
+# and the target host IP address is not already listed too (because the IP address might
+# change or the user might have multiple targets), then add an entry to the user's SSH
+# configuration so that SSH will always use this no-passphrase key for this target.
+if ! grep "$PRIVATE_KEY_FILE" ~/.ssh/config > /dev/null || ! grep "Host $TARGET_IP" ~/.ssh/config > /dev/null
+then
+    echo >> ~/.ssh/config
+    echo "Host $TARGET_IP" >> ~/.ssh/config
+    echo "  IdentityFile $PRIVATE_KEY_FILE" >> ~/.ssh/config
+    echo "  User root" >> ~/.ssh/config
+fi
+
+ssh-keygen -f "/home/$USER/.ssh/known_hosts" -R $TARGET_IP
+
+# Connect to the target and copy the
+ON_TARGET_KEY_FILE=$(basename $PUBLIC_KEY_FILE).$USER
+echo "Connecting to the target...  (ENTER TARGET'S ROOT PASSWORD WHENEVER PROMPTED FOR A PASSWORD)"
+echo "(Just hit ENTER if your target doesn't have a root password.)"
+cat $PUBLIC_KEY_FILE | ssh root@$TARGET_IP "
+    if grep $USER .ssh/authorized_keys > /dev/null 2>&1
+    then
+        echo \"Key already installed in .ssh/authorized_keys on target for user $USER.\"
+    else
+        mkdir -p .ssh
+        cat >> .ssh/authorized_keys
+    fi
+    "

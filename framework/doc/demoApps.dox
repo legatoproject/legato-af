@@ -1,0 +1,76 @@
+/** @page demoApps Legato Demo Applications
+
+@ref demoSetup <br>
+@ref demoInstall <br>
+@ref demoCmds <br>
+@ref demoWhatsNext
+
+@section demoSetup Setup Demo
+
+- Ensure SIM is registered to network. See @ref simUsageCommands.
+
+- Ensure APN name has been set. See @ref demoAPNUsage.
+
+- In modemDemo.adef file (only applies to modemDemo), modify "<please enter number here>" with your number:
+
+@code
+processes:      
+    run: ( send "<please enter number here>" "Welcome to modemDemo app")
+    run: ( modemDemo )
+@endcode
+
+@section demoInstall Install Demo
+
+There are two sample applications included with Legato code
+to demo various services.
+
+@subsection demo1 AirVantage demo
+
+@warning You must setup an AirVantage connection to your Legato device before installing the AirVantage demo: @ref connectingAirVantage.
+
+@ref
+To install and use this app:
+
+@verbatim
+$ cd apps/sample/airvantageDemo
+$ make ar7
+$ instapp airvantageDemo.ar7 <ipaddress>
+@endverbatim
+
+where @c ipaddress is the address of your target device.
+
+@subsection demo2 modemDemo Sample App
+
+To install and use this app:
+
+@verbatim
+$ cd apps/sample/modemDemo
+$ make ar7
+$ instapp modemDemo <ipaddress>
+@endverbatim
+
+where @c ipaddress is the address of your target device.
+
+
+@section demoCmds Demo Commands
+
+The @b modemDemo app accepts several commands (through sending the target a sms message) and will reply with the results: 
+
+- <b>Status</b> - return some status information of the target like radio is on/off and signal strength
+- <b>Sim</b> - returns sim state/info (iccid and imsi)
+- <b>Online</b> - turns on data connection
+- <b>Netinfo</b> - network information like gateway address
+- <b>Offline</b> - turns off data connection 
+- <b>TestDataConnection</b> - test data connection
+
+
+@section demoWhatsNext What's Next?
+
+@subpage connectingAirVantage  <br>
+@subpage demoPushData
+
+<HR>
+
+Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+
+**/

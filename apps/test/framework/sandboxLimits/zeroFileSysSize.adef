@@ -1,0 +1,20 @@
+start: manual
+
+mqueueSize: 10
+numProcs: 10
+rtSignalQueueSize: 10
+fileSystemSize: 0  // Zero is not allowed so the default should be used.
+
+executables:
+
+    zeroFileSysSizeTest ( limitsTest.c )
+
+processes:
+    vMemSize: 20000000
+    maxFileSize: 10
+    numFds: 10
+    memLockSize: 10
+    coreFileSize: 10
+
+    run: (zeroFileSysSizeTest 10 10 10 20000000 10 10 10 10 131072)
+

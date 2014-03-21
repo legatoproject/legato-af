@@ -1,0 +1,52 @@
+/** @page componentPuttingIntoApp Components Into Apps
+
+
+Let's create a new application that contains our client and server programs, with their interfaces
+bound to each other.  It will look like this:
+
+@image html HelloIPCApp.png
+
+To do this, we create an application definition file called "helloWorld.adef".
+
+@verbatim
+$ gedit helloWorld.adef
+@endverbatim
+
+It should look like this:
+
+@verbatim
+executables:
+
+    myServer ( greetServer )
+    myClient ( greetClient )
+
+processes:
+
+    run: (myServer)
+    run: (myClient)
+@endverbatim
+
+This defines two executable programs called myServer (containing the greetServer component)
+and myClient (containing the greetClient component).
+
+It then starts one instance of myServer and one instance of myClient.
+
+Now we can run @c mkapp to build everything and package it up into an application.
+
+@verbatim
+$ mkapp helloWorld.adef -t ar7
+Note, automatically importing the interface, 'greetClient.hello.'
+Note, automatically exporting the interface, 'greetServer.hello.'
+@endverbatim
+
+You will now have a file called "helloWorld.ar7" that contains your application.
+
+You can install and run it using instapp, see @ref appCreating for details.
+
+
+<HR>
+
+Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+
+**/
+

@@ -1,0 +1,7 @@
+executables:
+
+    fileLockTest ( fileLockTest.c )
+
+start:
+
+    fileLockTest

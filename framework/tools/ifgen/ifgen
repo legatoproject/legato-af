@@ -1,0 +1,146 @@
+#!/usr/bin/python2.7 -E
+#
+# Code generator main program
+#
+# Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+#
+
+import sys
+import argparse
+
+import codeTypes
+import interfaceParser
+import codeGen
+
+
+def GetArguments():
+    # Define the command line arguments/options
+    parser = argparse.ArgumentParser(description='Interface Code Generator')
+
+    parser.add_argument('interfaceFile',
+                        metavar='FILE',
+                        help='name of interface file')
+
+    parser.add_argument('--gen-all',
+                        dest="genAll",
+                        action='store_true',
+                        default=False,
+                        help='generate all files; overrides individual file options')
+
+    parser.add_argument('--gen-interface',
+                        dest="genInterface",
+                        action='store_true',
+                        default=False,
+                        help='generate interface header file')
+
+    parser.add_argument('--gen-local',
+                        dest="genLocal",
+                        action='store_true',
+                        default=False,
+                        help='generate local header file')
+
+    parser.add_argument('--gen-client',
+                        dest="genClient",
+                        action='store_true',
+                        default=False,
+                        help='generate client IPC implementation file')
+
+    parser.add_argument('--gen-server-interface',
+                        dest="genServerInterface",
+                        action='store_true',
+                        default=False,
+                        help='generate server interface header file')
+
+    parser.add_argument('--gen-server',
+                        dest="genServer",
+                        action='store_true',
+                        default=False,
+                        help='generate server IPC implementation file')
+
+    parser.add_argument('--async-server',
+                        dest="async",
+                        action='store_true',
+                        default=False,
+                        help='generate asynchronous-style server functions')
+
+    parser.add_argument('--name-prefix',
+                        dest="namePrefix",
+                        default='',
+                        help='optional prefix for generated functions/types')
+
+    # todo: Is this option still needed, or is the --name-prefix option sufficient?
+    parser.add_argument('--service-tag',
+                        dest="serviceTag",
+                        default='',
+                        help='optional short name for service')
+
+    parser.add_argument('--file-prefix',
+                        dest="filePrefix",
+                        default='',
+                        help='optional prefix for generated files')
+
+    parser.add_argument('--user-include',
+                        dest="userInclude",
+                        default='',
+                        help='optional C include file for extra definitions')
+
+    parser.add_argument('--output-dir',
+                        dest="outputDir",
+                        default='',
+                        help='optional output directory for generated files')
+
+    parser.add_argument('--hash',
+                        dest="hash",
+                        action='store_true',
+                        default=False,
+                        help='print SHA256 hash for interface; NO files are generated')
+
+    parser.add_argument('--dump',
+                        dest="dump",
+                        action='store_true',
+                        default=False,
+                        help='print info on parsed functions; NO files are generated')
+
+    # Parse the command lines arguments
+    args = parser.parse_args()
+
+    # If --gen-all is specified, it forces all files to be generated
+    if args.genAll:
+        args.genInterface=True
+        args.genLocal=True
+        args.genClient=True
+        args.genServerInterface=True
+        args.genServer=True
+
+    return args
+
+
+#
+# Main
+#
+
+args = GetArguments()
+#print args
+
+data = open(args.interfaceFile, 'r').read()
+
+# Set the name prefix first.  This has to be done before the interface is actually 
+# parsed, since the resulting parsedCode will use the prefix.
+codeTypes.SetNamePrefix(args.namePrefix)
+
+parsedCode = interfaceParser.parseCode(data)
+
+# Dump info on the parsed file.  No need to generate any code.
+if args.dump:
+    interfaceParser.printCode(parsedCode)
+    sys.exit(0)
+
+# Handle the --hash argument here.  No need to generate any code
+if args.hash:
+    print codeTypes.GetHash(parsedCode)
+    sys.exit(0)
+
+# Pass 'args' so that the functiond can determine what needs to be output
+codeGen.WriteAllCode(args, parsedCode)
+
+

@@ -1,0 +1,77 @@
+/** @page defFiles Legato Definition Files
+
+@ref defBackground  <br>
+@ref defBuild  <br>
+@ref defConfiguration   <br>
+@ref defWhatsNext
+
+
+@section defBackground .adef and .cdef files
+
+The Application .adef and Component.cdef are used by the build tools to define attributes.
+Application .adef and Component.cdef files have the same basic format.
+They are divided into sections with content specific to each section.
+
+Comments can be included using C++-style one-line comments:
+@code starts with "" and goes to end of line @endcode
+
+or C-style multi-line comments: 
+
+@code starts with "/*" and ending with "*/" @endcode
+
+Except for the sources: section (at least one source file must exist for any component), all sections 
+in the .adef and Component.cdef are optional (they can be empty).
+
+Sections can be in any order, multiple occurrences are permitted, and some sections have sub-sections.
+Line-terminating characters (e.g., new-line and carriage-return) are treated like spaces and tabs;
+the choice of formatting within these files is relatively unrestricted (e.g.,  hard tabs or spaces can be used for indentation).
+
+@code
+files:
+    htdocs/index.html   /var/www/
+
+import :  // Note that space is allowed between the section name and the colon.
+    ...
+@endcode
+
+
+@section defBuild Tool Search Paths
+
+Two are used:
+ - @b source search path - lists file system directories where the build tools look for source code files and components.
+ - @b interface search path - lists file system directories where the build tools look for interface definition files (.h files and .api files).
+
+The default search path “.” is the current working directory where the build tool ran.
+
+Search paths can be changed through command-line options:
+- ‘-i’ sets the interface search path
+- ‘-c’ sets the source search path
+
+
+@section defConfiguration Configuration
+
+Settings in the Component.cdef file are often configuration settings for that component.
+
+Most settings in the .adef file are also configuration settings, and inherit settings from Component.cdef files.
+
+If the same setting appears in an .adef and a Component.cdef, the .adef setting overrides the .cdef file.
+
+All configuration settings can be overridden on the target device at runtime
+but they make not take effect until the app is restarted.
+
+@section defWhatsNext What's Next?
+
+@subpage defFilesAdef  <br>
+@subpage defFilesCdef
+
+Or move to the <b>next level</b>: 
+
+@ref buildTools  <br>
+@ref demoApps
+
+<HR>
+
+Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+
+**/
+

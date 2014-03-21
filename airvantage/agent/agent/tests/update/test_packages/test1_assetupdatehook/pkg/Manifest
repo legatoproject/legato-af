@@ -1,0 +1,27 @@
+-------------------------------------------------------------------------------
+-- Copyright (c) 2012 Sierra Wireless and others.
+-- All rights reserved. This program and the accompanying materials
+-- are made available under the terms of the Eclipse Public License v1.0
+-- which accompanies this distribution, and is available at
+-- http://www.eclipse.org/legal/epl-v10.html
+--
+-- Contributors:
+--     Laurent Barthelemy for Sierra Wireless - initial API and implementation
+------------------------------------------------------------------------------
+
+{
+  -- Global information
+  version = "toto_1.0",
+
+  -- Packages information
+  components =
+  {
+    {   name = "update_test_01_assetupdatehook.update",
+        location = ".",
+        provides = { feattoto="1.0"},
+        version = "1",
+        parameters = { autostart=true, bar=42, foo='test' }
+    }
+  }
+}
+

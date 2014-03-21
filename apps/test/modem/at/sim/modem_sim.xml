@@ -1,0 +1,259 @@
+<tests>
+
+    <testStart>
+        <ask>AT+WIND?</ask>
+        <resp>
+            <ack>+WIND: 0</ack>
+            <ack>OK</ack>
+        </resp>
+    </testStart>
+
+    <testStart2>
+        <ask>AT+WIND=9</ask>
+        <resp>
+            <ack>OK</ack>
+        </resp>
+    </testStart2>
+
+    <GetCardIdentification>
+        <ask>at+ccid</ask>
+        <resp>
+            <ack>+CCID: "123456789ABCDEF12345"</ack>
+            <ack>OK</ack>
+        </resp>
+    </GetCardIdentification>
+
+    <GetCardIdentification2>
+        <ask>at+ccid</ask>
+        <resp>
+            <ack>+CCID: "00000000000000000000"</ack>
+            <ack>OK</ack>
+        </resp>
+    </GetCardIdentification2>
+
+    <GetIMSI>
+        <ask>at+cimi</ask>
+        <resp>
+            <ack>123456780ABCDEF</ack>
+            <ack>OK</ack>
+        </resp>
+    </GetIMSI>
+
+
+    <test_pa_sim_GetState_1>
+        <ask>at+cpin?</ask>
+        <resp>
+            <ack>ERROR</ack>
+        </resp>
+    </test_pa_sim_GetState_1>
+    <test_pa_sim_GetState_2>
+        <ask>at+cpin?</ask>
+        <resp>
+            <ack>+CPIN: READY</ack>
+        </resp>
+    </test_pa_sim_GetState_2>
+    <test_pa_sim_GetState_3>
+        <ask>at+cpin?</ask>
+        <resp>
+            <ack>+CPIN: SIM PIN</ack>
+        </resp>
+    </test_pa_sim_GetState_3>
+    <test_pa_sim_GetState_4>
+        <ask>at+cpin?</ask>
+        <resp>
+            <ack>+CPIN: SIM PUK</ack>
+        </resp>
+    </test_pa_sim_GetState_4>
+    <test_pa_sim_GetState_5>
+        <ask>at+cpin?</ask>
+        <resp>
+            <ack>+CPIN: SIM PIN2</ack>
+        </resp>
+    </test_pa_sim_GetState_5>
+    <test_pa_sim_GetState_6>
+        <ask>at+cpin?</ask>
+        <resp>
+            <ack>+CPIN: SIM PUK2</ack>
+        </resp>
+    </test_pa_sim_GetState_6>
+    <test_pa_sim_GetState_7>
+        <ask>at+cpin?</ask>
+        <resp>
+            <ack>+CPIN: PH-SIM PIN</ack>
+        </resp>
+    </test_pa_sim_GetState_7>
+    <test_pa_sim_GetState_8>
+        <ask>at+cpin?</ask>
+        <resp>
+            <ack>+CMS ERROR: 310</ack>
+        </resp>
+    </test_pa_sim_GetState_8>
+    <test_pa_sim_GetState_9>
+        <ask>at+cpin?</ask>
+        <resp>
+            <ack>+CMS ERROR: 311</ack>
+        </resp>
+    </test_pa_sim_GetState_9>
+    <test_pa_sim_GetState_10>
+        <ask>at+cpin?</ask>
+        <resp>
+            <ack>+CMS ERROR: 312</ack>
+        </resp>
+    </test_pa_sim_GetState_10>
+    <test_pa_sim_GetState_11>
+        <ask>at+cpin?</ask>
+        <resp>
+            <ack>+CMS ERROR: 313</ack>
+        </resp>
+    </test_pa_sim_GetState_11>
+    <test_pa_sim_GetState_12>
+        <ask>at+cpin?</ask>
+        <resp>
+            <ack>+CMS ERROR: 316</ack>
+        </resp>
+    </test_pa_sim_GetState_12>
+    <test_pa_sim_GetState_13>
+        <ask>at+cpin?</ask>
+        <resp>
+            <ack>+CMS ERROR: 317</ack>
+        </resp>
+    </test_pa_sim_GetState_13>
+    <test_pa_sim_GetState_14>
+        <ask>at+cpin?</ask>
+        <resp>
+            <ack>+CMS ERROR: 318</ack>
+        </resp>
+    </test_pa_sim_GetState_14>
+    <test_pa_sim_GetState_16>
+        <ask>at+cpin?</ask>
+        <resp>
+            <ack>+CMS ERROR: 320</ack>
+        </resp>
+    </test_pa_sim_GetState_16>
+    <test_pa_sim_GetState_17>
+        <ask>at+cpin?</ask>
+        <resp>
+            <ack>+CMS ERROR: 515</ack>
+        </resp>
+    </test_pa_sim_GetState_17>
+
+    <test_pa_sim_EnterPIN_1>
+        <ask>at+cpin=0000</ask>
+        <resp>
+            <ack>+CME ERROR: 16</ack>
+        </resp>
+    </test_pa_sim_EnterPIN_1>
+    <test_pa_sim_EnterPIN_2>
+        <ask>at+cpin=1234</ask>
+        <resp>
+            <ack>OK</ack>
+        </resp>
+    </test_pa_sim_EnterPIN_2>
+
+    <test_pa_sim_EnterPUK_1>
+        <ask>at+cpin=00000000,0000</ask>
+        <resp>
+            <ack>+CME ERROR: 16</ack>
+        </resp>
+    </test_pa_sim_EnterPUK_1>
+    <test_pa_sim_EnterPUK_2>
+        <ask>at+cpin=00000000,1234</ask>
+        <resp>
+            <ack>+CME ERROR: 16</ack>
+        </resp>
+    </test_pa_sim_EnterPUK_2>
+    <test_pa_sim_EnterPUK_3>
+        <ask>at+cpin=12345678,1234</ask>
+        <resp>
+            <ack>OK</ack>
+        </resp>
+    </test_pa_sim_EnterPUK_3>
+    <test_pa_sim_EnterPUK_4>
+        <ask>at+cpin=12345678,0000</ask>
+        <resp>
+            <ack>OK</ack>
+        </resp>
+    </test_pa_sim_EnterPUK_4>
+
+    <pa_sim_GetPINRemainingAttempts_1>
+        <ask>at+cpinc</ask>
+        <resp>
+            <ack>OK</ack>
+        </resp>
+    </pa_sim_GetPINRemainingAttempts_1>
+    <pa_sim_GetPINRemainingAttempts_2>
+        <ask>at+cpinc</ask>
+        <resp>
+            <ack>+CPINC: 3,0,10,0</ack>
+            <ack>OK</ack>
+        </resp>
+    </pa_sim_GetPINRemainingAttempts_2>
+    <pa_sim_GetPINRemainingAttempts_3>
+        <ask>at+cpinc</ask>
+        <resp>
+            <ack>+CPINC: 0,2,0,10</ack>
+            <ack>OK</ack>
+        </resp>
+    </pa_sim_GetPINRemainingAttempts_3>
+
+   <pa_sim_GetPUKRemainingAttempts_1>
+       <ask>at+cpinc</ask>
+       <resp>
+           <ack>OK</ack>
+       </resp>
+   </pa_sim_GetPUKRemainingAttempts_1>
+   <pa_sim_GetPUKRemainingAttempts_2>
+        <ask>at+cpinc</ask>
+        <resp>
+            <ack>+CPINC: 3,0,1,0</ack>
+            <ack>OK</ack>
+        </resp>
+    </pa_sim_GetPUKRemainingAttempts_2>
+    <pa_sim_GetPUKRemainingAttempts_3>
+        <ask>at+cpinc</ask>
+        <resp>
+            <ack>+CPINC: 3,3,3,0</ack>
+            <ack>OK</ack>
+        </resp>
+    </pa_sim_GetPUKRemainingAttempts_3>
+
+    <test_pa_sim_ChangePIN_1>
+        <ask>at+cpwd="SC",11111111,1111</ask>
+        <resp>
+            <ack>OK</ack>
+        </resp>
+    </test_pa_sim_ChangePIN_1>
+    <test_pa_sim_ChangePIN_2>
+        <ask>at+cpwd="P2",22222222,2222</ask>
+        <resp>
+            <ack>OK</ack>
+        </resp>
+    </test_pa_sim_ChangePIN_2>
+
+    <test_pa_sim_EnablePIN_1>
+        <ask>at+clck="SC",1,1111</ask>
+        <resp>
+            <ack>OK</ack>
+        </resp>
+    </test_pa_sim_EnablePIN_1>
+    <test_pa_sim_EnablePIN_2>
+        <ask>at+clck="P2",1,2222</ask>
+        <resp>
+            <ack>OK</ack>
+        </resp>
+    </test_pa_sim_EnablePIN_2>
+
+    <test_pa_sim_DisablePIN_1>
+        <ask>at+clck="SC",0,1111</ask>
+        <resp>
+            <ack>OK</ack>
+        </resp>
+    </test_pa_sim_DisablePIN_1>
+    <test_pa_sim_DisablePIN_2>
+        <ask>at+clck="P2",0,2222</ask>
+        <resp>
+            <ack>OK</ack>
+        </resp>
+    </test_pa_sim_DisablePIN_2>
+
+</tests>

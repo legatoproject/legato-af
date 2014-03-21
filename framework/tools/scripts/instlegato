@@ -1,0 +1,93 @@
+#!/bin/bash
+
+# This script installs the Legato framework in /usr/local on a target device using SCP.
+# Note: this implies that /usr/local must exist and be writeable on the target.
+# The legato framework must have also been built for the appropriate target device.
+
+function PrintUsage()
+{
+    echo "USAGE: $(basename $0) SRC_DIR DEST_IP"
+    echo
+    echo "  where, SRC_DIR = the directory in which the target's built Legato files can be found."
+    echo "                   E.g., 'build/ar7'."
+    echo
+    echo "         DEST_IP = the IP address of the target device."
+    echo
+}
+
+SRC_DIR=$1
+DEST_IP=$2
+
+# Check if they are asking for help.
+if [ "$1" = "-h" -o "$1" = "help" -o "$1" = "--help" ]
+then
+    PrintUsage
+    exit 0
+fi
+
+if [ $# -ne 2 ]
+then
+    echo "***ERROR: Incorrect number of arguments."
+    echo
+    PrintUsage
+    exit 1
+fi
+
+# Check that the first argument exists and is a directory.
+if ! [ -d "$SRC_DIR" ]
+then
+    echo "***ERROR: First argument should be a directory."
+    echo "Directory '$SRC_DIR' not found."
+    echo "Perhaps it needs to be built?"
+    echo
+    PrintUsage
+    exit 1
+fi
+
+# Check that the second argument is provided and can be pinged.
+if ! [ $DEST_IP ]
+then
+    echo "***ERROR: Second argument should be an IP address."
+    echo
+    PrintUsage
+    exit 1
+fi
+
+if ! ping -c 1 -w 1 $DEST_IP > /dev/null
+then
+    echo "***ERROR: Device address $DEST_IP seems to be unreachable."
+    echo
+    exit 1
+fi
+
+TAR_FILE="$SRC_DIR/legato-runtime.tar"
+
+if ! [ -f "$TAR_FILE" ]
+then
+    echo "***ERROR: Runtime tarball '$TAR_FILE' not found."
+    echo "Are you sure '$SRC_DIR' is a target-specific Legato build directory and"
+    echo "the build has completed successfully?"
+    echo
+    PrintUsage
+    exit 1
+fi
+
+# Create a tarball of the target device's staging area and stream it into place on the device.
+# NOTE: If we don't sleep for a second, the ssh server on the target will kill the legato
+# runtime when the ssh session terminates.
+cat "$TAR_FILE" |
+ssh root@$DEST_IP '
+    if [ -f /usr/local/bin/legato ]
+    then
+        /usr/local/bin/legato stop
+    fi
+    mkdir -p /usr/local/bin &&
+    cd / &&
+    tar x &&
+    chmod -R go-w /usr/local &&
+    chown -R root:root /usr/local &&
+    ( umount /etc/ld.so.cache || true ) &&
+    /sbin/ldconfig -v -C /var/run/ld.so.cache &&
+    mount --bind /var/run/ld.so.cache /etc/ld.so.cache &&
+    sleep 2' &&
+echo "DONE."

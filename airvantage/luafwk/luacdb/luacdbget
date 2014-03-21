@@ -1,0 +1,40 @@
+#!/bin/sh
+
+# expects seekable cdb on stdin
+exec 3<&0
+
+case $# in
+1)	key="$1"
+	skip=0;;
+2)	key="$1"
+	skip="$2";;
+*)	echo "luacdbget: usage: luacdbget key [skip]" >&2
+	exit 111;;
+esac
+
+exec lua - <<EOF
+
+local cdb = require("cdb")
+
+local key="$key"
+local skip="$skip"+0
+
+local function fatal(msg)
+	io.stderr:write('luacdbget: fatal: ' .. (msg or '') .. '\n')
+	os.exit(111)
+end
+
+local t, errno = cdb.init(3)
+if errno then fatal('cdb.init: errno=' .. errno) end
+
+local function iter()
+	for val in t:values(key) do
+		if skip == 0 then io.write(val); os.exit(0) end
+		skip = skip-1
+	end
+end
+
+xpcall(iter, fatal)
+os.exit(100)
+
+EOF

@@ -1,0 +1,14 @@
+-- Global information
+{
+version = "1.0",
+ 
+-- Components information
+components = {
+  {
+  name = "@sys.update.testUpdate",   
+  location = "/update",
+  version = "2.0"
+  },
+} --end of Components information
+
+} -- end of Manifest

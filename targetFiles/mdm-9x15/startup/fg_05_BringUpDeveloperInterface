@@ -1,0 +1,6 @@
+#!/bin/sh
+
+# This brings up a fixed ip on the usb ecm interface.
+# You can modify this if you wish to do something different
+
+ifconfig usb0 192.168.1.2 up

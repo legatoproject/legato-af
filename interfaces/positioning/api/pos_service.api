@@ -1,0 +1,57 @@
+/*
+ * Interface for Positioning Sample Service
+ *
+ * Copyright (C) Sierra Wireless, Inc. 2013.  All rights reserved. Use of this work is subject to license.
+ */
+
+
+HANDLER MovementHandler
+{
+    ADD_HANDLER_PARAMS
+    (
+        uint32      horizontalMagnitude IN,
+        uint32      verticalMagnitude IN
+    );
+
+    HANDLER_PARAMS
+    (
+        le_pos_SampleRef_t    positionSampleRef
+    );
+};
+
+
+FUNCTION le_result_t Get2DLocation
+(
+    int32               latitude OUT,
+    int32               longitude OUT,
+    int32               hAccuracy OUT
+);
+
+FUNCTION le_result_t Get3DLocation
+(
+    int32               latitude OUT,
+    int32               longitude OUT,
+    int32               hAccuracy OUT,
+    int32               altitude OUT,
+    int32               vAccuracy OUT
+);
+
+FUNCTION le_result_t GetMotion
+(
+    uint32              hSpeed OUT,
+    int32               hSpeedAccuracy OUT,
+    int32               vSpeed OUT,
+    int32               vSpeedAccuracy OUT
+);
+
+FUNCTION le_result_t GetHeading
+(
+    int32               heading OUT,
+    int32               headingAccuracy OUT
+);
+
+FUNCTION le_result_t GetDirection
+(
+    int32               direction OUT,
+    int32               directionAccuracy OUT
+);

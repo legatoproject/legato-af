@@ -1,0 +1,8 @@
+---
+-- LuaFileSystem is a Lua library developed to complement the set of functions related to file systems offered by the standard Lua distribution.
+-- LuaFileSystem offers a portable way to access the underlying directory structure and file attributes.<br />
+-- Please refer to the official online documentation: [LuaFileSystem reference](http://keplerproject.github.com/luafilesystem/manual.html#reference).
+-- @module lfs
+--
+
+return nil

@@ -1,0 +1,8 @@
+treemgr agent.treemgr.handlers.extvars.treehdlsample
+
+treehdlsample=
+# Symbolic mapping, each var mapped to its logical name (mapping is done statically)
+treehdlsample.int_value = 1
+treehdlsample.double_value = 2
+treehdlsample.string_value = 4
+treehdlsample.bool_value = 8

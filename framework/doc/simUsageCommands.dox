@@ -1,0 +1,57 @@
+/** @page simUsageCommands SIM Commands 
+
+SIM tool commands:
+
+To get sim status:
+
+@code
+        sim
+@endcode
+ 
+To enter pin code:
+
+ @code
+        sim enterpin <pin>
+@endcode
+ 
+
+To lock sim:
+
+@code
+        sim lock <pin>
+@endcode
+ 
+
+To unlock sim:
+
+@code
+        sim unlock <pin>
+@endcode
+ 
+
+To unblock sim:
+
+@code
+        sim unblock <puk> <newpin>
+@endcode
+ 
+
+To store pin:
+
+@code
+        sim storepin <pin>
+
+@endcode
+ 
+- <b>Enter PIN</b>: Enters the PIN code that is required before any Mobile equipment functionality can be used.
+- <b> Lock</b>: Locks the SIM card: enables requests for the PIN code.
+- <b> Unlock</b>: Unlocks the SIM card: disables requests for the PIN code.
+- <b>Unblock</b>: Unblocks the SIM card. The SIM card is blocked after X unsuccessful attempts to enter the PIN.
+- <b>Store PIN</b>: Stores SIM into the configDB. Whenever the SIM is inserted, it'll use this PIN code to unlock.
+
+<HR>
+
+Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+
+**/
+

@@ -1,0 +1,78 @@
+/** @page defFilesCdef Legato cdef Files
+
+@ref defsources <br>
+@ref defimport <br>
+@ref defexport <br>
+@ref deffiles <br>
+
+Legato uses these sections in the Component.cdef :
+
+@section defsources sources
+
+Contains a list of source code files.
+
+One source file must implement a COMPONENT_INIT function called at start-up.
+
+@code
+sources:
+
+    foo.c
+    bar.c
+    init.c      // This one implements the COMPONENT_INIT
+    @endcode
+
+@section defimport import
+
+Lists IPC services required by this component from other components.
+
+Consists of a service instance name and interface definition (.api) file path separated by an equals sign (‘=’).
+
+@code
+import:
+
+    hello = sample/greet.api   // We need to use the Greet API to say “hello” to the world.
+    @endcode
+
+The build tools search for the interface definition (.api) file based on the interface search path.
+
+Inside the component’s source code, you can call API functions defined inside the .api files service instance name prepended.
+
+If sample/greet.api defines a function called “Greet()”, the source code for the component can call it as “hello_Greet()”. 
+In C, source code must \#include “interfaces.h” for this definition.
+
+Multiple instances of the same API listed in the “import” section must have unique instance names, and will appear as separate functions with different prefixes.
+
+@code
+import:
+
+    heat = digitalOutput.api   // This is what we use to turn on and off the heater.
+    cool = digitalOutput.api   // This is what we use to turn on and off the cooling (A/C). @endcode
+
+If digitalOutput.api defines two functions On() and Off(),
+then the component’s source code would have four functions available to it: heat_On(), heat_Off(), cool_On(), and cool_Off().
+
+@section defexport export
+
+Lists IPC services provided by this component to other components.
+
+Contents are identical in syntax to the contents of the “import” section, but it the semantic inverse.
+
+@code
+export:
+
+    hello = sample/greet.api   // We offer the Greet API to others so they can say “hello” to the world. @endcode
+
+The component’s source code implements the API functions defined inside the .api files, with the service instance name prepended. 
+If @verbatim sample/greet.api@endverbatim defines a function called @verbatim “Greet()”@endverbatim, 
+the source code for the component must implement a function called @verbatim “hello_Greet()”@endverbatim. 
+In C, the source code must \#include “interfaces.h” to get the function prototype definition.
+
+@section deffiles files
+
+The same as the @ref filesAdef section in .adef files.
+
+
+
+Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+
+**/

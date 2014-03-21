@@ -1,0 +1,73 @@
+/** @page basicInterfaces Legato Interfaces
+
+@ref functionCallAPIs <br>
+@ref dataSampleStreams <br>
+
+If component reuse is to be fully realized, it is vital that components be designed for reuse.
+Reusability partly depends on portability, which the Legato framework provides, but it also
+depends largely on interoperability.  That is, reusable components must be designed for
+interoperability with as many other things as possible; <i> including things that don't yet
+exist! </i>
+
+The single most important factor in making something interoperable is the design of its interfaces.
+Standardized data types and interaction methods must be used; and the simpler the interfaces,
+the better.
+
+Legato embraces the philosophy that programmers should
+always be allowed to choose whatever implementation language best suits the task at hand, regardless
+of what other components they will have to interface with.  Some developers are better at
+programming in certain languages, and some languages are better suited to solving certain problems.
+To this end, Legato endeavours to provide developers with an easy way to interface components
+with each other even if they have been written in different languages.
+
+A common example of a programming-language-independent interface is a networking protocol.  But,
+networking protocols come with a lot of pitfalls and overhead, including endian issues, race
+conditions, protocol stack framing overheads and processing time, to name a few.  It also tends
+to require a lot of hand coding of the protocol implementation.
+
+While Legato does, of course, support networking, it also provides tools for implementing much
+lighter-weight, language-independent communication between components that exist on the same
+host device, and could even be running within the same process.
+
+Legato supports two forms of language-independent interface:
+ - functionCallAPIs
+ - dataSampleStreams
+
+<HR>
+@section functionCallAPIs Function Call APIs
+
+Virtually all programmers are familiar with function calls. While Legato
+allows normal libraries to use their specific programming-language function call
+interfaces, Legato also supports language-independent function call interfaces.  
+
+Using a simple interface definition language (IDL), you can
+create a function call API implemented in one language and called from another.
+
+The implementation code (the server) can run in a different process, or even in
+a different application (in a different sandbox), than the client code that uses that implementation.  The
+Legato build system automatically generates the code needed to marshall parameters and
+return codes into messages, and send them over the IPC system.
+
+See @ref languageIndependentAPIs for more information.
+
+@section dataSampleStreams Data Sample Streams
+
+Data Sample Streams are based on the transmission of <b> Data Samples </b> from @b Outputs
+to @b Inputs.
+
+Data Sample Streams allow systems to use objects that act like
+parts of an industrial process, taking in samples, performing some processing, and generating
+ other samples.  An example case is where a temperature sensor and a heating coil are connected
+to a PID controller to implement a thermostat. To get a programmable thermostat, you'd add a
+schedule (with a user interface) that outputs a temperature setpoint to the PID controller.
+
+@image html DataSampleStreamTStatExample.png
+
+
+
+<HR>
+
+Copyright (C) Sierra Wireless, Inc. 2012-2013. All rights reserved. Use of this work is subject to license.
+
+**/
+

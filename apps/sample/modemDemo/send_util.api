@@ -1,0 +1,5 @@
+FUNCTION le_result_t SendMessage
+(
+    string telPtr[15] IN,
+    string messagePtr[160] IN
+);

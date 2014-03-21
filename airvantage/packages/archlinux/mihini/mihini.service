@@ -1,0 +1,11 @@
+[Unit]
+Description=Mihini Daemon & agent
+Wants=network.target
+After=network.target
+
+[Service]
+ExecStart=/opt/mihini/bin/appmon_daemon -a /opt/mihini/bin/agent -w /opt/mihini -h mihini -u mihini -g mihini -n 5
+Type=simple
+
+[Install]
+WantedBy=multi-user.target

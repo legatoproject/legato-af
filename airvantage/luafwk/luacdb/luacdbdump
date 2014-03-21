@@ -1,0 +1,29 @@
+#!/bin/sh
+
+# expects seekable cdb on stdin
+exec 3<&0
+
+exec lua - <<EOF
+
+local cdb = require("cdb")
+
+local function fatal(msg)
+	io.stderr:write('luacdbdump: fatal: ' .. (msg or '') .. '\n')
+	os.exit(111)
+end
+
+local t, errno = cdb.init(3)
+if errno then fatal('cdb.init: errno=' .. errno) end
+
+local function iter()
+	local write = io.write
+	local format = string.format
+	for k,v in t:pairs() do
+		write(format('+%d,%d:', k:len(), v:len()), k, '->', v, '\n')
+	end
+	write('\n')
+end
+
+xpcall(iter, fatal)
+
+EOF

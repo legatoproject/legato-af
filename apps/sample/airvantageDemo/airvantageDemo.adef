@@ -1,0 +1,28 @@
+executables:
+        airvantageDemo (
+                            "airvantageDemo.c"
+                            "$LEGATO_BUILD/airvantage/runtime/lib/libreturncodes.so"
+                            "$LEGATO_BUILD/airvantage/runtime/lib/libSwi_AirVantage.so"
+                            "$LEGATO_BUILD/airvantage/runtime/lib/libSwi_DeviceTree.so"
+                            "$LEGATO_BUILD/airvantage/runtime/lib/libEmp.so"
+                            "$LEGATO_BUILD/airvantage/runtime/lib/libyajl.so"
+                            "$LEGATO_BUILD/airvantage/runtime/lib/libSwi_log.so"
+                            "$LEGATO_BUILD/airvantage/runtime/lib/libSwi_DSet.so"
+                          )
+
+
+import:
+    // mount libraries to sandbox
+    "/usr/local/lib/libreturncodes.so"          "/lib/"
+    "/usr/local/lib/libSwi_AirVantage.so"       "/lib/"
+    "/usr/local/lib/libSwi_DeviceTree.so"       "/lib/"
+    "/usr/local/lib/libEmp.so"                  "/lib/"
+    "/usr/local/lib/libyajl.so"                 "/lib/"
+    "/usr/local/lib/libSwi_log.so"              "/lib/"
+    "/usr/local/lib/libSwi_DSet.so"             "/lib/"
+
+processes:
+    run: ( airvantageDemo )
+
+start:
+    auto

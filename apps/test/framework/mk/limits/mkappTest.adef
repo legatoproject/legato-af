@@ -1,0 +1,45 @@
+start: manual
+
+numProcs: 20
+
+mqueueSize: 50
+
+rtSignalQueueSize: 10
+
+fileSystemSize: 1001K
+
+
+executables:
+
+    foo ( foo.c )
+
+processes:
+
+    run: p1 (foo)
+
+    priority: low
+
+    vMemSize: 2000K
+    coreFileSize: 100000
+    maxFileSize:1K memLockSize:27K
+    numFds: 23
+
+    faultAction: ignore
+
+processes:
+
+    envVars:    LD_LIBRARY_PATH=/lib
+                PATH=/bin
+
+    priority: rt1
+    faultAction: restart
+
+    run: p2 (foo)
+
+    vMemSize: 2004K
+    coreFileSize: 0
+    maxFileSize:1000 memLockSize:1024K
+
+    run: p3 (foo)
+
+    numFds: 32

@@ -1,0 +1,44 @@
+#!/bin/bash
+#*******************************************************************************
+# Copyright (c) 2012 Sierra Wireless and others.
+# All rights reserved. This program and the accompanying materials
+# are made available under the terms of the Eclipse Public License v1.0
+# which accompanies this distribution, and is available at
+# http://www.eclipse.org/legal/epl-v10.html
+#
+# Contributors:
+#     Guilhem Saurel for Sierra Wireless - initial script
+#*******************************************************************************
+
+useradd -b /opt -U mihini || echo "Mihini user already exists"
+sudo usermod -a -G uucp,dialout,lock mihini
+
+cd ~mihini
+
+for rw in persist update apps
+do
+    mkdir -p /var/opt/mihini/$rw
+    ln -s /var/opt/mihini/$rw
+done
+
+chown -R mihini:mihini /{var/,}opt/mihini
+
+cat << EOF > /etc/systemd/system/mihini.service
+[Unit]
+Description=Mihini Daemon & agent
+Wants=network.target
+After=network.target
+
+[Service]
+ExecStart=/opt/mihini/bin/appmon_daemon -a /opt/mihini/bin/agent -w /opt/mihini -h mihini -u mihini -g mihini -n 5
+Type=simple
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+echo "/opt/mihini/lib" > /etc/ld.so.conf.d/01-mihini.conf
+ldconfig
+
+systemctl enable mihini
+systemctl start mihini

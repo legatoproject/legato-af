@@ -1,0 +1,23 @@
+/** @page demoAPNUsage APN Commands
+
+
+The APN tool used to set the APN name for internet profile.
+
+APN tool commands:
+ 
+To get APN name:
+@code
+        apn get
+@endcode
+ 
+To set APN name:
+@code
+        apn set <apn name>
+ @endcode
+
+<HR>
+
+Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+
+**/
+

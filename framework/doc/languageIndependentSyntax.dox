@@ -1,0 +1,194 @@
+/** @page languageIndependentSyntax Interface Syntax
+
+@ref types <br>
+@ref function <br>
+@ref handler <br>
+@ref example
+
+The interface file currently supports defining two types of interface objects:
+ - functions
+ - handlers
+
+Functions are similar to C functions.  They can take input and output parameters, and
+can return a result. A handler is a special function type that can be registered for callbacks.
+
+The interface file currently supports a limited number of pre-defined types.  For additional
+types, support to include C types is available.
+
+The interface file supports both C and C++ comment styles.  Comments that use the doxygen formats 
+@c /** to start a multi-line comment or @c ///< to start a one line comment receive special 
+processing.  Multi-line comments at the start of the interface file will be copied directly 
+to the appropriate generated files.  See @ref function and @ref handler for details on how comments
+ are copied.
+
+@todo
+ - Other types of interface objects may eventually be supported, such as classes
+
+@section types Type Support
+
+The interface file currently supports a limited number of pre-defined types.  These are:
+
+@verbatim
+uint8
+uint16
+uint32
+uint64
+
+int8
+int16
+int32
+int64
+
+string
+@endverbatim
+
+The unsigned and signed integer types are self-explanatory. See @ref function for details on the @c string type.  
+
+There is currently no support for defining additional types within the interface file. 
+See @ref languageIndependentC for details on how to include
+C types, which can be used anywhere that the pre-defined types are used.
+
+Also, all  C types defined in the @c legato.h file are available.  The most commonly used
+of these is the @ref le_result_t type.
+
+@todo
+ - Support for user-defined types will be added in a future release
+
+
+@section function Specifying a Function
+
+A function is specified as:
+
+@verbatim
+FUNCTION [<returnType>] <name>
+(
+    [<parameterList>]
+);
+@endverbatim
+
+The @c parameterList can contain one or more parameters separated by commas, or can be empty
+if there are no parameters.  The scalar type refers to anything that's not an array or string (i.e. scalar types do not
+have a length). These parameters types are supported:
+
+- <tt> \<type\> \<name\> [ ( "IN" | "OUT" ) ]</tt>
+     - scalar type
+     - defaults to IN if a direction is not specified
+
+- <tt> \<type\> \<name\> "[" [ \<minSize\> ".." ] \<maxSize\> "]" "IN" </tt>
+     - an IN array
+     - @c maxSize specifies the maximum number of elements allowed for the array
+     - optional @c minSize specifies the minimum number of elements required for the array
+
+- <tt> \<type\> \<name\> "[" \<minSize\> "]" "OUT" </tt>
+     - an OUT array
+     - array should be large enough to store @c minSize elements;  if supported by the
+       function implemention, a shorter OUT array can be used.
+
+- <tt> "string" \<name\> "[" [ \<minSize\> ".." ] \<maxSize\> "]" "IN" </tt>
+     - an IN string
+     - @c maxSize specifies the maximum string length allowed,
+     - optional @c minSize specifies the minimum string length required
+     - string length is given as number of characters, excluding any terminating characters
+
+- <tt> "string" \<name\> "[" \<minSize\> "]" "OUT" </tt>
+     - an OUT string
+     - string should be large enough to store @c minSize characters; if supported by the
+       function implemention, a shorter OUT string can be used.
+     - string length is given as number of characters, excluding any terminating characters
+
+The @c returnType is optional, and if specified, must be a scalar type as described above.
+
+Comments given in the function definition will be copied to the appropriate generated files
+under the following conditions:
+ - multi-line comments must start with "/**".
+ - single-line comments must start with "///<". Unlike typical doxygen usage, if there are a
+   number of single line comments, each line must start with "///<", rather than just the 
+   first line.
+ - if the function definition is preceded by a multi-line comment then this comment will be 
+   copied to the appropriate generated files.  
+ - if any parameter is followed by a multi-line comment or one or more single line comments,
+   then all these comments will be copied to the appropriate generated files.
+
+
+@section handler Specifying a Handler
+
+Do this to specify a handler:
+
+@verbatim
+HANDLER <handlerType>
+{
+    HANDLER_PARAMS
+    (
+        [<parameterList>]
+    );
+        
+    ADD_HANDLER_PARAMS
+    (
+        [<parameterList>]
+    );
+}
+@endverbatim
+
+The @c parameterList can contain one or more parameters separated by commas, or can be empty
+if there are no parameters.  Currently, the @c HANDLER_PARAMS @c parameterList can only be scalar
+types, as described above for @ref function.  All the parameters should be IN
+parameters.  The @c ADD_HANDLER_PARAMS @c parameterList can be
+anything that's valid for a function. @c ADD_HANDLER_PARAMS does not need to be specified if
+the @c parameterList is empty.
+
+Comments given for a handler definition are not currently copied to the appropriate generated
+files. 
+
+See @ref c_handler for details on the C code generated from the above handler definition.
+
+
+@section example Interface File Sample
+
+Here's a sample file:
+
+@verbatim
+/**
+ * Example interface file
+ */
+
+/**
+ * Handler definition
+ */
+HANDLER TestA
+{
+    HANDLER_PARAMS
+    (
+        int32 x
+    );
+        
+    ADD_HANDLER_PARAMS ();
+};
+
+/**
+ * Function takes all the possible kinds of parameters, but returns nothing
+ */
+FUNCTION allParameters
+(
+    int32 a,  ///< first one-line comment
+              ///< second one-line comment
+    uint32 b OUT,
+    uint32 data[10] IN,
+    uint32 output[10] OUT,
+    string label [10..20] IN,
+    string response [20] OUT
+);
+
+/**
+ * This function fakes an event so the handler will be callled.  
+ * Only needed for testing.  Would never exist on a real system.
+ */
+FUNCTION TriggerTestA
+(
+);
+@endverbatim
+
+<HR>
+
+Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+
+**/

@@ -1,0 +1,39 @@
+#*******************************************************************************
+# Copyright (c) 2012 Sierra Wireless and others.
+# All rights reserved. This program and the accompanying materials
+# are made available under the terms of the Eclipse Public License v1.0
+# which accompanies this distribution, and is available at
+# http://www.eclipse.org/legal/epl-v10.html
+#
+# Contributors:
+#     Laurent Barthelemy for Sierra Wireless - initial API and implementation
+#*******************************************************************************
+
+#!/bin/sh
+
+APPNAME="SampleApp"
+
+on_term()
+{
+  echo $APPNAME "Dying..."
+
+  #you can remove the exit call to term that sigkill is send to kill app after some time
+  # you can change the exit code to test the app is restarted
+  exit 0
+}
+
+
+# Execute function on_term() receiving TERM signal
+# The trap function seems not to be executed during a sleep
+
+#trap 'on_term' TERM
+
+
+while true
+do
+  echo $APPNAME "pid:" $$ "date:" `date` "id=" `id`
+  sleep 5
+done
+
+# We never get here.
+exit 1

@@ -1,0 +1,139 @@
+/** @page appInstallAirVantage Installing a Legato application remotely using AirVantage
+
+API info is here: @ref swi_airvantage.h
+
+This page explains how to build, create your application, configure the AirVantage platform and deploy your application remotely
+on your device.
+
+In this example, we use the sample "helloWorld" as the application.
+We also use AR7 as the target, you may apply the example to your actual device.
+
+ - @ref buildapp
+ - @ref createAppAv
+     - @ref compressApp
+     - @ref createAppModel
+     - @ref createAppPkg 
+ - @ref usingAv
+     - @ref uploadApp
+     - @ref createJob
+ - @ref rcvAppAgent
+     - @ref agtConnect
+     - @ref checkStatus
+ - @ref goingFurther
+
+
+@section buildapp Build the application
+
+Firstly, make sure that Legato is built locally for AR7, then :
+
+@verbatim
+Legato $ . bin/configlegatoenv
+Legato $ cd apps/sample/helloWorld
+Legato $ mkapp -t ar7 helloWorld.adef
+@endverbatim
+
+@section createAppAv Create application package for AirVantage
+
+@subsection compressApp Compress application package
+
+ Put helloWorld.ar7 inside a tar archive (this is required by the AirVantage platform) :
+
+@verbatim Legato $ tar cvpf helloWorld.ar7.tar helloWorld.ar7 @endverbatim
+
+
+@subsection createAppModel Create application model
+
+Create application model following this example:
+
+@verbatim
+<?xml version="1.0" encoding="ASCII"?>
+<app:application xmlns:app="http://www.sierrawireless.com/airvantage/application/1.0" name="HelloWorld_jsmith" revision="1.0" type="HelloWorld_jsmith">
+  <application-manager use="MIHINI_APPCON"/>
+  <binaries>
+    <binary file="helloWorld.ar7.tar"/>
+  </binaries>
+</app:application>
+@endverbatim
+
+Some explanations on model fields:
+- `type` field will be the identifier of the application on the device (the `APPNAME` to interact with supervisor).
+- `name` field is used on AirVantage UI
+
+Some advices and rules to create the model:
+- To ease the creation of this model, it is advised to set `type` and `name` fields with the same value.
+- Make sure that field `type` is set with unique value: you can add your AirVantage username in it to ensure the value will be unique.
+- Make sure that fields `name` and `revision` form a unique value pair.
+- Make sure that the field `binary file` contains the name of the resulting tar file. (see previous step @ref compressApp )
+- Save the file as `.app` file
+
+@subsection createAppPkg Create AirVantage application package
+
+Create a zip archive containing appmodel.app and helloWorld.ar7.tar,
+call it myapp.zip for example
+
+@verbatim zip myapp.zip appmodel.app helloWorld.ar7.tar @endverbatim
+
+
+
+@section usingAv Using AirVantage Platform 
+
+In this part, we assume that you already created your device on the platform using the section @ref connectingAirVantage
+
+@subsection uploadApp Upload application
+
+Upload `myapp.zip` using this documentation:
+https://doc.airvantage.net/display/USERGUIDE/Develop+Activity :  "My
+Apps" Section -> action Release (and select publish)
+
+
+@subsection createJob Create application installation job
+ 
+You need to create the application install job on the platform:
+on the "Monitor" view for your system, use the "More" menu, and select "Install application" and then select the application you just uploaded,released and published in previous step.
+
+
+@section rcvAppAgent Receive application on the AirVantage agent
+
+
+@subsection agtConnect Make the agent to connect
+Once the command is sent from the platform
+you need to connect the agent to the platform:
+@verbatim
+$ telnet 192.168.1.2 2000
+ > :agent.srvcon.connect()  # wait a moment
+= "ok"
+@endverbatim
+
+(When you interact with AirVantage, monitor the logs in the same time)
+
+@subsection checkStatus Check Success Status
+
+If the installation was successful, you should find helloWorld in
+the installed applications:
+@verbatim
+$ telnet 192.168.1.2 2000
+ > a=require 'agent.appcon'
+ > :a.list()
+{ "helloWorld" }
+ > :a.status("helloWorld")
+"running"
+@endverbatim
+
+In the same way, if the installation was successful, you should find helloWorld in
+the application list on the Monitor view of your device on AirVantage. 
+
+@section goingFurther Going further
+
+Start, stop, uninstall jobs can be created using corresponding UI buttons on the "Monitor" view for your system, 
+in the "Applications" section, next to the application name you choose.
+
+
+<HR>
+
+For more details on how to create a Legato application, check out @ref appCreating.
+
+For more information see the AirVantage documentation at https://doc.airvantage.net/display/USERGUIDE/Getting+Started
+
+Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+
+**/

@@ -1,0 +1,39 @@
+treemgr agent.treemgr.handlers.extvars.lible_tree_hdlr
+
+system.cellular.apn.current = 0
+system.cellular.cdma.link.ecio = 1
+system.cellular.cdma.link.operator = 2
+system.cellular.cdma.link.pn_offset = 3
+system.cellular.cdma.link.sid = 4
+system.cellular.cdma.link.nid = 5
+system.cellular.gsm.link.cell_id = 6
+system.cellular.gsm.link.ecio = 7
+system.cellular.gsm.link.operator = 8
+system.cellular.lte.link.rsrp = 9
+system.cellular.lte.link.rsrq = 10
+system.cellular.link.bytes_rcvd = 11
+system.cellular.link.bytes_sent = 12
+system.cellular.link.roam_status = 13
+system.cellular.link.ip = 14
+system.cellular.link.pkts_rcvd = 15
+system.cellular.link.pkts_sent = 16
+system.cellular.link.rssi = 17
+system.cellular.link.service = 18
+system.cellular.hw_info.imei = 19
+system.cellular.sim.iccid = 20
+system.cellular.sim.imsi = 21
+system.cellular.subscriber.phone_num = 22
+system.cellular.link.signal_bars = 23
+
+system.hw_info.product_str = 24
+system.sw_info.fw_ver = 25
+system.sw_info.fw_name = 26
+
+system.io.powerin = 27
+
+system.advanced.board_temp = 28
+system.advanced.radio_temp = 29
+system.advanced.reset_nb = 30
+
+system.gps.latitude = 31
+system.gps.longitude = 32

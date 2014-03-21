@@ -1,0 +1,140 @@
+/*
+ * Interface for SMS Service
+ *
+ * Copyright (C) Sierra Wireless, Inc. 2013.  All rights reserved. Use of this work is subject to license.
+ */
+
+HANDLER RxMessageHandler
+{
+    HANDLER_PARAMS
+    (
+        le_sms_msg_Ref_t  msgRef
+    );
+};
+
+FUNCTION le_sms_msg_Ref_t Create
+(
+);
+
+FUNCTION le_result_t SetDestination
+(
+    le_sms_msg_Ref_t msgRef,
+    string           dest[15] IN
+);
+
+FUNCTION le_result_t SetText
+(
+    le_sms_msg_Ref_t msgRef,
+    string           text[160] IN
+);
+
+FUNCTION le_result_t SetBinary
+(
+    le_sms_msg_Ref_t msgRef,    
+    uint8_t          bin[140] IN
+);
+
+FUNCTION le_result_t SetPDU
+(
+    le_sms_msg_Ref_t msgRef,    
+    uint8_t          pdu[176] IN
+);
+
+FUNCTION le_result_t Send
+(
+    le_sms_msg_Ref_t msgRef
+);
+
+FUNCTION Delete
+(
+    le_sms_msg_Ref_t msgRef
+);
+
+FUNCTION le_sms_msg_Format_t GetFormat
+(
+    le_sms_msg_Ref_t msgRef
+);
+
+FUNCTION le_result_t GetSenderTel
+(
+    le_sms_msg_Ref_t msgRef,
+    string           tel[15] OUT
+);
+
+FUNCTION size_t GetUserdataLen
+(
+    le_sms_msg_Ref_t msgRef
+);
+
+FUNCTION le_result_t GetTimeStamp
+(
+    le_sms_msg_Ref_t msgRef,
+    string           timestamp[25] OUT
+);
+
+FUNCTION size_t GetUserdataLen
+(
+    le_sms_msg_Ref_t msgRef
+);
+
+FUNCTION le_result_t GetText
+(
+    le_sms_msg_Ref_t msgRef,
+    string           text[160] OUT
+);
+
+FUNCTION le_result_t GetBinary
+(
+    le_sms_msg_Ref_t msgRef,
+    uint8_t          bin[140] OUT
+);
+
+FUNCTION le_result_t GetPDU
+(
+    le_sms_msg_Ref_t msgRef,
+    uint8_t          pdu[176] OUT
+);
+
+FUNCTION size_t GetPDULen
+(
+    le_sms_msg_Ref_t msgRef
+);
+
+FUNCTION le_result_t DeleteFromStorage
+(
+    le_sms_msg_Ref_t msgRef
+);
+
+FUNCTION le_sms_msg_ListRef_t CreateRxMsgList
+(
+);
+
+FUNCTION void DeleteList
+(
+    le_sms_msg_ListRef_t msgListRef
+);
+
+FUNCTION le_sms_msg_Ref_t GetFirst
+(
+    le_sms_msg_ListRef_t msgListRef
+);
+
+FUNCTION le_sms_msg_Ref_t GetNext
+(
+    le_sms_msg_ListRef_t msgListRef
+);
+
+FUNCTION le_sms_msg_Status_t GetStatus
+(
+    le_sms_msg_Ref_t msgRef
+);
+
+FUNCTION void MarkRead
+(
+    le_sms_msg_Ref_t msgRef
+);
+
+FUNCTION void MarkUnread
+(
+    le_sms_msg_Ref_t  msgRef
+);

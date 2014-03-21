@@ -1,0 +1,36 @@
+#!/bin/bash
+
+# This script stops the Legato Service Directory and Log Control Daemon, if they are running.
+# It outputs "Wasn't running." if they were not running.  It outputs "Stopped." if they were
+# stopped.  It outputs "***ERROR: ", followed by an error message (to standard error) if it fails.
+
+LOG_CONTROL_DAEMON_PID=$(pgrep -f logCtrlDaemon)
+if [ $LOG_CONTROL_DAEMON_PID ]
+then
+    if ! kill -SIGTERM $LOG_CONTROL_DAEMON_PID
+    then
+        echo "***ERROR: Failed to stop the Log Control Daemon." 1>&2
+        exit 1
+    fi
+
+    STOPPED=true
+fi
+
+SERVICE_DIRECTORY_PID=$(pgrep -f -n serviceDirectory)
+if [ $SERVICE_DIRECTORY_PID ]
+then
+    if ! kill -SIGTERM $SERVICE_DIRECTORY_PID
+    then
+        echo "***ERROR: Failed to stop the Service Directory." 1>&2
+        exit 1
+    fi
+
+    STOPPED=true
+fi
+
+if [ $STOPPED ]
+then
+    echo "Stopped."
+else
+    echo "Wasn't running."
+fi

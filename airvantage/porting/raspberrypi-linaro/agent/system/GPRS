@@ -1,0 +1,63 @@
+#!/bin/sh
+
+#*******************************************************************************
+# Copyright (c) 2012 Sierra Wireless and others.
+# All rights reserved. This program and the accompanying materials
+# are made available under the terms of the Eclipse Public License v1.0
+# which accompanies this distribution, and is available at
+# http://www.eclipse.org/legal/epl-v10.html
+#
+# Contributors:
+#     Sierra Wireless - initial API and implementation
+#*******************************************************************************
+
+#harmless script for gprs bearer
+#as it's not simple to emulate gprs over ppp, this script only output predefinied values
+#it does not affect network config
+
+
+IPADDR=100.101.102.103
+#HWADDR=
+NETMASK=255.255.255.255
+GW=100.101.102.1
+DNS=200.201.202.203
+ITFNAME=ppp0
+TMP=`date +%s`
+RX=`expr $TMP - 1289900000`
+TX=`expr $TMP - 1289990000`
+
+
+case "$1" in
+    init)
+    #read parameters
+    echo $ITFNAME
+    exit 0
+    ;;
+
+    start)
+    #start interface
+    RES="${IPADDR:-NULL} ${HWADDR:-NULL} ${NETMASK:-NULL} ${GW:-NULL} ${DNS:-NULL}"
+    echo $RES
+    exit 0
+    ;;
+
+    stop)
+    #stop interface
+    exit 0
+    ;;
+
+    default)
+    #set default route
+    exit 0
+    ;;
+
+    stats)
+    echo $RX $TX
+    exit 0
+    ;;
+
+
+    *)
+    exit 0
+    ;;
+esac

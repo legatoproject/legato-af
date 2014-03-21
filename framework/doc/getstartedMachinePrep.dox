@@ -1,0 +1,44 @@
+/** @page getstartedMachinePrep Prep Dev Machine
+
+@ref instLinuxPackages  <br>
+@ref uninstCache  <br>
+@ref defSysShell  <br>
+@ref devmachineWhatsNext
+
+The devlopment machine needs a few things to be set up first:
+
+@section instLinuxPackages Install Linux Packages
+
+Run the following to install necessary packages:
+
+@verbatim $ sudo apt-get install bison build-essential chrpath cifs-utils cmake coreutils curl 
+desktop-file-utils diffstat docbook-utils doxygen fakeroot flex g++ gawk gcc git-core gitk graphviz 
+help2man libgmp3-dev libmpfr-dev libreadline6-dev libtool libxml2-dev libxml-libxml-perl make m4 python-pip 
+python-jinja2 python-pysqlite2 quilt samba scons sed subversion texi2html texinfo unzip wget 
+@endverbatim
+
+@section uninstCache Uninstall ccache
+
+If @c ccache is installed, you must uninstall it  so you can build some target images: 
+@verbatim
+$ sudo apt-get remove ccache @endverbatim
+
+@section defSysShell Set Default System Shell 
+
+Some versions of Ubuntu default to dash instead of bash, which will cause builds to fail. 
+Change the system shell to use bash: 
+@verbatim
+$ sudo dpkg-reconfigure dash @endverbatim
+
+Answer "No" to the question.
+
+@section devmachineWhatsNext What's Next?
+
+@ref getstartedConnectDevKit
+
+<HR>
+
+Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+
+**/
+

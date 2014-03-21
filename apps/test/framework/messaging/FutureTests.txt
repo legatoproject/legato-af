@@ -1,0 +1,25 @@
+Future automated unit tests to be implemented for the Low-Level Messaging APIs:
+
+Test 4:
+ - Create a thread that tries to become a client of a service that it later advertises itself.
+ - Make sure the open call-back happens later.
+
+Test 5:
+ - Spawn separate processes for client and server.
+ - Kill client and re-start it loads of times.
+ - Check that server isn't leaking anything.
+
+Test 6:
+ - Spawn separate processes for client and server.
+ - Kill server.
+ - Check that client dies too.
+
+Test 7:
+ - Spawn separate processes for client and server.
+ - Register close handler on client.
+ - Kill server.
+ - Check that client doesn't die too.
+ - Re-spawn server.
+ - Check that client can reconnect to service.
+
+Copyright (C) 2013, Sierra Wireless, Inc. - All rights reserved. Use of this work is subject to license.

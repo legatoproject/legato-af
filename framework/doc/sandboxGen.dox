@@ -1,0 +1,39 @@
+/** @page sandboxGen Legato Sandboxes 
+
+Related info:
+
+@ref Security  <br>
+@ref basicRuntimeArch
+
+@section sandboxGen Legato Sandboxes and Security
+ 
+Legato uses sandboxes to provide a security layer against untrusted apps running in the same system. 
+Legato sandboxes isolate apps from the rest of the system where those apps don’t require root privileges 
+and have minimal system requirements. This allows OEM and ISV components to safely coexist on the same 
+device without fear of interfering or breaking the stack.
+
+Some applications aren’t suitable for Legato’s sandbox because it’s not a virtualized environment. A system analysis utility that 
+gathers statistics about an app’s resource usage is not a good candidate for a Legato sandboxed app. But an app that displays the 
+analyzed data to a web server @a is a good candidate.
+ 
+Legato sandboxes are based on @c chroot jails. Chroot changes the root directory of a process to a specified location. 
+The process then only has access to files and directories under its root directory. Only processes with certain capabilities can
+ find their way outside of their @c chrooted root directory.
+ 
+Legato sandboxes also provide resource limitations. Resource limitations place limits on the amount of system resources 
+an app is allowed to consume. Without resource limits, an isolated app can still cause damage by consuming all available resources.
+ 
+All sandboxes are created in non-persistent memory, which has the benefit of automatically removing all sandboxes on 
+system shutdown. Legato sandboxes use bind mounts for importing files from the root file system into sandboxes. 
+Bind-mounted files are updated when the file is update in the root file system which makes system updates easily managed.  
+Bind-mounted files are not copied so memory requirements are minimal.
+ 
+A Legato sandboxed app can access services outside its sandbox, although not directly. All available services are advertised by the 
+Service Directory. Apps connect to services through a request to the Service Directory. The Service Directory grants access if the 
+app is in the specified service’s ACL. 
+
+<HR>
+
+Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+
+**/

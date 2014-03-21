@@ -1,0 +1,38 @@
+-------------------------------------------------------------------------------
+-- Copyright (c) 2012 Sierra Wireless and others.
+-- All rights reserved. This program and the accompanying materials
+-- are made available under the terms of the Eclipse Public License v1.0
+-- which accompanies this distribution, and is available at
+-- http://www.eclipse.org/legal/epl-v10.html
+--
+-- Contributors:
+--     Laurent Barthelemy for Sierra Wireless - initial API and implementation
+-------------------------------------------------------------------------------
+
+-- Example of an application installable through the agent.update module.
+-- The installable package can be generated with:
+--    ${mihini}/agent/agent/update/tools/createpkg.sh \
+--         <path-to-folder-containing-the-manifest> \
+--         <path-where-the-tarball-must-be-generated>
+--
+-- The resulting package can be installed by copying it as
+-- runtime/update/drop/updatepackage.tar. It will then be installed
+-- at next reboot or when `require "agent.update".localupdate()` will be called.
+-- `localupdate` can also take a path to a tar file and install it.
+
+{
+  -- Global information
+  version = "test_1.0",
+
+  -- Packages information
+  components =
+  {
+    {   name = "@sys.appcon.app1",
+        location = "app",
+        version = "0.1",
+        --depends={ Agent=">=0.7DEV", ALEOS="#4.2.3,4.3" },
+        --provides={ appservice="1.0" }
+        --parameters={ purge=false, autostart=true }
+    }
+  }
+}

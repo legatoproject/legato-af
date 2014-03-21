@@ -1,0 +1,8 @@
+executables:
+    helloWorld ( "helloWorld.c" )
+
+processes:
+    envVars:
+        LE_LOG_LEVEL = DEBUG
+
+    run: (helloWorld)

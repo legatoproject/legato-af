@@ -1,0 +1,9 @@
+luacdb is a Lua interface to Dan Bernstein's cdb.  luacdb provides Lua
+interfaces for both creating and reading cdb's.
+
+luacdb is in the public domain and comes with no warranty - see
+LICENSE for legalese.
+
+See INSTALL for installation instructions.
+
+Please send all bug reports and suggestions to taj.khattra@gmail.com.

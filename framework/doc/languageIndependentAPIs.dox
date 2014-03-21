@@ -1,0 +1,16 @@
+/** @page languageIndependentAPIs Language Independent
+
+Language-independent function calls are defined in an interface file using a simple syntax
+similar to C. The interface file is used to generate a number of target language-specific files.  
+
+Language-independent topics:
+
+@subpage languageIndependentSyntax <br>
+@subpage languageIndependentC
+
+<HR>
+
+Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+
+**/
+

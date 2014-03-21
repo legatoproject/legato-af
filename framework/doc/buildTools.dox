@@ -1,0 +1,43 @@
+/** @page buildTools Build Tools
+
+
+@ref buildSequence   <br>
+@ref buildDirectory   <br>
+@ref buildWhatsNext
+
+@section buildSequence Sequence Summary 
+
+Legato has build tools that'll help you get your applications up and running quickly. 
+
+Generally, you create a Legato application using this build processing sequence:
+
+- write source code (in C) - must include one instance of @c COMPONENT_INIT .
+- write @c Components.cdef file
+- write [application name].adef file 
+- build application using @c mkapp
+
+
+@section buildDirectory Directory Structure
+
+See the Samples directories in the demo applications to view the directory structure.
+
+See the @ref demoApps  topic for details on the sample demo.
+@section buildWhatsNext What's Next?
+
+These are the main Legato build tools:
+
+@subpage buildToolsmkexe  <br>
+@subpage buildToolsmkapp
+
+Related topics:
+
+@ref defFiles   <br>
+@ref appCreating   <br>
+@ref componentWriting   <br>
+@ref demoApps
+
+ 
+<HR>
+Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+
+**/

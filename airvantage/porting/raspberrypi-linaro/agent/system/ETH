@@ -1,0 +1,80 @@
+#!/bin/sh
+
+#*******************************************************************************
+# Copyright (c) 2012 Sierra Wireless and others.
+# All rights reserved. This program and the accompanying materials
+# are made available under the terms of the Eclipse Public License v1.0
+# which accompanies this distribution, and is available at
+# http://www.eclipse.org/legal/epl-v10.html
+#
+# Contributors:
+#     Sierra Wireless - initial API and implementation
+#*******************************************************************************
+
+#harmless script for eth bearer
+#try to retrieve useful info about the first eth device found
+# do not affect network config
+# use fake values for IPADDR, GW, etc, in order to fake correct configuration for NetworkManager.
+
+#default value to use if real value cannot be retrieved
+DEFIPADDR=881.882.883.884
+DEFHWADDR=si:er:ra:wi:re:le
+DEFNETMASK=888.888.888.888
+DEFGW=888.000.999.000
+DEFDNS=404.404.404.404
+
+case "$1" in
+    init)
+    #read parameters
+    ITF=$(ifconfig 2>/dev/null | grep eth | sed -n 's_\(eth[0-9]\+\)\s*.*_\1_p')
+    echo ${ITF}
+    exit 0
+    ;;
+
+    start)
+    #start interface
+    if [ -z "$2" ]; then
+        exit 1
+    fi
+    ETHDEVICE=$2
+    IFCONFIG=`ifconfig  ${ETHDEVICE} 2>/dev/null`
+    IPADDR=`echo $IFCONFIG | sed -n 's_.*inet addr:\([0-9\.]\+\) .*_\1_p'`
+    HWADDR=`echo $IFCONFIG | sed -n 's_.*HWaddr \([0-9:a-f]\+\).*_\1_p'`
+    NETMASK=`echo $IFCONFIG | sed -n 's_.*Mask:\([0-9\.]\+\) .*_\1_p'`
+    #get the default gateway for current device, only get the first one.
+    GW=`route -n | grep UG | grep ${ETHDEVICE} | sed -n -e 's/^\([0-9\.]*\)\s*\([0-9\.]*\).*/\2/p' -e 'q'`
+    DNS=`cat /etc/resolv.conf | sed -n 's_^nameserver \([0-9\.]\+\)_\1_p'`
+    #default values so that Network Manager is happy.
+    RES="${IPADDR:-$DEFIPADDR} ${HWADDR:-$DEFHWADDR} ${NETMASK:-$DEFNETMASK} ${GW:-$DEFGW} ${DNS:-$DEFDNS}"
+    echo $RES
+    exit 0
+    ;;
+
+    stop)
+    #stop interface
+    exit 0
+    ;;
+
+    default)
+    #set default route
+    exit 0
+    ;;
+
+    stats)
+
+    if [ -z "$2" ]; then
+        exit 1
+    fi
+    ETHDEVICE=$2
+    IFCONFIG=`ifconfig $ETHDEVICE 2>/dev/null`
+    RX=`echo $IFCONFIG | sed -n 's_.*RX bytes:\([0-9]\+\) .*_\1_p'`
+    TX=`echo $IFCONFIG | sed -n 's_.*TX bytes:\([0-9]\+\) .*_\1_p'`
+
+    echo $RX $TX
+    exit 0
+    ;;
+
+    *)
+    exit 0
+    ;;
+esac

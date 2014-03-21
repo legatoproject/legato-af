@@ -1,0 +1,53 @@
+/** @page appaddingOtherThings Adding Things to Apps
+
+Sometimes you need other stuff in your applications like
+a third-party library, some data files needed, or a script or a legacy program built on another system.
+
+To add other files to applications, you add other sections to your application's ".adef" file.
+
+To add an audio file and a third-party library,
+adding something like the following:
+
+@verbatim
+files:
+
+    [r]     audio/alert.wav     /usr/share/sounds/
+
+    [r]     third-party/foo/lib/foo.so.1 /lib
+@endverbatim
+
+The "files:" section will get the file ./audio/alert.wav from the build host's file system
+(relative to the current working directory in which @c mkapp is run), and list it under
+/usr/share/sounds (from the application's point-of-view when it runs on the target).  
+
+The letter inside the square brackets (e.g., [r]) contain the permissions flags 
+for the file on the target:
+ - 'r' = @b readable
+ - 'w' = @b writeable but changes will be discarded on reset
+ - 'p' = writeable and changes to it will be @b persistent (i.e., survive power failure or reset)
+ - 'x' = @b executable
+
+If you want to have a script or other executable run when the application starts, add that file to
+ - the "files:" section (with the executable flag [x] set), and
+ - the list of executables in the processes section, "run:" subsection.
+
+@verbatim
+files:
+
+    [x]     otherProject/bin/bar    /usr/bin/bar
+
+processes:
+
+run: (/usr/bin/bar)
+@endverbatim
+
+This grabs ./otherProject/bin/bar (relative to the directory where @c mkapp is run),
+displays it in the application sandbox's /usr/bin/bar directory, and starts one instance of
+it when the application starts.
+
+
+<HR>
+
+Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+
+**/

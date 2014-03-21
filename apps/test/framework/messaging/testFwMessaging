@@ -1,0 +1,36 @@
+#!/bin/bash
+
+EXE_NAME=$(basename $0)
+
+function RunTest()
+{
+    local testIndex=$1
+    local testName=$EXE_NAME-Test$testIndex
+    local testPath=$EXEC_DIR/$testName
+    echo "=========== Running test: $testName ============"
+    if ! $testPath
+    then
+        echo "=========== Test FAILED: $testName ($testPath) ============"
+        exit 1
+    fi
+    echo "=========== Test passed: $testName ============"
+}
+
+
+echo "===================== STARTING LOW-LEVEL MESSAGING TESTS ==========================="
+echo "Current directory is: $(pwd)"
+echo "Service Directory can be found at: $SERVICE_DIRECTORY_PATH"
+echo "EXEC_DIR is: $EXEC_DIR"
+
+# ========================
+# Run tests
+
+RunTest 1
+RunTest 2
+
+# ========================
+# Wrap up
+
+sleep 0.5
+
+echo "===================== LOW-LEVEL MESSAGING TESTS PASSED ==========================="

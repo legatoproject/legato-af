@@ -1,0 +1,18 @@
+start: manual
+
+executables:
+
+    faultTest ( faultTest.c )
+
+processes:
+    faultAction: ignore
+
+    // This needs to be "processName (executable appName faultType)
+    run: noExit (faultTest FaultApp noExit)
+    run: noFault (faultTest FaultApp noFault)
+
+processes:
+    faultAction: restart
+
+    run: progFault (faultTest FaultApp progFault)
+    run: sigFault (faultTest FaultApp sigFault)

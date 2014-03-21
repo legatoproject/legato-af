@@ -1,0 +1,14 @@
+//import:
+//    le_sms_msg = sms_service.api
+//    le_mrc     = mrc_service.api
+//    le_mdc     = mdc_service.api
+//    le_sim     = sim_service.api
+
+export:
+    send = send_util.api    
+
+sources:
+    "demo.c"
+
+
+

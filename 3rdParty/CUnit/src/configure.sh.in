@@ -1,0 +1,4 @@
+#!/bin/sh
+export CC="@CMAKE_C_COMPILER@"
+export CFLAGS="@CMAKE_C_COMPILER_ARG1@"
+./configure --prefix="@CUNIT_INSTALL@" @CUNIT_CONFIGURE_ARGS@

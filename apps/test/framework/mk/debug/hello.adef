@@ -1,0 +1,10 @@
+processes:
+
+  run: hey ( hello )
+  run: hi ( hello )
+  run: allo ( hello )
+
+executables:
+
+  hello ( helloWorld.c )
+

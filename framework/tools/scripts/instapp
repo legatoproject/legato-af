@@ -1,0 +1,48 @@
+#!/bin/bash
+
+function PrintUsage()
+{
+    echo "USAGE: $(basename $0) APP_FILE DEST_IP"
+    echo
+    echo "  where, APP_FILE = the application to be installed.  E.g., 'myApp.ar7'."
+    echo
+    echo "         DEST_IP = the IP address of the target device."
+    echo
+}
+
+APP_FILE=$1
+DEST_IP=$2
+
+# Check if they are asking for help.
+if [ "$1" = "-h" -o "$1" = "help" -o "$1" = "--help" ]
+then
+    PrintUsage
+    exit 0
+fi
+
+# Check that the first argument exists and is a file.
+if ! [ -f "$APP_FILE" ]
+then
+    echo "***ERROR: First argument should be an application file."
+    PrintUsage
+    exit 1
+fi
+
+# Check that the second argument is provided and can be pinged.
+if ! [ $DEST_IP ]
+then
+    echo "***ERROR: Second argument should be an IP address."
+    PrintUsage
+    exit 1
+fi
+
+if ! ping -c 1 -w 1 $DEST_IP > /dev/null
+then
+    echo "***ERROR: Device address $DEST_IP seems to be unreachable."
+    exit 1
+fi
+
+# Feed the application file into tar xf running in the application install directory.
+APP_NAME=$(basename "$APP_FILE" | sed 's/\.[^.]*$//')
+echo "Installing application '$APP_NAME' from file '$APP_FILE'."
+cat $APP_FILE | ssh root@$DEST_IP "/usr/local/bin/app install '$APP_NAME'"

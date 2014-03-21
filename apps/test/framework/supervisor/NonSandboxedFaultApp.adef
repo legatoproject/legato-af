@@ -1,0 +1,20 @@
+start: manual
+
+sandboxed: false
+
+executables:
+
+    faultTest ( faultTest.c )
+
+processes:
+    faultAction: ignore
+
+    // This needs to be "processName (executable appName faultType)
+    run: noExit (faultTest NonSandboxedFaultApp noExit)
+    run: noFault (faultTest NonSandboxedFaultApp noFault)
+
+processes:
+    faultAction: restart
+
+    run: progFault (faultTest NonSandboxedFaultApp progFault)
+    run: sigFault (faultTest NonSandboxedFaultApp sigFault)

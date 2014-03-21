@@ -1,0 +1,57 @@
+<tests>
+
+    <test_gnss_Init>
+        <ask>AT+GPSINIT=30</ask>
+        <resp>
+            <ack>OK</ack>
+            <ack>+GPSEVINIT: 1</ack>
+        </resp>
+    </test_gnss_Init>
+
+    <test_gnss_SetAcquisitionRate>
+        <ask>AT+GPSNMEA=1,5,FFFF</ask>
+        <resp>
+            <ack>OK</ack>
+        </resp>
+    </test_gnss_SetAcquisitionRate>
+
+    <test_gnss_SetAcquisitionRate2>
+        <ask>AT+GPSNMEA=1,1,FFFF</ask>
+        <resp>
+            <ack>OK</ack>
+        </resp>
+    </test_gnss_SetAcquisitionRate2>
+
+    <test_gnss_SetAcquisitionRate3>
+        <ask>AT+GPSNMEA=1,1,FFFF</ask>
+        <resp>
+            <ack>OK</ack>
+        </resp>
+    </test_gnss_SetAcquisitionRate3>
+
+    <test_gnss_Start>
+        <ask>AT+GPSSTART=3</ask>
+        <resp>
+            <ack>OK</ack>
+            <ack>+GPSEVSTART: 1</ack>
+        </resp>
+    </test_gnss_Start>
+
+    <test_gnss_Stop>
+        <ask>AT+GPSSTOP</ask>
+        <resp>
+            <ack>OK</ack>
+            <ack>+GPSEVSTOP: 1</ack>
+        </resp>
+    </test_gnss_Stop>
+
+   <test_gnss_Release>
+       <ask>AT+GPSRELEASE</ask>
+       <resp>
+           <ack>OK</ack>
+           <ack>+GPSEVRELEASE: 1</ack>
+       </resp>
+   </test_gnss_Release>
+
+</tests>
+

@@ -1,0 +1,200 @@
+#!/bin/sh
+
+# Starts, stops, restarts, installs and uninstalls Legato applications.
+
+APPS_ROOT=/opt/legato/apps
+SANDBOX_ROOT=/tmp/legato/sandboxes
+
+ACTION=$1
+APP_NAME=$2
+
+exitCode=0
+
+
+# Make sure /usr/local/bin is in the path.
+export PATH=/usr/local/bin:$PATH
+
+
+PrintUsage()
+{
+    echo
+    echo "USAGE: `basename $0` [start|stop|restart|remove] APP_NAME [ APP_NAME ... ]"
+    echo "   or: `basename $0` [start|stop|restart|remove] '*'"
+    echo "   or: `basename $0` install APP_NAME"
+    echo
+    echo "In the first form, names of one or more applications are given."
+    echo
+    echo "In the second form, all installed applications will be acted upon."
+    echo
+    echo "In the third form, one application name is given and the application file must be"
+    echo "provided on stdin."
+    echo
+}
+
+
+IsAppInstalled()
+# Takes a single application name as its only argument.
+{
+    # An app is considered "installed" if an install directory exists for it.
+    test -d "$APPS_ROOT/$1"
+}
+
+
+StartApp()
+# Takes a list of applications as arguments.
+{
+    while [ $# -ge 1 ]
+    do
+        appCtrl "start" "$1" 2> /dev/null
+
+        shift
+    done
+}
+
+
+StopApp()
+# Takes a list of applications as arguments.
+{
+    while [ $# -ge 1 ]
+    do
+        appCtrl "stop" "$1"  2> /dev/null
+
+        shift
+    done
+}
+
+
+InstallApp()
+# Takes a single application name as its only argument.
+{
+    echo "Installing app '$1'..."
+
+    # Create the directory to install into.
+    mkdir -p "$APPS_ROOT/$1" &&
+
+    # Unpack the app into the app's install directory.
+    tar xj -C "$APPS_ROOT/$1"
+    if ! [ $? ]
+    then
+        rmdir "$APPS_ROOT/$1"
+        echo "**FAILED**  Failed to unpack the application."
+        exit 1
+    fi
+
+    # Fix up the permissions.
+    chown -R root:root "$APPS_ROOT/$1" &&
+    find "$APPS_ROOT/$1" -type d | xargs chmod a+x-ws
+    find "$APPS_ROOT/$1" ! -type d | xargs chmod a-xws
+    find "$APPS_ROOT/$1/bin" ! -type d | xargs chmod a+x
+
+    # Install the application's configuration into the root user's configuration tree.
+    appCfgInstall "$1" &&
+
+    echo "DONE"
+}
+
+
+RemoveApp()
+# Takes a list of applications as arguments.
+{
+    while [ $# -ge 1 ]
+    do
+        if IsAppInstalled $1
+        then
+            echo "Removing app '$1'..."
+        fi
+
+        # Even if it doesn't look like it's installed, delete its configuration anyway,
+        # in case an earlier removal process was interrupted or someone manually deleted
+        # the app's install directory.
+        (
+            appCfgRemove "$1" &&
+            rm -rf "$APPS_ROOT/$1"
+        )
+        if [ $? -ne 0 ]
+        then
+            exitCode=1
+            echo "**FAILED**  Couldn't remove configuration data."
+        else
+            echo "DONE"
+        fi
+
+        shift
+    done
+}
+
+
+
+# Check if they are asking for help.
+if [ "$1" = "-h" -o "$1" = "help" -o "$1" = "--help" ]
+then
+    PrintUsage
+    exit 0
+fi
+
+# Check that the application root directory exists.
+if ! [ -d "$APPS_ROOT" ]
+then
+    mkdir -p "$APPS_ROOT"
+fi
+
+# Build the list of applications to operate on.
+APP_LIST=
+if [ "$APP_NAME" = "*" ]
+then
+    APP_LIST=`ls $APPS_ROOT`
+    if [ "$APP_LIST" = "" ]
+    then
+        echo "There are no applications currently installed."
+        exit 0
+    fi
+else
+    shift
+    APP_LIST="$*"
+fi
+
+case "$ACTION" in
+
+start)
+    StartApp $APP_LIST
+    ;;
+
+stop)
+    StopApp $APP_LIST
+    ;;
+
+restart)
+    StopApp $APP_LIST
+    StartApp $APP_LIST
+    ;;
+
+install)
+    # Only one, specific application name allowed.
+    if [ "$APP_NAME" = "*" ]
+    then
+        echo "***ERROR: One specific application name must be provided for install."
+        PrintUsage
+        exit 1
+    fi
+
+    # In case it's already installed, stop it and remove it first.
+    StopApp $APP_NAME
+    RemoveApp $APP_NAME
+
+    # Then install it.
+    InstallApp $APP_NAME
+    ;;
+
+remove)
+    StopApp $APP_LIST
+    RemoveApp $APP_LIST
+    ;;
+
+*)
+    PrintUsage
+    exit 1
+    ;;
+
+esac
+
+exit $exitCode

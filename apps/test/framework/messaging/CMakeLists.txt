@@ -1,0 +1,63 @@
+#*******************************************************************************
+# Copyright (C) 2013, Sierra Wireless Inc., all rights reserved.
+#
+# Contributors:
+#     Sierra Wireless - initial API and implementation
+#*******************************************************************************
+
+find_package(Legato REQUIRED)
+
+
+### TEST 1
+
+set(TEST_NAME testFwMessaging-Test1)
+
+mkexe(  ${TEST_NAME} -v
+            messagingTest1.c
+            burgerServer.c
+        DEPENDS
+            burgerProtocol.h
+            burgerServer.h
+            burgerServer.c
+            messagingTest1.c
+        )
+
+add_test(${TEST_NAME} ${EXECUTABLE_OUTPUT_PATH}/${TEST_NAME})
+
+
+### TEST 2
+
+set(TEST_NAME testFwMessaging-Test2)
+
+mkexe(  ${TEST_NAME}
+            messagingTest2.c
+            burgerServer.c
+        DEPENDS
+            burgerProtocol.h
+            burgerServer.h
+            burgerServer.c
+            messagingTest2.c
+        )
+
+add_test(${TEST_NAME} ${EXECUTABLE_OUTPUT_PATH}/${TEST_NAME})
+
+
+### TEST 3
+
+set(TEST_NAME testFwMessaging-Test3)
+
+mkexe(  ${TEST_NAME}-client
+            messagingTest3-client.c
+        DEPENDS
+            messagingTest3-client.c
+        )
+
+mkexe(  ${TEST_NAME}-server
+            messagingTest3-server.c
+        DEPENDS
+            messagingTest3-server.c
+        )
+
+# This test needs to be run manually.
+#add_test(${TEST_NAME} ${EXECUTABLE_OUTPUT_PATH}/${TEST_NAME})
+

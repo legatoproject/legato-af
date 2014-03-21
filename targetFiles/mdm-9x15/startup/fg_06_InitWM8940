@@ -1,0 +1,6 @@
+#!/bin/sh
+
+# This initializes the WM8940 codec through the SPI (Sierra Wireless Dev Kit
+# for AirPrime AR and WP Series)
+
+/usr/bin/wm8940_demo --pcm > /dev/null

@@ -1,0 +1,14 @@
+/** @page getstartedUninstall Uninstall Legato
+
+
+@section uninstLegato Uninstall Legato
+
+To uninstall Legato from your development PC, delete the directory where you extracted 
+Legato.
+To uninstall the toolchain from your development PC, delete the toolchain directory /opt/swi.
+
+<HR>
+
+Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+
+**/

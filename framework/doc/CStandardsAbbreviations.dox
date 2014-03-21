@@ -1,0 +1,48 @@
+/** @page CStandardsAbbreviations C Standard Abbreviations
+
+
+Other C standards pages: 
+
+@ref CcodingStdsMain  <br>
+@ref CStandardsParameters
+
+To maintain manageable-length identifiers, developers often abbreviate words when constructing identifiers.  
+If these abbreviations are not carefully chosen, they can create confusion.
+
+Following is a list of acceptable abbreviations (in alphabetical order of abbreviated word).  
+@warning Don't use other abbreviations.
+
+@note Propose additions if you feel something's missing.
+
+Original Word  @b abbreviation
+
+- acknowledge @b ack 
+- allocate @b alloc 
+- callback @b cb 
+- concatenate @b cat 
+- delete @b del 
+- file descriptor @b fd 
+- forward @b fwd 
+- handle @b hndl 
+- handler @b hdlr 
+- initialize @b init 
+- iterator @b it 
+- laugh out loud @b lol :) 
+- message @b msg 
+- negative acknowledge @b nack 
+- number @b num 
+- number of count 
+- pointer @b ptr 
+- previous @b prev 
+- receive @b rx 
+- reference @b ref 
+- register @b reg 
+- timer @b tmr 
+- transaction @b txn 
+- transmit @b tx 
+
+<HR>
+
+Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+
+**/

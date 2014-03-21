@@ -1,0 +1,24 @@
+groups:
+ www-data
+ jokers
+
+groups:
+
+fileSystemSize: 100K
+
+processes:
+
+  run: hey ( hello )
+
+
+
+executables:
+
+  hello ( helloWorld.c )
+
+groups:
+  dialout
+
+groups:
+
+sandboxed: false

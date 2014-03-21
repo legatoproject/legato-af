@@ -1,0 +1,41 @@
+/** @page buildToolsmkapp Make Application
+
+
+Run @b mkapp to build the executable and bundle it into an application.
+
+Available command line parameters:
+
+@b -c \<string\> - @a component @a search - (multiple, optional) Add a directory to the component search path.
+
+@b -i \<string\> - @a interface @a search - (multiple, optional) Add a directory to the interface search path.
+
+@b -o \<string\> - @a output @a directory - (optional) Specify the directory for build the application file (ready to be install on target).
+
+@b -t \<string\> - @a target - (optional) Set the compile target (localhost|ar7).
+
+@b -v - @a verbose - (optional) Set into verbose mode for extra diagnostic information.
+
+@b -w \<string\> - @a object @a directory - (optional) Specify the directory for any intermediate build artifacts (e.g., .o files, generated source code).
+ 
+
+@c mkapp completes the following functions:
+
+- HandleDebugArg
+- GetCommandLineArgs 
+- ConstructObjectModel 
+- CopyToStaging
+- GenerateAppLimitsConfig 
+- GenerateGroupsConfig
+- GenerateSingleFileMappingConfig
+- GenerateFileMappingConfig
+- GenerateProcessEnvVarsConfig 
+- GenerateProcessConfig
+- GenerateSupervisorConfig 
+- Build
+- MakeApp
+
+
+
+Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+
+**/

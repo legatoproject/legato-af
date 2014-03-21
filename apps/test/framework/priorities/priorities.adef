@@ -1,0 +1,33 @@
+executables:
+
+    priorityTest ( priorities.c )
+
+processes:
+    faultAction: stopApp
+    priority: idle
+    run: test1 (priorityTest idle SCHED_IDLE 0 0)
+
+processes:
+    faultAction: stopApp
+    priority: low
+    run: test2 (priorityTest low SCHED_OTHER 10 0)
+
+processes:
+    faultAction: stopApp
+    priority: medium
+    run: test3 (priorityTest medium SCHED_OTHER 0 0)
+
+processes:
+    faultAction: stopApp
+    priority: high
+    run: test4 (priorityTest high SCHED_OTHER -10 0)
+
+processes:
+    faultAction: stopApp
+    priority: rt1
+    run: test5 (priorityTest rt1 SCHED_RR 0 1)
+
+processes:
+    faultAction: stopApp
+    priority: rt32
+    run: test5 (priorityTest rt32 SCHED_RR 0 32)

@@ -1,0 +1,34 @@
+/** @page apphelloWorld Create helloWorld
+
+@section helloWorld Hello World
+
+First, create a Legato version of
+our old friend "Hello World".
+
+Create a text file called "hello.c" containing the following text:
+
+@code
+#include "legato.h"
+
+COMPONENT_INIT
+{
+    LE_INFO("Hello world.");
+}
+@endcode
+
+The COMPONENT_INIT macro defines a "component initializer" function that Legato automatically runs at process start-up.  
+
+Make the component initializer run LE_INFO()
+at start-up.  When Legato builds your code, it automatically
+defines COMPONENT_INIT to be a proper function declaration (this reduces 
+build setup work).
+
+@section helloWorldWhatsNext What's Next?
+
+@ref appconvertingItIntoAnApp
+
+<HR>
+
+Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+
+**/

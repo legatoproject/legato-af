@@ -1,0 +1,34 @@
+/*
+ * Interface for Modem Radio Control Service
+ *
+ * Copyright (C) Sierra Wireless, Inc. 2013.  All rights reserved. Use of this work is subject to license.
+ */
+
+
+HANDLER NetRegStateHandler
+{
+    HANDLER_PARAMS
+    (
+        le_mrc_NetRegState_t state
+    );
+};
+
+FUNCTION le_result_t GetNetRegState
+(
+    le_mrc_NetRegState_t state OUT
+);
+
+FUNCTION le_result_t GetSignalQual
+(
+    uint32 quality OUT
+);
+
+FUNCTION le_result_t SetRadioPower
+(
+    le_onoff_t power IN
+);
+
+FUNCTION le_result_t GetRadioPower
+(
+    le_onoff_t power OUT
+);

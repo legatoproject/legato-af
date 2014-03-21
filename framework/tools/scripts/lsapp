@@ -1,0 +1,36 @@
+#!/bin/bash
+
+function PrintUsage()
+{
+    echo "USAGE: $(basename $0) DEST_IP"
+    echo
+    echo "  where, DEST_IP = the IP address of the target device."
+    echo
+}
+
+DEST_IP=$1
+
+# Check if they are asking for help.
+if [ "$1" = "-h" -o "$1" = "help" -o "$1" = "--help" ]
+then
+    PrintUsage
+    exit 0
+fi
+
+# Check that the first argument is provided and can be pinged.
+if ! [ $DEST_IP ]
+then
+    echo "***ERROR: Argument should be an IP address."
+    PrintUsage
+    exit 1
+fi
+
+if ! ping -c 1 -w 1 $DEST_IP > /dev/null
+then
+    echo "***ERROR: Device address $DEST_IP seems to be unreachable."
+    exit 1
+fi
+
+
+# List the contents of the application install directory.
+ssh root@$DEST_IP ls /opt/legato/apps

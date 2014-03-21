@@ -1,0 +1,23 @@
+start: manual
+
+mqueueSize: 10
+numProcs: 10
+rtSignalQueueSize: 10
+fileSystemSize: 10000
+
+executables:
+
+    limitsTest ( limitsTest.c )
+
+processes:
+    vMemSize: 10000000
+    maxFileSize: 10
+    numFds: 10
+    memLockSize: 10
+    coreFileSize: 10
+
+    run: (limitsTest 10 10 10 10000000 10 10 10 10 10000)
+
+// The arguments is the list of expected resource limit values in this order.
+// mqueueSize, numProcs, rtSignalQueueSize, vMemSize, maxFileSize, numFds, memLockSize, coreFileSize, fileSystemSize
+

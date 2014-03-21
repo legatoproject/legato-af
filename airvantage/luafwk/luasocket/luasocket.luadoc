@@ -1,0 +1,25 @@
+--------------------------------------------------------------------------------
+-- This module provides TCP and UDP sockets as well as HTTP, FTP protocol stacks and more. <br />
+-- Refer to the official online documentation: [LuaSocket Reference](http://w3.impa.br/~diego/software/luasocket/reference.html). <br />
+-- Only modified API appears on this page.
+--
+-- @module socket
+--
+
+--------------------------------------------------------------------------------
+-- This function is a shortcut that creates and returns a TCP server object bound to a local address and port,
+-- ready to accept client connections.
+-- Modified from the original Luasocket function to support an optional hook argument.
+--
+-- @function [parent=#socket] bind
+-- @param host local address to bind to
+-- @param port local port to bind
+-- @param backlog_or_hook  Optionally, user can also specify the backlog argument to the listen method (defaults to 32).
+--  This third parameter can also be the hook if no backlog parameter  is given.
+---@param hook is an additional parameter (not compatible with luasocket original socket.bind()
+-- @return TCP server object
+-- @usage socket.bind("someaddress", 4242, function hook(...) end)
+-- @usage socket.bind("someaddress", 4242, 32,function hook(...) end)
+--
+	
+return nil

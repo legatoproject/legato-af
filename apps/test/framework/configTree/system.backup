@@ -1,0 +1,36 @@
+
+"configTree"
+{
+    "enableTimeout" "true"
+    "maxRead" "2048"
+    "maxWrite" "1024"
+
+    "users"
+    {
+        "joe"
+        {
+            "defaultTree" "joe"
+        }
+
+        "jake"
+        {
+            "defaultTree" "jake"
+        }
+
+        "fhqwhgads"
+        {
+            "defaultTree" "fhqwhgads"
+            "toTheLimit" "true"
+            "trees"
+            {
+                "joe" ""
+                "jake" ""
+            }
+        }
+    }
+}
+
+"system"
+{
+}
+

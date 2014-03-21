@@ -1,0 +1,9 @@
+---
+-- Lua is a programming language used to interface with Agent services.
+-- Lua comes with a set of official libraries like string, table, math, etc.<br />
+-- To find documentation about the language itself as well as the official libraries, please refer to
+-- the official online documentation: [Lua Manual](http://www.lua.org/manual/5.1/)
+-- @module lua
+--
+
+return nil

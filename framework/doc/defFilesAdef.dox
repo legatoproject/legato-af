@@ -1,0 +1,228 @@
+/** @page defFilesAdef Legato adef Files
+
+@ref sandboxed <br>
+@ref start <br>
+@ref numProcs <br>
+@ref mqueueSize <br>
+@ref rtSignalQueueSize <br>
+@ref fileSystemSize <br>
+@ref filesAdef <br>
+@ref executablesAdef <br>
+@ref importAdef <br>
+@ref groupsAdef <br>
+@ref refprocessesAdef 
+
+Legato uses these sections in the .adef:
+
+@section sandboxed sandboxed
+
+Specifies if the app will be launched inside a sandbox. 
+
+Permitted content in this section is:
+
+ - @b true - app will be run inside of a sandbox.
+ - @b false - app won't be run in a sandbox.
+
+The default is @b true.
+
+If an app is not inside of a sandbox (unsandboxed), it can see the target device's real root file system.  
+A sandboxed app can't see the target's real root file system; instead, a sandboxed app has its own, separate root file system (which it can't leave).
+
+Each app has its own user ID and primary group ID.  User name and primary group name is "app-xxxx", 
+where the "xxxx" is replaced with the name of the app.  
+
+Sandboxed apps aren't allowed to be members of other groups 
+and are not allowed to have any capabilities (see "man 7 capabilities") set on their executables.  
+
+Unsandboxed apps are allowed to have executables with capabilities and be members of other groups (see the "groups:" section).  
+
+While a user and/or group will be automatically created if missing for the specified app, 
+only users and groups of sandboxed app will be automatically deleted when those apps are uninstalled.
+
+@code
+sandboxed: false
+@endcode
+
+@section start start
+
+Specifies if the app should start automatically at start-up:
+"auto" sets the app to start automatically by the Supervisor.
+"manual" sets the app to start through a manual prompt to the Supervisor.
+
+@code
+start: auto
+@endcode
+
+
+@section numProcs numProcs
+
+Specifies the maximum number of processes allowed to run at one time: an integer number of processes.
+
+@code
+numProcs: 4
+@endcode
+
+@section mqueueSize mqueueSize
+
+Specifies the maximum number of POSIX MQueues messages permitted.
+
+@code
+mqueueSize: 22
+@endcode
+
+@section rtSignalQueueSize rtSignalQueueSize
+
+Specifies the maximum number of real-time signals that can be queued (waiting for delivery to processes).
+
+@code
+rtSignalQueueSize: 10
+@endcode
+
+@section fileSystemSize fileSystemSize
+
+Specifies the maximum amount of RAM that can be consumed by an app's temp (volatile) file system at runtime.
+
+@code
+fileSystemSize: 120K
+@endcode
+
+@section filesAdef files
+
+Lists additional files to be included in an app
+so they’re available at runtime (e.g., audio files, web pages, executable scripts or programs from external build system).
+
+Three things need to be specified for each app:
+
+<b>Access permissions</b> - any combination of one or more of the following letters, enclosed in square brackets:
+- r = readable
+- w = writeable but changes will be discarded on reset
+- p = writeable and changes to it will be persistent (i.e., survive power failure or reset)
+- x = executable
+
+If permissions values are not specified, then read-only ([r]) is the default.
+
+<b>Build system path</b> - file system path on the build PC where the file is located at build time.
+
+<b>Target path</b> - file system path inside the app sandbox on the target where the file will appear at runtime.  
+Unsandboxed apps' path will be prefixed with "/opt/legato/apps/xxxx", where "xxxx" is replaced by the app name.
+
+File paths can be enclosed in quotation marks (either single ' or double "). This is required when the file path contains spaces.
+
+@code
+files:
+
+    [r]     audio/alert.wav     /usr/share/sounds/
+    [rx]  third-party/foobar/bin/foobar   /bin/
+    htdocs/index.html   /var/www/
+    "stuff/file name with spaces"  /usr/share/stuff/
+    'stuff/another file'   /usr/share/stuff/
+@endcode
+
+<b>Permissions</b>
+
+File permissions and ownership in the original file on the 
+development PC file system are copied into the application for both users and groups.
+
+When the application is installed on a target: <br>
+- the owner and group are set to @c root.
+- the executable permission is removed from all files outside of the application's bin directory.
+- executable permission is granted to all directories.
+- executable permission is granted to all files inside the application's bin directory.
+- write permission is removed from everything in the application.
+- the @c setuid bit is cleared on everything in the application.
+
+@section executablesAdef executables
+
+Lists executables to be constructed and moved to the “bin” directory inside the app.
+
+An executable’s content is specified inside parentheses following the name:
+- relative file system path to source code file (e.g., a .c, .java, or .lua file)
+- component
+- relative file system path to library file (e.g., .a or .so file).
+
+Only .c files, components, and libraries are currently supported.
+
+@code
+executables:
+
+    myexe1 ( file1.c libgoodstuff.so )
+    myexe2 ( foobar toto )
+@endcode
+
+@section importAdef import 
+
+If components are in an executable, they’ll be built and linked into the executable with its 
+COMPONENT_INIT function run at process start-up. 
+The component’s runtime files are packaged inside the app to be installed on the target.
+If a source file is in an executable, the build tools search for it according to the source search path. 
+It’s then compiled (if written in a compiled language) and linked into the executable. 
+
+All source files specified for an executable are considered a component (called "default"); 
+one of those source files must implement a COMPONENT_INIT function called at start-up.
+If a library is an executable, the build tools search for it in the .adef and Component.cdef files. 
+When the executable is linked, it includes libraries in the order listed. It’s permitted to list the same library more than once; 
+sometimes you have unresolved symbol because of the single-pass linker.
+
+C files will be compiled and linked using the appropriate compiler tool chain, depending on the built target device.
+
+Sometimes, incompatibilities between components or source code prevent them from being included in the 
+same executable (e.g., Java sources and C). The build tools will check and advise if that’s the case.
+
+The @b import section lists things  imported to the app’s sandbox at runtime from outside of the sandbox.
+The contents appear similar to the files: section’s content, but meanings are different:
+Things listed in the “import” section are expected to be found on the target at runtime. 
+They are not copied into the app at build time; they're made accessible to the app inside of its sandbox at runtime.
+
+Currently, only virtual file system objects (files, directories, named sockets and pipes, device files, etc.) are explicitly imported. 
+(Note: IPC interfaces are imported by components using the Component.cdef file’s “import” section.)
+
+This section is ignored if the app is not sandboxed (if sandboxed set to false).
+
+Items in the import section have essentially the same format as items in the files section, 
+except the first path must be an absolute path (beginning with ‘/’).
+
+The first path is the object to be imported that is an absolute path in the target device’s file system, outside of the sandbox.
+
+The second path is the absolute file system path inside the app’s sandbox where the object will appear at runtime.
+
+File paths can be enclosed in quotation marks (either single ' or double "). This is required when the file path contains spaces.
+
+@code
+import:
+    // I get character stream input from outside via a named pipe (read-only)
+    /var/run/someNamedPipe  /var/run/
+
+    // I need read and write access to UART2.
+    [rw] /dev/ttyS1  /dev/
+
+    // I need to be able to play back audio files installed in /usr/local/share/audio.
+    "/usr/local/share/audio/error message.wav" /usr/share/audio/
+    '/usr/local/share/audio/success message.wav' /usr/share/audio/
+@endcode
+
+Permissions settings in import can't override permissions on the object in the target’s file system. 
+If an object is read-only for the app’s user account in the root file system, 
+it'll still be read-only accessible inside the app’s sandbox (even if imported “[rw]” in the app’s .adef file).
+
+File permissions and ownership (group and user) on the original file in the target system  remain in effect inside the sandbox.
+
+@section groupsAdef groups
+
+Add an unsandboxed app's user to groups on the target system. Not permitted for sandboxed apps.
+
+@code
+groups:
+    www-data
+    modem
+@endcode
+
+@section refprocessesAdef processes
+
+The processes section of the .adef also has sub-sections @subpage processesAdef .
+
+<HR>
+
+
+Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+
+**/

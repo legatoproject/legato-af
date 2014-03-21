@@ -1,0 +1,968 @@
+/* The standard CSS for doxygen */
+
+body, table, div, p, dl {
+	font-family: "Open Sans", Helvetica, Arial, sans-serif;
+	font-size: 12px;
+	line-height: 1.4;
+    color: #030303;
+}
+
+body {
+    overflow: hidden;
+}
+
+
+/* @group Heading Levels */
+
+.contents h1,
+.contents h2 {
+    border-spacing: 0px;
+    padding: 0px;
+    text-transform: uppercase;
+    font-weight: bold;
+    color: #616161;
+    padding-bottom: 5px;
+    border-bottom: 1px solid #ddd;
+}
+
+h1 {
+	font-size: 100%;
+}
+
+.title {
+	font-size: 150%;
+	margin: 10px 2px;
+}
+
+h2 {
+    font-size: 98%;
+}
+
+h3 {
+	font-size: 95%;
+}
+
+dt {
+	font-weight: bold;
+}
+
+div.multicol {
+	-moz-column-gap: 1em;
+	-webkit-column-gap: 1em;
+	-moz-column-count: 3;
+	-webkit-column-count: 3;
+}
+
+p.startli, p.startdd, p.starttd {
+	margin-top: 2px;
+}
+
+p.endli {
+	margin-bottom: 0px;
+}
+
+p.enddd {
+	margin-bottom: 4px;
+}
+
+p.endtd {
+	margin-bottom: 2px;
+}
+
+/* @end */
+
+caption {
+	font-weight: bold;
+}
+
+span.legend {
+        font-size: 70%;
+        text-align: center;
+}
+
+h3.version {
+        font-size: 90%;
+        text-align: center;
+}
+
+div.qindex, div.navtab{
+	background-color: #fcfcfc;
+	border: 1px solid #C7C7C7;
+	text-align: center;
+}
+
+div.qindex, div.navpath {
+	width: 100%;
+	line-height: 140%;
+}
+
+div.navtab {
+	margin-right: 15px;
+}
+
+/* @group Link Styling */
+
+a {
+	color: #146a95;
+	font-weight: normal;
+	text-decoration: none;
+}
+
+.contents a:visited {
+	color: #336B9C;
+}
+
+.contents p {
+    margin-left: 15px;
+}
+
+.contents div.fragment pre {
+    margin: 0px;
+}
+
+.contents ul {
+    list-style-type: disc;
+}
+
+a:hover {
+    color: #e53b30;
+}
+
+a.qindex {
+	font-weight: bold;
+}
+
+a.qindexHL {
+	font-weight: bold;
+	background-color: #9CAFD4;
+	color: #000000;
+	border: 1px double #869DCA;
+}
+
+.contents a.qindexHL:visited {
+        color: #000000;
+}
+
+a.el {
+}
+
+a.elRef {
+}
+
+/* @end */
+
+dl.el {
+	margin-left: -1cm;
+}
+
+div.fragment,
+pre.fragment {
+    font-family: monospace, fixed;
+    font-size:  9pt;
+    line-height: 125%;
+    overflow: auto;
+    word-wrap: break-word;
+    color: #333;
+    padding: 4px 8px;
+    margin-left: 7px; /* 15-8px */
+}
+
+div.fragment:hover,
+pre.fragment:hover {
+    background-color: #f9f9f9;
+}
+
+div.fragment .line {
+    font-family: monospace, fixed;
+    white-space: pre;
+    color: #333;
+}
+
+div.ah {
+	background-color: #f8f8f8;
+	font-weight: bold;
+	color: #676B6E;
+	margin-bottom: 3px;
+	margin-top: 3px;
+	padding: 0.2em;
+	border: solid thin #C7C7C7;
+	border-radius: 0.5em;
+	-webkit-border-radius: .5em;
+	-moz-border-radius: .5em;
+}
+
+div.groupHeader {
+	margin-left: 16px;
+	margin-top: 12px;
+	font-weight: bold;
+}
+
+div.groupText {
+	margin-left: 16px;
+	font-style: italic;
+}
+
+body {
+	background-color: white;
+	color: black;
+        margin: 0;
+}
+
+div.contents {
+	margin-top: 10px;
+	margin-left: 8px;
+	margin-right: 8px;
+}
+
+td.indexkey {
+	background-color: ;
+	font-weight: bold;
+	border: ;
+	margin: ;
+	padding: 2px 10px;
+        white-space: nowrap;
+        vertical-align: top;
+}
+
+td.indexvalue {
+	background-color: ;
+	border: ;
+	padding: 2px 10px;
+	margin: 2px 0px;
+}
+
+tr.memlist {
+	background-color: #EEF1F7;
+}
+
+p.formulaDsp {
+	text-align: center;
+}
+
+img.formulaDsp {
+
+}
+
+img.formulaInl {
+	vertical-align: middle;
+}
+
+div.center {
+	text-align: center;
+        margin-top: 0px;
+        margin-bottom: 0px;
+        padding: 0px;
+}
+
+div.center img {
+	border: 0px;
+}
+
+address.footer {
+	text-align: right;
+	padding-right: 12px;
+}
+
+.footer img {
+	border: 0px;
+	vertical-align: middle;
+}
+
+/* @group Code Colorization */
+
+span.keyword {
+	color: #008000;
+}
+
+span.keywordtype {
+	color: #445588;
+    font-weight: bold;
+}
+
+span.keywordflow {
+	color: #e08000
+}
+
+span.comment {
+	color: rgb(153, 153, 136);
+    font-style: italic;
+}
+
+span.preprocessor {
+	color: #847a00;
+}
+
+span.stringliteral {
+	color: #dd1144;
+}
+
+span.charliteral {
+	color: #008080
+}
+
+span.vhdldigit {
+	color: #ff00ff
+}
+
+span.vhdlchar {
+	color: #000000
+}
+
+span.vhdlkeyword {
+	color: #700070
+}
+
+span.vhdllogic {
+	color: #ff0000
+}
+
+/* @end */
+
+/*
+.search {
+	color: #003399;
+	font-weight: bold;
+}
+
+form.search {
+	margin-bottom: 0px;
+	margin-top: 0px;
+}
+
+input.search {
+	font-size: 75%;
+	color: #000080;
+	font-weight: normal;
+	background-color: #e8eef2;
+}
+*/
+
+td.tiny {
+	font-size: 75%;
+}
+
+.dirtab {
+	padding: 4px;
+	border-collapse: collapse;
+	border: 1px solid #A3B4D7;
+}
+
+th.dirtab {
+	background: #EBEFF6;
+	font-weight: bold;
+}
+
+hr {
+	height: 0px;
+	border: none;
+	border-top: 1px solid #DDD;
+}
+
+hr.footer {
+	height: 1px;
+}
+
+/* @group Member Descriptions */
+
+table.memberdecls {
+	border-spacing: 0px;
+	padding: 0px;
+}
+
+.mdescLeft, .mdescRight,
+.memItemLeft, .memItemRight,
+.memTemplItemLeft, .memTemplItemRight, .memTemplParams {
+	background-color: #FAFAFA;
+	border: none;
+	margin: 4px;
+	padding: 1px 0 0 8px;
+}
+
+.mdescLeft, .mdescRight {
+	padding: 0px 8px 4px 8px;
+	color: #555;
+}
+
+.memItemLeft, .memItemRight, .memTemplParams {
+	border-top: 1px solid #DFDFDF;
+}
+
+.memItemLeft, .memTemplItemLeft {
+        white-space: nowrap;
+}
+
+.memItemRight {
+	width: 100%;
+}
+
+.memTemplParams {
+	color: #4665A2;
+        white-space: nowrap;
+}
+
+/* @end */
+
+/* @group Member Details */
+
+/* Styles for detailed member documentation */
+
+.memtemplate {
+	font-size: 80%;
+	color: #4665A2;
+	font-weight: normal;
+	margin-left: 9px;
+}
+
+.memnav {
+	background-color: #EBEFF6;
+	border: 1px solid #A3B4D7;
+	text-align: center;
+	margin: 2px;
+	margin-right: 15px;
+	padding: 2px;
+}
+
+.mempage {
+	width: 100%;
+}
+
+.memitem {
+	padding: 0;
+	margin-bottom: 10px;
+	margin-right: 5px;
+}
+
+.memname {
+        white-space: nowrap;
+        font-weight: bold;
+        margin-left: 6px;
+}
+
+.memproto, dl.reflist dt {
+        border-top: 1px solid #C7C7C7;
+        border-left: 1px solid #C7C7C7;
+        border-right: 1px solid #C7C7C7;
+        border-bottom: 1px solid #C7C7C7;
+        background: #FAFAFA;
+        padding: 6px 0px 6px 0px;
+        color: #676B6E;
+        font-weight: bold;
+        text-shadow: 0px 1px 1px rgba(255, 255, 255, 0.9);
+}
+
+.memdoc, dl.reflist dd {
+        border-bottom: 1px solid #C7C7C7;
+        border-left: 1px solid #C7C7C7;
+        border-right: 1px solid #C7C7C7;
+        padding: 2px 5px;
+        border-top-width: 0;
+        /* opera specific markup */
+        border-bottom-left-radius: 8px;
+        border-bottom-right-radius: 8px;
+        box-shadow: 5px 5px 5px rgba(0, 0, 0, 0.05);
+        /* firefox specific markup */
+        -moz-border-radius-bottomleft: 8px;
+        -moz-border-radius-bottomright: 8px;
+        -moz-box-shadow: rgba(0, 0, 0, 0.05) 5px 5px 5px;
+        /* webkit specific markup */
+        -webkit-border-bottom-left-radius: 8px;
+        -webkit-border-bottom-right-radius: 8px;
+        -webkit-box-shadow: 5px 5px 5px rgba(0, 0, 0, 0.05);
+}
+
+dl.reflist dt {
+        padding: 5px;
+}
+
+dl.reflist dd {
+        margin: 0px 0px 10px 0px;
+        padding: 5px;
+}
+
+.paramkey {
+	text-align: right;
+}
+
+.paramtype {
+	white-space: nowrap;
+}
+
+.paramname {
+	color: #333;
+	white-space: nowrap;
+}
+.paramname em {
+	font-style: normal;
+}
+
+.params, .retval, .exception, .tparams {
+        border-spacing: 6px 2px;
+}
+
+.params .paramname, .retval .paramname {
+        font-weight: bold;
+        vertical-align: top;
+}
+
+.params .paramtype {
+        font-style: italic;
+        vertical-align: top;
+}
+
+.params .paramdir {
+        font-family: "courier new",courier,monospace;
+        vertical-align: top;
+}
+
+
+
+
+/* @end */
+
+/* @group Directory (tree) */
+
+/* for the tree view */
+
+.ftvtree {
+	margin: 0px;
+}
+
+/* these are for tree view when used as main index */
+
+.directory {
+	font-size: 9pt;
+	font-weight: bold;
+	margin: 5px;
+}
+
+.directory h3 {
+	margin: 0px;
+	margin-top: 1em;
+	font-size: 11pt;
+}
+
+/*
+The following two styles can be used to replace the root node title
+with an image of your choice.  Simply uncomment the next two styles,
+specify the name of your image and be sure to set 'height' to the
+proper pixel height of your image.
+*/
+
+/*
+.directory h3.swap {
+	height: 61px;
+	background-repeat: no-repeat;
+	background-image: url("yourimage.gif");
+}
+.directory h3.swap span {
+	display: none;
+}
+*/
+
+.directory > h3 {
+	margin-top: 0;
+}
+
+.directory p {
+	margin: 0px;
+	white-space: nowrap;
+}
+
+.directory div {
+	display: none;
+	margin: 0px;
+}
+
+.directory img {
+	vertical-align: -30%;
+}
+
+/* these are for tree view when not used as main index */
+
+.directory-alt {
+	font-size: 100%;
+	font-weight: bold;
+}
+
+.directory-alt h3 {
+	margin: 0px;
+	margin-top: 1em;
+	font-size: 11pt;
+}
+
+.directory-alt > h3 {
+	margin-top: 0;
+}
+
+.directory-alt p {
+	margin: 0px;
+	white-space: nowrap;
+}
+
+.directory-alt div {
+	display: none;
+	margin: 0px;
+}
+
+.directory-alt img {
+	vertical-align: -30%;
+}
+
+/* @end */
+
+div.dynheader {
+        margin-top: 8px;
+}
+
+address {
+	font-style: normal;
+	color: #2A3D61;
+}
+
+table.doxtable {
+	border-collapse:collapse;
+}
+
+table.doxtable td, table.doxtable th {
+	border: 1px solid #2D4068;
+	padding: 3px 7px 2px;
+}
+
+table.doxtable th {
+	background-color: #374F7F;
+	color: #FFFFFF;
+	font-size: 110%;
+	padding-bottom: 4px;
+	padding-top: 5px;
+	text-align:left;
+}
+
+table.fieldtable {
+        width: 100%;
+        margin-bottom: 10px;
+        border: 1px solid #C7C7C7;
+        border-spacing: 0px;
+}
+
+.fieldtable td, .fieldtable th {
+        padding: 3px 7px 2px;
+}
+
+.fieldtable td.fieldtype, .fieldtable td.fieldname {
+        white-space: nowrap;
+        border-right: 1px solid ##f8f8f8;
+        border-bottom: 1px solid #C7C7C7;
+        vertical-align: top;
+}
+
+.fieldtable td.fielddoc {
+        border-bottom: 1px solid #C7C7C7;
+        width: 100%;
+}
+
+.fieldtable tr:last-child td {
+        border-bottom: none;
+}
+
+.fieldtable th {
+        background-color: #FAFAFA;
+        font-size: 90%;
+        color: #676B6E;
+        padding-bottom: 4px;
+        padding-top: 5px;
+        text-align:left;
+        border-bottom: 1px solid #C7C7C7;
+}
+
+
+.tabsearch {
+	top: 0px;
+	left: 10px;
+	height: 36px;
+	background-image: url('tab_b.png');
+	z-index: 101;
+	overflow: hidden;
+	font-size: 13px;
+}
+
+.navpath ul
+{
+	font-size: 11px;
+	background-image:;
+	background-repeat:repeat-x;
+	height:30px;
+	line-height:30px;
+	overflow:hidden;
+	margin:0px;
+	padding:0px;
+}
+
+.navpath li
+{
+	list-style-type:none;
+	float:left;
+	padding-left:10px;
+	padding-right:15px;
+	background-image:url('bc_s.png');
+	background-repeat:no-repeat;
+	background-position:right;
+	color:#364D7C;
+}
+
+.navpath li.navelem a
+{
+	height:32px;
+	display:block;
+	text-decoration: none;
+	outline: none;
+}
+
+.navpath li.navelem a:hover
+{
+	color:#666666;
+}
+
+ul.footer {
+        list-style-type:none;
+}
+
+div.footer
+{
+    width: 100%;
+    border: 1px solid #C7C7C7;
+    height: 30px;
+}
+
+div.footer div
+{
+    float: right;
+    margin-right: 15px;
+    text-align: right;
+    color:#364D7C;
+    font-size: 8pt;
+    line-height: 28px;
+}
+
+
+div.summary
+{
+	float: right;
+	font-size: 8pt;
+	padding-right: 5px;
+	width: 50%;
+	text-align: right;
+}
+
+div.summary a
+{
+	white-space: nowrap;
+}
+
+div.ingroups
+{
+	margin-left: 5px;
+	font-size: 8pt;
+	padding-left: 5px;
+	width: 50%;
+	text-align: left;
+}
+
+div.ingroups a
+{
+	white-space: nowrap;
+}
+
+div.header
+{
+	margin:  0px;
+    border-bottom: 1px solid #f7f7f7;
+}
+
+div.headertitle
+{
+	padding: 5px 5px 5px 7px;
+}
+
+dl
+{
+    padding: 0 0 0 10px;
+    margin-left: 5px;
+}
+
+dl:hover
+{
+    background-color: #f9f9f9;
+}
+
+dl b a {
+    font-weight: bold;
+}
+
+dl.note, dl.warning, dl.attention, dl.pre, dl.post, dl.invariant, dl.deprecated, dl.todo, dl.test, dl.bug
+{
+    padding: 4px 2px 4px 8px;
+    margin-left: 7px;
+}
+
+dl.note dt
+{
+        color: #a86500;
+}
+
+dl.warning dt, dl.attention dt
+{
+        color: #de0000;
+}
+
+dl.pre dt, dl.post dt, dl.invariant dt
+{
+        color: #399a17;
+}
+
+dl.deprecated dt
+{
+        color: #fafafa;
+}
+
+dl.todo dt b,
+dl.todo dt b a,
+dl.todo dt b a:visited
+{
+        color: #0f6587;
+}
+
+dl.test dt b a,
+dl.test dt b a,
+dl.test dt b a:visited
+{
+        color: #3f2472;
+}
+
+dl.bug dt
+{
+        color: #f9f5f1;
+}
+
+#projectlogo
+{
+	text-align: center;
+	vertical-align: bottom;
+	border-collapse: separate;
+    padding-left: 20px;
+}
+
+#projectlogo img
+{
+	border: 0px none;
+    float: left;
+    margin-right: 10px;
+}
+
+#projectname
+{
+    font-size: 300%;
+    color: #555457;
+	margin: 0px;
+	padding: 2px 0px;
+}
+
+#projectbrief
+{
+	margin: 0px;
+	padding: 0px;
+    font-size: 8pt;
+    color: #222;
+    float: left;
+    position: relative;
+    top: 25px;
+}
+
+#projectnumber
+{
+	font-size: 50%;
+	margin: 0px;
+	padding: 0px;
+}
+
+#top {
+    border-bottom: 1px solid #C7C7C7;
+}
+
+#titlearea
+{
+	padding: 5px;
+	margin: 0px;
+	width: 100%;
+}
+
+.image
+{
+        text-align: center;
+}
+
+.dotgraph
+{
+        text-align: center;
+}
+
+.mscgraph
+{
+        text-align: center;
+}
+
+.caption
+{
+	font-weight: bold;
+}
+
+div.zoom
+{
+	border: 1px solid #90A5CE;
+}
+
+dl.citelist {
+        margin-bottom:50px;
+}
+
+dl.citelist dt {
+        color:#334975;
+        float:left;
+        font-weight:bold;
+        margin-right:10px;
+        padding:5px;
+}
+
+dl.citelist dd {
+        margin:2px 0;
+        padding:5px 0;
+}
+
+@media print
+{
+  #top { display: none; }
+  #side-nav { display: none; }
+  #nav-path, .footer { display: none; }
+  body { overflow:visible; }
+  h1, h2, h3, h4, h5, h6 { page-break-after: avoid; }
+  .summary { display: none; }
+  .memitem { page-break-inside: avoid; }
+  #doc-content
+  {
+    margin-left:0 !important;
+    height:auto !important;
+    width:auto !important;
+    overflow:inherit;
+    display:inline;
+  }
+  pre.fragment, div.fragment
+  {
+    overflow: visible;
+    text-wrap: unrestricted;
+    white-space: -moz-pre-wrap; /* Moz */
+    white-space: -pre-wrap; /* Opera 4-6 */
+    white-space: -o-pre-wrap; /* Opera 7 */
+    white-space: pre-wrap; /* CSS3  */
+    word-wrap: break-word; /* IE 5.5+ */
+  }
+}
+

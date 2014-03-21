@@ -1,0 +1,200 @@
+/** @page componenthelloIPC Hello IPC
+
+@ref helloIPCGettingStarted <br>
+@ref helloIPCDefiningTheAPI <br>
+@ref helloIPCCreatingTheServer <br>
+@ref helloIPCCreatingTheClient
+  
+Now, lets explore how to use IPC between components.
+
+Covered in this topic:
+ - Define a simple interface protocol that clients can use to ask servers to "Greet".
+ - Create a server that prints "Hello world" whenever a client asks it to "Greet",
+ - Create a client that asks the server to "Greet",
+ - Start the Service Directory so the client and server can find each other, and then
+ - Start the server process and the client process.
+
+Here's what it looks like at runtime:
+
+@image html HelloIPC.png
+
+When we show the static view of components inside executables, it looks like this:
+
+@image html HelloIPCWithComponents.png
+
+Note that each interface has
+ - an interface protocol
+ - a friendly name.
+
+In our example, the client and server both use the same friendly name "hello" for their
+interfaces, and of course, they both must use the same protocol, or they wouldn't be able to
+communicate with each other.
+
+@section helloIPCGettingStarted Getting Started
+
+First, let's create a directory for our little project and change directories into there:
+
+@verbatim
+$ mkdir helloIPC
+$ cd helloIPC
+@endverbatim
+
+@section helloIPCDefiningTheAPI Defining the Interface Protocol
+
+Next, we define the interface protocol to be used between the client and the server.
+
+To create our function-call API, we create a definition file called "greet.api".
+
+@verbatim
+$ gedit greet.api
+@endverbatim
+
+Put the following inside greet.api:
+
+@verbatim
+FUNCTION Greet
+(
+);
+@endverbatim
+
+This declares a function called "Greet" that takes no arguments and returns nothing.
+
+@section helloIPCCreatingTheServer Creating the Server
+
+Next we create a server component called "greetServer" that offers a greeting service
+called "hello" that can be accessed using our simple "greet" API.
+We do this by creating a file called "Component.cdef" in a new directory
+called "greetServer".
+
+@verbatim
+$ mkdir greetServer
+$ gedit greetServer/Component.cdef
+@endverbatim
+
+@note Keeping components in separate directories from each other is a requirement of
+      the framework.
+
+greetServer/Component.cdef should contain the following:
+
+@code
+
+export:
+
+    hello = greet.api
+
+sources:
+
+    greetServer.c
+
+@endcode
+
+This declares that the component named "greetServer" (the name of the directory is the name
+of the component) exports a service called "hello" that is accessed using the API defined
+in "greet.api", where the source code can be found in the file greetServer.c.
+
+@note The source code file name extension is used to determine the programming language
+      that it is written in.
+
+To implement the server (in C), create a file "greetServer/greetServer.c":
+
+@verbatim
+$ gedit greetServer/greetServer.c
+@endverbatim
+
+Make it contain the following:
+
+@code
+
+#include "legato.h"
+#include "interfaces.h"
+
+void hello_Greet(void)
+{
+    LE_INFO("Hello world.");
+}
+
+COMPONENT_INIT
+{
+          hello_StartServer("hello"); 
+}
+
+@endcode
+
+The file "interfaces.h" will be auto-generated based on the contents of greet.api and
+greetServer's Component.cdef.  It will contain a prototype of the function
+hello_Greet(), which we implemented in greetServer.c.
+
+The function hello_Greet() will be called when a client binds to our "hello" service
+and calls the function Greet().  The name "hello_Greet" follows this pattern:
+
+@verbatim
+<export-name> '_' <api-function-name>
+@endverbatim
+
+The <export-name> is the name given to the exported interface.  In our example, it
+is the name "hello" before the '=' in the line "hello = greet.api".
+
+@note If you forget to implement a service function on the server or if you give it the wrong name,
+      the link stage will fail and complain that the symbol is unresolved, so you'll know that you
+      missed a function and you'll be able to see what the correct name of the function should be.
+
+In this simple example, our server doesn't need to do anything when it starts up, so we have left
+our component initializer empty.
+
+
+@section helloIPCCreatingTheClient Creating the Client
+
+Now that we have a server, let's create a client to use its service.  First, create a directory
+for the greetClient component and a file in it called "Component.cdef".
+
+@verbatim
+$ mkdir greetClient
+$ gedit greetClient/Component.cdef
+@endverbatim
+
+greetClient/Component.cdef should contain:
+
+@verbatim
+import:
+
+    hello = greet.api
+
+sources:
+
+    greetClient.c
+@endverbatim
+
+To implement the client using C, create a file called "greetClient/greetClient.c":
+
+@verbatim
+$ gedit greetClient/greetClient.c
+@endverbatim
+
+Make it contain the following:
+
+@code
+
+#include "legato.h"
+#include "interfaces.h"
+
+COMPONENT_INIT
+{
+    hello_StartClient("hello");
+    hello_Greet();
+}
+
+@endcode
+
+The "interfaces.h" file that the client includes is a different one than the one that the
+server uses.  This one is specially generated for the client based on the contents of
+greetClient/Component.cdef and greet.api.
+
+In the client, we use the component initializer to call hello_Greet() at start-up.
+
+
+  <HR>
+
+Copyright (C) Sierra Wireless, Inc. 2012-2013. All rights reserved. Use of this work is subject to license.
+
+**/
+

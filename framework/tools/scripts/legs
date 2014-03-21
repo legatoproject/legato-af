@@ -1,0 +1,31 @@
+#!/bin/bash
+
+LEGATO_ROOT="$1"
+
+# If the legato root directory was not specified on the command line, try to derive it from the
+# path of this script file (which is found in $0).
+if [ "$LEGATO_ROOT" = "" ]
+then
+    # If this script was not run using an absolute path, then we prefix it with the current
+    # working directory's path to make it absolute.
+    FIRST_CHAR="${0:0:1}"
+    if [ "$FIRST_CHAR" == "/" ]
+    then
+        ABS_PATH_TO_THIS_SCRIPT="$0"
+    else
+        ABS_PATH_TO_THIS_SCRIPT="$(pwd)/$0"
+    fi
+
+    # The legato root directory is most likely the parent directory of the directory in which
+    # this script file resides, so strip off the script file name and one directory name.
+    LEGATO_ROOT=$(dirname $(dirname "$ABS_PATH_TO_THIS_SCRIPT"))
+fi
+echo "Using legato framework found under '$LEGATO_ROOT'"
+
+# Start a sub-shell and tell it to change to the legato root, source the file that sets up
+# the legato environment, and start interpreting stdin interactively.
+bash -i <<EOF
+source "$LEGATO_ROOT/bin/configlegatoenv"
+exec <> /dev/tty
+EOF
+

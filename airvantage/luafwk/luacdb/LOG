@@ -1,0 +1,85 @@
+20081021
+	- lcdb.c:luaopen_cdb(): store metatable in function environment.
+	- lcdb_make.c:luaopen_cdb_make(): ditto.
+	- lcdb.c:lcdb_init(): create userdata only if open() succeeds.
+	- lcdb_make.c:lcdb_make_start(): create userdata only if open_trunc()
+	  succeeds.
+	- lcdb.c:lcdb_gc(): zapped.  use lcdb_free() as __gc metamethod.
+	- lcdb.c:lcdb_free(): set metatable to nil.
+	- lcdb_make.c:lcdb_make_finish(): set metatable to nil.
+	- cdb.lua,cdb_make.lua: zapped.
+	- Makefile,INSTALL: renamed lcdb.so and lcdb_make.so to cdb.so and
+	  cdb_make.so.
+	- lcdb.c:lcdb_find(): zapped.
+	- lcdb.c:lcdb_findnext(): switched order of return values dpos and
+	  dlen.
+	- lcdb.c:lcdb_findnext(): return nothing if no next key, instead of
+	  dpos=0.
+	- lcdb.c: renamed luaopen_lcdb() to luaopen_cdb().
+	- lcdb_make.c: renamed luaopen_lcdb_make() to luaopen_cdb_make().
+
+20060624
+	- lcdb.c:lcdb_init(): initialize Cdb after lua_newuserdata()
+	- lcdb.c: added lcdb_gc()
+	- lcdb_make.c:lcdb_make_start(): initialize Cdbmake after
+	  lua_newuserdata()
+
+20060619
+	- ported to Lua 5.1
+	- Makefile: s/-fPIC/-fpic/
+
+1.6	(22 Dec 2004)
+	- cdb.lua:cdb.entries(): set errno properly when k==nil.
+
+1.5	(12 Sep 2004)
+	- lcdb.c, lcdb_make.c: define our own box/unbox macros.
+	- lcdb.c, lcdb_make.c: new luaopen_*() logic.
+
+1.4	(14 Mar 2004)
+	- INSTALL: s/package()/require()/.
+	- lcdb.c, lcdb_make.c: return errstr in addition to errno.
+	- cdb.lua, cdb_make.lua: use errstr instead of errno.
+	- Makefile:test: eliminate errstr from comparison.
+
+1.3.4	(20 Nov 2003)
+	- added __tostring metamethod for cdb and cdb_make handles.
+
+1.3.3	(10 Nov 2003)
+	- cdb.entries(): support iterating over values of a specific key
+          (in addition to iterating over entire cdb).
+
+1.3.2	(06 Nov 2003)
+	- added back cdb.metatable and cdb_make.metatable - useful to check
+          if a given userdata is a cdb or cdb_make handle (thanks lhf).
+	- Makefile: added 'test' target
+
+1.3.1	(05 Nov 2003)
+	- set cdb metatable.__index in lcdb.c, not cdb.lua.  ditto cdb_make.
+	- added -fPIC -DPIC to CFLAGS
+
+1.3	(04 Nov 2003)
+	- cdb.init() now accepts filename or fd.
+	- released as 1.3 (1.2.2 should have been called 1.3 instead).
+
+1.2.2	(03 Nov 2003)
+	- ported to Lua 5.0
+
+1.2.1	(24 Nov 2001)
+	- luacdb.c: replace lua_newtag()/lua_tag()/lua_touserdata() with
+	  lua_newtype()/lua_name2tag()/luaL_check_userdata().
+
+1.2	(21 Nov 2001)
+	- luacdb.c: replace lua_pushusertag() with lua_newuserdatabox()
+	  and lua_settag().
+	- luacdbmake-12, luacdbmake-12.oo: try to simulate read('*w').
+
+1.1	(19 Nov 2001)
+	- luacdb.c: added cdb_make binding.
+	- cdb_make.lua: created.  oo interface for cdb_make binding.
+	- luacdbmake-12, luacdbmake-12.oo: created.
+	- rts: added luacdbmake-12 tests.
+	- cdb.lua:CDB:init(), luacdbget.oo: CDB:init() now returns errno only.
+	- cdb.lua:get(): handle error in cdb_read().
+
+1.0	(17 Nov 2001)
+	- first public release.

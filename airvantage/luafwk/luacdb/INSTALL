@@ -1,0 +1,17 @@
+- cdb-0.75 must be built before you can build luacdb.
+
+- Edit Makefile to reflect your installation of lua-5.1 and cdb-0.75, CFLAGS
+  etc. and then type 'make' to build shared objects cdb.so and cdb_make.so.
+
+- Test them by typing 'make test' - there should be no output (note: rts
+  assumes that you have cdbmake-sv and lua in your PATH)
+
+	% make test
+	./rts | sed ... >rts.out && cmp rts.out rts.exp
+	%
+
+- Install cdb.so and cdb_make.so in your LUA_CPATH.
+
+The luacdbdump, luacdbget and luacdbmake-12 scripts are provided as examples
+only and do not need to be installed.  For production, use the corresponding
+programs from the cdb package.

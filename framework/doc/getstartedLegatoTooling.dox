@@ -1,0 +1,58 @@
+/** @page getstartedLegatoTooling Developer Studio
+
+@ref instDevStud <br>
+@ref configDevStud <br>
+@ref usingDevStud
+
+@section instDevStud Install Developer Studio
+
+See Developer Studio installation: http://developer.sierrawireless.com/developerstudio
+
+@note You’ll need to install the IDE for Legato Application Framework feature to 
+develop Legato applications and connect to Legato devices.
+
+@section configDevStud Configure Developer Studio
+
+Before you can develop Legato applications, there's some config
+steps to complete.
+
+<b>Configure Developer Studio toolchain path</b> 
+
+Legato Linux GCC path has to be configured in Developer Studio so it can build Legato applications. 
+Dev Studio needs to find the @c arm-poky-linux-gnueabi-gcc compiler.
+It's done in the Window > Preferences dialog, at Developer Studio > Tools preferences > GCC/GDB 
+paths preferences location. 
+
+Here's the path:
+
+@verbatim
+/opt/swi/y14-ext/tmp/sysroots/x86_64-linux/usr/bin/armv7a-vfp-neon-poky-linux-gnueabi
+@endverbatim
+
+See @ref getstartedInstallPackages for toolchain installation info.
+
+<b>Configure Legato package</b>
+
+Developer Studio needs the location of the Legato Framework package build directory so it can use it.
+In the Package Manager perspective, click on the Add Repository button of the Available Packages view. 
+
+You'll need to point on the Legato Package directory.
+
+@note Build the Legato Framework before installing Developer Studio.
+
+As soon as the path is set, Developer Studio will detect the Legato package. Then, you can select it, 
+and click the Install action in order to configure the package.
+
+@section usingDevStud Use Developer Studio
+
+You can use Developer Studio features like these with Legato applications and devices:
+
+- In the Applications perspective, create, develop and build applications.
+- In the Remote System Explorer perspective, connect and interact with Legato devices.
+- In the Debug perspective, perform step-by-step debugging sessions in a running Legato application.
+
+<HR>
+
+Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+
+**/

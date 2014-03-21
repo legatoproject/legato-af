@@ -1,0 +1,66 @@
+/** @mainpage Welcome
+
+@section Overview
+
+Legato means 'musical notes played smoothly and connected without interruption'.
+
+That's why we use the same term for the Legato platform. Legato also means smooth development that's ready to run, build, 
+and @a connect M2M devices to the cloud. 
+
+Legato's comprehensive platform integrates an application framework, a development environment, 
+and a ready-built Linux distribution so you can focus on configuring business logic and adding value,
+instead of fighting with incompatible tools, wading through disjointed documentation, or reverse
+engineering code. 
+
+Legato has everything you need to connect M2M fast:
+ - programming language APIs
+ - target runtime environment
+ - development and build tools
+ - automated tests
+
+Legato's APIs and development tools let you easily write new software components and specify 
+how applications will use those components.
+
+Legato's runtime environment has a set of daemon processes that cooperatively 
+implement execution sandboxes, secure IPC, fault monitoring, and autonomous recovery on your 
+target devices operating in the field.
+
+Legato's build tools turn new code into applications ready packaged 
+for deployment to target devices. An there are other development tools that ease things like 
+testing, troubleshooting, and installing your new software on your devices.
+
+Legato also comes with automated tests ready to use in your development environment,
+ and a raft of documentation in a no nonsense format to show you what to do.
+
+@section gettingStarted Start developing with Legato
+
+@subpage getstartedMain for installation and setup information.
+
+@subpage basicConcepts to learn the basics. 
+
+After that, move on to:
+
+@subpage appCreating  <br>
+@subpage componentWriting <br>
+@subpage languageIndependentAPIs <br>
+@subpage defFiles <br>
+@subpage buildTools <br>
+@subpage demoApps <br>
+@subpage tools <br>
+@subpage connectingAirVantage <br>
+@subpage legatoServices
+
+
+@section legatoAPIs Legato APIs
+
+C Programming Language is directly supported by Legato.
+
+Here the Legato @subpage c_APIs APIs.
+
+Support for other languages like Python and Java, and others will be added in the future.
+
+<HR>
+
+Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+
+**/

@@ -1,0 +1,33 @@
+/** @page buildToolsmkexe Make Executable
+
+
+Run @b mkexe to create an executable.
+
+Available command line parameters:
+
+@b -c \<string\> @a component @a search  - (multiple, optional) Add a directory to the component search path.
+
+@b -i \<string\> @a interface @a search - (multiple, optional) Add a directory to the interface search path.
+
+@b -l \<string\> @a library @a output @a directory - (optional) Specify the directory for any generated runtime libraries.
+
+@b -o \<string\> @a output - Path of the executable file to generate.
+
+@b -t \<string\> @a target - (optional) Specify the target device to build for (localhost | ar7).
+
+@b -v - @a verbose - (optional) Set into verbose mode for extra diagnostic information.
+
+@b -w \<string\> @a object @a directory - (optional) Specify the directory for any intermediate build artifacts (e.g., .o files, generated source code).
+
+@c mkexe  completes the following functions:
+
+- GetCommandLineArgs 
+- GetComponent 
+- ConstructObjectModel 
+- Build
+- MakeExecutable
+
+
+Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+
+**/

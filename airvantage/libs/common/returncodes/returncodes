@@ -1,0 +1,28 @@
+# Error code list
+#
+# Name must be C compatible enum names.
+# Error codes must be negative values.
+# Description can be any string, but cannot contain newlines (i.e. description need to fit on one ASCII line)
+#
+# CODE      NAME                    DESCRIPTION
+#
+0           OK                      Successful.
+-1          NOT_FOUND               The referenced item does not exist or could not be found.
+-2          OUT_OF_RANGE            An index or other value is out of range.
+-3          NO_MEMORY               Insufficient memory is available.
+-4          NOT_PERMITTED           Current user does not have permission to perform requested action.
+-5          UNSPECIFIED_ERROR       An unspecified error happened.
+-6          COMMUNICATION_ERROR     Communications error.
+-7          TIMEOUT                 A time-out occurred.
+-8          WOULD_BLOCK             Would have blocked if non-blocking behavior was not requested.
+-9          DEADLOCK                Would have caused a deadlock.
+-10         BAD_FORMAT              Inputs or data are not formated correctly.
+-11         DUPLICATE               Duplicate entry found or operation already performed.
+-12         BAD_PARAMETER           Parameter is not valid.
+-13         CLOSED                  The file, stream or object was closed.
+-14         IO_ERROR                An IO error occurred.
+-15         NOT_IMPLEMENTED         This feature is not implemented.
+-16         BUSY                    The component or service is busy.
+-17         NOT_INITIALIZED         The service or object is not initialized
+-18         END                     The file, stream or buffer reached the end.
+-19         NOT_AVAILABLE           The service is not available.

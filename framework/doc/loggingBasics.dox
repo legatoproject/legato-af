@@ -1,0 +1,53 @@
+/** @page loggingBasics Legato Logging
+
+Legato comes with a command line tool to set logging variables for Legato
+ components.  Executed commands are translated and sent to the Legato log daemon, which
+ forwards it to the correct destination. The Log Control Daemon uses filters to log needed messages, discarding unnecessary ones.
+ 
+ @subpage loggingCmds <br>
+ @ref c_logging 
+  
+ The general format of log commands is:
+
+ @verbatim
+$ log command commandParameter in destination
+@endverbatim
+
+ Here are some command samples:
+
+ Set the log level to INFO for a component in a process:
+ @verbatim
+$ log level INFO in "processName/componentName"
+@endverbatim
+
+Enable a trace:
+ @verbatim
+$ log trace "keyword" in "processName/componentName"
+@endverbatim
+
+ Disable a trace:
+ @verbatim
+$ log stoptrace "keyword" in "processName/componentName"
+@endverbatim
+
+All can use "*" in place of processName and componentName to mean
+ all processes and/or all components.  If the "processName/componentName" is omitted, the
+ default destination is set for all processes and all components.  In the samples, the
+ 'in' is optional.
+
+ The translated command to send to the log daemon has this format:
+
+    ----------------------------------------
+   | cmd | destination | commandParameter |
+   ----------------------------------------
+
+where,
+   @a cmd is a command code, one byte long.
+   destination is the "processName/componentName" followed by a '/' character.
+   commandParameter is the string specific to the command.
+
+<HR>
+
+Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+
+**/

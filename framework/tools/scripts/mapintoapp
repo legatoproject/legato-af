@@ -1,0 +1,122 @@
+#!/bin/bash
+
+PrintUsage()
+{
+    echo
+    echo "USAGE:    $(basename $0) APP_FILE SRC_PATH DEST_PATH"
+    echo
+    echo "    Maps a file or directory into an application's sandbox."
+    echo
+    echo "    APP_FILE  is the path to the built application file (e.g., helloWorld.ar7)."
+    echo
+    echo "    SRC_PATH  is the on-target file system path of the file or directory to be mapped"
+    echo "              into the application's sandbox.  This can be an absolute path in the target"
+    echo "              filesystem or a relative path from the application's on-target install"
+    echo "              directory (beginning with './')."
+    echo
+    echo "    DEST_PATH is the in-sandbox file system path at which the file or directory will"
+    echo "              appear inside the application's sandbox on-target.  This is an absolute"
+    echo "              path inside the sandbox.  It must not try to go up directories (using '..')"
+    echo
+    echo "EXAMPLES:"
+    echo
+    echo "    $(basename $0) myapp.ar7 /usr/local/lib/libfoo.so.2 /lib/"
+    echo "    $(basename $0) myapp.ar7 ./bin/myexe /bin/"
+    echo
+}
+
+
+# Print an error message and exit.
+Error()
+{
+    echo "***ERROR: $*" 1>&2
+    echo "          Try '$(basename $0) --help' for help." 1>&2
+    exit 1
+}
+
+
+IsValidSrcPath()
+{
+    echo "$1" | grep -E '^\.?(/[-[:alnum:]_.]+)+/?$' > /dev/null
+}
+
+
+IsValidDestPath()
+{
+    echo "$1" | grep -E '^(/[-[:alnum:]_.]+)+/$' > /dev/null  &&
+    echo "$1" | grep -F -v '/../' > /dev/null
+}
+
+
+if [ "$1" = "-h" -o "$1" = "help" -o "$1" == "--help" ]
+then
+    PrintUsage
+    exit 0
+
+elif [ $# -ne 3 ]
+then
+    Error "Incorrect number of arguments."
+
+elif ! [ -f "$1" ]
+then
+    Error "'$1' is not an application file."
+
+elif ! IsValidSrcPath $2
+then
+    Error "Invalid source path '$2'.  Must be an absolute or relative path, beginning with either './' or '/'."
+
+elif ! IsValidDestPath $3
+then
+    Error "Invalid destination path '$3'.  Must be an absolute path ending in '/' and containing no '..'."
+fi
+
+APP_FILE="$1"
+APP_SUFFIX=$(echo "$APP_FILE" | sed 's#^.*\(\.[[:alpha:]][[:alnum:]]*\)$#\1#')
+APP_NAME=$(basename "$APP_FILE" $APP_SUFFIX)
+SRC_PATH="$2"
+DEST_PATH="$3"
+TMP_DIR="/tmp/$USER/$APP_NAME"
+
+# Do expansion of ~/ in the app file path.
+if echo "$APP_FILE" | grep -E '^~/' > /dev/null
+then
+    APP_FILE=$(echo "$APP_FILE" | sed -r "s#^~#/home/$USER#")
+fi
+
+# Convert the app file path to an absolute path, if relative.
+if echo "$APP_FILE" | grep -E -v '^/' > /dev/null
+then
+    APP_FILE=$(pwd)/"$APP_FILE"
+fi
+
+echo "Unpacking into temporary directory '$TMP_DIR'."
+if [ -e "$TMP_DIR" ]
+then
+    echo "***ERROR: Object already exists at '$TMP_DIR'."
+    exit 1
+fi
+
+mkdir -p "$TMP_DIR"
+cd "$TMP_DIR"
+tar xjf "$APP_FILE"
+
+echo "Adding the following to config/$APP_NAME/files in $APP_FILE:"
+echo "    $SRC_PATH => $DEST_PATH"
+
+if cat "./config/$APP_NAME/files" | grep "$SRC_PATH => $DEST_PATH" > /dev/null
+then
+    echo "That mapping already existed in that app.  Nothing changed."
+else
+    echo "$SRC_PATH => $DEST_PATH" >> "./config/$APP_NAME/files"
+
+    echo "Repacking application '$APP_FILE'."
+    tar cjf "$APP_NAME.$APP_SUFFIX" .
+    tar tjf "$APP_NAME.$APP_SUFFIX"
+
+    echo "Replacing old application with new."
+    mv "$APP_NAME.$APP_SUFFIX" "$APP_FILE"
+fi
+
+echo "Cleaning up temporary directory '$TMP_DIR'."
+cd -
+rm -rf "$TMP_DIR"

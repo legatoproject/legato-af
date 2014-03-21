@@ -1,0 +1,15 @@
+/** @page tools Legato Device Tools
+
+Legato has these device tools:  
+
+@subpage loggingBasics <br>
+@subpage configDBCommands <br>
+@subpage simUsageCommands <br>
+@subpage demoAPNUsage <br>
+@subpage dataCommands
+
+<HR>
+
+Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+
+**/

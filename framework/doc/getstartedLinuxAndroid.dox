@@ -1,0 +1,32 @@
+/** @page getstartedLinuxAndroid Linux Android SDK
+
+
+@ref instLinuxAndroid <br>
+@ref createDevRules
+
+Only a 64-bit Ubuntu 12.04 distribution is currently being tested. Other distributions are unknown at this time, but can be tried. 
+If you intend to rebuild the Linux images, don't use Ubuntu 13.10: it does not work.
+
+The following info explains how to set fastboot.
+
+@section instLinuxAndroid Linux Android Tools
+
+Android tools use fastboot to replace the kernel and root filesystem on devices.  
+
+Download Android SDK tools from http://developer.android.com/sdk/index.html. 
+
+Extract the file and add the directory containing the fastboot command to your path. 
+
+@section createDevRules Create Udev Rules
+
+By default, fastboot on Ubuntu can't communicate with a USB-connected device because of the default permissions. Create udev rules to overcome this.
+In the file /etc/udev/rules.d/51-android.rules insert the following two lines and save: 
+@code SUBSYSTEM=="usb", ATTRS{idVendor}=="1199", MODE="0666" @endcode
+@code SUBSYSTEM=="usb", ATTRS{idVendor}=="18d1", MODE="0666" @endcode
+Then reboot your PC. 
+
+<HR>
+
+Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+
+**/

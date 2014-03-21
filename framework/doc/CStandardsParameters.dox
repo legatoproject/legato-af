@@ -1,0 +1,276 @@
+/** @page CStandardsParameters C Standard Parameters
+
+@ref cstdsparamCamelCase <br>
+@ref cstdsparamPrefix <br>
+@ref cstdsparamPointers <br>
+@ref cstdsparamStaticVariables <br>
+@ref cstdsparamAbbreviations <br>
+@ref cstdsparamCommenting <br>
+@ref cstdsparamSeparateInterfacefromImplementation <br>
+@ref cstdsparamInterfaceDocumentation <br>
+@ref cstdsparamFunctionParameter <br>
+@ref cstdsparamConstPointers <br>
+@ref cstdsparamMultithreading <br>
+@ref cstdsparamTabs <br>
+
+Other C standards pages: 
+
+@ref CcodingStdsMain <br>
+@ref CStandardsAbbreviations
+
+@section cstdsparamCamelCase Camel Case
+
+Variable names and function parameter names should be in CamelCase.
+
+@section cstdsparamPrefix Prefix
+
+Variables are never defined inside header files, and therefore they never need prefixes.
+
+@section cstdsparamPointers Pointers
+
+Pointers are used very differently than non-pointer variables.  Not only does a range of new operators become available for use with pointers, but mathematical operations take on a whole new meaning when used with pointers.  As a result, it is important to distinguish pointer variables from non-pointer variables.  Therefore, the names of pointer variables '''must end in "Ptr"'''.
+
+@code
+
+int index = 0;
+int* indexPtr = &index;
+
+@endcode
+
+Note that there is an exception when working with opaque types.  This is because pointers are often used to implement opaque types in C.  For example, a header file might contain something like this:
+@code
+
+typedef struct foo_Sandwich* foo_SandwichRef_t;
+
+@endcode
+This defines a type that can be used to refer to a "Sandwich" object.  Note that struct foo_Sandwich is never defined outside of the "foo" module (and may not even be defined inside of the foo module).  Therefore, to all outsiders, this reference looks like a pointer to an incomplete type and cannot be dereferenced.  Inside the "foo" module, struct foo_Sandwich could be defined ''or'' this pointer type could even be used to hold an integer, a char, or anything else that is the same size or smaller than a pointer.  For example, a "file reference" could be implemented on some systems as an integer file descriptor.  In these cases, because the reference is an opaque type that is never used as a pointer by anyone outside of the module that implements it, and because it might not be a pointer at all even inside the module that implements it, variables of '''opaque pointer types don't need a "Ptr" suffix'''.
+
+@section cstdsparamStaticVariables Static Variables
+
+Variables that exist on the stack are function parameters and "automatic variables" (non-static variables declared inside of functions).  When these variables go out of scope, they disappear.  That is, their memory is released to be later used for other purposes.  To make it obvious that these variables are stack variables and not static variables, they '''must start with a lower-case letter'''.
+
+Because the scope of these variables is limited to within a specific function or compound block within a function, they '''need not have a prefix''' to avoid naming conflicts with variables in other scopes.
+
+For example,
+@code
+
+static void Function(int numericParameter)
+{
+    char* stringAutoVariable;
+
+
+    ...
+}
+
+@endcode
+
+@note Only stack variable names and struct/union member names can (and must) start with lower-case letters.
+
+
+Static variables are not stored in either the stack or the heap.  They are statically allocated in the data segment of the process's address space.  Furthermore, they have scope limited to either a compound statement (if defined inside a function), or a file (if defined outside of all functions).  Because these variables are never visible outside of a file, they don't need any special prefix to prevent naming conflicts with variables from other files.  But, because they are stored differently than variables on the stack (and don't disappear when they go out of scope), they '''start with an upper-case letter''' to distinguish them from stack variables.
+
+For example,
+@code
+
+static int CallCounter = 0;  // This is a file-scope variable.
+
+static void Function(int numericParameter)
+{
+    static bool WasCalledBefore = FALSE;
+    char* stringAutoVariable;
+
+    if (!WasCalledBefore)
+    {
+        ...
+        WasCalledBefore = TRUE;
+    }
+
+    CallCounter++;
+
+    ...
+}
+
+@endcode
+
+@section cstdsparamAbbreviations  Abbreviations
+
+In the interests of having manageable-length identifiers, developers often abbreviate words when constructing identifiers. 
+Unfortunately, if these abbreviations are not carefully chosen, they can often create confusion.
+ 
+See @ref CStandardsAbbreviations. Other abbreviations should @b not be used.
+
+
+@section cstdsparamCommenting Commenting
+
+If anything not completely obvious is going on, it must be documented clearly using comments.
+
+Comments should also be used to improve readability, wherever appropriate.
+
+However, there's '''no point''' in commenting the obvious, like this:
+@code
+
+// Set the flag
+isReady = TRUE;
+
+@endcode
+
+Comments should focus mainly on the '''why''', as opposed to the ''what'' or the ''how''. The code should be written in such a way that ''what'' the code is doing and ''how'' it is doing it is obvious given how nicely named the identifiers are and how cleanly structured the code is.  If it isn't, please consider rewriting the code.  If rewriting it to make the ''what'' and ''how'' more obvious is not practical, then do please comment the ''what'' and the ''how'', but rewriting for clarity of the code is preferred.  What cannot often be conveyed in the code itself is ''why'' the code is doing what it is doing.  This is the most valuable information to have in comments, since it can shine light on pitfalls and help quickly identify whether design change options are viable.  Often, the ''why'' was learned the hard way, so documenting it can save others from having to learn it the hard way too.  Also, sometimes things are done arbitrarily, which is good to know too so people don't have to fear that making changes to it might break something in some subtle way.
+
+C++ style comments are permitted in C code.  All modern compilers support them.
+
+Each module should contain a module comment block at the top of the file that describes the module's purpose.  The header comment block should be formatted like this:
+
+@code
+
+/**
+ * @file le_basics.h
+ *
+ * There are certain cardinal types and commonly-used constants that form the most basic
+ * foundation upon which everything else is built.  These include things such as
+ * error codes, portable integer types, and helpful macros to make ugly things nicer to look
+ * at and easier to use.
+ *
+ * <HR>
+ *
+ * Copyright (C) Sierra Wireless, Inc. 2012. All rights reserved. Use of this work is subject to license.
+ */
+
+
+Each function should be preceded by a comment block that describes the purpose of the function, its possible return values and any side effects that it may have.  The function blocks should be formatted like this:
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Creates a sub-pool.
+ * 
+ * See @ref sub_pools for more information.
+ * 
+ * @return
+ *      A reference to the sub-pool.
+ */
+//--------------------------------------------------------------------------------------------------
+le_mem_PoolRef_t le_mem_CreateSubPool
+(
+    le_mem_PoolRef_t    pool,       ///< [IN] The super-pool.
+    const char*         name,       ///< [IN] The name of the sub-pool (will be copied into the
+                                    ///   sub-pool).
+    size_t              numObjects  ///< [IN] The number of objects to take from the super-pool.
+);
+
+
+Function parameters should be documented with comments after the parameter as shown in the example above.  Placing the comments after the parameters as opposed to in the function comment block keeps the comments and parameters together and makes the comments either to read.  It also serves as a reminder to the developer to update the comments when the parameters are changed.
+
+A struct should be documented in a similar manner where each field has comments proceeding it, for example:
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * List of memory pool statistics.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    uint64_t    numAllocs;      ///< The number of times an object has been allocated from this pool.
+    size_t      numFree;        ///< The number of free objects currently available in this pool.
+    size_t      numOverflows;   ///< The number of times le_mem_ForceAlloc() had to expand the pool.
+}
+le_mem_PoolStats_t;
+
+
+Enumerated types should also be documented in a similar manner.  
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Standard result codes.
+ * 
+ * @note All error codes are negative integers, thereby allowing functions returning signed
+ *       integers to return non-negative values when successful or standard error codes on failure.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef enum
+{
+    LE_OK = 0,              ///< Successful.
+    LE_NOT_FOUND = -1,      ///< The referenced item does not exist or could not be found.
+    LE_NOT_POSSIBLE = -2,   ///< It is not possible to perform the requested action. 
+    LE_OUT_OF_RANGE = -3,   ///< An index or other value is out of range.
+    LE_NO_MEMORY = -4,      ///< Insufficient memory is available.
+    LE_NOT_PERMITTED = -5,  ///< Current user does not have permission to perform requested action.
+    LE_FAULT = -6,          ///< Unspecified internal error.
+    LE_COMM_ERROR = -7,     ///< Communications error.
+    LE_TIMEOUT = -8,        ///< A time-out occurred.
+    LE_OVERFLOW = -9,       ///< An overflow occurred or would have occurred.
+    LE_WOULD_BLOCK = -10,   ///< Would have blocked if non-blocking behaviour was not requested.
+}
+le_result_t;
+
+
+However, if the meaning of the constants in an enumerated type are obvious from their names the comments may be omitted as in the following example.
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Boolean type.
+ * 
+ * 0 is false and 1 is true, in keeping with the C programming language's
+ * Boolean expression evaluation rules.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef enum
+{
+    FALSE = 0,
+    TRUE = 1
+}
+bool;
+
+
+@endcode
+
+
+@section cstdsparamSeparateInterfacefromImplementation  Separating Interface from Implementation
+
+Header files should contain only interface details.  Implementation details should appear only in @c .c files.
+
+The separation of interface from implementation reduces coupling, which increases quality.
+
+
+@section cstdsparamInterfaceDocumentation Interface Documentation
+
+Inter-component interfaces should be documented using Doxygen.  This allows documentation pages to be written right inside the include (.h) files.
+
+
+@section cstdsparamFunctionParameter Function Parameters
+
+The  number of parameters passed to any given function should be kept as low as possible.  Functions with less parameters tend to be easier to understand and easier to use.  As a general guideline, '''C functions should have 3 parameters or less'''.
+
+
+@section cstdsparamConstPointers  Const Pointers
+
+Pointer type function parameters must be declared @c const if the object pointed to will not be modified by the function it is being passed to.
+
+Pointer type return values must be declared @c const if the object being returned must not be modified by the caller.
+
+@section cstdsparamMultithreading Multithreading 
+
+Sometimes multithreading can be a powerful tool, allowing functionally related code to be grouped into a single flow of control where it would otherwise be fragmented into small chunks that can run without blocking.   However, multithreading can easily become the source of some of the most nasty bugs.
+
+What can we do in coding standards to help prevent bugs arising from multithreading? How about defining how synchronization is performed? Can we have a standard macro definition for mutual exclusion for example? Maybe that is a little outside of what coding standards normally define, but it could be useful.
+
+@section cstdsparamTabs Tabs
+
+Unfortunately,  tab characters are not handled in a consistent way in editors and  browsers.  Some put tab stops at the equivalent of 8 spaces, others use 4  and, albeit rarely, other distances are sometimes used as well. As a  result, source code containing tab characters are not rendered properly  in all cases.
+
+Tab characters must be avoided in C source code.  '''Spaces must be used''' to indent lines C code, instead.
+
+The standard indentation distance is '''4 spaces''' per indentation level.
+
+Configure  your editor(s) now!  (...and, while you're at it, tell your editor not  to automatically go and change pre-existing code.)
+
+
+
+<HR>
+
+Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+
+**/

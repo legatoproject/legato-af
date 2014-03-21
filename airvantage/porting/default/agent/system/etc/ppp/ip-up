@@ -1,0 +1,35 @@
+#!/bin/sh
+
+#*******************************************************************************
+# Copyright (c) 2012 Sierra Wireless and others.
+# All rights reserved. This program and the accompanying materials
+# are made available under the terms of the Eclipse Public License v1.0
+# which accompanies this distribution, and is available at
+# http://www.eclipse.org/legal/epl-v10.html
+#
+# Contributors:
+#     Sierra Wireless - initial API and implementation
+#*******************************************************************************
+
+# This script is called with the following arguments:
+#    Arg  Name                          Example
+#    $1   Interface name                ppp0
+#    $2   The tty                       ttyS1
+#    $3   The link speed                38400
+#    $4   Local IP number               12.34.56.78
+#    $5   Peer  IP number               12.34.56.99
+#    $6   Optional ``ipparam'' value    foo
+
+PPP_IFACE="$1"
+
+
+#delete default route
+/sbin/route del default
+#add interface ppp0 as default route
+/sbin/route add default dev ${PPP_IFACE}
+
+if [ -f /etc/ppp/resolv.conf ]; then
+    cp /etc/ppp/resolv.conf /etc/resolv.conf
+fi
+
+

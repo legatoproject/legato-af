@@ -1,0 +1,53 @@
+/*
+ * Interface for Modem Call Profile Service
+ *
+ * Copyright (C) Sierra Wireless, Inc. 2013.  All rights reserved. Use of this work is subject to license.
+ */
+
+HANDLER StateChangeHandler
+{
+    ADD_HANDLER_PARAMS
+    (
+        le_mcc_profile_Ref_t profileRef IN ///< The profile reference.
+    );
+
+    HANDLER_PARAMS
+    (
+        le_mcc_profile_State_t  newState
+    );
+};
+
+HANDLER CallEventHandler
+{
+    ADD_HANDLER_PARAMS
+    (
+        le_mcc_profile_Ref_t profileRef IN ///< The profile to update.
+    );
+
+    HANDLER_PARAMS
+    (
+        le_mcc_call_Ref_t    callRef,
+        le_mcc_call_Event_t  event
+    );
+};
+
+FUNCTION le_mcc_profile_Ref_t GetByName
+(
+    string profileNamePtr[100] IN ///< The name of the profile to search for.
+);
+
+FUNCTION Release
+(
+    le_mcc_profile_Ref_t profileRef IN ///< The Call profile reference.
+);
+
+FUNCTION le_mcc_profile_State_t GetState
+(
+    le_mcc_profile_Ref_t profileRef IN  ///< The profile reference to read.
+);
+
+FUNCTION le_mcc_call_Ref_t CreateCall
+(
+    le_mcc_profile_Ref_t profileRef IN , ///< The profile to create a new call on.
+    string destinationPtr[18] IN ///< The target number we are going to call.
+);

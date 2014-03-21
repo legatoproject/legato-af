@@ -1,0 +1,5 @@
+LD_LIBRARY_PATH=/usr/local/agent-runtime/lib:/usr/local/lib
+LUA_CPATH=/usr/local/agent-runtime/lua/?.so
+LUA_PATH=/usr/local/agent-runtime/lua/?.lua;/usr/local/agent-runtime/lua/?/init.lua
+LUA_AF_RO_PATH=/usr/local/agent-runtime/
+LUA_AF_RW_PATH=/usr/local/agent-runtime/

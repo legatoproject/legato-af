@@ -1,0 +1,16 @@
+executables:
+    modemDemo ( "demoComponent"
+                "$LEGATO_BUILD/bin/lib/lible_mdm_client.so"
+                "$LEGATO_BUILD/bin/lib/lible_data_client.so" )
+    send      ( "sendComponent" )
+
+import:
+    // mount libraries to sandbox
+    "/usr/local/lib/lible_mdm_client.so"        "/lib/"
+    "/usr/local/lib/lible_data_client.so"       "/lib/"
+
+processes:
+    run: ( modemDemo )
+    run: ( send "<Input number>" "Welcome to modemDemo app")
+
+start: auto

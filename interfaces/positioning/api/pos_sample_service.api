@@ -1,0 +1,54 @@
+/*
+ * Interface for Positioning Sample Service
+ *
+ * Copyright (C) Sierra Wireless, Inc. 2013.  All rights reserved. Use of this work is subject to license.
+ */
+
+FUNCTION le_result_t Get2DLocation
+(
+    le_pos_SampleRef_t  positionSampleRef,
+    int32               latitude OUT,
+    int32               longitude OUT,
+    int32               horizontalAccuracy OUT
+);
+
+FUNCTION le_result_t GetAltitude
+(
+    le_pos_SampleRef_t  positionSampleRef,
+    int32               altitude OUT,
+    int32               altitudeAccuracy OUT
+);
+
+FUNCTION le_result_t GetHorizontalSpeed
+(
+    le_pos_SampleRef_t  positionSampleRef,
+    uint32              hspeed OUT,
+    int32               hspeedAccuracy OUT
+);
+
+FUNCTION le_result_t GetVerticalSpeed
+(
+    le_pos_SampleRef_t  positionSampleRef,
+    int32               vspeed OUT,
+    int32               vspeedAccuracy OUT
+);
+
+FUNCTION le_result_t GetHeading
+(
+    le_pos_SampleRef_t  positionSampleRef,
+    int32               heading OUT,
+    int32               headingAccuracy OUT
+);
+
+FUNCTION le_result_t GetDirection
+(
+    le_pos_SampleRef_t  positionSampleRef,
+    int32               direction OUT,
+    int32               directionAccuracy OUT
+);
+
+FUNCTION Release
+(
+    le_pos_SampleRef_t  positionSampleRef
+);
+

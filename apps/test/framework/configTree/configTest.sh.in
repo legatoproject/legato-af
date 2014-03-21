@@ -1,0 +1,100 @@
+#!/bin/bash
+
+
+
+
+# The command line option to look for.  If this text is found that means that the caller wants us to
+# make sure that the required legato system services are running.
+SERVEROPT="withserver"
+
+
+
+
+if [ "$1" = "$SERVEROPT" ]
+then
+    # Make sure that the service directory isn't already running.
+    killall serviceDirectory || true
+
+    # Start up the system services.  But give the service directory a little extra time to startup
+    # as the others depend on it.
+    echo "Starting the system services."
+
+    @SERVICE_DIRECTORY_BIN@ &
+    sleep 1
+    @LOG_CTRL_DAEMON_BIN@ &
+    @CONFIG_TREE_BIN@ &
+else
+    # Ok, just start the configTree.  TODO: Remove this as the configTree should have been started
+    # automaticly by this point.
+
+    echo "Starting just the configTree."
+    @CONFIG_TREE_BIN@ &
+fi
+
+
+
+
+function ExecWithTimeout()
+{
+    # Extract the parameters passed to this funciton.
+    TIMEOUT=$1
+    COMMAND=$2
+    COMMAND_ARGS=${*:3}
+
+    # Grab the PID so the
+
+
+    # Start a timer process, if it isn't stopped before the sleep returns the process will exit our
+    # script.  Grab our PID so that the child can kill this script if it times out.
+    PARENT=$$
+
+    {
+        sleep $TIMEOUT
+        echo "EXEC FAILED"
+        kill $PARENT
+    } &
+
+    TIMER_PROCID=$!
+    echo "Timeout started with PID $TIMER_PROCID"
+
+    # Now, execute the command the user wanted to run.  If the command returns before the timer
+    # expires kill the timer sub-process.
+    $COMMAND $COMMAND_ARGS
+    RET_VAL=$?
+
+    echo "SUCCESS.  Killing timeout process $TIMER_PROCID."
+    kill $TIMER_PROCID || true
+
+    return $RET_VAL
+}
+
+
+
+
+# Make sure everything is started up and ready to go, then clear out our test count.
+sleep 1
+@CONFIG_TOOL_BIN@ /configTest/testCount 0
+
+
+# These two executables create and fail to close a read and write transaction respectivly.  If the
+# configTree doesn't handle this situation correctly then things will start hanging.
+ExecWithTimeout 5 @EXECUTABLE_OUTPUT_PATH@/configDropReadExe
+ExecWithTimeout 5 @EXECUTABLE_OUTPUT_PATH@/configDropWriteExe
+
+
+# Now, fire up a bunch of instances of the config test executable, all in parallel.  If any of them
+# return an error, just simply pass that back to our caller.
+for i in `seq 1 50`;
+do
+    MY_STR+="$i "
+done
+
+echo $MY_STR | ExecWithTimeout 20 xargs -n 1 -P 0 @EXECUTABLE_OUTPUT_PATH@/configTestExe
+
+# Report the number of tests that were run.
+echo "Number of tests run:"
+@CONFIG_TOOL_BIN@ /configTest/testCount
+
+
+# TODO: Get rid of this when configTree is started automaticly for the texting.
+killall configTree || true

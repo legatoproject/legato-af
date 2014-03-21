@@ -1,0 +1,13 @@
+start: manual
+
+executables:
+
+    faultTest ( faultTest.c )
+
+processes:
+    faultAction: stopApp
+
+    // This needs to be "processName (executable appName faultType)
+    run: noExit (faultTest StopApp noExit)
+    run: stopApp (faultTest StopApp sigFault)
+

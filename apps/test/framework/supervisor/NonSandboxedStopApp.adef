@@ -1,0 +1,15 @@
+start: manual
+
+sandboxed: false
+
+executables:
+
+    faultTest ( faultTest.c )
+
+processes:
+    faultAction: stopApp
+
+    // This needs to be "processName (executable appName faultType)
+    run: noExit (faultTest NonSandboxedStopApp noExit)
+    run: stopApp (faultTest NonSandboxedStopApp sigFault)
+

@@ -1,0 +1,171 @@
+/* To be processed by cpp, in order to produce aleos.map. */
+/*-----------------------------------------------------------------------------
+ * Copyright (c) 2012 Sierra Wireless and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ *
+ * Contributors:
+ *     Fabien Fleutot     for Sierra Wireless - initial API and implementation
+ *----------------------------------------------------------------------------*/
+
+treemgr agent.devman.extvars.aleosvars
+aleos=
+
+#include "MSCIIDs.h"
+
+system.gps.latitude             =MSCIID_STS_PP_GPS_LAT7
+system.gps.longitude            =MSCIID_STS_PP_GPS_LONG7
+system.gps.speed                =MSCIID_STS_PP_GPS_SPEED
+system.gps.heading              =MSCIID_STS_PP_GPS_HEADING
+system.gps.altitude             =MSCIID_STS_PP_GPS_ALTITUDE
+system.gps.hours                =MSCIID_STS_PP_GPS_TIME_HH
+system.gps.minutes              =MSCIID_STS_PP_GPS_TIME_MM
+system.gps.seconds              =MSCIID_STS_PP_GPS_TIME_SS
+system.gps.year                 =MSCIID_STS_PP_GPS_TIME_YR
+system.gps.month                =MSCIID_STS_PP_GPS_TIME_MH
+system.gps.day                  =MSCIID_STS_PP_GPS_TIME_DY
+system.gps.sat_cnt              =MSCIID_STS_PP_GPS_SAT_CNT
+system.gps.qual                 =MSCIID_STS_PP_GPS_QUAL
+system.gps.fix                  =MSCIID_STS_PP_GPS_FIX
+
+system.hw_info.global_id             =MSCIID_INF_DEVICE_ID
+system.sw_info.fw_ver                =MSCIID_INF_ALEOS_SW_VER
+system.hw_info.hw_ver                =MSCIID_INF_ALEOS_HW_VER
+system.sw_info.boot_ver              =MSCIID_INF_BOOT_VER
+system.hw_info.product_str           =MSCIID_INF_PRODUCT_STR
+system.cellular.subscriber.phone_num =MSCIID_INF_PHONE_NUM
+system.io.ignition_in                =MSCIID_STS_PP_IGNITION_SENSE
+system.io.powerin                    =MSCIID_STS_POWERIN
+system.io.gpio.1                     =MSCIID_STS_IO_DIGITAL_IN1
+system.ddns.service.device_name      =MSCIID_CFG_CMN_MDM_NAME
+system.aleos.io.in1                  =MSCIID_STS_IO_DIGITAL_IN1
+system.aleos.io.pulse_cnt1           =MSCIID_PULSE_CNT_01
+system.aleos.io.relay1               =MSCIID_STS_IO_DIGITAL_OUT1
+system.aleos.io.relay1.last          =MSCIID_STS_IO_DIGITAL_CFG1
+system.aleos.reserve.ser0            =MSCIID_CFG_IO_RESERVE_SERIAL0
+system.aleos.reserve.dm              =MSCIID_CFG_IO_RESERVE_QUALCOMM_DM
+
+system.aleos.pwr_state            =MSCIID_STS_POWER_MODE
+system.aleos.low_pwr.mode         =MSCIID_CFG_CMN_LOW_PWR_MODE
+system.aleos.low_pwr.voltage      =MSCIID_CFG_CMN_VLTG_POWER
+system.aleos.low_pwr.wake_delta   =MSCIID_CFG_CMN_LOW_PWR_WAKE_DELTA
+system.aleos.low_pwr.delay        =MSCIID_CFG_CMN_POWER_OFF
+system.aleos.low_pwr.start_time   =MSCIID_CFG_CMN_LOW_PWR_WAKEUP
+system.aleos.low_pwr.act_duration =MSCIID_CFG_CMN_LOW_PWR_DUR_ACTIVE
+system.aleos.low_pwr.inact_dur    =MSCIID_CFG_CMN_LOW_PWR_DUR_INACTIVE
+system.aleos.low_pwr.ignt_sense   =MSCIID_CFG_CMN_DTR_POWER
+
+system.aleos.cellular.state       =MSCIID_STS_NETWORK_STATE
+system.cellular.link.channel      =MSCIID_STS_NETWORK_CHANNEL
+system.cellular.link.service      =MSCIID_STS_NETWORK_SERVICE
+system.cellular.link.state        =MSCIID_STS_LINK_STATE
+system.cellular.link.ip           =MSCIID_STS_NETWORK_IP
+
+system.cellular.link.pkts_sent    =MSCIID_STS_MODEM_IP_SENT
+system.cellular.link.pkts_rcvd    =MSCIID_STS_MODEM_IP_RECV
+system.cellular.link.bytes_sent   =MSCIID_STS_MODEM_SENT
+system.cellular.link.bytes_rcvd   =MSCIID_STS_MODEM_RECV
+
+system.aleos.cellular.data_usage.service_status  =MSCIID_STS_CURRENT_SERVICE_STATE
+system.aleos.cellular.data_usage.daily_limit     =MSCIID_CFG_DAILY_DATA_LIMIT
+system.aleos.cellular.data_usage.cur_daily_usage =MSCIID_STS_CURRENT_DAILY_DATA_USAGEMB
+system.aleos.cellular.data_uage.monthly_units    =MSCIID_CFG_MONTHLY_DATA_USAGE_UNITS
+system.aleos.cellular.data_usage.monthly_limit   =MSCIID_CFG_MONTHLY_DATA_LIMIT
+system.aleos.cellular.data_usage.monthly_usage   =MSCIID_STS_CURRENT_MONTHLY_DATA_USAGEMB
+system.aleos.cellular.data_usage.monthly_start_day =MSCIID_CFG_STARTOF_MONTHLY_BILLING
+
+system.cellular.link.rssi      =MSCIID_STS_NETWORK_RSSI
+system.cellular.sw_info.fw_ver =MSCIID_INF_MODEM_SW_VER
+system.cellular.hw_info.model  =MSCIID_INF_MODEM_HW_VER
+system.cellular.hw_info.imei   =MSCIID_INF_MODEM_ID
+system.cellular.tech           =MSCIID_INF_RADIO_TECH
+
+system.cellular.cdma.link.sid       =MSCIID_STS_CDMA_SID
+system.cellular.cdma.subscriber.nai =MSCIID_CFG_CDMA_QCMIPNAI
+system.cellular.cdma.link.operator  =MSCIID_STS_CDMA_OPERATOR
+system.cellular.cdma.link.ecio      =MSCIID_STS_CDMA_ECIO
+system.cellular.cdma.link.pn_offset =MSCIID_STS_CDMA_PN_OFFSET
+
+system.cellular.gsm.link.operator   =MSCIID_STS_GPRS_OPERATOR
+system.cellular.gsm.link.ecio       =MSCIID_STS_GPRS_ECIO
+system.cellular.gsm.link.cell_id    =MSCIID_STS_GPRS_CELL_ID
+
+system.cellular.sim.iccid           =MSCIID_STS_GPRS_SIMID
+system.cellular.sim.imsi            =MSCIID_STS_GPRS_IMSI
+system.cellular.sim.enable          =MSCIID_CFG_GPRS_SIM_ENABLE
+system.cellular.sim.pin             =MSCIID_CFG_GPRS_SIM_PIN
+
+system.cellular.apn.apn             =MSCIID_CFG_GPRS_APN
+system.cellular.apn_current         =MSCIID_STS_CMN_APN_CURRENT
+/*
+system.cellular.apn.1.name          =MSCIID_APN_LIST
+system.cellular.apn.1.type          =MSCIID_APN_LIST
+system.cellular.apn.1.user          =MSCIID_APN_LIST
+system.cellular.apn.1.password      =MSCIID_APN_LIST
+system.cellular.apn.1.authtype      =MSCIID_APN_LIST
+*/
+
+system.router.dhcp.netmask          =MSCIID_CFG_CMN_DHCP_NETMASK
+
+system.aleos.lan.pppoe.auth_type     =MSCIID_CFG_CMN_HOST_AUTH
+system.aleos.lan.pppoe.user_id       =MSCIID_CFG_CMN_HOST_UID
+system.aleos.lan.pppoe.passwd        =MSCIID_CFG_CMN_HOST_PW
+
+system.wan.vpn.1.status             =MSCIID_STS_IPSEC_STATE
+system.wan.vpn.1.tunnel_type        =MSCIID_CFG_TUNNEL_TYPE
+system.wan.vpn.1.gateway_type       =MSCIID_CFG_IKE_TYPE
+system.wan.vpn.1.gateway_address    =MSCIID_CFG_IKE_GATEWAY
+system.wan.vpn.1.remote_subnet      =MSCIID_CFG_IKE_GW_MASK
+system.wan.vpn.1.pre_shared_key     =MSCIID_CFG_IKE_PSK1
+system.wan.vpn.1.local_id_type      =MSCIID_CFG_IKE_LID_TYPE
+system.wan.vpn.1.local_id_ip        =MSCIID_CFG_IKE_LID_IP
+system.wan.vpn.1.local_fqdn         =MSCIID_CFG_IKE_LID_FQDN
+system.wan.vpn.1.peer_id_type       =MSCIID_CFG_IKE_RID_TYPE
+system.wan.vpn.1.peer_id_ip         =MSCIID_CFG_IKE_RID_IP
+system.wan.vpn.1.peer_id_fqdn       =MSCIID_CFG_IKE_RID_FQDN
+system.wan.vpn.1.mode               =MSCIID_CFG_IKE_MODE
+system.wan.vpn.1.encrypt            =MSCIID_CFG_IKE_ENCRYPT
+system.wan.vpn.1.auth               =MSCIID_CFG_IKE_AUTH
+system.wan.vpn.1.key_grp            =MSCIID_CFG_IKE_DH
+system.wan.vpn.1.sa_life_time       =MSCIID_CFG_IKE_SALT
+system.wan.vpn.1.lan_addr_type      =MSCIID_CFG_IPSEC_LA_TYPE
+system.wan.vpn.1.lan_addr_ip        =MSCIID_CFG_IPSEC_LA_ADDR1
+system.wan.vpn.1.lan_addr_mask      =MSCIID_CFG_IPSEC_LA_ADDR2
+system.wan.vpn.1.remote_addr_type   =MSCIID_CFG_IPSEC_RA_TYPE
+system.wan.vpn.1.remote_addr_ip     =MSCIID_CFG_IPSEC_RA_ADDR1
+system.wan.vpn.1.remote_addr_mask   =MSCIID_CFG_IPSEC_RA_ADDR2
+system.wan.vpn.1.pfs                =MSCIID_VPN1_PFS
+system.wan.vpn.1.ipsec_encrypt      =MSCIID_CFG_IPSEC_ENCRYPT
+system.wan.vpn.1.ipsec_auth         =MSCIID_CFG_IPSEC_AUTH
+system.wan.vpn.1.ipsec_key_grp      =MSCIID_CFG_IPSEC_DH
+system.wan.vpn.1.ipsec_sa_life_time =MSCIID_CFG_IPSEC_SALT
+system.wan.vpn.1.gre_ttl            =MSCIID_CFG_VPN1_TTL
+
+// Keep these around until the samples get converted...
+system.mdm.global_id=MSCIID_INF_DEVICE_ID
+system.mdm.version=MSCIID_INF_VERSION
+system.mdm.aleos_sw_ver=MSCIID_INF_ALEOS_SW_VER
+system.mdm.aleos_hw_ver=MSCIID_INF_ALEOS_HW_VER
+system.mdm.boot_ver=MSCIID_INF_BOOT_VER
+system.mdm.product_str=MSCIID_INF_PRODUCT_STR
+system.radio.sw_ver=MSCIID_INF_MODEM_SW_VER
+system.radio.hw_ver=MSCIID_INF_MODEM_HW_VER
+system.radio.id=MSCIID_INF_MODEM_ID
+system.mdm.phone_num=MSCIID_INF_PHONE_NUM
+system.net.state=MSCIID_STS_NETWORK_STATE
+system.net.channel=MSCIID_STS_NETWORK_CHANNEL
+system.net.rssi=MSCIID_STS_NETWORK_RSSI
+system.net.service=MSCIID_STS_NETWORK_SERVICE
+system.net.link_state=MSCIID_STS_LINK_STATE
+system.net.ip=MSCIID_STS_NETWORK_IP
+system.mdm.modem_name=MSCIID_CFG_CMN_MDM_NAME
+system.host.auth_type=MSCIID_CFG_CMN_HOST_AUTH
+system.host.user_id=MSCIID_CFG_CMN_HOST_UID
+system.host.passwd=MSCIID_CFG_CMN_HOST_PW
+system.mdm.digital_in1=MSCIID_STS_IO_DIGITAL_IN1
+system.mdm.ignition_in=MSCIID_STS_PP_IGNITION_SENSE
+system.mdm.reserve_ser0=MSCIID_CFG_IO_RESERVE_SERIAL0
+system.mdm.powerin=MSCIID_STS_POWERIN
+system.radio.tech=MSCIID_INF_RADIO_TECH

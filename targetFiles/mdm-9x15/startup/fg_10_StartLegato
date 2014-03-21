@@ -1,0 +1,7 @@
+#!/bin/sh
+
+# Starts up the Legato runtime environment.
+
+mkdir -p /opt/legato/apps
+
+/usr/local/bin/legato start

@@ -1,0 +1,49 @@
+/*
+ * Example interface file
+ *
+ * Copyright (C) Sierra Wireless, Inc. 2013.  All rights reserved. Use of this work is subject to license.
+ */
+
+// Handler definition
+HANDLER TestA
+{
+    ADD_HANDLER_PARAMS ();
+
+    HANDLER_PARAMS
+    (
+        int32 x
+    );
+        
+    //ADD_HANDLER_PARAMS ();
+};
+
+// Function takes all the possible kinds of parameters, but returns nothing
+FUNCTION allParameters
+(
+    int32 a,
+    uint32 b OUT,
+    uint32 data[10] IN,
+    uint32 output[10] OUT,
+    string label [10..20] IN,
+    string response [20] OUT
+);
+
+// This function fakes an event, so that the handler will be callled.  
+// Only needed for testing.  Would never exist on a real system.
+FUNCTION TriggerTestA
+(
+);
+
+// Handler definition for testing bugs
+HANDLER BugTest
+{
+    HANDLER_PARAMS
+    (
+    );
+        
+    ADD_HANDLER_PARAMS 
+    (
+        string newPathPtr[512] IN
+    );
+};
+

@@ -1,0 +1,48 @@
+treemgr agent.treemgr.handlers.dummystatusreport
+#------------------------------------------------------------------------------
+#- Copyright (c) 2012 Sierra Wireless and others.
+#- All rights reserved. This program and the accompanying materials
+#- are made available under the terms of the Eclipse Public License v1.0
+#- which accompanies this distribution, and is available at
+#- http://www.eclipse.org/legal/epl-v10.html
+#-
+#- Contributors:
+#-     Romain Perier     for Sierra Wireless - initial API and implementation
+#------------------------------------------------------------------------------
+
+system.cellular.apn.current = current
+system.cellular.cdma.link.ecio = cdma_ecio
+system.cellular.cdma.link.operator = cdma_operator
+system.cellular.cdma.link.pn_offset = pn_offset
+system.cellular.cdma.link.sid = sid
+system.cellular.cdma.link.nid = nid
+system.cellular.gsm.link.cell_id = cell_id
+system.cellular.gsm.link.ecio = gsm_ecio
+system.cellular.gsm.link.operator = gsm_operator
+system.cellular.lte.link.rsrp = rsrp
+system.cellular.lte.link.rsrq = rsrq
+system.cellular.link.bytes_rcvd = bytes_rcvd
+system.cellular.link.bytes_sent = bytes_sent
+system.cellular.link.roam_status = roam_status
+system.cellular.link.ip = ip
+system.cellular.link.pkts_rcvd = pkts_rcvd
+system.cellular.link.pkts_sent = pkts_sent
+system.cellular.link.rssi = rssi
+system.cellular.link.service = service
+system.cellular.hw_info.imei = hw_info_imei
+system.cellular.sim.iccid = sim_iccid
+system.cellular.sim.imsi = sim_imsi
+system.cellular.subscriber.phone_num = subscriber_phone_num
+system.hw_info.product_str = product_str
+system.sw_info.fw_ver = fw_ver
+system.sw_info.fw_name = fw_name
+
+system.io.powerin = powerin
+
+system.advanced.board_temp = board_temp
+system.advanced.radio_temp = radio_temp
+system.advanced.reset_nb = reset_nb
+
+
+system.gps.latitude = latitude
+system.gps.longitude = longitude

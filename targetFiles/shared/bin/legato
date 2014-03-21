@@ -1,0 +1,145 @@
+#!/bin/sh
+
+# Starts/stops/restarts the Legato framework.
+
+SUPERVISOR_CONFIG_ROOT=/tmp/LegatoConfigTree
+CONFIG_DIR=/opt/legato/configTree
+APPS_ROOT=/opt/legato/apps
+SYS_PROCS_ROOT=/opt/legato
+
+ACTION=$1
+
+# Make sure /usr/local/bin is in the path.
+PATH=/usr/local/bin:$PATH
+
+
+# Check if ps supports arguments.  If so, we need to run "ps aux" to be able
+# to see the supervisor process if it is running.  Otherwise, we just run "ps".
+PS='ps aux'
+if ! $PS > /dev/null 2>&1
+then
+    PS=ps
+fi
+
+
+PrintUsage()
+{
+    echo "USAGE: `basename $0` [start|stop|restart|version]"
+}
+
+
+IsRunning()
+# Checks if a process with a given name is running.
+# Takes a single argument, which is the name of the process.
+{
+    $PS | grep $1 | grep -v grep > /dev/null
+}
+
+
+StartLegato()
+{
+    # Make sure it isn't running already.
+    if IsRunning supervisor
+    then
+        echo "The Legato Supervisor is already running."
+        exit 0
+    fi
+
+    echo "Starting Legato... "
+
+    # Make sure the configTree's configuration directory exists.
+    mkdir -p $CONFIG_DIR &&
+
+    # Configure the Supervisor to start the sysProcs.
+    mkdir -p $SUPERVISOR_CONFIG_ROOT &&
+    > $SUPERVISOR_CONFIG_ROOT/sysProcs
+    for procName in serviceDirectory logCtrlDaemon configTree audioDaemon modemDaemon posDaemon dcsDaemon agent
+    do
+        if [ ! -f "/usr/local/bin/$procName" ]
+        then
+            continue
+        fi
+        echo "/usr/local/bin/$procName" >> $SUPERVISOR_CONFIG_ROOT/sysProcs
+        if ! [ $? ]
+        then
+            echo "***ERROR: Failed to configure $SUPERVISOR_CONFIG_ROOT/sysProcs."
+            exit 1
+        fi
+
+        # Configure the Supervisor to use the sysProcs environment variables.
+        if [ -f "$SYS_PROCS_ROOT/$procName/envVars" ]
+        then
+            # Copy the sysProc's environment variable file into the main configuration directory.
+            mkdir "$SUPERVISOR_CONFIG_ROOT/$procName/"
+            cp "$SYS_PROCS_ROOT/$procName/envVars" "$SUPERVISOR_CONFIG_ROOT/$procName/envVars"
+        fi
+    done
+
+    # Start the Supervisor (it will Daemonize itself).
+    echo "Starting the supervisor..."
+    /usr/local/bin/supervisor
+
+    # NOTE: The Supervisor will automatically start all the applications after it starts
+    #       the "sysProcs".
+}
+
+
+StopLegato()
+{
+    if IsRunning supervisor
+    then
+        echo "Stopping Legato... "
+
+        # Tell the Supervisor to shutdown Legato.
+        appCtrl "stopLegato" 2> /dev/null
+
+        # Delete the Configuration Tree we built in /tmp.
+        rm -rf $SUPERVISOR_CONFIG_ROOT
+
+        echo "DONE."
+    elif IsRunning serviceDirectory
+    then
+        echo "Supervisor isn't running, but the Service Directory is.  Killing it now..."
+
+        # Stop the Service Directory.  This will cause everything else to shutdown.
+        killall serviceDirectory > /dev/null 2>&1
+    else
+        echo "Legato wasn't running."
+    fi
+}
+
+
+case "$ACTION" in
+start)
+    StartLegato
+    ;;
+
+stop)
+    StopLegato
+    ;;
+
+restart)
+    StopLegato
+    StartLegato
+    ;;
+
+help | --help | -h)
+    PrintUsage
+    ;;
+
+version)
+    if [ -f /opt/legato/version ]
+    then
+        cat /opt/legato/version
+    else
+        echo "UNKNOWN"
+        exit 1
+    fi
+    ;;
+
+*)
+    PrintUsage
+    exit 1
+    ;;
+
+esac
