@@ -55,9 +55,9 @@ After that, move on to:
 
 C Programming Language is directly supported by Legato.
 
-Here the Legato @subpage c_APIs APIs.
+Legato @subpage c_APIs.
 
-Support for other languages like Python and Java, and others will be added in the future.
+Support for other languages like Python, Java, and others will be added in the future.
 
 <HR>
 

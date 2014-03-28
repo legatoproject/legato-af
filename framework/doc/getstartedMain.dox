@@ -6,22 +6,19 @@
 
 @section inLegato Legato Installation Packages
 
-Legato Beta contains the following installation files:
-- @b Legato-Toolchain-mdm9x15-14.1-x86_64.tar.bz2 - complete cross toolchain to compile Legato applications on a 64-bit Linux host.
+Go to https://developer.sierrawireless.com/legato for access to the latest Legato package downloads including:
+- Legato application framework and sample applications with open source code, 
+and Yocto recipes and kernel source to build Legato Linux images for AR7 and WP7 devices (available on GitHub).
 
-- @b Legato-Toolchain-mdm9x15-14.1-i686.tar.bz2 - complete cross toolchain to compile Legato applications on a 32-bit Linux host.
+- complete cross toolchains to compile Legato applications on a 64-bit and 32-bit Linux hosts.
 
-- @b Legato-Linux-Source-mdm9x15-14.1.tar.bz2 - Legato source code with all Yocto recipes and kernel source to build Legato Linux images for AR7 and WP7 devices. 
-The Poky build tool with the meta-OpenEmbedded layer is available from the Yocto project.
+- prebuilt images of the Linux kernel and rootfs that match the image on the device (can be flashed using the fastboot tool).
 
-- @b Legato-Linux-Images-mdm9x15-14.1.tar.bz2 - prebuilt images of the Linux kernel and rootfs that match the image on the device. These can be flashed using the fastboot tool.
+- firmware packages to reinstall software from the factory onto dev kit devices.
 
-- @b Drivers - all the Windows drivers needed to recover your device.
+- drivers needed for Windows to restore devices.
 
-- <b>One-click tools</b> - one-click firmware packages that will reinstall software from the factory onto dev kit devices. 
-It’s run on Windows and requires Sierra Wireless drivers be installed.
-
-<b>Quick start</b>:
+<b>Quick start  </b>:
 
 @ref getstartedMachinePrep  <br>
 @ref getstartedConnectDevKit  <br>

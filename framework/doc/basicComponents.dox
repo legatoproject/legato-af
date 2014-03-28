@@ -62,7 +62,7 @@ and methods can be recombined into different arrangements that exhibit different
 behaviours.  Web mashups combine previously-constructed web services into 
 completely new applications because those web services provide well-defined 
 interfaces using standard access mechanisms and data formats.  The mashup
-doesn't care about how the web services are implemented, the mashup only cares about what the
+doesn't care about how the web services are implemented; the mashup only cares about what the
 interfaces provide, adding the 'glue' code, and testing the new creation.
 
 Further potential of component-based development is the ease of sharing (for free or
@@ -75,16 +75,17 @@ Legato components generally follow an event-driven model. Callback functions
 are attached to specific events, and when events occur, a thread's event loop triggers the
 appropriate callbacks. After initialization functions run, Legato's event processing reacts 
 to configured event handlers and calling registered callbacks. This approach allows multiple components 
-to be deployed to the same process, reduces the risk of multi-threaded race conditions.
-It also saves stack memory space.  
+to be deployed to the same process, reduces the risk of multi-threaded race conditions, and
+saves stack memory space.  
 
 @section compWhatsNext What's Next
 
+@ref basicInterfaces  <br>
 @ref eventBasics
 
 <HR>
 
-Copyright (C) Sierra Wireless, Inc. 2012-2013. All rights reserved. Use of this work is subject to license.
+Copyright (C) Sierra Wireless, Inc. 2012-2013. All rights reserved.
 
 **/
 

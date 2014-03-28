@@ -31,7 +31,7 @@ These file/directories will be extracted:
 - <b>meta-swi-extras</b> -  Build scripts and proprietary code
 
 Yocto uses a layered model for its build system. In Legato, device-specific layers are
- @c meta-swi-<target> and @c meta-swi-bin.
+ @c meta-swi-[target] and @c meta-swi-bin.
   
 Yocto 1.4.1 and poky environment documentation is available at:
 https://www.yoctoproject.org/documentation/archived?keys=&field_version_tid=45 
@@ -105,6 +105,6 @@ For more complex customizations, refer to the Yocto documentation.
 
 <HR>
 
-Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved.
 
 **/

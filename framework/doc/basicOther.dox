@@ -19,17 +19,7 @@ Either way, it needs to be:
    - malicious snooping and vandalizm
    - multi-threaded race conditions
    - untimely device reset or power loss
- - upgradeable
-
-This last point refers to the fact that future versions of application software
-may need to structure its configuration data quite differently
-than its predecessors did.  However, when the device's software is updated to a new version,
-it still needs to be able to read the configuration data that was created by the old version.
-
-Furthermore, if the software is downgraded, it still should be able to read configuration
-settings that were not changed while it was running the newer software.
-
-@note Configuration data storage has not yet been implemented.
+ -  read configuration data regardless of the application's version.
 
 @todo Update this section and its subsections to match implementation.
 
@@ -40,24 +30,24 @@ of child nodes, each with its own name.  At the leaves of the tree, the nodes ca
 
 This tree structure allows configuration data items to be uniquely identified using path names,
 much like file system paths, which makes it much easier to access configuration data via HTTP,
-SNMP, OMA-DM, and other protocols.  It also allows the configuration database to be explored using
+SNMP, OMA-DM, and other protocols. It also allows the configuration database to be explored using
 tree walking algorithms and tools.
 
 @subsection Transactions
 
-Configuration data can be shared by multiple processes and threads.  As a result, race conditions
-that threaten data integrity become possible.  For example, if threads A and B both use data
-fields X and Y, it could be very bad if thread A interrupts thread B to read those fields just
+Configuration data can be shared by multiple processes and threads. This can sometimes result in race conditions
+that can threaten data integrity. For example, if threads A and B both use data
+fields X and Y, it could be bad if thread A interrupts thread B to read those fields just
 after thread B has updated field X and is about to update field Y to be consistent with the new
 value of field X.
 
-Furthermore, it's possible that a reset or power loss may occur at any time, and we need to be sure
-that this does not corrupt the configuration data.  For example, if power fails just after field X
+A possible reset or power loss may occur at any time, and we must be sure that would not 
+corrupt the configuration data.  For example, if power fails just after field X
 has been updated, but before field Y gets updated to match the new value of field X, then the
-configuration data could be left in an invalid state.  Transactions are used to prevent these
+configuration data could be in an invalid state.  Transactions are used to prevent these
 sorts of problems.
 
-Before a change can be made to configuration data, a write transaction must be started.  All
+Before a change can be made to configuration data, a write transaction must be started. All
 changes are made in the context of such a transaction, and when the changes are complete, the
 transaction can be "committed".  If a fault prevents the entire set of changes from being applied
 on commit, or if the transaction is cancelled before it is committed, then none of that
@@ -158,22 +148,22 @@ operating system.  For example, if a device is not in use, the driver will autom
 that device in its lowest power state.
 
 Of course, application behaviour drives power consumption.  If application code is
-using a device when it doesn't really need to, then power will be wasted.  Furthermore, power
-will be wasted if application code is running busy-wait loops or doing periodic polling for events.
-Instead, applications should register call-back functions to be called when events occur, so
-that application code will only run when an event occurs, rather than waking up to check
-for events that haven't happened.  Every CPU cycle uses power, so when a power-sensitive
+using a device when it doesn't really need to, then power will be wasted.  Power
+is also wasted if application code is running busy-wait loops or periodically polling for events.
+Instead, applications should register call-back functions to be triggered when events occur. This way
+application code will only run when an event occurs, rather than waking up to check
+for events that haven't happened. Every CPU cycle uses power, so when a power-sensitive
 application is woken up, it will execute as few instructions as possible before going back
 to sleep.
 
-When all threads are sleeping (not running), the operating system will reduce the power state
-of the CPU and/or memory automatically.  When using the Legato event loop, returning from a handler
-(call-back) function will put the thread to sleep (unless there is another event waiting to be
-handled).  When writing your own event handling loop, block your thread on poll(), select(),
-read(), write(), recv(), etc. to put your thread to sleep when it doesn't have any work to do.
+When all threads are sleeping, the operating system will reduce the CPU power state 
+and/or memory automatically. The Legato event loop return handler 
+will put the thread to sleep (unless there is another event waiting). 
+To put your thread to sleep when it doesn't have any work to do, block your thread on poll(), select(),
+read(), write(), recv(), etc.
 
-Keep in mind that periodic timers will wake your application up and consume power, so to save power
-when you must use a periodic timer, use a timer period that is as long possible.  Longer timer
+Periodic timers will wake your application up and consume power. To save power
+when using a periodic timer, make thetimer period as long possible.  Longer timer
 periods allow the operating system to go into deeper sleep states.
 
 <HR>

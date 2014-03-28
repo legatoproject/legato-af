@@ -15,7 +15,7 @@ Applcation services are built on top of foundation services.
 
 Foundation services provide a full-featured interface to various system and modem resources.
 
-@subsection modem  
+@subsection Modem  
 
  @subpage c_sms <br>
  @subpage c_sim <br>
@@ -36,7 +36,7 @@ Foundation services provide a full-featured interface to various system and mode
 
 <HR>
 
-Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved.
 
 **/
 

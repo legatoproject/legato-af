@@ -5,9 +5,10 @@
 @ref devkitWhatsNext
 
 Connect PC to dev kit device:
-- install WP7 module by firmly pressing the four posts into place.
+-  @subpage getstartedAssyDevKit with Legato-ready module.
 - attach cables to board: UART1 and Ethernet, and power supply (micro-USB requires ECM configuration).
 - attach cables to host PC.
+- power up board.
 
 Photo of a Legato dev kit board with power, Ethernet, micro-USB, and UART1 connections:
 
@@ -52,10 +53,9 @@ commands), USB Audio, and Ethernet over USB (through an adapter). Requires ECM t
 
 Ethernet cable for direct network connection to obtain dynamic IP address for the device using DHCP.  
 
-@b Power @b supply
-
 @section devkitWhatsNext What's Next?
 
+@ref getstartedAssyDevKit  <br>
 @ref getstartedInstallPackages
 
 <HR>

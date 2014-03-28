@@ -19,7 +19,7 @@ Just like any embedded Linux platform, you can install individual executables,
 libraries, resource files, etc., you can write init scripts,
 and you can implement security sandboxes, fault monitoring, and fault recovery.
 But Legato provides the platform to do all that so you 
-can focus on your business's unique value-add instead.
+can focus on your business' unique value-add instead.
 
 The next topics will show you how to:
  - create a simple executable 

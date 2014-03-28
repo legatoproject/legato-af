@@ -2,17 +2,18 @@
 
 @ref eventBackground <br>
 @ref eventBasics <br>
-@ref eventWhatsNext 
+
+Also see @ref c_eventLoop
 
 @section eventBackground Background
 
 In event-drivent programming, the flow of a program is determined by events triggered through 
-a defined interaction (e.g., user interacton, exceeding threshold limit ).
+a defined interaction (e.g., user interaction, exceeding threshold limit, etc. ).
 Usually, a main loop listens for events, and then triggers a callback function when an event is detected. 
 
-Overall, Legato components are written using an  event-driven model. Callback functions
+Overall, Legato components are written using an event-driven model. Callback functions
 are attached to specific events, and when events occur, the thread's event loop triggers the
-appropriate callbacks.  Legato components can also start other threads that run their own Legato event loops, if needed.
+appropriate callbacks.  Legato components can also start other threads that run their own Legato event loops.
 
 Every component implements an initialization function called at process start-up by the
 main thread.  That function does whatever initialization is required for that component
@@ -49,14 +50,12 @@ Legato's Event Loop API uses a central <b> event loop </b> calls <b> event handl
  *  - @ref c_event_files
  *  - @ref c_event_dispatchingToOtherThreads
  
-@section eventWhatsNext What's Next
 
- @ref c_eventLoop
 
  
 <HR>
 
-Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved.
 
 **/
 

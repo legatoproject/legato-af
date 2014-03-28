@@ -5,41 +5,46 @@
 @ref serviceDirectory <br>
 @ref configTree <br>
 @ref applications <br>
+@ref runtimeWhatsNext 
 
-Legato's runtime architecture runs each application in its own sandbox. 
+Legato's runtime architecture manages each application in its own sandbox. 
 
 @image html LayeredArchitecture.png
 
 Applications communicate with each other using access-controlled message-passing 
-services.  The Supervisor automatically creates sandboxes for you.
+services.  The Supervisor automatically creates sandboxes.
 
 @section supervisor Supervisor
 
 The Supervisor is a privileged process running on the target device that looks after a bunch of things:
- - creates and destroys sandboxes for applications,
- - starts and stops applications,
- - acts as an application watchdog,
+ - creates and destroys sandboxes for applications
+ - starts and stops applications
+ - acts as an application watchdog
  - performs fault recovery actions when applications fail (such as restarting the app).
 
 @section logControlDaemon Log Control Daemon
 
 The Log Control Daemon is the essential part of the logging system.  The daemon keeps track of 
-filters like monitoring application process changes and logging debug message only
-when needed (discarding when not needed).
+filters like monitoring application process changes and logging debug messages only
+when needed (discarding them when not needed).
+
+See @ref c_logging
 
 @section serviceDirectory Service Directory
 
-The Service Directory provides secure inter-process communication (IPC) for applications to provide and consume services.
+The Service Directory runs secure inter-process communication (IPC) for applications to provide and consume services.
 Servers 'advertise' in the Service Directory,
 and clients request service connections through the Service Directory. 
 The Service Directory ensures that only authorized connections are established.
+
+See @ref legatoServices
 
 @section configTree Configuration Tree
 
 The Configuration Tree provides persistent configuration data
 storage organized in a tree structure.
 
-See @ref Configuration for more information on configuration data support in Legato.
+See @ref Configuration and @ref api_config 
 
 @section applications Applications
 
@@ -50,10 +55,13 @@ the files and IPC services to access are declared, which should be examined and 
 installed on the target.  At runtime, the Supervisor and the Service Directory enforces that only those approved files and IPC services
 are accessed by that application.
 
-Applications are assembled from @ref componentBased "components".
+Applications are assembled from components.
+
+@section runtimeWhatsNext What's Next?
+@ref basicComponents
 
 <HR>
 
-Copyright (C) Sierra Wireless, Inc. 2012-2013. All rights reserved. Use of this work is subject to license.
+Copyright (C) Sierra Wireless, Inc. 2012-2013. All rights reserved.
 
 **/

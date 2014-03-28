@@ -1,10 +1,10 @@
 /** @page legatoArchitecture Legato Architecture Notes
 
 
-@ref legatoComponents <br>
-@ref legatoComponentCatalog <br>
-@ref legatoApplications <br>
-@ref legatoDeployments <br>
+@ref legatoComponents  <br>
+@ref archnotesLegatoServices  <br>
+@ref legatoApplications  <br>
+@ref legatoDeployments  <br>
 
 
 @section legatoComponents Components and Interfaces
@@ -18,8 +18,8 @@ A Legato component can be almost anything. The only requirement is that it must 
 
 @image html GenericComponent.png
 
-You need at least one executable or one shared library to link to a client.  The choice is up to 
-component; the component's client is unaware of this.  Component clients 
+You need at least one executable or one shared library to link to a client.  The choice is up to the
+component; the component's client is unaware of how it is linked.  Component clients 
 only connect to a component's interface, not its implemtation.
 
 
@@ -28,7 +28,7 @@ only connect to a component's interface, not its implemtation.
 Components can directly communicate through simple function calls when 
 implemented as a shared library.
 
-This is most straight forward in C.  An interface defines various objects, methods, and
+This is most straight forward in C. An interface defines various objects, methods, and
 function calls.  This gets turned into C functions and structures.  The client code then
 calls these functions directly.
 
@@ -57,10 +57,12 @@ multiple sources using an accuracy filter.
 
 @subsection legatoComponentsPackaging Component Packaging
 
-Components are built into a single package for sharing and deployment.  A  component definition file
-is required for the build system to know which package to use.  The component
-packager generates a component file that is digitally signed, and contains all 
+Components are built into a single package for sharing and deployment.  A component definition file
+is required for the build system so it knows which package to use.  The component
+packager generates a component file that's digitally signed, and contains all 
 files and meta-data to be installed on a target device.
+
+@subsection Geo-fence Geo-fence component definition 
 
 For a component profile using a geo-fencing interface, the component needs to
 know the device's current position, and provide call backs when the device enters and
@@ -116,7 +118,7 @@ component MyGeoFence
 
 @endverbatim
 
-@section legatoComponentCatalog Component Catalog
+@section archnotesLegatoServices Legato Services
 
 Every application and component developer gets an account on the component catalog website 
 where they can then publish their components and interfaces. This can be set up as public or private.
@@ -124,7 +126,7 @@ where they can then publish their components and interfaces. This can be set up 
 If an interface/component/application is private, you can share
 that component with a defined list of other developers or orginizations.
 
-@ref componentCatalog 
+@ref legatoServices 
 
 @section legatoApplications Legato Applications
 
@@ -140,9 +142,11 @@ If an application tries to exceed these permissions, it will fail. Because an ap
 is a collection of components, the permissions required are the sum of all of the
 permissions required by the components comprising that application.
 
-This code sample uses a geo-fencing application.  It to get a position from an attached GPS
-device and a cell modem.  The application then provides a GeoFence interface that can be bound
-into another app.
+@subsection Geo-fenceApp Geo-fence application sample code 
+
+This code sample uses a geo-fencing application to get a position from an attached GPS
+device and a cell modem. The application then provides a GeoFence interface that can be bound
+into another app like this:
 
 @verbatim
 
@@ -183,7 +187,7 @@ application MyPositionTrackingApp
 
 @endverbatim
 
-@section legatoDeployments Deploying a Legato Application
+@section legatoDeployments Deploying Legato Applications
 
 Once applications are built, they can be then deployed to devices; Legato uses 
 deployment packages that can include one or more applications.
@@ -193,8 +197,10 @@ the device.  Applications can also be connected to each other.  This way, the de
 can also provide useful services that can be consumed by other
 applications.
 
-To deploy our geo-fencing application, write a deployment definition that
-includes a location alert application and a connection to our geo-fencing app:
+@subsection Geo-fenceDeploy Geo-fence deployment sample 
+
+To deploy the geo-fencing sample application, write a deployment definition that
+includes a location alert application and a connection to our geo-fencing app like this:
 
 @verbatim
 
@@ -299,6 +305,6 @@ deployment "RentCo Deployment"
 
 <HR>
 
-Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved.
 
 **/

@@ -1,10 +1,10 @@
 /** @page componentWriting Write Components
 
-@ref basicComponents  <br>
-@ref componentWhatsNext
+@ref writebasicComponents  <br>
+@ref writecomponentWhatsNext
 
 
-@section basicComponents Legato Components
+@section writebasicComponents Legato Components
 
 Software components are collections of functionally related software that communicate with
 other components via well-defined interfaces. See @ref componentBased for more background
@@ -40,7 +40,7 @@ application sandboxes,
  - automatically creates debugging trace points
 
 
-@section componentWhatsNext What's Next?
+@section writecomponentWhatsNext What's Next?
 
 Other component writing topics:
 
@@ -56,7 +56,7 @@ Or move to the <b>next level</b>:
 
 <HR>
 
-Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved.
 
 **/
 

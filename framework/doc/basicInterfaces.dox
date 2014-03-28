@@ -2,38 +2,38 @@
 
 @ref functionCallAPIs <br>
 @ref dataSampleStreams <br>
+@ref intWhatsNext
 
-If component reuse is to be fully realized, it is vital that components be designed for reuse.
+To maximize component reuse, it's vital components be designed for reuse.
 Reusability partly depends on portability, which the Legato framework provides, but it also
-depends largely on interoperability.  That is, reusable components must be designed for
-interoperability with as many other things as possible; <i> including things that don't yet
-exist! </i>
+depends largely on interoperability.  Reusable components must be designed for
+interoperability with as many other things as possible, including things that don't 
+exist <i>- yet! </i>
 
-The single most important factor in making something interoperable is the design of its interfaces.
-Standardized data types and interaction methods must be used; and the simpler the interfaces,
+Interface design is the most important factor to make something interoperable. 
+Standardized data types and interaction methods must be used, and the simpler the interfaces,
 the better.
 
-Legato embraces the philosophy that programmers should
-always be allowed to choose whatever implementation language best suits the task at hand, regardless
-of what other components they will have to interface with.  Some developers are better at
+Legato embraces the philosophy that developers should
+always be allowed to choose the implementation language best suited to the task at hand, regardless
+of the components used.  Some developers are better at
 programming in certain languages, and some languages are better suited to solving certain problems.
-To this end, Legato endeavours to provide developers with an easy way to interface components
-with each other even if they have been written in different languages.
+That's why Legato provides developers with an easy way to interface components
+with each other, even if they have been written in different languages.
 
-A common example of a programming-language-independent interface is a networking protocol.  But,
-networking protocols come with a lot of pitfalls and overhead, including endian issues, race
-conditions, protocol stack framing overheads and processing time, to name a few.  It also tends
-to require a lot of hand coding of the protocol implementation.
+A common example of a programming-language-independent interface is a networking protocol. But
+networking protocols come with pitfalls and overhead,  things like endian issues, race
+conditions, protocol stack framing overheads and poor processing time.  Networking protocols also tend
+to require a lot of hand coding specific to the protocol implementation.
 
-While Legato does, of course, support networking, it also provides tools for implementing much
+Legato supports networking, if that's what's needed, but it also has tools to implement much
 lighter-weight, language-independent communication between components that exist on the same
-host device, and could even be running within the same process.
+host device or even running within the same process.
 
 Legato supports two forms of language-independent interface:
  - functionCallAPIs
  - dataSampleStreams
 
-<HR>
 @section functionCallAPIs Function Call APIs
 
 Virtually all programmers are familiar with function calls. While Legato
@@ -63,11 +63,12 @@ schedule (with a user interface) that outputs a temperature setpoint to the PID 
 
 @image html DataSampleStreamTStatExample.png
 
-
+@section intWhatsNext What's Next?
+@ref eventBasics
 
 <HR>
 
-Copyright (C) Sierra Wireless, Inc. 2012-2013. All rights reserved. Use of this work is subject to license.
+Copyright (C) Sierra Wireless, Inc. 2012-2013. All rights reserved.
 
 **/
 

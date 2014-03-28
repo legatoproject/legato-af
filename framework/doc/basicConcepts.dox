@@ -12,7 +12,7 @@ Ready-to-Run: integrated and validated application framework, Linux distribution
 Ready-to-Build: open source and flexible foundation with customizable components that future proof software investments.  <br>
 Ready-to-Connect: simple and secure connectivity to any cloud, network, and peripheral device out-of-the-box.  <br>
 
-Legato's is designed to make developing component-based software for embedded devices in the
+Legato is designed to make developing component-based software for embedded devices in the
 Internet-of-things easier, faster, and less expensive. 
 
 The Legato platform integrates everything needed for M2M connectivity:
@@ -35,7 +35,7 @@ Or move to the <b>next level</b>: @ref appCreating.
 
 <HR>
 
-Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved.
 
 **/
 

@@ -1,12 +1,14 @@
 /** @page getstartedInstallPackages Install Packages
 
-@ref getstartedMachinePrep before installing these packages:
+@ref getstartedMachinePrep before installing Legato packages.
 
 @ref instToolchain  <br>
 @ref instLegato  <br>
 @ref instPkgWhatsNext
 
-Download the latest Legato Packages <link>.
+Download the latest Legato packages through https://developer.sierrawireless.com/legato.
+
+To access the Legato application framework, you'll need a GitHub account.
 
 Then @ref setupTarget.
 
@@ -14,37 +16,45 @@ Here are the @ref dirStruct created.
 
 @section instToolchain Install Legato Toolchain
 
-Install the cross-toolchain for building ARM applications. 
-Copy the file Legato-Toolchain-mdm9x15-14.1-x86_64.tar.bz2 to /opt/swi and then extract it. 
+You'll need to install the cross-toolchain for building ARM applications. 
+Copy the either the 64-bit or 32-bit [Legato-Toolchain-file] to /opt/swi and then extract it. 
 
 You may need to use sudo:
 
 @code 
 $ mkdir –p /opt/swi
-$ cp Legato-Toolchain-mdm9x15-14.1-x86_64.tar.bz2  /opt/swi 
+$ cp [Legato-Toolchain-file-name]  /opt/swi 
 $ cd /opt/swi 
-$ sudo tar xvjf Legato-Toolchain-mdm9x15-14.1-x86_64.tar.bz2
+$ sudo tar xvjf [Legato-Toolchain-file-name]
 @endcode
 
-If you're running 32-bit Linux, use the Legato-Toolchain-mdm9x15-14.1-i686.tar.bz2 toolchain.
 @section instLegato Install Legato
 
-Install the Legato framework on your development PC.
+Install the Legato application framework on your development host PC. 
 
-@b Untar Legato-Linux-Source-mdm9x15-14.1.tar.bz2  (as your own user):
-@code $ tar xvjf Legato-Linux-Source-mdm9x15-14.1.tar.bz2 @endcode
+First, create a directory where you'll run Legato (e.g., mkdir Legato).
 
-@b cd to Legato-Beta directory 
+Then run:
+@code
+git clone https://github.com/legatoproject/legato-af.git
+@endcode
+You'll be prompted for your GitHub credentials.
+
+@b cd to your Legato directory 
 
 @b Run @c make.
 
-@b Configure your bash shell's environment for the Legato application build tools, source bin/configlegatoenv 
-@code $ . bin/configlegatoenv @endcode
-@note You must run  <b>. bin/configlegatoenv</b> every time you open a new shell to work with Legato applications.
+@b Build the framework on the target device by running: 
+@code $ make [wp7 or ar7] @endcode
 
-@b Build the framework for the target by running: 
-@code $ make ar7 (or wp7)@endcode
-@code $ make ar7 INCLUDE_AIRVANTAGE=1 (includes the AV agent)@endcode
+Or to include the AV agent:
+@code $ make [wp7 or ar7] INCLUDE_AIRVANTAGE=1 @endcode
+
+<b> . bin/configlegatoenv  </b>
+@warning You must configure your bash shell's environment for the Legato application build tools every time you open a new shell.
+
+Run this every time you open a new shell:
+@code $ . bin/configlegatoenv @endcode
 
 @section setupTarget Setup Target Device
 
@@ -58,7 +68,7 @@ You need to setup a few things on the target device before you can start develop
 - install a serial commmunication program to access the device and obtain an IP address.
 - create startup directory on the device and copy startup scripts to the device.
 - copy Legato libraries and executables to the device.
-- install Legato.
+- install Legato on the device.
 
 @subsection copyStartScripts Copy startup scripts to target 
 
@@ -75,13 +85,13 @@ Then copy the startup files to the device:
 scp /targetFiles/mdm-9x15/startup/fg_* /mnt/flash/startup
 @endcode
 
-Scripts beginning with @c fg_ are started first, in the foreground, and then everything else is runs in the background. 
+Scripts beginning with @c fg_ are started first, and then everything else is runs in the background. 
 You can add more scripts to customize your target. @c fg_ scripts must have executable permissions or they will not run.
 
 See @ref getstartedInstallNotes for helpful device setup tips.
 
 @note In the rare case you need to stop a start up script, run
-@code touch  /mnt/flash/startup/stoplegato @endcode 
+@code touch /mnt/flash/startup/stoplegato @endcode 
 
 @subsection rebootTarget Reboot target device
 Wait for the target to fully reboot. The device IP address may have changed. Check it using 
@@ -93,17 +103,18 @@ Run this to copy the Legato framework libraries and executables onto the device,
 start the Legato runtime components:
 
 @code 
-$ instlegato build/ar7 <target ip address>  
+$ instlegato build/[ar7 or wp7] <target ip address>  
 @endcode
-@note Only the ar7 variable is currently configured, but this setting works with WP7 modules.
-
 
 @section dirStruct Directories
 
 Here's the top level Legato directory structure: 
 
+<b> ./apps </b> -
+sample applications: airvantageDemo, helloWorld, modeDemo.
+
 <b> ./bin </b> - 
-created by build system and populated with executable files that run on the 
+created by build system and populated with executable files run on the 
 development host that ran the build. Contains files like @c mkapp 
 and @c mkexe. 
 
@@ -113,7 +124,7 @@ results of a framework build.  Created by the build system.
 <b>./build/tools</b> - 
  tools built and then used by the build system to build other things. 
 
-<b> ./build/<target> </b> - 
+<b> ./build/[target] </b> - 
 output of a build for a specific target (e.g., ./build/wp7). 
 
 <b> ./buildTools</b> - 
@@ -122,11 +133,17 @@ source code for build tools (when built, in ./build/tools).
 <b> ./cmake </b> - 
 CMake scripts used by the build system. 
 
+<b> ./components </b> -
+pre-built audio, data, modem and positioning components.
+
 <b>./framework</b> - 
 source code for the Legato framework. 
 
+<b> ./interfaces </b> -
+pre-built audio, data, modem and positioning interfaces.
+
 <b>./targetFiles </b> - 
-files that are for installation on target devices. 
+files for installation on target devices. 
 
 @section instPkgWhatsNext What's Next?
 
@@ -140,7 +157,7 @@ Or you can move on to creating an @ref helloWorld app.
 
 <HR>
 
-Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved.
 
 **/
 
