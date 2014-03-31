@@ -45,7 +45,16 @@ StartApp()
 {
     while [ $# -ge 1 ]
     do
+        echo "Starting app '$1'..."
+
         appCtrl "start" "$1" 2> /dev/null
+
+        if [ $? -ne 0 ]
+        then
+            exitCode=1
+        else
+            echo "DONE"
+        fi
 
         shift
     done
@@ -57,7 +66,16 @@ StopApp()
 {
     while [ $# -ge 1 ]
     do
+        echo "Stopping app '$1'..."
+
         appCtrl "stop" "$1"  2> /dev/null
+
+        if [ $? -ne 0 ]
+        then
+            exitCode=1
+        else
+            echo "DONE"
+        fi
 
         shift
     done
@@ -69,28 +87,40 @@ InstallApp()
 {
     echo "Installing app '$1'..."
 
-    # Create the directory to install into.
-    mkdir -p "$APPS_ROOT/$1" &&
+    (
+        # Create the directory to install into.
+        mkdir -p "$APPS_ROOT/$1" &&
 
-    # Unpack the app into the app's install directory.
-    tar xj -C "$APPS_ROOT/$1"
-    if ! [ $? ]
+        # Unpack the app into the app's install directory.
+        tar xj -C "$APPS_ROOT/$1"
+    )
+
+    if [ $? -ne 0 ]
     then
         rmdir "$APPS_ROOT/$1"
-        echo "**FAILED**  Failed to unpack the application."
+        echo "Failed to unpack the application."
         exit 1
     fi
 
-    # Fix up the permissions.
-    chown -R root:root "$APPS_ROOT/$1" &&
-    find "$APPS_ROOT/$1" -type d | xargs chmod a+x-ws
-    find "$APPS_ROOT/$1" ! -type d | xargs chmod a-xws
-    find "$APPS_ROOT/$1/bin" ! -type d | xargs chmod a+x
+    (
+        # Fix up the permissions.
+        ( chown -R root:root "$APPS_ROOT/$1" ) &&
+        ( find "$APPS_ROOT/$1" -type d | xargs chmod a+x-ws ) &&
+        ( find "$APPS_ROOT/$1" ! -type d | xargs chmod a-xws ) &&
+        ( find "$APPS_ROOT/$1/bin" ! -type d | xargs chmod a+x ) &&
 
-    # Install the application's configuration into the root user's configuration tree.
-    appCfgInstall "$1" &&
+        # Install the application's configuration into the root user's configuration tree.
+        ( appCfgInstall "$1" )
+    )
 
-    echo "DONE"
+    if [ $? -ne 0 ]
+    then
+        rmdir "$APPS_ROOT/$1"
+        echo "FAILED"
+        exit 1
+    else
+        echo "DONE"
+    fi
 }
 
 
@@ -99,24 +129,25 @@ RemoveApp()
 {
     while [ $# -ge 1 ]
     do
-        if IsAppInstalled $1
+        echo "Removing app '$1'..."
+
+        rm -rf "$APPS_ROOT/$1"
+
+        if [ $? -ne 0 ]
         then
-            echo "Removing app '$1'..."
+            exitCode=1
+            echo "Couldn't remove installation directory."
         fi
 
         # Even if it doesn't look like it's installed, delete its configuration anyway,
         # in case an earlier removal process was interrupted or someone manually deleted
         # the app's install directory.
-        (
-            appCfgRemove "$1" &&
-            rm -rf "$APPS_ROOT/$1"
-        )
+        appCfgRemove "$1"
+
         if [ $? -ne 0 ]
         then
             exitCode=1
-            echo "**FAILED**  Couldn't remove configuration data."
-        else
-            echo "DONE"
+            echo "Couldn't remove configuration data."
         fi
 
         shift
@@ -130,6 +161,13 @@ if [ "$1" = "-h" -o "$1" = "help" -o "$1" = "--help" ]
 then
     PrintUsage
     exit 0
+fi
+
+# Check that something was given as an app name.
+if [ "$APP_NAME" = "" ]
+then
+    echo "Missing application name."
+    exit 1
 fi
 
 # Check that the application root directory exists.
@@ -165,6 +203,7 @@ stop)
 
 restart)
     StopApp $APP_LIST
+    exitCode=0
     StartApp $APP_LIST
     ;;
 
@@ -180,6 +219,7 @@ install)
     # In case it's already installed, stop it and remove it first.
     StopApp $APP_NAME
     RemoveApp $APP_NAME
+    exitCode=0
 
     # Then install it.
     InstallApp $APP_NAME
@@ -187,6 +227,7 @@ install)
 
 remove)
     StopApp $APP_LIST
+    exitCode=0
     RemoveApp $APP_LIST
     ;;
 
