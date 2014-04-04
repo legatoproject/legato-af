@@ -29,8 +29,6 @@ Other basic concepts topics:
 @subpage basicOther  <br>
 @subpage sandboxGen
 
-You might want to check out @subpage legatoArchitecture for some high-level background info. 
-
 Or move to the <b>next level</b>: @ref appCreating.
 
 <HR>
