@@ -3,10 +3,14 @@
 === Dependencies:
 
   - Ubuntu 12.04 or newer.
+  
   - Packages required:
-        bison cmake coreutils docbook-utils doxygen fakeroot flex g++ gawk gcc graphviz
-        help2man libtool make m4 python-pip python-pyparsing python-pysqlite2 sed
-        texi2html texinfo unzip
+        bison build-essential chrpath cifs-utils cmake coreutils curl desktop-file-utils
+        diffstat docbook-utils doxygen fakeroot flex g++ gawk gcc git-core gitk graphviz
+        help2man libgmp3-dev libmpfr-dev libreadline6-dev libtool libxml2-dev libxml-libxml-perl
+        make m4 python-pip python-jinja2 python-pysqlite2 quilt samba scons sed subversion
+        texi2html texinfo unzip wget
+        
   - Cross toolchain(s).
 
 
