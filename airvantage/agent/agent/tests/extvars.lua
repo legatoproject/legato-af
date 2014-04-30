@@ -21,19 +21,21 @@ function t:setup()
     u.assert(devicetree.init())
 end
 
-local function get_val(leaf, vtype)
+local function get_val(leaf, vtype, val)
     local res = devicetree.get(leaf)
-    u.assert_not_nil(res, "Cannot get leaf variable:"..leaf)
+    u.assert(res, "Cannot get leaf variable:"..leaf)
     u.assert(type(res) == vtype, "bad variable type")
+    u.assert_equal(val, res, "Bad value received")
 end
 
 
 --test all leaf types (string, integer, bool, ...)
+--also test values reception
 function t:test_01_get_leaf()
-    get_val("treehdlsample.string_value", "string")-- string
-    get_val("treehdlsample.int_value", "number")-- integer
-    get_val("treehdlsample.bool_value", "boolean")--bool
-    get_val("treehdlsample.double_value", "number")--double
+    get_val("treehdlsample.string_value", "string", "foo")-- string
+    get_val("treehdlsample.int_value", "number", 42)-- integer
+    get_val("treehdlsample.bool_value", "boolean", true)--bool
+    get_val("treehdlsample.double_value", "number", 23.99)--double
 end
 
 function t:test_02_get_node()
@@ -70,7 +72,7 @@ end
 function t:test_04_set_leaf()
     set_val("treehdlsample.string_value", "plop");--string
     set_val("treehdlsample.int_value", 666)--number
-    set_val("treehdlsample.bool_value", false)--bolean
+    set_val("treehdlsample.bool_value", false)--boolean
     set_val("treehdlsample.double_value", 3.14)--number
 end
 

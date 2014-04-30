@@ -20,7 +20,7 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Start the client main thread
+ * Start the service for the client main thread
  */
 //--------------------------------------------------------------------------------------------------
 void le_pos_StartClient
@@ -40,17 +40,31 @@ void le_pos_StopClient
 );
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Reference type for le_pos_MovementHandler handler ADD/REMOVE functions
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct le_pos_MovementHandler* le_pos_MovementHandlerRef_t;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This handler ...
+ *
+ * @param positionSampleRef
+ * @param contextPtr
+ */
+//--------------------------------------------------------------------------------------------------
 typedef void (*le_pos_MovementHandlerFunc_t)
 (
     le_pos_SampleRef_t positionSampleRef,
     void* contextPtr
 );
 
-typedef struct le_pos_MovementHandler* le_pos_MovementHandlerRef_t;
-
 //--------------------------------------------------------------------------------------------------
 /**
- * This function adds a handler ...
+ * le_pos_MovementHandler handler ADD function
  */
 //--------------------------------------------------------------------------------------------------
 le_pos_MovementHandlerRef_t le_pos_AddMovementHandler
@@ -70,7 +84,7 @@ le_pos_MovementHandlerRef_t le_pos_AddMovementHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function removes a handler ...
+ * le_pos_MovementHandler handler REMOVE function
  */
 //--------------------------------------------------------------------------------------------------
 void le_pos_RemoveMovementHandler

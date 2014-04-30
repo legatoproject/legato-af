@@ -12,7 +12,7 @@
 // Define the version of the Agent here:
 
 #define MIHINI_AGENT__MAJOR_VERSION        "0"
-#define MIHINI_AGENT__MINOR_VERSION        "9"
+#define MIHINI_AGENT__MINOR_VERSION        "10"
 
 
 

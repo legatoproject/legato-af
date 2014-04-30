@@ -24,6 +24,14 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Capture and playback threads flags
+ */
+//--------------------------------------------------------------------------------------------------
+static bool CaptureIsOn;
+static bool PlaybackIsOn;
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Capture thread reference
  */
 //--------------------------------------------------------------------------------------------------
@@ -343,6 +351,144 @@ static void* CaptureThread
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * This function must be called to start a playback thread
+ *
+ * @return LE_OK            The thread is started
+ * @return LE_BAD_PARAMETER The playback format is not valid
+ * @return LE_DUPLICATE     The thread is already started
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t StartPlayback
+(
+    const char* formatPtr,      ///< [IN] Playback format
+    uint32_t    channelCount    ///< [IN] Number of channel
+)
+{
+    PlaybackIsOn = true;
+
+    struct audioThreadParameter audioParam;
+
+    LE_ASSERT(formatPtr);
+
+    LE_DEBUG("Create Playback thread '%s'",formatPtr);
+
+    if (strcmp("L16-8K",formatPtr)==0) {
+        audioParam.nbChannel = channelCount;
+        audioParam.rate = 8000;
+        audioParam.format = SNDRV_PCM_FORMAT_S16_LE;
+        audioParam.threadSemaphore = le_sem_Create("PlaybackSem",0);
+    } else {
+        LE_ERROR("This format '%s' is not supported",formatPtr);
+        return LE_BAD_PARAMETER;
+    }
+
+    if (PlaybackThreadRef) {
+        LE_ERROR("Playback thread is already started");
+        return LE_DUPLICATE;
+    }
+
+    PlaybackThreadRef = le_thread_Create("Audio-Playback",
+                                         PlaybackThread,
+                                         &audioParam);
+
+    le_thread_SetJoinable(PlaybackThreadRef);
+    le_thread_Start(PlaybackThreadRef);
+
+    le_sem_Wait(audioParam.threadSemaphore);
+    le_sem_Delete(audioParam.threadSemaphore);
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to start a capture thread
+ *
+ * @return LE_OK            The thread is started
+ * @return LE_BAD_PARAMETER The capture format is not valid
+ * @return LE_DUPLICATE     The thread is already started
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t StartCapture
+(
+    const char* formatPtr,      ///< [IN] Capture format
+    uint32_t    channelCount    ///< [IN] Number of channel
+)
+{
+    struct audioThreadParameter audioParam;
+
+    LE_ASSERT(formatPtr);
+
+    LE_DEBUG("Create Capture thread '%s'",formatPtr);
+
+    if (strcmp("L16-8K",formatPtr)==0)
+    {
+        audioParam.nbChannel = channelCount;
+        audioParam.rate = 8000;
+        audioParam.format = SNDRV_PCM_FORMAT_S16_LE;
+        audioParam.threadSemaphore = le_sem_Create("CaptureSem",0);
+    }
+    else
+    {
+        LE_ERROR("This format '%s' is not supported",formatPtr);
+        return LE_BAD_PARAMETER;
+    }
+
+    if (CaptureThreadRef)
+    {
+        LE_ERROR("Capture thread is already started");
+        return LE_DUPLICATE;
+    }
+
+    CaptureThreadRef = le_thread_Create("Audio-Capture",
+                                        CaptureThread,
+                                        &audioParam);
+
+    le_thread_SetJoinable(CaptureThreadRef);
+    le_thread_Start(CaptureThreadRef);
+
+    le_sem_Wait(audioParam.threadSemaphore);
+    le_sem_Delete(audioParam.threadSemaphore);
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to start the playback and record threads
+ *
+ * @return LE_OK            The thread is started
+ * @return LE_BAD_PARAMETER The capture format is not valid
+ * @return LE_DUPLICATE     The thread is already started
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t StartThreads
+(
+    const char* formatPtr,      ///< [IN] Capture format
+    uint32_t    channelCount    ///< [IN] Number of channel
+)
+{
+    le_result_t res;
+
+    LE_ASSERT(formatPtr);
+
+    if (PlaybackIsOn && CaptureIsOn)
+    {
+        if((res=StartPlayback(formatPtr, channelCount)) != LE_OK)
+        {
+            return res;
+        }
+        if((res=StartCapture(formatPtr, channelCount)) != LE_OK)
+        {
+            return res;
+        }
+    }
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This function must be called to set a mixer value
  *
  */
@@ -359,23 +505,27 @@ void SetMixerParameter
     LE_DEBUG("Set '%s' with value '%s'",namePtr,valuePtr);
 
     mixerPtr = mixer_open(AUDIO_QUALCOMM_DEVICE_PATH);
-    if (mixerPtr==NULL) {
+    if (mixerPtr==NULL)
+    {
         LE_FATAL("Cannot open <%s>",AUDIO_QUALCOMM_DEVICE_PATH);
     }
 
     ctlPtr = mixer_get_control(mixerPtr, namePtr, 0);
-    if (ctlPtr==NULL) {
+    if (ctlPtr==NULL)
+    {
         LE_FATAL("Cannot get mixer controler <%s>", namePtr);
     }
 
     if (isdigit(valuePtr[0]))
     {
-        if ( mixer_ctl_set_value(ctlPtr,1, (char**)&valuePtr ) ) {
+        if ( mixer_ctl_set_value(ctlPtr,1, (char**)&valuePtr ) )
+        {
             LE_FATAL("Cannot set the value <%s>",valuePtr);
         }
     } else
     {
-        if ( mixer_ctl_select(ctlPtr, valuePtr ) ) {
+        if ( mixer_ctl_select(ctlPtr, valuePtr ) )
+        {
             LE_FATAL("Cannot select the value <%s>",valuePtr);
         }
     }
@@ -399,12 +549,14 @@ void GetMixerParameter
     struct mixer_ctl *ctlPtr;
 
     mixerPtr = mixer_open(AUDIO_QUALCOMM_DEVICE_PATH);
-    if (mixerPtr==NULL) {
+    if (mixerPtr==NULL)
+    {
         LE_FATAL("Cannot open <%s>",AUDIO_QUALCOMM_DEVICE_PATH);
     }
 
     ctlPtr = mixer_get_control(mixerPtr, namePtr, 0);
-    if (ctlPtr==NULL) {
+    if (ctlPtr==NULL)
+    {
         LE_FATAL("Cannot get mixer controler <%s>", namePtr);
     }
 
@@ -454,6 +606,49 @@ le_result_t pa_audio_SetPcmTimeSlot
         case PA_AUDIO_IF_DSP_FRONTEND_USB_TX:
         case PA_AUDIO_IF_DSP_BACKEND_MODEM_VOICE_RX:
         case PA_AUDIO_IF_DSP_BACKEND_MODEM_VOICE_TX:
+        case PA_AUDIO_IF_DSP_FRONTEND_I2S_RX:
+        case PA_AUDIO_IF_DSP_FRONTEND_I2S_TX:
+        case PA_AUDIO_IF_FILE_PLAYING:
+        case PA_AUDIO_IF_END:
+        {
+            break;
+        }
+    }
+    LE_ERROR("This interface (%d) is not supported",interface);
+    return LE_FAULT;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to set the channel mode of an I2S interface.
+ *
+ * @return LE_FAULT         The function failed to set the channel mode.
+ * @return LE_OK            The function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_audio_SetI2sChannelMode
+(
+    pa_audio_If_t           interface,
+    le_audio_I2SChannel_t  mode
+)
+{
+    LE_DEBUG("Use channel mode.%d for interface.%d", mode, interface);
+
+    switch (interface)
+    {
+        case PA_AUDIO_IF_DSP_FRONTEND_I2S_RX:
+        case PA_AUDIO_IF_DSP_FRONTEND_I2S_TX:
+        {
+             return LE_OK;
+        }
+        case PA_AUDIO_IF_CODEC_SPEAKER:
+        case PA_AUDIO_IF_CODEC_MIC:
+        case PA_AUDIO_IF_DSP_FRONTEND_USB_RX:
+        case PA_AUDIO_IF_DSP_FRONTEND_USB_TX:
+        case PA_AUDIO_IF_DSP_BACKEND_MODEM_VOICE_RX:
+        case PA_AUDIO_IF_DSP_BACKEND_MODEM_VOICE_TX:
+        case PA_AUDIO_IF_DSP_FRONTEND_PCM_RX:
+        case PA_AUDIO_IF_DSP_FRONTEND_PCM_TX:
         case PA_AUDIO_IF_FILE_PLAYING:
         case PA_AUDIO_IF_END:
         {
@@ -493,6 +688,8 @@ le_result_t pa_audio_SetMasterMode
         case PA_AUDIO_IF_DSP_FRONTEND_USB_TX:
         case PA_AUDIO_IF_DSP_BACKEND_MODEM_VOICE_RX:
         case PA_AUDIO_IF_DSP_BACKEND_MODEM_VOICE_TX:
+        case PA_AUDIO_IF_DSP_FRONTEND_I2S_RX:
+        case PA_AUDIO_IF_DSP_FRONTEND_I2S_TX:
         case PA_AUDIO_IF_FILE_PLAYING:
         case PA_AUDIO_IF_END:
         {
@@ -532,6 +729,8 @@ le_result_t pa_audio_SetSlaveMode
         case PA_AUDIO_IF_DSP_FRONTEND_USB_TX:
         case PA_AUDIO_IF_DSP_BACKEND_MODEM_VOICE_RX:
         case PA_AUDIO_IF_DSP_BACKEND_MODEM_VOICE_TX:
+        case PA_AUDIO_IF_DSP_FRONTEND_I2S_RX:
+        case PA_AUDIO_IF_DSP_FRONTEND_I2S_TX:
         case PA_AUDIO_IF_FILE_PLAYING:
         case PA_AUDIO_IF_END:
         {
@@ -542,9 +741,10 @@ le_result_t pa_audio_SetSlaveMode
     return LE_FAULT;
 }
 
+
 //--------------------------------------------------------------------------------------------------
 /**
- * This function must be called to start a playing thread
+ * This function must be called to ask for a playback thread starting
  *
  * @return LE_OK            The thread is started
  * @return LE_BAD_PARAMETER The playback format is not valid
@@ -557,43 +757,16 @@ le_result_t pa_audio_StartPlayback
     uint32_t    channelCount    ///< [IN] Number of channel
 )
 {
-    struct audioThreadParameter audioParam;
-
     LE_ASSERT(formatPtr);
 
-    LE_DEBUG("Create Playback thread '%s'",formatPtr);
+    PlaybackIsOn = true;
 
-    if (strcmp("L16-8K",formatPtr)==0) {
-        audioParam.nbChannel = channelCount;
-        audioParam.rate = 8000;
-        audioParam.format = SNDRV_PCM_FORMAT_S16_LE;
-        audioParam.threadSemaphore = le_sem_Create("PlaybackSem",0);
-    } else {
-        LE_ERROR("This format '%s' is not supported",formatPtr);
-        return LE_BAD_PARAMETER;
-    }
-
-    if (PlaybackThreadRef) {
-        LE_ERROR("Playback thread is already started");
-        return LE_DUPLICATE;
-    }
-
-    PlaybackThreadRef = le_thread_Create("Audio-Playback",
-                                         PlaybackThread,
-                                         &audioParam);
-
-    le_thread_SetJoinable(PlaybackThreadRef);
-    le_thread_Start(PlaybackThreadRef);
-
-    le_sem_Wait(audioParam.threadSemaphore);
-    le_sem_Delete(audioParam.threadSemaphore);
-
-    return LE_OK;
+    return (StartThreads(formatPtr, channelCount));
 }
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function must be called to stop a playing thread
+ * This function must be called to stop a playback thread
  *
  */
 //--------------------------------------------------------------------------------------------------
@@ -602,7 +775,10 @@ void pa_audio_StopPlayback
     void
 )
 {
-    if (PlaybackThreadRef) {
+    PlaybackIsOn = false;
+
+    if (PlaybackThreadRef)
+    {
         le_thread_Cancel(PlaybackThreadRef);
         le_thread_Join(PlaybackThreadRef,NULL);
         PlaybackThreadRef = NULL;
@@ -611,7 +787,7 @@ void pa_audio_StopPlayback
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function must be called to start a recording thread
+ * This function must be called to ask for a capture thread starting
  *
  * @return LE_OK            The thread is started
  * @return LE_BAD_PARAMETER The capture format is not valid
@@ -624,43 +800,16 @@ le_result_t pa_audio_StartCapture
     uint32_t    channelCount    ///< [IN] Number of channel
 )
 {
-    struct audioThreadParameter audioParam;
-
     LE_ASSERT(formatPtr);
 
-    LE_DEBUG("Create Capture thread '%s'",formatPtr);
+    CaptureIsOn = true;
 
-    if (strcmp("L16-8K",formatPtr)==0) {
-        audioParam.nbChannel = channelCount;
-        audioParam.rate = 8000;
-        audioParam.format = SNDRV_PCM_FORMAT_S16_LE;
-        audioParam.threadSemaphore = le_sem_Create("CaptureSem",0);
-    } else {
-        LE_ERROR("This format '%s' is not supported",formatPtr);
-        return LE_BAD_PARAMETER;
-    }
-
-    if (CaptureThreadRef) {
-        LE_ERROR("Capture thread is already started");
-        return LE_DUPLICATE;
-    }
-
-    CaptureThreadRef = le_thread_Create("Audio-Capture",
-                                        CaptureThread,
-                                        &audioParam);
-
-    le_thread_SetJoinable(CaptureThreadRef);
-    le_thread_Start(CaptureThreadRef);
-
-    le_sem_Wait(audioParam.threadSemaphore);
-    le_sem_Delete(audioParam.threadSemaphore);
-
-    return LE_OK;
+    return (StartThreads(formatPtr, channelCount));
 }
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function must be called to stop a recording thread
+ * This function must be called to stop a capture thread
  *
  */
 //--------------------------------------------------------------------------------------------------
@@ -669,7 +818,10 @@ void pa_audio_StopCapture
     void
 )
 {
-    if (CaptureThreadRef) {
+    CaptureIsOn = false;
+
+    if (CaptureThreadRef)
+    {
         le_thread_Cancel(CaptureThreadRef);
         le_thread_Join(CaptureThreadRef,NULL);
         CaptureThreadRef = NULL;

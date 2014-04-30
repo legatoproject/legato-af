@@ -23,7 +23,7 @@ function MT :get(hpath)
     local parent_path, key = path.split(hpath, -1)
     local parent_table = path.find(self.table, parent_path)
     if not parent_table then
-        return nil, "path "..parent_path.." not found"
+        return nil, "NOT_FOUND"
     end
     local x = parent_table[key]
     if x==nil then return nil
@@ -38,7 +38,7 @@ function MT :set(hmap)
         local parent_path, key = path.split(hpath, -1)
         local parent_table = path.find(t, parent_path, 'noowr')
         if type(parent_table) == 'table' then parent_table[key] = val
-        else return nil, "cannot write to path "..hpath end
+        else return nil, "NOT_PERMITTED" end
     end
     return true
 end

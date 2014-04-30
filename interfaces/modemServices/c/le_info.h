@@ -5,12 +5,14 @@
  *
  * <HR>
  *
- * This file contains prototype definitions for Modem Information APIs.
+ * This file contains prototype definitions for Modem Information APIs. 
+ * 
+ * It's used to retrieve the International Mobile Equipment Identity (IMEI).
  *
  *
  * <HR>
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
  */
 
 
@@ -18,7 +20,7 @@
  *
  * Legato @ref c_info include file.
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
  */
 
 #ifndef LEGATO_INFO_INCLUDE_GUARD
@@ -55,14 +57,14 @@
  * @return LE_OVERFLOW     IMEI length exceed the maximum length.
  * @return LE_OK          Function succeeded.
  *
- * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ * @note If the caller passes a bad pointer into this function, it's a fatal error; the
  *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_info_GetImei
 (
-    char*            imeiPtr,  ///< [OUT] The IMEI string.
-    size_t           len      ///< [IN] The length of IMEI string.
+    char*            imeiPtr,  ///< [OUT] IMEI string.
+    size_t           len      ///< [IN] Length of IMEI string.
 );
 
 

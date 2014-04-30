@@ -78,7 +78,8 @@ Edit the ini file from android:
 •	A device VID must be added to be recognized by ADB.  
 •	Create a %USERPROFILE%\.android directory, if it does not exist. 
 •	Navigate to the %USERPROFILE%\.android directory. 
-In the %USERPROFILE%\.android directory, create or edit the file adb_usb.ini. If the file already exists, it will contain a DO NOT EDIT message. Disregard this message and edit the file anyway. To edit, add a line containing 0x05C6 and a line containing 0x1199 to the end of the file. 
+In the %USERPROFILE%\.android directory, create or edit the file adb_usb.ini. If the file already exists, it will contain a DO NOT EDIT message. 
+Disregard this message and edit the file anyway. To edit, add a line containing 0x05C6 and a line containing 0x1199 to the end of the file. 
 Note: Don’t run android update adb or it will reset the contents of this file and overwrite the line just added.  
 After editing, the adb_usb.ini file should look like this: 
 # ANDROID 3RD PARTY VENDOR ID LIST -- DO NOT EDIT. 
@@ -90,20 +91,20 @@ After editing, the adb_usb.ini file should look like this:
 
 @section instSWdrivers Install Sierra Wireless Drivers
 
-Legato Beta includes a Drivers.zip file. 
+Legato Beta includes a Drivers.zip file available from Resources-> Downloads at http://developer.sierrawireless.com/landing/legato.aspx.
 
 Unzip it to a temporary location and run the SwiDriverSetup.exe program. 
 
-Connect the target AR7 device into a USB port on your PC. 
+Connect the target device (with WP7 or AR7 module) to your PC. 
 
-The AR7 will attempt to enumerate as an ADB device. This may not work if Windows fails to recognize the correct driver, 
+The module will attempt to enumerate as an ADB device. This may not work if Windows fails to recognize the correct driver, 
 but can be resolved through the Windows Device Manager. You should see an entry for your device with an '!' against 
 it showing that no driver is installed. 
 
 Right-click the device and select 'Update Driver Software…'  
 Select the option to install the driver locally and browse the Android SDK tools location. 
 
-Go to %install_dir%\sdk\extras\google\usb_driver. 
+Go to @verbatim %install_dir%\sdk\extras\google\usb_driver@endverbatim
 
 The 'Android Composite ADB Interface' should be in the device list. 
 
@@ -113,6 +114,7 @@ For convenience, add this directory to the windows path to allow adb and fastboo
 
 <HR>
 
-Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved.
+Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+
 
 **/

@@ -14,6 +14,10 @@ INCLUDE(cmake/add_lua_library.cmake)
 INCLUDE(cmake/add_public_header.cmake)
 INCLUDE(cmake/add_unit_test.cmake)
 
+IF(NOT DEFINED SECURITY_LIB)
+    SET(SECURITY_LIB "openaes")
+ENDIF(NOT DEFINED SECURITY_LIB)
+
 PROJECT(EMBEDDED)
 
 SET(CMAKE_C_FLAGS_MINSIZEREL "-Os -s")
@@ -71,7 +75,7 @@ ADD_SUBDIRECTORY (doc)
 ADD_SUBDIRECTORY(porting/${PLATFORM})
 
 ADD_CUSTOM_TARGET(mihini)
-ADD_DEPENDENCIES(mihini agent cfwk luafwk)
+ADD_DEPENDENCIES(mihini agent cfwk luafwk agent_treemgr_treehdlsample treehdlsample)
 
 IF(CMAKE_BUILD_TYPE STREQUAL "MinSizeRel")
     ADD_CUSTOM_COMMAND(TARGET mihini

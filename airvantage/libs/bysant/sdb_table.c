@@ -369,3 +369,7 @@ const char *sdb_getcolname( sdb_table_t *tbl, sdb_ncolumn_t icol) {
   if( (tbl->state == SDB_ST_BROKEN) || (tbl->state == SDB_ST_UNCONFIGURED)) return NULL;
     return tbl->conf_strings + tbl->columns[icol].label_offset;
 }
+
+const char *sdb_getpath( sdb_table_t *tbl) {
+  return tbl->conf_strings ;
+}

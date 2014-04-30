@@ -356,7 +356,7 @@ static le_result_t ImportFile
     if (!isDir)
     {
         // Create all the directories in the destination path.
-        RETURN_IF_NOT_OK(le_dir_MakePath(destPath, S_IRWXU | S_IXOTH));
+        RETURN_IF_NOT_OK(le_dir_MakePath(destPath, S_IRWXU | S_IROTH | S_IXOTH));
     }
 
     // Now get the destination's full path.
@@ -382,7 +382,7 @@ static le_result_t ImportFile
     if (isDir)
     {
         // Create all the directories in the full destination path.
-        RETURN_IF_NOT_OK(le_dir_MakePath(fullDestPath, S_IRWXU | S_IXOTH));
+        RETURN_IF_NOT_OK(le_dir_MakePath(fullDestPath, S_IRWXU | S_IROTH | S_IXOTH));
     }
     else
     {
@@ -436,16 +436,10 @@ static le_result_t ImportAllFiles
     const char* sandboxPath = app_GetSandboxPath(appRef);
 
     // Create an iterator for our app.
-    le_cfg_iteratorRef_t appCfg = le_cfg_CreateReadTxn(app_GetConfigPath(appRef));
+    le_cfg_IteratorRef_t appCfg = le_cfg_CreateReadTxn(app_GetConfigPath(appRef));
 
     // Check if this app should be in debug mode.
-    bool debugMode = false;
-    if (!le_cfg_IsEmpty(appCfg, CFG_NODE_APP_DEBUG))
-    {
-        debugMode = le_cfg_GetBool(appCfg, CFG_NODE_APP_DEBUG);
-    }
-
-    if (debugMode)
+    if (le_cfg_GetBool(appCfg, CFG_NODE_APP_DEBUG, false))
     {
         int i;
         for (i = 0; i < NUM_ARRAY_MEMBERS(DebugImportObjs); i++)
@@ -453,18 +447,19 @@ static le_result_t ImportAllFiles
             // Import files and directories needed for debug.
             if (ImportFile(DebugImportObjs[i].src, DebugImportObjs[i].dest, sandboxPath) != LE_OK)
             {
-                le_cfg_DeleteIterator(appCfg);
+                le_cfg_CancelTxn(appCfg);
                 return LE_FAULT;
             }
         }
     }
 
     // Read the files to import from the config tree.
-    if (le_cfg_GoToNode(appCfg, CFG_NODE_IMPORT_FILES) != LE_OK)
+    le_cfg_GoToNode(appCfg, CFG_NODE_IMPORT_FILES);
+    if (le_cfg_NodeExists(appCfg, "") == false)
     {
         LE_ERROR("There are no files to import for application '%s'.", appName);
 
-        le_cfg_DeleteIterator(appCfg);
+        le_cfg_CancelTxn(appCfg);
         return LE_FAULT;
     }
 
@@ -472,34 +467,40 @@ static le_result_t ImportAllFiles
     {
         LE_ERROR("No files to import for application '%s'.", appName);
 
-        le_cfg_DeleteIterator(appCfg);
+        le_cfg_CancelTxn(appCfg);
         return LE_FAULT;
     }
 
     do
     {
         char srcFile[LIMIT_MAX_PATH_BYTES];
-        if (le_cfg_GetString(appCfg, CFG_NODE_SRC_FILE, srcFile, sizeof(srcFile)) != LE_OK)
+        if (le_cfg_GetString(appCfg, CFG_NODE_SRC_FILE, srcFile, sizeof(srcFile), "") != LE_OK)
         {
             LE_ERROR("Source file path '%s...' for app '%s' is too long.", srcFile, appName);
 
-            le_cfg_DeleteIterator(appCfg);
+            le_cfg_CancelTxn(appCfg);
+            return LE_FAULT;
+        }
+
+        if (strncmp(srcFile, "", LIMIT_MAX_PATH_BYTES) == 0)
+        {
+            LE_ERROR("Empty source file path supplied for app %s.", appName);
             return LE_FAULT;
         }
 
         // Convert the source file path to an absolute path.
         char* sourceFilePtr = srcFile;
-        char absSrcPath[LIMIT_MAX_PATH_BYTES];
+        char absSrcPath[LIMIT_MAX_PATH_BYTES] = { 0 };
 
         if (srcFile[0] != '/')
         {
-            if (snprintf(absSrcPath, sizeof(absSrcPath),
-                         "%s/%s/%s", APPS_INSTALL_DIR, appName, srcFile) >= sizeof(absSrcPath))
+            if (le_path_Concat("/", absSrcPath, sizeof(absSrcPath),
+                               APPS_INSTALL_DIR, appName, srcFile, (char*)NULL) == LE_OVERFLOW)
             {
-                LE_ERROR("Absolute file path '%s' for app '%s' is too long.",
-                         absSrcPath, appName);
+                LE_ERROR("Absolute file path '%s/%s/%s' for app '%s' is too long.",
+                         APPS_INSTALL_DIR, appName, srcFile, appName);
 
-                le_cfg_DeleteIterator(appCfg);
+                le_cfg_CancelTxn(appCfg);
                 return LE_FAULT;
             }
 
@@ -507,23 +508,31 @@ static le_result_t ImportAllFiles
         }
 
         char destPath[LIMIT_MAX_PATH_BYTES];
-        if (le_cfg_GetString(appCfg, CFG_NODE_DEST_PATH, destPath, sizeof(destPath)) != LE_OK)
+        if (le_cfg_GetString(appCfg, CFG_NODE_DEST_PATH, destPath, sizeof(destPath), "") != LE_OK)
         {
             LE_ERROR("Destination file path '%s...' for app '%s' is too long.", destPath, appName);
 
-            le_cfg_DeleteIterator(appCfg);
+            le_cfg_CancelTxn(appCfg);
+            return LE_FAULT;
+        }
+
+        if (strncmp(destPath, "", LIMIT_MAX_PATH_BYTES) == 0)
+        {
+            LE_ERROR("Empty dest file path supplied for file '%s' in app %s.", absSrcPath, appName);
+
+            le_cfg_CancelTxn(appCfg);
             return LE_FAULT;
         }
 
         if (ImportFile(sourceFilePtr, destPath, sandboxPath) != LE_OK)
         {
-            le_cfg_DeleteIterator(appCfg);
+            le_cfg_CancelTxn(appCfg);
             return LE_FAULT;
         }
     }
     while (le_cfg_GoToNextSibling(appCfg) == LE_OK);
 
-    le_cfg_DeleteIterator(appCfg);
+    le_cfg_CancelTxn(appCfg);
 
     // Import default files.
     int i;
@@ -533,6 +542,44 @@ static le_result_t ImportAllFiles
         {
             return LE_FAULT;
         }
+    }
+
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets up a local file system for the application's sandbox.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_FAULT if there was an error.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t SetupFileSystem
+(
+    app_Ref_t appRef                ///< [IN] The application to setup the sandbox for.
+)
+{
+    int fileSysLimit = (int)resLim_GetSandboxedAppTmpfsLimit(appRef);
+
+    // Make the mount options.
+    char opt[100];
+    if (snprintf(opt, sizeof(opt), "size=%d,mode=%.4o,uid=0",
+                 (int)fileSysLimit, S_IRWXU | S_IXOTH) >= sizeof(opt))
+    {
+        LE_ERROR("Mount options string is too long. '%s'", opt);
+
+        return LE_FAULT;
+    }
+
+    // Mount the tmpfs for the sandbox.
+    if (mount("none", app_GetSandboxPath(appRef), "tmpfs", MS_NOSUID, opt) == -1)
+    {
+        LE_ERROR("Could not create mount for sandbox '%s'.  %m.", app_GetName(appRef));
+
+        return LE_FAULT;
     }
 
     return LE_OK;
@@ -589,8 +636,11 @@ le_result_t sandbox_Setup
         }
     }
 
-    // Set the resource limits for this application.
-    resLim_SetAppLimits(appRef);
+    // Setup the sandboxed apps local file system.
+    if (SetupFileSystem(appRef) != LE_OK)
+    {
+        goto cleanup;
+    }
 
     // Create /tmp folder in the sandbox.  This where we put Legato sockets.
     char folderPath[LIMIT_MAX_PATH_BYTES];
@@ -708,7 +758,6 @@ le_result_t sandbox_Remove
     app_Ref_t appRef                ///< [IN] The application to remove the sandbox for.
 )
 {
-#define MAX_MNT_ENTRY_BYTES         3*LIMIT_MAX_PATH_BYTES
 #define MAX_NUM_UNMNT_LOOPS         20
 
     const char* appName = app_GetName(appRef);
@@ -726,7 +775,7 @@ le_result_t sandbox_Remove
 
     // Read the mounts and search for the ones in our sandbox.
     struct mntent mntEntry;
-    char buf[MAX_MNT_ENTRY_BYTES];
+    char buf[LIMIT_MAX_MNT_ENTRY_BYTES];
 
     // Continue to search the mount points until no sandbox entries are found.  We do this because
     // several mounts may have been performed on the same mount point.
@@ -747,7 +796,7 @@ le_result_t sandbox_Remove
 
         foundEntryInSandbox = false;
 
-        while (getmntent_r(mntFilePtr, &mntEntry, buf, MAX_MNT_ENTRY_BYTES) != NULL)
+        while (getmntent_r(mntFilePtr, &mntEntry, buf, LIMIT_MAX_MNT_ENTRY_BYTES) != NULL)
         {
             // If neccessary modify the string to only contain the path.
             TruncateToPath(mntEntry.mnt_dir);

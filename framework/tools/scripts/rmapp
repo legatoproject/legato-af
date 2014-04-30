@@ -44,4 +44,4 @@ fi
 
 # Tell the device to stop the application and uninstall it.
 APP_NAME=$(basename "$APP_NAME" | sed 's/\.[^.]*$//')
-ssh root@$DEST_IP "/usr/local/bin/app remove $APP_NAME"
+ssh root@$DEST_IP "/usr/local/bin/app remove '$APP_NAME'"

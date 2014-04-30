@@ -38,7 +38,7 @@
 // -------------------------------------------------------------------------------------------------
 FUNCTION le_result_t ImportTree
 (
-    le_cfg_iteratorRef_t iteratorRef IN,  ///< The write iterator that is being used for the import.
+    le_cfg_IteratorRef_t iteratorRef IN,  ///< The write iterator that is being used for the import.
     string filePath[512]             IN,  ///< Import the tree data from the this file.
     string nodePath[512]             IN   ///< Where in the tree should this import happen?  Leave
                                           ///<   as an empty string to use the iterator's current
@@ -64,7 +64,7 @@ FUNCTION le_result_t ImportTree
 // -------------------------------------------------------------------------------------------------
 FUNCTION le_result_t ExportTree
 (
-    le_cfg_iteratorRef_t iteratorRef IN,  ///< The write iterator that is being used for the export.
+    le_cfg_IteratorRef_t iteratorRef IN,  ///< The write iterator that is being used for the export.
     string filePath[512]             IN,  ///< Import the tree data from the this file.
     string nodePath[512]             IN   ///< Where in the tree should this export happen?  Leave
                                           ///<   as an empty string to use the iterator's current
@@ -83,35 +83,17 @@ FUNCTION le_result_t ExportTree
 
 // -------------------------------------------------------------------------------------------------
 /**
- *  Create an iterator that can list all of the trees registered with the system.
- */
-// -------------------------------------------------------------------------------------------------
-FUNCTION le_cfgAdmin_treeIteratorRef_t CreateTreeIterator
-(
-);
-
-
-// -------------------------------------------------------------------------------------------------
-/**
- *  Call this function when you are done with the iterator.
- */
-// -------------------------------------------------------------------------------------------------
-FUNCTION void DeleteTreeIterator
-(
-    le_cfgAdmin_treeIteratorRef_t iteratorRef IN  ///< The iterator object to dispose of.
-);
-
-
-// -------------------------------------------------------------------------------------------------
-/**
  *  Read the name of the tree currently pointed at by the iterator.
+ *
+ *  @return
+ *    - LE_OK if there is enough room to copy the name into the supplied buffer.
+ *    - LE_OVERFLOW if not.
  */
 // -------------------------------------------------------------------------------------------------
-FUNCTION void GetTreeName
+FUNCTION le_result_t GetTreeName
 (
-    le_cfgAdmin_treeIteratorRef_t iteratorRef IN,  ///< The iterator object to read.
-    string name[64]                      OUT       ///< The name of the currently referenced tree is
-                                                   ///<   passed in this out parameter.
+    string name[64] OUT  ///< The name of the currently referenced tree is passed in this out
+                         ///< parameter.
 );
 
 
@@ -119,9 +101,13 @@ FUNCTION void GetTreeName
 /**
  *  Move onto the next tree in the list.  If there are no more trees this function returns false,
  *  otherwise true is returned.
+ *
+ *  @return
+ *    - LE_OK if there are more trees to iterate through.
+ *    - LE_NOT_FOUND if not.
+ *    - LE_FAULT if the tree collection was changed in the middle of an iteration.
  */
 // -------------------------------------------------------------------------------------------------
-FUNCTION bool NextTree
+FUNCTION le_result_t NextTree
 (
-    le_cfgAdmin_treeIteratorRef_t iteratorRef IN  ///< The iterator object to increment.
 );

@@ -28,17 +28,19 @@ static const char*          ConnectionMatrix[PA_AUDIO_IF_END+1][PA_AUDIO_IF_END+
  * This function initializes the Connection Matric as follows:
  *
  *
- * IN\OUT         |          MODEM_VOICE_TX             |               USB_TX               |  SPEAKER  |               SEC_PCM_TX
- * ---------------------------------------------------------------------------------------------------------------------------------------------
- * MODEM_VOICE_RX |                N/A                  |  AFE_PCM_RX_Voice Mixer CSVoice    |    N/A    |  SEC_AUX_PCM_RX_Voice Mixer CSVoice
- * ---------------------------------------------------------------------------------------------------------------------------------------------
- * USB_RX         |   Voice_Tx Mixer AFE_PCM_TX_Voice   |               N/A                  |    N/A    |                  N/A
- * ---------------------------------------------------------------------------------------------------------------------------------------------
- * SEC_PCM_RX     | Voice_Tx Mixer SEC_AUX_PCM_TX_Voice |               N/A                  |    N/A    |                  N/A
- * ---------------------------------------------------------------------------------------------------------------------------------------------
- * MIC            |                N/A                  |               N/A                  |    N/A    |                  N/A    
- * ---------------------------------------------------------------------------------------------------------------------------------------------
- * FILE_PLAYING   |                N/A                  | AFE_PCM_RX Audio Mixer MultiMedia1 |    N/A    |                  N/A    
+ * IN\OUT         |          MODEM_VOICE_TX             |               USB_TX               |  SPEAKER  |                PCM_TX               |                I2S_TX               |
+ * ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+ * MODEM_VOICE_RX |                N/A                  |  AFE_PCM_RX_Voice Mixer CSVoice    |    N/A    |  SEC_AUX_PCM_RX_Voice Mixer CSVoice |   SEC_RX_Voice Mixer CSVoice
+ * ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+ * USB_RX         |   Voice_Tx Mixer AFE_PCM_TX_Voice   |               N/A                  |    N/A    |                  N/A                |                  N/A                |
+ * ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+ * PCM_RX         | Voice_Tx Mixer SEC_AUX_PCM_TX_Voice |               N/A                  |    N/A    |                  N/A                |                  N/A                |
+ * ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+ * I2S_RX         |    Voice_Tx Mixer SEC_TX_Voice      |               N/A                  |    N/A    |                  N/A                |                  N/A                |
+ * ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+ * MIC            |                N/A                  |               N/A                  |    N/A    |                  N/A                |                  N/A                |
+ * ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+ * FILE_PLAYING   |                N/A                  | AFE_PCM_RX Audio Mixer MultiMedia1 |    N/A    |                  N/A                |                  N/A                |
  *
  */
 //--------------------------------------------------------------------------------------------------
@@ -51,6 +53,8 @@ void InitializeConnectionMatrix
     ConnectionMatrix[PA_AUDIO_IF_DSP_FRONTEND_USB_RX][PA_AUDIO_IF_DSP_BACKEND_MODEM_VOICE_TX] = "Voice_Tx Mixer AFE_PCM_TX_Voice";
     ConnectionMatrix[PA_AUDIO_IF_DSP_BACKEND_MODEM_VOICE_RX][PA_AUDIO_IF_DSP_FRONTEND_PCM_TX] = "SEC_AUX_PCM_RX_Voice Mixer CSVoice";
     ConnectionMatrix[PA_AUDIO_IF_DSP_FRONTEND_PCM_RX][PA_AUDIO_IF_DSP_BACKEND_MODEM_VOICE_TX] = "Voice_Tx Mixer SEC_AUX_PCM_TX_Voice";
+    ConnectionMatrix[PA_AUDIO_IF_DSP_BACKEND_MODEM_VOICE_RX][PA_AUDIO_IF_DSP_FRONTEND_I2S_TX] = "SEC_RX_Voice Mixer CSVoice";
+    ConnectionMatrix[PA_AUDIO_IF_DSP_FRONTEND_I2S_RX][PA_AUDIO_IF_DSP_BACKEND_MODEM_VOICE_TX] = "Voice_Tx Mixer SEC_TX_Voice";
     ConnectionMatrix[PA_AUDIO_IF_FILE_PLAYING][PA_AUDIO_IF_DSP_FRONTEND_USB_TX] = "AFE_PCM_RX Audio Mixer MultiMedia1";
 }
 
@@ -74,6 +78,9 @@ le_result_t pa_audio_Init
 )
 {
     InitializeConnectionMatrix();
+
+    pa_audio_StopPlayback();
+    pa_audio_StopCapture();
 
     return LE_OK;
 }

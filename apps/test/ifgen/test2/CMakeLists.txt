@@ -13,11 +13,21 @@ set_legato_component(${TEST_NAME})
 # Set the path to the ifgen tool
 set(IFGEN_TOOL ${LEGATO_SOURCE_DIR}/bin/ifgen )
 
+# todo: There may be a better way to generate the imported file(s), as this is
+#       somewhat awkward to use.  
+add_custom_command (
+    OUTPUT common_interface.h
+    COMMAND ${IFGEN_TOOL} ${CMAKE_CURRENT_SOURCE_DIR}/common.api
+                          --gen-interface
+    DEPENDS common.api
+)
+
+
 add_custom_command (
     OUTPUT client.c server.c
     COMMAND ${IFGEN_TOOL} ${CMAKE_CURRENT_SOURCE_DIR}/example.api
-                          --gen-all 
-    DEPENDS example.api
+                          --gen-all --no-default-prefix
+    DEPENDS example.api common_interface.h
 )
 
 # Since the generated header files go into the BINARY_DIR, need to add this to the
@@ -65,7 +75,8 @@ add_custom_command (
                           --gen-local
                           --async-server
                           --file-prefix async_
-    DEPENDS example.api
+                          --no-default-prefix
+    DEPENDS example.api common_interface.h
 )
 
 

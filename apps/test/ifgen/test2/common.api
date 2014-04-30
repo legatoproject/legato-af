@@ -1,0 +1,31 @@
+/**
+ * Common definitions potentially across multiple .api files
+ */
+
+
+/**
+ * Definition example
+ */
+DEFINE SOME_VALUE = 5;
+
+/**
+ * Example of using previously DEFINEd symbol within an imported file.
+ */
+DEFINE TEN = SOME_VALUE + 5;
+
+/**
+ * Reference example
+ */
+REFERENCE OpaqueReference;
+
+/**
+ * ENUM example
+ */
+ENUM EnumExample
+{
+    ZERO,     ///< first enum
+    ONE,      ///< second enum
+    TWO,      ///< third enum
+    THREE     ///< fourth enum
+};
+

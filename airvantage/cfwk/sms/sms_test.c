@@ -41,6 +41,7 @@ static const char *lua_script =
 
 
 static volatile uint8_t waiting_for_sms = 1;
+static swi_sms_regId_t regId;
 
 static void exec_lua_code()
 {
@@ -64,126 +65,115 @@ static void sms_handler(const char *sender, const char *message)
     }
 }
 
-static int test_sms_Init()
+DEFINE_TEST(test_sms_Init)
 {
   rc_ReturnCode_t res;
 
   res = swi_sms_Init();
-  if (res != RC_OK)
-    return res;
+  ASSERT_TESTCASE_IS_OK(res);
 
   res = swi_sms_Init();
-  if (res != RC_OK)
-    return res;
+  ASSERT_TESTCASE_IS_OK(res);
 
   res = swi_sms_Init();
-  if (res != RC_OK)
-    return res;
-  return RC_OK;
+  ASSERT_TESTCASE_IS_OK(res);
 }
 
-static int test_sms_Destroy()
+DEFINE_TEST(test_sms_Destroy)
 {
   rc_ReturnCode_t res;
 
   res = swi_sms_Destroy();
-  if (res != RC_OK)
-    return res;
+  ASSERT_TESTCASE_IS_OK(res);
 
   res = swi_sms_Destroy();
-  if (res != RC_OK)
-    return res;
+  ASSERT_TESTCASE_IS_OK(res);
 
   res = swi_sms_Destroy();
-  if (res != RC_OK)
-    return res;
-  return RC_OK;
+  ASSERT_TESTCASE_IS_OK(res);
 }
 
-static int test_sms_Register(swi_sms_ReceptionCB_t callback, const char* senderPatternPtr,
-                 const char* messagePatternPtr, swi_sms_regId_t *regIdPtr)
+static void sms_Register(swi_sms_ReceptionCB_t callback, const char* senderPatternPtr,
+                         const char* messagePatternPtr, swi_sms_regId_t *regIdPtr)
 {
   rc_ReturnCode_t res;
 
   res = swi_sms_Register(callback, senderPatternPtr, messagePatternPtr, regIdPtr);
-
-  if (res != RC_OK)
-    return res;
+  ASSERT_TESTCASE_IS_OK(res);
 
   exec_lua_code();
   while(waiting_for_sms)
     ;
   waiting_for_sms = 1;
-  return RC_OK;
 }
 
-static int test_sms_Register_failure()
+DEFINE_TEST(test_sms_Register_for_one)
+{
+    sms_Register((swi_sms_ReceptionCB_t)sms_handler, PHONE_NUMBER, MESSAGE, &regId);
+}
+
+DEFINE_TEST(test_sms_Register_for_all)
+{
+    sms_Register((swi_sms_ReceptionCB_t)sms_handler, NULL, NULL, &regId);
+}
+
+DEFINE_TEST(test_sms_Register_failure)
 {
   rc_ReturnCode_t res;
   swi_sms_regId_t regId;
 
   res = swi_sms_Register((swi_sms_ReceptionCB_t)sms_handler, NULL, NULL, NULL);
-  if (res != RC_BAD_PARAMETER)
-    return res;
+  ASSERT_TESTCASE_EQUAL(RC_BAD_PARAMETER, res);
 
   res = swi_sms_Register(NULL, NULL, NULL, &regId);
-  if (res != RC_BAD_PARAMETER)
-    return res;
+  ASSERT_TESTCASE_EQUAL(RC_BAD_PARAMETER, res);
 
   res = swi_sms_Register(NULL, NULL, NULL, NULL);
-  if (res != RC_BAD_PARAMETER)
-    return res;
-  return RC_OK;
+  ASSERT_TESTCASE_EQUAL(RC_BAD_PARAMETER, res);
 }
 
-static int test_sms_Send(const char *recipientPtr, const char* messagePtr, swi_sms_Format_t format)
+DEFINE_TEST(test_sms_Send)
 {
   rc_ReturnCode_t res;
 
-  res = swi_sms_Send(recipientPtr, messagePtr, format);
-  return res;
+  res = swi_sms_Send(PHONE_NUMBER, MESSAGE, SWI_SMS_8BITS);
+  ASSERT_TESTCASE_IS_OK(res);
 }
 
-static int test_sms_Unregister(swi_sms_regId_t regId)
+DEFINE_TEST(test_sms_Unregister)
 {
-  return swi_sms_Unregister(regId);
+  ASSERT_TESTCASE_IS_OK(swi_sms_Unregister(regId));
 }
 
-static int test_sms_Unregister_failure()
+DEFINE_TEST(test_sms_Unregister_failure)
 {
   rc_ReturnCode_t res;
 
-  res = test_sms_Unregister((swi_sms_regId_t)0);
-  if (res != RC_BAD_PARAMETER)
-    return res;
+  res = swi_sms_Unregister((swi_sms_regId_t)0);
+  ASSERT_TESTCASE_EQUAL(RC_BAD_PARAMETER, res);
 
-  res = test_sms_Unregister((swi_sms_regId_t)-1);
-   if (res != RC_BAD_PARAMETER)
-    return res;
+  res = swi_sms_Unregister((swi_sms_regId_t)-1);
+  ASSERT_TESTCASE_EQUAL(RC_BAD_PARAMETER, res);
 
-  res = test_sms_Unregister((swi_sms_regId_t)-2);
-   if (res != RC_BAD_PARAMETER)
-     return res;
-   return RC_OK;
+  res = swi_sms_Unregister((swi_sms_regId_t)-2);
+  ASSERT_TESTCASE_EQUAL(RC_BAD_PARAMETER, res);
 }
 
 int main(void)
 {
-  swi_sms_regId_t regId;
-
   INIT_TEST("SMS_TEST");
-  CHECK_TEST(test_sms_Init());
+  test_sms_Init();
 
-  CHECK_TEST(test_sms_Register((swi_sms_ReceptionCB_t)sms_handler, PHONE_NUMBER, MESSAGE, &regId));
-  CHECK_TEST(test_sms_Unregister(regId));
+  test_sms_Register_for_one();
+  test_sms_Unregister();
 
-  CHECK_TEST(test_sms_Register((swi_sms_ReceptionCB_t)sms_handler, NULL, NULL, &regId));
-  CHECK_TEST(test_sms_Unregister(regId));
+  test_sms_Register_for_all();
+  test_sms_Unregister();
 
-  CHECK_TEST(test_sms_Register_failure());
-  CHECK_TEST(test_sms_Unregister_failure());
+  test_sms_Register_failure();
+  test_sms_Unregister_failure();
 
-  CHECK_TEST(test_sms_Send(PHONE_NUMBER, MESSAGE, SWI_SMS_8BITS));
-  CHECK_TEST(test_sms_Destroy());
+  test_sms_Send();
+  test_sms_Destroy();
   return 0;
 }

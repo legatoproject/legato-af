@@ -12,108 +12,102 @@
  *
  * @ref le_audio.h "Click here for the API reference documentation."
  *
- * <HR>
+ *@ref le_audio_interfaces<br>
+ *@ref le_audio_streams<br>
+ *@ref le_audio_connectors<br>
+ *@ref le_audio_formats<br>
+ *@ref le_audio_samples<br>
  *
- * @section le_audio_toc Table of Contents
+ * The Audio API handles audio interfaces including play or listen supported formats.
  *
- *   - @ref le_audio_intro
- *   - @ref le_audio_interfaces
- *   - @ref le_audio_streams
- *   - @ref le_audio_connectors
- *   - @ref le_audio_formats
- *   - @ref le_audio_samples
- *
- * @section le_audio_intro Introduction
- *
- * The Audio API allows to handle audio interfaces, and play or listen supported formats on these
- * interfaces.
- *
- * A given Legato device offers several audio interfaces. The Users must choose the input and output
- * interfaces they want to tie together. The Audio stream related to a particular interface is
+ * A Legato device can use several audio interfaces. You choose the input and output
+ * interfaces to tie together. The Audio stream related to a particular interface is
  * represented with an 'Audio Stream Reference'.
  *
- * The Users can create their own audio path by connecting several audio streams together thanks to
- * audio connectors. They must create Audio connectors to set up these connections.
+ * You can create your own audio path by connecting several audio streams together using
+ * audio connectors.
  *
- * An audio path can support more than two audio interfaces. For example, a 'basic' output audio
- * path of a voice call imply to connect the Modem Voice Received interface with the Speaker
- * interface but, at the same time, the Modem Voice Received interface can be also connected to a
+ * An audio path can support more than two audio interfaces. You can have a basic output audio
+ * path of a voice call to connect the Modem Voice Received interface with the Speaker
+ * interface, and at the same time, the Modem Voice Received interface can be also connected to a
  * Recorder Device interface.
  *
  * @section le_audio_interfaces Open/Close an Audio Interface
  *
- * The following functions allows the Users to select the desired interface:
- *
- * - le_audio_OpenMic(): it returns an Audio Stream Reference of the analog audio signal coming from
+ * The following functions let you select the desired interface:
+ * - @c le_audio_OpenMic(): returns an Audio Stream Reference of the analog audio signal coming from
  *                       the microphone input.
- * - le_audio_OpenSpeaker(): it returns an Audio Stream Reference of the analog audio signal routed
+ * - @c le_audio_OpenSpeaker(): returns an Audio Stream Reference of the analog audio signal routed
  *                           to the Speaker output.
- * - le_audio_OpenUsbRx(): it returns an Audio Stream Reference of the digitized audio signal coming
+ * - @c le_audio_OpenUsbRx(): returns an Audio Stream Reference of the digitized audio signal coming
  *                         from an external device connected via USB Audio Class.
- * - le_audio_OpenUsbTx(): it returns an Audio Stream Reference of the digitized audio signal routed
+ * - @c le_audio_OpenUsbTx(): returns an Audio Stream Reference of the digitized audio signal routed
  *                         to an external device connected via USB Audio Class.
- * - le_audio_OpenPcmRx(): it returns an Audio Stream Reference of the digitized audio signal coming
- *                         from an external device connected via the PCM interface.
- * - le_audio_OpenPcmTx(): it returns an Audio Stream Reference of the digitized audio signal routed
- *                         to an external device connected via the PCM interface.
- * - le_audio_OpenModemVoiceRx(): it returns an Audio Stream Reference of the digitized audio signal
+ * - @c le_audio_OpenPcmRx(): it returns an Audio Stream Reference of the digitized audio signal
+ *                            coming from an external device connected via the PCM interface.
+ * - @c le_audio_OpenPcmTx(): it returns an Audio Stream Reference of the digitized audio signal
+ *                            routed to an external device connected via the PCM interface.
+ * - @c le_audio_OpenI2sRx(): it returns an Audio Stream Reference of the digitized audio signal
+ *                            coming from an external device connected via the I2S interface.
+ * - @c le_audio_OpenI2sTx(): it returns an Audio Stream Reference of the digitized audio signal
+ *                            routed to an external device connected via the I2S interface.
+ * - @c le_audio_OpenModemVoiceRx(): returns an Audio Stream Reference of the digitized audio signal
  *                                coming from a voice call. The audio format is negotiated with the
  *                                network when the call is established.
- * - le_audio_OpenModemVoiceTx(): it returns an Audio Stream Reference of the digitized audio signal
+ * - @c le_audio_OpenModemVoiceTx(): returns an Audio Stream Reference of the digitized audio signal
  *                                routed to a voice call. The audio format is negotiated with the
  *                                network when the call is established.
  *
- * Note that multiple users can own the same stream at the same time.
+ * Multiple users can own the same stream at the same time.
  *
- * The le_audio_GetFormat() function can be called to get the audio format of an input or output
+ * @c le_audio_GetFormat() can be called to get the audio format of an input or output
  * stream.
  *
- * When the Users have finished using an interface they must call le_audio_Close() to release it. If
- * several Users own the same corresponding stream reference, the interface will be definitively
- * closed only after the last user releases the audio stream.
+ * Call @c le_audio_Close() to release it. If
+ * several users own the same, corresponding stream reference, the interface will
+ * close only after the last user releases the audio stream.
  *
  * @section le_audio_streams Control an Audio Stream
  *
- * Once the Users get an Audio Stream reference, they can control it with the following functions:
+ * Once the users get an Audio Stream reference, they can control it with the following functions:
  *
- * - le_audio_SetGain(): it allows the User to adjust the gain of an audio stream (0 means 'muted',
- *                       100 is the maximum gain value).
- * - le_audio_GetGain(): it allows the User to retrieve the gain of an audio stream (0 means
- *                       'muted', 100 is the maximum gain value).
- * - le_audio_Mute(): it allows the User to mute an audio stream.
- * - le_audio_Unmute(): it allows the User to unmute an audio stream.
+ * - @c le_audio_SetGain(): allows the user to adjust the gain of an audio stream (0 means 'muted',
+ *                          100 is the maximum gain value).
+ * - @c le_audio_GetGain(): allows the User to retrieve the gain of an audio stream (0 means
+ *                          'muted', 100 is the maximum gain value).
+ * - @c le_audio_Mute(): allows the user to mute an audio stream.
+ * - @c le_audio_Unmute(): allows the user to unmute an audio stream.
  *
  * @note The hardware may or may not support the full 0-100 resolution, and if you want to see what
  * was actually set call le_audio_GetGain() after le_audio_SetGain() to get the real value.
  *
  * @section le_audio_connectors Create Audio connectors
  *
- * The Users can create their own audio path by connecting several audio streams together.
+ * You can create your own audio path by connecting several audio streams together.
  *
- * The le_audio_CreateConnector() function creates a reference to an audio connector.
+ * @c le_audio_CreateConnector() function creates a reference to an audio connector.
  *
- * The User can tie an audio stream to a connector by calling the le_audio_Connect()
+ * You can tie an audio stream to a connector by calling the le_audio_Connect()
  * function.
  *
- * The User can remove an audio stream from a connector by calling the le_audio_Disconnect()
+ * You can remove an audio stream from a connector by calling the le_audio_Disconnect()
  * function.
  *
- * When the Users have finished using a connector, they can delete it with the
- * le_audio_DeleteConnector() function.
+ * When finished with it, delete it using the @c le_audio_DeleteConnector() function.
  *
  * @section le_audio_formats Specifying audio formats
  *
- * The encoding audio format can be specified to (or retrieved from) the audio interfaces which
+ * The encoding audio format can be specified to (or retrieved from) the audio interfaces that
  * support this option. The format parameter is a string containing the IANA specified encoding
  * format name for Real-Time protocol (RTP).
  *
  * The complete list of the audio encoding format names can be found on the IANA organization web
  * site (http://www.iana.org).
  *
- * The function that can get the current audio format for an open interface is:
- * - le_audio_GetFormat()
+ * Function that gets the current audio format for an open interface is:
+ * - @c le_audio_GetFormat()
  *
- * @warning Please do not forget to check the list of supported audio formats for your specific
+ * @warning Ensure to check the list of supported audio formats for your specific
  * platform.
  *
  * Some examples of audio formats:
@@ -130,36 +124,36 @@
  *
  * @section le_audio_samples Code samples
  *
- * In the two following code samples, we illustrate how we can create different audio paths for an
+ * The following two code samples show how to create different audio paths for an
  * incoming voice call.
  *
- * In the first example, the audio path depends on the presence of an USB Audio handset. The
- * @b ConnectVoiceCallAudio() function creates this audio path: if I got an USB Audio handset
- * plugged and fully operationnal, I will redirect the audio of my call to it, otherwise I will
- * redirect it to the in-built microphone and speaker.
+ * The first example has the audio path depending on an USB Audio handset. The
+ * @b ConnectVoiceCallAudio() function creates this audio path. A USB Audio handset
+ * plugged in and fully operationnal, will redirect the call audio to the handset; otherwise, it will
+ * redirect the call to the default microphone and speaker.
  *
- * The @b DisconnectVoiceCallAudio() function simply deletes the audio path.
+ * Use @c DisconnectVoiceCallAudio() to delete the audio path.
  *
  * @code
  *
  * le_result_t ConnectVoiceCallAudio
  * (
- *     le_audio_ConnectorRef_t*  audioInputConnectorRefPtr,  // [OUT] The input connector.
- *     le_audio_ConnectorRef_t*  audioOutputConnectorRefPtr, // [OUT] The output connector.
- *     le_audio_StreamRef_t*     mdmRxAudioRefPtr,           // [OUT] The received voice call audio stream.
- *     le_audio_StreamRef_t*     mdmTxAudioRefPtr,           // [OUT] The transmitted voice call audio stream.
- *     le_audio_StreamRef_t*     deviceRxAudioRefPtr,        // [OUT] The received device audio stream.
- *     le_audio_StreamRef_t*     deviceTxAudioRefPtr         // [OUT] The transmitted device audio stream.
+ *     le_audio_ConnectorRef_t*  audioInputConnectorRefPtr,  // [OUT] Input connector.
+ *     le_audio_ConnectorRef_t*  audioOutputConnectorRefPtr, // [OUT] Output connector.
+ *     le_audio_StreamRef_t*     mdmRxAudioRefPtr,           // [OUT] Received voice call audio stream.
+ *     le_audio_StreamRef_t*     mdmTxAudioRefPtr,           // [OUT] Transmitted voice call audio stream.
+ *     le_audio_StreamRef_t*     deviceRxAudioRefPtr,        // [OUT] Received device audio stream.
+ *     le_audio_StreamRef_t*     deviceTxAudioRefPtr         // [OUT] Transmitted device audio stream.
  * )
  * {
- *     // I get the audio from the voice call, I don't care of its audio format.
+ *     // I get the audio from the voice call, I don't care which audio format.
  *     *mdmRxAudioRefPtr = le_audio_OpenModemVoiceRx();
  *     *mdmTxAudioRefPtr = le_audio_OpenModemVoiceTx();
  *
  *     // If I cannot get the audio from the voice call, I return an error.
  *     if ((*mdmRxAudioRefPtr == NULL) || (*mdmTxAudioRefPtr == NULL))
  *     {
- *             // I close the audio interfaces whatever the one has failed to open.
+ *             // I close the audio interfaces that have failed to open.
  *             le_audio_Close(*mdmRxAudioRefPtr);
  *             le_audio_Close(*mdmTxAudioRefPtr);
  *             return LE_NOT_POSSIBLE;
@@ -199,12 +193,12 @@
  *
  * void DisconnectVoiceCallAudio
  * (
- *     le_audio_ConnectorRef_t  audioInputConnectorRef,  // [IN] The input connector.
- *     le_audio_ConnectorRef_t  audioOutputConnectorRef, // [IN] The output connector.
- *     le_audio_StreamRef_t     mdmRxAudioRef,           // [IN] The received voice call audio stream.
- *     le_audio_StreamRef_t     mdmTxAudioRef,           // [IN] The transmitted voice call audio stream.
- *     le_audio_StreamRef_t     deviceRxAudioRef,        // [IN] The received device audio stream.
- *     le_audio_StreamRef_t     deviceTxAudioRef         // [IN] The transmitted device audio stream.
+ *     le_audio_ConnectorRef_t  audioInputConnectorRef,  // [IN] Input connector.
+ *     le_audio_ConnectorRef_t  audioOutputConnectorRef, // [IN] Output connector.
+ *     le_audio_StreamRef_t     mdmRxAudioRef,           // [IN] Received voice call audio stream.
+ *     le_audio_StreamRef_t     mdmTxAudioRef,           // [IN] Transmitted voice call audio stream.
+ *     le_audio_StreamRef_t     deviceRxAudioRef,        // [IN] Received device audio stream.
+ *     le_audio_StreamRef_t     deviceTxAudioRef         // [IN] Transmitted device audio stream.
  * )
  * {
  *     // The call is terminated, I can close its audio interfaces.
@@ -222,29 +216,29 @@
  *
  * @endcode
  *
- * In this second example, we have functions to deal with a new 'Incoming call' event during a call
+ * The next code sample uses specific functions to deal with a new 'Incoming call' event during a call
  * already in progress.
  *
- * When no call is in progress I can use the @b ConnectVoiceCallAudio() function to redirect the
+ * If no call is in progress,  use the @c ConnectVoiceCallAudio() function to redirect the
  * call audio to the in-built Microphone and Speaker.
  *
- * If a new call is incoming and if it is condidered as a high priority call, I must mute the audio
- * of the first one and connect the new one to my current audio path. The @b SwitchVoiceCallAudio()
- * function performs these actions.
+ * If a new call is incoming, and considered a high priority call, you must mute the audio
+ * of the first call, and then connect the new call to your current audio path.
+ * Use @c SwitchVoiceCallAudio() for these actions.
  *
- * When the high priority call terminates, I can turn back to my previous call and reactivate its
- * audio with the @b SwitchBackVoiceCallAudio() function.
+ * When the high priority call terminates, you can return back to your previous call and reactivate its
+ * audio with the @c SwitchBackVoiceCallAudio() function.
  *
  * @code
  *
  * le_result_t ConnectVoiceCallAudio
  * (
- *     le_audio_ConnectorRef_t*  audioInputConnectorRefPtr,  // [OUT] The input connector.
- *     le_audio_ConnectorRef_t*  audioOutputConnectorRefPtr, // [OUT] The output connector.
- *     le_audio_StreamRef_t*     mdmRxAudioRefPtr,           // [OUT] The received voice call audio stream.
- *     le_audio_StreamRef_t*     mdmTxAudioRefPtr,           // [OUT] The transmitted voice call audio stream.
- *     le_audio_StreamRef_t*     micRefPtr,                  // [OUT] The Microphone stream.
- *     le_audio_StreamRef_t*     speakerRefPtr               // [OUT] The Speaker stream.
+ *     le_audio_ConnectorRef_t*  audioInputConnectorRefPtr,  // [OUT] Input connector.
+ *     le_audio_ConnectorRef_t*  audioOutputConnectorRefPtr, // [OUT] Output connector.
+ *     le_audio_StreamRef_t*     mdmRxAudioRefPtr,           // [OUT] Received voice call audio stream.
+ *     le_audio_StreamRef_t*     mdmTxAudioRefPtr,           // [OUT] Transmitted voice call audio stream.
+ *     le_audio_StreamRef_t*     micRefPtr,                  // [OUT] Microphone stream.
+ *     le_audio_StreamRef_t*     speakerRefPtr               // [OUT] Speaker stream.
  * )
  * {
  *     *mdmRxAudioRefPtr = le_audio_OpenModemVoiceRx();
@@ -253,7 +247,7 @@
  *     // If I cannot get the audio from the voice call, I return an error.
  *     if ((*mdmRxAudioRefPtr == NULL) || (*mdmTxAudioRefPtr == NULL))
  *     {
- *             // I close the audio interfaces whatever the one has failed to open.
+ *             // I close the audio interfaces that  have failed to open.
  *             le_audio_Close(*mdmRxAudioRefPtr);
  *             le_audio_Close(*mdmTxAudioRefPtr);
  *             return LE_NOT_POSSIBLE;
@@ -277,12 +271,12 @@
  *
  * le_result_t SwitchVoiceCallAudio
  * (
- *     le_audio_ConnectorRef_t  audioInputConnectorRef,  // [IN] The input connector.
- *     le_audio_ConnectorRef_t  audioOutputConnectorRef, // [IN] The output connector.
- *     le_audio_StreamRef_t     oldMdmRxAudioRef,        // [IN] The received audio stream of the previous voice call.
- *     le_audio_StreamRef_t     oldMdmTxAudioRef,        // [IN] The transmitted audio stream of the previous voice call.
- *     le_audio_StreamRef_t*    newMdmRxAudioRefPtr,     // [OUT] The received audio stream of the new voice call.
- *     le_audio_StreamRef_t*    newMdmTxAudioRefPtr      // [OUT] The transmitted audio stream of the new voice call.
+ *     le_audio_ConnectorRef_t  audioInputConnectorRef,  // [IN] Input connector.
+ *     le_audio_ConnectorRef_t  audioOutputConnectorRef, // [IN] Output connector.
+ *     le_audio_StreamRef_t     oldMdmRxAudioRef,        // [IN] Received audio stream of the previous voice call.
+ *     le_audio_StreamRef_t     oldMdmTxAudioRef,        // [IN] Transmitted audio stream of the previous voice call.
+ *     le_audio_StreamRef_t*    newMdmRxAudioRefPtr,     // [OUT] Received audio stream of the new voice call.
+ *     le_audio_StreamRef_t*    newMdmTxAudioRefPtr      // [OUT] Transmitted audio stream of the new voice call.
  * )
  * {
  *     if ((newMdmRxAudioRefPtr == NULL)     ||
@@ -297,7 +291,7 @@
  *     // If I cannot get the audio from the voice call, I return an error.
  *     if ((*newMdmRxAudioRefPtr == NULL) || (*newMdmTxAudioRefPtr == NULL))
  *     {
- *         // I close the audio interfaces whatever the one has failed to open.
+ *         // I close the audio interfaces that have failed to open.
  *         le_audio_Close(*newMdmRxAudioRefPtr);
  *         le_audio_Close(*newMdmTxAudioRefPtr);
  *         return LE_NOT_POSSIBLE;
@@ -317,10 +311,10 @@
  *
  * le_result_t SwitchBackVoiceCallAudio
  * (
- *     le_audio_StreamRef_t  oldMdmRxAudioRef, // [IN] The received audio stream of the previous voice call.
- *     le_audio_StreamRef_t  oldMdmTxAudioRef, // [IN] The transmitted audio stream of the previous voice call.
- *     le_audio_StreamRef_t  newMdmRxAudioRef, // [IN] The received audio stream of the new voice call.
- *     le_audio_StreamRef_t  newMdmTxAudioRef  // [IN] The transmitted audio stream  of the new voice call.
+ *     le_audio_StreamRef_t  oldMdmRxAudioRef, // [IN] Received audio stream of the previous voice call.
+ *     le_audio_StreamRef_t  oldMdmTxAudioRef, // [IN] Transmitted audio stream of the previous voice call.
+ *     le_audio_StreamRef_t  newMdmRxAudioRef, // [IN] Received audio stream of the new voice call.
+ *     le_audio_StreamRef_t  newMdmTxAudioRef  // [IN] Transmitted audio stream  of the new voice call.
  * )
  * {
  *     // I can delete the new call audio interfaces.
@@ -365,7 +359,7 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Start the client main thread
+ * Start the service for the client main thread
  */
 //--------------------------------------------------------------------------------------------------
 void le_audio_StartClient
@@ -388,7 +382,7 @@ void le_audio_StopClient
 /**
  * Open the Microphone.
  *
- * @return A Reference to the input audio stream, NULL if the function fails.
+ * @return Reference to the input audio stream, NULL if the function fails.
  */
 //--------------------------------------------------------------------------------------------------
 le_audio_StreamRef_t le_audio_OpenMic
@@ -400,7 +394,7 @@ le_audio_StreamRef_t le_audio_OpenMic
 /**
  * Open the Speakerphone.
  *
- * @return A Reference to the output audio stream, NULL if the function fails.
+ * @return Reference to the output audio stream, NULL if the function fails.
  */
 //--------------------------------------------------------------------------------------------------
 le_audio_StreamRef_t le_audio_OpenSpeaker
@@ -412,7 +406,7 @@ le_audio_StreamRef_t le_audio_OpenSpeaker
 /**
  * Open the received audio stream of an USB audio class.
  *
- * @return A Reference to the input audio stream, NULL if the function fails.
+ * @return Reference to the input audio stream, NULL if the function fails.
  */
 //--------------------------------------------------------------------------------------------------
 le_audio_StreamRef_t le_audio_OpenUsbRx
@@ -424,7 +418,7 @@ le_audio_StreamRef_t le_audio_OpenUsbRx
 /**
  * Open the transmitted audio stream of an USB audio class.
  *
- * @return A Reference to the output audio stream, NULL if the function fails.
+ * @return Reference to the output audio stream, NULL if the function fails.
  */
 //--------------------------------------------------------------------------------------------------
 le_audio_StreamRef_t le_audio_OpenUsbTx
@@ -436,7 +430,7 @@ le_audio_StreamRef_t le_audio_OpenUsbTx
 /**
  * Open the received audio stream of the PCM interface.
  *
- * @return A Reference to the input audio stream, NULL if the function fails.
+ * @return Reference to the input audio stream, NULL if the function fails.
  */
 //--------------------------------------------------------------------------------------------------
 le_audio_StreamRef_t le_audio_OpenPcmRx
@@ -449,7 +443,7 @@ le_audio_StreamRef_t le_audio_OpenPcmRx
 /**
  * Open the transmitted audio stream of the PCM interface.
  *
- * @return A Reference to the output audio stream, NULL if the function fails.
+ * @return Reference to the output audio stream, NULL if the function fails.
  */
 //--------------------------------------------------------------------------------------------------
 le_audio_StreamRef_t le_audio_OpenPcmTx
@@ -460,9 +454,35 @@ le_audio_StreamRef_t le_audio_OpenPcmTx
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Open the received audio stream of the I2S interface.
+ *
+ * @return Reference to the input audio stream, NULL if the function fails.
+ */
+//--------------------------------------------------------------------------------------------------
+le_audio_StreamRef_t le_audio_OpenI2sRx
+(
+    le_audio_I2SChannel_t mode
+        ///< [IN]
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Open the transmitted audio stream of the I2S interface.
+ *
+ * @return Reference to the output audio stream, NULL if the function fails.
+ */
+//--------------------------------------------------------------------------------------------------
+le_audio_StreamRef_t le_audio_OpenI2sTx
+(
+    le_audio_I2SChannel_t mode
+        ///< [IN]
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Open the received audio stream of a voice call.
  *
- * @return A Reference to the input audio stream, NULL if the function fails.
+ * @return Reference to the input audio stream, NULL if the function fails.
  */
 //--------------------------------------------------------------------------------------------------
 le_audio_StreamRef_t le_audio_OpenModemVoiceRx
@@ -474,7 +494,7 @@ le_audio_StreamRef_t le_audio_OpenModemVoiceRx
 /**
  * Open the transmitted audio stream of a voice call.
  *
- * @return A Reference to the output audio stream, NULL if the function fails.
+ * @return Reference to the output audio stream, NULL if the function fails.
  */
 //--------------------------------------------------------------------------------------------------
 le_audio_StreamRef_t le_audio_OpenModemVoiceTx
@@ -486,11 +506,11 @@ le_audio_StreamRef_t le_audio_OpenModemVoiceTx
 /**
  * Get the audio format of an input or output stream.
  *
- * @return LE_FAULT         The function failed.
- * @return LE_BAD_PARAMETER The audio stream reference is invalid.
- * @return LE_OK            The function succeeded.
+ * @return LE_FAULT         Function failed.
+ * @return LE_BAD_PARAMETER Audio stream reference is invalid.
+ * @return LE_OK            Function succeeded.
  *
- * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ * @note If the caller is passing a bad reference into this function, it is a fatal error, the
  *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
@@ -509,7 +529,7 @@ le_result_t le_audio_GetFormat
 //--------------------------------------------------------------------------------------------------
 /**
  * Close an audio stream.
- * If several Users own the stream reference, the interface will be definitively closed only after
+ * If several users own the stream reference, the interface closes only after
  * the last user closes the audio stream.
  *
  * @note If the caller is passing a bad reference into this function, it is a fatal error, the
@@ -526,10 +546,10 @@ void le_audio_Close
 /**
  * Set the Gain value of an input or output stream.
  *
- * @return LE_FAULT         The function failed.
- * @return LE_BAD_PARAMETER The audio stream reference is invalid.
- * @return LE_OUT_OF_RANGE  The gain parameter is not between 0 and 100
- * @return LE_OK            The function succeeded.
+ * @return LE_FAULT         Function failed.
+ * @return LE_BAD_PARAMETER Audio stream reference is invalid.
+ * @return LE_OUT_OF_RANGE  Gain parameter is not between 0 and 100
+ * @return LE_OK            Function succeeded.
  *
  * @note The hardware may or may not support the full 0-100 resolution, and if you want to see what
  * was actually set call le_audio_GetGain() after le_audio_SetGain() to get the real value.
@@ -551,14 +571,14 @@ le_result_t le_audio_SetGain
 /**
  * Get the Gain value of an input or output stream.
  *
- * @return LE_FAULT         The function failed.
- * @return LE_BAD_PARAMETER The audio stream reference is invalid.
- * @return LE_OK            The function succeeded.
+ * @return LE_FAULT         Function failed.
+ * @return LE_BAD_PARAMETER Audio stream reference is invalid.
+ * @return LE_OK            Function succeeded.
  *
  * @note The hardware may or may not support the full 0-100 resolution, and if you want to see what
  * was actually set call le_audio_GetGain() after le_audio_SetGain() to get the real value.
  *
- * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ * @note If the caller is passing a bad reference into this function, it is a fatal error, the
  *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
@@ -575,9 +595,9 @@ le_result_t le_audio_GetGain
 /**
  * Mute an audio stream.
  *
- * @return LE_FAULT         The function failed.
- * @return LE_BAD_PARAMETER The audio stream reference is invalid.
- * @return LE_OK            The function succeeded.
+ * @return LE_FAULT         Function failed.
+ * @return LE_BAD_PARAMETER Audio stream reference is invalid.
+ * @return LE_OK            Function succeeded.
  *
  * @note If the caller is passing a bad reference into this function, it is a fatal error, the
  *       function will not return.
@@ -593,9 +613,9 @@ le_result_t le_audio_Mute
 /**
  * Unmute an audio stream.
  *
- * @return LE_FAULT         The function failed.
- * @return LE_BAD_PARAMETER The audio stream reference is invalid.
- * @return LE_OK            The function succeeded.
+ * @return LE_FAULT         Function failed.
+ * @return LE_BAD_PARAMETER Audio stream reference is invalid.
+ * @return LE_OK            Function succeeded.
  *
  * @note If the caller is passing a bad reference into this function, it is a fatal error, the
  *       function will not return.
@@ -611,7 +631,7 @@ le_result_t le_audio_Unmute
 /**
  * Create an audio connector reference.
  *
- * @return A Reference to the audio connector, NULL if the function fails.
+ * @return Reference to the audio connector, NULL if the function fails.
  */
 //--------------------------------------------------------------------------------------------------
 le_audio_ConnectorRef_t le_audio_CreateConnector
@@ -637,10 +657,10 @@ void le_audio_DeleteConnector
 /**
  * Connect an audio stream to the connector reference.
  *
- * @return LE_FAULT         The function failed.
- * @return LE_BUSY          There are insufficient DSP resources available.
- * @return LE_BAD_PARAMETER The connector and/or the audio stream references are invalid.
- * @return LE_OK            The function succeeded.
+ * @return LE_FAULT         Function failed.
+ * @return LE_BUSY          Insufficient DSP resources available.
+ * @return LE_BAD_PARAMETER Connector and/or the audio stream references are invalid.
+ * @return LE_OK            Function succeeded.
  *
  * @note If the caller is passing a bad reference into this function, it is a fatal error, the
  *       function will not return.

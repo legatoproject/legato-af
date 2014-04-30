@@ -70,6 +70,8 @@ local asscon     = require "agent.asscon"
 local config     = require "agent.config"
 local racon      = require "racon"
 local device     = require "agent.devman"
+local rcerrnum   = require "returncodes".tonumber
+local checks     = require "checks"
 local devasset   = device.asset
 --internal sub modules
 local common     = require "agent.update.common"
@@ -78,7 +80,7 @@ local pkgcheck   = require "agent.update.pkgcheck"
 local updatemgr  = require "agent.update.updatemgr"
 local updaters   = require "agent.update.builtinupdaters"
 local upderrnum  = require "agent.update.status".tonumber
-
+local upderrstr  = require "agent.update.status".tostring
 local data = common.data
 
 local M = { }
@@ -374,7 +376,7 @@ local function EMPSoftwareUpdateRequest(assetid, request)
 
     if not data.currentupdate then
         log("UPDATE", "INFO", "Received software update request(%s) while no update is in progress, from %s", tostring(request), sprint(assetid))
-        return 1, "no update in progress"
+        return asscon.formaterr("no update in progress")
     end
 
     -- see swi_update.h for request details
@@ -382,7 +384,7 @@ local function EMPSoftwareUpdateRequest(assetid, request)
 
     if not requests[request] then
         log("UPDATE", "WARNING", "Received invalid software update request(%s)", tostring(request))
-        return 1, "invalid update request"
+        return asscon.formaterr("invalid update request")
     end
 
     -- special cases: we are paused and need to take care of the request now
@@ -535,6 +537,99 @@ local function stepprogress(details, finalizer)
     end
 end
 
+
+
+---uninstallcmp
+-- Removes the component identified by param cmpname (as it would be speficied in Manifest).
+--
+-- This update action doesn't follow regular update process. The current design of update module
+-- doesn't allow to add easily this uninstallcmp feature, so we try to add it without modifying deeply
+-- the module, even if it means no respecting the regular update process.
+-- Current specificities:
+-- 30 sec timeout for completion, no retry, no step, no user notification,
+-- no resume after agent reboot, 1 cmp uninstall at the same time.
+--
+-- @param cmpname mandatory string, must be different from empty string
+-- @return "ok" on success, nil+errstr on error.
+local function uninstallcmp(cmpname)
+    checks("string")
+    if cmpname == "" then return nil, "BAD_PARAMETER" end
+    if data.currentupdate then return nil, "OTHER_UPDATE_IN_PROGRESS: can't run uninstallcmp until current update is done" end
+    log("UPDATE", "INFO", "Component uninstallation in progress")
+    -- fill new update info, making sure getstatus will work as expected
+    -- also put fields that will be saved in lastupdate.
+    data.currentupdate= { infos= { proto = "localuninstall" } }
+    data.currentupdate.step = 1
+    data.currentupdate.status = "in_progress"
+    data.currentupdate.starttime = os.time()
+
+    --res: integer, update code status, details: optional string, error details
+    --returns "ok" on success, nil, details on error
+    local function cleanuninstallcmp(res, details)
+        details = tostring(details)
+        data.currentupdate.result = res
+        data.currentupdate.resultdetails = details
+        -- `savestate` copies currentupdate fields to lastupdate, and set currentupdate to nil and persist swlist.
+        savestate()
+        -- send this signal to unblock potential pending getstatus("sync") call.
+        sched.signal("updateresult", res==upderrnum 'OK' and "success" or "failure")
+        log("UPDATE", res and "INFO" or "ERROR", "Component uninstallation finished with [%s] [%s]", tostring(res), details)
+        local result = res == upderrnum 'OK' and "ok" or nil
+        local strerr =  res == upderrnum 'OK' and nil or string.format("%s:%s", upderrstr(res), details)
+        return result, strerr
+    end
+
+    -- ## don't persist current update infos: cmp removal won't be resumed if the agent is stopped.
+
+    -- Build manifest to trigger cmp removal.
+    local manifest = {
+        components = {
+            { name = cmpname}
+        }
+    }
+
+    -- check dependencies using dedicated API in pkgcheck
+    local res, errcode, errstr = pkgcheck.checkmanifest(manifest)
+    if not res then
+        errcode = errcode or upderrnum'MANIFEST_DEFAULT_ERROR'
+        return cleanuninstallcmp(errcode, errstr)
+    end
+
+    --we're good
+    data.currentupdate.manifest = manifest
+
+    local function senduninstallcmd()
+        --assetid is the first element of cmpname, payload sent without version meaning uninstall
+        local res, err = asscon.sendcmd(pathutils.split(cmpname, 1), 'SoftwareUpdate', {cmpname})
+        if not res then --signal failure ASAP to prevent useless timeout expiration.
+            log("UPDATE","ERROR", "Failed to send uninstallcmd to asset %s, err=%s", cmpname, tostring(err))
+            sched.signal("localuninstall", { cmpname = cmpname, updateresult = upderrnum"SENDING_UPDATE_TO_ASSET_FAILED" })
+        end
+    end
+    
+    --sends the uninstall request to the asset and wait for the specific signal.
+    sched.run(senduninstallcmd)
+    local event = sched.wait( "localuninstall", {"*", 30}) -- 30 sec timeout
+    --no retry! we can analyse the results
+    local res, err
+    if event == "timeout" then
+        res = upderrnum"SENDING_UPDATE_TO_ASSET_FAILED"; err = event
+    elseif type(event) ~= "table" or event.cmpname ~= cmpname then
+        res = upderrnum"ASSET_UPDATE_EXECUTION_FAILED"; err = "Internal error: received invalid cmpname for update result, aborting."
+    else
+        res = event.updateresult or upderrnum"DEFAULT_RESULT_CODE"
+        --update software list only in case of success
+        if res == upderrnum 'OK' then
+            --set `force` to false: cmp removal was not forced: dependency check has been done
+            common.updateswlist( manifest.components[1], false)
+        else
+            err = string.format("Component [%s] has reported an error [%s]", cmpname, res)
+        end
+    end
+    return cleanuninstallcmp(res, err)
+end
+
+
 --todo to remove:
 local INIT_DONE
 
@@ -560,10 +655,10 @@ end
 local function update_sink()
    return function(chunk, err)
             local handle = io.open(common.dropdir .. "/updatepackage.tar", "a")
-	    local ret = (not chunk) and 1 or handle:write(chunk)
-	    handle:close()
-	    return ret
-	  end
+        local ret = (not chunk) and 1 or handle:write(chunk)
+        handle:close()
+        return ret
+      end
 end
 
 --init
@@ -603,14 +698,14 @@ local function init()
             sched.sighook("Agent", "InitDone", function() sched.run(localupdate) end )
         end
 
-	-- register rest commands
-	if type(config.rest) == "table" and config.rest.activate == true then
-	   local rest = require 'web.rest'
-	   rest.register("update[/%w%?]*$", "POST", rest_localupdate_handler, update_sink())
-	   rest.register("update[/%w%?]*$", "GET", rest_status_handler)
-	else
-	   rest_localupdate_handler = nil
-	   rest_status_handler = nil
+        -- register rest commands
+        if config.get("rest.activate") then
+            local rest = require 'web.rest'
+            rest.register("^update/?$", "POST", rest_localupdate_handler, update_sink())
+            rest.register("^update/?$", "GET", rest_status_handler)
+        else
+            rest_localupdate_handler = nil
+            rest_status_handler = nil
         end
     else
         log("UPDATE", "INFO", "Update service init was already done!")
@@ -625,9 +720,8 @@ M.localupdate = localupdate
 M.getstatus = getstatus
 --to be used from SUF M3DA cmd hld to notify new update
 M.notifynewupdate = notifynewupdate
---to be used from mgr to report to srv
---agnostic from protocol
---M.sendresult = sendresult
+--uninstall component shortcut public API
+M.uninstallcmp = uninstallcmp
 
 --temporary fix to have update api as a global
 agent.update = M

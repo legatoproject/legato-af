@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2012 Sierra Wireless and others.
+ * Copyright (c) 2014 Sierra Wireless and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -89,7 +89,7 @@ rc_ReturnCode_t swi_av_Destroy();
 */
 rc_ReturnCode_t swi_av_ConnectToServer
 (
-    unsigned int latency ///< [IN] latency in seconds before initiating the connection to the server,
+    unsigned int latency ///< [IN] Latency in seconds before initiating the connection to the server,
                          ///<  use SWI_AV_CX_SYNC to specify synchronous connection.
 );
 
@@ -114,7 +114,7 @@ rc_ReturnCode_t swi_av_ConnectToServer
 */
 rc_ReturnCode_t swi_av_TriggerPolicy
 (
-    const char* policyPtr ///< [IN] name of the policy queue to be flushed. Flush all policies if policy=='*';
+    const char* policyPtr ///< [IN] Name of the policy queue to be flushed. Flush all policies if policy=='*';
                           ///<      only flush the default policy if policy is omitted.
 );
 
@@ -143,10 +143,10 @@ typedef struct swi_av_Asset swi_av_Asset_t;
 */
 rc_ReturnCode_t swi_av_asset_Create
 (
-    swi_av_Asset_t** asset, ///< [OUT] pointer to hold the newly created asset.
-                            ///<       The AirVantage library is responsible for allocating the resources of this asset.
-                            ///<       The user is responsible of releasing resources using #swi_av_asset_Destroy.
-    const char* assetIdPtr  ///< [IN] string defining the assetId identifying the instance of this new asset.
+    swi_av_Asset_t** asset, ///< [OUT] Pointer to hold the newly created asset,
+                            ///<        AirVantage library is responsible for allocating the resources of this asset.
+                            ///<       User is responsible of releasing resources using #swi_av_asset_Destroy.
+    const char* assetIdPtr  ///< [IN] String defining the assetId identifying the instance of this new asset,
                             ///<      NULL and empty string values are forbidden.
                             ///<      The assetId must be unique on the same device, otherwise asset starting will fail.
 );
@@ -165,7 +165,7 @@ rc_ReturnCode_t swi_av_asset_Create
 */
 rc_ReturnCode_t swi_av_asset_Start
 (
-    swi_av_Asset_t* asset ///< [IN] the asset to start
+    swi_av_Asset_t* asset ///< [IN] Asset to start
 );
 
 
@@ -179,7 +179,7 @@ rc_ReturnCode_t swi_av_asset_Start
 */
 rc_ReturnCode_t swi_av_asset_Destroy
 (
-    swi_av_Asset_t* asset ///< [IN] the asset to stop
+    swi_av_Asset_t* asset ///< [IN] Asset to stop
 );
 
 
@@ -199,7 +199,7 @@ rc_ReturnCode_t swi_av_asset_Destroy
 * for those special timestamp requests.
 */
 typedef enum swi_av_timestamp{
-  SWI_AV_TSTAMP_NO = 0,   ///< Explicitly request no timestamp to send alongside the data
+  SWI_AV_TSTAMP_NO = 0,   ///< Explicitly request no timestamp to send alongside the data.
   SWI_AV_TSTAMP_AUTO = 1, ///< Timestamp will be automatically generated when the data is added.
 }swi_av_timestamp_t;
 
@@ -219,15 +219,15 @@ typedef enum swi_av_timestamp{
 */
 rc_ReturnCode_t swi_av_asset_PushString
 (
-    swi_av_Asset_t* asset, ///< [IN] the asset used to send the data
-    const char *pathPtr,   ///< [IN] the datastore path under which data will be stored relative to the asset node,
-                           ///<      the last path segment will be used as a datastore key.
+    swi_av_Asset_t* asset, ///< [IN] Asset used to send the data.
+    const char *pathPtr,   ///< [IN] Datastore path under which data will be stored relative to the asset node,
+                           ///<      Last path segment will be used as a datastore key.
                            ///<      NULL and empty string values are forbidden.
-    const char* policyPtr, ///< [IN] optional name of the policy controlling when the data must be sent to the server.
+    const char* policyPtr, ///< [IN] Optional name of the policy controlling when the data must be sent to the server.
                            ///<      If omitted, the default policy is used.
-    uint32_t timestamp,    ///< [IN] optional timestamp, in second since Unix Epoch,  #swi_av_timestamp_t values can be used
-                           ///<      to request automatic or no timestamp.
-    const char* valuePtr   ///< [IN] string value to push
+    uint32_t timestamp,    ///< [IN] Optional timestamp, in second since Unix Epoch,  #swi_av_timestamp_t values can be used
+                           ///<      Request automatic or no timestamp.
+    const char* valuePtr   ///< [IN] String value to push.
 );
 
 /**
@@ -246,14 +246,14 @@ rc_ReturnCode_t swi_av_asset_PushString
 */
 rc_ReturnCode_t swi_av_asset_PushInteger
 (
-    swi_av_Asset_t* asset, ///< [IN] the asset used to send the data
-    const char *pathPtr,   ///< [IN] the datastore path under which data will be stored relative to the asset node,
-                           ///<      the last path segment will be used as a datastore key.
-    const char* policyPtr, ///< [IN] optional, name of the policy controlling when the data must be sent to the server.
+    swi_av_Asset_t* asset, ///< [IN] Asset used to send the data.
+    const char *pathPtr,   ///< [IN] Datastore path under which data will be stored relative to the asset node.
+                           ///<      Last path segment will be used as a datastore key.
+    const char* policyPtr, ///< [IN] Optional, name of the policy controlling when the data must be sent to the server.
                            ///<      If omitted, the default policy is used.
-    uint32_t timestamp,    ///< [IN] optional timestamp, in second since Unix Epoch, #swi_av_timestamp_t values can be used
-                           ///<      to request automatic or no timestamp.
-    int64_t value          ///< [IN] integer value to push
+    uint32_t timestamp,    ///< [IN] Optional timestamp, in second since Unix Epoch, #swi_av_timestamp_t values can be used
+                           ///<      Request automatic or no timestamp.
+    int64_t value          ///< [IN] Integer value to push
 );
 
 /**
@@ -272,13 +272,13 @@ rc_ReturnCode_t swi_av_asset_PushInteger
 */
 rc_ReturnCode_t swi_av_asset_PushFloat
 (
-    swi_av_Asset_t* asset, ///< [IN] the asset used to send the data
-    const char *pathPtr,   ///< [IN] the datastore path under which data will be stored relative to the asset node,
-                           ///<      the last path segment will be used as a datastore key
-    const char* policyPtr, ///< [IN] optional name of the policy controlling when the data must be sent to the server.
+    swi_av_Asset_t* asset, ///< [IN] Asset used to send the data
+    const char *pathPtr,   ///< [IN] Datastore path under which data will be stored relative to the asset node.
+                           ///<      Last path segment will be used as a datastore key
+    const char* policyPtr, ///< [IN] Optional name of the policy controlling when the data must be sent to the server.
                            ///<      If omitted, the default policy is used.
-    uint32_t timestamp,    ///< [IN] optional timestamp, in second since Unix Epoch, #swi_av_timestamp_t values can be used
-                           ///<      to request automatic or no timestamp.
+    uint32_t timestamp,    ///< [IN] Optional timestamp, in second since Unix Epoch, #swi_av_timestamp_t values can be used
+                           ///<      Request automatic or no timestamp.
     double value           ///< [IN] float value to push
 );
 
@@ -318,17 +318,17 @@ typedef enum
 */
 rc_ReturnCode_t swi_av_table_Create
 (
-    swi_av_Asset_t* asset,      ///< [IN] the asset used to send the data
-    swi_av_Table_t** table,     ///< [OUT] pointer to hold the newly created table.
-                                ///<       The AirVantage library is responsible for allocating the resources of this table,
-                                ///<       The user is responsible of releasing the resources using swi_av_Table_Destroy.
-    const char* pathPtr,        ///< [IN] the datastore path under which data will be stored relative to the asset node
-    size_t numColumns,          ///< [IN] number of columns of the table
-    const char** columnNamesPtr,///< [IN] pointer to an array of strings (with numColums entries): name of each column.
-    const char* policyPtr,      ///< [IN] name of the policy controlling when the data must be sent to the server.
-    swi_av_Table_Storage_t persisted, ///< [IN] value which describes how the table must be persisted, STORAGE_FLASH meaning file persistence,
+    swi_av_Asset_t* asset,      ///< [IN] Asset used to send the data
+    swi_av_Table_t** table,     ///< [OUT] Pointer to hold the newly created table.
+                                ///<        AirVantage library is responsible for allocating the resources of this table,
+                                ///<       User is responsible of releasing the resources using swi_av_Table_Destroy.
+    const char* pathPtr,        ///< [IN] Datastore path under which data will be stored relative to the asset node
+    size_t numColumns,          ///< [IN] Number of columns of the table
+    const char** columnNamesPtr,///< [IN] Pointer to an array of strings (with numColums entries): name of each column.
+    const char* policyPtr,      ///< [IN] Name of the policy controlling when the data must be sent to the server.
+    swi_av_Table_Storage_t persisted, ///< [IN] Value which describes how the table must be persisted, STORAGE_FLASH meaning file persistence,
                                 ///<      STORAGE_RAM meaning in ram only.
-    int purge                   ///< [IN] boolean value, indicates if existing table (if any) is recreated (true) or reused (false).
+    int purge                   ///< [IN] Boolean value, indicates if existing table (if any) is recreated (true) or reused (false).
                                 ///<      Recreation means the table will be dropped and then created from scratch
                                 ///<      (so any data inside table will be lost).
 );
@@ -359,8 +359,8 @@ rc_ReturnCode_t swi_av_table_Destroy
 */
 rc_ReturnCode_t swi_av_table_PushFloat
 (
-    swi_av_Table_t* table, ///< [IN] the table where to push the value
-    double value           ///< [IN] the float to push
+    swi_av_Table_t* table, ///< [IN] Table where to push the value
+    double value           ///< [IN] Float to push
 );
 
 
@@ -376,8 +376,8 @@ rc_ReturnCode_t swi_av_table_PushFloat
 */
 rc_ReturnCode_t swi_av_table_PushInteger
 (
-    swi_av_Table_t* table, ///< [IN] the table where to push the value
-    int value              ///< [IN] the integer to push
+    swi_av_Table_t* table, ///< [IN] Table where to push the value
+    int value              ///< [IN] Integer to push
 );
 
 /**
@@ -391,8 +391,8 @@ rc_ReturnCode_t swi_av_table_PushInteger
 */
 rc_ReturnCode_t swi_av_table_PushString
 (
-    swi_av_Table_t* table, ///< [IN] the table where to push the value
-    const char* value      ///< [IN] the string to push
+    swi_av_Table_t* table, ///< [IN] Table where to push the value
+    const char* value      ///< [IN] String to push
 );
 
 
@@ -408,7 +408,7 @@ rc_ReturnCode_t swi_av_table_PushString
 */
 rc_ReturnCode_t swi_av_table_PushRow
 (
-    swi_av_Table_t* table ///< [IN] the table where to push the value
+    swi_av_Table_t* table ///< [IN] Table where to push the value
 );
 
 
@@ -430,13 +430,13 @@ rc_ReturnCode_t swi_av_table_PushRow
 *
 * String parameters given to this function will be released when the callback returns.
 *
-* @param asset [IN] the asset receiving the data
-* @param pathPtr [IN] the path targeted by the data sent by the server.
-* @param data [IN] the data iterator containing the received data.
+* @param asset [IN] Asset receiving the data
+* @param pathPtr [IN] Path targeted by the data sent by the server.
+* @param data [IN] Data iterator containing the received data.
 *             The data contained in the iterator will be automatically released when the callback returns.
-* @param ack_id [IN] the id to be used to acknowledge the received data.
+* @param ack_id [IN] ID to be used to acknowledge the received data.
 *               If ack_id=0 then there is no need to acknowledge.
-* @param userDataPtr [IN] the user data given at callback registration.
+* @param userDataPtr [IN] User data given at callback registration.
 */
 typedef void (*swi_av_DataWriteCB)
 (
@@ -490,9 +490,9 @@ typedef void (*swi_av_DataWriteCB)
 */
 rc_ReturnCode_t swi_av_RegisterDataWrite
 (
-    swi_av_Asset_t *asset, ///< [IN] the asset listening to incoming data.
-    swi_av_DataWriteCB cb, ///< [IN] the callback function to register to receive the data.
-    void * userDataPtr     ///< [IN] user data that will be given back in callback.
+    swi_av_Asset_t *asset, ///< [IN] Asset listening to incoming data.
+    swi_av_DataWriteCB cb, ///< [IN] Callback function to register to receive the data.
+    void * userDataPtr     ///< [IN] User data that will be given back in callback.
 );
 
 
@@ -506,11 +506,11 @@ rc_ReturnCode_t swi_av_RegisterDataWrite
 */
 rc_ReturnCode_t swi_av_Acknowledge
 (
-    int ackId,             ///< [IN] the id to acknowledge, as given to the data reception callback.
-    int status,            ///< [IN] status of the acknowledge: 0 means success, other values mean error
-    const char* errMsgPtr, ///< [IN] an optional error message string
-    const char* policyPtr, ///< [IN] optional triggering policy to send the acknowledgment, defaults to "now".
-    int persisted          ///< [IN] boolean, if true, the ACK message will be persisted in flash by the agent,
+    int ackId,             ///< [IN] ID to acknowledge, as given to the data reception callback.
+    int status,            ///< [IN] Status of the acknowledge: 0 means success, other values mean error
+    const char* errMsgPtr, ///< [IN] Optional error message string
+    const char* policyPtr, ///< [IN] Optional triggering policy to send the acknowledgment, defaults to "now".
+    int persisted          ///< [IN] Boolean, if true, the ACK message will be persisted in flash by the agent,
                            ///<      and kept even if a reboot occurs before the policy is triggered.
 );
 
@@ -538,17 +538,17 @@ rc_ReturnCode_t swi_av_Acknowledge
 *
 * String parameters will be released when the callback returns.
 *
-* @param asset               [IN] the asset receiving the update notification
-* @param componentNamePtr    [IN] is the identifier of the component to update, (the component name is a path in dotted notation)
+* @param asset               [IN] Asset receiving the update notification
+* @param componentNamePtr    [IN] Identifier of the component to update, (the component name is a path in dotted notation)
 *                                 the name is defined in update package manifest file, here it is provided without the assetid at the beginning.
-* @param versionPtr          [IN] is the version of the component to install. Version can be empty string (but not NULL!)
+* @param versionPtr          [IN] Version of the component to install. Version can be empty string (but not NULL!)
 *                                 to specify de-installation request, non empty string for regular update/install of software component.
-* @param updateFilePathPtr   [IN] absolute path to local file to use on the device to do the update, can be empty string when version is empty too.
+* @param updateFilePathPtr   [IN] Absolute path to local file to use on the device to do the update, can be empty string when version is empty too.
 *                                 The file will be automatically deleted when the update process ends, so once #swi_av_SendUpdateResult has been called,
 *                                 or all retries have been done for a single component update, the file existence on file system is not guaranteed anymore.
-* @param customParams        [IN] application specifics parameters, defined in update package, can be NULL if no custom parameter was defined.
+* @param customParams        [IN] Application specifics parameters, defined in update package, can be NULL if no custom parameter was defined.
 *                                 To be processed using #swi_dset_Iterator_t API, embedded data in the iterator will be automatically released when this callback returns.
-* @param userDataPtr         [IN] the user data given at callback registration
+* @param userDataPtr         [IN] User data given at callback registration
 *
 *
 *
@@ -582,7 +582,7 @@ typedef rc_ReturnCode_t (*swi_av_updateNotificationCB)
 * This feature targets applications that want to process their own update or applications that are responsible for updating another pieces of software,
 * taking advantage of the integrated solution provided by AirVantage services.
 *
-* If the application wants to have a deeper control of the whole update process, it needs to use the functionalities provided by \ref swi_update.h.
+* If the application wants to have a deeper control of the whole update process, it needs to use the functionalities provided by @ref swi_update.h.
 *
 * - There can be only one pending software update request at a time.
 * - Only one hook can be registered for the whole asset
@@ -602,10 +602,10 @@ typedef rc_ReturnCode_t (*swi_av_updateNotificationCB)
 */
 rc_ReturnCode_t swi_av_RegisterUpdateNotification
 (
-    swi_av_Asset_t* asset,           ///< [IN] the asset listening to update notification, can be a started or non-started asset.
-    swi_av_updateNotificationCB cb,  ///< [IN] the callback function to register to receive asset update notification
+    swi_av_Asset_t* asset,           ///< [IN] Asset listening to update notification, can be a started or non-started asset.
+    swi_av_updateNotificationCB cb,  ///< [IN] Callback function to register to receive asset update notification
                                      ///< Giving NULL as parameter will be treated as unregister of previous callback.
-    void *userDataPtr                ///< [IN] user data that will be given back in callback
+    void *userDataPtr                ///< [IN] User data that will be given back in callback
 );
 
 
@@ -617,11 +617,11 @@ rc_ReturnCode_t swi_av_RegisterUpdateNotification
 */
 rc_ReturnCode_t swi_av_SendUpdateResult
 (
-    swi_av_Asset_t* asset,        ///< [IN] the asset that was targeted by the software update request.
-    const char* componentNamePtr, ///< [IN] this must be the same value as the one that was given as argument to the swi_av_updateNotificationCB.
+    swi_av_Asset_t* asset,        ///< [IN] Asset that was targeted by the software update request.
+    const char* componentNamePtr, ///< [IN]Must be the same value as the one that was given as argument to the swi_av_updateNotificationCB.
                                   ///<      As only one software update is possible for the same component at the same time, the couple asset+componentName
                                   ///<      fully identifies the software update request.
-    int updateResult              ///< [IN] the result of the update, 200 for success, any other value means error.
+    int updateResult              ///< [IN] Result of the update, 200 for success, any other value means error.
                                   ///<      Values from 480 to 499 are reserved for applicative error codes,so it is highly recommended
                                   ///<      to use one (or more) of those to signify an error coming from an asset update.
 );

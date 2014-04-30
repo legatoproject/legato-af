@@ -5,6 +5,7 @@
 # Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
 #
 
+import os
 import sys
 import argparse
 
@@ -66,7 +67,8 @@ def GetArguments():
     parser.add_argument('--name-prefix',
                         dest="namePrefix",
                         default='',
-                        help='optional prefix for generated functions/types')
+                        help='''optional prefix for generated functions/types; defaults to input
+                        filename''')
 
     # todo: Is this option still needed, or is the --name-prefix option sufficient?
     parser.add_argument('--service-tag',
@@ -77,7 +79,7 @@ def GetArguments():
     parser.add_argument('--file-prefix',
                         dest="filePrefix",
                         default='',
-                        help='optional prefix for generated files')
+                        help='optional prefix for generated files; defaults to input file name')
 
     parser.add_argument('--user-include',
                         dest="userInclude",
@@ -88,6 +90,18 @@ def GetArguments():
                         dest="outputDir",
                         default='',
                         help='optional output directory for generated files')
+
+    parser.add_argument('--import-dir',
+                        dest="importDirs",
+                        action="append",
+                        default=[],
+                        help='optional directory for imported files; may be given multiple times')
+
+    parser.add_argument('--no-default-prefix',
+                        dest="noDefaultPrefix",
+                        action='store_true',
+                        default=False,
+                        help='do not use default file or name prefix if none is specified')
 
     parser.add_argument('--hash',
                         dest="hash",
@@ -112,35 +126,130 @@ def GetArguments():
         args.genServerInterface=True
         args.genServer=True
 
+    # If appropriate, use the default name or file prefixes
+    if not args.noDefaultPrefix:
+        apiFileName = os.path.splitext( os.path.basename(args.interfaceFile) )[0]
+        if not args.namePrefix:
+            args.namePrefix = apiFileName
+        if not args.filePrefix:
+            args.filePrefix = apiFileName
+
+    # todo: Remove this once all callers are updated.
+    #       The usage has changed slightly, so the trailing '_' will be added when necessary.
+    #       Until all callers have been updated, strip off the trailing underscore, if given.
+    if args.namePrefix and args.namePrefix[-1] == '_':
+        args.namePrefix = args.namePrefix[:-1]
+
+    if args.filePrefix and args.filePrefix[-1] == '_':
+        args.filePrefix = args.filePrefix[:-1]
+
     return args
+
+
+
+def ProcessImportList(importList, importDirs):
+    #print importList
+    importedCodeList = []
+
+    for i in importList:
+        name = i.name+".api"
+        print "importing", name
+
+        # Try to find the imported file in the given directory list
+        found = False
+        for d in importDirs:
+            path = os.path.join(d, name)
+            if os.path.exists(path):
+                found = True
+                break
+
+        if not found:
+            print "ERROR: '%s' not found in %s" % (name, importDirs)
+            sys.exit(1)
+              
+        data = open(path, 'r').read()
+
+        # In the current .api file, the imported types will be referenced using "name.",
+        # whereas in the generated C code, the prefix will be "name_".
+        codeTypes.SetImportName(i.name)
+        codeTypes.SetNamePrefix(i.name)
+
+        # Parse the imported file, which implicitly populates the type translation data
+        # todo: Currently, nested imports are not supported.  Would this actually be useful?
+        # todo: Currently, no checks are made to ensure that imported files only contain
+        #       type related definitions, i.e. it could contain FUNCTIONs and HANDLERs.
+        #       Should these be allowed in imported files?  It does provide more flexibility,
+        #       but it might also cause problems later.
+        parsedCode = interfaceParser.parseCode(data)
+        codeList = parsedCode['codeList']
+        importedCodeList += codeList
+
+ 
+        # todo: If given the appropriate option, may also want to generate the imported file,
+        #       but for now, don't do anything with the imported data.
+        # todo: Does it make sense to generate the imported file if it contains non-type
+        #       definitions.  If it contains FUNCTIONs, etc, it should already be generated
+        #       by some other means.
+        # todo: If we do generate the imported file here, should it be done once all files are 
+        #       parsed, or after the individual file is parsed.  This is only an issue if errors 
+        #       are encountered.
+
+    return importedCodeList
 
 
 #
 # Main
+# 
+def Main():
+    args = GetArguments()
+    #print args
+
+    data = open(args.interfaceFile, 'r').read()
+
+    # Process all the imported files first.  
+    importDirs = [ os.path.split(args.interfaceFile)[0] ] + args.importDirs
+    importList =  interfaceParser.getImportList(data)
+    importedCodeList = ProcessImportList(importList, importDirs)
+
+    # Set the name prefix first.  This has to be done before the interface is actually 
+    # parsed, since the resulting parsedCode will use the prefix.  Also, reset the
+    # import name, since this is the main file.
+    codeTypes.SetNamePrefix(args.namePrefix)
+    codeTypes.SetImportName("")
+
+    parsedCode = interfaceParser.parseCode(data)
+    allCodeList = importedCodeList + parsedCode['codeList']
+
+    # Dump info on the parsed file.  No need to generate any code.
+    if args.dump:
+        if args.hash:
+            # Print out the text used for generating the hash
+            print codeTypes.GetHashString(allCodeList)
+        else:
+            # Print out info on all the types, functions and handlers
+            codeTypes.PrintCode(allCodeList)
+
+            # Print out the type dictionary.
+            print '='*40 + '\n'
+            codeTypes.PrintDefinedTypes()
+        sys.exit(0)
+
+    # Calculate the hashValue, as it is always needed
+    hashValue = codeTypes.GetHash(allCodeList) 
+
+    # Handle the --hash argument here.  No need to generate any code
+    if args.hash:
+        print hashValue
+        sys.exit(0)
+
+    # Pass 'args' so that the function can determine what needs to be output
+    codeGen.WriteAllCode(args, parsedCode, hashValue)
+
+
+
+#
+# Init
 #
 
-args = GetArguments()
-#print args
-
-data = open(args.interfaceFile, 'r').read()
-
-# Set the name prefix first.  This has to be done before the interface is actually 
-# parsed, since the resulting parsedCode will use the prefix.
-codeTypes.SetNamePrefix(args.namePrefix)
-
-parsedCode = interfaceParser.parseCode(data)
-
-# Dump info on the parsed file.  No need to generate any code.
-if args.dump:
-    interfaceParser.printCode(parsedCode)
-    sys.exit(0)
-
-# Handle the --hash argument here.  No need to generate any code
-if args.hash:
-    print codeTypes.GetHash(parsedCode)
-    sys.exit(0)
-
-# Pass 'args' so that the functiond can determine what needs to be output
-codeGen.WriteAllCode(args, parsedCode)
-
+Main()
 

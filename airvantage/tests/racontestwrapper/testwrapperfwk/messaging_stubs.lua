@@ -21,21 +21,19 @@ local function remote_patching()
       return
    end
 
-   local init_config = client:newexec(function(...)
-					 local sms = require 'agent.asscon.sms'
-					 local update = require 'agent.update'
-					 package.loaded["messaging"].init = function()
-					    local internal = require 'messaginghal'
-					    internal.init()
-					    return "ok"
-					 end
-					 package.loaded["messaging"].sendSMS = function(recepient, message, format)
-					    print("sendSMS: recepient = " .. tostring(recepient) .. ", message = " .. tostring(message) .. ", format = " .. tostring(format))
-					    return "ok"
-					 end
-					 sms.init()
-					 update.init()
-				      end)
+  local init_config = client:newexec(function(...)
+          local sms = require 'agent.asscon.sms' -- TODO: this should not be in the test but rather setup a dedicated the defaultconfig for thoses tests...
+          package.loaded["messaging"].init = function()
+              local internal = require 'messaginghal'
+              internal.init()
+              return "ok"
+          end
+          package.loaded["messaging"].sendSMS = function(recepient, message, format)
+              print("sendSMS: recepient = " .. tostring(recepient) .. ", message = " .. tostring(message) .. ", format = " .. tostring(format))
+              return "ok"
+          end
+          sms.init() -- TODO: this should not be in the test but rather setup a dedicated the defaultconfig for thoses tests
+              end)
    init_config()
    sched.signal("messaging_stubs", "patched")
 end

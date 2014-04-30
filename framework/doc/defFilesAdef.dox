@@ -5,18 +5,20 @@
 @ref numProcs <br>
 @ref mqueueSize <br>
 @ref rtSignalQueueSize <br>
+@ref memLimit <br>
+@ref cpuShare <br>
 @ref fileSystemSize <br>
 @ref filesAdef <br>
 @ref executablesAdef <br>
 @ref importAdef <br>
 @ref groupsAdef <br>
-@ref refprocessesAdef 
+@ref refprocessesAdef
 
 Legato uses these sections in the .adef:
 
 @section sandboxed sandboxed
 
-Specifies if the app will be launched inside a sandbox. 
+Specifies if the app will be launched inside a sandbox.
 
 Permitted content in this section is:
 
@@ -25,18 +27,18 @@ Permitted content in this section is:
 
 The default is @b true.
 
-If an app is not inside of a sandbox (unsandboxed), it can see the target device's real root file system.  
+If an app is not inside of a sandbox (unsandboxed), it can see the target device's real root file system.
 A sandboxed app can't see the target's real root file system; instead, a sandboxed app has its own, separate root file system (which it can't leave).
 
-Each app has its own user ID and primary group ID.  User name and primary group name is "app-xxxx", 
-where the "xxxx" is replaced with the name of the app.  
+Each app has its own user ID and primary group ID.  User name and primary group name is "app-xxxx",
+where the "xxxx" is replaced with the name of the app.
 
-Sandboxed apps aren't allowed to be members of other groups 
-and are not allowed to have any capabilities (see "man 7 capabilities") set on their executables.  
+Sandboxed apps aren't allowed to be members of other groups
+and are not allowed to have any capabilities (see "man 7 capabilities") set on their executables.
 
-Unsandboxed apps are allowed to have executables with capabilities and be members of other groups (see the "groups:" section).  
+Unsandboxed apps are allowed to have executables with capabilities and be members of other groups (see the "groups:" section).
 
-While a user and/or group will be automatically created if missing for the specified app, 
+While a user and/or group will be automatically created if missing for the specified app,
 only users and groups of sandboxed app will be automatically deleted when those apps are uninstalled.
 
 @code
@@ -48,6 +50,7 @@ sandboxed: false
 Specifies if the app should start automatically at start-up:
 "auto" sets the app to start automatically by the Supervisor.
 "manual" sets the app to start through a manual prompt to the Supervisor.
+Default is @b auto.
 
 @code
 start: auto
@@ -57,6 +60,7 @@ start: auto
 @section numProcs numProcs
 
 Specifies the maximum number of processes allowed to run at one time: an integer number of processes.
+Default is @b 10.
 
 @code
 numProcs: 4
@@ -64,7 +68,7 @@ numProcs: 4
 
 @section mqueueSize mqueueSize
 
-Specifies the maximum number of POSIX MQueues messages permitted.
+Specifies the maximum number of bytes that can be allocated for POSIX MQueues. Default is @b 512.
 
 @code
 mqueueSize: 22
@@ -73,14 +77,61 @@ mqueueSize: 22
 @section rtSignalQueueSize rtSignalQueueSize
 
 Specifies the maximum number of real-time signals that can be queued (waiting for delivery to processes).
+Default is @b 100.
 
 @code
 rtSignalQueueSize: 10
 @endcode
 
+@section memLimit memLimit
+
+Specifies the maximum amount of memory (in kilobytes) that all processes in an application can share.
+Default is @b 40960.
+
+@code
+memLimit: 4000
+@endcode
+
+@section cpuShare cpuShare
+
+Specifies the relative cpu share for an application.
+
+Cpu share is used to calculate the cpu percentage for a process relative to all other processes
+in the system.  Newly created cgroups and processes not belonging to a cgroup are given a default
+value of @b 1024.  The actual percentage of the cpu given to a process is calculated as:
+
+(share value of process) / (sum of shares from all processes contending for the cpu)
+
+All processes within a cgroup share the available cpu share for that cgroup.
+
+For example:
+
+cgroupA is configured with the default share value, 1024.
+cgroupB is configured with 512 as its share value.
+cgroupC is configured with 2048 as its share value.
+
+cgroupA has one process running.
+cgroupB has two processes running.
+cgroupC has one process running.
+
+Assuming that all processes in cgroupA, cgroupB and cgroupC are running and not blocked waiting
+for some I/O or timer event and that another system process is also running.
+
+Sum of all shares (including the one system process) is 1024 + 512 + 2048 + 1024 = 4608
+
+The process in cgroupA will get 1024/4608 = 22% of the cpu.
+The two processes in cgroupB will share 512/4608 = 11% of the cpu, each process getting 5.5%.
+The process in cgroupC will get 2048/4608 = 44% of the cpu.
+The system process will get 1024/4608 = 22% of the cpu.
+
+@code
+cpuShare: 512
+@endcode
+
 @section fileSystemSize fileSystemSize
 
 Specifies the maximum amount of RAM that can be consumed by an app's temp (volatile) file system at runtime.
+Default is @b 128K
 
 @code
 fileSystemSize: 120K
@@ -103,7 +154,7 @@ If permissions values are not specified, then read-only ([r]) is the default.
 
 <b>Build system path</b> - file system path on the build PC where the file is located at build time.
 
-<b>Target path</b> - file system path inside the app sandbox on the target where the file will appear at runtime.  
+<b>Target path</b> - file system path inside the app sandbox on the target where the file will appear at runtime.
 Unsandboxed apps' path will be prefixed with "/opt/legato/apps/xxxx", where "xxxx" is replaced by the app name.
 
 File paths can be enclosed in quotation marks (either single ' or double "). This is required when the file path contains spaces.
@@ -120,7 +171,7 @@ files:
 
 <b>Permissions</b>
 
-File permissions and ownership in the original file on the 
+File permissions and ownership in the original file on the
 development PC file system are copied into the application for both users and groups.
 
 When the application is installed on a target: <br>
@@ -149,36 +200,36 @@ executables:
     myexe2 ( foobar toto )
 @endcode
 
-@section importAdef import 
+@section importAdef import
 
-If components are in an executable, they’ll be built and linked into the executable with its 
-COMPONENT_INIT function run at process start-up. 
+If components are in an executable, they’ll be built and linked into the executable with its
+COMPONENT_INIT function run at process start-up.
 The component’s runtime files are packaged inside the app to be installed on the target.
-If a source file is in an executable, the build tools search for it according to the source search path. 
-It’s then compiled (if written in a compiled language) and linked into the executable. 
+If a source file is in an executable, the build tools search for it according to the source search path.
+It’s then compiled (if written in a compiled language) and linked into the executable.
 
-All source files specified for an executable are considered a component (called "default"); 
+All source files specified for an executable are considered a component (called "default");
 one of those source files must implement a COMPONENT_INIT function called at start-up.
-If a library is an executable, the build tools search for it in the .adef and Component.cdef files. 
-When the executable is linked, it includes libraries in the order listed. It’s permitted to list the same library more than once; 
+If a library is an executable, the build tools search for it in the .adef and Component.cdef files.
+When the executable is linked, it includes libraries in the order listed. It’s permitted to list the same library more than once;
 sometimes you have unresolved symbol because of the single-pass linker.
 
 C files will be compiled and linked using the appropriate compiler tool chain, depending on the built target device.
 
-Sometimes, incompatibilities between components or source code prevent them from being included in the 
+Sometimes, incompatibilities between components or source code prevent them from being included in the
 same executable (e.g., Java sources and C). The build tools will check and advise if that’s the case.
 
 The @b import section lists things  imported to the app’s sandbox at runtime from outside of the sandbox.
 The contents appear similar to the files: section’s content, but meanings are different:
-Things listed in the “import” section are expected to be found on the target at runtime. 
+Things listed in the “import” section are expected to be found on the target at runtime.
 They are not copied into the app at build time; they're made accessible to the app inside of its sandbox at runtime.
 
-Currently, only virtual file system objects (files, directories, named sockets and pipes, device files, etc.) are explicitly imported. 
+Currently, only virtual file system objects (files, directories, named sockets and pipes, device files, etc.) are explicitly imported.
 (Note: IPC interfaces are imported by components using the Component.cdef file’s “import” section.)
 
 This section is ignored if the app is not sandboxed (if sandboxed set to false).
 
-Items in the import section have essentially the same format as items in the files section, 
+Items in the import section have essentially the same format as items in the files section,
 except the first path must be an absolute path (beginning with ‘/’).
 
 The first path is the object to be imported that is an absolute path in the target device’s file system, outside of the sandbox.
@@ -200,8 +251,8 @@ import:
     '/usr/local/share/audio/success message.wav' /usr/share/audio/
 @endcode
 
-Permissions settings in import can't override permissions on the object in the target’s file system. 
-If an object is read-only for the app’s user account in the root file system, 
+Permissions settings in import can't override permissions on the object in the target’s file system.
+If an object is read-only for the app’s user account in the root file system,
 it'll still be read-only accessible inside the app’s sandbox (even if imported “[rw]” in the app’s .adef file).
 
 File permissions and ownership (group and user) on the original file in the target system  remain in effect inside the sandbox.
@@ -218,7 +269,7 @@ groups:
 
 @section refprocessesAdef processes
 
-The processes section of the .adef also has sub-sections @subpage processesAdef .
+The processes section of the .adef also has sub-sections @subpage defFilesProcessesAdef.
 
 <HR>
 

@@ -554,9 +554,9 @@ function sched.step()
         log.trace('SCHED', 'DEBUG', "STEP %s", tostring (thread))
         local success, msg = coroutine.resume (unpack (cell))
         if not success and msg ~= KILL_TOKEN then
-            -- report the error msg
-            print ("In " .. tostring(thread)..": error: " .. tostring(msg))
-            print (debug.traceback(thread))
+            log('SCHED', 'ERROR', "In %s: %s %s",
+                tostring(thread), tostring(msg),
+                debug.traceback(thread))
         end
         ---------------------------------------------
         -- If the coroutine died, signal it for those
@@ -633,7 +633,6 @@ local function runcell(c, emitter, event, args, wokenup_tasks, new_queue)
             errmsg = string.format("In signal %s.%s: %s",
                 tostring(emitter), event, tostring(errmsg))
             log('SCHED', 'ERROR', errmsg)
-            print (errmsg)
         end
         if reattach_hook then
             if new_queue then table.insert (new_queue, c) end

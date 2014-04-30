@@ -52,7 +52,7 @@ ADD_SUBDIRECTORY(asscon)
 
 # optional provisioning module, to easily write crypto keys locally
 ADD_LUA_LIBRARY(agent_provisioning DESTINATION agent EXCLUDE_FROM_ALL provisioning.lua)
-
+ADD_DEPENDENCIES(agent_provisioning crypto_keystore)
 
 ADD_DEPENDENCIES(agent_modules
 
@@ -82,9 +82,11 @@ ADD_LUA_LIBRARY(test_agent DESTINATION tests EXCLUDE_FROM_ALL
     tests/appcon.lua tests/treemgr/treemgr_table1.lua
     tests/treemgr/treemgr_table2.lua
     tests/update/update.lua
+    tests/update/updateDaily.lua
+    tests/data_policy.lua
 )
 
-ADD_DEPENDENCIES(test_agent test_agent_treemgr_maps treehdlsample)
+ADD_DEPENDENCIES(test_agent test_agent_treemgr_maps treehdlsample agent)
 
 ADD_CUSTOM_TARGET(test_update_pkgs
     COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/tests/update/test_packages ${CMAKE_INSTALL_PREFIX}/update/tmp/test_packages

@@ -349,6 +349,21 @@ le_result_t le_utf8_CopyUpToSubStr
 
                 return LE_OK;
             }
+            else if (memcmp(srcStr + i, subStr, subStrLen) == 0)
+            {
+                // Note: Do this check before the overflow check so that we do not get false
+                // positives for overflow.
+
+                // Found character.  Complete the copy and return.
+                destStr[i] = '\0';
+
+                if (numBytesPtr)
+                {
+                    *numBytesPtr = i;
+                }
+
+                return LE_OK;
+            }
             else if (charLength + i >= destSize)
             {
                 // This character will not fit in the available space so stop.
@@ -360,18 +375,6 @@ le_result_t le_utf8_CopyUpToSubStr
                 }
 
                 return LE_OVERFLOW;
-            }
-            else if (memcmp(srcStr + i, subStr, subStrLen) == 0)
-            {
-                // Found character.  Complete the copy and return.
-                destStr[i] = '\0';
-
-                if (numBytesPtr)
-                {
-                    *numBytesPtr = i;
-                }
-
-                return LE_OK;
             }
             else
             {

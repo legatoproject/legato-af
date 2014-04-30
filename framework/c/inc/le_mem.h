@@ -20,10 +20,10 @@
 
 Dynamic memory allocation (especially deallocation) using the C runtime heap, through
 malloc, free, strdup, calloc, realloc, etc. can result in performance degradation and out-of-memory
-conditions.   
- 
-This is due to fragmentation of the heap. The degraded performance and exhausted memory result from indirect interactions 
-within the heap between unrelated application code. These issues are non-deterministic, 
+conditions.
+
+This is due to fragmentation of the heap. The degraded performance and exhausted memory result from indirect interactions
+within the heap between unrelated application code. These issues are non-deterministic,
 and can be very difficult to rectify.
 
 Memory Pools offer a powerful solution.  They trade-off a deterministic amount of
@@ -65,9 +65,9 @@ advanced topics.
 
 Before allocating memory from a pool, the pool must be created using le_mem_CreatePool(), passing
 it the name of the pool and the size of the objects to be allocated from that pool. This returns
-a reference to the new pool, which has zero free objects in it. 
+a reference to the new pool, which has zero free objects in it.
 
-To populate your new pool with free objects, you call @c le_mem_ExpandPool(). 
+To populate your new pool with free objects, you call @c le_mem_ExpandPool().
 This is separated into two functions (rather than having
 one function with three parameters) to make it virtually impossible to accidentally get the parameters
 in the wrong order (which would result in nasty bugs that couldn't be caught by the compiler).
@@ -123,10 +123,10 @@ Allocating from a pool has multiple options:
                         expand the pool (or log an error and terminate the calling process there's
                         not enough free memory to expand the pool).
 
-All of these functions take a pool reference and return a pointer to the object 
+All of these functions take a pool reference and return a pointer to the object
 allocated from the pool.
 
-The first option, using @c le_mem_TryAlloc(), is the 
+The first option, using @c le_mem_TryAlloc(), is the
  closest to the way good old malloc() works.  It requires the caller check the
 return code to see if it's NULL.  This can be annoying enough that a lot of
 people get lazy and don't check the return code (Bad programmer! Bad!). It turns out that
@@ -143,7 +143,7 @@ allows developers to defer fine tuning their pool sizes until after they get thi
 Later, they check the logs for pool size usage, and then modify their pool sizes accordingly.
 If a particular pool is continually growing, it's a good indication there's a
 memory leak. This permits seeing exactly what objects are being leaked.  If certain debug
-options are turned on, they can even find out which line in which file allocated the blocks 
+options are turned on, they can even find out which line in which file allocated the blocks
  being leaked.
 
 
@@ -178,8 +178,8 @@ This allows one function to:
  - increment its reference count and pass a pointer to the object to another function (or thread, data structure, etc.).
  - work with it some more.
  - release the object without having to worry about when the other function is finished with it.
- 
-The other function also releases the object when it's done with it.  So, the object will 
+
+The other function also releases the object when it's done with it.  So, the object will
 exist until both functions are done.
 
 If there are multiple threads involved, be careful to protect the shared
@@ -232,7 +232,7 @@ static void DeletePointList(Point_t** pointList, size_t numPoints)
 
 In this sample, when DeletePointList() is called (with a pointer to an array of pointers
 to Point_t objects with reference counts of 1), each of the objects in the pointList is
-released.  This causes their reference counts to hit 0, which triggers executing 
+released.  This causes their reference counts to hit 0, which triggers executing
 PointDestructor() for each object in the pointList, and the "Destroying point..." message will
 be printed for each.
 
@@ -267,8 +267,8 @@ allocated from pools are not inherently protected from races between threads.
 
 Allocating and releasing objects, checking stats, incrementing reference
 counts, etc. can all be done from multiple threads (excluding signal handlers) without having
-to worry about corrupting the memory pools' hidden internal data structures.  
- 
+to worry about corrupting the memory pools' hidden internal data structures.
+
 There's no magical way to prevent different threads from interferring with each other
 if they both access the @a contents of the same object at the same time.
 
@@ -326,8 +326,8 @@ their needs before telling the service-provider.  We'd rather have the clients i
 report their own needs to the service-provider.  Also, we don't want each client to have to wait
 for all the other clients to report their needs before starting to use
 the services offered by the service-provider.  That would add more complexity to the interactions
-between the clients and the service-provider.  
- 
+between the clients and the service-provider.
+
 This is what should happen when the service-provider can't wait for all clients
 to report their needs before creating the pool:
  - When the service-provider starts up, it creates an empty pool.
@@ -353,10 +353,10 @@ and says it will probably need a maximum of X of the service-provider's resource
 service provider can set aside that many of those resources in a sub-pool for that client.
 If that client goes over its limit, the sub-pool will log a warning message.
 
-The problem sizing the super-pool correctly at start-up still exists,
+The problem of sizing the super-pool correctly at start-up still exists,
 so what's the point of having a sub-pool, when all of the resources could just be allocated from
-the super-pool? 
- 
+the super-pool?
+
 The benefit is really gained in troubleshooting.  If client A, B, C, D and E are
 all behaving nicely, but client F is leaking resources, the sub-pool created
 on behalf of client F will start warning about the memory leak; time won't have to be
@@ -404,7 +404,7 @@ typedef struct le_mem_Pool* le_mem_PoolRef_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Prototype for destructor functions.  
+ * Prototype for destructor functions.
  *
  * @param objPtr   Pointer to the object where reference count has reached zero.  After the destructor
  *                 returns this object's memory will be released back into the pool (and this pointer

@@ -13,10 +13,8 @@
 #include "resourceLimits.h"
 #include "le_cfg_interface.h"
 #include "limit.h"
-#include <sys/sysinfo.h>
-#include <sys/mount.h>
-#include <sys/resource.h>
-#include <mntent.h>
+#include "user.h"
+#include "cgroups.h"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -69,12 +67,22 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * The name of the node in the config tree that contains a process's virtual memory limit.
+ * The name of the node in the config tree that contains an application's memory limit.
  *
- * If this entry in the config tree is missing or is empty, DEFAULT_LIMIT_VIRTUAL_MEMORY is used.
+ * If this entry in the config tree is missing or is empty, DEFAULT_LIMIT_MEMORY is used.
  */
 //--------------------------------------------------------------------------------------------------
-#define CFG_NODE_LIMIT_VIRTUAL_MEMORY                   "virtualMemoryLimit"
+#define CFG_NODE_LIMIT_MEMORY                           "memLimit"
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The name of the node in the config tree that contains an application's cpu share.
+ *
+ * If this entry in the config tree is missing or is empty, DEFAULT_LIMIT_CPU_SHARE is used.
+ */
+//--------------------------------------------------------------------------------------------------
+#define CFG_NODE_LIMIT_CPU_SHARE                        "cpuShare"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -134,7 +142,8 @@
 #define DEFAULT_LIMIT_TOTAL_POSIX_MSG_QUEUE_SIZE        512
 #define DEFAULT_LIMIT_NUM_PROCESSES                     10
 #define DEFAULT_LIMIT_RT_SIGNAL_QUEUE_SIZE              100
-#define DEFAULT_LIMIT_VIRTUAL_MEMORY                    16777216
+#define DEFAULT_LIMIT_MEMORY                            40960
+#define DEFAULT_LIMIT_CPU_SHARE                         1024
 #define DEFAULT_LIMIT_CORE_DUMP_FILE_SIZE               8192
 #define DEFAULT_LIMIT_MAX_FILE_SIZE                     90112
 #define DEFAULT_LIMIT_MEM_LOCK_SIZE                     8192
@@ -160,7 +169,7 @@
 //--------------------------------------------------------------------------------------------------
 static le_result_t GetCfgResourceLimit
 (
-    le_cfg_iteratorRef_t limitCfg,  // The iterator pointing to the configured limit to read.  This
+    le_cfg_IteratorRef_t limitCfg,  // The iterator pointing to the configured limit to read.  This
                                     // iterator is a owned by the caller and should not be deleted
                                     // in this function.
     rlim_t* limitValuePtr           // The value read from the config tree.
@@ -171,7 +180,7 @@ static le_result_t GetCfgResourceLimit
         return LE_FAULT;
     }
 
-    int limitValue = le_cfg_GetInt(limitCfg, "");
+    int limitValue = le_cfg_GetInt(limitCfg, "", 0);
 
     if (limitValue < 0)
     {
@@ -186,13 +195,59 @@ static le_result_t GetCfgResourceLimit
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Gets the sandboxed application's tmpfs file system limit.
+ *
+ * @return
+ *      The file system limit for the specified application.
+ */
+//--------------------------------------------------------------------------------------------------
+rlim_t resLim_GetSandboxedAppTmpfsLimit
+(
+    app_Ref_t appRef                ///< [IN] The application to set resource limits for.
+)
+{
+    // Get the resource limit from the config tree.  Zero means unlimited for tmpfs mounts and is
+    // not allowed.
+
+    // Determine the file system limit to set.
+    rlim_t fileSysLimit = DEFAULT_LIMIT_FILE_SYSTEM_SIZE;
+
+    // Create a config iterator to get the file system limit from the config tree.
+    le_cfg_IteratorRef_t appCfg = le_cfg_CreateReadTxn(app_GetConfigPath(appRef));
+    le_cfg_GoToNode(appCfg, CFG_NODE_LIMIT_FILE_SYSTEM_SIZE);
+
+    if (le_cfg_NodeExists(appCfg, "") == false)
+    {
+        LE_WARN("No resource limit %s.  Assuming the default value %d.",
+                CFG_NODE_LIMIT_FILE_SYSTEM_SIZE,
+                DEFAULT_LIMIT_FILE_SYSTEM_SIZE);
+    }
+    else if ( (GetCfgResourceLimit(appCfg, &fileSysLimit) != LE_OK) ||
+              (fileSysLimit == 0) )
+    {
+        // Use the default limit.
+        LE_ERROR("Configured resource limit %s is invalid.  Assuming the default value %d.",
+                 CFG_NODE_LIMIT_FILE_SYSTEM_SIZE,
+                 DEFAULT_LIMIT_FILE_SYSTEM_SIZE);
+
+        fileSysLimit = DEFAULT_LIMIT_FILE_SYSTEM_SIZE;
+    }
+
+    le_cfg_CancelTxn(appCfg);
+
+    return fileSysLimit;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Sets the specified Linux resource limit (rlimit) for the application/process.
  */
 //--------------------------------------------------------------------------------------------------
 static void SetRLimit
 (
     pid_t pid,                      // The pid of the process to set the limit for.
-    le_cfg_iteratorRef_t procCfg,   // The iterator for the process.  This is a iterator is owned by
+    le_cfg_IteratorRef_t procCfg,   // The iterator for the process.  This is a iterator is owned by
                                     // the caller and should not be deleted in this function.
     const char* resourceName,       // The resource name in the config tree.
     int resourceID,                 // The resource ID that setrlimit() expects.
@@ -203,7 +258,8 @@ static void SetRLimit
     struct rlimit lim = {defaultValue, defaultValue};
 
     // Move the iterator to the resource limit to read.
-    if (le_cfg_GoToNode(procCfg, resourceName) != LE_OK)
+    le_cfg_GoToNode(procCfg, resourceName);
+    if (le_cfg_NodeExists(procCfg, "") == false)
     {
         LE_WARN("No resource limit %s.  Using the default value %lu.", resourceName, defaultValue);
     }
@@ -246,81 +302,50 @@ static void SetRLimit
 //--------------------------------------------------------------------------------------------------
 /**
  * Sets the resource limits for the specified application.
- *
- * @return
- *      LE_OK if successful.
- *      LE_FAULT if there was an error.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t resLim_SetAppLimits
+void resLim_SetAppLimits
 (
     app_Ref_t appRef                ///< [IN] The application to set resource limits for.
 )
 {
-    const char* appName = app_GetName(appRef);
+    // Get the application's user name for use with cgroups.
+    char userName[LIMIT_MAX_USER_NAME_BYTES];
+    LE_ASSERT(user_ConvertToUserName(app_GetName(appRef), userName, sizeof(userName)) == LE_OK);
 
-    // Mount a tmpfs for the app sandbox setting the file system limit.
-    // Get the available system memory.
-    struct sysinfo info;
-    LE_ASSERT(sysinfo(&info) == 0);
-
-    // Get the resource limit from the config tree.  Zero means unlimited for tmpfs mounts and is
-    // not allowed.
-
-    // Determine the file system limit to set.
-    rlim_t fileSysLimit = DEFAULT_LIMIT_FILE_SYSTEM_SIZE;
-
-    // Create a config iterator to get the file system limit from the config tree.
-    le_cfg_iteratorRef_t appCfg = le_cfg_CreateReadTxn(app_GetConfigPath(appRef));
-
-    if (le_cfg_GoToNode(appCfg, CFG_NODE_LIMIT_FILE_SYSTEM_SIZE) != LE_OK)
+    // Create cgroups for this application in each of the cgroup subsystems.
+    cgrp_SubSys_t subSys = 0;
+    for (; subSys < CGRP_NUM_SUBSYSTEMS; subSys++)
     {
-        LE_WARN("No resource limit %s.  Assuming the default value %d.",
-                CFG_NODE_LIMIT_FILE_SYSTEM_SIZE,
-                DEFAULT_LIMIT_FILE_SYSTEM_SIZE);
-    }
-    else if ( (GetCfgResourceLimit(appCfg, &fileSysLimit) != LE_OK) ||
-              (fileSysLimit == 0) )
-    {
-        // Use the default limit.
-        LE_ERROR("Configured resource limit %s is invalid.  Assuming the default value %d.",
-                 CFG_NODE_LIMIT_FILE_SYSTEM_SIZE,
-                 DEFAULT_LIMIT_FILE_SYSTEM_SIZE);
-
-        fileSysLimit = DEFAULT_LIMIT_FILE_SYSTEM_SIZE;
+        cgrp_Create(subSys, userName);
     }
 
-    le_cfg_DeleteIterator(appCfg);
+    // Create a config iterator for this app.
+    le_cfg_IteratorRef_t appCfg = le_cfg_CreateReadTxn(app_GetConfigPath(appRef));
 
-    // Check if there is enough memory on the system.
-    if (fileSysLimit >= info.freeram)
+    // Set the cpu limit.
+    int cpuShare = le_cfg_GetInt(appCfg, CFG_NODE_LIMIT_CPU_SHARE, DEFAULT_LIMIT_CPU_SHARE);
+
+    if (le_cfg_NodeExists(appCfg, CFG_NODE_LIMIT_CPU_SHARE) == false)
     {
-        LE_ERROR("Not enough memory to run application '%s'. Available memory %ld. Required memory %ld.",
-                 appName, info.freeram, fileSysLimit);
-
-        return LE_FAULT;
+        LE_WARN("No cpu share limit.  Using the default value %d.", DEFAULT_LIMIT_CPU_SHARE);
     }
 
-    // Make the mount options.
-    char opt[100];
-    if (snprintf(opt, sizeof(opt), "size=%d,mode=%.4o,uid=0",
-                 (int)fileSysLimit, S_IRWXU | S_IXOTH) >= sizeof(opt))
-    {
-        LE_ERROR("Mount options string is too long. '%s'", opt);
+    cgrp_cpu_SetShare(userName, cpuShare);
 
-        return LE_FAULT;
+    // Set the memory limit.
+    size_t memLimit = le_cfg_GetInt(appCfg, CFG_NODE_LIMIT_MEMORY, DEFAULT_LIMIT_MEMORY);
+
+    if (le_cfg_NodeExists(appCfg, CFG_NODE_LIMIT_MEMORY) == false)
+    {
+        LE_WARN("No memory limit.  Using the default value %dK.", DEFAULT_LIMIT_MEMORY);
     }
 
-    // Mount the tmpfs for the sandbox.
-    if (mount("none", app_GetSandboxPath(appRef), "tmpfs", MS_NOSUID, opt) == -1)
-    {
-        LE_ERROR("Could not create mount for sandbox '%s'.  %m.", appName);
+    cgrp_mem_SetLimit(userName, memLimit);
 
-        return LE_FAULT;
-    }
-
-    return LE_OK;
+    le_cfg_CancelTxn(appCfg);
 }
+
 
 
 //--------------------------------------------------------------------------------------------------
@@ -340,12 +365,9 @@ le_result_t resLim_SetProcLimits
     pid_t pid = proc_GetPID(procRef);
 
     // Create an iterator for this process.
-    le_cfg_iteratorRef_t procCfg = le_cfg_CreateReadTxn(proc_GetConfigPath(procRef));
+    le_cfg_IteratorRef_t procCfg = le_cfg_CreateReadTxn(proc_GetConfigPath(procRef));
 
     // Set the process resource limits.
-    SetRLimit(pid, procCfg, CFG_NODE_LIMIT_VIRTUAL_MEMORY, RLIMIT_AS,
-              DEFAULT_LIMIT_VIRTUAL_MEMORY);
-
     SetRLimit(pid, procCfg, CFG_NODE_LIMIT_CORE_DUMP_FILE_SIZE, RLIMIT_CORE,
               DEFAULT_LIMIT_CORE_DUMP_FILE_SIZE);
 
@@ -361,8 +383,7 @@ le_result_t resLim_SetProcLimits
     // Set the application limits.
     //
     // @note Even though these are application limits they still need to be set for the process
-    //       because Linux rlimits are applied to individual processes.  When we move to cgroups
-    //       this function should be less awkward.
+    //       because Linux rlimits are applied to individual processes.
 
     // Goto the application config path from the process config path.
     le_cfg_GoToParent(procCfg);
@@ -377,7 +398,47 @@ le_result_t resLim_SetProcLimits
     SetRLimit(pid, procCfg, CFG_NODE_LIMIT_RT_SIGNAL_QUEUE_SIZE, RLIMIT_SIGPENDING,
               DEFAULT_LIMIT_RT_SIGNAL_QUEUE_SIZE);
 
-    le_cfg_DeleteIterator(procCfg);
+    le_cfg_CancelTxn(procCfg);
+
+    // Get the application's user name for use with cgroups.
+    char userName[LIMIT_MAX_USER_NAME_BYTES];
+    LE_ASSERT(user_ConvertToUserName(proc_GetAppName(procRef), userName, sizeof(userName)) == LE_OK);
+
+    // Add the process to its app's cgroups in each of the cgroup subsystems.
+    cgrp_SubSys_t subSys = 0;
+    for (; subSys < CGRP_NUM_SUBSYSTEMS; subSys++)
+    {
+        LE_ASSERT(cgrp_AddProc(subSys, userName, pid) == LE_OK);
+    }
 
     return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Cleans up any resources used to set the resource limits for an application.  This should be
+ * called when an app is completely stopped, meaning all processes in the application have been
+ * killed.
+ */
+//--------------------------------------------------------------------------------------------------
+void resLim_CleanupApp
+(
+    app_Ref_t appRef                ///< [IN] Application to clean up resources for.
+)
+{
+    const char* appNamePtr = app_GetName(appRef);
+
+    // Get the application's user name for use with cgroups.
+    char userName[LIMIT_MAX_USER_NAME_BYTES];
+    LE_ASSERT(user_ConvertToUserName(appNamePtr, userName, sizeof(userName)) == LE_OK);
+
+    // Remove cgroups for this app in each of the cgroup subsystems.
+    cgrp_SubSys_t subSys = 0;
+    for (; subSys < CGRP_NUM_SUBSYSTEMS; subSys++)
+    {
+        LE_ERROR_IF(cgrp_Delete(subSys, userName) != LE_OK,
+                    "Could not remove %s cgroup for application '%s'.",
+                    cgrp_SubSysName(subSys), appNamePtr);
+    }
 }

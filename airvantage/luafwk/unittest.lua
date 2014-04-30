@@ -28,9 +28,11 @@ local debug = debug
 local getmetatable = getmetatable
 local setmetatable = setmetatable
 local tostring = tostring
+local tonumber = tonumber
 local type = type
 local next = next
 local fmt = string.format
+local p = p
 
 
 module(...)
@@ -217,6 +219,7 @@ function assert_no_error(f, msg)
 end
 
 function assert_clone_tables(exp, got, msg)
+    if type(got) ~= 'table' then wraptest(false, msg, fmt("Expected a table but got value %s", tostring(got))) end
     local d = tableutils.diff(exp, got)
     wraptest(nil == next(d), msg, fmt("Expected clone tables, but keys { %s } are different, got %s", table.concat(d, ', '), sprint(got)))
 end
@@ -251,6 +254,7 @@ local function id(...) return ... end
 
 
 local function runtest(stats, testsuitename, testname, test)
+    local initialTime=os.time()
     local s, err = coxpcall(test, id)
     local type
     local ret
@@ -275,10 +279,12 @@ local function runtest(stats, testsuitename, testname, test)
         table.insert(stats.failedtests, {testsuite = testsuitename, test=testname, type = type, msg=err})
     else
         stats.nbpassedtests = stats.nbpassedtests + 1
-    table.insert(stats.passedtests, {testsuite = testsuitename, test=testname, type = type, msg="OK"})
+        table.insert(stats.passedtests, {testsuite = testsuitename, test=testname, type = type, msg="OK"})
         ret = "."
+
     end
-    print(ret, testname)
+    local duration=os.date("!%T", os.difftime(os.time(), initialTime)) --! to use UTC time, %T means %H:%M:%S.
+    print(string.format("%s %s %s", ret, testname, duration))
     return ret
 end
 
@@ -310,26 +316,30 @@ function run(filterpattern)
               nbtestsuites  = 0,
               nbabortedtestsuites = 0,
               abortedtestsuites = {},
+              timeresults = {},
               starttime = os.time()}
     nbofassert = 0 -- module local to count asserts
-
 
     local l = listtests(filterpattern)
 
     for tsn, tsl in tableutils.sortedpairs(l) do
         print(fmt("Running [%s] testsuite:", tsn))
+        local tsstarttime=os.time()
         stats.nbtestsuites = stats.nbtestsuites+1
 
         local s
+        stats.timeresults[tsn] = {}
         if tsl.setup then s = runtest(stats, tsn, "setup", tsl.setup) end
         if s ~= "A" then -- only run test until abort is encountered
             local testsuite = testsuites[tsn]
+
             for _, tn in ipairs(tsl) do
                 s = runtest(stats, tsn, tn, testsuite[tn])
                 if s=='A' then break end
             end
         end
         if tsl.teardown then runtest(stats, tsn, "teardown", tsl.teardown) end
+        stats.timeresults[tsn] = os.date("!%T", os.difftime(os.time(), tsstarttime))  --! to use UTC time, %T means %H:%M:%S. 
     end
 
     stats.nbofassert = nbofassert

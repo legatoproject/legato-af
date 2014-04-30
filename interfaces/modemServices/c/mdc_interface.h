@@ -20,7 +20,7 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Start the client main thread
+ * Start the service for the client main thread
  */
 //--------------------------------------------------------------------------------------------------
 void le_mdc_StartClient
@@ -40,17 +40,31 @@ void le_mdc_StopClient
 );
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Reference type for le_mdc_SessionStateHandler handler ADD/REMOVE functions
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct le_mdc_SessionStateHandler* le_mdc_SessionStateHandlerRef_t;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This handler ...
+ *
+ * @param isConnected
+ * @param contextPtr
+ */
+//--------------------------------------------------------------------------------------------------
 typedef void (*le_mdc_SessionStateHandlerFunc_t)
 (
     bool isConnected,
     void* contextPtr
 );
 
-typedef struct le_mdc_SessionStateHandler* le_mdc_SessionStateHandlerRef_t;
-
 //--------------------------------------------------------------------------------------------------
 /**
- * This function adds a handler ...
+ * le_mdc_SessionStateHandler handler ADD function
  */
 //--------------------------------------------------------------------------------------------------
 le_mdc_SessionStateHandlerRef_t le_mdc_AddSessionStateHandler
@@ -68,7 +82,7 @@ le_mdc_SessionStateHandlerRef_t le_mdc_AddSessionStateHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function removes a handler ...
+ * le_mdc_SessionStateHandler handler REMOVE function
  */
 //--------------------------------------------------------------------------------------------------
 void le_mdc_RemoveSessionStateHandler
@@ -158,6 +172,23 @@ le_result_t le_mdc_GetInterfaceName
 //--------------------------------------------------------------------------------------------------
 
 //--------------------------------------------------------------------------------------------------
+le_result_t le_mdc_GetIPAddress
+(
+    le_mdc_Profile_Ref_t profileRef,
+        ///< [IN]
+        ///< Query this profile object
+
+    char* ipAddr,
+        ///< [OUT]
+        ///< [OUT] The IP address in dotted format
+
+    size_t ipAddrNumElements
+        ///< [IN]
+);
+
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
 le_result_t le_mdc_GetGatewayAddress
 (
     le_mdc_Profile_Ref_t profileRef,
@@ -194,6 +225,79 @@ le_result_t le_mdc_GetDNSAddresses
 
     size_t dns2AddrStrNumElements
         ///< [IN]
+);
+
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+bool le_mdc_IsIPV4
+(
+    le_mdc_Profile_Ref_t profileRef
+        ///< [IN]
+        ///< Query this profile object
+);
+
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+bool le_mdc_IsIPV6
+(
+    le_mdc_Profile_Ref_t profileRef
+        ///< [IN]
+        ///< Query this profile object
+);
+
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mdc_GetAccessPointName
+(
+    le_mdc_Profile_Ref_t profileRef,
+        ///< [IN]
+        ///< Query this profile object
+
+    char* apnNameStr,
+        ///< [OUT]
+        ///< The Access Point Name
+
+    size_t apnNameStrNumElements
+        ///< [IN]
+);
+
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mdc_GetDataBearerTechnology
+(
+    le_mdc_Profile_Ref_t profileRef,
+        ///< [IN]
+        ///< Query this profile object
+
+    le_mdc_dataBearerTechnology_t* dataBearerTechnologyPtrPtr
+        ///< [OUT]
+        ///< The data bearer technology
+);
+
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mdc_GetBytesCounters
+(
+    uint64_t* rxBytesPtr,
+        ///< [OUT]
+        ///< bytes amount received since the last counter reset
+
+    uint64_t* txBytesPtr
+        ///< [OUT]
+        ///< bytes amount transmitted since the last counter reset
+);
+
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mdc_ResetBytesCounter
+(
+    void
 );
 
 

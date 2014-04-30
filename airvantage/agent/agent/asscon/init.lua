@@ -59,6 +59,15 @@ function registercmd(name, hook)
     return "ok"
 end
 
+-- Format the error to the EMP Handler specification: and EMP handler should
+--  return ErrCode, ErrDescription when ErrDescription is exactly the string
+--  returned by the any Lua API call
+function formaterr(err)
+  local en = errnum(err)
+  en = en>0 and errnum("UNSPECIFIED_ERROR") or en
+  return en, err
+end
+
 local function getassetids(id)
     if not assets[id] then
         return "Unknown asset id"
@@ -83,12 +92,12 @@ local function EMPRegisterAsset(assetid, name)
     -- check name
     if name:find("%.") or name=="" then
         log("ASSCON", "ERROR", "Asset name %q is not respecting naming policy. Rejecting registration.", name)
-        return errnum 'BAD_PARAMETER'
+        return formaterr("BAD_PARAMETER:name does not respect naming policy (contains '.')")
     end
     -- check name availability
     if assets[name] then
         log("ASSCON", "ERROR", "An asset was already registered with name %q ([%s]). Rejecting registration !", name, tostring(assets[name]))
-        return errnum 'BAD_PARAMETER'
+        return formaterr("BAD_PARAMETER:asset name already registered")
     end
     -- register new asset
     assets[name] = assetid
@@ -102,7 +111,7 @@ local function EMPUnregisterAsset(assetid, name)
     log("ASSCON", "DETAIL", "Unregistering [%s] as asset (%s)...", tostring(assetid), name)
     if not assets[name] then
         log("ASSCON", "ERROR", "No asset registered with name %q. Rejecting unregistration !", name)
-        return errnum 'BAD_PARAMETER'
+        return formaterr("BAD_PARAMETER:name not registered")
     end
     unregisterasset(name)
     return 0
@@ -158,13 +167,13 @@ function connectionhandler(skt)
                 local s, c, p = copcall(cmd, instance, payload)
                 if not s then
                     log("ASSCON", "ERROR", "Error while executing EMP command (%s) for asset (%s): '%s'.", tostring(cmdname), getassetids(instance), c)
-                    return errnum 'BAD_PARAMETER', c
+                    return formaterr('BAD_PARAMETER:'..tostring(c))
                 else
                     return c, p
                 end
             else
                 log("ASSCON", "ERROR", "Asset (%s) sent an unsupported EMP command (%s)", getassetids(instance), tostring(cmdname))
-                return errnum 'BAD_PARAMETER', "unsupported EMP command"
+                return formaterr("BAD_PARAMETER: unsupported EMP command")
             end
         end
     end

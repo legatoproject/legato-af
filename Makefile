@@ -113,6 +113,8 @@ $(TARGETS): %: build_% stage_%
 .PHONY: clean
 clean:
 	rm -rf build Documentation bin doxygen.*.log doxygen.*.err
+	rm -rf interfaces/config/c/configTypes.h \
+		   interfaces/configAdmin/c/configAdminTypes.h
 
 
 # Goal for building all documentation.
@@ -209,11 +211,13 @@ BIN_INSTALL_LIST =  supervisor       \
 					modemDaemon      \
 					posDaemon        \
 					dcsDaemon        \
+					cnetDaemon       \
 					appCfgInstall	 \
 					appCfgRemove     \
 					data             \
-					appCtrl		 \
+					appCtrl          \
 					sim              \
+					inspect          \
                                         apn
 
 
@@ -231,6 +235,7 @@ LIB_INSTALL_LIST =  liblegato.so            \
 					lible_audio_services.so \
 					lible_audio_client.so   \
 					lible_data_client.so    \
+					lible_cellnet_client.so    \
 					lible_cfg_api.so        \
 					lible_cfgAdmin_api.so   \
 					libappConfig.so         \

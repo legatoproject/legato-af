@@ -10,6 +10,8 @@
 #*******************************************************************************
 PROJECT(MIHINI_M3DA)
 
+
+
 ### Serialization & deserialization ###
 
 # Low-level interface to C library
@@ -48,10 +50,13 @@ ADD_LUA_LIBRARY(m3da_transport_servers DESTINATION
 ADD_LUA_LIBRARY(m3da_session DESTINATION m3da/session session/default.lua)
 
 # Authentication & encryption enabled session communication layer
-ADD_LUA_LIBRARY(m3da_session_security DESTINATION m3da =session/security.lua)
-
-
-ADD_DEPENDENCIES(m3da_session_security crypto_aes crypto_random crypto_hmac)
+IF(${SECURITY_LIB} STREQUAL "tomcrypt")
+    ADD_LUA_LIBRARY(m3da_session_security DESTINATION m3da =session/security.lua =session/provisioning.lua)
+    ADD_DEPENDENCIES(m3da_session_security crypto_aes crypto_random crypto_hmac crypto_ecdh crypto_md5)
+ELSE(${SECURITY_LIB} STREQUAL "tomcrypt")
+    ADD_LUA_LIBRARY(m3da_session_security DESTINATION m3da =session/security.lua)
+    ADD_DEPENDENCIES(m3da_session_security crypto_aes crypto_random crypto_hmac)
+ENDIF(${SECURITY_LIB} STREQUAL "tomcrypt")
 
 INSTALL(TARGETS lib_bysant_lua LIBRARY DESTINATION lib)
 INSTALL(TARGETS bysant_core LIBRARY DESTINATION lua/m3da/bysant)

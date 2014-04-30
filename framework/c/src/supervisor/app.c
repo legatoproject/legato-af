@@ -14,6 +14,7 @@
 #include "user.h"
 #include "le_cfg_interface.h"
 #include "sandbox.h"
+#include "resourceLimits.h"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -220,13 +221,14 @@ static le_result_t CreateUserAndGroups
     if (!(appRef->sandboxed))
     {
         // Get an iterator to the supplementary groups list in the config.
-        le_cfg_iteratorRef_t cfgIter = le_cfg_CreateReadTxn(appRef->cfgPathRoot);
+        le_cfg_IteratorRef_t cfgIter = le_cfg_CreateReadTxn(appRef->cfgPathRoot);
 
-        if ( (le_cfg_GoToNode(cfgIter, CFG_NODE_GROUPS) != LE_OK) ||
-             (le_cfg_GoToFirstChild(cfgIter) != LE_OK) )
+        le_cfg_GoToNode(cfgIter, CFG_NODE_GROUPS);
+
+        if (le_cfg_GoToFirstChild(cfgIter) != LE_OK)
         {
             LE_DEBUG("No supplementary groups for app '%s'.", appRef->name);
-            le_cfg_DeleteIterator(cfgIter);
+            le_cfg_CancelTxn(cfgIter);
 
             return LE_OK;
         }
@@ -237,10 +239,10 @@ static le_result_t CreateUserAndGroups
         {
             // Read the supplementary group name from the config.
             char groupName[LIMIT_MAX_USER_NAME_BYTES];
-            if (le_cfg_GetNodeName(cfgIter, groupName, sizeof(groupName)) != LE_OK)
+            if (le_cfg_GetNodeName(cfgIter, "", groupName, sizeof(groupName)) != LE_OK)
             {
                 LE_ERROR("Could not read supplementary group for app '%s'.", appRef->name);
-                le_cfg_DeleteIterator(cfgIter);
+                le_cfg_CancelTxn(cfgIter);
                 return LE_FAULT;
             }
 
@@ -249,7 +251,7 @@ static le_result_t CreateUserAndGroups
             if (user_CreateGroup(groupName, &gid) == LE_FAULT)
             {
                 LE_ERROR("Could not create supplementary group '%s'.", groupName);
-                le_cfg_DeleteIterator(cfgIter);
+                le_cfg_CancelTxn(cfgIter);
                 return LE_FAULT;
             }
 
@@ -264,14 +266,14 @@ static le_result_t CreateUserAndGroups
             else if (i >= LIMIT_MAX_NUM_SUPPLEMENTARY_GROUPS - 1)
             {
                 LE_ERROR("Too many supplementary groups for app '%s'.", appRef->name);
-                le_cfg_DeleteIterator(cfgIter);
+                le_cfg_CancelTxn(cfgIter);
                 return LE_FAULT;
             }
         }
 
         appRef->numSupplementGids = i + 1;
 
-        le_cfg_DeleteIterator(cfgIter);
+        le_cfg_CancelTxn(cfgIter);
     }
 
     return LE_OK;
@@ -315,17 +317,10 @@ app_Ref_t app_Create
     appPtr->state = APP_STATE_STOPPED;
 
     // Get a config iterator for this app.
-    le_cfg_iteratorRef_t cfgIterator = le_cfg_CreateReadTxn(appPtr->cfgPathRoot);
+    le_cfg_IteratorRef_t cfgIterator = le_cfg_CreateReadTxn(appPtr->cfgPathRoot);
 
     // See if this is a sandboxed app.
-    if (le_cfg_IsEmpty(cfgIterator, CFG_NODE_SANDBOXED))
-    {
-        appPtr->sandboxed = true;
-    }
-    else
-    {
-        appPtr->sandboxed = le_cfg_GetBool(cfgIterator, CFG_NODE_SANDBOXED);
-    }
+    appPtr->sandboxed = le_cfg_GetBool(cfgIterator, CFG_NODE_SANDBOXED, true);
 
     // @todo: Create the user and all the groups for this app.  This function has a side affect
     //        where it populates the app's supplementary groups list and sets the uid and the
@@ -334,7 +329,7 @@ app_Ref_t app_Create
     if (CreateUserAndGroups(appPtr) != LE_OK)
     {
         le_mem_Release(appPtr);
-        le_cfg_DeleteIterator(cfgIterator);
+        le_cfg_CancelTxn(cfgIterator);
         return NULL;
     }
 
@@ -347,7 +342,7 @@ app_Ref_t app_Create
                      appPtr->sandboxPath, appPtr->name);
 
             le_mem_Release(appPtr);
-            le_cfg_DeleteIterator(cfgIterator);
+            le_cfg_CancelTxn(cfgIterator);
             return NULL;
         }
     }
@@ -357,14 +352,7 @@ app_Ref_t app_Create
     }
 
     // Move the config iterator to the procs list for this app.
-    if (le_cfg_GoToNode(cfgIterator, CFG_NODE_PROC_LIST) != LE_OK)
-    {
-        LE_ERROR("Could not read list of processes for application '%s'.", appPtr->name);
-
-        le_mem_Release(appPtr);
-        le_cfg_DeleteIterator(cfgIterator);
-        return NULL;
-    }
+    le_cfg_GoToNode(cfgIterator, CFG_NODE_PROC_LIST);
 
     // Read the list of processes for this application from the config tree.
     if (le_cfg_GoToFirstChild(cfgIterator) != LE_OK)
@@ -372,7 +360,7 @@ app_Ref_t app_Create
         LE_ERROR("No processes for application '%s'.", appPtr->name);
 
         le_mem_Release(appPtr);
-        le_cfg_DeleteIterator(cfgIterator);
+        le_cfg_CancelTxn(cfgIterator);
         return NULL;
     }
 
@@ -381,8 +369,13 @@ app_Ref_t app_Create
         // Get the process's config path.
         char procCfgPath[LIMIT_MAX_PATH_BYTES];
 
-        //@todo: le_cfg_GetPath() should have a return value.  Check the return value when it is available.
-        le_cfg_GetPath(cfgIterator, procCfgPath, sizeof(procCfgPath));
+        if (le_cfg_GetPath(cfgIterator, "", procCfgPath, sizeof(procCfgPath)) == LE_OVERFLOW)
+        {
+            LE_ERROR("Internal path buffer too small.");
+            app_Delete(appPtr);
+            le_cfg_CancelTxn(cfgIterator);
+            return NULL;
+        }
 
         // Strip off the trailing '/'.
         size_t lastIndex = le_utf8_NumBytes(procCfgPath) - 1;
@@ -394,10 +387,10 @@ app_Ref_t app_Create
 
         // Create the process.
         proc_Ref_t procPtr;
-        if ((procPtr = proc_Create(procCfgPath)) == NULL)
+        if ((procPtr = proc_Create(procCfgPath, appPtr->name)) == NULL)
         {
             app_Delete(appPtr);
-            le_cfg_DeleteIterator(cfgIterator);
+            le_cfg_CancelTxn(cfgIterator);
             return NULL;
         }
 
@@ -410,7 +403,7 @@ app_Ref_t app_Create
     }
     while (le_cfg_GoToNextSibling(cfgIterator) == LE_OK);
 
-    le_cfg_DeleteIterator(cfgIterator);
+    le_cfg_CancelTxn(cfgIterator);
 
     return appPtr;
 }
@@ -542,6 +535,9 @@ le_result_t app_Start
             return LE_FAULT;
         }
     }
+
+    // Set the resource limit for this application.
+    resLim_SetAppLimits(appRef);
 
     // Start all the processes in the application.
     le_dls_Link_t* procLinkPtr = le_dls_Peek(&(appRef->procs));
@@ -691,6 +687,18 @@ void app_Stop
         }
 
         procLinkPtr = le_dls_PeekNext(&(appRef->procs), procLinkPtr);
+    }
+
+    // Kill all user apps in case there were any forked processes in the app.
+    // NOTE: There is a race condition here because the processes that are killed may take some time
+    //       to die but we have no way of knowing when they actually die.  This may cause problems
+    //       trying to cleanup system resources such as unmounting files used by the processes,
+    //       deleting cgroups, etc.
+    //       It is possible to poll /proc for all processes with the same application's username but
+    //       this seems fairly heavy weight and is therefore left for future enhancements.
+    if (KillAllUserProcs(appRef->uid) != LE_OK)
+    {
+        LE_ERROR("Could not kill processes for application '%s'.", appRef->name);
     }
 }
 
@@ -1088,7 +1096,7 @@ static bool HasRunningProc
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Kills all processes in an application and deletes its sandbox.
+ * Cleans up a stopped application's resources ie. sandbox, resource limits, etc.
  */
 //--------------------------------------------------------------------------------------------------
 static void CleanupApp
@@ -1096,12 +1104,6 @@ static void CleanupApp
     app_Ref_t appRef                    ///< [IN] The application reference.
 )
 {
-    // Kill all user apps in case there were any forked processes in the app.
-    if (KillAllUserProcs(appRef->uid) != LE_OK)
-    {
-        LE_ERROR("Could not kill processes for application '%s'.", appRef->name);
-    }
-
     // Remove the sanbox.
     if (appRef->sandboxed)
     {
@@ -1111,7 +1113,8 @@ static void CleanupApp
         }
     }
 
-    appRef->state = APP_STATE_STOPPED;
+    // Remove the resource limits.
+    resLim_CleanupApp(appRef);
 }
 
 
@@ -1213,7 +1216,11 @@ its fault policy the system will now be rebooted.", proc_GetName(procRef), appRe
     {
         LE_INFO("app '%s' has stopped.", appRef->name);
 
+        // Note the application is cleaned up here so if the app is restarted it will apply the new
+        // config settings if the config has changed.
         CleanupApp(appRef);
+
+        appRef->state = APP_STATE_STOPPED;
     }
 
     return LE_OK;

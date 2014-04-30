@@ -177,16 +177,26 @@ local function EMPSoftwareUpdateResult(assetid, payload)
     local cmpname, updateresult = unpack(payload)
     if not updateresult then
         log("UPDATE","ERROR","Received SoftwareUpdateResult command with an incorrect payload, result ignored")
-        return rcerrnum 'BAD_PARAMETER'
+        return asscon.formaterr("BAD_PARAMETER:incorrect payload")
+    end
+
+    if not data.currentupdate then
+        log("UPDATE", "DETAIL",  "SoftwareUpdateResult for component[%s]: status [%d], no update in progress, update result discarded", cmpname, updateresult);
+        return asscon.formaterr("BAD_PARAMETER:no update in progress")
+    end
+
+    if data.currentupdate.infos.proto == "localuninstall" then -- specific handling for uninstallcmp API.
+        sched.signal("localuninstall", { cmpname = cmpname, updateresult = updateresult })
+        return rcerrnum 'OK'
     end
 
     --check that the UpdateResult come from the current component being updated.
-    if not data.currentupdate or not data.currentupdate.manifest.components[data.currentupdate.index]
+    if not data.currentupdate.manifest.components[data.currentupdate.index]
     or cmpname ~= data.currentupdate.manifest.components[data.currentupdate.index].name
     or data.currentupdate.manifest.components[data.currentupdate.index].result -- only first received result is used
     then
         log("UPDATE", "DETAIL",  "SoftwareUpdateResult for component[%s]: status [%d], no update in progress for that component, update result discarded", cmpname, updateresult);
-        return rcerrnum 'BAD_PARAMETER'
+        return asscon.formaterr("BAD_PARAMETER:no update in progress")
     end
 
     log("UPDATE", "DETAIL", "SoftwareUpdateResult for component[%s]: resultcode [%d]", cmpname, updateresult)
@@ -238,10 +248,6 @@ local function start_dispatch()
 end
 
 M.init = init
-
---M.resumeupdate = resumeupdate
 M.dispatch = start_dispatch
---M.finishupdate = finishupdate
---M.changestatus = changestatus
 
 return M

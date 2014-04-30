@@ -102,7 +102,7 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Start the client main thread
+ * Start the service for the client main thread
  */
 //--------------------------------------------------------------------------------------------------
 void le_data_StartClient
@@ -122,6 +122,25 @@ void le_data_StopClient
 );
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Reference type for le_data_ConnectionStateHandler handler ADD/REMOVE functions
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct le_data_ConnectionStateHandler* le_data_ConnectionStateHandlerRef_t;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler for connection state changes
+ *
+ * @param intfName
+ *        Interface name for the data connection
+ * @param isConnected
+ *        State: connected or disconnected
+ * @param contextPtr
+ */
+//--------------------------------------------------------------------------------------------------
 typedef void (*le_data_ConnectionStateHandlerFunc_t)
 (
     const char* intfName,
@@ -129,11 +148,9 @@ typedef void (*le_data_ConnectionStateHandlerFunc_t)
     void* contextPtr
 );
 
-typedef struct le_data_ConnectionStateHandler* le_data_ConnectionStateHandlerRef_t;
-
 //--------------------------------------------------------------------------------------------------
 /**
- * This function adds a handler ...
+ * le_data_ConnectionStateHandler handler ADD function
  */
 //--------------------------------------------------------------------------------------------------
 le_data_ConnectionStateHandlerRef_t le_data_AddConnectionStateHandler
@@ -147,7 +164,7 @@ le_data_ConnectionStateHandlerRef_t le_data_AddConnectionStateHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function removes a handler ...
+ * le_data_ConnectionStateHandler handler REMOVE function
  */
 //--------------------------------------------------------------------------------------------------
 void le_data_RemoveConnectionStateHandler

@@ -5,35 +5,12 @@
 
 
 
-#include "legato.h"
-
-
-
-
 // -------------------------------------------------------------------------------------------------
 /**
  *  Opaque iterator reference type.
  */
 // -------------------------------------------------------------------------------------------------
-typedef struct le_cfg_iterator* le_cfg_iteratorRef_t;
-
-
-
-
-// -------------------------------------------------------------------------------------------------
-/**
- *  Iterator status types.
- */
-// -------------------------------------------------------------------------------------------------
-typedef enum
-{
-    LE_CFG_ACTION_STEM_DELETED = 0x01,
-    LE_CFG_ACTION_STEM_CREATED = 0x02,
-    LE_CFG_ACTION_LEAF_CREATED = 0x04,
-    LE_CFG_ACTION_LEAF_UPDATED = 0x08,
-    LE_CFG_ACTION_LEAF_DELETED = 0x10
-}
-le_cfg_nodeAction_t;
+typedef struct le_cfg_Iterator* le_cfg_IteratorRef_t;
 
 
 
@@ -45,16 +22,15 @@ le_cfg_nodeAction_t;
 // -------------------------------------------------------------------------------------------------
 typedef enum
 {
-    LE_CFG_TYPE_EMPTY,
-    LE_CFG_TYPE_STRING,
-    LE_CFG_TYPE_BOOL,
-    LE_CFG_TYPE_INT,      // Signed 32-bit.
-    LE_CFG_TYPE_FLOAT,    // 32-bit floating point value.
-    LE_CFG_TYPE_STEM,     // Non-leaf node.
-    LE_CFG_TYPE_DENIED,   // Access denied.
+    LE_CFG_TYPE_EMPTY,        ///< A node with no value.
+    LE_CFG_TYPE_STRING,       ///< A string encoded as utf8.
+    LE_CFG_TYPE_BOOL,         ///< Boolean value.
+    LE_CFG_TYPE_INT,          ///< Signed 32-bit.
+    LE_CFG_TYPE_FLOAT,        ///< 64-bit floating point value.
+    LE_CFG_TYPE_STEM,         ///< Non-leaf node, this node is the parent of other nodes.
+    LE_CFG_TYPE_DOESNT_EXIST  ///< Node doesn't exist.
 }
 le_cfg_nodeType_t;
-
 
 
 

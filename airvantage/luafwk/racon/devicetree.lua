@@ -36,6 +36,8 @@ local M = {
 }
 
 
+local uniqueuserid = 1
+
 local function sem_wait()
    while M.sem_value <= 0 do
       sched.wait("dt.semaphore", "unlock")
@@ -74,12 +76,14 @@ function M.set(path, value)
     s, b = common.sendcmd("SetVariable", { path, value })
     sem_post()
 
-    if s == "ok" and b[1] == niltoken then
-        return nil, b[2]
-    elseif s == "ok" then
-        return b[1]
-    end
-    return s, b
+    -- No callbacks acknowledged the changes, returning "not handled"
+    if s and type(b) == "string" then return b end
+    -- At least one callback returned an error, theses errors have been collected into a table.
+    -- Returning this table as errors informations.
+    if s and type(b) == "table"  then return nil, b end
+    -- An error occured, normal case
+    if not s and type(b) == "string" then return nil, b end
+    return s
 end
 
 --------------------------------------------------------------------------------
@@ -126,7 +130,7 @@ function M.get(...)
     assert(type(lpath_list) == "string" or type(lpath_list) == "table")
 
     local s, b = common.sendcmd("GetVariable", { prefix or "", lpath_list })
-    if s~="ok" then return nil, (b or "unknown error") end
+    if s~="ok" then return nil, (b or "UNSPECIFIED_ERROR") end
     if b[1] == niltoken then return nil, b[2] end
     return b[1]
 end
@@ -181,15 +185,15 @@ function M.register(...)
     local status, id = common.sendcmd("RegisterVariable", { prefix or "", regvars, passivevars})
     if status~="ok" then
        sem_post()
-       return nil, (id or "unknown error")
+       return nil, (id or "UNSPECIFIED_ERROR")
     end
-    local userId = 1
-    for _, v in pairs(M.notifyvarid) do
-       userId = v.userId
-    end
-    userId = userId + 1
+
+    -- Generate a new unique user ID
+    local userId = uniqueuserid
+    uniqueuserid = uniqueuserid+1
+    
     -- A user identifier is required to avoid gaps in the list (when the callback is unregistered)
-    table.insert(M.notifyvarid, {userId=userId, regId=id, cb=callback})
+    table.insert(M.notifyvarid, {userId=userId, regId=id, cb=callback, prefix=prefix, regvars=regvars, passivevars=passivevars})
     sem_post()
     return userId
 end
@@ -211,16 +215,16 @@ function M.unregister(userid)
     sem_wait()
     for k, v in pairs(M.notifyvarid) do
        if v.userId == userid then
-      local s, msg = common.sendcmd("UnregisterVariable", v.regId)
-      if s == "ok" then
-         table.remove(M.notifyvarid, k)
-      end
-      sem_post()
-      return s, msg
+          local s, msg = common.sendcmd("UnregisterVariable", v.regId)
+          if s == "ok" then
+             table.remove(M.notifyvarid, k)
+          end
+          sem_post()
+          return s, msg
        end
     end
     sem_post()
-    return nil, "invalid id to unregister"
+    return nil, "BAD_PARAMETER"
 end
 
 
@@ -250,9 +254,9 @@ local function emp_ipc_broken_handler()
    M.sem_value=0
    sched.run(function()
         for _, reg in pairs(M.notifyvarid) do
-           local status, id = common.sendcmd("RegisterVariable", { reg.regvars, reg.passivevars})
+           local status, id = common.sendcmd("RegisterVariable", { reg.prefix or "", reg.regvars, reg.passivevars})
            if status ~= "ok" then
-              log("DT", "WARNING", "Failed to register back callback notification %s", tostring(reg.cb))
+              log("DT", "WARNING", "Failed to register back callback notification err=%s", tostring(status))
            else
               reg.regId = id
            end

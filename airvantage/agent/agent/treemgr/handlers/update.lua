@@ -29,7 +29,7 @@ function M :get(hpath)
     if not root or root == "" then --list update root path childs: only 2 subtables are accessible
         return nil, { swlist=true, currentupdate=(ucommon.data.currentupdate ~= nil or nil)}
     else
-        if not ucommon.data[root] then return nil, "invalid path" -- ckeck sub path is valid
+        if not ucommon.data[root] then return nil, "BAD_PARAMETER" -- ckeck sub path is valid
         else
             local data =  pathutils.get(ucommon.data[root], subtree)
             if not data or type(data) ~="table" then return data --leaf value, return i
@@ -46,7 +46,7 @@ end
 
 --set not allowed on update subtree
 function M :set(hmap)
-    return nil, "update subtree is not writable"
+    return nil, "NOT_PERMITTED"
 end
 
 return M

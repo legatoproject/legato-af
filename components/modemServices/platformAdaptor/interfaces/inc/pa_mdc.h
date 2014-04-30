@@ -74,6 +74,86 @@
 //--------------------------------------------------------------------------------------------------
 #define PA_MDC_APN_MAX_BYTES (PA_MDC_APN_MAX_LEN+1)
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Define the maximum length for an userName entry
+ *
+ * @todo Find out the real maximum length for the userName.
+ */
+//--------------------------------------------------------------------------------------------------
+#define PA_MDC_USERNAME_MAX_LEN 64
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Define the maximum length for an userName null-ended string
+ */
+//--------------------------------------------------------------------------------------------------
+#define PA_MDC_USERNAME_MAX_BYTES (PA_MDC_USERNAME_MAX_LEN+1)
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Define the maximum length for a password entry
+ *
+ * @todo Find out the real maximum length for the password.
+ */
+//--------------------------------------------------------------------------------------------------
+#define PA_MDC_PWD_MAX_LEN 100
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Define the maximum length for an password null-ended string
+ */
+//--------------------------------------------------------------------------------------------------
+#define PA_MDC_PWD_MAX_BYTES (PA_MDC_PWD_MAX_LEN+1)
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Enumerates the possible values for the authentication type
+ */
+//--------------------------------------------------------------------------------------------------
+typedef enum
+{
+    PA_MDC_AUTH_NONE,    ///< no authentication
+    PA_MDC_AUTH_PAP,     ///< PAP protocol
+    PA_MDC_AUTH_CHAP,    ///< CHAP protocol
+}
+ pa_mdc_AuthType_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Data Control Profile structure that contains modem specific profile data
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct {
+    pa_mdc_AuthType_t type;                   ///< Authentication using PAP
+    char userName[PA_MDC_USERNAME_MAX_BYTES]; ///< UserName used by authentication
+    char password[PA_MDC_APN_MAX_BYTES]; ///< Password used by authentication
+}
+pa_mdc_Authentication_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Session IP family
+ */
+//--------------------------------------------------------------------------------------------------
+typedef enum {
+    PA_MDC_SESSION_IPV4=0,  ///< IP V4
+    PA_MDC_SESSION_IPV6     ///< IP V6
+}
+pa_mdc_SessionType_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Data PDP Type
+ */
+//--------------------------------------------------------------------------------------------------
+typedef enum {
+    PA_MDC_PDP_UNKNOWN = 0,
+    PA_MDC_PDP_IPV4,
+    PA_MDC_PDP_IPV6,
+    PA_MDC_PDP_IPV4V6
+}
+pa_mdc_PdpType_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -82,6 +162,8 @@
 //--------------------------------------------------------------------------------------------------
 typedef struct {
     char apn[PA_MDC_APN_MAX_BYTES]; ///< Access Point Name (APN)
+    pa_mdc_Authentication_t authentication; ///< Authentication
+    pa_mdc_PdpType_t pdp;           ///< PDP type
 }
 pa_mdc_ProfileData_t;
 
@@ -110,6 +192,16 @@ typedef struct {
 }
 pa_mdc_SessionStateData_t;
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Packet statistics structure
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct {
+    uint64_t    transmittedBytesCount;  ///< Number of bytes transmitted without error.
+    uint64_t    receivedBytesCount;     ///< Number of bytes received without error.
+}
+pa_mdc_PktStatistics_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -160,7 +252,7 @@ le_result_t pa_mdc_WriteProfile
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Start a data session with the given profile
+ * Start a data session with the given profile using IPV4
  *
  * @return
  *      - LE_OK on success
@@ -168,12 +260,59 @@ le_result_t pa_mdc_WriteProfile
  *      - LE_NOT_POSSIBLE for other failures
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mdc_StartSession
+le_result_t pa_mdc_StartSessionIPV4
 (
     uint32_t profileIndex,        ///< [IN] The profile to use
     uint32_t* callRefPtr          ///< [OUT] Reference used for stopping the data session
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Start a data session with the given profile using IPV6
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_DUPLICATE if the data session is already connected
+ *      - LE_NOT_POSSIBLE for other failures
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_mdc_StartSessionIPV6
+(
+    uint32_t profileIndex,        ///< [IN] The profile to use
+    uint32_t* callRefPtr          ///< [OUT] Reference used for stopping the data session
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Start a data session with the given profile using IPV4-V6
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_DUPLICATE if the data session is already connected
+ *      - LE_NOT_POSSIBLE for other failures
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_mdc_StartSessionIPV4V6
+(
+    uint32_t profileIndex,        ///< [IN] The profile to use
+    uint32_t* callRefPtr          ///< [OUT] Reference used for stopping the data session
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get session type for the given profile ( IP V4 or V6 )
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_NOT_POSSIBLE for other failures
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_mdc_GetSessionType
+(
+    uint32_t profileIndex,              ///< [IN] The profile to use
+    pa_mdc_SessionType_t* sessionIpPtr  ///< [OUT] IP family session
+);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -243,6 +382,24 @@ le_result_t pa_mdc_GetInterfaceName
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Get the IP address for the given profile, if the data session is connected.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_OVERFLOW if the IP address would not fit in gatewayAddrStr
+ *      - LE_NOT_POSSIBLE for all other errors
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_mdc_GetIPAddress
+(
+    uint32_t profileIndex,             ///< [IN] The profile to use
+    char*  ipAddrStr,                  ///< [OUT] The IP address in dotted format
+    size_t ipAddrStrSize               ///< [IN] The size in bytes of the address buffer
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Get the gateway IP address for the given profile, if the data session is connected.
  *
  * @return
@@ -282,6 +439,67 @@ le_result_t pa_mdc_GetDNSAddresses
     size_t dns2AddrStrSize                  ///< [IN] The size in bytes of the dns2AddrStr buffer
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Access Point Name for the given profile, if the data session is connected.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_OVERFLOW if the Access Point Name would not fit in apnNameStr
+ *      - LE_NOT_POSSIBLE for all other errors
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_mdc_GetAccessPointName
+(
+    uint32_t profileIndex,             ///< [IN] The profile to use
+    char*  apnNameStr,                 ///< [OUT] The Access Point Name
+    size_t apnNameStrSize              ///< [IN] The size in bytes of the address buffer
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Data Bearer Technology for the given profile, if the data session is connected.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_NOT_POSSIBLE for all other errors
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_mdc_GetDataBearerTechnology
+(
+    uint32_t profileIndex,                                 ///< [IN] The profile to use
+    le_mdc_dataBearerTechnology_t* dataBearerTechnologyPtr ///< [OUT] The data bearer technology
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get data flow statistics since the last reset.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_NOT_POSSIBLE for all other errors
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_mdc_GetDataFlowStatistics
+(
+    pa_mdc_PktStatistics_t *dataStatisticsPtr ///< [OUT] Statistics data
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Reset data flow statistics
+ *
+ * * @return
+ *      - LE_OK on success
+ *      - LE_NOT_POSSIBLE for all other errors
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_mdc_ResetDataFlowStatistics
+(
+    void
+);
 
 #endif // LEGATO_PA_MDC_INCLUDE_GUARD
 

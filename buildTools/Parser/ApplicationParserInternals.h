@@ -255,8 +255,8 @@ void ayy_SetNumProcsLimit
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Set the maximum number of messages that are allowed to be queued-up in POSIX MQueues waiting for
- * processes in this application at any given time.
+ * Set the maximum number of bytes that can be allocated for POSIX MQueues for all processes
+ * in this application at any given time.
  */
 //--------------------------------------------------------------------------------------------------
 void ayy_SetMqueueSizeLimit
@@ -273,6 +273,31 @@ void ayy_SetMqueueSizeLimit
  */
 //--------------------------------------------------------------------------------------------------
 void ayy_SetRTSignalQueueSizeLimit
+(
+    int limit   ///< Must be a positive integer.  May be overridden by system-wide settings.
+);
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets the maximum amount of memory (in kilobytes) the application is allowed to use for all of it
+ * processes.
+ */
+//--------------------------------------------------------------------------------------------------
+void ayy_SetMemoryLimit
+(
+    int limit   ///< Must be a positive integer.  May be overridden by system-wide settings.
+);
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets the cpu share for all processes in the application.
+ */
+//--------------------------------------------------------------------------------------------------
+void ayy_SetCpuShare
 (
     int limit   ///< Must be a positive integer.  May be overridden by system-wide settings.
 );
@@ -320,18 +345,6 @@ void ayy_SetFileSystemSizeLimit
 void ayy_SetPriority
 (
     const char* priority
-);
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Sets the maximum size (in bytes) that a process in the current processes section can make
- * its virtual address space.
- */
-//--------------------------------------------------------------------------------------------------
-void ayy_SetVMemSizeLimit
-(
-    int limit   ///< Must be a positive integer.  May be overridden by system-wide settings.
 );
 
 

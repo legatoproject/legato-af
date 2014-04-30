@@ -105,12 +105,8 @@ end
 function M.sendcmd (cmd, payload)
     if not M.initialized then error "Module not initialized" end
     local s, b = empparser:send_emp_cmd_wait(cmd, payload)
-    if s == 0 then return "ok", (b~="" and b or nil) else
-        --in case of error, the EMP status is a rc_ReturnCode_t
-        local msg = "error "..(errstr(s) or s) --s might be an unknown rc_ReturnCode_t
-        if b then msg = msg.." [hint: "..tostring(b).."]" end
-        return nil, msg
-    end
+    if s == 0 then return "ok", (b~="" and b or nil) end
+    return nil, b or errstr(s) or "unknown error"
 end
 
 return M

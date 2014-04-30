@@ -21,12 +21,12 @@
  *  - receive data
  *  - receive asset update request
  *
- *  This module relies on Mihini's Agent process, which is responsible for queuing data,
+ *  This module relies on Agent process, which is responsible for queuing data,
  *  managing the flush timers and sending the data to the remote AirVantage server.
  *  Many of the APIs in this module relay the data to the Agent; the Agent then manages the data as described.
  *
  *  Two methods are supported for sending data to the AirVantage servers:
- *   - The swi_av_asset_Push* functions are this is a simple API for managing how to send data, this is the recommended method for most use cases.
+ *   - The swi_av_asset_Push* functions: this is a simple API for managing how to send data, this is the recommended method for most use cases.
  *   - Tables API (via swi_av_table_Create): this allows for more advanced control of the transfer of data.
  *
  * <HR>
@@ -36,6 +36,7 @@
 #define SWI_AIRVANTAGE_INCLUDE_GUARD
 
 #include <stdlib.h>
+#include <limits.h>
 #include "returncodes.h"
 #include "swi_dset.h"
 
@@ -54,7 +55,7 @@
 #define SWI_AV_INFO 1
 
 /**
-* Initializes the Airvantage library.
+* Initializes the AirVantage library.
 * A call to swi_av_Init is mandatory to enable AirVantage library APIs.
 *
 * @return RC_OK on success
@@ -63,7 +64,7 @@
 rc_ReturnCode_t swi_av_Init();
 
 /**
-* Destroys the Airvantage library.
+* Destroys the AirVantage library.
 *
 * @return RC_OK on success
 */
@@ -193,7 +194,9 @@ rc_ReturnCode_t swi_av_asset_Destroy
 
 
 /**
-* Specific values for timestamps.
+* Specific values for timestamps to be used with swi_av_asset_Push* functions.
+* (Those values are not meant to be used with advanced swi_av_table_Push* functions).
+*
 * Timestamps values 0 and 1 (in second since Unix Epoch) are reserved
 * for those special timestamp requests.
 */
@@ -214,7 +217,7 @@ typedef enum swi_av_timestamp{
 * String parameters can be released by user once the call has returned.
 *
 * @return RC_OK on success
-* @return RC_NOT__AVAILABLE if the Agent cannot be accessed.
+* @return RC_NOT_AVAILABLE if the Agent cannot be accessed.
 */
 rc_ReturnCode_t swi_av_asset_PushString
 (
@@ -232,7 +235,7 @@ rc_ReturnCode_t swi_av_asset_PushString
 /**
 * Pushes an integer value to the agent.
 * The data are not necessarily moved forward from the agent to the server immediately:
-* agent-to-server data transfers are managed through policies, as described in the Mihini Agent product documentation.
+* agent-to-server data transfers are managed through policies, as described in the Agent product documentation.
 * This API is optimized for ease of use: it will internally try to reformat data in the most sensible,
 * server-compatible way. Applications requiring a tight control over how data are structured, buffered,
 * consolidated and reported should consider the more advanced Table API,
@@ -258,7 +261,7 @@ rc_ReturnCode_t swi_av_asset_PushInteger
 /**
 * Pushes a float value to the agent.
 * The data are not necessarily moved forward from the agent to the server immediately:
-* agent-to-server data transfers are managed through policies, as described in the Mihini Agent product documentation.
+* agent-to-server data transfers are managed through policies, as described in the Agent product documentation.
 * This API is optimized for ease of use: it will internally try to reformat data in the most sensible,
 * server-compatible way. Applications requiring a tight control over how data are structured, buffered,
 * consolidated and reported should consider the more advanced Table API,
@@ -306,7 +309,7 @@ typedef enum
 } swi_av_Table_Storage_t;
 
 /**
-* Creates a table, the Airvantage objects handling staging database tables, to buffer, consolidate
+* Creates a table, the AirVantage objects handling staging database tables, to buffer, consolidate
 * and send structured data.
 *
 * String parameters can be released by user once the call has returned.

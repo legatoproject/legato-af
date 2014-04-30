@@ -22,7 +22,8 @@
  * @subpage c_messaging  <br>
  * @subpage c_mutex  <br>
  * @subpage c_path  <br>
- *  @subpage c_print  <br>
+ * @subpage c_pathIter  <br>
+ * @subpage c_print  <br>
  * @subpage c_clock  <br>
  * @subpage c_safeRef  <br>
  * @subpage c_semaphore  <br>
@@ -154,6 +155,7 @@
 #include "le_messaging.h"
 #include "le_test.h"
 #include "le_path.h"
+#include "le_pathIter.h"
 #include "le_hex.h"
 #include "le_dir.h"
 #include "le_fileLock.h"

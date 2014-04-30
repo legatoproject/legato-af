@@ -1,10 +1,10 @@
-/** @page componentBasicComp Creating a Basic Component
+/** @page componentBasicComp Create a Basic Component
 
 
 This is how to create a  basic component, written in C, that just
 prints "Hello World." when the process it is in starts up.
 
-First, create a directory: the name becomes the name of the component.
+First, create a directory: the directory name will become the component name.
 
 @verbatim
 $ mkdir helloComp
@@ -59,8 +59,7 @@ Legato framework headers.  This reduces the amount of time you have to spend inc
 header files to get access to the functions and data types you need.
 
 The COMPONENT_INIT macro is used to identify your <b> component initializer</b>.
-Every component must have a component initializer, and the code in it must get the component
-ready to have its exported interfaces accessed by other components.
+Every component must have a component initializer.
 
 By using component initializers instead of having each component implement their own main()
 function, we make it possible to run multiple components in the same executable, and even share
@@ -108,19 +107,19 @@ run: (helloWorld)
 And then build it like this:
 
 @verbatim
-$ mkapp hi.adef -t ar7
+$ mkapp hi.adef -t wp7
 @endverbatim
 
 And install on target like this:
 
 @verbatim
-$ instapp hi.ar7 192.168.1.2
+$ instapp hi.wp7 192.168.1.2
 @endverbatim
 
 @note  Your installed application output will display in /var/log/messages in the target device,
  not on the terminal you used to install the application.
 <HR>
 
-Copyright (C) Sierra Wireless, Inc. 2012-2013. All rights reserved. Use of this work is subject to license.
+Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
 
 **/

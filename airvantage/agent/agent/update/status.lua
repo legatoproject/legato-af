@@ -45,6 +45,8 @@ local num2string = {
 
 local string2num = { }
 
+--489 -> 499: project dependent error, tonumber("PROJECT_DEPENDANT_ERROR") will be 499
+for i=489, 499 do num2string[i]="PROJECT_DEPENDENT_ERROR" end
 for k, v in pairs(num2string) do string2num[v]=k end
 
 function M.tonumber(str)

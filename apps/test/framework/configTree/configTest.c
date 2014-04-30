@@ -20,10 +20,10 @@ static char TestRootDir[STR_SIZE] = { 0 };
 
 static const char* NodeTypeStr
 (
-    le_cfg_iteratorRef_t iterRef
+    le_cfg_IteratorRef_t iterRef
 )
 {
-    switch (le_cfg_GetNodeType(iterRef))
+    switch (le_cfg_GetNodeType(iterRef, ""))
     {
         case LE_CFG_TYPE_STRING:
             return "string";
@@ -43,8 +43,8 @@ static const char* NodeTypeStr
         case LE_CFG_TYPE_STEM:
             return "stem";
 
-        case LE_CFG_TYPE_DENIED:
-            return "**DENIED**";
+        case LE_CFG_TYPE_DOESNT_EXIST:
+            return "**DOESN'T EXIST**";
     }
 
     return "unknown";
@@ -53,7 +53,7 @@ static const char* NodeTypeStr
 
 
 
-static void DumpTree(le_cfg_iteratorRef_t iterRef, size_t indent)
+static void DumpTree(le_cfg_IteratorRef_t iterRef, size_t indent)
 {
     if (le_arg_NumArgs() == 1)
     {
@@ -71,8 +71,8 @@ static void DumpTree(le_cfg_iteratorRef_t iterRef, size_t indent)
             printf(" ");
         }
 
-        le_cfg_GetNodeName(iterRef, strBuffer, STR_SIZE);
-        le_cfg_nodeType_t type = le_cfg_GetNodeType(iterRef);
+        le_cfg_GetNodeName(iterRef, "", strBuffer, STR_SIZE);
+        le_cfg_nodeType_t type = le_cfg_GetNodeType(iterRef, "");
 
         switch (type)
         {
@@ -90,7 +90,7 @@ static void DumpTree(le_cfg_iteratorRef_t iterRef, size_t indent)
 
             default:
                 printf("%s<%s> == ", strBuffer, NodeTypeStr(iterRef));
-                le_cfg_GetString(iterRef, "", strBuffer, STR_SIZE);
+                le_cfg_GetString(iterRef, "", strBuffer, STR_SIZE, "");
                 printf("%s\n", strBuffer);
                 break;
         }
@@ -103,25 +103,18 @@ static void DumpTree(le_cfg_iteratorRef_t iterRef, size_t indent)
 
 static void ClearTree()
 {
-    le_result_t result;
-
     LE_INFO("---- Clearing Out Current Tree -----------------------------------------------------");
-    le_cfg_iteratorRef_t iterRef = le_cfg_CreateWriteTxn(TestRootDir);
+    le_cfg_IteratorRef_t iterRef = le_cfg_CreateWriteTxn(TestRootDir);
     LE_FATAL_IF(iterRef == NULL, "Test: %s - Could not create iterator.", TestRootDir);
 
     DumpTree(iterRef, 0);
     le_cfg_DeleteNode(iterRef, "");
 
-    result = le_cfg_CommitWrite(iterRef);
-    LE_FATAL_IF(result != LE_OK,
-                "Test: %s - Could not commit changes, result == %s.",
-                TestRootDir,
-                LE_RESULT_TXT(result));
-
+    le_cfg_CommitTxn(iterRef);
 
     iterRef = le_cfg_CreateReadTxn(TestRootDir);
     DumpTree(iterRef, 0);
-    le_cfg_DeleteIterator(iterRef);
+    le_cfg_CancelTxn(iterRef);
 }
 
 
@@ -140,21 +133,16 @@ static void QuickFunctionTest()
 
         char strBuffer[513] = { 0 };
 
-        result = le_cfg_QuickGetString(pathBuffer, strBuffer, 513);
-        LE_FATAL_IF(result != LE_NOT_PERMITTED,
+        result = le_cfg_QuickGetString(pathBuffer, strBuffer, 513, "");
+        LE_FATAL_IF(result != LE_OK,
                     "Test: %s - Test failure, result == %s.",
                     TestRootDir,
                     LE_RESULT_TXT(result));
         LE_DEBUG("<<< Get STRING <%s>", strBuffer);
 
-        result = le_cfg_QuickSetString(pathBuffer,
-                                       "Something funny is going on!");
-        LE_FATAL_IF(result != LE_OK,
-                    "Test: %s - Test failure, result == %s.",
-                    TestRootDir,
-                    LE_RESULT_TXT(result));
+        le_cfg_QuickSetString(pathBuffer, "Something funny is going on!");
 
-        result = le_cfg_QuickGetString(pathBuffer, strBuffer, 513);
+        result = le_cfg_QuickGetString(pathBuffer, strBuffer, 513, "");
         LE_FATAL_IF(result != LE_OK,
                     "Test: %s - Test failure, result == %s.",
                     TestRootDir,
@@ -165,41 +153,24 @@ static void QuickFunctionTest()
     {
         snprintf(pathBuffer, STR_SIZE, "%s/quickFunctions/intVal", TestRootDir);
 
-        int value;
-
-        result = le_cfg_QuickGetInt(pathBuffer, &value);
-        LE_FATAL_IF(result != LE_NOT_PERMITTED,
-                    "Test: %s - Test failure, result == %s.",
-                    TestRootDir,
-                    LE_RESULT_TXT(result));
+        int value = le_cfg_QuickGetInt(pathBuffer, 0);
         LE_DEBUG("<<< Get INT <%d>", value);
-        result = le_cfg_QuickSetInt(pathBuffer, 1111);
-        LE_FATAL_IF(result != LE_OK, "Test: %s - Test failure, result == %s.",
-                    TestRootDir,
-                    LE_RESULT_TXT(result));
 
-        le_cfg_QuickGetInt(pathBuffer, &value);
+        le_cfg_QuickSetInt(pathBuffer, 1111);
+
+        value = le_cfg_QuickGetInt(pathBuffer, 0);
         LE_DEBUG("<<< Get INT <%d>", value);
     }
 
     {
         snprintf(pathBuffer, STR_SIZE, "%s/quickFunctions/floatVal", TestRootDir);
 
-        double value;
-
-        result = le_cfg_QuickGetFloat(pathBuffer, &value);
-        LE_FATAL_IF(result != LE_NOT_PERMITTED,
-                    "Test: %s - failure, result == %s.",
-                    TestRootDir,
-                    LE_RESULT_TXT(result));
+        double value = le_cfg_QuickGetFloat(pathBuffer, 0.0);
         LE_DEBUG("<<< Get FLOAT <%f>", value);
-        result = le_cfg_QuickSetFloat(pathBuffer, 1024.25);
-        LE_FATAL_IF(result != LE_OK,
-                    "Test: %s - failure, result == %s.",
-                    TestRootDir,
-                    LE_RESULT_TXT(result));
 
-        result = le_cfg_QuickGetFloat(pathBuffer, &value);
+        le_cfg_QuickSetFloat(pathBuffer, 1024.25);
+
+        value = le_cfg_QuickGetFloat(pathBuffer, 0.0);
         LE_FATAL_IF(result != LE_OK,
                     "Test: %s - failure, result == %s.",
                     TestRootDir,
@@ -210,175 +181,18 @@ static void QuickFunctionTest()
     {
         snprintf(pathBuffer, STR_SIZE, "%s/quickFunctions/boolVal", TestRootDir);
 
-        bool value;
-
-        result = le_cfg_QuickGetBool(pathBuffer, &value);
-        LE_FATAL_IF(result != LE_NOT_PERMITTED,
-                    "Test: %s - failure, result == %s.",
-                    TestRootDir,
-                    LE_RESULT_TXT(result));
+        bool value = le_cfg_QuickGetBool(pathBuffer, false);
         LE_DEBUG("<<< Get BOOL <%d>", value);
-        result = le_cfg_QuickSetBool(pathBuffer, true);
-        LE_FATAL_IF(result != LE_OK,
-                    "Test: %s - failure, result == %s.",
-                    TestRootDir,
-                    LE_RESULT_TXT(result));
 
-        result = le_cfg_QuickGetBool(pathBuffer, &value);
+        le_cfg_QuickSetBool(pathBuffer, true);
+
+        value = le_cfg_QuickGetBool(pathBuffer, false);
         LE_FATAL_IF(result != LE_OK,
                     "Test: %s - failure, result == %s.",
                     TestRootDir,
                     LE_RESULT_TXT(result));
         LE_DEBUG("<<< Get BOOL <%d>", value);
     }
-}
-
-
-
-
-static void AllAsInt
-(
-    le_cfg_iteratorRef_t iterRef
-)
-{
-    static char nameBuffer[STR_SIZE] = { 0 };
-
-    le_cfg_GoToFirstChild(iterRef);
-
-    do
-    {
-        int value;
-
-        le_cfg_GetNodeName(iterRef, nameBuffer, STR_SIZE);
-        value = le_cfg_GetInt(iterRef, "");
-
-        LE_DEBUG("Read<%s>: %s: %d", NodeTypeStr(iterRef), nameBuffer, value);
-    }
-    while (le_cfg_GoToNextSibling(iterRef) == LE_OK);
-
-    le_cfg_GoToParent(iterRef);
-}
-
-
-
-
-static void AllAsFloat
-(
-    le_cfg_iteratorRef_t iterRef
-)
-{
-    static char nameBuffer[STR_SIZE] = { 0 };
-
-    le_cfg_GoToFirstChild(iterRef);
-
-    do
-    {
-        float value;
-
-        le_cfg_GetNodeName(iterRef, nameBuffer, STR_SIZE);
-        value = le_cfg_GetFloat(iterRef, "");
-
-        LE_DEBUG("Read<%s>: %s: %f", NodeTypeStr(iterRef), nameBuffer, value);
-    }
-    while (le_cfg_GoToNextSibling(iterRef) == LE_OK);
-
-    le_cfg_GoToParent(iterRef);
-}
-
-
-
-
-static void AllAsBool
-(
-    le_cfg_iteratorRef_t iterRef
-)
-{
-    static char nameBuffer[STR_SIZE] = { 0 };
-
-    le_cfg_GoToFirstChild(iterRef);
-
-    do
-    {
-        bool value;
-
-        le_cfg_GetNodeName(iterRef, nameBuffer, STR_SIZE);
-        value = le_cfg_GetBool(iterRef, "");
-
-        LE_DEBUG("Read<%s>: %s: %d", NodeTypeStr(iterRef), nameBuffer, value);
-    }
-    while (le_cfg_GoToNextSibling(iterRef) == LE_OK);
-
-    le_cfg_GoToParent(iterRef);
-}
-
-
-
-
-static void TestValueWrite
-(
-    le_cfg_iteratorRef_t iterRef,
-    const char* namePtr,
-    const char* valuePtr,
-    le_cfg_nodeType_t exptectedType
-)
-{
-    static char strBuffer[STR_SIZE] = { 0 };
-
-    LE_FATAL_IF(le_cfg_IsEmpty(iterRef, namePtr) != true,
-                "Test: %s - %s is non-empty when it shouldn't be.",
-                TestRootDir,
-                namePtr);
-
-    le_cfg_SetString(iterRef, namePtr, valuePtr);
-    le_cfg_GetString(iterRef, namePtr, strBuffer, STR_SIZE);
-
-    LE_DEBUG("Wrote: '%s' to %s, got back '%s'.", valuePtr, namePtr, strBuffer);
-
-    LE_FATAL_IF(strncmp(strBuffer, valuePtr, STR_SIZE) != 0,
-                "Test: %s - Did not get back what was written.  Expected '%s', got, '%s'.",
-                TestRootDir,
-                valuePtr,
-                strBuffer);
-
-    le_cfg_GoToNode(iterRef, namePtr);
-    LE_FATAL_IF(le_cfg_GetNodeType(iterRef) != exptectedType,
-                "Test: %s - Did not get expected type.  Got %s instead.",
-                TestRootDir,
-                NodeTypeStr(iterRef));
-
-    le_cfg_GoToNode(iterRef, "..");
-}
-
-
-
-
-static void TestValueTypes()
-{
-    LE_INFO("---- Testing Value Type Guessing ---------------------------------------------------");
-
-    char pathBuffer[STR_SIZE] = { 0 };
-    snprintf(pathBuffer, STR_SIZE, "%s/valueTypes/", TestRootDir);
-
-    le_cfg_iteratorRef_t iterRef = le_cfg_CreateWriteTxn(pathBuffer);
-
-    TestValueWrite(iterRef, "value0", "false",                            LE_CFG_TYPE_BOOL);
-    TestValueWrite(iterRef, "value1", "true",                             LE_CFG_TYPE_BOOL);
-    TestValueWrite(iterRef, "value2", "1024",                             LE_CFG_TYPE_INT);
-    TestValueWrite(iterRef, "value3", "10.24",                            LE_CFG_TYPE_FLOAT);
-    TestValueWrite(iterRef, "value4", "-1024",                            LE_CFG_TYPE_INT);
-    TestValueWrite(iterRef, "value5", "-10.24",                           LE_CFG_TYPE_FLOAT);
-    TestValueWrite(iterRef, "value6", "Something wicked this way comes.", LE_CFG_TYPE_STRING);
-    TestValueWrite(iterRef, "value7", "5.525e-5",                         LE_CFG_TYPE_FLOAT);
-    TestValueWrite(iterRef, "value8", "",                                 LE_CFG_TYPE_EMPTY);
-
-    AllAsInt(iterRef);
-    AllAsFloat(iterRef);
-    AllAsBool(iterRef);
-
-    le_cfg_GoToNode(iterRef, pathBuffer);
-    DumpTree(iterRef, 0);
-
-    le_cfg_DeleteIterator(iterRef);
 }
 
 
@@ -386,19 +200,19 @@ static void TestValueTypes()
 
 static void TestValue
 (
-    le_cfg_iteratorRef_t iterRef,
+    le_cfg_IteratorRef_t iterRef,
     const char* valueNamePtr,
     const char* expectedValue
 )
 {
     static char strBuffer[STR_SIZE] = { 0 };
 
-    le_cfg_GetString(iterRef, valueNamePtr, strBuffer, STR_SIZE);
+    le_cfg_GetString(iterRef, valueNamePtr, strBuffer, STR_SIZE, "");
     LE_FATAL_IF(strncmp(strBuffer, expectedValue, STR_SIZE) != 0,
                 "Test: %s - Expected '%s' but got '%s' instead.",
                 TestRootDir,
-                valueNamePtr,
-                expectedValue);
+                expectedValue,
+                strBuffer);
 
 }
 
@@ -407,13 +221,11 @@ static void TestValue
 
 static void DeleteTest()
 {
-    le_result_t result;
-
     static char pathBuffer[STR_SIZE] = { 0 };
 
     snprintf(pathBuffer, STR_SIZE, "%s/deleteTest/", TestRootDir);
 
-    le_cfg_iteratorRef_t iterRef = le_cfg_CreateWriteTxn(pathBuffer);
+    le_cfg_IteratorRef_t iterRef = le_cfg_CreateWriteTxn(pathBuffer);
 
     le_cfg_SetString(iterRef, "valueA", "aNewValue");
     le_cfg_SetString(iterRef, "valueB", "aNewValue");
@@ -423,11 +235,7 @@ static void DeleteTest()
     TestValue(iterRef, "valueB", "aNewValue");
     TestValue(iterRef, "valueC", "aNewValue");
 
-    result = le_cfg_CommitWrite(iterRef);
-    LE_FATAL_IF(result != LE_OK,
-                "Test: %s - Could not commit write.  Reason = %s",
-                TestRootDir,
-                LE_RESULT_TXT(result));
+    le_cfg_CommitTxn(iterRef);
 
 
 
@@ -439,11 +247,7 @@ static void DeleteTest()
     TestValue(iterRef, "valueB", "");
     TestValue(iterRef, "valueC", "aNewValue");
 
-    result = le_cfg_CommitWrite(iterRef);
-    LE_FATAL_IF(result != LE_OK,
-                "Test: %s - Could not commit write.  Reason = %s",
-                TestRootDir,
-                LE_RESULT_TXT(result));
+    le_cfg_CommitTxn(iterRef);
 
 
 
@@ -455,7 +259,7 @@ static void DeleteTest()
 
     DumpTree(iterRef, 0);
 
-    le_cfg_DeleteIterator(iterRef);
+    le_cfg_CancelTxn(iterRef);
 }
 
 
@@ -478,20 +282,15 @@ static void StringSizeTest()
     strncpy(smallParentPathBuffer, parentPathBuffer, SMALL_STR_SIZE);
 
 
-    result = le_cfg_QuickSetString(pathBuffer,
-                                   "This is a bigger string than may be usual for this test.");
-    LE_FATAL_IF(result != LE_OK,
-                "Test: %s - Failure, result == %s.",
-                TestRootDir,
-                LE_RESULT_TXT(result));
+    le_cfg_QuickSetString(pathBuffer, "This is a bigger string than may be usual for this test.");
 
 
     static char buffer[STR_SIZE];
 
-    le_cfg_iteratorRef_t iterRef = le_cfg_CreateReadTxn(pathBuffer);
+    le_cfg_IteratorRef_t iterRef = le_cfg_CreateReadTxn(pathBuffer);
 
 
-    result = le_cfg_GetPath(iterRef, buffer, SMALL_STR_SIZE);
+    result = le_cfg_GetPath(iterRef, "", buffer, SMALL_STR_SIZE);
     LE_FATAL_IF(result != LE_OVERFLOW,
                 "Test: %s - The buffer should have been too small.",
                 TestRootDir);
@@ -500,16 +299,7 @@ static void StringSizeTest()
                 TestRootDir,
                 buffer);
 
-    result = le_cfg_GetParentPath(iterRef, buffer, SMALL_STR_SIZE);
-    LE_FATAL_IF(result != LE_OVERFLOW,
-                "Test: %s - The buffer should have been too small.",
-                TestRootDir);
-    LE_FATAL_IF(strcmp(buffer, smallParentPathBuffer) == 0,
-                "Test: %s - Unexpected value returned, %s",
-                TestRootDir,
-                buffer);
-
-    result = le_cfg_GetString(iterRef, "", buffer, SMALL_STR_SIZE);
+    result = le_cfg_GetString(iterRef, "", buffer, SMALL_STR_SIZE, "");
     LE_FATAL_IF(result != LE_OVERFLOW,
                 "Test: %s - The buffer should have been too small.",
                 TestRootDir);
@@ -519,7 +309,7 @@ static void StringSizeTest()
                 buffer);
 
 
-    result = le_cfg_GetPath(iterRef, buffer, STR_SIZE);
+    result = le_cfg_GetPath(iterRef, "", buffer, STR_SIZE);
     LE_FATAL_IF(result != LE_OK,
                 "Test: %s - The buffer should have been big enough.",
                 TestRootDir);
@@ -528,14 +318,7 @@ static void StringSizeTest()
                 TestRootDir,
                 buffer);
 
-    result = le_cfg_GetParentPath(iterRef, buffer, STR_SIZE);
-    LE_FATAL_IF(result != LE_OK, "Test: %s - The buffer should have been big enough.", TestRootDir);
-    LE_FATAL_IF(strcmp(buffer, parentPathBuffer) != 0,
-                "Test: %s - Unexpected value returned, %s",
-                TestRootDir,
-                buffer);
-
-    result = le_cfg_GetString(iterRef, "", buffer, STR_SIZE);
+    result = le_cfg_GetString(iterRef, "", buffer, STR_SIZE, "");
     LE_FATAL_IF(result != LE_OK, "Test: %s - The buffer should have been big enough.", TestRootDir);
     LE_FATAL_IF(strcmp(buffer, "This is a bigger string than may be usual for this test.") != 0,
                 "Test: %s - Unexpected value returned, %s",
@@ -543,10 +326,10 @@ static void StringSizeTest()
                 buffer);
 
 
-    le_cfg_DeleteIterator(iterRef);
+    le_cfg_CancelTxn(iterRef);
 
 
-    result = le_cfg_QuickGetString(pathBuffer, buffer, SMALL_STR_SIZE);
+    result = le_cfg_QuickGetString(pathBuffer, buffer, SMALL_STR_SIZE, "");
     LE_FATAL_IF(result != LE_OVERFLOW,
                 "Test: %s - The buffer should have been too small.",
                 TestRootDir);
@@ -555,7 +338,7 @@ static void StringSizeTest()
                 TestRootDir,
                 buffer);
 
-    result = le_cfg_QuickGetString(pathBuffer, buffer, STR_SIZE);
+    result = le_cfg_QuickGetString(pathBuffer, buffer, STR_SIZE, "");
     LE_FATAL_IF(result != LE_OK,
                 "Test: %s - The buffer should have been big enough.",
                 TestRootDir);
@@ -564,38 +347,6 @@ static void StringSizeTest()
                 TestRootDir,
                 buffer);
 }
-
-
-
-/*static void TestValues
-(
-    le_cfg_iteratorRef_t iterRef,
-    bool shouldExist
-)
-{
-    if (shouldExist == false)
-    {
-        LE_FATAL_IF(le_cfg_IsEmpty(iterRef, ".") == false, "Base node should be empty.");
-    }
-    else
-    {
-        char buffer[20] = { 0 };
-
-        LE_FATAL_IF(le_cfg_IsEmpty(iterRef, "anEmptyValue") != true, "Value not empty.");
-        LE_FATAL_IF(le_cfg_GetInt(iterRef, "anIntValue") != 2248, "Int value not as expected");
-        //LE_FATAL_IF(le_cfg_GetFloat(iterRef, "aSubNode/aFloatValue") != 22.48, "Bad float value.");
-        LE_FATAL_IF(le_cfg_GetBool(iterRef, "aBoolValue") != true, "Bad bool value.");
-
-        le_result_t result = le_cfg_GetString(iterRef, "aSubNode/aStringValue", buffer, 20);
-        LE_FATAL_IF(result != LE_OK,
-                    "Problem with get string, result = %s.",
-                    LE_RESULT_TXT(result));
-
-        LE_FATAL_IF(strcmp(buffer, "I am some text!") != 0,
-                    "Did not read back expected value, found \'%s\' instead.",
-                    buffer);
-    }
-}*/
 
 
 
@@ -617,7 +368,7 @@ static void TestImportExport()
 
     LE_INFO("----  Import and commit a config. ----");
 
-    le_cfg_iteratorRef_t iterRef = le_cfg_CreateWriteTxn("/suite/fileTests");
+    le_cfg_IteratorRef_t iterRef = le_cfg_CreateWriteTxn("/suite/fileTests");
     le_result_t result = le_cfg_ImportTree(iterRef, filePath, "");
 
     LE_FATAL_IF(result != LE_OK,
@@ -627,7 +378,7 @@ static void TestImportExport()
 
     TestValues(iterRef, true);
 
-    result = le_cfg_CommitWrite(iterRef);
+    result = le_cfg_CommitTxn(iterRef);
     LE_FATAL_IF(result != LE_OK, "Commit failure, result = %s.", LE_RESULT_TXT(result));
 
 
@@ -651,7 +402,7 @@ static void TestImportExport()
 
     TestValues(iterRef, true);
 
-    le_cfg_DeleteIterator(iterRef);
+    le_cfg_CancelTxn(iterRef);
 
     TestValues(iterRef, true);*/
 
@@ -670,14 +421,10 @@ static void MultiTreeTest()
     snprintf(pathBuffer, STR_SIZE, "foo:/%s/quickMultiTreeTest/value", TestRootDir);
 
 
-    le_result_t result = le_cfg_QuickSetString(pathBuffer, "hello world");
-    LE_FATAL_IF(result != LE_OK,
-                "Test: %s - Could not write value to tree, foo.  Reason = %s",
-                TestRootDir,
-                LE_RESULT_TXT(result));
+    le_cfg_QuickSetString(pathBuffer, "hello world");
 
 
-    result = le_cfg_QuickGetString(pathBuffer, strBuffer, STR_SIZE);
+    le_result_t result = le_cfg_QuickGetString(pathBuffer, strBuffer, STR_SIZE, "");
     LE_FATAL_IF(result != LE_OK,
                 "Test: %s - Could not read value from tree, foo.  Reason = %s",
                 TestRootDir,
@@ -690,19 +437,59 @@ static void MultiTreeTest()
 
 
 
+static void ExistAndEmptyTest()
+{
+    static char pathBuffer[STR_SIZE] = { 0 };
+    snprintf(pathBuffer, STR_SIZE, "/%s/existAndEmptyTest/", TestRootDir);
+
+    {
+        le_cfg_IteratorRef_t iterRef = le_cfg_CreateWriteTxn(pathBuffer);
+
+        le_cfg_SetEmpty(iterRef, "");
+        LE_TEST(le_cfg_IsEmpty(iterRef, "") == true);
+
+        LE_TEST(le_cfg_NodeExists(iterRef, "valueA") == false);
+        LE_TEST(le_cfg_NodeExists(iterRef, "valueB") == false);
+        LE_TEST(le_cfg_NodeExists(iterRef, "valueC") == false);
+        LE_TEST(le_cfg_NodeExists(iterRef, "valueD") == false);
+
+        LE_TEST(le_cfg_IsEmpty(iterRef, "valueA") == true);
+        LE_TEST(le_cfg_IsEmpty(iterRef, "valueB") == true);
+        LE_TEST(le_cfg_IsEmpty(iterRef, "valueC") == true);
+        LE_TEST(le_cfg_IsEmpty(iterRef, "valueD") == true);
+
+
+        le_cfg_SetString(iterRef, "valueA", "aNewValue");
+        le_cfg_SetInt(iterRef, "valueB", 10);
+        le_cfg_SetBool(iterRef, "valueC", true);
+        le_cfg_SetFloat(iterRef, "valueD", 10.24);
+
+        LE_TEST(le_cfg_NodeExists(iterRef, "valueA") == true);
+        LE_TEST(le_cfg_NodeExists(iterRef, "valueB") == true);
+        LE_TEST(le_cfg_NodeExists(iterRef, "valueC") == true);
+        LE_TEST(le_cfg_NodeExists(iterRef, "valueD") == true);
+
+        LE_TEST(le_cfg_IsEmpty(iterRef, "valueA") == false);
+        LE_TEST(le_cfg_IsEmpty(iterRef, "valueB") == false);
+        LE_TEST(le_cfg_IsEmpty(iterRef, "valueC") == false);
+        LE_TEST(le_cfg_IsEmpty(iterRef, "valueD") == false);
+
+        le_cfg_CommitTxn(iterRef);
+    }
+}
+
+
+
 
 static void IncTestCount
 (
     void
 )
 {
-    le_cfg_iteratorRef_t iterRef = le_cfg_CreateWriteTxn("/configTest/testCount");
+    le_cfg_IteratorRef_t iterRef = le_cfg_CreateWriteTxn("/configTest/testCount");
 
-    int count = le_cfg_GetInt(iterRef, "");
-    count++;
-    le_cfg_SetInt(iterRef, "", count);
-
-    le_cfg_CommitWrite(iterRef);
+    le_cfg_SetInt(iterRef, "", le_cfg_GetInt(iterRef, "", 0) + 1);
+    le_cfg_CommitTxn(iterRef);
 }
 
 
@@ -729,11 +516,11 @@ COMPONENT_INIT
     ClearTree();
 
     QuickFunctionTest();
-    TestValueTypes();
     DeleteTest();
     StringSizeTest();
     TestImportExport();
     MultiTreeTest();
+    ExistAndEmptyTest();
 
     if (le_arg_NumArgs() == 1)
     {

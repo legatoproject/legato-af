@@ -26,37 +26,41 @@ processes:
 This defines one executable called helloWorld implemented by hello.c, 
 and then starts one instance of the helloWorld executable.
 
-@note If your executable has multiple source files, add more files inside the
+If your executable has multiple source files, add more files inside the
       parentheses after the executable name: "helloWorld ( hello.c foo.c )".
 
 Run @c mkapp to build the executable and bundle it into an application.
 
 
 Use the "-t" option to build a target other than the default "localhost"
-target, (e.g., to build the helloWorld application for a device running the
-Sierra Wireless AR7 module):
+target.
+
+This is how to build the helloWorld application for a device running the
+Sierra Wireless WP7 module:
 
 @verbatim
-$ mkapp -t ar7 helloWorld.adef
+$ mkapp -t wp7 helloWorld.adef
 @endverbatim
 
-Now, you have a file called helloWorld.ar7.  Use "instapp" to install it on your target 
+@note If you're building an AR7 app, substitute @c ar7 for @c wp7 in the mkapp run command.
+
+Now, you have a file called helloWorld.wp7.  Use "instapp" to install it on your target 
 so it can be started automatically by the Supervisor when the device boots up.
 
 @verbatim
-$ instapp helloWorld.ar7 <ip addr>
+$ instapp helloWorld.wp7 <ip addr>
 @endverbatim
 
 The second argument tells the target device host address from where to run the application.
 This will connect to the target, upload the application, and start it.
 
-@note  Your installed application output will display in /var/log/messages in the target device,
+Your installed application output will display in /var/log/messages in the target device,
  not on the terminal you used to install the application.
 
 Use "rmapp" to uninstall your application.
 
 @verbatim
-$ rmapp helloWorld.ar7 <ip addr>
+$ rmapp helloWorld.wp7 <ip addr>
 @endverbatim
 
 Use "lsapp" to list the applications installed on a target.

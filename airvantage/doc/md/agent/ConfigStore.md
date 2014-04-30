@@ -423,19 +423,22 @@ rpc.address = 'localhost'
 rpc.port = 1999
 ~~~
 
-#### Data queues
+#### Data policies
 
 ~~~{.lua}
--- activate Data queues
+-- activate data policies
 data.activate = true
-data.queues = { } -- list of available Data queues
--- Each data queue correspond to a data sending policy, there are three main types of policies:
--- manual: data sending is triggered by the user
--- cron: data sending is triggered on cron events
--- latency: data sending is triggered some times after a data push
-data.queues.default = { 'manual' } -- default data queue to use when no policy name is used when sending data
-data.queues.hourly = { latency = 60 * 60 }
-data.queues.daily = { latency = 24 * 60 * 60 }
-data.queues.never = { 'manual' }
-data.queues.now = { latency = 5 }
+data.policy = { } -- list of available Data policies
+-- Each data queue correspond to a data sending policy, there are five types of policies:
+-- manual: data sending is triggered by the user. Set to true when using this trigger.
+-- cron: data sending is triggered on cron events. Set the value to string describing the cron trigger (look into timer.cron API for the syntax).
+-- latency: data sending is triggered some times after a data push. Set to the maximum number of seconds to trigger the data sending after the data has been pushed.
+-- period: data sending is triggered at a given period. Set to the number of second period.
+-- onboot: data sending is triggered after the agent boots. Set to the number of seconds after the agent has boot up.
+data.policy.default = { manual = true } -- default data queue to use when no policy name is used when sending data
+data.policy.hourly = { latency = 60 * 60 }
+data.policy.daily = { latency = 24 * 60 * 60 }
+data.policy.never = { manual = true }
+data.policy.now = { latency = 5 }
+data.policy.onboot = { onboot = 30 }
 ~~~

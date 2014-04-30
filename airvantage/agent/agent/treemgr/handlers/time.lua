@@ -23,7 +23,7 @@ function M :get (path)
 end
 
 -- Not supported
-function M :set() return nil, "cannot write time" end
+function M :set() return nil, "NOT_IMPLEMENTED" end
 
 -- Not supported
 function M :register() end

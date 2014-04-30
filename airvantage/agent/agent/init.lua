@@ -104,8 +104,18 @@ local simplemodules = {}        -- holds simple modules defined as a single init
                                 -- couple Lua Module file is too much for a couple of lines... simplemodules[name] = modinitfunction
 
 
+-- The init function takes care of finding the module, and erase the init function from the module (init is used only once !)
 local function protectedinit(mod, params)
-    return (simplemodules[mod] or require('agent.'..mod).init)(params)
+    local f = simplemodules[mod]
+    if f then
+      simplemodules[mod] = nil
+    else
+      local m = require('agent.'..mod)
+      f = m.init
+      m.init = nil
+    end
+
+    return f(params)
 end
 protectedinit = protect(protectedinit)
 
@@ -279,7 +289,7 @@ local function initialize()
 
     -- Create the socket that is used for communication with all local clients
     scheduleinit{name="AssetConnector", mod="asscon", initflag=true, params=c"agent"}
-    scheduleinit{name="ServerConnector", mod="srvcon", initflag=true, reqdep="AssetConnector", optdep="NetworkManager" }
+    scheduleinit{name="ServerConnector", mod="srvcon", initflag=true, reqdep="AssetConnector", optdep= {"NetworkManager", "Rest"}}
     scheduleinit{name="Modem", mod="modem", initflag=c"modem.activate"}
 
     -- Start the shell if activated in the configuration
@@ -297,13 +307,13 @@ local function initialize()
 
     -- Start the Software Update module
     scheduleinit{name="Update", mod="update", initflag=c"update.activate",
-                 reqdep= {"DeviceManagement", "AssetConnector"}, optdep = {"ApplicationContainer", "SMS", "NetworkManager" }}
+                 reqdep= {"DeviceManagement", "AssetConnector"}, optdep = {"ApplicationContainer", "SMS", "NetworkManager", "Rest" }}
 
     -- Start the Application Container
-    scheduleinit{name="ApplicationContainer", mod="appcon", initflag=c"appcon.activate", optdep= "DeviceManagement"}
+    scheduleinit{name="ApplicationContainer", mod="appcon", initflag=c"appcon.activate", optdep= {"DeviceManagement", "Rest" }}
 
     -- Start the Device Management module
-    scheduleinit{name="DeviceManagement", mod="devman", initflag=c"device.activate", reqdep="AssetConnector", params=c"device"}
+    scheduleinit{name="DeviceManagement", mod="devman", initflag=c"device.activate", reqdep="AssetConnector", optdep="Rest", params=c"device"}
 
     -- Start the Monitoring Engine, currently disabled
     scheduleinit{name="Monitoring", mod="monitoring", initflag=c"monitoring.activate", reqdep="DeviceManagement"}

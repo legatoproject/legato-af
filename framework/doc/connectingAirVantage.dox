@@ -3,7 +3,7 @@
 
 Detailed info: <br>
 @subpage appInstallAirVantage <br>
-@subpage AVConnectLib  <br>
+@subpage airVantageConnectLib  <br>
 
 API info is here: @ref swi_airvantage.h
 

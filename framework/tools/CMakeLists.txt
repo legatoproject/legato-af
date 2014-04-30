@@ -7,8 +7,6 @@
 
 add_subdirectory(logTool)
 add_subdirectory(installer)
-add_subdirectory(data)
 add_subdirectory(config)
 add_subdirectory(appCtrl)
-add_subdirectory(sim)
-add_subdirectory(apn)
+add_subdirectory(inspect)

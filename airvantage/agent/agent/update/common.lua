@@ -17,11 +17,11 @@ local M = {}
 -- internal data, persisted and read from server
 -- data table is just a proxy to enable to have update data load/unloaded as a cache (see cache functions below for more desc)
 -- data table organization:
--- data.swlist (table) contains software status
--- data.currentupdate (table) contains current update description if any
 --
--- data.swlist.lastupdatestatus= (integer) result code of last update job
--- data.swlist.lastupdateerrstr= (string) description of the error (if any) for last update
+-- data.swlist (table) contains software status
+-- data.swlist.lastupdate.result: (integer) last update job result, to be interpreted using agent.update.status.result.
+-- data.swlist.lastupdate.resultdetails: (string) error details on update job
+-- data.swlist.lastupdate.starttime: (integer) when the last update job was started, as returned by os.time(seconds since Epoch).
 -- data.swlist.components: (table) contains "installed"/"provisioned" software components
 -- data.swlist.components[uid] (table) contains the description of a component
 -- data.swlist.components[uid].name: string
@@ -31,6 +31,27 @@ local M = {}
 -- data.swlist.components[uid].depends (table) with features/components needed by this components
 -- data.swlist.components[uid].parameters: (table) with parameters given in update package at install time
 -- data.swlist.components[uid].force (boolean) whether this component was installed using dependency checking
+--
+-- data.currentupdate: (table) contains current update description if any.
+-- data.currentupdate.result: (integer) global update job result, to be interpreted using agent.update.status.
+-- data.currentupdate.resultdetails: (string) error details on update job failure.
+-- data.currentupdate.starttime: (integer) when the update job started, as returned by os.time(seconds since Epoch).
+-- data.currentupdate.status: (string) whether the current udpate is "paused" or "in_progress".
+-- data.currentupdate.request: (string) pending request from user to control update process, can be "pause, "abort", "resume".
+-- data.currentupdate.step: (integer) index to access STEPS tables in agent.update, identifies the current step of the update.
+-- data.currentupdate.infos: (table) contains information to perform an update (especially first and last steps), fields depends on `proto` field value.
+-- data.currentupdate.infos.proto: (string) describe the kind of update in progress, can be "m3da", "localupdate" or "localuninstall".
+-- data.currentupdate.infos.updatefile: (string) used for "localupdate" update type only, the absolute path to the update package.
+-- data.currentupdate.infos.url: (string) used for "m3da" update type only, the URL to download the update package archive.
+-- data.currentupdate.infos.signature: (string) used for "m3da" update type only, the signature computed by M3DA server to be used to check archive integrity.
+-- data.currentupdate.infos.ticketid: (integer) used for "m3da" update type only, ticket id to acknowledge the M3DA SoftwareUpdate command.
+-- data.currentupdate.updatefile: (string) absolute path to the update package archive file.
+-- data.currentupdate.update_directory: (string) absolute path to the folder where the update package have been extracted.
+-- data.currentupdate.index: (integer) current component in `data.currentupdate.manifest` being updated.
+-- data.currentupdate.manifest: (table) manifest table loaded from update package `Manifest` file.
+-- data.currentupdate.manifest.components: see `data.swlist.components` table and sub fields description.
+-- data.currentupdate.manifest.components[index].result: (integer) update job result for one component, to be interpreted using agent.update.status.
+--
 local data = {}
 
 
@@ -73,7 +94,7 @@ local function savecurrentupdate() return saveobj("currentupdate") end
 --subtable.default: default value to be used if nothing is load from flash
 -- note: subtable.t can be nil after subtable unload or because persisted data is nil
 -- so the subtable is loaded only when subtable.tmr is non nil
-local cache = {longevity=10, swlist = {tmr=nil, t=nil, default={ components={} }}, -- cannot be nil, set a default value
+local cache = {longevity=30, swlist = {tmr=nil, t=nil, default={ components={} }}, -- cannot be nil, set a default value
     currentupdate = {tmr=nil, t=nil} -- is nil when no update is in progress, do not set default value
 }
 
@@ -90,6 +111,7 @@ local function cachefunc_index(t, name)
     if not cache[name] then return nil
     elseif cache[name].tmr then --table is loaded in ram
         log("UPDATE", "DEBUG", "cache: cachefunc_index found %s %s", tostring(name), tostring(os.time()) )
+        cache[name].tmr:rearm()
         return cache[name].t
     else--load table
         if name=='swlist' then checkplatformcmp() end

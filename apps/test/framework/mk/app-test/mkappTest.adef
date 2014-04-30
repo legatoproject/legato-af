@@ -13,7 +13,7 @@ a comment */
 files:
         files/xyz  /usr/share/files/
         files/xyz  /usr/share/files/abc
-    [r] libexternal/libexternal.so  /lib
+    [r] libexternal/libexternal.so  /lib/
 
 executables:
 

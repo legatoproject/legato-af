@@ -1,7 +1,6 @@
 /** @page basicInterfaces Legato Interfaces
 
 @ref functionCallAPIs <br>
-@ref dataSampleStreams <br>
 @ref intWhatsNext
 
 To maximize component reuse, it's vital components be designed for reuse.
@@ -30,10 +29,6 @@ Legato supports networking, if that's what's needed, but it also has tools to im
 lighter-weight, language-independent communication between components that exist on the same
 host device or even running within the same process.
 
-Legato supports two forms of language-independent interface:
- - functionCallAPIs
- - dataSampleStreams
-
 @section functionCallAPIs Function Call APIs
 
 Virtually all programmers are familiar with function calls. While Legato
@@ -50,25 +45,12 @@ return codes into messages, and send them over the IPC system.
 
 See @ref languageIndependentAPIs for more information.
 
-@section dataSampleStreams Data Sample Streams
-
-Data Sample Streams are based on the transmission of <b> Data Samples </b> from @b Outputs
-to @b Inputs.
-
-Data Sample Streams allow systems to use objects that act like
-parts of an industrial process, taking in samples, performing some processing, and generating
- other samples.  An example case is where a temperature sensor and a heating coil are connected
-to a PID controller to implement a thermostat. To get a programmable thermostat, you'd add a
-schedule (with a user interface) that outputs a temperature setpoint to the PID controller.
-
-@image html DataSampleStreamTStatExample.png
-
 @section intWhatsNext What's Next?
 @ref eventBasics
 
 <HR>
 
-Copyright (C) Sierra Wireless, Inc. 2012-2013. All rights reserved.
+Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
 
 **/
 

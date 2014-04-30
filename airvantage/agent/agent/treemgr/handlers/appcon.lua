@@ -43,7 +43,7 @@ function M :get(hpath)
     if not root then
         return nil, { list=true, apps=true }
     elseif root == 'list' then
-        if appname then return nil, "invalid path" end
+        if appname then return nil, "BAD_PARAMETER" end
         return table.concat(utable.keys(appcon.list()), ' ')
     elseif root == 'apps' then
         if not appname then -- list all applications in a table's keys
@@ -54,22 +54,22 @@ function M :get(hpath)
             return nil, get_attrs(appname)
         end
         local attr = attrs[method]
-        if attr~=nil then return attr else return nil, "no such attribute" end
+        if attr~=nil then return attr else return nil, "BAD_PARAMETER" end
     else -- starts neither with 'list' nor 'apps'
-        return nil, "invalid path"
+        return nil, "BAD_PARAMETER"
     end
 end
 
 function M :set(hmap)
     for hpath, val in pairs(hmap) do
         local apps, appname, method = unpack (upath.segments(hpath))
-        if apps~='apps' then return nil, 'invalid path'
+        if apps~='apps' then return nil, 'BAD_PARAMETER'
         elseif method=='started' then
             if val then return appcon.start(appname)
             else return appcon.stop(appname) end
         elseif method=='autostart' then
             return appcon.configure(appname, val)
-        else return nil, 'Cannot write this attribute' end
+        else return nil, 'NOT_PERMITTED:Cannot write this attribute' end
     end
 end
 

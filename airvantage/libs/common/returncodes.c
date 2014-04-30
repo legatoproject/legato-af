@@ -92,9 +92,14 @@ static int compcn(const void *m1, const void *m2)
 rc_ReturnCode_t rc_StringToReturnCode( const char *name)
 {
     struct cn key, *res;
-    key.name = name;
+    char *ptr;
+
+    ptr = strchr(name, ':');
+    key.name =  ptr ? strndup(name, ptr - name) : name;
     if (!name) return 1;
     res = bsearch(&key, rc_names, (sizeof(rc_names)/sizeof(*rc_names)), sizeof(*rc_names), compcn);
+    if (ptr)
+        free(key.name);
     if (!res)
         return 1;
     else

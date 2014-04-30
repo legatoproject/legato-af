@@ -183,12 +183,19 @@ rc_ReturnCode_t swi_av_ConnectToServer(unsigned int latency)
   yajl_gen gen;
 
   SWI_LOG("AV", DEBUG, "%s: latency=%u\n", __FUNCTION__, latency);
-  if (latency == SWI_AV_CX_SYNC)
-    return RC_OK;
+
+  //UNINT_MAX used to define SWI_AV_CX_SYNC, limiting manual latency value to INT_MAX should be OK.
+  if (latency != SWI_AV_CX_SYNC && latency > INT_MAX)
+    return RC_BAD_PARAMETER;
 
   YAJL_GEN_ALLOC(gen);
 
-  YAJL_GEN_INTEGER(latency, "latency");
+  //null latency in payload means synchronous connection
+  if (latency != SWI_AV_CX_SYNC)
+    YAJL_GEN_INTEGER(latency, "latency");
+  else
+    YAJL_GEN_ELEMENT(yajl_gen_null(gen), "latency");
+
   YAJL_GEN_GET_BUF(payload, payloadLen);
 
   res = emp_send_and_wait_response(EMP_CONNECTTOSERVER, 0, payload, payloadLen, &respPayload, &respPayloadLen);
@@ -532,7 +539,7 @@ static rc_ReturnCode_t swi_av_asset_Push(swi_av_Asset_t* asset, const char *path
 
   if (RC_OK != res)
   {
-    SWI_LOG("AV", ERROR, "%s: failed to send EMP_PFLUSH cmd, res = %d\n", __FUNCTION__, res);
+    SWI_LOG("AV", ERROR, "%s: failed to send EMP_PDATA cmd, res = %d\n", __FUNCTION__, res);
     if (NULL != respPayload)
     {
       SWI_LOG("AV", ERROR, "%s: respPayload data = %.*s\n", __FUNCTION__, respPayloadLen, respPayload);
@@ -989,109 +996,24 @@ rc_ReturnCode_t processResponse(yajl_val body)
   return RC_OK;
 }
 
-/*
- * input : path   - is a remaining path (without asset id, can be ""), this path must be malloc and be freed within the function
- *       : body   - is a variable which contains the contents of command, the command will be modified in M3DA style
- * output: setOut - dset object
- * */
-rc_ReturnCode_t processCommand(yajl_val body, swi_dset_Iterator_t* setOut, char** path)
-{
-  SWI_LOG("AV", DEBUG, "%s\n", __FUNCTION__);
 
-  rc_ReturnCode_t res = RC_OK;
-  yajl_val sub_body = NULL;
-  const char* commandName = NULL;
-
-  if (body->type != yajl_t_object)
-  {
-    SWI_LOG("AV", ERROR, "%s: Invalid body class received from RA, expected object type, got type=%u\n",
-        __FUNCTION__, body->type);
-    return res = RC_BAD_FORMAT;
-  }
-
-  int i;
-  /*we get command name*/
-  for (i = 0; i < body->u.object.len; i++)
-  {
-    if (!strcmp(body->u.object.keys[i], "Command"))
-    {
-      commandName = body->u.object.values[i]->u.string;
-      break;
-    }
-  }
-
-  int commandNameLength = strlen(commandName);
-
-  /*compute new path for command (M3DA style) by adding "commands." string*/
-  char* commandPath = NULL;
-  int pathLength = strlen(*path);
-  int commandPathLength = 0;
-  if (pathLength)
-  {
-    // "commands" + "." + $path + "." + $cmdname + '\0'
-    commandPathLength = 8 + 1 + pathLength + 1 + commandNameLength + 1;
-    commandPath = malloc(commandPathLength);
-    strcpy(commandPath, "commands.");
-    strncat(commandPath, commandName, commandNameLength);
-    strcat(commandPath, ".");
-    strcat(commandPath, *path);
-    commandPath[commandPathLength - 1] = '\0';
-  }
-  else
-  {
-    // "commands" + "." + $cmdname + '\0'
-    commandPathLength = 8 + 1 + commandNameLength + 1;
-    commandPath = malloc(commandPathLength);
-    strcpy(commandPath, "commands.");
-    strncat(commandPath, commandName, commandNameLength);
-    commandPath[commandPathLength - 1] = '\0';
-  }
-
-  free(*path);
-  *path = commandPath;
-
-  /*we get the object corresponding with the key "Args"*/
-  for (i = 0; i < body->u.object.len; i++)
-  {
-    if (!strcmp(body->u.object.keys[i], "Args"))
-    {
-      sub_body = body->u.object.values[i];
-      if (sub_body->type == yajl_t_object || sub_body->type == yajl_t_array)
-        res = process(sub_body, setOut);
-
-      else
-      {
-        SWI_LOG("AV", ERROR,
-            "%s: Invalid sub-body class received from RA, expected object or array type, got type=%u\n",
-            __FUNCTION__, sub_body->type);
-        return res = RC_BAD_FORMAT;
-      }
-      break;
-    }
-  }
-
-  //commandPath will need to be freed by caller.
-  SWI_LOG("AV", DEBUG, "%s: %s\n", __FUNCTION__, *path);
-  return res;
-}
 
 /* read common data of all messages
  * Input  : yval
  * Output : body, body_class, path, ticket_id
  */
-rc_ReturnCode_t readMessage(yajl_val* yval, yajl_val* body, char ** body_class, char ** path, int* ticket_id)
+rc_ReturnCode_t readMessage(yajl_val* yval, yajl_val* body, char ** class, char ** path, int* ticket_id)
 {
   SWI_LOG("AV", DEBUG, "%s...\n", __FUNCTION__);
 
   char format_error = 0;
-  char* class = NULL;
   int i;
 
   /*parse message in yval value*/
   for (i = 0; i < (*yval)->u.object.len; i++)
   {
     //Path
-    if (!strcmp((*yval)->u.object.keys[i], "Path"))
+    if (!strcmp((*yval)->u.object.keys[i], "path"))
     {
       if ((*yval)->u.object.values[i]->type != yajl_t_string)
       {
@@ -1103,7 +1025,7 @@ rc_ReturnCode_t readMessage(yajl_val* yval, yajl_val* body, char ** body_class, 
     }
 
     /*Ticketid*/
-    if (!strcmp((*yval)->u.object.keys[i], "TicketId"))
+    if (!strcmp((*yval)->u.object.keys[i], "ticketid"))
     {
       if ((*yval)->u.object.values[i]->type != yajl_t_number)
       {
@@ -1115,7 +1037,7 @@ rc_ReturnCode_t readMessage(yajl_val* yval, yajl_val* body, char ** body_class, 
     }
 
     /*Body*/
-    if (!strcmp((*yval)->u.object.keys[i], "Body"))
+    if (!strcmp((*yval)->u.object.keys[i], "body"))
     {
       if ((*yval)->u.object.values[i]->type != yajl_t_object && (*yval)->u.object.values[i]->type != yajl_t_array)
       {
@@ -1134,31 +1056,13 @@ rc_ReturnCode_t readMessage(yajl_val* yval, yajl_val* body, char ** body_class, 
         format_error = 1;
         break;
       }
-      class = (*yval)->u.object.values[i]->u.string;
+      *class = (*yval)->u.object.values[i]->u.string;
       continue;
     }
   }
 
-  /*find body class*/
-  if (*body)
-  {
-    for (i = 0; i < (*body)->u.object.len; i++)
-    {
-      if (!strcmp((*body)->u.object.keys[i], "__class"))
-      {
-        if ((*body)->u.object.values[i]->type != yajl_t_string)
-        {
-          format_error = 1;
-          break;
-        }
-        *body_class = (*body)->u.object.values[i]->u.string;
-        break;
-      }
-    }
-  }
-
   /*valid object format*/
-  if (format_error || class == NULL || *path == NULL || *body == NULL || strcmp(class, "AWT-DA::Message"))
+  if (format_error || *class == NULL || *path == NULL || *body == NULL )
   {
     SWI_LOG("AV", ERROR, "%s: Invalid payload received from RA, object content invalid\n", __FUNCTION__);
     return RC_BAD_FORMAT;
@@ -1180,7 +1084,7 @@ rc_ReturnCode_t empSendDataHdlr(uint32_t payloadsize, char* payload)
   swi_av_Asset_t* asset = NULL;
   int64_t addr = 0;
   int ticket_id = 0;
-  char* path = NULL, *json_payload = NULL, *asset_id = NULL, *body_class = NULL;
+  char* path = NULL, *json_payload = NULL, *asset_id = NULL, *class = NULL;
   char* remaining_path = NULL; /*without asset_id*/
 
   json_payload = strndup(payload, payloadsize);
@@ -1197,7 +1101,7 @@ rc_ReturnCode_t empSendDataHdlr(uint32_t payloadsize, char* payload)
   }
 
   /*Get values in message*/
-  res = readMessage(&yval, &body, &body_class, &path, &ticket_id);
+  res = readMessage(&yval, &body, &class, &path, &ticket_id);
   if (res != RC_OK)
   {
     SWI_LOG("AV", DEBUG, "%s: readMessage failed %d\n", __FUNCTION__, res);
@@ -1224,17 +1128,12 @@ rc_ReturnCode_t empSendDataHdlr(uint32_t payloadsize, char* payload)
       return res;
     }
 
-    /*full body format validation will be done for each body class*/
+    /*full body format validation will be done for each class*/
 
-    if (body_class == NULL )
+    if (!strcmp(class, "Message") )
       res = processDataWriting(body, user_set); /*data writing case*/
-
-    else if (!strcmp(body_class, "AWT-DA::Command"))
-      res = processCommand(body, user_set, &remaining_path); /*Command case!*/
-
-    else if (!strcmp(body_class, "AWT-DA::Response"))
+    else if (!strcmp(class, "Response")) //Note: for now, agent.srvcon already filters Response messages.
       res = processResponse(body); /*Response case!*/
-
     else /*unsupported type!!*/
     {
       SWI_LOG("AV", ERROR, "%s: Invalid payload received from RA, object body class invalid\n", __FUNCTION__);

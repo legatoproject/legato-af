@@ -27,11 +27,13 @@ end
 
 function t:test_meta1()
     config.tests = {meta1 = 42}
+    sched.wait() -- table write in config/treemgr is not synchronous when using table access so have the schedule to have the result
     u.assert_equal(config.tests.meta1, 42)
 end
 
 function t:test_meta2()
     config.tests = {meta2 = {t1 = 'toto', t2={t3={"a", "b"}}}}
+    sched.wait() -- table write in config/treemgr is not synchronous when using table access so have the schedule to have the result
     u.assert_equal(config.tests.meta2.t1, 'toto')
     u.assert_equal(config.tests.meta2.t2.t3[1], "a")
     u.assert_equal(config.tests.meta2.t2.t3[2], "b")
@@ -72,6 +74,7 @@ end
 function t:test_diff1()
     config.default()
     config.tests={diff1=42}
+    sched.wait()
     u.assert_clone_tables({"tests.diff1"}, config.diff())
     u.assert_clone_tables({"diff1"}, config.diff("tests"))
     u.assert_clone_tables({""}, config.diff("tests.diff1"))
@@ -85,11 +88,13 @@ end
 
 function t:test_treemgr_proxy1()
     tm_tree.config.tests = {meta1 = 42}
+    sched.wait() -- table write in config/treemgr is not synchronous when using table access so have the schedule to have the result
     u.assert_equal(tm_tree.config.tests .meta1, 42)
 end
 
 function t:test_treemgr_proxy2()
     tm_tree.config.tests = {meta2 = {t1 = 'toto', t2={t3={"a", "b"}}}}
+    sched.wait() -- table write in config/treemgr is not synchronous when using table access so have the schedule to have the result
     u.assert_equal(tm_tree.config.tests.meta2.t1, 'toto')
     u.assert_equal(tm_tree.config.tests.meta2.t2.t3[1], "a")
     u.assert_equal(tm_tree.config.tests.meta2.t2.t3[2], "b")

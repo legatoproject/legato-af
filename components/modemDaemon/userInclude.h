@@ -10,5 +10,6 @@
 #include "le_sim.h"
 #include "le_mdc.h"
 #include "le_mcc.h"
+#include "le_mrc.h"
 
 #endif

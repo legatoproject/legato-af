@@ -221,7 +221,9 @@ local function try_to_compile_and_run(self)
                     local printer = pretty and function(...) return siprint(self.printindent, ...) end  or tostring
                     for i = 2, results.n do
                         table.insert(out, "= ")
-                        table.insert(out, printer(results[i]))
+                        local status, line = copcall(printer, results[i])
+                        if not status then line = "<print error>" end
+                        table.insert(out, line)
                         table.insert(out, "\r\n")
                     end
                 else

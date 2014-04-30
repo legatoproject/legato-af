@@ -28,7 +28,7 @@
 #define NUMBER_MAX_ID 10000
 #define SIZE_ALLOC 5 /* size allocated for id number */
 static volatile char waiting_notification = 1;
-static char result = 1;
+static int result = 1;
 
 rc_ReturnCode_t get_path_element(int first, const char* pathPtr, char** remainingPath, char** varName);
 
@@ -261,7 +261,7 @@ static void dwcb_DataWrittingList(swi_av_Asset_t *asset, ///< [IN] the asset rec
   return;
 }
 
-static void dwcb_DataCommandList(swi_av_Asset_t *asset, ///< [IN] the asset receiving the data
+static void dwcb_DataCommand(swi_av_Asset_t *asset, ///< [IN] the asset receiving the data
     const char *pathPtr, ///< [IN] the path targeted by the data sent by the server.
     swi_dset_Iterator_t* data, ///< [IN] the data iterator containing the received data.
                                ///<      The data contained in the iterator will be automatically released when the callback returns.
@@ -269,9 +269,11 @@ static void dwcb_DataCommandList(swi_av_Asset_t *asset, ///< [IN] the asset rece
                                              ///<      If ack_id=0 then there is no need to acknowledge.
     void *userDataPtr)
 {
-  SWI_LOG("AV_TEST", DEBUG, "dwcb_DataCommandList: pathPtr=%s, ack_id=%d\n", pathPtr, ack_id);
+  SWI_LOG("AV_TEST", DEBUG, "dwcb_DataCommand: pathPtr=%s, ack_id=%d\n", pathPtr, ack_id);
+  //init result
+  result = 0;
 
-  if (strcmp(pathPtr, "commands.plop.sub.path"))
+  if (strcmp(pathPtr, "commands.avTestCommand"))
   {
     result = 122;
     waiting_notification = 0;
@@ -285,265 +287,234 @@ static void dwcb_DataCommandList(swi_av_Asset_t *asset, ///< [IN] the asset rece
     return;
   }
 
+
   rc_ReturnCode_t res = RC_OK;
-  bool valueOK = true;
+  int value1 = -1, value2 = -1, pname1 = -1, pname2 = -1; //init at -1 meaning: not received
+
   res = swi_dset_Next(data);
-  while (res == RC_OK && valueOK)
+
+
+  while (res == RC_OK && result == 0)
   {
     swi_dset_Type_t type = swi_dset_GetType(data);
 
     switch (type)
     {
       case SWI_DSET_INTEGER:
+        if (strcmp(swi_dset_GetName(data), "param1"))
+          result = 125;
+        else
+          pname1 = 0;
         if (swi_dset_ToInteger(data) != 42)
-          valueOK = false;
+          result = 126;
+        else
+          value1 =  0;
         break;
       case SWI_DSET_STRING:
+        if (strcmp(swi_dset_GetName(data), "param2"))
+          result = 127;
+        else
+          pname2 = 0;
         if (strcmp(swi_dset_ToString(data), "bar"))
-          valueOK = false;
+          result = 128;
+        else
+          value2 = 0;
         break;
       default:
+        result = 129; //unexpected data!
         break;
     }
     res = swi_dset_Next(data);
   }
 
-  if (!valueOK)
-  {
-    result = 125;
-    waiting_notification = 0;
-    return;
+  //check all param were received
+  if ( result == 0 && (value1 == -1 || value2 == -1 || pname1 == -1 || pname2 == -1)){
+    result = 130;
+    SWI_LOG("AV_TEST", ERROR, "at least one value was missing (i.e. -1): value1 = %d, value2 = %d, pname1 = %d, pname2 = %d\n", value1, value2, pname1, pname2);
   }
 
   if (ack_id)
-    swi_av_Acknowledge(ack_id, 42, "some error msg", "now", 0);
+    swi_av_Acknowledge(ack_id, result, "some error msg", "now", 0);
 
   swi_dset_Destroy(data);
-  result = 0;
   waiting_notification = 0;
   return;
 }
 
-static int test_1_Init_Destroy()
+DEFINE_TEST(test_1_Init_Destroy)
 {
-  rc_ReturnCode_t res = swi_av_Init();
-  if (res != RC_OK)
-    return res;
+  rc_ReturnCode_t res;
 
   res = swi_av_Init();
-  if (res != RC_OK)
-    return res;
+  ASSERT_TESTCASE_IS_OK(res);
+
+  res = swi_av_Init();
+  ASSERT_TESTCASE_IS_OK(res);
 
   res = swi_av_Destroy();
-  if (res != RC_OK)
-    return res;
+  ASSERT_TESTCASE_IS_OK(res);
 
   res = swi_av_Destroy();
-  if (res != RC_OK)
-    return res;
-
-  return 0;
+  ASSERT_TESTCASE_IS_OK(res);
 }
 
-static int test_2_TriggerPolicy()
+DEFINE_TEST(test_2_TriggerPolicy)
 {
   rc_ReturnCode_t res = swi_av_Init();
-  if (res != RC_OK)
-    return res;
+  ASSERT_TESTCASE_IS_OK(res);
 
   // trigger default policy
   res = swi_av_TriggerPolicy(NULL);
-  if (res != RC_OK)
-    return res;
+  ASSERT_TESTCASE_IS_OK(res);
 
   // trigger one existing policy
   res = swi_av_TriggerPolicy("now");
-  if (res != RC_OK)
-    return res;
+  ASSERT_TESTCASE_IS_OK(res);
 
   // trigger "never" policy: this must fail
   res = swi_av_TriggerPolicy("never");
-  if (res != RC_BAD_PARAMETER)
-    return res;
+  ASSERT_TESTCASE_EQUAL(RC_BAD_PARAMETER, res);
 
   // test using unknown policy
   res = swi_av_TriggerPolicy("plop");
-  if (res != RC_BAD_PARAMETER)
-    return res;
+  ASSERT_TESTCASE_EQUAL(RC_BAD_PARAMETER, res);
 
   res = swi_av_Destroy();
-  if (res != RC_OK)
-    return res;
-  return 0;
+  ASSERT_TESTCASE_IS_OK(res);
 }
 
-static int test_3_ConnectToServer()
+DEFINE_TEST(test_3_ConnectToServer)
 {
   rc_ReturnCode_t res = swi_av_Init();
-  if (res != RC_OK)
-    return res;
+  ASSERT_TESTCASE_IS_OK(res);
 
 //test using requesting SYNC connexion
   res = swi_av_ConnectToServer(SWI_AV_CX_SYNC);
-  if (res != RC_OK)
-    return res;
+  ASSERT_TESTCASE_IS_OK(res);
 
   SWI_LOG("AV_TEST", DEBUG, "sync done\n");
 
 //test using 0 latency: async but "immediate" connection
   res = swi_av_ConnectToServer(0);
-  if (res != RC_OK)
-    return res;
+  ASSERT_TESTCASE_IS_OK(res);
 
 //test using correct latency
   res = swi_av_ConnectToServer(10);
-  if (res != RC_OK)
-    return res;
+  ASSERT_TESTCASE_IS_OK(res);
 
 //test using too big latency:
 //expected behavior here: rejected
   res = swi_av_ConnectToServer((unsigned int) INT_MAX + 1);
-  if (res != RC_BAD_PARAMETER)
-    return res;
+  ASSERT_TESTCASE_EQUAL(RC_BAD_PARAMETER, res);
 
   res = swi_av_Destroy();
-  if (res != RC_OK)
-    return res;
-
-  return 0;
+  ASSERT_TESTCASE_IS_OK(res);
 }
 
-static int test_4_asset_Create_Start_Destroy()
+DEFINE_TEST(test_4_asset_Create_Start_Destroy)
 {
   rc_ReturnCode_t res = swi_av_Init();
-  if (res != RC_OK)
-    return res;
+  ASSERT_TESTCASE_IS_OK(res);
 
   swi_av_Asset_t* asset;
   /*
    res = swi_av_asset_Create(&asset, NULL);
-   if (res != RC_BAD_PARAMETER)
-   return 1;
+   ASSERT_TESTCASE_EQUAL(RC_BAD_PARAMETER, res);
 
    res = swi_av_asset_Create(NULL, "test_asset");
-   if (res != RC_BAD_PARAMETER)
-   return 1;
+   ASSERT_TESTCASE_EQUAL(RC_BAD_PARAMETER, res);
    */
   res = swi_av_asset_Create(&asset, ASSET_ID);
-  if (res != RC_OK)
-    return res;
+  ASSERT_TESTCASE_IS_OK(res);
 
   res = swi_av_asset_Start(NULL );
-  if (res != RC_BAD_PARAMETER)
-    return res;
+  ASSERT_TESTCASE_EQUAL(RC_BAD_PARAMETER, res);
 
   res = swi_av_asset_Start(asset);
-  if (res != RC_OK)
-    return res;
+  ASSERT_TESTCASE_IS_OK(res);
 
   res = swi_av_asset_Destroy(NULL);
-  if (res != RC_BAD_PARAMETER)
-    return res;
+  ASSERT_TESTCASE_EQUAL(RC_BAD_PARAMETER, res);
 
   res = swi_av_asset_Destroy(asset);
-  if (res != RC_OK)
-    return res;
+  ASSERT_TESTCASE_IS_OK(res);
 
   res = swi_av_Destroy();
-  if (res != RC_OK)
-    return res;
-
-  return RC_OK;
+  ASSERT_TESTCASE_IS_OK(res);
 }
 
-static int test_5_asset_pushData()
+DEFINE_TEST(test_5_asset_pushData)
 {
 
   rc_ReturnCode_t res = swi_av_Init();
-  if (res != RC_OK)
-    return 1;
+  ASSERT_TESTCASE_IS_OK(res);
 
   swi_av_Asset_t* asset;
 
   res = swi_av_asset_Create(&asset, ASSET_ID);
-  if (res != RC_OK)
-    return res;
+  ASSERT_TESTCASE_IS_OK(res);
 
   res = swi_av_asset_Start(asset);
-  if (res != RC_OK)
-    return res;
+  ASSERT_TESTCASE_IS_OK(res);
 
 //"long" path
   res = swi_av_asset_PushInteger(asset, "titi.test.toto1", "now", SWI_AV_TSTAMP_AUTO, 42);
-  if (res != RC_OK)
-    return res;
+  ASSERT_TESTCASE_IS_OK(res);
+
 //"short" path
   res = swi_av_asset_PushInteger(asset, "titi.toto2", "now", SWI_AV_TSTAMP_AUTO, 43);
-  if (res != RC_OK)
-    return res;
+  ASSERT_TESTCASE_IS_OK(res);
+
 //"shortest" path
   res = swi_av_asset_PushInteger(asset, "toto3", "now", SWI_AV_TSTAMP_AUTO, 44);
-  if (res != RC_OK)
-    return res;
+  ASSERT_TESTCASE_IS_OK(res);
+
 //"shortest" path, no timestamp
   res = swi_av_asset_PushInteger(asset, "toto4", "now", SWI_AV_TSTAMP_NO, 45);
-  if (res != RC_OK)
-    return res;
+  ASSERT_TESTCASE_IS_OK(res);
+
 //"shortest" path, no timestamp, no policy
   res = swi_av_asset_PushInteger(asset, "toto5", NULL, SWI_AV_TSTAMP_AUTO, 46);
-  if (res != RC_OK)
-    return res;
+  ASSERT_TESTCASE_IS_OK(res);
+
 //"shortest" path, manual timestamp, no policy
   res = swi_av_asset_PushInteger(asset, "toto6", NULL, 23, 47);
-  if (res != RC_OK)
-    return res;
+  ASSERT_TESTCASE_IS_OK(res);
 
   res = swi_av_asset_PushFloat(asset, "toto7", "now", SWI_AV_TSTAMP_AUTO, 47.455555);
-  if (res != RC_OK)
-    return res;
+  ASSERT_TESTCASE_IS_OK(res);
 
   res = swi_av_asset_PushString(asset, "toto8", "now", SWI_AV_TSTAMP_AUTO, "foo");
-  if (res != RC_OK)
-    return res;
+  ASSERT_TESTCASE_IS_OK(res);
 
   res = swi_av_asset_PushString(asset, "toto8", "now", SWI_AV_TSTAMP_AUTO, NULL );
-  if (res != RC_BAD_PARAMETER)
-    return res;
+  ASSERT_TESTCASE_EQUAL(RC_BAD_PARAMETER, res);
 
   res = swi_av_asset_PushString(asset, "toto8", "plop", SWI_AV_TSTAMP_AUTO, "foo");
-  if (res != RC_BAD_PARAMETER)
-    return res;
+  ASSERT_TESTCASE_EQUAL(RC_BAD_PARAMETER, res);
 
   res = swi_av_TriggerPolicy("*");
-  if (res != RC_OK)
-    return res;
+  ASSERT_TESTCASE_IS_OK(res);
 
   res = swi_av_asset_Destroy(asset);
-  if (res != RC_OK)
-    return res;
-
-  return 0;
+  ASSERT_TESTCASE_IS_OK(res);
 }
 
-static int test_6_Acknowledge()
+DEFINE_TEST(test_6_Acknowledge)
 {
   rc_ReturnCode_t res;
 
   res = swi_av_Init();
-  if (res != RC_OK)
-    return res;
+  ASSERT_TESTCASE_IS_OK(res);
 
   res = swi_av_Acknowledge(0, 0, "BANG BANG BANG", "now", 0);
-  if (res != RC_OK)
-    return res;
+  ASSERT_TESTCASE_IS_OK(res);
 
   res = swi_av_TriggerPolicy("now");
-  if (res != RC_OK)
-    return res;
-  return 0;
+  ASSERT_TESTCASE_IS_OK(res);
 }
 
-static int test_7_path_utils()
+DEFINE_TEST(test_7_path_utils)
 {
 
   rc_ReturnCode_t res = RC_OK;
@@ -553,12 +524,12 @@ static int test_7_path_utils()
   const char* path = "toto.titi.tata";
   res = get_path_element(0, path, &remain, &var);
   SWI_LOG("AV_TEST", DEBUG, "last: var=[%s], remain=[%s]\n", var, remain);
-  if (res != RC_OK)
-    return res;
+  ASSERT_TESTCASE_IS_OK(res);
+
   if (strcmp("tata", var))
-    return res;
+    ABORT("Invalid var content");
   if (strcmp("toto.titi", remain))
-    return res;
+    ABORT("Invalid remain content");
 
   if (var)
     free(var);
@@ -567,12 +538,12 @@ static int test_7_path_utils()
 
   res = get_path_element(1, path, &remain, &var);
   SWI_LOG("AV_TEST", DEBUG, "first: var=[%s], remain=[%s]\n", var, remain);
-  if (res != RC_OK)
-    return res;
+  ASSERT_TESTCASE_IS_OK(res);
+
   if (strcmp("titi.tata", remain))
-    return res;
+    ABORT("Invalid remain content");
   if (strcmp("toto", var))
-    return res;
+    ABORT("Invalid var content");
 
   if (var)
     free(var);
@@ -583,12 +554,12 @@ static int test_7_path_utils()
 
   res = get_path_element(1, path, &remain, &var);
   SWI_LOG("AV_TEST", DEBUG, "first: var=[%s], remain=[%s]\n", var, remain);
-  if (res != RC_OK)
-    return res;
+  ASSERT_TESTCASE_IS_OK(res);
+
   if (strcmp("", remain))
-    return res;
+    ABORT("Invalid remain content");
   if (strcmp("foobarfoobar", var))
-    return res;
+    ABORT("Invalid var content");
 
   if (var)
     free(var);
@@ -597,12 +568,12 @@ static int test_7_path_utils()
 
   res = get_path_element(0, path, &remain, &var);
   SWI_LOG("AV_TEST", DEBUG, "last: var=[%s], remain=[%s]\n", var, remain);
-  if (res != RC_OK)
-    return res;
+  ASSERT_TESTCASE_IS_OK(res);
+
   if (strcmp("", remain))
-    return res;
+    ABORT("Invalid remain content");
   if (strcmp("foobarfoobar", var))
-    return res;
+    ABORT("Invalid var content");
 
   if (var)
     free(var);
@@ -610,29 +581,25 @@ static int test_7_path_utils()
     free(remain);
 
 //todo test cas with bad content in path: .toto, toto., ttu..titi, etc
-
-  return 0;
 }
 
-static int test_8_UpdateNotification()
+DEFINE_TEST(test_8_UpdateNotification)
 {
   rc_ReturnCode_t res;
   swi_av_Asset_t* asset = NULL;
   waiting_notification = 1;
 
   res = swi_av_Init();
-  if (res != RC_OK)
-    return res;
+  ASSERT_TESTCASE_IS_OK(res);
 
   res = swi_av_asset_Create(&asset, ASSET_ID);
-  if (res != RC_OK)
-    return res;
+  ASSERT_TESTCASE_IS_OK(res);
+
   res = swi_av_asset_Start(asset);
-  if (res != RC_OK)
-    return res;
+  ASSERT_TESTCASE_IS_OK(res);
+
   res = swi_av_RegisterUpdateNotification(asset, (swi_av_updateNotificationCB) updateNotificationCb, "userData");
-  if (res != RC_OK)
-    return res;
+  ASSERT_TESTCASE_IS_OK(res);
 
   const char *cmd_SoftwareUpdate ="'SoftwareUpdate', { 'av_test_asset_id.my_pkg', 'my_version', '/toto/my_file', {foo='bar', num=42, float=0.23}})\n";
   exec_lua_code(cmd_SoftwareUpdate);
@@ -641,13 +608,10 @@ static int test_8_UpdateNotification()
     ;
 
   swi_av_asset_Destroy(asset);
-  if (res != RC_OK)
-    return res;
-
-  return result;
+  ASSERT_TESTCASE_IS_OK(res);
 }
 
-static int test_9_TableManipulation()
+DEFINE_TEST(test_9_TableManipulation)
 {
   rc_ReturnCode_t res;
   swi_av_Asset_t* asset = NULL;
@@ -655,73 +619,59 @@ static int test_9_TableManipulation()
   const char *columns[] = { "column1", "column2", "column3" };
 
   res = swi_av_Init();
-  if (res != RC_OK)
-    return res;
+  ASSERT_TESTCASE_IS_OK(res);
 
   res = swi_av_asset_Create(&asset, ASSET_ID);
-  if (res != RC_OK)
-    return res;
+  ASSERT_TESTCASE_IS_OK(res);
 
   res = swi_av_asset_Start(asset);
-  if (res != RC_OK)
-    return res;
+  ASSERT_TESTCASE_IS_OK(res);
 
   res = swi_av_table_Create(asset, &table, "test", 3, columns, "now", STORAGE_RAM, 0);
-  if (res != RC_OK)
-    return res;
+  ASSERT_TESTCASE_IS_OK(res);
 
   res = swi_av_table_PushInteger(table, 1234);
-  if (res != RC_OK)
-    return res;
+  ASSERT_TESTCASE_IS_OK(res);
 
   res = swi_av_table_PushFloat(table, 1234.1234);
-  if (res != RC_OK)
-    return res;
+  ASSERT_TESTCASE_IS_OK(res);
 
   res = swi_av_table_PushString(table, "test");
-  if (res != RC_OK)
-    return res;
+  ASSERT_TESTCASE_IS_OK(res);
 
   res = swi_av_table_PushString(table, "fake push");
-  if (res != RC_OUT_OF_RANGE)
-    return res;
+  ASSERT_TESTCASE_EQUAL(RC_OUT_OF_RANGE, res);
 
   res = swi_av_table_PushRow(table);
-  if (res != RC_OK)
-    return res;
+  ASSERT_TESTCASE_IS_OK(res);
 
   res = swi_av_table_Destroy(table);
-  if (res != RC_OK)
-    return res;
+  ASSERT_TESTCASE_IS_OK(res);
+
   swi_av_asset_Destroy(asset);
-  return 0;
 }
 
-static int test_10_asset_receiveDataWriting()
+DEFINE_TEST(test_10_asset_receiveDataWriting)
 {
   rc_ReturnCode_t res = RC_OK;
   waiting_notification = 1;
 
   res = swi_av_Init();
-  if (res != RC_OK)
-    return res;
+   ASSERT_TESTCASE_IS_OK(res);
 
   swi_av_Asset_t* asset;
 
   res = swi_av_asset_Create(&asset, ASSET_ID);
-  if (res != RC_OK)
-    return res;
+   ASSERT_TESTCASE_IS_OK(res);
 
   res = swi_av_RegisterDataWrite(asset, dwcb_DataWritting, NULL );
-  if (res != RC_OK)
-    return res;
+  ASSERT_TESTCASE_IS_OK(res);
 
   res = swi_av_asset_Start(asset);
-  if (res != RC_OK)
-    return res;
+  ASSERT_TESTCASE_IS_OK(res);
 
   /*command sends to av_test_asset_id asset*/
-  const char* str = "'SendData', { Path = 'av_test_asset_id.sub.path', Body = { foo = 'bar' }, TicketId = %u, Type = 5, __class = 'AWT-DA::Message' })\n";
+  const char* str = "'SendData', { path = 'av_test_asset_id.sub.path', body = { foo = 'bar' }, ticketid = %u, Type = 5, __class = 'Message' })\n";
   char* cmd_SendDataWriting = addTicketId(str);
 
   exec_lua_code(cmd_SendDataWriting);
@@ -730,41 +680,34 @@ static int test_10_asset_receiveDataWriting()
     ;
 
   res = swi_av_asset_Destroy(asset);
-  if (res != RC_OK)
-    return res;
+  ASSERT_TESTCASE_IS_OK(res);
 
   res = swi_av_Destroy();
-  if (res != RC_OK)
-    return res;
+  ASSERT_TESTCASE_IS_OK(res);
 
   free(cmd_SendDataWriting);
-  return result;
 }
 
-static int test_11_asset_receiveDataWritingList()
+DEFINE_TEST(test_11_asset_receiveDataWritingList)
 {
   rc_ReturnCode_t res = RC_OK;
   waiting_notification = 1;
 
   res = swi_av_Init();
-  if (res != RC_OK)
-    return res;
+  ASSERT_TESTCASE_IS_OK(res);
 
   swi_av_Asset_t* asset;
 
   res = swi_av_asset_Create(&asset, ASSET_ID);
-  if (res != RC_OK)
-    return res;
+  ASSERT_TESTCASE_IS_OK(res);
 
   res = swi_av_RegisterDataWrite(asset, dwcb_DataWrittingList, NULL );
-  if (res != RC_OK)
-    return res;
+  ASSERT_TESTCASE_IS_OK(res);
 
   res = swi_av_asset_Start(asset);
-  if (res != RC_OK)
-    return res;
+  ASSERT_TESTCASE_IS_OK(res);
 
-  const char* str = "'SendData', { Path = 'av_test_asset_id.sub.path', Body = { 42, 'bar' }, TicketId = %u, Type = 5, __class = 'AWT-DA::Message' })\n";
+  const char* str = "'SendData', { path = 'av_test_asset_id.sub.path', body = { 42, 'bar' }, ticketid = %u, Type = 5, __class = 'Message' })\n";
   char* cmd_SendDataWrittingList = addTicketId(str);
 
   exec_lua_code(cmd_SendDataWrittingList);
@@ -773,41 +716,34 @@ static int test_11_asset_receiveDataWritingList()
     ;
 
   res = swi_av_asset_Destroy(asset);
-  if (res != RC_OK)
-    return res;
+  ASSERT_TESTCASE_IS_OK(res);
 
   res = swi_av_Destroy();
-  if (res != RC_OK)
-    return res;
+  ASSERT_TESTCASE_IS_OK(res);
 
   free(cmd_SendDataWrittingList);
-  return result;
 }
 
-static int test_12_asset_receiveDataCommandList()
+DEFINE_TEST(test_12_asset_receiveDataCommandList)
 {
   rc_ReturnCode_t res = RC_OK;
   waiting_notification = 1;
 
   res = swi_av_Init();
-  if (res != RC_OK)
-    return res;
+  ASSERT_TESTCASE_IS_OK(res);
 
   swi_av_Asset_t* asset;
 
   res = swi_av_asset_Create(&asset, ASSET_ID);
-  if (res != RC_OK)
-    return res;
+  ASSERT_TESTCASE_IS_OK(res);
 
-  res = swi_av_RegisterDataWrite(asset, dwcb_DataCommandList, NULL );
-  if (res != RC_OK)
-    return res;
+  res = swi_av_RegisterDataWrite(asset, dwcb_DataCommand, NULL );
+  ASSERT_TESTCASE_IS_OK(res);
 
   res = swi_av_asset_Start(asset);
-  if (res != RC_OK)
-    return res;
+  ASSERT_TESTCASE_IS_OK(res);
 
-  const char* str = "'SendData', { Path = 'av_test_asset_id.sub.path', Body = { Command = 'plop',  Args = {42, 'bar'}, __class = 'AWT-DA::Command' },  TicketId = %u, Type = 2,  __class = 'AWT-DA::Message' })\n";
+  const char* str = "'SendData', { path = 'av_test_asset_id.commands.avTestCommand', body = { param1=42, param2='bar' } ,  ticketid = %u, Type = 2,  __class = 'Message' })\n";
   char* cmd_SendDataCommandList = addTicketId(str);
 
   exec_lua_code(cmd_SendDataCommandList);
@@ -816,34 +752,31 @@ static int test_12_asset_receiveDataCommandList()
     ;
 
   res = swi_av_asset_Destroy(asset);
-  if (res != RC_OK)
-    return res;
+  ASSERT_TESTCASE_IS_OK(res);
 
   res = swi_av_Destroy();
-  if (res != RC_OK)
-    return res;
+  ASSERT_TESTCASE_IS_OK(res);
 
   free(cmd_SendDataCommandList);
-  return result;
 }
 
 int main(int argc, char *argv[])
 {
   INIT_TEST("AV_TEST");
-//  swi_log_setlevel(DEBUG, "AV", NULL );
 
-  CHECK_TEST(test_1_Init_Destroy());
-  CHECK_TEST(test_2_TriggerPolicy());
-  CHECK_TEST(test_3_ConnectToServer());
-  CHECK_TEST(test_4_asset_Create_Start_Destroy());
-  CHECK_TEST(test_5_asset_pushData());
-  CHECK_TEST(test_6_Acknowledge());
-  CHECK_TEST(test_7_path_utils());
-  CHECK_TEST(test_8_UpdateNotification());
-  CHECK_TEST(test_9_TableManipulation());
-  CHECK_TEST(test_10_asset_receiveDataWriting());
-  CHECK_TEST(test_11_asset_receiveDataWritingList());
-  CHECK_TEST(test_12_asset_receiveDataCommandList());
+  test_1_Init_Destroy();
+  test_2_TriggerPolicy();
+  test_3_ConnectToServer();
+  test_4_asset_Create_Start_Destroy();
+  test_5_asset_pushData();
+  test_6_Acknowledge();
+  test_7_path_utils();
+  test_8_UpdateNotification();
+  test_9_TableManipulation();
+  test_10_asset_receiveDataWriting();
+  test_11_asset_receiveDataWritingList();
+  test_12_asset_receiveDataCommandList();
+
 
 //preventive clean if one previous test failed
 //  swi_av_Destroy();

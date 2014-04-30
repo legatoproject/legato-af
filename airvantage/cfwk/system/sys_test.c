@@ -15,63 +15,57 @@
 #include "swi_log.h"
 #include "testutils.h"
 
-static int test_sys_Init()
+DEFINE_TEST(test_sys_Init)
 {
   rc_ReturnCode_t res;
 
   res = swi_sys_Init();
-  if (res != RC_OK)
-    return res;
+  ASSERT_TESTCASE_IS_OK(res);
+
   res = swi_sys_Init();
-  if (res != RC_OK)
-    return res;
+  ASSERT_TESTCASE_IS_OK(res);
+
   res = swi_sys_Init();
-  if (res != RC_OK)
-    return res;
-  return RC_OK;
+  ASSERT_TESTCASE_IS_OK(res);
 }
 
-static int test_sys_Destroy()
+DEFINE_TEST(test_sys_Destroy)
 {
   rc_ReturnCode_t res;
 
   res = swi_sys_Destroy();
-  if (res != RC_OK)
-    return res;
+  ASSERT_TESTCASE_IS_OK(res);
+
   res = swi_sys_Destroy();
-  if (res != RC_OK)
-    return res;
+  ASSERT_TESTCASE_IS_OK(res);
+
   res = swi_sys_Destroy();
-  if (res != RC_OK)
-    return res;
-  return RC_OK;
+  ASSERT_TESTCASE_IS_OK(res);
 }
 
-static int test_sys_Reboot()
+DEFINE_TEST(test_sys_Reboot)
 {
   rc_ReturnCode_t res;
 
   res = swi_sys_Reboot("TEST1 FOR REBOOT");
-  if (res !=  RC_OK)
-    return res;
+  ASSERT_TESTCASE_IS_OK(res);
+
   res = swi_sys_Reboot("TEST2 FOR REBOOT");
-  if (res !=  RC_OK)
-    return res;
+  ASSERT_TESTCASE_IS_OK(res);
+
   res = swi_sys_Reboot("");
-  if (res !=  RC_OK)
-    return res;
+  ASSERT_TESTCASE_IS_OK(res);
+
   res = swi_sys_Reboot(NULL);
-  if (res !=  RC_OK)
-    return res;
-  return RC_OK;
+  ASSERT_TESTCASE_IS_OK(res);
 }
 
 int main(void)
 {
   INIT_TEST("DT_TEST");
 
-  CHECK_TEST(test_sys_Init());
-  CHECK_TEST(test_sys_Reboot());
-  CHECK_TEST(test_sys_Destroy());
+  test_sys_Init();
+  test_sys_Reboot();
+  test_sys_Destroy();
   return 0;
 }

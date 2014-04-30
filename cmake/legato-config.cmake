@@ -18,6 +18,8 @@ set(LEGATO_TREE_HDLR_DIR                    ${LEGATO_SOURCE_DIR}/components/lega
 set(LEGATO_CONFIGTREE_API_TARGET            le_cfg_api)
 set(LEGATO_CONFIGTREE_API_DIR               ${LEGATO_SOURCE_DIR}/framework/c/src/configApi)
 
+set(LEGATO_CONFIGTREE_ENTRIES_DIR           ${LEGATO_SOURCE_DIR}/components/cfgEntries)
+
 set(LEGATO_SERVICES_MODEM_TARGET            le_mdm_services)
 set(LEGATO_SERVICES_MODEM_DIR               ${LEGATO_SOURCE_DIR}/components/modemServices/implementation)
 set(LEGATO_SERVICES_MODEM_CLIENT_TARGET     le_mdm_client)
@@ -27,6 +29,8 @@ set(LEGATO_SERVICES_POSITIONING_DIR         ${LEGATO_SOURCE_DIR}/components/posi
 set(LEGATO_SERVICES_POSITIONING_CLIENT_TARGET     le_pos_client)
 
 set(LEGATO_SERVICES_DCS_CLIENT_TARGET       le_data_client)
+
+set(LEGATO_SERVICES_CNET_CLIENT_TARGET      le_cellnet_client)
 
 set(LEGATO_COMPONENTS_MODEM_TARGET          le_pa)
 set(LEGATO_COMPONENTS_MODEM_DIR             ${LEGATO_SOURCE_DIR}/components/modemServices/platformAdaptor)
@@ -82,6 +86,7 @@ set(LEGATO_INCLUDE_DIRS ${LEGATO_INCLUDE_DIRS}
     ${LEGATO_SOURCE_DIR}/interfaces/positioning/c
     ${LEGATO_SOURCE_DIR}/interfaces/audio/c
     ${LEGATO_SOURCE_DIR}/interfaces/dataConnectionService/c
+    ${LEGATO_SOURCE_DIR}/interfaces/cellNetService/c
     ${LEGATO_SOURCE_DIR}/interfaces/config/c
 )
 
@@ -101,6 +106,9 @@ set(LEGATO_INCLUDE_DIRS_PRIV ${LEGATO_INCLUDE_DIRS_PRIV}
     ${LEGATO_SERVICES_AUDIO_DIR}/src
     ${LEGATO_SERVICES_MODEM_DIR}/src
     ${LEGATO_SERVICES_POSITIONING_DIR}/src
+
+    # ConfigDB entries
+    ${LEGATO_CONFIGTREE_ENTRIES_DIR}
 )
 
 set(LEGATO_LIBRARIES
@@ -216,12 +224,12 @@ function(mkapp APP_NAME ADEF)
                         -o ${EXECUTABLE_OUTPUT_PATH}
                         -v
                         ${ARGN}
-            COMMAND 
+            COMMAND
             DEPENDS ${ADEF}
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
             COMMENT "mkapp '${APP_NAME}': ${APP_PKG}"
     )
-    
+
     add_custom_target(${APP_NAME}
             ALL
             DEPENDS ${APP_PKG}

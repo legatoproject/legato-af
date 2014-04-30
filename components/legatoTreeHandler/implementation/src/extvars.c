@@ -30,6 +30,7 @@
 
 #include "le_info.h"
 #include "le_mrc.h"
+#include "le_mdc.h"
 #include "le_sim.h"
 #include "le_pos.h"
 
@@ -196,14 +197,21 @@ static bool AllVarsRegistered;
  */
 //--------------------------------------------------------------------------------------------------
 static TreeHdlVar_t TreeHdlVars[NVARS] = {
+  { .id = EXTVARS_VAR_ID_APN, .type = EXTVARS_TYPE_STR, .notified = true},
+  { .id = EXTVARS_VAR_ID_GSM_OPERATOR, .type = EXTVARS_TYPE_STR, .notified = true},
+  { .id = EXTVARS_VAR_ID_BYTES_RCVD, .type = EXTVARS_TYPE_INT, .notified = true},
+  { .id = EXTVARS_VAR_ID_BYTES_SENT, .type = EXTVARS_TYPE_INT, .notified = true},
   { .id = EXTVARS_VAR_ID_ROAM_STATUS, .type = EXTVARS_TYPE_BOOL, .notified = true},
+  { .id = EXTVARS_VAR_ID_IP, .type = EXTVARS_TYPE_STR, .notified = true},
+  { .id = EXTVARS_VAR_ID_SERVICE, .type = EXTVARS_TYPE_STR, .notified = true},
   { .id = EXTVARS_VAR_ID_IMEI, .type = EXTVARS_TYPE_STR, .notified = true},
   { .id = EXTVARS_VAR_ID_ICCID, .type = EXTVARS_TYPE_STR, .notified = true},
   { .id = EXTVARS_VAR_ID_IMSI, .type = EXTVARS_TYPE_STR, .notified = true},
+  { .id = EXTVARS_VAR_ID_SUBSCRIBER_PHONE_NUM, .type = EXTVARS_TYPE_STR, .notified = true},
+  { .id = EXTVARS_VAR_ID_SIGNAL_BARS, .type = EXTVARS_TYPE_INT, .notified = true},
   { .id = EXTVARS_VAR_ID_LATITUDE, .type = EXTVARS_TYPE_DOUBLE, .notified = true},
   { .id = EXTVARS_VAR_ID_LONGITUDE, .type = EXTVARS_TYPE_DOUBLE, .notified = true},
 };
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Event ID for  variable's value changes.
@@ -216,6 +224,72 @@ static IdVar_t CurrentVarIds[NVARS];
 //--------------------------------------------------------------------------------------------------
 // Static functions of MSClient thread.
 //--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Convert into string the data bearer technology
+ *
+ * return
+ *      LE_OK function succeed
+ *      LE_OVERFLOW bufferStr is too small
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t ConvertDataBearerTechnologyToString
+(
+    le_mdc_dataBearerTechnology_t dataBearerTechnology,
+    char *bufferStr,
+    size_t bufferStrSize
+)
+{
+    le_result_t result = LE_OK;
+    switch (dataBearerTechnology)
+    {
+        case LE_MDC_DATA_BEARER_TECHNOLOGY_CDMA2000_1X:
+            result = le_utf8_Copy(bufferStr, "1X", bufferStrSize, NULL);
+            break;
+        case LE_MDC_DATA_BEARER_TECHNOLOGY_CDMA2000_HRPD:
+            result = le_utf8_Copy(bufferStr, "EV-DO Rev.0", bufferStrSize, NULL);
+            break;
+        case LE_MDC_DATA_BEARER_TECHNOLOGY_EDGE:
+            result = le_utf8_Copy(bufferStr, "EDGE", bufferStrSize, NULL);
+            break;
+        case LE_MDC_DATA_BEARER_TECHNOLOGY_UMTS:
+            result = le_utf8_Copy(bufferStr, "UMTS", bufferStrSize, NULL);
+            break;
+        case LE_MDC_DATA_BEARER_TECHNOLOGY_CDMA200_HRPD:
+            result = le_utf8_Copy(bufferStr, "EV-DO Rev.A", bufferStrSize, NULL);
+            break;
+        case LE_MDC_DATA_BEARER_TECHNOLOGY_LTE:
+            result = le_utf8_Copy(bufferStr, "LTE", bufferStrSize, NULL);
+            break;
+        case LE_MDC_DATA_BEARER_TECHNOLOGY_HSDPA_WCDMA:
+            result = le_utf8_Copy(bufferStr, "HSDPA", bufferStrSize, NULL);
+            break;
+        case LE_MDC_DATA_BEARER_TECHNOLOGY_WCDMA_HSUPA:
+            result = le_utf8_Copy(bufferStr, "HSUPA", bufferStrSize, NULL);
+            break;
+        case LE_MDC_DATA_BEARER_TECHNOLOGY_HSDPA_HSUPA:
+            result = le_utf8_Copy(bufferStr, "HSPA", bufferStrSize, NULL);
+            break;
+        case LE_MDC_DATA_BEARER_TECHNOLOGY_GSM:
+            result = le_utf8_Copy(bufferStr, "GSM", bufferStrSize, NULL);
+            break;
+        case LE_MDC_DATA_BEARER_TECHNOLOGY_CDMA2000_EHRPD:
+        case LE_MDC_DATA_BEARER_TECHNOLOGY_HSDPAPLUS_WCDMA:
+        case LE_MDC_DATA_BEARER_TECHNOLOGY_HSDPAPLUS_HSUPA:
+        case LE_MDC_DATA_BEARER_TECHNOLOGY_DC_HSDPAPLUS_WCDMA:
+        case LE_MDC_DATA_BEARER_TECHNOLOGY_DC_HSDPAPLUS_HSUPA:
+        case LE_MDC_DATA_BEARER_TECHNOLOGY_HSDPAPLUS_64QAM:
+        case LE_MDC_DATA_BEARER_TECHNOLOGY_HSDPAPLUS_64QAM_HSUPA:
+        case LE_MDC_DATA_BEARER_TECHNOLOGY_TDSCDMA:
+        case LE_MDC_DATA_BEARER_TECHNOLOGY_TDSCDMA_HSDPA:
+        case LE_MDC_DATA_BEARER_TECHNOLOGY_TDSCDMA_HSUPA:
+        case LE_MDC_DATA_BEARER_TECHNOLOGY_UNKNOWN:
+            result = le_utf8_Copy(bufferStr, "Unknown", bufferStrSize, NULL);
+            break;
+    }
+    return result;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -291,9 +365,157 @@ void ForceValueUpdating
             }
         }
         break;
+        case EXTVARS_VAR_ID_SIGNAL_BARS:
+        {
+            uint32_t signalQuality;
+            if (le_mrc_GetSignalQual(&signalQuality) != LE_OK)
+            {
+                LE_ERROR("Failed to get the signal quality!");
+            }
+            else
+            {
+                varPtr->value.i = signalQuality;
+            }
+        }
+        break;
+        case EXTVARS_VAR_ID_BYTES_RCVD:
+        case EXTVARS_VAR_ID_BYTES_SENT:
+        {
+            uint64_t bytesReceived,bytesSend;
+            if (le_mdc_GetBytesCounters(&bytesReceived,&bytesSend) != LE_OK)
+            {
+                LE_ERROR("Failed to get the Bytes counters!");
+            }
+            else
+            {
+                if (varPtr->id == EXTVARS_VAR_ID_BYTES_RCVD)
+                {
+                    varPtr->value.i = bytesReceived;
+                }
+                else
+                {
+                    varPtr->value.i = bytesSend;
+                }
+            }
+        }
+        break;
 
         default:
         break;
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler function for session state Notifications.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void SessionStateHandler
+(
+    bool   isConnected,
+    void*  contextPtr
+)
+{
+
+    TreeHdlVar_t*   varPtr;
+    bool            notify=false;
+    char apnNameStr[64] = {0};  // size is 64 because of struct ValueVar_t
+    char ipAddrStr[64] = {0};   // size is 64 because of struct ValueVar_t
+    le_mdc_dataBearerTechnology_t dataBearerTechnology=LE_MDC_DATA_BEARER_TECHNOLOGY_UNKNOWN;
+    char serviceStr[64] = {0};
+
+    LE_DEBUG("New Session State notified (%s)", (isConnected)?"Connected":"Disconnected");
+
+    le_mdc_Profile_Ref_t profileRef = contextPtr;
+    if (profileRef == NULL)
+    {
+        LE_ERROR("Failed to retrieve profile reference.");
+        return;
+    }
+
+    if (isConnected)
+    {
+        if ( le_mdc_GetAccessPointName(profileRef,apnNameStr,sizeof(apnNameStr)) != LE_OK )
+        {
+            LE_ERROR("Failed to get Access Point Name!");
+            return;
+        }
+        if ( le_mdc_GetIPAddress(profileRef,ipAddrStr,sizeof(ipAddrStr)) != LE_OK )
+        {
+            LE_ERROR("Failed to get IP Address!");
+            return;
+        }
+        if ( le_mdc_GetDataBearerTechnology(profileRef,&dataBearerTechnology) != LE_OK )
+        {
+            LE_ERROR("Failed to get Data Bearer Technology!");
+            return;
+        }
+        if ( ConvertDataBearerTechnologyToString(dataBearerTechnology,
+                                                 serviceStr,sizeof(serviceStr)) != LE_OK)
+        {
+            LE_ERROR("Could not convert %d!",dataBearerTechnology);
+            return;
+        }
+    }
+    else
+    {
+        le_utf8_Copy(apnNameStr,"",sizeof(apnNameStr),NULL);
+        le_utf8_Copy(ipAddrStr,"",sizeof(ipAddrStr),NULL);
+        le_utf8_Copy(serviceStr,"None",sizeof(serviceStr),NULL);
+    }
+
+    // Access Point Name
+    {
+        varPtr = GetTreeVariable(EXTVARS_VAR_ID_APN);
+        if ( le_utf8_Copy(varPtr->value.s,apnNameStr,sizeof(varPtr->value.s),NULL) != LE_OK )
+        {
+            LE_ERROR("Could not copy '%s'!",apnNameStr);
+            return;
+        }
+        varPtr->id = EXTVARS_VAR_ID_APN;
+        varPtr->type = EXTVARS_TYPE_STR;
+        varPtr->notified = false;
+        varPtr->isReadOnly = true;
+        notify=true;
+    }
+
+    // IP Address
+    {
+        varPtr = GetTreeVariable(EXTVARS_VAR_ID_IP);
+        if ( le_utf8_Copy(varPtr->value.s,ipAddrStr,sizeof(varPtr->value.s),NULL) != LE_OK )
+        {
+            LE_ERROR("Could not copy '%s'!",ipAddrStr);
+            return;
+        }
+        varPtr->id = EXTVARS_VAR_ID_IP;
+        varPtr->type = EXTVARS_TYPE_STR;
+        varPtr->notified = false;
+        varPtr->isReadOnly = true;
+        notify=true;
+    }
+
+    // data Bearer Technology
+    {
+        varPtr = GetTreeVariable(EXTVARS_VAR_ID_SERVICE);
+        if ( le_utf8_Copy(varPtr->value.s,serviceStr,sizeof(varPtr->value.s),NULL) != LE_OK )
+        {
+            LE_ERROR("Could not copy '%s'!",ipAddrStr);
+            return ;
+        }
+        varPtr->id = EXTVARS_VAR_ID_SERVICE;
+        varPtr->type = EXTVARS_TYPE_STR;
+        varPtr->notified = false;
+        varPtr->isReadOnly = true;
+        notify=true;
+    }
+
+    if (notify)
+    {
+        LE_DEBUG("Notify on VarValueChangeId.%p", VarValueChangeId);
+        // Notify the change
+        le_event_Report(VarValueChangeId, NULL, 0);
     }
 }
 
@@ -312,6 +534,7 @@ static void SimStateHandler
     TreeHdlVar_t*   varPtr;
     char            iccid[LE_SIM_ICCID_LEN];
     char            imsi[LE_SIM_IMSI_LEN];
+    char            phoneNumber[LE_TEL_NMBR_MAX_LEN] = {0};
     bool            notify=false;
     le_sim_States_t state;
 
@@ -331,6 +554,14 @@ static void SimStateHandler
 
             varPtr = GetTreeVariable(EXTVARS_VAR_ID_IMSI);
             varPtr->id = EXTVARS_VAR_ID_IMSI;
+            varPtr->type = EXTVARS_TYPE_STR;
+            varPtr->notified = false;
+            varPtr->isReadOnly = true;
+            varPtr->value.s[0] = '\0';
+            notify=true;
+
+            varPtr = GetTreeVariable(EXTVARS_VAR_ID_SUBSCRIBER_PHONE_NUM);
+            varPtr->id = EXTVARS_VAR_ID_SUBSCRIBER_PHONE_NUM;
             varPtr->type = EXTVARS_TYPE_STR;
             varPtr->notified = false;
             varPtr->isReadOnly = true;
@@ -357,6 +588,7 @@ static void SimStateHandler
                     LE_DEBUG("ICCID is updated with %s (get.%s)", (char*) varPtr->value.s, iccid);
                 }
             }
+
             break;
 
         case LE_SIM_READY:
@@ -397,6 +629,26 @@ static void SimStateHandler
                     LE_DEBUG("IMSI is updated with %s (get.%s)", (char*) varPtr->value.s, imsi);
                 }
             }
+
+            if ( le_sim_GetSubscriberPhoneNumber(simRef,phoneNumber, sizeof(phoneNumber)) != LE_OK)
+            {
+                LE_ERROR("Failed to get the Phone Number!");
+            }
+            else
+            {
+                varPtr = GetTreeVariable(EXTVARS_VAR_ID_SUBSCRIBER_PHONE_NUM);
+
+                if (strcmp((const char *)varPtr->value.s, phoneNumber))
+                {
+                    varPtr->id = EXTVARS_VAR_ID_SUBSCRIBER_PHONE_NUM;
+                    varPtr->type = EXTVARS_TYPE_STR;
+                    varPtr->notified = false;
+                    varPtr->isReadOnly = true;
+                    le_utf8_Copy((char*)varPtr->value.s,phoneNumber,sizeof(varPtr->value.s),NULL);
+                    notify=true;
+                    LE_DEBUG("Phone Number is updated with %s (get.%s)",(char*) varPtr->value.s, phoneNumber);
+                }
+            }
             break;
 
         case LE_SIM_BLOCKED:
@@ -425,7 +677,10 @@ static void NetRegHandler
     void*                contextPtr
 )
 {
-    TreeHdlVar_t*          varPtr;
+    TreeHdlVar_t*   varPtr;
+    bool notify = false;
+
+    LE_DEBUG("Network state (%X)",state);
 
     if (state == LE_MRC_REG_ROAMING)
     {
@@ -437,8 +692,7 @@ static void NetRegHandler
             varPtr->id = EXTVARS_VAR_ID_ROAM_STATUS;
             varPtr->type = EXTVARS_TYPE_BOOL;
             varPtr->notified = false;
-            // Notify the change
-            le_event_Report(VarValueChangeId, NULL, 0);
+            notify = true;
         }
     }
     else
@@ -451,10 +705,48 @@ static void NetRegHandler
             varPtr->id = EXTVARS_VAR_ID_ROAM_STATUS;
             varPtr->type = EXTVARS_TYPE_BOOL;
             varPtr->notified = false;
-            // Notify the change
-            le_event_Report(VarValueChangeId, NULL, 0);
+            notify = true;
+        }
+    }
+
+    // Update operator Name
+    if (    (state != LE_MRC_REG_SEARCHING)
+         && (state != LE_MRC_REG_DENIED)
+       )
+    {
+        char homeNetworkName[64] = {0};
+
+        le_result_t result = le_mrc_GetHomeNetworkName(homeNetworkName,sizeof(homeNetworkName));
+        if (result == LE_NOT_POSSIBLE)
+        {
+            le_utf8_Copy(homeNetworkName,"",sizeof(homeNetworkName),NULL);
+        }
+        else if ( result == LE_OVERFLOW )
+        {
+            LE_ERROR("Failed to get all the operator name!");
         }
 
+        varPtr = GetTreeVariable(EXTVARS_VAR_ID_GSM_OPERATOR);
+        if (strcmp(varPtr->value.s,homeNetworkName))
+        {
+            if ( le_utf8_Copy(varPtr->value.s,
+                              homeNetworkName,
+                              sizeof(varPtr->value.s),NULL) )
+            {
+                LE_ERROR("'%s' is too long", homeNetworkName);
+                return;
+            }
+            varPtr->id = EXTVARS_VAR_ID_GSM_OPERATOR;
+            varPtr->type = EXTVARS_TYPE_STR;
+            varPtr->notified = false;
+            notify = true;
+        }
+    }
+
+    if (notify)
+    {
+        // Notify the change
+        le_event_Report(VarValueChangeId, NULL, 0);
     }
 }
 
@@ -509,6 +801,12 @@ static rc_ReturnCode_t InitializeMrcVariables
     TreeHdlVar_t*           varPtr;
     le_mrc_NetRegState_t    netState;
 
+    if (le_mrc_AddNetRegStateHandler(NetRegHandler, NULL) == NULL)
+    {
+        LE_ERROR("Failed to install the Roaming State handler function!");
+        rc = RC_UNSPECIFIED_ERROR;
+    }
+
     // Roaming State
     if (le_mrc_GetNetRegState(&netState) != LE_OK)
     {
@@ -535,10 +833,194 @@ static rc_ReturnCode_t InitializeMrcVariables
         varPtr->isReadOnly = true;
     }
 
-    if (le_mrc_AddNetRegStateHandler(NetRegHandler, NULL) == NULL)
+    // Signal quality
     {
-        LE_ERROR("Failed to install the Roaming State handler function!");
+        uint32_t signalQuality;
+        if (le_mrc_GetSignalQual(&signalQuality) != LE_OK)
+        {
+            LE_ERROR("Failed to get the signal quality!");
+            rc = RC_UNSPECIFIED_ERROR;
+        }
+        else
+        {
+            varPtr = GetTreeVariable(EXTVARS_VAR_ID_SIGNAL_BARS);
+            varPtr->value.i = signalQuality;
+            varPtr->id = EXTVARS_VAR_ID_SIGNAL_BARS;
+            varPtr->type = EXTVARS_TYPE_INT;
+            varPtr->notified = true;
+            varPtr->registered = false;
+            varPtr->isReadOnly = true;
+        }
+    }
+
+    // Operator Name
+    {
+        varPtr = GetTreeVariable(EXTVARS_VAR_ID_GSM_OPERATOR);
+        le_result_t result = le_mrc_GetHomeNetworkName(varPtr->value.s,sizeof(varPtr->value.s));
+        if (result == LE_NOT_POSSIBLE)
+        {
+            le_utf8_Copy(varPtr->value.s,"",sizeof(varPtr->value.s),NULL);
+        }
+        else if ( result == LE_OVERFLOW )
+        {
+            LE_ERROR("Failed to get all the operator name!");
+            return RC_UNSPECIFIED_ERROR;
+        }
+        varPtr->id = EXTVARS_VAR_ID_GSM_OPERATOR;
+        varPtr->type = EXTVARS_TYPE_STR;
+        varPtr->notified = true;
+        varPtr->registered = false;
+        varPtr->isReadOnly = true;
+    }
+
+    return rc;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Initialization function for MDC variables.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static rc_ReturnCode_t InitializeMdcVariables
+(
+    void
+)
+{
+    rc_ReturnCode_t         rc=RC_OK;
+    TreeHdlVar_t*           varPtr;
+
+    // Register for data session state changes
+    le_mdc_Profile_Ref_t profileRef = le_mdc_LoadProfile("internet");
+    if (profileRef == NULL)
+    {
+        LE_ERROR("Failed to open profile.");
+    }
+
+    // Add handler when a session start or stop
+    if (le_mdc_AddSessionStateHandler(profileRef, SessionStateHandler, profileRef) == NULL)
+    {
+        LE_ERROR("Failed to install the Session State handler function!");
         rc = RC_UNSPECIFIED_ERROR;
+    }
+
+    // Access Point Name
+    {
+        char apnNameStr[64] = {0};  // size is 64 because of struct ValueVar_t
+        le_result_t result = le_mdc_GetAccessPointName(profileRef,apnNameStr,sizeof(apnNameStr));
+        if ( result == LE_OVERFLOW )
+        {
+            LE_ERROR("Failed to get Access Point Name!");
+            return RC_OUT_OF_RANGE;
+        }
+        else if ( result == LE_NOT_POSSIBLE )
+        {
+            le_utf8_Copy(apnNameStr,"",sizeof(apnNameStr),NULL);
+        }
+
+        varPtr = GetTreeVariable(EXTVARS_VAR_ID_APN);
+        if ( le_utf8_Copy(varPtr->value.s,apnNameStr,sizeof(varPtr->value.s),NULL) != LE_OK )
+        {
+            LE_ERROR("Could not copy '%s'!",apnNameStr);
+            return RC_OUT_OF_RANGE;
+        }
+        varPtr->id = EXTVARS_VAR_ID_APN;
+        varPtr->type = EXTVARS_TYPE_STR;
+        varPtr->notified = true;
+        varPtr->registered = false;
+        varPtr->isReadOnly = true;
+    }
+
+    // IP Address
+    {
+        char ipAddrStr[64] = {0};   // size is 64 because of struct ValueVar_t
+        le_result_t result = le_mdc_GetIPAddress(profileRef,ipAddrStr,sizeof(ipAddrStr));
+        if ( result == LE_OVERFLOW )
+        {
+            LE_ERROR("Failed to get IP Address!");
+            return RC_OUT_OF_RANGE;
+        }
+        else if ( result == LE_NOT_POSSIBLE )
+        {
+            le_utf8_Copy(ipAddrStr,"",sizeof(ipAddrStr),NULL);
+        }
+
+        varPtr = GetTreeVariable(EXTVARS_VAR_ID_IP);
+        if ( le_utf8_Copy(varPtr->value.s,ipAddrStr,sizeof(varPtr->value.s),NULL) != LE_OK )
+        {
+            LE_ERROR("Could not copy '%s'!",ipAddrStr);
+            return RC_OUT_OF_RANGE;
+        }
+        varPtr->id = EXTVARS_VAR_ID_IP;
+        varPtr->type = EXTVARS_TYPE_STR;
+        varPtr->notified = true;
+        varPtr->registered = false;
+        varPtr->isReadOnly = true;
+    }
+
+    // data Bearer Technology
+    {
+        le_mdc_dataBearerTechnology_t dataBearerTechnology=LE_MDC_DATA_BEARER_TECHNOLOGY_UNKNOWN;
+        char serviceStr[64] = {0};  // size is 64 because of struct ValueVar_t
+
+        le_result_t result = le_mdc_GetDataBearerTechnology(profileRef,&dataBearerTechnology);
+        if ( result == LE_OVERFLOW )
+        {
+            LE_ERROR("Failed to get Data Bearer Technology!");
+            return RC_OUT_OF_RANGE;
+        }
+        else if (result == LE_NOT_POSSIBLE )
+        {
+            le_utf8_Copy(serviceStr,"None",sizeof(serviceStr),NULL);
+        }
+        else if (result == LE_OK)
+        {
+            if ( ConvertDataBearerTechnologyToString(dataBearerTechnology,
+                                                     serviceStr,sizeof(serviceStr)) != LE_OK)
+            {
+                LE_ERROR("Could not convert %d!",dataBearerTechnology);
+                return RC_OUT_OF_RANGE;
+            }
+        }
+
+        varPtr = GetTreeVariable(EXTVARS_VAR_ID_SERVICE);
+        if ( le_utf8_Copy(varPtr->value.s,serviceStr,sizeof(varPtr->value.s),NULL) != LE_OK )
+        {
+            LE_ERROR("Could not copy '%s'!",serviceStr);
+            return RC_OUT_OF_RANGE;
+        }
+        varPtr->id = EXTVARS_VAR_ID_SERVICE;
+        varPtr->type = EXTVARS_TYPE_STR;
+        varPtr->notified = true;
+        varPtr->registered = false;
+        varPtr->isReadOnly = true;
+    }
+
+    // bytes received/sent
+    {
+        uint64_t bytesReceived, bytesSent;
+        le_result_t result = le_mdc_GetBytesCounters(&bytesReceived,&bytesSent);
+        if ( result != LE_OK )
+        {
+            LE_ERROR("Failed to get Bytes Counter!s");
+            return LE_NOT_FOUND;
+        }
+
+        varPtr = GetTreeVariable(EXTVARS_VAR_ID_BYTES_RCVD);
+        varPtr->value.i = bytesReceived;
+        varPtr->id = EXTVARS_VAR_ID_BYTES_RCVD;
+        varPtr->type = EXTVARS_TYPE_INT;
+        varPtr->notified = true;
+        varPtr->registered = false;
+        varPtr->isReadOnly = true;
+
+        varPtr = GetTreeVariable(EXTVARS_VAR_ID_BYTES_SENT);
+        varPtr->value.i = bytesSent;
+        varPtr->id = EXTVARS_VAR_ID_BYTES_SENT;
+        varPtr->type = EXTVARS_TYPE_INT;
+        varPtr->notified = true;
+        varPtr->registered = false;
+        varPtr->isReadOnly = true;
     }
 
     return rc;
@@ -560,6 +1042,13 @@ static rc_ReturnCode_t InitializeSimVariables
     le_sim_Ref_t    simRef;
     char            iccid[LE_SIM_ICCID_LEN];
     char            imsi[LE_SIM_IMSI_LEN];
+    char            phoneNumber[LE_TEL_NMBR_MAX_LEN] = {0};
+
+    if(le_sim_AddNewStateHandler(SimStateHandler, NULL) == NULL)
+    {
+        LE_ERROR("Failed to install the SIM state handler function!");
+        rc = RC_UNSPECIFIED_ERROR;
+    }
 
     if((simRef = le_sim_Create(1)) == NULL)
     {
@@ -601,12 +1090,24 @@ static rc_ReturnCode_t InitializeSimVariables
             varPtr->isReadOnly = true;
             le_utf8_Copy((char*) varPtr->value.s, imsi, sizeof(varPtr->value.s), NULL);
         }
-    }
 
-    if(le_sim_AddNewStateHandler(SimStateHandler, NULL) == NULL)
-    {
-        LE_ERROR("Failed to install the SIM state handler function!");
-        rc = RC_UNSPECIFIED_ERROR;
+        if ( le_sim_GetSubscriberPhoneNumber(simRef,phoneNumber, sizeof(phoneNumber)) != LE_OK)
+        {
+            LE_ERROR("Failed to get the Phone Number!");
+            rc = RC_UNSPECIFIED_ERROR;
+        }
+        else
+        {
+            varPtr = GetTreeVariable(EXTVARS_VAR_ID_SUBSCRIBER_PHONE_NUM);
+
+            varPtr->id = EXTVARS_VAR_ID_SUBSCRIBER_PHONE_NUM;
+            varPtr->type = EXTVARS_TYPE_STR;
+            varPtr->notified = true;
+            varPtr->registered = false;
+            varPtr->isReadOnly = true;
+            LE_DEBUG("phoneNumber %s",phoneNumber);
+            le_utf8_Copy((char*) varPtr->value.s, phoneNumber, sizeof(varPtr->value.s), NULL);
+        }
     }
 
     return rc;
@@ -675,6 +1176,7 @@ static void* MsClientThread
 
     // Populate my tree
     InitializeInfoVariables();
+    InitializeMdcVariables();
     InitializeMrcVariables();
     InitializeSimVariables();
 

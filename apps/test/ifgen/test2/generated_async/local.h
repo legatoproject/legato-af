@@ -14,7 +14,7 @@
 
 #include "legato.h"
 
-#define PROTOCOL_ID_STR "6eb229106644f1fcc141ad4230e46f51cf8e6677afecfa672d6b4b6617e4da43"
+#define PROTOCOL_ID_STR "18f06a4cb12b70e9f1487977fcecc04dfdc4dc6931eb677b36c87d9702c2de1e"
 
 
 // todo: This will need to depend on the particular protocol, but the exact size is not easy to

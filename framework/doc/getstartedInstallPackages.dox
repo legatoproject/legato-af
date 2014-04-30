@@ -6,7 +6,7 @@
 @ref instLegato  <br>
 @ref instPkgWhatsNext
 
-Download the latest Legato packages through https://developer.sierrawireless.com/legato.
+Download the latest Legato packages through http://developer.sierrawireless.com/landing/legato.aspx
 
 To access the Legato application framework, you'll need a GitHub account.
 
@@ -40,21 +40,23 @@ git clone https://github.com/legatoproject/legato-af.git
 @endcode
 You'll be prompted for your GitHub credentials.
 
-@b cd to your Legato directory 
-
-@b Run @c make.
-
-@b Build the framework on the target device by running: 
-@code $ make [wp7 or ar7] @endcode
-
-Or to include the AV agent:
-@code $ make [wp7 or ar7] INCLUDE_AIRVANTAGE=1 @endcode
-
 <b> . bin/configlegatoenv  </b>
 @warning You must configure your bash shell's environment for the Legato application build tools every time you open a new shell.
 
 Run this every time you open a new shell:
 @code $ . bin/configlegatoenv @endcode
+
+@b cd to your Legato directory 
+
+@b Run @c make.
+
+@b Build the framework on the target device by running: 
+@code $ make wp7 @endcode
+
+@note If you're building an AR7 device, substitute @c ar7 for @c wp7.
+
+Or to include the AirVantage agent:
+@code $ make wp7 INCLUDE_AIRVANTAGE=1 @endcode
 
 @section setupTarget Setup Target Device
 
@@ -103,7 +105,7 @@ Run this to copy the Legato framework libraries and executables onto the device,
 start the Legato runtime components:
 
 @code 
-$ instlegato build/[ar7 or wp7] <target ip address>  
+$ instlegato build/wp7 <target ip address>  
 @endcode
 
 @section dirStruct Directories
@@ -157,7 +159,7 @@ Or you can move on to creating an @ref helloWorld app.
 
 <HR>
 
-Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved.
+Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
 
 **/
 

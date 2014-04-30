@@ -1,48 +1,98 @@
 
 // -------------------------------------------------------------------------------------------------
-/*
- *  Implementation of the low level tree DB structure.  This code also handles the persisting of the
- *  tree db to the filesystem.
+/**
+ * @file treeDb.c
  *
- *  Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ * Implementation of the low level tree DB structure.  This code also handles the persisting of the
+ * tree db to the filesystem.
+ *
+ * The tree structure looks like this:
+ *
+@verbatim
+
+    Shadow Tree ------------+----------+  +------------------------+
+                            |          |  |                        |
+                            v          v  v                        |
+    Tree Collection --*--> Tree --+--> Node --+--> Child List --*--+
+                                  |           |
+                                  |           +--> Value
+                                  |           |
+                                  |           +--> Handler List --*--> Handler
+                                  |
+                                  +--> Request Queue
+                                  |
+                                  +--> Write Iterator Reference
+                                  |
+                                  +--> Read Iterator Count
+
+@endverbatim
+ *
+ * The Tree Collection holds Tree objects. There's one Tree object for each configuration tree.
+ * They are indexed by tree name.
+ *
+ * Each Tree object has a single "root" Node.
+ *
+ * Each Node can have either a value or a list of child Nodes.
+ *
+ * When a write transaction is started for a Tree, the iterator reference for that transaction
+ * is recorded in the Tree object.  When the transaction is committed or cancelled, that reference
+ * is cleared out.
+ *
+ * When a read transaction is started for a Tree, the count of read iterators in that Tree is
+ * incremented.  When it ends, the count is decremented.
+ *
+ * When client requests are received that cannot be processed immediately, because of the state
+ * of the tree the request is for (e.g., if a write transaction commit request is received while
+ * there are read transactions in progress on the tree), then the request is queued onto the tree's
+ * Request Queue.
+ *
+ * <b>Shadow Trees:</b>
+ *
+ * In addition, there's the notion of a "Shadow Tree", which is a tree that contains changes
+ * that have been made to another tree in a write transaction that has not yet been committed.
+ * Each node in a shadow tree is called a "Shadow Node".
+ *
+ * When a write transaction is started on a tree, a shadow tree is created for that tree, and
+ * a shadow node is created for the root node.  As a shadow node is traversed (using the normal
+ * tree traversal functions), new shadow nodes are created for any nodes that have been traversed
+ * to and any of their sibling nodes.  When changes are made to a node, the new value is stored
+ * in the shadow node.  When new nodes are added, a new shadow node is created in the shadow
+ * tree.  When nodes are deleted, the shadow node is marked "deleted".
+ *
+ * When a write transaction is cancelled, the shadow tree and all its shadow nodes are discarded.
+ *
+ * When a write transaction is committed, the shadow tree is traversed, and any changes found
+ * in it are applied to the "original" tree that the shadow tree was shadowing.  This process is
+ * called "merging".
+ *
+ * Shadow Trees don't have handlers, request queues, write iterator references or read iterator
+ * counts.
+ *
+ * ----
+ *  Copyright (C) Sierra Wireless, Inc. 2013, 2014. All rights reserved. Use of this work is subject
+ *  to license.
  */
 // -------------------------------------------------------------------------------------------------
 
-#include <stdio.h>
-#include <stdbool.h>
 #include "legato.h"
 #include "interfaces.h"
 #include "stringBuffer.h"
-#include "internalCfgTypes.h"
+#include "dynamicString.h"
+#include "treePath.h"
 #include "treeDb.h"
+#include "treeUser.h"
+#include "nodeIterator.h"
 
 
 
 
-// Path to the config tree directory in the linux filesystem.
+/// Path to the config tree directory in the linux filesystem.
 #define CFG_TREE_PATH "/opt/legato/configTree"
 
 
-// Set the size of each string segment.
-#define SEGMENT_SIZE 28
-// TODO: Tune SEGMENT_SIZE for efficiency.
 
-
-
-
-// -------------------------------------------------------------------------------------------------
-/**
- *  Names and values in the db all use this structure.  This way, these strings do not need to have
- *  a fixed size.  The string values are grown and shrunk as needed.
- */
-// -------------------------------------------------------------------------------------------------
-typedef struct NodeString_t
-{
-    char value[SEGMENT_SIZE];      ///< The actual text.  The segment is NULL padded, not NULL
-                                   ///<   terminated.
-    struct NodeString_t* nextPtr;  ///< A pointer to the next segment in the chain.
-}
-NodeString_t;
+/// Maximum size (in bytes) of a "small" string, including the null terminator.
+#define SMALL_STR 24
 
 
 
@@ -65,112 +115,143 @@ NodeFlags_t;
 
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Change notification handler object structure. (aka "Handler objects")
+ *
+ * Each one of these is used to keep track of a client's change notification handler function
+ * registration for a particular tree node.  These are allocated from the Handler Pool and kept
+ * on a Node object's Handler List.
+ **/
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    le_dls_Link_t link;                     ///< Used to link into the Node object's Handler List.
+    le_cfg_ChangeHandlerFunc_t handlerPtr;  ///< Function to call back.
+    void* contextPtr;                       ///< Context to give the function when called.
+}
+Handler_t;
+
+
+
 
 // -------------------------------------------------------------------------------------------------
 /**
- *  The node structure.
+ *  The Node object structure.
  */
 // -------------------------------------------------------------------------------------------------
-typedef struct tdb_Node_t
+typedef struct Node
 {
-    struct tdb_Node_t* parentPtr;         ///< The parent node of this one.
+    tdb_NodeRef_t parentRef;         ///< The parent node of this one.
 
-    le_cfg_nodeType_t type;                  ///< What kind of value does this node hold.
+    le_cfg_nodeType_t type;          ///< What kind of value does this node hold.
 
-    NodeFlags_t flags;                    ///< Various flags set on the node.
-    struct tdb_Node_t* shadowPtr;         ///< If this node is shadowing another then the pointer to
-                                          ///<   that shadowed node is here.
+    NodeFlags_t flags;               ///< Various flags set on the node.
+    tdb_NodeRef_t shadowRef;         ///< If this node is shadowing another then the pointer to
+                                     ///<   that shadowed node is here.
 
-    NodeString_t name;                    ///< The name of this node.
+    dstr_Ref_t nameRef;              ///< The name of this node.
 
-    struct tdb_Node_t* siblingPtr;        ///< The linked list of node siblings.  All of the nodes
-                                          ///<   in this list have the same parent node.
+    le_dls_Link_t siblingList;       ///< The linked list of node siblings.  All of the nodes
+                                     ///<   in this list have the same parent node.
 
-    // TODO: Callback chain...
-    // TODO: See if I can convert this back to a union.
-    struct
+    le_dls_List_t handlerList;       ///< List of change notification handler objects registered
+                                     ///    for this node.
+
+    union
     {
-        NodeString_t value;               ///< The value of the node.  This is only valid if the
-                                          ///<   node is not a stem.
+        dstr_Ref_t valueRef;         ///< The value of the node.  This is only valid if the
+                                     ///<   node is not a stem.
 
-        struct
-        {
-            uint32_t count;               ///< Count of children of this node.
-            struct tdb_Node_t* childPtr;  ///< The linked list of children belonging to this node.
-        }
-        children;                         ///< Values in this structure are only valid if this node
-                                          ///<   is a stem.
+        le_dls_List_t children;      ///< The linked list of children belonging to this node.
     }
-    info;                                 ///< The actual inforation that this node stores.
+    info;                            ///< The actual inforation that this node stores.
 }
-tdb_Node_t;
+Node_t;
 
 
 
 
-// The memory pool responsible for tree nodes.
-le_mem_PoolRef_t NodePool = NULL;
-#define CFG_NODE_POOL_NAME "configTree.nodePool"
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Structure used to keep track of the trees loaded in the configTree daemon.
+ */
+// -------------------------------------------------------------------------------------------------
+typedef struct Tree
+{
+    struct Tree* originalTreeRef;     ///< If non-NULL then this points back to the original
+                                          ///<   tree this one is shadowing.
 
-// This pool is used to manage the memory used by the node strings.
-le_mem_PoolRef_t NodeStringPool = NULL;
-#define CFG_NODE_STRING_POOL_NAME "configTree.nodeStringPool"
+    char name[MAX_TREE_NAME];             ///< The name of this tree.
 
-// The collection of configuration trees managed by the system.
+    int revisionId;                       ///< The current revision,
+                                          ///<   0 - Unknonwn.
+                                          ///<   1, 2, 3 is one of the rock, paper, scissors revs.
+
+    Node_t* rootNodeRef;                  ///< The root node of this tree.
+
+    ssize_t activeReadCount;              ///< Count of reads that are currently active on
+                                          ///<   this tree.
+    ni_IteratorRef_t activeWriteIterRef;  ///< The parent write iterator that's active on
+                                          ///<   this tree.  NULL if there are no writes
+                                          ///<   pending.
+
+    le_sls_List_t requestList;            ///< Each tree maintains it's own list of pending
+                                          ///<   requests.
+}
+Tree_t;
+
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Types of lexical tokens that can be found in configuration data files.
+ **/
+//--------------------------------------------------------------------------------------------------
+typedef enum
+{
+    TT_EMPTY_VALUE,     ///< Node without any value.
+    TT_BOOL_VALUE,      ///< Boolean value.
+    TT_INT_VALUE,       ///< Signed integer.
+    TT_FLOAT_VALUE,     ///< Floating point number.
+    TT_STRING_VALUE,    ///< UTF-8 text string.
+    TT_OPEN_GROUP,      ///< Start of grouping.
+    TT_CLOSE_GROUP      ///< End of grouping.
+}
+TokenType_t;
+
+
+
+
+/// The memory pool responsible for tree nodes.
+le_mem_PoolRef_t NodePoolRef = NULL;
+#define CFG_NODE_POOL_NAME "nodePool"
+
+/// The collection of configuration trees managed by the system.
 le_hashmap_Ref_t TreeCollectionRef = NULL;
+
+/// Pool from which Tree objects are allocated.
 le_mem_PoolRef_t TreePoolRef = NULL;
 
-#define CFG_TREE_COLLECTION_NAME "configTree.treeCollection"
-#define CFG_TREE_POOL_NAME       "configTree.treePool"
+#define CFG_TREE_COLLECTION_NAME "treeCollection"
+#define CFG_TREE_POOL_NAME       "treePool"
 
 
 
 
-
-
-
-
-// ------------------------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------------
 /**
- *  Called to determine if a given node string is equivlant to "".
+ *  Clear all flags from the given node.
  */
 // -------------------------------------------------------------------------------------------------
-static bool IsNodeStringEmpty
+static void ClearFlags
 (
-    NodeString_t* nodeStringPtr  ///< The string to check.
+    tdb_NodeRef_t nodeRef  ///< The node to update.
 )
-{
-    // If we're dealing with a NULL node string the consider it empty.
-    if (nodeStringPtr == NULL)
-    {
-        return true;
-    }
-
-    // Also, consider the string empty if the first character is NULL.
-    return nodeStringPtr->value[0] == '\0';
-}
-
-
-
-
-// ------------------------------------------------------------------------------------------------
-/**
- *  Free up the memory used by the node string.
- */
 // -------------------------------------------------------------------------------------------------
-static void ReleaseNodeStr
-(
-    NodeString_t* nodeStrPtr  ///< The string to free.
-)
 {
-    // Release the node string, and all of it's child items.
-    while (nodeStrPtr != NULL)
-    {
-        NodeString_t* thisPtr = nodeStrPtr;
-
-        nodeStrPtr = thisPtr->nextPtr;
-        le_mem_Release(thisPtr);
-    }
+    nodeRef->flags = NODE_FLAGS_UNSET;
 }
 
 
@@ -178,42 +259,16 @@ static void ReleaseNodeStr
 
 // -------------------------------------------------------------------------------------------------
 /**
- *  Copy a node strng into a traditional string buffer.  This function also takes care to make sure
- *  that the destionation buffer is not overflowed.
+ *  Check to see if this node is in fact a shadow node.
  */
 // -------------------------------------------------------------------------------------------------
-static void CopyNodeStringToString
+static bool IsShadow
 (
-    char* destPtr,                  ///< The C string to copy into.
-    size_t destMax,                 ///< How big is this buffer?
-    const NodeString_t* nodeStrPtr  ///< The source node string to copy from.
+    const tdb_NodeRef_t nodeRef  ///< The node to check.
 )
+// -------------------------------------------------------------------------------------------------
 {
-    size_t copied = 0;
-
-    // Fire through the segments while making sure that we don't exceed the destination buffer.
-    while (   (copied < destMax)
-           && (nodeStrPtr != NULL))
-    {
-        // Compute what we need for the whole segment.
-        size_t toCopy = copied + SEGMENT_SIZE;
-        size_t diff = 0;
-
-        // Back it off from that ideal if there isn't enough space in the destination buffer.
-        if (toCopy >= destMax)
-        {
-            diff = toCopy - destMax;
-        }
-
-        // Copy the string and update our destination pointer to reflect what we had copied.
-        strncpy(destPtr, nodeStrPtr->value, SEGMENT_SIZE - diff);
-
-        destPtr += (toCopy - copied);
-        copied = toCopy;
-
-        // Move onto the next segment.
-        nodeStrPtr = nodeStrPtr->nextPtr;
-    }
+    return (nodeRef->flags & NODE_IS_SHADOW) != 0;
 }
 
 
@@ -221,131 +276,210 @@ static void CopyNodeStringToString
 
 // -------------------------------------------------------------------------------------------------
 /**
- *  Take a regualar C style string and copy it into a node string, allocating and freeing as
- *  required.
+ *  Set the shadow flag in this node.
  */
 // -------------------------------------------------------------------------------------------------
-static void CopyStringToNodeString
+static void SetShadowFlag
 (
-    NodeString_t* nodeStrPtr,  ///< The string to update.
-    const char* sourcePtr      ///< The string to copy.
+    tdb_NodeRef_t nodeRef  ///< The node to update.
 )
+// -------------------------------------------------------------------------------------------------
 {
-    // Go through the string copying it segment by segment.  Only allocate new blocks if they're
-    // needed.
-    size_t length = strlen(sourcePtr);
-    size_t copied = 0;
-
-    while (copied < length)
-    {
-        strncpy(nodeStrPtr->value, sourcePtr, SEGMENT_SIZE);
-
-        sourcePtr += SEGMENT_SIZE;
-        copied += SEGMENT_SIZE;
-
-        if (copied < length)
-        {
-            if (nodeStrPtr->nextPtr == NULL)
-            {
-                nodeStrPtr->nextPtr = le_mem_ForceAlloc(NodeStringPool);
-                memset(nodeStrPtr->nextPtr, 0, sizeof(NodeString_t));
-            }
-
-            nodeStrPtr = nodeStrPtr->nextPtr;
-        }
-    }
-
-
-    // Now that the copy is finished, free up any unused blocks.
-    ReleaseNodeStr(nodeStrPtr->nextPtr);
-    nodeStrPtr->nextPtr = NULL;
+    nodeRef->flags |= NODE_IS_SHADOW;
 }
 
 
 
 
-// ------------------------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------------
 /**
- *  Copy a node string into another node string.
+ *  Check to see if this node has been modified.
  */
 // -------------------------------------------------------------------------------------------------
-static void CopyNodeString
+static bool IsModifed
 (
-    NodeString_t* destStrPtr,  ///< The copy target.
-    NodeString_t* srcStrPtr    ///< The copy source.
+    const tdb_NodeRef_t nodeRef  ///< The node to read.
 )
+// -------------------------------------------------------------------------------------------------
 {
-    // Whip through and copy the segements as needed.  Allocate new ones as we go.
-    while (srcStrPtr != NULL)
-    {
-        memcpy(destStrPtr->value, srcStrPtr->value, SEGMENT_SIZE);
-
-        srcStrPtr = srcStrPtr->nextPtr;
-
-        if (srcStrPtr != NULL)
-        {
-            if (destStrPtr->nextPtr != NULL)
-            {
-                destStrPtr = destStrPtr->nextPtr;
-            }
-            else
-            {
-                destStrPtr->nextPtr = le_mem_ForceAlloc(NodeStringPool);
-                memset(destStrPtr->nextPtr, 0, sizeof(NodeString_t));
-
-                destStrPtr = destStrPtr->nextPtr;
-            }
-        }
-    }
-
-
-    // If the new copy is smaller that what was previously held, shrink the string down to match.
-    ReleaseNodeStr(destStrPtr->nextPtr);
-    destStrPtr->nextPtr = NULL;
+    return (nodeRef->flags & NODE_IS_MODIFIED) != 0;
 }
 
 
 
 
-// ------------------------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------------
 /**
- *  Compute the length of a node string.
+ *  Mark the node as modified.
  */
 // -------------------------------------------------------------------------------------------------
-static size_t GetNodeStringLength
+static void SetModifiedFlag
 (
-    const NodeString_t* nodeStrPtr  ///< The string to read.
+    tdb_NodeRef_t nodeRef  ///< The node to update.
 )
+// -------------------------------------------------------------------------------------------------
 {
-    size_t count = 0;
-
-    // Count whole blocks, then get what's actually used in the last one.
-    while (nodeStrPtr->nextPtr != NULL)
-    {
-        count++;
-        nodeStrPtr = nodeStrPtr->nextPtr;
-    }
-
-    return strnlen(nodeStrPtr->value, SEGMENT_SIZE) + (count * SEGMENT_SIZE);
+    nodeRef->flags |= NODE_IS_MODIFIED;
 }
 
 
 
 
-// ------------------------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------------
 /**
- *  Allocate and zero out a new tree node..
+ *  Clear the modified flag.
+ */
+// -------------------------------------------------------------------------------------------------
+static void ClearModifiedFlag
+(
+    tdb_NodeRef_t nodeRef  ///< The node to update.
+)
+// -------------------------------------------------------------------------------------------------
+{
+    nodeRef->flags &= ~NODE_IS_MODIFIED;
+}
+
+
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Has the node been marked as deleted?
+ */
+// -------------------------------------------------------------------------------------------------
+static bool IsDeleted
+(
+    tdb_NodeRef_t nodeRef  ///< The node to read.
+)
+// -------------------------------------------------------------------------------------------------
+{
+    return (nodeRef->flags & NODE_IS_DELETED) != 0;
+}
+
+
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Set the deleted flag on the node.
+ */
+// -------------------------------------------------------------------------------------------------
+static void SetDeletedFlag
+(
+    tdb_NodeRef_t nodeRef  ///<
+)
+// -------------------------------------------------------------------------------------------------
+{
+    nodeRef->flags |= NODE_IS_DELETED;
+}
+
+
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Clear the deleted flag on a node.
+ */
+// -------------------------------------------------------------------------------------------------
+static void ClearDeletedFlag
+(
+    tdb_NodeRef_t nodeRef  ///< The node to update.
+)
+// -------------------------------------------------------------------------------------------------
+{
+    nodeRef->flags &= ~NODE_IS_DELETED;
+}
+
+
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Allocate a new node and fill out it's default information.
  */
 // -------------------------------------------------------------------------------------------------
 static tdb_NodeRef_t NewNode
 (
+    void
 )
+// -------------------------------------------------------------------------------------------------
 {
     // Create a new blank node.
-    tdb_NodeRef_t newNode = le_mem_ForceAlloc(NodePool);
-    memset(newNode, 0, sizeof(tdb_Node_t));
+    tdb_NodeRef_t newNodeRef = le_mem_ForceAlloc(NodePoolRef);
 
-    return newNode;
+    newNodeRef->parentRef = NULL;
+    newNodeRef->type = LE_CFG_TYPE_EMPTY;
+    ClearFlags(newNodeRef);
+    newNodeRef->shadowRef = NULL;
+    newNodeRef->nameRef = NULL;
+    newNodeRef->siblingList = LE_DLS_LINK_INIT;
+    memset(&newNodeRef->info, 0, sizeof(newNodeRef->info));
+
+    return newNodeRef;
+}
+
+
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ *  The node destructor function.  This will take care of freeing a node's string values and any
+ *  children it may have.  Called automaticly by the memory system when a node is released.
+ */
+// -------------------------------------------------------------------------------------------------
+static void NodeDestructor
+(
+    void* objectPtr  ///< The generic object to free.
+)
+// -------------------------------------------------------------------------------------------------
+{
+    tdb_NodeRef_t nodeRef = (tdb_NodeRef_t)objectPtr;
+
+    if (nodeRef->nameRef)
+    {
+        dstr_Release(nodeRef->nameRef);
+    }
+
+    switch (nodeRef->type)
+    {
+        case LE_CFG_TYPE_EMPTY:
+        case LE_CFG_TYPE_DOESNT_EXIST:
+            // Nothing to do here.
+            break;
+
+        case LE_CFG_TYPE_STRING:
+        case LE_CFG_TYPE_BOOL:
+        case LE_CFG_TYPE_INT:
+        case LE_CFG_TYPE_FLOAT:
+            if (nodeRef->info.valueRef)
+            {
+                dstr_Release(nodeRef->info.valueRef);
+            }
+            break;
+
+        case LE_CFG_TYPE_STEM:
+            {
+                tdb_NodeRef_t childRef = tdb_GetFirstChildNode(nodeRef);
+
+                while (childRef != NULL)
+                {
+                    tdb_NodeRef_t nextChildRef = tdb_GetNextSiblingNode(childRef);
+
+                    le_mem_Release(childRef);
+                    childRef = nextChildRef;
+                }
+            }
+            break;
+    }
+
+    if (nodeRef->parentRef != NULL)
+    {
+        LE_ASSERT(nodeRef->parentRef->type == LE_CFG_TYPE_STEM);
+        LE_ASSERT(le_dls_IsEmpty(&nodeRef->parentRef->info.children) == false);
+        LE_ASSERT(le_dls_IsInList(&nodeRef->parentRef->info.children, &nodeRef->siblingList));
+
+        le_dls_Remove(&nodeRef->parentRef->info.children, &nodeRef->siblingList);
+    }
 }
 
 
@@ -358,110 +492,33 @@ static tdb_NodeRef_t NewNode
 // -------------------------------------------------------------------------------------------------
 static tdb_NodeRef_t NewShadowNode
 (
-    tdb_NodeRef_t nodePtr  ///< The node to shadow.
+    tdb_NodeRef_t nodeRef  ///< The node to shadow.
 )
+// -------------------------------------------------------------------------------------------------
 {
-    // It's possible for nodePtr to be NULL.  We could be creating a shadow node for which no
-    // original exists.  Which is the case when creating a new path that didn't exist in the
-    // original tree.  However, if we do have a valid base node, check the programs sanity and make
-    // sure it isn't already a shadow node.
-    if (nodePtr != NULL)
-    {
-        LE_ASSERT((nodePtr->flags & NODE_IS_SHADOW) == 0);
-    }
-
     // Allocate a new blank node.
-    tdb_NodeRef_t newPtr = NewNode();
+    tdb_NodeRef_t newShadowRef = NewNode();
 
-    // Turn it into a shadow of the original node.
-    newPtr->type = nodePtr->type;
-    newPtr->flags = NODE_IS_SHADOW | nodePtr->flags;
-    newPtr->shadowPtr = nodePtr;
-
-    // Now, if the parent node, (if there is a parent node,) is marked as deleted, then do the same
-    // with this new node.
-    if (   (nodePtr->parentPtr != NULL)
-        && (tdb_IsDeleted(nodePtr->parentPtr)))
+    // Turn it into a shadow of the original node.  It's possible for nodeRef to be NULL.  We could
+    // be creating a shadow node for which no original exists.  Which is the case when creating a
+    // new path that didn't exist in the original tree.
+    if (nodeRef != NULL)
     {
-        newPtr->flags |= NODE_IS_DELETED;
-    }
+        newShadowRef->type = nodeRef->type;
+        newShadowRef->flags = nodeRef->flags;
+        newShadowRef->shadowRef = nodeRef;
 
-    // Keep track of the child count if this is a shadow of a stem.
-    if (   (nodePtr != NULL)
-        && (nodePtr->type == LE_CFG_TYPE_STEM))
-    {
-        newPtr->info.children.count = nodePtr->info.children.count;
-    }
-
-    return newPtr;
-}
-
-
-
-
-// -------------------------------------------------------------------------------------------------
-/**
- *  Called to get the first shadow child of a node collection..
- */
-// -------------------------------------------------------------------------------------------------
-static tdb_NodeRef_t GetFirstShadowChild
-(
-    tdb_NodeRef_t shadowParentPtr
-)
-{
-    // Sanity check, if we were given a bad node pointer, or if the given node isn't even a stem,
-    // then there are no children to return.
-    if (   (shadowParentPtr == NULL)
-        || (shadowParentPtr->type != LE_CFG_TYPE_STEM))
-    {
-        return NULL;
-    }
-
-    // This is a valid node pointer.  Does this node have any children currently?  If yes, then
-    // return the pointer to the first one.
-    if (shadowParentPtr->info.children.childPtr != NULL)
-    {
-        return shadowParentPtr->info.children.childPtr;
-    }
-
-
-    // This node has no shadow children.  So what we do now is check the original node... Does it
-    // have any children?  If it does, we simply recreate the whole collection now.  (We do not
-    // recurse into the grandchildren though.)  Doing this now makes life simpler, instead of doing
-    // this piecemeal and possibly out of order.
-    tdb_NodeRef_t originalPtr = shadowParentPtr->shadowPtr;
-
-    if (originalPtr == NULL)
-    {
-        return NULL;
-    }
-
-
-    // Simply iterate through the original collection and add a new shadow child to our own
-    // collection.
-    tdb_NodeRef_t shadowPtr = NULL;
-    tdb_NodeRef_t originalChildPtr = tdb_GetFirstChildNode(originalPtr);
-
-    while (originalChildPtr != NULL)
-    {
-        tdb_NodeRef_t newShadowPtr = NewShadowNode(originalChildPtr);
-        newShadowPtr->parentPtr = shadowParentPtr;
-
-        if (shadowPtr != NULL)
+        // Now, if the parent node, (if there is a parent node,) is marked as deleted, then do the
+        // same with this new node.
+        if (   (nodeRef->parentRef != NULL)
+            && (IsDeleted(nodeRef->parentRef)))
         {
-            shadowPtr->siblingPtr = newShadowPtr;
+            SetDeletedFlag(newShadowRef);
         }
-        else
-        {
-            shadowParentPtr->info.children.childPtr = newShadowPtr;
-        }
-
-        shadowPtr = newShadowPtr;
-        originalChildPtr = originalChildPtr->siblingPtr;
     }
 
-    // Now, finally, return the first of the newly created shadow nodes.
-    return shadowParentPtr->info.children.childPtr;
+    SetShadowFlag(newShadowRef);
+    return newShadowRef;
 }
 
 
@@ -474,48 +531,41 @@ static tdb_NodeRef_t GetFirstShadowChild
 // -------------------------------------------------------------------------------------------------
 static tdb_NodeRef_t NewChildNode
 (
-    tdb_NodeRef_t nodePtr  ///< The node to be given with a new child.
+    tdb_NodeRef_t nodeRef  ///< The node to be given with a new child.
 )
+// -------------------------------------------------------------------------------------------------
 {
-    LE_ASSERT(nodePtr != NULL);
-
     // If the node is currently empty, then turn it into a stem.
-    if (nodePtr->type == LE_CFG_TYPE_EMPTY)
+    if (nodeRef->type == LE_CFG_TYPE_EMPTY)
     {
-        nodePtr->type = LE_CFG_TYPE_STEM;
+        nodeRef->type = LE_CFG_TYPE_STEM;
     }
 
-    LE_ASSERT(nodePtr->type == LE_CFG_TYPE_STEM);
-
+    LE_ASSERT(nodeRef->type == LE_CFG_TYPE_STEM);
 
     // Create a new node.  Then set it's parent to the given node
-    tdb_NodeRef_t newPtr = NewNode();
+    tdb_NodeRef_t newRef = NewNode();
 
-    newPtr->parentPtr = nodePtr;
-    newPtr->type = LE_CFG_TYPE_EMPTY;
+    newRef->parentRef = nodeRef;
+    newRef->type = LE_CFG_TYPE_EMPTY;
 
     // Get the new node to inheret the parent's shadow and deletion flags.
-    newPtr->flags = nodePtr->flags & (NODE_IS_SHADOW | NODE_IS_DELETED);
+    if (IsShadow(nodeRef))
+    {
+        SetShadowFlag(newRef);
+    }
+
+    if (IsDeleted(nodeRef))
+    {
+        SetDeletedFlag(newRef);
+    }
 
     // Now make sure to add the new child node to the end of the parents collection.
-    tdb_NodeRef_t nextPtr = nodePtr->info.children.childPtr;
+    le_dls_Queue(&nodeRef->info.children, &newRef->siblingList);
 
-    if (nextPtr == NULL)
-    {
-        nodePtr->info.children.childPtr = newPtr;
-    }
-    else
-    {
-        while (nextPtr->siblingPtr != NULL)
-        {
-            nextPtr = nextPtr->siblingPtr;
-        }
-
-        nextPtr->siblingPtr = newPtr;
-    }
 
     // Finally return the newly created node to the caller.
-    return newPtr;
+    return newRef;
 }
 
 
@@ -523,87 +573,58 @@ static tdb_NodeRef_t NewChildNode
 
 // -------------------------------------------------------------------------------------------------
 /**
- *  Free up a given node and the string values it may have.  Note that this will not free up the
- *  node's children.  It is expected that the node's children have already been deleted.
- *
- *  This will also properly free up shadow nodes.
+ *  Called to shadow a node's collection of children.
  */
 // -------------------------------------------------------------------------------------------------
-static void ForceReleaseNode
+static void ShadowChildren
 (
-    tdb_NodeRef_t nodePtr  ///< The node to free.
+    tdb_NodeRef_t shadowParentRef  ///< The node we're reading.
 )
+// -------------------------------------------------------------------------------------------------
 {
-    if (nodePtr == NULL)
+    // If the parent node isn't a stem then there isn't much else to do here.
+    if (shadowParentRef->type != LE_CFG_TYPE_STEM)
     {
         return;
     }
 
-    // Free up any extra memory, (if any,) associated with the node.
-    ReleaseNodeStr(nodePtr->name.nextPtr);
-
-    if (nodePtr->type != LE_CFG_TYPE_STEM)
-    {
-        ReleaseNodeStr(nodePtr->info.value.nextPtr);
-    }
-
-    // Now properly release this node too.
-    le_mem_Release(nodePtr);
-}
-
-
-
-
-// -------------------------------------------------------------------------------------------------
-/**
- *  Free up a given node and the string values it may have.  Note that this will not free up the
- *  node's children.  It is expected that the node's children have already been deleted.
- *
- *  Shadow nodes are only marked for deletion.  This is so that later these deletions can be
- *  propigated into the master tree.
- */
-// -------------------------------------------------------------------------------------------------
-static void ReleaseNode
-(
-    tdb_NodeRef_t nodePtr  ///< The node to free.
-)
-{
-    if (nodePtr == NULL)
+    // Does this node have any children currently?  If yes, then we don't need to do anything else.
+    if (le_dls_IsEmpty(&shadowParentRef->info.children) == false)
     {
         return;
     }
 
-    // Mark the node as having been deleted.
-    nodePtr->flags |= NODE_IS_DELETED;
-}
-
-
-
-
-// -------------------------------------------------------------------------------------------------
-/**
- *  Call this function to make sure that the given node and all of it's parents will be persisted.
- *  Often in shadow trees paths can be created but are only fully comitted when values are written
- *  to them.
- */
-// -------------------------------------------------------------------------------------------------
-static void EnsureExists
-(
-    tdb_NodeRef_t nodePtr  ///< Make sure that this node "offically" exists.
-)
-{
-    // Simply go up through the chain and clear any deleted flags.
-    while (nodePtr != NULL)
+    // Has this node been modified?  If so, then the shadow children may have been cleared from
+    // this collection.
+    if (IsModifed(shadowParentRef) == true)
     {
-        nodePtr->flags &= ~NODE_IS_DELETED;
+        return;
+    }
 
-        if (   ((nodePtr->flags & NODE_IS_SHADOW) != 0)
-            && (nodePtr->shadowPtr == NULL))
-        {
-            nodePtr->flags |= NODE_IS_MODIFIED;
-        }
+    // This node has no shadow children.  So what we do now is check the original node... Does it
+    // have any children?  If it does, we simply recreate the whole collection now.  (We do not
+    // recurse into the grandchildren though.)  Doing this now makes life simpler, instead of doing
+    // this piecemeal and possibly out of order.
+    tdb_NodeRef_t originalRef = shadowParentRef->shadowRef;
 
-        nodePtr = nodePtr->parentPtr;
+    if (   (originalRef == NULL)
+        || (originalRef->type != LE_CFG_TYPE_STEM))
+    {
+        return;
+    }
+
+    // Simply iterate through the original collection and add a new shadow child to our own
+    // collection.
+    tdb_NodeRef_t originalChildRef = tdb_GetFirstChildNode(originalRef);
+
+    while (originalChildRef != NULL)
+    {
+        tdb_NodeRef_t newShadowRef = NewShadowNode(originalChildRef);
+        newShadowRef->parentRef = shadowParentRef;
+
+        le_dls_Queue(&shadowParentRef->info.children, &newShadowRef->siblingList);
+
+        originalChildRef = tdb_GetNextSiblingNode(originalChildRef);
     }
 }
 
@@ -612,123 +633,24 @@ static void EnsureExists
 
 // -------------------------------------------------------------------------------------------------
 /**
- *  Called to take a shadow node and merge it's data back into the original tree.
+ *  Search up through a node tree until we find the root node.
  */
 // -------------------------------------------------------------------------------------------------
-static void MergeNode
+static tdb_NodeRef_t GetRootParentNode
 (
-    tdb_NodeRef_t nodePtr  ///< The shadow node to merge with it's original.
+    tdb_NodeRef_t nodeRef  ///< Find the greatest grand parent of this node.
 )
-{
-    if (nodePtr == NULL)
-    {
-        return;
-    }
-
-    // Sanity check, is this really a shadow node?
-    LE_ASSERT((nodePtr->flags & NODE_IS_SHADOW) != 0);
-
-    // If this node as been delted then mark the original as well.
-    if ((nodePtr->flags & NODE_IS_DELETED) != 0)
-    {
-        ReleaseNode(nodePtr->shadowPtr);
-        return;
-    }
-
-    // Don't bother to do anything if the node has never been changed.
-    if ((nodePtr->flags & NODE_IS_MODIFIED) == 0)
-    {
-        return;
-    }
-
-
-    // Check to see if there is a node that was shadowed.  If there wasn't then we need to crate a
-    // new node in the list.
-    tdb_NodeRef_t shadowedPtr = nodePtr->shadowPtr;
-
-
-    if (shadowedPtr == NULL)
-    {
-        // There is no original node, so create a new node in the parent's collection.  (Which
-        // better exist.)
-        tdb_NodeRef_t shadowedParentPtr = nodePtr->parentPtr->shadowPtr;
-
-        LE_ASSERT(shadowedParentPtr != NULL);
-
-        // Create the child node and copy our data over to it.  If this will be a new stem node then
-        // the new child nodes will be created later in subsequent calls to this funciton.
-        shadowedPtr = NewChildNode(shadowedParentPtr);
-        nodePtr->shadowPtr = shadowedPtr;
-
-        CopyNodeString(&shadowedPtr->name, &nodePtr->name);
-        shadowedPtr->type = nodePtr->type;
-
-        if (shadowedPtr->type != LE_CFG_TYPE_STEM)
-        {
-            CopyNodeString(&shadowedPtr->info.value, &nodePtr->info.value);
-        }
-    }
-    else
-    {
-        // There is an existing node.  If the name has been changed, copy it over now.
-        if (IsNodeStringEmpty(&nodePtr->name) == false)
-        {
-            CopyNodeString(&shadowedPtr->name, &nodePtr->name);
-        }
-
-        // If this isn't a stem node, then copy the value over now.
-        shadowedPtr->type = nodePtr->type;
-
-        if (   (shadowedPtr->type != LE_CFG_TYPE_STEM)
-            && (IsNodeStringEmpty(&nodePtr->info.value) == false))
-        {
-            // Clear out any existing values or child nodes.  Then copy over the new string.
-            tdb_ClearNode(shadowedPtr);
-            CopyNodeString(&shadowedPtr->info.value, &nodePtr->info.value);
-        }
-    }
-
-    // Finally clear the modifed flag and make sure that the node now offically exists.
-    nodePtr->flags &= ~NODE_IS_MODIFIED;
-    nodePtr->shadowPtr->flags &= ~NODE_IS_DELETED;
-
-    EnsureExists(nodePtr->shadowPtr);
-}
-
-
-
-
 // -------------------------------------------------------------------------------------------------
-/**
- *  .When traversing the entire tree, this function is used to find the next, last, leftmost node.
- */
-// -------------------------------------------------------------------------------------------------
-static tdb_NodeRef_t FindTailChild
-(
-    tdb_NodeRef_t nodePtr  ///< The node to search from.
-)
 {
-    if (nodePtr == NULL)
+    tdb_NodeRef_t parentRef = NULL;
+
+    while (nodeRef != NULL)
     {
-        return NULL;
+        parentRef = nodeRef;
+        nodeRef = tdb_GetNodeParent(nodeRef);
     }
 
-    tdb_NodeRef_t foundPtr = NULL;
-
-    while (foundPtr == NULL)
-    {
-        if (   (nodePtr->type == LE_CFG_TYPE_STEM)
-            && (nodePtr->info.children.childPtr != NULL))
-        {
-            nodePtr = nodePtr->info.children.childPtr;
-        }
-        else
-        {
-            foundPtr = nodePtr;
-        }
-    }
-
-    return foundPtr;
+    return parentRef;
 }
 
 
@@ -742,73 +664,77 @@ static tdb_NodeRef_t FindTailChild
 // -------------------------------------------------------------------------------------------------
 static tdb_NodeRef_t GetNamedChild
 (
-    tdb_NodeRef_t nodePtr,  ///< Find the named child of this node.
-    const char* namePtr,    ///< The name we're looking for.
-    bool forceCreate        ///< Should a node be created, even if we're not on a shadow tree?
+    tdb_NodeRef_t nodeRef,  ///< The node to search.
+    const char* nameRef     ///< The name we're searching for.
 )
+// -------------------------------------------------------------------------------------------------
 {
-    // If this node doesn't exist, then it's children do not exist either.
-    if (nodePtr == NULL)
+    // Is this one of the "special" names?
+    if (strcmp(nameRef, ".") == 0)
     {
-        return NULL;
+        return nodeRef;
     }
 
-    // Looks like we were really just asking about this node anyhow.
-    if (strcmp(namePtr, ".") == 0)
+    if (strcmp(nameRef, "..") == 0)
     {
-        return nodePtr;
+        return nodeRef->parentRef;
     }
 
-    // Grab this node's parent.
-    if (strcmp(namePtr, "..") == 0)
+    // If this is a shdadow node, and the current node isn't a stem, then convert this node into an
+    // empty stem node now.
+    if (   (IsShadow(nodeRef))
+        && (nodeRef->type != LE_CFG_TYPE_STEM))
     {
-        return nodePtr->parentPtr;
-    }
-
-    // If we're allowed to manufacture the child nodes, then make sure that makes sense here.
-    if (   (((nodePtr->flags & NODE_IS_SHADOW) != 0) || (forceCreate == true))
-        && (nodePtr->type == LE_CFG_TYPE_EMPTY))
-    {
-        nodePtr->type = LE_CFG_TYPE_STEM;
-    }
-
-    if (nodePtr->type != LE_CFG_TYPE_STEM)
-    {
-        return NULL;
-    }
-
-
-    // Search the child list for a node with the given name.
-    tdb_NodeRef_t currentPtr = tdb_GetFirstChildNode(nodePtr);
-    char* currentNamePtr = sb_Get();
-
-    while (currentPtr != NULL)
-    {
-        tdb_GetName(currentPtr, currentNamePtr, SB_SIZE);
-
-        if (strncmp(currentNamePtr, namePtr, SB_SIZE) == 0)
+        if (nodeRef->type != LE_CFG_TYPE_EMPTY)
         {
-            sb_Release(currentNamePtr);
-            return currentPtr;
+            tdb_SetEmpty(nodeRef);
         }
 
-        currentPtr = tdb_GetNextSibling(currentPtr);
+        nodeRef->type = LE_CFG_TYPE_STEM;
+        nodeRef->info.children = LE_DLS_LIST_INIT;
     }
 
-    sb_Release(currentNamePtr);
+    // If the node still isn't a stem at this point then it can not possibly have children.
+    if (nodeRef->type != LE_CFG_TYPE_STEM)
+    {
+        return NULL;
+    }
 
+    // Search the child list for a node with the given name.
+    tdb_NodeRef_t currentRef = tdb_GetFirstChildNode(nodeRef);
+    char* currentNameRef = sb_Get();
+
+    while (currentRef != NULL)
+    {
+        tdb_GetNodeName(currentRef, currentNameRef, SB_SIZE);
+
+        if (strncmp(currentNameRef, nameRef, SB_SIZE) == 0)
+        {
+            sb_Release(currentNameRef);
+            return currentRef;
+        }
+
+        currentRef = tdb_GetNextSiblingNode(currentRef);
+    }
+
+    sb_Release(currentNameRef);
 
     // At this point the node has not been found.  Check to see if we can create a new node.  If we
-    // can, do so now and add it to the parent's list.
-    if (   ((nodePtr->flags & NODE_IS_SHADOW) != 0)
-        || (forceCreate == true))
+    // can, do so now and add it to the parent's list.  But mark is as deleted as this node does not
+    // officially exist yet.  (The deleted flag will be removed if this node or one if it's
+    // children has a value written to it.)
+    if (IsShadow(nodeRef))
     {
-        tdb_NodeRef_t childPtr = NewChildNode(nodePtr);
+        tdb_NodeRef_t childRef = NewChildNode(nodeRef);
 
-        tdb_SetName(childPtr, namePtr);
-
-        childPtr->flags |= NODE_IS_DELETED;
-        return childPtr;
+        if (tdb_SetNodeName(childRef, nameRef) == LE_OK)
+        {
+            return childRef;
+        }
+        else
+        {
+            le_mem_Release(childRef);
+        }
     }
 
     // Nope, no creation was allowed, so there is no node to return.
@@ -820,34 +746,34 @@ static tdb_NodeRef_t GetNamedChild
 
 // -------------------------------------------------------------------------------------------------
 /**
- *  Check to see what kind of character this is.
+ *  Check to see if a given node exists within a node's child collection.
  *
- *  @return LE_CFG_TYPE_INT is returned if the character looks like an integer value.
- *          LE_CFG_TYPE_FLOAT is returned if this could be a floating point value.
- *          LE_CFG_TYPE_STRING is returned in all other cases.
+ *  @return True if the given node exists within the parent node's collection.  False if not.
  */
 // -------------------------------------------------------------------------------------------------
-static le_cfg_nodeType_t DigitType
+static bool NodeExists
 (
-    char digit  ///< The character to check.
+    tdb_NodeRef_t parentRef,  ///< The parent node to search.
+    const char* namePtr       ///< The name to search for.
 )
+// -------------------------------------------------------------------------------------------------
 {
+    tdb_NodeRef_t currentRef = tdb_GetFirstChildNode(parentRef);
+    char currentName[MAX_NODE_NAME] = { 0 };
 
-    if (   ((digit >= '0') && (digit <= '9'))
-        || (digit == '-')
-        || (digit == '+'))
+    while (currentRef != NULL)
     {
-        return LE_CFG_TYPE_INT;
+        tdb_GetNodeName(currentRef, currentName, MAX_NODE_NAME);
+
+        if (strncmp(currentName, namePtr, MAX_NODE_NAME) == 0)
+        {
+            return true;
+        }
+
+        currentRef = tdb_GetNextSiblingNode(currentRef);
     }
 
-    if (   (digit == '.')
-        || (digit == 'e')
-        || (digit == 'E'))
-    {
-        return LE_CFG_TYPE_FLOAT;
-    }
-
-    return LE_CFG_TYPE_STRING;
+    return false;
 }
 
 
@@ -855,66 +781,158 @@ static le_cfg_nodeType_t DigitType
 
 // -------------------------------------------------------------------------------------------------
 /**
- *  This function is called to do a quick guess on the string type.
+ *  Merge a shadow node with the original it represents.
  */
 // -------------------------------------------------------------------------------------------------
-static le_cfg_nodeType_t GuessTypeFromString
+static void MergeNode
 (
-    const char* stringPtr  ///< The string to check.
+    tdb_NodeRef_t nodeRef  ///< The shadow node to merge.
 )
+// -------------------------------------------------------------------------------------------------
 {
-    // If there's no string or an empty string then there isn't much left to do.
-    if (   (stringPtr == NULL)
-        || (*stringPtr == 0))
+    LE_ASSERT(nodeRef != NULL);
+
+    // This node is being merged, so make sure that it isn't marked as modified any more.
+    ClearModifiedFlag(nodeRef);
+
+    // If this shadow node for some reason doesn't have a ref check for an original version of it in
+    // the original tree.  This shadow node may have been destroyed and re-created loosing this
+    // link.
+    if (nodeRef->shadowRef == NULL)
     {
-        return LE_CFG_TYPE_EMPTY;
-    }
+        tdb_NodeRef_t shadowedParentRef = tdb_GetNodeParent(nodeRef->parentRef->shadowRef);
 
-
-    // Now, is this a boolean value?
-    if (   (strcmp(stringPtr, "true") == 0)
-        || (strcmp(stringPtr, "false") == 0))
-    {
-        return LE_CFG_TYPE_BOOL;
-    }
-
-
-    // If this starts off with a negative, but there is no string to follow, consider it a string
-    // and not an int.
-    if (*stringPtr == '-')
-    {
-        stringPtr++;
-
-        if (*stringPtr == 0)
+        if (shadowedParentRef != NULL)
         {
-            return LE_CFG_TYPE_STRING;
+            char name[MAX_NODE_NAME] = { 0 };
+
+            tdb_GetNodeName(nodeRef, name, MAX_NODE_NAME);
+            nodeRef->shadowRef = GetNamedChild(shadowedParentRef, name);
         }
     }
 
-    // Ok, now assume this is an integer.
-    le_cfg_nodeType_t type = LE_CFG_TYPE_INT;
-
-    while (*stringPtr)
+    // If this node has been marked as deleted, then simply drop the original node and move on.
+    if (IsDeleted(nodeRef))
     {
-        // Check the digit type, if we run into a string character just give up and call it a
-        // string.  If we encounter a floating point value, then promote it to a float.
-        le_cfg_nodeType_t newType = DigitType(*stringPtr);
-
-        if (newType == LE_CFG_TYPE_STRING)
+        if (   (nodeRef->shadowRef != NULL)
+            && (tdb_GetNodeParent(nodeRef->shadowRef) != NULL))
         {
-            type = newType;
-            break;
+            le_mem_Release(nodeRef->shadowRef);
         }
-        else if (newType == LE_CFG_TYPE_FLOAT)
+        else
         {
-            type = LE_CFG_TYPE_FLOAT;
+            // We delete every node but the root node.  Since this is the root node, we just need
+            // to clear it out.
+            tdb_SetEmpty(nodeRef->shadowRef);
         }
 
-        stringPtr++;
+        return;
     }
 
-    // Finally return what we got.
-    return type;
+    // If the original node doesn't exist, create it now.
+    tdb_NodeRef_t originalRef = nodeRef->shadowRef;
+
+    if (originalRef == NULL)
+    {
+        LE_ASSERT(nodeRef->parentRef != NULL);
+        LE_ASSERT(nodeRef->parentRef->shadowRef != NULL);
+
+        nodeRef->shadowRef = originalRef = NewChildNode(nodeRef->parentRef->shadowRef);
+    }
+
+    ClearModifiedFlag(originalRef);
+
+    // If the name has been changed, then copy it over now.
+    if (dstr_IsNullOrEmpty(nodeRef->nameRef) == false)
+    {
+        if (originalRef->nameRef != NULL)
+        {
+            dstr_Copy(originalRef->nameRef, nodeRef->nameRef);
+        }
+        else
+        {
+            originalRef->nameRef = dstr_NewFromDstr(nodeRef->nameRef);
+        }
+    }
+
+
+    // Check the types of the original and the shadow nodes.  If the new node has been cleared.
+    // Then clear out the original node.  If one is a stem and the other isn't, clear out the
+    // original because things are going to be changing.
+    le_cfg_nodeType_t nodeType = tdb_GetNodeType(nodeRef);
+    le_cfg_nodeType_t originalType = tdb_GetNodeType(originalRef);
+
+    if (   (nodeType == LE_CFG_TYPE_EMPTY)
+        || (   (originalType == LE_CFG_TYPE_STEM)
+            && (nodeType != LE_CFG_TYPE_STEM))
+        || (   (originalType != LE_CFG_TYPE_STEM)
+            && (nodeType == LE_CFG_TYPE_STEM)))
+    {
+        tdb_SetEmpty(originalRef);
+    }
+
+
+    // Ok, we know that the node hasn't been deleted.  Check to see if it's considered empty and
+    // that it isn't a stem.  If not, then copy over the string value.
+    if (   (nodeType != LE_CFG_TYPE_EMPTY)
+        && (nodeType != LE_CFG_TYPE_STEM))
+    {
+        if (nodeRef->info.valueRef != NULL)
+        {
+            if (originalRef->info.valueRef != NULL)
+            {
+                dstr_Copy(originalRef->info.valueRef, nodeRef->info.valueRef);
+            }
+            else
+            {
+                originalRef->info.valueRef = dstr_NewFromDstr(nodeRef->info.valueRef);
+            }
+
+            // Propigate over the type as that may have changed, like going from an int value to a
+            // bool value.
+
+            originalRef->type = nodeRef->type;
+        }
+    }
+
+    // Now at this point, if both the original and the shadow node are stems, we'll let the function
+    // InternalMergeTree take care of the children, (if any.)
+
+    // If the original has been cleared out, we can still just rely on InternalMergeTree to
+    // propigate over the new nodes.
+}
+
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Recursive function to merge a collection of shadow nodes with the original tree.
+ */
+// -------------------------------------------------------------------------------------------------
+static void InternalMergeTree
+(
+    tdb_NodeRef_t nodeRef  ///< Node and any children to merge.
+)
+// -------------------------------------------------------------------------------------------------
+{
+    if (IsModifed(nodeRef))
+    {
+        MergeNode(nodeRef);
+    }
+
+    if (   (nodeRef->type == LE_CFG_TYPE_STEM)
+        && (IsDeleted(nodeRef) == false))
+    {
+        nodeRef = tdb_GetFirstChildNode(nodeRef);
+
+        while (nodeRef != NULL)
+        {
+            tdb_NodeRef_t nextNodeRef = tdb_GetNextSiblingNode(nodeRef);
+
+            InternalMergeTree(nodeRef);
+            nodeRef = nextNodeRef;
+        }
+    }
 }
 
 
@@ -922,18 +940,21 @@ static le_cfg_nodeType_t GuessTypeFromString
 
 // -------------------------------------------------------------------------------------------------
 /**
- *  Peek into the input stream one character ahead.
+ *  Make sure that the given node and any of it's parents are not marked as having been deleted.
  */
 // -------------------------------------------------------------------------------------------------
-static signed char PeekChar
+static void EnsureExists
 (
-    FILE* filePtr  ///< The file stream to peek into.
+    tdb_NodeRef_t nodeRef   ///< Update this node, and all of it's parentage and make sure none of
+                            ///<   them are marked for deletion.
 )
+// -------------------------------------------------------------------------------------------------
 {
-    char next = fgetc(filePtr);
-    ungetc(next, filePtr);
-
-    return next;
+    while (nodeRef != NULL)
+    {
+        ClearDeletedFlag(nodeRef);
+        nodeRef = tdb_GetNodeParent(nodeRef);
+    }
 }
 
 
@@ -941,182 +962,28 @@ static signed char PeekChar
 
 // -------------------------------------------------------------------------------------------------
 /**
- *  Skip any whitespace encountered in the input stream.  Stop skipping once we hit a valid token.
- *
- *  @return Returns true if there is more text to be read once this function returns.  A false is
- *          returned if the function reaches the end of the file.
+ *  Create a new tree object and set it to default values.
  */
 // -------------------------------------------------------------------------------------------------
-static bool SkipWhitespace
+tdb_TreeRef_t NewTree
 (
-    FILE* filePtr  ///< The file stream to seek through.
+    const char* treeNameRef,   ///< The name of the new tree.
+    tdb_NodeRef_t rootNodeRef  ///< The root node of this new tree.
 )
+// -------------------------------------------------------------------------------------------------
 {
-    bool done = false;
-    bool isEof = false;
+    tdb_TreeRef_t treeRef = le_mem_ForceAlloc(TreePoolRef);
 
-    while (done == false)
-    {
-        switch (PeekChar(filePtr))
-        {
-            case '\n':
-            case '\r':
-            case '\t':
-            case ' ':
-                // Eat the character.
-                fgetc(filePtr);
-                break;
+    strncpy(treeRef->name, treeNameRef, MAX_TREE_NAME);
 
-            case EOF:
-                done = true;
-                isEof = true;
-                break;
+    treeRef->originalTreeRef = NULL;
+    treeRef->revisionId = 0;
+    treeRef->rootNodeRef = (rootNodeRef != NULL) ? rootNodeRef : NewNode();
+    treeRef->activeReadCount = 0;
+    treeRef->activeWriteIterRef = NULL;
+    treeRef->requestList = LE_SLS_LIST_INIT;
 
-            default:
-                done = true;
-                break;
-        }
-    }
-
-    return isEof == false;
-}
-
-
-
-
-// -------------------------------------------------------------------------------------------------
-/**
- *  Read a token from the input stream.  A token can be an opening '{' or a closing '}' bracket, or
- *  a token can be a string.
- *
- *  @return Returns true if there is more text to be read once this function returns.  A false is
- *          returned if the function reaches the end of the file.
- */
-// -------------------------------------------------------------------------------------------------
-static bool ReadToken
-(
-    FILE* filePtr,    ///<
-    char* stringPtr,  ///<
-    size_t maxString  ///<
-)
-{
-    memset(stringPtr, 0, maxString);
-
-    if (SkipWhitespace(filePtr) == false)
-    {
-        return false;
-    }
-
-    signed char next = fgetc(filePtr);
-
-    // Consider a { or a } character a whole token.
-    if (   (next == '{')
-        || (next == '}'))
-    {
-        *stringPtr = next;
-        return true;
-    }
-
-    // It's not a bracket, so it'd better be a string.
-    if (next != '\"')
-    {
-        return false;
-    }
-
-
-    // Ok, we have a string, so read on until we hit the end of hte string.
-    size_t index = 0;
-    bool done = false;
-
-    while (   (done == false)
-           && (next != EOF)
-           && (index < (maxString - 1)))
-    {
-        next = PeekChar(filePtr);
-
-        switch (next)
-        {
-            // We hit the end of the file in the middle of the string.  Return failure.
-            case EOF:
-                return false;
-
-            // We found the end of the string, so all done.
-            case '\"':
-                fgetc(filePtr);
-                done = true;
-                break;
-
-            // We found an escape character, so read in what the user was escaping.
-            case '\\':
-                fgetc(filePtr);
-                next = PeekChar(filePtr);
-                if (   (next == '\"')
-                    || (next == '\\'))
-                {
-                    *stringPtr = fgetc(filePtr);
-                    stringPtr++;
-                    index++;
-                }
-                else
-                {
-                    // Looks like we werent escaping a string char or a slash, so error out:
-                    return false;
-                }
-                break;
-
-            // Simply add this character to the string we're building.
-            default:
-                *stringPtr = fgetc(filePtr);
-                stringPtr++;
-                index++;
-                break;
-        }
-    }
-
-    return true;
-}
-
-
-
-
-// -------------------------------------------------------------------------------------------------
-/**
- *  Write a string token to the output stream.
- */
-// -------------------------------------------------------------------------------------------------
-static void WriteToken
-(
-    int descriptor,        ///< The file descriptor being written to.
-    const char* stringPtr  ///< The token string to write.
-)
-{
-    // This function will filter any illegial characters found in the string and write it to the
-    // output file, including the required quotes around the token.
-    char* originalPtr = sb_Get();
-    strncpy(originalPtr, stringPtr, SB_SIZE);
-
-    char* newString = originalPtr;
-    char* position = strchr(newString, '\"');
-
-    write(descriptor, "\"", 1);
-
-    while (position != NULL)
-    {
-        *position = 0;
-
-        write(descriptor, newString, strlen(newString));
-        write(descriptor, "\\\"", 2);
-
-        newString = ++position;
-        position = strchr(newString, '\"');
-    }
-
-    write(descriptor, newString, strlen(newString));
-    write(descriptor, "\" ", 2);
-
-    // TODO: Deal with strings with a \ in them...
-
-    sb_Release(originalPtr);
+    return treeRef;
 }
 
 
@@ -1129,9 +996,10 @@ static void WriteToken
 // -------------------------------------------------------------------------------------------------
 static char* GetTreePath
 (
-    const char* treeNamePtr,
-    int revisionId
+    const char* treeNameRef,  ///< The name of the tree we're generating a name for.
+    int revisionId            ///< Generate a name based on the tree revision.
 )
+// -------------------------------------------------------------------------------------------------
 {
     // paper    --> rock       1 -> 2
     // rock     --> scissors   2 -> 3
@@ -1148,7 +1016,7 @@ static char* GetTreePath
              SB_SIZE,
              "%s/%s.%s",
              CFG_TREE_PATH,
-             treeNamePtr,
+             treeNameRef,
              revNames[revisionId - 1]);
 
     return fullPathPtr;
@@ -1164,11 +1032,12 @@ static char* GetTreePath
 // -------------------------------------------------------------------------------------------------
 static bool TreeFileExists
 (
-    const char* treeNamePtr,  ///< Name of the tree to check.
+    const char* treeNameRef,  ///< Name of the tree to check.
     int revisionId            ///< The revision of the tree to check against.
 )
+// -------------------------------------------------------------------------------------------------
 {
-    char* fullPathPtr = GetTreePath(treeNamePtr, revisionId);
+    char* fullPathPtr = GetTreePath(treeNameRef, revisionId);
 
     // Make sure this part was successful.
     if (fullPathPtr == NULL)
@@ -1200,38 +1069,487 @@ static bool TreeFileExists
  *  operation.  So we abandon the newer file and go with the older more reliable file.
  */
 // -------------------------------------------------------------------------------------------------
-static int GetRevision
+static void UpdateRevision
 (
-    const char* treeName  ///< The tree to look for.
+    tdb_TreeRef_t treeRef  ///< Update the revision for this tree object.
+)
+// -------------------------------------------------------------------------------------------------
+{
+    int newRevision = 0;
+
+    if (TreeFileExists(treeRef->name, 1))
+    {
+        if (TreeFileExists(treeRef->name, 3))
+        {
+            newRevision = 3;
+        }
+
+        newRevision = 1;
+    }
+    else if (TreeFileExists(treeRef->name, 3))
+    {
+        if (TreeFileExists(treeRef->name, 2))
+        {
+            newRevision = 2;
+        }
+
+        newRevision = 3;
+    }
+    else if (TreeFileExists(treeRef->name, 2))
+    {
+        newRevision = 2;
+    }
+
+    treeRef->revisionId = newRevision;
+}
+
+
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Peek into the input stream one character ahead.
+ */
+// -------------------------------------------------------------------------------------------------
+static signed char PeekChar
+(
+    FILE* filePtr  ///< The file stream to peek into.
+)
+// -------------------------------------------------------------------------------------------------
+{
+    char next = fgetc(filePtr);
+    ungetc(next, filePtr);
+
+    return next;
+}
+
+
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Skip any whitespace encountered in the input stream.  Stop skipping once we hit a valid token.
+ *
+ *  @return LE_OK if the whitespace is skiped and there is still more file to read.
+ *          LE_OUT_OF_RANGE if the end of the file is hit.
+ */
+// -------------------------------------------------------------------------------------------------
+static le_result_t SkipWhiteSpace
+(
+    FILE* filePtr  ///< The file stream to seek through.
+)
+// -------------------------------------------------------------------------------------------------
+{
+    bool done = false;
+    bool isEof = false;
+
+    while (done == false)
+    {
+        switch (PeekChar(filePtr))
+        {
+            case '\n':
+            case '\r':
+            case '\t':
+            case ' ':
+                // Eat the character.
+                fgetc(filePtr);
+                break;
+
+            case EOF:
+                done = true;
+                isEof = true;
+                break;
+
+            default:
+                done = true;
+                break;
+        }
+    }
+
+    return isEof == true ? LE_OUT_OF_RANGE : LE_OK;
+}
+
+
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Read a boolean literal from the input file.
+ *
+ *  @return LE_OK if the literal could be read.
+ *          LE_FORMAT_ERROR if the literal could not be read.
+ */
+// -------------------------------------------------------------------------------------------------
+static bool ReadBoolToken
+(
+    FILE* filePtr,     ///< The file we're reading from.
+    char* stringPtr,   ///< String buffer to hold the token we've read.
+    size_t stringSize  ///< How big is the supplied string buffer?
 )
 {
-    if (TreeFileExists(treeName, 1))
-    {
-        if (TreeFileExists(treeName, 3))
-        {
-            return 3;
-        }
+    signed char next = fgetc(filePtr);
 
-        return 1;
+    if (   (next == 't')
+        || (next == 'f'))
+    {
+        stringPtr[0] = next;
+        stringPtr[1] = 0;
+
+        return LE_OK;
     }
 
-    if (TreeFileExists(treeName, 3))
-    {
-        if (TreeFileExists(treeName, 2))
-        {
-            return 2;
-        }
-
-        return 3;
-    }
-
-    if (TreeFileExists(treeName, 2))
-    {
-        return 2;
-    }
-
-    return 0;
+    return LE_FORMAT_ERROR;
 }
+
+
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Read a textual literal from the input file, the read is terminated successfuly if the terminal
+ *  character is found.
+ *
+ *  @return LE_OK if the string is read from the file.
+ *          LE_FORMAT_ERROR if the text fails to be read from the file.
+ */
+// -------------------------------------------------------------------------------------------------
+static le_result_t ReadTextLiteral
+(
+    FILE* filePtr,        ///< The file we're reading from.
+    char* stringPtr,      ///< String buffer to hold the token we've read.
+    size_t stringSize,    ///< How big is the supplied string buffer?
+    signed char terminal  ///< The terminal character we're searching for.
+)
+// -------------------------------------------------------------------------------------------------
+{
+    signed char next;
+    size_t count = 0;
+
+    while ((next = fgetc(filePtr)) != terminal)
+    {
+        if (next == EOF)
+        {
+            LE_ERROR("Missing end specifier, ']' in int value.");
+            return LE_FORMAT_ERROR;
+        }
+
+        if (next == '\\')
+        {
+            next = fgetc(filePtr);
+
+            if (next == EOF)
+            {
+                LE_ERROR("Unexpected EOF after finding \\ character.");
+                return LE_FORMAT_ERROR;
+            }
+        }
+
+        *stringPtr = next;
+
+        ++stringPtr;
+        ++count;
+
+        if (count >= (stringSize - 1))
+        {
+            *stringPtr = 0;
+
+            LE_ERROR("String literal too large.");
+            return LE_FORMAT_ERROR;
+        }
+    }
+
+    *stringPtr = 0;
+
+    return LE_OK;
+}
+
+
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Read an integer token string from the file.
+ */
+// -------------------------------------------------------------------------------------------------
+static le_result_t ReadIntToken
+(
+    FILE* filePtr,     ///< The file we're reading from.
+    char* stringPtr,   ///< String buffer to hold the token we've read.
+    size_t stringSize  ///< How big is the supplied string buffer?
+)
+// -------------------------------------------------------------------------------------------------
+{
+    le_result_t result = ReadTextLiteral(filePtr, stringPtr, stringSize, ']');
+
+    // TODO: Validate the int string.
+
+    return result;
+}
+
+
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Read a floating point token string from the file.
+ */
+// -------------------------------------------------------------------------------------------------
+static le_result_t ReadFloatToken
+(
+    FILE* filePtr,     ///< The file we're reading from.
+    char* stringPtr,   ///< String buffer to hold the token we've read.
+    size_t stringSize  ///< How big is the supplied string buffer?
+)
+// -------------------------------------------------------------------------------------------------
+{
+    le_result_t result = ReadTextLiteral(filePtr, stringPtr, stringSize, ')');
+
+    // TODO: Validate the float string.
+
+    return result;
+}
+
+
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Read a string from the config tree file.
+ */
+// -------------------------------------------------------------------------------------------------
+static le_result_t ReadStringToken
+(
+    FILE* filePtr,     ///< The file we're reading from.
+    char* stringPtr,   ///< String buffer to hold the token we've read.
+    size_t stringSize  ///< How big is the supplied string buffer?
+)
+// -------------------------------------------------------------------------------------------------
+{
+    le_result_t result = ReadTextLiteral(filePtr, stringPtr, stringSize, '"');
+
+    // TODO: Validate the literal string.
+
+    return result;
+}
+
+
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Read a token from the input stream.
+ */
+// -------------------------------------------------------------------------------------------------
+static le_result_t ReadToken
+(
+    FILE* filePtr,         ///< The file we're reading from.
+    char* stringPtr,       ///< String buffer to hold the token we've read.
+    size_t stringSize,     ///< How big is the supplied string buffer?
+    TokenType_t* typePtr   ///< OUT: The type of token read from the file.
+)
+// -------------------------------------------------------------------------------------------------
+{
+    *stringPtr = 0;
+
+    if (SkipWhiteSpace(filePtr) != LE_OK)
+    {
+        return LE_OUT_OF_RANGE;
+    }
+
+    signed char next;
+
+    while ((next = fgetc(filePtr)) != EOF)
+    {
+        switch (next)
+        {
+            case '~':
+                *typePtr = TT_EMPTY_VALUE;
+                return LE_OK;
+
+            case '!':
+                *typePtr = TT_BOOL_VALUE;
+                return ReadBoolToken(filePtr, stringPtr, stringSize);
+
+            case '[':
+                *typePtr = TT_INT_VALUE;
+                return ReadIntToken(filePtr, stringPtr, stringSize);
+
+            case '(':
+                *typePtr = TT_FLOAT_VALUE;
+                return ReadFloatToken(filePtr, stringPtr, stringSize);
+
+            case '\"':
+                *typePtr = TT_STRING_VALUE;
+                return ReadStringToken(filePtr, stringPtr, stringSize);
+
+            case '{':
+                *typePtr = TT_OPEN_GROUP;
+                return LE_OK;
+
+            case '}':
+                *typePtr = TT_CLOSE_GROUP;
+                return LE_OK;
+
+            default:
+                LE_ERROR("Unexpected character in input stream.");
+                return LE_FORMAT_ERROR;
+        }
+    }
+
+    return LE_OUT_OF_RANGE;
+}
+
+
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Read a node value from the given file.  If the value is a collection, then read in those nodes
+ *  too.
+ *
+ *  @return LE_OK if the read is scuccessful.
+ *          LE_FORMAT_ERROR if parse errors are encountered.
+ *          LE_NOT_FOUND if the end of file is reached.
+ */
+// -------------------------------------------------------------------------------------------------
+static le_result_t InternalReadNode
+(
+    tdb_NodeRef_t nodeRef,  ///< The node we're reading a value for.
+    FILE* filePtr           ///< The file we're reading the value from.
+)
+// -------------------------------------------------------------------------------------------------
+{
+    static char stringBuffer[MAX_NODE_NAME] = { 0 };
+
+    TokenType_t tokenType;
+
+    // Try to read this node's value.
+    if (ReadToken(filePtr, stringBuffer, MAX_NODE_NAME, &tokenType) != LE_OK)
+    {
+        LE_ERROR("Unexpected EOF or bad token in file.");
+        return LE_FORMAT_ERROR;
+    }
+
+    tdb_SetEmpty(nodeRef);
+
+    switch (tokenType)
+    {
+        case TT_BOOL_VALUE:
+            tdb_SetValueAsString(nodeRef, stringBuffer);
+            nodeRef->type = LE_CFG_TYPE_BOOL;
+            break;
+
+        case TT_INT_VALUE:
+            tdb_SetValueAsString(nodeRef, stringBuffer);
+            nodeRef->type = LE_CFG_TYPE_INT;
+            break;
+
+        case TT_FLOAT_VALUE:
+            tdb_SetValueAsString(nodeRef, stringBuffer);
+            nodeRef->type = LE_CFG_TYPE_FLOAT;
+            break;
+
+        case TT_STRING_VALUE:
+            tdb_SetValueAsString(nodeRef, stringBuffer);
+            break;
+
+        case TT_EMPTY_VALUE:
+            // The node has already been cleared, so there's nothing left to do but make sure that
+            // the node exists.
+            ClearDeletedFlag(nodeRef);
+            break;
+
+        case TT_OPEN_GROUP:
+            while (tokenType != TT_CLOSE_GROUP)
+            {
+                if (ReadToken(filePtr, stringBuffer, MAX_NODE_NAME, &tokenType) != LE_OK)
+                {
+                    LE_ERROR("Unexpected EOF or bad token in file while looking for '}'.");
+                    return LE_FORMAT_ERROR;
+                }
+
+                if (tokenType == TT_STRING_VALUE)
+                {
+                    tdb_NodeRef_t childRef = GetNamedChild(nodeRef, stringBuffer);
+
+                    if (childRef == NULL)
+                    {
+                        childRef = NewChildNode(nodeRef);
+                        if (tdb_SetNodeName(childRef, stringBuffer) != LE_OK)
+                        {
+                            LE_ERROR("Bad node name, '%s'.", stringBuffer);
+                            return LE_FORMAT_ERROR;
+                        }
+
+                        LE_DEBUG("New node, %s", stringBuffer);
+                    }
+
+                    EnsureExists(childRef);
+
+                    le_result_t result = InternalReadNode(childRef, filePtr);
+
+                    if (result != LE_OK)
+                    {
+                        return result;
+                    }
+                }
+                else if (tokenType == TT_CLOSE_GROUP)
+                {
+                    break;
+                }
+                else
+                {
+                    LE_ERROR("Unexpected token in found while looking for '}'.");
+                    return LE_FORMAT_ERROR;
+                }
+            }
+            break;
+
+        case TT_CLOSE_GROUP:
+        default:
+            LE_ERROR("Unexpected token found.");
+            return LE_FORMAT_ERROR;
+    }
+
+    return LE_OK;
+}
+
+
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Write a string token to the output stream.  This function will write the string and escape all
+ *  control characters as it does so.
+ */
+// -------------------------------------------------------------------------------------------------
+static void WriteStringValue
+(
+    int descriptor,        ///< The file to write to.
+    char startChar,        ///< The delimiter to use.
+    char endChar,          ///< The closing delimiter to use.
+    const char* stringPtr  ///< The actual string to write.
+)
+// -------------------------------------------------------------------------------------------------
+{
+    write(descriptor, &startChar, 1);
+
+    while (*stringPtr != 0)
+    {
+        if (   (*stringPtr == '\"')
+            || (*stringPtr == '\\'))
+        {
+            write(descriptor, "\\", 1);
+        }
+
+        write(descriptor, stringPtr, 1);
+        stringPtr++;
+    }
+
+    write(descriptor, &endChar, 1);
+    write(descriptor, " ", 1);
+}
+
 
 
 
@@ -1242,14 +1560,15 @@ static int GetRevision
 // -------------------------------------------------------------------------------------------------
 static void IncrementRevision
 (
-    TreeInfo_t* treePtr
+    tdb_TreeRef_t treeRef
 )
+// -------------------------------------------------------------------------------------------------
 {
-    treePtr->revisionId++;
+    treeRef->revisionId++;
 
-    if (treePtr->revisionId > 3)
+    if (treeRef->revisionId > 3)
     {
-        treePtr->revisionId = 1;
+        treeRef->revisionId = 1;
     }
 }
 
@@ -1258,41 +1577,68 @@ static void IncrementRevision
 
 // -------------------------------------------------------------------------------------------------
 /**
- *  Load a configuration tree from the filesystem.
+ *  Attempt to load a configuration tree from a config file.  This function will look for the latest
+ *  valid version of the config file and load that one.
  */
 // -------------------------------------------------------------------------------------------------
 static void LoadTree
 (
-    TreeInfo_t* treePtr,  ///< The configuration tree to load.
-    int revisionId        ///< The revision of the tree to try to load.
+    tdb_TreeRef_t treeRef  ///< The tree object to load from the filesystem.
 )
+// -------------------------------------------------------------------------------------------------
 {
     // If we don't know the revision then hunt it out from the filesystem.
-    if (treePtr->revisionId == 0)
+    if (treeRef->revisionId == 0)
     {
-        treePtr->revisionId = GetRevision(treePtr->name);
+        UpdateRevision(treeRef);
     }
 
     // If this tree has no root, create it now.
-    if (treePtr->rootNodeRef == NULL)
+    if (treeRef->rootNodeRef == NULL)
     {
-        treePtr->rootNodeRef = NewNode();
+        treeRef->rootNodeRef = NewNode();
     }
 
     // Ok, if we found a valid revision of the tree in the fs, try to load it now.
-    if (treePtr->revisionId != 0)
+    if (treeRef->revisionId != 0)
     {
-        char* pathPtr = GetTreePath(treePtr->name, treePtr->revisionId);
-        int fileRef = open(pathPtr, O_RDONLY);
+        char* pathPtr = GetTreePath(treeRef->name, treeRef->revisionId);
 
-        EnsureExists(treePtr->rootNodeRef);
+        LE_DEBUG("** Loading configuration tree from <%s>.", pathPtr);
 
-        if (tdb_ReadTreeNode(treePtr->rootNodeRef, fileRef) == false)
+        int fileRef = -1;
+
+        do
         {
-            LE_ERROR("Could not open configuration tree: %s", pathPtr);
+            fileRef = open(pathPtr, O_RDONLY);
         }
+        while ((fileRef == -1) && (errno == EINTR));
 
-        close(fileRef);
+        EnsureExists(treeRef->rootNodeRef);
+
+        if (fileRef == -1)
+        {
+            LE_ERROR("Could not open configuration tree file: %s, reason: %s",
+                     pathPtr,
+                     strerror(errno));
+        }
+        else
+        {
+            if (tdb_ReadTreeNode(treeRef->rootNodeRef, fileRef) == false)
+            {
+                LE_ERROR("Could not parse configuration tree file: %s.", pathPtr);
+                le_mem_Release(treeRef->rootNodeRef);
+                treeRef->rootNodeRef = NewNode();
+            }
+
+            int retVal = -1;
+
+            do
+            {
+                retVal = close(fileRef);
+            }
+            while ((retVal == -1) && (errno == EINTR));
+        }
 
         sb_Release(pathPtr);
     }
@@ -1301,21 +1647,24 @@ static void LoadTree
 
 
 
-
 // -------------------------------------------------------------------------------------------------
 /**
- *  Allocate our pools and load the config data from the filesystem.
+ *  Initialize the tree DB subsystem, and automaticly load the system tree from the filesystem.
  */
 // -------------------------------------------------------------------------------------------------
 void tdb_Init
 (
+    void
 )
+// -------------------------------------------------------------------------------------------------
 {
-    // Initialize the memory pools.
-    NodePool = le_mem_CreatePool(CFG_NODE_POOL_NAME, sizeof(tdb_Node_t));
-    NodeStringPool = le_mem_CreatePool(CFG_NODE_STRING_POOL_NAME, sizeof(NodeString_t));
+    LE_DEBUG("** Initialize Tree DB subsystem.");
 
-    TreePoolRef = le_mem_CreatePool(CFG_TREE_POOL_NAME, sizeof(TreeInfo_t));
+    // Initialize the memory pools.
+    NodePoolRef = le_mem_CreatePool(CFG_NODE_POOL_NAME, sizeof(Node_t));
+    le_mem_SetDestructor(NodePoolRef, NodeDestructor);
+
+    TreePoolRef = le_mem_CreatePool(CFG_TREE_POOL_NAME, sizeof(Tree_t));
     TreeCollectionRef = le_hashmap_Create(CFG_TREE_COLLECTION_NAME,
                                           31,
                                           le_hashmap_HashString,
@@ -1331,346 +1680,71 @@ void tdb_Init
 // -------------------------------------------------------------------------------------------------
 /**
  *  Get the named tree.
+ *
+ *  @return Pointer to the named tree object.
  */
 // -------------------------------------------------------------------------------------------------
-TreeInfo_t* tdb_GetTree
+tdb_TreeRef_t tdb_GetTree
 (
-    const char* treeNamePtr  ///< The tree to load.
+    const char* treeNameRef  ///< The tree to load.
 )
+// -------------------------------------------------------------------------------------------------
 {
     // Check to see if we have this tree loaded up in our map.
-    TreeInfo_t* treePtr = le_hashmap_Get(TreeCollectionRef, treeNamePtr);
+    tdb_TreeRef_t treeRef = le_hashmap_Get(TreeCollectionRef, treeNameRef);
 
-    if (treePtr == NULL)
+    if (treeRef == NULL)
     {
         // Looks like we don't so create an object for it, and add it to our map.
-        treePtr = le_mem_ForceAlloc(TreePoolRef);
+        treeRef = NewTree(treeNameRef, NULL);
+        le_hashmap_Put(TreeCollectionRef, treeRef->name, treeRef);
 
-        strncpy(treePtr->name, treeNamePtr, MAX_USER_NAME);
-        treePtr->revisionId = 0;
-        treePtr->rootNodeRef = NewNode();
-        treePtr->activeReadCount = 0;
-        treePtr->activeWriteIterPtr = NULL;
-        treePtr->requestList = LE_SLS_LIST_INIT;
-
-        le_hashmap_Put(TreeCollectionRef, treePtr->name, treePtr);
-    }
-
-    // Has the tree been loaded from the filesystem?  If not, try to do so now.
-    if (treePtr->revisionId == 0)
-    {
-        LoadTree(treePtr, GetRevision(treeNamePtr));
+        LoadTree(treeRef);
     }
 
     // Finally return the tree we have to the user.
-    return treePtr;
+    return treeRef;
 }
 
 
 
 
-//--------------------------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------------
 /**
- * Gets an interator for step-by-step iteration over the tree collection. In this mode the iteration
- * is controlled by the calling function using the le_ref_NextNode() function.  There is one
- * iterator and calling this function resets the iterator position to the start of the map.  The
- * iterator is not ready for data access until le_ref_NextNode() has been called at least once.
+ *  Called to get the poitner to the tree collection iterator.
  *
- * @return  Returns A reference to a hashmap iterator which is ready for le_hashmap_NextNode() to be
- *          called on it.
+ *  @return Reference to the tree collection iterator.
  */
-//--------------------------------------------------------------------------------------------------
-tdb_IterRef_t tdb_GetTreeIterator
+// -------------------------------------------------------------------------------------------------
+le_hashmap_It_Ref_t tdb_GetTreeIterRef
 (
     void
 )
+// -------------------------------------------------------------------------------------------------
 {
-    return (tdb_IterRef_t)le_hashmap_GetIterator(TreeCollectionRef);
+    return le_hashmap_GetIterator(TreeCollectionRef);
 }
 
 
 
-
-//--------------------------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------------
 /**
- * Moves the iterator to the next key/value pair in the map.  If the hashmap is modified during
- * iteration then this function will return an error.
+ *  Called to create a new tree that shadows an existing one.
  *
- * @return  Returns LE_OK unless you go past the end of the map, then returns LE_NOT_FOUND.
- *          If the iterator has been invalidated by the map changing or you have previously
- *          received a LE_NOT_FOUND then this returns LE_FAULT.
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t tdb_NextNode
-(
-    tdb_IterRef_t iteratorRef  ///< Reference to the iterator.
-)
-{
-    return le_hashmap_NextNode((le_hashmap_It_Ref_t)iteratorRef);
-}
-
-
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Retrieves a pointer to the value which the iterator is currently pointing at.  If the iterator
- * has just been initialized and le_ref_NextNode() has not been called, or if the iterator has been
- * invalidated then this will return NULL.
- *
- * @return  A pointer to the current value, or NULL if the iterator has been invalidated or is not
- *          ready.
- */
-//--------------------------------------------------------------------------------------------------
-TreeInfo_t* tdb_iter_GetTree
-(
-    tdb_IterRef_t iteratorRef  ///< Reference to the iterator.
-)
-{
-    return (TreeInfo_t*)le_hashmap_GetKey((le_hashmap_It_Ref_t)iteratorRef);
-}
-
-
-
-
-// -------------------------------------------------------------------------------------------------
-/**
- *  Called to commit the changes to a given config tree.
+ *  @return Pointer to the new shadow tree.
  */
 // -------------------------------------------------------------------------------------------------
-void tdb_CommitTree
+tdb_TreeRef_t tdb_ShadowTree
 (
-    TreeInfo_t* treePtr  ///< The tree to be committed to the filesystem.
+    tdb_TreeRef_t treeRef  ///< The tree to shadow.
 )
+// -------------------------------------------------------------------------------------------------
 {
-    // Attempt to save the tree.  Start by bumping up the version.
-    int oldId = treePtr->revisionId;
-    IncrementRevision(treePtr);
+    LE_ASSERT(treeRef->originalTreeRef == NULL);
+    tdb_TreeRef_t shadowRef = NewTree(treeRef->name, NewShadowNode(treeRef->rootNodeRef));
+    shadowRef->originalTreeRef = treeRef;
 
-    // Compute the path and open the new file for this tree.
-    char* newFilePath = GetTreePath(treePtr->name, treePtr->revisionId);
-    int fileRef = open(newFilePath,
-                       O_RDWR | O_CREAT | O_TRUNC,
-                       S_IRUSR | S_IWUSR);
-
-    LE_DEBUG("Attempting to serialize the tree to <%s>.", newFilePath);
-    sb_Release(newFilePath);
-
-    // Now, write the tree data, and if an old revision still exists, delete it now.
-    tdb_WriteTreeNode(treePtr->rootNodeRef, fileRef);
-    close(fileRef);
-
-    if (   (oldId != 0)
-        && (TreeFileExists(treePtr->name, oldId)))
-    {
-        // Again, compute a path, and this time simply delete the old file.
-        char* newFilePath = GetTreePath(treePtr->name, oldId);
-        unlink(newFilePath);
-        sb_Release(newFilePath);
-    }
-}
-
-
-
-
-// -------------------------------------------------------------------------------------------------
-/**
- *  Serialize a tree node and it's children to a file in the filesystem.
- */
-// -------------------------------------------------------------------------------------------------
-void tdb_WriteTreeNode
-(
-    tdb_NodeRef_t nodePtr,  ///< Write the contents of this node to a file descriptor.
-    int descriptor          ///< The file descriptor to write to.
-)
-{
-    LE_ASSERT(nodePtr != NULL);
-    LE_ASSERT(descriptor != -1);
-
-    // Now, create a C file stream that wraps the descriptor.
-    char* stringBuffer = sb_Get();
-
-
-    // Get the first child of this node, ignoring the nodes that are marked as deleted.
-    tdb_NodeRef_t currentPtr = tdb_GetFirstActiveChildNode(nodePtr);
-
-    while (currentPtr != NULL)
-    {
-        // Get the name of this node and write it out.
-        tdb_GetName(currentPtr, stringBuffer, SB_SIZE);
-        WriteToken(descriptor, stringBuffer);
-
-        tdb_NodeRef_t nextPtr = NULL;
-
-        // If this is a stem node, then advance on to the child.
-        if (currentPtr->type == LE_CFG_TYPE_STEM)
-        {
-            write(descriptor, "{ ", 2);
-            nextPtr = tdb_GetFirstActiveChildNode(currentPtr);
-
-            if (nextPtr == NULL)
-            {
-                write(descriptor, "} ", 2);
-                nextPtr = tdb_GetNextActiveSibling(currentPtr);
-            }
-        }
-        else
-        {
-            // Otherwise, write out the value for this node and advance on to the next sibling.
-            tdb_GetAsString(currentPtr, stringBuffer, SB_SIZE);
-            WriteToken(descriptor, stringBuffer);
-
-            nextPtr = tdb_GetNextActiveSibling(currentPtr);
-        }
-
-        // Check to see if we were successful in advancing on.
-        if (nextPtr != NULL)
-        {
-            // We were, so use that new node in our next round of iteration.
-            currentPtr = nextPtr;
-        }
-        else
-        {
-            // Ok, there are no more siblings.  So, close off this branch and advance back up the
-            // tree a level.  If that level has no siblings keep going back up the chain until we
-            // get back to the node we started this write off on.  If we get back to the parent
-            // node then we're done.
-            while (   (currentPtr != nodePtr)
-                   && (nextPtr == NULL))
-            {
-                currentPtr = tdb_GetParentNode(currentPtr);
-                nextPtr = tdb_GetNextActiveSibling(currentPtr);
-
-                if (currentPtr != nodePtr)
-                {
-                    write(descriptor, "} ", 2);
-                }
-            }
-
-            if (currentPtr == nodePtr)
-            {
-                currentPtr = NULL;
-            }
-            else
-            {
-                currentPtr = nextPtr;
-            }
-        }
-    }
-
-    sb_Release(stringBuffer);
-}
-
-
-
-
-// -------------------------------------------------------------------------------------------------
-/**
- *  Read a configuration tree node's contents from the file system.
- *
- *  @return A true if the read was successful.  A false otherwise.
- */
-// -------------------------------------------------------------------------------------------------
-bool tdb_ReadTreeNode
-(
-    tdb_NodeRef_t nodePtr,  ///< The node to write the new data to.
-    int descriptor          ///< The file to read from.
-)
-{
-    LE_ASSERT(nodePtr != NULL);
-
-
-    // First, clear out any existing value or children of this node.  They will be replaced with
-    // whatever we find in the file.  Then make sure this node and all of it's parents have their
-    // deleted flag cleared.
-    tdb_ClearNode(nodePtr);
-    EnsureExists(nodePtr);
-
-    // Now, create a C file stream that wraps the descriptor.
-    FILE* filePtr = fdopen(descriptor, "r");
-
-    if (filePtr == NULL)
-    {
-        LE_ERROR("Could not access the input stream for tree import.");
-        return false;
-    }
-
-    bool wasSuccessful = true;
-    char* stringPtr = sb_Get();
-
-    tdb_NodeRef_t currentPtr = nodePtr;
-
-    int inBracketCount = 0;
-
-
-    while (   (currentPtr != NULL)
-           && ReadToken(filePtr, stringPtr, SB_SIZE))
-    {
-        if (strcmp(stringPtr, "}") == 0)
-        {
-            currentPtr = currentPtr->parentPtr;
-            inBracketCount--;
-
-            if (inBracketCount < 0)
-            {
-                currentPtr = NULL;
-            }
-        }
-        else if (strcmp(stringPtr, "") == 0)
-        {
-            // Looks like a node was given with an empty name string.  Fail out.
-            currentPtr = NULL;
-            wasSuccessful = false;
-        }
-        else
-        {
-            // Looks like we were given a valid name.  Try to find the name in currentPtr's
-            // collection.
-            tdb_NodeRef_t newNodePtr = GetNamedChild(currentPtr, stringPtr, false);
-
-            if (newNodePtr == NULL)
-            {
-                // Create a new node and add it to the collection.  Set the node's name.
-                newNodePtr = NewChildNode(currentPtr);
-                tdb_SetName(newNodePtr, stringPtr);
-            }
-            else
-            {
-                // Make sure that this node isn't makred for removal.
-                newNodePtr->flags &= ~NODE_IS_DELETED;
-            }
-
-            // Get the next string for the node's value.  If the string marks a new collection make
-            // sure that the new node is a stem and get ready to start populating the node with
-            // values.   Otherwise, simply set the nodes value.  If a string wasn't supplied then
-            // that's an error.
-            if (ReadToken(filePtr, stringPtr, SB_SIZE))
-            {
-                if (strcmp(stringPtr, "{") == 0)
-                {
-                    inBracketCount++;
-
-                    // Make the new node a stem, then continue on with this as the base node.
-                    newNodePtr->type = LE_CFG_TYPE_STEM;
-                    currentPtr = newNodePtr;
-                }
-                else
-                {
-                    tdb_SetAsString(newNodePtr, stringPtr);
-                }
-            }
-            else
-            {
-                currentPtr = NULL;
-                wasSuccessful = false;
-            }
-        }
-    }
-
-
-    sb_Release(stringPtr);
-
-    return wasSuccessful;
+    return shadowRef;
 }
 
 
@@ -1679,20 +1753,18 @@ bool tdb_ReadTreeNode
 // -------------------------------------------------------------------------------------------------
 /**
  *  Called to create a new tree that shadows an existing one.
+ *
+ *  @return Pointer to the tree name string.
  */
 // -------------------------------------------------------------------------------------------------
-tdb_NodeRef_t tdb_ShadowTree
+const char* tdb_GetTreeName
 (
-    tdb_NodeRef_t originalPtr  ///< The tree to shadow.
+    tdb_TreeRef_t treeRef  ///< The tree object to read.
 )
+// -------------------------------------------------------------------------------------------------
 {
-    LE_ASSERT(originalPtr != NULL);
-    LE_ASSERT((originalPtr->flags & NODE_IS_SHADOW) == 0);
-
-
-    // We don't actually shadow the whole tree all at once.  Just this one node.  As the user
-    // traverses this shadow tree, new nodes are created as required.
-    return NewShadowNode(originalPtr);
+    LE_ASSERT(treeRef != NULL);
+    return treeRef->name;
 }
 
 
@@ -1700,57 +1772,246 @@ tdb_NodeRef_t tdb_ShadowTree
 
 // -------------------------------------------------------------------------------------------------
 /**
- *  Traverse a shadow tree and merge it's changes back into it's parent.
+ *  Called to get the root node of a tree object.
+ *
+ *  @return A pointer to the root node of a tree.
+ */
+// -------------------------------------------------------------------------------------------------
+tdb_NodeRef_t tdb_GetRootNode
+(
+    tdb_TreeRef_t treeRef  ///< The tree object to read.
+)
+// -------------------------------------------------------------------------------------------------
+{
+    LE_ASSERT(treeRef != NULL);
+    return treeRef->rootNodeRef;
+}
+
+
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Get a pointer to the write iterator that's active on the current tree.
+ *
+ *  @return A pointer to the write iterator currently active on the tree.  NULL if there isn't an
+ *          iterator on the tree.
+ */
+// -------------------------------------------------------------------------------------------------
+ni_IteratorRef_t tdb_GetActiveWriteIter
+(
+    tdb_TreeRef_t treeRef  ///< The tree object to read.
+)
+// -------------------------------------------------------------------------------------------------
+{
+    LE_ASSERT(treeRef != NULL);
+
+    if (treeRef->originalTreeRef != NULL)
+    {
+        return treeRef->originalTreeRef->activeWriteIterRef;
+    }
+
+    return treeRef->activeWriteIterRef;
+}
+
+
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Call to check for any active read iterator's on the tree.
+ *
+ *  @return True if there are active iterators on the tree, False otherwise.
+ */
+// -------------------------------------------------------------------------------------------------
+bool tdb_HasActiveReaders
+(
+    tdb_TreeRef_t treeRef  ///< The tree object to read.
+)
+// -------------------------------------------------------------------------------------------------
+{
+    LE_ASSERT(treeRef != NULL);
+
+    if (treeRef->originalTreeRef != NULL)
+    {
+        return treeRef->originalTreeRef->activeReadCount;
+    }
+
+    return treeRef->activeReadCount != 0;
+}
+
+
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Register an iterator on the given tree.
+ */
+// -------------------------------------------------------------------------------------------------
+void tdb_RegisterIterator
+(
+    tdb_TreeRef_t treeRef,        ///< The tree object to update.
+    ni_IteratorRef_t iteratorRef  ///< The iterator object we're registering.
+)
+// -------------------------------------------------------------------------------------------------
+{
+    LE_ASSERT(treeRef != NULL);
+    LE_ASSERT(iteratorRef != NULL);
+
+    if (treeRef->originalTreeRef != NULL)
+    {
+        treeRef = treeRef->originalTreeRef;
+    }
+
+    if (ni_IsWriteable(iteratorRef))
+    {
+        LE_ASSERT(treeRef->activeWriteIterRef == NULL);
+        treeRef->activeWriteIterRef = iteratorRef;
+        LE_ASSERT(treeRef->activeWriteIterRef != NULL);
+    }
+    else
+    {
+        treeRef->activeReadCount++;
+    }
+}
+
+
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Remove a prior iterator registration from a tree object.
+ */
+// -------------------------------------------------------------------------------------------------
+void tdb_UnregisterIterator
+(
+    tdb_TreeRef_t treeRef,        ///< The tree object to update.
+    ni_IteratorRef_t iteratorRef  ///< The iterator object we're removing from the tree.
+)
+// -------------------------------------------------------------------------------------------------
+{
+    LE_ASSERT(treeRef != NULL);
+    LE_ASSERT(iteratorRef != NULL);
+
+    if (treeRef->originalTreeRef != NULL)
+    {
+        treeRef = treeRef->originalTreeRef;
+    }
+
+    if (ni_IsWriteable(iteratorRef))
+    {
+        LE_FATAL_IF(treeRef->activeWriteIterRef != iteratorRef,
+                    "Internal error, unregistering write iterator <%p>, "
+                    "but tree had write iterator <%p> registered on tree <%p>.",
+                    iteratorRef,
+                    treeRef->activeWriteIterRef,
+                    treeRef);
+
+        treeRef->activeWriteIterRef = NULL;
+    }
+    else
+    {
+        treeRef->activeReadCount--;
+        LE_ASSERT(treeRef->activeReadCount >= 0);
+    }
+}
+
+
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Get the list of requests on this tree.
+ *
+ *  @return Pointer to the request queue for this tree.
+ */
+// -------------------------------------------------------------------------------------------------
+le_sls_List_t* tdb_GetRequestQueue
+(
+    tdb_TreeRef_t treeRef  ///< The tree object to read.
+)
+// -------------------------------------------------------------------------------------------------
+{
+    LE_ASSERT(treeRef != NULL);
+
+    if (treeRef->originalTreeRef != NULL)
+    {
+        return &treeRef->originalTreeRef->requestList;
+    }
+
+    return &treeRef->requestList;
+}
+
+
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Merge a shadow tree into the original tree it was created from.  Once the change is merged the
+ *  updated tree is serialized to the filesystem.
  */
 // -------------------------------------------------------------------------------------------------
 void tdb_MergeTree
 (
-    tdb_NodeRef_t shadowTreeRef  ///< Merge the ndoes from this tree into their base tree.
+    tdb_TreeRef_t shadowTreeRef  ///< Merge the ndoes from this tree into their base tree.
 )
+// -------------------------------------------------------------------------------------------------
 {
-    // We basicly start at the root node of the tree and travel up from parent to child until we've
-    // covered all of the shadow tree.
+    // Get our shadow tree's root node and merge it's changes into the real tree.
+    tdb_NodeRef_t nodeRef = shadowTreeRef->rootNodeRef;
+    InternalMergeTree(nodeRef);
 
-    // This way when new nodes need to be created in the base tree we can be garunteed that the
-    // parent will already exist.
+    // Now increment revision of the tree and open a tree file for writing.
+    tdb_TreeRef_t originalTreeRef = shadowTreeRef->originalTreeRef;
+    int oldId = originalTreeRef->revisionId;
 
-    tdb_NodeRef_t currentPtr = tdb_GetRootNode(shadowTreeRef);
+    IncrementRevision(originalTreeRef);
+    char* newFilePath = GetTreePath(originalTreeRef->name, originalTreeRef->revisionId);
 
-    while (currentPtr != NULL)
+    LE_DEBUG("Changes mearged, now attempting to serialize the tree to <%s>.", newFilePath);
+
+    int fileRef = -1;
+
+    do
     {
-        tdb_NodeRef_t nextPtr = NULL;
+        fileRef = open(newFilePath, O_RDWR | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
+    }
+    while (   (fileRef == -1)
+           && (errno == EINTR));
 
-        MergeNode(currentPtr);
+    sb_Release(newFilePath);
 
-        if (currentPtr->type == LE_CFG_TYPE_STEM)
-        {
-            nextPtr = tdb_GetFirstChildNode(currentPtr);
+    if (fileRef == -1)
+    {
+        LE_EMERG("Changes have been merged in memory, however they could not be committed to the "
+                 "filesystem!!  Reason: %s", strerror(errno));
+        return;
+    }
 
-            if (nextPtr == NULL)
-            {
-                nextPtr = tdb_GetNextSibling(currentPtr);
-            }
-        }
-        else
-        {
-            nextPtr = tdb_GetNextSibling(currentPtr);
-        }
+    // We have a tree file to write to, so stream the new tree to it then close the output file.
+    tdb_WriteTreeNode(originalTreeRef->rootNodeRef, fileRef);
 
-        if (nextPtr != NULL)
-        {
-            currentPtr = nextPtr;
-        }
-        else
-        {
-            while (   (currentPtr != NULL)
-                   && (nextPtr == NULL))
-            {
-                currentPtr = tdb_GetParentNode(currentPtr);
-                nextPtr = tdb_GetNextSibling(currentPtr);
-            }
+    int retVal = -1;
 
-            currentPtr = nextPtr;
-        }
+    do
+    {
+        retVal = close(fileRef);
+    }
+    while ((retVal == -1) && (errno == EINTR));
+
+    LE_EMERG_IF(retVal == -1, "An error occured while closing the tree file: %s", strerror(errno));
+
+
+    // Finally remove the old version of the tree file, if there is one.
+    if (   (oldId != 0)
+        && (TreeFileExists(originalTreeRef->name, oldId)))
+    {
+        char* oldFilePath = GetTreePath(originalTreeRef->name, oldId);
+
+        LE_DEBUG("Removing obsolete tree file, <%s>.", oldFilePath);
+
+        unlink(oldFilePath);
+        sb_Release(oldFilePath);
     }
 }
 
@@ -1764,27 +2025,199 @@ void tdb_MergeTree
 // -------------------------------------------------------------------------------------------------
 void tdb_ReleaseTree
 (
-    tdb_NodeRef_t treeRef  ///< The tree to free.  Note that this doesn't have to be the root node.
+    tdb_TreeRef_t treeRef  ///< The tree to free.  Note that this doesn't have to be the root node.
 )
+// -------------------------------------------------------------------------------------------------
 {
-    // Simply traverse the entire tree leaf back to root deleting nodes as we go.
-    tdb_NodeRef_t currentPtr = FindTailChild(tdb_GetRootNode(treeRef));
+    LE_ASSERT(treeRef != NULL);
 
-    while (currentPtr != NULL)
+    if (treeRef->originalTreeRef != NULL)
     {
-        tdb_NodeRef_t parentPtr = currentPtr->parentPtr;
-        tdb_NodeRef_t siblingPtr = currentPtr->siblingPtr;
+        le_mem_Release(treeRef->rootNodeRef);
+        le_mem_Release(treeRef);
+    }
 
-        ForceReleaseNode(currentPtr);
+    // TODO: Possibly free regular trees if there are no active iterators on it?
+    //       Should timeouts be used for this?
+}
 
-        if (siblingPtr != NULL)
+
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Read a configuration tree node's contents from the file system.
+ *
+ *  @note On exit the descriptor's file pointer will be at EOF.  If the function fails, then the
+ *        file pointer will be somewhere in the middle of the file.
+ *
+ *  @return True if the read is successful, or false if not.
+ */
+// -------------------------------------------------------------------------------------------------
+bool tdb_ReadTreeNode
+(
+    tdb_NodeRef_t nodeRef,  ///< The node to write the new data to.
+    int descriptor          ///< The file to read from.
+)
+// -------------------------------------------------------------------------------------------------
+{
+    LE_ASSERT(nodeRef != NULL);
+    LE_ASSERT(descriptor != -1);
+
+    // Clear out any contents that the node may have, and make sure that it isn't marked as deleted.
+    tdb_SetEmpty(nodeRef);
+    EnsureExists(nodeRef);
+
+
+    // Duplicate the file descriptor, this is because we later use a C library file pointer for the
+    // parsing routines.  When the file pointer is closed it also closes the underlying descriptor,
+    // which may not be what the caller wants or expects.
+    int newDescriptor = -1;
+
+    do
+    {
+        newDescriptor = dup(descriptor);
+    }
+    while (   (newDescriptor == -1)
+           && (errno == EINTR));
+
+    if (newDescriptor == -1)
+    {
+        LE_ERROR("Could not duplicate file descriptor, reason: %s", strerror(errno));
+        return false;
+    }
+
+
+    FILE* filePtr = fdopen(newDescriptor, "r");
+
+    if (filePtr == NULL)
+    {
+        int oldErrno = errno;
+        int closeResult;
+
+        do
         {
-            currentPtr = FindTailChild(siblingPtr);
+            closeResult = close(newDescriptor);
         }
-        else
-        {
-            currentPtr = parentPtr;
-        }
+        while (   (closeResult == -1)
+               && (errno == EINTR));
+
+        LE_ERROR("Could not access the input stream for tree import, reason: %s",
+                 strerror(oldErrno));
+        return false;
+    }
+
+    // Ok read the specified node from the file object.  If the read fails, report it and clear out
+    // the node.  We shouldn't be leaving the node in a half initialized state.
+    bool result = true;
+
+    if (InternalReadNode(nodeRef, filePtr) != LE_OK)
+    {
+        tdb_SetEmpty(nodeRef);
+        result = false;
+    }
+
+    // Make sure that there aren't any unexpected tokens left in the file.
+    if (SkipWhiteSpace(filePtr) != LE_OUT_OF_RANGE)
+    {
+        LE_ERROR("Unexpected token in file.");
+        return false;
+    }
+
+    // Finally close our file object and return the result.
+    int closeResult = EOF;
+
+    do
+    {
+        closeResult = fclose(filePtr);
+    }
+    while (   (closeResult == EOF)
+           && (errno == EINTR));
+
+    if (closeResult == EOF)
+    {
+        LE_ERROR("Could not properly close file, reason: %s", strerror(errno));
+    }
+
+
+    return result;
+}
+
+
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Serialize a tree node and it's children to a file in the filesystem.
+ */
+// -------------------------------------------------------------------------------------------------
+void tdb_WriteTreeNode
+(
+    tdb_NodeRef_t nodeRef,  ///< Write the contents of this node to a file descriptor.
+    int descriptor          ///< The file descriptor to write to.
+)
+// -------------------------------------------------------------------------------------------------
+{
+    // If the node is marked as having been deleted, don't save it.
+    if (IsDeleted(nodeRef))
+    {
+        return;
+    }
+
+    // Get the node's value as a string.
+    static char stringBuffer[MAX_NODE_NAME];
+
+    tdb_GetValueAsString(nodeRef, stringBuffer, MAX_NODE_NAME, "");
+
+    // Now, depending on the type of node, write out any required format information.
+    switch (nodeRef->type)
+    {
+        case LE_CFG_TYPE_EMPTY:
+            write(descriptor, "~ ", 2);
+            break;
+
+        case LE_CFG_TYPE_BOOL:
+            write(descriptor, "!", 1);
+            write(descriptor, stringBuffer, 1);
+            write(descriptor, " ", 1);
+            break;
+
+        case LE_CFG_TYPE_STRING:
+            WriteStringValue(descriptor, '\"', '\"', stringBuffer);
+            break;
+
+        case LE_CFG_TYPE_INT:
+            WriteStringValue(descriptor, '[', ']', stringBuffer);
+            break;
+
+        case LE_CFG_TYPE_FLOAT:
+            WriteStringValue(descriptor, '(', ')', stringBuffer);
+            break;
+
+        // Looks like this node is a collection, so write out it's child nodes now.
+        case LE_CFG_TYPE_STEM:
+            {
+                write(descriptor, "{ ", 2);
+
+                tdb_NodeRef_t childRef = tdb_GetFirstActiveChildNode(nodeRef);
+
+                while (childRef != NULL)
+                {
+                    tdb_GetNodeName(childRef, stringBuffer, MAX_NODE_NAME);
+                    WriteStringValue(descriptor, '\"', '\"', stringBuffer);
+
+                    tdb_WriteTreeNode(childRef, descriptor);
+
+                    childRef = tdb_GetNextActiveSiblingNode(childRef);
+                }
+
+                write(descriptor, "} ", 2);
+            }
+            break;
+
+        // Not much to do here.
+        case LE_CFG_TYPE_DOESNT_EXIST:
+            break;
     }
 }
 
@@ -1798,37 +2231,49 @@ void tdb_ReleaseTree
 // -------------------------------------------------------------------------------------------------
 tdb_NodeRef_t tdb_GetNode
 (
-    tdb_NodeRef_t baseNodePtr,  ///< The base node to start from.
-    const char* nodePathPtr,    ///< The path we're searching for in the tree.
-    bool forceCreate            ///< Should the nodes on the path be created?  Even if this isn't
-                                ///<   a shadow tree?
+    tdb_NodeRef_t baseNodeRef,     ///< The base node to start from.
+    le_pathIter_Ref_t nodePathRef  ///< The path we're searching for in the tree.
 )
+// -------------------------------------------------------------------------------------------------
 {
-    le_path_IteratorRef_t pathIterator = le_path_iter_Create(nodePathPtr, "/");
+    LE_ASSERT(baseNodeRef != NULL);
+    LE_ASSERT(nodePathRef != NULL);
 
     // Check to see if we're starting at the given node, or that node's root node.
-    tdb_NodeRef_t currentPtr = baseNodePtr;
+    tdb_NodeRef_t currentRef = baseNodeRef;
 
-    if (le_path_iter_IsAbsolute(pathIterator))
+    if (le_pathIter_IsAbsolute(nodePathRef))
     {
-        currentPtr = tdb_GetRootNode(currentPtr);
+        currentRef = GetRootParentNode(currentRef);
     }
 
     // Now start moving along the path, moving the current node along as we go.  The called function
     // also deals with . and .. names in the path as well, returning the current and parent nodes
     // respectivly.
-    char* namePtr = sb_Get();
+    char nameRef[MAX_NODE_NAME] = { 0 };
 
-    while (le_path_iter_GetNextNode(pathIterator, namePtr, SB_SIZE) != LE_NOT_FOUND)
+    le_result_t result = le_pathIter_GoToStart(nodePathRef);
+
+    while (   (result != LE_NOT_FOUND)
+           && (currentRef != NULL))
     {
-        currentPtr = GetNamedChild(currentPtr, namePtr, forceCreate);
+        result = le_pathIter_GetCurrentNode(nodePathRef, nameRef, MAX_NODE_NAME);
+
+        if (result == LE_OVERFLOW)
+        {
+            LE_ERROR("Path segment overflow on path.");
+            currentRef = NULL;
+        }
+        else if (result == LE_OK)
+        {
+            currentRef = GetNamedChild(currentRef, nameRef);
+            result = le_pathIter_GoToNext(nodePathRef);
+
+        }
     }
 
-    sb_Release(namePtr);
-    le_path_iter_Delete(pathIterator);
-
     // Finally return the last node we traversed to.
-    return currentPtr;
+    return currentRef;
 }
 
 
@@ -1836,22 +2281,227 @@ tdb_NodeRef_t tdb_GetNode
 
 // -------------------------------------------------------------------------------------------------
 /**
- *  Delete a given node and all of it's children.
+ *  Get the name of a given node.
  */
 // -------------------------------------------------------------------------------------------------
-void tdb_DeleteNode
+le_result_t tdb_GetNodeName
 (
-    tdb_NodeRef_t nodePtr  ///< The node to delete.
+    tdb_NodeRef_t nodeRef,  ///< The node to read.
+    char* stringPtr,        ///< Destination buffer to hold the name.
+    size_t maxSize          ///< Size of this buffer.
 )
+// -------------------------------------------------------------------------------------------------
 {
-    if (nodePtr == NULL)
+    LE_ASSERT(nodeRef != NULL);
+    LE_ASSERT(stringPtr != NULL);
+
+    stringPtr[0] = 0;
+
+    // Get the name pointer from the ndoe.  However if this is a shadow node, then this name may be
+    // NULL.  The reason that the name may be NULL is because the client never changed the name of
+    // the node.  So, we just get the name from the original node, saving memory.  However, nodes
+    // like the root node of a tree also do not have names.
+    dstr_Ref_t nameRef = nodeRef->nameRef;
+
+    if (   (IsShadow(nodeRef))
+        && (nodeRef->nameRef == NULL)
+        && (nodeRef->shadowRef != NULL))
+    {
+        nameRef = nodeRef->shadowRef->nameRef;
+    }
+
+    // If the node has a name, copy it into the user buffer now.
+    if (nameRef != NULL)
+    {
+        return dstr_CopyToCstr(stringPtr, maxSize, nameRef, NULL);
+    }
+
+    return LE_OK;
+}
+
+
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Set the name of a given node.  But also validate the name as there are certain names that nodes
+ *  shouldn't have.
+ *
+ *  @return LE_OK if the set is successful.  LE_FORMAT_ERROR if the name contains illegial
+ *          characters, or otherwise would not work as a node name.  LE_DUPLICATE, if there is
+ *          another node with the new name in the same collection.
+ */
+// -------------------------------------------------------------------------------------------------
+le_result_t tdb_SetNodeName
+(
+    tdb_NodeRef_t nodeRef,  ///< The node to read.
+    const char* stringPtr   ///< New name for the node.
+)
+// -------------------------------------------------------------------------------------------------
+{
+    LE_ASSERT(nodeRef != NULL);
+
+    if (   (stringPtr == NULL)
+        || (strcmp(stringPtr, "") == 0)
+        || (strcmp(stringPtr, ".") == 0)
+        || (strcmp(stringPtr, "..") == 0)
+        || (strchr(stringPtr, '/') != NULL))
+    {
+        return LE_FORMAT_ERROR;
+    }
+
+    // Check for a duplicate name in this collection.
+    if (   (nodeRef->parentRef != NULL)
+        && (NodeExists(nodeRef->parentRef, stringPtr) == true))
+    {
+        return LE_DUPLICATE;
+    }
+
+    // Copy over the new name.  Note that we don't care if this node is a shadow node.  Coping over
+    // the name is taken care of as part of the merge process.
+    if (nodeRef->nameRef == NULL)
+    {
+        nodeRef->nameRef = dstr_NewFromCstr(stringPtr);
+    }
+    else
+    {
+        dstr_CopyFromCstr(nodeRef->nameRef, stringPtr);
+    }
+
+    // Make sure that we know to merge this node later.
+    SetModifiedFlag(nodeRef);
+
+    return LE_OK;
+}
+
+
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Call to read out what kind of value the node object holds.
+ *
+ *  @return A member of the le_cfg_nodeType_t indicating the type of node in question.
+ *          If the node is NULL or is marked as deleted, then LE_CFG_TYPE_DOESNT_EXIST.  Othwerwise
+ *          if the value is empty or the node is an empty collection LE_CFG_TYPE_EMPTY is returned.
+ *          The node's recorded type is returned in all other cases.
+ */
+// -------------------------------------------------------------------------------------------------
+le_cfg_nodeType_t tdb_GetNodeType
+(
+    tdb_NodeRef_t nodeRef  ///< The node to read.
+)
+// -------------------------------------------------------------------------------------------------
+{
+    // First, has this node been marked as deleted?
+    if (   (nodeRef == NULL)
+        || (IsDeleted(nodeRef)))
+    {
+        return LE_CFG_TYPE_DOESNT_EXIST;
+    }
+
+    // If the node is a stem but has no children, then treat the node as empty.
+    if (   (nodeRef->type == LE_CFG_TYPE_STEM)
+        && (tdb_GetFirstActiveChildNode(nodeRef) == NULL))
+    {
+        return LE_CFG_TYPE_EMPTY;
+    }
+
+    // If the node isn't a stem and there is no string value then this node is definitly empty.
+    if (   (nodeRef->type != LE_CFG_TYPE_STEM)
+        && (nodeRef->info.valueRef == NULL))
+    {
+        if (   (IsShadow(nodeRef))
+            && (IsModifed(nodeRef) == false))
+        {
+            return tdb_GetNodeType(nodeRef->shadowRef);
+        }
+
+        return LE_CFG_TYPE_EMPTY;
+    }
+
+    // Otherwise simply return the type recorded in this node.
+    return nodeRef->type;
+}
+
+
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Is the node currently empty?
+ *
+ *  @return If tdb_GetNodeType would return either LE_CFG_TYPE_EMPTY or LE_CFG_TYPE_DOESNT_EXIST
+ *          then this function will return true.  Otherwise this function will return false.
+ */
+// -------------------------------------------------------------------------------------------------
+bool tdb_IsNodeEmpty
+(
+    tdb_NodeRef_t nodeRef  ///< The node to read.
+)
+// -------------------------------------------------------------------------------------------------
+{
+    le_cfg_nodeType_t type = tdb_GetNodeType(nodeRef);
+
+    return    (type == LE_CFG_TYPE_EMPTY)
+           || (type == LE_CFG_TYPE_DOESNT_EXIST);
+}
+
+
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Clear out the data from a node, releasing any children it may have.
+ */
+// -------------------------------------------------------------------------------------------------
+void tdb_SetEmpty
+(
+    tdb_NodeRef_t nodeRef  ///< The node to clear.
+)
+// -------------------------------------------------------------------------------------------------
+{
+    if (nodeRef == NULL)
     {
         return;
     }
 
-    // Clear out any contents of this node, then release the node itself.
-    tdb_ClearNode(nodePtr);
-    ReleaseNode(nodePtr);
+    le_cfg_nodeType_t type = tdb_GetNodeType(nodeRef);
+
+    // If the node is already empty then there isn't much left to do.
+    if (   (type == LE_CFG_TYPE_EMPTY)
+        || (type == LE_CFG_TYPE_DOESNT_EXIST))
+    {
+        return;
+    }
+
+    // If this is a stem node, then go through and clear out the children.
+    if (nodeRef->type == LE_CFG_TYPE_STEM)
+    {
+        tdb_NodeRef_t childRef = tdb_GetFirstChildNode(nodeRef);
+
+        while (childRef != NULL)
+        {
+            tdb_NodeRef_t nextChildRef = tdb_GetNextSiblingNode(childRef);
+
+            // We don't remove the child from the list explicitly, because the destructor will take
+            // care of that for us.
+            le_mem_Release(childRef);
+            childRef = nextChildRef;
+        }
+
+        nodeRef->info.children = LE_DLS_LIST_INIT;
+    }
+    else if (nodeRef->info.valueRef)
+    {
+        // It's a string value, so free it now.
+        dstr_Release(nodeRef->info.valueRef);
+        nodeRef->info.valueRef = NULL;
+    }
+
+    // Mark the node as being emtpy, and that it has been modified.
+    nodeRef->type = LE_CFG_TYPE_EMPTY;
+    SetModifiedFlag(nodeRef);
 }
 
 
@@ -1859,30 +2509,43 @@ void tdb_DeleteNode
 
 // -------------------------------------------------------------------------------------------------
 /**
- *  Find a root node for the given tree node.
- *
- *  @return The root node of the tree that the given node is a part of.
+ *  Delete a given node from it's tree.
  */
 // -------------------------------------------------------------------------------------------------
-tdb_NodeRef_t tdb_GetRootNode
+void tdb_DeleteNode
 (
-    tdb_NodeRef_t nodePtr  ///< Find the parent for this node.
+    tdb_NodeRef_t nodeRef  ///< The node to delete.
 )
+// -------------------------------------------------------------------------------------------------
 {
-    if (nodePtr == NULL)
+    LE_ASSERT(nodeRef != NULL);
+
+    // Mark the node as having been modified.  Clear out any children, and mark the node itself as
+    // deleted.  If this isn't a shadow node, then just free the memory now.
+    SetModifiedFlag(nodeRef);
+
+    if (nodeRef->type == LE_CFG_TYPE_STEM)
     {
-        return NULL;
+        tdb_NodeRef_t childRef = tdb_GetFirstActiveChildNode(nodeRef);
+
+        while (childRef != NULL)
+        {
+            tdb_NodeRef_t nextChildRef = tdb_GetNextActiveSiblingNode(childRef);
+            tdb_DeleteNode(childRef);
+
+            childRef = nextChildRef;
+        }
     }
 
-    tdb_NodeRef_t parentPtr = tdb_GetParentNode(nodePtr);
-
-    while (parentPtr != NULL)
+    if (   (IsShadow(nodeRef))
+        || (tdb_GetNodeParent(nodeRef) == NULL))
     {
-        nodePtr = parentPtr;
-        parentPtr = tdb_GetParentNode(nodePtr);
+        SetDeletedFlag(nodeRef);
     }
-
-    return nodePtr;
+    else
+    {
+        le_mem_Release(nodeRef);
+    }
 }
 
 
@@ -1895,19 +2558,15 @@ tdb_NodeRef_t tdb_GetRootNode
  *  @return The parent node of the given node.
  */
 // -------------------------------------------------------------------------------------------------
-tdb_NodeRef_t tdb_GetParentNode
+tdb_NodeRef_t tdb_GetNodeParent
 (
-    tdb_NodeRef_t nodePtr  ///< Get the parent of this node.
+    tdb_NodeRef_t nodeRef  ///< The node object to iterate from.
 )
+// -------------------------------------------------------------------------------------------------
 {
-    if (nodePtr == NULL)
-    {
-        return NULL;
-    }
-
-    return nodePtr->parentPtr;
+    LE_ASSERT(nodeRef != NULL);
+    return nodeRef->parentRef;
 }
-
 
 
 
@@ -1922,30 +2581,37 @@ tdb_NodeRef_t tdb_GetParentNode
 // -------------------------------------------------------------------------------------------------
 tdb_NodeRef_t tdb_GetFirstChildNode
 (
-    tdb_NodeRef_t nodePtr  ///< The node to read.
+    tdb_NodeRef_t nodeRef  ///< The node object to iterate from.
 )
+// -------------------------------------------------------------------------------------------------
 {
-    if (nodePtr == NULL)
+    LE_ASSERT(nodeRef != NULL);
+
+    // Is this the type of node that has children?
+    if (   (   (nodeRef->type != LE_CFG_TYPE_STEM)
+            || (le_dls_IsEmpty(&nodeRef->info.children) == true))
+        && (IsShadow(nodeRef) == false))
     {
         return NULL;
     }
 
-    if (nodePtr->type != LE_CFG_TYPE_STEM)
+    // If the node is a shadow node, and it doesn't have any children call ShadowChildren to
+    // propigate over the original collection of child nodes into this one.
+    if (   (IsShadow(nodeRef))
+        && (le_dls_Peek(&nodeRef->info.children) == NULL)
+        && (nodeRef->shadowRef != NULL))
     {
-        return NULL;
+        if (IsModifed(nodeRef) == false)
+        {
+            ShadowChildren(nodeRef);
+        }
     }
 
-    // If the node is a shadow node, and it doesn't have any children call GetFirstShadowChild to
-    // propigate over the original collection of child nodes into this one.  Then return the first
-    // new shadow child node.
-    if (   ((nodePtr->flags & NODE_IS_SHADOW) != 0)
-        && (nodePtr->shadowPtr != NULL))
-    {
-        return GetFirstShadowChild(nodePtr);
-    }
+    // Just return the first child of this node...  Or NULL if it doesn't have one.
+    le_dls_Link_t* linkPtr = le_dls_Peek(&nodeRef->info.children);
 
-    // Otherwise just return the first child of this node...  Or NULL if it doesn't have one.
-    return nodePtr->info.children.childPtr;
+    return linkPtr == NULL ? NULL
+                           : CONTAINER_OF(linkPtr, Node_t, siblingList);
 }
 
 
@@ -1958,17 +2624,24 @@ tdb_NodeRef_t tdb_GetFirstChildNode
  *  @return The next sibling node for the given node.
  */
 // -------------------------------------------------------------------------------------------------
-tdb_NodeRef_t tdb_GetNextSibling
+tdb_NodeRef_t tdb_GetNextSiblingNode
 (
-    tdb_NodeRef_t nodePtr  ///< The node to read.
+    tdb_NodeRef_t nodeRef  ///< The node object to iterate from.
 )
+// -------------------------------------------------------------------------------------------------
 {
-    if (nodePtr == NULL)
+    LE_ASSERT(nodeRef != NULL);
+
+    if (nodeRef->parentRef == NULL)
     {
         return NULL;
     }
 
-    return nodePtr->siblingPtr;
+    le_dls_Link_t* linkPtr = le_dls_PeekNext(&nodeRef->parentRef->info.children,
+                                             &nodeRef->siblingList);
+
+    return linkPtr == NULL ? NULL
+                           : CONTAINER_OF(linkPtr, Node_t, siblingList);
 }
 
 
@@ -1984,18 +2657,21 @@ tdb_NodeRef_t tdb_GetNextSibling
 // -------------------------------------------------------------------------------------------------
 tdb_NodeRef_t tdb_GetFirstActiveChildNode
 (
-    tdb_NodeRef_t nodePtr  ///< The node to read.
+    tdb_NodeRef_t nodeRef  ///< The node object to iterate from.
 )
+// -------------------------------------------------------------------------------------------------
 {
-    tdb_NodeRef_t childPtr = tdb_GetFirstChildNode(nodePtr);
+    LE_ASSERT(nodeRef != NULL);
 
-    if (   (childPtr != NULL)
-        && ((childPtr->flags & NODE_IS_DELETED) != 0))
+    tdb_NodeRef_t childRef = tdb_GetFirstChildNode(nodeRef);
+
+    if (   (childRef != NULL)
+        && (IsDeleted(childRef) == true))
     {
-        return tdb_GetNextActiveSibling(childPtr);
+        return tdb_GetNextActiveSiblingNode(childRef);
     }
 
-    return childPtr;
+    return childRef;
 }
 
 
@@ -2008,17 +2684,20 @@ tdb_NodeRef_t tdb_GetFirstActiveChildNode
  *  @return The next "live" node in the sibling chain.
  */
 // -------------------------------------------------------------------------------------------------
-tdb_NodeRef_t tdb_GetNextActiveSibling
+tdb_NodeRef_t tdb_GetNextActiveSiblingNode
 (
-    tdb_NodeRef_t nodePtr  ///< The node to read.
+    tdb_NodeRef_t nodeRef  ///< The node object to iterate from.
 )
+// -------------------------------------------------------------------------------------------------
 {
-    tdb_NodeRef_t nextPtr = tdb_GetNextSibling(nodePtr);
+    LE_ASSERT(nodeRef != NULL);
+
+    tdb_NodeRef_t nextPtr = tdb_GetNextSiblingNode(nodeRef);
 
     while (   (nextPtr != NULL)
-           && ((nextPtr->flags & NODE_IS_DELETED) != 0))
+           && (IsDeleted(nextPtr) == true))
     {
-        nextPtr = tdb_GetNextSibling(nextPtr);
+        nextPtr = tdb_GetNextSiblingNode(nextPtr);
     }
 
     return nextPtr;
@@ -2029,169 +2708,49 @@ tdb_NodeRef_t tdb_GetNextActiveSibling
 
 // -------------------------------------------------------------------------------------------------
 /**
- *  Get the count of the children of this node.
- */
-// -------------------------------------------------------------------------------------------------
-size_t tdb_ChildNodeCount
-(
-    tdb_NodeRef_t nodePtr  ///< The node to read.
-)
-{
-    if (nodePtr == NULL)
-    {
-        return 0;
-    }
-
-    if (nodePtr->type != LE_CFG_TYPE_STEM)
-    {
-        return 0;
-    }
-
-    return nodePtr->info.children.count;
-}
-
-
-
-
-// -------------------------------------------------------------------------------------------------
-/**
- *  Check to see if a given node pointer represents a deleted node.
- */
-// -------------------------------------------------------------------------------------------------
-bool tdb_IsDeleted
-(
-    tdb_NodeRef_t nodePtr  ///< The node to check.
-)
-{
-    if (nodePtr == NULL)
-    {
-        return true;
-    }
-
-    return (nodePtr->flags & NODE_IS_DELETED) != 0;
-}
-
-
-
-
-// -------------------------------------------------------------------------------------------------
-/**
- *  Get the name of a given node.
- */
-// -------------------------------------------------------------------------------------------------
-void tdb_GetName
-(
-    tdb_NodeRef_t nodePtr,  ///< The node to read.
-    char* stringPtr,        ///< Destination buffer to hold the name.
-    size_t maxSize          ///< Size of this buffer.
-)
-{
-    memset(stringPtr, 0, maxSize);
-
-    if (nodePtr != NULL)
-    {
-        if ((nodePtr->flags & NODE_IS_SHADOW) != 0)
-        {
-            if (   (IsNodeStringEmpty(&nodePtr->name))
-                && (nodePtr->shadowPtr != NULL))
-            {
-                CopyNodeStringToString(stringPtr, maxSize, &nodePtr->shadowPtr->name);
-                return;
-            }
-        }
-
-        CopyNodeStringToString(stringPtr, maxSize, &nodePtr->name);
-    }
-}
-
-
-
-
-// -------------------------------------------------------------------------------------------------
-/**
- *  Compute the length of the name.
- */
-// -------------------------------------------------------------------------------------------------
-size_t tdb_GetNameLength
-(
-    tdb_NodeRef_t nodePtr  ///< The node to read.
-)
-{
-    if (nodePtr != NULL)
-    {
-        if (   ((nodePtr->flags & NODE_IS_SHADOW) != 0)
-            && (IsNodeStringEmpty(&nodePtr->name))
-            && (nodePtr->shadowPtr != NULL))
-        {
-            {
-                return GetNodeStringLength(&nodePtr->shadowPtr->name);
-            }
-        }
-
-        return GetNodeStringLength(&nodePtr->name);
-    }
-
-    return 0;
-}
-
-
-
-
-// -------------------------------------------------------------------------------------------------
-/**
- *  Set the name of a given node.  If this is a node in a shadow tree, the name is then overwritten.
- */
-// -------------------------------------------------------------------------------------------------
-void tdb_SetName
-(
-    tdb_NodeRef_t nodePtr,  ///< The node to write to.
-    const char* stringPtr   ///< The name to give to the node.
-)
-{
-    if (nodePtr != NULL)
-    {
-        CopyStringToNodeString(&nodePtr->name, stringPtr);
-        nodePtr->flags |= NODE_IS_MODIFIED;
-    }
-}
-
-
-
-
-// -------------------------------------------------------------------------------------------------
-/**
  *  Get the nodes string value and copy into the destination buffer.
+ *
+ *  @return LE_OK if the value is copied ok.
+ *          LE_OVERFLOW if the value can not fit in the supplied buffer.
  */
 // -------------------------------------------------------------------------------------------------
-void tdb_GetAsString
+le_result_t tdb_GetValueAsString
 (
-    tdb_NodeRef_t nodePtr,  ///< The node object to read.
+    tdb_NodeRef_t nodeRef,  ///< The node object to read.
     char* stringPtr,        ///< Target buffer for the value string.
-    size_t maxSize          ///< Maximum size the buffer can hold.
+    size_t maxSize,         ///< Maximum size the buffer can hold.
+    const char* defaultPtr  ///< Default value to use in the event that the requested value doesn't
+                            ///<   exist.
 )
+// -------------------------------------------------------------------------------------------------
 {
-    memset(stringPtr, 0, maxSize);
+    LE_ASSERT(nodeRef != NULL);
 
-    if ((nodePtr->flags & NODE_IS_DELETED) != 0)
+    stringPtr[0] = 0;
+    le_cfg_nodeType_t type = tdb_GetNodeType(nodeRef);
+
+    // If there is no value, just give the default value back.
+    if (   (type == LE_CFG_TYPE_EMPTY)
+        || (type == LE_CFG_TYPE_DOESNT_EXIST)
+        || (type == LE_CFG_TYPE_STEM))
     {
-        return;
+        return le_utf8_Copy(stringPtr, defaultPtr, maxSize, NULL);
     }
 
-    if (   (nodePtr != NULL)
-        && (nodePtr->type != LE_CFG_TYPE_STEM))
+    // Check to see if we have the value locally, or if we need to go back to the original node for
+    // the value.
+    if (nodeRef->info.valueRef == NULL)
     {
-        if ((nodePtr->flags & NODE_IS_SHADOW) != 0)
+        if (IsShadow(nodeRef))
         {
-            if (   (IsNodeStringEmpty(&nodePtr->info.value))
-                && (nodePtr->shadowPtr != NULL))
-            {
-                CopyNodeStringToString(stringPtr, maxSize, &nodePtr->shadowPtr->info.value);
-                return;
-            }
+            LE_ASSERT(nodeRef->shadowRef != NULL);
+            return dstr_CopyToCstr(stringPtr, maxSize, nodeRef->shadowRef->info.valueRef, NULL);
         }
 
-        CopyNodeStringToString(stringPtr, maxSize, &nodePtr->info.value);
+        return LE_OK;
     }
+
+    return dstr_CopyToCstr(stringPtr, maxSize, nodeRef->info.valueRef, NULL);
 }
 
 
@@ -2203,28 +2762,40 @@ void tdb_GetAsString
  *  lost.
  */
 // -------------------------------------------------------------------------------------------------
-void tdb_SetAsString
+void tdb_SetValueAsString
 (
-    tdb_NodeRef_t nodePtr,  ///< The node to set.
+    tdb_NodeRef_t nodeRef,  ///< The node to set.
     const char* stringPtr   ///< The value to write to the node.
 )
+// -------------------------------------------------------------------------------------------------
 {
-    if (nodePtr == NULL)
+    LE_ASSERT(nodeRef != NULL);
+
+    // Make sure the node is cleared out and value is set to it's default state.
+    if (   (nodeRef->type == LE_CFG_TYPE_STEM)
+        || (nodeRef->type == LE_CFG_TYPE_EMPTY))
     {
-        return;
+        tdb_SetEmpty(nodeRef);
+        nodeRef->info.valueRef = NULL;
     }
 
-    if (nodePtr->type == LE_CFG_TYPE_STEM)
+    // Mark this as a string node, and copy over the value.
+    nodeRef->type = LE_CFG_TYPE_STRING;
+
+    if (nodeRef->info.valueRef == NULL)
     {
-        tdb_ClearNode(nodePtr);
+        nodeRef->info.valueRef = dstr_NewFromCstr(stringPtr);
+    }
+    else
+    {
+        dstr_CopyFromCstr(nodeRef->info.valueRef, stringPtr);
     }
 
-    nodePtr->type = GuessTypeFromString(stringPtr);
-    CopyStringToNodeString(&nodePtr->info.value, stringPtr);
-
-    nodePtr->flags |= NODE_IS_MODIFIED;
-
-    EnsureExists(nodePtr);
+    // Make sure the system knows this node has been modified so that it can be included for merging
+    // into the original tree.  Also, make sure that this node and it's parents are not marked as
+    // having been deleted.
+    SetModifiedFlag(nodeRef);
+    EnsureExists(nodeRef);
 }
 
 
@@ -2235,51 +2806,41 @@ void tdb_SetAsString
  *  Read the given node and interpret it as a boolean value.
  */
 // -------------------------------------------------------------------------------------------------
-bool tdb_GetAsBool
+bool tdb_GetValueAsBool
 (
-    tdb_NodeRef_t nodePtr  ///< The node to read.
+    tdb_NodeRef_t nodeRef,  ///< The node to read.
+    bool defaultValue       ///< Default value to use in the event that the requested value doesn't
+                            ///<   exist.
 )
+// -------------------------------------------------------------------------------------------------
 {
+    LE_ASSERT(nodeRef != NULL);
+
     bool result;
 
-    switch (nodePtr->type)
+    switch (tdb_GetNodeType(nodeRef))
     {
-        case LE_CFG_TYPE_STRING:
-            result = !IsNodeStringEmpty(&nodePtr->info.value);
-            break;
-
+        // If this isn't a bool node, then return the default value.
         case LE_CFG_TYPE_BOOL:
             {
-                char buffer[7] = { 0 };
+                char buffer[SMALL_STR] = { 0 };
 
-                tdb_GetAsString(nodePtr, buffer, 6);
+                LE_FATAL_IF(tdb_GetValueAsString(nodeRef, buffer, SMALL_STR, "") == LE_OVERFLOW,
+                            "Internal error, bool value string too large.");
 
-                if (strcmp(buffer, "false") == 0)
+                if (strcmp(buffer, "f") == 0)
                 {
                     result = false;
                 }
                 else
                 {
-                    result = buffer[0] != 0;
+                    result = true;
                 }
             }
             break;
 
-        case LE_CFG_TYPE_INT:
-            result = tdb_GetAsInt(nodePtr) != 0;
-            break;
-
-        case LE_CFG_TYPE_FLOAT:
-            {
-                float value = tdb_GetAsFloat(nodePtr);
-                result = (value > 0.0f) || (value < 0.0f);
-            }
-            break;
-
-        case LE_CFG_TYPE_STEM:
-        case LE_CFG_TYPE_EMPTY:
         default:
-            result = false;
+            result = defaultValue;
             break;
     }
 
@@ -2294,13 +2855,17 @@ bool tdb_GetAsBool
  *  Overwite a node value as a new boolen value..
  */
 // -------------------------------------------------------------------------------------------------
-void tdb_SetAsBool
+void tdb_SetValueAsBool
 (
-    tdb_NodeRef_t nodePtr,  ///< The node to write to.
+    tdb_NodeRef_t nodeRef,  ///< The node to write to.
     bool value              ///< The new value to write to that node.
 )
+// -------------------------------------------------------------------------------------------------
 {
-    tdb_SetAsString(nodePtr, value ? "true" : "false");
+    LE_ASSERT(nodeRef != NULL);
+
+    tdb_SetValueAsString(nodeRef, value ? "t" : "f");
+    nodeRef->type = LE_CFG_TYPE_BOOL;
 }
 
 
@@ -2309,39 +2874,46 @@ void tdb_SetAsBool
 // -------------------------------------------------------------------------------------------------
 /**
  *  Read the given node and interpret it as an integer value.
+ *
+ *  @return The node's current value as an int.  If the value was originaly a float then it is
+ *          rounded.  If the node doesn't exist or is some other type then the default value is
+ *          returned.
  */
 // -------------------------------------------------------------------------------------------------
-int tdb_GetAsInt
+int32_t tdb_GetValueAsInt
 (
-    tdb_NodeRef_t nodePtr  ///< The node to read from.
+    tdb_NodeRef_t nodeRef,  ///< The node to read from.
+    int32_t defaultValue    ///< Default value to use in the event that the requested value doesn't
+                            ///<   exist.
 )
+// -------------------------------------------------------------------------------------------------
 {
+    LE_ASSERT(nodeRef != NULL);
+
     int result;
 
-    switch (nodePtr->type)
+    switch (tdb_GetNodeType(nodeRef))
     {
-        case LE_CFG_TYPE_BOOL:
-            result = tdb_GetAsBool(nodePtr) ? 1 : 0;
-            break;
-
+        // Convert from either the underlying string directly or convert from a stored floating
+        // point value.
         case LE_CFG_TYPE_INT:
             {
-                char buffer[SEGMENT_SIZE + 1] = { 0 };
+                char buffer[SMALL_STR] = { 0 };
 
-                tdb_GetAsString(nodePtr, buffer, SEGMENT_SIZE);
+                tdb_GetValueAsString(nodeRef, buffer, SMALL_STR, "");
                 result = atoi(buffer);
             }
             break;
 
         case LE_CFG_TYPE_FLOAT:
-            result = (int)tdb_GetAsFloat(nodePtr) + 0.5;
+            {
+                double newValue = tdb_GetValueAsFloat(nodeRef, 0.0);
+                result = (int)(newValue >= 0.0 ? newValue + 0.5 : newValue - 0.5);
+            }
             break;
 
-        case LE_CFG_TYPE_STRING:
-        case LE_CFG_TYPE_EMPTY:
-        case LE_CFG_TYPE_STEM:
         default:
-            result = 0;
+            result = defaultValue;
             break;
     }
 
@@ -2356,16 +2928,20 @@ int tdb_GetAsInt
  *  Set an integer value to a given node, overwriting the previous value.
  */
 // -------------------------------------------------------------------------------------------------
-void tdb_SetAsInt
+void tdb_SetValueAsInt
 (
-    tdb_NodeRef_t nodePtr,  ///< The ndoe to write to.
+    tdb_NodeRef_t nodeRef,  ///< The node to write to.
     int value               ///< The value to write.
 )
+// -------------------------------------------------------------------------------------------------
 {
-    char buffer[SEGMENT_SIZE + 1] = { 0 };
+    LE_ASSERT(nodeRef != NULL);
 
-    snprintf(buffer, SEGMENT_SIZE, "%d", value);
-    tdb_SetAsString(nodePtr, buffer);
+    char buffer[SMALL_STR] = { 0 };
+    snprintf(buffer, SMALL_STR, "%d", value);
+
+    tdb_SetValueAsString(nodeRef, buffer);
+    nodeRef->type = LE_CFG_TYPE_INT;
 }
 
 
@@ -2376,37 +2952,35 @@ void tdb_SetAsInt
  *  Read the given node and interpret it as a floating point value.
  */
 // -------------------------------------------------------------------------------------------------
-float tdb_GetAsFloat
+double tdb_GetValueAsFloat
 (
-    tdb_NodeRef_t nodePtr  ///< The ndoe to read.
+    tdb_NodeRef_t nodeRef,  ///< The node to read.
+    double defaultValue     ///< Default value to use in the event that the requested value doesn't
+                            ///<   exist.
 )
+// -------------------------------------------------------------------------------------------------
 {
-    float result;
+    LE_ASSERT(nodeRef != NULL);
 
-    switch (nodePtr->type)
+    double result;
+
+    switch (nodeRef->type)
     {
-        case LE_CFG_TYPE_BOOL:
-            result = tdb_GetAsBool(nodePtr) ? 1.0f : 0.0f;
-            break;
-
         case LE_CFG_TYPE_INT:
-            result = tdb_GetAsInt(nodePtr);
+            result = tdb_GetValueAsInt(nodeRef, 0);
             break;
 
         case LE_CFG_TYPE_FLOAT:
             {
-                char buffer[SEGMENT_SIZE + 1] = { 0 };
+                char buffer[SMALL_STR] = { 0 };
 
-                tdb_GetAsString(nodePtr, buffer, SEGMENT_SIZE);
+                tdb_GetValueAsString(nodeRef, buffer, SMALL_STR, "");
                 result = (float)atof(buffer);
             }
             break;
 
-        case LE_CFG_TYPE_STRING:
-        case LE_CFG_TYPE_EMPTY:
-        case LE_CFG_TYPE_STEM:
         default:
-            result = 0.0f;
+            result = defaultValue;
             break;
     }
 
@@ -2418,129 +2992,57 @@ float tdb_GetAsFloat
 
 // -------------------------------------------------------------------------------------------------
 /**
- *  Overwite a given ndoes value with a floating point one.
+ *  Overwite a given node's value with a floating point one.
  */
 // -------------------------------------------------------------------------------------------------
-void tdb_SetAsFloat
+void tdb_SetValueAsFloat
 (
-    tdb_NodeRef_t nodePtr,  ///< The node to write
-    float value             ///< The value to write to that node.
+    tdb_NodeRef_t nodeRef,  ///< The node to write
+    double value            ///< The value to write to that node.
 )
+// -------------------------------------------------------------------------------------------------
 {
-    char buffer[SEGMENT_SIZE + 1] = { 0 };
+    LE_ASSERT(nodeRef != NULL);
 
-    snprintf(buffer, SEGMENT_SIZE, "%f", value);
-    tdb_SetAsString(nodePtr, buffer);
+    char buffer[SMALL_STR] = { 0 };
+
+    snprintf(buffer, SMALL_STR, "%f", value);
+    tdb_SetValueAsString(nodeRef, buffer);
+    nodeRef->type = LE_CFG_TYPE_FLOAT;
 }
 
 
 
 
-// -------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------
 /**
- *  Reate the current type id out of the node.
+ *  Registers a handler function to be called when a node at or below a given path changes.
  */
-// -------------------------------------------------------------------------------------------------
-le_cfg_nodeType_t tdb_GetTypeId
+//--------------------------------------------------------------------------------------------------
+le_cfg_ChangeHandlerRef_t tdb_AddChangeHandler
 (
-    tdb_NodeRef_t nodePtr  ///< The node to read.
+    tdb_TreeRef_t tree,                     ///< The tree to register the handler on.
+    const char* pathPtr,                    ///< Path of the node to watch.
+    le_cfg_ChangeHandlerFunc_t handlerPtr,  ///< Function to call back.
+    void* contextPtr                        ///< Opaque value to pass to the function when called.
 )
+//--------------------------------------------------------------------------------------------------
 {
-    if (nodePtr == NULL)
-    {
-        return LE_CFG_TYPE_EMPTY;
-    }
-
-    if ((nodePtr->flags & NODE_IS_DELETED) != 0)
-    {
-        return LE_CFG_TYPE_EMPTY;
-    }
-
-    if (   (nodePtr->type == LE_CFG_TYPE_STEM)
-        && (tdb_GetFirstActiveChildNode(nodePtr) == NULL))
-    {
-        return LE_CFG_TYPE_EMPTY;
-    }
-
-    return nodePtr->type;
+    return NULL;
 }
 
 
 
 
-// -------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------
 /**
- *  Is the node currently empty?
+ *  Deregisters a handler function that was registered using tdb_AddChangeHandler().
  */
-// -------------------------------------------------------------------------------------------------
-bool tdb_IsNodeEmpty
+//--------------------------------------------------------------------------------------------------
+void tdb_RemoveChangeHandler
 (
-    tdb_NodeRef_t nodePtr  ///< The ndoe to read.
+    le_cfg_ChangeHandlerRef_t   handlerRef  ///< Reference returned by tdb_AddChangeHandler().
 )
-{
-    if (nodePtr == NULL)
-    {
-        return true;
-    }
-
-    if ((nodePtr->flags & NODE_IS_DELETED) != 0)
-    {
-        return true;
-    }
-
-    return tdb_GetTypeId(nodePtr) == LE_CFG_TYPE_EMPTY;
-}
-
-
-
-
-// -------------------------------------------------------------------------------------------------
-/**
- *  Clear out the contents of hte node.
- */
-// -------------------------------------------------------------------------------------------------
-void tdb_ClearNode
-(
-    tdb_NodeRef_t nodePtr  ///< The node to clear.
-)
-{
-    tdb_NodeRef_t currentPtr = FindTailChild(nodePtr);
-
-    while (currentPtr != NULL)
-    {
-        tdb_NodeRef_t parentPtr = currentPtr->parentPtr;
-        tdb_NodeRef_t siblingPtr = currentPtr->siblingPtr;
-
-        ReleaseNode(currentPtr);
-
-        if (currentPtr == nodePtr)
-        {
-            currentPtr = NULL;
-        }
-        else if (siblingPtr != NULL)
-        {
-            currentPtr = FindTailChild(siblingPtr);
-        }
-        else
-        {
-            currentPtr = parentPtr;
-        }
-    }
-}
-
-
-
-
-// -------------------------------------------------------------------------------------------------
-/**
- *  Append an update watch callback.
- */
-// -------------------------------------------------------------------------------------------------
-void tdb_AppendCallback
-(
-    tdb_NodeRef_t nodeRef,                         ///< The node to watch.
-    le_cfg_ChangeHandlerFunc_t updateCallbackPtr,  ///< The function to call on update.
-    void* contextPtr                               ///< A context to supply the callback with.
-)
+//--------------------------------------------------------------------------------------------------
 {
 }

@@ -98,3 +98,9 @@ HANDLER NewStateHandler
         le_sim_Ref_t simRef
     );
 };
+
+FUNCTION le_result_t GetSubscriberPhoneNumber
+(
+    le_sim_Ref_t simRef IN,
+    string       phoneNumberStr[18] OUT
+);

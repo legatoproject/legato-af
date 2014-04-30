@@ -20,12 +20,12 @@ local MT = { }; MT.__index=MT
 --- Read a variable
 function MT :get(hpath)
     if hpath=='' then return self.constant
-    else return nil, 'path not found' end
+    else return nil, 'NOT_FOUND' end
 end
 
 --- Write a map of variables
 function MT :set(hmap)
-    return nil, 'cannot write to path'
+    return nil, 'NOT_PERMITTED:cannot write to path, write is not supported'
 end
 
 -- Registration not supported

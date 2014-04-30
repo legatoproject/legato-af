@@ -11,12 +11,13 @@
 void allParameters
 (
     ServerCmdRef_t cmdRef,
-    int32_t a,
+    common_EnumExample_t a,
     const uint32_t* dataPtr,
     size_t dataNumElements,
     size_t outputNumElements,
     const char* label,
-    size_t responseNumElements
+    size_t responseNumElements,
+    size_t moreNumElements
 )
 {
     int i;
@@ -25,6 +26,7 @@ void allParameters
     uint32_t b;
     uint32_t output[outputNumElements];
     char response[responseNumElements];
+    char more[moreNumElements];
 
     // Print out received values
     LE_PRINT_VALUE("%i", a);
@@ -40,8 +42,9 @@ void allParameters
     }
 
     le_utf8_Copy(response, "response string", responseNumElements, NULL);
+    le_utf8_Copy(more, "more info", moreNumElements, NULL);
 
-    allParametersRespond(cmdRef, b, outputNumElements, output, response);
+    allParametersRespond(cmdRef, b, outputNumElements, output, response, more);
 }
 
 
@@ -98,6 +101,7 @@ void TriggerTestA
     TriggerTestARespond(cmdRef);
 
     // This will cause the server to fail, since only one response is allowed.
+    LE_WARN("About to crash the server by calling 'Respond' function twice");
     TriggerTestARespond(cmdRef);
 }
 

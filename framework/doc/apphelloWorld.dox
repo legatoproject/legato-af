@@ -16,12 +16,11 @@ COMPONENT_INIT
 }
 @endcode
 
-The COMPONENT_INIT macro defines a "component initializer" function that Legato automatically runs at process start-up.  
 
-Make the component initializer run LE_INFO()
-at start-up.  When Legato builds your code, it automatically
-defines COMPONENT_INIT to be a proper function declaration (this reduces 
-build setup work).
+The COMPONENT_INIT macro defines a component initializer function that Legato automatically runs at process start-up. 
+When Legato builds your code, it automatically defines COMPONENT_INIT to be a proper function declaration (this reduces build setup work).
+ 
+The component initializer will run LE_INFO() at start-up. LE_INFO() logs a message at the INFO severity level.
 
 @section helloWorldWhatsNext What's Next?
 

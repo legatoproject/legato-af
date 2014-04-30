@@ -571,7 +571,7 @@ le_result_t pa_mdc_WriteProfile
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Start a data session with the given profile
+ * Start a data session with the given profile using IPV4
  *
  * @return
  *      - LE_OK on success
@@ -579,7 +579,7 @@ le_result_t pa_mdc_WriteProfile
  *      - LE_NOT_POSSIBLE for other failures
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mdc_StartSession
+le_result_t pa_mdc_StartSessionIPV4
 (
     uint32_t profileIndex,        ///< [IN] The profile to use
     uint32_t* callRefPtr          ///< [OUT] Reference used for stopping the data session
@@ -621,6 +621,70 @@ le_result_t pa_mdc_StartSession
     }
 
     return result;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Start a data session with the given profile using IPV6
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_DUPLICATE if the data session is already connected
+ *      - LE_NOT_POSSIBLE for other failures
+ *
+ * @TODO    Implementation
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_mdc_StartSessionIPV6
+(
+    uint32_t profileIndex,        ///< [IN] The profile to use
+    uint32_t* callRefPtr          ///< [OUT] Reference used for stopping the data session
+)
+{
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Start a data session with the given profile using IPV4-V6
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_DUPLICATE if the data session is already connected
+ *      - LE_NOT_POSSIBLE for other failures
+ *
+ * @TODO    implementation
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_mdc_StartSessionIPV4V6
+(
+    uint32_t profileIndex,        ///< [IN] The profile to use
+    uint32_t* callRefPtr          ///< [OUT] Reference used for stopping the data session
+)
+{
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get session type for the given profile ( IP V4 or V6 )
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_NOT_POSSIBLE for other failures
+ *
+ * @TODO    implementation
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_mdc_GetSessionType
+(
+    uint32_t profileIndex,              ///< [IN] The profile to use
+    pa_mdc_SessionType_t* sessionIpPtr  ///< [OUT] IP family session
+)
+{
+    return LE_OK;
 }
 
 
@@ -758,6 +822,29 @@ le_result_t pa_mdc_GetInterfaceName
         return LE_OVERFLOW;
     }
 
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the IP address for the given profile, if the data session is connected.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_OVERFLOW if the IP address would not fit in gatewayAddrStr
+ *      - LE_NOT_POSSIBLE for all other errors
+ * @TODO
+ *      implementation
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_mdc_GetIPAddress
+(
+    uint32_t profileIndex,             ///< [IN] The profile to use
+    char*  ipAddrStr,                  ///< [OUT] The IP address in dotted format
+    size_t ipAddrStrSize               ///< [IN] The size in bytes of the address buffer
+)
+{
     return LE_OK;
 }
 
@@ -912,5 +999,89 @@ le_result_t pa_mdc_GetDNSAddresses
         }
     }
 
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Access Point Name for the given profile, if the data session is connected.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_OVERFLOW if the Access Point Name would not fit in apnNameStr
+ *      - LE_NOT_POSSIBLE for all other errors
+ * @TODO
+ *      implementation
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_mdc_GetAccessPointName
+(
+    uint32_t profileIndex,             ///< [IN] The profile to use
+    char*  apnNameStr,                 ///< [OUT] The Access Point Name
+    size_t apnNameStrSize              ///< [IN] The size in bytes of the address buffer
+)
+{
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Data Bearer Technology for the given profile, if the data session is connected.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_NOT_POSSIBLE for all other errors
+ * @TODO
+ *      implementation
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_mdc_GetDataBearerTechnology
+(
+    uint32_t profileIndex,                                 ///< [IN] The profile to use
+    le_mdc_dataBearerTechnology_t* dataBearerTechnologyPtr ///< [OUT] The data bearer technology
+)
+{
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get data flow statistics since the last reset.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_NOT_POSSIBLE for all other errors
+ *
+ * @TODO Implementation
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_mdc_GetDataFlowStatistics
+(
+    pa_mdc_PktStatistics_t *dataStatisticsPtr ///< [OUT] Statistics data
+)
+{
+    memset(dataStatisticsPtr,0,sizeof(*dataStatisticsPtr));
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Reset data flow statistics
+ *
+ * * @return
+ *      - LE_OK on success
+ *      - LE_NOT_POSSIBLE for all other errors
+ *
+ * @TODO Implementation
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_mdc_ResetDataFlowStatistics
+(
+    void
+)
+{
     return LE_OK;
 }

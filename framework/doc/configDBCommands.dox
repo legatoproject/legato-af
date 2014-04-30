@@ -6,7 +6,7 @@ Import and export whole sections of the tree from and to a file is also supporte
  
 If you run the tool without command line arguments, it generates this:
  
-@code
+@verbatim
 $ config
 Usage:
  
@@ -24,7 +24,7 @@ To import config data:
  
 To export config data:
     config export <tree path> <file path>
-@endcode
+@endverbatim
  
 Where:
 - <b>tree path</b> - Is a path to the tree and node to operate on.

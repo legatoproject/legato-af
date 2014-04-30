@@ -27,7 +27,7 @@
 #include "sha1.h"
 #include "lauxlib.h"
 
-#define DIGEST_LEN     16
+#define DIGEST_LEN     20
 #define HEX_DIGEST_LEN (2*DIGEST_LEN)
 
 
@@ -125,5 +125,6 @@ int luaopen_crypto_sha1( lua_State *L) {
     return 1;
 #undef REG
 }
+
 
 

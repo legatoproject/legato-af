@@ -12,7 +12,7 @@ static void AddBedroomData(swi_av_Asset_t *asset, swi_av_Table_t *table, int tem
 
     swi_av_table_PushInteger(table, temperature);
     swi_av_table_PushInteger(table, 19);
-    swi_av_table_PushInteger(table, SWI_AV_TSTAMP_AUTO);
+    swi_av_table_PushInteger(table, time(NULL));
 
     res = swi_av_table_PushRow(table);
     if (res != RC_OK)
@@ -37,7 +37,7 @@ int sampleMain()
     const char *columns[] = {
           "col1",
           "col2",
-          "col3"
+          "timestamp"
         };
 
     res = swi_av_Init();
@@ -56,7 +56,7 @@ int sampleMain()
     }
 
     LE_INFO("Registering asset\n");
-    swi_av_asset_Start(asset);
+    res = swi_av_asset_Start(asset);
     if (res != RC_OK)
     {
         fprintf(stderr, "Failed to register asset module\n");

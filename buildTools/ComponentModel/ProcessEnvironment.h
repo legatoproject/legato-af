@@ -44,7 +44,6 @@ class ProcessEnvironment
         std::string m_FaultAction;
 
         // RLimits:
-        size_t m_VMemSize;
         size_t m_CoreFileSize;
         size_t m_MaxFileSize;
         size_t m_MemLockSize;
@@ -64,9 +63,6 @@ class ProcessEnvironment
 
         void Priority(std::string&& priority) { m_Priority = priority; }
         const std::string& Priority() const { return m_Priority; }
-
-        void VMemSize(size_t limit) { m_VMemSize = limit; }
-        size_t VMemSize() const { return m_VMemSize; }
 
         void CoreFileSize(size_t limit) { m_CoreFileSize = limit; }
         size_t CoreFileSize() const { return m_CoreFileSize; }

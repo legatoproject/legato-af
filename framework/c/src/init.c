@@ -16,7 +16,7 @@
 #include "signals.h"
 #include "eventLoop.h"
 #include "timer.h"
-#include "path.h"
+#include "pathIter.h"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -42,16 +42,16 @@ __attribute__((constructor)) void _legato_InitFramework
     // logging uses memory pools, so memory pools must be initialized before logging.
 
     mem_Init();
-    log_Init();     // Uses memory pools.
-    sig_Init();     // Uses memory pools.
-    safeRef_Init(); // Uses memory pools and hash maps.
-    path_Init();    // Uses memory pools and safe references.
-    mutex_Init();   // Uses memory pools.
-    sem_Init();     // Uses memory pools.
-    thread_Init();  // Uses memory pools and safe references.
-    event_Init();   // Uses thread API.
-    timer_Init();   // Uses event loop.
-    msg_Init();     // Uses event loop.
+    log_Init();        // Uses memory pools.
+    sig_Init();        // Uses memory pools.
+    safeRef_Init();    // Uses memory pools and hash maps.
+    pathIter_Init();   // Uses memory pools and safe references.
+    mutex_Init();      // Uses memory pools.
+    sem_Init();        // Uses memory pools.
+    thread_Init();     // Uses memory pools and safe references.
+    event_Init();      // Uses thread API.
+    timer_Init();      // Uses event loop.
+    msg_Init();        // Uses event loop.
 
     // This must be called last, because it calls several subsystems to perform the
     // thread-specific initialization for the main thread.

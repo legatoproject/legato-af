@@ -1158,3 +1158,24 @@ le_result_t pa_sim_DisablePIN
     return LE_OK;
 }
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the SIM Phone Number.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_OVERFLOW if the Phone Number can't fit in phoneNumberStr
+ *      - LE_NOT_POSSIBLE on any other failure
+ * @TODO
+ *      implementation
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_sim_GetSubscriberPhoneNumber
+(
+    char        *phoneNumberStr,    ///< [OUT] The phone Number
+    size_t       phoneNumberStrSize ///< [IN]  Size of phoneNumberStr
+)
+{
+    return le_utf8_Copy(phoneNumberStr,"",phoneNumberStrSize, NULL);
+}

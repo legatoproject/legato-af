@@ -92,11 +92,16 @@ local logmod= "DT-GPIO"
 
 local M = { }
 
+local function report_error(msg, error)
+    log("GPIO", "DEBUG", msg)
+    return nil, error
+end
+
 function M :get (path)
     local res, err
     if path == nil or path == "" then --list root gpio path
         res, err = gpio.enabledlist() -- list of enabled GPIOs.
-        if not res or type(res)~= "table" then return nil, err or "error while loading GPIO list"
+        if not res or type(res)~= "table" then return report_error(err or "error while loading GPIO list", "IO_ERROR")
         else
             local res2 = {}
             for k,v in pairs(res) do res2[v]=true end
@@ -107,14 +112,14 @@ function M :get (path)
         end
     elseif path == "available" then
         local res, err = gpio.availablelist()
-        if not res then return nil, err or "Can't get availablelist"
+        if not res then return report_error(err or "Can't get availablelist", "IO_ERROR")
             --return it as a string so that no subvalue will be requested.
         else return sprint(res) end
     elseif path:match("settings") then --reading GPIO configuration
         local _, subpath = upath.split(path,1)
         if not subpath or subpath=="" then
             res, err = gpio.enabledlist() -- list of available GPIOs.
-            if not res or type(res)~= "table" then return nil, err or "error while loading GPIO list"
+            if not res or type(res)~= "table" then return report_error(err or "error while loading GPIO list", "IO_ERROR")
             else
                 local res2 = {}
                 for k,v in pairs(res) do res2[v]=true end
@@ -124,20 +129,20 @@ function M :get (path)
         else
             local id, setting = upath.split(subpath,1)
             id = tonumber(id)
-            if not id then return nil, "invalid GPIO id" end
+            if not id then return report_error("invalid GPIO id", "BAD_PARAMETER") end
             --listing config parameters for each GPIO ( it's supposed to be the same for each GPIO)
             if not setting or setting == "" then return nil, { direction = true, edge = true, activelow=true} end
             if setting == "direction" or setting == "edge" or setting == "activelow" then
                 -- those subpaths are only for configuration purpose
                 res, err = gpio.getconfig(id)
-                if not res or type(res)~= "table" then return nil, err or "failed to get GPIO config" end
+                if not res or type(res)~= "table" then return report_error(err or "failed to get GPIO config", "UNSPECIFIED_ERROR") end
                 if not res[setting] then
-                    return nil, string.format("failed to get GPIO config field %s", tostring(setting))
+		    return report_error(string.format("failed to get GPIO config field %s", tostring(setting)), "UNSPECIFIED_ERROR")
                 else
                     return res[setting]
                 end
             else
-                return nil, string.format("invalid GPIO parameter: %s", tostring(setting))
+	        return report_error(string.format("invalid GPIO parameter: %s", tostring(setting)), "BAD_PARAMETER")
             end
         end
     elseif tonumber(path) then
@@ -145,7 +150,7 @@ function M :get (path)
         local id = tonumber(path)
         return gpio.read(id)
     else
-        return nil, string.format("invalid GPIO parameter: %s", tostring(path))
+        return report_error(string.format("invalid GPIO parameter: %s", tostring(path)), "BAD_PARAMETER")
     end
 end
 
@@ -153,30 +158,30 @@ function M :set(hmap)
     local res, err, changesset = nil, nil, {}
     for hpath, val in pairs(hmap) do --set can be done on several values in the same call.
         val = niltoken(val) --filter niltoken value (no specific behavior for niltoken/nil)
-        if not val then return nil, string.format("invalid nil value for path %s", tostring(hpath)) end
+        if not val then return report_error(string.format("invalid nil value for path %s", tostring(hpath)), "BAD_PARAMETER") end
         local root, subpath = upath.split(hpath,1)
         local subpath1, subpath2 = upath.split(subpath,1)
         if root == "settings" then --configuring GPIO, path is like: `settings.id.direction` etc
             local id = tonumber(subpath1)
-            if not id then return nil, "invalid GPIO id" end
+            if not id then return report_error("invalid GPIO id", "BAD_PARAMETER") end
             if subpath2 == "direction" or subpath2 == "edge" or subpath2 == "activelow" then
                 val = tostring(val)
-                if not val then return nil, string.format("invalid value %s for parameter %s", val, subpath2) end
+                if not val then return report_error(string.format("invalid value %s for parameter %s", val, subpath2), "BAD_PARAMETER") end
                 res, err = gpio.configure(id, { [subpath2]=val})
-                if not res then return nil, string.format("error when configuring GPIO %d: err: %s", id, tostring(err)) end
+                if not res then return report_error(string.format("error when configuring GPIO %d: err: %s", id, tostring(err)), "IO_ERROR") end
                 --TODO: improvement: bufferize cfg actions?
             else
-                return nil, string.format("invalid GPIO parameter: %s", tostring(subpath2))
+	        return report_error(string.format("invalid GPIO parameter: %s", tostring(subpath2)), "BAD_PARAMETER")
             end
         elseif tonumber(root) and (subpath1=="" or not subpath1) then --writing GPIO value, the path is like `id`
             local id = tonumber(root)
             val = tostring(val)
-            if val ~= "0" and val~="1" then return nil, string.format("invalid value to write %s", val) end
+            if val ~= "0" and val~="1" then report_error(string.format("invalid value to write %s", val), "BAD_PARAMETER") end
             res,err = gpio.write(id, val)
-            if not res then return nil, string.format("error when writing to %d: err:%s", id, err) end
+            if not res then return report_error(string.format("error when writing to %d: err:%s", id, err), "IO_ERROR") end
             table.insert(changesset, id)
         else
-            return nil, string.format("invalid GPIO parameter: %s", tostring(hpath))
+	   return report_error(string.format("invalid GPIO parameter: %s", tostring(hpath)), "BAD_PARAMETER")
         end
     end
     return changesset
@@ -204,7 +209,7 @@ end
 function M :register(hpath)
     local id = tonumber(hpath)
     --can only register on `id` path
-    if not id then return nil, "only GPIO value can be monitored" end
+    if not id then return report_error("only GPIO value can be monitored", "BAD_PARAMETER") end
     if not registered[id] then
         registered[id] = true
         return gpio.register(id, gpio_hook)
@@ -217,7 +222,7 @@ end
 function M :unregister(hpath)
     local id = tonumber(hpath)
     --can only register on `id` path
-    if not id then return nil, "only GPIO value can be monitored" end
+    if not id then return report_error("only GPIO value can be monitored", "BAD_PARAMETER") end
     if registered[id] then
         registered[id] = nil
         return gpio.register(id, nil)

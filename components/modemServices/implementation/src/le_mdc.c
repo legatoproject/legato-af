@@ -15,7 +15,7 @@
 #include "pa_mdc.h"
 #include "le_mdc_local.h"
 #include "le_cfg_interface.h"
-#include "cfgEntries.h"
+#include "mdmCfgEntries.h"
 
 // Include macros for printing out values
 #include "le_print.h"
@@ -39,10 +39,11 @@
 //--------------------------------------------------------------------------------------------------
 typedef struct le_mdc_Profile {
     char name[LE_MDC_PROFILE_NAME_MAX_BYTES];   ///< User settable name of the profile
-    uint32_t profileIndex;                        ///< Index of the profile on the modem
-    uint32_t callRef;                             ///< Reference for current call, if connected
+    uint32_t profileIndex;                      ///< Index of the profile on the modem
+    uint32_t callRef;                           ///< Reference for current call, if connected
     le_event_Id_t sessionStateEvent;            ///< Event to report when session changes state
     pa_mdc_ProfileData_t modemData;             ///< Profile data that is written to the modem
+    bool    isOutdated;                         ///< ConfigDB outdated information
 }
 le_mdc_Profile_t;
 
@@ -75,7 +76,6 @@ static le_ref_MapRef_t DataProfileRefMap;
  */
 //--------------------------------------------------------------------------------------------------
 static le_mdc_Profile_t* ProfileTable[PA_MDC_MAX_PROFILE];
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -196,6 +196,9 @@ static le_mdc_Profile_Ref_t CreateProfile
     // Init the remaining fields
     profilePtr->callRef = 0;
 
+    // trigger the first configuration read from configDB
+    profilePtr->isOutdated = true;
+
     // Loop through the table until we find the first free modem profile index.  We are
     // guaranteed to find a free entry, otherwise, we would have already exited above.
     for (idx=0; idx<PA_MDC_MAX_PROFILE; idx++)
@@ -313,46 +316,506 @@ static void ApnProfileUpdate
     void* contextPtr
 )
 {
-    char apnName[LIMIT_MAX_PATH_BYTES] = {0};
-    char apnConfigPath[LIMIT_MAX_PATH_BYTES] = {0};
     le_mdc_Profile_Ref_t profileRef = (le_mdc_Profile_Ref_t)contextPtr;
 
-    snprintf(apnConfigPath, sizeof(apnConfigPath), "%s/%s",
+    le_mdc_Profile_t* profilePtr = le_ref_Lookup(DataProfileRefMap, profileRef);
+    if (profilePtr == NULL)
+    {
+        LE_CRIT("Invalid reference (%p) found!", profileRef);
+        return;
+    }
+
+    LE_DEBUG("AccessPointName changed in configDB");
+
+    profilePtr->isOutdated = true;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the Packet Data Protocol (PDP) for the given profile.
+ * *
+ * @return
+ *      - LE_OK on success
+ *      - LE_BAD_PARAMETER if the PDP is not supported
+ *      - LE_NOT_POSSIBLE if the data session is currently connected for the given profile
+ *      - LE_FAULT if the profile object is invalid.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t SetPDP
+(
+    le_mdc_Profile_Ref_t profileRef,    ///< [IN] Set APN for this profile object
+    const char* pdpStr                  ///< [IN] The Packet Data Protocol
+)
+{
+    le_mdc_Profile_t* profilePtr = le_ref_Lookup(DataProfileRefMap, profileRef);
+    if (profilePtr == NULL)
+    {
+        LE_CRIT("Invalid reference (%p) found!", profileRef);
+        return LE_FAULT;
+    }
+    if (pdpStr == NULL)
+    {
+        LE_CRIT("pdpStr is NULL !");
+        return LE_FAULT;
+    }
+
+    le_result_t result;
+    bool isConnected;
+
+    result = le_mdc_GetSessionState(profileRef, &isConnected);
+    if ( (result != LE_OK) || isConnected )
+    {
+        return LE_NOT_POSSIBLE;
+    }
+
+    if      ( strcmp(pdpStr,"IPV4") == 0 )
+    {
+        profilePtr->modemData.pdp = PA_MDC_PDP_IPV4;
+    }
+    else if ( strcmp(pdpStr,"IPV6") == 0 )
+    {
+        profilePtr->modemData.pdp = PA_MDC_PDP_IPV6;
+    }
+    else if ( strcmp(pdpStr,"IPV4V6") == 0 )
+    {
+        profilePtr->modemData.pdp = PA_MDC_PDP_IPV4V6;
+    }
+    else
+    {
+        LE_WARN("'%s' is not supported",pdpStr);
+        return LE_BAD_PARAMETER;
+    }
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set authentication property
+ *
+ * @return
+ *      - LE_OVERFLOW  Buffer is too small
+ *      - LE_OK        The function succeed.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t SetAuthentication
+(
+    pa_mdc_Authentication_t *authenticationPtr, ///< the structure to fill
+    pa_mdc_AuthType_t type, ///< Authentication type
+    const char *userName,   ///< UserName used by authentication
+    const char *password    ///< Password used by authentication
+)
+{
+    le_result_t result;
+    authenticationPtr->type = type;
+
+    result = le_utf8_Copy(authenticationPtr->userName,
+                          userName,
+                          sizeof(authenticationPtr->userName),
+                          NULL);
+    if (result != LE_OK) {
+        return result;
+    }
+    result = le_utf8_Copy(authenticationPtr->password,
+                          password,
+                          sizeof(authenticationPtr->password),
+                          NULL);
+    if (result != LE_OK) {
+        return result;
+    }
+
+    return LE_OK;
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Read authentication node for type entry from configDB
+ *
+ * @return:
+ *  - true if succeed, false otherwise
+ */
+//--------------------------------------------------------------------------------------------------
+static bool ReadAuthNodeConfiguration
+(
+    le_cfg_IteratorRef_t mdcCfg,
+    const char*          type,
+    const char*          node,
+    char*                buffer,
+    size_t               bufferSize
+)
+{
+    char password[LIMIT_MAX_PATH_BYTES] = {0};
+    char configPath[LIMIT_MAX_PATH_BYTES] = {0} ;
+
+    snprintf(configPath, sizeof(configPath), "%s/%s",
+             type,
+             node);
+
+    if ( le_cfg_GetString(mdcCfg,configPath,password,sizeof(password),"") != LE_OK )
+    {
+        LE_WARN("The configuration value %s was too large for the internal buffer.  "
+                "Max size is %zu bytes.",
+                node,
+                sizeof(password));
+
+        return false;
+    }
+
+    if (strcmp(password, "") == 0)
+    {
+        LE_DEBUG("No %s authentication set for '%s'",node, type);
+        return false;
+    }
+
+    if (le_utf8_Copy(buffer,password,bufferSize,NULL) == LE_OVERFLOW )
+    {
+        LE_WARN("%s '%s' truncated to '%s'.",
+                node,
+                password,
+                buffer);
+        return false;
+    }
+
+    return true;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Read authentication entry from configDB for a given profile
+ *
+ * @return
+ *      - LE_FAULT     The function failed.
+ *      - LE_OK        The function succeed.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t ReadAuthConfiguration
+(
+    le_cfg_IteratorRef_t mdcCfg,
+    const char*          type,
+    le_mdc_Profile_Ref_t profilePtr
+)
+{
+    char configPath[LIMIT_MAX_PATH_BYTES] = {0} ;
+
+    snprintf(configPath, sizeof(configPath), "%s/%s",
+             type,
+             CFG_NODE_ENABLE);
+
+    bool authEnabled = le_cfg_GetBool(mdcCfg,configPath,false);
+
+    if (authEnabled)
+    {
+        pa_mdc_AuthType_t authType;
+        char userName[PA_MDC_USERNAME_MAX_BYTES];
+        char password[PA_MDC_APN_MAX_BYTES];
+        if (   !(ReadAuthNodeConfiguration(mdcCfg,type,CFG_NODE_USER,userName,sizeof(userName))
+            && ReadAuthNodeConfiguration(mdcCfg,type,CFG_NODE_PWD,password,sizeof(password))))
+        {
+            LE_WARN("Authentication information incomplete for '%s'",profilePtr->name);
+            return LE_FAULT;
+        }
+
+        if (strcmp(type,CFG_NODE_PAP)==0)
+        {
+            authType = PA_MDC_AUTH_PAP;
+        }
+        else if (strcmp(type,CFG_NODE_CHAP)==0)
+        {
+            authType = PA_MDC_AUTH_CHAP;
+        }
+        else
+        {
+            LE_WARN("Authentication '%s' is not supported",type);
+            return LE_FAULT;
+        }
+
+        if (SetAuthentication(&profilePtr->modemData.authentication,
+                              authType, userName,password) != LE_OK)
+        {
+            LE_WARN("Could not fill Authentication information");
+            return LE_FAULT;
+        }
+        LE_DEBUG("'%s' authentication set for profile '%s'",type, profilePtr->name);
+    }
+    else
+    {
+        LE_DEBUG("'%s' authentication disabled for profile '%s'",type, profilePtr->name);
+    }
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * load authentication property for a profile from the configuration tree
+ *
+ * @return
+ *      - LE_NOT_FOUND The profile does not exist.
+ *      - LE_FAULT     The function failed.
+ *      - LE_OK        The function succeed.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t ReadAuthenticationConfiguration
+(
+    le_mdc_Profile_Ref_t profileRef
+)
+{
+    le_result_t result = LE_OK;
+
+    le_mdc_Profile_t* profilePtr = le_ref_Lookup(DataProfileRefMap, profileRef);
+    if (profilePtr == NULL)
+    {
+        LE_CRIT("Invalid reference (%p) found!", profileRef);
+        return LE_NOT_FOUND;
+    }
+
+    char configPath[LIMIT_MAX_PATH_BYTES] = {0} ;
+    snprintf(configPath, sizeof(configPath), "%s/%s/%s",
              CFG_MODEMSERVICE_MDC_PATH,
-             profileRef->name);
+             profilePtr->name,
+             CFG_NODE_AUTH);
 
-    LE_DEBUG("AccessPointName change for profile <%s>", profileRef->name);
+    LE_DEBUG("Read Authentication for profile <%s>", profilePtr->name);
 
-    le_cfg_iteratorRef_t mdcCfg = le_cfg_CreateReadTxn(apnConfigPath);
+    le_cfg_IteratorRef_t mdcCfg = le_cfg_CreateReadTxn(configPath);
 
     do
     {
-        if ( le_cfg_GetString(mdcCfg,CFG_NODE_APN,apnName,sizeof(apnName)) != LE_OK )
+        // check if the node exits
+        if ( le_cfg_IsEmpty(mdcCfg,"") )
         {
-            LE_WARN("No APN configuration set for %s profile",profileRef->name);
+            if (SetAuthentication(&profilePtr->modemData.authentication,
+                                  PA_MDC_AUTH_NONE, "","") != LE_OK)
+            {
+                LE_WARN("Could not fill Authentication information");
+                return LE_FAULT;
+            }
+            LE_DEBUG("No authentication set for profile '%s'", profilePtr->name);
+            break;
+        }
+
+        if ( ReadAuthConfiguration(mdcCfg,CFG_NODE_PAP,profilePtr) != LE_OK)
+        {
+            LE_WARN("Authentication information incomplete for '%s'",profilePtr->name);
+            result = LE_FAULT;
+            break;
+        }
+        else if ( ReadAuthConfiguration(mdcCfg,CFG_NODE_CHAP,profilePtr) != LE_OK)
+        {
+            LE_WARN("Authentication information incomplete for '%s'",profilePtr->name);
+            result = LE_FAULT;
+            break;
+        }
+
+    } while (false);
+
+    le_cfg_CancelTxn(mdcCfg);
+    return result;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * load APN property for a profile from the configuration tree
+ *
+ * @return
+ *      - LE_NOT_FOUND The profile does not exist.
+ *      - LE_FAULT     The function failed.
+ *      - LE_OK        The function succeed.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t ReadAPNConfiguration
+(
+    le_mdc_Profile_Ref_t profileRef
+)
+{
+    le_result_t result = LE_OK;
+
+    char apnName[LIMIT_MAX_PATH_BYTES] = {0};
+    char configPath[LIMIT_MAX_PATH_BYTES] = {0};
+
+    le_mdc_Profile_t* profilePtr = le_ref_Lookup(DataProfileRefMap, profileRef);
+    if (profilePtr == NULL)
+    {
+        LE_CRIT("Invalid reference (%p) found!", profileRef);
+        return LE_NOT_FOUND;
+    }
+
+    snprintf(configPath, sizeof(configPath), "%s/%s",
+             CFG_MODEMSERVICE_MDC_PATH,
+             profilePtr->name);
+
+    LE_DEBUG("Read AccessPointName for profile <%s>", profilePtr->name);
+
+    le_cfg_IteratorRef_t mdcCfg = le_cfg_CreateReadTxn(configPath);
+
+    do
+    {
+        if ( le_cfg_GetString(mdcCfg,CFG_NODE_APN,apnName,sizeof(apnName),"") != LE_OK )
+        {
+            LE_WARN("APN configuration string too large for %s profile",profilePtr->name);
+            result = LE_FAULT;
+            break;
+        }
+
+        if ( strcmp(apnName,"") == 0 )
+        {
+            LE_WARN("No APN configuration set for %s profile",profilePtr->name);
+            result = LE_FAULT;
             break;
         }
 
         if ( SetAPN(profileRef,apnName) != LE_OK )
         {
-            LE_WARN("Could not Set the APN for the profile %s",profileRef->name);
+            LE_WARN("Could not Set the APN for the profile %s",profilePtr->name);
+            result = LE_FAULT;
             break;
         }
 
         LE_DEBUG("New APN <%s> set for profile <%s>",
-                 profileRef->modemData.apn,
-                 profileRef->name);
+                profilePtr->modemData.apn,
+                profilePtr->name);
     } while (false);
 
-    le_cfg_DeleteIterator(mdcCfg);
+    le_cfg_CancelTxn(mdcCfg);
+
+    return result;
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * load PDP property for a profile from the configuration tree
+ *
+ * @return
+ *      - LE_NOT_FOUND The profile does not exist.
+ *      - LE_FAULT     The function failed.
+ *      - LE_OK        The function succeed.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t ReadPDPConfiguration
+(
+    le_mdc_Profile_Ref_t profileRef
+)
+{
+    le_result_t result = LE_OK;
+
+    char pdpType[LIMIT_MAX_PATH_BYTES] = {0};
+    char configPath[LIMIT_MAX_PATH_BYTES] = {0};
+
+    le_mdc_Profile_t* profilePtr = le_ref_Lookup(DataProfileRefMap, profileRef);
+    if (profilePtr == NULL)
+    {
+        LE_CRIT("Invalid reference (%p) found!", profileRef);
+        return LE_NOT_FOUND;
+    }
+
+    snprintf(configPath, sizeof(configPath), "%s/%s",
+             CFG_MODEMSERVICE_MDC_PATH,
+             profilePtr->name);
+
+    LE_DEBUG("Read PacketDataProtocol for profile <%s>.", profilePtr->name);
+
+    le_cfg_IteratorRef_t mdcCfg = le_cfg_CreateReadTxn(configPath);
+
+    do
+    {
+        // Get PDP type node
+        if ( le_cfg_GetString(mdcCfg,CFG_NODE_PDP,pdpType,sizeof(pdpType),"") != LE_OK )
+        {
+            LE_WARN("PDP configuration string for %s profile too large.  "
+                    "Max string size is %zu bytes.",
+                    profilePtr->name,
+                    sizeof(pdpType));
+            result = LE_FAULT;
+            break;
+        }
+
+        if ( strcmp(pdpType,"") == 0 )
+        {
+            LE_WARN("No PDP configuration set for %s profile.",profilePtr->name);
+            LE_WARN("Use the default one: IPV4");
+            if ( le_utf8_Copy(pdpType,"IPV4",sizeof(pdpType),NULL) == LE_OVERFLOW )
+            {
+                LE_ERROR("PDP '%s' is too long.", "IPV4");
+                result = LE_FAULT;
+                break;
+            }
+        }
+
+        if ( SetPDP(profileRef,pdpType) != LE_OK )
+        {
+            LE_WARN("Could not Set the PDP for the profile %s.",profilePtr->name);
+            result = LE_FAULT;
+            break;
+        }
+
+        LE_DEBUG("New PDP <%s> set for profile <%s>.",
+                pdpType,
+                profilePtr->name);
+    } while (false);
+
+    le_cfg_CancelTxn(mdcCfg);
+
+    return result;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Check MDC entries change in the configDB
+ *
+ * @return
+ *      - LE_FAULT     The function failed.
+ *      - LE_OK        The function succeed.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t CheckOutdatedProfileInformation
+(
+    le_mdc_Profile_Ref_t profileRef
+)
+{
+    le_mdc_Profile_t* profilePtr = le_ref_Lookup(DataProfileRefMap, profileRef);
+    if (profilePtr == NULL)
+    {
+        LE_CRIT("Invalid reference (%p) found!", profileRef);
+        return LE_FAULT;
+    }
+
+    if (profilePtr->isOutdated)
+    {
+        if ( ReadAPNConfiguration(profileRef) != LE_OK )
+        {
+            return LE_FAULT;
+        }
+
+        if ( ReadPDPConfiguration(profileRef) != LE_OK )
+        {
+            return LE_FAULT;
+        }
+
+        if ( ReadAuthenticationConfiguration(profileRef) != LE_OK )
+        {
+            return LE_FAULT;
+        }
+
+        if ( StoreProfile(profileRef) != LE_OK )
+        {
+            return LE_FAULT;
+        }
+
+        // TODO: Set outdated flags to false when track ticket #663 will be implemented
+    }
+
+    return LE_OK;
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Create and load a profile from the configuration tree
  *
  * @return
- *      - LE_NOT_FOUND The profile does not exist.
  *      - LE_FAULT     The function failed.
  *      - LE_OK        The function succeed.
  */
@@ -363,7 +826,6 @@ static le_result_t LoadOneProfile
 )
 {
     le_result_t result = LE_OK;
-    char apnName[LIMIT_MAX_PATH_BYTES] = {0};
     char apnConfigPath[LIMIT_MAX_PATH_BYTES] = {0};
 
     char configPath[LIMIT_MAX_PATH_BYTES];
@@ -371,44 +833,15 @@ static le_result_t LoadOneProfile
              CFG_MODEMSERVICE_MDC_PATH,
              profileNamePtr);
 
-    le_cfg_iteratorRef_t mdcCfg = le_cfg_CreateReadTxn(configPath);
+    le_cfg_IteratorRef_t mdcCfg = le_cfg_CreateReadTxn(configPath);
 
     do
     {
-        // check if the node exits
-        if ( le_cfg_IsEmpty(mdcCfg,"") )
-        {
-            LE_DEBUG("Profile '%s' not found in configTree", profileNamePtr);
-            result = LE_NOT_FOUND;
-            break;
-        }
-
-        if ( le_cfg_GetString(mdcCfg,CFG_NODE_APN,apnName,sizeof(apnName)) != LE_OK )
-        {
-            LE_WARN("No APN configuration set for %s profile",profileNamePtr);
-            result = LE_NOT_FOUND;
-            break;
-        }
-
         // Create the profile from the configDB
         le_mdc_Profile_Ref_t profileRef = CreateProfile(profileNamePtr);
         if (!profileRef)
         {
             LE_WARN("Could not create the profile %s",profileNamePtr);
-            result = LE_FAULT;
-            break;
-        }
-
-        if ( SetAPN(profileRef,apnName) != LE_OK )
-        {
-            LE_WARN("Could not Set the APN for the profile %s",profileNamePtr);
-            result = LE_FAULT;
-            break;
-        }
-
-        if ( StoreProfile(profileRef) != LE_OK )
-        {
-            LE_WARN("Could not store the profile %s",profileNamePtr);
             result = LE_FAULT;
             break;
         }
@@ -419,9 +852,17 @@ static le_result_t LoadOneProfile
                  CFG_NODE_APN);
         // Add a configDb handler to check if the APN change.
         le_cfg_AddChangeHandler(apnConfigPath,ApnProfileUpdate,profileRef);
+
+        if ( CheckOutdatedProfileInformation(profileRef) != LE_OK)
+        {
+            LE_WARN("Could check outdated profile information");
+            result = LE_FAULT;
+            break;
+        }
+
     } while (false);
 
-    le_cfg_DeleteIterator(mdcCfg);
+    le_cfg_CancelTxn(mdcCfg);
     return result;
 }
 
@@ -436,39 +877,49 @@ static void LoadAllProfileFromConfigDb
 )
 {
     // Check that the modemDataConnection has a configuration value.
-    le_cfg_iteratorRef_t mdcCfg = le_cfg_CreateReadTxn(CFG_MODEMSERVICE_MDC_PATH);
+    le_cfg_IteratorRef_t mdcCfg = le_cfg_CreateReadTxn(CFG_MODEMSERVICE_MDC_PATH);
 
     // Check if there is one entry into the configDB, if not add a default one.
     if (le_cfg_GoToFirstChild(mdcCfg) != LE_OK)
     {
         LE_WARN("No configuration for modemServices installed.");
-        le_cfg_DeleteIterator(mdcCfg);
+        le_cfg_CancelTxn(mdcCfg);
         return;
     }
 
     // Read all profile from configDB
-    do
+    if ( le_cfg_NodeExists(mdcCfg,"") == false )
     {
-        // Get the profile name.
-        char profileName[LIMIT_MAX_PATH_BYTES] = {0};
-
-        if ( le_cfg_GetNodeName(mdcCfg, profileName, sizeof(profileName)) != LE_OK)
-        {
-            LE_WARN("No Profile configuration for modemServices installed.");
-            break;
-        }
-
-        // Create and load the profile
-        if ( LoadOneProfile(profileName) != LE_OK )
-        {
-            LE_WARN("Could not load '%s' profile from configTree", profileName);
-            break;
-        }
+        LE_WARN("No Profile configuration for modemServices installed.");
     }
-    while (le_cfg_GoToNextSibling(mdcCfg) == LE_OK);
+    else
+    {
+        do
+        {
+            // Get the profile name.
+            char profileName[LIMIT_MAX_PATH_BYTES] = {0};
 
-    le_cfg_DeleteIterator(mdcCfg);
+            if ( le_cfg_GetNodeName(mdcCfg,"",profileName,sizeof(profileName)) != LE_OK )
+            {
+                LE_ERROR("Profile name at too large for internal buffers.  "
+                         "Maximum size is %zu bytes.",
+                         sizeof(profileName));
+                break;
+            }
+
+            // Create and load the profile
+            if ( LoadOneProfile(profileName) != LE_OK )
+            {
+                LE_WARN("Could not load '%s' profile from configTree", profileName);
+                break;
+            }
+        }
+        while (le_cfg_GoToNextSibling(mdcCfg) == LE_OK);
+    }
+
+    le_cfg_CancelTxn(mdcCfg);
 }
+
 
 // =============================================
 //  MODULE/COMPONENT FUNCTIONS
@@ -624,7 +1075,22 @@ le_result_t le_mdc_StartSession
         return LE_FAULT;
     }
 
-    return pa_mdc_StartSession(profilePtr->profileIndex, &profilePtr->callRef);
+    if ( CheckOutdatedProfileInformation(profileRef) != LE_OK )
+    {
+        return LE_NOT_POSSIBLE;
+    }
+
+    switch (profilePtr->modemData.pdp)
+    {
+        case PA_MDC_PDP_IPV4:
+            return pa_mdc_StartSessionIPV4(profilePtr->profileIndex, &profilePtr->callRef);
+        case PA_MDC_PDP_IPV6:
+            return pa_mdc_StartSessionIPV6(profilePtr->profileIndex, &profilePtr->callRef);
+        case PA_MDC_PDP_IPV4V6:
+            return pa_mdc_StartSessionIPV4V6(profilePtr->profileIndex, &profilePtr->callRef);
+        default:
+            return pa_mdc_StartSessionIPV4(profilePtr->profileIndex, &profilePtr->callRef);
+    }
 }
 
 
@@ -655,7 +1121,6 @@ le_result_t le_mdc_StopSession
 
     return pa_mdc_StopSession(profilePtr->callRef);
 }
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -792,6 +1257,40 @@ le_result_t le_mdc_GetInterfaceName
 }
 
 
+/**
+ * Get the IP address for the given profile, if the data session is connected.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_OVERFLOW if the IP address would not fit in ipAddrStr
+ *      - LE_NOT_POSSIBLE for all other errors
+ *
+ * @note
+ *      The process exits, if an invalid profile object is given
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mdc_GetIPAddress
+(
+    le_mdc_Profile_Ref_t profileRef,   ///< [IN] Query this profile object
+    char*  ipAddrStr,                  ///< [OUT] The IP address in dotted format
+    size_t ipAddrStrSize               ///< [IN] The size in bytes of the address buffer
+)
+{
+    le_mdc_Profile_t* profilePtr = le_ref_Lookup(DataProfileRefMap, profileRef);
+    if (profilePtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) found!", profileRef);
+        return LE_FAULT;
+    }
+    if (ipAddrStr == NULL)
+    {
+        LE_KILL_CLIENT("IPAddrStr is NULL !");
+        return LE_FAULT;
+    }
+
+    return pa_mdc_GetIPAddress(profilePtr->profileIndex, ipAddrStr, ipAddrStrSize);
+}
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Get the gateway IP address for the given profile, if the data session is connected.
@@ -874,4 +1373,197 @@ le_result_t le_mdc_GetDNSAddresses
                                   dns2AddrStr, dns2AddrStrSize);
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Access Point Name for the given profile, if the data session is connected.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_OVERFLOW if the Access Point Name would not fit in apnNameStr
+ *      - LE_NOT_POSSIBLE for all other errors
+ *
+ * @note
+ *      The process exits, if an invalid profile object is given
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mdc_GetAccessPointName
+(
+    le_mdc_Profile_Ref_t profileRef,   ///< [IN] Query this profile object
+    char*  apnNameStr,                 ///< [OUT] The Access Point Name
+    size_t apnNameStrSize              ///< [IN] The size in bytes of the address buffer
+)
+{
+    le_mdc_Profile_t* profilePtr = le_ref_Lookup(DataProfileRefMap, profileRef);
+    if (profilePtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) found!", profileRef);
+        return LE_FAULT;
+    }
+    if (apnNameStr == NULL)
+    {
+        LE_KILL_CLIENT("IPAddrStr is NULL !");
+        return LE_FAULT;
+    }
 
+    return pa_mdc_GetAccessPointName(profilePtr->profileIndex, apnNameStr, apnNameStrSize);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Data Bearer Technology for the given profile, if the data session is connected.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_NOT_POSSIBLE for all other errors
+ *
+ * @note
+ *      The process exits, if an invalid profile object is given
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mdc_GetDataBearerTechnology
+(
+    le_mdc_Profile_Ref_t profileRef,                        ///< [IN] Query this profile object
+    le_mdc_dataBearerTechnology_t* dataBearerTechnologyPtr  ///< [OUT] The data bearer technology
+)
+{
+    le_mdc_Profile_t* profilePtr = le_ref_Lookup(DataProfileRefMap, profileRef);
+    if (profilePtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) found!", profileRef);
+        return LE_FAULT;
+    }
+    if (dataBearerTechnologyPtr == NULL)
+    {
+        LE_KILL_CLIENT("IPAddrStr is NULL !");
+        return LE_FAULT;
+    }
+
+    return pa_mdc_GetDataBearerTechnology(profilePtr->profileIndex, dataBearerTechnologyPtr);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Allow the caller to know if the given profile is actually supporting IPv4.
+ *
+ * @return TRUE if PDP type is IPv4, FALSE otherwise.
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+bool le_mdc_IsIPV4
+(
+    le_mdc_Profile_Ref_t profileRef        ///< [IN] Query this profile object
+)
+{
+    pa_mdc_SessionType_t ipFamily;
+    le_mdc_Profile_t* profilePtr = le_ref_Lookup(DataProfileRefMap, profileRef);
+    if (profilePtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) found!", profileRef);
+        return LE_FAULT;
+    }
+
+    if (pa_mdc_GetSessionType(profilePtr->profileIndex,&ipFamily) != LE_OK)
+    {
+        LE_WARN("Could not get the Session Type");
+        return false;
+    }
+
+    return (ipFamily == PA_MDC_SESSION_IPV4);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Allow the caller to know if the given profile is actually supporting IPv4.
+ *
+ * @return TRUE if PDP type is IPv6, FALSE otherwise.
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+bool le_mdc_IsIPV6
+(
+    le_mdc_Profile_Ref_t profileRef        ///< [IN] Query this profile object
+)
+{
+    pa_mdc_SessionType_t ipFamily;
+    le_mdc_Profile_t* profilePtr = le_ref_Lookup(DataProfileRefMap, profileRef);
+    if (profilePtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) found!", profileRef);
+        return LE_FAULT;
+    }
+
+    if (pa_mdc_GetSessionType(profilePtr->profileIndex,&ipFamily) != LE_OK)
+    {
+        LE_WARN("Could not get the Session Type");
+        return false;
+    }
+
+    return (ipFamily == PA_MDC_SESSION_IPV6);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get number of bytes received/transmitted without error since the last reset.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_NOT_POSSIBLE for all other errors
+ *
+ * @note
+ *      - The process exits, if an invalid pointer is given
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mdc_GetBytesCounters
+(
+    uint64_t *rxBytes,  ///< [OUT] bytes amount received since the last counter reset
+    uint64_t *txBytes   ///< [OUT] bytes amount transmitted since the last counter reset
+)
+{
+    if (rxBytes == NULL)
+    {
+        LE_KILL_CLIENT("rxBytes is NULL !");
+        return LE_FAULT;
+    }
+    if (txBytes == NULL)
+    {
+        LE_KILL_CLIENT("txBytes is NULL !");
+        return LE_FAULT;
+    }
+
+    pa_mdc_PktStatistics_t data;
+    le_result_t result = pa_mdc_GetDataFlowStatistics(&data);
+    if ( result != LE_OK )
+    {
+        return result;
+    }
+
+    *rxBytes = data.receivedBytesCount;
+    *txBytes = data.transmittedBytesCount;
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Reset received/transmitted data flow statistics
+ *
+ * * @return
+ *      - LE_OK on success
+ *      - LE_NOT_POSSIBLE for all other errors
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mdc_ResetBytesCounter
+(
+    void
+)
+{
+    return pa_mdc_ResetDataFlowStatistics();
+}

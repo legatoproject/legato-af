@@ -6,7 +6,7 @@
 
 @section inLegato Legato Installation Packages
 
-Go to https://developer.sierrawireless.com/legato for access to the latest Legato package downloads including:
+Go to http://developer.sierrawireless.com/landing/legato.aspx for access to the latest Legato package downloads including:
 - Legato application framework and sample applications with open source code, 
 and Yocto recipes and kernel source to build Legato Linux images for AR7 and WP7 devices (available on GitHub).
 

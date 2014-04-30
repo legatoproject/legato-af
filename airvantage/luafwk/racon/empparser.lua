@@ -79,7 +79,7 @@ local api = { }; api.__index = api
 local serialize = yajl.to_string
 
 local function deserialize(str)
-    return str and yajl.to_value('['..str..']')[1] or yajl.null
+    return str and yajl.to_value('['..str..']', {check_utf8=false})[1] or yajl.null
 end
 
 -- Create and return a new instance of an EMP Parser
@@ -113,16 +113,15 @@ local function parse(self)
 
             log('EMP', 'DEBUG', "[->RCV] [RSP] #%d %s %s", rid, cmdname, serialized_payload)
 
-        if self.inprogress[rid] == "TIMEDOUT" then
-           self.inprogress[rid] = nil
-           self.inprogress.n = self.inprogress.n-1
+            if self.inprogress[rid] == "TIMEDOUT" then
+                self.inprogress[rid] = nil
+                self.inprogress.n = self.inprogress.n-1
             elseif self.inprogress[rid] then
-           self.inprogress[rid] = nil -- this finishes an in-progress command
-           self.inprogress.n = self.inprogress.n-1
-
-           sched.signal(self, cmdname..tostring(rid), status, payload)
+                self.inprogress[rid] = nil -- this finishes an in-progress command
+                self.inprogress.n = self.inprogress.n-1
+                sched.signal(self, cmdname..tostring(rid), status, payload)
             else
-           log("EMP", "ERROR", "Received an unexpected response: cmd [%s], payload [%s], rid[%d]", cmdname, payload, rid)
+                log("EMP", "ERROR", "Received an unexpected response: cmd [%s], payload [%s], rid[%d]", cmdname, payload, rid)
             end
 
 
@@ -158,7 +157,7 @@ end
 function api:run(reconnect_handler)
     local s, err, skt, status
     while true do
-       s, err = copcall(parse, self)
+       s, err = copcall(parse, self) --parse doesn't return anything, err is only Lua error given by copcall.
        self.skt = errnum 'IPC_BROKEN'
        sched.signal(self, "ipc broken")
 
@@ -201,8 +200,8 @@ end
 
 function api:send_emp_cmd(cmd, payload)
     assert(type(cmd) == "string" and COMMAND_NAMES[cmd]) -- ensure the command exist
-    if not self.skt    then return errnum 'SERVER_UNREACHABLE', "connection closed" end
-    if self.skt == 517 then return errnum 'IPC_BROKEN', "ipc broken" end
+    if not self.skt    then return errnum 'SERVER_UNREACHABLE', "SERVER_UNREACHABLE:connection closed" end
+    if self.skt == 517 then return errnum 'IPC_BROKEN', "IPC_BROKEN:ipc broken" end
 
     sendcmd(self, cmd, getrequestid(self, cmd), payload)
     return "ok"
@@ -213,9 +212,9 @@ local ERR_SERVER_UNREACHABLE = errnum 'SERVER_UNREACHABLE'
 
 function api:send_emp_cmd_wait(cmd, payload)
     assert(type(cmd) == "string" and COMMAND_NAMES[cmd]) -- ensure the command exist
-    if not self.skt then return ERR_SERVER_UNREACHABLE, "connection closed" end
-    if self.skt == ERR_IPC_BROKEN then return ERR_IPC_BROKEN, "ipc broken" end
-    if self.skt == ERR_SERVER_UNREACHABLE then return ERR_SERVER_UNREACHABLE, "server unreachable" end
+    if not self.skt then return ERR_SERVER_UNREACHABLE, "SERVER_UNREACHABLE:connection closed" end
+    if self.skt == ERR_IPC_BROKEN then return ERR_IPC_BROKEN, "IPC_BROKEN:ipc broken" end
+    if self.skt == ERR_SERVER_UNREACHABLE then return ERR_SERVER_UNREACHABLE, "SERVER_UNREACHABLE:server unreachable" end
 
     local rid = getrequestid(self, cmd)
     -- launch it in background (sched.run does not cause a yield) so we are sure that the following wait will not miss an event !!
@@ -224,15 +223,15 @@ function api:send_emp_cmd_wait(cmd, payload)
     local ev, s, p = sched.wait(self, {cmd..tostring(rid), 'closed', 'ipc broken', M.cmd_timeout})
     if ev == 'closed' then
        self.inprogress[rid] = nil
-       return errnum 'COMMUNICATION_ERROR', "server unreachable"
+       return errnum 'COMMUNICATION_ERROR', "COMMUNICATION_ERROR:server unreachable"
     end
     if ev == 'timeout' then
        self.inprogress[rid] = "TIMEDOUT"
-       return errnum 'TIMEOUT', "timeout for ack expired"
+       return errnum 'TIMEOUT', "TIMEOUT:timeout for ack expired"
     end
     if ev == 'ipc broken' then
        self.inprogress[rid] = nil
-       return errnum 'CLOSED', "ipc broken"
+       return errnum 'CLOSED', "CLOSED:ipc broken"
     end
     return s, p
 end

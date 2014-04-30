@@ -39,6 +39,8 @@ start[ \t\n]*:              { return START; }
 numProcs[ \t\n]*:           { return NUM_PROCS; }
 mqueueSize[ \t\n]*:         { return MQUEUE_SIZE; }
 rtSignalQueueSize[ \t\n]*:  { return RT_SIGNAL_QUEUE_SIZE; }
+memLimit[ \t\n]*:           { return MEMORY_LIMIT; }
+cpuShare[ \t\n]*:           { return CPU_SHARE; }
 fileSystemSize[ \t\n]*:     { return FILE_SYSTEM_SIZE; }
 components[ \t\n]*:         { return COMPONENTS; }
 groups[ \t\n]*:             { return GROUPS; }
@@ -48,7 +50,6 @@ processes[ \t\n]*:          { return PROCESSES; }
 run[ \t\n]*:                { return RUN; }
 envVars[ \t\n]*:            { return ENV_VARS; }
 priority[ \t\n]*:           { return PRIORITY; }
-vMemSize[ \t\n]*:           { return V_MEM_SIZE; }
 coreFileSize[ \t\n]*:       { return CORE_FILE_SIZE; }
 maxFileSize[ \t\n]*:        { return MAX_FILE_SIZE; }
 memLockSize[ \t\n]*:        { return MEM_LOCK_SIZE; }

@@ -1,9 +1,12 @@
 
 // -------------------------------------------------------------------------------------------------
-/*
+/**
+ *  @file stringBuffer.c
+ *
  *  Helper code for maintaining largish buffers of string memory.
  *
- *  Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ *  Copyright (C) Sierra Wireless, Inc. 2013, 2014. All rights reserved. Use of this work is subject
+ *  to license.
  */
 // -------------------------------------------------------------------------------------------------
 
@@ -13,13 +16,11 @@
 
 
 
-//--------------------------------------------------------------------------------------------------
-/**
- *  Our pool for data strings.
- */
-//--------------------------------------------------------------------------------------------------
+/// Our pool for data strings.
 static le_mem_PoolRef_t StringBufferPoolRef = NULL;
 
+
+/// Our name for the data string pool.
 #define CFG_STRING_BUFFER_POOL "configTree.stringPool"
 
 
@@ -28,12 +29,18 @@ static le_mem_PoolRef_t StringBufferPoolRef = NULL;
 //--------------------------------------------------------------------------------------------------
 /**
  *  Init the buffer pool this code depends on.
+ *
+ *  @return Pointer to the new string buffer.
  */
 //--------------------------------------------------------------------------------------------------
 void sb_Init
 (
+    void
 )
+//--------------------------------------------------------------------------------------------------
 {
+    LE_DEBUG("** Initialize String Buffer subsystem.");
+
     StringBufferPoolRef = le_mem_CreatePool(CFG_STRING_BUFFER_POOL, SB_SIZE);
 }
 
@@ -47,7 +54,9 @@ void sb_Init
 //--------------------------------------------------------------------------------------------------
 char* sb_Get
 (
+    void
 )
+//--------------------------------------------------------------------------------------------------
 {
     char* buffer = le_mem_ForceAlloc(StringBufferPoolRef);
     memset(buffer, 0, SB_SIZE);
@@ -61,12 +70,15 @@ char* sb_Get
 //--------------------------------------------------------------------------------------------------
 /**
  *  Crate a new copy of an existing string buffer object.
+ *
+ *  @return a new copy of the given string.
  */
 //--------------------------------------------------------------------------------------------------
 char* sb_NewCopy
 (
     const char* stringPtr  ///< The buffer to duplicate.
 )
+//--------------------------------------------------------------------------------------------------
 {
     char* bufferPtr = sb_Get();
     strncpy(bufferPtr, stringPtr, SB_SIZE);
@@ -86,6 +98,7 @@ void sb_Release
 (
     char* bufferPtr  ///< The string to release.
 )
+//--------------------------------------------------------------------------------------------------
 {
     le_mem_Release(bufferPtr);
 }

@@ -1,9 +1,12 @@
 
 // -------------------------------------------------------------------------------------------------
-/*
+/**
+ *  @file stringBuffer.h
+ *
  *  Helper code for maintaining largish buffers of string memory.
  *
- *  Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ *  Copyright (C) Sierra Wireless, Inc. 2013, 2014. All rights reserved. Use of this work is subject
+ *  to license.
  */
 // -------------------------------------------------------------------------------------------------
 
@@ -13,7 +16,7 @@
 
 
 
-#define SB_SIZE 512
+#define SB_SIZE ((size_t)512)
 
 
 
@@ -25,6 +28,7 @@
 //--------------------------------------------------------------------------------------------------
 void sb_Init
 (
+    void
 );
 
 
@@ -33,10 +37,13 @@ void sb_Init
 //--------------------------------------------------------------------------------------------------
 /**
  *  Allocate a new string from our pool.
+ *
+ *  @return Pointer to the new string buffer.
  */
 //--------------------------------------------------------------------------------------------------
 char* sb_Get
 (
+    void
 );
 
 
@@ -45,6 +52,8 @@ char* sb_Get
 //--------------------------------------------------------------------------------------------------
 /**
  *  Crate a new copy of an existing string buffer object.
+ *
+ *  @return a new copy of the given string.
  */
 //--------------------------------------------------------------------------------------------------
 char* sb_NewCopy

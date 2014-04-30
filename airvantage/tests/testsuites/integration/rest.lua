@@ -10,7 +10,7 @@ local sprint        = sprint
 local table         = table
 local http          = require 'socket.http'
 local loader        = require 'utils.loader' 
-
+local upath         = require 'utils.path'
 
 local t = u.newtestsuite 'Rest Integration'
 local targetManager = nil
@@ -19,7 +19,7 @@ local baseurl = "http://localhost:"..defaultport.."/"
 
 
 
-local function modifyDefaultConfigFile(path)
+local function modifyDefaultConfigFile(path, values)
   -- load the file
   local defconf = require "agent.defaultconfig"
 
@@ -27,6 +27,14 @@ local function modifyDefaultConfigFile(path)
   defconf.rest.activate = true
   defconf.rest.port = defaultport
   
+  --values: specific values to modify in config
+  --values: a key/value map eg: { ["server.url"] = "tcp://foo.bar"}
+  if type(values) == "table" then
+    for k,v in pairs(values) do
+      upath.set(defconf, k, v)
+    end
+  end
+
   os.execute("rm -rf "..path.."/runtime/persist")
   os.execute("rm -rf "..path.."/runtime/crypto")
   
@@ -272,7 +280,7 @@ function t:test_ReadDeviceTreeNoHandlerSlash()
   u.assert_not_nil(r, "HTTP request got an empty response")
   u.assert_equal(500, c)
   
-  u.assert_equal("handler not found", r)
+  u.assert_equal("NOT_FOUND", r)
 end
 
 
@@ -304,7 +312,7 @@ function t:test_ReadDeviceTreeNoHandlerNoLeafDot()
   u.assert_not_nil(r, "HTTP request got an empty response")
   u.assert_equal(500, c)
   
-  u.assert_equal("handler not found", r)
+  u.assert_equal("NOT_FOUND", r)
 end
 
 function t:test_ReadDeviceTreeCustomName()
@@ -704,6 +712,179 @@ function t:test_UPDATEDeviceTreeConfigServer()
   
   u.assert_equal("HTTP/UPDATE is not supported for devicetree/config/myserver", httpResponse[r])
   end
+
+--No latency -> synchronous Server connection
+function t:test_RequestServerConnectionSync()
+ -- Change default config file to match the test requirement
+  local path = targetManager.targetdir
+  local refconf = modifyDefaultConfigFile(path)
+
+  -- Start the Agent and get a RPC connection on it
+  targetManager:start()
+  sched.wait(2)
+  local rpcclient = targetManager:getrpc(false)
+
+
+  -- Request
+  local url = baseurl.."server"
+  local tbody = {}
+
+  local httpBodyJSON = yajl.to_string(tbody)
+  local httpHeaders = { ["content-Type"]   = "application/json",
+                        ["content-length"] = tostring(#httpBodyJSON)} -- The length is needed because the body is sent chunked
+  local httpResponse = {}
+
+  local r, c, h = http.request{
+    url = url,
+    method = "GET",
+    headers = httpHeaders,
+    source = ltn12.source.string(httpBodyJSON),
+    sink = ltn12.sink.table(httpResponse)}
+
+  rpcclient:call('os.exit', 0)
+
+  u.assert_equal(200, c, httpResponse[r])
+end
+
+
+--Just test url pattern
+function t:test_RequestServerConnectionErrorUrl1()
+ -- Change default config file to match the test requirement
+  local path = targetManager.targetdir
+  local refconf = modifyDefaultConfigFile(path)
+
+  -- Start the Agent and get a RPC connection on it
+  targetManager:start()
+  sched.wait(2)
+  local rpcclient = targetManager:getrpc(false)
+
+
+  -- Request
+  local url = baseurl.."aaaaserver"
+  local tbody = {}
+
+  local httpBodyJSON = yajl.to_string(tbody)
+  local httpHeaders = { ["content-Type"]   = "application/json",
+                        ["content-length"] = tostring(#httpBodyJSON)} -- The length is needed because the body is sent chunked
+  local httpResponse = {}
+
+  local r, c, h = http.request{
+    url = url,
+    method = "GET",
+    headers = httpHeaders,
+    source = ltn12.source.string(httpBodyJSON),
+    sink = ltn12.sink.table(httpResponse)}
+
+  rpcclient:call('os.exit', 0)
+
+  u.assert_equal(404, c, httpResponse[r])
+end
+
+--Just test url pattern
+function t:test_RequestServerConnectionErrorUrl2()
+ -- Change default config file to match the test requirement
+  local path = targetManager.targetdir
+  local refconf = modifyDefaultConfigFile(path)
+
+  -- Start the Agent and get a RPC connection on it
+  targetManager:start()
+  sched.wait(2)
+  local rpcclient = targetManager:getrpc(false)
+
+
+  -- Request
+  local url = baseurl.."serverbbbb"
+  local tbody = {}
+
+  local httpBodyJSON = yajl.to_string(tbody)
+  local httpHeaders = { ["content-Type"]   = "application/json",
+                        ["content-length"] = tostring(#httpBodyJSON)} -- The length is needed because the body is sent chunked
+  local httpResponse = {}
+
+  local r, c, h = http.request{
+    url = url,
+    method = "GET",
+    headers = httpHeaders,
+    source = ltn12.source.string(httpBodyJSON),
+    sink = ltn12.sink.table(httpResponse)}
+
+  rpcclient:call('os.exit', 0)
+
+  u.assert_equal(404, c, httpResponse[r])
+end
+
+--No latency -> synchronous Server connection
+--set bad url to ensure connection error
+-- ensure Rest API get the connection error
+function t:test_RequestServerConnectionSyncError()
+  -- Change default config file to match the test requirement
+  local path = targetManager.targetdir
+  -- configure bad server url for this test, so that connection will fail
+  local refconf = modifyDefaultConfigFile(path, { ["server.url"] = "tcp://foo.bar"})
+
+  -- Start the Agent and get a RPC connection on it
+  targetManager:start()
+  sched.wait(2)
+  local rpcclient = targetManager:getrpc(false)
+
+
+  -- Request
+  local url = baseurl.."server/"
+  local tbody = {}
+
+  local httpBodyJSON = yajl.to_string(tbody)
+  local httpHeaders = { ["content-Type"]   = "application/json",
+                        ["content-length"] = tostring(#httpBodyJSON)} -- The length is needed because the body is sent chunked
+  local httpResponse = {}
+
+  local r, c, h = http.request{
+    url = url,
+    method = "GET",
+    headers = httpHeaders,
+    source = ltn12.source.string(httpBodyJSON),
+    sink = ltn12.sink.table(httpResponse)}
+
+  rpcclient:call('os.exit', 0)
+
+  u.assert_equal(500, c, httpResponse[r])
+end
+
+
+--Add latency parameter
+function t:test_RequestServerConnectionASync()
+ -- Change default config file to match the test requirement
+  local path = targetManager.targetdir
+  local refconf = modifyDefaultConfigFile(path)
+
+  -- Start the Agent and get a RPC connection on it
+  targetManager:start()
+  sched.wait(2)
+  local rpcclient = targetManager:getrpc(false)
+
+
+  -- Request
+  local url = baseurl.."server?latency=42"
+  local tbody = {}
+
+  local httpBodyJSON = yajl.to_string(tbody)
+  local httpHeaders = { ["content-Type"]   = "application/json",
+                        ["content-length"] = tostring(#httpBodyJSON)} -- The length is needed because the body is sent chunked
+  local httpResponse = {}
+
+  local r, c, h = http.request{
+    url = url,
+    method = "GET",
+    headers = httpHeaders,
+    source = ltn12.source.string(httpBodyJSON),
+    sink = ltn12.sink.table(httpResponse)}
+
+  rpcclient:call('os.exit', 0)
+
+  -- For now we only check the request was accepted.
+  -- Testing that the connection actually occurred n sec later requires to add end to end 
+  -- capabilities to the test.
+  u.assert_equal(200, c, httpResponse[r])
+end
 
 
 return {init = init}

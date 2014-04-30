@@ -44,9 +44,9 @@ function MT :get(hpath)
         return nil, children_set
     else
         local cell = get_cell(self, hpath)
-        if not cell then return nil, "no such path" end
+        if not cell then return nil, "NOT_FOUND" end
         local getter = cell.get
-        if not getter then return nil, "non-readable path" end
+        if not getter then return nil, "NOT_PERMITTED:non-readable path" end
         return getter(hpath)
     end
 end
@@ -58,9 +58,9 @@ function MT :set(hmap)
 
     for hpath, value in pairs(hmap) do
         local cell = get_cell(self, hpath)
-        if not cell then return nil, "no such path" end
+        if not cell then return nil, "NOT_FOUND" end
         local setter = cell.set
-        if not setter then return nil, "non-writable path" end
+        if not setter then return nil, "NOT_PERMITTED:non-writable path" end
         local previous_value
         if tonotify then
             local getter = cell.get

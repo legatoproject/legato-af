@@ -433,32 +433,42 @@ static void GenerateAppLimitsConfig
 {
     if (App.IsSandboxed() == false)
     {
-        cfgStream << "\"sandboxed\" \"false\"" << std::endl;
+        cfgStream << "  \"sandboxed\" !f" << std::endl;
     }
 
     if (App.Debug() == true)
     {
-        cfgStream << "\"debug\" \"true\"" << std::endl;
+        cfgStream << "  \"debug\" !t" << std::endl;
     }
 
     if (App.StartMode() == legato::App::MANUAL)
     {
-        cfgStream << "\"deferLaunch\" \"yes\"" << std::endl;
+        cfgStream << "  \"deferLaunch\" !t" << std::endl;
     }
 
     if (App.NumProcs() != SIZE_MAX)
     {
-        cfgStream << "\"numProcessesLimit\" \"" << App.NumProcs() << "\"" << std::endl;
+        cfgStream << "  \"numProcessesLimit\" [" << App.NumProcs() << "]" << std::endl;
     }
 
     if (App.MqueueSize() != SIZE_MAX)
     {
-        cfgStream << "\"totalPosixMsgQueueSizeLimit\" \"" << App.MqueueSize() << "\"" << std::endl;
+        cfgStream << "  \"totalPosixMsgQueueSizeLimit\" [" << App.MqueueSize() << "]" << std::endl;
     }
 
     if (App.RtSignalQueueSize() != SIZE_MAX)
     {
-        cfgStream << "\"rtSignalQueueSizeLimit\" \"" << App.RtSignalQueueSize() << "\"" << std::endl;
+        cfgStream << "  \"rtSignalQueueSizeLimit\" [" << App.RtSignalQueueSize() << "]" << std::endl;
+    }
+
+    if (App.MemLimit() != SIZE_MAX)
+    {
+        cfgStream << "\"memLimit\" [" << App.MemLimit() << "]" << std::endl;
+    }
+
+    if (App.CpuShare() != SIZE_MAX)
+    {
+        cfgStream << "\"cpuShare\" [" << App.CpuShare() << "]" << std::endl;
     }
 
     if (App.FileSystemSize() != SIZE_MAX)
@@ -471,7 +481,7 @@ static void GenerateAppLimitsConfig
         }
         else
         {
-            cfgStream << "\"fileSystemSizeLimit\" \"" << App.FileSystemSize() << "\"" << std::endl;
+            cfgStream << "  \"fileSystemSizeLimit\" [" << App.FileSystemSize() << "]" << std::endl;
         }
     }
 }
@@ -509,15 +519,15 @@ static void GenerateGroupsConfig
 
     // Group names are specified by inserting empty leaf nodes under the "groups" branch
     // of the application's configuration tree.
-    cfgStream << "\"groups\"" << std::endl;
-    cfgStream << "{" << std::endl;
+    cfgStream << "  \"groups\"" << std::endl;
+    cfgStream << "  {" << std::endl;
 
     for (auto groupName : groupsList)
     {
-        cfgStream << "\"" << groupName << "\" \"\"" << std::endl;
+        cfgStream << "  \"" << groupName << "\" \"\"" << std::endl;
     }
 
-    cfgStream << "}" << std::endl << std::endl;
+    cfgStream << "  }" << std::endl << std::endl;
 }
 
 
@@ -535,11 +545,11 @@ static void GenerateSingleFileMappingConfig
 )
 //--------------------------------------------------------------------------------------------------
 {
-    cfgStream << "  \"" << index++ << "\"" << std::endl;
-    cfgStream << "  {" << std::endl;
-    cfgStream << "    \"src\" \"" << mapping.m_SourcePath << "\"" << std::endl;
-    cfgStream << "    \"dest\" \"" << mapping.m_DestPath << "\"" << std::endl;
-    cfgStream << "  }" << std::endl;
+    cfgStream << "    \"" << index++ << "\"" << std::endl;
+    cfgStream << "    {" << std::endl;
+    cfgStream << "      \"src\" \"" << mapping.m_SourcePath << "\"" << std::endl;
+    cfgStream << "      \"dest\" \"" << mapping.m_DestPath << "\"" << std::endl;
+    cfgStream << "    }" << std::endl;
 }
 
 
@@ -559,8 +569,8 @@ static void GenerateFileMappingConfig
 
     // Create nodes under "files", where each node is named with an index, starting a 0,
     // and contains a "src" node and a "dest" node.
-    cfgStream << "\"files\"" << std::endl;
-    cfgStream << "{" << std::endl;
+    cfgStream << "  \"files\"" << std::endl;
+    cfgStream << "  {" << std::endl;
 
     // Import the standard libraries that everyone needs.
     const char* libList[] = {   "/lib/ld-linux.so.3",
@@ -583,23 +593,48 @@ static void GenerateFileMappingConfig
     }
     // Included files also need to be imported into the application sandbox.
     // But, the import is from a point relative to the app's install directory.
+    // On the target, the source file will be found in the application's install directory,
+    // under a directory whose path is the same as the directory in which the file will appear
+    // inside the sandbox.  For example, if the app is installed under /opt/legato/apps/myApp/,
+    // then the file /opt/legato/apps/myApp/usr/share/beep.wav would appear inside the sandbox
+    // under the directory /usr/share/.
     for (const auto& mapping : App.IncludedFiles())
     {
         legato::FileMapping importMapping = mapping;
+
+        // Extract the name of the source file, as it will appear in the application's install
+        // directory on target.
         std::string sourceFileName = legato::GetLastPathNode(mapping.m_SourcePath);
 
-        // If the destination is a directory name, append the file name from the source.
+        // If the destination is a directory name, the file's name in the application sandbox will
+        // be the same as the file's name in the application install directory, and the
+        // Supervisor will automatically add the file name onto the end of the destination path.
         if (mapping.m_DestPath.back() == '/')
         {
-            importMapping.m_DestPath += sourceFileName;
+            // The source path must be a relative path from the application install directory,
+            // so skip over the leading '/' in the destination path (which must be absolute)
+            // and copy the rest to the source path.
             importMapping.m_SourcePath = importMapping.m_DestPath.substr(1);
+
+            // Append the original source path's file name to the new source path.
+            importMapping.m_SourcePath += sourceFileName;
+
         }
-        // If the destination is a file name, the source file name may be different from the
-        // destination file name.
+        // But, if the destination is a file name, the file name in the sandbox (dest path) may be
+        // different from the file name in the application install directory (source path)
         else
         {
-            std::string destDir = legato::GetContainingDir(importMapping.m_DestPath);
-            importMapping.m_SourcePath = destDir.substr(1) + '/' + sourceFileName;
+            // Get the directory path that is the same relative to both the root of the sandbox
+            // and the application's install directory.  (Skip the leading '/' in the dest path
+            // and strip off the file name.)
+            std::string dirPath = legato::GetContainingDir(importMapping.m_DestPath.substr(1));
+
+            // Generate the file mapping's source path relative to the application's install
+            // directory.
+            importMapping.m_SourcePath = dirPath + '/' + sourceFileName;
+
+            // Note: the destination path requires no modification in this case.  It will already
+            // be an absolute path to a file inside the sandbox.
         }
 
         GenerateSingleFileMappingConfig(cfgStream, index++, importMapping);
@@ -626,7 +661,7 @@ static void GenerateFileMappingConfig
         }
     }
 
-    cfgStream << "}" << std::endl << std::endl;
+    cfgStream << "  }" << std::endl << std::endl;
 }
 
 
@@ -650,8 +685,8 @@ static void GenerateProcessEnvVarsConfig
     // Any environment variables are declared under a node called "envVars".
     // Each env var has its own node, with the name of the node being the name of
     // the environment variable.
-    cfgStream << "    \"envVars\"" << std::endl;
-    cfgStream << "    {" << std::endl;
+    cfgStream << "      \"envVars\"" << std::endl;
+    cfgStream << "      {" << std::endl;
     for (const auto& pair : procEnv.EnvVarList())
     {
         if (pair.first == "PATH")
@@ -659,7 +694,7 @@ static void GenerateProcessEnvVarsConfig
             pathSpecified = true;
         }
 
-        cfgStream << "      \"" << pair.first << "\" \"" << pair.second << "\""
+        cfgStream << "        \"" << pair.first << "\" \"" << pair.second << "\""
                   << std::endl;
     }
 
@@ -671,10 +706,10 @@ static void GenerateProcessEnvVarsConfig
         {
             path = "/opt/legato/apps/" + App.Name() + "/bin:" + path;
         }
-        cfgStream << "      \"PATH\" \"" << path << "\"" << std::endl;
+        cfgStream << "        \"PATH\" \"" << path << "\"" << std::endl;
     }
 
-    cfgStream << "    }" << std::endl;
+    cfgStream << "      }" << std::endl;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -690,73 +725,69 @@ static void GenerateProcessConfig
 //--------------------------------------------------------------------------------------------------
 {
     // Create nodes under "procs", where each process has its own node, named after the process.
-    cfgStream << "\"procs\"" << std::endl;
-    cfgStream << "{" << std::endl;
+    cfgStream << "  \"procs\"" << std::endl;
+    cfgStream << "  {" << std::endl;
 
     for (const auto& procEnv : App.ProcEnvironments())
     {
         for (const auto& process : procEnv.ProcessList())
         {
-            cfgStream << "  \"" << process.Name() << "\"" << std::endl;
-            cfgStream << "  {" << std::endl;
+            cfgStream << "    \"" << process.Name() << "\"" << std::endl;
+            cfgStream << "    {" << std::endl;
 
             // If the process has debugging enabled, then add a "debug" configuration
             // node for this process that contains the debug port number to be used.
             if (process.IsDebuggingEnabled())
             {
-                cfgStream << "    \"debug\" \"" << process.DebugPort() << "\"" << std::endl;
+                cfgStream << "      \"debug\" [" << process.DebugPort() << "]" << std::endl;
             }
 
             // The command-line argument list is an indexed list of arguments under a node called
             // "args", where the first argument (0) must be the executable to run.
-            cfgStream << "    \"args\"" << std::endl;
-            cfgStream << "    {" << std::endl;
-            cfgStream << "      \"0\" \"" << process.ExePath() << "\"" << std::endl;
+            cfgStream << "      \"args\"" << std::endl;
+            cfgStream << "      {" << std::endl;
+            cfgStream << "        \"0\" \"" << process.ExePath() << "\"" << std::endl;
             int argIndex = 1;
             for (const auto& arg : process.CommandLineArgs())
             {
-                cfgStream << "      \"" << argIndex << "\" \"" << arg << "\"" << std::endl;
+                cfgStream << "        \"" << argIndex << "\" \"" << arg << "\"" << std::endl;
                 argIndex++;
             }
-            cfgStream << "    }" << std::endl;
+            cfgStream << "      }" << std::endl;
 
             GenerateProcessEnvVarsConfig(cfgStream, procEnv);
 
             // Generate the priority, fault action, and limits configuration.
             if (procEnv.FaultAction() != "")
             {
-                cfgStream << "    \"faultAction\" \"" << procEnv.FaultAction() << "\"" << std::endl;
+                cfgStream << "      \"faultAction\" \"" << procEnv.FaultAction() << "\"" << std::endl;
             }
             if (procEnv.Priority() != "")
             {
-                cfgStream << "    \"priority\" \"" << procEnv.Priority() << "\"" << std::endl;
-            }
-            if (procEnv.VMemSize() != SIZE_MAX)
-            {
-                cfgStream << "    \"virtualMemoryLimit\" \"" << procEnv.VMemSize() << "\"" << std::endl;
+                cfgStream << "      \"priority\" \"" << procEnv.Priority() << "\"" << std::endl;
             }
             if (procEnv.CoreFileSize() != SIZE_MAX)
             {
-                cfgStream << "    \"coreDumpFileSizeLimit\" \"" << procEnv.CoreFileSize() << "\"" << std::endl;
+                cfgStream << "      \"coreDumpFileSizeLimit\" [" << procEnv.CoreFileSize() << "]" << std::endl;
             }
             if (procEnv.MaxFileSize() != SIZE_MAX)
             {
-                cfgStream << "    \"maxFileSizeLimit\" \"" << procEnv.MaxFileSize() << "\"" << std::endl;
+                cfgStream << "      \"maxFileSizeLimit\" [" << procEnv.MaxFileSize() << "]" << std::endl;
             }
             if (procEnv.MemLockSize() != SIZE_MAX)
             {
-                cfgStream << "    \"memLockSizeLimit\" \"" << procEnv.MemLockSize() << "\"" << std::endl;
+                cfgStream << "      \"memLockSizeLimit\" [" << procEnv.MemLockSize() << "]" << std::endl;
             }
             if (procEnv.NumFds() != SIZE_MAX)
             {
-                cfgStream << "    \"numFileDescriptorsLimit\" \"" << procEnv.NumFds() << "\"" << std::endl;
+                cfgStream << "      \"numFileDescriptorsLimit\" [" << procEnv.NumFds() << "]" << std::endl;
             }
 
-            cfgStream << "  }" << std::endl;
+            cfgStream << "    }" << std::endl;
         }
     }
 
-    cfgStream << "}" << std::endl << std::endl;
+    cfgStream << "  }" << std::endl << std::endl;
 }
 
 
@@ -783,6 +814,8 @@ static void GenerateSupervisorConfig
 
     std::ofstream cfgStream(path, std::ofstream::trunc);
 
+    cfgStream << "{" << std::endl << std::endl;
+
     GenerateAppLimitsConfig(cfgStream);
 
     GenerateGroupsConfig(cfgStream);
@@ -790,6 +823,8 @@ static void GenerateSupervisorConfig
     GenerateFileMappingConfig(cfgStream);
 
     GenerateProcessConfig(cfgStream);
+
+    cfgStream << "}" << std::endl;
 }
 
 

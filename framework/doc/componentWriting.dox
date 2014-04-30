@@ -20,25 +20,20 @@ Components can be implemented in any supported programming language.
 
 Components built using a compiled language, like C or Java, get built into libraries that
 can be placed into executables.  Source files for interpreted languages don't get compiled,
-but can also be placed into exectutables, in which case, the appropriate interpreter gets
-included in the executable too.
+but can also be placed into executables, in which case, the appropriate interpreter also gets
+included in the executable.
 
 When multiple components written in the same programming language get included in the same
 executable together, they can call each other's exported API functions, just as one library
-can call another library's API functions in a normal program.  However, the real power of
-component-based development is unleashed when components make use of language-independent
-IPC instead.  This allows interfaces to be implemented in one language and used in another,
-which
- - opens up opportunities for code reuse from projects written in different languages and
- - frees developers to use the language that is best suited for any given task.
+can call another library's API functions in a normal program. 
 
-But, even when a whole project is written in the same language, using language-independent IPC
+But if a language-independent IPC approach to component-based development is followed, 
+interfaces can be implemented in one language and used in another. This opens up opportunities 
+for code reuse from projects written in different languages, and frees developers to use the language best suited for a given task.
 
- - makes the component inherently more reusable for future projects,
- - creates opportunities for isolation of functions in different processes or even different
-application sandboxes,
- - automatically creates debugging trace points
-
+But even when an entire project is written in the same language, using language-independent IPC makes 
+the component inherently more reusable, creates opportunities for function isolation in different processes or different
+application sandboxes, and automatically creates debugging trace points.
 
 @section writecomponentWhatsNext What's Next?
 
@@ -51,12 +46,13 @@ Other component writing topics:
 
 Or move to the <b>next level</b>: 
 
- @ref componentCatalog   <br>
+@ref defFiles  <br>
+ @ref legatoServices  <br>
  @ref legatoAPIs
 
 <HR>
 
-Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved.
+Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
 
 **/
 

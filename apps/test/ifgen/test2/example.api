@@ -1,40 +1,75 @@
-/*
+/**
+ * @page ifgentest Testing IfGen Doxygen Support
+ *
+ * @ref interface.h "Click here for the API Reference documentation."
+ *
  * Example interface file
+ */
+
+/**
+ * @file interface.h
+ *
+ * Legato @ref ifgentest include file.
  *
  * Copyright (C) Sierra Wireless, Inc. 2013.  All rights reserved. Use of this work is subject to license.
  */
 
-// Handler definition
+
+USETYPES common;
+
+DEFINE TEN = common.TEN;
+DEFINE TWENTY = TEN + common.TEN;
+DEFINE SOME_STRING = "some string";
+
+
+/**
+ * Handler definition
+ */
 HANDLER TestA
 {
     ADD_HANDLER_PARAMS ();
 
     HANDLER_PARAMS
     (
-        int32 x
+        int32 x   ///< First parameter for the handler
+                  ///< Second comment line
     );
         
     //ADD_HANDLER_PARAMS ();
 };
 
-// Function takes all the possible kinds of parameters, but returns nothing
+/**
+ * Function takes all the possible kinds of parameters, but returns nothing
+ */
 FUNCTION allParameters
 (
-    int32 a,
+    common.EnumExample a,  ///< first one-line comment
+                           ///< second one-line comment
     uint32 b OUT,
-    uint32 data[10] IN,
-    uint32 output[10] OUT,
-    string label [10..20] IN,
-    string response [20] OUT
+    uint32 data[common.TEN] IN,
+
+    uint32 output[TEN] OUT,   ///< some more comments here
+    ///< and some comments here as well
+
+    string label [common.TEN..20] IN,
+    string response [TWENTY] OUT,
+    ///< comments on final parameter, first line
+    ///< and more comments
+
+    string more [TWENTY] OUT   ///< This parameter tests a bug fix
 );
 
-// This function fakes an event, so that the handler will be callled.  
-// Only needed for testing.  Would never exist on a real system.
+/**
+ * This function fakes an event, so that the handler will be called.  
+ * Only needed for testing.  Would never exist on a real system.
+ */
 FUNCTION TriggerTestA
 (
 );
 
-// Handler definition for testing bugs
+/**
+ * Handler definition for testing bugs
+ */
 HANDLER BugTest
 {
     HANDLER_PARAMS

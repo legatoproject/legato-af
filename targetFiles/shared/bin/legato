@@ -53,7 +53,7 @@ StartLegato()
     # Configure the Supervisor to start the sysProcs.
     mkdir -p $SUPERVISOR_CONFIG_ROOT &&
     > $SUPERVISOR_CONFIG_ROOT/sysProcs
-    for procName in serviceDirectory logCtrlDaemon configTree audioDaemon modemDaemon posDaemon dcsDaemon agent
+    for procName in serviceDirectory logCtrlDaemon configTree audioDaemon modemDaemon posDaemon dcsDaemon cnetDaemon agent
     do
         if [ ! -f "/usr/local/bin/$procName" ]
         then

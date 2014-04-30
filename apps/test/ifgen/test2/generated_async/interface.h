@@ -7,6 +7,20 @@
  * ====================== WARNING ======================
  */
 
+/**
+ * @page ifgentest Testing IfGen Doxygen Support
+ *
+ * @ref interface.h "Click here for the API Reference documentation."
+ *
+ * Example interface file
+ */
+/**
+ * @file interface.h
+ *
+ * Legato @ref ifgentest include file.
+ *
+ * Copyright (C) Sierra Wireless, Inc. 2013.  All rights reserved. Use of this work is subject to license.
+ */
 
 #ifndef INTERFACE_H_INCLUDE_GUARD
 #define INTERFACE_H_INCLUDE_GUARD
@@ -14,9 +28,13 @@
 
 #include "legato.h"
 
+// Interface specific includes
+#include "common_interface.h"
+
+
 //--------------------------------------------------------------------------------------------------
 /**
- * Start the client main thread
+ * Start the service for the client main thread
  */
 //--------------------------------------------------------------------------------------------------
 void StartClient
@@ -36,6 +54,50 @@ void StopClient
 );
 
 
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+#define TEN 10
+
+
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+#define TWENTY 20
+
+
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+#define SOME_STRING "some string"
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Reference type for TestA handler ADD/REMOVE functions
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct TestA* TestARef_t;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Reference type for BugTest handler ADD/REMOVE functions
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct BugTest* BugTestRef_t;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler definition
+ *
+ * @param x
+ *        First parameter for the handler
+ *        Second comment line
+ * @param contextPtr
+ */
+//--------------------------------------------------------------------------------------------------
 typedef void (*TestAFunc_t)
 (
     int32_t x,
@@ -43,16 +105,21 @@ typedef void (*TestAFunc_t)
 );
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler definition for testing bugs
+ *
+ * @param contextPtr
+ */
+//--------------------------------------------------------------------------------------------------
 typedef void (*BugTestFunc_t)
 (
     void* contextPtr
 );
 
-typedef struct TestA* TestARef_t;
-
 //--------------------------------------------------------------------------------------------------
 /**
- * This function adds a handler ...
+ * TestA handler ADD function
  */
 //--------------------------------------------------------------------------------------------------
 TestARef_t AddTestA
@@ -66,7 +133,7 @@ TestARef_t AddTestA
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function removes a handler ...
+ * TestA handler REMOVE function
  */
 //--------------------------------------------------------------------------------------------------
 void RemoveTestA
@@ -76,12 +143,16 @@ void RemoveTestA
 );
 
 //--------------------------------------------------------------------------------------------------
-
+/**
+ * Function takes all the possible kinds of parameters, but returns nothing
+ */
 //--------------------------------------------------------------------------------------------------
 void allParameters
 (
-    int32_t a,
+    common_EnumExample_t a,
         ///< [IN]
+        ///< first one-line comment
+        ///< second one-line comment
 
     uint32_t* bPtr,
         ///< [OUT]
@@ -94,6 +165,8 @@ void allParameters
 
     uint32_t* outputPtr,
         ///< [OUT]
+        ///< some more comments here
+        ///< and some comments here as well
 
     size_t* outputNumElementsPtr,
         ///< [INOUT]
@@ -103,24 +176,34 @@ void allParameters
 
     char* response,
         ///< [OUT]
+        ///< comments on final parameter, first line
+        ///< and more comments
 
-    size_t responseNumElements
+    size_t responseNumElements,
+        ///< [IN]
+
+    char* more,
+        ///< [OUT]
+        ///< This parameter tests a bug fix
+
+    size_t moreNumElements
         ///< [IN]
 );
 
 //--------------------------------------------------------------------------------------------------
-
+/**
+ * This function fakes an event, so that the handler will be called.
+ * Only needed for testing.  Would never exist on a real system.
+ */
 //--------------------------------------------------------------------------------------------------
 void TriggerTestA
 (
     void
 );
 
-typedef struct BugTest* BugTestRef_t;
-
 //--------------------------------------------------------------------------------------------------
 /**
- * This function adds a handler ...
+ * BugTest handler ADD function
  */
 //--------------------------------------------------------------------------------------------------
 BugTestRef_t AddBugTest
@@ -137,7 +220,7 @@ BugTestRef_t AddBugTest
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function removes a handler ...
+ * BugTest handler REMOVE function
  */
 //--------------------------------------------------------------------------------------------------
 void RemoveBugTest

@@ -77,13 +77,22 @@ end
 local function EMPGetVariable(assetid, payload)
     local prefix, lpath_list = unpack(payload)
     local v, l = treemgr.get(prefix ~= "" and prefix or nil, lpath_list)
-    return 0, { niltoken(v), l }
+    if not v and type(l) == "string" then return asscon.formaterr(l) end
+    return errnum("OK"), { niltoken(v), l }
 end
 
 local function EMPSetVariable(assetid, payload)
     local path, value = unpack(payload)
-    local res, err = treemgr.set(path, value) -- ensure we don't give niltoken to treemgr
-    return 0, { niltoken(res), err }
+    local res, err = treemgr.set(path, value)
+
+     -- An error occured
+    if not res and type(err) == "string" then return asscon.formaterr(err) end
+
+    -- At least one callback returned an error, theses errors have been collected into a table.
+    -- Returning this table.
+    if not res and type(err) == "table" then return errnum("OK"), err end
+    if res and res ~= "ok" then return errnum("OK"), res end -- no callbacks acknowledged the changes, returning "not handled"
+    return errnum("OK")
 end
 
 local dt_id_idx = 0
@@ -109,7 +118,7 @@ local function EMPRegisterVariable(assetid, payload)
 
     -- ensure we don't give niltoken to treemgr
     tm_id, err = treemgr.register(prefix ~= "" and prefix or nil, regvars, hook, passivevars)
-    if not tm_id then return nil, err end
+    if not tm_id then return asscon.formaterr(err) end
     dt_id = "DT_ID_"..dt_id_idx
     dt_id_idx = dt_id_idx+1
     dt2tm[dt_id]=tm_id
@@ -117,17 +126,17 @@ local function EMPRegisterVariable(assetid, payload)
 end
 
 local function EMPUnregisterVariable(assetid, dt_id)
-    if not dt_id then return errnum 'BAD_PARAMETER', "no devicetree id provided to unregister" end
+    if not dt_id then return asscon.formaterr("BAD_PARAMETER:no devicetree id provided to unregister") end
     local tm_id = dt2tm[dt_id]
     dt2tm[dt_id] = nil
-    if not tm_id then return errnum 'UNSPECIFIED_ERROR', "no matching treemanager id found" end
+    if not tm_id then return asscon.formaterr("no matching treemanager id found") end
     local res, err = treemgr.unregister(tm_id)
     if res then return 0
-    else return errnum 'UNSPECIFIED_ERROR', (err or "unknown error") end
+    else return asscon.formaterr(err) end
 end
 
 local function rest_get_handler(env)
-   local node = env["suburl"]:gsub("/", "%.")
+   local node = env["suburl"] and env["suburl"]:gsub("/", ".") or ""
    local v, l = treemgr.get(nil, node)
    if not v and type(l) == "string" then
       return v, l
@@ -139,7 +148,7 @@ local function rest_set_handler(env)
    if not env["payload"] then
       return nil, "missing value"
    end
-   local node = env["suburl"]:gsub("/", "%.")
+   local node = env["suburl"] and env["suburl"]:gsub("/", ".") or ""
    return treemgr.set(node, env["payload"])
 end
 
@@ -170,8 +179,8 @@ function M.init(cfg)
     -- register rest commands
     if type(config.rest) == "table" and config.rest.activate == true  then
        local rest = require 'web.rest'
-       rest.register("devicetree/[%w.]+", "GET", rest_get_handler)
-       rest.register("devicetree/[%w.]+", "PUT", rest_set_handler)
+       rest.register("^devicetree", "GET", rest_get_handler)
+       rest.register("^devicetree", "PUT", rest_set_handler)
     else
        rest_get_handler = nil
        rest_set_handler = nil

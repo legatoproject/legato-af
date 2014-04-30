@@ -62,10 +62,12 @@ class App
         std::set<std::string> m_Groups;
 
         // RLimits:
-        size_t m_NumProcs;
-        size_t m_MqueueSize;
-        size_t m_RtSignalQueueSize;
-        size_t m_FileSystemSize;
+        size_t m_NumProcs;          // number of processes
+        size_t m_MqueueSize;        // bytes
+        size_t m_RtSignalQueueSize; // number of signals
+        size_t m_MemLimit;          // kilobytes
+        size_t m_CpuShare;          // relative share value
+        size_t m_FileSystemSize;    // bytes
 
     public:
         App();
@@ -103,6 +105,12 @@ class App
 
         void RtSignalQueueSize(size_t limit)   { m_RtSignalQueueSize = limit; }
         size_t RtSignalQueueSize() const { return m_RtSignalQueueSize; }
+
+        void MemLimit(size_t limit)   { m_MemLimit = limit; }
+        size_t MemLimit() const { return m_MemLimit; }
+
+        void CpuShare(size_t limit)   { m_CpuShare = limit; }
+        size_t CpuShare() const { return m_CpuShare; }
 
         void FileSystemSize(size_t limit) { m_FileSystemSize = limit; }
         size_t FileSystemSize() const { return m_FileSystemSize; }

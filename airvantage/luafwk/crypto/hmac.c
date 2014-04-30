@@ -34,9 +34,9 @@
 #include "lauxlib.h"
 #include "keystore.h"
 
-#define DIGEST_LEN     16
-#define HEX_DIGEST_LEN (2*DIGEST_LEN)
-#define KEY_LEN        64
+#define MAX_DIGEST_LEN      20 // Max length of candidate hash, in our case SHA1HashSize 20
+#define HEX_MAX_DIGEST_LEN  (2*MAX_DIGEST_LEN)
+#define KEY_LEN             64
 
 struct hmac_ctx_t {
     enum { HASH_MD5, HASH_SHA1 } hash;
@@ -47,9 +47,9 @@ struct hmac_ctx_t {
 
 static const char figures[]="0123456789abcdef";
 
-static void bin2hex( char hex[HEX_DIGEST_LEN], unsigned char bin[DIGEST_LEN]) {
+static void bin2hex( char hex[HEX_MAX_DIGEST_LEN], unsigned char bin[MAX_DIGEST_LEN]) {
     int i;
-    for( i=0; i<DIGEST_LEN; i++) {
+    for( i=0; i<MAX_DIGEST_LEN; i++) {
         int byte = bin[i];
         hex[2*i]   = figures[byte>>4];
         hex[2*i+1] = figures[byte&0xf];
@@ -72,7 +72,7 @@ static void h_update( struct hmac_ctx_t *ctx, unsigned char *data, size_t length
     else SHA1Input( & ctx->u.sha1, data, length);
 }
 
-static void h_digest( struct hmac_ctx_t *ctx, unsigned char digest[DIGEST_LEN]) {
+static void h_digest( struct hmac_ctx_t *ctx, unsigned char digest[MAX_DIGEST_LEN]) {
     if( HASH_MD5 == ctx->hash) MD5Final( digest, & ctx->u.md5);
     else SHA1Result( & ctx->u.sha1, digest);
 }
@@ -117,7 +117,9 @@ static int api_hmac_update( lua_State *L) {
  * as an hexadecimal string if it's false. */
 static int api_hmac_digest( lua_State *L) {
     struct hmac_ctx_t *ctx = checkhmac ( L, 1);
-    unsigned char digest[DIGEST_LEN];
+    int hsize = 16;
+    if( HASH_SHA1 == ctx->hash) hsize = 20;
+    unsigned char digest[MAX_DIGEST_LEN];
 
     if( ctx->digested) { lua_pushnil( L); lua_pushliteral( L, "digest already computed"); return 2; }
     ctx->digested = 1;
@@ -125,15 +127,15 @@ static int api_hmac_digest( lua_State *L) {
     h_digest( ctx, digest);  // (inner) digest = HASH(k_ipad..msg)
     h_init( ctx);            // reuse hash ctx to compute outer hash
     h_update( ctx, ctx->key, KEY_LEN); // key = k_opad
-    h_update( ctx, digest, DIGEST_LEN);
+    h_update( ctx, digest, hsize);
     h_digest(ctx, digest); // (outer) digest = MD5(k_opad..inner digest)
 
     if( lua_toboolean( L, 2)) {
-        lua_pushlstring( L, (const char *) digest, DIGEST_LEN);
+        lua_pushlstring( L, (const char *) digest, hsize);
     } else {
-        char hex[HEX_DIGEST_LEN];
+        char hex[HEX_MAX_DIGEST_LEN];
         bin2hex( hex, digest);
-        lua_pushlstring( L, (const char *) hex, HEX_DIGEST_LEN);
+        lua_pushlstring( L, (const char *) hex, 2 * hsize);
     }
 
     return 1;
@@ -179,5 +181,6 @@ int luaopen_crypto_hmac( lua_State *L) {
     return 1;
 #undef REG
 }
+
 
 

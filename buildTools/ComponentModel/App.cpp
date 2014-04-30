@@ -61,6 +61,8 @@ App::App
     m_NumProcs(SIZE_MAX),
     m_MqueueSize(SIZE_MAX),
     m_RtSignalQueueSize(SIZE_MAX),
+    m_MemLimit(SIZE_MAX),
+    m_CpuShare(SIZE_MAX),
     m_FileSystemSize(SIZE_MAX)
 //--------------------------------------------------------------------------------------------------
 {
@@ -92,6 +94,8 @@ App::App
     m_NumProcs(std::move(application.m_NumProcs)),
     m_MqueueSize(std::move(application.m_MqueueSize)),
     m_RtSignalQueueSize(std::move(application.m_RtSignalQueueSize)),
+    m_MemLimit(std::move(application.m_MemLimit)),
+    m_CpuShare(std::move(application.m_CpuShare)),
     m_FileSystemSize(std::move(application.m_FileSystemSize))
 {
 }
@@ -125,6 +129,8 @@ App& App::operator =
         m_NumProcs = std::move(application.m_NumProcs);
         m_MqueueSize = std::move(application.m_MqueueSize);
         m_RtSignalQueueSize = std::move(application.m_RtSignalQueueSize);
+        m_MemLimit = std::move(application.m_MemLimit);
+        m_CpuShare = std::move(application.m_CpuShare);
         m_FileSystemSize = std::move(application.m_FileSystemSize);
     }
 

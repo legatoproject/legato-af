@@ -25,7 +25,7 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Start the client main thread
+ * Start the service for the client main thread
  */
 //--------------------------------------------------------------------------------------------------
 void le_cfgAdmin_StartClient
@@ -64,7 +64,7 @@ void le_cfgAdmin_StopClient
 //--------------------------------------------------------------------------------------------------
 le_result_t le_cfgAdmin_ImportTree
 (
-    le_cfg_iteratorRef_t iteratorRef,
+    le_cfg_IteratorRef_t iteratorRef,
         ///< [IN]
         ///< The write iterator that is being used for the import.
 
@@ -97,7 +97,7 @@ le_result_t le_cfgAdmin_ImportTree
 //--------------------------------------------------------------------------------------------------
 le_result_t le_cfgAdmin_ExportTree
 (
-    le_cfg_iteratorRef_t iteratorRef,
+    le_cfg_IteratorRef_t iteratorRef,
         ///< [IN]
         ///< The write iterator that is being used for the export.
 
@@ -114,41 +114,19 @@ le_result_t le_cfgAdmin_ExportTree
 
 //--------------------------------------------------------------------------------------------------
 /**
- *  Create an iterator that can list all of the trees registered with the system.
- */
-//--------------------------------------------------------------------------------------------------
-le_cfgAdmin_treeIteratorRef_t le_cfgAdmin_CreateTreeIterator
-(
-    void
-);
-
-//--------------------------------------------------------------------------------------------------
-/**
- *  Call this function when you are done with the iterator.
- */
-//--------------------------------------------------------------------------------------------------
-void le_cfgAdmin_DeleteTreeIterator
-(
-    le_cfgAdmin_treeIteratorRef_t iteratorRef
-        ///< [IN]
-        ///< The iterator object to dispose of.
-);
-
-//--------------------------------------------------------------------------------------------------
-/**
  *  Read the name of the tree currently pointed at by the iterator.
+ *
+ *  @return
+ *    - LE_OK if there is enough room to copy the name into the supplied buffer.
+ *    - LE_OVERFLOW if not.
  */
 //--------------------------------------------------------------------------------------------------
-void le_cfgAdmin_GetTreeName
+le_result_t le_cfgAdmin_GetTreeName
 (
-    le_cfgAdmin_treeIteratorRef_t iteratorRef,
-        ///< [IN]
-        ///< The iterator object to read.
-
     char* name,
         ///< [OUT]
-        ///< The name of the currently referenced tree is
-        ///<   passed in this out parameter.
+        ///< The name of the currently referenced tree is passed in this out
+        ///< parameter.
 
     size_t nameNumElements
         ///< [IN]
@@ -158,13 +136,16 @@ void le_cfgAdmin_GetTreeName
 /**
  *  Move onto the next tree in the list.  If there are no more trees this function returns false,
  *  otherwise true is returned.
+ *
+ *  @return
+ *    - LE_OK if there are more trees to iterate through.
+ *    - LE_NOT_FOUND if not.
+ *    - LE_FAULT if the tree collection was changed in the middle of an iteration.
  */
 //--------------------------------------------------------------------------------------------------
-bool le_cfgAdmin_NextTree
+le_result_t le_cfgAdmin_NextTree
 (
-    le_cfgAdmin_treeIteratorRef_t iteratorRef
-        ///< [IN]
-        ///< The iterator object to increment.
+    void
 );
 
 

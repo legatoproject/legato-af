@@ -1,4 +1,4 @@
-#### Mihini Specifications
+####  Embedded framework and Agent Specifications
 
 This page regroups all stable specifications that are linked to the Embedded framework and Agent modules
 
@@ -22,6 +22,7 @@ This page regroups all stable specifications that are linked to the Embedded fra
         - [Using treemgr handlers for asset management](agent/Using_treemgr_handlers_for_asset_management.html)
 
 - Agent connector libraries
+    - [AirVantage Agent Connector library](agent_connector_libraries/Agent_Connector_Library.html)
     - [Racon Lua library](agent_connector_libraries/Racon_Lua_library.html)
     - [Embedded Micro Protocol (EMP)](agent_connector_libraries/Embedded_Micro_Protocol_EMP.html)
     - [Agent - UserGuide](agent_connector_libraries/Agent_UserGuide.html)

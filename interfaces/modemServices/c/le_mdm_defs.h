@@ -58,6 +58,14 @@ le_sim_States_t;
 //                                          MRC
 //--------------------------------------------------------------------------------------------------
 
+// Mobile Country Code length
+#define LE_MRC_MCC_LEN      3
+#define LE_MRC_MCC_BYTES    (LE_MRC_MCC_LEN+1)
+
+// Mobile network Code length
+#define LE_MRC_MNC_LEN      3
+#define LE_MRC_MNC_BYTES    (LE_MRC_MNC_LEN+1)
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Network Registration states.
@@ -76,6 +84,26 @@ typedef enum
 le_mrc_NetRegState_t;
 
 //--------------------------------------------------------------------------------------------------
+/**
+ * Radio Access Technology
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+typedef enum
+{
+    LE_MRC_RAT_UNKNOWN  = 0,     ///< Unknown
+    LE_MRC_RAT_GSM      = 1<<0,  ///< GSM network
+    LE_MRC_RAT_UTMS     = 1<<1,  ///< UTMS network
+    LE_MRC_RAT_LTE      = 1<<2,  ///< LTE network
+    LE_MRC_RAT_TC_SCDMA = 1<<3,  ///< TC SCDMA network
+    LE_MRC_RAT_ALL      = LE_MRC_RAT_GSM |
+                          LE_MRC_RAT_UTMS |
+                          LE_MRC_RAT_LTE |
+                          LE_MRC_RAT_TC_SCDMA   ///< All technology
+}
+le_mrc_Rat_t;
+
+//--------------------------------------------------------------------------------------------------
 //                                          MCC
 //--------------------------------------------------------------------------------------------------
 
@@ -86,7 +114,6 @@ le_mrc_NetRegState_t;
  */
 //--------------------------------------------------------------------------------------------------
 #define LE_TEL_NMBR_MAX_LEN      (15+2+1)
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -121,6 +148,42 @@ typedef enum
     LE_MCC_TERM_NOT_DEFINED,   ///< Undefined reason.
 }
 le_mcc_call_TerminationReason_t;
+
+
+//--------------------------------------------------------------------------------------------------
+//                                          MDC
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Enumeration to convey Data Bearer Technology.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef enum
+{
+    LE_MDC_DATA_BEARER_TECHNOLOGY_UNKNOWN = 0,              ///< Unknown
+    LE_MDC_DATA_BEARER_TECHNOLOGY_CDMA2000_1X,              ///< cdma2000 1X
+    LE_MDC_DATA_BEARER_TECHNOLOGY_CDMA2000_HRPD,            ///< cdma2000 HRPD (1xEV-DO)
+    LE_MDC_DATA_BEARER_TECHNOLOGY_GSM,                      ///< GSM
+    LE_MDC_DATA_BEARER_TECHNOLOGY_UMTS,                     ///< UMTS
+    LE_MDC_DATA_BEARER_TECHNOLOGY_CDMA200_HRPD,             ///< cdma200 HRPD (1xEV-DO RevA)
+    LE_MDC_DATA_BEARER_TECHNOLOGY_EDGE,                     ///< EDGE
+    LE_MDC_DATA_BEARER_TECHNOLOGY_HSDPA_WCDMA,              ///< HSDPA and WCDMA
+    LE_MDC_DATA_BEARER_TECHNOLOGY_WCDMA_HSUPA,              ///< WCDMA and HSUPA
+    LE_MDC_DATA_BEARER_TECHNOLOGY_HSDPA_HSUPA,              ///< HSDPA and HSUPA
+    LE_MDC_DATA_BEARER_TECHNOLOGY_LTE,                      ///< LTE
+    LE_MDC_DATA_BEARER_TECHNOLOGY_CDMA2000_EHRPD,           ///< cdma2000 EHRPD
+    LE_MDC_DATA_BEARER_TECHNOLOGY_HSDPAPLUS_WCDMA,          ///< HSDPA+ and WCDMA
+    LE_MDC_DATA_BEARER_TECHNOLOGY_HSDPAPLUS_HSUPA,          ///< HSDPA+ and HSUPA
+    LE_MDC_DATA_BEARER_TECHNOLOGY_DC_HSDPAPLUS_WCDMA,       ///< DC_HSDPA+ and WCDMA
+    LE_MDC_DATA_BEARER_TECHNOLOGY_DC_HSDPAPLUS_HSUPA,       ///< DC_HSDPA+ and HSUPA
+    LE_MDC_DATA_BEARER_TECHNOLOGY_HSDPAPLUS_64QAM,          ///< HSDPA+ and 64QAM
+    LE_MDC_DATA_BEARER_TECHNOLOGY_HSDPAPLUS_64QAM_HSUPA,    ///< HSDPA+, 64QAM and HSUPA
+    LE_MDC_DATA_BEARER_TECHNOLOGY_TDSCDMA,                  ///< TDSCDMA
+    LE_MDC_DATA_BEARER_TECHNOLOGY_TDSCDMA_HSDPA,            ///< TDSCDMA and HSDPA
+    LE_MDC_DATA_BEARER_TECHNOLOGY_TDSCDMA_HSUPA,            ///< TDSCDMA and HSUPA
+}
+le_mdc_dataBearerTechnology_t;
 
 
 //--------------------------------------------------------------------------------------------------

@@ -18,11 +18,12 @@ types, support to include C types is available.
 The interface file supports both C and C++ comment styles.  Comments that use the doxygen formats 
 @c /** to start a multi-line comment or @c ///< to start a one line comment receive special 
 processing.  Multi-line comments at the start of the interface file will be copied directly 
-to the appropriate generated files.  See @ref function and @ref handler for details on how comments
- are copied.
+to the appropriate generated files. 
+
+See @ref function and @ref handler for details on how comments are copied.
 
 @todo
- - Other types of interface objects may eventually be supported, such as classes
+ - Other types of interface objects may eventually be supported, e.g. classes
 
 @section types Type Support
 

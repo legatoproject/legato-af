@@ -99,7 +99,7 @@ local function record_insert(P, columns, path, record)
 
     -- Create the table if necessary before pushing data in it.
     if not sdb then
-        sdb, msg = stagedb('ram:'..support, columns)
+        sdb, msg = stagedb(path, 'ram', columns)
         if not sdb then return nil, msg end
         P.records[support] = sdb
         local r
@@ -178,9 +178,9 @@ function handle.TableNew(asset, x)
     -- create table if not exists or purged
     if not t then
         log('DATAMGR', 'DEBUG', "Create new table %s", table_id)
-        local sdb, errmsg = stagedb(table_id, x.columns)
+        local sdb, errmsg = stagedb(path, x.storage, x.columns)
         if not sdb then return errnum 'UNSPECIFIED_ERROR', errmsg end
-        t = { id=table_id, path=path, sdb=sdb }
+        t = { id=table_id, sdb=sdb }
     else log('DATAMGR', 'DEBUG', "Retrieving existing table %s", table_id) end
 
     t.send_policy=P
@@ -282,7 +282,7 @@ end
 --------------------------------------------------------------------------------
 local sdb_sendings_in_progress = { }
 
-local function sdb2srv(path, sdb, policy_to_kill, key_to_kill, dont_reset)
+local function sdb2srv(sdb, policy_to_kill, key_to_kill, dont_reset)
     if sdb_sendings_in_progress[sdb] then return nil, "already sending" end
     sdb_sendings_in_progress[sdb] = true
     local function src_factory()
@@ -299,7 +299,7 @@ local function sdb2srv(path, sdb, policy_to_kill, key_to_kill, dont_reset)
             local buff = { }
             assert(bss :setwriter(buff))
             assert(bss :object 'Message')
-            assert(bss (path))
+            assert(bss (sdb:getpath() ))
             assert(bss (0))
             return table.concat(buff)
         end
@@ -342,7 +342,7 @@ end
 
 -- simpler wrapper for sdb2srv to be consistent with consolidate for predeclared tables.
 local function tbl2srv(t, dont_reset)
-    return sdb2srv(t.path, t.sdb, nil, nil, dont_reset)
+    return sdb2srv(t.sdb, nil, nil, dont_reset)
 end
 
 --------------------------------------------------------------------------------
@@ -427,14 +427,13 @@ end
 
 -- Send a single policy; return true if there's a need to connect to the server.
 local function send_policy(P)
-    log('DATAMGR', 'INFO', "flushing policy %q", P.name)
+    log('DATAMGR', 'DETAIL', "flushing policy %q", P.name)
 
     local c = false -- whether a connection has been requested
 
     -- 1/ flush undeclared data record tables
     for support, sdb in pairs(P.records) do
-        local path = support :match("^[^:]+")
-        c = sdb2srv(path, sdb, P.records, support) or c
+        c = sdb2srv(sdb, P.records, support) or c
     end
 
     -- 2/ consolidate tables
@@ -461,12 +460,8 @@ local function send_policy(P)
         end
     end
 
-    -- 5/ reset periodic flush policy, if applicable
-    local t = P.periodic_timer
-    if t then timer.rearm(t) end
-
-    -- 6/ record next event date for the policy
-    t = t or P.cron_timer
+    -- 5/ record next event date for the policy
+    local t = P.periodic_timer or P.cron_timer
     P.nextevent = t and t.nd or nil
 
     if c then return true else return nil, "no need to connect" end
@@ -523,7 +518,7 @@ function handle.ConsoNew(asset, x)
     local src_table_id = x.src
     local src = TABLES[src_table_id]
     if not src then return errnum 'BAD_PARAMETER', "no such source table" end
-    local assetname = upath.split(src.path, 1)
+    local assetname = upath.split( src.sdb:getpath(), 1 );
 
     local dst_path = upath.concat(assetname, x.path)
     local dst_table_id = get_table_id (dst_path, x.storage, x.columns)
@@ -554,9 +549,9 @@ function handle.ConsoNew(asset, x)
 
     if not dst then
         log('DATAMGR', 'DEBUG', "Creating consolidation table %s for %s", dst_table_id, src_table_id)
-        local dst_sdb, errmsg = src.sdb :newconsolidation(dst_table_id, x.columns)
+        local dst_sdb, errmsg = src.sdb :newconsolidation(dst_path, x.storage, x.columns)
         if not dst_sdb then return errnum 'UNSPECIFIED_ERROR', errmsg end
-        dst = { id=dst_table_id, path=dst_path, sdb=dst_sdb, src_table=src }
+        dst = { id=dst_table_id, sdb=dst_sdb, src_table=src }
     end
 
     dst.send_policy=SP
@@ -621,6 +616,60 @@ local function setup_latency_callback(P, l)
     end
 end
 
+-- Checks whether policy configuration cfg is legal for a policy named pname.
+-- If it is, set the appropriate timers, so that this policy is triggered as described by cfg.
+-- Does not write the new configuration in the configuration tree.
+local function configpolicy(P, pname, cfg)
+    log('DATAMGR', 'DETAIL', "Configuring policy %q with %q", P.name, sprint(cfg))
+
+    -- Enforce basic policies behavior (names are reserved)
+    if pname == 'now' then -- must contain latency and onboot triggers
+      if not cfg.latency or not cfg.onboot then
+        log('DATAMGR', 'ERROR', "Missing mandatory latency or onboot param in data.policy.now policy, reverting to default latency=5, onboot=30")
+        cfg = {latency=5, onboot=30}
+      end
+    elseif pname == 'on_boot' or pname == 'onboot' then -- must contain onboot trigger
+      if not cfg.onboot  then
+          log('DATAMGR', 'ERROR', "Missing mandatory onboot param in data.policy.on_boot policy, reverting to default onboot=30")
+          cfg = {onboot=30}
+      end
+    elseif pname == 'never' then -- must not contain any trigger but manual
+      local err = false
+      for k in pairs(cfg) do if type(k)=='string' and k~='manual' then err = true break end end
+      if err then
+        log('DATAMGR', 'ERROR', "\"never\" policy can only contain the manual trigger, reverting to manual trigger only")
+        cfg = {manual = true}
+      end
+    end
+
+    -- A policy cannot be erased, at best it will be set to manual
+    if next(cfg) == nil then
+      log('DATAMGR', 'ERROR', "Policy %q is empty, defaulting to the manual trigger", pname)
+      cfg = {manual = true}
+    end
+
+    -- Actually configure the policy
+    for k, v in pairs(cfg) do
+        if type(k)=='number' or k=="manual" then -- support a number as a key to be backward compatible. The proper syntax is manual = true, though.
+            --    disregard (manual policies can only be triggered with triggerpolicy() function call)
+        elseif k=='onboot' then
+            local delay = tonumber(v)
+            if delay and delay>0 then
+                sched.sigonce("Agent", "InitDone", function() timer.new(delay, send_and_connect, P) end)
+            else log('DATAMGR', 'ERROR', "onboot policy config needs a positive value in seconds") end
+        elseif k=='period' then
+            local period = tonumber(v)
+            if period and period>0 then start_periodic_timer(P, period)
+            else log('DATAMGR', 'ERROR', "period policy config needs a positive value in seconds") end
+        elseif k=='cron' then start_cron_timer(P, v)
+        elseif k=='latency' then
+            local l = tonumber(v)
+            if not l then log('DATAMGR', 'ERROR', "latency policy config needs a positive value in seconds")
+            else setup_latency_callback(P, l) end
+        else log('DATAMGR', 'ERROR', "Ignores policy %s unknown trigger name %s", pname, tostring(k)) end
+    end
+end
+
 function M.new_policy(pname, cfg)
     local P = {
         name           = pname;
@@ -632,25 +681,7 @@ function M.new_policy(pname, cfg)
 
     if POLICIES[pname] then return nil, "policy name conflict" end
 
-    for k, v in pairs(cfg or { }) do
-        if type(k)=='number' or k=="manually" then
-            --    disregard
-        elseif k=='onboot' then
-            local delay = tonumber(v)
-            if delay and delay>0 then
-                timer.new(delay, send_and_connect, P)
-            else log('DATAMGR', 'ERROR', "onboot policy config needs a positive value in seconds") end
-        elseif k=='period' then
-            local period = tonumber(v)
-            if period and period>0 then start_periodic_timer(P, period)
-            else log('DATAMGR', 'ERROR', "period policy config needs a positive value in seconds") end
-        elseif k=='cron' then start_cron_timer(P, v)
-        elseif k=='latency' then
-            local l = tonumber(v)
-            if not l then log('DATAMGR', 'ERROR', "latency policy config needs a positive value in seconds")
-            else setup_latency_callback(P, l) end
-        else log('DATAMGR', 'ERROR', "Unknown policy config name %s", tostring(k)) end
-    end
+    configpolicy(P, pname, cfg)
 
     local ack_rom = persist.table.new('ack_policy_'..pname)
     if not ack_rom then return nil, "Cannot init ack rom storage: "..msg end
@@ -658,6 +689,22 @@ function M.new_policy(pname, cfg)
     POLICIES[pname] = P
     return P
 end
+
+
+function M.update_policy(pname, cfg)
+  local P = POLICIES[pname]
+  if not P then return nil, "no policy with that name" end
+
+  -- Cancel any pre-existing timer
+  local t = P.periodic_timer or P.cron_timer
+  if t then t:cancel() end
+  P.periodic_timer = nil
+  P.cron_timer = nil
+  P.nextevent = nil
+
+  configpolicy(P, pname, cfg)
+end
+
 
 function M.close_table(asset_name, table_id)
     local t = TABLES[table_id]
@@ -680,44 +727,37 @@ function M.init(cfg)
     -- * there must be a default policy, whose content is free
     -- * there must be a 'now' policy, it must be triggered with a latency
     --   and with an 'onboot' criterion
+    -- * there must be a 'onboot' or 'on_boot' policy, it must be triggered with a 'onboot' trigger
     -- * there must be a 'never' policy; it must be empty.
 
-    for pname, pcfg in pairs(cfg.policy or { }) do M.new_policy(pname, pcfg) end
-
-    for _, name in pairs{ 'default', 'now', 'never', 'on_boot' } do
-        if not POLICIES[name] then
-            log('DATAMGR', 'ERROR',
-            "Missing mandatory data policy in agent config: data.policy.%s",
-            name)
-            return nil, "No "..name.." policy"
-        end
+    cfg.policy = cfg.policy or {}
+    for _, name in pairs{ 'default', 'now', 'never', 'onboot' } do
+        if not cfg.policy[name] then cfg.policy[name] = {} end -- will be filled with the default values in the new_policy function.
     end
 
-    if not cfg.policy.now.latency or not cfg.policy.now.onboot then
-        log('DATAMGR', 'ERROR',
-        "Missing mandatory latency or onboot param in data.policy.now policy")
-        return nil, "Invalid now policy"
-    end
-
-    if not cfg.policy.on_boot.onboot  then
-        log('DATAMGR', 'ERROR',
-        "Missing mandatory  onboot param in data.policy.on_boot policy")
-        return nil, "Invalid on_boot policy"
-    end
-
-    for k, v in pairs(cfg.policy.never) do
-        if type(k)=='string' and k~='manually' then
-            log('DATAMGR', 'ERROR',
-            "Triggering config %q forbidden in \"never\" policy.", k)
-            return nil, "Invalid never policy"
-        end
-    end
+    for pname, pcfg in pairs(cfg.policy) do M.new_policy(pname, pcfg) end
 
     -- Each function in the `handle` table must be attached, under its name,
     -- as an EMP handler.
     for name, f in pairs(handle) do
         asscon.registercmd(name, f)
     end
+
+    -- Listen to changes on the policy config tree, in order to reconfigure them on the fly.
+    local tm = require 'agent.treemgr'
+    local function updatepolicy(changelist)
+      local policies = {}
+      local policycfg = (require'agent.treemgr.table').config.data.policy
+      for k, v in pairs(changelist) do policies[upath.split(k, 1)] = true end -- find which policies are changed
+      
+      for k in pairs(policies) do
+        if POLICIES[k] then M.update_policy(k, policycfg[k])
+        else M.new_policy(k, policycfg[k]) end
+      end
+    end
+    tm.register("config.data.policy", "", updatepolicy)
+
+    
     return true
 end
 

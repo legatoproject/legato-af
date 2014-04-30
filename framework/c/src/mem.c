@@ -26,7 +26,8 @@
  * other words sub-pools of sub-pools are not allowed.
  *
  * Unlike a memory pool, which cannot be deleted, a sub-pool can be deleted.  When a sub-pool is
- * deleted the sub-pool's blocks are released back into the super-pool.  The sub-pool itself is then
+ * deleted the sub-pool's blocks are released back into the super-pool.  However, it is an error to
+ * delete a sub-pool while there are still blocks allocated from it.  The sub-pool itself is then
  * removed from the list of pools and released back into the pool of sub-pools.
  *
  * GUARD BANDS
@@ -38,7 +39,7 @@
  * is unlikely to occur in normal data.  Whenever a block is allocated or released, the
  * guard bands are checked for corruption and any corruption is reported.
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
  *
  */
 #include "legato.h"
@@ -52,9 +53,6 @@
 #define GUARD_BAND_SIZE (sizeof(GUARD_WORD) * NUM_GUARD_BAND_WORDS)
 
 
-/// The maximum size of the pool name.
-#define MAX_POOL_NAME_SIZE              32
-
 /// The default number of Sub Pool objects in the Sub Pools Pool.
 /// @todo Make this configurable.
 #define DEFAULT_SUB_POOLS_POOL_SIZE     8
@@ -66,33 +64,6 @@
  */
 //--------------------------------------------------------------------------------------------------
 #define DEFAULT_NUM_BLOCKS_TO_FORCE     1
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Definition of a memory pool.
- */
-//--------------------------------------------------------------------------------------------------
-typedef struct le_mem_Pool
-{
-    le_dls_Link_t poolLink;             // This pool's link in the list of memory pools.
-    struct le_mem_Pool* superPoolPtr;   // A pointer to our super pool if we are a sub-pool. NULL
-                                        // if we are not a sub-pool.
-    le_sls_List_t freeList;             // The list of free memory blocks.
-    size_t userDataSize;                // The size of the object requested by the client in bytes.
-    size_t totalBlockSize;              // The number of bytes in a block, including all overhead.
-    uint64_t numAllocs;                 // The number of times an object has been allocated from
-                                        // this pool.
-    size_t numOverflows;                // The number of times le_mem_ForceAlloc() had to expand the
-                                        // pool.
-    size_t totalBlocks;                 // The total number of blocks in this pool including free
-                                        // and allocated blocks.
-    size_t numBlocksToForce;            // The number of blocks that is added when Force Alloc
-                                        // expands the pool.
-    le_mem_Destructor_t destructor;     // The destructor for objects in this pool.
-    char name[MAX_POOL_NAME_SIZE];      // The name of the pool.
-}
-MemPool_t;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -261,7 +232,7 @@ static void InitPool
 )
 {
     // Initialize the memory pool.
-    if (le_utf8_Copy(pool->name, name, MAX_POOL_NAME_SIZE, NULL) == LE_OVERFLOW)
+    if (le_utf8_Copy(pool->name, name, MEM_MAX_POOL_NAME_BYTES, NULL) == LE_OVERFLOW)
     {
         LE_WARN("Memory pool name '%s' is truncated to '%s'", name, pool->name);
     }
@@ -289,9 +260,11 @@ static void InitPool
     pool->totalBlockSize = blockSize;
     pool->destructor = NULL;
     pool->superPoolPtr = NULL;
-    pool->numAllocs = 0;
+    pool->numAllocations = 0;
     pool->numOverflows = 0;
     pool->totalBlocks = 0;
+    pool->numBlocksInUse = 0;
+    pool->maxNumBlocksUsed = 0;
     pool->numBlocksToForce = DEFAULT_NUM_BLOCKS_TO_FORCE;
 }
 
@@ -412,8 +385,22 @@ void mem_Init
     //       only one thread running.
 
     // Create a memory for all sub-pools.
-    SubPoolsPool = le_mem_CreatePool("Sub-pool pools", sizeof(MemPool_t));
+    SubPoolsPool = le_mem_CreatePool("SubPools", sizeof(MemPool_t));
     le_mem_ExpandPool(SubPoolsPool, DEFAULT_SUB_POOLS_POOL_SIZE);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Returns a pointer to the list of pools.
+ */
+//--------------------------------------------------------------------------------------------------
+void* mem_GetListOfPools
+(
+    void
+)
+{
+    return &ListOfPools;
 }
 
 
@@ -492,6 +479,14 @@ le_mem_PoolRef_t le_mem_ExpandPool
 
         // Update the sub-pool total block count.
         pool->totalBlocks = pool->totalBlocks + numObjects;
+
+        // Update the super-pool's block use counts.
+        pool->superPoolPtr->numBlocksInUse += numObjects;
+
+        if (pool->superPoolPtr->numBlocksInUse > pool->superPoolPtr->maxNumBlocksUsed)
+        {
+            pool->superPoolPtr->maxNumBlocksUsed = pool->superPoolPtr->numBlocksInUse;
+        }
     }
     else
     {
@@ -536,7 +531,14 @@ void* le_mem_TryAlloc
         MemBlock_t* blockPtr = CONTAINER_OF(blockLinkPtr, MemBlock_t, link);
 
         // Update the pool and the block.
-        pool->numAllocs++;
+        pool->numAllocations++;
+        pool->numBlocksInUse++;
+
+        if (pool->numBlocksInUse > pool->maxNumBlocksUsed)
+        {
+            pool->maxNumBlocksUsed++;
+        }
+
         blockPtr->refCount = 1;
 
         // Return the user object in the block.
@@ -708,6 +710,8 @@ void le_mem_Release
             // clobbered.
             le_sls_Stack(&(poolPtr->freeList), &(blockPtr->link));
 
+            poolPtr->numBlocksInUse--;
+
             break;
         }
 
@@ -793,9 +797,9 @@ void le_mem_GetStats
 )
 {
     Lock();
-    statsPtr->numAllocs = pool->numAllocs;
+    statsPtr->numAllocs = pool->numAllocations;
     statsPtr->numOverflows = pool->numOverflows;
-    statsPtr->numFree = le_sls_NumLinks(&(pool->freeList));
+    statsPtr->numFree = pool->totalBlocks - pool->numBlocksInUse;
     Unlock();
 }
 
@@ -814,7 +818,7 @@ void le_mem_ResetStats
 )
 {
     Lock();
-    pool->numAllocs = 0;
+    pool->numAllocations = 0;
     pool->numOverflows = 0;
     Unlock();
 }
@@ -982,6 +986,9 @@ void le_mem_DeleteSubPool
 
     // Move the blocks from the subPool back to the superpool.
     MoveBlocks(superPool, subPool, numBlocks);
+
+    // Update the superPool's block use count.
+    superPool->numBlocksInUse -= numBlocks;
 
     // Remove the sub-pool from the list of sub-pools.
     le_dls_Remove(&ListOfPools, &(subPool->poolLink));

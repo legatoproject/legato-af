@@ -458,7 +458,7 @@ local function ensure_correct_wait(time)
    local b = monotonic_time()
    sched.wait(time)
    local e = monotonic_time()
-   local delta=time * 1.0 / 100
+   local delta = 0.01
    u.assert_gte(time, e - b)
    u.assert_lte(time+delta, e - b)
 end

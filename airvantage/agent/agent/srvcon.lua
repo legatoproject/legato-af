@@ -165,7 +165,7 @@ end
 --- Responds to request to connect to server sent through EMP messages.
 local function EMPConnectToServer(assetid, latency)
     local s, err = M.connect(latency)
-    if not s then return errnum 'COMMUNICATION_ERROR', err else return 0 end
+    if not s then return asscon.formaterr(err) else return 0 end
 end
 
 --- Sets up the module according to agent.config settings.
@@ -217,6 +217,12 @@ function M.init()
                 log("SRVCON", "ERROR", "Ignoring unknown policy: '%s'", tostring(policy))
             end
         end
+    end
+
+    if config.get("rest.activate") then
+        local rest = require 'web.rest'
+        --Note: handler code suppose env parameter can't be nil and also silently discard unexpected URL params (behaves like no param was given).
+        rest.register("^server/?$", "GET", function(env) return M.connect(tonumber(upath.get(env, "params.latency"))) end)
     end
 
     return "ok"

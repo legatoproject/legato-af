@@ -53,6 +53,13 @@ FUNCTION le_result_t GetInterfaceName
     string interfaceName[10] OUT            ///< The name of the network interface
 );
 
+
+FUNCTION le_result_t GetIPAddress
+(
+    le_mdc_Profile_Ref_t profileRef,   ///< Query this profile object
+    string ipAddr[10] OUT              ///< [OUT] The IP address in dotted format
+);
+
 FUNCTION le_result_t GetGatewayAddress
 (
     le_mdc_Profile_Ref_t profileRef,        ///< Query this profile object
@@ -62,6 +69,38 @@ FUNCTION le_result_t GetGatewayAddress
 FUNCTION le_result_t GetDNSAddresses
 (
     le_mdc_Profile_Ref_t profileRef,        ///< Query this profile object
-    string dns1AddrStr[10] OUT,             ///< The primary DNS IP address in dotted format
-    string dns2AddrStr[10] OUT              ///< The secondary DNS IP address in dotted format
+    string dns1AddrStr[30] OUT,             ///< The primary DNS IP address in dotted format
+    string dns2AddrStr[30] OUT              ///< The secondary DNS IP address in dotted format
+);
+
+FUNCTION bool IsIPV4
+(
+    le_mdc_Profile_Ref_t profileRef        ///< Query this profile object
+);
+
+FUNCTION bool IsIPV6
+(
+    le_mdc_Profile_Ref_t profileRef        ///< Query this profile object
+);
+
+FUNCTION le_result_t GetAccessPointName
+(
+    le_mdc_Profile_Ref_t profileRef,   ///< Query this profile object
+    string apnNameStr[100] OUT         ///< The Access Point Name
+);
+
+FUNCTION le_result_t GetDataBearerTechnology
+(
+    le_mdc_Profile_Ref_t profileRef,        ///< Query this profile object
+    le_mdc_dataBearerTechnology_t dataBearerTechnologyPtr OUT  ///< The data bearer technology
+);
+
+FUNCTION le_result_t GetBytesCounters
+(
+    uint64_t rxBytes OUT,  ///< bytes amount received since the last counter reset
+    uint64_t txBytes OUT   ///< bytes amount transmitted since the last counter reset
+);
+
+FUNCTION le_result_t ResetBytesCounter
+(
 );

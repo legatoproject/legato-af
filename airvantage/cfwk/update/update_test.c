@@ -109,64 +109,51 @@ static rc_ReturnCode_t statusNotification(swi_update_Notification_t* indPtr)
   return RC_OK;
 }
 
-static int test_update_Init()
+DEFINE_TEST(test_update_Init)
 {
   rc_ReturnCode_t res;
 
   res = swi_update_Init();
-  if (res != RC_OK)
-    return 1;
+  ASSERT_TESTCASE_IS_OK(res);
 
   res = swi_update_Init();
-  if (res != RC_OK)
-    return 1;
+  ASSERT_TESTCASE_IS_OK(res);
 
   res = swi_update_Init();
-  if (res != RC_OK)
-    return 1;
-  return 0;
+  ASSERT_TESTCASE_IS_OK(res);
 }
 
-static int test_update_Destroy()
+DEFINE_TEST(test_update_Destroy)
 {
   rc_ReturnCode_t res;
 
   res = swi_update_Destroy();
-  if (res != RC_OK)
-    return 1;
+  ASSERT_TESTCASE_IS_OK(res);
 
   res = swi_update_Destroy();
-  if (res != RC_OK)
-    return 1;
-  return 0;
+  ASSERT_TESTCASE_IS_OK(res);
 }
 
 // swi_update_Request must be used when an update is in progress, so
 // its test is likely to be put in  statusNotification callback test/use.
 
-//static int test_update_Request()
+//DEFINE_TEST(test_update_Request)
 //{
 //  rc_ReturnCode_t res;
 //
 //  res = swi_update_Request(SWI_UPDATE_REQ_PAUSE);
-//  if (res != RC_OK)
-//    return 1;
-//  return 0;
+//  ASSERT_TESTCASE_IS_OK(res);
 //}
 
-static int test_update_RegisterStatusNotification()
+DEFINE_TEST(test_update_RegisterStatusNotification)
 {
   rc_ReturnCode_t res;
 
   res = swi_update_RegisterStatusNotification(NULL);
-  if (res != RC_OK)
-    return 1;
+  ASSERT_TESTCASE_IS_OK(res);
 
   res = swi_update_RegisterStatusNotification(statusNotification);
-  if (res != RC_OK)
-    return 1;
-
-  return 0;
+  ASSERT_TESTCASE_IS_OK(res);
 }
 
 static void exec_lua_code()
@@ -213,16 +200,16 @@ int main(void)
 {
   INIT_TEST("UPDATE_TEST");
 
-  CHECK_TEST(test_update_Init());
-  //CHECK_TEST(test_update_Request());
-  CHECK_TEST(test_update_RegisterStatusNotification());
+  test_update_Init();
+  //test_update_Request();
+  test_update_RegisterStatusNotification();
 
   //waiting_update_notification is set to 0 at the end of an update and on update event error
   generate_package();
   exec_lua_code();
   while(waiting_update_notification)
     usleep(1000 * 100);
-  CHECK_TEST(test_update_Destroy());
+  test_update_Destroy();
 
   return 0;
 }

@@ -156,6 +156,8 @@ static le_audio_Stream_t*   UsbRxStreamPtr=NULL;
 static le_audio_Stream_t*   UsbTxStreamPtr=NULL;
 static le_audio_Stream_t*   PcmRxStreamPtr=NULL;
 static le_audio_Stream_t*   PcmTxStreamPtr=NULL;
+static le_audio_Stream_t*   I2sRxStreamPtr=NULL;
+static le_audio_Stream_t*   I2sTxStreamPtr=NULL;
 static le_audio_Stream_t*   ModemVoiceRxStreamPtr=NULL;
 static le_audio_Stream_t*   ModemVoiceTxStreamPtr=NULL;
 
@@ -481,7 +483,8 @@ static le_result_t StartCapture
 
         if (( currentStreamPtr->audioInterface == PA_AUDIO_IF_CODEC_MIC )           ||
             ( currentStreamPtr->audioInterface == PA_AUDIO_IF_DSP_FRONTEND_USB_RX ) ||
-            ( currentStreamPtr->audioInterface == PA_AUDIO_IF_DSP_FRONTEND_PCM_RX ))
+            ( currentStreamPtr->audioInterface == PA_AUDIO_IF_DSP_FRONTEND_PCM_RX ) ||
+            ( currentStreamPtr->audioInterface == PA_AUDIO_IF_DSP_FRONTEND_I2S_RX ))
         {
             if (!connectorPtr->captureThreadIsStarted)
             {
@@ -555,7 +558,8 @@ static le_result_t StopCapture
 
             if (( currentStreamPtr->audioInterface == PA_AUDIO_IF_CODEC_MIC )           ||
                 ( currentStreamPtr->audioInterface == PA_AUDIO_IF_DSP_FRONTEND_USB_RX ) ||
-                ( currentStreamPtr->audioInterface == PA_AUDIO_IF_DSP_FRONTEND_PCM_RX ) )
+                ( currentStreamPtr->audioInterface == PA_AUDIO_IF_DSP_FRONTEND_PCM_RX ) ||
+                ( currentStreamPtr->audioInterface == PA_AUDIO_IF_DSP_FRONTEND_I2S_RX ) )
             {
                 if (currentConnectorPtr->captureThreadIsStarted)
                 {
@@ -613,7 +617,8 @@ static le_result_t StartPlayback
 
         if (( currentStreamPtr->audioInterface == PA_AUDIO_IF_CODEC_SPEAKER )       ||
             ( currentStreamPtr->audioInterface == PA_AUDIO_IF_DSP_FRONTEND_USB_TX ) ||
-            ( currentStreamPtr->audioInterface == PA_AUDIO_IF_DSP_FRONTEND_PCM_TX ) )
+            ( currentStreamPtr->audioInterface == PA_AUDIO_IF_DSP_FRONTEND_PCM_TX ) ||
+            ( currentStreamPtr->audioInterface == PA_AUDIO_IF_DSP_FRONTEND_I2S_TX ) )
         {
             if (!connectorPtr->playbackThreadIsStarted)
             {
@@ -684,7 +689,8 @@ static le_result_t StopPlayback
 
             if (( currentStreamPtr->audioInterface == PA_AUDIO_IF_CODEC_SPEAKER )       ||
                 ( currentStreamPtr->audioInterface == PA_AUDIO_IF_DSP_FRONTEND_USB_TX ) ||
-                ( currentStreamPtr->audioInterface == PA_AUDIO_IF_DSP_FRONTEND_PCM_TX ))
+                ( currentStreamPtr->audioInterface == PA_AUDIO_IF_DSP_FRONTEND_PCM_TX ) ||
+                ( currentStreamPtr->audioInterface == PA_AUDIO_IF_DSP_FRONTEND_I2S_TX ))
             {
                 if (currentConnectorPtr->playbackThreadIsStarted)
                 {
@@ -736,14 +742,13 @@ static le_hashmap_Ref_t GetHashMapElement
 
         if (!currentPtr->isUsed)
         {
-            LE_DEBUG("Found one HashMap unused");
+            LE_DEBUG("Found one HashMap unused (%p)", currentPtr->hashMapRef);
             currentPtr->isUsed = true;
             return currentPtr->hashMapRef;
         }
         linkPtr = le_dls_PeekNext(&AudioHashMapList,linkPtr);
     }
 
-    LE_DEBUG("Create a new HashMap");
 
     currentPtr = le_mem_ForceAlloc(AudioHashMapPool);
 
@@ -755,6 +760,8 @@ static le_hashmap_Ref_t GetHashMapElement
     currentPtr->link = LE_DLS_LINK_INIT;
 
     le_dls_Queue(&AudioHashMapList,&(currentPtr->link));
+
+    LE_DEBUG("Create a new HashMap (%p)", currentPtr->hashMapRef);
 
     return currentPtr->hashMapRef;
 }
@@ -782,7 +789,7 @@ static void ReleaseHashMapElement
 
         if (currentPtr->hashMapRef == hashMapRef)
         {
-            LE_DEBUG("Found HashMap to release");
+            LE_DEBUG("Found HashMap to release (%p)", currentPtr->hashMapRef);
             currentPtr->isUsed = false;
             return;
         }
@@ -875,6 +882,12 @@ static void DestructStream
         case PA_AUDIO_IF_DSP_FRONTEND_PCM_TX:
             PcmTxStreamPtr = NULL;
             break;
+        case PA_AUDIO_IF_DSP_FRONTEND_I2S_RX:
+            I2sRxStreamPtr = NULL;
+            break;
+        case PA_AUDIO_IF_DSP_FRONTEND_I2S_TX:
+            I2sTxStreamPtr = NULL;
+            break;
         case PA_AUDIO_IF_FILE_PLAYING:
         case PA_AUDIO_IF_END:
             break;
@@ -949,7 +962,7 @@ void le_audio_Init
 /**
  * Open the Microphone.
  *
- * @return A Reference to the input audio stream, NULL if the function fails.
+ * @return Reference to the input audio stream, NULL if the function fails.
  */
 //--------------------------------------------------------------------------------------------------
 le_audio_StreamRef_t le_audio_OpenMic
@@ -966,13 +979,16 @@ le_audio_StreamRef_t le_audio_OpenMic
         MicStreamPtr->audioInterface = PA_AUDIO_IF_CODEC_MIC;
         MicStreamPtr->isInput = true;
 
-        if ( pa_audio_EnableCodecInput(PA_AUDIO_IF_CODEC_MIC) != LE_OK ) {
+        if ( pa_audio_EnableCodecInput(PA_AUDIO_IF_CODEC_MIC) != LE_OK )
+        {
             LE_WARN("Cannot open Microphone");
             le_mem_Release(MicStreamPtr);
             MicStreamPtr = NULL;
             return NULL;
         }
-    } else {
+    }
+    else
+    {
         le_mem_AddRef(MicStreamPtr);
     }
 
@@ -985,7 +1001,7 @@ le_audio_StreamRef_t le_audio_OpenMic
 /**
  * Open the Speakerphone.
  *
- * @return A Reference to the output audio stream, NULL if the function fails.
+ * @return Reference to the output audio stream, NULL if the function fails.
  */
 //--------------------------------------------------------------------------------------------------
 le_audio_StreamRef_t le_audio_OpenSpeaker
@@ -1002,13 +1018,16 @@ le_audio_StreamRef_t le_audio_OpenSpeaker
         SpeakerStreamPtr->audioInterface = PA_AUDIO_IF_CODEC_SPEAKER;
         SpeakerStreamPtr->isInput = false;
 
-        if ( pa_audio_EnableCodecOutput(PA_AUDIO_IF_CODEC_SPEAKER) != LE_OK ) {
+        if ( pa_audio_EnableCodecOutput(PA_AUDIO_IF_CODEC_SPEAKER) != LE_OK )
+        {
             LE_WARN("Cannot open Speaker");
             le_mem_Release(SpeakerStreamPtr);
             SpeakerStreamPtr = NULL;
             return NULL;
         }
-    } else {
+    }
+    else
+    {
         le_mem_AddRef(SpeakerStreamPtr);
     }
 
@@ -1021,7 +1040,7 @@ le_audio_StreamRef_t le_audio_OpenSpeaker
 /**
  * Open the received audio stream of an USB audio class.
  *
- * @return A Reference to the input audio stream, NULL if the function fails.
+ * @return Reference to the input audio stream, NULL if the function fails.
  */
 //--------------------------------------------------------------------------------------------------
 le_audio_StreamRef_t le_audio_OpenUsbRx
@@ -1029,14 +1048,17 @@ le_audio_StreamRef_t le_audio_OpenUsbRx
     void
 )
 {
-    if (!UsbRxStreamPtr) {
+    if (!UsbRxStreamPtr)
+    {
         UsbRxStreamPtr = le_mem_ForceAlloc(AudioStreamPool);
 
         InitializeStream(UsbRxStreamPtr);
 
         UsbRxStreamPtr->audioInterface = PA_AUDIO_IF_DSP_FRONTEND_USB_RX;
         UsbRxStreamPtr->isInput = true;
-    } else {
+    }
+    else
+    {
         le_mem_AddRef(UsbRxStreamPtr);
     }
 
@@ -1049,7 +1071,7 @@ le_audio_StreamRef_t le_audio_OpenUsbRx
 /**
  * Open the transmitted audio stream of an USB audio class.
  *
- * @return A Reference to the output audio stream, NULL if the function fails.
+ * @return Reference to the output audio stream, NULL if the function fails.
  */
 //--------------------------------------------------------------------------------------------------
 le_audio_StreamRef_t le_audio_OpenUsbTx
@@ -1057,14 +1079,17 @@ le_audio_StreamRef_t le_audio_OpenUsbTx
     void
 )
 {
-    if (!UsbTxStreamPtr) {
+    if (!UsbTxStreamPtr)
+    {
         UsbTxStreamPtr = le_mem_ForceAlloc(AudioStreamPool);
 
         InitializeStream(UsbTxStreamPtr);
 
         UsbTxStreamPtr->audioInterface = PA_AUDIO_IF_DSP_FRONTEND_USB_TX;
         UsbTxStreamPtr->isInput = false;
-    } else {
+    }
+    else
+    {
         le_mem_AddRef(UsbTxStreamPtr);
     }
 
@@ -1078,7 +1103,7 @@ le_audio_StreamRef_t le_audio_OpenUsbTx
 /**
  * Open the received audio stream of the PCM interface.
  *
- * @return A Reference to the input audio stream, NULL if the function fails.
+ * @return Reference to the input audio stream, NULL if the function fails.
  */
 //--------------------------------------------------------------------------------------------------
 le_audio_StreamRef_t le_audio_OpenPcmRx
@@ -1125,7 +1150,7 @@ le_audio_StreamRef_t le_audio_OpenPcmRx
 /**
  * Open the transmitted audio stream of the PCM interface.
  *
- * @return A Reference to the output audio stream, NULL if the function fails.
+ * @return Reference to the output audio stream, NULL if the function fails.
  */
 //--------------------------------------------------------------------------------------------------
 le_audio_StreamRef_t le_audio_OpenPcmTx
@@ -1168,12 +1193,89 @@ le_audio_StreamRef_t le_audio_OpenPcmTx
     return le_ref_CreateRef(AudioStreamRefMap, PcmTxStreamPtr);
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Open the received audio stream of the I2S interface.
+ *
+ * @return Reference to the input audio stream, NULL if the function fails.
+ */
+//--------------------------------------------------------------------------------------------------
+le_audio_StreamRef_t le_audio_OpenI2sRx
+(
+    le_audio_I2SChannel_t mode  ///< [IN] The channel mode.
+)
+{
+    if (!I2sRxStreamPtr)
+    {
+        I2sRxStreamPtr = le_mem_ForceAlloc(AudioStreamPool);
+
+        InitializeStream(I2sRxStreamPtr);
+
+        I2sRxStreamPtr->audioInterface = PA_AUDIO_IF_DSP_FRONTEND_I2S_RX;
+        I2sRxStreamPtr->isInput = true;
+
+        if ( pa_audio_SetI2sChannelMode(PA_AUDIO_IF_DSP_FRONTEND_I2S_RX, mode) != LE_OK )
+        {
+            LE_WARN("Cannot set the channel mode of I2S RX interface");
+            le_mem_Release(I2sRxStreamPtr);
+            I2sRxStreamPtr = NULL;
+            return NULL;
+        }
+    }
+    else
+    {
+        le_mem_AddRef(I2sRxStreamPtr);
+    }
+
+    LE_DEBUG("Open I2S RX input audio stream (%p)", I2sRxStreamPtr);
+    // Create and return a Safe Reference for this stream object.
+    return le_ref_CreateRef(AudioStreamRefMap, I2sRxStreamPtr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Open the transmitted audio stream of the I2S interface.
+ *
+ * @return Reference to the output audio stream, NULL if the function fails.
+ */
+//--------------------------------------------------------------------------------------------------
+le_audio_StreamRef_t le_audio_OpenI2sTx
+(
+    le_audio_I2SChannel_t mode  ///< [IN] The channel mode.
+)
+{
+    if (!I2sTxStreamPtr)
+    {
+        I2sTxStreamPtr = le_mem_ForceAlloc(AudioStreamPool);
+
+        InitializeStream(I2sTxStreamPtr);
+
+        I2sTxStreamPtr->audioInterface = PA_AUDIO_IF_DSP_FRONTEND_I2S_TX;
+        I2sTxStreamPtr->isInput = false;
+
+        if ( pa_audio_SetI2sChannelMode(PA_AUDIO_IF_DSP_FRONTEND_I2S_TX, mode) != LE_OK )
+        {
+            LE_WARN("Cannot set the channel mode of I2S TX interface");
+            le_mem_Release(PcmRxStreamPtr);
+            PcmRxStreamPtr = NULL;
+            return NULL;
+        }
+    }
+    else
+    {
+        le_mem_AddRef(I2sTxStreamPtr);
+    }
+
+    LE_DEBUG("Open I2S TX output audio stream (%p)", I2sTxStreamPtr);
+    // Create and return a Safe Reference for this stream object.
+    return le_ref_CreateRef(AudioStreamRefMap, I2sTxStreamPtr);
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Open the received audio stream of a voice call.
  *
- * @return A Reference to the input audio stream, NULL if the function fails.
+ * @return Reference to the input audio stream, NULL if the function fails.
  */
 //--------------------------------------------------------------------------------------------------
 le_audio_StreamRef_t le_audio_OpenModemVoiceRx
@@ -1181,14 +1283,17 @@ le_audio_StreamRef_t le_audio_OpenModemVoiceRx
     void
 )
 {
-    if (!ModemVoiceRxStreamPtr) {
+    if (!ModemVoiceRxStreamPtr)
+    {
         ModemVoiceRxStreamPtr = le_mem_ForceAlloc(AudioStreamPool);
 
         InitializeStream(ModemVoiceRxStreamPtr);
 
         ModemVoiceRxStreamPtr->audioInterface = PA_AUDIO_IF_DSP_BACKEND_MODEM_VOICE_RX;
         ModemVoiceRxStreamPtr->isInput = true;
-    } else {
+    }
+    else
+    {
         le_mem_AddRef(ModemVoiceRxStreamPtr);
     }
 
@@ -1201,7 +1306,7 @@ le_audio_StreamRef_t le_audio_OpenModemVoiceRx
 /**
  * Open the transmitted audio stream of a voice call.
  *
- * @return A Reference to the output audio stream, NULL if the function fails.
+ * @return Reference to the output audio stream, NULL if the function fails.
  */
 //--------------------------------------------------------------------------------------------------
 le_audio_StreamRef_t le_audio_OpenModemVoiceTx
@@ -1209,14 +1314,17 @@ le_audio_StreamRef_t le_audio_OpenModemVoiceTx
     void
 )
 {
-    if (!ModemVoiceTxStreamPtr) {
+    if (!ModemVoiceTxStreamPtr)
+    {
         ModemVoiceTxStreamPtr = le_mem_ForceAlloc(AudioStreamPool);
 
         InitializeStream(ModemVoiceTxStreamPtr);
 
         ModemVoiceTxStreamPtr->audioInterface = PA_AUDIO_IF_DSP_BACKEND_MODEM_VOICE_TX;
         ModemVoiceTxStreamPtr->isInput = false;
-    } else {
+    }
+    else
+    {
         le_mem_AddRef(ModemVoiceTxStreamPtr);
     }
 
@@ -1403,12 +1511,14 @@ le_result_t le_audio_Mute
         return LE_BAD_PARAMETER;
     }
 
-    if ( pa_audio_GetGain(streamPtr->audioInterface, &streamPtr->gain) != LE_OK ) {
+    if ( pa_audio_GetGain(streamPtr->audioInterface, &streamPtr->gain) != LE_OK )
+    {
         LE_ERROR("Cannot get stream gain");
         return LE_FAULT;
     }
 
-    if ( pa_audio_SetGain(streamPtr->audioInterface, 0) != LE_OK ) {
+    if ( pa_audio_SetGain(streamPtr->audioInterface, 0) != LE_OK )
+    {
         LE_ERROR("Cannot set stream gain");
         return LE_FAULT;
     }
@@ -1441,7 +1551,8 @@ le_result_t le_audio_Unmute
         return LE_BAD_PARAMETER;
     }
 
-    if ( pa_audio_SetGain(streamPtr->audioInterface, streamPtr->gain) != LE_OK ) {
+    if ( pa_audio_SetGain(streamPtr->audioInterface, streamPtr->gain) != LE_OK )
+    {
         LE_ERROR("Cannot set stream gain");
         return LE_FAULT;
     }
@@ -1453,7 +1564,7 @@ le_result_t le_audio_Unmute
 /**
  * Create an audio connector reference.
  *
- * @return A Reference to the audio connector, NULL if the function fails.
+ * @return Reference to the audio connector, NULL if the function fails.
  */
 //--------------------------------------------------------------------------------------------------
 le_audio_ConnectorRef_t le_audio_CreateConnector
@@ -1546,8 +1657,9 @@ le_result_t le_audio_Connect
         return LE_BAD_PARAMETER;
     }
 
-    LE_DEBUG("%p Connect [%d] '%s' to connectorRef %p",
+    LE_DEBUG("StreamRef.%p (@%p) Connect [%d] '%s' to connectorRef.%p",
              streamRef,
+             streamPtr,
              streamPtr->audioInterface,
              (streamPtr->isInput)?"input":"output",
              connectorRef);
@@ -1639,13 +1751,13 @@ void le_audio_Disconnect
         CloseStreamPaths (connectorPtr,streamPtr,connectorPtr->streamOutList);
         le_hashmap_Remove(connectorPtr->streamInList,streamPtr);
         le_hashmap_Remove(streamPtr->connectorList,connectorPtr);
-        StopCapture ();
+        StopCapture();
     }
     else
     {
         CloseStreamPaths (connectorPtr,streamPtr,connectorPtr->streamInList);
         le_hashmap_Remove(connectorPtr->streamOutList,streamPtr);
         le_hashmap_Remove(streamPtr->connectorList,connectorPtr);
-        StopPlayback ();
+        StopPlayback();
     }
 }

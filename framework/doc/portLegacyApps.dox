@@ -22,7 +22,7 @@ Here's the high-level steps <b>port your app to Legato</b>:
 
 - Include files to be installed as part of the app (executables, libraries, configuration files, devices, etc.) in the @c files: section of .adef.
 
-- Include files that need to be imported into the sandbox from the target’s file system (e.g., /dev/zero) in the @c import: section of .adef.
+- Include files that need to be imported into the sandbox from the target’s file system (e.g., /dev/zero, /dev/null) in the @c import: section of .adef.
 
 - Add @c run: lines in the @c processes: section in the .adef to define processes that should run in the app.
 
@@ -48,7 +48,7 @@ processes:
 To build the app, run:
 @code mkapp foo.adef @endcode
 
-Other app settings (e.g., @c faultAction) can also be set in the .adef files. See @ref processesAdef.
+Other app settings (e.g., @c faultAction) can also be set in the .adef files. See @ref defFilesProcessesAdef.
 
 @section portRootAccess Porting Apps with Root Access
 
@@ -70,11 +70,11 @@ framework initialization automatically.
 To use Legato's build system:
 
 @b Add this to all source files that will call Legato APIs: 
-@code  #include @c 'legato.h' @endcode
+@code  #include "legato.h" @endcode
 
 @b Remove the legacy program's @b main() function. Complete any app-specific initializations 
-and processing in the macro @c COMPONENT_INIT. The Legato build system generates a main() 
-function to initialize the Legato framework and call the COMPONENT_INIT macro. This must be 
+and processing in the @c COMPONENT_INIT function. The Legato build system generates a main() 
+function to initialize the Legato framework and call COMPONENT_INIT. This must be 
 done for each executable in the app.
 
 Optionally, modify the source to use the Legato event loop.
@@ -93,7 +93,7 @@ processes:
 @endcode
 
 @b Build the app using <b>mkapp foo.adef -t target</b> where [target] is something like @c 
-ar7.
+wp7 or @c ar7.
 
 @b Install the app on target using @b instapp.
 

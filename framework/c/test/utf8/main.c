@@ -356,6 +356,15 @@ int main(int argc, char *argv[])
         return LE_FAULT;
     }
 
+    // Copy up to an ascii character so that the buffer is completely filled.
+    if ( (le_utf8_CopyUpToSubStr(destBuffer, asciiStr, " ", 6, &numBytesCopied) == LE_OVERFLOW) ||
+         (numBytesCopied != 5) ||
+         (strncmp(destBuffer, asciiStr, 5) != 0) )
+    {
+        printf("Copy up to incorrect: %d\n", __LINE__);
+        return LE_FAULT;
+    }
+
     printf("Copy Up To Substring correct.\n");
 
     printf("*** Unit Test for le_utf8 module passed. ***\n");

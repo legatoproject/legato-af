@@ -64,6 +64,19 @@ __attribute__((unused)) static void* UnpackString(void* msgBufPtr, const char** 
     return ( msgBufPtr + dataSize );
 }
 
+// todo: This function may eventually replace all usage of UnpackString() above.
+//       Maybe there should also be a PackDataString() function as well?
+// Unused attribute is needed because this function may not always get used
+__attribute__((unused)) static void* UnpackDataString(void* msgBufPtr, void* dataPtr, size_t dataSize)
+{
+    // Number of bytes copied from msg buffer, not including null terminator
+    size_t numBytes;
+
+    // todo: For now, assume the string will always fit in the buffer. This may not always be true.
+    le_utf8_Copy( dataPtr, msgBufPtr, dataSize, &numBytes );
+    return ( msgBufPtr + (numBytes + 1) );
+}
+
 
 //--------------------------------------------------------------------------------------------------
 // Generic Server Types, Variables and Functions
@@ -430,8 +443,8 @@ static void Handle_allParameters
     uint8_t* _msgBufStartPtr = _msgBufPtr;
 
     // Unpack the input parameters from the message
-    int32_t a;
-    _msgBufPtr = UnpackData( _msgBufPtr, &a, sizeof(int32_t) );
+    common_EnumExample_t a;
+    _msgBufPtr = UnpackData( _msgBufPtr, &a, sizeof(common_EnumExample_t) );
 
     size_t dataNumElements;
     _msgBufPtr = UnpackData( _msgBufPtr, &dataNumElements, sizeof(size_t) );
@@ -448,15 +461,19 @@ static void Handle_allParameters
     size_t responseNumElements;
     _msgBufPtr = UnpackData( _msgBufPtr, &responseNumElements, sizeof(size_t) );
 
+    size_t moreNumElements;
+    _msgBufPtr = UnpackData( _msgBufPtr, &moreNumElements, sizeof(size_t) );
+
 
     // Define storage for output parameters
     uint32_t b;
 
     uint32_t output[outputNumElements];
     char response[responseNumElements];
+    char more[moreNumElements];
 
     // Call the function
-    allParameters ( a, &b, data, dataNumElements, output, &outputNumElements, label, response, responseNumElements );
+    allParameters ( a, &b, data, dataNumElements, output, &outputNumElements, label, response, responseNumElements, more, moreNumElements );
 
 
     // Re-use the message buffer for the response
@@ -468,6 +485,7 @@ static void Handle_allParameters
     _msgBufPtr = PackData( _msgBufPtr, &outputNumElements, sizeof(size_t) );
     _msgBufPtr = PackData( _msgBufPtr, output, outputNumElements*sizeof(uint32_t) );
     _msgBufPtr = PackString( _msgBufPtr, response );
+    _msgBufPtr = PackString( _msgBufPtr, more );
 
     // Return the response
     LE_DEBUG("Sending response to client session %p", le_msg_GetSession(_msgRef));

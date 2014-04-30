@@ -19,6 +19,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include <pthread.h>
 #include "swi_log.h"
 #include "extvars.h"
@@ -33,14 +34,15 @@
 
 typedef struct
 {
-    ExtVars_id_t id;
     union {
       int i;
       double d;
       char *s;
     } value;
+    ExtVars_id_t id;
     ExtVars_type_t type;
-    int registered:1;
+    bool registered;
+    bool static_type;
 }  treehdlvar_t;
 
 #ifdef DYNAMIC_NODES_STORAGE
@@ -53,10 +55,10 @@ static ExtVars_notify_t *notify;
 static void *notify_ctx;
 static uint8_t all_vars_registered = 0;
 static treehdlvar_t treehdlvars[NVARS] = {
-  { .id = 1, .type = EXTVARS_TYPE_INT },
-  { .id = 2, .type = EXTVARS_TYPE_DOUBLE },
-  { .id = 4, .type = EXTVARS_TYPE_STR },
-  { .id = 8, .type = EXTVARS_TYPE_BOOL },
+  { .id = 1, .type = EXTVARS_TYPE_INT, .static_type = 1, .value.i=42},
+  { .id = 2, .type = EXTVARS_TYPE_DOUBLE, .static_type = 1, .value.d=23.99},
+  { .id = 4, .type = EXTVARS_TYPE_STR, .static_type = 1, .value.s = "foo"}, //this default value is strdup in ExtVars_initialize
+  { .id = 8, .type = EXTVARS_TYPE_BOOL, .static_type = 1, .value.i=1},
 };
 
 
@@ -128,10 +130,20 @@ rc_ReturnCode_t ExtVars_get_variable (ExtVars_id_t id, void**value, ExtVars_type
     treehdlvar_t *treehdlvar = get_treevar(id);
 
     if(treehdlvar == NULL) return RC_NOT_FOUND;
-    if(value) *value = (treehdlvar->type == EXTVARS_TYPE_STR) ? (void *)treehdlvar->value.s : &treehdlvar->value.d;
+    if(value) {
+      if (treehdlvar->type == EXTVARS_TYPE_BOOL || treehdlvar->type == EXTVARS_TYPE_INT)
+        *value = (void *) &treehdlvar->value.i;
+      if (treehdlvar->type == EXTVARS_TYPE_STR)
+        *value = (void *) treehdlvar->value.s;
+      if (treehdlvar->type == EXTVARS_TYPE_DOUBLE)
+        *value = (void *) &treehdlvar->value.d;
+    }
     if(type)  *type  = treehdlvar->type;
     return RC_OK;
 }
+
+
+
 
 /* This function is called when treemgr changes the value attached to a leaf. It supports
  * changing a variable type on the fly, synchronous/asynchronous notifications and dynamic storage (according to the defined macro, see above)
@@ -151,6 +163,9 @@ rc_ReturnCode_t ExtVars_set_variables(int nvars, ExtVars_id_t *vars, void **valu
             return RC_NOT_FOUND;
 
         var->id = vars[i];
+
+        if (var->static_type && types[i] != var->type)
+            return RC_NOT_PERMITTED;
 
         //always free/realloc strings, we could find more effective if needed of course.
         if(var->type == EXTVARS_TYPE_STR) {
@@ -270,5 +285,17 @@ rc_ReturnCode_t ExtVars_list(int *nvars, ExtVars_id_t **vars)
     }
     if (vars) *vars = _vars;
     if (nvars) *nvars = NVARS;
+    return RC_OK;
+}
+
+rc_ReturnCode_t ExtVars_initialize (void){
+    int i;
+    //initialize variables
+    //set String values to use dyn allocated buffer (copied from default value set)
+    //This is to fit ExtVars_set_variables behavior that always "always free/realloc strings".
+    for (i = 0; i < NVARS; i++){
+      if(treehdlvars[i].type == EXTVARS_TYPE_STR)
+        treehdlvars[i].value.s=strdup(treehdlvars[i].value.s);
+    }
     return RC_OK;
 }

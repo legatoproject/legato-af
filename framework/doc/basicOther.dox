@@ -5,21 +5,21 @@
 @ref Security <br>
 @ref Internationalization <br>
 @ref powerManagement <br>
+@ref basicOtherWhatsNext
 
 @section Configuration
 
-Device configuration data is absolutely vital for most applications.  Seldom are all devices
-in an application completely identical.  Usually, there's some kind of customization of each
-device.  It may be a complex set of user preferences, or it may be just a simple node name.
-Either way, it needs to be:
- - stored somewhere it can be retrieved quickly and easily
+Device configuration data is vital for most applications.  Seldom are all devices
+in an application identical.  Usually, there's some kind of customization on each
+device: it may be a complex set of user preferences, or it may be just a simple node name.
+Regardless of the device's customization, the device needs to be:
+ - stored somewhere it can be retrieved quickly
  - easy to modify programmatically from within the device application code
  - easy to view and modify remotely via generic network or managed portal service
  - protected from
    - malicious snooping and vandalizm
    - multi-threaded race conditions
    - untimely device reset or power loss
- -  read configuration data regardless of the application's version.
 
 @todo Update this section and its subsections to match implementation.
 
@@ -53,14 +53,14 @@ transaction can be "committed".  If a fault prevents the entire set of changes f
 on commit, or if the transaction is cancelled before it is committed, then none of that
 transaction's changes will be applied.
 
-Transactions can also be started for reading only.  No write transaction is allowed to start
-while there is a read transaction in progress.  This ensures that anyone reading configuration
-data fields in the context of a read transaction will see only field values that are consistent
-with each other.
+Transactions can also be started for reading only.  A write transaction will be allowed to start
+while there is a read transaction in progress. But the commit process will block write transactions 
+until the read transactions have finished.  This ensures that anyone reading configuration
+data fields will see only field values that are consistent.
 
 To prevent denial of service problems (either accidental or malicious), transactions have a
-limited lifetime.  If a transaction remains open for too long, it will be automatically terminated
-and subsequent attempts to read or write within that transaction will fail.
+limited lifetime.  If a transaction remains open for too long, it will be automatically terminated; 
+the configration database will drop its connection to the offending client.
 
 @subsection backForwardCompatibility Backward/Forward Compatibility
 
@@ -100,8 +100,7 @@ configuration data can be used as an attack vector for malicious software.  As a
 access to configuration data must be strictly controlled when there is any possibility that
 malicious software may be allowed to run on a device.
 
-The Configuration Data system allows access control lists to be constructed for configuration
-data items.
+The Configuration Data system separates each applications' configration data only allowing access to its own data.
 
 @todo Document how configuration data access control lists are specified.
 
@@ -129,6 +128,8 @@ group ID, and root directory.  Files are bound into the chroot jail using bind m
 Access control for files is done using the underlying POSIX access control mechanisms, based
 on users and permissions.
 
+See @ref sandboxGen
+
 @todo Add support for CPU, RAM, flash, and network consumption limits on applications.
 
 @section Internationalization
@@ -148,23 +149,27 @@ operating system.  For example, if a device is not in use, the driver will autom
 that device in its lowest power state.
 
 Of course, application behaviour drives power consumption.  If application code is
-using a device when it doesn't really need to, then power will be wasted.  Power
+using a peripheral device when it doesn't really need to, then power will be wasted.  Power
 is also wasted if application code is running busy-wait loops or periodically polling for events.
 Instead, applications should register call-back functions to be triggered when events occur. This way
 application code will only run when an event occurs, rather than waking up to check
 for events that haven't happened. Every CPU cycle uses power, so when a power-sensitive
-application is woken up, it will execute as few instructions as possible before going back
+application is woken up, it should execute as few instructions as possible before going back
 to sleep.
 
 When all threads are sleeping, the operating system will reduce the CPU power state 
-and/or memory automatically. The Legato event loop return handler 
-will put the thread to sleep (unless there is another event waiting). 
-To put your thread to sleep when it doesn't have any work to do, block your thread on poll(), select(),
-read(), write(), recv(), etc.
+and/or memory automatically. When an event handler function returns back to the Legato event loop, 
+it puts the thread to sleep (unless there is another event waiting). If your thread is not running the Legato event loop,
+to put your thread to sleep when it's not working, block your thread on @c poll(),  @c select(),  @c read(),  @c write(),  @c recv(), etc.
 
 Periodic timers will wake your application up and consume power. To save power
-when using a periodic timer, make thetimer period as long possible.  Longer timer
+when using a periodic timer, make the timer period as long possible.  Longer timer
 periods allow the operating system to go into deeper sleep states.
+
+
+@section basicOtherWhatsNext What's Next?
+
+@ref basicRuntimeArch
 
 <HR>
 

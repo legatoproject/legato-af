@@ -267,6 +267,24 @@ void le_sls_AddAfter
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Removes the link found after currentLinkPtr.  The user must ensure that currentLinkPtr is in the
+ * list otherwise the behaviour of this function is undefined.
+ *
+ * @return
+ *      Pointer to the removed link.
+ *      NULL if there are no more links in the list after currentLinkPtr.
+ */
+//--------------------------------------------------------------------------------------------------
+le_sls_Link_t* le_sls_RemoveAfter
+(
+    le_sls_List_t* listPtr,            ///< [IN] The list to remove from.
+    le_sls_Link_t* currentLinkPtr      ///< [IN] The link after this one will be removed from the
+                                       ///<      list.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Removes and returns the link at the head of the list.
  *
  * @return

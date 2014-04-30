@@ -19,7 +19,7 @@ le_event_Id_t TriggerEvent;
 //--------------------------------------------------------------------------------------------------
 void allParameters
 (
-    int32_t a,
+    common_EnumExample_t a,
     uint32_t* bPtr,
     const uint32_t* dataPtr,
     size_t dataNumElements,
@@ -27,7 +27,9 @@ void allParameters
     size_t* outputNumElementsPtr,
     const char* label,
     char* response,
-    size_t responseNumElements
+    size_t responseNumElements,
+    char* more,
+    size_t moreNumElements
 )
 {
     int i;
@@ -46,6 +48,7 @@ void allParameters
     }
 
     le_utf8_Copy(response, "response string", responseNumElements, NULL);
+    le_utf8_Copy(more, "more info", moreNumElements, NULL);
 }
 
 

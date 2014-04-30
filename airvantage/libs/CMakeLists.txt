@@ -1,4 +1,4 @@
-#*******************************************************************************
+ #*******************************************************************************
 # Copyright (c) 2012 Sierra Wireless and others.
 # All rights reserved. This program and the accompanying materials
 # are made available under the terms of the Eclipse Public License v1.0
@@ -10,13 +10,16 @@
 #*******************************************************************************
 
 PROJECT(CLIBS)
+
+
+
 ADD_SUBDIRECTORY (common)
 ADD_SUBDIRECTORY (luasignal)
 ADD_SUBDIRECTORY (bysant)
 ADD_SUBDIRECTORY (SerialFramework)
 ADD_SUBDIRECTORY (hmac-md5)
 ADD_SUBDIRECTORY (sha1)
-ADD_SUBDIRECTORY (keystore)
 ADD_SUBDIRECTORY (cdb)
 ADD_SUBDIRECTORY (yajl)
-ADD_SUBDIRECTORY (openaes)
+ADD_SUBDIRECTORY (${SECURITY_LIB})
+ADD_SUBDIRECTORY (keystore)

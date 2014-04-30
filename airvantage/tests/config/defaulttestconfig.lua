@@ -44,6 +44,7 @@ local tests = {
   --time        = { target = {"native"}, environment = "agent", TestPolicy = "OnCommit"}, --needs root user rights
   --appcon      = { target = {"native"}, environment = {"agent"}, TestPolicy = "OnCommit"}, --needs root user rights
   extvars     = { target = {"native"}, environment = {"agent"}, TestPolicy = "OnCommit"},
+  data_policy = { target = {"native"}, environment = {"agent"}, TestPolicy = "OnCommit"},
   
   -- integration tests
   crypto      = { target = {"native"}, environment = {"integration"}, TestPolicy = "Daily"},
@@ -51,6 +52,7 @@ local tests = {
   restdigest  = { target = {"native"}, environment = {"integration"}, TestPolicy = "Daily"},
   srvcon      = { target = {"native"}, environment = {"integration"}, TestPolicy = "Daily"},
   updatedwl   = { target = {"native"}, environment = {"integration"}, TestPolicy = "Daily"},
+  updateDaily   = { target = {"native"}, environment = {"agent"}, TestPolicy = "Daily"},
 
   -- end to end tests
   --Legacy simulated target tests

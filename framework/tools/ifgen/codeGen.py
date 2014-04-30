@@ -156,6 +156,19 @@ __attribute__((unused)) static void* UnpackString(void* msgBufPtr, const char** 
     *dataStrPtr = msgBufPtr;
     return ( msgBufPtr + dataSize );
 }
+
+// todo: This function may eventually replace all usage of UnpackString() above.
+//       Maybe there should also be a PackDataString() function as well?
+// Unused attribute is needed because this function may not always get used
+__attribute__((unused)) static void* UnpackDataString(void* msgBufPtr, void* dataPtr, size_t dataSize)
+{
+    // Number of bytes copied from msg buffer, not including null terminator
+    size_t numBytes;
+
+    // todo: For now, assume the string will always fit in the buffer. This may not always be true.
+    le_utf8_Copy( dataPtr, msgBufPtr, dataSize, &numBytes );
+    return ( msgBufPtr + (numBytes + 1) );
+}
 """
 
 
@@ -182,8 +195,10 @@ def FormatHeaderComment(comment):
 #---------------------------------------------------------------------------------------------------
 
 
-
 HandlerTypeTemplate = """
+//--------------------------------------------------------------------------------------------------
+{{headerComment}}
+//--------------------------------------------------------------------------------------------------
 typedef void (*{{handler.name}})
 (
     {{ handler.parmList | printParmList("clientParmList") | indent }}
@@ -191,8 +206,28 @@ typedef void (*{{handler.name}})
 """
 
 
+def AddParamComments(header, parmList):
+    # If there is no header comment, then create a stub
+    if not header:
+        header = FormatHeaderComment("This handler ...")
+
+    headerLines = header.splitlines()
+    commentLines = []
+    for p in parmList:
+        commentLines.append( ' * @param %s' % p.name )
+
+        # The comment lines for each parameter start with '///<' which needs to be stripped off,
+        # in addition to any leading whitespace after that.
+        commentLines.extend( ' *        %s' % c[4:].lstrip() for c in p.comment.splitlines() )
+
+    newHeader = '\n'.join( headerLines[:-1] + [' *'] + commentLines + headerLines[-1:] )
+    #print newHeader
+    return newHeader
+
+
 def WriteHandlerTypeDef(fp, handler):
-    handlerStr = FormatCode(HandlerTypeTemplate, handler=handler)
+    headerComment = AddParamComments(handler.comment, handler.parmList)
+    handlerStr = FormatCode(HandlerTypeTemplate, handler=handler, headerComment=headerComment)
     print >>fp, handlerStr
 
 
@@ -336,6 +371,77 @@ def GetServerAsyncFuncPrototypeStr(func):
     # it doesn't add extra, unintended, spaces in the generated code output.
     return funcStr.strip()
 
+
+
+#---------------------------------------------------------------------------------------------------
+# Type defintion related functions and code
+#---------------------------------------------------------------------------------------------------
+
+
+TypeDefinitionTemplate = """
+//--------------------------------------------------------------------------------------------------
+{{typeDef.comment}}
+//--------------------------------------------------------------------------------------------------
+{{typeDef.definition}}
+"""
+
+
+def WriteTypeDefinition(fp, typeDef):
+    typeDefStr = FormatCode(TypeDefinitionTemplate, typeDef=typeDef)
+    print >>fp, typeDefStr
+
+
+#---------------------------------------------------------------------------------------------------
+
+
+EnumDefinitionTemplate = """
+//--------------------------------------------------------------------------------------------------
+{{enumDef.comment}}
+//--------------------------------------------------------------------------------------------------
+typedef enum
+{
+    {{ enumDef.valueList | printEnumListWithComments | indent }}
+}
+{{enumDef.typeName}};
+"""
+
+
+#
+# Generates a properly formatted string for the enum value, along with any associated comments.
+#
+def FormatEnumValue(value, lastValue):
+    # Format the enum
+    s = value.name[:]
+    if not lastValue:
+        s += ','
+
+    if value.comment:
+        commentLines = value.comment.splitlines()
+
+        # Indent the comments, relative to the parameter type/name
+        commentStr = '\n'.join( ' '*4+c for c in commentLines )
+
+        # Add the comments on the following line, and also add a trailing blank line
+        s = '\n'.join( ( s, commentStr, '' ) )
+        #print s
+
+    return s
+
+
+#
+# Define and register the filter for processing enum values with comments
+#
+def PrintEnumListWithComments(valueList):
+    resultList = [ FormatEnumValue(v, False) for v in valueList[:-1] ]
+    resultList += [ FormatEnumValue(valueList[-1], True) ]
+    return '\n'.join( resultList )
+
+Environment.filters["printEnumListWithComments"] = PrintEnumListWithComments
+
+
+def WriteEnumDefinition(fp, enumDef):
+    enumDefStr = FormatCode(EnumDefinitionTemplate, enumDef=enumDef)
+    print >>fp, enumDefStr
 
 
 #---------------------------------------------------------------------------------------------------
@@ -791,23 +897,15 @@ def WriteIncludeGuardEnd(fp, fileName):
 
 #---------------------------------------------------------------------------------------------------
 
-
-def WriteVerbatimSection(fp, verbatimSection):
-    print >>fp, '// Start of user-provided verbatim section'
-    print >>fp, verbatimSection
-    print >>fp, '// End of user-provided verbatim section\n\n'
-
-
-#---------------------------------------------------------------------------------------------------
-
 def WriteCommonInterface(fp,
                          startTemplate,
                          pf,
                          ph,
+                         pt,
+                         importList,
                          fileName,
                          genericFunctions,
                          userIncludeFile,
-                         verbatimSection,
                          headerComments,
                          genAsync):
 
@@ -820,22 +918,40 @@ def WriteCommonInterface(fp,
     WriteIncludeGuardBegin(fp, fileName)
     print >>fp, FormatCode(startTemplate)
 
-    # If the verbatim section is specified then use it.  This takes precedence over the
-    # userIncludeFile option.
-    if verbatimSection:
-        WriteVerbatimSection(fp, verbatimSection)
+    # Write the imported include files.
+    if importList:
+        print >>fp, '// Interface specific includes'
+        for i in importList:
+            print >>fp, '#include "%s"' % i
+        print >>fp, '\n'
 
     # If it was specified, include the customizable user include file.  This is needed so that user
     # specific C type definitions can be included.  Eventually, this will be replaced by a mechanism
     # to define types within the interface file.
-    elif userIncludeFile:
+    #
+    # todo: Once the transition to defined types is complete, the --user-include option will be removed.
+    #       Initially, the --user-include option was ignored if there were any defined types, but this
+    #       makes it harder to have a gradual transition.
+    if userIncludeFile:
         print >>fp, '// User customizable include file\n#include "%s"\n\n' % userIncludeFile
 
     # Write out the prototypes for the generic functions
     for s in genericFunctions:
         print >>fp, "%s;\n" % GetFuncPrototypeStr(s)
 
-    # Write out the handler type definitions first
+    # Write out the type definitions
+    for t in pt:
+        # Types that have a simple definition will have the appropriate attribute; otherwise call an
+        # explicit function to write out the definition.
+        if hasattr(t, "definition"):
+            WriteTypeDefinition(fp, t)
+        elif isinstance( t, codeTypes.EnumData ):
+            WriteEnumDefinition(fp, t)
+        else:
+            # todo: Should I print an error or something here?
+            pass
+
+    # Write out the handler type definitions
     for h in ph:
         WriteHandlerTypeDef(fp, h)
 
@@ -843,19 +959,8 @@ def WriteCommonInterface(fp,
     for f in pf:
         #print f
 
-        # If this is an AddHandler, then also write out the type definition for the return
-        # type.  Used by both the AddHandler and the RemoveHandler.
-        #
-        # todo: Right now this is written out right before the associated function prototypes.
-        #       Alternatively, this could be written out as one block before any of the function
-        #       prototypes.  Not sure which is beter, from a readability perspective.
-        #
-        if f.addHandlerName:
-            print >>fp, "%s\n" % f.handlerRefDefn
-
         # The Add and Remove handler functions are never asynchronous.
         if genAsync and not f.addHandlerName and not f.isRemoveHandler :
-            # todo: Add blank lines as necessary
             print >>fp, "%s;\n" % GetRespondFuncPrototypeStr(f)
             print >>fp, "%s;\n" % GetServerAsyncFuncPrototypeStr(f)
         else:
@@ -873,20 +978,22 @@ InterfaceHeaderStartTemplate = """
 
 def WriteInterfaceHeaderFile(pf,
                              ph,
+                             pt,
+                             importList,
                              userIncludeFile,
                              genericFunctions,
                              fileName,
-                             headerComments,
-                             verbatimSection):
+                             headerComments):
 
     WriteCommonInterface(InterfaceHeaderFileText,
                          InterfaceHeaderStartTemplate,
                          pf,
                          ph,
+                         pt,
+                         importList,
                          fileName,
                          genericFunctions,
                          userIncludeFile,
-                         verbatimSection,
                          headerComments,
                          False)
 
@@ -1496,9 +1603,10 @@ typedef struct {{ "ServerCmd*" | addNamePrefix }} {{ "ServerCmdRef_t" | addNameP
 
 def WriteServerHeaderFile(pf,
                           ph,
+                          pt,
+                          importList,
                           genericFunctions,
                           fileName,
-                          verbatimSection,
                           userIncludeFile,
                           genAsync):
 
@@ -1511,10 +1619,11 @@ def WriteServerHeaderFile(pf,
                          headerTemplate,
                          pf,
                          ph,
+                         pt,
+                         importList,
                          fileName,
                          genericFunctions,
                          userIncludeFile,
-                         verbatimSection,
                          [],
                          genAsync)
 
@@ -1532,7 +1641,7 @@ def GetOutputFileNames(prefix):
     #       causing problems with usage, and so the check has been commented out for now.
     if prefix:
         for i, fn in enumerate(fileNames):
-            newfn = prefix + fn
+            newfn = "%s_%s" % (prefix, fn)
 
             #if os.path.exists(newfn):
             #    print "ERROR: %s exists" % newfn
@@ -1545,7 +1654,7 @@ def GetOutputFileNames(prefix):
 
 
 
-def PostProcessAddHandler(f, flist):
+def PostProcessAddHandler(f, flist, tlist):
     """
     Define the AddHandler and RemoveHandler functions and add them to the function list.
 
@@ -1559,10 +1668,8 @@ def PostProcessAddHandler(f, flist):
        can select which profile they are registering against for state changes.  In all other cases,
        the AddHandler does not take any additional parameters, beyond the function pointer and in
        some cases the context pointer.  Reviewed the MCC and Positioning APIs.  MCC is same as MDC
-       and uses a profile ref.  Positioing uses two additional parameters horizontal and vertical
+       and uses a profile ref.  Positioning uses two additional parameters horizontal and vertical
        magnitude.  This could make things complicated.
-     - Need to add support for generating the context pointer parameter, in addition to the function
-       pointer parameter.
     """
 
     #print f
@@ -1570,16 +1677,13 @@ def PostProcessAddHandler(f, flist):
 
 
     #
-    # Create the AddHandler/RemoveHandler type, which is returned by the AddHandler and used
+    # Create the AddHandler/RemoveHandler ref type, which is returned by the AddHandler and used
     # by the RemoveHandler.
     #
-    # todo: Maybe this could be implemented with a template or something at the time the definition
-    #       is written out.  We really only need handlerRefType here, but we need the "Ref_t" suffix
-    #       both here and when the definition is written.  I suppose we also need f.name at the
-    #       time it will be printed out, but that won't be available at that time.
-    #
-    handlerRefType = "%sRef_t" % f.name
-    handlerRefDefn = "typedef struct %s* %s;" % (f.name, handlerRefType)
+    handlerRefType = codeTypes.ReferenceData(
+                        f.baseName,
+                        FormatHeaderComment("Reference type for %s handler ADD/REMOVE functions" % f.name))
+    tlist[f.name] = handlerRefType
     #print handlerRefType
     #print handlerRefDefn
 
@@ -1605,8 +1709,9 @@ def PostProcessAddHandler(f, flist):
         addParmList = list(f.parmList) + [ addParm, contextParm ]
     addHandler = codeTypes.FunctionData(
         "Add" + f.baseName,
-        handlerRefType,
-        addParmList
+        handlerRefType.refName,
+        addParmList,
+        FormatHeaderComment("%s handler ADD function" % f.name)
     )
     addHandler.addHandlerName = f.type
 
@@ -1637,14 +1742,7 @@ contextPtr = _clientDataPtr;\
     addParm.unpackCallName = "AsyncResponse_%s" % addParm.funcName
     # end of todo from above
 
-
-    # If addHandler.addHandlerName is a valid name, then when generating the code, the following
-    # additional attribute will be checked.
-    addHandler.handlerRefDefn = handlerRefDefn
-
-    # todo: Add a better comment
-    addHandler.comment = "/**\n * This function adds a handler ...\n */"
-
+    # Add the function to the function list
     #print addHandler
     flist[addHandler.name] = addHandler
 
@@ -1652,7 +1750,7 @@ contextPtr = _clientDataPtr;\
     # Create the RemoveHandler and add it to the function list
     #
 
-    removeParm = codeTypes.SimpleData( "addHandlerRef", handlerRefType )
+    removeParm = codeTypes.SimpleData( "addHandlerRef", handlerRefType.refName )
 
     # todo: This needs to be implemented better
     # As a temporary solution, directly modify the templates for the parameter.
@@ -1686,56 +1784,56 @@ le_mem_Release(serverDataPtr);
     removeHandler = codeTypes.FunctionData(
         "Remove" + f.baseName,
         "void",
-        [ removeParm ]
+        [ removeParm ],
+        FormatHeaderComment("%s handler REMOVE function" % f.name)
     )
     removeHandler.isRemoveHandler = True
 
-    # todo: Add a better comment
-    removeHandler.comment = "/**\n * This function removes a handler ...\n */"
-
+    # Add the function to the function list
     flist[removeHandler.name] = removeHandler
 
 
 
 
-def WriteAllCode(commandArgs, parsedData):
+def WriteAllCode(commandArgs, parsedData, hashValue):
 
     # Extract the different types of data
     headerComments = parsedData['headerList']
     parsedCode = parsedData['codeList']
-    verbatimSection = parsedData['verbatim']
+    importList = parsedData['importList']
 
-    # Split the functions into two lists, and insert any AddHandlers/RemoveHandlers as needed
+    # Split the parsed data into three lists, and insert any AddHandlers/RemoveHandlers as needed
     # todo: I used to need an OrderedDict, so that I could easily look up functions by name.
     #       Not sure if I still need this functionality, so maybe I could just use a list here,
     #       although I would have to update the code to use append() in a number of places.
     parsedFunctions = MyOrderedDict()
     parsedHandlers = MyOrderedDict()
+    parsedTypes = MyOrderedDict()
     for f in parsedCode:
         if isinstance( f, codeTypes.HandlerFunctionData ):
             parsedHandlers[f.name] = f
         elif isinstance( f, codeTypes.AddHandlerFunctionData ):
-            PostProcessAddHandler( f, parsedFunctions )
+            PostProcessAddHandler( f, parsedFunctions, parsedTypes )
+        elif isinstance( f, codeTypes.BaseTypeData ):
+            parsedTypes[f.name] = f
         else:
             parsedFunctions[f.name] = f
 
     # Create the generic client functions
-    # todo: FunctionData() should take a comment argument, and all code should be changed to
-    #       pass in this argument, instead of separately setting the comment attribute
     startClientFunc = codeTypes.FunctionData(
         "StartClient"+commandArgs.serviceTag,
         "void",
         # todo: Is there any need to have min/max sizes for the service instance name
-        [ codeTypes.StringData( "serviceInstanceName", codeTypes.DIR_IN ) ]
+        [ codeTypes.StringData( "serviceInstanceName", codeTypes.DIR_IN ) ],
+        FormatHeaderComment("Start the service for the client main thread")
     )
-    startClientFunc.comment = FormatHeaderComment("Start the client main thread")
 
     stopClientFunc = codeTypes.FunctionData(
         "StopClient"+commandArgs.serviceTag,
         "void",
-        [ codeTypes.VoidData() ]
+        [ codeTypes.VoidData() ],
+        FormatHeaderComment("Stop the service for the current client thread")
     )
-    stopClientFunc.comment = FormatHeaderComment("Stop the service for the current client thread")
 
     # IMPORTANT:
     # These functions must be in the same order as implemented in the ClientStartFuncCode template.
@@ -1746,23 +1844,23 @@ def WriteAllCode(commandArgs, parsedData):
         "StartServer"+commandArgs.serviceTag,
         "void",
         # todo: Is there any need to have min/max sizes for the service instance name
-        [ codeTypes.StringData( "serviceInstanceName", codeTypes.DIR_IN ) ]
+        [ codeTypes.StringData( "serviceInstanceName", codeTypes.DIR_IN ) ],
+        FormatHeaderComment("Initialize and start the server.")
     )
-    startServerFunc.comment = FormatHeaderComment("Initialize and start the server.")
 
     getServiceRef = codeTypes.FunctionData(
         "GetServiceRef"+commandArgs.serviceTag,
         "le_msg_ServiceRef_t",
-        [ codeTypes.VoidData() ]
+        [ codeTypes.VoidData() ],
+        FormatHeaderComment("Get the server service reference")
     )
-    getServiceRef.comment = FormatHeaderComment("Get the server service reference")
 
     getSessionRef = codeTypes.FunctionData(
         "GetClientSessionRef"+commandArgs.serviceTag,
         "le_msg_SessionRef_t",
-        [ codeTypes.VoidData() ]
+        [ codeTypes.VoidData() ],
+        FormatHeaderComment("Get the client session reference for the current message")
     )
-    getSessionRef.comment = FormatHeaderComment("Get the client session reference for the current message")
 
     # IMPORTANT:
     # These functions must be in the same order as implemented in the ServerStartFuncCode template.
@@ -1772,61 +1870,65 @@ def WriteAllCode(commandArgs, parsedData):
     outputFileList = GetOutputFileNames(commandArgs.filePrefix)
     interfaceFname, localFname, clientFname, serverFname, serverIncludeFname = outputFileList
 
-    # The hashValue is used as the PROTOCOL_ID_STR, shared between client and server.
-    hashValue = codeTypes.GetHash(parsedData)
-
-    # Write the files to the corresponding buffers.
-    WriteInterfaceHeaderFile(parsedFunctions,
-                             parsedHandlers,
-                             commandArgs.userInclude,
-                             genericInterfaceFunctions,
-                             interfaceFname,
-                             headerComments,
-                             verbatimSection)
-
-    WriteLocalHeaderFile(parsedFunctions,
-                         parsedHandlers,
-                         hashValue,
-                         localFname)
-
-    WriteClientFile([localFname, interfaceFname],
-                    parsedFunctions,
-                    parsedHandlers,
-                    genericInterfaceFunctions)
-
-    WriteServerHeaderFile(parsedFunctions,
-                          parsedHandlers,
-                          genericServerFunctions,
-                          serverIncludeFname,
-                          verbatimSection,
-                          commandArgs.userInclude,
-                          commandArgs.async)
-
-    WriteServerFile([localFname, serverIncludeFname],
-                    parsedFunctions,
-                    parsedHandlers,
-                    genericServerFunctions,
-                    commandArgs.async)
+    # Map the imported files to the appropriate include file names
+    importList = [ GetOutputFileNames(i.name)[0] for i in importList ]
 
     # If the output directory option was specified, then prepend to the output files names
     if commandArgs.outputDir:
         outputFileList = [ os.path.join( commandArgs.outputDir, fn ) for fn in outputFileList ]
-        interfaceFname, localFname, clientFname, serverFname, serverIncludeFname = outputFileList
+    interfaceFpath, localFpath, clientFpath, serverFpath, serverIncludeFpath = outputFileList
 
-    # If requested, write the output to the real files, overwriting any existing files
+    # If requested, write the contents to the corresponding buffers, and then write the buffers to
+    # the real files, overwriting any existing files
     if commandArgs.genInterface:
-        open(interfaceFname, 'w').write( InterfaceHeaderFileText.getvalue() )
+        # If there are no functions or handlers defined, then don't put the generic interface
+        # function prototypes in the interface header file.
+        if not parsedFunctions and not parsedHandlers:
+            genericFuncList = []
+        else:
+            genericFuncList = genericInterfaceFunctions
+
+        WriteInterfaceHeaderFile(parsedFunctions,
+                                 parsedHandlers,
+                                 parsedTypes,
+                                 importList,
+                                 commandArgs.userInclude,
+                                 genericFuncList,
+                                 interfaceFname,
+                                 headerComments)
+        open(interfaceFpath, 'w').write( InterfaceHeaderFileText.getvalue() )
 
     if commandArgs.genLocal:
-        open(localFname, 'w').write( LocalHeaderFileText.getvalue() )
+        WriteLocalHeaderFile(parsedFunctions,
+                             parsedHandlers,
+                             hashValue,
+                             localFname)
+        open(localFpath, 'w').write( LocalHeaderFileText.getvalue() )
 
     if commandArgs.genClient:
-        open(clientFname, 'w').write( ClientFileText.getvalue() )
+        WriteClientFile([localFname, interfaceFname],
+                        parsedFunctions,
+                        parsedHandlers,
+                        genericInterfaceFunctions)
+        open(clientFpath, 'w').write( ClientFileText.getvalue() )
 
     if commandArgs.genServerInterface:
-        open(serverIncludeFname, 'w').write( ServerIncludeFileText.getvalue() )
+        WriteServerHeaderFile(parsedFunctions,
+                              parsedHandlers,
+                              parsedTypes,
+                              importList,
+                              genericServerFunctions,
+                              serverIncludeFname,
+                              commandArgs.userInclude,
+                              commandArgs.async)
+        open(serverIncludeFpath, 'w').write( ServerIncludeFileText.getvalue() )
 
     if commandArgs.genServer:
-        open(serverFname, 'w').write( ServerFileText.getvalue() )
+        WriteServerFile([localFname, serverIncludeFname],
+                        parsedFunctions,
+                        parsedHandlers,
+                        genericServerFunctions,
+                        commandArgs.async)
+        open(serverFpath, 'w').write( ServerFileText.getvalue() )
 
 

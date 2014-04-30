@@ -20,7 +20,7 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Start the client main thread
+ * Start the service for the client main thread
  */
 //--------------------------------------------------------------------------------------------------
 void le_sms_msg_StartClient
@@ -40,17 +40,31 @@ void le_sms_msg_StopClient
 );
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Reference type for le_sms_msg_RxMessageHandler handler ADD/REMOVE functions
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct le_sms_msg_RxMessageHandler* le_sms_msg_RxMessageHandlerRef_t;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This handler ...
+ *
+ * @param msgRef
+ * @param contextPtr
+ */
+//--------------------------------------------------------------------------------------------------
 typedef void (*le_sms_msg_RxMessageHandlerFunc_t)
 (
     le_sms_msg_Ref_t msgRef,
     void* contextPtr
 );
 
-typedef struct le_sms_msg_RxMessageHandler* le_sms_msg_RxMessageHandlerRef_t;
-
 //--------------------------------------------------------------------------------------------------
 /**
- * This function adds a handler ...
+ * le_sms_msg_RxMessageHandler handler ADD function
  */
 //--------------------------------------------------------------------------------------------------
 le_sms_msg_RxMessageHandlerRef_t le_sms_msg_AddRxMessageHandler
@@ -64,7 +78,7 @@ le_sms_msg_RxMessageHandlerRef_t le_sms_msg_AddRxMessageHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function removes a handler ...
+ * le_sms_msg_RxMessageHandler handler REMOVE function
  */
 //--------------------------------------------------------------------------------------------------
 void le_sms_msg_RemoveRxMessageHandler

@@ -2,6 +2,7 @@
 
 @ref eventBackground <br>
 @ref eventBasics <br>
+@ref eventBasicsWhatsNext
 
 Also see @ref c_eventLoop
 
@@ -33,7 +34,7 @@ multi-threading is also supported by Legato along with the usual thread synchron
 
 @section eventBasics
 
-Legato's Event Loop API uses a central <b> event loop </b> calls <b> event handler </b> functions in
+Legato's Event Loop API uses a central <b> event loop </b> that calls <b> event handler </b> functions in
  * response to <b>event reports</b>.
  * 
  * Software components register their event handler functions with the event system (either
@@ -50,12 +51,12 @@ Legato's Event Loop API uses a central <b> event loop </b> calls <b> event handl
  *  - @ref c_event_files
  *  - @ref c_event_dispatchingToOtherThreads
  
+@section eventBasicsWhatsNext What's Next?
+@ref @ref sandboxGen
 
-
- 
 <HR>
 
-Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved.
+Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
 
 **/
 

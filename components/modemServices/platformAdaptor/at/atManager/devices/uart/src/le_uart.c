@@ -1,6 +1,6 @@
 /*******************************************************************************
  * Copyright (c) 2012 Sierra Wireless
- * All rights reserved. Use of this work is subject to license. 
+ * All rights reserved. Use of this work is subject to license.
  *******************************************************************************/
 
 #include <stdio.h>
@@ -329,8 +329,6 @@ int le_uart_write (uint32_t Handle, const char* buf, uint32_t buf_len)
 
         LE_DEBUG("Uart Write: %zd", size_written);
         size += size_written;
-
-        usleep(5000); // TODO: Fix ICC performance on telecom side problem
 
         if(size_written != size_to_wr)
             break;

@@ -23,7 +23,7 @@
  * Maximum string length and byte storage size of user names.
  */
 //--------------------------------------------------------------------------------------------------
-#define LIMIT_MAX_USER_NAME_LEN                 63
+#define LIMIT_MAX_USER_NAME_LEN                 (LIMIT_MAX_APP_NAME_LEN + 10)
 #define LIMIT_MAX_USER_NAME_BYTES               (LIMIT_MAX_USER_NAME_LEN + 1)
 
 
@@ -77,7 +77,7 @@
  * Maximum string length and byte storage size of path strings.
  */
 //--------------------------------------------------------------------------------------------------
-#define LIMIT_MAX_PATH_LEN                      254
+#define LIMIT_MAX_PATH_LEN                      511
 #define LIMIT_MAX_PATH_BYTES                    (LIMIT_MAX_PATH_LEN + 1)
 
 
@@ -165,6 +165,14 @@
  */
 //--------------------------------------------------------------------------------------------------
 #define LIMIT_MAX_NUM_SUPPLEMENTARY_GROUPS      30
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum number of bytes in a mount entry.
+ */
+//--------------------------------------------------------------------------------------------------
+#define LIMIT_MAX_MNT_ENTRY_BYTES               3*LIMIT_MAX_PATH_BYTES
 
 
 #endif // LE_SRC_LIMITS_INCLUDE_GUARD

@@ -10,7 +10,6 @@
 #include "le_sim.h"
 #include "pa_sim.h"
 #include "le_cfg_interface.h"
-#include "cfgEntries.h"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -57,6 +56,7 @@ typedef struct le_Sim
     char            IMSI[LE_SIM_IMSI_LEN];     ///< The international mobile subscriber identity.
     char            PIN[LE_SIM_PIN_MAX_LEN+1]; ///< The PIN code.
     char            PUK[LE_SIM_PUK_LEN+1];     ///< The PUK code.
+    char            phoneNumber[LE_TEL_NMBR_MAX_LEN]; /// < The Phone Number.
     bool            isPresent;                 ///< The 'isPresent' flag.
     le_dls_Link_t   link;                      ///< The Sim Object node link.
     void*           ref;                       ///< The safe reference for this object.
@@ -114,84 +114,6 @@ static le_event_Id_t NewSimStateEventId;
  */
 //--------------------------------------------------------------------------------------------------
 static uint32_t NumOfSlots;
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Load the configuration tree
- */
-//--------------------------------------------------------------------------------------------------
-static void LoadSimFromConfigDb
-(
-    uint32_t simNumber
-)
-{
-    // Get the configuration path for the SIM.
-    char configPath[LIMIT_MAX_PATH_BYTES];
-    snprintf(configPath, sizeof(configPath), "%s/%d",
-             CFG_MODEMSERVICE_SIM_PATH,
-             simNumber);
-
-    LE_DEBUG("Start reading SIM-%d information in ConfigDB",simNumber);
-
-    le_result_t result;
-    le_sim_Ref_t simRef = le_sim_Create(simNumber);
-    le_sim_States_t simState;
-
-    simState = le_sim_GetState(simRef);
-
-    switch (simState)
-    {
-        case LE_SIM_INSERTED:
-        {
-            // Check that the app has a configuration value.
-            le_cfg_iteratorRef_t simCfg = le_cfg_CreateReadTxn(configPath);
-
-            char simPin[LIMIT_MAX_PATH_BYTES] = {0};
-
-            if ( le_cfg_IsEmpty(simCfg,CFG_NODE_PIN) )
-            {
-                LE_WARN("PIN for SIM-%d is not define in configDB",simNumber);
-            }
-            else
-            {
-                if ( (result = le_cfg_GetString(simCfg,CFG_NODE_PIN,simPin,sizeof(simPin))) != LE_OK )
-                {
-                    LE_WARN("PIN not set for SIM-%d",simNumber);
-                    le_cfg_DeleteIterator(simCfg);
-                    return;
-                }
-                if ( (result = le_sim_EnterPIN(simRef,simPin)) != LE_OK )
-                {
-                    LE_ERROR("Error.%d Failed to enter SIM pin for SIM-%d",result,simNumber);
-                    le_cfg_DeleteIterator(simCfg);
-                    return;
-                }
-                LE_DEBUG("Sim-%d is unlocked", simNumber);
-            }
-
-            le_cfg_DeleteIterator(simCfg);
-            break;
-        }
-        case LE_SIM_BLOCKED:
-        {
-            LE_EMERG("Be carefull the sim-%d is BLOCKED, need to enter PUK code",simNumber);
-            break;
-        }
-        case LE_SIM_BUSY:
-            LE_WARN("Sim-%d was busy when loading configuration",simNumber);
-            break;
-        case LE_SIM_READY:
-            LE_DEBUG("Sim-%d is ready",simNumber);
-            break;
-        case LE_SIM_ABSENT:
-            LE_WARN("Sim-%d is absent",simNumber);
-            break;
-        case LE_SIM_STATE_UNKNOWN:
-            break;
-    }
-
-    LE_DEBUG("Load SIM information is done");
-}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -370,7 +292,6 @@ static le_result_t SelectSIMCard
             return LE_NOT_FOUND;
         }
         SelectedCard = simNum;
-        LoadSimFromConfigDb(SelectedCard);
     }
     return LE_OK;
 }
@@ -421,15 +342,21 @@ static void NewSimStateHandler
         GetSimCardInformation(simPtr, eventPtr->state);
     }
 
+    // Discard transitional states
+    switch (eventPtr->state)
+    {
+        case LE_SIM_BUSY:
+        case LE_SIM_STATE_UNKNOWN:
+            LE_DEBUG("Discarding report for card.%d, state.%d", eventPtr->num, eventPtr->state);
+            return;
+
+        default:
+            break;
+    }
+
     // Notify all the registered client handlers
     le_event_Report(NewSimStateEventId, &simPtr->ref, sizeof(le_sim_Ref_t));
     LE_DEBUG("Report on SIM reference %p", simPtr->ref);
-
-    // Try to enter PIN from the configDB just when sim is inserted
-    if (eventPtr->state == LE_SIM_INSERTED)
-    {
-        LoadSimFromConfigDb(SelectedCard);
-    }
 
     le_mem_Release(eventPtr);
 }
@@ -469,8 +396,6 @@ void le_sim_Init
     // Register a handler function for new SIM state notification
     LE_FATAL_IF((pa_sim_AddNewStateHandler(NewSimStateHandler) == NULL),
                 "Add new SIM state handler failed");
-
-    LoadSimFromConfigDb(SelectedCard);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1364,4 +1289,92 @@ void le_sim_RemoveNewStateHandler
     le_event_RemoveHandler((le_event_HandlerRef_t)handlerRef);
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the SIM Phone Number.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_OVERFLOW if the Phone Number can't fit in phoneNumberStr
+ *      - LE_NOT_POSSIBLE on any other failure
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_sim_GetSubscriberPhoneNumber
+(
+    le_sim_Ref_t simRef,            ///< [IN]  SIM object.
+    char        *phoneNumberStr,    ///< [OUT] The phone Number
+    size_t       phoneNumberStrSize ///< [IN]  Size of phoneNumberStr
+)
+{
+    le_sim_States_t  state;
+    char             phoneNumber[LE_TEL_NMBR_MAX_LEN] = {0} ;
+    Sim_t*           simPtr = le_ref_Lookup(SimRefMap, simRef);
+    le_result_t      res = LE_NOT_POSSIBLE;
+
+    if (simPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", simRef);
+        return LE_FAULT;
+    }
+    if (phoneNumberStr == NULL)
+    {
+        LE_KILL_CLIENT("phoneNumberStr is NULL !");
+        return LE_FAULT;
+    }
+
+    if (strlen(simPtr->phoneNumber) == 0)
+    {
+        if (SelectSIMCard(simPtr->num) == LE_OK)
+        {
+            if (pa_sim_GetState(&state) == LE_OK)
+            {
+                LE_DEBUG("Try get the Phone Number of card number.%d in state %d", simPtr->num, state);
+                if ((state == LE_SIM_INSERTED) ||
+                    (state == LE_SIM_READY)    ||
+                    (state == LE_SIM_BLOCKED))
+                {
+                    // Get identification information
+                    if(pa_sim_GetSubscriberPhoneNumber(phoneNumber, sizeof(phoneNumber)) != LE_OK)
+                    {
+                        LE_ERROR("Failed to get the Phone Number of card number.%d", simPtr->num);
+                        simPtr->phoneNumber[0] = '\0';
+                    }
+                    else
+                    {
+                        // Note that it is not valid to truncate the ICCID.
+                        res = le_utf8_Copy(simPtr->phoneNumber,
+                                           phoneNumber, sizeof(simPtr->phoneNumber), NULL);
+                    }
+                }
+            }
+        }
+        else
+        {
+            LE_ERROR("Failed to get the Phone Number of card number.%d", simPtr->num);
+            simPtr->phoneNumber[0] = '\0';
+        }
+    }
+    else
+    {
+        res = LE_OK;
+    }
+
+    // The ICCID is available. Copy it to the result buffer.
+    if (res == LE_OK)
+    {
+        res = le_utf8_Copy(phoneNumberStr,simPtr->phoneNumber,phoneNumberStrSize,NULL);
+    }
+
+    // If the ICCID could not be retrieved for some reason, or a truncation error occurred when
+    // copying the result, then ensure the cache is cleared.
+    if (res != LE_OK)
+    {
+        simPtr->phoneNumber[0] = '\0';
+    }
+
+    return res;
+}
 

@@ -697,7 +697,7 @@ local function runlocaltest(name)
     local test={}
 
     local function setup()
-        u.assert(update.init())
+        u.assert(config.update.activate)
         u.assert(config.set("update.localpkgname", "pkg_standalone_pkg.tar")) --set same value as file name (not path) as put in testdata.packagepath
         u.assert(loadtest(name, test))
     end

@@ -141,7 +141,6 @@ static rc_ReturnCode_t setVariable(const char *pathPtr, void *valuePtr, int type
   size_t payloadLen;
   uint32_t respPayloadLen = 0;
   yajl_gen gen;
-  yajl_val yval;
 
   if (pathPtr == NULL || (valuePtr == NULL && type != DT_TYPE_NULL))
     return RC_BAD_PARAMETER;
@@ -186,71 +185,7 @@ static rc_ReturnCode_t setVariable(const char *pathPtr, void *valuePtr, int type
   yajl_gen_free(gen);
 
   if (RC_OK != res)
-  {
-    SWI_LOG("DT", ERROR, "%s: failed to send EMP cmd, res = %d\n", __FUNCTION__, res);
-  }
-
-  if (respPayload)
-  {
-    char* payload = NULL;
-    payload = malloc(respPayloadLen + 1);
-    if (payload == NULL)
-    {
-      SWI_LOG("DT", ERROR, "%s: Failed to alloc payload\n", __FUNCTION__);
-      free(respPayload);
-      return RC_NO_MEMORY;
-    }
-
-    memcpy(payload, respPayload, respPayloadLen);
-    payload[respPayloadLen] = 0;
-
-    SWI_LOG("DT", DETAIL, "%s: respPayload = %.*s\n", __FUNCTION__, respPayloadLen, respPayload);
-    YAJL_TREE_PARSE(yval, payload);
-    //for now the payload contains ["ok"] as an JSON array in success case,
-    // [nil, error string in case of error] as an JSON array
-    if(YAJL_IS_ARRAY(yval)){
-      yajl_val* values = yval->u.array.values;
-      if(yval->u.array.len > 2 || yval->u.array.len == 0){
-        SWI_LOG("DT", ERROR, "Unexpected Response for Set command: JSON array is of size %d\n", yval->u.array.len);
-        res = RC_BAD_FORMAT;
-      }
-      else{ // 2 values of less
-        yajl_val yarray0 = values[0];
-        if( YAJL_IS_NULL(yarray0) ){ // error case
-          res = RC_UNSPECIFIED_ERROR; //to be replaced by rc status reception at some point
-          if(yval->u.array.len == 2 && yval->u.array.values[1]->type == yajl_t_string) {//may contain error description in string
-            SWI_LOG("DT", DETAIL, "setVariable command failed, details: %s\n", yval->u.array.values[1]->u.string);
-          }
-        }
-        else{
-          if(YAJL_IS_STRING(yarray0)){
-            char* str0 = YAJL_GET_STRING(yarray0);
-            if(! strncmp("ok", str0, strlen(str0)))
-              res = RC_OK;
-            else{
-              res = RC_BAD_FORMAT;
-              SWI_LOG("DT", DETAIL, "Unexpected Response for Set command: 1st elt is string [%s]\n", str0);
-            }
-          }
-          else{
-            res = RC_BAD_FORMAT; //
-            SWI_LOG("DT", DETAIL, "Unexpected Response for Set command:, 1st elt not string not null %d\n", yarray0->type);
-          }
-        }
-      }
-    }
-    else{ // not an array
-      SWI_LOG("DT", ERROR, "Unexpected Response for Set command: JSON array was expected, got %d\n", yval->type);
-      res = RC_BAD_FORMAT;
-    }
-
-    free(payload);
-    free(respPayload);
-    free(yval);
-  }
-
-
-
+     SWI_LOG("DT", ERROR, "%s: failed to send EMP cmd, res = %d\n", __FUNCTION__, res);
   return res;
 }
 
@@ -410,12 +345,12 @@ rc_ReturnCode_t swi_dt_Get(const char* pathPtr, swi_dset_Iterator_t** data, bool
   switch(yval->u.array.values[0]->type)
   {
   case yajl_t_number:
-    if (yval->u.number.flags & YAJL_NUMBER_INT_VALID)
+    if (yval->u.array.values[0]->u.number.flags & YAJL_NUMBER_INT_VALID)
     {
       res = swi_dset_PushInteger(*data, pathPtr,  strlen(pathPtr), yval->u.array.values[0]->u.number.i);
       SWI_LOG("DT", DEBUG, "%s: pushing int value %s -> %lld\n", __FUNCTION__, pathPtr, yval->u.array.values[0]->u.number.i);
     }
-    else if (yval->u.number.flags & YAJL_NUMBER_DOUBLE_VALID)
+    else if (yval->u.array.values[0]->u.number.flags & YAJL_NUMBER_DOUBLE_VALID)
     {
       res = swi_dset_PushFloat(*data, pathPtr,  strlen(pathPtr), yval->u.array.values[0]->u.number.d);
       SWI_LOG("DT", DEBUG, "%s: pushing float value %s -> %lf\n", __FUNCTION__, pathPtr, yval->u.array.values[0]->u.number.d);
@@ -431,9 +366,11 @@ rc_ReturnCode_t swi_dt_Get(const char* pathPtr, swi_dset_Iterator_t** data, bool
     break;
   case yajl_t_true:
     res = swi_dset_PushBool(*data, pathPtr, strlen(pathPtr), true);
+    SWI_LOG("DT", DEBUG, "%s: pushing true value.\n", __FUNCTION__);
     break;
   case yajl_t_false:
     res = swi_dset_PushBool(*data, pathPtr, strlen(pathPtr), false);
+    SWI_LOG("DT", DEBUG, "%s: pushing false value.\n", __FUNCTION__);
     break;
   default:
     SWI_LOG("DT", DEBUG, "%s: Unsupported value type, got %d\n", __FUNCTION__, yval->u.array.values[0]->type);
@@ -585,6 +522,15 @@ rc_ReturnCode_t swi_dt_Register(size_t numRegVars, const char** regVarsPtr, swi_
   int i = 0;
   cb_list_t *entry = NULL;
   yajl_gen gen;
+
+  if(numRegVars == 0) // we could have returned RC_OK but there is no point to do a register without any var.
+    return RC_BAD_PARAMETER;
+
+  if (regVarsPtr == NULL || cb == NULL || regIdPtr == NULL)
+    return RC_BAD_PARAMETER;
+
+  if (numPassiveVars > 0 && passiveVarsPtr == NULL) //numPassiveVars are optional
+    return RC_BAD_PARAMETER;
 
   YAJL_GEN_ALLOC(gen);
 

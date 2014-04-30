@@ -17,7 +17,7 @@ usage()
 cat << EOF
 usage: $0 [options] [destination]
 
-This script create a new available site file for apache2 and reload apache2 configuration.
+This script builds and executes test suites according to the chosen test policy.
 
 OPTIONS:
    -h      Show this message

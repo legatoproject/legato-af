@@ -187,6 +187,9 @@ int sdb_reset( sdb_table_t *tbl);
  * much slower. */
 int sdb_trim( sdb_table_t *tbl);
 
+/* assetname + path is the first string in conf_strings */
+const char *sdb_getpath( sdb_table_t *tbl);
+
 /* Configure the next column.
  * This must be called 'ncolumns' times before the table can be
  * used. The 'precision' argument is applicable only under certain

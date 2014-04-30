@@ -140,12 +140,14 @@
 //--------------------------------------------------------------------------------------------------
 typedef struct proc_Ref
 {
-    char*           name;                                   // The name of the process.
+    char*           name;                                   // Name of the process.
     char            cfgPathRoot[LIMIT_MAX_PATH_BYTES];      // Our path in the config tree.
+    char            appName[LIMIT_MAX_APP_NAME_BYTES];      // Name of the app that we are a part of.
     bool            paused;         // true if the process is paused.
     pid_t           pid;            // The pid of the process.
     time_t          faultTime;      // The time of the last fault.
     bool            cmdKill;        // true if the process was killed by proc_Stop().
+    le_timer_Ref_t  timerRef;       // Timer used to allow the application to shutdown
 }
 Process_t;
 
@@ -156,6 +158,17 @@ Process_t;
  */
 //--------------------------------------------------------------------------------------------------
 static le_mem_PoolRef_t ProcessPool;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Timeout value used to send a SIGKILL
+ */
+//--------------------------------------------------------------------------------------------------
+static const le_clk_Time_t KillTimeout = {
+        .sec = 0,
+        .usec = 300000,
+};
 
 
 //--------------------------------------------------------------------------------------------------
@@ -208,11 +221,13 @@ void proc_Init
 //--------------------------------------------------------------------------------------------------
 proc_Ref_t proc_Create
 (
-    const char* cfgPathRootPtr      ///< [IN] The path in the config tree for this process.
+    const char* cfgPathRootPtr,     ///< [IN] The path in the config tree for this process.
+    const char* appNamePtr          ///< [IN] The name of the app that this process is a part of.
 )
 {
     Process_t* procPtr = le_mem_ForceAlloc(ProcessPool);
 
+    // Copy the config path.
     if (le_utf8_Copy(procPtr->cfgPathRoot,
                      cfgPathRootPtr,
                      sizeof(procPtr->cfgPathRoot),
@@ -224,12 +239,26 @@ proc_Ref_t proc_Create
         return NULL;
     }
 
+
+    // Copy the app name.
+    if (le_utf8_Copy(procPtr->appName,
+                     appNamePtr,
+                     sizeof(procPtr->appName),
+                     NULL) == LE_OVERFLOW)
+    {
+        LE_ERROR("App name '%s' is too long.", appNamePtr);
+
+        le_mem_Release(procPtr);
+        return NULL;
+    }
+
     procPtr->name = le_path_GetBasenamePtr(procPtr->cfgPathRoot, "/");
 
     procPtr->faultTime = 0;
     procPtr->paused = false;
     procPtr->pid = -1;  // Processes that are not running are assigned -1 as its pid.
     procPtr->cmdKill = false;
+    procPtr->timerRef = NULL;
 
     return procPtr;
 }
@@ -270,12 +299,16 @@ static void SetSchedulingPriority
     int niceLevel = MEDIUM_PRIORITY_NICE_LEVEL;
 
     // Read the priority setting from the config tree.
-    le_cfg_iteratorRef_t procCfg = le_cfg_CreateReadTxn(procRef->cfgPathRoot);
+    le_cfg_IteratorRef_t procCfg = le_cfg_CreateReadTxn(procRef->cfgPathRoot);
 
     char priorStr[LIMIT_MAX_PRIORITY_NAME_BYTES];
-    le_result_t result = le_cfg_GetString(procCfg, CFG_NODE_PRIORITY, priorStr, sizeof(priorStr));
+    le_result_t result = le_cfg_GetString(procCfg,
+                                          CFG_NODE_PRIORITY,
+                                          priorStr,
+                                          sizeof(priorStr),
+                                          "medium");
 
-    le_cfg_DeleteIterator(procCfg);
+    le_cfg_CancelTxn(procCfg);
 
     // Set the policy, priority and nice levels depending on the priority setting.
     if (result != LE_OK)
@@ -354,13 +387,15 @@ static le_result_t GetEnvironmentVariables
     size_t maxNumEnvVars    ///< [IN] The maximum number of items envVars can hold.
 )
 {
-    le_cfg_iteratorRef_t procCfg = le_cfg_CreateReadTxn(procRef->cfgPathRoot);
+    le_cfg_IteratorRef_t procCfg = le_cfg_CreateReadTxn(procRef->cfgPathRoot);
 
-    if (le_cfg_GoToNode(procCfg, CFG_NODE_ENV_VARS) != LE_OK)
+    le_cfg_GoToNode(procCfg, CFG_NODE_ENV_VARS);
+
+    if (le_cfg_NodeExists(procCfg, "") == false)
     {
         LE_WARN("There are no environment variables for process '%s'.", procRef->name);
 
-        le_cfg_DeleteIterator(procCfg);
+        le_cfg_CancelTxn(procCfg);
         return LE_NOT_FOUND;
     }
 
@@ -368,19 +403,19 @@ static le_result_t GetEnvironmentVariables
     {
         LE_WARN("No environment variables for process '%s'.", procRef->name);
 
-        le_cfg_DeleteIterator(procCfg);
+        le_cfg_CancelTxn(procCfg);
         return LE_NOT_FOUND;
     }
 
     int i;
     for (i = 0; i < maxNumEnvVars; i++)
     {
-        if ( (le_cfg_GetNodeName(procCfg, envVars[i].name, LIMIT_MAX_ENV_VAR_NAME_BYTES) != LE_OK) ||
-             (le_cfg_GetString(procCfg, "", envVars[i].value, LIMIT_MAX_PATH_BYTES) != LE_OK) )
+        if ( (le_cfg_GetNodeName(procCfg, "", envVars[i].name, LIMIT_MAX_ENV_VAR_NAME_BYTES) != LE_OK) ||
+             (le_cfg_GetString(procCfg, "", envVars[i].value, LIMIT_MAX_PATH_BYTES, "") != LE_OK) )
         {
             LE_ERROR("Error reading environment variables for process '%s'.", procRef->name);
 
-            le_cfg_DeleteIterator(procCfg);
+            le_cfg_CancelTxn(procCfg);
             return LE_FAULT;
         }
 
@@ -392,12 +427,12 @@ static le_result_t GetEnvironmentVariables
         {
             LE_ERROR("There were too many environment variables for process '%s'.", procRef->name);
 
-            le_cfg_DeleteIterator(procCfg);
+            le_cfg_CancelTxn(procCfg);
             return LE_FAULT;
         }
     }
 
-    le_cfg_DeleteIterator(procCfg);
+    le_cfg_CancelTxn(procCfg);
     return i + 1;
 }
 
@@ -450,12 +485,12 @@ static bool IsInDebugMode
     bool debug = false;
 
     // Get a config iterator for the process.
-    le_cfg_iteratorRef_t procCfg = le_cfg_CreateReadTxn(procRef->cfgPathRoot);
+    le_cfg_IteratorRef_t procCfg = le_cfg_CreateReadTxn(procRef->cfgPathRoot);
 
-    if (!le_cfg_IsEmpty(procCfg, CFG_NODE_PROC_DEBUG))
+    if (le_cfg_GetNodeType(procCfg, CFG_NODE_PROC_DEBUG) == LE_CFG_TYPE_INT)
     {
         // Get the port number.
-        int32_t portNum = le_cfg_GetInt(procCfg, CFG_NODE_PROC_DEBUG);
+        int32_t portNum = le_cfg_GetInt(procCfg, CFG_NODE_PROC_DEBUG, 0);
 
         if (snprintf(portNumStr, portNumStrSize, ":%d", portNum) >= portNumStrSize)
         {
@@ -467,7 +502,7 @@ static bool IsInDebugMode
         }
     }
 
-    le_cfg_DeleteIterator(procCfg);
+    le_cfg_CancelTxn(procCfg);
 
     return debug;
 }
@@ -515,19 +550,20 @@ static le_result_t GetArgs
     bool debug = IsInDebugMode(procRef, argsBuffers[0], LIMIT_MAX_ARGS_STR_BYTES);
 
     // Get a config iterator to the arguments list.
-    le_cfg_iteratorRef_t procCfg = le_cfg_CreateReadTxn(procRef->cfgPathRoot);
+    le_cfg_IteratorRef_t procCfg = le_cfg_CreateReadTxn(procRef->cfgPathRoot);
 
-    if (le_cfg_GoToNode(procCfg, CFG_NODE_ARGS) != LE_OK)
+    le_cfg_GoToNode(procCfg, CFG_NODE_ARGS);
+    if (le_cfg_NodeExists(procCfg, "") == false)
     {
         LE_ERROR("There are no arguments for process '%s'.", procRef->name);
-        le_cfg_DeleteIterator(procCfg);
+        le_cfg_CancelTxn(procCfg);
         return LE_FAULT;
     }
 
     if (le_cfg_GoToFirstChild(procCfg) != LE_OK)
     {
         LE_ERROR("No arguments for process '%s'.", procRef->name);
-        le_cfg_DeleteIterator(procCfg);
+        le_cfg_CancelTxn(procCfg);
         return LE_FAULT;
     }
 
@@ -545,13 +581,13 @@ static le_result_t GetArgs
     }
 
     // Record the executable path.
-    if (le_cfg_GetString(procCfg, "", argsBuffers[bufIndex], LIMIT_MAX_ARGS_STR_BYTES) != LE_OK)
+    if (le_cfg_GetString(procCfg, "", argsBuffers[bufIndex], LIMIT_MAX_ARGS_STR_BYTES, "") != LE_OK)
     {
         LE_ERROR("Error reading argument '%s...' for process '%s'.",
                  argsBuffers[bufIndex],
                  procRef->name);
 
-        le_cfg_DeleteIterator(procCfg);
+        le_cfg_CancelTxn(procCfg);
         return LE_FAULT;
     }
 
@@ -575,17 +611,20 @@ static le_result_t GetArgs
         else if (bufIndex >= LIMIT_MAX_NUM_CMD_LINE_ARGS)
         {
             LE_ERROR("Too many arguments for process '%s'.", procRef->name);
-            le_cfg_DeleteIterator(procCfg);
+            le_cfg_CancelTxn(procCfg);
             return LE_FAULT;
         }
 
-        if (le_cfg_GetString(procCfg, "", argsBuffers[bufIndex], LIMIT_MAX_ARGS_STR_BYTES) != LE_OK)
+        if (   (le_cfg_IsEmpty(procCfg, "") == true)
+            || (le_cfg_GetString(procCfg, "", argsBuffers[bufIndex],
+                                 LIMIT_MAX_ARGS_STR_BYTES, "") != LE_OK)
+            || (strncmp(argsBuffers[bufIndex], "", LIMIT_MAX_ARGS_STR_BYTES) == 0))
         {
             LE_ERROR("Error reading argument '%s...' for process '%s'.",
                      argsBuffers[bufIndex],
                      procRef->name);
 
-            le_cfg_DeleteIterator(procCfg);
+            le_cfg_CancelTxn(procCfg);
             return LE_FAULT;
         }
 
@@ -593,7 +632,7 @@ static le_result_t GetArgs
         argsPtr[ptrIndex++] = argsBuffers[bufIndex++];
     }
 
-    le_cfg_DeleteIterator(procCfg);
+    le_cfg_CancelTxn(procCfg);
 
     return LE_OK;
 }
@@ -632,6 +671,37 @@ static void ConfigNonSandboxedProcess
     LE_FATAL_IF(setuid(uid) == -1, "Could not set the user ID.  %m.");
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Called when a process has not died due to a soft kill signal within the timeout period.
+ * Handles soft kill timeout by performing a hard kill.
+ */
+//--------------------------------------------------------------------------------------------------
+static void SoftKillExpiryHandler
+(
+    le_timer_Ref_t timerRef
+)
+{
+    proc_Ref_t procRef = (proc_Ref_t)le_timer_GetContextPtr(timerRef);
+
+    if (procRef->pid == -1)
+    {
+        LE_WARN("Process has already exited");
+        return;
+    }
+
+    LE_WARN("Hard killing %d", procRef->pid);
+
+    if (kill(procRef->pid, SIGKILL) == -1)
+    {
+        // Process could have exited while we haven't received the SIGCHLD yet
+        // Determine if it's still alive
+        LE_FATAL_IF( (kill(procRef->pid, 0) == 0),
+                    "Could not send SIGKILL to process '%s' (PID: %d).  %m.",
+                    procRef->name,
+                    procRef->pid);
+    }
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -859,11 +929,29 @@ void proc_Stop
 {
     LE_ASSERT(procRef->pid != -1);
 
-    if (kill(procRef->pid, SIGKILL) == -1)
+    LE_DEBUG("Soft killing %d", procRef->pid);
+
+    if (kill(procRef->pid, SIGTERM) == -1)
     {
-        LE_FATAL("Could not send SIGKILL to process '%s' (PID: %d).  %m.",
+        LE_FATAL("Could not send SIGTERM to process '%s' (PID: %d).  %m.",
                  procRef->name,
                  procRef->pid);
+    }
+
+    LE_ASSERT(procRef->timerRef == NULL);
+
+    {
+        char timerName[30];
+
+        snprintf(timerName, NUM_ARRAY_MEMBERS(timerName), "%d killer", procRef->pid);
+        procRef->timerRef = le_timer_Create(timerName);
+
+        le_timer_SetInterval(procRef->timerRef, KillTimeout);
+
+        le_timer_SetContextPtr(procRef->timerRef, (void*)procRef);
+        le_timer_SetHandler(procRef->timerRef, SoftKillExpiryHandler);
+
+        le_timer_Start(procRef->timerRef);
     }
 
     // Set this flag to indicate that the process was intentionally killed and its fault action
@@ -979,6 +1067,23 @@ const char* proc_GetName
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Get the name of the application that this process belongs to.
+ *
+ * @return
+ *      The application name.
+ */
+//--------------------------------------------------------------------------------------------------
+const char* proc_GetAppName
+(
+    proc_Ref_t procRef             ///< [IN] The process reference.
+)
+{
+    return (const char*)procRef->appName;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Get the process's previous fault time.
  *
  * @return
@@ -1038,13 +1143,13 @@ static proc_FaultAction_t GetFaultAction
     procRef->faultTime = (le_clk_GetAbsoluteTime()).sec;
 
     // Read the process's fault action from the config tree.
-    le_cfg_iteratorRef_t procCfg = le_cfg_CreateReadTxn(procRef->cfgPathRoot);
+    le_cfg_IteratorRef_t procCfg = le_cfg_CreateReadTxn(procRef->cfgPathRoot);
 
     char faultActionStr[LIMIT_MAX_FAULT_ACTION_NAME_BYTES];
     le_result_t result = le_cfg_GetString(procCfg, CFG_NODE_FAULT_ACTION,
-                                          faultActionStr, sizeof(faultActionStr));
+                                          faultActionStr, sizeof(faultActionStr), "");
 
-    le_cfg_DeleteIterator(procCfg);
+    le_cfg_CancelTxn(procCfg);
 
     // Set the fault action based on the fault action string.
     if (result != LE_OK)
@@ -1111,6 +1216,12 @@ proc_FaultAction_t proc_SigChildHandler
     else
     {
         // The process died.
+
+        if (procRef->timerRef != NULL)
+        {
+           le_timer_Delete(procRef->timerRef);
+           procRef->timerRef = NULL;
+        }
 
         if (WIFEXITED(procExitStatus))
         {

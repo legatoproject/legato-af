@@ -27,12 +27,24 @@ void test1(void)
     size_t length=10;
     uint32_t output[length];
     char response[21];
+    char more[21];
 
-    allParameters(3, &value, data, 4, output, &length, "input string", response, sizeof(response));
+    allParameters(COMMON_TWO,
+                  &value,
+                  data,
+                  4,
+                  output,
+                  &length,
+                  "input string",
+                  response,
+                  sizeof(response),
+                  more, 
+                  sizeof(more));
 
     LE_PRINT_VALUE("%i", value);
     LE_PRINT_ARRAY("%i", length, output);
     LE_PRINT_VALUE("%s", response);
+    LE_PRINT_VALUE("%s", more);
 }
 
 static TestARef_t HandlerRef;
@@ -108,12 +120,24 @@ void test3(void)
     size_t length=14;
     uint32_t output[length];
     char response[21];
+    char more[21];
 
-    allParameters(3, &value, data, 4, output, &length, "new thread string", response, sizeof(response));
+    allParameters(COMMON_THREE, 
+                  &value, 
+                  data, 
+                  4, 
+                  output, 
+                  &length, 
+                  "new thread string", 
+                  response, 
+                  sizeof(response),
+                  more,
+                  sizeof(more));
 
     LE_PRINT_VALUE("%i", value);
     LE_PRINT_ARRAY("%i", length, output);
     LE_PRINT_VALUE("%s", response);
+    LE_PRINT_VALUE("%s", more);
 }
 
 

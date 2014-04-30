@@ -34,12 +34,10 @@ It then starts one instance of myServer and one instance of myClient.
 Now we can run @c mkapp to build everything and package it up into an application.
 
 @verbatim
-$ mkapp helloWorld.adef -t ar7
-Note, automatically importing the interface, 'greetClient.hello.'
-Note, automatically exporting the interface, 'greetServer.hello.'
+$ mkapp helloWorld.adef -t wp7
 @endverbatim
 
-You will now have a file called "helloWorld.ar7" that contains your application.
+You will now have a file called "helloWorld.wp7" that contains your application.
 
 You can install and run it using instapp, see @ref appCreating for details.
 

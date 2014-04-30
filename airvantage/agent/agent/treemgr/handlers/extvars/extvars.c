@@ -63,18 +63,19 @@ static struct notify_buffer_t
 
 } notify_buffer;
 
-#define RETURN_ERROR_NUMBER( name, i) do { \
-    lua_pushnil( L); \
-    const char* errstr = rc_ReturnCodeToString(i); \
-    lua_pushfstring( L, "error %s(%d) in extvars.%s", errstr? errstr: "UNKNOWN ERROR", i, name); \
-    return 2; \
+#define RETURN_ERROR_NUMBER(name, i) do {                       \
+    lua_pushnil( L);                                            \
+    const char* errstr = rc_ReturnCodeToString(i);              \
+    if (!errstr) errstr = "UNSPECIFIED_ERROR";                  \
+    lua_pushfstring(L, "%s:error %d in extvars.%s", errstr, i, name); \
+    return 2;                                                   \
 } while( 0)
 
-#define RETURN_ERROR_STRING( msg) do { \
-    lua_pushnil( L); \
-    lua_pushstring( L, msg); \
-    return 2; \
-} while( 0)
+#define RETURN_ERROR_STRING(msg, returnCodesMsg) do {    \
+    lua_pushnil(L);                                      \
+    lua_pushfstring(L, "%s:%s", returnCodesMsg, msg);	 \
+    return 2;                                            \
+} while(0)
 
 #define RETURN_OK do{ lua_pushstring( L, "ok"); return 1; } while( 0)
 #define RETURN_DA_NOT_FOUND do { lua_pushnil(L); lua_pushnil(L); return 2;} while(0)
@@ -108,7 +109,7 @@ static int get_all_var_names( lua_State *L) {
 
     r = mod->list(&nvars, &vars);
 
-    if( r) RETURN_ERROR_NUMBER( "get", r);
+    if(r) RETURN_ERROR_NUMBER("get", r);
 
     for( i = 0; i<nvars; i++) {
         lua_pushnumber(  L, vars[i]); // ctx, "", children_set, var_number
@@ -141,7 +142,7 @@ static int get_leaf_value( lua_State *L) {
             RETURN_DA_NOT_FOUND;
         }
         else {
-            RETURN_ERROR_NUMBER( "get", r);
+            RETURN_ERROR_NUMBER("get", r);
 	}
     }
     switch( type) {
@@ -150,7 +151,7 @@ static int get_leaf_value( lua_State *L) {
         case EXTVARS_TYPE_DOUBLE: lua_pushnumber(  L, *(double*)     value); break;
         case EXTVARS_TYPE_BOOL:   lua_pushboolean( L, *(int*)        value); break;
         case EXTVARS_TYPE_NIL:    lua_pushnil(L); break;
-        default:                  RETURN_ERROR_STRING( "Unknown ExtVars type"); // TODO get_release leak
+        default:                  RETURN_ERROR_STRING("Unknown ExtVars type", "UNSPECIFIED_ERROR"); // TODO get_release leak
     }
     if (mod->get_release)
         mod->get_release(var, value, type);
@@ -211,7 +212,7 @@ static int api_set( lua_State *L) {
 #else
     void *chunk = malloc( chunk_size);
 #endif
-    if( ! chunk) RETURN_ERROR_STRING( "Not enough memory");
+    if( ! chunk) RETURN_ERROR_STRING("Not enough memory", "NO_MEMORY");
 
     int            *variables = (int*)            chunk;
     void          **values    = (void**)          (variables + n_entries);
@@ -227,7 +228,7 @@ static int api_set( lua_State *L) {
 
         /* Fill the variable id */
         int var = lua_tonumber( L, -2);
-        if( ! var) RETURN_ERROR_STRING( "Not a numeric variable name");
+        if( ! var) RETURN_ERROR_STRING("Not a numeric variable name", "BAD_PARAMETER");
         variables[i] = var;
 
         /* Fill type and value, allocate number value if necessary */
@@ -254,7 +255,7 @@ static int api_set( lua_State *L) {
             types[i] = EXTVARS_TYPE_BOOL;
             values[i] = lua_toboolean( L, -1) ? & val_true : & val_false;
         } else {
-            RETURN_ERROR_STRING( "Unsupported Lua type");
+	  RETURN_ERROR_STRING("Unsupported Lua type", "BAD_PARAMETER");
         }
         lua_pop( L, 1); // ctx, hmap, key
         i++;
@@ -268,7 +269,7 @@ static int api_set( lua_State *L) {
 #else
     free( chunk);
 #endif
-    if( r) RETURN_ERROR_NUMBER( "set", r); else RETURN_OK;
+    if(r) RETURN_ERROR_NUMBER("set", r); else RETURN_OK;
 }
 
 static int register_unregister( lua_State *L, int enable) {

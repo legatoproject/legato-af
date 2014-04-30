@@ -28,7 +28,19 @@ def SetNamePrefix(namePrefix):
 
 # Add the prefix to the given name
 def AddNamePrefix(name):
-    return NamePrefix + name
+    if NamePrefix:
+        return "%s_%s" % (NamePrefix, name)
+    else:
+        return name
+
+
+# Global for storing the name of the imported file. Empty if the file is not imported.
+ImportName = ""
+
+# Set the global import name variable
+def SetImportName(name):
+    global ImportName
+    ImportName = name
 
 
 DefinedInterfaceTypes = dict(
@@ -59,6 +71,59 @@ def ConvertInterfaceType(interfaceType):
     #       pre-defined, back to the original value, which is hopefully a valid C type.  Once
     #       user-defined types are supported, this should probably raise an exception or something.
     return interfaceType
+
+
+# Add a mapping from the interfaceType, as used in the interface files, to the corresponding C type.
+def AddInterfaceType(interfaceType, cType):
+    # Prepend the import name, if defined
+    if ImportName:
+        interfaceType = "%s.%s" % (ImportName, interfaceType)
+
+    # Do not allow multiple definitions for the same type
+    if interfaceType not in DefinedInterfaceTypes:
+        DefinedInterfaceTypes[interfaceType] = cType
+    else:
+        # todo: Should this be a fatal error?
+        print "ERROR: %s already defined as %s" % (interfaceType, cType)
+
+
+
+# Holds the values of DEFINEd symbols
+DefinedValues = dict()
+
+
+# Empty class to hold attribute values
+class Empty(object): pass
+
+
+# Adds values to the DEFINEd symbols dictionary
+def AddDefinitionValue(name, value):
+    # todo: Should we check for redefinitions?
+
+    # To support using imported values, create an empty object and put it in the DefinedValues
+    # dictionary.  Then, set attributes for this object for each imported value.  Thus, the eval
+    # will magically pick up those values.
+    if ImportName:
+        if ImportName not in DefinedValues:
+            DefinedValues[ImportName] = Empty()
+
+        setattr(DefinedValues[ImportName], name, value)
+    else:
+        DefinedValues[name] = value
+
+
+# Evaluates the DEFINE expression using the DEFINEd symbols dictionary
+def EvaluateDefinition(defn):
+
+    # If evaluating a definition in an imported file, use the dictionary for that imported file.
+    if ImportName and ImportName in DefinedValues:
+        evalGlobals = DefinedValues[ImportName].__dict__
+    else:
+        evalGlobals = DefinedValues
+
+    # Use a copy() of evalGlobals, so that eval doesn't put anything into our dictionaries
+    return eval(defn, evalGlobals.copy())
+
 
 
 #--------------------------------------------------------------------------
@@ -367,24 +432,21 @@ _msgBufPtr = UnpackString( _msgBufPtr, &{parm.name} );\
         # PackData and UnpackData functions, and thus these definitions were not necessary.
         #
         # However, this will not work for server-side async function support, since the Respond
-        # function does not (easily) have the necessary data size.  Thus, this is temporary
-        # solution, and must be fixed at some point.  This is because the client will be using
-        # UnpackData with the original buffer size.  Thus, if the server returns a string that
-        # is too long for the client buffer, an unterminated string would result.  To avoid this,
-        # explicitly terminating the result, just in case.  However, this is really bad, and
-        # should be fixed.
+        # function does not (easily) have the necessary data size.  The solution is to use
+        # PackString() on the server side, and UnpackDataString() on the client side.  The one
+        # problem with this solution is if the server returns a string that is too long for the
+        # client buffer, the string will get truncated.  TBD whether it is acceptable to truncate
+        # the string in this case, or whether something else should be done.
         self.asyncServerPack = """\
 _msgBufPtr = PackString( _msgBufPtr, {parm.unpackAddr} );\
 """
 
         # This is not strictly necessary, but ensures that strings get packed the same way
         # regardless of whether in the regular server-side function or in the respond function.
-        # As noted above, this will all get fixed.
         self.handlerPack = self.asyncServerPack
 
         self.clientUnpack = """\
-_msgBufPtr = UnpackData( _msgBufPtr, {parm.address}, {parm.numBytes} );
-{parm.address}[{parm.sizeVar}-1] = 0;\
+_msgBufPtr = UnpackDataString( _msgBufPtr, {parm.address}, {parm.numBytes} );\
 """
 
 
@@ -436,7 +498,7 @@ class BaseFunctionData(object):
     # Short name for the class, used when printing out the hash string.
     ClassName = "BASE"
 
-    def __init__(self, funcName, funcType, parmList):
+    def __init__(self, funcName, funcType, parmList, comment=""):
         self.name = funcName
         self.type = ConvertInterfaceType(funcType)
         self.parmList = parmList
@@ -448,8 +510,8 @@ class BaseFunctionData(object):
         # Add the prefix to all function names
         self.name = AddNamePrefix(self.name)
 
-        # Comment is initially empty
-        self.comment = ""
+        # Comment is initially empty, unless explicitly given.
+        self.comment = comment
 
 
     def __str__(self):
@@ -486,14 +548,14 @@ class FunctionData(BaseFunctionData):
 
     ClassName = "FUNCTION"
 
-    def __init__(self, funcName, funcType, parmList):
+    def __init__(self, funcName, funcType, parmList, comment=""):
 
         # Process the parameter list before using it to init the instance.
         #
         # Note that inCallList is the same as inList, but the parameters are ordered in function
         # call order, rather than packing/unpacking order.
         parmList, inList, inCallList, outList = self.processParmList(parmList)
-        super(FunctionData, self).__init__(funcName, funcType, parmList)
+        super(FunctionData, self).__init__(funcName, funcType, parmList, comment)
 
         self.parmListIn = inList
         self.parmListInCall = inCallList
@@ -648,7 +710,7 @@ class HandlerFunctionData(BaseFunctionData):
 
     ClassName = "HANDLER"
 
-    def __init__(self, funcName, funcType, parmList):
+    def __init__(self, funcName, funcType, parmList, comment=""):
 
         # Add the contextPtr variable to the parameter list before using it to init the instance.
         # If the handler does not have any parameters, the parameter list will only contain VoidData.
@@ -668,20 +730,119 @@ class HandlerFunctionData(BaseFunctionData):
         contextParm.clientPack = ""
 
         # Init the instance
-        super(HandlerFunctionData, self).__init__(funcName, funcType, parmList)
+        super(HandlerFunctionData, self).__init__(funcName, funcType, parmList, comment)
 
 
 class AddHandlerFunctionData(BaseFunctionData):
 
     ClassName = "ADD_HANDLER"
 
-    def __init__(self, funcName, funcType, parmList):
-        super(AddHandlerFunctionData, self).__init__(funcName, funcType, parmList)
+    def __init__(self, funcName, funcType, parmList, comment=""):
+        super(AddHandlerFunctionData, self).__init__(funcName, funcType, parmList, comment)
 
         # Add the prefix to the type.
         self.type = AddNamePrefix(self.type)
 
 
+
+#--------------------------------------------------------------------------
+# Type definition related classes
+#--------------------------------------------------------------------------
+
+
+# Base type for all type classes
+class BaseTypeData(object):
+
+    # todo: Should I use the same format as the functions, and have the keyword as the first item?
+    #       Perhaps the other classes that define this method could super() call this method to get
+    #       the common prefix, and then add anything else that they wanted.
+    def getHashString(self):
+        return self.baseName
+
+
+class ReferenceData(BaseTypeData):
+
+    definitionTemplate = """\
+typedef struct {self.name}* {self.refName};\
+"""
+
+    def __init__(self, name, comment=''):
+        self.baseName = name
+        self.name = AddNamePrefix(self.baseName)
+        self.refName = self.name+"Ref_t"
+        self.comment = comment
+
+        AddInterfaceType(self.baseName, self.refName)
+
+        # Pre-evaluate the type definition
+        self.definition = self.definitionTemplate.format(self=self)
+
+
+
+class DefineData(BaseTypeData):
+
+    definitionTemplate = """\
+#define {self.name} {self.value}\
+"""
+
+    def __init__(self, name, value, comment=''):
+        self.baseName = name
+        self.name = AddNamePrefix(self.baseName).upper()
+        self.value = value
+        self.comment = comment
+
+        AddInterfaceType(self.baseName, self.name)
+        AddDefinitionValue(self.baseName, self.value)
+
+        # Pre-evaluate the type definition
+        self.definition = self.definitionTemplate.format(self=self)
+
+    def getHashString(self):
+        return "%s %s" % (self.baseName, self.value)
+
+
+# Class for a single enum item/value
+class EnumValue(BaseTypeData):
+
+    def __init__(self, name, comment=''):
+        self.baseName = name
+        self.name = AddNamePrefix(self.baseName).upper()
+        self.comment = comment
+
+
+# Class for the complete enum definition
+class EnumData(BaseTypeData):
+
+    def __init__(self, name, valueList, comment=''):
+        self.baseName = name
+        self.name = AddNamePrefix(self.baseName)
+        self.typeName = self.name+"_t"
+        self.valueList = valueList
+        self.comment = comment
+
+        AddInterfaceType(self.baseName, self.typeName)
+
+    def getHashString(self):
+        return self.baseName + ' ' + ' '.join( v.getHashString() for v in self.valueList )
+
+
+
+#--------------------------------------------------------------------------
+# Import related classes
+# (todo: Are these part of the type definition related classes??)
+#--------------------------------------------------------------------------
+
+
+class ImportData(object):
+
+    def __init__(self, name):
+        self.name = name
+
+
+
+#--------------------------------------------------------------------------
+# Hash related functions
+#--------------------------------------------------------------------------
 
 #
 # Generate a string representation of the interface, suitable for generating a hash/digest
@@ -694,17 +855,44 @@ def GetHashString(codeList):
 #
 # Get the hash/digest value for the interface
 #
-def GetHash(codeData):
-    codeList = codeData['codeList']
-    verbatim = codeData['verbatim']
+def GetHash(codeList):
 
     h = hashlib.sha256()
     h.update( GetHashString(codeList) )
 
-    # If the verbatim section is provided, include it in the hash
-    if verbatim:
-        h.update( verbatim )
-
     return h.hexdigest()
+
+
+
+#--------------------------------------------------------------------------
+# Misc functions mainly for testing/debugging
+#--------------------------------------------------------------------------
+
+#
+# Print out the code list in a simple text format
+#
+def PrintCode(codeList):
+    #print codeList
+
+    for c in codeList:
+        print '-'*10
+        print c
+
+
+#
+# Print out the current mapping from .api types to C types.
+#
+def PrintDefinedTypes():
+    for k, v in DefinedInterfaceTypes.items():
+        print '%-20s => %s' % (k, v)
+    print '-'*40
+
+    for k, v in DefinedValues.items():
+        if isinstance(v, Empty):
+            for k1, v1 in v.__dict__.items():
+                print '%-20s => %-20s => %s' % (k, k1, v1)
+        else:
+            print '%-20s => %s' % (k, v)
+    print '-'*40
 
 

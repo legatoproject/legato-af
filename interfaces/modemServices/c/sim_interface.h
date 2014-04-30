@@ -20,7 +20,7 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Start the client main thread
+ * Start the service for the client main thread
  */
 //--------------------------------------------------------------------------------------------------
 void le_sim_StartClient
@@ -40,6 +40,22 @@ void le_sim_StopClient
 );
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Reference type for le_sim_NewStateHandler handler ADD/REMOVE functions
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct le_sim_NewStateHandler* le_sim_NewStateHandlerRef_t;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This handler ...
+ *
+ * @param simRef
+ * @param contextPtr
+ */
+//--------------------------------------------------------------------------------------------------
 typedef void (*le_sim_NewStateHandlerFunc_t)
 (
     le_sim_Ref_t simRef,
@@ -244,11 +260,9 @@ le_sim_States_t le_sim_GetState
         ///< The SIM object.
 );
 
-typedef struct le_sim_NewStateHandler* le_sim_NewStateHandlerRef_t;
-
 //--------------------------------------------------------------------------------------------------
 /**
- * This function adds a handler ...
+ * le_sim_NewStateHandler handler ADD function
  */
 //--------------------------------------------------------------------------------------------------
 le_sim_NewStateHandlerRef_t le_sim_AddNewStateHandler
@@ -262,12 +276,27 @@ le_sim_NewStateHandlerRef_t le_sim_AddNewStateHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function removes a handler ...
+ * le_sim_NewStateHandler handler REMOVE function
  */
 //--------------------------------------------------------------------------------------------------
 void le_sim_RemoveNewStateHandler
 (
     le_sim_NewStateHandlerRef_t addHandlerRef
+        ///< [IN]
+);
+
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+le_result_t le_sim_GetSubscriberPhoneNumber
+(
+    le_sim_Ref_t simRef,
+        ///< [IN]
+
+    char* phoneNumberStr,
+        ///< [OUT]
+
+    size_t phoneNumberStrNumElements
         ///< [IN]
 );
 

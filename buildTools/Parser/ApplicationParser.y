@@ -18,6 +18,8 @@
 %token  NUM_PROCS;
 %token  MQUEUE_SIZE;
 %token  RT_SIGNAL_QUEUE_SIZE;
+%token  MEMORY_LIMIT;
+%token  CPU_SHARE;
 %token  FILE_SYSTEM_SIZE;
 %token  COMPONENTS;
 %token  GROUPS;
@@ -27,7 +29,6 @@
 %token  RUN;
 %token  ENV_VARS;
 %token  PRIORITY;
-%token  V_MEM_SIZE;
 %token  CORE_FILE_SIZE;
 %token  MAX_FILE_SIZE;
 %token  MEM_LOCK_SIZE;
@@ -61,6 +62,8 @@ section
     | num_procs_section
     | mqueue_size_section
     | rt_signal_queue_section
+    | memory_limit_section
+    | cpu_share_section
     | file_system_size_section
     | components_section
     | groups_section
@@ -95,6 +98,16 @@ mqueue_size_section
 rt_signal_queue_section
     : RT_SIGNAL_QUEUE_SIZE
     | RT_SIGNAL_QUEUE_SIZE NUMBER   { ayy_SetRTSignalQueueSizeLimit(yy_GetNumber($2)); }
+    ;
+
+memory_limit_section
+    : MEMORY_LIMIT
+    | MEMORY_LIMIT NUMBER   { ayy_SetMemoryLimit(yy_GetNumber($2)); }
+    ;
+
+cpu_share_section
+    : CPU_SHARE
+    | CPU_SHARE NUMBER   { ayy_SetCpuShare(yy_GetNumber($2)); }
     ;
 
 file_system_size_section
@@ -184,7 +197,6 @@ processes_subsection
     : run_subsection
     | env_vars_subsection
     | priority_subsection
-    | v_mem_size_subsection
     | core_file_size_subsection
     | max_file_size_subsection
     | mem_lock_size_subsection
@@ -226,11 +238,6 @@ env_var
 priority_subsection
     : PRIORITY
     | PRIORITY NAME     { ayy_SetPriority($2); }
-    ;
-
-v_mem_size_subsection
-    : V_MEM_SIZE
-    | V_MEM_SIZE NUMBER     { ayy_SetVMemSizeLimit(yy_GetNumber($2)); }
     ;
 
 core_file_size_subsection

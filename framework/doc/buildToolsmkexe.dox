@@ -13,7 +13,7 @@ Available command line parameters:
 
 @b -o \<string\> @a output - Path of the executable file to generate.
 
-@b -t \<string\> @a target - (optional) Specify the target device to build for (localhost | ar7).
+@b -t \<string\> @a target - (optional) Specify the target device to build for (localhost | wp 7 or ar7).
 
 @b -v - @a verbose - (optional) Set into verbose mode for extra diagnostic information.
 
@@ -27,7 +27,8 @@ Available command line parameters:
 - Build
 - MakeExecutable
 
+<HR>
 
-Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
 
 **/

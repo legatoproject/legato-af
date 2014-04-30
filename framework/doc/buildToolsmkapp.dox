@@ -11,7 +11,7 @@ Available command line parameters:
 
 @b -o \<string\> - @a output @a directory - (optional) Specify the directory for build the application file (ready to be install on target).
 
-@b -t \<string\> - @a target - (optional) Set the compile target (localhost|ar7).
+@b -t \<string\> - @a target - (optional) Set the compile target (localhost|wp7 or ar7).
 
 @b -v - @a verbose - (optional) Set into verbose mode for extra diagnostic information.
 
@@ -34,8 +34,8 @@ Available command line parameters:
 - Build
 - MakeApp
 
+<HR>
 
-
-Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
 
 **/

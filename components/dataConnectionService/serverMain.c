@@ -102,6 +102,159 @@ static le_ref_MapRef_t RequestRefMap;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Set the default route for a profile
+ *
+ * return
+ *      LE_NOT_POSSIBLE Function failed
+ *      LE_OK           Function succeed
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t SetRouteConfiguration
+(
+    le_mdc_Profile_Ref_t profileRef
+)
+{
+    const char *optionPtr;
+    char gatewayAddr[100] = {0};
+    char systemCmd[200] = {0};
+
+    if ( le_mdc_GetGatewayAddress(profileRef, gatewayAddr, sizeof(gatewayAddr)) != LE_OK )
+    {
+        LE_INFO("le_mdc_GetGatewayAddress failed");
+        return LE_NOT_POSSIBLE;
+    }
+
+    LE_DEBUG("set the gateway %s",gatewayAddr);
+
+    if ( le_mdc_IsIPV6(profileRef) ) {
+        optionPtr = "-A inet6";
+    }
+    else if ( le_mdc_IsIPV4(profileRef) )
+    {
+        optionPtr = "";
+    }
+    else
+    {
+        LE_WARN("Profile is not using IPv4 nor IPv6");
+        return LE_NOT_POSSIBLE;
+    }
+
+    // Remove the last default GW.
+    LE_DEBUG("Execute 'route del default'");
+    if ( system("route del default") == -1 )
+    {
+        LE_WARN("system '%s' failed", systemCmd);
+        return LE_NOT_POSSIBLE;
+    }
+
+    // @TODO use of ioctl instead, should be done when rework the DCS.
+    snprintf(systemCmd, sizeof(systemCmd), "route %s add default gw %s",optionPtr, gatewayAddr);
+
+    LE_DEBUG("Execute '%s",systemCmd);
+    if ( system(systemCmd) == -1 )
+    {
+        LE_WARN("system '%s' failed", systemCmd);
+        return LE_NOT_POSSIBLE;
+    }
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the DNS configuration for a profile
+ *
+ * return
+ *      LE_NOT_POSSIBLE Function failed
+ *      LE_OK           Function succeed
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t SetDnsConfiguration
+(
+    le_mdc_Profile_Ref_t profileRef
+)
+{
+    char *linePtr = NULL;
+    size_t len = 0;
+
+    char dns1Addr[100] = {0};
+    char dns2Addr[100] = {0};
+    bool addDns1 = true;
+    bool addDns2 = true;
+
+    FILE* resolvFilePtr;
+
+    if ( le_mdc_GetDNSAddresses(profileRef,
+                                    dns1Addr, sizeof(dns1Addr),
+                                    dns2Addr, sizeof(dns2Addr)) != LE_OK )
+    {
+        LE_INFO("le_mdc_GetDNSAddresses failed");
+        return LE_NOT_POSSIBLE;
+    }
+    LE_INFO("Set DNS '%s' '%s'", dns1Addr,dns2Addr);
+
+    resolvFilePtr = fopen("/etc/resolv.conf", "a+");
+    if (resolvFilePtr == NULL)
+    {
+        LE_WARN("fopen on /etc/resolv.conf failed");
+        return LE_NOT_POSSIBLE;
+    }
+
+    // Search in file if the DNS are already set.
+    while (getline(&linePtr, &len, resolvFilePtr) != -1)
+    {
+        if ( addDns1 && (strstr(linePtr, dns1Addr) != NULL))
+        {
+            LE_DEBUG("'%s' found in file",dns1Addr);
+            addDns1 = false;
+        }
+        if ( addDns2 && (strstr(linePtr, dns2Addr) != NULL))
+        {
+            LE_DEBUG("'%s' found in file",dns2Addr);
+            addDns2 = false;
+        }
+    }
+
+    // Free the line
+    if (linePtr)
+    {
+        free(linePtr);
+    }
+
+    // Add dns1 if needed
+    if ( addDns1 && (fprintf(resolvFilePtr, "nameserver %s\n", dns1Addr) < 0) )
+    {
+        LE_WARN("fprintf failed");
+        if ( fclose(resolvFilePtr) != 0 )
+        {
+            LE_WARN("fclose failed");
+        }
+        return LE_NOT_POSSIBLE;
+    }
+
+    // Add dns2 if needed
+    if ( addDns2 && (fprintf(resolvFilePtr, "nameserver %s\n", dns2Addr) < 0) )
+    {
+        LE_WARN("fprintf failed");
+        if ( fclose(resolvFilePtr) != 0 )
+        {
+            LE_WARN("fclose failed");
+        }
+        return LE_NOT_POSSIBLE;
+    }
+
+    if ( fclose(resolvFilePtr) != 0 )
+    {
+        LE_WARN("fclose failed");
+        return LE_NOT_POSSIBLE;
+    }
+
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Start data session
  */
 //--------------------------------------------------------------------------------------------------
@@ -111,9 +264,6 @@ static void StartDataSession
 )
 {
     le_mdc_Profile_Ref_t profileRef = le_mdc_LoadProfile("internet");
-
-    char interfaceName[100];
-    char system_cmd[200];
 
     le_result_t result;
 
@@ -137,24 +287,18 @@ static void StartDataSession
         sleep(15);
     }
 
-    if (le_mdc_GetInterfaceName(profileRef, interfaceName, sizeof(interfaceName)) != LE_OK)
+    // First wait a few seconds for the default DHCP client.
+    sleep(3);
+
+    if ( SetRouteConfiguration(profileRef) != LE_OK )
     {
-        LE_ERROR("Failed to get interface name.");
+        LE_ERROR("Failed to get configuration route.");
         return;
     }
 
-    // The system may not be configured to run the correct DHCP client script, so re-run the DHCP
-    // client with the correct script.
-
-    // First wait a few seconds so as not to conflict with the default DHCP client.
-    sleep(3);
-
-    //The -q option is used to exit after obtaining a lease.
-    snprintf(system_cmd, sizeof(system_cmd), "udhcpc -q -i %s -s /etc/udhcpc.d/50default", interfaceName);
-
-    if (system(system_cmd) != 0)
+    if ( SetDnsConfiguration(profileRef) != LE_OK )
     {
-        LE_ERROR("Running udhcpc failed");
+        LE_ERROR("Failed to get configuration DNS.");
         return;
     }
 
@@ -196,7 +340,7 @@ static void StopDataSession
  * Send connection state event
  */
 //--------------------------------------------------------------------------------------------------
-void SendConnStateEvent
+static void SendConnStateEvent
 (
     bool isConnected
 )
@@ -236,7 +380,7 @@ void SendConnStateEvent
  * Handler to process a command
  */
 //--------------------------------------------------------------------------------------------------
-void ProcessCommand
+static void ProcessCommand
 (
     void* reportPtr
 )
@@ -310,6 +454,7 @@ static void DataSessionStateHandler
     // Update global state variable
     IsConnected = isConnected;
 
+
     // Send the state event to applications
     SendConnStateEvent(isConnected);
 
@@ -335,7 +480,7 @@ static void DataSessionStateHandler
  * This thread does the actual work of starting/stopping a data connection
  */
 //--------------------------------------------------------------------------------------------------
-void* DataThread
+static void* DataThread
 (
     void* contextPtr
 )
@@ -347,7 +492,6 @@ void* DataThread
                         CommandEvent,
                         ProcessCommand);
 
-
     // Register for data session state changes
     le_mdc_Profile_Ref_t profileRef = le_mdc_LoadProfile("internet");
     if (profileRef == NULL)
@@ -358,7 +502,6 @@ void* DataThread
     {
         le_mdc_AddSessionStateHandler(profileRef, DataSessionStateHandler, profileRef);
     }
-
 
     // Run the event loop
     le_event_RunLoop();

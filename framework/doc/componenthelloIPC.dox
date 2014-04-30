@@ -11,9 +11,7 @@ Covered in this topic:
  - Define a simple interface protocol that clients can use to ask servers to "Greet".
  - Create a server that prints "Hello world" whenever a client asks it to "Greet",
  - Create a client that asks the server to "Greet",
- - Start the Service Directory so the client and server can find each other, and then
- - Start the server process and the client process.
-
+ 
 Here's what it looks like at runtime:
 
 @image html HelloIPC.png
@@ -138,8 +136,8 @@ is the name "hello" before the '=' in the line "hello = greet.api".
       the link stage will fail and complain that the symbol is unresolved, so you'll know that you
       missed a function and you'll be able to see what the correct name of the function should be.
 
-In this simple example, our server doesn't need to do anything when it starts up, so we have left
-our component initializer empty.
+In this simple example, it's starting the service by calling the auto-generated function @c hello_StartServer @c ("hello").
+This parameter will go away in the future, but for now must match the function prefix.
 
 
 @section helloIPCCreatingTheClient Creating the Client
@@ -194,7 +192,7 @@ In the client, we use the component initializer to call hello_Greet() at start-u
 
   <HR>
 
-Copyright (C) Sierra Wireless, Inc. 2012-2013. All rights reserved. Use of this work is subject to license.
+Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
 
 **/
 

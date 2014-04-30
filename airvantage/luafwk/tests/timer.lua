@@ -15,16 +15,17 @@ local t = u.newtestsuite("timer")
 local monotonic_time = require 'sched.timer.core'.time
 require 'print'
 
-math.randomseed(os.time())
+-- Fix random seed so that the test are reproducible!
+math.randomseed(4242)
 
 local function random_timeout()
-   local r = math.random() * 10 % 4
+   local r = math.random() * 4 + 0.5
    return math.floor(r * 100) / 100
 end
 
 local function check_timer(timeout, starttime, endtime)
-   local delta = timeout * 4 / 100
-   u.assert_gte(timeout-delta, (endtime - starttime))
+   local delta = 0.02
+   u.assert_gte((timeout-delta), (endtime - starttime))
    u.assert_lte((timeout+delta), (endtime - starttime))
 end
 
@@ -33,10 +34,9 @@ function t:test_01_oneshot_timer()
    local starttime = monotonic_time()
 
    -- Testing oneshot timer with hook
-   local _timer = timer.new(timeout, function()
-					 sched.signal("timertest", "hook_invoked")
-				     end
-			   )
+   local _timer = timer.new(timeout,  function()
+                                        sched.signal("timertest", "hook_invoked")
+                                      end)
    u.assert_not_nil(_timer)
    local ev = sched.wait("timertest", { "hook_invoked", 5 })
    local endtime = monotonic_time()

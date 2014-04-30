@@ -73,7 +73,7 @@ function ExecWithTimeout()
 
 # Make sure everything is started up and ready to go, then clear out our test count.
 sleep 1
-@CONFIG_TOOL_BIN@ /configTest/testCount 0
+@CONFIG_TOOL_BIN@ set /configTest/testCount 0
 
 
 # These two executables create and fail to close a read and write transaction respectivly.  If the
@@ -93,7 +93,7 @@ echo $MY_STR | ExecWithTimeout 20 xargs -n 1 -P 0 @EXECUTABLE_OUTPUT_PATH@/confi
 
 # Report the number of tests that were run.
 echo "Number of tests run:"
-@CONFIG_TOOL_BIN@ /configTest/testCount
+@CONFIG_TOOL_BIN@ get /configTest/testCount
 
 
 # TODO: Get rid of this when configTree is started automaticly for the texting.

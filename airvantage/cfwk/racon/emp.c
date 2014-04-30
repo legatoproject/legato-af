@@ -248,7 +248,7 @@ static void reader_emp_parse()
       need = dlen - dcnt;
       size = ipc_read((char *) data + dcnt, need);
       if (size == 0)
-    return;
+        return;
       dcnt += size;
     } while (dcnt < dlen);
   }
@@ -355,12 +355,18 @@ static void* read_routine(void* ud)
       if (ipc_reconnect() == 0)
       {
         // Reconnection handlers might block the reader thread or in the worst case
-    // might call emp_send_and_wait_message which causes the thread to deadlock or timeout.
-    // So we need to call reconnections handlers in a separated thread.
+        // might call emp_send_and_wait_message which causes the thread to deadlock or timeout.
+        // So we need to call reconnection handlers in a separated thread.
         pthread_t t;
-        pthread_create(&t, NULL, reconnection_dispatcher, NULL);
-        pthread_detach(t);
-    errno = 0;
+        int res = pthread_create(&t, NULL, reconnection_dispatcher, NULL);
+        if (res){
+          SWI_LOG("EMP", ERROR, "Failed to create thread to run reconnection_dispatcher, errno:[%s]\n", strerror(errno));
+          //reconnection_dispatcher won't be run, quite unlikely and no much thing to do.
+        }
+        else{
+          pthread_detach(t);
+          errno = 0;
+        }
       }
     }
   }
@@ -428,11 +434,19 @@ rc_ReturnCode_t emp_parser_init(size_t nbCmds, EmpCommand* cmds, emp_command_hdl
       return RC_COMMUNICATION_ERROR;
     }
 
-    pthread_mutex_init(&parser->sockLock, 0);
+    if(pthread_mutex_init(&parser->sockLock, 0)){
+      SWI_LOG("EMP", ERROR, "parser mutex lock creation failed [%s]\n", strerror(errno));
+      emp_parser_destroy(nbCmds, cmds, ipcHdlr);
+      return RC_UNSPECIFIED_ERROR;
+    }
     parser->cmdTimeout = timeout ? atoi(timeout) : 60;
 
     SWI_LOG("EMP", DEBUG, "%s: Creating reader thread\n", __FUNCTION__);
-    pthread_create(&parser->readerThread, NULL, read_routine, NULL );
+    if(pthread_create(&parser->readerThread, NULL, read_routine, NULL )){
+          SWI_LOG("EMP", ERROR, "reader thread creation failed [%s]\n", strerror(errno));
+          emp_parser_destroy(nbCmds, cmds, ipcHdlr);
+          return RC_UNSPECIFIED_ERROR;
+    }
   }
 
   int i;
@@ -635,9 +649,16 @@ static rc_ReturnCode_t reader_dispatch_message(EmpCommand command, uint32_t rid,
     ud->payloadsize = payloadsize;
     ud->payload = payload;
     ud->rid = rid;
-    pthread_create(&thread, 0, thread_cmd_routine, (void*) ud);
-    pthread_detach(thread);
+    int res = pthread_create(&thread, 0, thread_cmd_routine, (void*) ud);
+    if (res){
+      SWI_LOG("EMP", ERROR, "Failed to create thread to process incoming command, errno[%s]\n", strerror(errno));
+      //clean resources
+      emp_freemessage(payload);
+      //we could improve error reporting by returning RC error depending on actual errno error
+      return RC_UNSPECIFIED_ERROR;
+    }
 
+    pthread_detach(thread);
     //it's up to the thread to send the response and free the payload!!
 
     return RC_OK;

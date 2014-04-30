@@ -13,7 +13,6 @@
  *@ref le_sim_id <br>
  *@ref le_sim_auth <br>
  *@ref le_sim_state <br>
- *@ref le_sim_configdb <br>
  *
  * A subscriber identity module or subscriber identification module (SIM) is an integrated circuit
  * that securely stores the international mobile subscriber identity (IMSI) and related key used
@@ -66,6 +65,10 @@
  *
  * @c le_sim_GetIMSI() API reads the international mobile subscriber identity (IMSI).
  *
+ * \b Phone \b Number:
+ * @c le_sim_GetSubscriberPhoneNumber() API reads the Phone Number associated to the SIM.
+ * If the phone number has not been provisioned, it will return the empty string.
+ *
  * @section le_sim_auth SIM Authentication
  * @c le_sim_EnterPIN() enters the PIN (Personal Identification Number) code that's
  * required before any Mobile equipment functionality can be used.
@@ -115,31 +118,11 @@
  * @note @c le_sim_RemoveNewStateHandler() API does not delete the SIM Object. The caller has to
  *       delete it.
  *
- * @section le_sim_configdb SIM configuration tree
- *
- * The configuration database path for the SIM is:
- * @verbatim
-   /
-       modemServices/
-           sim/
-               1/
-                   pin<string> == <PIN_CODE>
-
-  @endverbatim
- *
- *  - '1' is the sim slot number that @ref le_sim_GetSelectedCard is returning.
- *
- *  - 'PIN_CODE' is the PIN code for the SIM card.
- *
- * @note
- * when a new SIM is inserted and :
- *   - is locked, ModemServices will read automatically the configDB in order to try to enter
- * pin for the SIM card.
- *   - is blocked, ModemServices just log an error and did not try to enter the puk code.
  *
  * <HR>
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless, Inc. 2013, 2014. All rights reserved. Use of this work is subject
+ * to license.
  */
 
 
@@ -549,6 +532,26 @@ le_sim_NewStateHandlerRef_t le_sim_AddNewStateHandler
 void le_sim_RemoveNewStateHandler
 (
     le_sim_NewStateHandlerRef_t handlerRef ///< [IN] Handler reference.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the SIM Phone Number.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_OVERFLOW if the Phone Number can't fit in phoneNumberStr
+ *      - LE_NOT_POSSIBLE on any other failure
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_sim_GetSubscriberPhoneNumber
+(
+    le_sim_Ref_t simRef,            ///< [IN]  SIM object.
+    char        *phoneNumberStr,    ///< [OUT] The phone Number
+    size_t       phoneNumberStrSize ///< [IN]  Size of phoneNumberStr
 );
 
 #endif // LEGATO_SIM_INCLUDE_GUARD

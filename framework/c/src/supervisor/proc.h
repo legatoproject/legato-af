@@ -75,7 +75,8 @@ void proc_Init
 //--------------------------------------------------------------------------------------------------
 proc_Ref_t proc_Create
 (
-    const char* cfgPathRootPtr      ///< [IN] The path in the config tree for this process.
+    const char* cfgPathRootPtr,     ///< [IN] The path in the config tree for this process.
+    const char* appNamePtr          ///< [IN] The name of the app that this process is a part of.
 );
 
 
@@ -214,6 +215,20 @@ pid_t proc_GetPID
  */
 //--------------------------------------------------------------------------------------------------
 const char* proc_GetName
+(
+    proc_Ref_t procRef             ///< [IN] The process reference.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the name of the application that this process belongs to.
+ *
+ * @return
+ *      The application name.
+ */
+//--------------------------------------------------------------------------------------------------
+const char* proc_GetAppName
 (
     proc_Ref_t procRef             ///< [IN] The process reference.
 );

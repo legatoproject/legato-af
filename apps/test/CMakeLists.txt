@@ -37,6 +37,7 @@ add_subdirectory(modemServices/sim)
 add_subdirectory(audio/pa)
 add_subdirectory(audio/service)
 add_subdirectory(audio/mccClient)
+add_subdirectory(cellNetService)
 
 if(LEGATO_COMPONENTS_MODEM MATCHES "QMI")
     if(EXISTS modem/qmi)

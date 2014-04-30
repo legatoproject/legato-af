@@ -675,8 +675,8 @@ void ayy_SetNumProcsLimit
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Set the maximum number of messages that are allowed to be queued-up in POSIX MQueues waiting for
- * processes in this application at any given time.
+ * Set the maximum number of bytes that can be allocated for POSIX MQueues for all processes
+ * in this application at any given time.
  */
 //--------------------------------------------------------------------------------------------------
 void ayy_SetMqueueSizeLimit
@@ -687,7 +687,7 @@ void ayy_SetMqueueSizeLimit
 {
     if (ayy_IsVerbose)
     {
-        std::cout << "  Maximum number of POSIX MQueue messages: " << limit << std::endl;
+        std::cout << "  Maximum number of bytes for POSIX MQueues: " << limit << std::endl;
     }
 
     try
@@ -733,6 +733,75 @@ void ayy_SetRTSignalQueueSizeLimit
         }
 
         AppPtr->RtSignalQueueSize(static_cast<size_t>(limit));
+    }
+    catch (legato::Exception e)
+    {
+        ayy_error(e.what());
+    }
+}
+
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets the maximum amount of memory (in kilobytes) the application is allowed to use for all of it
+ * processes.
+ */
+//--------------------------------------------------------------------------------------------------
+void ayy_SetMemoryLimit
+(
+    int limit   ///< Must be a positive integer.  May be overridden by system-wide settings.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    if (ayy_IsVerbose)
+    {
+        std::cout << "  Memory limit: " << limit << std::endl;
+    }
+
+    try
+    {
+        if (limit < 0)
+        {
+            throw legato::Exception("Memory limit must be a non-negative number.");
+        }
+
+        AppPtr->MemLimit(static_cast<size_t>(limit));
+    }
+    catch (legato::Exception e)
+    {
+        ayy_error(e.what());
+    }
+}
+
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets the cpu share for all processes in the application.
+ */
+//--------------------------------------------------------------------------------------------------
+void ayy_SetCpuShare
+(
+    int limit   ///< Must be a positive integer.  May be overridden by system-wide settings.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    if (ayy_IsVerbose)
+    {
+        std::cout << "  CPU share: " << limit << std::endl;
+    }
+
+    try
+    {
+        if (limit < 0)
+        {
+            throw legato::Exception("CPU share must be a non-negative number.");
+        }
+
+        AppPtr->CpuShare(static_cast<size_t>(limit));
     }
     catch (legato::Exception e)
     {
@@ -846,43 +915,6 @@ void ayy_SetPriority
     }
 
 }
-
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Sets the maximum size (in bytes) that a process in the current processes section can make
- * its virtual address space.
- */
-//--------------------------------------------------------------------------------------------------
-void ayy_SetVMemSizeLimit
-(
-    int limit   ///< Must be a positive integer.  May be overridden by system-wide settings.
-)
-//--------------------------------------------------------------------------------------------------
-{
-    if (ayy_IsVerbose)
-    {
-        std::cout << "    Maximum size of process virtual memory: " << limit << " (bytes)" << std::endl;
-    }
-
-    try
-    {
-        legato::ProcessEnvironment& env = GetProcessEnvironment();
-
-        if (limit < 0)
-        {
-            throw legato::Exception("Maximum virtual memory size limit must be a non-negative number of bytes.");
-        }
-
-        env.VMemSize(static_cast<size_t>(limit));
-    }
-    catch (legato::Exception e)
-    {
-        ayy_error(e.what());
-    }
-}
-
 
 
 //--------------------------------------------------------------------------------------------------

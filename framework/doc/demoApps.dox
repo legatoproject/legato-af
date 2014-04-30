@@ -21,20 +21,20 @@ processes:
 
 @section demoInstall Install Demo
 
-There are two sample applications included with Legato code
-to demo various services.
+There are two sample applications included with Legato code to demo various services. 
+
+If you're using an AR7 module in your device, substitute @c ar7 for @c wp7.
 
 @subsection demo1 AirVantage demo
 
 @warning You must setup an AirVantage connection to your Legato device before installing the AirVantage demo: @ref connectingAirVantage.
 
-@ref
 To install and use this app:
 
 @verbatim
 $ cd apps/sample/airvantageDemo
-$ make ar7
-$ instapp airvantageDemo.ar7 <ipaddress>
+$ make wp7
+$ instapp airvantageDemo.wp7 <ipaddress>
 @endverbatim
 
 where @c ipaddress is the address of your target device.
@@ -45,12 +45,11 @@ To install and use this app:
 
 @verbatim
 $ cd apps/sample/modemDemo
-$ make ar7
+$ make wp7
 $ instapp modemDemo <ipaddress>
 @endverbatim
 
 where @c ipaddress is the address of your target device.
-
 
 @section demoCmds Demo Commands
 
@@ -62,7 +61,6 @@ The @b modemDemo app accepts several commands (through sending the target a sms 
 - <b>Netinfo</b> - network information like gateway address
 - <b>Offline</b> - turns off data connection 
 - <b>TestDataConnection</b> - test data connection
-
 
 @section demoWhatsNext What's Next?
 

@@ -42,7 +42,7 @@ void cfgInstall_Add
 
     LE_INFO("Importing configuration for application '%s' from '%s'.", appName, filePath);
 
-    le_cfg_iteratorRef_t i = le_cfg_CreateWriteTxn("/apps");
+    le_cfg_IteratorRef_t i = le_cfg_CreateWriteTxn("/apps");
 
     result = le_cfgAdmin_ImportTree(i, filePath, appName);
 
@@ -52,9 +52,7 @@ void cfgInstall_Add
                 appName,
                 LE_RESULT_TXT(result));
 
-    result = le_cfg_CommitWrite(i);
-
-    LE_FATAL_IF(result != LE_OK, "Write transaction failed.  Error '%s'.", LE_RESULT_TXT(result));
+    le_cfg_CommitTxn(i);
 }
 
 
@@ -69,18 +67,10 @@ void cfgInstall_Remove
 )
 //--------------------------------------------------------------------------------------------------
 {
-    le_result_t result;
-
     LE_INFO("Removing configuration for application '%s'.", appName);
 
-    le_cfg_iteratorRef_t i = le_cfg_CreateWriteTxn("/apps");
+    le_cfg_IteratorRef_t i = le_cfg_CreateWriteTxn("/apps");
 
     le_cfg_DeleteNode(i, appName);
-
-    result = le_cfg_CommitWrite(i);
-
-    if (result != LE_OK)
-    {
-        LE_FATAL("Write transaction failed.  Error '%s'.", LE_RESULT_TXT(result));
-    }
+    le_cfg_CommitTxn(i);
 }

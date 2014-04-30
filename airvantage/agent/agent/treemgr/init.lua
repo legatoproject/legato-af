@@ -368,6 +368,17 @@ local lfs         = require 'lfs'
 
 require 'print'
 
+local function cleanpath(t)
+    if type(t) == "table" then
+        for i, p in ipairs(t) do
+            t[i]=path.clean(p)
+        end
+    else
+        t = path.clean(t)
+    end
+    return t
+end
+
 --- Helper which associates a handler name with the handler itself.
 --  It is currently just wrapping Lua's `require`, as handler names
 --  are the names of the Lua modules returning them.
@@ -399,8 +410,7 @@ end
 --  @param handler_name
 --  @param hpath
 --  @return a list lpaths
---local
-function hpath2lpath(handler_name, hpath)
+local function hpath2lpath(handler_name, hpath)
     local results = { }
     -- printf("h2l: translate  %s:%s", handler_name, hpath)
     for hprefix, relpath in path.gsplit(hpath) do
@@ -420,8 +430,7 @@ end
 --  @param lpath the logical path
 --  @return TO BE DESCRIBED
 -- @return nil, error_msg
---local
-function lpath2hpath(lpath)
+local function lpath2hpath(lpath)
     for lprefix, relpath in  path.gsplit (lpath) do
         local handler_name, hpath = db.l2h (lprefix)
         if handler_name then
@@ -500,6 +509,9 @@ function M.get(...)
     assert(type(prefix) == "string" or type(prefix) == "nil")
     assert(type(lpath_list) == "string" or type(lpath_list) == "table")
     assert(type(result_lmap) == "table" or type(result_lmap) == "nil")
+    --remove unecessary chars (like "foo..bar")
+    prefix = prefix and cleanpath(prefix)
+    lpath_list = cleanpath(lpath_list)
 
     -- Perform a get for a single lpath.
     -- If children paths are found, they're added in `children_set`
@@ -540,7 +552,7 @@ function M.get(...)
             children_set [child_lpath] = true
         end
         if handler_found then return nil
-        else return nil, "handler not found" end
+        else return nil, "NOT_FOUND" end
     end
 
     -- use `get_lpath` to act on multiple paths, to fill the optional `result_lmap`,
@@ -646,7 +658,7 @@ function M.set(prefix_lpath, lmap)
     for k, v in utils_table.recursivepairs(lmap) do
         local lpath = path.concat (prefix_lpath, k)
         local l2h   = lpath2hpath (lpath)
-        if not l2h then return nil, lpath..": no mapping found" end
+        if not l2h then return nil, "NOT_FOUND" end
         local hmap  = handler_maps[l2h.handler] and handler_maps[l2h.handler].hwmap or nil
         if not hmap then hmap={ }; handler_maps[l2h.handler]= { handler_name = l2h.handler_name, hwmap = hmap } end
         local hpath = path.concat(l2h.hpath, l2h.relpath)
@@ -659,7 +671,7 @@ function M.set(prefix_lpath, lmap)
             log('TREEMGR', 'DEBUG', "Set: handler:set%s", sprint(hmap.hwmap))
         end
         local r, msg = handler :set (hmap.hwmap)
-        if not r then return r, msg or "unspecified handler error" end
+        if not r then return r, (msg or "UNSPECIFIED_ERROR") end
         if type(r) == "table" then
             local n = 0; for _,__ in pairs(r) do n = n + 1 end
             if n > 0 then return M.notify(hmap.handler_name, hmap.hwmap) end
@@ -741,7 +753,6 @@ function M.register(...)
         return s
     end
 
-    local function cleanpath(t) for i, p in ipairs(t) do t[i]=path.clean(p) end end
     cleanpath(monitored_lpath_list)
     cleanpath(associated_lpath_list)
 
@@ -873,7 +884,7 @@ function M.notify (handler_name, hmap)
                 -- TODO: cache lpath->monitored_lprefixes
                 for hook, _ in pairs(hooks_set) do notified_hooks[hook]=true end
             end
-        end
+        end 
     end
 
     for hook, _ in pairs(notified_hooks) do

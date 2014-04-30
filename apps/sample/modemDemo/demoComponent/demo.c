@@ -21,7 +21,9 @@
  *  Sierra Wireless server IP address used for data connection testing.
  */
 // -------------------------------------------------------------------------------------------------
-#define SERVER_ADDR "69.10.131.102"
+#define SERVER_ADDR_V4 "69.10.131.102"
+#define SERVER_ADDR_V6 "2a01:cd00:ff:ffff::450a:8366"
+
 
 // -------------------------------------------------------------------------------------------------
 /**
@@ -326,7 +328,7 @@ static void GoOffline
  *  report either success or failure (through TCP connection).
  */
 // -------------------------------------------------------------------------------------------------
-static void TestDataConnection
+static void TestDataConnectionV4
 (
     char* buffer
 )
@@ -340,11 +342,11 @@ static void TestDataConnection
         return;
     }
 
-    LE_INFO("Connecting to %s (www.sierrawireless.com)\n", SERVER_ADDR);
+    LE_INFO("Connecting to %s (www.sierrawireless.com)\n", SERVER_ADDR_V4);
 
     servAddr.sin_family = AF_INET;
     servAddr.sin_port = htons(80);
-    servAddr.sin_addr.s_addr = inet_addr(SERVER_ADDR);
+    servAddr.sin_addr.s_addr = inet_addr(SERVER_ADDR_V4);
 
     if (connect(sockFd, (struct sockaddr *)&servAddr, sizeof(servAddr)) < 0)
     {
@@ -358,7 +360,48 @@ static void TestDataConnection
     close(sockFd);
 }
 
+// -------------------------------------------------------------------------------------------------
+/**
+ *  In order to test out the active data connection, we simply attempt to connect to Sierra's website and
+ *  report either success or failure (through TCP connection).
+ */
+// -------------------------------------------------------------------------------------------------
+static void TestDataConnectionV6
+(
+    char* buffer
+)
+{
+    int sockFd = 0;
+    struct sockaddr_in6 servAddr;
 
+    if ((sockFd = socket(AF_INET6, SOCK_STREAM, 0)) < 0)
+    {
+        sprintf(buffer, "Failed to create socket");
+        return;
+    }
+
+    LE_INFO("Connecting to %s (www.sierrawireless.com)\n", SERVER_ADDR_V6);
+
+    servAddr.sin6_family = AF_INET6;
+    servAddr.sin6_port = htons(80);
+    if ( inet_pton(AF_INET6,SERVER_ADDR_V6,&(servAddr.sin6_addr)) == 1 )
+    {
+        if (connect(sockFd, (struct sockaddr *)&servAddr, sizeof(servAddr)) < 0)
+        {
+            sprintf(buffer, "Failed to connect to www.sierrawireless.com.");
+        }
+        else
+        {
+            sprintf(buffer, "Connection to www.sierrawireless.com was successful.");
+        }
+    }
+    else
+    {
+        sprintf(buffer, "Failed to convert %s ipv6.",SERVER_ADDR_V6);
+    }
+
+    close(sockFd);
+}
 
 // -------------------------------------------------------------------------------------------------
 /**
@@ -410,6 +453,152 @@ static void Netinfo
     sprintf(buffer, "GW: %s, DNS1: %s, DNS2: %s on %s", gatewayAddr, dns1Addr, dns2Addr, interfaceName);
 }
 
+// -------------------------------------------------------------------------------------------------
+/**
+ *  This function returns some useful information about the data flow statistics.
+ */
+// -------------------------------------------------------------------------------------------------
+static void Datainfo
+(
+    char* buffer   ///< [OUT] On success or failure, a message is written to this buffer.
+)
+{
+    uint64_t rxBytes=0;
+    uint64_t txBytes=0;
+
+    if (le_mdc_GetBytesCounters(&rxBytes,&txBytes) != LE_OK)
+    {
+        sprintf(buffer, "Failed to get bytes statistics.");
+        return;
+    }
+
+    sprintf(buffer, "Data bytes statistics: Received: %"PRIu64", Transmitted: %"PRIu64" ",
+                    rxBytes, txBytes);
+}
+
+// -------------------------------------------------------------------------------------------------
+/**
+ *  This function reset bytes information of the data flow statistics.
+ */
+// -------------------------------------------------------------------------------------------------
+static void DataReset
+(
+    char* buffer   ///< [OUT] On success or failure, a message is written to this buffer.
+)
+{
+    uint64_t rxBytes=0;
+    uint64_t txBytes=0;
+
+    le_mdc_ResetBytesCounter();
+
+    if (le_mdc_GetBytesCounters(&rxBytes,&txBytes) != LE_OK)
+    {
+        sprintf(buffer, "Failed to get bytes statistics.");
+        return;
+    }
+
+    sprintf(buffer, "Reset Data bytes statistics: Received: %"PRIu64", Transmitted: %"PRIu64" ",
+                    rxBytes, txBytes);
+}
+
+static const char* PrintNetworkName
+(
+    le_mrc_Rat_t technology
+)
+{
+    switch (technology)
+    {
+    case LE_MRC_RAT_GSM:
+        return "GSM";
+    case LE_MRC_RAT_UTMS:
+        return "UTMS";
+    case LE_MRC_RAT_LTE:
+        return "LTE";
+    case LE_MRC_RAT_TC_SCDMA:
+        return "TC SCDMA";
+    case LE_MRC_RAT_UNKNOWN:
+        return "Undefined";
+    case LE_MRC_RAT_ALL:
+        return "All technology";
+    }
+    return "Undefined";
+}
+
+
+/**
+ *  This function returns Network Scan.
+ */
+// -------------------------------------------------------------------------------------------------
+static void PerformScan
+(
+    char* buffer   ///< [OUT] On success or failure, a message is written to this buffer.
+)
+{
+    int bufferIdx = 0;
+    le_mrc_ScanInformation_ListRef_t scanInformationList = NULL;
+    fprintf(stdout, "Scan was asked");
+    scanInformationList = le_mrc_PerformCellularNetworkScan(LE_MRC_RAT_ALL);
+    if (!scanInformationList)
+    {
+        bufferIdx += sprintf(&buffer[bufferIdx], "Could not perform scan\n");
+        return;
+    }
+
+    le_mrc_ScanInformation_Ref_t cellRef;
+
+    uint32_t i;
+    for (i=1;i<LE_MRC_RAT_ALL;i=i<<1)
+    {
+
+        for (cellRef=le_mrc_GetFirstCellularNetworkScan(scanInformationList);
+             cellRef!=NULL;
+             cellRef=le_mrc_GetNextCellularNetworkScan(scanInformationList))
+        {
+            char mcc[4],mnc[4];
+            char name[100];
+
+            if (le_mrc_IsCellularNetworkRatAvailable(cellRef,i)) {
+
+                if (le_mrc_GetCellularNetworkMccMnc(cellRef,mcc,sizeof(mcc),mnc,sizeof(mnc))!=LE_OK)
+                {
+                    bufferIdx += sprintf(&buffer[bufferIdx], "Failed to get operator code.\n");
+                }
+                else
+                {
+                    bufferIdx += sprintf(&buffer[bufferIdx], "[%s-%s] ",mcc,mnc);
+                }
+
+                if (le_mrc_GetCellularNetworkName(cellRef, name, sizeof(name)) != LE_OK)
+                {
+                    bufferIdx += sprintf(&buffer[bufferIdx], "Failed to get operator name.\n");
+                }
+                else
+                {
+                    bufferIdx += sprintf(&buffer[bufferIdx], "%-32s",name);
+                }
+
+                bufferIdx += sprintf(&buffer[bufferIdx]," - %-10s [",
+                                     PrintNetworkName(i));
+
+                bufferIdx += sprintf(&buffer[bufferIdx],"%-15s,",
+                                     le_mrc_IsCellularNetworkInUse(cellRef)?"Is used":"Is not used");
+
+                bufferIdx += sprintf(&buffer[bufferIdx],"%-20s,",
+                                     le_mrc_IsCellularNetworkAvailable(cellRef)?"Is available":"Is not available");
+
+                bufferIdx += sprintf(&buffer[bufferIdx],"%-10s,",
+                                     le_mrc_IsCellularNetworkHome(cellRef)?"Home":"Roaming");
+
+                bufferIdx += sprintf(&buffer[bufferIdx],"%-10s]\n",
+                                     le_mrc_IsCellularNetworkForbidden(cellRef)?"Forbidden":"Allowed");
+            }
+        }
+    }
+
+    le_mrc_DeleteCellularNetworkScan(scanInformationList);
+
+    bufferIdx += sprintf(&buffer[bufferIdx], "Scan was Performed");
+}
 
 
 // -------------------------------------------------------------------------------------------------
@@ -426,7 +615,7 @@ static bool ProcessCommand
     const char* requesterPtr  ///< [IN] If not NULL, then any response text is SMSed to this target.
 )
 {
-    char buffer[140];
+    char buffer[10240];
 
     // Start looking for a match...
     if (strcmp(textPtr, "Crash") == 0)
@@ -517,13 +706,29 @@ static bool ProcessCommand
         le_utf8_Copy(buffer, "Releasing data connection.", sizeof(buffer), NULL);
         GoOffline(buffer);
     }
-    else if (strcmp(textPtr, "TestDataConnection") == 0)
+    else if (strcmp(textPtr, "TestDataConnectionV4") == 0)
     {
-        TestDataConnection(buffer);
+        TestDataConnectionV4(buffer);
+    }
+    else if (strcmp(textPtr, "TestDataConnectionV6") == 0)
+    {
+        TestDataConnectionV6(buffer);
     }
     else if (strcmp(textPtr, "Netinfo") == 0)
     {
         Netinfo(buffer);
+    }
+    else if (strcmp(textPtr, "DataInfo") == 0)
+    {
+        Datainfo(buffer);
+    }
+    else if (strcmp(textPtr, "DataReset") == 0)
+    {
+        DataReset(buffer);
+    }
+    else if (strcmp(textPtr, "Scan") == 0)
+    {
+        PerformScan(buffer);
     }
     else
     {

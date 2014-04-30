@@ -13,7 +13,7 @@
 #include "le_pos.h"
 #include "pa_gnss.h"
 #include "le_cfg_interface.h"
-#include "cfgEntries.h"
+#include "posCfgEntries.h"
 
 #include <math.h>
 
@@ -540,9 +540,9 @@ static void AcquitisionRateUpdate
              LEGATO_CONFIG_TREE_ROOT_DIR,
              CFG_NODE_POSITIONING);
 
-    le_cfg_iteratorRef_t posCfg = le_cfg_CreateReadTxn(configPath);
+    le_cfg_IteratorRef_t posCfg = le_cfg_CreateReadTxn(configPath);
 
-    int32_t rate = le_cfg_GetInt(posCfg,CFG_NODE_RATE);
+    int32_t rate = le_cfg_GetInt(posCfg, CFG_NODE_RATE, DEFAULT_ACQUISITION_RATE);
 
     // Set the new value for acquitision rate
     if (pa_gnss_SetAcquisitionRate(rate) != LE_OK)
@@ -552,7 +552,7 @@ static void AcquitisionRateUpdate
 
     LE_DEBUG("New acquisition rate (%d) for positioning",rate);
 
-    le_cfg_DeleteIterator(posCfg);
+    le_cfg_CancelTxn(posCfg);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -565,31 +565,11 @@ static void LoadPositioningFromConfigDb
     void
 )
 {
-    // Default configutation
-    int32_t rate = DEFAULT_ACQUISITION_RATE;
-
     // Check that the app has a configuration value.
-    le_cfg_iteratorRef_t posCfg = le_cfg_CreateReadTxn(CFG_POSITIONING_PATH);
+    le_cfg_IteratorRef_t posCfg = le_cfg_CreateReadTxn(CFG_POSITIONING_PATH);
 
-    if ( le_cfg_IsEmpty(posCfg,CFG_NODE_RATE) )
-    {
-        LE_WARN("No rate configuration set for positioning, Initialize the default one");
-        le_cfg_DeleteIterator(posCfg);
-
-        // Add the default acquisition rate,.
-        posCfg = le_cfg_CreateWriteTxn(CFG_POSITIONING_PATH);
-        // enter default the value
-        le_cfg_SetInt(posCfg,CFG_NODE_RATE,rate);
-
-        le_result_t result = le_cfg_CommitWrite(posCfg);
-        LE_FATAL_IF(result!=LE_OK,"Could not commit changes, result == %s.",LE_RESULT_TXT(result));
-
-        posCfg = le_cfg_CreateReadTxn(CFG_POSITIONING_PATH);
-    }
-    else
-    {
-        rate = le_cfg_GetInt(posCfg,CFG_NODE_RATE);
-    }
+    // Default configutation
+    int32_t rate = le_cfg_GetInt(posCfg, CFG_NODE_RATE, DEFAULT_ACQUISITION_RATE);
 
     LE_DEBUG("Set acquisition rate to value %d", rate);
     // TODO: how to stop/start device in order to limit power consumption?
@@ -599,7 +579,7 @@ static void LoadPositioningFromConfigDb
     // Add a configDb handler to check if the acquition rate change.
     le_cfg_AddChangeHandler(CFG_POSITIONING_RATE_PATH, AcquitisionRateUpdate,NULL);
 
-    le_cfg_DeleteIterator(posCfg);
+    le_cfg_CancelTxn(posCfg);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -695,12 +675,10 @@ le_pos_MovementHandlerRef_t le_pos_AddMovementHandler
     // update configDB with the new rate.
     {
         // Add the default acquisition rate,.
-        le_cfg_iteratorRef_t posCfg = le_cfg_CreateWriteTxn(CFG_POSITIONING_PATH);
+        le_cfg_IteratorRef_t posCfg = le_cfg_CreateWriteTxn(CFG_POSITIONING_PATH);
         // enter default the value
         le_cfg_SetInt(posCfg,CFG_NODE_RATE,rate);
-
-        le_result_t result = le_cfg_CommitWrite(posCfg);
-        LE_FATAL_IF(result!=LE_OK,"Could not commit changes, result == %s.",LE_RESULT_TXT(result));
+        le_cfg_CommitTxn(posCfg);
     }
 
     posSampleHandlerNodePtr->horizontalMagnitude = horizontalMagnitude;

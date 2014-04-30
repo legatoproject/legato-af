@@ -61,7 +61,7 @@ include_directories(${LEGATO_SOURCE_DIR}/interfaces/supervisor/c)
 
 set_legato_component(supervisor)
 add_legato_internal_executable(supervisor supervisor.c app.c proc.c resourceLimits.c sandbox.c
-                               le_sup_server.c)
+                               cgroups.c le_sup_server.c)
 
 target_link_libraries(supervisor pthread le_cfg_api)
 

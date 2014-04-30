@@ -23,6 +23,7 @@ ADD_LUA_LIBRARY(test_racon DESTINATION tests EXCLUDE_FROM_ALL
 ADD_UNIT_TEST(asset_tree asset_tree.lua TEST_TYPE non-standalone TEST_DEPENDENCY system_stubs)
 ADD_UNIT_TEST(racon racon.lua)
 ADD_UNIT_TEST(devicetree devicetree.lua)
+ADD_DEPENDENCIES(unittest_devicetree treehdlsample agent_treemgr_treehdlsample)
 ADD_UNIT_TEST(sms sms.lua TEST_DEPENDENCY messaging_stubs)
 ADD_UNIT_TEST(system system.lua TEST_DEPENDENCY system_stubs)
 ADD_UNIT_TEST(emp emp.lua TEST_DEPENDENCY emp_server TEST_OPT 1235)

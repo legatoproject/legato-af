@@ -82,13 +82,19 @@ function SDB_TABLE :serializeandreset()
 end
 
 -- Create a consolidation table
-function SDB_TABLE :newconsolidation(idsm, columns)
-    checks('stagedb.table', 'string', 'table')
-    local sm, id = idsm :match '^(.-):(.+)$'
-    if not sm then error "Invalid identifier" end
+function SDB_TABLE :newconsolidation(id, sm, columns)
+    checks('stagedb.table', 'string', 'string', 'table')
     local sdb, msg = sdb_core.newconsolidation(self.sdb, id, sm, columns)
     if not sdb then return nil, msg end
     return setmetatable({sdb=sdb}, SDB_TABLE)
+end
+
+-- get the path of table
+function SDB_TABLE :getpath()
+    checks('stagedb.table')
+    local path = sdb_core.getpath(self.sdb)
+    if not path then return nil, "path not found in table" end
+    return path
 end
 
 for _, name in pairs{ 'state', 'close', 'reset', 'consolidate', 'row', 'trim',
@@ -120,10 +126,8 @@ end
 -- @param idsm (string) String in format "<storage method>:<identifier>".
 -- @param columns (table) sequence of @{racon.table.columnspec}.
 --------------------------------------------------------------------------------
-function stagedb(idsm, columns)
-    checks('string', 'table')
-    local sm, id = idsm :match '^(.-):(.+)$'
-    if not sm then error "Invalid identifier" end
+function stagedb(id, sm, columns)
+    checks('string', 'string','table')
     local sdb, msg = sdb_core.init(id, sm, columns);
     if not sdb then return nil, msg end
     return setmetatable({sdb=sdb}, SDB_TABLE)

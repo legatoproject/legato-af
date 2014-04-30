@@ -154,10 +154,10 @@
     data = { }
     data.activate = true
     data.policy = { }
-    data.policy.default  = { latency = 5, onboot=30 }
+    data.policy.default  = { latency = 5, onboot = 30 }
     data.policy.hourly   = { latency = 60*60 }
     data.policy.daily    = { latency = 24*60*60 }
-    data.policy.never    = { 'manual' }
-    data.policy.now      = { latency = 5, onboot=30 }
-    data.policy.on_boot  = { onboot=30 }
+    data.policy.never    = { manual  = true }
+    data.policy.now      = { latency = 5, onboot = 30 }
+    data.policy.onboot   = { onboot  = 30 }
     return config

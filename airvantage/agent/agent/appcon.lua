@@ -18,7 +18,9 @@ local socket  = require"socket"
 local log = require"log"
 local pairs = pairs
 local tonumber = tonumber
+local tostring = tostring
 local string = string
+local utilstable = require "utils.table"
 
 local apps_path = (LUA_AF_RW_PATH or lfs.currentdir().."/").."apps/"
 local M = {}
@@ -294,8 +296,9 @@ end
 -- if the application is runnable, then it returns the status sent by status command of appmon_daemon (see appmon_daemon doc)
 -- else only returns "Not runnable"
 -- @param id the string used as unique id when application was installed
--- @return status string in case of success, nil+error message otherwise
-local function status(id)
+-- @param tableformat optional boolean, asking for table format output. Default is the raw string ouput of appmon_daemon
+-- @return status string/table in case of success, nil+error message otherwise
+local function status(id, tableformat)
     local app = application_list[id]
     if not app then return nil, "Unknown app"
     elseif not is_app_runnable(id) then
@@ -303,21 +306,20 @@ local function status(id)
     elseif not app.app_id_daemon then
         return "Runnable app not setup in daemon."
     else
-        local res,err = sndcmd("status "..app.app_id_daemon, true)
-        if res then
-            if not res :match "appname=%[%d-%] privileged=%[%d-%] (.*)" then
-                return nil, "error while getting application info from appmon_daemon: status command parsing error"
-            end
-	    local t = {}
+        local res, err = sndcmd("status "..app.app_id_daemon, true)
+        if not res then return nil, err or "error while getting application info from appmon_daemon: status command failed" end
+        err, res = res, res :match "appname=%[%d-%] (.*)"
+        if not res then return nil, string.format("error while getting application info from appmon_daemon: [%s]", tostring(err or "unknown error")) end
+
+        if not tableformat then
+            return res
+        else
+            local t = {}
+            local k, v
             -- for each substring of the form "key=value"
-            for i in res:gmatch("%w+=%[[%w /%-%.]+]") do
-                -- 1. extract the key, then extract the value
-                -- 2. remove brackets from value
-                -- 3. t[key] = value
-                t[i:gsub("=%[[%w /%-%.]+]", "")] = i:gsub("%w+=", ""):gsub("%[([%w /%-%.]+)]", "%1")
-            end
+            for k, v in res:gmatch("([%w_%-]+)=%[(.-)%]") do t[k] = tonumber(v) or v end
             return t
-        else return nil, err or "error while getting application info from appmon_daemon: status command failed" end
+        end
     end
 end
 
@@ -387,12 +389,8 @@ local function attributes(id)
         autostart = app.autostart;
         runnable = is_app_runnable(id) }
     if app.app_id_daemon then
-        local status_string, err = sndcmd("status "..app.app_id_daemon, true)
-        if status_string then
-            for k, v in status_string :gmatch "(%w+)=%[(.-)%]" do
-                result[k] = tonumber(v) or v
-            end
-        end
+        local t, err = status(id, true)
+        if t then utilstable.copy(t, result) end
     end
     return result
 end
@@ -406,6 +404,17 @@ local function list()
         res[k]={autostart=v.autostart, runnable=is_app_runnable(k) }
     end
     return res
+end
+
+--- handler for REST uninstall request
+local function restuninstall(env)
+    local id = env["suburl"]:gsub("/uninstall/?", "");
+    if not id then return nil, "invalid id" end
+    if config.get("update.activate") then -- if update is activated the uninstall be performed by update module
+        return require "agent.update".uninstallcmp("@sys.appcon."..id)
+    else -- otherwise directly call appcon uninstall API
+        return uninstall(id);
+    end
 end
 
 --- Init function to be called by the agent's initializer module.
@@ -437,13 +446,14 @@ local function init()
     afpathprovisioning()
 
     -- register rest commands
-    if type(config.rest) == "table" and config.rest.activate == true then
+    if config.get("rest.activate") then
        local rest = require 'web.rest'
-       rest.register("application$", "GET", list)
-       rest.register("application/[%w%.]+", "GET", function(env) return status(env["suburl"]) end)
-       rest.register("application/[%w%.]+/start", "PUT", function(env) return start(env["suburl"]:gsub("/start", "")) end)
-       rest.register("application/[%w%.]+/stop", "PUT", function(env) return stop(env["suburl"]:gsub("/stop", "")) end)
-       rest.register("application/[%w%.]+/configure", "PUT", function(env) local id = env["suburl"]:gsub("/configure", ""); return configure(id, env["payload"]) end)
+       rest.register("^application/?$", "GET", list)
+       rest.register("^application/[%w%.%-_]+/?$", "GET", function(env) return status(env["suburl"]:gsub("/?$", ""), true) end)
+       rest.register("^application/[%w%.%-_]+/start/?$", "PUT", function(env) return start(env["suburl"]:gsub("/start/?", "")) end)
+       rest.register("^application/[%w%.%-_]+/stop/?$", "PUT", function(env) return stop(env["suburl"]:gsub("/stop/?", "")) end)
+       rest.register("^application/[%w%.%-_]+/configure/?$", "PUT", function(env) local id = env["suburl"]:gsub("/configure/?", ""); return configure(id, env["payload"]) end)
+       rest.register("^application/[%w%.%-_]+/uninstall/?$", "PUT", restuninstall)
     end
     return "ok"
 end

@@ -427,6 +427,13 @@ static int api_close( lua_State *L) {
     return 1;
 }
 
+// mysdb :getpath()
+static int api_getpath( lua_State *L) {
+    const char* path = sdb_getpath(lua_sdb_checktable( L, 1));
+    lua_pushstring( L, path );
+    return 1;
+}
+
 int luaopen_stagedb_core( lua_State *L) {
 
 
@@ -443,6 +450,7 @@ int luaopen_stagedb_core( lua_State *L) {
     REG( close);
     REG( state);
     REG( trim);
+    REG( getpath);
 #undef REG
 
     lua_newtable(   L); // mt

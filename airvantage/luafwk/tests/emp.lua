@@ -37,7 +37,7 @@ local function send_cmd(id)
    while true do
       local s, p = emp.sendcmd(cmdmaps["SendCmd"], "sendcmd_payload")
 
-      if not s and p ~= "error CLOSED [hint: ipc broken]" then
+      if not s and p ~= "CLOSED" then
      log("EMP_TEST", "ERROR", "EMP sender thread #%d failed: %s", id, p)
      os.exit(1)
       end
@@ -78,7 +78,7 @@ end
 function t: test_02_trigger_response_timeout()
    local s, p = emp.sendcmd(cmdmaps["TriggerTimeout"])
    print("s", s, "p", p)
-   assert(not s and p == "error TIMEOUT [hint: timeout for ack expired]")
+   assert(not s and p:match("TIMEOUT"))
 end
 
 function t: test_03_stop_mt_cmd()
@@ -94,7 +94,7 @@ function t: reconnecting_fail()
    --FIXME: luasocket seems buggy when calling socket.connect twice
    repeat
       s, err = emp.sendcmd(cmdmaps["SimulateCrash"])
-   until (not s and err == "server unreachable")
+   until (not s and err == "COMMUNICATION_ERROR")
 end
 
 return t

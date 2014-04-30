@@ -17,21 +17,14 @@ processes:
     run: (helloWorld)
 @endverbatim
 
-Because the client and server are in the same executable and they use the same API ("greet.api")
-and instance names ("hello") for their interfaces, their interfaces are automatically bound to
-each other.
-
-
 
 <HR>
 
 Now we can run @c mkapp to build the application.
 
-@verbatim
-$ mkapp helloWorld.adef -t ar7
-Note, automatically importing the interface, 'greetClient.hello.'
-Note, automatically exporting the interface, 'greetServer.hello.'
-@endverbatim
+@code
+$ mkapp helloWorld.adef -t wp7
+@endcode
 
 <HR>
 

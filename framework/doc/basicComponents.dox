@@ -10,15 +10,14 @@ along with one or more licenses that apply to the component's files.
 Components can be "built".  This generates output such as object code libraries and
 other files that can be incorporated into applications that run on a target device.
 
-Legato components also have language-independent interfaces and configuration data.
+Legato components can also have language-independent interfaces and configuration data.
 
 @section componentBased Component-based Approach
 
-It's important to manage complexity to achieve building a successful non-trivial software system.
+It's important to manage complexity when building a successful non-trivial software system.
 The more complex the system becomes, the harder it is to ensure required system behaviour
 without unwanted effects.  If complexity is carefully compartmentalized 
-(broken into smaller pieces with like behaviour requirements), the system complexity can be reduced 
-with reuse a key attribute to heightened design efficiency.
+(broken into smaller pieces with like behaviour requirements), complexity can be reduced. 
 
 Software system complexity often creeps in due to unforseen details or future requirements.
 Hindsight lets us identify unnecessary complexity through careful analysis, and reduce it through refactoring and reengineering.
@@ -35,24 +34,22 @@ system behaviour.  It's proven that decoupling parts from
 each other (minimizing their interconnectedness) can dramatically reduce the overall system
 complexity and improve its maintainability. Modularization and packaging support this.
 
-Component-based software development separates implementation from interface and that lets software components 
-be interchanged similarly to hardware components.  For example, client components can be written to access 
-a standard telephony interface without knowing the implementation of the interface.  The same
-client component can  be reused without any changes where the telephony 
-interfaces, network protocols, or licensing agreements are available to those applications. 
+Component-based software development separates implementation from interface. That lets software components 
+be swapped out similar to hardware components.  For example, client components can be written to access 
+a standard telephony interface without knowing the implementation of the interface.  
 
 Legato is designed to make it easier to build systems using a component-based model. 
 
 Decoupling components and hiding implementation details within components (behind
 their interfaces) has a major impact on maintainability:
 
- - Clear interface definition and components' roles and responsibilities allow
+ - Clearly defining interface and components' roles and responsibilities allow
    defect sources to be isolated more easily. 
- - Components can be swapped out with stubs and interfaces can be instrumented to gather
+ - Components can be swapped out with stubs, and interfaces can be instrumented to gather
    more troubleshooting information.
- - Component changes that do not affect its interfaces are constrained
-   to that component.  This supports \a refactoring.
- - A test suite can be applied to any component implementing the same interface supporting test reuse.
+ - Component changes that don't affect its interfaces are constrained
+   to that component.  This supports @c \a refactoring.
+ - Test suites can be applied to components implementing the same interface so test reuse is also supported.
 
 A promise of component-based software development is to enable creative
 interconnection of components in previously unimagined ways to discover unique new solutions.
@@ -73,10 +70,13 @@ shared and reused in accordance with the license that the author has chosen to r
 
 Legato components generally follow an event-driven model. Callback functions
 are attached to specific events, and when events occur, a thread's event loop triggers the
-appropriate callbacks. After initialization functions run, Legato's event processing reacts 
-to configured event handlers and calling registered callbacks. This approach allows multiple components 
-to be deployed to the same process, reduces the risk of multi-threaded race conditions, and
-saves stack memory space.  
+appropriate callbacks. 
+
+After initialization functions run, Legato's event processing reacts to configured event handlers 
+and registered callbacks. This approach allows multiple components to be deployed to the same process, 
+reduces the risk of multi-threaded race conditions, and saves stack memory space.  
+
+Legato uses the term @a handler for an event handler, which is essentially a callback function.
 
 @section compWhatsNext What's Next
 
@@ -85,7 +85,7 @@ saves stack memory space.
 
 <HR>
 
-Copyright (C) Sierra Wireless, Inc. 2012-2013. All rights reserved.
+Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
 
 **/
 

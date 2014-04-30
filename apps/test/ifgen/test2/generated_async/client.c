@@ -64,6 +64,19 @@ __attribute__((unused)) static void* UnpackString(void* msgBufPtr, const char** 
     return ( msgBufPtr + dataSize );
 }
 
+// todo: This function may eventually replace all usage of UnpackString() above.
+//       Maybe there should also be a PackDataString() function as well?
+// Unused attribute is needed because this function may not always get used
+__attribute__((unused)) static void* UnpackDataString(void* msgBufPtr, void* dataPtr, size_t dataSize)
+{
+    // Number of bytes copied from msg buffer, not including null terminator
+    size_t numBytes;
+
+    // todo: For now, assume the string will always fit in the buffer. This may not always be true.
+    le_utf8_Copy( dataPtr, msgBufPtr, dataSize, &numBytes );
+    return ( msgBufPtr + (numBytes + 1) );
+}
+
 
 //--------------------------------------------------------------------------------------------------
 // Generic Client Types, Variables and Functions
@@ -271,7 +284,7 @@ static void InitClient(void)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Start the client main thread
+ * Start the service for the client main thread
  */
 //--------------------------------------------------------------------------------------------------
 void StartClient
@@ -405,7 +418,7 @@ static void _Handle_AddTestA
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function adds a handler ...
+ * TestA handler ADD function
  */
 //--------------------------------------------------------------------------------------------------
 TestARef_t AddTestA
@@ -477,7 +490,7 @@ TestARef_t AddTestA
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function removes a handler ...
+ * TestA handler REMOVE function
  */
 //--------------------------------------------------------------------------------------------------
 void RemoveTestA
@@ -536,12 +549,16 @@ void RemoveTestA
 
 
 //--------------------------------------------------------------------------------------------------
-
+/**
+ * Function takes all the possible kinds of parameters, but returns nothing
+ */
 //--------------------------------------------------------------------------------------------------
 void allParameters
 (
-    int32_t a,
+    common_EnumExample_t a,
         ///< [IN]
+        ///< first one-line comment
+        ///< second one-line comment
 
     uint32_t* bPtr,
         ///< [OUT]
@@ -554,6 +571,8 @@ void allParameters
 
     uint32_t* outputPtr,
         ///< [OUT]
+        ///< some more comments here
+        ///< and some comments here as well
 
     size_t* outputNumElementsPtr,
         ///< [INOUT]
@@ -563,8 +582,17 @@ void allParameters
 
     char* response,
         ///< [OUT]
+        ///< comments on final parameter, first line
+        ///< and more comments
 
-    size_t responseNumElements
+    size_t responseNumElements,
+        ///< [IN]
+
+    char* more,
+        ///< [OUT]
+        ///< This parameter tests a bug fix
+
+    size_t moreNumElements
         ///< [IN]
 )
 {
@@ -589,12 +617,13 @@ void allParameters
     _msgBufPtr = _msgPtr->buffer;
 
     // Pack the input parameters
-    _msgBufPtr = PackData( _msgBufPtr, &a, sizeof(int32_t) );
+    _msgBufPtr = PackData( _msgBufPtr, &a, sizeof(common_EnumExample_t) );
     _msgBufPtr = PackData( _msgBufPtr, &dataNumElements, sizeof(size_t) );
     _msgBufPtr = PackData( _msgBufPtr, dataPtr, dataNumElements*sizeof(uint32_t) );
     _msgBufPtr = PackData( _msgBufPtr, outputNumElementsPtr, sizeof(size_t) );
     _msgBufPtr = PackString( _msgBufPtr, label );
     _msgBufPtr = PackData( _msgBufPtr, &responseNumElements, sizeof(size_t) );
+    _msgBufPtr = PackData( _msgBufPtr, &moreNumElements, sizeof(size_t) );
 
     // Send a request to the server and get the response.
     LE_DEBUG("Sending message to server and waiting for response");
@@ -611,8 +640,8 @@ void allParameters
     _msgBufPtr = UnpackData( _msgBufPtr, bPtr, sizeof(uint32_t) );
     _msgBufPtr = UnpackData( _msgBufPtr, outputNumElementsPtr, sizeof(size_t) );
     _msgBufPtr = UnpackData( _msgBufPtr, outputPtr, *outputNumElementsPtr*sizeof(uint32_t) );
-    _msgBufPtr = UnpackData( _msgBufPtr, response, responseNumElements*sizeof(char) );
-    response[responseNumElements-1] = 0;
+    _msgBufPtr = UnpackDataString( _msgBufPtr, response, responseNumElements*sizeof(char) );
+    _msgBufPtr = UnpackDataString( _msgBufPtr, more, moreNumElements*sizeof(char) );
 
     // Release the message object, now that all results/output has been copied.
     le_msg_ReleaseMsg(_responseMsgRef);
@@ -620,7 +649,10 @@ void allParameters
 
 
 //--------------------------------------------------------------------------------------------------
-
+/**
+ * This function fakes an event, so that the handler will be called.
+ * Only needed for testing.  Would never exist on a real system.
+ */
 //--------------------------------------------------------------------------------------------------
 void TriggerTestA
 (
@@ -708,7 +740,7 @@ static void _Handle_AddBugTest
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function adds a handler ...
+ * BugTest handler ADD function
  */
 //--------------------------------------------------------------------------------------------------
 BugTestRef_t AddBugTest
@@ -785,7 +817,7 @@ BugTestRef_t AddBugTest
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function removes a handler ...
+ * BugTest handler REMOVE function
  */
 //--------------------------------------------------------------------------------------------------
 void RemoveBugTest

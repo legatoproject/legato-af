@@ -42,6 +42,7 @@
 
 
 #include "legato.h"
+#include "le_audio_defs.h"
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -60,7 +61,9 @@ typedef enum
     PA_AUDIO_IF_FILE_PLAYING                = 6,
     PA_AUDIO_IF_DSP_FRONTEND_PCM_RX         = 7,
     PA_AUDIO_IF_DSP_FRONTEND_PCM_TX         = 8,
-    PA_AUDIO_IF_END                         = 9
+    PA_AUDIO_IF_DSP_FRONTEND_I2S_RX         = 9,
+    PA_AUDIO_IF_DSP_FRONTEND_I2S_TX         = 10,
+    PA_AUDIO_IF_END                         = 11
 }
 pa_audio_If_t;
 
@@ -144,6 +147,20 @@ le_result_t pa_audio_SetPcmTimeSlot
 (
     pa_audio_If_t interface,
     uint32_t      timeslot
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to set the channel mode of an I2S interface.
+ *
+ * @return LE_FAULT         The function failed to set the channel mode.
+ * @return LE_OK            The function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_audio_SetI2sChannelMode
+(
+    pa_audio_If_t           interface,
+    le_audio_I2SChannel_t  mode
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -233,7 +250,7 @@ le_result_t pa_audio_GetGain
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function must be called to start a playing thread
+ * This function must be called to ask for a playback thread starting
  *
  * @return LE_OK            The thread is started
  * @return LE_BAD_PARAMETER The playback format is not valid
@@ -248,7 +265,7 @@ le_result_t pa_audio_StartPlayback
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function must be called to stop a playing thread
+ * This function must be called to stop a playback thread
  *
  */
 //--------------------------------------------------------------------------------------------------
@@ -259,7 +276,7 @@ void pa_audio_StopPlayback
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function must be called to start a recording thread
+ * This function must be called to ask for a capture thread starting
  *
  * @return LE_OK            The thread is started
  * @return LE_BAD_PARAMETER The capture format is not valid
@@ -274,7 +291,7 @@ le_result_t pa_audio_StartCapture
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function must be called to stop a recording thread
+ * This function must be called to stop a capture thread
  *
  */
 //--------------------------------------------------------------------------------------------------

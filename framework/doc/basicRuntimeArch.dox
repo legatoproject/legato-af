@@ -16,7 +16,7 @@ services.  The Supervisor automatically creates sandboxes.
 
 @section supervisor Supervisor
 
-The Supervisor is a privileged process running on the target device that looks after a bunch of things:
+The Supervisor is a privileged process running on the target device that:
  - creates and destroys sandboxes for applications
  - starts and stops applications
  - acts as an application watchdog
@@ -24,17 +24,13 @@ The Supervisor is a privileged process running on the target device that looks a
 
 @section logControlDaemon Log Control Daemon
 
-The Log Control Daemon is the essential part of the logging system.  The daemon keeps track of 
-filters like monitoring application process changes and logging debug messages only
-when needed (discarding them when not needed).
+The Log Control Daemon provides a user-friendly way to control log message filtering for running Legato application processes.
 
 See @ref c_logging
 
 @section serviceDirectory Service Directory
 
-The Service Directory runs secure inter-process communication (IPC) for applications to provide and consume services.
-Servers 'advertise' in the Service Directory,
-and clients request service connections through the Service Directory. 
+The Service Directory provides a secure way for client processes to find servers that offer the services they need.
 The Service Directory ensures that only authorized connections are established.
 
 See @ref legatoServices
@@ -48,11 +44,12 @@ See @ref Configuration and @ref api_config
 
 @section applications Applications
 
-At runtime, an application is considered one or more processes, usually running in a sandbox.
-
+An application is a collection of executable files, libraries, and/or other resource files (e.g., audio files, web pages) 
+that can be deployed to a target device. Once installed on a device, an application can be started and stopped.
+ 
 By default, each application runs in its own sandbox.  When an application is constructed, all
-the files and IPC services to access are declared, which should be examined and approved before 
-installed on the target.  At runtime, the Supervisor and the Service Directory enforces that only those approved files and IPC services
+the files and IPC services it needs to access are declared (these should be examined and approved before 
+installed on the target).  At runtime, the Supervisor and the Service Directory enforce that only those approved files and IPC services
 are accessed by that application.
 
 Applications are assembled from components.
@@ -62,6 +59,6 @@ Applications are assembled from components.
 
 <HR>
 
-Copyright (C) Sierra Wireless, Inc. 2012-2013. All rights reserved.
+Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
 
 **/

@@ -16,10 +16,12 @@
 --
 --  @module treemgr.table
 
+require 'sched'
 local upath    = require 'utils.path'
 local treemgr = require 'agent.treemgr'
 
-require 'print'
+
+--require 'print'
 
 --local printf=function() end
 
@@ -44,9 +46,10 @@ function MT  :__index(key)
 end
 
 --- Write a value in treemgr.
+--- Attention: the write is asynchronous (because of the yield across metamethod boundaries limitation)
 function MT  :__newindex(key, value)
     local path = upath.concat(self[pathtoken], key)
-    return treemgr.set(path, value)
+    sched.run(treemgr.set, path, value)
 end
 
 --- Iterate on every direct child of the proxy.

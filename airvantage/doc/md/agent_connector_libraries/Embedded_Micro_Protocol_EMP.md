@@ -88,7 +88,7 @@ payload                          payload '`payloadsize-2`' bytes of JSON
 Vocabulary:
 
 * App: stands for Application
-* Agt: stands for (Mihini) Agent
+* Agt: stands for Agent
 
 --------------------------------------------------------------------------------------------------------------------------------------------------------------
 ID            Command ID                   Request Direction        Description
@@ -99,13 +99,16 @@ ID            Command ID                   Request Direction        Description
                                                                      \
                                                                     **Command payload**: \
                                                                     The message is a JSON `map` which format is:\
-                                                                     - `Path`: a `string` identifying the root path of all variables contained in this message.\
-                                                                     - `TicketId`: a `number` that serves as a acknowledge request for this message.
-                                                                       The `TicketId` value must be given in `PAcknowledge` EMP command to acknowledge the message 
+                                                                     - `__class`: a `string` identifying the type of data coming from server, possible values are:\
+                                                                         -- **"Message"**: the server sends new data to the application.\
+                                                                         -- **"Response"**: the server acknowledges a data previously sent by the application.\
+                                                                     - `path`: a `string` identifying the root path of all variables contained in this message.\
+                                                                     - `ticketid`: a `number` that serves as an acknowledge request for this message.
+                                                                       The `ticketid` value must be given in `PAcknowledge` EMP command to acknowledge the message 
                                                                        to the server.\
-                                                                     - `Body`: variables sent by the server, the data is in a `map` which format is:\
+                                                                     - `body`: variables sent by the server, the data is in a `map` which format is:\
                                                                         -- `variable_name` = `variable_value` : `variable_name` is the variable sub path and name relative
-                                                                          to `Path`.\
+                                                                          to `path`.\
                                                                     \
                                                                     **Response payload**: \
                                                                      - `status`: 2 bytes acknowledging the command.

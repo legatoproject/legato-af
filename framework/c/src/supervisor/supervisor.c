@@ -219,6 +219,7 @@
 #include "fileDescriptor.h"
 #include "le_sup_server.h"
 #include "config.h"
+#include "cgroups.h"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -375,6 +376,24 @@ static le_dls_List_t SysProcsList = LE_DLS_LIST_INIT;
 //--------------------------------------------------------------------------------------------------
 static le_sup_ServerCmdRef_t StopLegatoCmdRef = NULL;
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Timeout value used to send a SIGKILL
+ */
+//--------------------------------------------------------------------------------------------------
+static const le_clk_Time_t KillTimeout = {
+        .sec = 0,
+        .usec = 300000,
+};
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Timer used to stop system processes.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_timer_Ref_t KillTimerRef;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -588,6 +607,21 @@ static void StopNextSysProc
     StopSysProcs();
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handle termination of the last system process.
+ */
+//--------------------------------------------------------------------------------------------------
+static void HandleLastSysProcStopped
+(
+    SysProcObjRef_t sysProcObjRef           // The system process that just stopped.
+)
+{
+    LE_INFO("Legato framework shut down.");
+
+    // Exit the Supervisor.
+    exit(EXIT_SUCCESS);
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -646,16 +680,24 @@ static le_result_t LaunchApp
     }
 
     // Get the configuration path for this app.
-    char configPath[LIMIT_MAX_PATH_BYTES];
-    snprintf(configPath, sizeof(configPath), "%s/%s", CFG_NODE_APPS_LIST, appNamePtr);
+    char configPath[LIMIT_MAX_PATH_BYTES] = { 0 };
+
+    if (le_path_Concat("/", configPath, LIMIT_MAX_PATH_BYTES,
+                       CFG_NODE_APPS_LIST, appNamePtr, (char*)NULL) == LE_OVERFLOW)
+    {
+        LE_ERROR("App name configuration path '%s/%s' too large for internal buffers!  "
+                 "Application '%s' is not installed and cannot run.",
+                 CFG_NODE_APPS_LIST, appNamePtr, appNamePtr);
+        return LE_FAULT;
+    }
 
     // Check that the app has a configuration value.
-    le_cfg_iteratorRef_t appCfg = le_cfg_CreateReadTxn(configPath);
+    le_cfg_IteratorRef_t appCfg = le_cfg_CreateReadTxn(configPath);
 
     if (le_cfg_IsEmpty(appCfg, ""))
     {
         LE_ERROR("Application '%s' is not installed and cannot run.", appNamePtr);
-        le_cfg_DeleteIterator(appCfg);
+        le_cfg_CancelTxn(appCfg);
         return LE_NOT_FOUND;
     }
 
@@ -664,7 +706,7 @@ static le_result_t LaunchApp
 
     if (appRef == NULL)
     {
-        le_cfg_DeleteIterator(appCfg);
+        le_cfg_CancelTxn(appCfg);
         return LE_FAULT;
     }
 
@@ -679,13 +721,14 @@ static le_result_t LaunchApp
     {
         app_Delete(appPtr->appRef);
         le_mem_Release(appPtr);
+        le_cfg_CancelTxn(appCfg);
 
         return LE_FAULT;
     }
 
     // @Note: We hang on to the the application config iterator till here to ensure the application
     // configuration does not change during the creation and starting of the application.
-    le_cfg_DeleteIterator(appCfg);
+    le_cfg_CancelTxn(appCfg);
 
     // Add the app to the list.
     le_dls_Queue(&AppsList, &(appPtr->link));
@@ -706,33 +749,41 @@ static void LaunchAllStartupApps
 )
 {
     // Read the list of applications from the config tree.
-    le_cfg_iteratorRef_t appCfg = le_cfg_CreateReadTxn(CFG_NODE_APPS_LIST);
+    le_cfg_IteratorRef_t appCfg = le_cfg_CreateReadTxn(CFG_NODE_APPS_LIST);
 
     if (le_cfg_GoToFirstChild(appCfg) != LE_OK)
     {
         LE_WARN("No applications installed.");
 
-        le_cfg_DeleteIterator(appCfg);
+        le_cfg_CancelTxn(appCfg);
         return;
     }
 
     do
     {
         // Check the defer launch for this application.
-        if (!le_cfg_GetBool(appCfg, CFG_NODE_DEFER_LAUNCH))
+        if (!le_cfg_GetBool(appCfg, CFG_NODE_DEFER_LAUNCH, false))
         {
             // Get the app name.
             char appName[LIMIT_MAX_APP_NAME_BYTES];
-            le_cfg_GetNodeName(appCfg, appName, sizeof(appName));
 
-            // Launch the application now.  No need to check the return code because there is
-            // nothing we can do about errors.
-            LaunchApp(appName);
+            if (le_cfg_GetNodeName(appCfg, "", appName, sizeof(appName)) == LE_OVERFLOW)
+            {
+                LE_ERROR("AppName buffer was too small, name truncated to '%s'.  "
+                         "Max app name in bytes, %d.  Application not launched.",
+                         appName, LIMIT_MAX_APP_NAME_BYTES);
+            }
+            else
+            {
+                // Launch the application now.  No need to check the return code because there is
+                // nothing we can do about errors.
+                LaunchApp(appName);
+            }
         }
     }
     while (le_cfg_GoToNextSibling(appCfg) == LE_OK);
 
-    le_cfg_DeleteIterator(appCfg);
+    le_cfg_CancelTxn(appCfg);
 }
 
 
@@ -957,6 +1008,25 @@ static void StartFramework
     LaunchAllStartupApps();
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Try to kill a system process
+ */
+//--------------------------------------------------------------------------------------------------
+static void KillSysProc
+(
+    SysProcObj_t* sysProcPtr
+)
+{
+    LE_INFO("Killing system process '%s' (PID: %d)", sysProcPtr->name, sysProcPtr->pid);
+
+    // Soft Kill the system process.
+    LE_ASSERT(kill(sysProcPtr->pid, SIGTERM) == 0);
+
+    // Start a timer in case process does not comply
+    le_timer_SetContextPtr(KillTimerRef, sysProcPtr);
+    le_timer_Start(KillTimerRef);
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -982,10 +1052,7 @@ static void StopSysProcs
             // Set the stop handler that will stop the next system process.
             sysProcPtr->stopHandler = StopNextSysProc;
 
-            LE_INFO("Killing system process '%s' (PID: %d)", sysProcPtr->name, sysProcPtr->pid);
-
-            // Kill the system process.
-            LE_ASSERT(kill(sysProcPtr->pid, SIGKILL) == 0);
+            KillSysProc(sysProcPtr);
 
             return;
         }
@@ -1006,14 +1073,11 @@ static void StopSysProcs
 
         SysProcObj_t* sysProcPtr = CONTAINER_OF(sysProcLinkPtr, SysProcObj_t, link);
 
-        // Kill the serviceDirectory now.
-        LE_ASSERT(kill(sysProcPtr->pid, SIGKILL) == 0);
+        // Set a handler
+        sysProcPtr->stopHandler = HandleLastSysProcStopped;
+
+        KillSysProc(sysProcPtr);
     }
-
-    LE_INFO("Legato framework shut down.");
-
-    // Exit the Supervisor.
-    exit(EXIT_SUCCESS);
 }
 
 
@@ -1150,6 +1214,11 @@ static void SigChildHandler
         // Search the list of System processes.
         SysProcObj_t* sysProcPtr = GetSysProcObj(pid);
 
+        if ( le_timer_IsRunning(KillTimerRef) && (le_timer_GetContextPtr(KillTimerRef) == sysProcPtr) )
+        {
+            le_timer_Stop(KillTimerRef);
+        }
+
         if ( (sysProcPtr != NULL) && (sysProcPtr->stopHandler != NULL) )
         {
             sysProcPtr->stopHandler(sysProcPtr);
@@ -1216,6 +1285,38 @@ static void SigChildHandler
     }
 }
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Called when a process has not died due to a soft kill signal within the timeout period.
+ * Handles soft kill timeout by performing a hard kill.
+ */
+//--------------------------------------------------------------------------------------------------
+static void SysProcsSoftKillExpiryHandler
+(
+    le_timer_Ref_t timerRef
+)
+{
+    SysProcObj_t* sysProcPtr = le_timer_GetContextPtr(timerRef);
+
+    if (sysProcPtr->pid == -1)
+    {
+        LE_WARN("Process has already exited");
+        return;
+    }
+
+    LE_WARN("Hard killing %d", sysProcPtr->pid);
+
+    if (kill(sysProcPtr->pid, SIGKILL) == -1)
+    {
+        // Process could have exited while we haven't received the SIGCHLD yet
+        // Determine if it's still alive
+        LE_FATAL_IF( (kill(sysProcPtr->pid, 0) == 0),
+                    "Could not send SIGKILL to process '%s' (PID: %d).  %m.",
+                    sysProcPtr->name,
+                    sysProcPtr->pid);
+    }
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1348,6 +1449,12 @@ COMPONENT_INIT
     // Daemonize ourself.
     Daemonize();
 
+    // Create timer to handle graceful shutdown
+    KillTimerRef = le_timer_Create("SupervisorKill");
+    le_timer_SetInterval(KillTimerRef, KillTimeout);
+
+    le_timer_SetHandler(KillTimerRef, SysProcsSoftKillExpiryHandler);
+
     // Create the Legato runtime directory if it doesn't already exists.
     LE_ASSERT(le_dir_Make(LE_RUNTIME_DIR, S_IRWXU | S_IXOTH) != LE_FAULT);
 
@@ -1364,6 +1471,7 @@ COMPONENT_INIT
     user_Init();
     user_RestoreBackup();
     app_Init();
+    cgrp_Init();
 
     // Create memory pools.
     AppObjPool = le_mem_CreatePool("Apps", sizeof(AppObj_t));

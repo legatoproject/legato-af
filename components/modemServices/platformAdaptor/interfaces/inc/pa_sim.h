@@ -393,5 +393,20 @@ le_result_t pa_sim_DisablePIN
     const pa_sim_Pin_t code   ///< [IN] code
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the SIM Phone Number.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_OVERFLOW if the Phone Number can't fit in phoneNumberStr
+ *      - LE_NOT_POSSIBLE on any other failure
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_sim_GetSubscriberPhoneNumber
+(
+    char        *phoneNumberStr,    ///< [OUT] The phone Number
+    size_t       phoneNumberStrSize ///< [IN]  Size of phoneNumberStr
+);
 
 #endif // LEGATO_PASIM_INCLUDE_GUARD

@@ -1,57 +1,18 @@
+
 //--------------------------------------------------------------------------------------------------
 /** @file path.c
  *
- * Implements the path API.  The path iterator stores the location of the path string and the
- * separator string and assumes that the user will not change them during the lifetime of the
- * iterator.
+ * Implements the path API.
  *
- * Separators can be one or more characters.  Iterators treat consecutive separators in a path as a
- * single separator.  Paths that begin with one or more separators are considered absolute paths.
+ * Separators can be one or more characters.  Path objects treat consecutive separators in a path as
+ * a single separator.  Paths that begin with one or more separators are considered absolute paths.
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to
+ * license.
  */
+//--------------------------------------------------------------------------------------------------
 
 #include "legato.h"
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Path iterator type.
- */
-//--------------------------------------------------------------------------------------------------
-typedef struct
-{
-    char* pathPtr;          // Pointer to the path string.
-    char* separatorPtr;     // Pointer to the separator string.
-    ssize_t firstNodeIndex; // Index of the first node in the path.
-    ssize_t currNodeIndex;  // Index of the current node in the path.
-}
-PathIterator_t;
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Path iterator memory pool.
- */
-//--------------------------------------------------------------------------------------------------
-static le_mem_PoolRef_t IteratorPool;
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * The expected maximum number of iterators.  This is not a hard limit and is used only for creating
- * the safe reference maps.
- */
-//--------------------------------------------------------------------------------------------------
-#define EXPECTED_MAX_NUM_ITERATORS      10
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * The safe reference maps for iterators.
- */
-//--------------------------------------------------------------------------------------------------
-static le_ref_MapRef_t IteratorMap;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -87,23 +48,25 @@ static size_t FindNextPathCharIndex
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Searches backwards to find the index of the next character that is not a separator in the str.
+ * Finds the index of the trailing separators.
  *
  * @return
- *      The index of the first character that is not a separator.
- *      -1 if there are no characters that is not a separator.
+ *      The index of the first trailing separator.
+ *      The index of the NULL-terminator if there are no trailing separators.
  */
 //--------------------------------------------------------------------------------------------------
-static ssize_t ReverseFindNextPathCharIndex
+static size_t FindTrailingSeparatorIndex
 (
     const char* str,        // The string to search.
     const char* sepPtr      // The separator string.
 )
 {
     size_t sepStrLen = le_utf8_NumBytes(sepPtr);
+
+    // Start at the end of the string.
     ssize_t i = le_utf8_NumBytes(str) - sepStrLen;
 
-    while (i > 0)
+    while (i >= 0)
     {
         if (strncmp(str + i, sepPtr, sepStrLen) == 0)
         {
@@ -111,12 +74,12 @@ static ssize_t ReverseFindNextPathCharIndex
         }
         else
         {
-            // Move back to the 1 minus the previous known separator.
-            return i + sepStrLen - 1;
+            break;
         }
     }
 
-    return -1;
+    // Move back to the previous known separator.
+    return i + sepStrLen;
 }
 
 
@@ -156,244 +119,6 @@ static size_t GetEndOfLastSubstr
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Gets the next node in the path starting from a specified index.
- *
- * If successful the iterator's currNodeIndex is set to the next node after the one that was just
- * accessed.  If there is no next node then currNodeIndex is set to the null-termninator.
- *
- * If the node buffer is too small, the portion of the node that will fit is copied to the node
- * buffer and LE_OVERFLOW.
- *
- * @return
- *      LE_OK if successful.
- *      LE_OVERFLOW if the node buffer was too small.
- *      LE_NOT_FOUND if there are no more nodes after the index.
- */
-//--------------------------------------------------------------------------------------------------
-static le_result_t GetNextNodeFromIndex
-(
-    PathIterator_t* iteratorPtr,        ///< [IN] The path iterator.
-    size_t pathIndex,                   ///< [IN] The index into the path to start from.
-    char* nodePtr,                      ///< [OUT] The buffer to store the node string.
-    size_t nodeBuffSize                 ///< [IN] The size of the node buffer in bytes.
-)
-{
-    char* pathPtr = iteratorPtr->pathPtr + pathIndex;
-
-    if (pathPtr[0] == '\0')
-    {
-        return LE_NOT_FOUND;
-    }
-    else
-    {
-        char* nextSepPtr = strstr(pathPtr, iteratorPtr->separatorPtr);
-
-        if (nextSepPtr == NULL)
-        {
-            // No separators were found.  Set the current node index to the null-terminator.
-            iteratorPtr->currNodeIndex = le_utf8_NumBytes(iteratorPtr->pathPtr);
-
-            // Copy the entire string.
-            return le_utf8_Copy(nodePtr, pathPtr, nodeBuffSize, NULL);
-        }
-        else
-        {
-            le_result_t result;
-            size_t numBytesInNode = nextSepPtr - pathPtr;
-
-            if (numBytesInNode >= nodeBuffSize)
-            {
-                // Copy up to the first separator.  Doesn't matter what the return value is we know
-                // there was an overflow.
-                le_utf8_Copy(nodePtr, pathPtr, nodeBuffSize, NULL);
-
-                result = LE_OVERFLOW;
-            }
-            else
-            {
-                // Copy up to the first separator.  Doesn't matter what the return value is we know
-                // the copy was OK.
-                le_utf8_Copy(nodePtr, pathPtr, numBytesInNode + 1, NULL);
-
-                result = LE_OK;
-            }
-
-            // Set the current node index to the beginning of the next node.
-            iteratorPtr->currNodeIndex = pathIndex + numBytesInNode +
-                                         FindNextPathCharIndex(pathPtr + numBytesInNode,
-                                                               iteratorPtr->separatorPtr);
-
-            return result;
-        }
-    }
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Initializes the path system.
- */
-//--------------------------------------------------------------------------------------------------
-void path_Init
-(
-    void
-)
-{
-    IteratorPool = le_mem_CreatePool("PathIteratorPool", sizeof(PathIterator_t));
-
-    // Create a Safe Reference Map to use for iterators.
-    IteratorMap = le_ref_CreateMap("PathIteratorMap", EXPECTED_MAX_NUM_ITERATORS);
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Creates a path iterator.  The path and separator strings must be unchanged during the life time
- * of the interator.  Operations on the iterator are undefined if either the path or separator
- * strings change.
- *
- * The path and separator strings must be null-terminated UTF-8 strings.  The separator string must
- * be non empty.
- *
- * @return
- *      A reference to the path iterator.
- */
-//--------------------------------------------------------------------------------------------------
-le_path_IteratorRef_t le_path_iter_Create
-(
-    const char* pathPtr,        ///< [IN] The path string.
-    const char* separatorPtr    ///< [IN] Separator string.
-)
-{
-    // Check parameters.
-    LE_ASSERT( (pathPtr != NULL) && (separatorPtr != NULL) && (le_utf8_NumBytes(separatorPtr) > 0) );
-
-    // Create the iterator.
-    PathIterator_t* iteratorPtr = le_mem_ForceAlloc(IteratorPool);
-
-    // Initialize the iterator.
-    iteratorPtr->pathPtr = (char*)pathPtr;
-    iteratorPtr->separatorPtr = (char*)separatorPtr;
-    iteratorPtr->firstNodeIndex = FindNextPathCharIndex(pathPtr, separatorPtr);
-    iteratorPtr->currNodeIndex = iteratorPtr->firstNodeIndex;
-
-    // Create and return a Safe Reference for this iterator.
-    return le_ref_CreateRef(IteratorMap, iteratorPtr);
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Gets the first node in the path.
- *
- * If the node buffer is too small, the portion of the node that will fit is copied to the node
- * buffer and LE_OVERFLOW is returned.
- *
- * If the path is empty then LE_NOT_FOUND is returned and nothing is copied to nodePtr.
- *
- * @return
- *      LE_OK if the entire node was copied.
- *      LE_OVERFLOW if the node buffer was too small.
- *      LE_NOT_FOUND if no nodes are available.
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t le_path_iter_GetFirstNode
-(
-    le_path_IteratorRef_t iteratorRef,  ///< [IN] The path iterator reference.
-    char* nodePtr,                      ///< [OUT] The buffer to store the node string.
-    size_t nodeBuffSize                 ///< [IN] The size of the node buffer in bytes.
-)
-{
-    // Check parameters.
-    LE_ASSERT( (nodePtr != NULL) && (nodeBuffSize > 0) );
-
-    PathIterator_t* iteratorPtr = le_ref_Lookup(IteratorMap, iteratorRef);
-    LE_ASSERT(iteratorPtr != NULL);
-
-    return GetNextNodeFromIndex(iteratorPtr, iteratorPtr->firstNodeIndex, nodePtr, nodeBuffSize);
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Gets the next node in the path.  Gets the node after the node that was most recently accessed.
- * Consecutive separators are treated as a single separator.
- *
- * If no other nodes have been accessed then the first node is copied to nodePtr.
- *
- * If the node buffer is too small, the portion of the node that will fit is copied to the node
- * buffer and LE_OVERFLOW is returned.
- *
- * If there are no more nodes then LE_NOT_FOUND is returned nothing is copied to nodePtr.
- *
- * @return
- *      LE_OK if succesful.
- *      LE_OVERFLOW if the nodePtr buffer is too small.
- *      LE_NOT_FOUND if no more nodes are available.
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t le_path_iter_GetNextNode
-(
-    le_path_IteratorRef_t iteratorRef,  ///< [IN] The path iterator reference.
-    char* nodePtr,                      ///< [OUT] The buffer to store the node string.
-    size_t nodeBuffSize                 ///< [IN] The size of the node buffer in bytes.
-)
-{
-    // Check parameters.
-    LE_ASSERT( (nodePtr != NULL) && (nodeBuffSize > 0) );
-
-    PathIterator_t* iteratorPtr = le_ref_Lookup(IteratorMap, iteratorRef);
-    LE_ASSERT(iteratorPtr != NULL);
-
-    return GetNextNodeFromIndex(iteratorPtr, iteratorPtr->currNodeIndex, nodePtr, nodeBuffSize);
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Determines if the path is absolute (begins with a separator) or relative (does not begin with a
- * separator.
- *
- * @return
- *      true if the path is absolute.
- *      false if the path is relative.
- */
-//--------------------------------------------------------------------------------------------------
-bool le_path_iter_IsAbsolute
-(
-    le_path_IteratorRef_t iteratorRef   ///< [IN] The path iterator reference.
-)
-{
-    PathIterator_t* iteratorPtr = le_ref_Lookup(IteratorMap, iteratorRef);
-    LE_ASSERT(iteratorPtr != NULL);
-
-    return !(iteratorPtr->firstNodeIndex == 0);
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Deletes a path iterator.
- */
-//--------------------------------------------------------------------------------------------------
-void le_path_iter_Delete
-(
-    le_path_IteratorRef_t iteratorRef   ///< [IN] The path iterator reference.
-)
-{
-    // Check parameters.
-    PathIterator_t* iteratorPtr = le_ref_Lookup(IteratorMap, iteratorRef);
-    LE_ASSERT(iteratorPtr != NULL);
-
-    // Invalidate the Safe Reference.
-    le_ref_DeleteRef(IteratorMap, iteratorRef);
-
-    le_mem_Release(iteratorPtr);
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Gets the directory, which is the entire path up to and including the last separator.
  *
  * @return
@@ -410,7 +135,10 @@ le_result_t le_path_GetDir
 )
 {
     // Check parameters.
-    LE_ASSERT( (pathPtr != NULL) && (separatorPtr != NULL) && (dirPtr != NULL) && (dirBuffSize > 0));
+    LE_ASSERT(   (pathPtr != NULL)
+              && (separatorPtr != NULL)
+              && (dirPtr != NULL)
+              && (dirBuffSize > 0));
 
     size_t i = GetEndOfLastSubstr(pathPtr, separatorPtr, le_utf8_NumBytes(pathPtr));
 
@@ -460,67 +188,116 @@ char* le_path_GetBasenamePtr
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Remove duplicate trailing separators from the path.  If there are multiple trailing separators
+ * then all trailing separators except one are removed.  If there are no trailing separators then
+ * nothing is changed.
+ *
+ * @return
+ *      true if duplicate trailing separators were successfully removed or there was already only a
+ *           single trailing separator.
+ *      false if there are no trailing separators in the path.
+ */
+//--------------------------------------------------------------------------------------------------
+static bool RemoveDuplicateTrailingSep
+(
+    char* pathPtr,                  ///< [IN] The path string.
+    const char* separatorPtr,       ///< [IN] The separator string.
+    size_t* lenPtr                  ///< [OUT] The resultant strings length.
+)
+{
+    size_t index = FindTrailingSeparatorIndex(pathPtr, separatorPtr);
+
+    if (pathPtr[index] == '\0')
+    {
+        // There are no trailing separators.
+        if (lenPtr != NULL)
+        {
+            *lenPtr = index;
+        }
+
+        return false;
+    }
+
+    // Move past the first trailing separator.
+    index += le_utf8_NumBytes(separatorPtr);
+
+    // Remove everything after the first trailing separator.
+    pathPtr[index] = '\0';
+
+    if (lenPtr != NULL)
+    {
+        *lenPtr = index;
+    }
+
+    return true;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Concatenates multiple path segments together.
  *
- * Copies all path segments into the provided buffer, ensuring that where segments are joined there
- * is only one separator between them.  Ending separators in the last path segments are also
- * dropped.
+ * Concatenates the path in the pathPtr buffer with all path segments and stores the result in the
+ * pathPtr.  Ensures that where path segments are joined there is only one separator between them.
+ * Duplicate trailing separators in the resultant path are also dropped.
+ *
+ * If there is not enough space in pathPtr for all segments, as many characters from the segments
+ * that will fit in the buffer will be copied and LE_OVERFLOW will be returned.  Partial UTF-8
+ * characters and partial separators will never be copied.
  *
  * @warning  The (char*)NULL at the end of the list of path segments is mandatory.  If this NULL is
  *           omitted the behaviour is undefined.
  *
  * @return
  *      LE_OK if successful.
- *      LE_OVERFLOW if there was not enough buffer space for all segments.
+ *      LE_OVERFLOW if there was not enough buffer space in pathPtr for all segments.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_path_Concat
 (
     const char* separatorPtr,       ///< [IN] Separator string.
-    char* bufPtr,                   ///< [OUT] Buffer to store the resultant path.
-    size_t bufSize,                 ///< [IN] Buffer size.
+    char* pathPtr,                  ///< [IN/OUT] Buffer containing the first segment and where
+                                    ///           the resultant path will be stored.
+    size_t pathSize,                ///< [IN] Buffer size.
     ...                             ///< [IN] Path segments to concatenate.  The list of segments
                                     ///       must be terminated by (char*)NULL.
 )
 {
     // Check parameters.
-    LE_ASSERT( (bufPtr != NULL) && (separatorPtr != NULL) );
-
-    // Initialize the buffer.
-    if (bufSize > 0)
-    {
-        bufPtr[0] = '\0';
-    }
+    LE_ASSERT( (pathPtr != NULL) && (separatorPtr != NULL) && (pathSize > 0) );
 
     va_list varArgs;
-    char* pathSegmentPtr;
-    size_t bufIndex = 0;
     le_result_t result = LE_OK;
     size_t separatorSize = le_utf8_NumBytes(separatorPtr);
+    size_t pathIndex;
 
     // Go to the first var arg.
-    va_start(varArgs, bufSize);
+    va_start(varArgs, pathSize);
 
     while (1)
     {
-        // Get the path segment from the next var arg.
-        pathSegmentPtr = va_arg(varArgs, char*);
+        bool hasSep = RemoveDuplicateTrailingSep(pathPtr, separatorPtr, &pathIndex);
 
-        if (pathSegmentPtr == NULL)
+        // Get the path segment from the next var arg.
+        char* segmentPtr = va_arg(varArgs, char*);
+
+        if (segmentPtr == NULL)
         {
             // No more segments.
             break;
         }
 
-        // Get the part of the path segment not inlcuding starting and ending separators.
-        size_t segStartIndex = FindNextPathCharIndex(pathSegmentPtr, separatorPtr);
-        ssize_t segEndIndex = ReverseFindNextPathCharIndex(pathSegmentPtr, separatorPtr);
+        // Get the start of the segment skipping over all starting separators.
+        size_t segStartIndex = FindNextPathCharIndex(segmentPtr, separatorPtr);
 
-        // Add the separator unless the first segment does not have a leading separator.
         size_t numBytesWritten;
-        if ((bufIndex != 0) || (segStartIndex != 0))
+
+        // Add a separator.
+        if ( (!hasSep) &&  // The path does not already have a separator.
+             ( ((pathIndex == 0) && (segStartIndex != 0)) || // Path is empty and segment starts with a separator.
+               ((pathIndex != 0) && (segmentPtr[segStartIndex] != '\0')) ) ) // Path is not empty and segment is not empty.
         {
-            if (separatorSize >= bufSize - bufIndex)
+            if (separatorSize >= pathSize - pathIndex)
             {
                 // No more room to add the separator.
                 result = LE_OVERFLOW;
@@ -528,37 +305,34 @@ le_result_t le_path_Concat
             }
 
             // This should always succeed because we've checked the space above.
-            LE_ASSERT(le_utf8_Copy(bufPtr + bufIndex,
+            LE_ASSERT(le_utf8_Copy(pathPtr + pathIndex,
                                    separatorPtr,
-                                   bufSize - bufIndex,
+                                   pathSize - pathIndex,
                                    &numBytesWritten) == LE_OK);
 
-            bufIndex += numBytesWritten;
+            pathIndex += numBytesWritten;
         }
 
-        // Copy the path segment.
-        if ((segEndIndex - segStartIndex) + 2 < bufSize - bufIndex)
+        if (segmentPtr[segStartIndex] == '\0')
         {
-            // This may overflow but is not an error so we don't check the return code here.
-            le_utf8_Copy(bufPtr + bufIndex,
-                         pathSegmentPtr + segStartIndex,
-                         segEndIndex - segStartIndex + 2,
-                         &numBytesWritten);
-        }
-        else
-        {
-            if (le_utf8_Copy(bufPtr + bufIndex,
-                             pathSegmentPtr + segStartIndex,
-                             bufSize - bufIndex,
-                             &numBytesWritten) == LE_OVERFLOW)
-            {
-                // No more room in the buffer.
-                result = LE_OVERFLOW;
-                break;
-            }
+            // Nothing in segment except for separators so skip it.  Do this check here after adding
+            // the separator so that if the path is empty and the separator only has a separators
+            // a separator is added to the path.
+            continue;
         }
 
-        bufIndex += numBytesWritten;
+        // Copy the path segment skipping over all starting separators in the segment.
+        if (le_utf8_Copy(pathPtr + pathIndex,
+                         segmentPtr + segStartIndex,
+                         pathSize - pathIndex,
+                         &numBytesWritten) == LE_OVERFLOW)
+        {
+            // No more room in the buffer.
+            result = LE_OVERFLOW;
+            break;
+        }
+
+        pathIndex += numBytesWritten;
     }
 
     va_end(varArgs);

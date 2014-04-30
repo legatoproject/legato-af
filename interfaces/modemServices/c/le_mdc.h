@@ -7,6 +7,7 @@
  *
  *@ref le_mdc_profile <br>
  *@ref le_mdc_session <br>
+ *@ref le_mdc_dataStatistics <br>
  *@ref le_mdc_configdb <br>
  *
  *
@@ -28,6 +29,8 @@
  *
  * The following data profile parameters can be retrieved:
  *  - Profile name using @ref le_mdc_GetProfileName.
+ *  - IP Preference (i.e. PDP type) can be checked with @c le_mdc_IsIPV4() or
+ *  @c le_mdc_IsIPV6()
  *
  * @todo
  *  - IP preference (i.e. PDP_type) is hard-coded to IPv4, but will be configurable in the future
@@ -47,8 +50,18 @@
  *
  * Once a data session starts, a Linux network interface is created.  It's the application's responsibility
  * to configure the network interface, usually through a DHCP client. Query the
- * interface name using @ref le_mdc_GetInterfaceName. The Gateway and DNS
+ * interface name using @ref le_mdc_GetInterfaceName. The IP address for the current data session
+ * can be retreived by  @ref le_mdc_GetIPAddress. The Gateway and DNS
  * addresses can be retrieved using @ref le_mdc_GetGatewayAddress and @ref le_mdc_GetDNSAddresses.
+ * The Access Point Name can be retrieved by @ref le_mdc_GetAccessPointName. The Data bearer
+ * Technology can be retreived by @ref le_mdc_GetDataBearerTechnology.
+ *
+ * @section le_mdc_dataStatistics Data Statistics
+ *
+ * Data bytes received/transmitted can be access through @ref le_mdc_GetBytesCounters.
+ * These values correspond to the number of bytes received/transmitted since the last software reset
+ * or the last @ref le_mdc_ResetBytesCounter called.
+ * Making these value persistent after a software reboot is the client responsibility.
  *
  * @section le_mdc_configdb Data configuration tree
  *
@@ -59,6 +72,17 @@
            modemDataConnection/
                <ProfileName_1>/
                    accessPointName<string> == <ADDR>
+                   packetDataProtocol<string> == <PDP_TYPE>
+                   authentication/
+                       pap/
+                           enable<bool> == <true/false>
+                           userName<string> == <USERNAME>
+                           password<string> == <PWD>
+                       chap/
+                           enable<bool> == <true/false>
+                           userName<string> == <USERNAME>
+                           password<string> == <PWD>
+
                <ProfileName_2>/
                    accessPointName<string> == <ADDR>
                ...
@@ -69,6 +93,19 @@
  *  - 'ProfileName_*' is the name that @ref le_mdc_LoadProfile can load.
  *
  *  - 'ADDR' is an address like xxx.xxx.xxx.xxx .
+ *
+ *  - 'USERNAME' is the name used for authentication
+ *
+ *  - 'PWD' is the password used for authentication
+ *
+ *  - 'PDP_TYPE' is the protocol:
+ *    - IPV4
+ *    - IPV6
+ *
+ *  If //modemServices/modemDataConnection/<ProfileName>/packetDataProtocol is omitted, IPV4 will
+ *  be the default protocol.
+ * @note PAP and CHAP authentication are not usable at the same time, the first authentication
+ * enabled found in the configDB will be used.
  *
  * <HR>
  *
@@ -91,6 +128,7 @@
 
 
 #include "legato.h"
+#include "le_mdm_defs.h"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -274,6 +312,26 @@ le_result_t le_mdc_GetInterfaceName
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Get the IP address for the given profile, if the data session is connected.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_OVERFLOW if the IP address would not fit in ipAddrStr
+ *      - LE_NOT_POSSIBLE for all other errors
+ *
+ * @note
+ *      The process exits, if an invalid profile object is given
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mdc_GetIPAddress
+(
+    le_mdc_Profile_Ref_t profileRef,   ///< [IN] Query this profile object
+    char*  ipAddrStr,                  ///< [OUT] The IP address in dotted format
+    size_t ipAddrStrSize               ///< [IN] The size in bytes of the address buffer
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Get the gateway IP address, if the data session is connected.
  *
  * @return
@@ -315,6 +373,108 @@ le_result_t le_mdc_GetDNSAddresses
     size_t dns1AddrStrSize,                 ///< [IN] dns1AddrStr buffer size in bytes
     char*  dns2AddrStr,                     ///< [OUT] Secondary DNS IP address in dotted format
     size_t dns2AddrStrSize                  ///< [IN] dns2AddrStr buffer size in bytes
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Allow the caller to know if the given profile is actually supporting IPv4.
+ *
+ * @return TRUE if PDP type is IPv4, FALSE otherwise.
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+bool le_mdc_IsIPV4
+(
+    le_mdc_Profile_Ref_t profileRef        ///< [IN] Query this profile object
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Allow the caller to know if the given profile is actually supporting IPv6.
+ *
+ * @return TRUE if PDP type is IPv6, FALSE otherwise.
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+bool le_mdc_IsIPV6
+(
+    le_mdc_Profile_Ref_t profileRef        ///< [IN] Query this profile object
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get number of bytes received/transmitted without error since the last reset.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_NOT_POSSIBLE for all other errors
+ *
+ * @note
+ *      - The process exits, if an invalid pointer is given
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mdc_GetBytesCounters
+(
+    uint64_t *rxBytes,  ///< [OUT] bytes amount received since the last counter reset
+    uint64_t *txBytes   ///< [OUT] bytes amount transmitted since the last counter reset
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Reset received/transmitted data flow statistics
+ *
+ * * @return
+ *      - LE_OK on success
+ *      - LE_NOT_POSSIBLE for all other errors
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mdc_ResetBytesCounter
+(
+    void
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Access Point Name for the given profile, if the data session is connected.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_OVERFLOW if the Access Point Name would not fit in apnNameStr
+ *      - LE_NOT_POSSIBLE for all other errors
+ *
+ * @note
+ *      The process exits, if an invalid profile object is given
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mdc_GetAccessPointName
+(
+    le_mdc_Profile_Ref_t profileRef,   ///< [IN] Query this profile object
+    char*  apnNameStr,                 ///< [OUT] The Access Point Name
+    size_t apnNameStrSize              ///< [IN] The size in bytes of the address buffer
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Data Bearer Technology for the given profile, if the data session is connected.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_NOT_POSSIBLE for all other errors
+ *
+ * @note
+ *      The process exits, if an invalid profile object is given
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mdc_GetDataBearerTechnology
+(
+    le_mdc_Profile_Ref_t profileRef,                        ///< [IN] Query this profile object
+    le_mdc_dataBearerTechnology_t* dataBearerTechnologyPtr  ///< [OUT] The data bearer technology
 );
 
 

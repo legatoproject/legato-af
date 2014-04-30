@@ -5,13 +5,6 @@
 
 @section basicOverview Overview
 
-Legato is an open source embedded platform built on Linux designed to simplify 
-embedded M2M development. 
-
-Ready-to-Run: integrated and validated application framework, Linux distribution, and development environment.  <br>
-Ready-to-Build: open source and flexible foundation with customizable components that future proof software investments.  <br>
-Ready-to-Connect: simple and secure connectivity to any cloud, network, and peripheral device out-of-the-box.  <br>
-
 Legato is designed to make developing component-based software for embedded devices in the
 Internet-of-things easier, faster, and less expensive. 
 
@@ -22,18 +15,18 @@ The Legato platform integrates everything needed for M2M connectivity:
 @section nextSteps What's Next?
 Other basic concepts topics:
 
+@subpage basicOther  <br>
 @subpage basicRuntimeArch  <br>
 @subpage basicComponents  <br>
 @subpage basicInterfaces  <br>
 @subpage eventBasics  <br>
-@subpage basicOther  <br>
 @subpage sandboxGen
 
 Or move to the <b>next level</b>: @ref appCreating.
 
 <HR>
 
-Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved.
+Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved.  Use of this work is subject to license.
 
 **/
 
