@@ -43,7 +43,7 @@ You'll be prompted for your GitHub credentials.
 <b> . bin/configlegatoenv  </b>
 @warning You must configure your bash shell's environment for the Legato application build tools every time you open a new shell.
 
-Run this every time you open a new shell:
+Run this every time you open a new shell (or add to your .profile):
 @code $ . bin/configlegatoenv @endcode
 
 @b cd to your Legato directory 
@@ -77,22 +77,23 @@ You need to setup a few things on the target device before you can start develop
 Using ssh, access the device:
 
 @code ssh root@<device ip addr> @endcode
+When prompted for a password, just press enter.
 
 Then create the startup directory:
 @code mkdir -p  /mnt/flash/startup @endcode
-When prompted for a password, just press enter.
 
-Then copy the startup files to the device:
+
+Then copy the startup files to the device by running the following from your PC:
 @code
-scp /targetFiles/mdm-9x15/startup/fg_* /mnt/flash/startup
+scp targetFiles/mdm-9x15/startup/fg_* root@<device ip addr>:/mnt/flash/startup
 @endcode
 
-Scripts beginning with @c fg_ are started first, and then everything else is runs in the background. 
+Scripts beginning with @c fg_ are run first during startup, and then everything else is runs in the background. 
 You can add more scripts to customize your target. @c fg_ scripts must have executable permissions or they will not run.
 
 See @ref getstartedInstallNotes for helpful device setup tips.
 
-@note In the rare case you need to stop a start up script, run
+@note In the rare case you need to prevent legato starting automatically, run
 @code touch /mnt/flash/startup/stoplegato @endcode 
 
 @subsection rebootTarget Reboot target device
