@@ -7,12 +7,13 @@
  *  functions allow detecting tree names wihtin a path, as well as the seperation of the path from
  *  the tree name.
  *
- *  Copyright (C) Sierra Wireless, Inc. 2013, 2014. All rights reserved. Use of this work is subject
- *  to license.
+ *  Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved.
+ *  Use of this work is subject to license.
  */
 // -------------------------------------------------------------------------------------------------
 
 #include "legato.h"
+#include "limit.h"
 #include "treePath.h"
 
 
@@ -25,7 +26,7 @@
 //--------------------------------------------------------------------------------------------------
 bool tp_PathHasTreeSpecifier
 (
-    const char* pathPtr  ///< The path to check.
+    const char* pathPtr  ///< [IN] The path to check.
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -40,16 +41,17 @@ bool tp_PathHasTreeSpecifier
  *  Copies the tree name from the given path poitner.  Only if there actually is a tree name in that
  *  path.
  *
- *  @note It is assumed that the buffer treeNamePtr is at least MAX_TREE_NAME bytes in size.
+ *  @note It is assumed that the buffer treeNamePtr is at least MAX_TREE_NAME_BYTES bytes in size.
  */
 //--------------------------------------------------------------------------------------------------
 void tp_GetTreeName
 (
-    char* treeNamePtr,   ///< Buffer to hold the tree name.
-    const char* pathPtr  ///< Extract the tree name out of this path.
+    char* treeNamePtr,   ///< [OUT] Buffer to hold the tree name.
+    const char* pathPtr  ///< [IN]  Extract the tree name out of this path.
 )
 //--------------------------------------------------------------------------------------------------
 {
+    // Check and make sure there's a tree name in the path in the first place.
     char* posPtr = strchr(pathPtr, ':');
 
     if (posPtr == NULL)
@@ -58,16 +60,20 @@ void tp_GetTreeName
         return;
     }
 
+    // Looks like there is a tree name, so copy it out.  Also, make sure that the name doesn't
+    // overflow.  If the name overflows, truncate and report as a warning.
+    size_t numBytes = 0;
+    le_result_t result = le_utf8_CopyUpToSubStr(treeNamePtr,
+                                                pathPtr,
+                                                ":",
+                                                MAX_TREE_NAME_BYTES,
+                                                &numBytes);
 
-    size_t count = posPtr - pathPtr;
-
-    if (count > MAX_TREE_NAME)
-    {
-        count = MAX_TREE_NAME;
-    }
-
-    strncpy(treeNamePtr, pathPtr, count);
-    treeNamePtr[MAX_TREE_NAME - 1] = 0;
+    LE_WARN_IF(result != LE_OK,
+               "Tree name from path, '%s', truncated to %zu bytes, '%s'",
+               pathPtr,
+               numBytes,
+               treeNamePtr);
 }
 
 
@@ -83,7 +89,7 @@ void tp_GetTreeName
 //--------------------------------------------------------------------------------------------------
 const char* tp_GetPathOnly
 (
-    const char* pathPtr  ///< The path to strip of a tree name, if any.
+    const char* pathPtr  ///< [IN] The path to strip of a tree name, if any.
 )
 //--------------------------------------------------------------------------------------------------
 {

@@ -1,9 +1,13 @@
--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 -- Copyright (c) 2012 Sierra Wireless and others.
 -- All rights reserved. This program and the accompanying materials
 -- are made available under the terms of the Eclipse Public License v1.0
--- which accompanies this distribution, and is available at
--- http://www.eclipse.org/legal/epl-v10.html
+-- and Eclipse Distribution License v1.0 which accompany this distribution.
+--
+-- The Eclipse Public License is available at
+--   http://www.eclipse.org/legal/epl-v10.html
+-- The Eclipse Distribution License is available at
+--   http://www.eclipse.org/org/documents/edl-v10.php
 --
 -- Contributors:
 --     Romain Perier for Sierra Wireless - initial API and implementation
@@ -31,6 +35,9 @@ local function wrap_new(...)
    return require 'fdwrapper' .new(...)
 end
 
+-- Activate the signal, this is necessary for execute function
+psignal.signal("SIGCHLD", true)
+
 --------------------------------------------------------------------------------
 --- Executes a command synchronously.
 -- The Lua VM is not blocked by the execution of the command.
@@ -42,17 +49,14 @@ function M.execute(cmd)
     local pid, err = core.execute(cmd)
     if not pid then return nil, err end
 
-    psignal.signal("SIGCHLD", true)
-    sched.wait("posixsignal", "SIGCHLD")
-
     local status, err
     while true do
        status, err = core.waitpid(pid)
-       if not status and type(err) == "string" then return nil, err end
-       if status then break end
-       sched.wait(1)
+       if status ~= "async" then break end
+       sched.wait("posixsignal", {"SIGCHLD", 5})
     end
-    return status
+
+    return status, err
 end
 
 -- overwrite the orignal fd close function so to block til the end of the command execution
@@ -62,9 +66,8 @@ local function pclose(self)
     local status, err
     while true do
        status, err = core.waitpid(self.file:getpid())
-       if not status and type(err) == "string" then return nil, err end
-       if status then break end
-       sched.wait(1)
+       if status ~= "async" then break end
+       sched.wait("posixsignal", {"SIGCHLD", 5})
     end
     local s, e = close(self)
     if not s then return nil, e end

@@ -47,6 +47,36 @@ void allParameters
     allParametersRespond(cmdRef, b, outputNumElements, output, response, more);
 }
 
+// Test file descriptor as input and output parameter
+void FileTest
+(
+    ServerCmdRef_t _cmdRef,
+    int dataFile
+)
+{
+    // Read and print out whatever is read from the client fd
+    char buffer[1000];
+    ssize_t numRead;
+
+    numRead = read(dataFile, buffer, sizeof(buffer));
+    buffer[numRead] = '\0';
+    LE_PRINT_VALUE("%zd", numRead);
+    LE_PRINT_VALUE("%s", buffer);
+
+    // Open a known file to return back to the client
+    int dataOut = open("/usr/include/stdio.h", O_RDONLY);
+    LE_PRINT_VALUE("%i", dataOut);
+
+    // Read a bit from the file, to make sure it is okay
+    numRead = read(dataOut, buffer, sizeof(buffer));
+    buffer[numRead] = '\0';
+    LE_PRINT_VALUE("%zd", numRead);
+    LE_PRINT_VALUE("%s", buffer);
+
+    // Return the response to the client
+    FileTestRespond(_cmdRef, dataOut);
+}
+
 
 // Storage for the handler ref
 static TestAFunc_t HandlerRef = NULL;
@@ -127,7 +157,7 @@ void RemoveBugTest
 }
 
 
-LE_EVENT_INIT_HANDLER
+COMPONENT_INIT
 {
     StartServer("Test 2");
 }

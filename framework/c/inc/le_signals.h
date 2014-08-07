@@ -1,7 +1,7 @@
 /**
  * @page c_signals Signals API
  *
- * @ref le_signals.h "Click here for the API reference documentation."
+ * @ref le_signals.h "API reference documentation"
  *
  * <HR>
  *
@@ -117,10 +117,9 @@
  * although, Legato has simplified the situation with signal events certain limitations still exist.
  * If possible, avoid using them.
  * 
- *
  * @section c_signals_blocking Blocking signals
  *
- * @todo Write @ref c_signals_blocking.
+ * @todo Write @ref c_signals_blocking
  *
  * <HR>
  *

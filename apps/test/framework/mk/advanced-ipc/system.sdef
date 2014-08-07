@@ -1,0 +1,8 @@
+apps:
+
+  client
+  server
+
+bindings:
+
+  client.greet = server.hello

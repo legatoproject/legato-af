@@ -1,0 +1,9 @@
+sources:
+
+    smsPduTest.c
+    $LEGATO_ROOT/components/modemServices/modemDaemon/smsPdu.c
+
+import:
+
+    le_sms.api     [types-only]
+    le_mdmDefs.api [types-only]

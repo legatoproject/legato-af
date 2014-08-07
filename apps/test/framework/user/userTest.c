@@ -16,9 +16,9 @@ gid_t Gid, AppGid;
 
 static void TestUserCreation(void)
 {
-    LE_ASSERT(user_Create(USER_NAME, "/tmp/userTest", &Uid, &Gid) == LE_OK);
-    LE_ASSERT(user_Create(USER_NAME, "", &Uid, &Gid) == LE_DUPLICATE);
-    LE_ASSERT(user_Create(APP_USER_NAME, "/tmp/userTest", &AppUid, &AppGid) == LE_OK);
+    LE_ASSERT(user_Create(USER_NAME, &Uid, &Gid) == LE_OK);
+    LE_ASSERT(user_Create(USER_NAME, &Uid, &Gid) == LE_DUPLICATE);
+    LE_ASSERT(user_Create(APP_USER_NAME, &AppUid, &AppGid) == LE_OK);
 }
 
 static void TestUserNameAndId(void)
@@ -75,7 +75,7 @@ static void TestCovertToUserName(void)
 {
     char userName[100];
 
-    LE_ASSERT(user_ConvertToUserName(APP_NAME, userName, sizeof(userName)) == LE_OK);
+    LE_ASSERT(user_AppNameToUserName(APP_NAME, userName, sizeof(userName)) == LE_OK);
 
     LE_ASSERT(strcmp(userName, APP_USER_NAME) == 0);
 }
@@ -107,7 +107,7 @@ static void TestGroupDelete(void)
 }
 
 
-LE_EVENT_INIT_HANDLER
+COMPONENT_INIT
 {
     LE_INFO("======== Starting Users Test ========");
 

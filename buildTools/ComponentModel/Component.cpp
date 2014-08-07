@@ -2,7 +2,7 @@
 /**
  * Implementation of the Component class.
  *
- * Copyright (C) 2013 Sierra Wireless Inc., all rights reserved.
+ * Copyright (C) 2013-2014 Sierra Wireless Inc.  Use of this work is subject to license.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -11,6 +11,72 @@
 namespace legato
 {
 
+// Global map of all components seen.  Key is the canonical path to the component.
+// Value is the Component object.
+static std::map<std::string, Component> ComponentMap;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Creates a new Component object for a given file system path.
+ *
+ * @return  Pointer to the Component object.
+ *
+ * @throw   legato::Exception if a duplicate is detected.
+ */
+//--------------------------------------------------------------------------------------------------
+Component* Component::CreateComponent
+(
+    const std::string& path ///< Cannonical path to the component.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // Convert the path to its cannonical form so we can detect duplicates even if they
+    // are found via different relative paths or symlinks.
+    std::string realPath = CanonicalPath(path);
+
+    auto iter = ComponentMap.find(realPath);
+    if (iter != ComponentMap.end())
+    {
+        throw legato::Exception("Internal error: Duplicate component '" + realPath + "'"
+                                " (" + path + ").");
+    }
+
+    // No match found, create a new entry in the map for this component and return that.
+    Component& component = ComponentMap[realPath];
+    component.Path(realPath);
+
+    return &component;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Finds an existing Component object for a given file system path.
+ *
+ * @return  Pointer to the Component object or NULL if not found.
+ */
+//--------------------------------------------------------------------------------------------------
+Component* Component::FindComponent
+(
+    const std::string& path ///< Cannonical path to the component.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // Convert the path to its cannonical form so we can detect duplicates even if they
+    // are found via different relative paths or symlinks.
+    std::string realPath = CanonicalPath(path);
+
+    auto iter = ComponentMap.find(realPath);
+    if (iter == ComponentMap.end())
+    {
+        return NULL;
+    }
+    else
+    {
+        return &(iter->second);
+    }
+}
 
 
 //--------------------------------------------------------------------------------------------------
@@ -26,15 +92,22 @@ Component::Component
 :   m_Name(std::move(component.m_Name)),
     m_CName(std::move(component.m_CName)),
     m_Path(std::move(component.m_Path)),
+    m_Library(std::move(component.m_Library)),
     m_CSourcesList(std::move(component.m_CSourcesList)),
     m_LibraryList(std::move(component.m_LibraryList)),
     m_IncludePath(std::move(component.m_IncludePath)),
+    m_HasCSources(std::move(component.m_HasCSources)),
+    m_HasCppSources(std::move(component.m_HasCppSources)),
     m_ImportedInterfaces(std::move(component.m_ImportedInterfaces)),
     m_ExportedInterfaces(std::move(component.m_ExportedInterfaces)),
-    m_IncludedFiles(std::move(component.m_IncludedFiles)),
-    m_ImportedFiles(std::move(component.m_ImportedFiles))
+    m_BundledFiles(std::move(component.m_BundledFiles)),
+    m_BundledDirs(std::move(component.m_BundledDirs)),
+    m_RequiredFiles(std::move(component.m_RequiredFiles)),
+    m_RequiredDirs(std::move(component.m_RequiredDirs)),
+    m_SubComponents(std::move(component.m_SubComponents)),
 //    m_PoolList(std::move(component.m_PoolList)),
 //    m_ConfigItemList(std::move(component.m_ConfigItemList))
+    m_BeingProcessed(std::move(component.m_BeingProcessed))
 //--------------------------------------------------------------------------------------------------
 {
 }
@@ -57,15 +130,22 @@ Component& Component::operator =
         m_Name = std::move(component.m_Name);
         m_CName = std::move(component.m_CName);
         m_Path = std::move(component.m_Path);
+        m_Library = std::move(component.m_Library);
         m_CSourcesList = std::move(component.m_CSourcesList);
         m_LibraryList = std::move(component.m_LibraryList);
         m_IncludePath = std::move(component.m_IncludePath);
+        m_HasCSources = std::move(component.m_HasCSources);
+        m_HasCppSources = std::move(component.m_HasCppSources);
         m_ImportedInterfaces = std::move(component.m_ImportedInterfaces);
         m_ExportedInterfaces = std::move(component.m_ExportedInterfaces);
-        m_IncludedFiles = std::move(component.m_IncludedFiles);
-        m_ImportedFiles = std::move(component.m_ImportedFiles);
+        m_BundledFiles = std::move(component.m_BundledFiles);
+        m_BundledDirs = std::move(component.m_BundledDirs);
+        m_RequiredFiles = std::move(component.m_RequiredFiles);
+        m_RequiredDirs = std::move(component.m_RequiredDirs);
+        m_SubComponents = std::move(component.m_SubComponents);
     //    m_PoolList = std::move(component.m_PoolList);
     //    m_ConfigItemList = std::move(component.m_ConfigItemList);
+        m_BeingProcessed = std::move(component.m_BeingProcessed);
     }
 
     return *this;
@@ -87,6 +167,8 @@ void Component::Name(const std::string& name)
     {
         CName(GetCSafeName(m_Name));
     }
+
+    m_Library.ShortName(m_Name);
 }
 
 
@@ -104,6 +186,8 @@ void Component::Name(std::string&& name)
     {
         CName(GetCSafeName(m_Name));
     }
+
+    m_Library.ShortName(m_Name);
 }
 
 
@@ -169,6 +253,12 @@ void Component::Path
 {
     m_Path = path;
 
+    // Remove the trailing slash, if there is one.
+    if (m_Path.back() == '/')
+    {
+        m_Path.erase(m_Path.end() - 1);
+    }
+
     if (m_Name == "")
     {
         Name(GetLastPathNode(m_Path));
@@ -188,6 +278,12 @@ void Component::Path
 //--------------------------------------------------------------------------------------------------
 {
     m_Path = std::move(path);
+
+    // Remove the trailing slash, if there is one.
+    if (m_Path.back() == '/')
+    {
+        m_Path.erase(m_Path.end() - 1);
+    }
 
     if (m_Name == "")
     {
@@ -224,18 +320,19 @@ void Component::AddSourceFile
 )
 //--------------------------------------------------------------------------------------------------
 {
-    // If it ends in a .c, then add it to the C Sources List.
-    auto ri = path.crbegin();
-
-    if ((ri != path.crend()) && (*ri == 'c'))
+    if (legato::IsCSource(path))
     {
-        ri++;
+        m_CSourcesList.push_back(path);
+        m_HasCSources = true;
 
-        if ((ri != path.crend()) && (*ri == '.'))
-        {
-            m_CSourcesList.push_back(path);
-            return;
-        }
+        return;
+    }
+    else if (legato::IsCppSource(path))
+    {
+        m_CSourcesList.push_back(path);
+        m_HasCppSources = true;
+
+        return;
     }
 
     throw Exception("File '" + path + "' is an unknown type of source code file.");
@@ -280,31 +377,57 @@ void Component::AddIncludeDir
  * making it appear at a specific location in the application sandbox file system.
  */
 //--------------------------------------------------------------------------------------------------
-void Component::AddIncludedFile
+void Component::AddBundledFile
 (
     FileMapping&& mapping   ///< The source path is in the build host file system.  Dest path is
                             ///  in the application sandbox.
 )
 //--------------------------------------------------------------------------------------------------
 {
-    if (!IsValidPath(mapping.m_DestPath))
-    {
-        throw Exception("'" + mapping.m_DestPath + "' is not a valid path.");
-    }
-    if (!IsAbsolutePath(mapping.m_DestPath))
-    {
-        throw Exception("Included files must be mapped to an absolute path ('"
-                        + mapping.m_DestPath + "' is not).");
-    }
-
     // If the imported file path is not absolute, then we need to prefix it with the
     // component directory path, because it is relative to that directory.
-    if (mapping.m_SourcePath[0] != '/')
+    if (!legato::IsAbsolutePath(mapping.m_SourcePath))
     {
-        mapping.m_SourcePath = m_Path + '/' + mapping.m_SourcePath;
+        mapping.m_SourcePath = legato::CombinePath(m_Path, mapping.m_SourcePath);
     }
 
-    m_IncludedFiles.push_back(mapping);
+    // Find the file in the host file system.
+    if (!legato::FileExists(mapping.m_SourcePath))
+    {
+        throw legato::Exception("File '" + mapping.m_SourcePath + "' not found.");
+    }
+
+    m_BundledFiles.push_back(std::move(mapping));
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Adds a directory from the build host's file system to an application (bundles it into the app),
+ * making it appear at a specific location in the application sandbox file system.
+ */
+//--------------------------------------------------------------------------------------------------
+void Component::AddBundledDir
+(
+    FileMapping&& mapping   ///< The source path is in the build host file system.  Dest path is
+                            ///  in the application sandbox.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // If the imported file path is not absolute, then we need to prefix it with the
+    // component directory path, because it is relative to that directory.
+    if (!legato::IsAbsolutePath(mapping.m_SourcePath))
+    {
+        mapping.m_SourcePath = legato::CombinePath(m_Path, mapping.m_SourcePath);
+    }
+
+    // Find the directory in the host file system.
+    if (!legato::DirectoryExists(mapping.m_SourcePath))
+    {
+        throw legato::Exception("Directory '" + mapping.m_SourcePath + "' not found.");
+    }
+
+    m_BundledDirs.push_back(std::move(mapping));
 }
 
 
@@ -314,7 +437,7 @@ void Component::AddIncludedFile
  * somewhere inside the application sandbox filesystem.
  */
 //--------------------------------------------------------------------------------------------------
-void Component::AddImportedFile
+void Component::AddRequiredFile
 (
     FileMapping&& mapping   ///< Source path is outside the sandbox (if relative, then relative to
                             ///  the application's install directory).  Dest path is inside the
@@ -322,21 +445,50 @@ void Component::AddImportedFile
 )
 //--------------------------------------------------------------------------------------------------
 {
-    if (!IsValidPath(mapping.m_DestPath))
-    {
-        throw Exception("'" + mapping.m_DestPath + "' is not a valid path.");
-    }
-    if (!IsAbsolutePath(mapping.m_DestPath))
-    {
-        throw Exception("Imported file system objects must be mapped to an absolute path ('"
-                        + mapping.m_DestPath + "' is not).");
-    }
-    if (!IsValidPath(mapping.m_SourcePath))
-    {
-        throw Exception("'" + mapping.m_SourcePath + "' is not a valid path.");
-    }
+    m_RequiredFiles.push_back(std::move(mapping));
+}
 
-    m_ImportedFiles.push_back(mapping);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Imports a directory from somewhere in the root target file system (outside the sandbox) to
+ * somewhere inside the application sandbox filesystem.
+ */
+//--------------------------------------------------------------------------------------------------
+void Component::AddRequiredDir
+(
+    FileMapping&& mapping   ///< Source path is outside the sandbox (if relative, then relative to
+                            ///  the application's install directory).  Dest path is inside the
+                            ///  application sandbox.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    m_RequiredDirs.push_back(std::move(mapping));
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Adds a component path to the list of paths to sub-components of this component.
+ */
+//--------------------------------------------------------------------------------------------------
+void Component::AddSubComponent
+(
+    const std::string& path,            ///< File system path to the component.
+    Component* componentPtr             ///< Pointer to the component object (or NULL).
+)
+//--------------------------------------------------------------------------------------------------
+{
+    if (m_SubComponents.find(path) != m_SubComponents.end())
+    {
+        throw legato::Exception("Component '" + m_Name + "'"
+                                " has duplicate sub-component "
+                                " '" + path + "'.");
+    }
+    else
+    {
+        m_SubComponents[path] = componentPtr;
+    }
 }
 
 
@@ -345,11 +497,10 @@ void Component::AddImportedFile
  * Adds an interface to the Component's collection of imported interfaces.
  **/
 //--------------------------------------------------------------------------------------------------
-void Component::AddImportedInterface
+ImportedInterface& Component::AddRequiredApi
 (
-    const std::string& name,        ///< Friendly name of the interface instance.
-    const std::string& apiFilePath  ///< .api file path.  Can be either absolute or relative to
-                                    ///  any directory in the interface search path.
+    const std::string& name,    ///< Friendly name of the interface instance.
+    Api_t* apiPtr               ///< Pointer to the API object.
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -360,8 +511,7 @@ void Component::AddImportedInterface
                         + "for component '" + m_Name + "'.'");
     }
 
-    ImportedInterface x = {name, apiFilePath};
-    m_ImportedInterfaces[name] = x;
+    return m_ImportedInterfaces[name] = ImportedInterface(name, apiPtr);
 }
 
 
@@ -370,11 +520,10 @@ void Component::AddImportedInterface
  * Adds an interface to the Component's collection of imported interfaces.
  **/
 //--------------------------------------------------------------------------------------------------
-void Component::AddExportedInterface
+ExportedInterface& Component::AddProvidedApi
 (
-    const std::string& name,        ///< Friendly name of the interface instance.
-    const std::string& apiFilePath  ///< .api file path.  Can be either absolute or relative to
-                                    ///  any directory in the interface search path.
+    const std::string& name,    ///< Friendly name of the interface instance.
+    Api_t* apiPtr               ///< Pointer to the API object.
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -384,7 +533,7 @@ void Component::AddExportedInterface
         throw Exception("Interfaces must have unique names. '" + name + "' is used more than once.");
     }
 
-    m_ExportedInterfaces[name] = {name, apiFilePath};
+    return m_ExportedInterfaces[name] = ExportedInterface(name, apiPtr);
 }
 
 

@@ -64,13 +64,6 @@ extern const char* cyy_FileName;
 extern int cyy_IsVerbose;
 
 
-//--------------------------------------------------------------------------------------------------
-/**
- * Restarts the component parsing with a new file stream to parse.
- */
-//--------------------------------------------------------------------------------------------------
-void cyy_restart(FILE *new_file);
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -94,12 +87,13 @@ void cyy_AddSourceFile
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Add a file mapping to a Component.
+ * Add a required file to a Component.  This is a file that is expected to exist outside the
+ * application's sandbox in the target file system and that the component needs access to.
  */
 //--------------------------------------------------------------------------------------------------
-void cyy_AddFileMapping
+void cyy_AddRequiredFile
 (
-    const char* permissions,///< String representing the permissions.
+    const char* permissions,///< String representing the permissions required ("[rwx]").
     const char* sourcePath, ///< The file path in the target file system, outside sandbox.
     const char* destPath    ///< The file path in the target file system, inside sandbox.
 );
@@ -107,11 +101,57 @@ void cyy_AddFileMapping
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Add an included file to a Component.  This is a file that should be bundled into any app that
- * this component is a part of.
+ * Add a required directory to a Component.  This is a directory that is expected to exist outside
+ * the application's sandbox in the target file system and that the component needs access to.
  */
 //--------------------------------------------------------------------------------------------------
-void cyy_AddIncludedFile
+void cyy_AddRequiredDir
+(
+    const char* permissions,///< String representing the permissions required ("[rwx]").
+    const char* sourcePath, ///< The directory path in the target file system, outside sandbox.
+    const char* destPath    ///< The directory path in the target file system, inside sandbox.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add a required library to a component.  This is a library that is expected to exist outside
+ * the application's sandbox in the target file system and that the component needs access to.
+ *
+ * Furthermore, this library will be linked with any executable that this component is a part of.
+ * At link time, the library search path with be searched for the library in the build host file
+ * system.
+ */
+//--------------------------------------------------------------------------------------------------
+void cyy_AddRequiredLib
+(
+    const char* libName     ///< The name of the library.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add a required component to a component.  This is another component that is used by the
+ * component that is currently being parsed.
+ *
+ * This will add that component to the component's list of subcomponents. Any executable
+ * that includes a component also includes all of that component's subcomponents and their
+ * subcomponents, etc.
+ */
+//--------------------------------------------------------------------------------------------------
+void cyy_AddRequiredComponent
+(
+    const char* path        ///< The path to the component.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add to a Component a file from the build host file system that should be bundled into any
+ * app that this component is a part of.
+ */
+//--------------------------------------------------------------------------------------------------
+void cyy_AddBundledFile
 (
     const char* permissions,///< String representing the permissions.
     const char* sourcePath, ///< The file path in the build host file system.
@@ -121,25 +161,124 @@ void cyy_AddIncludedFile
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Add an imported interface to a Component.
- **/
+ * Add to a Component a directory from the build host file system that should be bundled into
+ * any app that this component is a part of.
+ */
 //--------------------------------------------------------------------------------------------------
-void cyy_AddImportedInterface
+void cyy_AddBundledDir
 (
-    const char* instanceName,
-    const char* apiFile
+    const char* sourcePath, ///< The file path in the build host file system.
+    const char* destPath    ///< The file path in the target file system, inside sandbox.
 );
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Add an exported interface to a Component.
+ * Add a required (client-side) IPC API interface to a Component.
  **/
 //--------------------------------------------------------------------------------------------------
-void cyy_AddExportedInterface
+void cyy_AddRequiredApi
 (
-    const char* instanceName,
-    const char* apiFile
+    const char* instanceName,   ///< Interface instance name or
+                                ///  NULL if should be derived from .api file name.
+
+    const char* apiFile         ///< Path to the .api file.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add a types-only required (client-side) IPC API interface to a Component.
+ *
+ * This only imports the type definitions from the .api file without generating the client-side IPC
+ * library or automatically calling the client-side IPC initialization function.
+ **/
+//--------------------------------------------------------------------------------------------------
+void cyy_AddTypesOnlyRequiredApi
+(
+    const char* instanceName,   ///< Prefix to apply to the definitions, or
+                                ///  NULL if prefix should be derived from .api file name.
+
+    const char* apiFile         ///< Path to the .api file.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add a manual-start required (client-side) IPC API interface to a Component.
+ *
+ * The client-side IPC code will be generated, but the initialization code will not be run
+ * automatically by the executable's main function.
+ **/
+//--------------------------------------------------------------------------------------------------
+void cyy_AddManualStartRequiredApi
+(
+    const char* instanceName,   ///< Prefix to apply to the definitions, or
+                                ///  NULL if prefix should be derived from .api file name.
+
+    const char* apiFile         ///< Path to the .api file.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add a provided (server-side) IPC API interface to a Component.
+ **/
+//--------------------------------------------------------------------------------------------------
+void cyy_AddProvidedApi
+(
+    const char* instanceName,   ///< Interface instance name or
+                                ///  NULL if should be derived from .api file name.
+
+    const char* apiFile         ///< Path to the .api file.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add an asynchronous provided (server-side) IPC API interface to a Component.
+ **/
+//--------------------------------------------------------------------------------------------------
+void cyy_AddAsyncProvidedApi
+(
+    const char* instanceName,   ///< Interface instance name or
+                                ///  NULL if should be derived from .api file name.
+
+    const char* apiFile         ///< Path to the .api file.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add a manual-start provided (server-side) IPC API interface to a Component.
+ *
+ * The server-side IPC code will be generated, but the initialization code will not be run
+ * automatically by the executable's main function.
+ **/
+//--------------------------------------------------------------------------------------------------
+void cyy_AddManualStartProvidedApi
+(
+    const char* instanceName,   ///< Interface instance name or
+                                ///  NULL if should be derived from .api file name.
+
+    const char* apiFile         ///< Path to the .api file.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add a manual-start, asynchronous provided (server-side) IPC API interface to a Component.
+ *
+ * The server-side IPC code will be generated, but the initialization code will not be run
+ * automatically by the executable's main function.
+ **/
+//--------------------------------------------------------------------------------------------------
+void cyy_AddManualStartAsyncProvidedApi
+(
+    const char* instanceName,   ///< Interface instance name or
+                                ///  NULL if should be derived from .api file name.
+
+    const char* apiFile         ///< Path to the .api file.
 );
 
 

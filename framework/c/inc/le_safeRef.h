@@ -1,11 +1,14 @@
 /**
  * @page c_safeRef Safe References API
  *
- * @ref le_safeRef.h "Click here for the API reference documentation."
+ * @ref le_safeRef.h "API reference documentation"
  *
  * <HR>
  *
- * @ref c_safeRef_usage <br>
+ * @ref c_safeRef_create <br>
+ * @ref c_safeRef_lookup <br>
+ * @ref c_safeRef_delete <br> 
+ *  @ref c_safeRef_map <br>
  * @ref c_safeRef_multithreading <br>
  * @ref c_safeRef_example <br>
  *
@@ -21,26 +24,28 @@
  * <b> Safe References </b> are designed to help protect against damaged or stale references being
  * used by clients.
  *
- * @section c_safeRef_usage Usage
- *
- * Here's the basic usage pattern for safe references:
+ * @section c_safeRef_create Create Safe Reference
  *
  * Client calls an API's "Create" function:
  *  - "Create" function creates an object.
- *  - "Create" function creates a "Safe Reference" for the new object (le_ref_CreateRef()).
+ *  - "Create" function creates a "Safe Reference" for the new object @c le_ref_CreateRef() 
  *  - "Create" function returns the Safe Reference.
  *
+ * @section c_safeRef_lookup Lookup Pointer
+ * 
  * Followed by:
  *
  * Client calls another API function, passing in the Safe Reference:
- *  - API function translates the Safe Reference back into an object pointer (le_ref_Lookup())
+ *  - API function translates the Safe Reference back into an object pointer @c le_ref_Lookup() 
  *  - API function acts on the object.
  *
+ * @section c_safeRef_delete Delete Safe Reference
+ * 
  * Finishing with:
  *
  * Client calls API's "Delete" function, passing in the Safe Reference:
  *  - "Delete" function translates the Safe Reference back into a pointer to its object.
- *  - "Delete" function invalidates the Safe Reference (le_ref_DeleteRef()).
+ *  - "Delete" function invalidates the Safe Reference @c le_ref_DeleteRef() 
  *  - "Delete" function deletes the object.
  *
  * At this point, if the Client calls an API function and passes that same (now invalid) Safe Reference
@@ -50,7 +55,9 @@
  * than just acting as if it were a valid reference and clobbering the object's deallocated
  * memory or some other object that's reusing the old object's memory.
  *
- * A <b> Reference Map </b> object is used to create Safe References and keep track of the
+ * @section c_safeRef_map Create Referece Map
+ * 
+ * A <b> Reference Map </b> object can be used to create Safe References and keep track of the
  * mappings from Safe References to pointers.  At start-up, a Reference Map is
  * created by calling @c le_ref_CreateMap().  It takes a single argument, the maximum number
  * of mappings expected to track of at any time.
@@ -64,7 +71,7 @@
  *
  * @section c_safeRef_example Sample Code
  *
- * @subsection c_safeRef_example_api API Definition
+ * Here's an API Definition sample:
  *
  * @code
  * // Opaque reference to Foo objects.
@@ -86,7 +93,7 @@
  * );
  * @endcode
  *
- * @subsection c_safeRef_example_implementation API Implementation Code Sample
+ * Here's an API Implementation sample:
  *
  * @code
  * // Maximum number of Foo objects we expect to have at one time.
@@ -169,14 +176,14 @@
  *
  * <HR>
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
  */
 
 /** @file le_safeRef.h
  *
  * Legato @ref c_safeRef include file.
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
  */
 
 #ifndef LEGATO_SAFEREF_INCLUDE_GUARD

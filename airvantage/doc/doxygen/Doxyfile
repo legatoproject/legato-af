@@ -4,8 +4,12 @@
 # Copyright (c) 2012 Sierra Wireless and others.
 # All rights reserved. This program and the accompanying materials
 # are made available under the terms of the Eclipse Public License v1.0
-# which accompanies this distribution, and is available at
-# http://www.eclipse.org/legal/epl-v10.html
+# and Eclipse Distribution License v1.0 which accompany this distribution.
+#
+# The Eclipse Public License is available at
+#   http://www.eclipse.org/legal/epl-v10.html
+# The Eclipse Distribution License is available at
+#   http://www.eclipse.org/org/documents/edl-v10.php
 #
 # Contributors:
 #     Sierra Wireless - initial API and implementation
@@ -595,14 +599,14 @@ WARN_LOGFILE           =
 # directories like "/usr/src/myproject". Separate the files or directories
 # with spaces.
 
-INPUT                  =  mainpage.txt                                \
-                          ../../libs/common/returncodes.h                    \
-                          ../../cfwk/racon/swi_dset.h        \
-                          ../../cfwk/airvantage/swi_airvantage.h  \
-                          ../../cfwk/update/swi_update.h      \
-                          ../../cfwk/devicetree/swi_devicetree.h  \
-                          ../../cfwk/sms/swi_sms.h         \
-                          ../../cfwk/system/swi_system.h
+INPUT                  =  $(BASEDIR)/mainpage.txt                                \
+                          $(BASEDIR)/../../libs/common/returncodes.h                    \
+                          $(BASEDIR)/../../cfwk/racon/swi_dset.h        \
+                          $(BASEDIR)/../../cfwk/airvantage/swi_airvantage.h  \
+                          $(BASEDIR)/../../cfwk/update/swi_update.h      \
+                          $(BASEDIR)/../../cfwk/devicetree/swi_devicetree.h  \
+                          $(BASEDIR)/../../cfwk/sms/swi_sms.h         \
+                          $(BASEDIR)/../../cfwk/system/swi_system.h
 
 # This tag can be used to specify the character encoding of the source files
 # that doxygen parses. Internally doxygen uses the UTF-8 encoding, which is
@@ -813,9 +817,8 @@ HTML_FILE_EXTENSION    = .html
 # each generated HTML page. If it is left blank doxygen will generate a
 # standard header.
 
-#header file is generated on the fly to include Google analitics and 
-# not depend of Doxygen header version 
-HTML_HEADER            = header
+
+HTML_HEADER            =
 
 # The HTML_FOOTER tag can be used to specify a personal HTML footer for
 # each generated HTML page. If it is left blank doxygen will generate a

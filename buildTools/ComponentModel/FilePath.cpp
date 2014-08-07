@@ -3,7 +3,7 @@
  * Implementation of the FilePath class, which is used to hold the information regarding a single
  * file system object.
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless, Inc. 2013-2014.  Use of this work is subject to license.
  **/
 //--------------------------------------------------------------------------------------------------
 
@@ -12,10 +12,11 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <string.h>
+#include <limits.h>
+#include <stdlib.h>
 
 namespace legato
 {
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -125,6 +126,17 @@ std::string CombinePath
 {
     std::string newPath = base;
 
+    if (add.empty())
+    {
+        return newPath;
+    }
+
+    if (   (newPath.back() == '/')
+        && (add[0] == '/'))
+    {
+        return newPath + add.substr(1);
+    }
+
     if (   (newPath.back() != '/')
         && (add[0] != '/'))
     {
@@ -156,6 +168,31 @@ std::string AbsolutePath
     {
         return CombinePath(GetWorkingDir(), path);
     }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Make a file system path into a relative path by stripping off leading separators.
+ *
+ * @return  The relative path.
+ */
+//--------------------------------------------------------------------------------------------------
+std::string MakeRelativePath
+(
+    const std::string& path     ///< The original path, which could be absolute or relative.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    std::string relPath = path;
+
+    while (IsAbsolutePath(relPath))
+    {
+        // Remove the first character.
+        relPath.erase(0, 1);
+    }
+
+    return relPath;
 }
 
 
@@ -273,9 +310,12 @@ bool HasSuffix
     {
         auto pos = path.rfind(suffix);
 
-        if (pos == path.size() - suffix.size())
+        if (pos != string::npos)
         {
-            return true;
+            if (pos == path.size() - suffix.size())
+            {
+                return true;
+            }
         }
     }
 
@@ -297,28 +337,77 @@ bool HasSuffix
 //--------------------------------------------------------------------------------------------------
 std::string FindFile
 (
-    const std::string& name,                    ///< The file path.
+    const std::string& path,                    ///< The file path.
     const std::list<std::string>& searchPaths   ///< List of directory paths to search in.
 )
 //--------------------------------------------------------------------------------------------------
 {
-    if (legato::IsAbsolutePath(name))
+    std::string actualPath = DoEnvVarSubstitution(path);
+
+    if (legato::IsAbsolutePath(actualPath))
     {
-        if (legato::FileExists(name) == false)
+        if (legato::FileExists(actualPath) == false)
         {
             return "";
         }
 
-        return name;
+        return actualPath;
     }
 
-    for (const auto& path : searchPaths)
+    for (const auto& searchPath : searchPaths)
     {
-        if (legato::DirectoryExists(path))
+        if (legato::DirectoryExists(searchPath))
         {
-            std::string newPath = CombinePath(path, name);
+            std::string newPath = CombinePath(searchPath, actualPath);
 
             if (legato::FileExists(newPath))
+            {
+                return newPath;
+            }
+        }
+    }
+
+    return "";
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Searches for a directory.
+ *
+ * If the path given is absolute, then just checks for existence of a directory at that path.
+ * If the path is relative, then searches for that directory relative to each of the
+ * directories in the searchPaths list.
+ *
+ * @return The path of the directory if found or an empty string if not found.
+ */
+//--------------------------------------------------------------------------------------------------
+std::string FindDirectory
+(
+    const std::string& path,                    ///< The path to search for.
+    const std::list<std::string>& searchPaths   ///< List of directory paths to search in.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    std::string actualPath = DoEnvVarSubstitution(path);
+
+    if (legato::IsAbsolutePath(actualPath))
+    {
+        if (legato::DirectoryExists(actualPath) == false)
+        {
+            return "";
+        }
+
+        return actualPath;
+    }
+
+    for (const auto& searchPath : searchPaths)
+    {
+        if (legato::DirectoryExists(searchPath))
+        {
+            std::string newPath = CombinePath(searchPath, actualPath);
+
+            if (legato::DirectoryExists(newPath))
             {
                 return newPath;
             }
@@ -343,7 +432,31 @@ bool IsCSource
 //--------------------------------------------------------------------------------------------------
 {
     // If it ends in ".c" or ".C", then it's a C source code file.
-    static const std::list<std::string> suffixes = { ".c", ".C" };
+    static const std::list<std::string> suffixes = { ".c" };
+
+    return HasSuffix(path, suffixes);
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Figures out whether or not a given string is a C++ source code file path.
+ *
+ * @return true if this is a C++ source code file path.
+ */
+//--------------------------------------------------------------------------------------------------
+bool IsCppSource
+(
+    const std::string& path
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // If it ends in one of these extensions, then it's a C++ source code file.
+    static const std::list<std::string> suffixes =
+        {
+            ".cc", ".cp", ".cxx", ".cpp", ".c++", ".C", ".CC", ".CPP"
+        };
 
     return HasSuffix(path, suffixes);
 }
@@ -451,6 +564,12 @@ void MakeDir
     {
         auto pos = path.rfind('/');
 
+        // If the last character of the path is a '/', skip it.
+        if (pos == 0)
+        {
+            pos = path.rfind('/', 1);
+        }
+
         if (pos != std::string::npos)
         {
             MakeDir(path.substr(0, pos), mode);
@@ -476,6 +595,56 @@ void MakeDir
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Recursively delete a directory.  That is, delete everything in the directory,
+ * then delete the directory itself.
+ *
+ * If nothing exists at the path, quietly returns without error.
+ *
+ * If something other than a directory exists at the given path, it's an error.
+ *
+ * @throw legato::Exception if something goes wrong.
+ **/
+//--------------------------------------------------------------------------------------------------
+void CleanDir
+(
+    const std::string& path
+)
+//--------------------------------------------------------------------------------------------------
+{
+    struct stat statBuffer;
+
+    if (path == "")
+    {
+        throw legato::Exception("Attempt to delete using an empty path.");
+    }
+
+    // Get the status of whatever exists at that path.
+    if (stat(path.c_str(), &statBuffer) == 0)
+    {
+        // If it's a directory, delete it.
+        if (S_ISDIR(statBuffer.st_mode))
+        {
+            std::string commandLine = "rm -rf " + path;
+            int result = system(commandLine.c_str());
+            if (result != EXIT_SUCCESS)
+            {
+                std::stringstream buffer;
+                buffer << "Failed to execute command '" << commandLine << "'"
+                       << " result: " << result;
+                throw legato::Exception(buffer.str());
+            }
+        }
+    }
+    else if (errno != ENOENT)
+    {
+        throw legato::Exception("Failed to delete directory at '" + path + "'"
+                                " (" + strerror(errno) + ").");
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Gets the absolute file system path of the current working directory.
 */
 //--------------------------------------------------------------------------------------------------
@@ -494,6 +663,175 @@ std::string GetWorkingDir
     return newPath;
 }
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Look for environment variables (specified as "$VAR_NAME" or "${VAR_NAME}") in the path
+ * and replace with environment variable contents.
+ *
+ * @return The converted string.
+ **/
+//--------------------------------------------------------------------------------------------------
+std::string DoEnvVarSubstitution
+(
+    const std::string& path
+)
+//--------------------------------------------------------------------------------------------------
+{
+    std::string result;
+    std::string envVarName;
+
+    enum
+    {
+        NORMAL,
+        AFTER_DOLLAR,
+        UNBRACKETED_VAR_NAME,
+        BRACKETED_VAR_NAME,
+    }
+    state = NORMAL;
+
+    for (auto i = path.begin(); i != path.end() ; i++)
+    {
+        switch (state)
+        {
+            case NORMAL:
+
+                if (*i == '$')
+                {
+                    envVarName = "";
+                    state = AFTER_DOLLAR;
+                }
+                else
+                {
+                    result += *i;
+                }
+                break;
+
+            case AFTER_DOLLAR:
+
+                // Opening curly can be used to start a bracketed environment variable name,
+                // which must be terminated by a closing curly.
+                if (*i == '{')
+                {
+                    state = BRACKETED_VAR_NAME;
+                    break;
+                }
+                else
+                {
+                    state = UNBRACKETED_VAR_NAME;
+                }
+                // ** FALL THROUGH **
+
+            case UNBRACKETED_VAR_NAME:
+
+                // The first character in the env var name can be an alpha character or underscore.
+                // The remaining can be alphanumeric or underscore.
+                if (   (isalpha(*i))
+                    || (!envVarName.empty() && isdigit(*i))
+                    || (*i == '_') )
+                {
+                    envVarName += *i;
+                }
+                else
+                {
+                    // Look up the environment variable, and if found, add its value to the result.
+                    const char* envVarPtr = getenv(envVarName.c_str());
+                    if (envVarPtr != NULL)
+                    {
+                        result += envVarPtr;
+                    }
+
+                    // Copy into the result string the current character from the source string
+                    // (i.e., the one right after the environment variable).
+                    result += *i;
+
+                    state = NORMAL;
+                }
+                break;
+
+            case BRACKETED_VAR_NAME:
+
+                // The first character in the env var name can be an alpha character or underscore.
+                // The remaining can be alphanumeric or underscore.
+                if (   (isalpha(*i))
+                    || (!envVarName.empty() && isdigit(*i))
+                    || (*i == '_') )
+                {
+                    envVarName += *i;
+                }
+                else if (*i == '}') // Make sure properly terminated with closing curly.
+                {
+                    // Look up the environment variable, and if found, add its value to the result.
+                    const char* envVarPtr = getenv(envVarName.c_str());
+                    if (envVarPtr != NULL)
+                    {
+                        result += envVarPtr;
+                    }
+                    state = NORMAL;
+                }
+                else
+                {
+                    throw legato::Exception("Invalid character inside bracketed environment"
+                                            "variable name.");
+                }
+                break;
+        }
+    }
+
+    switch (state)
+    {
+        case NORMAL:
+            break;
+
+        case AFTER_DOLLAR:
+            throw legato::Exception("Environment variable name missing after '$'.");
+
+        case UNBRACKETED_VAR_NAME:
+            // The end of the string terminates the environment variable name.
+            // Look up the environment variable, and if found, add its value to the result.
+            {
+                const char* envVarPtr = getenv(envVarName.c_str());
+                if (envVarPtr != NULL)
+                {
+                    result += envVarPtr;
+                }
+            }
+            break;
+
+        case BRACKETED_VAR_NAME:
+            throw legato::Exception("Closing brace missing from environment variable.");
+    }
+
+    return result;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Clean all the '/./', '//', and '/../' nodes out of a path, follow symlinks, and makes the
+ * path absolute.
+ *
+ * @return The canonical path.
+ *
+ * @throw legato::Exception on error.
+ **/
+//--------------------------------------------------------------------------------------------------
+std::string CanonicalPath
+(
+    const std::string& path
+)
+//--------------------------------------------------------------------------------------------------
+{
+    char pathBuff[PATH_MAX];
+    char* cannonicalPath = realpath(path.c_str(), pathBuff);
+
+    if (cannonicalPath == NULL)
+    {
+        throw legato::Exception("Path '" + path + "' is malformed.");
+    }
+
+    return std::string(cannonicalPath);
+}
 
 
 }

@@ -1,0 +1,37 @@
+/** @page toolsExecInApp  Execute in App Sandbox
+
+Use the @c execInApp tool to execute a process in a running app's sandbox.
+
+The executed process will inherit the terminal's environment variables and file descriptors. The 
+excutable and all required libraries, resources, etc. must already be in the app's sandbox 
+before the executed process can be started. 
+ 
+<h1>Usage</h1>
+
+<b><c> execInApp [OPTIONS] execPath [ARGS] </c></b>
+
+@verbatim appName @endverbatim
+> Name of the running application where the process should start (can't start with dash - ).
+
+@verbatim execPath @endverbatim
+> Path in the sandbox to the file that will be executed (can't start with dash - ).
+ 
+<h1>Options</h1>
+
+@verbatim --procName=NAME @endverbatim
+> Gives the executed process the name NAME. If not specified, will be the name of the executable file.
+
+@verbatim --priority=PRIORITY @endverbatim
+> Sets the process priority, either: idle, low, medium, high, rt1, rt2, through to rt32.
+
+@verbatim --help @endverbatim
+> Displays help and exits.
+
+@verbatim [ARGS] @endverbatim
+> List of arguments to be passed to the executed process.
+
+<HR>
+
+Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+
+**/

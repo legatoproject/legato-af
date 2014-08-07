@@ -55,7 +55,7 @@ fi
 
 
 # If the Service Directory isn't already running, start it.
-if ! pgrep -f serviceDirectory > /dev/null
+if ! pgrep serviceDir > /dev/null
 then
     if [ "$LOG_FILE" != "" ]
     then
@@ -76,11 +76,13 @@ then
     fi
 
     STARTED=true
+else
+    echo "WARNING: Service Directory was already running." 1>&2
 fi
 
 
 # If the Log Control Daemon isn't already running, start it.
-if ! pgrep -f logCtrlDaemon > /dev/null
+if ! pgrep logCtrlDaemon > /dev/null
 then
     if [ "$LOG_FILE" != "" ]
     then
@@ -101,6 +103,8 @@ then
     sleep 0.2
 
     STARTED=true
+else
+    echo "WARNING: Log Control Daemon was already running." 1>&2
 fi
 
 if [ $STARTED ]

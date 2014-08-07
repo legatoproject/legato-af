@@ -1,6 +1,6 @@
 
 //--------------------------------------------------------------------------------------------------
-/** @file path.h
+/** @file pathIter.h
  *
  * Legato Path module's inter-module include file.
  *

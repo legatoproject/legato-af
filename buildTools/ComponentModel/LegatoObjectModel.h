@@ -8,41 +8,52 @@
  *
  * The object model looks like this: (note: '*' = "multiple")
  *
- * App --+--> Component List --*--> Component --+--> Sources List
- *       |                               ^      |
- *       |                               |      +--> Library List
- *       |                               |      |
- *       |                               |      +--> Imported Interfaces Map --*--+
- *       |                               |      |                                 +--> Interface
- *       |                               |      +--> Exported Interfaces Map --*--+
- *       |                               |      |
- *       |                               |      +--> Included Files List --*--+
- *       |                               |      |                             +--> File Mapping <--+
- *       |                               |      +--> File Imports List --*----+                    |
- *       |                               |      |                                                  |
- *       |                               |      +--> Pools Map (name, pool size)                   |
- *       |                               |      |                                                  |
- *       |                               |      +--> Config Item Map (path, value)                 |
- *       |                               |                                                         |
- *       |                               +------------------------------------------+              |
- *       |                                                                          |              |
- *       +--> Executables List --*--> Executable                                    |              |
- *       |                                |                                         |              |
- *       |                                +--> Component Instance List --*--> Component Instance   |
- *       |                                |                                                        |
- *       |                                +--> Bind List --*--> Bind                               |
- *       |                                |                                                        |
- *       |                                +--> Imported Interfaces Map --*--+                      |
- *       |                                |                                 +--> Interface         |
- *       |                                +--> Exported Interfaces Map --*--+                      |
- *       |                                                                                         |
- *       +--> Process Environment List --*--> Process Environment --> Process List --*--> Process  |
- *       |                                                                                         |
- *       +--> File Imports List --*---------+                                                      |
- *       |                                  +------------------------------------------------------+
- *       +--> Included Files List --*-------+
+ * @verbatim
+
+App --+--> File Imports List --*---------+
+      |                                  +---------------------------------------------------+
+      +--> Included Files List --*-------+                                                   |
+      |                                                                      Api <-+         |
+      +--> Component --*--> Component --+--> Sources List                          |         |
+      |    List                 ^       |                                Library <-+     |
+      |                         |       +--> Library List                          |         |
+      |                         |       |                                          |         |
+      |                         |       +--> Imported Interfaces Map --*--+        |         |
+      |                         |       |                                 +--> Interface <---|--+
+      |                         |       +--> Exported Interfaces Map --*--+                  |  |
+      |                         |       |                                                    |  |
+      |                         |       +--> Included Files List --*--+                      |  |
+      |                         |       |                             +--> File Mapping <----+  |
+      |                         |       +--> File Imports List --*----+                         |
+      |                         |       |                                                       |
+      |                         |       +--> Pools Map (name, pool size)                        |
+      |                         |       |                                                       |
+      |                         |       +--> Config Item Map (path, value)                      |
+      |                         |                                                               |
+      |                         +---------------------------+                                   |
+      |                                                     |                                   |
+      +--> Executables --*--> Executable                    |                                   |
+      |    List                 ^  |                        |                                   |
+      |                         |  |    Component           |                                   |
+      |                         |  +--> Instance --*--> Component                               |
+      |                         |        List           Instance                                |
+      |                         |                           |                                   |
+      |                         |                           +--> Imported Interfaces Map --*----+
+      |                         |                           |                                   |
+      |                         |                           +--> Exported Interfaces Map --*----+
+      |                         |
+      |                         +---------------------------------------------------------+
+      |                                                                                   |
+      |                                                                                   |
+      +--> Process Environment List --*--> Process Environment --> Process List --*--> Process
+      |
+      +--> Internal API Binds List --*--> Internal API Bind
+      |
+      +--> External API Binds List --*--> External API Bind
+
+@endverbatim
  *
- *  Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ *  Copyright (C) Sierra Wireless, Inc. 2013-2014. Use of this work is subject to license.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -61,15 +72,17 @@
 #include <sstream>
 
 #include "Exception.h"   // Basic string exception type.
+#include "Library.h"
+#include "Api.h"
 #include "Permissions.h"
 #include "ConfigItem.h"
 #include "MemoryPool.h"
 #include "FilePath.h"    // Helper functions related to file paths.
 #include "FileMapping.h"
 #include "Interface.h"
+#include "IpcBinding.h"
 #include "Component.h"
 #include "ComponentInstance.h"
-//#include "Bind.h"
 #include "Executable.h"
 #include "Process.h"
 #include "ProcessEnvironment.h"

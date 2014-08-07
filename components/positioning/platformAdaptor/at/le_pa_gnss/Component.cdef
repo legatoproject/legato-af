@@ -1,0 +1,7 @@
+sources:
+
+    gnss_at.c
+
+requires:
+
+    component: { atManager }

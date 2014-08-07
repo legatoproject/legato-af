@@ -1,10 +1,4 @@
-/** @page ccodingStdsParam C Naming Parameters 
-
-@ref cstdsparamCamelCase <br>
-@ref cstdsparamPrefix <br>
-@ref cstdsparamPointers <br>
-@ref cstdsparamStaticVariables <br>
-@ref cstdsparamAbbreviations <br>
+/** @page ccodingStdsParam Variables & Function Parameters 
 
 Other C language standards' pages: 
 

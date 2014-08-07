@@ -1,10 +1,5 @@
 /** @page c_APIs C APIs
  *
- * @ref apiList  <br>
- * @ref OOD  <br>
- * @ref opaqueTypes  <br>
- * @ref CcodingStdsMain  <br>
- *
  * @section apiList Legato C APIs
  *
  * Legato has these C language APIs:
@@ -100,7 +95,9 @@
 #ifndef LEGATO_H_INCLUDE_GUARD
 #define LEGATO_H_INCLUDE_GUARD
 
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE
+#endif
 
 #include <stddef.h>
 #include <unistd.h>
@@ -135,6 +132,11 @@
 #include <sys/sysinfo.h>
 #include <sys/resource.h>
 #include <mntent.h>
+#include <grp.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #include "le_basics.h"
 #include "le_doublyLinkedList.h"
@@ -143,8 +145,8 @@
 #include "le_mem.h"
 #include "le_log.h"
 #include "le_mutex.h"
-#include "le_semaphore.h"
 #include "le_clock.h"
+#include "le_semaphore.h"
 #include "le_safeRef.h"
 #include "le_thread.h"
 #include "le_eventLoop.h"
@@ -160,5 +162,8 @@
 #include "le_dir.h"
 #include "le_fileLock.h"
 
+#ifdef __cplusplus
+}
+#endif
 
 #endif // LEGATO_H_INCLUDE_GUARD

@@ -1,0 +1,32 @@
+sandboxed: true
+
+executables:
+    eCall ( eCallAppComponent )
+    trig  ( triggerComponent )
+
+
+processes:
+    envVars:
+        LE_LOG_LEVEL = DEBUG
+
+    run: (eCall)
+
+    priority: rt32  // The maximum priority is given to the eCall app.
+
+    /*-- Exception handling policy for processes in this section. --*/
+    faultAction: restart   // Restart the process if it fails.
+
+start:
+    auto
+
+bindings:
+
+    eCall.eCallAppComponent.le_ecall -> modemService.le_ecall
+    eCall.eCallAppComponent.le_pos -> positioningService.le_pos
+
+    trig.triggerComponent.ecallApp -> eCall.eCallAppComponent.ecallApp
+
+requires:
+
+    configTree: { [w] system }
+    configTree: { [w] eCall }

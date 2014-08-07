@@ -5,8 +5,8 @@
  *
  *  Helper code for maintaining largish buffers of string memory.
  *
- *  Copyright (C) Sierra Wireless, Inc. 2013, 2014. All rights reserved. Use of this work is subject
- *  to license.
+ *  Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved.
+ *  Use of this work is subject to license.
  */
 // -------------------------------------------------------------------------------------------------
 
@@ -76,7 +76,7 @@ char* sb_Get
 //--------------------------------------------------------------------------------------------------
 char* sb_NewCopy
 (
-    const char* stringPtr  ///< The buffer to duplicate.
+    const char* stringPtr  ///< [IN] The buffer to duplicate.
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -96,7 +96,7 @@ char* sb_NewCopy
 //--------------------------------------------------------------------------------------------------
 void sb_Release
 (
-    char* bufferPtr  ///< The string to release.
+    char* bufferPtr  ///< [IN] The string to release.
 )
 //--------------------------------------------------------------------------------------------------
 {

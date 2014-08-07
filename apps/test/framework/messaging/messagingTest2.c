@@ -212,7 +212,7 @@ static void StartClient
 
 
 // Component initialization function.
-LE_EVENT_INIT_HANDLER
+COMPONENT_INIT
 {
     LE_INFO("======= Test 2: Server and Client in same process but different threads - Sync ========");
 

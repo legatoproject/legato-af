@@ -1,9 +1,13 @@
 #*******************************************************************************
 # Copyright (c) 2012 Sierra Wireless and others.
-# All rights reserved. This building script is made available under the terms
-# of the Eclipse Public License v1.0 which accompanies this distribution, and
-# is available at
-# http://www.eclipse.org/legal/epl-v10.html
+# All rights reserved. This program and the accompanying materials
+# are made available under the terms of the Eclipse Public License v1.0
+# and Eclipse Distribution License v1.0 which accompany this distribution.
+#
+# The Eclipse Public License is available at
+#   http://www.eclipse.org/legal/epl-v10.html
+# The Eclipse Distribution License is available at
+#   http://www.eclipse.org/org/documents/edl-v10.php
 #
 # Contributors:
 #     Sierra Wireless - initial API and implementation
@@ -56,7 +60,7 @@ TARGET_LINK_LIBRARIES(lualib dl m)
 
 ### lua executable
 
-ADD_EXECUTABLE(lua EXCLUDE_FROM_ALL lua.c)
+ADD_EXECUTABLE(lua lua.c)
 TARGET_LINK_LIBRARIES (lua lualib pthread)
 # The link to pthread shouldn't be necessary,
 # but it prevents a segfault when using uClibc. To be removed when NPTL is used.
@@ -75,7 +79,7 @@ ENDIF(READLINE_LIB AND READLINE_INC)
 # The compiler uses non-exported symbols "lua[DMPSTU]_*", and therefore can't
 # rely on the shared library. Given its size, and the fact that it's not
 # necessary to run Mihini, it reincludes the Lua lib's sources.
-ADD_EXECUTABLE(luac EXCLUDE_FROM_ALL luac.c print.c ${LUALIB_SRC})
+ADD_EXECUTABLE(luac luac.c print.c ${LUALIB_SRC})
 TARGET_LINK_LIBRARIES(luac dl m)
 
 ### bit32 bit manipulation library, back-ported from Lua 5.2

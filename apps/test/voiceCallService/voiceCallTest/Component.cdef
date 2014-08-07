@@ -1,0 +1,8 @@
+sources:
+
+    voiceCallTest.c
+
+import:
+
+    le_voicecall.api
+    le_audio.api

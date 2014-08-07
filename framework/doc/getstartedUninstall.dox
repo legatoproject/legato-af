@@ -1,11 +1,10 @@
 /** @page getstartedUninstall Uninstall Legato
 
 
-@section uninstLegato Uninstall Legato
-
-To uninstall Legato from your development PC, delete the directory where you extracted 
+To uninstall Legato from your dev host, delete the directory where you extracted 
 Legato.
-To uninstall the toolchain from your development PC, delete the toolchain directory /opt/swi.
+
+To uninstall the toolchain, delete the toolchain directory @c /opt/swi.
 
 <HR>
 

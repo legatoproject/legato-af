@@ -415,6 +415,7 @@ static FILE* OpenStreamToFd
         case LE_FLOCK_WRITE:
             // The 'w' option does not cause truncation when used with fdopen().
             LE_ASSERT(le_utf8_Copy(modeStr, "w", sizeof(modeStr), NULL) == LE_OK);
+            break;
 
         case LE_FLOCK_APPEND:
             // The 'a' option cannot create the file when used with fdopen().
@@ -424,6 +425,7 @@ static FILE* OpenStreamToFd
         case LE_FLOCK_READ_AND_WRITE:
             // The 'w+' option does not cause truncation when used with fdopen().
             LE_ASSERT(le_utf8_Copy(modeStr, "w+", sizeof(modeStr), NULL) == LE_OK);
+            break;
 
         case LE_FLOCK_READ_AND_APPEND:
             // The 'a+' option cannot create the file when used with fdopen().

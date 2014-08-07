@@ -1,0 +1,97 @@
+/** @page toolsCellModem Cellular Modem
+
+The cellular modem tool is used to control modem functions.
+
+<h1>Usage</h1>
+
+<b><c> cm [SERVICES] [COMMANDS] </c></b>
+
+Available services are @ref cmRadioUsage "radio", @ref cmSimUsage "sim" and @ref cmDataUsage "data".
+
+@section cmRadioUsage CM Radio 
+
+@verbatim cm radio @endverbatim
+> Get modem status
+
+@verbatim cm radio <on/off> @endverbatim
+> Enable/disable radio
+
+@verbatim cm radio rat <CDMA/GSM/UMTS/LTE> @endverbatim
+> Set radio access technology
+
+After setting the radio access technology, you'll need to do a <c>legato restart</c> before it's effective.
+
+@section cmSimUsage CM SIM 
+
+@verbatim cm sim @endverbatim
+> Get sim status
+
+@verbatim cm sim enterpin <pin> @endverbatim
+> Enter pin code that's required before any mobile equipment functionality can be used.
+
+@verbatim cm sim changepin <oldpin> <newpin> @endverbatim
+> Change the PIN code of the SIM card.
+
+@verbatim cm sim lock <pin> @endverbatim
+> Lock SIM: enables SIM card security, will request for a PIN code when inserted.
+
+@verbatim cm sim unlock <pin> @endverbatim
+> Unlock SIM: disables SIM card security, won't request a PIN code when inserted (unsafe).
+
+@verbatim cm sim unblock <puk> <newpin> @endverbatim
+> Unblocks the SIM card. The SIM card is blocked after X unsuccessful attempts to enter the PIN.
+
+@verbatim cm sim storepin <pin> @endverbatim
+> Stores PIN. Whether security is enabled or not, the SIM card has a PIN code that must be 
+> entered for every operation. You can change the PIN code through @c changepin and @c unblock.
+
+@section cmDataUsage CM Data
+
+@verbatim cm data @endverbatim
+> Get info on profile in use
+
+@verbatim cm data profile <index> @endverbatim
+> Set profile in use
+
+@verbatim cm data apn <apn> @endverbatim
+> Set apn for profile in use
+
+@verbatim cm data pdp <pdp> @endverbatim
+> Set pdp type for profile in use
+
+@verbatim cm data auth <none/pap/chap> <username> <password> @endverbatim
+> Set authentication for profile in use
+
+@verbatim cm data connect <optional timeout (secs)> @endverbatim
+> Start a data connection
+
+@verbatim cm data list @endverbatim
+> List all the profiles
+
+@verbatim cm data watch @endverbatim
+> Monitor the data connection
+
+To start a data connection, please ensure that your profile has been configured correctly.
+Also ensure your modem is registered to the network. To verify, use <c>cm radio</c> and check @c Status.
+
+If you specify a time-out timer when starting a data connection, it will try to start a data 
+connection until the timer expires.
+
+When starting a data connection, currently it only uses profile 1. Any configuration set for other 
+profiles can't be used to start a data connection through the cm tool.
+
+@subsection Legato Beta 14.04 Users
+
+If you're upgrading from Legato Beta 14.04, data connection operation will be slightly different. 
+Once you have a data connection started successfully, the process will continue running. 
+
+To stop the session, do one of these:
+- Run <c>cm data connect</c> as usual and if you want to release the data connection, simply press CTRL+C.
+- Run <c>cm data connect &</c>  (background) and if you want to release the data connection, kill the process (<c>kill \<pid\></c>).
+
+
+<HR>
+
+Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+
+**/

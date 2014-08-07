@@ -1,9 +1,13 @@
--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 -- Copyright (c) 2012 Sierra Wireless and others.
 -- All rights reserved. This program and the accompanying materials
 -- are made available under the terms of the Eclipse Public License v1.0
--- which accompanies this distribution, and is available at
--- http://www.eclipse.org/legal/epl-v10.html
+-- and Eclipse Distribution License v1.0 which accompany this distribution.
+--
+-- The Eclipse Public License is available at
+--   http://www.eclipse.org/legal/epl-v10.html
+-- The Eclipse Distribution License is available at
+--   http://www.eclipse.org/org/documents/edl-v10.php
 --
 -- Contributors:
 --     Laurent Barthelemy for Sierra Wireless - initial API and implementation
@@ -16,6 +20,7 @@ local socket     = require "socket"
 local log        = require "log"
 local lfs        = require "lfs"
 local upderrnum  = require "agent.update.status".tonumber
+local system     = require "utils.system"
 local data       = common.data
 local escapepath = common.escapepath
 
@@ -70,10 +75,10 @@ local function checkpkg()
 
     --preventive directory removal before mkdir
     res, err  = os.execute("rm -rf "..escapepath(dirname))
-    res, err = os.execute("mkdir "..escapepath(dirname))
-    if 0 ~= res then
+    res, err = lfs.mkdir(dirname)
+    if not res then
         --mkdir error
-        return state.stepfinished("failure", upderrnum 'EXTRACTION_FOLDER_CREATION_FAILED', string.format("Cannot create folder to extract update package, err =[%s, %s]", res, err))
+        return state.stepfinished("failure", upderrnum 'EXTRACTION_FOLDER_CREATION_FAILED', string.format("Cannot create folder to extract update package, err =[%s]", tostring(err)))
     end
 
     -- test extraction: check free space

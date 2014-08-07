@@ -18,12 +18,12 @@
  * The Event Loop API supports Legato's @ref programmingModel.  In this event-driven
  * programming model, a central <b> event loop </b> calls <b> event handler </b> functions in
  * response to <b>event reports</b>.
- * 
+ *
  * Software components register their event handler functions with the event system (either
  * directly through the Event Loop API or indirectly through other APIs that use the Event Loop API)
  * so the central event loop knows the functions to call in response to defined events.
  *
- * Every event loop has an <b>event queue</b>, which is a queue of events waiting to be handled by that event loop.  
+ * Every event loop has an <b>event queue</b>, which is a queue of events waiting to be handled by that event loop.
  * The following different usage patterns are supported by the Event Loop API:
  *
  *  - @ref c_event_deferredFunctionCalls
@@ -126,8 +126,8 @@
  *
  * When an event report reaches the front of a thread's Event Queue, that thread's Event Loop
  * reads the report and then:
- * - Calls the handler functions registered by that thread.  
- * - Points to the report payload passed to the handler as a parameter.  
+ * - Calls the handler functions registered by that thread.
+ * - Points to the report payload passed to the handler as a parameter.
  * - Reports the payload was deleted on return, so the handler
  * function must copy any contents to keep.
  *
@@ -272,7 +272,7 @@
  * In a POSIX environment, like Linux, file descriptors are used for most process I/O.
  * Many components will need to be notified when one or more file descriptors are
  * ready to read from or write to, or experience an error or hang-up.
- * 
+ *
  * In conventional programs, it's common to block a thread on a call to @c read(), @c write(),
  * @c accept(), @c select(), @c poll(), or some variant of those functions.
  * But if that's done in a thread shared with other components, those other
@@ -340,10 +340,12 @@ static void MyReadHandler(int fd)
  * before its Monitor object is deleted. Always delete the Monitor object for a file descriptor
  * when it is closed.
  *
- * A file descriptor event handler can be removed (deregistered) using @c le_event_ClearFdHandler().
+ * A file descriptor event handler can be removed (deregistered) using @c le_event_ClearFdHandler()
+ * or le_event_ClearFdHandlerByEventType().
  * This is useful monitor writeability.  When the file descriptor is writeable,
  * but there's nothing to write, the writeability handler will be continuously run
- * until it's cleared or enough data is written into the file descriptor to cause it to become unwriteable.
+ * until it's cleared or enough data is written into the file descriptor to cause it to become
+ * unwriteable.
  * Allowing the handler to continually run is a colossal waste of CPU cycles
  * and power. To prevent this, clear the writeability handler and set it again later when an
  * attempt to write is rejected because the file descriptor is no longer writeable.
@@ -480,12 +482,12 @@ static void ContinueWriting(int fd)
  * @section c_event_reportingRefCountedObjects Event Reports Containing Reference-Counted Objects
  *
  *Sometimes you need to report an event where the report payload is pointing to a
- * reference-counted object allocated from a memory pool (see @ref c_memory).  
- * Memory leaks and/or crashes can result if its is sent through the Event Loop API 
- * without telling the Event Loop API it's pointing to a reference counted object. 
+ * reference-counted object allocated from a memory pool (see @ref c_memory).
+ * Memory leaks and/or crashes can result if its is sent through the Event Loop API
+ * without telling the Event Loop API it's pointing to a reference counted object.
  * If there are no subscribers, the Event Loop API iscards the reference without releasing it,
  * and the object is never be deleted. If multiple handlers are registered,
- * the reference could be released by the handlers too many times. Also, there are 
+ * the reference could be released by the handlers too many times. Also, there are
  * other, subtle issues that are nearly impossible to solve if threads terminate while
  * reports containing pointers to reference-counted objects are on their Event Queues.
  *
@@ -500,7 +502,7 @@ static void ContinueWriting(int fd)
  *
  * @c le_event_CreateIdWithRefCounting() is used the same way as le_event_CreateId(), except that
  * it doesn't require a payload size as the payload is always
- * known from the pointer to a reference-counted memory pool object.  Only Event IDs 
+ * known from the pointer to a reference-counted memory pool object.  Only Event IDs
  * created using le_event_CreateIdWithRefCounting() can be used with
  * le_event_ReportWithRefCounting().
  *
@@ -589,7 +591,7 @@ static void ContinueWriting(int fd)
  * Many legacy programs written on top of POSIX APIs will have previously built their own event loop
  * using poll(), select(), or some other blocking functions. It may be difficult to refactor this type of
  * event loop to use the Legato event loop instead.
- * 
+ *
  * Two functions are provided to assist integrating legacy code with the Legato
  * Event Loop:
  *  - @c le_event_GetFd() - Fetches a file descriptor that can be monitored using some variant of
@@ -651,9 +653,15 @@ typedef struct le_event_Id* le_event_Id_t;
  */
 //--------------------------------------------------------------------------------------------------
 
-// This macro is set by the build system.  However, if it hasn't been set, use a sensable default.
+#ifdef __cplusplus
+    #define LE_CI_LINKAGE extern "C"
+#else
+    #define LE_CI_LINKAGE
+#endif
+
+// This macro is set by the build system.  However, if it hasn't been set, use a sensible default.
 #ifndef COMPONENT_INIT
-    #define COMPONENT_INIT  void _le_event_InitializeComponent(void)
+    #define COMPONENT_INIT LE_CI_LINKAGE void _le_event_InitializeComponent(void)
 #endif
 
 /// Deprecated name for @ref COMPONENT_INIT.
@@ -748,7 +756,7 @@ typedef struct le_event_Handler* le_event_HandlerRef_t;
 /**
  * File Descriptor Handler reference.
  *
- * Used to refer to handlers that have been set for File Descriptorevents.  Only needed if
+ * Used to refer to handlers that have been set for File Descriptor events.  Only needed if
  * you need to set te handler's context pointer or remove the handler later.
  */
 //--------------------------------------------------------------------------------------------------
@@ -1008,6 +1016,18 @@ void le_event_SetFdHandlerContextPtr
 void le_event_ClearFdHandler
 (
     le_event_FdHandlerRef_t  handlerRef  ///< [in] Reference to the handler.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Deregisters a handler for a file descriptor event.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_event_ClearFdHandlerByEventType
+(
+    le_event_FdMonitorRef_t  monitorRef, ///< [in] Reference to the File Descriptor Monitor object.
+    le_event_FdEventType_t   eventType   ///< [in] The type of event to clear the handler for.
 );
 
 

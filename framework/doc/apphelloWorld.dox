@@ -1,9 +1,7 @@
 /** @page apphelloWorld Create helloWorld
 
-@section helloWorld Hello World
-
-First, create a Legato version of
-our old friend "Hello World".
+Here's how easy it is to create a Legato version of
+our old friend @c HelloWorld.
 
 Create a text file called "hello.c" containing the following text:
 

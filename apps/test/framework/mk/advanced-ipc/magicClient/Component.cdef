@@ -1,0 +1,5 @@
+sources:
+    magicClient.c
+
+import:
+    magic.api

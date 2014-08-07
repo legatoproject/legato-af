@@ -8,19 +8,12 @@ on your device.
 In this example, we use the sample "helloWorld" as the application with a 
 WP7 as the target. If you're using an AR7 module, substitute @c ar7 where appropriate.
 
-@ref buildapp <br>
-@ref createAppAv <br>
-@ref usingAv <br>
-@ref rcvAppAgent <br>
-@ref goingFurther <br>
-
-
 @section buildapp Build the application
 
 First, make sure that Legato is built locally for WP7, then :
 
 @verbatim
-Legato $ . bin/configlegatoenv
+Legato $ bin/legs
 Legato $ cd apps/sample/helloWorld
 Legato $ mkapp -t wp7 helloWorld.adef
 @endverbatim

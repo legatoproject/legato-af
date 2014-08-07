@@ -1,0 +1,77 @@
+/** @page frameworkDB Framework DB Schema
+
+This is Legato's application framework database schema:
+ 
+@verbatim 
+
+system:/
+    apps/
+        <app name>/
+            bindings/
+                <client interface name>
+                    protocol    <string>
+                    server/
+                            app         <string>
+                            user        <string>
+                            interface   <string>
+    users/
+        <user name>/
+            bindings/
+                <client interface name>
+                    protocol    <string>
+                    server/
+                            app         <string>
+                            user        <string>
+                            interface   <string>
+
+apps
+      appName1
+          sandboxed (true, false)
+          defer launch (true, false)
+          fileSystemSizeLimit (integer)
+          totalPosixMsgQueueSizeLimit (integer)
+          numProcessesLimit (integer)
+          rtSignalQueueSizeLimit (integer)
+          groups
+              groupName0
+              groupName1
+              ...
+              groupNameN
+          files
+             0
+                  src (string)
+                  dest (string)
+              1
+                  src (string)
+                  dest (string)
+              ...
+              N
+          procs
+              procName1
+                  virtualMemoryLimit (integer)
+                  coreDumpFileSizeLimit (integer)
+                  maxFileSizeLimit (integer)
+                  memLockSizeLimit (integer)
+                  numFileDescriptorsLimit (integer)
+              priority (string)
+              faultAction (string)
+              args
+                  0 (string) -> must contain the executable path relative to the sandbox root.
+                  1 (string)
+                  ...
+                  N (string)
+              envVars
+                  varName0
+                      varValue0 (string)
+                  varName1
+                      varValue1 (string)
+                  ...
+                  varNameN
+                      varValueN (string)
+@endverbatim
+
+<HR>
+
+Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+
+**/

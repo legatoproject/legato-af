@@ -13,10 +13,11 @@
 #define PROCESS_ENVIRONMENT_H_INCLUDE_GUARD
 
 #include "Process.h"
+#include "WatchdogConfig.h"
+
 
 namespace legato
 {
-
 
 class ProcessEnvironment
 {
@@ -49,6 +50,9 @@ class ProcessEnvironment
         size_t m_MemLockSize;
         size_t m_NumFds;
 
+        /// Watchdog
+        WatchdogTimeoutConfig m_WatchdogTimeout;
+        WatchdogActionConfig m_WatchdogAction;
 
     public:
         Process& CreateProcess() { m_ProcessList.emplace_back(); return m_ProcessList.back(); }
@@ -75,6 +79,12 @@ class ProcessEnvironment
 
         void NumFds(size_t limit) { m_NumFds = limit; }
         size_t NumFds() const { return m_NumFds; }
+
+        WatchdogTimeoutConfig& WatchdogTimeout() { return m_WatchdogTimeout; }
+        const WatchdogTimeoutConfig& WatchdogTimeout() const { return m_WatchdogTimeout; }
+
+        WatchdogActionConfig& WatchdogAction() { return m_WatchdogAction; }
+        const WatchdogActionConfig& WatchdogAction() const { return m_WatchdogAction; }
 };
 
 

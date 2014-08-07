@@ -1,0 +1,7 @@
+import:
+
+    le_cfg.api
+
+sources:
+
+    configDropWrite.c

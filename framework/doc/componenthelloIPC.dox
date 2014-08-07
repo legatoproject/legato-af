@@ -1,13 +1,7 @@
 /** @page componenthelloIPC Hello IPC
-
-@ref helloIPCGettingStarted <br>
-@ref helloIPCDefiningTheAPI <br>
-@ref helloIPCCreatingTheServer <br>
-@ref helloIPCCreatingTheClient
   
-Now, lets explore how to use IPC between components.
+Lets explore how to use IPC between components:
 
-Covered in this topic:
  - Define a simple interface protocol that clients can use to ask servers to "Greet".
  - Create a server that prints "Hello world" whenever a client asks it to "Greet",
  - Create a client that asks the server to "Greet",
@@ -113,13 +107,13 @@ void hello_Greet(void)
 
 COMPONENT_INIT
 {
-          hello_StartServer("hello"); 
+
 }
 
 @endcode
 
 The file "interfaces.h" will be auto-generated based on the contents of greet.api and
-greetServer's Component.cdef.  It will contain a prototype of the function
+greetServer's Component.cdef. It will contain a prototype of the function
 hello_Greet(), which we implemented in greetServer.c.
 
 The function hello_Greet() will be called when a client binds to our "hello" service
@@ -135,10 +129,6 @@ is the name "hello" before the '=' in the line "hello = greet.api".
 @note If you forget to implement a service function on the server or if you give it the wrong name,
       the link stage will fail and complain that the symbol is unresolved, so you'll know that you
       missed a function and you'll be able to see what the correct name of the function should be.
-
-In this simple example, it's starting the service by calling the auto-generated function @c hello_StartServer @c ("hello").
-This parameter will go away in the future, but for now must match the function prefix.
-
 
 @section helloIPCCreatingTheClient Creating the Client
 
@@ -177,7 +167,6 @@ Make it contain the following:
 
 COMPONENT_INIT
 {
-    hello_StartClient("hello");
     hello_Greet();
 }
 

@@ -1,6 +1,7 @@
 #include "legato.h"
 
 #define TEST_FILE       "/tmp/lockTestCount"
+#define TEST_FILE2      "/tmp/lockTestCount2"
 
 
 static void ReadAndIncCount(bool useLocks)
@@ -117,6 +118,124 @@ printf("%d\n", count);
     }
 }
 
+// Checks that files opened/created with le_fileLock API have the right access modes and file status flags.
+static void CheckFlags(void)
+{
+    // Test Create function.
+    int fd = le_flock_Create(TEST_FILE2, LE_FLOCK_READ, LE_FLOCK_REPLACE_IF_EXIST, S_IRWXU);
+    LE_ASSERT(fd > 0);
+    LE_ASSERT(fcntl(fd, F_GETFL) == O_RDONLY);
+    le_flock_Close(fd);
+
+    fd = le_flock_Create(TEST_FILE2, LE_FLOCK_WRITE, LE_FLOCK_REPLACE_IF_EXIST, S_IRWXU);
+    LE_ASSERT(fd > 0);
+    LE_ASSERT(fcntl(fd, F_GETFL) == O_WRONLY);
+    le_flock_Close(fd);
+
+    fd = le_flock_Create(TEST_FILE2, LE_FLOCK_APPEND, LE_FLOCK_REPLACE_IF_EXIST, S_IRWXU);
+    LE_ASSERT(fd > 0);
+    LE_ASSERT(fcntl(fd, F_GETFL) == (O_WRONLY|O_APPEND));
+    le_flock_Close(fd);
+
+    fd = le_flock_Create(TEST_FILE2, LE_FLOCK_READ_AND_WRITE, LE_FLOCK_REPLACE_IF_EXIST, S_IRWXU);
+    LE_ASSERT(fd > 0);
+    LE_ASSERT(fcntl(fd, F_GETFL) == O_RDWR);
+    le_flock_Close(fd);
+
+    fd = le_flock_Create(TEST_FILE2, LE_FLOCK_READ_AND_APPEND, LE_FLOCK_REPLACE_IF_EXIST, S_IRWXU);
+    LE_ASSERT(fd > 0);
+    LE_ASSERT(fcntl(fd, F_GETFL) == (O_RDWR|O_APPEND));
+    le_flock_Close(fd);
+
+    // Test Open function.
+    fd = le_flock_Open(TEST_FILE2, LE_FLOCK_READ);
+    LE_ASSERT(fd > 0);
+    LE_ASSERT(fcntl(fd, F_GETFL) == O_RDONLY);
+    le_flock_Close(fd);
+
+    fd = le_flock_Open(TEST_FILE2, LE_FLOCK_WRITE);
+    LE_ASSERT(fd > 0);
+    LE_ASSERT(fcntl(fd, F_GETFL) == O_WRONLY);
+    le_flock_Close(fd);
+
+    fd = le_flock_Open(TEST_FILE2, LE_FLOCK_APPEND);
+    LE_ASSERT(fd > 0);
+    LE_ASSERT(fcntl(fd, F_GETFL) == (O_WRONLY|O_APPEND));
+    le_flock_Close(fd);
+
+    fd = le_flock_Open(TEST_FILE2, LE_FLOCK_READ_AND_WRITE);
+    LE_ASSERT(fd > 0);
+    LE_ASSERT(fcntl(fd, F_GETFL) == O_RDWR);
+    le_flock_Close(fd);
+
+    fd = le_flock_Open(TEST_FILE2, LE_FLOCK_READ_AND_APPEND);
+    LE_ASSERT(fd > 0);
+    LE_ASSERT(fcntl(fd, F_GETFL) == (O_RDWR|O_APPEND));
+    le_flock_Close(fd);
+
+    // Test Create Stream function.
+    FILE* filePtr = le_flock_CreateStream(TEST_FILE2, LE_FLOCK_READ, LE_FLOCK_REPLACE_IF_EXIST, S_IRWXU, NULL);
+    fd = fileno(filePtr);
+    LE_ASSERT(fd > 0);
+    LE_ASSERT(fcntl(fd, F_GETFL) == O_RDONLY);
+    le_flock_Close(fd);
+
+    filePtr = le_flock_CreateStream(TEST_FILE2, LE_FLOCK_WRITE, LE_FLOCK_REPLACE_IF_EXIST, S_IRWXU, NULL);
+    fd = fileno(filePtr);
+    LE_ASSERT(fd > 0);
+    LE_ASSERT(fcntl(fd, F_GETFL) == O_WRONLY);
+    le_flock_Close(fd);
+
+    filePtr = le_flock_CreateStream(TEST_FILE2, LE_FLOCK_APPEND, LE_FLOCK_REPLACE_IF_EXIST, S_IRWXU, NULL);
+    fd = fileno(filePtr);
+    LE_ASSERT(fd > 0);
+    LE_ASSERT(fcntl(fd, F_GETFL) == (O_WRONLY|O_APPEND));
+    le_flock_Close(fd);
+
+    filePtr = le_flock_CreateStream(TEST_FILE2, LE_FLOCK_READ_AND_WRITE, LE_FLOCK_REPLACE_IF_EXIST, S_IRWXU, NULL);
+    fd = fileno(filePtr);
+    LE_ASSERT(fd > 0);
+    LE_ASSERT(fcntl(fd, F_GETFL) == O_RDWR);
+    le_flock_Close(fd);
+
+    filePtr = le_flock_CreateStream(TEST_FILE2, LE_FLOCK_READ_AND_APPEND, LE_FLOCK_REPLACE_IF_EXIST, S_IRWXU, NULL);
+    fd = fileno(filePtr);
+    LE_ASSERT(fd > 0);
+    LE_ASSERT(fcntl(fd, F_GETFL) == (O_RDWR|O_APPEND));
+    le_flock_Close(fd);
+
+    // Test Open Stream function.
+    filePtr = le_flock_OpenStream(TEST_FILE2, LE_FLOCK_READ, NULL);
+    fd = fileno(filePtr);
+    LE_ASSERT(fd > 0);
+    LE_ASSERT(fcntl(fd, F_GETFL) == O_RDONLY);
+    le_flock_Close(fd);
+
+    filePtr = le_flock_OpenStream(TEST_FILE2, LE_FLOCK_WRITE, NULL);
+    fd = fileno(filePtr);
+    LE_ASSERT(fd > 0);
+    LE_ASSERT(fcntl(fd, F_GETFL) == O_WRONLY);
+    le_flock_Close(fd);
+
+    filePtr = le_flock_OpenStream(TEST_FILE2, LE_FLOCK_APPEND, NULL);
+    fd = fileno(filePtr);
+    LE_ASSERT(fd > 0);
+    LE_ASSERT(fcntl(fd, F_GETFL) == (O_WRONLY|O_APPEND));
+    le_flock_Close(fd);
+
+    filePtr = le_flock_OpenStream(TEST_FILE2, LE_FLOCK_READ_AND_WRITE, NULL);
+    fd = fileno(filePtr);
+    LE_ASSERT(fd > 0);
+    LE_ASSERT(fcntl(fd, F_GETFL) == O_RDWR);
+    le_flock_Close(fd);
+
+    filePtr = le_flock_OpenStream(TEST_FILE2, LE_FLOCK_READ_AND_APPEND, NULL);
+    fd = fileno(filePtr);
+    LE_ASSERT(fd > 0);
+    LE_ASSERT(fcntl(fd, F_GETFL) == (O_RDWR|O_APPEND));
+    le_flock_Close(fd);
+}
+
 
 COMPONENT_INIT
 {
@@ -145,6 +264,9 @@ COMPONENT_INIT
     // the file.
     LE_FATAL_IF(!CheckCounts(2), "The file check is incorrect.");
     LE_INFO("The file check is correct with file locks.");
+
+    // Check file descriptor flags.
+    CheckFlags();
 
     LE_INFO("======== File Locking Test Completed Successfully ========");
     exit(EXIT_SUCCESS);

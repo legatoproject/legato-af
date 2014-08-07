@@ -2,7 +2,7 @@
 /**
  * File system path handling functions.
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless, Inc. 2013-2014.  Use of this work is subject to license.
  **/
 //--------------------------------------------------------------------------------------------------
 
@@ -67,6 +67,19 @@ std::string CombinePath
  */
 //--------------------------------------------------------------------------------------------------
 std::string AbsolutePath
+(
+    const std::string& path     ///< The original path, which could be absolute or relative.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Make a file system path into a relative path by stripping off leading separators.
+ *
+ * @return  The relative path.
+ */
+//--------------------------------------------------------------------------------------------------
+std::string MakeRelativePath
 (
     const std::string& path     ///< The original path, which could be absolute or relative.
 );
@@ -148,7 +161,25 @@ bool HasSuffix
 //--------------------------------------------------------------------------------------------------
 std::string FindFile
 (
-    const std::string& name,                    ///< The file path.
+    const std::string& path,                    ///< The file path.
+    const std::list<std::string>& searchPaths   ///< List of directory paths to search in.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Searches for a directory.
+ *
+ * If the path given is absolute, then just checks for existence of a directory at that path.
+ * If the path is relative, then searches for that directory relative to each of the
+ * directories in the searchPaths list.
+ *
+ * @return The path of the directory if found or an empty string if not found.
+ */
+//--------------------------------------------------------------------------------------------------
+std::string FindDirectory
+(
+    const std::string& path,                    ///< The path to search for.
     const std::list<std::string>& searchPaths   ///< List of directory paths to search in.
 );
 
@@ -161,6 +192,20 @@ std::string FindFile
  */
 //----------------------------------------------------------------------------------------------
 bool IsCSource
+(
+    const std::string& path
+);
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Figures out whether or not a given string is a C++ source code file path.
+ *
+ * @return true if this is a C++ source code file path.
+ */
+//--------------------------------------------------------------------------------------------------
+bool IsCppSource
 (
     const std::string& path
 );
@@ -225,12 +270,60 @@ void MakeDir
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Recursively delete a directory.  That is, delete everything in the directory,
+ * then delete the directory itself.
+ *
+ * If nothing exists at the path, quietly returns without error.
+ *
+ * If something other than a directory exists at the given path, it's an error.
+ *
+ * @throw legato::Exception if something goes wrong.
+ **/
+//--------------------------------------------------------------------------------------------------
+void CleanDir
+(
+    const std::string& path
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Gets the absolute file system path of the current working directory.
 */
 //--------------------------------------------------------------------------------------------------
 std::string GetWorkingDir
 (
     void
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Look for environment variables (specified as "$VAR_NAME" or "${VAR_NAME}") in the path
+ * and replace with environment variable contents.
+ *
+ * @return The converted string.
+ **/
+//--------------------------------------------------------------------------------------------------
+std::string DoEnvVarSubstitution
+(
+    const std::string& path
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Clean all the '/./', '//', and '/../' nodes out of a path, follow symlinks, and makes the
+ * path absolute.
+ *
+ * @return The canonical path.
+ *
+ * @throw legato::Exception on error.
+ **/
+//--------------------------------------------------------------------------------------------------
+std::string CanonicalPath
+(
+    const std::string& path
 );
 
 

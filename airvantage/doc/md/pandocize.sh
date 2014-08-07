@@ -4,13 +4,23 @@
 # Copyright (c) 2012 Sierra Wireless and others.
 # All rights reserved. This program and the accompanying materials
 # are made available under the terms of the Eclipse Public License v1.0
-# which accompanies this distribution, and is available at
-# http://www.eclipse.org/legal/epl-v10.html
+# and Eclipse Distribution License v1.0 which accompany this distribution.
+#
+# The Eclipse Public License is available at
+#   http://www.eclipse.org/legal/epl-v10.html
+# The Eclipse Distribution License is available at
+#   http://www.eclipse.org/org/documents/edl-v10.php
 #
 # Contributors:
 #     Romain Perier for Sierra Wireless - initial API and implementation
 #     Benjamin Cabé for Sierra Wireless - bug 407919
 #*******************************************************************************
+
+BASEDIR=$(cd $(dirname $0) && pwd)
+OUTPUT_DIR=$1/specs
+mkdir -p $1
+
+rm -fr $OUTPUT_DIR
 
 markdown_list="
     agent/ConfigStore.md
@@ -32,6 +42,7 @@ markdown_list="
     agent/Tree_Manager.md
     agent/Using_treemgr_handlers_for_asset_management.md
     agent/Remote_Script.md
+    agent/Rest.md
     agent/Monitoring.md
     agent_connector_libraries/Racon_Lua_library.md
     agent_connector_libraries/Agent_Connector_Library.md
@@ -43,16 +54,8 @@ markdown_list="
     ./index.md
 "
 
-source_dir="."
+source_dir=$BASEDIR
 
-while getopts i:g: o
-do  case "$o" in
-    i)  source_dir="$OPTARG";;
-    g)  ga_tracker_path="$OPTARG";;
-    ?)  print "Usage: $0 [-i markdown_input_folder] [-g ga_tracker_path]"
-        exit 1;;
-    esac
-done
 
 for md in $markdown_list; do
     output=$(echo $md | sed 's:\.md::')
@@ -67,10 +70,8 @@ for md in $markdown_list; do
         ln -s ${source_dir}/default.css ${category_dir}/default.css
     fi
 
-    if [ -n "$ga_tracker_path" ]; then
-        pandoc --standalone --css="default.css" --include-in-header="$ga_tracker_path" --highlight-style=tango ${source_dir}/$md -o ${output}.html || exit 1
-    else
-        echo "${source_dir}/$md"
-        pandoc --standalone --css="default.css" --highlight-style=tango ${source_dir}/$md -o ${output}.html || exit 1
-    fi
+    echo "${source_dir}/$md"
+    pandoc --standalone --css="default.css" --highlight-style=tango ${source_dir}/$md -o ${output}.html || exit 1 
 done
+
+cp -fr . $OUTPUT_DIR

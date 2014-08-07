@@ -1,0 +1,46 @@
+// -------------------------------------------------------------------------------------------------
+/**
+ * Supervisor API to get the state of applications.
+ *
+ * <HR>
+ *
+ * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ */
+// -------------------------------------------------------------------------------------------------
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The Supervisor State API service name used to start the service.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE API_NAME = "SupervisorState";
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Application states.  The Supervisor only knows about applications that it has started, it does
+ * not distinguish between installed applications that have not been started and applications that
+ * have not been installed.  The state of unknown applications is STOPPED.
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM State
+{
+    STOPPED,            ///< Application has been stopped or never started.
+    RUNNING,            ///< Application is running.
+    PAUSED              ///< Application has been paused by the Supervisor.
+};
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ * Gets the state of the specified application.
+ *
+ * @return
+ *      The state of the specified application.
+ */
+// -------------------------------------------------------------------------------------------------
+FUNCTION State GetAppState
+(
+    string appName[32] IN               ///< Name of the application.
+);

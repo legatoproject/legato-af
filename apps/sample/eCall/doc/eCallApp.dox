@@ -1,0 +1,32 @@
+/**
+ * @page c_ecallAppMain eCall Application and utility
+ *
+ * The eCall app starts a test eCall session using the Legato eCall API and the position data
+ * returned by the Legato Positioning API.
+ *
+ * The 'trig' utility - given as an example - shows how to trig the eCall App to start the eCall
+ * session.
+ *
+ * @subpage c_ecallApp
+ *
+ * @subpage c_ecallAppTrigg
+ *
+ * Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved.
+ *
+**/
+
+/** @page c_ecallAppTrigg 'trig' utility for eCall application
+ *
+ * This utility trigs the eCall application.
+ *
+ * It is given as an example, it shows how the eCall app must be trigged.
+ *
+ * You can call the utility by issuing the command:
+ * @verbatim
+   /opt/legato/apps/eCall/bin/trig <number of passengers>
+   @endverbatim
+ *
+ *
+ * Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved.
+ *
+**/

@@ -508,6 +508,56 @@ static void Handle_allParameters
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Server-side respond function for FileTest
+ */
+//--------------------------------------------------------------------------------------------------
+void FileTestRespond
+(
+    ServerCmdRef_t _cmdRef,
+    int dataOut
+)
+{
+    LE_ASSERT(_cmdRef != NULL);
+
+    // Get the message related data
+    le_msg_MessageRef_t _msgRef = (le_msg_MessageRef_t)_cmdRef;
+    _Message_t* _msgPtr = le_msg_GetPayloadPtr(_msgRef);
+    __attribute__((unused)) uint8_t* _msgBufPtr = _msgPtr->buffer;
+
+    // Ensure the passed in msgRef is for the correct message
+    LE_ASSERT(_msgPtr->id == _MSGID_FileTest);
+
+    // Ensure that this Respond function has not already been called
+    LE_FATAL_IF( !le_msg_NeedsResponse(_msgRef), "Response has already been sent");
+
+
+    // Pack any "out" parameters
+    le_msg_SetFd(_msgRef, dataOut);
+
+    // Return the response
+    LE_DEBUG("Sending response to client session %p", le_msg_GetSession(_msgRef));
+    le_msg_Respond(_msgRef);
+}
+
+static void Handle_FileTest
+(
+    le_msg_MessageRef_t _msgRef
+)
+{
+    // Get the message buffer pointer
+    __attribute__((unused)) uint8_t* _msgBufPtr = ((_Message_t*)le_msg_GetPayloadPtr(_msgRef))->buffer;
+
+    // Unpack the input parameters from the message
+    int dataFile;
+    dataFile = le_msg_GetFd(_msgRef);
+
+    // Call the function
+    FileTest ( (ServerCmdRef_t)_msgRef, dataFile );
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Server-side respond function for TriggerTestA
  */
 //--------------------------------------------------------------------------------------------------
@@ -711,6 +761,7 @@ static void ServerMsgRecvHandler
         case _MSGID_AddTestA : Handle_AddTestA(msgRef); break;
         case _MSGID_RemoveTestA : Handle_RemoveTestA(msgRef); break;
         case _MSGID_allParameters : Handle_allParameters(msgRef); break;
+        case _MSGID_FileTest : Handle_FileTest(msgRef); break;
         case _MSGID_TriggerTestA : Handle_TriggerTestA(msgRef); break;
         case _MSGID_AddBugTest : Handle_AddBugTest(msgRef); break;
         case _MSGID_RemoveBugTest : Handle_RemoveBugTest(msgRef); break;

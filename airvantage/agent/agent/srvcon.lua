@@ -1,9 +1,13 @@
--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 -- Copyright (c) 2012 Sierra Wireless and others.
 -- All rights reserved. This program and the accompanying materials
 -- are made available under the terms of the Eclipse Public License v1.0
--- which accompanies this distribution, and is available at
--- http://www.eclipse.org/legal/epl-v10.html
+-- and Eclipse Distribution License v1.0 which accompany this distribution.
+--
+-- The Eclipse Public License is available at
+--   http://www.eclipse.org/legal/epl-v10.html
+-- The Eclipse Distribution License is available at
+--   http://www.eclipse.org/org/documents/edl-v10.php
 --
 -- Contributors:
 --     Gilles Cannenterre for Sierra Wireless - initial API and implementation
@@ -53,6 +57,7 @@ local function dispatch_message(envelope_payload)
     while offset <= #envelope_payload do
         local msg
         msg, offset = m3da_deserialize(envelope_payload, offset)
+        if log.musttrace('SRVCON', 'DEBUG') then log('SRVCON', 'DEBUG', "Received message: [%s]", sprint(msg)) end
         if msg==nil and tonumber(offset) or msg=='' then
             log('SRVCON', 'DETAIL', 'Empty message from server')
         elseif msg.__class == 'Message' then
@@ -93,45 +98,39 @@ local function concat_factories(factories)
     end
 end
 
-local function rollback_session(factories, callbacks)
-    for f, _ in pairs(factories) do
-        M.sourcefactories[f]=true
-    end
-    for f, _ in pairs(callbacks) do
-        M.pendingcallbacks[f]=true
-    end
-end
-
-
 function M.dosession()
     if lock.waiting(M) > 0 then return nil, "connection already in progress" end
     lock.lock(M)
     local pending_factories, pending_callbacks
+
+    -- Make sure factories/callbacks are atomically stored locally and reset at the module level
     M.sourcefactories, M.pendingcallbacks, pending_factories, pending_callbacks =
         { }, { }, M.sourcefactories, M.pendingcallbacks
+
     local source_factory = concat_factories(pending_factories)
     local status, errmsg = agent.netman.withnetwork(M.session.send, M.session, source_factory)
-    if not status then
-        log('SRVCON', 'ERROR', "Error while sending data to server: %s", tostring(errmsg))
-        rollback_session(pending_factories, pending_callbacks)
-        lock.unlock(M)
-        return nil, errmsg
+
+    -- make sure status is nil in case of failed communication and "ok" otherwise!
+    if status then
+      if (status<200 or status >=300) then
+        errmsg = tostring((errmsg or "Failed with code")).." "..tostring(status)
+        status = nil
+      else status = "ok" end
     end
 
-	-- Execute the callbacks that where registered when the
-	-- session started (meanwhile, other callbacks might have
-	-- been stacked, corresponding with sources to be sent in
-	-- the next session).
+    -- Execute the callbacks that were registered when the
+    -- session started (meanwhile, other callbacks might have
+    -- been stacked, corresponding with sources to be sent in
+    -- the next session).
     for callback, _ in pairs(pending_callbacks) do
         callback(status, errmsg)
     end
+
+    if not status then log('SRVCON', 'ERROR', "Error while sending data to server: %s", tostring(errmsg)) end
+
     lock.unlock(M)
 
-    if status >= 200 and status <= 299 then
-        return "ok"
-    else
-        return nil, "unexpected status code " .. tostring(status)
-    end
+    return status, errmsg
 end
 
 -- Obsolete: former support for data sending through SMS.

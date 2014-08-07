@@ -3,7 +3,7 @@
  * Definition of the File Mapping class, which is used to hold the information regarding a mapping
  * of a file system object from one place to another, either in the same or another file system.
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless, Inc. 2013-2014.  Use of this work is subject to license.
  **/
 //--------------------------------------------------------------------------------------------------
 
@@ -34,7 +34,9 @@ class FileMapping
         std::string m_DestPath;   ///< Path at which the file will appear.
 
     public:
-        bool IsReadable();
+        bool operator<(const FileMapping& other) const;
+
+    public:
 };
 
 

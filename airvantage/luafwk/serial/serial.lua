@@ -129,22 +129,31 @@ end
 -- @param self
 -- @param buffer string containing data to send over the serial port.
 -- @return the number of bytes written on success.
--- @return `nil` followed by an error message otherwise.
---
+-- @return `nil` followed by an error message and the number of partial data bytes written as a third value when an error occurred.
+-- @usage written_bytes_success, err, written_bytes_partial = sdevice:write(buffer)
 
 
 --------------------------------------------------------------------------------
 -- Reads data from the serial port.
 --
+--  Reads data on the serial port, according to the given formats, which specify what to read.
+--  For each format, the function returns a string (or a number) with the characters read,
+--  or nil if it cannot read data with the specified format.
+--  When called without formats, it uses a default format that reads the entire next line.
+--
+-- The available formats are:
+--
+-- -    `"*l"`: reads the next line (skipping the end of line), returning `nil` on end of file. This is the default format.
+-- -    `"*a"`: reads the whole file, starting at the current position. On end of file, it returns the empty string.
+-- -    `number`: reads a string with up to this number of characters, returning `nil` on end of file. If number is zero,
+--                it reads nothing and returns an empty string, or `nil` on end of file.
+--
 -- @function [parent=#serialdev] read
 -- @param self
--- @param pattern can be a pattern string conforming to the
---   [Lua File API](http://www.lua.org/manual/5.1/manual.html#pdf-file:read),
---   or a number of bytes to read.
+-- @param pattern string or number conforming accepted patterns.
 -- @return the read data, as a string, on success.
--- @return `nil` followed by error string otherwise.
---
-
+-- @return `nil` followed by error string and the partial read data as a third value when an error occurred.
+-- @usage full_buffer, err, partial_buffer = sdevice:read(250)
 
 --------------------------------------------------------------------------------
 -- Flushes pending data.
@@ -154,6 +163,31 @@ end
 -- @return `"ok"` on success.
 -- @return `nil` followed by an error message otherwise.
 --
+
+--------------------------------------------------------------------------------
+-- Changes the timeout values for the object.
+--
+-- By default, all I/O operations are blocking. That is, any call to the methods @{#serialdev.read} and @{#serialdev.write} will block
+--  indefinitely, until the operation completes.
+-- The settimeout method defines a limit on the amount of time the I/O methods can block.
+-- When a timeout is set and the specified amount of time has elapsed, the affected methods give up and fail with an error code.
+--
+-- The amount of time to wait is specified as the `value` parameter, in seconds.
+--
+-- There are two timeout modes and both can be used together for fine tuning:
+--
+-- -    `"b"`: block timeout. Specifies the upper limit on the amount of time Serial instance can be blocked by the operating system while waiting for completion of any single I/O operation. This is the default mode;
+-- -    `"t"`: total timeout. Specifies the upper limit on the amount of time Serial instance can block a Lua script before returning from a call.
+--
+-- The `nil` timeout value allows operations to block indefinitely. Negative timeout values have the same effect.
+--
+-- @function [parent=#serialdev] settimeout
+-- @param self
+-- @param value integer to define timeout in seconds, `nil` or negative timeout is equivalent to no timeout.
+-- @param mode optional string to define the timeout mode to set, accepted value are `"b"` (block) or `"t"` (total), default is `"b"`.
+-- @return `1` on success.
+
+
 
 
 --------------------------------------------------------------------------------

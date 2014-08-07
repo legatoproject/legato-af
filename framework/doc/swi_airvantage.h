@@ -13,7 +13,7 @@
 
 /**
  * @file
- * @brief This API enables interaction with Sierra Wireless AirVantage Services Platform.
+ * 
  *
  * Using this API, an application can work with Sierra Wireless AirVantage Services Platform to:
  *  - request connection to AirVantage server

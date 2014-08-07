@@ -1,0 +1,75 @@
+/**
+ * @page c_posCtrl Positioning Control API
+ *
+ * @ref le_posCtrl_interface.h "Click here for the reference documentation."
+ *
+ * <HR>
+ *
+ * This API is used to enable and disable the positioning service.
+ *
+ * All other positioning functionality is provided by the @ref c_pos.
+ *
+ * To request that the positioning service be activated, call le_posCtrl_Request().
+ *
+ * To release the positioning service when finished with it, call le_posCtrl_Release().
+ *
+ * If the positioning service is already active when le_posCtrl_Request() is called, it will remain
+ * active.  This happens if another application has already requested that the positioning service
+ * be activated and not yet released the positioning service.
+ *
+ * The positioning service (and associated devices) will not necessarily be switched off when
+ * an application calls le_posCtrl_Release(). The positioning service will be switched off only
+ * after all applications that have requested that the positioning service be active have also
+ * released the positioning service.
+ *
+ * @note    Control of the positioning service is done through a separate API than the retrieval
+ *          of positioning information to allow access to positioning information by less-trusted
+ *          applications, while only allowing control of the positioning system by more-trusted
+ *          applications.
+ * <HR>
+ *
+ * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ */
+
+
+/** @file le_posCtrl_interface.h
+ *
+ * Legato @ref c_posCtrl include file.
+ *
+ * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ */
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Reference type for dealing with Position Service management.
+ */
+//--------------------------------------------------------------------------------------------------
+REFERENCE Activation;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Request activation of the positioning service.
+ *
+ * @return
+ *      - Reference to the service activation request (to be used later for releasing the request).
+ *      - NULL if the service request could not be processed.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION Activation Request
+(
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Release the positioning service.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION Release
+(
+    Activation ref IN ///< Reference to a positioning service activation request.
+);
+

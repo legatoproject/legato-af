@@ -1,6 +1,6 @@
 /** @page c_mutex Mutex API
  * 
- * @ref le_mutex.h "Click here for the API Reference documentation."
+ * @ref le_mutex.h "API Reference documentation"
  * 
  * <HR>
  * 
@@ -129,15 +129,15 @@
  * 
  * Both Normal and Traceable mutexes have some diagnostics capabilities.
  * 
- * The command-line diagnostic tool @ref tool_lsmutex "lsmutex" can be used to list the mutexes
+ * The command-line diagnostic tool lsmutex can be used to list the mutexes
  * that currently exist inside a given process.  The state of each mutex can be
  * seen, including a list of any threads that might be waiting for that mutex.
  * 
- * The tool @ref tool_threadlook "threadlook" will report if a given thread is currently
+ * The tool threadlook will report if a given thread is currently
  * holding the lock on a mutex or waiting for a mutex along with the mutex name.
  * 
  * If there are Traceable mutexes in a process, it's possible to use the
- * @ref tool_log "log" tool to enable or disable tracing on that mutex.  The trace keyword name is
+ * log tool to enable or disable tracing on that mutex.  The trace keyword name is
  * the name of the process, the name of the component, and the name of the mutex, separated by
  * slashes (e.g., "process/component/mutex").
  * 

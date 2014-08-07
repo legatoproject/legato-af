@@ -6,9 +6,12 @@ APPS_ROOT=/opt/legato/apps
 SANDBOX_ROOT=/tmp/legato/sandboxes
 
 ACTION=$1
-APP_NAME=$2
+APP_NAME=$(basename "$2" | sed 's/\.[^.]*$//')
 
 exitCode=0
+
+# used to carry the result of GetAppStatus
+appStatus="unknown"
 
 
 # Make sure /usr/local/bin is in the path.
@@ -18,25 +21,64 @@ export PATH=/usr/local/bin:$PATH
 PrintUsage()
 {
     echo
-    echo "USAGE: `basename $0` [start|stop|restart|remove] APP_NAME [ APP_NAME ... ]"
-    echo "   or: `basename $0` [start|stop|restart|remove] '*'"
+    echo "USAGE: `basename $0` [start|stop|restart|remove|status|version] APP_NAME [ APP_NAME ... ]"
+    echo "   or: `basename $0` [start|stop|restart|remove|status|version] '*'"
+    echo "   or: `basename $0` [list|status]"
     echo "   or: `basename $0` install APP_NAME"
     echo
     echo "In the first form, names of one or more applications are given."
     echo
     echo "In the second form, all installed applications will be acted upon."
     echo
-    echo "In the third form, one application name is given and the application file must be"
+    echo "In the third form, no application names are given."
+    echo
+    echo "In the fourth form, one application name is given and the application file must be"
     echo "provided on stdin."
     echo
 }
 
 
-IsAppInstalled()
-# Takes a single application name as its only argument.
+ListApps()
 {
-    # An app is considered "installed" if an install directory exists for it.
-    test -d "$APPS_ROOT/$1"
+    appCtrl "list"
+}
+
+
+AppStatus()
+{
+    if [ $# -eq 0 ]
+    then
+        appCtrl "status"
+        exit $?
+    fi
+
+    while [ $# -ge 1 ]
+    do
+        appCtrl "status" "$1"
+
+        if [ $? -ne 0 ]
+        then
+            exit 1
+        fi
+
+        shift
+    done
+}
+
+
+AppVersion()
+{
+    while [ $# -ge 1 ]
+    do
+        appCtrl "version" "$1"
+
+        if [ $? -ne 0 ]
+        then
+            exit 1
+        fi
+
+        shift
+    done
 }
 
 
@@ -47,7 +89,7 @@ StartApp()
     do
         echo "Starting app '$1'..."
 
-        appCtrl "start" "$1" 2> /dev/null
+        appCtrl "start" "$1"
 
         if [ $? -ne 0 ]
         then
@@ -68,7 +110,7 @@ StopApp()
     do
         echo "Stopping app '$1'..."
 
-        appCtrl "stop" "$1"  2> /dev/null
+        appCtrl "stop" "$1"
 
         if [ $? -ne 0 ]
         then
@@ -107,10 +149,16 @@ InstallApp()
         ( chown -R root:root "$APPS_ROOT/$1" ) &&
         ( find "$APPS_ROOT/$1" -type d | xargs chmod a+x-ws ) &&
         ( find "$APPS_ROOT/$1" ! -type d | xargs chmod a-xws ) &&
-        ( find "$APPS_ROOT/$1/bin" ! -type d | xargs chmod a+x ) &&
+        ( chmod -R a+x "$APPS_ROOT/$1/bin" ) &&
 
         # Install the application's configuration into the root user's configuration tree.
-        ( appCfgInstall "$1" )
+        ( appCfgInstall "$1" ) &&
+
+        # Create a user account for the app.
+        ( appUserAdd "$1" ) &&
+
+        # Load the latest IPC binding configuration into the Service Directory.
+        ( sdir load )
     )
 
     if [ $? -ne 0 ]
@@ -139,21 +187,74 @@ RemoveApp()
             echo "Couldn't remove installation directory."
         fi
 
-        # Even if it doesn't look like it's installed, delete its configuration anyway,
-        # in case an earlier removal process was interrupted or someone manually deleted
-        # the app's install directory.
+        # In case an earlier removal process was interrupted or someone manually deleted
+        # the app's install directory, even if it doesn't look like it's installed,
+        # delete the app's configuration and user account.
         appCfgRemove "$1"
-
         if [ $? -ne 0 ]
         then
             exitCode=1
             echo "Couldn't remove configuration data."
         fi
 
+        appUserRemove "$1"
+        if [ $? -ne 0 ]
+        then
+            exitCode=1
+            echo "Couldn't remove user account."
+        fi
+
+
+        # Load the latest IPC binding configuration into the Service Directory.
+        sdir load
+        if [ $? -ne 0 ]
+        then
+            exitCode=1
+            echo "Couldn't update Service Directory's IPC bindings."
+        fi
+
         shift
     done
 }
 
+# Before we do any work, see if the framework is running.
+ps | grep supervisor | grep -v grep > /dev/null
+if [ $? -ne 0 ]
+then
+    echo "The legato framework is not running. Please start it before proceeding."
+    exit 1
+fi
+
+# Use the new appCtrl status to determine what state the app is currently in.
+# Sets appStatus top 'not_installed' 'stopped' 'running' or 'unknown'
+GetAppStatus()
+{
+    case $(appCtrl "status" "$1") in
+
+    *installed*)
+        appStatus='not_installed'
+        ;;
+    *stopped*)
+        appStatus='stopped'
+        ;;
+    *running*)
+        appStatus='running'
+        ;;
+    *)
+        appStatus='unknown'
+        ;;
+    esac
+}
+
+# Check that something was given as an app name.
+CheckAppNameAvail()
+{
+    if [ "$APP_NAME" = "" ]
+    then
+        echo "Missing application name."
+        exit 1
+    fi
+}
 
 
 # Check if they are asking for help.
@@ -161,13 +262,6 @@ if [ "$1" = "-h" -o "$1" = "help" -o "$1" = "--help" ]
 then
     PrintUsage
     exit 0
-fi
-
-# Check that something was given as an app name.
-if [ "$APP_NAME" = "" ]
-then
-    echo "Missing application name."
-    exit 1
 fi
 
 # Check that the application root directory exists.
@@ -180,7 +274,7 @@ fi
 APP_LIST=
 if [ "$APP_NAME" = "*" ]
 then
-    APP_LIST=`ls $APPS_ROOT`
+    APP_LIST=`appCtrl list`
     if [ "$APP_LIST" = "" ]
     then
         echo "There are no applications currently installed."
@@ -188,26 +282,35 @@ then
     fi
 else
     shift
-    APP_LIST="$*"
+
+    for arg in "$@"
+    do
+        APP_LIST="$APP_LIST $(basename $arg | sed 's/\.[^.]*$//')"
+    done
 fi
 
 case "$ACTION" in
 
 start)
+    CheckAppNameAvail
     StartApp $APP_LIST
     ;;
 
 stop)
+    CheckAppNameAvail
     StopApp $APP_LIST
     ;;
 
 restart)
+    CheckAppNameAvail
     StopApp $APP_LIST
     exitCode=0
     StartApp $APP_LIST
     ;;
 
 install)
+    CheckAppNameAvail
+
     # Only one, specific application name allowed.
     if [ "$APP_NAME" = "*" ]
     then
@@ -217,18 +320,72 @@ install)
     fi
 
     # In case it's already installed, stop it and remove it first.
-    StopApp $APP_NAME
-    RemoveApp $APP_NAME
-    exitCode=0
+    GetAppStatus $APP_NAME
 
-    # Then install it.
-    InstallApp $APP_NAME
+    if [[ $appStatus == "running" ]]
+    then
+        StopApp $APP_NAME
+        appStatus='stopped'
+    fi
+
+    if [[ $appStatus == "stopped" ]]
+    then
+        RemoveApp $APP_NAME
+        appStatus='not_installed'
+    fi
+
+    if [[ $appStatus == "not_installed" ]]
+    then
+        InstallApp $APP_NAME
+    else
+        echo "Install $APP_NAME failed. Unknown error."
+        # in the future we may use different return codes for different errors
+        exitCode=1
+    fi
+
     ;;
 
 remove)
-    StopApp $APP_LIST
-    exitCode=0
-    RemoveApp $APP_LIST
+    CheckAppNameAvail
+
+    # loop through the list giving each app individual treatment
+    # preserve any non-zero exit code
+    for APP_NAME in $APP_LIST
+    do
+        GetAppStatus $APP_NAME
+
+        if [[ $appStatus == "running" ]]
+        then
+            StopApp $APP_NAME
+            appStatus='stopped'
+        fi
+
+        if [[ $appStatus == "stopped" ]]
+        then
+            RemoveApp $APP_NAME
+        elif [[ $appStatus == "not_installed" ]]
+        then
+            echo "$APP_NAME is not installed. Cannot remove"
+            exitCode=1
+        else
+            echo "Remove $APP_NAME failed. Unknown error."
+            # in the future we may use different return codes for different errors
+            exitCode=1
+        fi
+    done
+    ;;
+
+status)
+    AppStatus $APP_LIST
+    ;;
+
+version)
+    CheckAppNameAvail
+    AppVersion $APP_LIST
+    ;;
+
+list)
+    ListApps
     ;;
 
 *)

@@ -401,7 +401,7 @@ static void init()
     le_thread_Start(le_thread_Create("ATSimTest",simtest,NULL));
 }
 
-LE_EVENT_INIT_HANDLER
+COMPONENT_INIT
 {
     init();
 }

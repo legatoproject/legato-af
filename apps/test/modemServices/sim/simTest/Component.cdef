@@ -1,0 +1,8 @@
+sources:
+
+    le_simTest.c
+    main.c
+
+import:
+
+    le_sim.api

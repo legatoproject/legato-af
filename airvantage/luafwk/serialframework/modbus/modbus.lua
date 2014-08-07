@@ -1,9 +1,13 @@
--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 -- Copyright (c) 2012 Sierra Wireless and others.
 -- All rights reserved. This program and the accompanying materials
 -- are made available under the terms of the Eclipse Public License v1.0
--- which accompanies this distribution, and is available at
--- http://www.eclipse.org/legal/epl-v10.html
+-- and Eclipse Distribution License v1.0 which accompany this distribution.
+--
+-- The Eclipse Public License is available at
+--   http://www.eclipse.org/legal/epl-v10.html
+-- The Eclipse Distribution License is available at
+--   http://www.eclipse.org/org/documents/edl-v10.php
 --
 -- Contributors:
 --     Laurent Barthelemy for Sierra Wireless - initial API and implementation
@@ -20,7 +24,8 @@
 -- Data read and written by this module are exchanged as _buffers_, i.e. either
 -- strings or lists of strings. String(s) contain data as 8-bits bytes;
 -- endianness depends on what is expected/returned by the slave device.
--- To encode such strings, it is suggested to rely on @{pack#pack}, the binary
+--
+-- To encode/decode such strings, it is suggested to rely on @{pack}, the binary
 -- string packing library.
 --
 -- @module modbus
@@ -140,9 +145,12 @@ end
 -- @param sid number defining the slave id to send the request to
 -- @param address starting address
 -- @param length number of coils
--- @return read coil values in a buffer
+-- @return read coil values in a string buffer
 -- @return `nil` + error message
---
+-- @usage
+--  local m = modbus.new('/dev/ttyS0')
+--  local data = m:readCoils(1, 40, 1)
+--  local _, bool = string.unpack(data,"x8")
 
 
 -----------------------------------------------------------------------------------
@@ -153,9 +161,12 @@ end
 -- @param sid number defining the slave id to send the request to
 -- @param address starting address
 -- @param length number of inputs
--- @return read discrete inputs contant in a buffer
+-- @return read discrete inputs content in a string buffer
 -- @return `nil` + error message
---
+-- @usage
+--  local m = modbus.new('/dev/ttyS0')
+--  local data = m:readDiscreteInputs(1, 40, 1)
+--  local _, bool = string.unpack(data,"x8")
 
 
 -----------------------------------------------------------------------------------
@@ -166,9 +177,12 @@ end
 -- @param sid number defining the slave id to send the request to
 -- @param address starting address
 -- @param length number of registers
--- @return read holding registers content in a buffer
+-- @return read holding registers content in a string buffer
 -- @return `nil` + error message
---
+-- @usage
+--  local m = modbus.new('/dev/ttyS0')
+--  local data = m:readHoldingRegisters(1, 40, 1)
+--  local _, value = string.unpack(data,"<H")
 
 
 -----------------------------------------------------------------------------------
@@ -179,9 +193,12 @@ end
 -- @param sid number defining the slave id to send the request to
 -- @param address starting address
 -- @param length number of inputs
--- @return read input registers content in a buffer
+-- @return read input registers content in a string buffer
 -- @return `nil` + error message
---
+-- @usage
+--  local m = modbus.new('/dev/ttyS0')
+--  local data = m:readInputRegisters(1, 40, 1)
+--  local _, value = string.unpack(data,"<H")
 
 
 -----------------------------------------------------------------------------------
@@ -194,7 +211,9 @@ end
 -- @param value Boolean to write in the coil
 -- @return `"ok"`
 -- @return `nil` + error message
---
+-- @usage
+--  local m = modbus.new('/dev/ttyS0')
+--  local res, err = m:writeSingleCoil(1, 0, true)
 
 
 -----------------------------------------------------------------------------------
@@ -207,7 +226,9 @@ end
 -- @param value Short integer (`[0..0xFFFF]`) to write in the register
 -- @return `"ok"`
 -- @return `nil` + error message
---
+-- @usage
+--  local m = modbus.new('/dev/ttyS0')
+--  local res, err = m:writeSingleRegister(1, 0, 60)
 
 
 -----------------------------------------------------------------------------------
@@ -222,10 +243,9 @@ end
 -- @return `"ok"`
 -- @return `nil` + error message
 -- @usage
---  m = modbus.new('/dev/ttyS0')
---  res,err=m:writeMultipleCoils(1, 0, 8, string.pack('x8',
+--  local m = modbus.new('/dev/ttyS0')
+--  local res, err = m:writeMultipleCoils(1, 0, 8, string.pack('x8',
 --  true,false,false,true,false,true,false,true))
---
 
 
 -----------------------------------------------------------------------------------
@@ -239,8 +259,8 @@ end
 -- @return `"ok"`
 -- @return `nil` + error message
 -- @usage
---  m = modbus.new('/dev/ttyS0')
---  res,err=m:writeMultipleRegisters(1, 90, string.pack("<H8",21,159,357,654,852,
+--  local m = modbus.new('/dev/ttyS0')
+--  local res, err = m:writeMultipleRegisters(1, 90, string.pack("<H8",21,159,357,654,852,
 --  357,654,852))
 
 -- Create each individual request method, which are mostly variant of a same closure.

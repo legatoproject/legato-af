@@ -1,0 +1,54 @@
+/**
+ * Example API file
+ */
+
+USETYPES common;
+
+DEFINE TEN = common.TEN;
+DEFINE TWENTY = TEN + common.TEN;
+DEFINE SOME_STRING = "some string";
+
+
+/**
+ * Handler definition
+ */
+HANDLER TestA
+{
+    ADD_HANDLER_PARAMS ();
+
+    HANDLER_PARAMS
+    (
+        int32 x   ///< First parameter for the handler
+                  ///< Second comment line
+    );
+};
+
+
+/**
+ * Function takes all the possible kinds of parameters, but returns nothing
+ */
+FUNCTION allParameters
+(
+    common.EnumExample a,  ///< first one-line comment
+                           ///< second one-line comment
+    uint32 b OUT,
+    uint32 data[common.TEN] IN,
+
+    uint32 output[TEN] OUT,   ///< some more comments here
+    ///< and some comments here as well
+
+    string label [common.TEN..20] IN,
+    string response [TWENTY] OUT
+    ///< comments on final parameter, first line
+    ///< and more comments
+);
+
+
+/**
+ * Test file descriptors as IN and OUT parameters
+ */
+FUNCTION FileTest
+(
+    file dataFile IN,   ///< file descriptor as IN parameter
+    file dataOut OUT    ///< file descriptor as OUT parameter
+);

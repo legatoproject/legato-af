@@ -1,0 +1,27 @@
+sandboxed: false
+
+bundles:
+
+    dir: $LEGATO_ROOT/build/$TARGET/airvantage/runtime   /usr/local/agent-runtime
+
+files:
+
+    [r] $LEGATO_ROOT/build/$TARGET/bin/lib/lible_tree_hdlr.so   /usr/local/agent-runtime/lua/agent/treemgr/handlers/extvars
+    [r] $LEGATO_ROOT/components/airvantage/le_tree_hdlr/legatoTreeHdlr.map  /usr/local/agent-runtime/resources/
+
+    [rx] $LEGATO_ROOT/build/$TARGET/airvantage/runtime/bin/agent /bin/
+
+processes:
+
+    envVars:
+
+        LD_LIBRARY_PATH="/opt/legato/apps/airvantage/usr/local/agent-runtime/lib:/opt/legato/apps/airvantage/lib"
+        LUA_CPATH="/opt/legato/apps/airvantage/usr/local/agent-runtime/lua/?.so"
+        LUA_PATH="/opt/legato/apps/airvantage/usr/local/agent-runtime/lua/?.lua;/opt/legato/apps/airvantage/usr/local/agent-runtime/lua/?/init.lua"
+        LUA_AF_RO_PATH="/opt/legato/apps/airvantage/usr/local/agent-runtime/"
+        LUA_AF_RW_PATH="/opt/legato/apps/airvantage/usr/local/agent-runtime/"
+        PATH="/opt/legato/apps/airvantage/usr/local/agent-runtime/bin:/opt/legato/apps/airvantage/bin:/usr/local/bin:/usr/bin:/bin"
+
+    run: ( agent )
+
+    faultAction: restart

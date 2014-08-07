@@ -1,0 +1,7 @@
+sources:
+
+    sdirTool.c
+
+import:
+
+    le_cfg.api  [manual-start]

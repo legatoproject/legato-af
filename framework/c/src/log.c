@@ -11,7 +11,7 @@
 #include "log.h"
 #include "logDaemon.h"
 #include "limit.h"
-
+#include "messagingSession.h"
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -797,7 +797,7 @@ void log_ConnectToControlDaemon
     // Note: the process's main thread will always run the log command message receive handler.
     le_msg_SetSessionRecvHandler(IpcSessionRef, ProcessLogCmd, NULL);
 
-    le_result_t result = le_msg_OpenSessionSync(IpcSessionRef);
+    le_result_t result = msgSession_TryOpenSessionSync(IpcSessionRef);
     if (result != LE_OK)
     {
         LE_DEBUG("Could not connect to log control daemon.");

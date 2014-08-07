@@ -1,7 +1,7 @@
 /**
  * @page c_threading Thread Control API
  *
- * @ref le_thread.h "Click here for the API reference documentation."
+ * @ref le_thread.h "API reference documentation"
  *
  * <HR>
  *
@@ -122,7 +122,7 @@
  * the same way (e.g., if it might be canceled by another thread or exit in several places due
  * to error detection code), then a clean-up function (destructor) is probably needed.
  *
- * Legato threads use @ c  le_thread_AddDestructor() for clean-up functions.
+ * Legato threads use @c le_thread_AddDestructor() for clean-up functions.
  *  It registers a function to be called by a specified thread just
  * before it terminates.  A parent thread can also call @c le_thread_AddChildDestructor() to register
  * a destructor for a child thread before it starts the child thread.

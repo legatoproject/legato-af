@@ -44,6 +44,10 @@
  */
 #include "legato.h"
 #include "mem.h"
+#include "addr.h"
+#include "limit.h"
+#include "files.h"
+#include "fileDescriptor.h"
 
 #define USE_GUARD_BAND
 #define FILL_DELETED_AND_CHECK_ALLOCATED
@@ -64,6 +68,34 @@
  */
 //--------------------------------------------------------------------------------------------------
 #define DEFAULT_NUM_BLOCKS_TO_FORCE     1
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Definition of a memory pool.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct le_mem_Pool
+{
+    le_dls_Link_t poolLink;             ///< This pool's link in the list of memory pools.
+    struct le_mem_Pool* superPoolPtr;   ///< A pointer to our super pool if we are a sub-pool. NULL
+                                        ///  if we are not a sub-pool.
+    le_sls_List_t freeList;             ///< List of free memory blocks.
+    size_t userDataSize;                ///< Size of the object requested by the client in bytes.
+    size_t blockSize;                   ///< Number of bytes in a block, including all overhead.
+    uint64_t numAllocations;            ///< Total number of times an object has been allocated
+                                        ///  from this pool.
+    size_t numOverflows;                ///< Number of times le_mem_ForceAlloc() had to expand pool.
+    size_t totalBlocks;                 ///< Total number of blocks in this pool including free
+                                        ///  and allocated blocks.
+    size_t numBlocksInUse;              ///< Number of currently allocated blocks.
+    size_t maxNumBlocksUsed;            ///< Maximum number of allocated blocks at any one time.
+    size_t numBlocksToForce;            ///< Number of blocks that is added when Force Alloc
+                                        ///  expands the pool.
+    le_mem_Destructor_t destructor;     ///< The destructor for objects in this pool.
+    char name[LIMIT_MAX_MEM_POOL_NAME_BYTES]; ///< Name of the pool.
+}
+MemPool_t;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -109,6 +141,31 @@ static le_mem_PoolRef_t SubPoolsPool;
  */
 //--------------------------------------------------------------------------------------------------
 static pthread_mutex_t Mutex = PTHREAD_MUTEX_INITIALIZER;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Iterator object for stepping through the list of memory pools in a remote process.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct mem_iter_t
+{
+    pid_t pid;                  ///< PID of the process this iterator is for.
+    int procMemFd;              ///< The file descriptor to the remote process's /proc/pid/mem file.
+    le_dls_List_t poolsList;    ///< The list of memory pools in the remote process.
+    le_dls_Link_t* headPoolLinkPtr; ///< Pointer to the first pool's link.
+    MemPool_t currMemPool;      ///< The current memory pool from the list.
+}
+MemIter_t;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Local memory pool that is used for allocating memory pool iterators.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mem_PoolRef_t IteratorPool;
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -161,7 +218,7 @@ static inline void Unlock
 
         // There's another guard band at the end of the data section.
         guardBandWordPtr = (uint32_t*)(   ((uint8_t*)blockHeaderPtr)
-                                        + blockHeaderPtr->poolPtr->totalBlockSize
+                                        + blockHeaderPtr->poolPtr->blockSize
                                         - GUARD_BAND_SIZE );
         for (i = 0; i < NUM_GUARD_BAND_WORDS; i++, guardBandWordPtr++)
         {
@@ -198,7 +255,7 @@ static inline void Unlock
 
         // There's another guard band at the end of the data section.
         guardBandWordPtr = (uint32_t*)(   ((uint8_t*)blockHeaderPtr)
-                                        + blockHeaderPtr->poolPtr->totalBlockSize
+                                        + blockHeaderPtr->poolPtr->blockSize
                                         - GUARD_BAND_SIZE);
         for (i = 0; i < NUM_GUARD_BAND_WORDS; i++, guardBandWordPtr++)
         {
@@ -232,7 +289,7 @@ static void InitPool
 )
 {
     // Initialize the memory pool.
-    if (le_utf8_Copy(pool->name, name, MEM_MAX_POOL_NAME_BYTES, NULL) == LE_OVERFLOW)
+    if (le_utf8_Copy(pool->name, name, sizeof(pool->name), NULL) == LE_OVERFLOW)
     {
         LE_WARN("Memory pool name '%s' is truncated to '%s'", name, pool->name);
     }
@@ -257,7 +314,7 @@ static void InitPool
     pool->poolLink = LE_DLS_LINK_INIT;
     pool->freeList = LE_SLS_LIST_INIT;
     pool->userDataSize = objSize;
-    pool->totalBlockSize = blockSize;
+    pool->blockSize = blockSize;
     pool->destructor = NULL;
     pool->superPoolPtr = NULL;
     pool->numAllocations = 0;
@@ -335,7 +392,7 @@ static void AddBlocks
 )
 {
     size_t i;
-    size_t blockSize = pool->totalBlockSize;
+    size_t blockSize = pool->blockSize;
     size_t mallocSize = numBlocks * blockSize;
 
     // Allocate the chunk.
@@ -387,20 +444,9 @@ void mem_Init
     // Create a memory for all sub-pools.
     SubPoolsPool = le_mem_CreatePool("SubPools", sizeof(MemPool_t));
     le_mem_ExpandPool(SubPoolsPool, DEFAULT_SUB_POOLS_POOL_SIZE);
-}
 
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Returns a pointer to the list of pools.
- */
-//--------------------------------------------------------------------------------------------------
-void* mem_GetListOfPools
-(
-    void
-)
-{
-    return &ListOfPools;
+    // Create a memory pool for iterators.
+    IteratorPool = le_mem_CreatePool("MemIterators", sizeof(MemIter_t));
 }
 
 
@@ -514,6 +560,8 @@ void* le_mem_TryAlloc
     le_mem_PoolRef_t    pool    ///< [IN] The pool from which the object is to be allocated.
 )
 {
+    LE_ASSERT(pool != NULL);
+
     void* userPtr;
 
     Lock();
@@ -572,6 +620,8 @@ void* le_mem_AssertAlloc
     le_mem_PoolRef_t    pool    ///< [IN] The pool from which the object is to be allocated.
 )
 {
+    LE_ASSERT(pool != NULL);
+
     void* objPtr = le_mem_TryAlloc(pool);
 
     LE_ASSERT(objPtr);
@@ -596,6 +646,8 @@ void* le_mem_ForceAlloc
     le_mem_PoolRef_t    pool    ///< [IN] The pool from which the object is to be allocated.
 )
 {
+    LE_ASSERT(pool != NULL);
+
     void* objPtr;
 
     while ((objPtr = le_mem_TryAlloc(pool)) == NULL)
@@ -636,6 +688,8 @@ void le_mem_SetNumObjsToForce
                                     ///       le_mem_ForceAlloc expands the pool.
 )
 {
+    LE_ASSERT(pool != NULL);
+
     Lock();
     pool->numBlocksToForce = numObjects;
     Unlock();
@@ -776,6 +830,8 @@ void le_mem_SetDestructor
     le_mem_Destructor_t destructor  ///< [IN] The destructor function.
 )
 {
+    LE_ASSERT(pool != NULL);
+
     Lock();
     pool->destructor = destructor;
     Unlock();
@@ -796,10 +852,16 @@ void le_mem_GetStats
     le_mem_PoolStats_t* statsPtr    ///< [OUT] Pointer to where the stats will be stored.
 )
 {
+    LE_ASSERT( (pool != NULL) && (statsPtr != NULL) );
+
     Lock();
+
     statsPtr->numAllocs = pool->numAllocations;
     statsPtr->numOverflows = pool->numOverflows;
     statsPtr->numFree = pool->totalBlocks - pool->numBlocksInUse;
+    statsPtr->numBlocksInUse = pool->numBlocksInUse;
+    statsPtr->maxNumBlocksUsed = pool->maxNumBlocksUsed;
+
     Unlock();
 }
 
@@ -817,10 +879,64 @@ void le_mem_ResetStats
     le_mem_PoolRef_t    pool        ///< [IN] The pool whose stats are to be reset.
 )
 {
+    LE_ASSERT(pool != NULL);
+
     Lock();
     pool->numAllocations = 0;
     pool->numOverflows = 0;
     Unlock();
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets the memory pool's name.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_OVERFLOW if the name was truncated to fit in the provided buffer.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mem_GetName
+(
+    le_mem_PoolRef_t    pool,       ///< [IN] The memory pool.
+    char*               namePtr,    ///< [OUT] Buffer to store the name of memory pool.
+    size_t              bufSize     ///< [IN] Size of the buffer namePtr points to.
+)
+{
+    LE_ASSERT(pool != NULL);
+
+    Lock();
+    le_result_t result = le_utf8_Copy(namePtr, pool->name, bufSize, NULL);
+    Unlock();
+
+    return result;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Checks if the specified pool is a sub-pool.
+ *
+ * @return
+ *      true if it is a sub-pool.
+ *      false if it is not a sub-pool.
+ */
+//--------------------------------------------------------------------------------------------------
+const bool le_mem_IsSubPool
+(
+    le_mem_PoolRef_t    pool        ///< [IN] The memory pool.
+)
+{
+    LE_ASSERT(pool != NULL);
+
+    bool isSubPool;
+
+    Lock();
+    isSubPool = (pool->superPoolPtr != NULL);
+    Unlock();
+
+    return isSubPool;
 }
 
 
@@ -838,6 +954,8 @@ size_t le_mem_GetTotalNumObjs
     le_mem_PoolRef_t    pool        ///< [IN] The pool whose number of objects is to be fetched.
 )
 {
+    LE_ASSERT(pool != NULL);
+
     size_t numBlocks;
 
     Lock();
@@ -861,10 +979,37 @@ size_t le_mem_GetObjectSize
     le_mem_PoolRef_t    pool        ///< [IN] The pool whose object size is to be fetched.
 )
 {
+    LE_ASSERT(pool != NULL);
+
     size_t objSize;
 
     Lock();
     objSize = pool->userDataSize;
+    Unlock();
+
+    return objSize;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Fetches the total size of the object including all the memory overhead in a given pool (in bytes).
+ *
+ * @return
+ *      Total object memory size, in bytes.
+ */
+//--------------------------------------------------------------------------------------------------
+size_t le_mem_GetObjectFullSize
+(
+    le_mem_PoolRef_t    pool        ///< [IN] The pool whose object memory size is to be fetched.
+)
+{
+    LE_ASSERT(pool != NULL);
+
+    size_t objSize;
+
+    Lock();
+    objSize = pool->blockSize;
     Unlock();
 
     return objSize;
@@ -934,6 +1079,8 @@ le_mem_PoolRef_t le_mem_CreateSubPool
     size_t              numObjects  ///< [IN] The number of objects to take from the super-pool.
 )
 {
+    LE_ASSERT(superPool != NULL);
+
     // Make sure the parent pool is not itself a sub-pool.
     LE_ASSERT(superPool->superPoolPtr == NULL);
 
@@ -976,6 +1123,8 @@ void le_mem_DeleteSubPool
     le_mem_PoolRef_t    subPool     ///< [IN] The sub-pool to be deleted.
 )
 {
+    LE_ASSERT(subPool != NULL);
+
     Lock();
 
     // Make sure all sub-pool objects are free.
@@ -997,4 +1146,252 @@ void le_mem_DeleteSubPool
 
     // Release the sub-pool.
     le_mem_Release(subPool);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets the address of the memory pools list in the address space of the specified process.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_NOT_FOUND if the memory pool list address was not found.
+ *      LE_FAULT if there was an error.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t GetMemPoolsListAddress
+(
+    pid_t pid,                          // Process to to get the address for.
+    off_t* addrPtr                      // The address of the memory pools list.
+)
+{
+    // Get the address of our framework library.
+    off_t libAddr;
+    if (addr_GetLibDataSection(0, "liblegato.so", &libAddr) != LE_OK)
+    {
+        // Can't find our framework library address.
+        return LE_FAULT;
+    }
+
+    // Calculate the offset address of the memory pools list by subtracting it by the start of our
+    // own framwork library address.
+    off_t offset = (off_t)(&ListOfPools) - libAddr;
+
+    // Get the address of the framework library in the remote process.
+    le_result_t result = addr_GetLibDataSection(pid, "liblegato.so", &libAddr);
+    if (result != LE_OK)
+    {
+        return result;
+    }
+
+    // Calculate the process-under-inspection's mem pools address by adding the offset to the start
+    // of their framework library address.
+    *addrPtr = libAddr + offset;
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Creates an iterator that can be used to iterate over the list of available memory pools for a
+ * specific process.
+ *
+ * @note
+ *      The specified pid must be greater than zero.
+ *
+ *      The calling process must be root or have appropriate capabilities for this function and all
+ *      subsequent operations on the iterator to succeed.
+ *
+ *      If NULL is returned the errorPtr will be set appropriately.  Possible values are:
+ *      LE_NOT_POSSIBLE if the specified process is not a Legato process.
+ *      LE_FAULT if there was some other error.
+ *
+ *      errorPtr can be NULL if the error code is not needed.
+ *
+ * @return
+ *      An iterator to the list of memory pools for the specified process.
+ *      NULL if there was an error.
+ */
+//--------------------------------------------------------------------------------------------------
+mem_Iter_Ref_t mem_iter_Create
+(
+    pid_t pid,                  ///< [IN] The process to get the iterator for.
+    le_result_t *errorPtr       ///< [OUT] Error code.  See comment block for more details.
+)
+{
+    if (pid <= 0)
+    {
+        LE_ERROR("Invalid PID %d.", pid);
+
+        if (errorPtr != NULL)
+        {
+            *errorPtr = LE_FAULT;
+        }
+
+        return NULL;
+    }
+
+    // Build the path to the mem file for the process to inspect.
+    char memFilePath[LIMIT_MAX_PATH_BYTES];
+    int snprintSize = snprintf(memFilePath, sizeof(memFilePath), "/proc/%d/mem", pid);
+
+    if (snprintSize >= sizeof(memFilePath))
+    {
+        LE_ERROR("Path is too long '%s'.", memFilePath);
+        *errorPtr = LE_FAULT;
+        return NULL;
+    }
+    else if (snprintSize < 0)
+    {
+        LE_ERROR("snprintf encoding error.");
+        *errorPtr = LE_FAULT;
+        return NULL;
+    }
+
+    // Open the mem file for the specified process.
+    int fd = open(memFilePath, O_RDONLY);
+
+    if (fd == -1)
+    {
+        LE_ERROR("Could not open %s.  %m.\n", memFilePath);
+        *errorPtr = LE_FAULT;
+        return NULL;
+    }
+
+    // Get the address offset of the list of memory pools for the process to inspect.
+    off_t listOfPoolsAddrOffset;
+
+    le_result_t result = GetMemPoolsListAddress(pid, &listOfPoolsAddrOffset);
+
+    if (result != LE_OK)
+    {
+        fd_Close(fd);
+
+        if (result == LE_NOT_FOUND)
+        {
+            LE_ERROR("There is no framework library so process %d is not a legato process.", pid);
+            *errorPtr = LE_NOT_POSSIBLE;
+        }
+        else
+        {
+            LE_ERROR("Could not read memory pools list address for process %d.", pid);
+            *errorPtr = LE_FAULT;
+        }
+        return NULL;
+    }
+
+    // Create the iterator.
+    MemIter_t* iteratorPtr = le_mem_ForceAlloc(IteratorPool);
+    iteratorPtr->headPoolLinkPtr = NULL;
+    iteratorPtr->procMemFd = fd;
+    iteratorPtr->pid = pid;
+
+    // Get the ListOfPools for the process-under-inspection.
+    if (files_ReadFromOffset(fd, listOfPoolsAddrOffset, &(iteratorPtr->poolsList),
+                             sizeof(iteratorPtr->poolsList)) != LE_OK)
+    {
+        le_mem_Release(iteratorPtr);
+        fd_Close(fd);
+        *errorPtr = LE_FAULT;
+        return NULL;
+    }
+
+    return iteratorPtr;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets the next memory pool from the specified iterator.  The first time this function is called
+ * after mem_iter_Create() is called the first memory pool in the list is returned.  The second
+ * time this function is called the second memory pool is returned and so on.
+ *
+ * @warning
+ *      The memory pool returned by this function belongs to the remote process.  Do not attempt to
+ *      expand the pool or allocate objects from the pool, doing so will lead to memory leaks in
+ *      the calling process.
+ *
+ * @todo
+ *      Currently there is a race condition where a process may have deleted a sub-pool just after
+ *      we read it into our memory.  This will make us think that the sub-pool is at the end of the
+ *      list while in fact the list may contain additional pools.  Pausing the process using SIGSTOP
+ *      does not help because the SIGSTOP signal may be recieved by the process under inspection
+ *      just as it is in the process of deleting a sub-pool.  Come up with a way to fix this.
+ *
+ * @return
+ *      A memory pool from the iterator's list of memory pools.
+ *      NULL if there are no more memory pools in the list.
+ */
+//--------------------------------------------------------------------------------------------------
+le_mem_PoolRef_t mem_iter_GetNextPool
+(
+    mem_Iter_Ref_t iterator     ///< [IN] The iterator to get the next mem pool from.
+)
+{
+    LE_ASSERT(iterator != NULL);
+
+    // Create a fake list of pools that has a single element.  Use this when iterating over the
+    // link's in the list because the links read from the mems file is in the address space of the
+    // process under test.  Using a fake pool guarantees that the linked list operation does not
+    // accidentally reference memory in our own memory space.  This means that we have to check
+    // for the end of the list manually.
+    le_dls_List_t fakeListOfPools = LE_DLS_LIST_INIT;
+    le_dls_Link_t fakeLink = LE_DLS_LINK_INIT;
+    le_dls_Stack(&fakeListOfPools, &fakeLink);
+
+    // Get the next link in the list.
+    le_dls_Link_t* poolLinkPtr;
+
+    if (iterator->headPoolLinkPtr == NULL)
+    {
+        // Get the address of the first pool's link.
+        iterator->headPoolLinkPtr = le_dls_Peek(&(iterator->poolsList));
+        poolLinkPtr = iterator->headPoolLinkPtr;
+    }
+    else
+    {
+        // Get the address of the next pool.
+        poolLinkPtr = le_dls_PeekNext(&fakeListOfPools, &(iterator->currMemPool.poolLink));
+
+        if (poolLinkPtr == iterator->headPoolLinkPtr)
+        {
+            // Looped back to the first pool so there are no more pools.
+            return NULL;
+        }
+    }
+
+    if (poolLinkPtr == NULL)
+    {
+        return NULL;
+    }
+
+    // Get the address of pool.
+    MemPool_t* poolPtr = CONTAINER_OF(poolLinkPtr, MemPool_t, poolLink);
+
+    // Read the pool into our own memory.
+    if (files_ReadFromOffset(iterator->procMemFd, (ssize_t)poolPtr, &(iterator->currMemPool),
+                             sizeof(iterator->currMemPool)) != LE_OK)
+    {
+        return NULL;
+    }
+
+    return &(iterator->currMemPool);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Deletes the iterator.
+ */
+//--------------------------------------------------------------------------------------------------
+void mem_iter_Delete
+(
+    mem_Iter_Ref_t iterator     ///< [IN] The iterator to delete.
+)
+{
+    LE_ASSERT(iterator != NULL);
+
+    fd_Close(iterator->procMemFd);
+
+    le_mem_Release(iterator);
 }

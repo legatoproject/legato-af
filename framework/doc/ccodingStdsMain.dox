@@ -4,24 +4,6 @@ Legato follows these C language standards to aid in simplifying coding and help 
 
 General standards (in alpha order):
 
-@ref cstdsparamCommenting <br>
-@ref cstdsConstPointers <br>
-@ref cstdsCyclomatic  <br>
-@ref cstdsExistingCode  <br>
-@ref cstdsExtern  <br>
-@ref cstdsFanOut  <br>
-@ref cstdsFunctionParameter <br>
-@ref cstdsGlobalVariables  <br>
-@ref cstdsGotos  <br>
-@ref cstdsHeap  <br>
-@ref cstdsInterfaceDocumentation <br>
-@ref cstdsLineLength  <br>
-@ref cstdsMultipleInclusionGuards  <br>
-@ref cstdsMultithreading <br>
-@ref cstdsRecursion  <br>
-@ref cstdsSeparateInterfacefromImplementation <br>
-@ref cstdsTabs 
-
 Detailed info: 
 
 @subpage ccodingStdsNaming  <br>

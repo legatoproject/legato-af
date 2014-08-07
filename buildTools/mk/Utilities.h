@@ -2,7 +2,7 @@
 /**
  * Utility functions used by the mk tools.
  *
- * Copyright (C) 201 Sierra Wireless Inc., all rights reserved.
+ * Copyright (C) 2013-2014, Sierra Wireless Inc.  Use of this work is subject to license.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -23,6 +23,21 @@ namespace mk
  */
 //----------------------------------------------------------------------------------------------
 std::string GetCompilerPath
+(
+    const std::string& target  ///< Name of the target platform (e.g., "localhost" or "ar7").
+);
+
+
+//----------------------------------------------------------------------------------------------
+/**
+ * Get the sysroot path to use when linking for a given target.
+ *
+ * @return  The path to the sysroot base directory.
+ *
+ * @throw   legato::Exception if target not recognized.
+ */
+//----------------------------------------------------------------------------------------------
+std::string GetSysRootPath
 (
     const std::string& target  ///< Name of the target platform (e.g., "localhost" or "ar7").
 );
@@ -83,29 +98,42 @@ std::string GetComponentInitName
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Generate IPC API client code for a given protocol in a given directory.
- */
+ * Gets the API protocol hash string for the framework's Config API.
+ *
+ * @return the hash string.
+ **/
 //--------------------------------------------------------------------------------------------------
-void GenerateApiClientCode
+const std::string& ConfigApiHash
 (
-    const std::string& instanceName,    ///< Name of the interface instance.
-    const std::string& protocolFile,    ///< Path to the .api file.
-    const std::string& outputDir,       ///< Directory into which the library will go.
-    bool isVerbose                      ///< If true, write troubleshooting info to stdout.
+    const legato::BuildParams_t& buildParams
 );
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Generate IPC API server code for a given protocol in a given directory.
- */
+ * Gets the API protocol hash string for the framework's Watchdog API.
+ *
+ * @return the hash string.
+ **/
 //--------------------------------------------------------------------------------------------------
-void GenerateApiServerCode
+const std::string& WatchdogApiHash
 (
-    const std::string& instanceName,    ///< Name of the interface instance.
-    const std::string& protocolFile,    ///< Path to the .api file.
-    const std::string& outputDir,       ///< Directory into which the library will go.
-    bool isVerbose                      ///< If true, write troubleshooting info to stdout.
+    const legato::BuildParams_t& buildParams
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Copy a file or directory from the build host's file system to the application's staging
+ * directory.
+ **/
+//--------------------------------------------------------------------------------------------------
+void CopyToStaging
+(
+    const std::string& sourcePath,      ///< Build host file system path to source file.
+    const std::string& stagingDirPath,  ///< Build host file system path to staging directory.
+    const std::string& sandboxPath,     ///< Must be an absolute path in the app's runtime sandbox.
+    bool isVerbose                      ///< true if progress should be printed to stdout.
 );
 
 

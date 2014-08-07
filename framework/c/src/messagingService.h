@@ -20,8 +20,8 @@
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
-    le_msg_ProtocolRef_t    protocolRef;            ///< The protocol that this service supports.
-    char    name[LE_SVCDIR_MAX_SERVICE_NAME_SIZE];  ///< The service instance name.
+    le_msg_ProtocolRef_t    protocolRef;        ///< The protocol that this service supports.
+    char    name[LIMIT_MAX_SERVICE_NAME_BYTES]; ///< The service instance name.
 }
 ServiceId_t;
 
@@ -38,6 +38,14 @@ typedef struct le_msg_Service
     // Stuff only used on the Server side:
 
     void*           contextPtr;         ///< Opaque value set using le_msg_SetServiceContextPtr().
+
+    enum
+    {
+        LE_MSG_SERVICE_CONNECTING,  ///< Connecting to the Service Directory.
+        LE_MSG_SERVICE_ADVERTISED,  ///< Connected to the Service Directory (advertised).
+        LE_MSG_SERVICE_HIDDEN       ///< Disconnected from the Service Directory (hidden).
+    }
+    state;
 
     int             directorySocketFd;  ///< File descriptor of socket connected to the
                                         ///  Service Directory (or -1 if not connected).

@@ -1,0 +1,7 @@
+sources:
+
+    client.c
+
+import:
+
+    printer = printer.api

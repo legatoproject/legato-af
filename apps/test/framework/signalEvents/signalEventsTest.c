@@ -93,7 +93,7 @@ static void* Thread2(void* context)
 }
 
 
-LE_EVENT_INIT_HANDLER
+COMPONENT_INIT
 {
     LE_INFO("======== Begin Signal Events Test ========");
 

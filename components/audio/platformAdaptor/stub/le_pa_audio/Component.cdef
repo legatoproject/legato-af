@@ -1,0 +1,7 @@
+sources:
+
+    pa_audio.c
+
+import:
+
+    le_audio.api [types-only]

@@ -1,0 +1,17 @@
+executables:
+
+    greeter (greetServer)
+    snubber (greetServer)
+    magician (magician)
+
+processes:
+
+    run: (greeter "Greetings!")
+    run: (snubber "BAH!")
+    run: (magician)
+
+provides:
+
+    api: hello { greeter.greetServer.hello }
+    api: snub { snubber.greetServer.hello }
+    api: { magician.magician.magic }

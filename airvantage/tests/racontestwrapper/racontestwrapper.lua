@@ -1,11 +1,15 @@
 #!bin/lua
 
--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 -- Copyright (c) 2012 Sierra Wireless and others.
 -- All rights reserved. This program and the accompanying materials
 -- are made available under the terms of the Eclipse Public License v1.0
--- which accompanies this distribution, and is available at
--- http://www.eclipse.org/legal/epl-v10.html
+-- and Eclipse Distribution License v1.0 which accompany this distribution.
+--
+-- The Eclipse Public License is available at
+--   http://www.eclipse.org/legal/epl-v10.html
+-- The Eclipse Distribution License is available at
+--   http://www.eclipse.org/org/documents/edl-v10.php
 --
 -- Contributors:
 --     Sierra Wireless - initial API and implementation
@@ -46,7 +50,7 @@ end
 local function run_non_standalone_lua_unittest(testname)
     testname = testname:gsub(".lua", "")
 
-    local client = require 'rpc'.newclient()
+    local client = require 'rpc'.newclient("localhost", 2012)
     if not client then
         print("Ready agent not started")
         return

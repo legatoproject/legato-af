@@ -26,7 +26,7 @@ namespace parser
 //--------------------------------------------------------------------------------------------------
 void ParseApp
 (
-    App& app,                           ///< The object to be populated.
+    App* appPtr,                        ///< The object to be populated.
     const BuildParams_t& buildParams    ///< Build parameters obtained from the command line.
 );
 
@@ -42,8 +42,52 @@ void ParseApp
 //--------------------------------------------------------------------------------------------------
 void ParseComponent
 (
-    Component& component,               ///< The Component object to populate.
+    Component* componentPtr,            ///< The Component object to populate.
     const BuildParams_t& buildParams    ///< Build parameters obtained from the command line.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add an instance of a given component to an executable.
+ */
+//--------------------------------------------------------------------------------------------------
+void AddComponentToExe
+(
+    legato::App* appPtr,
+    legato::Executable* exePtr,
+    legato::Component* componentPtr ///< The component object.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add an instance of a given component to an executable.
+ *
+ * @return Pointer to the Component Instance object.
+ */
+//--------------------------------------------------------------------------------------------------
+void AddComponentToExe
+(
+    legato::App* appPtr,
+    legato::Executable* exePtr,
+    const std::string& path,    ///< The path to the component.
+    const legato::BuildParams_t& buildParams
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get a pointer to the API object for a given .api file.
+ *
+ * @return A pointer to the API object.
+ *
+ * @throw legato::Exception if something goes wrong.
+ **/
+//--------------------------------------------------------------------------------------------------
+Api_t* GetApiObject
+(
+    const std::string& filePath,        ///< [in] Absolute file system path to API file.
+    const BuildParams_t& buildParams    ///< [in] Build parameters.
 );
 
 

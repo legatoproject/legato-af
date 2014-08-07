@@ -1,0 +1,77 @@
+/**
+ * @page c_ecallApp eCall Application
+ *
+ * @ref ecallApp_interface.h "Click here for the API Reference documentation."
+ *
+ * This app provides an @c ecallApp_StartSession() API to start a test eCall session.
+ * You can call @c ecallApp_StartSession() with the number of passengers as a parameter to start the
+ * session.
+ *
+ * This app is automatically restarted in case of errors until the eCall session is completed. You
+ * don't have to retrigger the session by calling @c ecallApp_StartSession(), the app will use
+ * context variables containing the number of passengers and the session status.
+ *
+ *
+ * This App uses the configuration tree to retrieve the following data:
+ *
+ * @verbatim
+  config get eCall:/
+
+  /
+      settings/
+           hMinAccuracy<int> == <minimum horizontal accuracy value>
+           dirMinAccuracy<int> == <minimum direction accuracy value>
+   @endverbatim
+ *
+ * - 'hAccuracy' is the minimum expected horizontal accuracy to trust the position (in meters).
+ * - 'dirAccuracy' is the minimum expected direction accuracy to trust the position (in degrees).
+ *
+ * You can set them by issuing the commands:
+ * @verbatim
+   config set eCall:/settings/hMinAccuracy <minimum horizontal accuracy value> int
+   config set eCall:/settings/dirMinAccuracy <minimum direction accuracy value> int
+   @endverbatim
+ *
+ * Moreover, this app use two context variables:
+ *
+ * @verbatim
+  config get eCall:/
+
+  /
+      context/
+           isCleared<bool> == <cleared session flag>
+           paxCount<int> == <number of passengers>
+   @endverbatim
+ *
+ * - 'isCleared' is a flag indicating that a previous eCall session was or was not yet completed.
+ * - 'paxCount' is the number of passengers passed to the app when it was triggered.
+ *
+ *
+ * <HR>
+ *
+ * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ */
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * @file ecallApp_interface.h
+ *
+ * Legato @ref c_ecallApp include file.
+ *
+ * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Retrieve the eCall app settings and start a test eCall Session.
+ *
+ * @note On failure, the process exits, so you don't have to worry about checking any returned
+ *       error codes.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION StartSession
+(
+    uint32_t  paxCount  IN ///< number of passengers
+);

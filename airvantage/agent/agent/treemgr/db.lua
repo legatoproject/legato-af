@@ -1,9 +1,13 @@
--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 -- Copyright (c) 2012 Sierra Wireless and others.
 -- All rights reserved. This program and the accompanying materials
 -- are made available under the terms of the Eclipse Public License v1.0
--- which accompanies this distribution, and is available at
--- http://www.eclipse.org/legal/epl-v10.html
+-- and Eclipse Distribution License v1.0 which accompany this distribution.
+--
+-- The Eclipse Public License is available at
+--   http://www.eclipse.org/legal/epl-v10.html
+-- The Eclipse Distribution License is available at
+--   http://www.eclipse.org/org/documents/edl-v10.php
 --
 -- Contributors:
 --     Fabien Fleutot for Sierra Wireless - initial API and implementation
@@ -46,9 +50,10 @@
 
 local cdb = require 'cdb'
 local lfs = require 'lfs'
+local system = require 'utils.system'
 
 local treemgr_path = (LUA_AF_RW_PATH or "./").."persist/treemgr/"
-os.execute("mkdir -p "..treemgr_path)
+system.mktree(treemgr_path)
 
 local resources_path = (LUA_AF_RO_PATH or "./").."resources/"
 

@@ -22,7 +22,6 @@ typedef enum
     LIM_MSG_QUEUE_SIZE = 0,
     LIM_NUM_PROCS,
     LIM_NUM_SIGS_QUEUED,
-    LIM_VIRTUAL_MEM_SIZE,
     LIM_FILE_SIZE,
     LIM_NUM_FDS,
     LIM_MEM_LOCK_SIZE,
@@ -35,12 +34,12 @@ Limits_t;
 static rlim_t ExpectedLimits[LIM_MAX_NUM_LIMITS];
 
 // The list of rlimits.  Must correspond to the limits in Limits_t and be in the same order.
-#define NUM_RLIMITS     8
-static int RLimit[NUM_RLIMITS] = {RLIMIT_MSGQUEUE, RLIMIT_NPROC, RLIMIT_SIGPENDING, RLIMIT_AS,
+#define NUM_RLIMITS     LIM_MAX_NUM_LIMITS - 1
+static int RLimit[NUM_RLIMITS] = {RLIMIT_MSGQUEUE, RLIMIT_NPROC, RLIMIT_SIGPENDING,
                                   RLIMIT_FSIZE, RLIMIT_NOFILE, RLIMIT_MEMLOCK, RLIMIT_CORE};
 
 static char* RLimitStr[NUM_RLIMITS] = {"RLIMIT_MSGQUEUE", "RLIMIT_NPROC", "RLIMIT_SIGPENDING",
-                                        "RLIMIT_AS", "RLIMIT_FSIZE", "RLIMIT_NOFILE",
+                                        "RLIMIT_FSIZE", "RLIMIT_NOFILE",
                                         "RLIMIT_MEMLOCK", "RLIMIT_CORE"};
 
 
@@ -123,7 +122,7 @@ static void TestRLimits(void)
 
 
 
-LE_EVENT_INIT_HANDLER
+COMPONENT_INIT
 {
     LE_INFO("======== Starting Resource Limits Test ========");
 

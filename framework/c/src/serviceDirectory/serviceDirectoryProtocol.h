@@ -1,6 +1,12 @@
 /**
  * @page serviceDirectoryProtocol Legato Service Directory Protocol
  *
+ * @ref serviceDirectoryProtocol_Intro <br>
+ * @ref serviceDirectoryProtocol_SocketsAndCredentials <br>
+ * @ref serviceDirectoryProtocol_Servers <br>
+ * @ref serviceDirectoryProtocol_Clients <br>
+ * @ref serviceDirectoryProtocol_Packing
+ *
  * @section serviceDirectoryProtocol_Intro Introduction
  *
  * The Legato Service Directory Protocol is the protocol that Legato inter-process communication
@@ -10,7 +16,7 @@
  * by what processes and what clients are connected to them.  It is a key component in the
  * implementation of the @ref c_messaging.
  *
- * @section serviceDirectoryProtocol_Description Protocol Description
+ * @section serviceDirectoryProtocol_SocketsAndCredentials Sockets and Credentials
  *
  * The Service Directory has two Unix domain sockets, bound to well-known file system paths.
  * Servers connect to one of these sockets when they need to provide a service to other processes.
@@ -19,12 +25,11 @@
  * When a client or server connects, the Service Directory gets a new socket that it can use to
  * communicate with that remote process.  Also, because it is a SOCK_SEQPACKET connection, it
  * can get the credentials (uid, gid, and pid) of the connected process using getsockopt() with
- * the SO_PEERCRED option.  This allows the Service Directory to enforce access control
- * restrictions.  It also makes it possible for the Service Directory to know what needs to
- * be cleaned up when the Supervisor notifies it that a certain process (identified by its pid)
- * has died.
+ * the SO_PEERCRED option.  These credentials are authenticated by the OS kernel, so the
+ * Service Directory can be assured that they have not been forged when using them to enforce
+ * access control restrictions.
  *
- * @section serviceDirectoryProtocol_Servers Server-Directory Communication
+ * @section serviceDirectoryProtocol_Servers Server-to-Directory Communication
  *
  * When a server wants to offer a service to other processes, it opens a socket and connects it
  * to the Service Directory's server connection socket.  The server then sends in the name of the
@@ -47,7 +52,7 @@
  * @note The server socket is a named socket, rather than an abstract socket because this allows
  *       file system permissions to be used to prevent DoS attacks on this socket.
  *
- * @section serviceDirectoryProtocol_Clients Client-Directory Communication
+ * @section serviceDirectoryProtocol_Clients Client-to-Directory Communication
  *
  * When a client wants to open a session with a service, they open a socket and connect it to
  * the Service Directory's client connection socket.  The client then sends in the name of the
@@ -78,18 +83,20 @@
  * byte swapping.  Furthermore, all message members are multiples of the processor's
  * natural word size, so there's little risk of structure packing misalignment.
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless, Inc. 2013 - 2014. Use of this work is subject to license.
  */
 
 /** @file serviceDirectoryProtocol.h
  *
  * See @ref serviceDirectoryProtocol
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless, Inc. 2013 - 2014. Use of this work is subject to license.
  */
 
 #ifndef LEGATO_SERVICE_DIRECTORY_PROTOCOL_INCLUDE_GUARD
 #define LEGATO_SERVICE_DIRECTORY_PROTOCOL_INCLUDE_GUARD
+
+#include "../limit.h"
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -113,18 +120,6 @@
 
 
 //--------------------------------------------------------------------------------------------------
-/// Maximum size of a service protocol identity string, including the null terminator byte.
-//--------------------------------------------------------------------------------------------------
-#define LE_SVCDIR_MAX_PROTOCOL_ID_SIZE     128
-
-
-//--------------------------------------------------------------------------------------------------
-/// Maximum size of a service instance name string, including the null terminator byte.
-//--------------------------------------------------------------------------------------------------
-#define LE_SVCDIR_MAX_SERVICE_NAME_SIZE    128
-
-
-//--------------------------------------------------------------------------------------------------
 /**
  * Service identity.  This structure contains everything that is required to uniquely identify
  * a Legato IPC service.
@@ -133,8 +128,8 @@
 typedef struct
 {
     size_t              maxProtocolMsgSize; ///< Max size of protocol's messages, in bytes.
-    char                protocolId[LE_SVCDIR_MAX_PROTOCOL_ID_SIZE];   ///< Protocol identifier.
-    char                serviceName[LE_SVCDIR_MAX_SERVICE_NAME_SIZE]; ///< Service instance name.
+    char                protocolId[LIMIT_MAX_PROTOCOL_ID_BYTES];    ///< Protocol identifier.
+    char                serviceName[LIMIT_MAX_SERVICE_NAME_BYTES];  ///< Service instance name.
 }
 svcdir_ServiceId_t;
 

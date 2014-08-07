@@ -1,9 +1,13 @@
--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 -- Copyright (c) 2012 Sierra Wireless and others.
 -- All rights reserved. This program and the accompanying materials
 -- are made available under the terms of the Eclipse Public License v1.0
--- which accompanies this distribution, and is available at
--- http://www.eclipse.org/legal/epl-v10.html
+-- and Eclipse Distribution License v1.0 which accompany this distribution.
+--
+-- The Eclipse Public License is available at
+--   http://www.eclipse.org/legal/epl-v10.html
+-- The Eclipse Distribution License is available at
+--   http://www.eclipse.org/org/documents/edl-v10.php
 --
 -- Contributors:
 --     Laurent Barthelemy for Sierra Wireless - initial API and implementation
@@ -21,6 +25,7 @@ local tonumber = tonumber
 local tostring = tostring
 local string = string
 local utilstable = require "utils.table"
+local system = require "utils.system"
 
 local apps_path = (LUA_AF_RW_PATH or lfs.currentdir().."/").."apps/"
 local M = {}
@@ -264,8 +269,8 @@ local function install(id, data_path, autostart, purge)
     else
         --no app registered, preventive clean
         os.execute("rm -rf "..apps_path..id)
-        res = os.execute("mkdir "..apps_path..id)
-        if res~= 0 then return nil, "Error while creating app runtime dir" end
+        res, err = lfs.mkdir(apps_path..id)
+        if not res then return nil, "Error while creating app runtime dir : "..tostring(err) end
     end
     res, err = recursive_copy_overwrite(data_path, apps_path..id)
     if not res then return nil, err end
@@ -422,8 +427,8 @@ end
 --  with autostart parameter set to true.
 -- @return "ok" string in case of success, nil+error of message otherwise
 local function init()
-    local res, err = os.execute("mkdir -p "..apps_path)
-    assert( 0 == res, string.format("ApplicationContainer cannot create apps runtime directory, err=%s", tostring(err)))
+    local res, err = system.mktree(apps_path)
+    assert(res, string.format("ApplicationContainer cannot create apps runtime directory, err=%s", tostring(err)))
 
     loadAppList();
     local res, err

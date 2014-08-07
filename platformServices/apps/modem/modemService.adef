@@ -1,0 +1,18 @@
+sandboxed: false
+
+executables:
+
+    modemDaemon (   $LEGATO_ROOT/components/modemServices/modemDaemon    )
+
+processes:
+
+    run: (modemDaemon)
+    faultAction: restart
+    
+bindings:
+
+    modemDaemon.modemDaemon.le_audio -> audioService.le_audio
+
+requires:
+
+    configTree: { [w] system }

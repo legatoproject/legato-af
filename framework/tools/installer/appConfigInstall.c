@@ -2,6 +2,8 @@
 /**
  * Implementation of the appCfgInstall program, which installs an application's configuration
  * into the Configuration Tree.
+ *
+ * Copyright 2013-2014, Sierra Wireless Inc.  Use of this work is subject to license.
  **/
 //--------------------------------------------------------------------------------------------------
 

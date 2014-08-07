@@ -1,7 +1,6 @@
-/** @page basicInterfaces Legato Interfaces
+/** @page basicInterfaces Interfaces
 
-@ref functionCallAPIs <br>
-@ref intWhatsNext
+@section intOverview Overview
 
 To maximize component reuse, it's vital components be designed for reuse.
 Reusability partly depends on portability, which the Legato framework provides, but it also

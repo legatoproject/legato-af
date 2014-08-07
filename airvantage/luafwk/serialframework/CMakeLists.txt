@@ -2,8 +2,12 @@
 # Copyright (c) 2012 Sierra Wireless and others.
 # All rights reserved. This program and the accompanying materials
 # are made available under the terms of the Eclipse Public License v1.0
-# which accompanies this distribution, and is available at
-# http://www.eclipse.org/legal/epl-v10.html
+# and Eclipse Distribution License v1.0 which accompany this distribution.
+#
+# The Eclipse Public License is available at
+#   http://www.eclipse.org/legal/epl-v10.html
+# The Eclipse Distribution License is available at
+#   http://www.eclipse.org/org/documents/edl-v10.php
 #
 # Contributors:
 #     Sierra Wireless - initial API and implementation
@@ -27,7 +31,7 @@ INCLUDE_DIRECTORIES(
 # TODO: move serial parts out of common in modbus.lua
 
 # Transport-independent part
-ADD_LUA_LIBRARY(modbus_serializer DESTINATION modbus EXCLUDE_FROM_ALL ${MODBUS_SRC})
+ADD_LUA_LIBRARY(modbus_serializer DESTINATION modbus ${MODBUS_SRC})
 SET_TARGET_PROPERTIES(modbus_serializer PROPERTIES OUTPUT_NAME serializer)
 TARGET_LINK_LIBRARIES(modbus_serializer lib_modbus lib_returncodes)
 ADD_DEPENDENCIES(modbus_serializer sched serial)

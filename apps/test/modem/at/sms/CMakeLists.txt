@@ -41,12 +41,11 @@ if(${LEGATO_TARGET} STREQUAL "localhost")
         set(TEST_XML          ${CMAKE_CURRENT_SOURCE_DIR}/modem_sms.xml)
         set(TEST_SOCKET       "/tmp/modem_sms")
 
-
-        add_test(${APP_TARGET}
-            ${SCRIPT_PATH} ${STUB_PATH} ${TEST_APP_PATH} ${TEST_XML} ${TEST_SOCKET}
-        )
-
-        set_tests_properties(${APP_TARGET} PROPERTIES TIMEOUT 10)
+#        add_test(${APP_TARGET}
+#            ${SCRIPT_PATH} ${STUB_PATH} ${TEST_APP_PATH} ${TEST_XML} ${TEST_SOCKET}
+#        )
+#
+#        set_tests_properties(${APP_TARGET} PROPERTIES TIMEOUT 10)
 
     endif()
 

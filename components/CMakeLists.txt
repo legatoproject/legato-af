@@ -1,19 +1,11 @@
 #*******************************************************************************
-# Copyright (C) 2013, Sierra Wireless Inc., all rights reserved.
-#
-# Contributors:
-#     Sierra Wireless - initial API and implementation
+# Copyright (C) 2013-2014, Sierra Wireless Inc.
+# Use of this work is subject to license.
 #*******************************************************************************
 
-### Components
+### Only the Air Vantage support components get built into libraries.
+### Everything else under this directory gets included as a component
+### in an exe or app.
 if(INCLUDE_AIRVANTAGE)
-    add_subdirectory(legatoTreeHandler)
+    add_subdirectory(airvantage)
 endif()
-add_subdirectory(audio)
-add_subdirectory(audioDaemon)
-add_subdirectory(modemServices)
-add_subdirectory(modemDaemon)
-add_subdirectory(positioning)
-add_subdirectory(posDaemon)
-add_subdirectory(dataConnectionService)
-add_subdirectory(cellNetService)

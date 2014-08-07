@@ -1,0 +1,6 @@
+
+executables:
+    writer ( configTestWriteAclApp )
+
+processes:
+    run: (writer cfgSelfWrite)

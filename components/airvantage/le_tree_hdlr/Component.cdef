@@ -1,0 +1,13 @@
+sources:
+
+    extvars.c
+
+import:
+
+    le_mdmDefs.api  [types-only]
+    le_info.api     [manual-start]
+    le_mdc.api      [manual-start]
+    le_mrc.api      [manual-start]
+    le_sim.api      [manual-start]
+    le_pos.api      [manual-start]
+    le_posCtrl.api  [manual-start]

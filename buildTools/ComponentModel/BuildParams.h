@@ -2,7 +2,7 @@
 /**
  * Object that stores build parameters gathered from the command line.
  *
- * Copyright (C) 201 Sierra Wireless Inc., all rights reserved.
+ * Copyright (C) 2013-2014 Sierra Wireless Inc.  Use of this work is subject to license.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -23,6 +23,7 @@ class BuildParams_t
         std::string             m_ExeOutputDir;     ///< Path to directory for build executables.
         std::string             m_LibOutputDir;     ///< Path to directory for built libraries.
         std::string             m_ObjOutputDir;     ///< Dir path for intermediate build products.
+        std::string             m_StagingDir;       ///< Dir path for build staging.
         std::string             m_CCompilerFlags;   ///< Flags to be passed to the C compiler.
         std::string             m_LinkerFlags;      ///< Flags to be passed to the linker.
 
@@ -57,6 +58,9 @@ class BuildParams_t
         void ObjOutputDir(const std::string& path) { m_ObjOutputDir = path; }
         void ObjOutputDir(std::string&& path) { m_ObjOutputDir = std::move(path); }
 
+        void StagingDir(const std::string& path) { m_StagingDir = path; }
+        void StagingDir(std::string&& path) { m_StagingDir = std::move(path); }
+
         void CCompilerFlags(const std::string& path) { m_CCompilerFlags = path; }
         void CCompilerFlags(std::string&& path) { m_CCompilerFlags = std::move(path); }
 
@@ -71,6 +75,7 @@ class BuildParams_t
         const std::string & ExeOutputDir() const { return m_ExeOutputDir; }
         const std::string & LibOutputDir() const { return m_LibOutputDir; }
         const std::string& ObjOutputDir() const { return m_ObjOutputDir; }
+        const std::string& StagingDir() const { return m_StagingDir; }
         const std::string& CCompilerFlags() const { return m_CCompilerFlags; }
         const std::string& LinkerFlags() const { return m_LinkerFlags; }
 };

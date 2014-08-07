@@ -142,7 +142,9 @@ static Service_t* CreateService
                 serviceName,
                 sizeof(servicePtr->id.name));
 
-    servicePtr->directorySocketFd = -1; // -1 indicates connection closed (service not advertised).
+    servicePtr->state = LE_MSG_SERVICE_HIDDEN;
+
+    servicePtr->directorySocketFd = -1;
     servicePtr->fdMonitorRef = NULL;
     servicePtr->serverThread = NULL;    // NULL indicates no server in this process.
 
@@ -249,6 +251,59 @@ static void CallOpenHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Event handler function called when a Service's directorySocketFd becomes writeable.
+ *
+ * This only happens when the Service is in the CONNECTING state and the connection to the
+ * Service Directory is established or fails to be established.  After that, we disable
+ * writeability notification.
+ */
+//--------------------------------------------------------------------------------------------------
+static void DirectorySocketWriteable
+(
+    int fd
+)
+//--------------------------------------------------------------------------------------------------
+{
+    Service_t* servicePtr = le_event_GetContextPtr();
+
+    if (servicePtr->state == LE_MSG_SERVICE_CONNECTING)
+    {
+        // Must have connected (or failed to do so).
+        int errCode = unixSocket_GetErrorState(servicePtr->directorySocketFd);
+
+        // Disable writeability notification.
+        le_event_ClearFdHandlerByEventType(servicePtr->fdMonitorRef, LE_EVENT_FD_WRITEABLE);
+
+        // If connection successful,
+        if (errCode == 0)
+        {
+            // Send the Service ID to the Service Directory.
+            msgService_SendServiceId(servicePtr, fd);
+
+            servicePtr->state = LE_MSG_SERVICE_ADVERTISED;
+
+            // Wait for the Service Directory to respond by either dropping the connection
+            // (meaning that we have been denied permission to offer this service) or by
+            // forwarding us file descriptors for authenticated client connections.
+        }
+        // If connection failed,
+        else
+        {
+            LE_FATAL("Failed to connect to Service Directory. SO_ERROR %d (%s).",
+                     errCode,
+                     strerror(errCode));
+        }
+    }
+    else
+    {
+        LE_CRIT("Unexpected writeability notification in state %d.", servicePtr->state);
+    }
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Event handler function called when a Service's directorySocketFd becomes readable.
  *
  * This means that the Service Directory has sent us the file descriptor of an authenticated
@@ -285,8 +340,8 @@ static void DirectorySocketReadable
     else if (clientSocketFd < 0)
     {
         LE_ERROR("Received something other than a file descriptor from Service Directory for (%s:%s).",
-                 le_msg_GetProtocolIdStr(servicePtr->id.protocolRef),
-                 servicePtr->id.name);
+                 servicePtr->id.name,
+                 le_msg_GetProtocolIdStr(servicePtr->id.protocolRef));
     }
     else
     {
@@ -321,8 +376,8 @@ static void DirectorySocketClosed
     Service_t* servicePtr = le_event_GetContextPtr();
 
     LE_FATAL("Permission to offer service (%s:%s) has been denied.",
-             le_msg_GetProtocolIdStr(servicePtr->id.protocolRef),
-             servicePtr->id.name);
+             servicePtr->id.name,
+             le_msg_GetProtocolIdStr(servicePtr->id.protocolRef));
 }
 
 
@@ -342,8 +397,8 @@ static void DirectorySocketError
     Service_t* servicePtr = le_event_GetContextPtr();
 
     LE_FATAL("Error on Service Directory connection for service (%s:%s).",
-             le_msg_GetProtocolIdStr(servicePtr->id.protocolRef),
-             servicePtr->id.name);
+             servicePtr->id.name,
+             le_msg_GetProtocolIdStr(servicePtr->id.protocolRef));
 }
 
 
@@ -361,12 +416,24 @@ static void StartMonitoringDirectorySocket
 {
     le_event_FdHandlerRef_t handlerRef;
 
-    char name[128];
-    size_t bytes;
-    le_utf8_Copy(name, le_msg_GetProtocolIdStr(servicePtr->id.protocolRef), sizeof(name), &bytes);
-    le_utf8_Copy(name + bytes, servicePtr->id.name, sizeof(name) - bytes, NULL);
+    char name[LIMIT_MAX_MEM_POOL_NAME_BYTES];
+    char* destPtr = name;
+    size_t spaceLeft = sizeof(name);
+    size_t bytesCopied;
+    le_utf8_Copy(destPtr, servicePtr->id.name, spaceLeft, &bytesCopied);
+    destPtr += bytesCopied;
+    spaceLeft -= bytesCopied;
+    le_utf8_Copy(destPtr, ":", spaceLeft, &bytesCopied);
+    destPtr += bytesCopied;
+    spaceLeft -= bytesCopied;
+    le_utf8_Copy(destPtr, le_msg_GetProtocolIdStr(servicePtr->id.protocolRef), spaceLeft, NULL);
 
     servicePtr->fdMonitorRef = le_event_CreateFdMonitor(name, servicePtr->directorySocketFd);
+
+    handlerRef = le_event_SetFdHandler(servicePtr->fdMonitorRef,
+                                       LE_EVENT_FD_WRITEABLE,
+                                       DirectorySocketWriteable);
+    le_event_SetFdHandlerContextPtr(handlerRef, servicePtr);
 
     handlerRef = le_event_SetFdHandler(servicePtr->fdMonitorRef,
                                        LE_EVENT_FD_READABLE,
@@ -513,7 +580,7 @@ void msgService_SendServiceId
     {
         LE_FATAL("Failed to send. Result = %d (%s)", result, LE_RESULT_TXT(result));
     }
-    // NOTE: This is generally done when the socket is newly opened, so this shouldn't ever
+    // NOTE: This is only done when the socket is newly opened, so this shouldn't ever
     //       return LE_NO_MEMORY to indicate send buffers being full.
 }
 
@@ -630,8 +697,8 @@ void msgService_ProcessMessageFromClient
     else
     {
         LE_WARN("No service receive handler (%s:%s). Discarding message. Closing session.",
-                le_msg_GetProtocolIdStr(serviceRef->id.protocolRef),
-                serviceRef->id.name);
+                serviceRef->id.name,
+                le_msg_GetProtocolIdStr(serviceRef->id.protocolRef));
         le_msg_DeleteSession(le_msg_GetSession(msgRef));
         le_msg_ReleaseMsg(msgRef);
     }
@@ -671,8 +738,8 @@ le_msg_ServiceRef_t le_msg_CreateService
     // is already being offered by someone else in this very process.
     LE_FATAL_IF(servicePtr->serverThread != NULL,
                 "Duplicate service (%s:%s) offered in same process.",
-                le_msg_GetProtocolIdStr(protocolRef),
-                serviceName);
+                serviceName,
+                le_msg_GetProtocolIdStr(protocolRef));
 
     servicePtr->serverThread = le_thread_GetCurrent();
 
@@ -697,8 +764,8 @@ void le_msg_DeleteService
 {
     LE_FATAL_IF(serviceRef->serverThread != le_thread_GetCurrent(),
                 "Attempted to delete service (%s:%s) not owned by thread.",
-                le_msg_GetProtocolIdStr(serviceRef->id.protocolRef),
-                serviceRef->id.name);
+                serviceRef->id.name,
+                le_msg_GetProtocolIdStr(serviceRef->id.protocolRef));
 
     // If the service is still advertised, hide it.
     le_msg_HideService(serviceRef);
@@ -737,13 +804,41 @@ void le_msg_SetServiceOpenHandler
 )
 //--------------------------------------------------------------------------------------------------
 {
+    LE_FATAL_IF(serviceRef == NULL,
+                "Service doesn't exist. Make sure service is started before setting handlers");
     LE_FATAL_IF(serviceRef->serverThread != le_thread_GetCurrent(),
                 "Service (%s:%s) not owned by calling thread.",
-                le_msg_GetProtocolIdStr(serviceRef->id.protocolRef),
-                serviceRef->id.name);
+                serviceRef->id.name,
+                le_msg_GetProtocolIdStr(serviceRef->id.protocolRef));
 
     serviceRef->openHandler = handlerFunc;
     serviceRef->openContextPtr = contextPtr;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets the currently registered service open handler and it's context pointer, or NULL if none are
+ * currently registered.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_msg_GetServiceOpenHandler
+(
+    le_msg_ServiceRef_t             serviceRef, ///< [in]  Reference to the service.
+    le_msg_SessionEventHandler_t*   handlerFunc,///< [out] Handler function.
+    void**                          contextPtr  ///< [out] Opaque pointer value to pass to handler.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    LE_FATAL_IF(serviceRef == NULL,
+                "Service doesn't exist. Make sure service is started before setting handlers");
+    LE_FATAL_IF(serviceRef->serverThread != le_thread_GetCurrent(),
+                "Service (%s:%s) not owned by calling thread.",
+                serviceRef->id.name,
+                le_msg_GetProtocolIdStr(serviceRef->id.protocolRef));
+
+    *handlerFunc = serviceRef->openHandler;
+    *contextPtr = serviceRef->openContextPtr;
 }
 
 
@@ -763,13 +858,41 @@ void le_msg_SetServiceCloseHandler
 )
 //--------------------------------------------------------------------------------------------------
 {
+    LE_FATAL_IF(serviceRef == NULL,
+                "Service doesn't exist. Make sure service is started before setting handlers");
     LE_FATAL_IF(serviceRef->serverThread != le_thread_GetCurrent(),
                 "Service (%s:%s) not owned by calling thread.",
-                le_msg_GetProtocolIdStr(serviceRef->id.protocolRef),
-                serviceRef->id.name);
+                serviceRef->id.name,
+                le_msg_GetProtocolIdStr(serviceRef->id.protocolRef));
 
     serviceRef->closeHandler = handlerFunc;
     serviceRef->closeContextPtr = contextPtr;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets the currently registered service close handler and it's context pointer, or NULL if none are
+ * currently registered.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_msg_GetServiceCloseHandler
+(
+    le_msg_ServiceRef_t             serviceRef, ///< [in]  Reference to the service.
+    le_msg_SessionEventHandler_t*   handlerFunc,///< [out] Handler function.
+    void**                          contextPtr  ///< [out] Opaque pointer value to pass to handler.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    LE_FATAL_IF(serviceRef == NULL,
+                "Service doesn't exist. Make sure service is started before setting handlers");
+    LE_FATAL_IF(serviceRef->serverThread != le_thread_GetCurrent(),
+                "Service (%s:%s) not owned by calling thread.",
+                serviceRef->id.name,
+                le_msg_GetProtocolIdStr(serviceRef->id.protocolRef));
+
+    *handlerFunc = serviceRef->closeHandler;
+    *contextPtr = serviceRef->closeContextPtr;
 }
 
 
@@ -791,8 +914,8 @@ void le_msg_SetServiceRecvHandler
 {
     LE_FATAL_IF(serviceRef->serverThread != le_thread_GetCurrent(),
                 "Service (%s:%s) not owned by calling thread.",
-                le_msg_GetProtocolIdStr(serviceRef->id.protocolRef),
-                serviceRef->id.name);
+                serviceRef->id.name,
+                le_msg_GetProtocolIdStr(serviceRef->id.protocolRef));
 
     serviceRef->recvHandler = handlerFunc;
     serviceRef->recvContextPtr = contextPtr;
@@ -854,8 +977,16 @@ void le_msg_AdvertiseService
 )
 //--------------------------------------------------------------------------------------------------
 {
-    // Open a socket and connect it to the Service Directory.
+    LE_FATAL_IF(serviceRef->state != LE_MSG_SERVICE_HIDDEN,
+                "Re-advertising before hiding service '%s:%s'.",
+                serviceRef->id.name,
+                le_msg_GetProtocolIdStr(serviceRef->id.protocolRef));
+
+    serviceRef->state = LE_MSG_SERVICE_CONNECTING;
+
+    // Open a socket.
     int fd = unixSocket_CreateSeqPacketUnnamed();
+    serviceRef->directorySocketFd = fd;
 
     // Check for failure.
     LE_FATAL_IF(fd == LE_NOT_PERMITTED, "Permission to open socket denied.");
@@ -881,27 +1012,22 @@ void le_msg_AdvertiseService
         LE_WARN("Service Directory connection mapped to %s.", streamNameStr);
     }
 
-    le_result_t result = unixSocket_Connect(fd, LE_SVCDIR_SERVER_SOCKET_NAME);
-    LE_FATAL_IF(result != LE_OK,
-                "Failed to connect to Service Directory. Result = %d (%s).",
-                result,
-                LE_RESULT_TXT(result));
-
-    serviceRef->directorySocketFd = fd;
-
     // Set the socket non-blocking.
     fd_SetNonBlocking(fd);
 
     // Start monitoring the socket for events.
     StartMonitoringDirectorySocket(serviceRef);
 
-    // Send the Service ID to the Service Directory.
-    msgService_SendServiceId(serviceRef, fd);
+    // Connect the socket to the Service Directory.
+    le_result_t result = unixSocket_Connect(fd, LE_SVCDIR_SERVER_SOCKET_NAME);
+    LE_FATAL_IF((result != LE_OK) && (result != LE_WOULD_BLOCK),
+                "Failed to connect to Service Directory. Result = %d (%s).",
+                result,
+                LE_RESULT_TXT(result));
 
-    // Wait for the Service Directory to respond by either dropping the connection
-    // (meaning that we have been denied permission to offer this service) or by
-    // forwarding us file descriptors for authenticated client connections.
+    // Wait for writeability notification on the socket.  See DirectorySocketWriteable().
 }
+
 
 
 //--------------------------------------------------------------------------------------------------
@@ -925,6 +1051,8 @@ void le_msg_HideService
     // Close the connection with the Service Directory.
     fd_Close(serviceRef->directorySocketFd);
     serviceRef->directorySocketFd = -1;
+
+    serviceRef->state = LE_MSG_SERVICE_HIDDEN;
 }
 
 

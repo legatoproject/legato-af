@@ -1,0 +1,12 @@
+sources:
+
+    resourceLimits.c
+    sandbox.c
+    cgroups.c
+    app.c
+    proc.c
+    watchdogAction.c
+
+import:
+
+    le_cfg.api

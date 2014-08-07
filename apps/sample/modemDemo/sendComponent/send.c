@@ -35,8 +35,6 @@ COMPONENT_INIT
 {
     le_result_t result;
 
-    send_StartClient("send");
-
     char destNum[MAX_TEL_NUMBER] = { 0 };
     char messageText[MAX_SMS_TEXT] = { 0 };
 

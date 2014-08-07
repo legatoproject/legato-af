@@ -1,14 +1,12 @@
-/** @page getstartedConnectDevKit Prep Device Dev Kit
-
-@ref devBoardSwitches  <br>
-@ref devBoardCables  <br>
-@ref devkitWhatsNext
+/** @page getstartedConnectDevKit Prep Dev Kit Board
 
 Connect PC to dev kit device:
 -  @subpage getstartedAssyDevKit with Legato-ready module.
 - attach cables to board: UART1 and Ethernet, and power supply (micro-USB requires ECM configuration).
-- attach cables to host PC.
+- attach cables to dev host.
 - power up board.
+
+<HR>
 
 Photo of a Legato dev kit board with power, Ethernet, micro-USB, and UART1 connections:
 
@@ -35,7 +33,7 @@ Cables used to connect the Legato development kit board:
 
 @b UART1
 
-Serial to USB cable to the host PC. Provides serial console to embedded Linux. Requires Minicom or similar tool to access device.
+Serial to USB cable to the dev host. Provides serial console to embedded Linux. Requires Minicom or similar tool to access device.
 
 UART port settings: <br>
 - Speed -115200 baud 
@@ -44,9 +42,11 @@ UART port settings: <br>
 - Stop bits - 1 
 - Flow control - None 
 
-@b USB
+If you’re running Minicom, set these config options through the CTRL+A O (configure) serial port setup. 
 
-Micro-USB to USB cable to the host PC. Provides access to fastboot, CDC-ECM, CDC-ACM (AT 
+@b Micro-USB
+
+Micro-USB to USB cable to the dev host. Provides access to fastboot, CDC-ECM, CDC-ACM (AT 
 commands), USB Audio, and Ethernet over USB (through an adapter). Requires ECM to be setup. Disabled by default.
 
 @b Ethernet
@@ -56,6 +56,7 @@ Ethernet cable for direct network connection to obtain dynamic IP address for th
 @section devkitWhatsNext What's Next?
 
 @ref getstartedAssyDevKit  <br>
+@ref getstartedBootableUSB  <br>
 @ref getstartedInstallPackages
 
 <HR>

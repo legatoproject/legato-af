@@ -10,11 +10,10 @@ executables:
     largeValuesTest ( limitsTest.c )
 
 processes:
-    vMemSize: 100000000
     maxFileSize: 100000000
     numFds: 100000000  // This should max out at 1024.
     memLockSize: 100000000
     coreFileSize: 100000000
 
-    run: (largeValuesTest 100000000 100000000 100000000 100000000 100000000 1024 100000000 100000000 100000000)
+    run: (largeValuesTest 100000000 100000000 100000000 100000000 1024 100000000 100000000 100000000)
 

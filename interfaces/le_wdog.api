@@ -1,0 +1,55 @@
+// -------------------------------------------------------------------------------------------------
+/**
+ *  @page api_wdog Watchdog Service
+ *
+ *  @ref le_wdog_interface.h "API reference documentation"
+ *
+ * <HR>
+ *
+ * Simple watchdog service.
+ *
+ * Provides a kickable watchdog with a timeout that can be configured in adef or specified at run
+ * time.  If a kick is not received in the specified time out then the supervisor will be signalled
+ * to perform the action given in WatchdogAction.
+ *
+ * <HR>
+ *
+ * Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to
+ * license.
+ */
+// -------------------------------------------------------------------------------------------------
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ * Special values that have specific meaning when used as durations in Timeout()
+ * DEFINE TIMEOUT_NEVER     ///<  Suspend the watchdog so that it never times out
+ * DEFINE TIMEOUT_NOW       ///<  Timeout immediately
+ */
+// -------------------------------------------------------------------------------------------------
+
+DEFINE TIMEOUT_NEVER = -1;
+DEFINE TIMEOUT_NOW = 0;
+
+// -------------------------------------------------------------------------------------------------
+/**
+ * Kicks the watchdog timer.
+ *
+ * Once the watchdog has been kicked it must be kicked again before the expiration of the current
+ * effective timeout else the configured WatchdogAction will be executed.
+ *
+ */
+// -------------------------------------------------------------------------------------------------
+FUNCTION Kick ();
+
+// -------------------------------------------------------------------------------------------------
+/**
+ * Set a time out.
+ *
+ * The watchdog is kicked and a new effective timeout value is set. The new timeout will be
+ * effective until the next kick at which point it will revert to the original value.
+ */
+// -------------------------------------------------------------------------------------------------
+FUNCTION Timeout (
+    int32 milliseconds IN ///< The number of milliseconds until this timer expires
+);

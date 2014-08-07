@@ -10,15 +10,8 @@
 
 #include "legato.h"
 
-#include "le_cfg_interface.h"
+#include "interfaces.h"
 #include "mdmCfgEntries.h"
-
-// Modem Services includes
-#include "le_mrc.h"
-#include "le_sim.h"
-
-// IPC for Cellular Network interface
-#include "le_cellnet_server.h"
 
 #include "le_print.h"
 
@@ -91,7 +84,7 @@ static void LoadSimFromConfigDb
     LE_DEBUG("Start reading SIM-%d information in ConfigDB",simNumber);
 
     le_result_t result;
-    le_sim_Ref_t simRef = le_sim_Create(simNumber);
+    le_sim_ObjRef_t simRef = le_sim_Create(simNumber);
     le_sim_States_t simState;
 
     do
@@ -194,6 +187,25 @@ static le_cellnet_State_t TranslateToCellNetState
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Send connection state event
+ */
+//--------------------------------------------------------------------------------------------------
+static void SendCellNetStateEvent
+(
+    void
+)
+{
+    le_mrc_NetRegState_t  state;
+    le_mrc_GetNetRegState(&state);
+    le_cellnet_State_t cellNetState = TranslateToCellNetState(state);
+    LE_PRINT_VALUE("%i", cellNetState);
+
+    // Send the event to interested applications
+    le_event_Report(CellNetStateEvent, &cellNetState, sizeof(cellNetState));
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Start Cellular Network Service Timer Handler.
  * When the timer expires, verify if the radio is ON, if NOT retry to power it up and rearm the
  * timer.
@@ -223,13 +235,14 @@ static void StartCellNetTimerHandler
             le_timer_Delete(timerRef);
 
             // Load SIM configuration from Config DB into the first SIM card found
-            for (i=1 ; i<le_sim_CountSlots() ; i++)
+            for (i=1 ; i<=le_sim_CountSlots() ; i++)
             {
 
-                le_sim_Ref_t simRef = le_sim_Create(i);
+                le_sim_ObjRef_t simRef = le_sim_Create(i);
                 if (le_sim_IsPresent(simRef))
                 {
                     LoadSimFromConfigDb(i);
+                    SendCellNetStateEvent();
                     return;
                 }
             }
@@ -263,12 +276,13 @@ static void StartCellularNetwork
     {
         IsOn = true;
         // Load SIM configuration from ConfigDB into the first SIM card found
-        for (i=1 ; i<le_sim_CountSlots() ; i++)
+        for (i=1 ; i<=le_sim_CountSlots() ; i++)
         {
-            le_sim_Ref_t simRef = le_sim_Create(i);
+            le_sim_ObjRef_t simRef = le_sim_Create(i);
             if (le_sim_IsPresent(simRef))
             {
                 LoadSimFromConfigDb(i);
+                SendCellNetStateEvent();
                 return;
             }
         }
@@ -369,22 +383,6 @@ static void StopCellularNetwork
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Send connection state event
- */
-//--------------------------------------------------------------------------------------------------
-static void SendCellNetStateEvent
-(
-    le_cellnet_State_t cellNetState
-)
-{
-    LE_PRINT_VALUE("%i", cellNetState);
-
-    // Send the event to interested applications
-    le_event_Report(CellNetStateEvent, &cellNetState, sizeof(cellNetState));
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Handler to process a command
  */
 //--------------------------------------------------------------------------------------------------
@@ -406,11 +404,7 @@ static void ProcessCommand
         }
         else
         {
-            le_mrc_NetRegState_t  state;
-
-            le_mrc_GetNetRegState(&state);
-
-            SendCellNetStateEvent(TranslateToCellNetState(state));
+            SendCellNetStateEvent();
         }
     }
     else if (command == RELEASE_COMMAND)
@@ -440,7 +434,7 @@ static void ProcessCommand
 //--------------------------------------------------------------------------------------------------
 static void SimStateHandler
 (
-    le_sim_Ref_t simRef,
+    le_sim_ObjRef_t simRef,
     void*        contextPtr)
 {
     le_sim_States_t   state;
@@ -450,6 +444,7 @@ static void SimStateHandler
     if (state == LE_SIM_INSERTED)
     {
         LoadSimFromConfigDb(slot);
+        SendCellNetStateEvent();
     }
 }
 
@@ -469,7 +464,7 @@ static void MrcNetRegHandler
     LE_PRINT_VALUE("Cellular Network Registration state.%d", cellNetState);
 
     // Send the state event to applications
-    SendCellNetStateEvent(cellNetState);
+    le_event_Report(CellNetStateEvent, &cellNetState, sizeof(cellNetState));
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -621,9 +616,6 @@ void le_cellnet_Release
 //--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
-    // Init the cellular network service
-    le_cellnet_StartServer("cellNetworkService");
-
     // Init the various events
     CommandEvent = le_event_CreateId("CellNet Command", sizeof(uint32_t));
     CellNetStateEvent = le_event_CreateId("CellNet State", sizeof(le_cellnet_State_t));
@@ -634,17 +626,6 @@ COMPONENT_INIT
 
     // Start the cellular network thread
     le_thread_Start( le_thread_Create("CellNet Thread", CellNetThread, NULL) );
-
-    // Close the fd that we inherited from the Supervisor.  This will let the Supervisor know that
-    // we are initialized.  Then re-open it to /dev/null so that it cannot be reused later.
-    FILE* filePtr;
-    do
-    {
-        filePtr = freopen("/dev/null", "r", stdin);
-    }
-    while ( (filePtr == NULL) && (errno == EINTR) );
-
-    LE_FATAL_IF(filePtr == NULL, "Failed to redirect stdin to /dev/null.  %m.");
 
     LE_INFO("Cellular Network Server is ready");
 }

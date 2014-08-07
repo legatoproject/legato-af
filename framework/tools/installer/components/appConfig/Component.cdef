@@ -4,9 +4,12 @@
     This component knows how to install and uninstall application configuration settings
     in the configuration tree.
 
-    Copyright 2013, Sierra Wireless Inc., all rights reserved.
+    Copyright 2013-2014, Sierra Wireless Inc.  Use of this work is subject to license
 */
 
 sources:
     src/configInstaller.c
 
+import:
+    le_cfg.api
+    le_cfgAdmin.api

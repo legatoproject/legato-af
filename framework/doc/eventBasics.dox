@@ -1,9 +1,5 @@
 /** @page eventBasics Event-driven Programming
 
-@ref eventBackground <br>
-@ref eventBasics <br>
-@ref eventBasicsWhatsNext
-
 Also see @ref c_eventLoop
 
 @section eventBackground Background
@@ -52,7 +48,7 @@ Legato's Event Loop API uses a central <b> event loop </b> that calls <b> event 
  *  - @ref c_event_dispatchingToOtherThreads
  
 @section eventBasicsWhatsNext What's Next?
-@ref @ref sandboxGen
+@ref sandboxGen
 
 <HR>
 

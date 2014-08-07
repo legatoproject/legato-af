@@ -5,11 +5,11 @@ Here are some helpful tips for Yocto Linux working with Sierra Wireless devices:
 @ref yoctoNoPwd <br>
 @ref yoctoNFSRoot <br>
 @ref yoctoCDC <br>
+@ref yoctoPrefIP <br>
 @ref yoctoStaticIP <br>
 @ref yoctoBSPTestReport <br>
 @ref yoctoReadWrite <br>
 @ref yoctoNoDown <br>
-@ref yoctoPrefIP <br>
 @ref yoctoDefUSB <br>
 
 @section yoctoNoPwd Log on Without Password
@@ -26,6 +26,12 @@ There’s more info available at https://www.kernel.org/doc/Documentation/filesy
 @section yoctoCDC CDC-ECM for IP vs Ethernet
 Using CDC-ECM for IP connections will cause the MAC address to change every reboot because the kernel allocates software-defined 
 MAC addresses to interfaces. This may cause new connections to be detected by your host every time you reboot the device. 
+
+@section yoctoPrefIP  Setup Preferred IP
+Either boot with an Ethernet cable plugged in and let the device obtain an IP address using 
+DHCP, or enable CDC-ECM and the micro-USB cable. You can then determine the IP address using 
+@c ifconfig on the console or provide a fixed IP from your DHCP server. Then use @c ssh and @c scp to 
+access the device and transfer files. Remember root has no password. 
 
 @section yoctoStaticIP Setup Target Static IP
 
@@ -84,14 +90,8 @@ The Yocto build defaults to disable new package downloads.
 
 Enable downloading new packages over the Internet, modify: 
 
-@c<build-dir>/conf/local.conf value @c BB_NO_NETWORK to "0" . 
+@c <build-dir>/conf/local.conf value @c BB_NO_NETWORK to "0" . 
 The file is only present after a build has run once. 
-
-@section yoctoPrefIP  Setup Preferred IP
-Either boot with an Ethernet cable plugged in and let the device obtain an IP address using 
-DHCP or use CDC-ECM with a USB cable. You can then determine the IP address using 
-@c ifconfig on the console or provide a fixed IP from your DHCP server. Then use @c ssh and @c scp to 
-access the device and transfer files. Remember root has no password. 
 
 @section yoctoDefUSB Change Default USB Classes
 During the boot sequence, startup scripts run the file @c /etc/legato/usbsetup that 

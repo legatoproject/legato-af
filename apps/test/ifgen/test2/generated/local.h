@@ -14,7 +14,7 @@
 
 #include "legato.h"
 
-#define PROTOCOL_ID_STR "18f06a4cb12b70e9f1487977fcecc04dfdc4dc6931eb677b36c87d9702c2de1e"
+#define PROTOCOL_ID_STR "1da15798caeb8ebeeb4bad7f34dd828b18f316c8e8e340652394e1b652215746"
 
 
 // todo: This will need to depend on the particular protocol, but the exact size is not easy to
@@ -33,9 +33,10 @@ _Message_t;
 #define _MSGID_AddTestA 0
 #define _MSGID_RemoveTestA 1
 #define _MSGID_allParameters 2
-#define _MSGID_TriggerTestA 3
-#define _MSGID_AddBugTest 4
-#define _MSGID_RemoveBugTest 5
+#define _MSGID_FileTest 3
+#define _MSGID_TriggerTestA 4
+#define _MSGID_AddBugTest 5
+#define _MSGID_RemoveBugTest 6
 
 
 #endif // LOCAL_H_INCLUDE_GUARD

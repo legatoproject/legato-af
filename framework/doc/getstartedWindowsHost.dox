@@ -1,11 +1,11 @@
-/** @page getstartedWindowsHost Windows Host
+/** @page getstartedWindowsHost Windows Dev Host
 
 @ref instAndroidtools <br>
 @ref instSWdrivers <br>
 
 @section instAndroidtools Windows Android Tools
 
-You only need to set up a Windows PC to recover a device. 
+You only need to set up a Windows host to recover a device. 
 
 The Android SDK tools can be downloaded from http://developer.android.com/sdk/index.html. 
 
@@ -91,7 +91,9 @@ After editing, the adb_usb.ini file should look like this:
 
 @section instSWdrivers Install Sierra Wireless Drivers
 
-Legato Beta includes a Drivers.zip file available from Resources-> Downloads at http://developer.sierrawireless.com/landing/legato.aspx.
+Legato Beta drivers are available from the Dev Zone at http://developer.sierrawireless.com/Resources/Resources/Legato/Distribution.aspx.
+
+Click on the link "Windows drivers needed to upgrade WP7 Series firmware" to download the Drivers_Package.zip file (under Sierra Wireless WP7 modules upgrade).
 
 Unzip it to a temporary location and run the SwiDriverSetup.exe program. 
 
@@ -104,11 +106,11 @@ it showing that no driver is installed.
 Right-click the device and select 'Update Driver Software…'  
 Select the option to install the driver locally and browse the Android SDK tools location. 
 
-Go to @verbatim %install_dir%\sdk\extras\google\usb_driver@endverbatim
+Go to @verbatim %install_dir%\sdk\extras\google\usb_driver @endverbatim
 
 The 'Android Composite ADB Interface' should be in the device list. 
 
-Check that you can start a command shell by cd to %install_dir%\sdk\platform-tools. 
+Check that you can start a command shell by cd to @verbatim %install_dir%\sdk\platform-tools @endverbatim. 
 From this directory you can run “adb devices” that should show a connected device. 
 For convenience, add this directory to the windows path to allow adb and fastboot to be run from any directory.  
 

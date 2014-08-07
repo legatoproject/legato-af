@@ -6,6 +6,5 @@
 #*******************************************************************************
 
 # Macros
-include("${CMAKE_MODULE_PATH}/GetGitRevision.cmake")
 include("${CMAKE_MODULE_PATH}/GetGerritUser.cmake")
 include("${CMAKE_MODULE_PATH}/GetCompilerTarget.cmake")

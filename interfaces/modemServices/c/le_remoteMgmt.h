@@ -8,7 +8,7 @@
  * The Modem platform embeds a client for wake up message requests from the Air Vantage
  * server.
  *
- * To implement Air Vantage Management Services (AVMS) features, when the embedded client 
+ * To implement Air Vantage Management Services (AVMS) features, when the embedded client
  * receives a wake up message, an indication must be sent to the Air Vantage Connector allowing it
  * to contact Air Vantage server so it can perform any pending jobs.
  *
@@ -19,7 +19,7 @@
  * @section le_remoteMgmt_wakeupindic Wake-Up signaling
  *
  * The Air Vantage Connector can register a handler function to notify when a wake up message
- * is received by the Modem. The wake up notification advises Air Vantage 
+ * is received by the Modem. The wake up notification advises Air Vantage
  * wants to talk to the Air Vantage Connector. A pending indicator can be maintained until the Air Vantage
  * Connector comes alive and asks for wake up registration.
  *

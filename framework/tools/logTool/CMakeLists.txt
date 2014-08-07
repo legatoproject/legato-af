@@ -9,10 +9,10 @@ project(LOGTOOL C)
 
 find_package(Legato REQUIRED)
 
-# Set the output file name
-set(APP_TARGET "log")
-set(APP_COMPONENT "log")
-
-# Compile
-set_legato_component(${APP_COMPONENT})
-add_legato_internal_executable(${APP_TARGET} logTool.c)
+mkexe(  log
+            logTool.c
+            -i ../../c/src
+            -i ../../c/src/logDaemon
+        DEPENDS
+            logTool.c
+        )

@@ -2,8 +2,12 @@
  * Copyright (c) 2012 Sierra Wireless and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+ * and Eclipse Distribution License v1.0 which accompany this distribution.
+ *
+ * The Eclipse Public License is available at
+ *   http://www.eclipse.org/legal/epl-v10.html
+ * The Eclipse Distribution License is available at
+ *   http://www.eclipse.org/org/documents/edl-v10.php
  *
  * Contributors:
  *     Fabien Fleutot for Sierra Wireless - initial API and implementation
@@ -46,7 +50,7 @@ static const char *const serialization_methods [] = {
 static int push_sdb_error( lua_State *L, int n) {
   lua_pushnil( L);
   switch( n) {
-#define CASE(x) case SDB_E##x: lua_pushstring( L, #x); break
+#define CASE(x) case SDB_E##x: lua_pushstring( L, "SDB ERROR: "#x); break
   CASE( OK);
   CASE( BADSTATE);
   CASE( TOOBIG);
@@ -60,7 +64,11 @@ static int push_sdb_error( lua_State *L, int n) {
   CASE( INTERNAL);
 #undef CASE
   default:
-    lua_pushinteger( L, n);
+    {
+      char buf[32];
+      snprintf(buf, 32, "SDB ERROR: %d", n);
+      lua_pushstring(L, buf);
+    }
   }
   return 2;
 }
@@ -206,7 +214,7 @@ static int api_init( lua_State *L) {
     // id, storage, columns, udata
 
     r = sdb_initwithoutcolumns( tbl, id, ncolumns, storage);
-    if( r) { lua_pushnil( L); lua_pushinteger( L, r); return 2; }
+    if( r) { return push_sdb_error(L, r); }
 
     lua_getfield(     L, LUA_REGISTRYINDEX, MT_NAME); // id, storage, columns, udata, mt
     lua_setmetatable( L, -2); // id, storage, columns, udata
@@ -259,7 +267,7 @@ static int api_newconsolidation( lua_State *L) {
     // src, id, storage, columns, dst
 
     r = sdb_initwithoutcolumns( dst, id, ncolumns, storage);
-    if( r) { lua_pushnil( L); lua_pushinteger( L, r); return 2; }
+    if( r) { return push_sdb_error(L, r); }
 
     lua_getfield(     L, LUA_REGISTRYINDEX, MT_NAME); // id, storage, columns, udata, mt
     lua_setmetatable( L, -2); // id, storage, columns, udata
@@ -427,13 +435,6 @@ static int api_close( lua_State *L) {
     return 1;
 }
 
-// mysdb :getpath()
-static int api_getpath( lua_State *L) {
-    const char* path = sdb_getpath(lua_sdb_checktable( L, 1));
-    lua_pushstring( L, path );
-    return 1;
-}
-
 int luaopen_stagedb_core( lua_State *L) {
 
 
@@ -450,7 +451,6 @@ int luaopen_stagedb_core( lua_State *L) {
     REG( close);
     REG( state);
     REG( trim);
-    REG( getpath);
 #undef REG
 
     lua_newtable(   L); // mt

@@ -426,6 +426,66 @@ le_result_t le_sem_TryWait
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Wait for a semaphore with a limit on how long to wait.
+ *
+ * @return
+ *      - LE_OK         The function succeed
+ *      - LE_TIMEOUT    timeToWait elapsed
+ *
+ * @note When LE_TIMEOUT occurs the semaphore is not decremented.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_sem_WaitWithTimeOut
+(
+    le_sem_Ref_t    semaphorePtr,   ///< [IN] Pointer to the semaphore.
+    le_clk_Time_t   timeToWait      ///< [IN] Time to wait
+)
+{
+//     TODO: Implement this.
+//     if (semaphorePtr->isTraceable)
+//     {
+//     }
+//     else
+    {
+        struct timespec timeOut;
+        int result;
+
+        // Prepare the timer
+        le_clk_Time_t currentUtcTime = le_clk_GetAbsoluteTime();
+        le_clk_Time_t wakeUpTime = le_clk_Add(currentUtcTime,timeToWait);
+        timeOut.tv_sec = wakeUpTime.sec;
+        timeOut.tv_nsec = wakeUpTime.usec;
+
+        // Retrieve reference thread
+        sem_ThreadRec_t* perThreadRecPtr = thread_GetSemaphoreRecPtr();
+        // Save into waiting list
+        perThreadRecPtr->waitingOnSemaphore = semaphorePtr;
+        AddToWaitingList(semaphorePtr, perThreadRecPtr);
+
+        result = sem_timedwait(&semaphorePtr->semaphore,&timeOut);
+
+        // Remove from waiting list
+        RemoveFromWaitingList(semaphorePtr, perThreadRecPtr);
+        perThreadRecPtr->waitingOnSemaphore = NULL;
+
+        if (result != 0)
+        {
+            if ( errno == ETIMEDOUT ) {
+                return LE_TIMEOUT;
+            } else {
+                LE_FATAL("Thread '%s' failed to wait on semaphore '%s'. Error code %d (%m).",
+                        le_thread_GetMyName(),
+                        semaphorePtr->nameStr,
+                        result);
+            }
+        }
+    }
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Post a semaphore.
  *
  * @return Nothing.

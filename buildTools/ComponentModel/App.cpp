@@ -1,13 +1,16 @@
 //--------------------------------------------------------------------------------------------------
 /**
- *  Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ *  Copyright (C) Sierra Wireless, Inc. 2013-2014.  Use of this work is subject to license.
  */
 //--------------------------------------------------------------------------------------------------
 
 #include "LegatoObjectModel.h"
+#include "WatchdogConfig.h"
+#include "limit.h"
 
 namespace legato
 {
+
 
 
 //--------------------------------------------------------------------------------------------------
@@ -40,9 +43,17 @@ static std::string AppNameFromDefFilePath
         startPos++;
     }
 
-    return path.substr(startPos, endPos - startPos);
-}
+    std::string appName = path.substr(startPos, endPos - startPos);
 
+    if (appName.length() > LIMIT_MAX_APP_NAME_LEN)
+    {
+        throw Exception("Application name " + appName +
+                        " is too long.  Application names must be a maximum of " +
+                        std::to_string(LIMIT_MAX_APP_NAME_LEN) + " characters.");
+    }
+
+    return appName;
+}
 
 
 //--------------------------------------------------------------------------------------------------
@@ -55,6 +66,7 @@ App::App
 )
 //--------------------------------------------------------------------------------------------------
 :   m_Name("untitled"),
+    m_Version(""),
     m_IsSandboxed(true),
     m_Debug(false),
     m_StartMode(AUTO),
@@ -63,7 +75,9 @@ App::App
     m_RtSignalQueueSize(SIZE_MAX),
     m_MemLimit(SIZE_MAX),
     m_CpuShare(SIZE_MAX),
-    m_FileSystemSize(SIZE_MAX)
+    m_FileSystemSize(SIZE_MAX),
+    m_UsesWatchdog(false),
+    m_UsesConfig(false)
 //--------------------------------------------------------------------------------------------------
 {
 }
@@ -81,6 +95,7 @@ App::App
 )
 //--------------------------------------------------------------------------------------------------
 :   m_Name(std::move(application.m_Name)),
+    m_Version(std::move(application.m_Version)),
     m_DefFilePath(std::move(application.m_DefFilePath)),
     m_IsSandboxed(std::move(application.m_IsSandboxed)),
     m_Debug(std::move(application.m_Debug)),
@@ -88,15 +103,24 @@ App::App
     m_Components(std::move(application.m_Components)),
     m_Executables(std::move(application.m_Executables)),
     m_ProcEnvironments(std::move(application.m_ProcEnvironments)),
-    m_IncludedFiles(std::move(application.m_IncludedFiles)),
-    m_ImportedFiles(std::move(application.m_ImportedFiles)),
+    m_BundledFiles(std::move(application.m_BundledFiles)),
+    m_BundledDirs(std::move(application.m_BundledDirs)),
+    m_RequiredFiles(std::move(application.m_RequiredFiles)),
+    m_RequiredDirs(std::move(application.m_RequiredDirs)),
+    m_InternalApiBinds(std::move(application.m_InternalApiBinds)),
+    m_ExternalApiBinds(std::move(application.m_ExternalApiBinds)),
     m_Groups(std::move(application.m_Groups)),
     m_NumProcs(std::move(application.m_NumProcs)),
     m_MqueueSize(std::move(application.m_MqueueSize)),
     m_RtSignalQueueSize(std::move(application.m_RtSignalQueueSize)),
     m_MemLimit(std::move(application.m_MemLimit)),
     m_CpuShare(std::move(application.m_CpuShare)),
-    m_FileSystemSize(std::move(application.m_FileSystemSize))
+    m_FileSystemSize(std::move(application.m_FileSystemSize)),
+    m_WatchdogTimeout(std::move(application.m_WatchdogTimeout)),
+    m_WatchdogAction(std::move(application.m_WatchdogAction)),
+    m_UsesWatchdog(false),
+    m_UsesConfig(false),
+    m_ConfigTrees(application.m_ConfigTrees)
 {
 }
 
@@ -116,6 +140,7 @@ App& App::operator =
     if (&application != this)
     {
         m_Name = std::move(application.m_Name);
+        m_Version = std::move(application.m_Version);
         m_DefFilePath = std::move(application.m_DefFilePath);
         m_IsSandboxed = std::move(application.m_IsSandboxed);
         m_Debug = std::move(application.m_Debug);
@@ -123,8 +148,12 @@ App& App::operator =
         m_Components = std::move(application.m_Components);
         m_Executables = std::move(application.m_Executables);
         m_ProcEnvironments = std::move(application.m_ProcEnvironments);
-        m_IncludedFiles = std::move(application.m_IncludedFiles);
-        m_ImportedFiles = std::move(application.m_ImportedFiles);
+        m_BundledFiles = std::move(application.m_BundledFiles);
+        m_BundledDirs = std::move(application.m_BundledDirs);
+        m_RequiredFiles = std::move(application.m_RequiredFiles);
+        m_RequiredDirs = std::move(application.m_RequiredDirs);
+        m_InternalApiBinds = std::move(application.m_InternalApiBinds);
+        m_ExternalApiBinds = std::move(application.m_ExternalApiBinds);
         m_Groups = std::move(application.m_Groups);
         m_NumProcs = std::move(application.m_NumProcs);
         m_MqueueSize = std::move(application.m_MqueueSize);
@@ -132,6 +161,11 @@ App& App::operator =
         m_MemLimit = std::move(application.m_MemLimit);
         m_CpuShare = std::move(application.m_CpuShare);
         m_FileSystemSize = std::move(application.m_FileSystemSize);
+        m_WatchdogTimeout = std::move(application.m_WatchdogTimeout);
+        m_WatchdogAction = std::move(application.m_WatchdogAction);
+        m_UsesWatchdog = std::move(application.m_UsesWatchdog);
+        m_UsesConfig = std::move(application.m_UsesConfig);
+        m_ConfigTrees = std::move(application.m_ConfigTrees);
     }
 
     return *this;
@@ -177,37 +211,6 @@ void App::DefFilePath
 }
 
 
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Adds a component to the application.
- */
-//--------------------------------------------------------------------------------------------------
-Component& App::CreateComponent
-(
-    const std::string& name ///< Name of the component.
-)
-{
-    auto foundItem = m_Components.find(name);
-
-    if (foundItem != m_Components.end())
-    {
-        throw Exception("Attempting to add multiple components with the same name: '" + name + "'");
-    }
-
-    Component& component = m_Components[name];
-
-    component.Name(name);
-
-    component.AddImportedFile( {    PERMISSION_READABLE,
-                                    std::string("lib/lib") + name + ".so",
-                                    "/lib/" } );
-
-    return component;
-}
-
-
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Creates a new executable in the application.
@@ -238,11 +241,6 @@ Executable& App::CreateExecutable
     Executable& exe = m_Executables[path];
     exe.OutputPath(path);   // NOTE: This has the side effect of setting the exe's CName.
 
-    // Add the executable to the list of files to be imported into the sandbox.
-    AddImportedFile( {  PERMISSION_READABLE | PERMISSION_EXECUTABLE,
-                        std::string("bin/") + path,
-                        "/bin/" } );
-
     return exe;
 }
 
@@ -254,23 +252,66 @@ Executable& App::CreateExecutable
  * making it appear at a specific location in the application sandbox file system.
  */
 //--------------------------------------------------------------------------------------------------
-void App::AddIncludedFile
+void App::AddBundledFile
 (
     FileMapping&& mapping
 )
 //--------------------------------------------------------------------------------------------------
 {
-    if (!IsValidPath(mapping.m_DestPath))
+    // If the build host path (source path) is not absolute, then we need to prefix it with
+    // the application's directory path.
+    if (!legato::IsAbsolutePath(mapping.m_SourcePath))
     {
-        throw Exception("'" + mapping.m_DestPath + "' is not a valid path.");
-    }
-    if (!IsAbsolutePath(mapping.m_DestPath))
-    {
-        throw Exception("Included files must be mapped to an absolute path ('"
-                        + mapping.m_DestPath + "' is not).");
+        mapping.m_SourcePath = legato::CombinePath(Path(), mapping.m_SourcePath);
     }
 
-    m_IncludedFiles.push_back(mapping);
+    // Find the file in the host file system.
+    if (!legato::FileExists(mapping.m_SourcePath))
+    {
+        if (legato::DirectoryExists(mapping.m_SourcePath))
+        {
+            throw legato::Exception("'" + mapping.m_SourcePath + "' is a directory, not a file.");
+        }
+
+        throw legato::Exception("File '" + mapping.m_SourcePath + "' not found.");
+    }
+
+    m_BundledFiles.insert(std::move(mapping));
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Adds all the files and subdirectories from a directory in the build host's file system to
+ * an application (bundles it into the app), making it appear at a specific location in the
+ * application sandbox file system.
+ */
+//--------------------------------------------------------------------------------------------------
+void App::AddBundledDir
+(
+    FileMapping&& mapping
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // If the build host path (source path) is not absolute, then we need to prefix it with
+    // the application's directory path.
+    if (!legato::IsAbsolutePath(mapping.m_SourcePath))
+    {
+        mapping.m_SourcePath = legato::CombinePath(Path(), mapping.m_SourcePath);
+    }
+
+    // Find the directory in the host file system.
+    if (!legato::DirectoryExists(mapping.m_SourcePath))
+    {
+        if (legato::FileExists(mapping.m_SourcePath))
+        {
+            throw legato::Exception("'" + mapping.m_SourcePath + "' is a file, not a directory.");
+        }
+
+        throw legato::Exception("Directory '" + mapping.m_SourcePath + "' not found.");
+    }
+
+    m_BundledDirs.insert(std::move(mapping));
 }
 
 
@@ -280,7 +321,23 @@ void App::AddIncludedFile
  * somewhere inside the application sandbox filesystem.
  */
 //--------------------------------------------------------------------------------------------------
-void App::AddImportedFile
+void App::AddRequiredFile
+(
+    FileMapping&& mapping
+)
+//--------------------------------------------------------------------------------------------------
+{
+    m_RequiredFiles.insert(std::move(mapping));
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Imports a directory from somewhere in the root target file system (outside the sandbox) to
+ * somewhere inside the application sandbox filesystem.
+ */
+//--------------------------------------------------------------------------------------------------
+void App::AddRequiredDir
 (
     FileMapping&& mapping
 )
@@ -292,7 +349,8 @@ void App::AddImportedFile
     }
     if (!IsAbsolutePath(mapping.m_DestPath))
     {
-        throw Exception("Imported file system objects must be mapped to an absolute path ('"
+        throw Exception(std::string("External file system objects must be mapped to an absolute")
+                        + " path inside the application sandbox ('"
                         + mapping.m_DestPath + "' is not).");
     }
     if (!IsValidPath(mapping.m_SourcePath))
@@ -300,7 +358,212 @@ void App::AddImportedFile
         throw Exception("'" + mapping.m_SourcePath + "' is not a valid path.");
     }
 
-    m_ImportedFiles.push_back(mapping);
+    // If there's a trailing slash, remove it.
+    if (mapping.m_SourcePath.back() == '/')
+    {
+        mapping.m_SourcePath.erase(--mapping.m_SourcePath.end());
+    }
+
+    m_RequiredDirs.insert(std::move(mapping));
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Creates a binding from a client-side IPC API interface to a server offered by an app or user
+ * outside this app.
+ *
+ * @return Reference to the newly created binding.
+ **/
+//--------------------------------------------------------------------------------------------------
+ExternalApiBind& App::AddExternalApiBind
+(
+    const std::string& clientInterface  ///< Client interface specifier (exe.comp.interface)
+)
+//--------------------------------------------------------------------------------------------------
+{
+    if (   (m_InternalApiBinds.find(clientInterface) != m_InternalApiBinds.end())
+        || (m_ExternalApiBinds.find(clientInterface) != m_ExternalApiBinds.end()) )
+    {
+        throw Exception("Multiple bindings of the same API client interface: '"
+                        + clientInterface + "'.");
+    }
+
+    ExternalApiBind& binding = m_ExternalApiBinds[clientInterface];
+
+    binding.ClientInterface(clientInterface);
+
+    return binding;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Creates a binding from a client-side interface to a server-side interface in the same app.
+ **/
+//--------------------------------------------------------------------------------------------------
+void App::AddInternalApiBind
+(
+    const std::string& clientInterface, ///< Client interface specifier (exe.comp.interface)
+    const std::string& serverInterface  ///< Server interface specifier (exe.comp.interface)
+)
+//--------------------------------------------------------------------------------------------------
+{
+    if (   (m_InternalApiBinds.find(clientInterface) != m_InternalApiBinds.end())
+        || (m_ExternalApiBinds.find(clientInterface) != m_ExternalApiBinds.end()) )
+    {
+        throw Exception("Multiple bindings of the same API client interface: '"
+                        + clientInterface + "'.");
+    }
+
+    InternalApiBind& binding = m_InternalApiBinds[clientInterface];
+
+    binding.ClientInterface(clientInterface);
+    binding.ServerInterface(serverInterface);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Searches for an instance of a client-side interface on any of the application's executables.
+ *
+ * @return Reference to the interface.
+ *
+ * @throw legato::Exception if the interface name is not found anywhere in the app.
+ **/
+//--------------------------------------------------------------------------------------------------
+ImportedInterface& App::FindClientInterface
+(
+    const std::string& exeName,
+    const std::string& componentName,
+    const std::string& interfaceName
+)
+//--------------------------------------------------------------------------------------------------
+{
+    try
+    {
+        auto exeMapIter = m_Executables.find(exeName);
+        if (exeMapIter == m_Executables.end())
+        {
+            throw legato::Exception("No such executable '" + exeName + "'.");
+        }
+
+        auto& componentInstance = exeMapIter->second.FindComponentInstance(componentName);
+
+        return componentInstance.FindClientInterface(interfaceName);
+    }
+    catch (legato::Exception e)
+    {
+        std::string name = exeName + '.' + componentName + '.' + interfaceName;
+
+        throw legato::Exception ("Client-side IPC API interface '" + name + "'"
+                                " not found in app '" + m_Name + "'.  " + e.what() );
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Searches for an instance of a server-side interface on any of the application's executables.
+ *
+ * @return Reference to the interface.
+ *
+ * @throw legato::Exception if the interface name is not found anywhere in the app.
+ **/
+//--------------------------------------------------------------------------------------------------
+ExportedInterface& App::FindServerInterface
+(
+    const std::string& exeName,
+    const std::string& componentName,
+    const std::string& interfaceName
+)
+//--------------------------------------------------------------------------------------------------
+{
+    try
+    {
+        auto exeMapIter = m_Executables.find(exeName);
+        if (exeMapIter == m_Executables.end())
+        {
+            throw legato::Exception("No such executable '" + exeName + "'.");
+        }
+
+        auto& componentInstance = exeMapIter->second.FindComponentInstance(componentName);
+
+        return componentInstance.FindServerInterface(interfaceName);
+    }
+    catch (legato::Exception e)
+    {
+        std::string name = exeName + '.' + componentName + '.' + interfaceName;
+
+        throw legato::Exception ("Server-side IPC API interface '" + name + "'"
+                                " not found in app '" + m_Name + "'.  " + e.what() );
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Searches for an instance of a client-side interface on any of the application's executables.
+ *
+ * @return Reference to the interface.
+ *
+ * @throw legato::Exception if the interface name is not found anywhere in the app.
+ **/
+//--------------------------------------------------------------------------------------------------
+ImportedInterface& App::FindClientInterface
+(
+    const std::string& name ///< Interface specification of the form "exe.component.interface"
+)
+//--------------------------------------------------------------------------------------------------
+{
+    std::string exeName;
+    std::string componentName;
+    std::string interfaceName;
+
+    try
+    {
+        legato::Interface::SplitAppUniqueName(name, exeName, componentName, interfaceName);
+    }
+    catch (legato::Exception e)
+    {
+        throw legato::Exception ("Client-side IPC API interface '" + name + "'"
+                                " not found in app '" + m_Name + "'.  " + e.what() );
+    }
+
+    return FindClientInterface(exeName, componentName, interfaceName);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Searches for an instance of a server-side interface on any of the application's executables.
+ *
+ * @return Reference to the interface.
+ *
+ * @throw legato::Exception if the interface name is not found anywhere in the app.
+ **/
+//--------------------------------------------------------------------------------------------------
+ExportedInterface& App::FindServerInterface
+(
+    const std::string& name ///< Interface specification of the form "exe.component.interface"
+)
+//--------------------------------------------------------------------------------------------------
+{
+    std::string exeName;
+    std::string componentName;
+    std::string interfaceName;
+
+    try
+    {
+        legato::Interface::SplitAppUniqueName(name, exeName, componentName, interfaceName);
+    }
+    catch (legato::Exception e)
+    {
+        throw legato::Exception ("Server-side IPC API interface '" + name + "'"
+                                " not found in app '" + m_Name + "'.  " + e.what() );
+    }
+
+    return FindServerInterface(exeName, componentName, interfaceName);
 }
 
 
@@ -336,19 +599,24 @@ void App::AddGroup
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Bind two interfaces together.
- */
+ * Add permission to access a given configuration tree.
+ **/
 //--------------------------------------------------------------------------------------------------
-void App::Bind
+void App::AddConfigTreeAccess
 (
-    const std::string& importProcess,
-    const std::string& importInterface,
-    const std::string& exportProcess,
-    const std::string& exportInterface
+    const std::string& tree,
+    int flags
 )
 //--------------------------------------------------------------------------------------------------
 {
-    throw Exception("Binding not supported.");
+    // If they've already specified permission for this same tree, it's most likely a mistake.
+    if (m_ConfigTrees.find(tree) != m_ConfigTrees.end())
+    {
+        throw legato::Exception("Duplicate access specification for configuration tree '"
+                                + tree + "'");
+    }
+
+    m_ConfigTrees[tree] = flags;
 }
 
 

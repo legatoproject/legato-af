@@ -18,7 +18,7 @@
 #define LIMIT_MAX_PATH_BYTES            (LIMIT_MAX_PATH_LEN + 1)
 
 
-#define LEGATO_CONFIG_TREE_ROOT_DIR ""
+#define LEGATO_CONFIG_TREE_ROOT_DIR "system:"
 
 #define CFG_NODE_POSITIONING        "positioning"
 

@@ -1,0 +1,5 @@
+sources:
+    server.c
+
+export:
+    magic.api

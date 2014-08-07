@@ -1,0 +1,170 @@
+/** @page toolsConfigDB Config Database
+
+@ref configDBcmds <br>
+@ref treePaths <br>
+@ref configSamples
+
+@section configDBcmds Config DB Commands
+
+Use the @c config command line tool to change a target's configuration database.
+Functions supported include: inspect a tree, read/write values, and import/export
+enitre tree sections.
+
+<h2>Usage</h2>
+
+<b><c> config [OPTIONS] </c></b>
+
+@verbatim config get <tree path> [--format=json] @endverbatim
+> Read a value.
+
+@verbatim config set <tree path> <new value> [<type>] @endverbatim
+> Write a value.
+
+@verbatim config rename <node path> <new name> @endverbatim
+> Rename a node:
+
+@verbatim config delete <tree path> @endverbatim
+> Delete a node.
+
+@verbatim config import <tree path> <file path> [--format=json] @endverbatim
+> Import config data.
+
+@verbatim config export <tree path> <file path> [--format=json] @endverbatim
+> Export config data.
+
+@verbatim config list @endverbatim
+> List all config trees.
+
+@verbatim config rmtree <tree name> @endverbatim
+> Delete a tree.
+
+@verbatim config help @endverbatim
+> Display help.
+
+<h2>Options</h2>
+
+@verbatim <tree path> @endverbatim
+> Path to the tree and node to configure.
+
+@verbatim <tree name> @endverbatim
+> Is the name of a tree in the system, but without a path.
+
+@verbatim <file path> @endverbatim
+> Path to the file for import/export.
+
+@verbatim <new value> @endverbatim
+> String value to write to the config tree.
+
+@verbatim <type> @endverbatim
+> Optional, must be bool, int, float, or string. If tool, must be true or false.
+> If unspecified, default type is string.
+
+@verbatim --format=json @endverbatim
+> For imports, then properly formatted JSON will be expected.
+> For exports, then the data will be generated as well.
+> It is also possible to specify JSON for the get sub-command.
+
+@section treePaths Tree Paths
+
+A tree path is specified similar to a @c *nix path. With the beginning slash being optional.
+
+    For example:
+
+        /a/path/to/somewhere
+    or
+        a/path/to/somewhere
+
+The configTree supports multiple trees: a default tree is assigned per user.
+If the config tool is run as root, then alternative trees can be specified
+in the path by entering a tree name, then a colon and the value path.
+
+Here's an example using the tree named 'foo' instead of the default tree:
+
+      foo:/a/path/to/somewhere
+
+
+@subsection configTreeLocation Tree location
+
+The trees themselves are stored in the file system at:
+@verbatim /opt/legato/configTree @endverbatim
+
+The configTree cycles through the extensions, .rock, .paper, and .scissors to differentiate
+between versions of the tree file. The base file name is the same as the tree.
+
+A listing for /opt/legato/configTree where the system tree and the user trees are foo and bar looks
+like this:
+
+@verbatim
+$ ls /opt/legato/configTree/ -l
+total 32
+-rw------- 1 user user  3456 May 12 11:02 bar.rock
+-rw------- 1 user user  3456 May  9 11:04 foo.scissors
+-rw------- 1 user user 21037 May  9 11:04 system.paper
+@endverbatim
+
+The system, or root user, has its own tree; each application has a separate tree.
+
+@section configSamples Config DB Samples
+
+To dump a tree, run this to get the default tree for the current user:
+
+@verbatim config get / @endverbatim
+
+Or to get a specific tree:
+
+@verbatim
+$ config get foo:/
+/
+  helloWorld/
+    greeted<bool> == true
+    ignored<bool> == false
+@endverbatim
+
+The config tool can also read and write individual values.  You can read the value of greeted like
+this:
+
+@verbatim
+$ config get /helloWorld/greeted
+true
+@endverbatim
+
+If you want to see everything under helloWorld:
+@verbatim
+$ config get /helloWorld
+helloWorld/
+  greeted<bool> == true
+  ignored<bool> == false
+@endverbatim
+
+If you want to change the value of ignored:
+@verbatim
+$ config set /helloWorld/ignored true bool
+@endverbatim
+
+You can check it by running:
+@verbatim
+$ config get /helloWorld/ignored
+true
+@endverbatim
+
+If the config tool is listing a tree it will display the node name and a / if the current node
+has children.  (Except for the root node, as the root node does not have a name.)
+
+For leaf nodes, the config tool will display the value type in angle brackets, <>, as well as its
+name and actual value:
+
+@verbatim
+/
+  testValues/
+    aBoolValue<bool> == true
+    aStringValue<string> == This is some text I saved.
+    anIntValue<int> == 1024
+    afloatValue<float> == 10.24
+@endverbatim
+
+<HR>
+
+Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to
+license.
+
+**/

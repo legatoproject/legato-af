@@ -45,7 +45,9 @@ ProcessEnvironment::ProcessEnvironment
     m_CoreFileSize(std::move(original.m_CoreFileSize)),
     m_MaxFileSize(std::move(original.m_MaxFileSize)),
     m_MemLockSize(std::move(original.m_MemLockSize)),
-    m_NumFds(std::move(original.m_NumFds))
+    m_NumFds(std::move(original.m_NumFds)),
+    m_WatchdogTimeout(std::move(original.m_WatchdogTimeout)),
+    m_WatchdogAction(std::move(original.m_WatchdogAction))
 //--------------------------------------------------------------------------------------------------
 {
 }

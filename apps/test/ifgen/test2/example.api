@@ -59,6 +59,17 @@ FUNCTION allParameters
     string more [TWENTY] OUT   ///< This parameter tests a bug fix
 );
 
+
+/**
+ * Test file descriptors as IN and OUT parameters
+ */
+FUNCTION FileTest
+(
+    file dataFile IN,   ///< file descriptor as IN parameter
+    file dataOut OUT    ///< file descriptor as OUT parameter
+);
+
+
 /**
  * This function fakes an event, so that the handler will be called.  
  * Only needed for testing.  Would never exist on a real system.

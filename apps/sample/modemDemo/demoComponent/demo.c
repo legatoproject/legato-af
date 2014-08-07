@@ -4,17 +4,11 @@
 /* Legato Framework */
 #include "legato.h"
 
-/* Modem Services (Client) */
-#include "le_sms.h"
-#include "le_sim.h"
-#include "le_mdc.h"
-#include "le_mrc.h"
+/* IPC APIs */
+#include "interfaces.h"
 
-/* Data Connection Services (Client) */
-#include "le_data_interface.h"
-
-/* "send_util.api" (Server) */
-#include "send_server.h"
+#define SMS_TEXT_MAX_LEN    160
+#define SMS_TEXT_MAX_BYTES  (SMS_TEXT_MAX_LEN+1)
 
 // -------------------------------------------------------------------------------------------------
 /**
@@ -37,7 +31,7 @@ static char DestNumValid = false;
  *  The destination phone number we report to on events.
  */
 // -------------------------------------------------------------------------------------------------
-static char DestNum[LE_SMS_TEL_NMBR_MAX_LEN] = { 0 };
+static char DestNum[LE_MDMDEFS_PHONE_NUM_MAX_LEN] = { 0 };
 
 // -------------------------------------------------------------------------------------------------
 /**
@@ -52,7 +46,7 @@ static FILE* OutputFilePtr = NULL;
  *  The data connection reference
  */
 // -------------------------------------------------------------------------------------------------
-static le_data_Request_Ref_t RequestRef = NULL;
+static le_data_RequestObjRef_t RequestRef = NULL;
 
 // -------------------------------------------------------------------------------------------------
 /**
@@ -214,6 +208,8 @@ static const char* GetSignalString
 // -------------------------------------------------------------------------------------------------
 /**
  *  This function deals with the actual sending of a text message to a destination.
+ *  If the message is longer than 160 char, then the message will be send by multiple SMS,
+ *  the arrival order is not predictable.
  *
  *  @return
  *       - LE_OK            The function succeeded.
@@ -234,42 +230,77 @@ static le_result_t SendMessage
     const char* message   ///< [IN] The message to be sent to the destination phone.
 )
 {
-    // Allocate a message object from the SMS pool.  If this fails, the application will halt, so
-    // there's no point in checking for a valid object.
-    le_sms_msg_Ref_t messageRef = le_sms_msg_Create();
+    le_sms_MsgRef_t messageRef = NULL;
     le_result_t result;
 
-    // Populate the message parameters, and let the underlying API validate them.
-    if ((result = le_sms_msg_SetDestination(messageRef, number)) != LE_OK)
+    uint32_t messageSize = strlen(message);
+    uint32_t messagePart,i;
+
+
+    if (messageSize % SMS_TEXT_MAX_LEN)
     {
-        LE_ERROR("Failed to set message destination number.  Result: %d", result);
-        goto done;
+        messagePart = (messageSize/SMS_TEXT_MAX_LEN)+1;
+    }
+    else
+    {
+        messagePart = messageSize/SMS_TEXT_MAX_LEN;
     }
 
-    if ((result = le_sms_msg_SetText(messageRef, message)) != LE_OK)
+    for (i=0;i<messagePart;i++)
     {
-        LE_ERROR("Failed to set the message text.  Result: %d", result);
-        goto done;
-    }
+        uint32_t messageCopySize;
+        char messageToSend[SMS_TEXT_MAX_BYTES] = {0};
 
-    // Now, attempt to send the message.
-    if ((result = le_sms_msg_Send(messageRef)) != LE_OK)
-    {
-        LE_ERROR("Message transmission failed.  Result: %d", result);
-        goto done;
-    }
+        if (i==messagePart-1)
+        {
+            messageCopySize = messageSize % SMS_TEXT_MAX_LEN;
+        }
+        else
+        {
+            messageCopySize = SMS_TEXT_MAX_LEN;
+        }
 
-    // If we got here, then the send was successful.  Record the message in the log.
-    if (OutputFilePtr)
-    {
-        fprintf(OutputFilePtr, "send (%s): %s\n", number, message);
-        fflush(OutputFilePtr);
-    }
+        memcpy(messageToSend,&message[i*SMS_TEXT_MAX_LEN],messageCopySize);
+        messageToSend[messageCopySize] = '\0';
 
+        // Allocate a message object from the SMS pool.  If this fails, the application will halt, so
+        // there's no point in checking for a valid object.
+        messageRef = le_sms_Create();
+
+        // Populate the message parameters, and let the underlying API validate them.
+        if ((result = le_sms_SetDestination(messageRef, number)) != LE_OK)
+        {
+            LE_ERROR("Failed to set message destination number.  Result: %d", result);
+            goto done;
+        }
+
+        if ((result = le_sms_SetText(messageRef, messageToSend)) != LE_OK)
+        {
+            LE_ERROR("Failed to set the message text.  Result: %d", result);
+            goto done;
+        }
+
+        // Now, attempt to send the message.
+        if ((result = le_sms_Send(messageRef)) != LE_OK)
+        {
+            LE_ERROR("Message transmission failed.  Result: %d", result);
+            goto done;
+        }
+
+        // If we got here, then the send was successful.  Record the message in the log.
+        if (OutputFilePtr)
+        {
+            fprintf(OutputFilePtr, "send (%s): %s\n", number, messageToSend);
+            fflush(OutputFilePtr);
+        }
+
+        le_sms_Delete(messageRef);
+        messageRef = NULL;
+    }
 // Finally, clean up our memory and let the caller know what happened.
 done:
 
-    le_sms_msg_Delete(messageRef);
+    if (messageRef) { le_sms_Delete(messageRef); }
     return result;
 }
 
@@ -413,11 +444,13 @@ static void Netinfo
     char* buffer   ///< [OUT] On success or failure, a message is written to this buffer.
 )
 {
-    le_mdc_Profile_Ref_t profileRef = le_mdc_LoadProfile("internet");
+    uint32_t bufferIndex = 0;
+    // hard coded, first profile.
+    le_mdc_ProfileRef_t profileRef = le_mdc_GetProfile(1);
 
     if (profileRef == NULL)
     {
-        sprintf(buffer, "Failed to open profile.");
+        bufferIndex += sprintf(&buffer[bufferIndex], "Failed to open profile.");
         return;
     }
 
@@ -428,29 +461,59 @@ static void Netinfo
 
     if (le_mdc_GetInterfaceName(profileRef, interfaceName, sizeof(interfaceName)) != LE_OK)
     {
-        sprintf(buffer, "Failed to get interface name.");
+        bufferIndex += sprintf(&buffer[bufferIndex], "Failed to get interface name.");
         interfaceName[0] = '\0';
         return;
     }
 
-    if (le_mdc_GetGatewayAddress(profileRef, gatewayAddr, sizeof(gatewayAddr)) != LE_OK)
+    if ( le_mdc_IsIPv4(profileRef) )
     {
-        sprintf(buffer, "Failed to get gateway address.");
-        gatewayAddr[0] = '\0';
-        return;
+        if (le_mdc_GetIPv4GatewayAddress(profileRef, gatewayAddr, sizeof(gatewayAddr)) != LE_OK)
+        {
+            bufferIndex += sprintf(&buffer[bufferIndex], "Failed to get gateway address.");
+            gatewayAddr[0] = '\0';
+            return;
+        }
+
+        if (le_mdc_GetIPv4DNSAddresses(profileRef,
+                                   dns1Addr, sizeof(dns1Addr),
+                                   dns2Addr, sizeof(dns2Addr)) != LE_OK)
+        {
+            bufferIndex += sprintf(&buffer[bufferIndex], "Failed to read DNS addresses.");
+            dns1Addr[0] = '\0';
+            dns2Addr[0] = '\0';
+            return;
+        }
+
+        bufferIndex += sprintf(&buffer[bufferIndex],
+                               "\nIPV4 GW: %s, DNS1: %s, DNS2: %s on %s",
+                               gatewayAddr, dns1Addr, dns2Addr, interfaceName);
     }
 
-    if (le_mdc_GetDNSAddresses(profileRef,
-                               dns1Addr, sizeof(dns1Addr),
-                               dns2Addr, sizeof(dns2Addr)) != LE_OK)
+    if ( le_mdc_IsIPv6(profileRef) )
     {
-        sprintf(buffer, "Failed to read DNS addresses.");
-        dns1Addr[0] = '\0';
-        dns2Addr[0] = '\0';
-        return;
+        if (le_mdc_GetIPv6GatewayAddress(profileRef, gatewayAddr, sizeof(gatewayAddr)) != LE_OK)
+        {
+            bufferIndex += sprintf(&buffer[bufferIndex], "Failed to get gateway address.");
+            gatewayAddr[0] = '\0';
+            return;
+        }
+
+        if (le_mdc_GetIPv6DNSAddresses(profileRef,
+                                   dns1Addr, sizeof(dns1Addr),
+                                   dns2Addr, sizeof(dns2Addr)) != LE_OK)
+        {
+            bufferIndex += sprintf(&buffer[bufferIndex], "Failed to read DNS addresses.");
+            dns1Addr[0] = '\0';
+            dns2Addr[0] = '\0';
+            return;
+        }
+
+        bufferIndex += sprintf(&buffer[bufferIndex],
+                               "\nIPV6 GW: %s, DNS1: %s, DNS2: %s on %s",
+                               gatewayAddr, dns1Addr, dns2Addr, interfaceName);
     }
 
-    sprintf(buffer, "GW: %s, DNS1: %s, DNS2: %s on %s", gatewayAddr, dns1Addr, dns2Addr, interfaceName);
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -508,34 +571,55 @@ static const char* PrintNetworkName
 {
     switch (technology)
     {
-    case LE_MRC_RAT_GSM:
-        return "GSM";
-    case LE_MRC_RAT_UTMS:
-        return "UTMS";
-    case LE_MRC_RAT_LTE:
-        return "LTE";
-    case LE_MRC_RAT_TC_SCDMA:
-        return "TC SCDMA";
     case LE_MRC_RAT_UNKNOWN:
         return "Undefined";
+    case LE_MRC_RAT_GSM:
+        return "GSM";
+    case LE_MRC_RAT_UMTS:
+        return "UMTS";
+    case LE_MRC_RAT_UMTS_GSM:
+        return "UMTS+GSM";
+    case LE_MRC_RAT_LTE:
+        return "LTE";
+    case LE_MRC_RAT_LTE_GSM:
+        return "LTE+GSM";
+    case LE_MRC_RAT_LTE_UMTS:
+        return "LTE+UMTS";
+    case LE_MRC_RAT_LTE_UMTS_GSM:
+        return "LTE+UMTS+GSM";
+    case LE_MRC_RAT_CDMA:
+        return "CDMA";
+    case LE_MRC_RAT_CDMA_GSM:
+        return "CDMA+GSM";
+    case LE_MRC_RAT_CDMA_UMTS:
+        return "CDMA+UMTS";
+    case LE_MRC_RAT_CDMA_UMTS_GSM:
+        return "CDMA+UMTS+GSM";
+    case LE_MRC_RAT_CDMA_LTE:
+        return "CDMA+LTE";
+    case LE_MRC_RAT_CDMA_LTE_GSM:
+        return "CDMA+LTE+GSM";
+    case LE_MRC_RAT_CDMA_LTE_UMTS:
+        return "CDMA+LTE+UMTS";
     case LE_MRC_RAT_ALL:
-        return "All technology";
+        return "All technologies";
     }
     return "Undefined";
 }
 
-
+// -------------------------------------------------------------------------------------------------
 /**
  *  This function returns Network Scan.
  */
 // -------------------------------------------------------------------------------------------------
 static void PerformScan
 (
-    char* buffer   ///< [OUT] On success or failure, a message is written to this buffer.
+    char* buffer,  ///< [OUT] On success or failure, a message is written to this buffer.
+    const char* requesterPtr ///< [IN] If not NULL, then any response text is SMSed to this target.
 )
 {
     int bufferIdx = 0;
-    le_mrc_ScanInformation_ListRef_t scanInformationList = NULL;
+    le_mrc_ScanInformationListRef_t scanInformationList = NULL;
     fprintf(stdout, "Scan was asked");
     scanInformationList = le_mrc_PerformCellularNetworkScan(LE_MRC_RAT_ALL);
     if (!scanInformationList)
@@ -544,18 +628,18 @@ static void PerformScan
         return;
     }
 
-    le_mrc_ScanInformation_Ref_t cellRef;
+    le_mrc_ScanInformationRef_t cellRef;
 
     uint32_t i;
     for (i=1;i<LE_MRC_RAT_ALL;i=i<<1)
     {
-
         for (cellRef=le_mrc_GetFirstCellularNetworkScan(scanInformationList);
              cellRef!=NULL;
              cellRef=le_mrc_GetNextCellularNetworkScan(scanInformationList))
         {
             char mcc[4],mnc[4];
             char name[100];
+            bufferIdx = 0;
 
             if (le_mrc_IsCellularNetworkRatAvailable(cellRef,i)) {
 
@@ -565,7 +649,7 @@ static void PerformScan
                 }
                 else
                 {
-                    bufferIdx += sprintf(&buffer[bufferIdx], "[%s-%s] ",mcc,mnc);
+                    bufferIdx += sprintf(&buffer[bufferIdx], "%s-%s ",mcc,mnc);
                 }
 
                 if (le_mrc_GetCellularNetworkName(cellRef, name, sizeof(name)) != LE_OK)
@@ -574,30 +658,43 @@ static void PerformScan
                 }
                 else
                 {
-                    bufferIdx += sprintf(&buffer[bufferIdx], "%-32s",name);
+                    bufferIdx += sprintf(&buffer[bufferIdx], "%s",name);
                 }
 
-                bufferIdx += sprintf(&buffer[bufferIdx]," - %-10s [",
-                                     PrintNetworkName(i));
+                bufferIdx += sprintf(&buffer[bufferIdx]," - %s ",PrintNetworkName(i));
 
-                bufferIdx += sprintf(&buffer[bufferIdx],"%-15s,",
+                bufferIdx += sprintf(&buffer[bufferIdx],"%s,",
                                      le_mrc_IsCellularNetworkInUse(cellRef)?"Is used":"Is not used");
 
-                bufferIdx += sprintf(&buffer[bufferIdx],"%-20s,",
+                bufferIdx += sprintf(&buffer[bufferIdx],"%s,",
                                      le_mrc_IsCellularNetworkAvailable(cellRef)?"Is available":"Is not available");
 
-                bufferIdx += sprintf(&buffer[bufferIdx],"%-10s,",
+                bufferIdx += sprintf(&buffer[bufferIdx],"%s,",
                                      le_mrc_IsCellularNetworkHome(cellRef)?"Home":"Roaming");
 
-                bufferIdx += sprintf(&buffer[bufferIdx],"%-10s]\n",
+                bufferIdx += sprintf(&buffer[bufferIdx],"%s\n",
                                      le_mrc_IsCellularNetworkForbidden(cellRef)?"Forbidden":"Allowed");
+
+                // Check to see if any processing has occurred.  If so, check to see if the request came from a
+                // local or remote requester.
+                // If the requester was local, (requesterPtr == NULL) then simply log our response to the SMS log.
+                // Otherwise, attempt to SMS the response string to the original caller.
+                if (requesterPtr != NULL)
+                {
+                    SendMessage(requesterPtr, buffer);
+                }
+                else if (OutputFilePtr != NULL)
+                {
+                    fprintf(OutputFilePtr, "## %s ##\n", buffer);
+                    fflush(OutputFilePtr);
+                }
             }
         }
     }
 
     le_mrc_DeleteCellularNetworkScan(scanInformationList);
 
-    bufferIdx += sprintf(&buffer[bufferIdx], "Scan was Performed");
+    bufferIdx += sprintf(&buffer[0], "Scan was Performed");
 }
 
 
@@ -667,7 +764,7 @@ static bool ProcessCommand
         // Like the status command, this command queries the underling hardware for information.
         // This information is turned into a string that can then be returned to the caller.
         const uint32_t simSlot = 1;
-        le_sim_Ref_t simRef = le_sim_Create(simSlot);
+        le_sim_ObjRef_t simRef = le_sim_Create(simSlot);
 
         char iccid[100];
         char imsi[100];
@@ -728,7 +825,7 @@ static bool ProcessCommand
     }
     else if (strcmp(textPtr, "Scan") == 0)
     {
-        PerformScan(buffer);
+        PerformScan(buffer,requesterPtr);
     }
     else
     {
@@ -767,25 +864,25 @@ static bool ProcessCommand
 // -------------------------------------------------------------------------------------------------
 static void SmsReceivedHandler
 (
-    le_sms_msg_Ref_t messagePtr,   ///< [IN] Message object received from the modem.
-     void*           contextPtr    ///< [IN] The handler's context.
+    le_sms_MsgRef_t messagePtr,   ///< [IN] Message object received from the modem.
+    void*           contextPtr    ///< [IN] The handler's context.
 )
 {
     // First off, make sure this is a message that we can handle.
     LE_DEBUG("smsReceivedHandler called.");
 
-    if (le_sms_msg_GetFormat(messagePtr) != LE_SMS_FORMAT_TEXT)
+    if (le_sms_GetFormat(messagePtr) != LE_SMS_FORMAT_TEXT)
     {
         LE_INFO("Non-text message received!");
         return;
     }
 
     // Now, extract the relavant information and record the message in the appropriate places.
-    char tel[LE_SMS_TEL_NMBR_MAX_LEN] = { 0 };
+    char tel[LE_MDMDEFS_PHONE_NUM_MAX_LEN] = { 0 };
     char text[LE_SMS_TEXT_MAX_LEN] = { 0 };
 
-    le_sms_msg_GetSenderTel(messagePtr, tel, LE_SMS_TEL_NMBR_MAX_LEN);
-    le_sms_msg_GetText(messagePtr, text, LE_SMS_TEXT_MAX_LEN);
+    le_sms_GetSenderTel(messagePtr, tel, LE_MDMDEFS_PHONE_NUM_MAX_LEN);
+    le_sms_GetText(messagePtr, text, LE_SMS_TEXT_MAX_LEN);
 
     // We are now reporting to this person
     DestNumValid = true;
@@ -793,7 +890,7 @@ static void SmsReceivedHandler
 
     LE_INFO("Message: %s: %s", tel, text);
 
-    le_sms_msg_DeleteFromStorage(messagePtr);
+    le_sms_DeleteFromStorage(messagePtr);
 
     if (OutputFilePtr)
     {
@@ -913,13 +1010,11 @@ COMPONENT_INIT
 
     LE_INFO("Running modemDemo\n");
 
-    send_StartServer("send");
-
     // register network state handler
     le_mrc_AddNetRegStateHandler(NetRegStateHandler, NULL);
 
     // register sms handler
-    le_sms_msg_AddRxMessageHandler(SmsReceivedHandler, NULL);
+    le_sms_AddRxMessageHandler(SmsReceivedHandler, NULL);
 
     // Now, make sure that the radio has been turned on and is ready to go.
     if ((result = le_mrc_GetRadioPower(&power)) != LE_OK)

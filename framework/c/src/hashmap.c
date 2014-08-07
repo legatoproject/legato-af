@@ -36,11 +36,11 @@ struct Entry {
  */
 typedef struct le_hashmap_It {
     le_hashmap_Ref_t theMapPtr;
-    uint32_t currentIndex;
+    int32_t currentIndex;
     le_dls_List_t* currentListPtr;
     le_dls_Link_t* currentLinkPtr;
     Entry_t* currentEntryPtr;
-    bool isValid;
+    bool isValueValid;
 }
 HashmapIt_t;
 
@@ -249,7 +249,7 @@ le_hashmap_Ref_t le_hashmap_Create
     mapRef->nameStr = nameStr;
 
     mapRef->iteratorPtr->theMapPtr = mapRef;
-    mapRef->iteratorPtr->isValid = true;
+    mapRef->iteratorPtr->isValueValid = true;
 
     return mapRef;
 }
@@ -270,10 +270,7 @@ void* le_hashmap_Put
     const void* keyPtr,        ///< [in] Pointer to the key to be stored
     const void* valuePtr       ///< [in] Pointer to the value to be stored
 )
-{  
-    // Invalidate the iterator
-    mapRef->iteratorPtr->isValid = false;
-
+{
     size_t hash = HashKey(mapRef, keyPtr);
     size_t index = CalculateIndex(mapRef->bucketCount, hash);
 
@@ -348,7 +345,7 @@ void* le_hashmap_Put
                     mapRef->nameStr,
                     mapRef->size
                 );
-                
+
                 mapRef->chainLengthPtr[index]++;
 
                 HASHMAP_TRACE(
@@ -434,6 +431,9 @@ void* le_hashmap_Get
 /**
  * Remove a value from a HashMap.
  *
+ * @note  If the iterator is currently on the item being removed, then it's value is invalidated.
+ *        The iterator will have to be moved before values and keys can be read from it again.
+ *
  * @return  Returns a pointer to the value or NULL if the key is not found.
  *
  */
@@ -445,9 +445,6 @@ void* le_hashmap_Remove
    const void* keyPtr       ///< [in] Pointer to the key to be removed
 )
 {
-    // Invalidate the iterator
-    mapRef->iteratorPtr->isValid = false;
-
     int hash = HashKey(mapRef, keyPtr);
     size_t index = CalculateIndex(mapRef->bucketCount, hash);
 
@@ -471,6 +468,12 @@ void* le_hashmap_Remove
                           mapRef->equalsFuncPtr)
                           )
         {
+            if (mapRef->iteratorPtr->currentLinkPtr == theLinkPtr)
+            {
+                le_hashmap_PrevNode(mapRef->iteratorPtr);
+                mapRef->iteratorPtr->isValueValid = false;
+            }
+
             void* value = (void*)(currentEntryPtr->valuePtr);
             le_dls_Remove(listHeadPtr, theLinkPtr);
             le_mem_Release( currentEntryPtr );
@@ -603,8 +606,12 @@ void le_hashmap_RemoveAll
     le_hashmap_Ref_t mapRef    ///< [in] Reference to the map
 )
 {
-    // Invalidate the iterator
-    mapRef->iteratorPtr->isValid = false;
+    // Reset the iterator
+    mapRef->iteratorPtr->isValueValid = false;
+    mapRef->iteratorPtr->currentIndex = -1;
+    mapRef->iteratorPtr->currentListPtr = NULL;
+    mapRef->iteratorPtr->currentLinkPtr = NULL;
+    mapRef->iteratorPtr->currentEntryPtr = NULL;
 
     uint32_t i;
     for (i = 0; i < mapRef->bucketCount; i++) {
@@ -682,7 +689,7 @@ le_hashmap_It_Ref_t le_hashmap_GetIterator
     // Set the counter to -1 so that we know the iterator is at the start
     mapRef->iteratorPtr->currentIndex = -1;
     // Mark the iterator as valid
-    mapRef->iteratorPtr->isValid = true;
+    mapRef->iteratorPtr->isValueValid = true;
 
     return mapRef->iteratorPtr;
 }
@@ -692,11 +699,8 @@ le_hashmap_It_Ref_t le_hashmap_GetIterator
 /**
  * Moves the iterator to the next key/value pair in the map. Order is dependent
  * on the hash algorithm and the order of inserts and is not sorted at all.
- * If the hashmap is modified during iteration then this function will return an error.
  *
  * @return  Returns LE_OK unless you go past the end of the map, then returns LE_NOT_FOUND
- *          If the iterator has been invalidated by the map changing or you have previously
- *          received a LE_NOT_FOUND then this returns LE_FAULT
  *
  */
 //--------------------------------------------------------------------------------------------------
@@ -705,20 +709,12 @@ le_result_t le_hashmap_NextNode
     le_hashmap_It_Ref_t iteratorRef        ///< [IN] Reference to the iterator
 )
 {
-    if (!iteratorRef->isValid)
-    {
-        LE_WARN
-        (
-            "Hashmap %s: Attempted use of invalid iterator",
-            iteratorRef->theMapPtr->nameStr
-        );
-        return LE_FAULT;
-    }
+    iteratorRef->isValueValid = true;
 
     // If the map is empty immediately return LE_NOT_FOUND
     if (le_hashmap_isEmpty(iteratorRef->theMapPtr))
     {
-        iteratorRef->isValid = false;
+        iteratorRef->isValueValid = false;
         return LE_NOT_FOUND;
     }
 
@@ -774,9 +770,89 @@ le_result_t le_hashmap_NextNode
     }
 
     // At the end without finding another entry, need to invalidate the iterator
-    iteratorRef->isValid = false;
+    iteratorRef->isValueValid = false;
     return LE_NOT_FOUND;
 }
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Moves the iterator to the previous key/value pair in the map. Order is dependent
+ * on the hash algorithm and the order of inserts, and is not sorted at all.
+ *
+ * @return  Returns LE_OK unless you go past the beginning of the map, then returns LE_NOT_FOUND.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_hashmap_PrevNode
+(
+    le_hashmap_It_Ref_t iteratorRef        ///< [IN] Reference to the iterator
+)
+{
+    iteratorRef->isValueValid = true;
+
+    // If the map is empty or if we're already at the beginning of the table, immediately return
+    // LE_NOT_FOUND.
+    if (
+         (le_hashmap_isEmpty(iteratorRef->theMapPtr)) ||
+         (iteratorRef->currentIndex == -1)
+       )
+    {
+        iteratorRef->isValueValid = false;
+        return LE_NOT_FOUND;
+    }
+
+    le_dls_Link_t* theLinkPtr = le_dls_PeekPrev(iteratorRef->currentListPtr,
+                                                iteratorRef->currentLinkPtr);
+
+    if (NULL == theLinkPtr)
+    {
+        // Find the previous list tail.
+        for (
+               iteratorRef->currentIndex = iteratorRef->currentIndex - 1;
+               iteratorRef->currentIndex >= 0;
+               iteratorRef->currentIndex-- )
+        {
+            le_dls_List_t* listHeadPtr = &(iteratorRef->theMapPtr->bucketsPtr[iteratorRef->currentIndex]);
+            theLinkPtr = le_dls_PeekTail(listHeadPtr);
+
+            if (NULL != theLinkPtr)
+            {
+                Entry_t* currentEntryPtr = CONTAINER_OF(theLinkPtr, Entry_t, entryListLink);
+                iteratorRef->currentLinkPtr = theLinkPtr;
+                iteratorRef->currentEntryPtr = currentEntryPtr;
+                iteratorRef->currentListPtr = listHeadPtr;
+
+                HASHMAP_TRACE(
+                    iteratorRef->theMapPtr,
+                    "Found index head match, index is %d",
+                    iteratorRef->currentIndex
+                );
+                return LE_OK;
+            }
+        }
+    }
+    else
+    {
+        Entry_t* currentEntryPtr = CONTAINER_OF(theLinkPtr, Entry_t, entryListLink);
+        iteratorRef->currentLinkPtr = theLinkPtr;
+        iteratorRef->currentEntryPtr = currentEntryPtr;
+        // No change to the current list head pointer as we're in the same list
+
+        HASHMAP_TRACE(
+            iteratorRef->theMapPtr,
+            "Found index list match, index is %d",
+            iteratorRef->currentIndex
+        );
+
+        return LE_OK;
+    }
+
+    // At the beginning, without finding another entry, need to invalidate the iterator.
+    iteratorRef->isValueValid = false;
+    return LE_NOT_FOUND;
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -791,7 +867,7 @@ void const * le_hashmap_GetKey
     le_hashmap_It_Ref_t iteratorRef        ///< [IN] Reference to the iterator
 )
 {
-    if (!iteratorRef->isValid || (iteratorRef->currentIndex == -1)) return NULL;
+    if (!iteratorRef->isValueValid || (iteratorRef->currentIndex == -1)) return NULL;
 
     return iteratorRef->currentEntryPtr->keyPtr;
 }
@@ -809,7 +885,7 @@ void const * le_hashmap_GetValue
     le_hashmap_It_Ref_t iteratorRef        ///< [IN] Reference to the iterator
 )
 {
-    if (!iteratorRef->isValid || (iteratorRef->currentIndex == -1)) return NULL;
+    if (!iteratorRef->isValueValid || (iteratorRef->currentIndex == -1)) return NULL;
 
     return iteratorRef->currentEntryPtr->valuePtr;
 }
@@ -827,7 +903,7 @@ void const * le_hashmap_GetValue
  *
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_hashmap_GetFirstNode 
+le_result_t le_hashmap_GetFirstNode
 (
     le_hashmap_Ref_t mapRef,   ///< [in] Reference to the map
     void **firstKeyPtr,        ///> [out] Pointer to the first key
@@ -839,14 +915,14 @@ le_result_t le_hashmap_GetFirstNode
     {
         return LE_NOT_FOUND;
     }
-    
+
     // If the keyPtr is NULL return LE_BAD_PARAMETER
     if (firstKeyPtr == NULL)
     {
         LE_ERROR("NULL key");
         return LE_BAD_PARAMETER;
     }
-    
+
     // Find the first list head
     size_t index = 0;
     for (
@@ -876,7 +952,7 @@ le_result_t le_hashmap_GetFirstNode
  * if new keys have been added to the map.
  * If NULL is passed as the nextValuePtr then only the key will be returned.
  *
- * @return  LE_OK if the next node is returned. If the keyPtr is not found in the 
+ * @return  LE_OK if the next node is returned. If the keyPtr is not found in the
  *          map then LE_BAD_PARAMETER is returned. LE_NOT_FOUND is returned if the passed
  *          in key is the last one in the map.
  *
@@ -892,14 +968,14 @@ le_result_t le_hashmap_GetNodeAfter
 {
     // If the map is empty or the key is invalid
     if (
-          (le_hashmap_isEmpty(mapRef)) || 
-          (keyPtr == NULL) || 
+          (le_hashmap_isEmpty(mapRef)) ||
+          (keyPtr == NULL) ||
           (nextKeyPtr == NULL)
         )
     {
         return LE_BAD_PARAMETER;
     }
-      
+
     // Find the node pointed to by the key
     size_t hash = HashKey(mapRef, keyPtr);
     size_t index = CalculateIndex(mapRef->bucketCount, hash);
@@ -1061,8 +1137,8 @@ size_t le_hashmap_HashUInt32
     const void* intToHashPtr    ///< [in] Pointer to the integer to be hashed
 )
 {
-    // Return the key value itself.
-    return *((size_t*) intToHashPtr);
+    uint32_t ui = *((uint32_t *)intToHashPtr);
+    return (size_t)ui;
 }
 
 //--------------------------------------------------------------------------------------------------

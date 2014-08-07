@@ -1,60 +1,49 @@
 /** @page getstartedMain Get Started
 
-@ref inLegato   <br>
-@ref envHost   <br>
-@ref getstartWhatsNext
+Get Started info is organized for a Quick Start and for Advanced Users.
 
-@section inLegato Legato Installation Packages
+Quick Start has two options: 
+- bootable USB stick to get up and running fast.
+- dev host installation for those needing a permanent installation on a Linux host.
 
-Go to http://developer.sierrawireless.com/landing/legato.aspx for access to the latest Legato package downloads including:
-- Legato application framework and sample applications with open source code, 
-and Yocto recipes and kernel source to build Legato Linux images for AR7 and WP7 devices (available on GitHub).
+Advanced topics give power users info to tinker under the hood of the target device (e.g. flash or customize the Yocto image).
 
-- complete cross toolchains to compile Legato applications on a 64-bit and 32-bit Linux hosts.
+@subpage getstartedQuick  <br>
+@subpage getstartedAdvanced  <br>
 
-- prebuilt images of the Linux kernel and rootfs that match the image on the device (can be flashed using the fastboot tool).
+See @subpage legatoRelNotesBeta for release-specific information.
 
-- firmware packages to reinstall software from the factory onto dev kit devices.
+See @subpage legatoUpgradeBeta if you need to upgrade from a previous version.
 
-- drivers needed for Windows to restore devices.
+See Legato Developer Zone http://developer.sierrawireless.com/landing/legato.aspx
 
-<b>Quick start  </b>:
+@section sysReqs System Requirements
 
-@ref getstartedMachinePrep  <br>
-@ref getstartedConnectDevKit  <br>
-@ref getstartedInstallPackages  <br>
-@ref apphelloWorld
+If you’re running from the bootable USB stick, a minimum of 2GB RAM is suggested.
 
-@section envHost Environment Host Requirements
+If you’re installing the development environment and application framework on a development host, 
+ recommended system requirements for the Ubuntu desktop is at least 768 MB of RAM and 5 GB of disk space.
 
-Different options are available for host PCs depending on needs. 
-You can build, install, and work with Legato entirely from a Linux PC, but device recovery is 
-only possible from Windows at this time. See the topic Set up Window host PC. 
+Ubuntu version 12.04 is officially supported, although you can try others (e.g., 14.04). 
+
+If you’re downloading Legato source and toolchain files, you’ll need a minimum Internet connection speed of 4 Mpbs.
+
+@section devHostReqs Dev Host Requirements
+
+Different options are available for development host PCs depending on needs. 
+You can build, install, and work with Legato entirely from a Linux dev host, but target device recovery is 
+only possible from Windows at this time. See @ref getstartedWindowsHost. 
 
 <b>Linux vs Windows tasks</b>
 
-Linux Host is used to:
+Linux dev host is used to compile system software, flash Linux images, develop and debug applications.
 
-- Compile System software
-- Flash Linux images
-- Develop and debug applications
+Windows Host is used to flash Linux images, flash new modem firmware, recover device.
 
-Windows Host is used to:
-- Flash Linux images
-- Flash new modem firmware
-- Recover device
+@section targetReqs Target Requirements
 
-@section getstartWhatsNext What's Next?
-
-Complete Get Started info:
-
-@subpage getstartedMachinePrep  <br>
-@subpage getstartedConnectDevKit  <br>
-@subpage getstartedInstallPackages  <br>
-@subpage getstartedYoctoLinux  <br>
-@subpage getstartedLegatoTooling  <br>
-@subpage getstartedWindowsHost  <br>
-@subpage getstartedRestore
+Legato uses the AirPrime – AR and WP Series-Development Kit.
+<br>
 
 <HR>
 

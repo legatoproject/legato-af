@@ -2,8 +2,12 @@
  * Copyright (c) 2012 Sierra Wireless and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+ * and Eclipse Distribution License v1.0 which accompany this distribution.
+ *
+ * The Eclipse Public License is available at
+ *   http://www.eclipse.org/legal/epl-v10.html
+ * The Eclipse Distribution License is available at
+ *   http://www.eclipse.org/org/documents/edl-v10.php
  *
  * Contributors:
  *     Fabien Fleutot for Sierra Wireless - initial API and implementation
@@ -418,7 +422,7 @@ static int compute_serialization_methods( struct sdb_table_t *tbl) {
 
     /* Retrieve the most common delta, to compute QVP sizes */
     for( i=0; i<nsmallest; i++) {
-        int j, best_specimen, best_occurrences=0;
+        int j, best_specimen=0, best_occurrences=0;
         struct data_analysis_t *data = analysis_data + i;
         for( j=0; j<data->mc_len; j++) {
             int specimen    = data->modecandidates[j].key;

@@ -1,17 +1,19 @@
-/** @page defFilesCdef Legato cdef Files
+/** @page defFilesCdef Component Definition (.cdef) Files
 
-@ref defsources <br>
-@ref defimport <br>
-@ref defexport <br>
-@ref deffiles <br>
+<c>Component.cdef</c> files can contain these sections:
 
-Legato uses these sections in the Component.cdef :
+@ref defFilesCdefSources <br>
+@ref defFilesCdefImport <br>
+@ref defFilesCdefExport <br>
+@ref defFilesCdefFiles <br>
+@ref defFilesCdefRequires
 
-@section defsources sources
+
+@section defFilesCdefSources sources
 
 Contains a list of source code files.
 
-One source file must implement a COMPONENT_INIT function called at start-up.
+One source file must implement a @c COMPONENT_INIT function called at start-up.
 
 @code
 sources:
@@ -19,59 +21,180 @@ sources:
     foo.c
     bar.c
     init.c      // This one implements the COMPONENT_INIT
-    @endcode
+@endcode
 
-@section defimport import
 
-Lists IPC services required by this component from other components.
+@section defFilesCdefImport import
 
-Consists of a service instance name and interface definition (.api) file path separated by an equals sign (‘=’).
+Lists IPC API definitions required by this component from other components.
+
+Each entry in the import list must have an interface definition (.api) file.
+
+Optionally, it may also contain an interface name followed by an equals sign ('=') in front of the
+@c .api file path.  If the interface name is omitted, the name of the @c .api file
+(minus the ".api" extension) will be used as the name of the interface.  All symbols (type names
+and function names) defined in the @c .api file will be prefixed with this interface name and
+an underscore.
 
 @code
 import:
 
-    hello = sample/greet.api   // We need to use the Greet API to say “hello” to the world.
-    @endcode
+    hello = sample/greet.api    // Greet() from the API will appear as "hello_Greet()" in my code.
+    le_cfg.api                  // The interface name will be "le_cfg".
+@endcode
 
 The build tools search for the interface definition (.api) file based on the interface search path.
 
-Inside the component’s source code, you can call API functions defined inside the .api files service instance name prepended.
+Inside the component’s source code, you can call API functions defined inside the @c .api files.
+The types and functions defined in the @c .api file will appear inside the component with the
+interface name (plus an underscore) prepended to them.
 
-If sample/greet.api defines a function called “Greet()”, the source code for the component can call it as “hello_Greet()”. 
-In C, source code must \#include “interfaces.h” for this definition.
+For example, if the <c> greet.api </c> file contains a function called @c Greet(), it will appear
+inside the component as @c hello_Greet().  And the @c StartReadTxn() function declared in
+<c> le_cfg.api </c> will appear to the component as @c le_cfg_StartReadTxn().
 
-Multiple instances of the same API listed in the “import” section must have unique instance names, and will appear as separate functions with different prefixes.
+In C/C++, source code must \#include “interfaces.h” to use the auto-generated function definitions.
+
+Multiple instances of the same API listed in the “import” section must have unique instance names,
+and will appear as separate functions with different prefixes.
 
 @code
 import:
 
     heat = digitalOutput.api   // This is what we use to turn on and off the heater.
-    cool = digitalOutput.api   // This is what we use to turn on and off the cooling (A/C). @endcode
+    cool = digitalOutput.api   // This is what we use to turn on and off the cooling (A/C).
+@endcode
 
-If digitalOutput.api defines two functions On() and Off(),
-then the component’s source code would have four functions available to it: heat_On(), heat_Off(), cool_On(), and cool_Off().
+If <c> digitalOutput.api </c> defines two functions @c On() @c and Off(),
+then the component’s source code would have four functions available to it:
+@c heat_On(), @c heat_Off(), @c cool_On(), and @c cool_Off().
 
-@section defexport export
+@subsection defFilesCdefImportOptions Options
+
+Normally, when an API is imported by a component, the component will want to use that API
+(i.e., call its functions), so the build tools will automatically generate the client-side IPC
+code for that API and automatically try to connect to the server when the executable is run.
+There are a couple of options that can be used to suppress this behaviour.
+
+The @b @c [types-only] option tells the build tools the client only wants to use type definitions
+from the API.  When this option is present, the client-side IPC code will not be generated for
+this API, but the types defined in the API will still be made available to the component (through
+<c>interfaces.h</c> in C/C++.)
+
+The @b @c [manual-start] option tells the build tools not to automatically connect to this API's
+server when the process starts.  If this option is used, the component can control exactly when
+it wants to connect to the server by calling the @c xxxx_ConnectService() function explicitly
+in the component source code.
+
+@code
+import:
+
+    foo.api [types-only]        // Only need typedefs from here.  Don't need IPC code generated.
+    bar.api [manual-start]      // I'll start this when I'm ready by calling bar_ConnectService().
+@endcode
+
+
+@section defFilesCdefExport export
 
 Lists IPC services provided by this component to other components.
-
-Contents are identical in syntax to the contents of the “import” section, but it the semantic inverse.
+Contents use essentially the same syntax as the the @ref defFilesCdefImport section, except the
+options are different.
 
 @code
 export:
 
-    hello = sample/greet.api   // We offer the Greet API to others so they can say “hello” to the world. @endcode
+    greet.api   // We offer the Greet API to others so they can say “hello” to the world.
+    heat = digitalOutput.api
+    cool = digitalOutput.api
+@endcode
 
-The component’s source code implements the API functions defined inside the .api files, with the service instance name prepended. 
-If @verbatim sample/greet.api@endverbatim defines a function called @verbatim “Greet()”@endverbatim, 
-the source code for the component must implement a function called @verbatim “hello_Greet()”@endverbatim. 
-In C, the source code must \#include “interfaces.h” to get the function prototype definition.
+The component code must implement the functions defined inside the @c .api files.
 
-@section deffiles files
+The function and data type names defined in the @c .api files must be prefixed with the
+interface name and an underscore.
 
-The same as the @ref filesAdef section in .adef files.
+If <c> greet.api </c> defines a function called @c Greet(), the source code for the component
+must implement a function called @c hello_Greet().
+
+In C, the source code must \#include “interfaces.h” to get the function prototype definitions.
+
+@subsection defFilesCdefExportManualAdvertisement [manual-start] option
+
+The @b @c [manual-start] option tells the build tools not to automatically advertise this API
+with the Service Directory when the process starts.  If this option is used, the component can
+control exactly when it wants to start offering the service to others by calling the
+@c xxxx_AdvertiseService() function explicitly in the component source code when it is ready.
+
+@code
+export:
+
+    foo.api [manual-start]
+@endcode
 
 
+@subsection defFilesCdefExportAsync [async] option
+
+Often, the server of a service can simply implement the functions as if they were called
+directly by the client (even though the client may be running inside another process).
+So, when the client calls an API function, the server's API function gets called, and when
+the server returns from the function, the function returns in the client process.
+
+However, sometimes the server needs to hold onto the client request and do other things
+(perhaps handing requests from other clients) before sending a response back to the client
+and allowing the client to continue.  This is called "asynchronous" mode, and it is enabled
+using the <c> [async] </c> keyword on the end of the @c export section entry.
+
+@code
+export:
+
+    bar.api [async]
+@endcode
+
+When asynchronous mode is enabled for an interface, the server-side generated code changes as
+follows:
+- A @c commandRef parameter is added to the beginning of all the API functions' parameter lists.
+- The return value is removed from every API function.
+- A @c Respond() function is generated for every API function.
+
+In async mode, the server responds to the client's call to API function @c F() by calling the
+associated @c FRespond() function.
+
+The @c Respond functions all take the @c commandRef as their first parameter.  If an
+API function has a return value, that return value is sent to the client via the second parameter
+of the @c Respond function.
+
+
+@section defFilesCdefFiles files
+
+The same as the @ref filesAdef section in @c .adef files.
+
+
+@section defFilesCdefRequires requires
+
+The @c requires: section is used to specify things that the component needs from its runtime
+environment.
+
+Eventually, this will support "file:", "dir:", "lib:", and "api:" subsections, but for now,
+only "lib:" subsections are supported.
+
+
+@subsection defFilesCdefRequiresLib lib
+
+The @c lib: subsection of the @c requires: section is used to add a required library to a Component.
+
+A required library is a library file that is expected to exist in the target file system (outside
+the application's sandbox) that the component needs access to at runtime.
+
+Furthermore, this library will be linked with any executable that this component is a part of.
+The library name is specified without the leading "lib" or the trailing ".so".
+
+@verbatim
+requires:
+
+    lib: foo    // I need access to libfoo.so
+@endverbatim
+
+<hr>
 
 Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
 

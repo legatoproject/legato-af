@@ -11,10 +11,6 @@ find_package(CUnit REQUIRED)
 set(APP_COMPONENT positioningTest)
 set(APP_TARGET testPositioning)
 
-# TODO: Make this test available for other GNSS implementations
-# or move it to an AT subdir
-if(LEGATO_COMPONENTS_GNSS MATCHES "AT")
-
 file(GLOB APP_SOURCES "${LEGATO_SOURCE_DIR}/apps/positioning/src/*.c")
 
 set(APP_SOURCES
@@ -34,7 +30,7 @@ if(LEGATO_COMPONENTS_GNSS MATCHES "AT")
     )
 endif()
 
-if((NOT DEFINED DISABLE_SIMUL) AND (${LEGATO_TARGET} STREQUAL "localhost"))
+if(DEFINED ENABLE_SIMUL)
     add_definitions(-DENABLE_SIMUL=1)
 endif()
 
@@ -44,6 +40,7 @@ add_legato_internal_executable(${APP_TARGET} ${APP_SOURCES})
 target_link_libraries(${APP_TARGET}
     ${CUNIT_LIBRARIES}
     ${LEGATO_SERVICES_POSITIONING_TARGET}
+    ${LEGATO_SERVICES_POSSER_CLIENT_TARGET}
 )
 
 if(LEGATO_COMPONENTS_GNSS MATCHES "AT")
@@ -54,7 +51,7 @@ endif()
 
 if(${LEGATO_TARGET} STREQUAL "localhost")
     set(TEST_APP_PATH     ${EXECUTABLE_OUTPUT_PATH}/${APP_TARGET})
-    if(NOT DEFINED DISABLE_SIMUL)
+    if(DEFINED ENABLE_SIMUL)
         message("Positioning test uses simulator.")
 
         set(SCRIPT_PATH       ${CMAKE_CURRENT_SOURCE_DIR}/gnssSimulator.sh)
@@ -68,10 +65,22 @@ if(${LEGATO_TARGET} STREQUAL "localhost")
         ${SCRIPT_PATH} ${STUB_PATH} ${TEST_APP_PATH} ${TEST_XML} ${TEST_GNSS} ${TEST_GNSS_BLOCK} ${TEST_SOCKET}
         )
         set_tests_properties(${APP_TARGET} PROPERTIES TIMEOUT 120)
-    else()
-        add_test(${APP_TARGET} ${TEST_APP_PATH})
-        set_tests_properties(${APP_TARGET} PROPERTIES TIMEOUT 600)
     endif()
 endif()
 
-endif() #LEGATO_COMPONENTS_GNSS MATCHES "AT")
+
+set(APP_TARGET testPosService)
+
+mkexe(  ${APP_TARGET}
+            posServiceTest
+            -i ${LEGATO_ROOT}/interfaces/posService
+        DEPENDS
+            legato
+            posServiceTest/Component.cdef
+            posServiceTest/posServiceTest.c
+    )
+
+if(NOT ${LEGATO_TARGET} STREQUAL "localhost")
+    add_test(${APP_TARGET} ${EXECUTABLE_OUTPUT_PATH}/${APP_TARGET})
+    set_tests_properties(${APP_TARGET} PROPERTIES TIMEOUT 0)
+endif()

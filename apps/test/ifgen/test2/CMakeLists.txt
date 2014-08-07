@@ -16,9 +16,10 @@ set(IFGEN_TOOL ${LEGATO_SOURCE_DIR}/bin/ifgen )
 # todo: There may be a better way to generate the imported file(s), as this is
 #       somewhat awkward to use.  
 add_custom_command (
-    OUTPUT common_interface.h
+    OUTPUT common_interface.h common_server.h
     COMMAND ${IFGEN_TOOL} ${CMAKE_CURRENT_SOURCE_DIR}/common.api
                           --gen-interface
+                          --gen-server-interface
     DEPENDS common.api
 )
 
@@ -27,7 +28,7 @@ add_custom_command (
     OUTPUT client.c server.c
     COMMAND ${IFGEN_TOOL} ${CMAKE_CURRENT_SOURCE_DIR}/example.api
                           --gen-all --no-default-prefix
-    DEPENDS example.api common_interface.h
+    DEPENDS example.api common_interface.h common_server.h
 )
 
 # Since the generated header files go into the BINARY_DIR, need to add this to the

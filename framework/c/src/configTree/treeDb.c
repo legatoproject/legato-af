@@ -1,12 +1,12 @@
 
 // -------------------------------------------------------------------------------------------------
 /**
- * @file treeDb.c
+ *  @file treeDb.c
  *
- * Implementation of the low level tree DB structure.  This code also handles the persisting of the
- * tree db to the filesystem.
+ *  Implementation of the low level tree DB structure.  This code also handles the persisting of the
+ *  tree db to the filesystem.
  *
- * The tree structure looks like this:
+ *  The tree structure looks like this:
  *
 @verbatim
 
@@ -27,54 +27,106 @@
 
 @endverbatim
  *
- * The Tree Collection holds Tree objects. There's one Tree object for each configuration tree.
- * They are indexed by tree name.
+ *  The Tree Collection holds Tree objects. There's one Tree object for each configuration tree.
+ *  They are indexed by tree name.
  *
- * Each Tree object has a single "root" Node.
+ *  Each Tree object has a single "root" Node.
  *
- * Each Node can have either a value or a list of child Nodes.
+ *  Each Node can have either a value or a list of child Nodes.
  *
- * When a write transaction is started for a Tree, the iterator reference for that transaction
- * is recorded in the Tree object.  When the transaction is committed or cancelled, that reference
- * is cleared out.
+ *  When a write transaction is started for a Tree, the iterator reference for that transaction
+ *  is recorded in the Tree object.  When the transaction is committed or cancelled, that reference
+ *  is cleared out.
  *
- * When a read transaction is started for a Tree, the count of read iterators in that Tree is
- * incremented.  When it ends, the count is decremented.
+ *  When a read transaction is started for a Tree, the count of read iterators in that Tree is
+ *  incremented.  When it ends, the count is decremented.
  *
- * When client requests are received that cannot be processed immediately, because of the state
- * of the tree the request is for (e.g., if a write transaction commit request is received while
- * there are read transactions in progress on the tree), then the request is queued onto the tree's
- * Request Queue.
+ *  When client requests are received that cannot be processed immediately, because of the state
+ *  of the tree the request is for (e.g., if a write transaction commit request is received while
+ *  there are read transactions in progress on the tree), then the request is queued onto the tree's
+ *  Request Queue.
  *
- * <b>Shadow Trees:</b>
+ *  <b>Shadow Trees:</b>
  *
- * In addition, there's the notion of a "Shadow Tree", which is a tree that contains changes
- * that have been made to another tree in a write transaction that has not yet been committed.
- * Each node in a shadow tree is called a "Shadow Node".
+ *  In addition, there's the notion of a "Shadow Tree", which is a tree that contains changes
+ *  that have been made to another tree in a write transaction that has not yet been committed.
+ *  Each node in a shadow tree is called a "Shadow Node".
  *
- * When a write transaction is started on a tree, a shadow tree is created for that tree, and
- * a shadow node is created for the root node.  As a shadow node is traversed (using the normal
- * tree traversal functions), new shadow nodes are created for any nodes that have been traversed
- * to and any of their sibling nodes.  When changes are made to a node, the new value is stored
- * in the shadow node.  When new nodes are added, a new shadow node is created in the shadow
- * tree.  When nodes are deleted, the shadow node is marked "deleted".
+ *  When a write transaction is started on a tree, a shadow tree is created for that tree, and
+ *  a shadow node is created for the root node.  As a shadow node is traversed (using the normal
+ *  tree traversal functions), new shadow nodes are created for any nodes that have been traversed
+ *  to and any of their sibling nodes.  When changes are made to a node, the new value is stored
+ *  in the shadow node.  When new nodes are added, a new shadow node is created in the shadow
+ *  tree.  When nodes are deleted, the shadow node is marked "deleted".
  *
- * When a write transaction is cancelled, the shadow tree and all its shadow nodes are discarded.
+ *  When a write transaction is cancelled, the shadow tree and all its shadow nodes are discarded.
  *
- * When a write transaction is committed, the shadow tree is traversed, and any changes found
- * in it are applied to the "original" tree that the shadow tree was shadowing.  This process is
- * called "merging".
+ *  When a write transaction is committed, the shadow tree is traversed, and any changes found
+ *  in it are applied to the "original" tree that the shadow tree was shadowing.  This process is
+ *  called "merging".
  *
- * Shadow Trees don't have handlers, request queues, write iterator references or read iterator
- * counts.
+ *  Shadow Trees don't have handlers, request queues, write iterator references or read iterator
+ *  counts.
  *
- * ----
- *  Copyright (C) Sierra Wireless, Inc. 2013, 2014. All rights reserved. Use of this work is subject
- *  to license.
+ *  <b>Event Handler Registration:</b>
+ *
+ *  The config tree allows clients to register callbacks to be notified if certian sections of a
+ *  configuration tree is modified.
+ *
+ *  The way this works is that a global hash map of registrations is maintained.  With the hash being
+ *  generated from the path to the tree and node of interest.  So, if an program was interested in
+ *  watching the apps collection in the system tree it would use the path:
+ *
+ *  @verbatim system:/apps @endverbatim
+ *
+ *  For each unique path a registration object is created, and that registration object will hold a
+ *  list of event handlers for the node.
+ *
+ * @verbatim
+
+    +------------------------+
+    | HandlerRegistrationMap |
+    +------------------------+
+      |
+      | Hash of 'system:/apps'  +--------------+
+      *------------------------>| Registration |
+                                +--------------+
+                                    |
+                                    |  List of handlers  +---------+
+                                    +--------------------| Handler |
+                                    |                    +---------+
+                                    |                       |
+                                    |                       +- Function Pointer
+                                    |                       +- Context Pointer
+                                    |                       +- Other data...
+                                    |
+                                    |                    +---------+
+                                    +--------------------| Handler |
+                                    |                    +---------+
+                                    |
+                                    .
+                                    .
+                                    .
+
+ * @endverbatim
+ *
+ *  The system also employs the use of SafeRefs to keep track of each registered handler so that a
+ *  handler can quickly and easily remove a handler as required.
+ *
+ *  When a merge occurs each modified node path is checked against the registration map.  If there
+ *  is a registration object for that node each of the registered handlers is invoked.
+ *
+ *  Handlers are registered in this hash map so that the target node doesn't need to actually exist
+ *  in order to have a handler registed for it.  In fact, a handler will be called when a node is
+ *  deleted and when it is recreated.
+ *
+ *  Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved.
+ *  Use of this work is subject to license.
  */
 // -------------------------------------------------------------------------------------------------
 
 #include "legato.h"
+#include "limit.h"
 #include "interfaces.h"
 #include "stringBuffer.h"
 #include "dynamicString.h"
@@ -86,13 +138,86 @@
 
 
 
-/// Path to the config tree directory in the linux filesystem.
-#define CFG_TREE_PATH "/opt/legato/configTree"
+/// Maximum path size for the config tree.
+#define CFG_MAX_PATH_SIZE SB_SIZE
 
 
 
 /// Maximum size (in bytes) of a "small" string, including the null terminator.
 #define SMALL_STR 24
+
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Records the event registration for a given node in a given tree.
+ **/
+//--------------------------------------------------------------------------------------------------
+typedef struct Registration
+{
+    char registrationPath[CFG_MAX_PATH_SIZE];  ///< Path to the node being watched.  This *must*
+                                               ///<   also include the tree name.
+
+    union
+    {
+        le_dls_List_t handlerList;   ///< List of handlers to watch the specified node.
+        le_sls_Link_t link;          ///< When a client session is destroyed, all of it's handlers
+                                     ///<   are automatically removed.  If a registration object is
+                                     ///<   determined to be no longer required, this link is used
+                                     ///<   to queue the registration object for deletion.
+    };
+}
+Registration_t;
+
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Change notification handler object structure. (aka "Handler objects")
+ *
+ * Each one of these is used to keep track of a client's change notification handler function
+ * registration for a particular tree node.  These are allocated from the Handler Pool and kept
+ * on a Node object's Handler List.
+ **/
+//--------------------------------------------------------------------------------------------------
+typedef struct Handler
+{
+    le_dls_Link_t link;                     ///< Used to link into into the parent registration
+                                            ///<   list.
+
+    le_msg_SessionRef_t sessionRef;         ///< Session that this handler was registered on.
+
+    le_cfg_ChangeHandlerFunc_t handlerPtr;  ///< Function to call back.
+    void* contextPtr;                       ///< Context to give the function when called.
+
+    Registration_t* registrationPtr;        ///< The registration object this handler is attached
+                                            ///<   to.
+
+    le_cfg_ChangeHandlerRef_t safeRef;      ///< The safe reference to this object.
+}
+Handler_t;
+
+
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Context structure used during handler cleanup.  Handler cleanup happens when a configAPI session
+ *  closes and we need to make sure that registered handlers are not leaked.
+ *
+ *  This structure is passed to the hashmap for each handler so that it can take care of the cleanup
+ *  duties.
+ */
+// -------------------------------------------------------------------------------------------------
+typedef struct CleanUpContext
+{
+    le_msg_SessionRef_t sessionRef;  ///< Reference to the session that had closed.
+    le_sls_List_t deleteQueue;       ///< Queue of Registration_t object to release as a result of
+                                     ///<   session being closed.
+}
+CleanUpContext_t;
 
 
 
@@ -112,25 +237,6 @@ typedef enum
                              ///<   take place later.
 }
 NodeFlags_t;
-
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Change notification handler object structure. (aka "Handler objects")
- *
- * Each one of these is used to keep track of a client's change notification handler function
- * registration for a particular tree node.  These are allocated from the Handler Pool and kept
- * on a Node object's Handler List.
- **/
-//--------------------------------------------------------------------------------------------------
-typedef struct
-{
-    le_dls_Link_t link;                     ///< Used to link into the Node object's Handler List.
-    le_cfg_ChangeHandlerFunc_t handlerPtr;  ///< Function to call back.
-    void* contextPtr;                       ///< Context to give the function when called.
-}
-Handler_t;
 
 
 
@@ -155,9 +261,6 @@ typedef struct Node
     le_dls_Link_t siblingList;       ///< The linked list of node siblings.  All of the nodes
                                      ///<   in this list have the same parent node.
 
-    le_dls_List_t handlerList;       ///< List of change notification handler objects registered
-                                     ///    for this node.
-
     union
     {
         dstr_Ref_t valueRef;         ///< The value of the node.  This is only valid if the
@@ -179,10 +282,14 @@ Node_t;
 // -------------------------------------------------------------------------------------------------
 typedef struct Tree
 {
-    struct Tree* originalTreeRef;     ///< If non-NULL then this points back to the original
+    bool isDeletePending;                 ///< If this is set to true, then the tree will be deleted
+                                          ///<   once the last iterator has been closed on it.  If
+                                          ///<   it is set to false, the tree is left alone.
+
+    struct Tree* originalTreeRef;         ///< If non-NULL then this points back to the original
                                           ///<   tree this one is shadowing.
 
-    char name[MAX_TREE_NAME];             ///< The name of this tree.
+    char name[MAX_TREE_NAME_BYTES];       ///< The name of this tree.
 
     int revisionId;                       ///< The current revision,
                                           ///<   0 - Unknonwn.
@@ -225,17 +332,57 @@ TokenType_t;
 
 
 /// The memory pool responsible for tree nodes.
-le_mem_PoolRef_t NodePoolRef = NULL;
+static le_mem_PoolRef_t NodePoolRef = NULL;
+
+/// The name of the memory pool that handles tree nodes.
 #define CFG_NODE_POOL_NAME "nodePool"
 
+
+
 /// The collection of configuration trees managed by the system.
-le_hashmap_Ref_t TreeCollectionRef = NULL;
+static le_hashmap_Ref_t TreeCollectionRef = NULL;
+
+/// Name of the tree collection object.
+#define CFG_TREE_COLLECTION_NAME "treeCollection"
+
+
 
 /// Pool from which Tree objects are allocated.
-le_mem_PoolRef_t TreePoolRef = NULL;
+static le_mem_PoolRef_t TreePoolRef = NULL;
 
-#define CFG_TREE_COLLECTION_NAME "treeCollection"
-#define CFG_TREE_POOL_NAME       "treePool"
+/// Name of the tree object memory pool.
+#define CFG_TREE_POOL_NAME "treePool"
+
+
+
+/// Hash map to keep track of event registrations based on the registered node path.
+static le_hashmap_Ref_t HandlerRegistrationMap = NULL;
+
+/// Name of the registration hash map.
+#define CFG_HANDLER_REG_NAME "handlerLookupMap"
+
+
+
+/// Pool for registered change handlers.
+static le_mem_PoolRef_t HandlerPool = NULL;
+
+/// Name of the handler pool.
+#define CFG_HANDLER_POOL_NAME "HandlerPool"
+
+
+/// Safe ref map for the change handler objects.
+static le_ref_MapRef_t HandlerSafeRefMap = NULL;
+
+/// Name of the safe ref map.
+#define CFG_HANDLER_REF_MAP "HandlerSafeRefMap"
+
+
+
+/// Pool to handle the registration objects.
+static le_mem_PoolRef_t RegistrationPool = NULL;
+
+/// Name of the registration pool.
+#define CFG_REGISTRATION_POOL_NAME "RegistrationPool"
 
 
 
@@ -247,7 +394,7 @@ le_mem_PoolRef_t TreePoolRef = NULL;
 // -------------------------------------------------------------------------------------------------
 static void ClearFlags
 (
-    tdb_NodeRef_t nodeRef  ///< The node to update.
+    tdb_NodeRef_t nodeRef  ///< [IN] The node to update.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -264,7 +411,7 @@ static void ClearFlags
 // -------------------------------------------------------------------------------------------------
 static bool IsShadow
 (
-    const tdb_NodeRef_t nodeRef  ///< The node to check.
+    const tdb_NodeRef_t nodeRef  ///< [IN] The node to check.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -281,7 +428,7 @@ static bool IsShadow
 // -------------------------------------------------------------------------------------------------
 static void SetShadowFlag
 (
-    tdb_NodeRef_t nodeRef  ///< The node to update.
+    tdb_NodeRef_t nodeRef  ///< [IN] The node to update.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -296,9 +443,9 @@ static void SetShadowFlag
  *  Check to see if this node has been modified.
  */
 // -------------------------------------------------------------------------------------------------
-static bool IsModifed
+static bool IsModified
 (
-    const tdb_NodeRef_t nodeRef  ///< The node to read.
+    const tdb_NodeRef_t nodeRef  ///< [IN] The node to read.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -315,7 +462,7 @@ static bool IsModifed
 // -------------------------------------------------------------------------------------------------
 static void SetModifiedFlag
 (
-    tdb_NodeRef_t nodeRef  ///< The node to update.
+    tdb_NodeRef_t nodeRef  ///< [IN] The node to update.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -332,7 +479,7 @@ static void SetModifiedFlag
 // -------------------------------------------------------------------------------------------------
 static void ClearModifiedFlag
 (
-    tdb_NodeRef_t nodeRef  ///< The node to update.
+    tdb_NodeRef_t nodeRef  ///< [IN] The node to update.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -349,7 +496,7 @@ static void ClearModifiedFlag
 // -------------------------------------------------------------------------------------------------
 static bool IsDeleted
 (
-    tdb_NodeRef_t nodeRef  ///< The node to read.
+    tdb_NodeRef_t nodeRef  ///< [IN] The node to read.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -366,7 +513,7 @@ static bool IsDeleted
 // -------------------------------------------------------------------------------------------------
 static void SetDeletedFlag
 (
-    tdb_NodeRef_t nodeRef  ///<
+    tdb_NodeRef_t nodeRef  ///< [IN] The node to update.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -383,7 +530,7 @@ static void SetDeletedFlag
 // -------------------------------------------------------------------------------------------------
 static void ClearDeletedFlag
 (
-    tdb_NodeRef_t nodeRef  ///< The node to update.
+    tdb_NodeRef_t nodeRef  ///< [IN] The node to update.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -396,6 +543,8 @@ static void ClearDeletedFlag
 // -------------------------------------------------------------------------------------------------
 /**
  *  Allocate a new node and fill out it's default information.
+ *
+ *  @return The newly created node.
  */
 // -------------------------------------------------------------------------------------------------
 static tdb_NodeRef_t NewNode
@@ -429,7 +578,7 @@ static tdb_NodeRef_t NewNode
 // -------------------------------------------------------------------------------------------------
 static void NodeDestructor
 (
-    void* objectPtr  ///< The generic object to free.
+    void* objectPtr  ///< [IN] The generic object to free.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -488,11 +637,13 @@ static void NodeDestructor
 // -------------------------------------------------------------------------------------------------
 /**
  *  Allocate a new node from our pool, and turn it into a shadow of an existing node.
+ *
+ *  @return A new node that shadows the existing node.
  */
 // -------------------------------------------------------------------------------------------------
 static tdb_NodeRef_t NewShadowNode
 (
-    tdb_NodeRef_t nodeRef  ///< The node to shadow.
+    tdb_NodeRef_t nodeRef  ///< [IN] The node to shadow.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -527,11 +678,13 @@ static tdb_NodeRef_t NewShadowNode
 // -------------------------------------------------------------------------------------------------
 /**
  *  Create a new node and insert it into the given node's children collection.
+ *
+ *  @return The newly create node, already inserted into the supplied node's child collection.
  */
 // -------------------------------------------------------------------------------------------------
 static tdb_NodeRef_t NewChildNode
 (
-    tdb_NodeRef_t nodeRef  ///< The node to be given with a new child.
+    tdb_NodeRef_t nodeRef  ///< [IN] The node to be given with a new child.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -553,6 +706,7 @@ static tdb_NodeRef_t NewChildNode
     if (IsShadow(nodeRef))
     {
         SetShadowFlag(newRef);
+        SetDeletedFlag(newRef);
     }
 
     if (IsDeleted(nodeRef))
@@ -562,7 +716,6 @@ static tdb_NodeRef_t NewChildNode
 
     // Now make sure to add the new child node to the end of the parents collection.
     le_dls_Queue(&nodeRef->info.children, &newRef->siblingList);
-
 
     // Finally return the newly created node to the caller.
     return newRef;
@@ -578,7 +731,7 @@ static tdb_NodeRef_t NewChildNode
 // -------------------------------------------------------------------------------------------------
 static void ShadowChildren
 (
-    tdb_NodeRef_t shadowParentRef  ///< The node we're reading.
+    tdb_NodeRef_t shadowParentRef  ///< [IN] The node we're shadowing the children of.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -596,7 +749,7 @@ static void ShadowChildren
 
     // Has this node been modified?  If so, then the shadow children may have been cleared from
     // this collection.
-    if (IsModifed(shadowParentRef) == true)
+    if (IsModified(shadowParentRef) == true)
     {
         return;
     }
@@ -638,7 +791,7 @@ static void ShadowChildren
 // -------------------------------------------------------------------------------------------------
 static tdb_NodeRef_t GetRootParentNode
 (
-    tdb_NodeRef_t nodeRef  ///< Find the greatest grand parent of this node.
+    tdb_NodeRef_t nodeRef  ///< [IN] Find the greatest grand parent of this node.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -664,8 +817,8 @@ static tdb_NodeRef_t GetRootParentNode
 // -------------------------------------------------------------------------------------------------
 static tdb_NodeRef_t GetNamedChild
 (
-    tdb_NodeRef_t nodeRef,  ///< The node to search.
-    const char* nameRef     ///< The name we're searching for.
+    tdb_NodeRef_t nodeRef,  ///< [IN] The node to search.
+    const char* nameRef     ///< [IN] The name we're searching for.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -727,6 +880,8 @@ static tdb_NodeRef_t GetNamedChild
     {
         tdb_NodeRef_t childRef = NewChildNode(nodeRef);
 
+        SetDeletedFlag(childRef);
+
         if (tdb_SetNodeName(childRef, nameRef) == LE_OK)
         {
             return childRef;
@@ -753,8 +908,8 @@ static tdb_NodeRef_t GetNamedChild
 // -------------------------------------------------------------------------------------------------
 static bool NodeExists
 (
-    tdb_NodeRef_t parentRef,  ///< The parent node to search.
-    const char* namePtr       ///< The name to search for.
+    tdb_NodeRef_t parentRef,  ///< [IN] The parent node to search.
+    const char* namePtr       ///< [IN] The name to search for.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -786,21 +941,18 @@ static bool NodeExists
 // -------------------------------------------------------------------------------------------------
 static void MergeNode
 (
-    tdb_NodeRef_t nodeRef  ///< The shadow node to merge.
+    tdb_NodeRef_t nodeRef  ///< [IN] The shadow node to merge.
 )
 // -------------------------------------------------------------------------------------------------
 {
     LE_ASSERT(nodeRef != NULL);
-
-    // This node is being merged, so make sure that it isn't marked as modified any more.
-    ClearModifiedFlag(nodeRef);
 
     // If this shadow node for some reason doesn't have a ref check for an original version of it in
     // the original tree.  This shadow node may have been destroyed and re-created loosing this
     // link.
     if (nodeRef->shadowRef == NULL)
     {
-        tdb_NodeRef_t shadowedParentRef = tdb_GetNodeParent(nodeRef->parentRef->shadowRef);
+        tdb_NodeRef_t shadowedParentRef = tdb_GetNodeParent(nodeRef)->shadowRef;
 
         if (shadowedParentRef != NULL)
         {
@@ -855,22 +1007,16 @@ static void MergeNode
         }
     }
 
-
-    // Check the types of the original and the shadow nodes.  If the new node has been cleared.
-    // Then clear out the original node.  If one is a stem and the other isn't, clear out the
-    // original because things are going to be changing.
+    // Check the types of the original and the shadow nodes.  If the new node has been cleared,
+    // then clear out the original node.  If the types have changed, then clear out the original so
+    // that we can properly populate it again.
     le_cfg_nodeType_t nodeType = tdb_GetNodeType(nodeRef);
-    le_cfg_nodeType_t originalType = tdb_GetNodeType(originalRef);
 
     if (   (nodeType == LE_CFG_TYPE_EMPTY)
-        || (   (originalType == LE_CFG_TYPE_STEM)
-            && (nodeType != LE_CFG_TYPE_STEM))
-        || (   (originalType != LE_CFG_TYPE_STEM)
-            && (nodeType == LE_CFG_TYPE_STEM)))
+        || (nodeType != originalRef->type))
     {
         tdb_SetEmpty(originalRef);
     }
-
 
     // Ok, we know that the node hasn't been deleted.  Check to see if it's considered empty and
     // that it isn't a stem.  If not, then copy over the string value.
@@ -904,18 +1050,82 @@ static void MergeNode
 
 
 
+
 // -------------------------------------------------------------------------------------------------
 /**
- *  Recursive function to merge a collection of shadow nodes with the original tree.
+ *  Called to fire any callbacks registered on the given node path.  If nothing is registered on the
+ *  given path, nothing happens.
  */
 // -------------------------------------------------------------------------------------------------
-static void InternalMergeTree
+static void TriggerCallbacks
 (
-    tdb_NodeRef_t nodeRef  ///< Node and any children to merge.
+    le_pathIter_Ref_t pathRef  ///< [IN] The path to search for callback registrations.
 )
 // -------------------------------------------------------------------------------------------------
 {
-    if (IsModifed(nodeRef))
+    // Read the path out of the buffer.
+    char pathBuffer[CFG_MAX_PATH_SIZE] = { 0 };
+    if (le_pathIter_GetPath(pathRef, pathBuffer, sizeof(pathBuffer)) != LE_OK)
+    {
+        LE_ERROR("Callback path buffer overflow.");
+        return;
+    }
+
+    // Try to find a registration object for this path.
+    Registration_t* foundRegistrationPtr = le_hashmap_Get(HandlerRegistrationMap, pathBuffer);
+
+    if (foundRegistrationPtr != NULL)
+    {
+        // An object was found, so iterate through the callbacks, calling each one in turn.
+        le_dls_Link_t* linkPtr = le_dls_Peek(&foundRegistrationPtr->handlerList);
+
+        while (linkPtr != NULL)
+        {
+            Handler_t* handlerObjectPtr = CONTAINER_OF(linkPtr, Handler_t, link);
+
+            handlerObjectPtr->handlerPtr(handlerObjectPtr->contextPtr);
+            linkPtr = le_dls_PeekNext(&foundRegistrationPtr->handlerList, linkPtr);
+        }
+    }
+}
+
+
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Recursive function to merge a collection of shadow nodes with the original tree.
+ *
+ *  @return True if the given node or any if it's children have been modified.  False if not.
+ */
+// -------------------------------------------------------------------------------------------------
+static bool InternalMergeTree
+(
+    le_pathIter_Ref_t pathRef,  ///< [IN] Path to the parent of hte current node.
+    tdb_NodeRef_t nodeRef       ///< [IN] Node and any children to merge.
+)
+// -------------------------------------------------------------------------------------------------
+{
+    bool isModified = IsModified(nodeRef);
+
+
+    {
+        char nodeName[MAX_NODE_NAME] = { 0 };
+
+        LE_ASSERT(tdb_GetNodeName(nodeRef, nodeName, MAX_NODE_NAME) == LE_OK);
+        le_result_t result = le_pathIter_Append(pathRef, nodeName);
+
+        LE_WARN_IF(result != LE_OK,
+                   "Could not append node '%s' onto the update callback tracking path.  "
+                   "Reason: %d, '%s'.",
+                   nodeName,
+                   result,
+                   LE_RESULT_TXT(result));
+    }
+
+    // IF this node is modified, mearge it.  If this node is a stem, then merge it's children.  Keep
+    // track of whether any of those children have been modified as well.
+    if (isModified)
     {
         MergeNode(nodeRef);
     }
@@ -929,32 +1139,26 @@ static void InternalMergeTree
         {
             tdb_NodeRef_t nextNodeRef = tdb_GetNextSiblingNode(nodeRef);
 
-            InternalMergeTree(nodeRef);
+            isModified = InternalMergeTree(pathRef, nodeRef) || isModified;
             nodeRef = nextNodeRef;
         }
     }
-}
 
-
-
-
-// -------------------------------------------------------------------------------------------------
-/**
- *  Make sure that the given node and any of it's parents are not marked as having been deleted.
- */
-// -------------------------------------------------------------------------------------------------
-static void EnsureExists
-(
-    tdb_NodeRef_t nodeRef   ///< Update this node, and all of it's parentage and make sure none of
-                            ///<   them are marked for deletion.
-)
-// -------------------------------------------------------------------------------------------------
-{
-    while (nodeRef != NULL)
+    // If this node, or any of it's children have been modified.  Try to fire any callbacks that may
+    // be registered.
+    if (isModified)
     {
-        ClearDeletedFlag(nodeRef);
-        nodeRef = tdb_GetNodeParent(nodeRef);
+        TriggerCallbacks(pathRef);
     }
+
+    // Now remove this node from the tracking path and let our caller know if any modifications have
+    // happened at this level or lower.
+    if (le_pathIter_GoToEnd(pathRef) == LE_OK)
+    {
+        le_pathIter_Truncate(pathRef);
+    }
+
+    return isModified;
 }
 
 
@@ -963,19 +1167,22 @@ static void EnsureExists
 // -------------------------------------------------------------------------------------------------
 /**
  *  Create a new tree object and set it to default values.
+ *
+ *  @return A ref to the newly created tree object.
  */
 // -------------------------------------------------------------------------------------------------
 tdb_TreeRef_t NewTree
 (
-    const char* treeNameRef,   ///< The name of the new tree.
-    tdb_NodeRef_t rootNodeRef  ///< The root node of this new tree.
+    const char* treeNameRef,   ///< [IN] The name of the new tree.
+    tdb_NodeRef_t rootNodeRef  ///< [IN] The root node of this new tree.
 )
 // -------------------------------------------------------------------------------------------------
 {
     tdb_TreeRef_t treeRef = le_mem_ForceAlloc(TreePoolRef);
 
-    strncpy(treeRef->name, treeNameRef, MAX_TREE_NAME);
+    LE_ASSERT(le_utf8_Copy(treeRef->name, treeNameRef, MAX_TREE_NAME_BYTES, NULL) == LE_OK);
 
+    treeRef->isDeletePending = false;
     treeRef->originalTreeRef = NULL;
     treeRef->revisionId = 0;
     treeRef->rootNodeRef = (rootNodeRef != NULL) ? rootNodeRef : NewNode();
@@ -991,13 +1198,41 @@ tdb_TreeRef_t NewTree
 
 // -------------------------------------------------------------------------------------------------
 /**
+ *  Destructor called when a tree object is to be freed from memory.
+ */
+// -------------------------------------------------------------------------------------------------
+static void TreeDestructor
+(
+    void* objectPtr  ///< The memory object to destruct.
+)
+// -------------------------------------------------------------------------------------------------
+{
+    tdb_TreeRef_t treeRef = (tdb_TreeRef_t)objectPtr;
+
+    // Kill the root node.
+    le_mem_Release(treeRef->rootNodeRef);
+    treeRef->rootNodeRef = NULL;
+
+    // Sanity check, is the tree actually ready to clean up?
+    LE_ASSERT(treeRef->activeReadCount == 0);
+    LE_ASSERT(treeRef->activeWriteIterRef == NULL);
+    LE_ASSERT(le_sls_IsEmpty(&treeRef->requestList) == true);
+}
+
+
+
+
+// -------------------------------------------------------------------------------------------------
+/**
  *  Create a path to a tree file with the given revision id.
+ *
+ *  @return A stringBuffer backed string containing the full path to the tree file.
  */
 // -------------------------------------------------------------------------------------------------
 static char* GetTreePath
 (
-    const char* treeNameRef,  ///< The name of the tree we're generating a name for.
-    int revisionId            ///< Generate a name based on the tree revision.
+    const char* treeNameRef,  ///< [IN] The name of the tree we're generating a name for.
+    int revisionId            ///< [IN] Generate a name based on the tree revision.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -1028,12 +1263,14 @@ static char* GetTreePath
 // -------------------------------------------------------------------------------------------------
 /**
  *  Check to see if a configTree file at the given revision already exists in the filesystem.
+ *
+ *  @return True if the named file exists, false otherwise.
  */
 // -------------------------------------------------------------------------------------------------
 static bool TreeFileExists
 (
-    const char* treeNameRef,  ///< Name of the tree to check.
-    int revisionId            ///< The revision of the tree to check against.
+    const char* treeNameRef,  ///< [IN] Name of the tree to check.
+    int revisionId            ///< [IN] The revision of the tree to check against.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -1071,7 +1308,7 @@ static bool TreeFileExists
 // -------------------------------------------------------------------------------------------------
 static void UpdateRevision
 (
-    tdb_TreeRef_t treeRef  ///< Update the revision for this tree object.
+    tdb_TreeRef_t treeRef  ///< [IN] Update the revision for this tree object.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -1113,7 +1350,7 @@ static void UpdateRevision
 // -------------------------------------------------------------------------------------------------
 static signed char PeekChar
 (
-    FILE* filePtr  ///< The file stream to peek into.
+    FILE* filePtr  ///< [IN] The file stream to peek into.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -1136,7 +1373,7 @@ static signed char PeekChar
 // -------------------------------------------------------------------------------------------------
 static le_result_t SkipWhiteSpace
 (
-    FILE* filePtr  ///< The file stream to seek through.
+    FILE* filePtr  ///< [IN] The file stream to seek through.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -1182,10 +1419,11 @@ static le_result_t SkipWhiteSpace
 // -------------------------------------------------------------------------------------------------
 static bool ReadBoolToken
 (
-    FILE* filePtr,     ///< The file we're reading from.
-    char* stringPtr,   ///< String buffer to hold the token we've read.
-    size_t stringSize  ///< How big is the supplied string buffer?
+    FILE* filePtr,     ///< [IN]  The file we're reading from.
+    char* stringPtr,   ///< [OUT] String buffer to hold the token we've read.
+    size_t stringSize  ///< [IN]  How big is the supplied string buffer?
 )
+// -------------------------------------------------------------------------------------------------
 {
     signed char next = fgetc(filePtr);
 
@@ -1215,10 +1453,10 @@ static bool ReadBoolToken
 // -------------------------------------------------------------------------------------------------
 static le_result_t ReadTextLiteral
 (
-    FILE* filePtr,        ///< The file we're reading from.
-    char* stringPtr,      ///< String buffer to hold the token we've read.
-    size_t stringSize,    ///< How big is the supplied string buffer?
-    signed char terminal  ///< The terminal character we're searching for.
+    FILE* filePtr,        ///< [IN]  The file we're reading from.
+    char* stringPtr,      ///< [OUT] String buffer to hold the token we've read.
+    size_t stringSize,    ///< [IN]  How big is the supplied string buffer?
+    signed char terminal  ///< [IN]  The terminal character we're searching for.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -1269,13 +1507,16 @@ static le_result_t ReadTextLiteral
 // -------------------------------------------------------------------------------------------------
 /**
  *  Read an integer token string from the file.
+ *
+ *  @return LE_OK if the string is read from the file.
+ *          LE_FORMAT_ERROR if the text fails to be read from the file.
  */
 // -------------------------------------------------------------------------------------------------
 static le_result_t ReadIntToken
 (
-    FILE* filePtr,     ///< The file we're reading from.
-    char* stringPtr,   ///< String buffer to hold the token we've read.
-    size_t stringSize  ///< How big is the supplied string buffer?
+    FILE* filePtr,     ///< [IN]  The file we're reading from.
+    char* stringPtr,   ///< [OUT] String buffer to hold the token we've read.
+    size_t stringSize  ///< [IN]  How big is the supplied string buffer?
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -1292,13 +1533,16 @@ static le_result_t ReadIntToken
 // -------------------------------------------------------------------------------------------------
 /**
  *  Read a floating point token string from the file.
+ *
+ *  @return LE_OK if the string is read from the file.
+ *          LE_FORMAT_ERROR if the text fails to be read from the file.
  */
 // -------------------------------------------------------------------------------------------------
 static le_result_t ReadFloatToken
 (
-    FILE* filePtr,     ///< The file we're reading from.
-    char* stringPtr,   ///< String buffer to hold the token we've read.
-    size_t stringSize  ///< How big is the supplied string buffer?
+    FILE* filePtr,     ///< [IN]  The file we're reading from.
+    char* stringPtr,   ///< [OUT] String buffer to hold the token we've read.
+    size_t stringSize  ///< [IN]  How big is the supplied string buffer?
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -1315,13 +1559,16 @@ static le_result_t ReadFloatToken
 // -------------------------------------------------------------------------------------------------
 /**
  *  Read a string from the config tree file.
+ *
+ *  @return LE_OK if the string is read from the file.
+ *          LE_FORMAT_ERROR if the text fails to be read from the file.
  */
 // -------------------------------------------------------------------------------------------------
 static le_result_t ReadStringToken
 (
-    FILE* filePtr,     ///< The file we're reading from.
-    char* stringPtr,   ///< String buffer to hold the token we've read.
-    size_t stringSize  ///< How big is the supplied string buffer?
+    FILE* filePtr,     ///< [IN]  The file we're reading from.
+    char* stringPtr,   ///< [OUT] String buffer to hold the token we've read.
+    size_t stringSize  ///< [IN]  How big is the supplied string buffer?
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -1338,14 +1585,17 @@ static le_result_t ReadStringToken
 // -------------------------------------------------------------------------------------------------
 /**
  *  Read a token from the input stream.
+ *
+ *  @return LE_OK if a token could be read.  LE_OUT_OF_RANGE if the end of the stream is reached
+ *          before a token could be finished.
  */
 // -------------------------------------------------------------------------------------------------
 static le_result_t ReadToken
 (
-    FILE* filePtr,         ///< The file we're reading from.
-    char* stringPtr,       ///< String buffer to hold the token we've read.
-    size_t stringSize,     ///< How big is the supplied string buffer?
-    TokenType_t* typePtr   ///< OUT: The type of token read from the file.
+    FILE* filePtr,         ///< [IN]  The file we're reading from.
+    char* stringPtr,       ///< [OUT] String buffer to hold the token we've read.
+    size_t stringSize,     ///< [IN]  How big is the supplied string buffer?
+    TokenType_t* typePtr   ///< [OUT] The type of token read from the file.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -1414,8 +1664,8 @@ static le_result_t ReadToken
 // -------------------------------------------------------------------------------------------------
 static le_result_t InternalReadNode
 (
-    tdb_NodeRef_t nodeRef,  ///< The node we're reading a value for.
-    FILE* filePtr           ///< The file we're reading the value from.
+    tdb_NodeRef_t nodeRef,  ///< [IN] The node we're reading a value for.
+    FILE* filePtr           ///< [IN] The file we're reading the value from.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -1484,7 +1734,7 @@ static le_result_t InternalReadNode
                         LE_DEBUG("New node, %s", stringBuffer);
                     }
 
-                    EnsureExists(childRef);
+                    tdb_EnsureExists(childRef);
 
                     le_result_t result = InternalReadNode(childRef, filePtr);
 
@@ -1511,6 +1761,17 @@ static le_result_t InternalReadNode
             return LE_FORMAT_ERROR;
     }
 
+    if (IsShadow(nodeRef) == false)
+    {
+        ClearModifiedFlag(nodeRef);
+    }
+    else
+    {
+        SetModifiedFlag(nodeRef);
+    }
+
+    tdb_EnsureExists(nodeRef);
+
     return LE_OK;
 }
 
@@ -1525,10 +1786,10 @@ static le_result_t InternalReadNode
 // -------------------------------------------------------------------------------------------------
 static void WriteStringValue
 (
-    int descriptor,        ///< The file to write to.
-    char startChar,        ///< The delimiter to use.
-    char endChar,          ///< The closing delimiter to use.
-    const char* stringPtr  ///< The actual string to write.
+    int descriptor,        ///< [IN] The file to write to.
+    char startChar,        ///< [IN] The delimiter to use.
+    char endChar,          ///< [IN] The closing delimiter to use.
+    const char* stringPtr  ///< [IN] The actual string to write.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -1560,7 +1821,7 @@ static void WriteStringValue
 // -------------------------------------------------------------------------------------------------
 static void IncrementRevision
 (
-    tdb_TreeRef_t treeRef
+    tdb_TreeRef_t treeRef  ///< [IN] Increment the revision of this tree.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -1583,7 +1844,7 @@ static void IncrementRevision
 // -------------------------------------------------------------------------------------------------
 static void LoadTree
 (
-    tdb_TreeRef_t treeRef  ///< The tree object to load from the filesystem.
+    tdb_TreeRef_t treeRef  ///< [IN] The tree object to load from the filesystem.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -1614,7 +1875,7 @@ static void LoadTree
         }
         while ((fileRef == -1) && (errno == EINTR));
 
-        EnsureExists(treeRef->rootNodeRef);
+        tdb_EnsureExists(treeRef->rootNodeRef);
 
         if (fileRef == -1)
         {
@@ -1646,6 +1907,115 @@ static void LoadTree
 
 
 
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Removes the handler object from the given registration object.  This function will also free the
+ *  memory that the handler object had used.
+ */
+// -------------------------------------------------------------------------------------------------
+static void RemoveHandler
+(
+    Registration_t* registrationPtr,  ///< [IN] The registration object to remove the link from.
+    Handler_t* handlerPtr             ///< [IN] The handler object we're removing.
+)
+// -------------------------------------------------------------------------------------------------
+{
+    // Kill the ref, and remove the object from the registration list.
+    le_ref_DeleteRef(HandlerSafeRefMap, handlerPtr->safeRef);
+    le_dls_Remove(&registrationPtr->handlerList, &handlerPtr->link);
+
+    // Clear out the link data, just to be safe.
+    handlerPtr->link = LE_DLS_LINK_INIT;
+    handlerPtr->sessionRef = NULL;
+    handlerPtr->registrationPtr = NULL;
+    handlerPtr->safeRef = NULL;
+
+    // Finally kill the object.
+    le_mem_Release(handlerPtr);
+}
+
+
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ *  This function is called by the hash map ForEach function, which is invoked when a session closed
+ *  event occurs.
+ *
+ *  This function takes care of cleaning out orphaned event handlers from the registration objects
+ *  currently stored in the registration hash map.  If a given registration handler is no longer
+ *  required then the object itself is queued for deletion.  It is queued and not deleted in place
+ *  because the hash map does not support deleting objects in the middle of an iteration.
+ *
+ *  @return True.  This function always returns true to indicate that iteration should continue
+ *          until the end of the hash map.
+ */
+// -------------------------------------------------------------------------------------------------
+static bool OnHandlerRegistrationCleanup
+(
+    const void* keyPtr,    ///< [IN] The key used by this hash entry.
+    const void* valuePtr,  ///< [IN] The registration object.
+    void* contextPtr       ///< [IN] Context info including the ref for the session that closed.
+)
+// -------------------------------------------------------------------------------------------------
+{
+    // Convert our pointers into something useable.
+    Registration_t* registrationPtr = (Registration_t*)valuePtr;
+    CleanUpContext_t* cleanUpContextPtr = (CleanUpContext_t*)contextPtr;
+
+    // Go through this registration object's list of update handlers and check to see if they were
+    // registered on the target session.  If so, free them from the list.
+    le_dls_Link_t* linkPtr = le_dls_Peek(&registrationPtr->handlerList);
+
+    while (linkPtr != NULL)
+    {
+        Handler_t* handlerObjectPtr = CONTAINER_OF(linkPtr, Handler_t, link);
+        linkPtr = le_dls_PeekNext(&registrationPtr->handlerList, linkPtr);
+
+        if (handlerObjectPtr->sessionRef == cleanUpContextPtr->sessionRef)
+        {
+            RemoveHandler(registrationPtr, handlerObjectPtr);
+        }
+    }
+
+    // Now, check to see if there are any handlers left in this object.  If the registration object
+    // is empty, then queue it for deletion.
+    if (le_dls_IsEmpty(&registrationPtr->handlerList))
+    {
+        registrationPtr->link = LE_SLS_LINK_INIT;
+        le_sls_Queue(&cleanUpContextPtr->deleteQueue, &registrationPtr->link);
+    }
+
+    // We want to continue iterating through the collection.
+    return true;
+}
+
+
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Call this function to delete a tree file from the filesystem.
+ */
+// -------------------------------------------------------------------------------------------------
+static void DeleteTreeFile
+(
+    const char* filePathPtr  ///< Path to the tree file in question.
+)
+// -------------------------------------------------------------------------------------------------
+{
+    LE_DEBUG("** Deleting tree file, '%s'.", filePathPtr);
+
+    if (unlink(filePathPtr) >= 0)
+    {
+        return;
+    }
+
+    LE_ERROR("File delete failure, '%s', reason '%s'.", filePathPtr, strerror(errno));
+}
+
+
+
 
 // -------------------------------------------------------------------------------------------------
 /**
@@ -1663,12 +2033,35 @@ void tdb_Init
     // Initialize the memory pools.
     NodePoolRef = le_mem_CreatePool(CFG_NODE_POOL_NAME, sizeof(Node_t));
     le_mem_SetDestructor(NodePoolRef, NodeDestructor);
+    le_mem_SetNumObjsToForce(NodePoolRef, 50);    // Grow in chunks of 50 blocks.
+
+    // For now (until pool config is added to the framework), set a minimum size.
+    if (le_mem_GetTotalNumObjs(NodePoolRef) != 0)
+    {
+        LE_WARN("TODO: Remove this code.");
+    }
+    else
+    {
+        le_mem_ExpandPool(NodePoolRef, 1000);
+    }
+
 
     TreePoolRef = le_mem_CreatePool(CFG_TREE_POOL_NAME, sizeof(Tree_t));
+    le_mem_SetDestructor(TreePoolRef, TreeDestructor);
     TreeCollectionRef = le_hashmap_Create(CFG_TREE_COLLECTION_NAME,
                                           31,
                                           le_hashmap_HashString,
                                           le_hashmap_EqualsString);
+
+    HandlerRegistrationMap = le_hashmap_Create(CFG_HANDLER_REG_NAME,
+                                               31,
+                                               le_hashmap_HashString,
+                                               le_hashmap_EqualsString);
+
+    HandlerSafeRefMap = le_ref_CreateMap(CFG_HANDLER_REF_MAP, 5);
+
+    HandlerPool = le_mem_CreatePool(CFG_HANDLER_POOL_NAME, sizeof(Handler_t));
+    RegistrationPool = le_mem_CreatePool(CFG_REGISTRATION_POOL_NAME, sizeof(Registration_t));
 
     // Preload the system tree.
     tdb_GetTree("system");
@@ -1686,17 +2079,17 @@ void tdb_Init
 // -------------------------------------------------------------------------------------------------
 tdb_TreeRef_t tdb_GetTree
 (
-    const char* treeNameRef  ///< The tree to load.
+    const char* treeNamePtr  ///< [IN] The tree to load.
 )
 // -------------------------------------------------------------------------------------------------
 {
     // Check to see if we have this tree loaded up in our map.
-    tdb_TreeRef_t treeRef = le_hashmap_Get(TreeCollectionRef, treeNameRef);
+    tdb_TreeRef_t treeRef = le_hashmap_Get(TreeCollectionRef, treeNamePtr);
 
     if (treeRef == NULL)
     {
         // Looks like we don't so create an object for it, and add it to our map.
-        treeRef = NewTree(treeNameRef, NULL);
+        treeRef = NewTree(treeNamePtr, NULL);
         le_hashmap_Put(TreeCollectionRef, treeRef->name, treeRef);
 
         LoadTree(treeRef);
@@ -1704,6 +2097,57 @@ tdb_TreeRef_t tdb_GetTree
 
     // Finally return the tree we have to the user.
     return treeRef;
+}
+
+
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Called to delete the given tree both from memory and from the filesystem.
+ *
+ *  If the given tree has active iterators on it, then it will only be marked for deletion.  After
+ *  all of the iterators close, the tree will be removed from the system automatically.
+ */
+// -------------------------------------------------------------------------------------------------
+void tdb_DeleteTree
+(
+    tdb_TreeRef_t treeRef  ///< [IN] The tree object to permanently delete.
+)
+// -------------------------------------------------------------------------------------------------
+{
+    // Check to see if there are any active iterators on the tree.  If there are, simply mark the
+    // tree for deletion for now.
+    if (   (tdb_GetActiveWriteIter(treeRef) == NULL)
+        && (tdb_HasActiveReaders(treeRef) == 0))
+    {
+        // Looks like there's no one on the tree, so delete any tree files that may exist.  Then
+        // kill the tree itself.
+        LE_DEBUG("** Deleting configuration tree, '%s'.", treeRef->name);
+
+        for (int id = 1; id <= 3; id++)
+        {
+            if (TreeFileExists(treeRef->name, id))
+            {
+                char* filePathPtr = GetTreePath(treeRef->name, id);
+
+                DeleteTreeFile(filePathPtr);
+                sb_Release(filePathPtr);
+            }
+        }
+
+        LE_ASSERT(le_hashmap_Remove(TreeCollectionRef, treeRef->name) == treeRef);
+        le_mem_Release(treeRef);
+    }
+    else
+    {
+        LE_DEBUG("** Configuration tree, '%s', deletion requested.  "
+                 "However there are still active iterators.  "
+                 "Marking for later deletion.",
+                 treeRef->name);
+
+        treeRef->isDeletePending = true;
+    }
 }
 
 
@@ -1736,7 +2180,7 @@ le_hashmap_It_Ref_t tdb_GetTreeIterRef
 // -------------------------------------------------------------------------------------------------
 tdb_TreeRef_t tdb_ShadowTree
 (
-    tdb_TreeRef_t treeRef  ///< The tree to shadow.
+    tdb_TreeRef_t treeRef  ///< [IN] The tree to shadow.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -1759,7 +2203,7 @@ tdb_TreeRef_t tdb_ShadowTree
 // -------------------------------------------------------------------------------------------------
 const char* tdb_GetTreeName
 (
-    tdb_TreeRef_t treeRef  ///< The tree object to read.
+    tdb_TreeRef_t treeRef  ///< [IN] The tree object to read.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -1779,7 +2223,7 @@ const char* tdb_GetTreeName
 // -------------------------------------------------------------------------------------------------
 tdb_NodeRef_t tdb_GetRootNode
 (
-    tdb_TreeRef_t treeRef  ///< The tree object to read.
+    tdb_TreeRef_t treeRef  ///< [IN] The tree object to read.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -1800,7 +2244,7 @@ tdb_NodeRef_t tdb_GetRootNode
 // -------------------------------------------------------------------------------------------------
 ni_IteratorRef_t tdb_GetActiveWriteIter
 (
-    tdb_TreeRef_t treeRef  ///< The tree object to read.
+    tdb_TreeRef_t treeRef  ///< [IN] The tree object to read.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -1826,7 +2270,7 @@ ni_IteratorRef_t tdb_GetActiveWriteIter
 // -------------------------------------------------------------------------------------------------
 bool tdb_HasActiveReaders
 (
-    tdb_TreeRef_t treeRef  ///< The tree object to read.
+    tdb_TreeRef_t treeRef  ///< [IN] The tree object to read.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -1850,8 +2294,8 @@ bool tdb_HasActiveReaders
 // -------------------------------------------------------------------------------------------------
 void tdb_RegisterIterator
 (
-    tdb_TreeRef_t treeRef,        ///< The tree object to update.
-    ni_IteratorRef_t iteratorRef  ///< The iterator object we're registering.
+    tdb_TreeRef_t treeRef,        ///< [IN] The tree object to update.
+    ni_IteratorRef_t iteratorRef  ///< [IN] The iterator object we're registering.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -1885,8 +2329,8 @@ void tdb_RegisterIterator
 // -------------------------------------------------------------------------------------------------
 void tdb_UnregisterIterator
 (
-    tdb_TreeRef_t treeRef,        ///< The tree object to update.
-    ni_IteratorRef_t iteratorRef  ///< The iterator object we're removing from the tree.
+    tdb_TreeRef_t treeRef,        ///< [IN] The tree object to update.
+    ni_IteratorRef_t iteratorRef  ///< [IN] The iterator object we're removing from the tree.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -1914,6 +2358,11 @@ void tdb_UnregisterIterator
         treeRef->activeReadCount--;
         LE_ASSERT(treeRef->activeReadCount >= 0);
     }
+
+    if (treeRef->isDeletePending)
+    {
+        tdb_DeleteTree(treeRef);
+    }
 }
 
 
@@ -1928,7 +2377,7 @@ void tdb_UnregisterIterator
 // -------------------------------------------------------------------------------------------------
 le_sls_List_t* tdb_GetRequestQueue
 (
-    tdb_TreeRef_t treeRef  ///< The tree object to read.
+    tdb_TreeRef_t treeRef  ///< [IN] The tree object to read.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -1953,13 +2402,24 @@ le_sls_List_t* tdb_GetRequestQueue
 // -------------------------------------------------------------------------------------------------
 void tdb_MergeTree
 (
-    tdb_TreeRef_t shadowTreeRef  ///< Merge the ndoes from this tree into their base tree.
+    tdb_TreeRef_t shadowTreeRef  ///< [IN] Merge the ndoes from this tree into their base tree.
 )
 // -------------------------------------------------------------------------------------------------
 {
-    // Get our shadow tree's root node and merge it's changes into the real tree.
+    // Get our shadow tree's root node and merge it's changes into the real tree.  Create a path
+    // iterator to track the merge and allow for update handlers to be called.
+    le_pathIter_Ref_t pathRef = NULL;
     tdb_NodeRef_t nodeRef = shadowTreeRef->rootNodeRef;
-    InternalMergeTree(nodeRef);
+
+    {
+        char basePath[CFG_MAX_PATH_SIZE] = { 0 };
+
+        snprintf(basePath, sizeof(basePath), "%s:/", shadowTreeRef->originalTreeRef->name);
+        pathRef = le_pathIter_CreateForUnix(basePath);
+    }
+
+    InternalMergeTree(pathRef, nodeRef);
+    le_pathIter_Delete(pathRef);
 
     // Now increment revision of the tree and open a tree file for writing.
     tdb_TreeRef_t originalTreeRef = shadowTreeRef->originalTreeRef;
@@ -2008,9 +2468,7 @@ void tdb_MergeTree
     {
         char* oldFilePath = GetTreePath(originalTreeRef->name, oldId);
 
-        LE_DEBUG("Removing obsolete tree file, <%s>.", oldFilePath);
-
-        unlink(oldFilePath);
+        DeleteTreeFile(oldFilePath);
         sb_Release(oldFilePath);
     }
 }
@@ -2025,7 +2483,7 @@ void tdb_MergeTree
 // -------------------------------------------------------------------------------------------------
 void tdb_ReleaseTree
 (
-    tdb_TreeRef_t treeRef  ///< The tree to free.  Note that this doesn't have to be the root node.
+    tdb_TreeRef_t treeRef  ///< [IN] The tree to free.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -2033,7 +2491,6 @@ void tdb_ReleaseTree
 
     if (treeRef->originalTreeRef != NULL)
     {
-        le_mem_Release(treeRef->rootNodeRef);
         le_mem_Release(treeRef);
     }
 
@@ -2056,8 +2513,8 @@ void tdb_ReleaseTree
 // -------------------------------------------------------------------------------------------------
 bool tdb_ReadTreeNode
 (
-    tdb_NodeRef_t nodeRef,  ///< The node to write the new data to.
-    int descriptor          ///< The file to read from.
+    tdb_NodeRef_t nodeRef,  ///< [IN] The node to write the new data to.
+    int descriptor          ///< [IN] The file to read from.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -2066,7 +2523,7 @@ bool tdb_ReadTreeNode
 
     // Clear out any contents that the node may have, and make sure that it isn't marked as deleted.
     tdb_SetEmpty(nodeRef);
-    EnsureExists(nodeRef);
+    tdb_EnsureExists(nodeRef);
 
 
     // Duplicate the file descriptor, this is because we later use a C library file pointer for the
@@ -2153,8 +2610,8 @@ bool tdb_ReadTreeNode
 // -------------------------------------------------------------------------------------------------
 void tdb_WriteTreeNode
 (
-    tdb_NodeRef_t nodeRef,  ///< Write the contents of this node to a file descriptor.
-    int descriptor          ///< The file descriptor to write to.
+    tdb_NodeRef_t nodeRef,  ///< [IN] Write the contents of this node to a file descriptor.
+    int descriptor          ///< [IN] The file descriptor to write to.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -2227,12 +2684,15 @@ void tdb_WriteTreeNode
 // -------------------------------------------------------------------------------------------------
 /**
  *  Given a base node and a path, find another node in the tree.
+ *
+ *  @return A reference to the required node if found, NULL if not.  NULL is also returned if the
+ *          path is eitehr too big to process or if a node name within the path is too large.
  */
 // -------------------------------------------------------------------------------------------------
 tdb_NodeRef_t tdb_GetNode
 (
-    tdb_NodeRef_t baseNodeRef,     ///< The base node to start from.
-    le_pathIter_Ref_t nodePathRef  ///< The path we're searching for in the tree.
+    tdb_NodeRef_t baseNodeRef,     ///< [IN] The base node to start from.
+    le_pathIter_Ref_t nodePathRef  ///< [IN] The path we're searching for in the tree.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -2268,7 +2728,6 @@ tdb_NodeRef_t tdb_GetNode
         {
             currentRef = GetNamedChild(currentRef, nameRef);
             result = le_pathIter_GoToNext(nodePathRef);
-
         }
     }
 
@@ -2281,14 +2740,38 @@ tdb_NodeRef_t tdb_GetNode
 
 // -------------------------------------------------------------------------------------------------
 /**
+ *  Make sure that the given node and any of it's parents are not marked as having been deleted.
+ */
+// -------------------------------------------------------------------------------------------------
+void tdb_EnsureExists
+(
+    tdb_NodeRef_t nodeRef   ///< [IN] Update this node, and all of it's parentage and make sure none
+                            ///<      of them are marked for deletion.
+)
+// -------------------------------------------------------------------------------------------------
+{
+    while (nodeRef != NULL)
+    {
+        ClearDeletedFlag(nodeRef);
+        nodeRef = tdb_GetNodeParent(nodeRef);
+    }
+}
+
+
+
+
+// -------------------------------------------------------------------------------------------------
+/**
  *  Get the name of a given node.
+ *
+ *  @return LE_OK if the name copied successfuly.  LE_OVERFLOW if not.
  */
 // -------------------------------------------------------------------------------------------------
 le_result_t tdb_GetNodeName
 (
-    tdb_NodeRef_t nodeRef,  ///< The node to read.
-    char* stringPtr,        ///< Destination buffer to hold the name.
-    size_t maxSize          ///< Size of this buffer.
+    tdb_NodeRef_t nodeRef,  ///< [IN]  The node to read.
+    char* stringPtr,        ///< [OUT] Destination buffer to hold the name.
+    size_t maxSize          ///< [IN]  Size of this buffer.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -2328,14 +2811,14 @@ le_result_t tdb_GetNodeName
  *  shouldn't have.
  *
  *  @return LE_OK if the set is successful.  LE_FORMAT_ERROR if the name contains illegial
- *          characters, or otherwise would not work as a node name.  LE_DUPLICATE, if there is
- *          another node with the new name in the same collection.
+ *          characters, or otherwise would not work as a node name.  LE_OVERFLOW if the name is too
+ *          long.  LE_DUPLICATE, if there is another node with the new name in the same collection.
  */
 // -------------------------------------------------------------------------------------------------
 le_result_t tdb_SetNodeName
 (
-    tdb_NodeRef_t nodeRef,  ///< The node to read.
-    const char* stringPtr   ///< New name for the node.
+    tdb_NodeRef_t nodeRef,  ///< [IN] The node to update.
+    const char* stringPtr   ///< [IN] New name for the node.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -2345,9 +2828,21 @@ le_result_t tdb_SetNodeName
         || (strcmp(stringPtr, "") == 0)
         || (strcmp(stringPtr, ".") == 0)
         || (strcmp(stringPtr, "..") == 0)
-        || (strchr(stringPtr, '/') != NULL))
+        || (strchr(stringPtr, '/') != NULL)
+        || (strchr(stringPtr, ':') != NULL))
     {
         return LE_FORMAT_ERROR;
+    }
+
+    // You can't change the name of the root node.
+    if (nodeRef->parentRef == NULL)
+    {
+        return LE_FORMAT_ERROR;
+    }
+
+    if (strlen(stringPtr) >= MAX_NODE_NAME)
+    {
+        return LE_OVERFLOW;
     }
 
     // Check for a duplicate name in this collection.
@@ -2366,6 +2861,17 @@ le_result_t tdb_SetNodeName
     else
     {
         dstr_CopyFromCstr(nodeRef->nameRef, stringPtr);
+    }
+
+    // If this is a shadow node and this is the change that modified it, then try to get it's
+    // children now.  This is done so that later when this node is merged the merge code doesn't end
+    // up thinking that the child nodes where removed.
+    if (   (IsShadow(nodeRef) == true)
+        && (IsModified(nodeRef) == false))
+    {
+        // Note that we don't bother checking to see if this is even a stem as tdb_GetFirstChildNode
+        // will take care of that.
+        tdb_GetFirstChildNode(nodeRef);
     }
 
     // Make sure that we know to merge this node later.
@@ -2389,7 +2895,7 @@ le_result_t tdb_SetNodeName
 // -------------------------------------------------------------------------------------------------
 le_cfg_nodeType_t tdb_GetNodeType
 (
-    tdb_NodeRef_t nodeRef  ///< The node to read.
+    tdb_NodeRef_t nodeRef  ///< [IN] The node to read.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -2412,7 +2918,7 @@ le_cfg_nodeType_t tdb_GetNodeType
         && (nodeRef->info.valueRef == NULL))
     {
         if (   (IsShadow(nodeRef))
-            && (IsModifed(nodeRef) == false))
+            && (IsModified(nodeRef) == false))
         {
             return tdb_GetNodeType(nodeRef->shadowRef);
         }
@@ -2437,7 +2943,7 @@ le_cfg_nodeType_t tdb_GetNodeType
 // -------------------------------------------------------------------------------------------------
 bool tdb_IsNodeEmpty
 (
-    tdb_NodeRef_t nodeRef  ///< The node to read.
+    tdb_NodeRef_t nodeRef  ///< [IN] The node to read.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -2457,7 +2963,7 @@ bool tdb_IsNodeEmpty
 // -------------------------------------------------------------------------------------------------
 void tdb_SetEmpty
 (
-    tdb_NodeRef_t nodeRef  ///< The node to clear.
+    tdb_NodeRef_t nodeRef  ///< [IN] The node to clear.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -2514,7 +3020,7 @@ void tdb_SetEmpty
 // -------------------------------------------------------------------------------------------------
 void tdb_DeleteNode
 (
-    tdb_NodeRef_t nodeRef  ///< The node to delete.
+    tdb_NodeRef_t nodeRef  ///< [IN] The node to delete.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -2560,7 +3066,7 @@ void tdb_DeleteNode
 // -------------------------------------------------------------------------------------------------
 tdb_NodeRef_t tdb_GetNodeParent
 (
-    tdb_NodeRef_t nodeRef  ///< The node object to iterate from.
+    tdb_NodeRef_t nodeRef  ///< [IN] The node object to read the parent object from.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -2581,7 +3087,7 @@ tdb_NodeRef_t tdb_GetNodeParent
 // -------------------------------------------------------------------------------------------------
 tdb_NodeRef_t tdb_GetFirstChildNode
 (
-    tdb_NodeRef_t nodeRef  ///< The node object to iterate from.
+    tdb_NodeRef_t nodeRef  ///< [IN] Get the first child of this node.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -2601,7 +3107,7 @@ tdb_NodeRef_t tdb_GetFirstChildNode
         && (le_dls_Peek(&nodeRef->info.children) == NULL)
         && (nodeRef->shadowRef != NULL))
     {
-        if (IsModifed(nodeRef) == false)
+        if (IsModified(nodeRef) == false)
         {
             ShadowChildren(nodeRef);
         }
@@ -2626,7 +3132,7 @@ tdb_NodeRef_t tdb_GetFirstChildNode
 // -------------------------------------------------------------------------------------------------
 tdb_NodeRef_t tdb_GetNextSiblingNode
 (
-    tdb_NodeRef_t nodeRef  ///< The node object to iterate from.
+    tdb_NodeRef_t nodeRef  ///< [IN] The node object to iterate from.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -2657,7 +3163,7 @@ tdb_NodeRef_t tdb_GetNextSiblingNode
 // -------------------------------------------------------------------------------------------------
 tdb_NodeRef_t tdb_GetFirstActiveChildNode
 (
-    tdb_NodeRef_t nodeRef  ///< The node object to iterate from.
+    tdb_NodeRef_t nodeRef  ///< [IN] Get the first child of this node.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -2686,7 +3192,7 @@ tdb_NodeRef_t tdb_GetFirstActiveChildNode
 // -------------------------------------------------------------------------------------------------
 tdb_NodeRef_t tdb_GetNextActiveSiblingNode
 (
-    tdb_NodeRef_t nodeRef  ///< The node object to iterate from.
+    tdb_NodeRef_t nodeRef  ///< [IN] The node object to iterate from.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -2716,11 +3222,11 @@ tdb_NodeRef_t tdb_GetNextActiveSiblingNode
 // -------------------------------------------------------------------------------------------------
 le_result_t tdb_GetValueAsString
 (
-    tdb_NodeRef_t nodeRef,  ///< The node object to read.
-    char* stringPtr,        ///< Target buffer for the value string.
-    size_t maxSize,         ///< Maximum size the buffer can hold.
-    const char* defaultPtr  ///< Default value to use in the event that the requested value doesn't
-                            ///<   exist.
+    tdb_NodeRef_t nodeRef,  ///< [IN]  The node object to read.
+    char* stringPtr,        ///< [OUT] Target buffer for the value string.
+    size_t maxSize,         ///< [IN]  Maximum size the buffer can hold.
+    const char* defaultPtr  ///< [IN]  Default value to use in the event that the requested value
+                            ///<       doesn't exist.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -2764,8 +3270,8 @@ le_result_t tdb_GetValueAsString
 // -------------------------------------------------------------------------------------------------
 void tdb_SetValueAsString
 (
-    tdb_NodeRef_t nodeRef,  ///< The node to set.
-    const char* stringPtr   ///< The value to write to the node.
+    tdb_NodeRef_t nodeRef,  ///< [IN] The node to set.
+    const char* stringPtr   ///< [IN] The value to write to the node.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -2773,7 +3279,7 @@ void tdb_SetValueAsString
 
     // Make sure the node is cleared out and value is set to it's default state.
     if (   (nodeRef->type == LE_CFG_TYPE_STEM)
-        || (nodeRef->type == LE_CFG_TYPE_EMPTY))
+        || (nodeRef->type != LE_CFG_TYPE_EMPTY))
     {
         tdb_SetEmpty(nodeRef);
         nodeRef->info.valueRef = NULL;
@@ -2795,7 +3301,7 @@ void tdb_SetValueAsString
     // into the original tree.  Also, make sure that this node and it's parents are not marked as
     // having been deleted.
     SetModifiedFlag(nodeRef);
-    EnsureExists(nodeRef);
+    tdb_EnsureExists(nodeRef);
 }
 
 
@@ -2804,13 +3310,16 @@ void tdb_SetValueAsString
 // -------------------------------------------------------------------------------------------------
 /**
  *  Read the given node and interpret it as a boolean value.
+ *
+ *  @return The node's value as a 32-bit boolean.  If the node doesn't exists or has the wrong type
+ *          the default value is returned instead.
  */
 // -------------------------------------------------------------------------------------------------
 bool tdb_GetValueAsBool
 (
-    tdb_NodeRef_t nodeRef,  ///< The node to read.
-    bool defaultValue       ///< Default value to use in the event that the requested value doesn't
-                            ///<   exist.
+    tdb_NodeRef_t nodeRef,  ///< [IN] The node to read.
+    bool defaultValue       ///< [IN] Default value to use in the event that the requested value
+                            ///<      doesn't exist.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -2857,8 +3366,8 @@ bool tdb_GetValueAsBool
 // -------------------------------------------------------------------------------------------------
 void tdb_SetValueAsBool
 (
-    tdb_NodeRef_t nodeRef,  ///< The node to write to.
-    bool value              ///< The new value to write to that node.
+    tdb_NodeRef_t nodeRef,  ///< [IN] The node to write to.
+    bool value              ///< [IN] The new value to write to that node.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -2882,9 +3391,9 @@ void tdb_SetValueAsBool
 // -------------------------------------------------------------------------------------------------
 int32_t tdb_GetValueAsInt
 (
-    tdb_NodeRef_t nodeRef,  ///< The node to read from.
-    int32_t defaultValue    ///< Default value to use in the event that the requested value doesn't
-                            ///<   exist.
+    tdb_NodeRef_t nodeRef,  ///< [IN] The node to read from.
+    int32_t defaultValue    ///< [IN] Default value to use in the event that the requested value
+                            ///<      doesn't exist.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -2930,8 +3439,8 @@ int32_t tdb_GetValueAsInt
 // -------------------------------------------------------------------------------------------------
 void tdb_SetValueAsInt
 (
-    tdb_NodeRef_t nodeRef,  ///< The node to write to.
-    int value               ///< The value to write.
+    tdb_NodeRef_t nodeRef,  ///< [IN] The node to write to.
+    int value               ///< [IN] The value to write.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -2950,13 +3459,16 @@ void tdb_SetValueAsInt
 // -------------------------------------------------------------------------------------------------
 /**
  *  Read the given node and interpret it as a floating point value.
+ *
+ *  @return The node's value as a 64-bit floating point number.  If the value is an int, it is
+ *          converted.  Otherwise, the default value is returned.
  */
 // -------------------------------------------------------------------------------------------------
 double tdb_GetValueAsFloat
 (
-    tdb_NodeRef_t nodeRef,  ///< The node to read.
-    double defaultValue     ///< Default value to use in the event that the requested value doesn't
-                            ///<   exist.
+    tdb_NodeRef_t nodeRef,  ///< [IN] The node to read.
+    double defaultValue     ///< [IN] Default value to use in the event that the requested value
+                            ///<      doesn't exist.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -2997,8 +3509,8 @@ double tdb_GetValueAsFloat
 // -------------------------------------------------------------------------------------------------
 void tdb_SetValueAsFloat
 (
-    tdb_NodeRef_t nodeRef,  ///< The node to write
-    double value            ///< The value to write to that node.
+    tdb_NodeRef_t nodeRef,  ///< [IN] The node to write
+    double value            ///< [IN] The value to write to that node.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -3017,18 +3529,87 @@ void tdb_SetValueAsFloat
 //--------------------------------------------------------------------------------------------------
 /**
  *  Registers a handler function to be called when a node at or below a given path changes.
+ *
+ *  @return A new safe ref backed object, or NULL if the creation failed.
  */
 //--------------------------------------------------------------------------------------------------
 le_cfg_ChangeHandlerRef_t tdb_AddChangeHandler
 (
-    tdb_TreeRef_t tree,                     ///< The tree to register the handler on.
-    const char* pathPtr,                    ///< Path of the node to watch.
-    le_cfg_ChangeHandlerFunc_t handlerPtr,  ///< Function to call back.
-    void* contextPtr                        ///< Opaque value to pass to the function when called.
+    tdb_TreeRef_t treeRef,                  ///< [IN] The tree to register the handler on.
+    le_msg_SessionRef_t sessionRef,         ///< [IN] The session that the request came in on.
+    const char* pathPtr,                    ///< [IN] Path of the node to watch.
+    le_cfg_ChangeHandlerFunc_t handlerPtr,  ///< [IN] Function to call back.
+    void* contextPtr                        ///< [IN] Opaque value to pass to the function when
+                                            ///<      called.
 )
 //--------------------------------------------------------------------------------------------------
 {
-    return NULL;
+    le_pathIter_Ref_t pathIterRef = NULL;
+    char newPathBuffer[CFG_MAX_PATH_SIZE] = { 0 };
+
+    // Check to see if the tree was specified in the request.  If it wasn't then add the user's tree
+    // to the path now.
+    if (tp_PathHasTreeSpecifier(pathPtr))
+    {
+        pathIterRef = le_pathIter_CreateForUnix(pathPtr);
+    }
+    else
+    {
+        snprintf(newPathBuffer, sizeof(newPathBuffer), "%s:%s", treeRef->name, pathPtr);
+        pathIterRef = le_pathIter_CreateForUnix(newPathBuffer);
+    }
+
+    // Get the normalized path out of the iterator object.  If the tree specifier got removed for
+    // any reason during the normalization, or if the internal path exceeded our buffer then return
+    // failure now.
+    le_result_t result = le_pathIter_GetPath(pathIterRef, newPathBuffer, sizeof(newPathBuffer));
+    le_pathIter_Delete(pathIterRef);
+
+    if (result != LE_OK)
+    {
+        LE_ERROR("Change registration path error, %d: '%s'.", result, LE_RESULT_TXT(result));
+        return NULL;
+    }
+
+    if (tp_PathHasTreeSpecifier(newPathBuffer) == false)
+    {
+        LE_ERROR("Failed to set tree for event registration.");
+        return NULL;
+    }
+
+    // Find the registration object for the given node, if it currently exists.
+    Registration_t* foundRegistrationPtr = le_hashmap_Get(HandlerRegistrationMap, newPathBuffer);
+
+    if (foundRegistrationPtr == NULL)
+    {
+        // Looks like a registration object hasn't been created yet.  So, do so now and add it to
+        // our map.
+        foundRegistrationPtr = le_mem_ForceAlloc(RegistrationPool);
+
+        foundRegistrationPtr->handlerList = LE_DLS_LIST_INIT;
+        le_utf8_Copy(foundRegistrationPtr->registrationPath,
+                     newPathBuffer,
+                     sizeof(foundRegistrationPtr->registrationPath),
+                     NULL);
+
+        le_hashmap_Put(HandlerRegistrationMap,
+                       foundRegistrationPtr->registrationPath,
+                       foundRegistrationPtr);
+    }
+
+    // Add this handler to the registration object to keep track of it for later.
+    Handler_t* handlerObjectPtr = le_mem_ForceAlloc(HandlerPool);
+
+    handlerObjectPtr->link = LE_DLS_LINK_INIT;
+    handlerObjectPtr->sessionRef = sessionRef;
+    handlerObjectPtr->handlerPtr = handlerPtr;
+    handlerObjectPtr->contextPtr = contextPtr;
+    handlerObjectPtr->registrationPtr = foundRegistrationPtr;
+    handlerObjectPtr->safeRef = le_ref_CreateRef(HandlerSafeRefMap, handlerObjectPtr);
+
+    le_dls_Queue(&foundRegistrationPtr->handlerList, &handlerObjectPtr->link);
+
+    return handlerObjectPtr->safeRef;
 }
 
 
@@ -3041,8 +3622,61 @@ le_cfg_ChangeHandlerRef_t tdb_AddChangeHandler
 //--------------------------------------------------------------------------------------------------
 void tdb_RemoveChangeHandler
 (
-    le_cfg_ChangeHandlerRef_t   handlerRef  ///< Reference returned by tdb_AddChangeHandler().
+    le_cfg_ChangeHandlerRef_t handlerRef,  ///< [IN] Reference returned by tdb_AddChangeHandler().
+    le_msg_SessionRef_t sessionRef         ///< [IN] The session of the user making this request.
 )
 //--------------------------------------------------------------------------------------------------
 {
+    // Simply look up the handler object in the safe ref map, then make sure that the object was
+    // found and belongs to the user session.
+    Handler_t* handlerObjectPtr = le_ref_Lookup(HandlerSafeRefMap, handlerRef);
+
+    if (   (handlerObjectPtr != NULL)
+        && (handlerObjectPtr->sessionRef == sessionRef))
+    {
+        Registration_t* registrationPtr = handlerObjectPtr->registrationPtr;
+
+        // Remove the handler object from the registration object's list.
+        RemoveHandler(registrationPtr, handlerObjectPtr);
+
+        // If there are no more handlers in this registration object, kill the object.
+        if (le_dls_IsEmpty(&registrationPtr->handlerList))
+        {
+            le_hashmap_Remove(HandlerRegistrationMap, registrationPtr->registrationPath);
+            le_mem_Release(registrationPtr);
+        }
+    }
+}
+
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Clean out any event handlers registered on the given session.
+ */
+//--------------------------------------------------------------------------------------------------
+void tdb_CleanUpHandlers
+(
+    le_msg_SessionRef_t sessionRef  ///< [IN] The session that's been closed.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // Go through all of the registration objects and their registered event handlers.  Remove any
+    // that belong to the given session.  If the reg object is rendered empty by this, then queue
+    // up that object in the supplied delete queue.
+    CleanUpContext_t cleanUpContext = { sessionRef, LE_SLS_LIST_INIT };
+    le_hashmap_ForEach(HandlerRegistrationMap, OnHandlerRegistrationCleanup, &cleanUpContext);
+
+    // Now.  Go through the cleanUpContext delete queue and remove the registration object found
+    // within.
+    le_sls_Link_t* linkPtr = NULL;
+
+    while ((linkPtr = le_sls_Pop(&cleanUpContext.deleteQueue)) != NULL)
+    {
+        Registration_t* registrationPtr = CONTAINER_OF(linkPtr, Registration_t, link);
+
+        le_hashmap_Remove(HandlerRegistrationMap, registrationPtr->registrationPath);
+        le_mem_Release(registrationPtr);
+    }
 }

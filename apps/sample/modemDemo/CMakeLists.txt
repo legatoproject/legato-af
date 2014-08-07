@@ -8,17 +8,15 @@
 find_package(Legato REQUIRED)
 
 # Creates application from the .adef
-mkapp(modemDemoApp modemDemo.adef
-    -i ${LEGATO_SOURCE_DIR}/interfaces/modemServices/c
-    -i ${LEGATO_SOURCE_DIR}/interfaces/dataConnectionService/c
+mkapp(modemDemo.adef
+    -i ${LEGATO_SOURCE_DIR}/interfaces/modemServices
+    -i ${LEGATO_SOURCE_DIR}/interfaces/dataConnectionService
     DEPENDS
         legato
-        le_mdm_client
-        le_data_client
         send_util.api
         demoComponent/*
         sendComponent/*
 )
 
 # This is a sample application
-add_dependencies(samples modemDemoApp)
+add_dependencies(samples modemDemo)

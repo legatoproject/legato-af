@@ -1,0 +1,8 @@
+sources:
+
+    le_mrcTest.c
+    main.c
+
+import:
+
+    le_mrc.api

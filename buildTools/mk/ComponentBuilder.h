@@ -2,7 +2,7 @@
 /**
  * Object that knows how to build Components.
  *
- * Copyright (C) 201 Sierra Wireless Inc., all rights reserved.
+ * Copyright (C) 2013-2014 Sierra Wireless Inc.  Use of this work is subject to license.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -19,8 +19,10 @@ class ComponentBuilder_t
         ComponentBuilder_t(const legato::BuildParams_t& params) : m_Params(params) {}
 
     public:
-        void GenerateInterfaceCode(legato::Component& component);
-        void Build(const legato::Component& component);
+        void GenerateInterfacesHeader(legato::Component& component);
+        void BuildInterfaces(legato::Component& component);
+        void BuildComponentLib(legato::Component& component);
+        void Build(legato::Component& component);
 };
 
 

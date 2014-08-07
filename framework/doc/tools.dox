@@ -1,14 +1,9 @@
-/** @page tools Legato Tools
+/** @page tools Tools
 
-Legato comes with these tools:  
+Legato has tools for:
 
-@subpage loggingBasics <br>
-@subpage configDBCommands <br>
-@subpage inspectTool <br>
-@subpage simUsageCommands <br>
-@subpage demoAPNUsage <br>
-@subpage dataCommands
-
+ @subpage toolsTarget "Targets" <br>
+ @subpage toolsHost "Hosts" <br>
 
 <HR>
 

@@ -493,6 +493,43 @@ static void Handle_allParameters
 }
 
 
+static void Handle_FileTest
+(
+    le_msg_MessageRef_t _msgRef
+
+)
+{
+    // Get the message buffer pointer
+    uint8_t* _msgBufPtr = ((_Message_t*)le_msg_GetPayloadPtr(_msgRef))->buffer;
+
+    // Needed if we are returning a result or output values
+    uint8_t* _msgBufStartPtr = _msgBufPtr;
+
+    // Unpack the input parameters from the message
+    int dataFile;
+    dataFile = le_msg_GetFd(_msgRef);
+
+
+    // Define storage for output parameters
+    int dataOut;
+
+    // Call the function
+    FileTest ( dataFile, &dataOut );
+
+
+    // Re-use the message buffer for the response
+    _msgBufPtr = _msgBufStartPtr;
+
+
+    // Pack any "out" parameters
+    le_msg_SetFd(_msgRef, dataOut);
+
+    // Return the response
+    LE_DEBUG("Sending response to client session %p", le_msg_GetSession(_msgRef));
+    le_msg_Respond(_msgRef);
+}
+
+
 static void Handle_TriggerTestA
 (
     le_msg_MessageRef_t _msgRef
@@ -686,6 +723,7 @@ static void ServerMsgRecvHandler
         case _MSGID_AddTestA : Handle_AddTestA(msgRef); break;
         case _MSGID_RemoveTestA : Handle_RemoveTestA(msgRef); break;
         case _MSGID_allParameters : Handle_allParameters(msgRef); break;
+        case _MSGID_FileTest : Handle_FileTest(msgRef); break;
         case _MSGID_TriggerTestA : Handle_TriggerTestA(msgRef); break;
         case _MSGID_AddBugTest : Handle_AddBugTest(msgRef); break;
         case _MSGID_RemoveBugTest : Handle_RemoveBugTest(msgRef); break;

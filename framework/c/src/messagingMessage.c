@@ -12,6 +12,8 @@
 #include "messagingProtocol.h"
 #include "messagingSession.h"
 #include "messagingService.h"
+#include "fileDescriptor.h"
+#include "unixSocket.h"
 
 // =======================================
 //  PRIVATE FUNCTIONS
@@ -46,6 +48,16 @@ static void MessageDestructor
         // notify the server of the closure (if the server has a close handler registered).
         msgService_CallCloseHandler(msgSession_GetServiceRef(msgPtr->sessionRef),
                                     msgPtr->sessionRef);
+    }
+
+    // Release any open fds in the message.
+    if (!msgSession_IsClient(msgPtr->sessionRef) && (msgPtr->clientServer.server.responseFd >= 0))
+    {
+        fd_Close(msgPtr->clientServer.server.responseFd);
+    }
+    if (msgPtr->fd >= 0)
+    {
+        fd_Close(msgPtr->fd);
     }
 
     // Release the Message object's hold on the Session object.
@@ -87,13 +99,16 @@ le_mem_PoolRef_t msgMessage_CreatePool
 )
 //--------------------------------------------------------------------------------------------------
 {
-    char poolName[128];
+    char poolName[LIMIT_MAX_MEM_POOL_NAME_BYTES];
     size_t bytesCopied;
     le_result_t result;
 
-    le_utf8_Copy(poolName, name, sizeof(poolName), &bytesCopied);
-    result = le_utf8_Copy(poolName + bytesCopied, "-Msgs", sizeof(poolName) - bytesCopied, NULL);
-    LE_ERROR_IF(result != LE_OK, "Pool name truncated to '%s'.", poolName);
+    le_utf8_Copy(poolName, "msgs-", sizeof(poolName), &bytesCopied);
+    result = le_utf8_Copy(poolName + bytesCopied, name, sizeof(poolName) - bytesCopied, NULL);
+    if (result != LE_OK)
+    {
+        LE_DEBUG("Pool name truncated to '%s' for protocol '%s'.", poolName, name);
+    }
 
     le_mem_PoolRef_t poolRef = le_mem_CreatePool(poolName, sizeof(Message_t) + largestMsgSize);
 
@@ -112,7 +127,8 @@ le_mem_PoolRef_t msgMessage_CreatePool
  * @return
  * - LE_OK if successful.
  * - LE_NO_MEMORY if the socket doesn't have enough send buffer space available right now.
- * - LE_COMM_ERROR if the socket reported an error on the send operation.
+ * - LE_COMM_ERROR if the localSocketFd is not connected.
+ * - LE_FAULT if failed for some other reason (check your logs).
  *
  * @note    Won't return LE_NO_MEMORY if the socket is in blocking mode.
  */
@@ -124,53 +140,29 @@ le_result_t msgMessage_Send
 )
 //--------------------------------------------------------------------------------------------------
 {
+    // If this is a response message,
+    if (le_msg_NeedsResponse(msgPtr))
+    {
+        // If there was an fd that was received from the client but not fetched from the message
+        // generate a warning and close that fd.
+        if (msgPtr->fd >= 0)
+        {
+            LE_WARN("File descriptor not retrieved from message received from client.");
+            fd_Close(msgPtr->fd);
+        }
+
+        // Move the responseFd to the normal fd position in the message object.
+        msgPtr->fd = msgPtr->clientServer.server.responseFd;
+        msgPtr->clientServer.server.responseFd = -1;
+    }
+
     // The first bytes come from our transaction ID and the rest (if any)
-    // from our Message object's payload section.
-    struct iovec ioVector[] =   {
-                                    {   iov_base: &msgPtr->txnId,
-                                        iov_len: sizeof(msgPtr->txnId)
-                                    },
-                                    {   iov_base: msgPtr->payload,
-                                        iov_len: le_msg_GetMaxPayloadSize(msgPtr)
-                                    }
-                                };
-    struct msghdr msgHeader =   {
-                                    msg_name: NULL,
-                                    msg_namelen: 0,
-                                    msg_iov: ioVector,
-                                    msg_iovlen: NUM_ARRAY_MEMBERS(ioVector),
-                                    msg_control: NULL,
-                                    msg_controllen: 0,
-                                };
-
-    ssize_t bytesSent;
-    do
-    {
-        bytesSent = sendmsg(socketFd, &msgHeader, MSG_EOR);
-    }
-    while ((bytesSent == -1) && (errno == EINTR));
-
-    if (bytesSent < 0)
-    {
-        // Failed to send!
-
-        if ((errno == EAGAIN) || (errno == EWOULDBLOCK))
-        {
-            // There's no send buffer memory available in the kernel.
-            LE_DEBUG("Out of send buffer memory.");
-            return LE_NO_MEMORY;
-        }
-        else
-        {
-            LE_ERROR("sendmsg() failed. Errno = %d (%m).", errno);
-            return LE_COMM_ERROR;
-        }
-    }
-    else
-    {
-        LE_ASSERT(bytesSent == (sizeof(msgPtr->txnId) + le_msg_GetMaxPayloadSize(msgPtr)));
-        return LE_OK;
-    }
+    // from our Message object's payload section, which comes right after the transaction ID.
+    return unixSocket_SendMsg(  socketFd,
+                                &msgPtr->txnId,
+                                sizeof(msgPtr->txnId) + le_msg_GetMaxPayloadSize(msgPtr),
+                                msgPtr->fd,
+                                false   ); // Don't send process credentials.
 }
 
 
@@ -180,7 +172,7 @@ le_result_t msgMessage_Send
  *
  * @return
  * - LE_OK if successful.
- * - LE_NOT_FOUNT if there's nothing there to receive.
+ * - LE_WOULD_BLOCK if there's nothing there to receive and the socket is set non-blocking.
  * - LE_CLOSED if the connection has closed.
  * - LE_COMM_ERROR if an error was encountered.
  */
@@ -194,55 +186,18 @@ le_result_t msgMessage_Receive
 {
     // Receive the first bytes into our transaction ID and the rest (if any)
     // into our Message object's payload section.
-    struct iovec ioVector[] =   {
-                                    {   iov_base: &msgRef->txnId,
-                                        iov_len: sizeof(msgRef->txnId)
-                                    },
-                                    {   iov_base: msgRef->payload,
-                                        iov_len: le_msg_GetMaxPayloadSize(msgRef)
-                                    }
-                                };
-    struct msghdr msgHeader =   {
-                                    msg_name: NULL,
-                                    msg_namelen: 0,
-                                    msg_iov: ioVector,
-                                    msg_iovlen: NUM_ARRAY_MEMBERS(ioVector),
-                                    msg_control: NULL,
-                                    msg_controllen: 0,
-                                };
-    ssize_t bytesReceived;
-    do
+    size_t byteCount = sizeof(msgRef->txnId) + le_msg_GetMaxPayloadSize(msgRef);
+    le_result_t result = unixSocket_ReceiveMsg( socketFd,
+                                                &msgRef->txnId,
+                                                &byteCount,
+                                                &msgRef->fd,
+                                                NULL    );  // Don't receive credentials.
+    if (!msgSession_IsClient(msgRef->sessionRef))
     {
-        bytesReceived = recvmsg(socketFd, &msgHeader, 0);
+        msgRef->clientServer.server.responseFd = -1;
     }
-    while ((bytesReceived == -1) && (errno == EINTR));
 
-    if (bytesReceived < 0)
-    {
-        if ((errno == EWOULDBLOCK) || (errno == EAGAIN))
-        {
-            return LE_NOT_FOUND;
-        }
-        else if (errno == ECONNRESET)
-        {
-            return LE_CLOSED;
-        }
-        else
-        {
-            // Failed to receive!  This is an error on the connection.
-            LE_ERROR("recvmsg() failed. Errno = %d (%m).", errno);
-            return LE_COMM_ERROR;
-        }
-    }
-    else if (bytesReceived == 0)
-    {
-        // The socket closed down.  This can trigger a "readable" event, so this is normal.
-        return LE_CLOSED;
-    }
-    else
-    {
-        return LE_OK;
-    }
+    return result;
 }
 
 
@@ -258,9 +213,10 @@ void msgMessage_CallCompletionCallback
 )
 //--------------------------------------------------------------------------------------------------
 {
-    if (requestMsgRef->completionCallback != NULL)
+    if (requestMsgRef->clientServer.client.completionCallback != NULL)
     {
-        requestMsgRef->completionCallback(responseMsgRef, requestMsgRef->contextPtr);
+        requestMsgRef->clientServer.client.completionCallback(responseMsgRef,
+                                                     requestMsgRef->clientServer.client.contextPtr);
     }
 }
 
@@ -296,8 +252,16 @@ le_msg_MessageRef_t le_msg_CreateMsg
     msgPtr->link = LE_DLS_LINK_INIT;
     msgPtr->sessionRef = sessionRef;
     le_mem_AddRef(sessionRef);  // Message object holds a reference to the Session object.
-    msgPtr->completionCallback = NULL;
-    msgPtr->contextPtr = NULL;
+    if (msgSession_IsClient(sessionRef))
+    {
+        msgPtr->clientServer.client.completionCallback = NULL;
+        msgPtr->clientServer.client.contextPtr = NULL;
+    }
+    else
+    {
+        msgPtr->clientServer.server.responseFd = -1;
+    }
+    msgPtr->fd = -1;
     msgPtr->txnId = 0;
     memset(msgPtr->payload, 0, le_msg_GetProtocolMaxMsgSize(protocolRef));
 
@@ -399,6 +363,68 @@ size_t le_msg_GetMaxPayloadSize
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Sets the file descriptor to be sent with this message.
+ *
+ * This file descriptor will be closed when the message is sent (or when it is deleted without
+ * being sent).
+ *
+ * At most one file descriptor is allowed to be sent per message.
+ **/
+//--------------------------------------------------------------------------------------------------
+void le_msg_SetFd
+(
+    le_msg_MessageRef_t msgRef,     ///< [in] Reference to the message.
+    int                 fd          ///< [in] File descriptor.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // If this is a message that is to be responded to, then store the fd in the "response fd"
+    // field so that the fd field is still available to be read.
+    if (le_msg_NeedsResponse(msgRef))
+    {
+        if (msgRef->clientServer.server.responseFd >= 0)
+        {
+            LE_FATAL("Attempt to set more than one file descriptor on the same message.");
+        }
+        msgRef->clientServer.server.responseFd = fd;
+    }
+    // Otherwise, store the fd in the normal fd-to-be-sent field.
+    else
+    {
+        if (msgRef->fd >= 0)
+        {
+            LE_FATAL("Attempt to set more than one file descriptor on the same message.");
+        }
+
+        msgRef->fd = fd;
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Fetches a received file descriptor from the message.
+ *
+ * @return The file descriptor, or -1 if no file descriptor was sent with this message or if the
+ *         fd was already fetched from the message.
+ **/
+//--------------------------------------------------------------------------------------------------
+int le_msg_GetFd
+(
+    le_msg_MessageRef_t msgRef      ///< [in] Reference to the message.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    int fd = msgRef->fd;
+    msgRef->fd = -1;
+
+    return fd;
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Sends a message.  No response expected.
  */
 //--------------------------------------------------------------------------------------------------
@@ -455,8 +481,8 @@ void le_msg_RequestResponse
 //--------------------------------------------------------------------------------------------------
 {
     // Save the completion callback function.
-    msgRef->completionCallback = handlerFunc;
-    msgRef->contextPtr = contextPtr;
+    msgRef->clientServer.client.completionCallback = handlerFunc;
+    msgRef->clientServer.client.contextPtr = contextPtr;
 
     // Tell the Session to do an asynchronous request-response transaction.
     msgSession_RequestResponse(msgRef->sessionRef, msgRef);

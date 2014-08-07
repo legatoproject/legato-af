@@ -7,8 +7,8 @@
  *  functions allow detecting tree names wihtin a path, as well as the seperation of the path from
  *  the tree name.
  *
- *  Copyright (C) Sierra Wireless, Inc. 2013, 2014. All rights reserved. Use of this work is subject
- *  to license.
+ *  Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved.
+ *  Use of this work is subject to license.
  */
 // -------------------------------------------------------------------------------------------------
 
@@ -17,8 +17,13 @@
 
 
 
+/// The max size of a config tree name.
+#define MAX_TREE_NAME_LEN   LIMIT_MAX_USER_NAME_LEN
 
-#define MAX_TREE_NAME 50
+
+
+// Same as before, but this time in bytes.
+#define MAX_TREE_NAME_BYTES LIMIT_MAX_USER_NAME_BYTES
 
 
 

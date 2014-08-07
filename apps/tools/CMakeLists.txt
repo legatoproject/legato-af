@@ -5,6 +5,5 @@
 #     Sierra Wireless - initial API and implementation
 #*******************************************************************************
 
-add_subdirectory(data)
-add_subdirectory(sim)
-add_subdirectory(apn)
+add_subdirectory(cmodem)
+add_subdirectory(fwupdate)

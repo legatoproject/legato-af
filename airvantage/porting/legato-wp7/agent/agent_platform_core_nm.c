@@ -2,8 +2,12 @@
  * Copyright (c) 2013 Sierra Wireless and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+ * and Eclipse Distribution License v1.0 which accompany this distribution.
+ *
+ * The Eclipse Public License is available at
+ *   http://www.eclipse.org/legal/epl-v10.html
+ * The Eclipse Distribution License is available at
+ *   http://www.eclipse.org/org/documents/edl-v10.php
  *
  * Contributors:
  *     Romain Perier for Sierra Wireless - initial API and implementation
@@ -20,10 +24,10 @@ static le_data_ConnectionStateHandlerRef_t airvantage_handlerRef;
 extern lua_State *L_eventloop;
 
 
-//structure used to put le_data_Request_Ref_t in a Lua userdata
+//structure used to put le_data_RequestObjRef_t in a Lua userdata
 typedef struct
 {
-  le_data_Request_Ref_t data_ref;
+  le_data_RequestObjRef_t data_ref;
 } nmctx;
 
 
@@ -44,7 +48,7 @@ typedef struct
  */
 static int l_connectionRequest(lua_State *L)
 {
-    le_data_Request_Ref_t ref = le_data_Request();
+    le_data_RequestObjRef_t ref = le_data_Request();
     if ( ref != NULL){
       nmctx* nmud = lua_newuserdata(L, sizeof(*nmud));
       nmud->data_ref = ref;

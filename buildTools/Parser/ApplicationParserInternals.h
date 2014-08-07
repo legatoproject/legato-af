@@ -4,7 +4,7 @@
  *
  * @warning THIS FILE IS INCLUDED FROM C CODE.
  *
- * Copyright (C) 2013 Sierra Wireless Inc., all rights reserved.
+ * Copyright (C) 2013-2014 Sierra Wireless Inc., Use of this work is subject to license.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -66,19 +66,22 @@ extern int ayy_IsVerbose;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Restarts the application parsing with a new file stream to parse.
- */
-//--------------------------------------------------------------------------------------------------
-void ayy_restart(FILE *new_file);
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * The standard error reporting function that will be called by both the
  * lexer and the parser when they detect errors or when the YYERROR macro is invoked.
  */
 //--------------------------------------------------------------------------------------------------
 void ayy_error(const char* errorString);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the application version.
+ */
+//--------------------------------------------------------------------------------------------------
+void ayy_SetVersion
+(
+    const char* version         ///< The version string.
+);
 
 
 //--------------------------------------------------------------------------------------------------
@@ -140,7 +143,12 @@ void ayy_FinishProcessesSection
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Add a file to the application.
+ * Add a file or directory from the build host file system to the application.
+ *
+ * If the sourcePath ends in a '/', then it is treated as a directory.
+ * Otherwise, it is treated as a file.
+ *
+ * @warning This function is deprecated.
  */
 //--------------------------------------------------------------------------------------------------
 void ayy_AddFile
@@ -150,6 +158,30 @@ void ayy_AddFile
     const char* destPath    ///< The file path in the target file system, inside sandbox.
 );
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add a file from the build host file system to the application.
+ */
+//--------------------------------------------------------------------------------------------------
+void ayy_AddBundledFile
+(
+    const char* permissions,///< String representing the permissions.
+    const char* sourcePath, ///< The file path in the build host's file system.
+    const char* destPath    ///< The file path in the target file system, inside sandbox.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add a directory from the build host file system to the application.
+ */
+//--------------------------------------------------------------------------------------------------
+void ayy_AddBundledDir
+(
+    const char* sourcePath, ///< The path in the build host's file system.
+    const char* destPath    ///< The path in the target file system, inside sandbox.
+);
 
 
 //--------------------------------------------------------------------------------------------------
@@ -172,6 +204,17 @@ void ayy_AddExecutable
 void ayy_AddExeContent
 (
     const char* contentName
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Called when parsing of an executable specification finishes.
+ */
+//--------------------------------------------------------------------------------------------------
+void ayy_FinalizeExecutable
+(
+    void
 );
 
 
@@ -227,11 +270,28 @@ void ayy_AddEnvVar
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Add a file import mapping, which is the mapping of an object from the file system somewhere
- * outside the application sandbox to somewhere in the file system inside the application sandbox.
+ * Add a file import mapping, which is the mapping of a non-directory object from the file system
+ * somewhere outside the application sandbox to somewhere in the file system inside the application
+ * sandbox.
  **/
 //--------------------------------------------------------------------------------------------------
-void ayy_AddFileImport
+void ayy_AddRequiredFile
+(
+    const char* permissions,///< String representing the permissions. (e.g., "[r]")
+    const char* sourcePath, ///< The path in the target file system., outside the sandbox.
+    const char* destPath    ///< The path in the target file system, inside the sandbox.
+);
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add a directory import mapping, which is the mapping of a directory object from the file system
+ * somewhere outside the application sandbox to somewhere in the file system inside the application
+ * sandbox.
+ **/
+//--------------------------------------------------------------------------------------------------
+void ayy_AddRequiredDir
 (
     const char* permissions,///< String representing the permissions. (e.g., "[r]")
     const char* sourcePath, ///< The path in the target file system., outside the sandbox.
@@ -431,6 +491,29 @@ void ayy_SetWatchdogAction
     const char* action  ///< Accepted actions are TBD.
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets the timeout for the watchdogs in the application.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void ayy_SetWatchdogTimeout
+(
+    const int timeout  ///< The time in milliseconds after which the watchdog expires if not
+                       ///< kicked again before then. Only positive values are allowed.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Disables the watchdog timeout in the application if the timeout value is "never".
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void ayy_SetWatchdogDisabled
+(
+    const char* never  ///< The only acceptable string in "never"
+                       ///< Any other will leave the watchdog enabled with default timeout
+);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -448,17 +531,76 @@ void ayy_SetPoolSize
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Create an IPC binding between one interface and another.
- *
- * Each interface definition is expected to be of the form "proc.interface".  One of the
- * two interfaces must be an imported interface, while the other must be an exported interface.
+ * Mark a client-side IPC API interface as an external interface that can be bound to other
+ * apps or users using a given interface name.
  */
 //--------------------------------------------------------------------------------------------------
-void ayy_CreateBind
+void ayy_AddRequiredApi
 (
-    const char* importSpecifier,
-    const char* exportSpecifier
+    const char* externalAlias, ///< [in] Name to use outside app (NULL = use client interface name).
+    const char* clientInterfaceSpec  ///< [in] Client-side interface (exe.component.interface).
 );
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Mark a server-side IPC API interface as an external interface that other apps or users
+ * can bind to using a given interface name.
+ */
+//--------------------------------------------------------------------------------------------------
+void ayy_AddProvidedApi
+(
+    const char* externalAlias, ///< [in] Name to use outside app (NULL = use server interface name).
+    const char* clientInterfaceSpec  ///< [in] Client-side interface (exe.component.interface).
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Create an IPC API binding.
+ *
+ * The client interface specification is always expected to be of the form
+ * "exe.component.interface".
+ *
+ * The server interface specification can be one of the following:
+ * - "exe.component.interface" = an internal bind (within the app).
+ * - "app.service" = an external bind to a service provided by an application.
+ */
+//--------------------------------------------------------------------------------------------------
+void ayy_AddBind
+(
+    const char* clientInterfaceSpec,    ///< [in] Client-side interface.
+    const char* serverInterfaceSpec     ///< [in] Server-side interface.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Create an IPC API binding to a service offered by a user.
+ *
+ * The client interface specification is expected to be of the form
+ * "exe.component.interface".
+ */
+//--------------------------------------------------------------------------------------------------
+void ayy_AddBindOutToUser
+(
+    const char* clientInterfaceSpec,    ///< [in] Client-side interface.
+    const char* serverUserName,         ///< [in] Server-side user name.
+    const char* serverServiceName       ///< [in] Server-side service name.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add read access permission for a particular configuration tree.
+ **/
+//--------------------------------------------------------------------------------------------------
+void ayy_AddConfigTreeAccess
+(
+    const char* permissions,    ///< [in] String representing the permissions (e.g., "[r]", "[w]").
+    const char* treeName        ///< [in] The name of the configuration tree.
+);
+
 
 
 #endif // APPLICATION_PARSER_H_INCLUDE_GUARD

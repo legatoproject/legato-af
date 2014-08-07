@@ -1,0 +1,65 @@
+/** @page toolsInspect Inspect Process
+
+Legato has an inspection diagnostic tool that can examine running Legato processes.
+Currently, only memory pools are supported; later versions will add more capabilities. 
+
+Prints memory pools' usage to stdout for the specified process.
+
+<h1>Usage</h1>
+
+<b><c>inspect [OPTIONS] PID</c></b>
+
+<h1>Options</h1>
+
+@verbatim -f @endverbatim
+> Update process memory usage information every 3 seconds.
+
+@verbatim --interval=SECONDS @endverbatim
+> Update process memory usage information every SECONDS.
+
+@verbatim --help @endverbatim
+> Display help and exit.
+
+<h1>Output Sample</h1>
+
+@verbatim
+Legato Memory Pools Inspector
+Inspecting process 759
+TOTAL BLKS  USED BLKS   MAX USED  OVERFLOWS     ALLOCS  MEMORY POOL
+         8          0          0          0          0  SubPools
+        10          5          5          0          5  TraceKeys
+        10          2          2          0          2  LogSession
+         0          0          0          0          0  SigMonitor
+         0          0          0          0          0  SigHandler
+        10          7          7          0          7  SafeRef-Map
+         0          0          0          0          0  PathIteratorPool
+         8          0          0          0          0  safeRefPathIteratorMap
+         4          0          0          0          0  mutex
+         4          0          0          0          0  semaphore
+         4          1          1          0          1  Thread Pool
+         4          1          1          0          1  safeRefThreadRef
+         0          0          0          0          0  DestructorObjs
+        10          0          1          0       1568  QueuedFunction
+        10          0          0          0          0  EventHandler
+         5          0          0          0          0  Events
+         4          0          0          0          0  safeRefEvents
+         8          0          0          0          0  safeRefEventHandlers
+        10          2          2          0          2  FdMonitor
+         8          2          2          0          2  safeRefFdMonitors
+        64          5          5          0          5  safeRefFdEventHandlers
+         1          1          1          0          1  Default Timer Pool
+         5          1          1          0          1  Protocol
+        32          1          1          0          1  MessagingServices
+        32          1          1          0          1  MessagingServices
+        10          1          1          0          1  Session
+        32          0          1          0          2  safeRefMsgTxnIDs
+        10          0          2          0          4  LogControlProtocol-Msgs
+      1567       1567       1567       1567       1567  EmployeePool
+@endverbatim
+
+
+<HR>
+
+Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+
+**/

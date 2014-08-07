@@ -1,0 +1,14 @@
+sandboxed: false
+
+executables:
+
+    posDaemon ( $LEGATO_ROOT/components/positioning/posDaemon )
+
+processes:
+
+    run: (posDaemon)
+    faultAction: restart
+    
+requires:
+
+    configTree: { [w] system }

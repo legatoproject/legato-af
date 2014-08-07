@@ -116,8 +116,10 @@ And install on target like this:
 $ instapp hi.wp7 192.168.1.2
 @endverbatim
 
-@note  Your installed application output will display in /var/log/messages in the target device,
- not on the terminal you used to install the application.
+@note Your installed application's output will not appear on the terminal you used to install
+the application.  It will go into the syslog buffer on the target device, which can
+be viewed using @c logread.
+
 <HR>
 
 Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.

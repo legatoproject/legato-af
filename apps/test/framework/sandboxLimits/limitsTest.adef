@@ -10,14 +10,13 @@ executables:
     limitsTest ( limitsTest.c )
 
 processes:
-    vMemSize: 10000000
     maxFileSize: 10
     numFds: 10
     memLockSize: 10
     coreFileSize: 10
 
-    run: (limitsTest 10 10 10 10000000 10 10 10 10 10000)
+    run: (limitsTest 10 10 10 10 10 10 10 10000)
 
 // The arguments is the list of expected resource limit values in this order.
-// mqueueSize, numProcs, rtSignalQueueSize, vMemSize, maxFileSize, numFds, memLockSize, coreFileSize, fileSystemSize
+// mqueueSize, numProcs, rtSignalQueueSize, maxFileSize, numFds, memLockSize, coreFileSize, fileSystemSize
 

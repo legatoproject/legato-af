@@ -1,9 +1,13 @@
--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 -- Copyright (c) 2012 Sierra Wireless and others.
 -- All rights reserved. This program and the accompanying materials
 -- are made available under the terms of the Eclipse Public License v1.0
--- which accompanies this distribution, and is available at
--- http://www.eclipse.org/legal/epl-v10.html
+-- and Eclipse Distribution License v1.0 which accompany this distribution.
+--
+-- The Eclipse Public License is available at
+--   http://www.eclipse.org/legal/epl-v10.html
+-- The Eclipse Distribution License is available at
+--   http://www.eclipse.org/org/documents/edl-v10.php
 --
 -- Contributors:
 --     Laurent Barthelemy for Sierra Wireless - initial API and implementation
@@ -263,12 +267,16 @@ end
 --     of parameters fields from update package, those parameters provide a way to give application specific
 --     update parameters.
 --    <br><br>
--- * `return value`: an integer, 200 for success, any other value means error.
---     Values from 480 to 499 are reserved for applicative error codes,
---     so it is highly recommended to use one (or more) of those to signify
---     an error coming from this update hook.
---     Non-integer return values will be rejected and be replaced by
---     default value 471.
+-- * `return value`:
+--
+--     * an integer for synchronous update request result: 200 for success, any other value means error.
+--        Values from 480 to 499 are reserved for applicative error codes,
+--        so it is highly recommended to use one (or more) of those to signify
+--        an error coming from this update hook.
+--     * `"async"` string, then the appliacation must send update request result later on
+--        using @{racon.asset#asset.sendUpdateResult} API.
+--     * Other non-integer return values will be rejected and be replaced by
+--        default value 471, thus setting the update request as failed.
 -- @return `"ok"` on success.
 -- @return `nil` followed by an error message otherwise.
 --
@@ -414,7 +422,7 @@ end
 -- @function [parent=#asset] sendUpdateResult
 -- @param self
 -- @param componentName a string, this must be the same value as the one
--- that was given as argument to the update hook (the hook registered with #setUpdateHook). <br>
+-- that was given as argument to the update hook (the hook registered with @{racon.asset#asset.setUpdateHook}). <br>
 -- As only one software update is possible for the same component at the same time,
 -- the couple asset+componentName fully identifies the software update request.
 -- @param updateResult a number, the result of the update, 200 for success,

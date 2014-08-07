@@ -18,7 +18,7 @@
 #define NO_FAULT        "noFault"
 
 
-LE_EVENT_INIT_HANDLER
+COMPONENT_INIT
 {
     // Get the app name.
     char appName[100];

@@ -1,0 +1,7 @@
+watchdogTimeout: never
+
+executables:
+    dogTestNever (dogTestNever)
+
+processes:
+    run: (dogTestNever)

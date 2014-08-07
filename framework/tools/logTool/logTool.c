@@ -51,6 +51,7 @@ $ log stoptrace "keyword" in "processName/componentName"
 #include "legato.h"
 #include "log.h"
 #include "logDaemon.h"
+#include "messagingSession.h"
 #include "limit.h"
 #include <ctype.h>
 
@@ -286,7 +287,7 @@ static le_msg_MessageRef_t ConnectToLogControlDaemon
     le_msg_SetSessionRecvHandler(sessionRef, MsgReceiveHandler, NULL);
     le_msg_SetSessionCloseHandler(sessionRef, SessionCloseHandler, NULL);
 
-    le_result_t result = le_msg_OpenSessionSync(sessionRef);
+    le_result_t result = msgSession_TryOpenSessionSync(sessionRef);
     if (result == LE_OK)
     {
         return le_msg_CreateMsg(sessionRef);
@@ -294,22 +295,8 @@ static le_msg_MessageRef_t ConnectToLogControlDaemon
     else
     {
         printf("***ERROR: Can't communicate with the Log Control Daemon.\n");
-
-        if (result == LE_COMM_ERROR)
-        {
-            printf("Service Directory is unreachable.\n"
-                   "Perhaps the Service Directory is not running?\n");
-        }
-        else if (result == LE_NOT_PERMITTED)
-        {
-            printf("Permission denied.\n");
-        }
-        else
-        {
-            printf("Unexpected result code from le_msg_OpenSessionSync(): %d (%s).",
-                   result,
-                   LE_RESULT_TXT(result));
-        }
+        printf("Service Directory is unreachable.\n"
+               "Perhaps the Service Directory is not running?\n");
 
         exit(EXIT_FAILURE);
     }

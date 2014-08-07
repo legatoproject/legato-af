@@ -1,10 +1,55 @@
-/** @page languageIndependentAPIs Language Independent Interfaces
+/** @page languageIndependentAPIs Language-Independent APIs
 
-Language-independent function calls are defined in an interface file using a simple syntax
-similar to C. The interface file is used to generate a number of target language-specific files.  
+Legato components can export APIs for other components to use.  This can be done the conventional
+way, by writing a C header file to define the interface, for example.  But, a C header file can
+only be used by components that are written in C, and functions defined in a C header file can
+only be implemented by C code.  Furthermore, C compilers won't generate IPC code for you, so
+unless you write your own, your API implementation and its user are forced to run inside the
+same process.  This can severely limit the reusability of components and can force the use of a
+programming language that is not ideally suited to a particular problem domain or developer
+skill set.  It also leaves inter-process communication (IPC) to be implemented manually, which
+can be time-consuming and fraught with bugs and security issues.
+
+To alleviate these problems, Legato provides a very simple form of interface definition language
+(IDL) that is similar to C but that helps the programmer define their API such that it can
+be used in multiple different programming languages.
+
+These IDL files are called <b> API definition </b> (<c>.api</c>) files.
+
+These <c>.api</c> files are processed by the <b><c>ifgen</c></b> build tool, which generates
+function definitions and IPC code in an implementation language chosen by the component writer.
+Most of the time, developers don't need to know anything about <c>ifgen</c>, though, because it
+is automatically run by other build tools, as needed.
+
+@note Although the only language supported today is C, the plan is that the
+client and server can be written in different languages, multiple clients can be written in
+different languages, and multiple server implementations can be written in different languages;
+and none of them would have to include any IPC code or language translation layer.
+
+When writing a client of an API, the programmer
+ - imports the API into their component (add the <c>.api</c> file to the <c>import:</c> section of
+   the component's <c>Component.cdef</c> file)
+ - include/import the generated code into their program (e.g., in C: <c>\#include "interfaces.h"</c>)
+ - call the functions in the API
+
+This will automatically take care of IPC connection opening/closing, message buffer
+allocation/release, message passing, synchronization between client and server threads/processes,
+and sandbox security access control.
+
+When writing a server of an API, the programmer
+ - exports the API from their component (add the <c>.api</c> file to the <c>export:</c> section of
+   the component's <c>Component.cdef</c> file)
+ - include/import the generated code into their program (e.g., in C: <c>\#include "interfaces.h"</c>)
+ - implement the functions in the API
+
+The server's functions will be called automatically when the client calls the
+auto-generated client-side versions of those functions.
+
+For more information:
 
 @subpage languageIndependentSyntax <br>
-@subpage languageIndependentC
+@subpage languageIndependentC <br>
+@ref defFiles
 
 <HR>
 

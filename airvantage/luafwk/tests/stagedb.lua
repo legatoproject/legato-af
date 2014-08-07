@@ -1,9 +1,13 @@
--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 -- Copyright (c) 2012 Sierra Wireless and others.
 -- All rights reserved. This program and the accompanying materials
 -- are made available under the terms of the Eclipse Public License v1.0
--- which accompanies this distribution, and is available at
--- http://www.eclipse.org/legal/epl-v10.html
+-- and Eclipse Distribution License v1.0 which accompany this distribution.
+--
+-- The Eclipse Public License is available at
+--   http://www.eclipse.org/legal/epl-v10.html
+-- The Eclipse Distribution License is available at
+--   http://www.eclipse.org/org/documents/edl-v10.php
 --
 -- Contributors:
 --     Julien Desgats     for Sierra Wireless - initial API and implementation
@@ -41,7 +45,7 @@ end
 
 --setup :  create a db ram to store data
 function t :setup()
-    x = stagedb("foo.db", "ram", { 'temperature',  'pressure', 'timestamp' })
+    x = stagedb("ram:foo.db", { 'temperature',  'pressure', 'timestamp' })
     x.BLOCKSIZE=300
 end
 
@@ -134,12 +138,12 @@ t.test_10_10 = test_nrows_blocksize(10, 10)
 --test the storage of stagedb in file
 function t :test_file_storage()
     local path = os.tmpname()
-    local fx = stagedb(path,"file", { 'temperature',  'pressure', 'timestamp' })
+    local fx = stagedb("file:"..path, { 'temperature',  'pressure', 'timestamp' })
     feed_data(fx, 10)
     check_data(flush_data(fx), 10)
     fx :close()
 
-    local fx2 = stagedb(path,"file", { 'temperature',  'pressure', 'timestamp' })
+    local fx2 = stagedb("file:"..path, { 'temperature',  'pressure', 'timestamp' })
     check_data(flush_data(fx2), 10)
     fx2 :reset()
     feed_data(fx2, 5)
@@ -149,7 +153,7 @@ end
 
 --test consolidation 1
 function t :test_conso1()
-    local y = x :newconsolidation("test_conso1", "ram", { temperature='max', pressure='mean' })
+    local y = x :newconsolidation("ram:test_conso1", { temperature='max', pressure='mean' })
     feed_data(x, 20)
     u.assert(x :consolidate())
     local y2 = flush_data(y)
@@ -160,15 +164,15 @@ function t :test_conso1()
     u.assert(y2.pressure[1] < 1098)
     u.assert_nil(u.timestamp)
 
-    u.assert_nil(x :newconsolidation("test_conso1","ram", { temperature='max', pressure='mean' }),
+    u.assert_nil(x :newconsolidation("ram:test_conso1", { temperature='max', pressure='mean' }),
         "setting a 2nd conso table should not be possible")
 end
 
 --test consolidation 2
 function t :test_conso2()
     local function test_consolidation_helper(method, expected)
-        local raw = u.assert(stagedb("raw.db", "ram", { { name="temp", serialization="smallest"} }))
-        local y = u.assert(raw :newconsolidation("test_conso2", "ram",
+        local raw = u.assert(stagedb("ram:raw.db", { { name="temp", serialization="smallest"} }))
+        local y = u.assert(raw :newconsolidation("ram:test_conso2",
             { {name="temp", serialization="fastest", consolidation=method} }))
         u.assert(raw :row{ temp=15 } :row{ temp=18 } :row{ temp=16 })
         u.assert(raw :consolidate())
@@ -190,8 +194,8 @@ end
 
 -- test that factor parameter is taken in account for consolidation tables
 function t :test_conso_precision()
-    local raw = u.assert(stagedb("raw", "ram", { { name="temp", serialization="smallest"} }))
-    local consolidated = u.assert(raw :newconsolidation("consolidated-first", "ram",
+    local raw = u.assert(stagedb("ram:raw", { { name="temp", serialization="smallest"} }))
+    local consolidated = u.assert(raw :newconsolidation("ram:consolidated-first",
         { {name="temp", serialization="deltasvector", consolidation="median", factor=0.1 } }))
     u.assert(raw :row{ temp=15.3 } :row{ temp=18.6 } :row{ temp=16.1 })
     u.assert(raw :consolidate() :reset())
@@ -203,8 +207,8 @@ function t :test_conso_precision()
 end
 
 function t :test_conso_empty()
-    local raw = u.assert(stagedb("raw", "ram", { "temp" }))
-    local consolidated = u.assert(raw :newconsolidation("consolidated", "ram",
+    local raw = u.assert(stagedb("ram:raw", { "temp" }))
+    local consolidated = u.assert(raw :newconsolidation("ram:consolidated",
         { { name='temp', consolidation='min', serialization='fastest' } }))
     u.assert_equal(0, consolidated:state().nrows)
     u.assert_nil(raw :consolidate())
@@ -213,8 +217,8 @@ end
 
 -- test methods that use copy_data function
 function t :test_conso_copy_data()
-    local raw = u.assert(stagedb("raw", "ram", { "temp" }))
-    local consolidated = u.assert(raw :newconsolidation("consolidated", "ram",
+    local raw = u.assert(stagedb("ram:raw", { "temp" }))
+    local consolidated = u.assert(raw :newconsolidation("ram:consolidated",
         { { name='temp', consolidation='middle', serialization='fastest' } }))
     u.assert(raw :row{ temp=15.3 } :row{ temp=16.1 } :row{ temp=18.6 })
     u.assert(raw :consolidate() :reset())
@@ -226,21 +230,21 @@ end
 
 --test writing of stagedb data when we close it
 function t :test_broken()
-    local t = u.assert(stagedb("raw", "ram", { "temp" }))
+    local t = u.assert(stagedb("ram:raw", { "temp" }))
     u.assert(t :close())
     u.assert_nil(t :row{ temp=12 })
     u.assert(t :close()) -- check that close a table twice is a no-op
 
     -- try with a file based table
     local path = os.tmpname()
-    t = u.assert(stagedb(path, "file", { "temp" }))
+    t = u.assert(stagedb("file:"..path, { "temp" }))
     u.assert(t :close())
     u.assert_nil(t :row{ temp=12 })
     u.assert(t :close())
 
     -- error in consolidation spec
-    local tbl = stagedb('tbl', 'ram', {'a', 'b'})
-    u.assert_error(function() tbl:newconsolidation('conso', "ram", { a='min', c='max' }) end)
+    local tbl = stagedb('ram:tbl', {'a', 'b'})
+    u.assert_error(function() tbl:newconsolidation('ram:conso', { a='min', c='max' }) end)
     u.assert(os.remove(path))
 end
 
@@ -251,7 +255,7 @@ local cont_ts = u.newtestsuite("stagedb containers")
 local function test_deltasvector_factory(n, blocksize, divisor)
     divisor = divisor or 1
     return function()
-        local db = stagedb("foo.db","ram", { { name="col", serialization="deltasvector", factor=10/divisor } })
+        local db = stagedb("ram:foo.db", { { name="col", serialization="deltasvector", factor=10/divisor } })
         if blocksize then db.BLOCKSIZE = blocksize end
         local deltas = { }
         db:row{ col=20/divisor }
@@ -279,7 +283,7 @@ cont_ts.test_deltas_vector_10k_64k = test_deltasvector_factory(10000, 0xffff)
 cont_ts.test_deltas_vector_with_doubles  = test_deltasvector_factory(1, nil, 100)
 
 function cont_ts.test_deltasvector_nil()
-    local db = stagedb("foo.db", "ram", { { name="col", serialization="deltasvector", factor=10 } })
+    local db = stagedb("ram:foo.db", { { name="col", serialization="deltasvector", factor=10 } })
     db:row{ col=12 }:row{ col="foo" }:row{ col=0 }  -- we give a different type
     u.assert_nil(flush_data(db))  -- we expected a nil or a error??
     --u.assert_error(function() flush_data(db) end)
@@ -293,7 +297,7 @@ local function test_qpv_factory(n, blocksize)
     local startvalue = 143
 
     return function()
-        local db = stagedb("foo.db", "ram", { { name="col", serialization="quasiperiodicvector", period=20 } })
+        local db = stagedb("ram:foo.db", { { name="col", serialization="quasiperiodicvector", period=20 } })
         if blocksize then db.BLOCKSIZE = blocksize end
         local value, allshifts = startvalue, { }
         db:row{ col=value }
@@ -324,7 +328,7 @@ cont_ts.test_quasiperiodic_vector_1k_16 = test_qpv_factory(1000, 16)
 cont_ts.test_quasiperiodic_vector_10k_64k = test_qpv_factory(10000, 0xffff)
 
 function cont_ts.test_quasiperiodic_vector_negative()
-    local db = stagedb("foo.db", "ram", { { name="col", serialization="quasiperiodicvector", period=0 } })
+    local db = stagedb("ram:foo.db", { { name="col", serialization="quasiperiodicvector", period=0 } })
     db :row{ col=-10 } :row{ col=-10 } :row{ col=-10 } :row{ col=-11 }: row{ col = -11 }
     local result = flush_data(db)
     u.assert_clone_tables({
@@ -342,13 +346,13 @@ function cont_ts.test_32bit_float()
     local function asfloat(d) return (select(2, string.pack("f", d):unpack("f"))) end
     local db, result, dsize, fsize
     -- test with plain doubles (first 3 rows exceeds 32bit float precision)
-    local db = stagedb("foo.db", "ram", { { name="col", serialization="list", asfloat=false } })
+    local db = stagedb("ram:foo.db", { { name="col", serialization="list", asfloat=false } })
     db :row{ col = 0.123456789 } :row{ col = 9876.54321 } :row{ col = 1e-100 } :row{ col = 0.5 }
     result, dsize = flush_data(db)
     u.assert_clone_tables({ col = {0.123456789, 9876.54321, 1e-100, 0.5} }, result)
 
     -- now with float shrinking
-    db = stagedb("foo.db", "ram", { { name="col", serialization="list", asfloat=true } })
+    db = stagedb("ram:foo.db", { { name="col", serialization="list", asfloat=true } })
     -- these numbers cannot be represented exactly in 32bit float
     db :row{ col = 0.123456789 } :row{ col = 9876.54321 } :row{ col = 1e-100 } :row{ col = 0.5 }
     result, fsize = flush_data(db)
@@ -359,7 +363,7 @@ function cont_ts.test_32bit_float()
 end
 
 function cont_ts.test_smallest_basic()
-    local db = stagedb("foo.db", "ram", {
+    local db = stagedb("ram:foo.db", {
         { name="timestamp", serialization="smallest" },    -- QPV expected (constant period)
         { name="temp",      serialization="smallest" },    -- QPV expecred (quasi constant data)
         { name="growing",   serialization="smallest" },    -- DV expected (no fixed period)
@@ -425,12 +429,12 @@ function cont_ts.test_smallest_with_float()
     local db, result
 
     -- without forced factor
-    db = stagedb("foo.db", "ram", { { name="col", serialization="smallest" } })
+    db = stagedb("ram:foo.db", { { name="col", serialization="smallest" } })
     result = feedandflush(db)
     u.assert_clone_tables({ col = { 10, 20.1, 30.7, 39.6, 50.1 } }, result)
 
     -- with forced factor
-    db = stagedb("foo.db", "ram", { { name="col", serialization="smallest", factor=0.1 } })
+    db = stagedb("ram:foo.db", { { name="col", serialization="smallest", factor=0.1 } })
     result = feedandflush(db)
     u.assert_clone_tables({
         col = {
@@ -444,7 +448,7 @@ end
 
 function cont_ts.test_smallest_with_factor()
     -- 1st case: factor makes the DV smaller
-    local db = stagedb("foo.db", "ram", { { name="col", serialization="smallest", factor=10 } })
+    local db = stagedb("ram:foo.db", { { name="col", serialization="smallest", factor=10 } })
     db :row{ col = 1000 } :row{ col = 1011 } :row{ col = 1020 } :row{ col = 1031 } :row{ col = 1040 }
     local result = flush_data(db)
     u.assert_clone_tables({
@@ -458,14 +462,14 @@ function cont_ts.test_smallest_with_factor()
 
     -- 2nd case: even with factor, QPV is smaller
     --FIXME AWTDA3 QPV
-    db = stagedb("foo.db", "ram", { { name="col", serialization="smallest", factor=10 } })
+    db = stagedb("ram:foo.db", { { name="col", serialization="smallest", factor=10 } })
     db :row{ col = 1000 } :row{ col = 1010 } :row{ col = 1020 } :row{ col = 1030 } :row{ col = 1040 }
     result = flush_data(db)
     u.assert_equal(result.col.__class,  "QuasiPeriodicVector")
 end
 
 function cont_ts.test_smallest_with_table_reset()
-    local db = stagedb("foo.db", "ram", { { name="col", serialization="smallest" } })
+    local db = stagedb("ram:foo.db", { { name="col", serialization="smallest" } })
     -- fill the table with a period of 10
     db :row{ col = 1000 } :row{ col = 1010 } :row{ col = 1020 } :row{ col = 1030 } :row{ col = 1040 }
     local result = flush_data(db)
@@ -482,7 +486,7 @@ function cont_ts.test_smallest_with_table_reset()
 end
 
 function cont_ts.test_smallest_with_4bytes_floats()
-    local db = stagedb("foo.db", "ram", { { name="col", serialization="smallest", factor=0.02, asfloat=true } })
+    local db = stagedb("ram:foo.db", { { name="col", serialization="smallest", factor=0.02, asfloat=true } })
     local result
     -- fill with data set which is shorter in DV than in vector as 4 bytes float
     db :row{ col = 0.2 } :row{ col = 0.6 } :row{ col = 1.2 } :row{ col = 1.6 } :row{ col = 2.2 }
@@ -498,7 +502,7 @@ end
 
 function cont_ts.test_smallest_with_file_storage()
     local filename = os.tmpname()
-    local db = stagedb(filename, "file", { { name="col", serialization="smallest" } })
+    local db = stagedb("file:"..filename, { { name="col", serialization="smallest" } })
     --FIXME AWTDA3 QPV
     local expected = {
         col = {
@@ -524,7 +528,7 @@ function cont_ts.test_smallest_with_file_storage()
             1030,
             1040 } }
 
-    db = stagedb(filename, "file", { { name="col", serialization="smallest" } })
+    db = stagedb("file:"..filename, { { name="col", serialization="smallest" } })
     result = flush_data(db)
     u.assert_clone_tables(expected, result)
 

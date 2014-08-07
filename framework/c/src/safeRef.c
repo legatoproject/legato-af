@@ -14,18 +14,20 @@
 
 #include "legato.h"
 
+#include "limit.h"
+
 // =============================================
 //  PRIVATE DATA
 // =============================================
 
-#define MAX_NAME_BYTES 24
+#define MAX_NAME_BYTES LIMIT_MAX_MEM_POOL_NAME_BYTES
 
 /// Default number of Map objects in the Map Pool.
 /// @todo Make this configurable.
 #define DEFAULT_MAP_POOL_SIZE 10
 
 /// Name used for diagnostics.
-static const char ModuleName[] = "safeRef";
+static const char ModuleName[] = "ref";
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -138,9 +140,11 @@ le_ref_MapRef_t le_ref_CreateMap
     Map_t* mapPtr = le_mem_ForceAlloc(MapPool);
 
     size_t strLen;
+
     LE_ASSERT(le_utf8_Copy(mapPtr->name, ModuleName, sizeof(mapPtr->name), &strLen) == LE_OK);
 
-    if (le_utf8_Copy(mapPtr->name + strLen, name, sizeof(mapPtr->name) - strLen, NULL) == LE_OVERFLOW)
+    if (   le_utf8_Copy(mapPtr->name + strLen, name, sizeof(mapPtr->name) - strLen, NULL)
+        == LE_OVERFLOW)
     {
         LE_WARN("Map name '%s%s' truncated to '%s'.", ModuleName, name, mapPtr->name);
     }

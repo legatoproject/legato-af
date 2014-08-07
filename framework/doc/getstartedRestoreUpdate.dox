@@ -1,9 +1,9 @@
 /** @page getstartedRestore Restore or Update
 
+Restore or update target:
 
-Set Linux Android tools like fast boot @subpage getstartedLinuxAndroid
-
-Restore dev kit device to factory settings @subpage oneClickTools
+@subpage getstartedLinuxAndroid <br>
+@subpage getstartedWindowsHost
 
 And if you really must @subpage getstartedUninstall
 

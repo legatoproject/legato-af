@@ -5,8 +5,8 @@
  *
  *  A memory pool backed dynamic string API.
  *
- *  Copyright (C) Sierra Wireless, Inc. 2013, 2014. All rights reserved. Use of this work is subject
- *  to license.
+ *  Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved.
+ *  Use of this work is subject to license.
  */
 // -------------------------------------------------------------------------------------------------
 
@@ -141,7 +141,7 @@ static dstr_Ref_t NewSegment
 //--------------------------------------------------------------------------------------------------
 static dstr_Ref_t FirstSegmentRef
 (
-    dstr_Ref_t headRef  ///< The head of the string.
+    dstr_Ref_t headRef  ///< [IN] The head of the string.
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -170,8 +170,8 @@ static dstr_Ref_t FirstSegmentRef
 //--------------------------------------------------------------------------------------------------
 static dstr_Ref_t NextSegmentRef
 (
-    dstr_Ref_t headRef,    ///< The head of the string.
-    dstr_Ref_t currentPtr  ///< The current sub-section of the string.
+    dstr_Ref_t headRef,    ///< [IN] The head of the string.
+    dstr_Ref_t currentPtr  ///< [IN] The current sub-section of the string.
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -201,7 +201,7 @@ static dstr_Ref_t NextSegmentRef
 //--------------------------------------------------------------------------------------------------
 static dstr_Ref_t NewOrFirstSegmentRef
 (
-    dstr_Ref_t headRef  ///< The head of the string.
+    dstr_Ref_t headRef  ///< [IN] The head of the string.
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -229,8 +229,8 @@ static dstr_Ref_t NewOrFirstSegmentRef
 //--------------------------------------------------------------------------------------------------
 static dstr_Ref_t NewOrNextSegmentRef
 (
-    dstr_Ref_t headRef,    ///< The head of the string.
-    dstr_Ref_t currentPtr  ///< The current sub-section of the string.
+    dstr_Ref_t headRef,    ///< [IN] The head of the string.
+    dstr_Ref_t currentPtr  ///< [IN] The current sub-section of the string.
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -257,8 +257,8 @@ static dstr_Ref_t NewOrNextSegmentRef
 //--------------------------------------------------------------------------------------------------
 static void FreeAnyAfter
 (
-    dstr_Ref_t headRef,    ///< The head of the string.
-    dstr_Ref_t currentPtr  ///< The current sub-section of the string.
+    dstr_Ref_t headRef,    ///< [IN] The head of the string.
+    dstr_Ref_t currentPtr  ///< [IN] The current sub-section of the string.
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -293,6 +293,17 @@ void dstr_Init
     LE_DEBUG("** Initialize Dynamic String subsystem.");
 
     DynamicStringPoolRef = le_mem_CreatePool(CFG_DSTR_POOL_NAME, sizeof(Dstr_t));
+    le_mem_SetNumObjsToForce(DynamicStringPoolRef, 100);    // Grow in chunks of 100 blocks.
+
+    // For now (until pool config is added to the framework), set a minimum size.
+    if (le_mem_GetTotalNumObjs(DynamicStringPoolRef) != 0)
+    {
+        LE_WARN("TODO: Remove this code.");
+    }
+    else
+    {
+        le_mem_ExpandPool(DynamicStringPoolRef, 3000);
+    }
 }
 
 
@@ -327,7 +338,7 @@ dstr_Ref_t dstr_New
 //--------------------------------------------------------------------------------------------------
 dstr_Ref_t dstr_NewFromCstr
 (
-    const char* originalStrPtr  ///< The orignal C-String to copy.
+    const char* originalStrPtr  ///< [IN] The orignal C-String to copy.
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -347,7 +358,7 @@ dstr_Ref_t dstr_NewFromCstr
 //--------------------------------------------------------------------------------------------------
 dstr_Ref_t dstr_NewFromDstr
 (
-    const dstr_Ref_t originalStrPtr  ///< The original dynamic string to copy.
+    const dstr_Ref_t originalStrPtr  ///< [IN] The original dynamic string to copy.
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -366,7 +377,7 @@ dstr_Ref_t dstr_NewFromDstr
 //--------------------------------------------------------------------------------------------------
 void dstr_Release
 (
-    dstr_Ref_t strRef  ///< The dynamic string to free.
+    dstr_Ref_t strRef  ///< [IN] The dynamic string to free.
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -396,11 +407,11 @@ void dstr_Release
 //--------------------------------------------------------------------------------------------------
 le_result_t dstr_CopyToCstr
 (
-    char* destStrPtr,               ///< The destiniation string buffer.
-    size_t destStrMax,              ///< The maximum string the buffer can handle.
-    const dstr_Ref_t sourceStrRef,  ///< The dynamic string to copy to said buffer.
-    size_t* totalCopied             ///< If supplied, this is the total number of bytes copied to
-                                    ///<   the target string buffer.
+    char* destStrPtr,               ///< [OUT] The destiniation string buffer.
+    size_t destStrMax,              ///< [IN]  The maximum string the buffer can handle.
+    const dstr_Ref_t sourceStrRef,  ///< [IN]  The dynamic string to copy to said buffer.
+    size_t* totalCopied             ///< [IN]  If supplied, this is the total number of bytes copied
+                                    ///<       to the target string buffer.
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -452,8 +463,8 @@ le_result_t dstr_CopyToCstr
 //--------------------------------------------------------------------------------------------------
 void dstr_CopyFromCstr
 (
-    dstr_Ref_t destStrRef,     ///< The dynamic string to copy to.
-    const char* sourceStrPtr  ///< The C-style string to copy from.
+    dstr_Ref_t destStrRef,    ///< [OUT] The dynamic string to copy to.
+    const char* sourceStrPtr  ///< [IN]  The C-style string to copy from.
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -492,8 +503,8 @@ void dstr_CopyFromCstr
 //--------------------------------------------------------------------------------------------------
 void dstr_Copy
 (
-    dstr_Ref_t destStrPtr,         ///< The string to copy into.
-    const dstr_Ref_t sourceStrPtr  ///< The string to copy from.
+    dstr_Ref_t destStrPtr,         ///< [OUT] The string to copy into.
+    const dstr_Ref_t sourceStrPtr  ///< [IN]  The string to copy from.
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -527,7 +538,7 @@ void dstr_Copy
 //--------------------------------------------------------------------------------------------------
 bool dstr_IsNullOrEmpty
 (
-    const dstr_Ref_t strRef  ///< The dynamic string object to check.
+    const dstr_Ref_t strRef  ///< [IN] The dynamic string object to check.
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -554,7 +565,7 @@ bool dstr_IsNullOrEmpty
 //--------------------------------------------------------------------------------------------------
 size_t dstr_NumChars
 (
-    const dstr_Ref_t strRef  ///< The dynamic string object to read.
+    const dstr_Ref_t strRef  ///< [IN] The dynamic string object to read.
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -590,7 +601,7 @@ size_t dstr_NumChars
 //--------------------------------------------------------------------------------------------------
 size_t dstr_NumBytes
 (
-    const dstr_Ref_t strRef  ///< The dynamic string object to read.
+    const dstr_Ref_t strRef  ///< [IN] The dynamic string object to read.
 )
 //--------------------------------------------------------------------------------------------------
 {

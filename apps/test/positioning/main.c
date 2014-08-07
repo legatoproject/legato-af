@@ -1,10 +1,9 @@
  /**
   * This module is for unit testing of the Positioning component.
   *
-  * Run cmake -UDISABLE_SIMUL before launching make if you want to use the simulator.
-  * Run cmake -DDISABLE_SIMUL=1 otherwise.
+  * Run cmake -DENABLE_SIMUL=1 before launching make if you want to use the simulator.
   *
-  * Copyright (C) Sierra Wireless, Inc. 2013.  All rights reserved. Use of this work is subject to license.
+  * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
   *
   */
 
@@ -20,15 +19,17 @@
 #include <Basic.h>
 
 #include "main.h"
+
+#ifdef ENABLE_SIMUL
 #include "atMgr.h"
 #include "atCmdSync.h"
 #include "atPorts.h"
 #include "atPortsInternal.h"
 #include "atMachineDevice.h"
+#endif
 
 #include "le_pos.h"
-#include "le_pos_local.h"
-#include "pa_gnss.h"
+#include "le_posCtrl.h"
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -173,7 +174,8 @@ static void CreateAtPortCommand
 
 #endif
 
-void init(void)
+
+COMPONENT_INIT
 {
 #ifdef ENABLE_SIMUL
 
@@ -183,15 +185,9 @@ void init(void)
 
     CreateAtPortCommand();
 
-    // Do not start the interface, it will be done in 'le_pos_Init'
-
 #endif
 
-    le_pos_Init();
-    le_thread_Start(le_thread_Create("POSTest",test,NULL));
-}
+    LE_ASSERT(le_posCtrl_Request() != NULL);
 
-LE_EVENT_INIT_HANDLER
-{
-    init();
+    le_thread_Start(le_thread_Create("POSTest",test,NULL));
 }

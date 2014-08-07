@@ -69,7 +69,7 @@ static void TestRtPriority(void)
 }
 
 
-LE_EVENT_INIT_HANDLER
+COMPONENT_INIT
 {
     char prioritySetting[100];
     LE_ASSERT(le_arg_GetArg(0, prioritySetting, sizeof(prioritySetting)) == LE_OK);

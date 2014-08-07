@@ -1,9 +1,13 @@
--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 -- Copyright (c) 2012 Sierra Wireless and others.
 -- All rights reserved. This program and the accompanying materials
 -- are made available under the terms of the Eclipse Public License v1.0
--- which accompanies this distribution, and is available at
--- http://www.eclipse.org/legal/epl-v10.html
+-- and Eclipse Distribution License v1.0 which accompany this distribution.
+--
+-- The Eclipse Public License is available at
+--   http://www.eclipse.org/legal/epl-v10.html
+-- The Eclipse Distribution License is available at
+--   http://www.eclipse.org/org/documents/edl-v10.php
 --
 -- Contributors:
 --     Laurent Barthelemy for Sierra Wireless - initial API and implementation
@@ -17,6 +21,7 @@ local ltn12tostring = require "utils.ltn12.source".tostring
 local racon  = require "racon"
 local config = require "agent.config"
 local asscon = require "agent.asscon"
+local putils = require "utils.path"
 
 local t = u.newtestsuite("asset_tree")
 
@@ -52,6 +57,58 @@ local function make_msg(Type, Path, Ticketid, Body)
         ticketid = Ticketid,
         type = Type,
     }
+end
+
+function t:test_asset_default_ReadNode()
+    local assetid="test_asset_READNODE"
+    --create/register
+    local newasset = u.assert(racon.newasset(assetid))
+    local status   = u.assert(newasset:start())
+
+    --check initial status
+    u.assert_not_nil(newasset.tree)
+    u.assert_not_nil(newasset.tree.commands)
+    u.assert_function(newasset.tree.commands.__default)
+    u.assert_function(newasset.tree.commands.ReadNode)
+
+    --Notes:
+    -- - following ReadNode cases use the ReadNode command format as used by the AirAvantage server
+    --  as the date of 2014-04-23
+    -- - `make_msg` first argument is `Type`, which is not valid anymore since M3DA (AWTDA2 remains ...) and EMP
+    -- modifications. It should be replaced by `__class` field, however as racon.asset.tree defaults to data writing behavior
+    -- that's no big deal.
+
+    --simple success case: read one leaf that exists
+    newasset.tree.foo = "bar"
+    local cmdpath = putils.concat(assetid, "commands.ReadNode")
+    local payload = make_msg(2, cmdpath , 4242, { "foo" })
+    local status, err = asscon.sendcmd(assetid, "SendData", payload)
+    u.assert_equal(0, status, err)
+
+    --2nd success case: read two leafs that exists, more complicated path
+    newasset.tree.foo2 = { }
+    newasset.tree.foo2.bar1 = "foofoo"
+    newasset.tree.foo2.bar2 =  { bar3 = "foofoo"}
+    local payload = make_msg(2, cmdpath, 4243, {"foo2.bar1", "foo2.bar2.bar3" })
+    local status, err = asscon.sendcmd(assetid, "SendData", payload)
+    u.assert_equal(0, status, err)
+
+    --3nd success case: read a (interior) node that exists
+    newasset.tree.foo3 = { }
+    newasset.tree.foo3.bar1 = "foofoo"
+    newasset.tree.foo3.bar2 =  { bar3 = "foofoo"}
+    local payload = make_msg(2, cmdpath, 4243, {"foo3" })
+    local status, err = asscon.sendcmd(assetid, "SendData", payload)
+    u.assert_equal(0, status, err)
+
+    --error case: read one node that doesn't exists (part of the part does exist)
+    newasset.tree.foo3 = { node = "hello" }
+    local payload = make_msg(2, cmdpath, 4244, { "foo3.absentvar"} )
+    local status, err = asscon.sendcmd(assetid, "SendData", payload)
+    u.assert_equal(-1, status, err)
+    u.assert_match("path not found", err, "unexpected error, expecting not found error")
+
+    u.assert(newasset:close())
 end
 
 

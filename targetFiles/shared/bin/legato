@@ -7,6 +7,9 @@ CONFIG_DIR=/opt/legato/configTree
 APPS_ROOT=/opt/legato/apps
 SYS_PROCS_ROOT=/opt/legato
 
+# Wait upto 10 seconds for appCtrl to stop legato
+StopLegatoTimeout=10
+
 ACTION=$1
 
 # Make sure /usr/local/bin is in the path.
@@ -36,6 +39,19 @@ IsRunning()
 }
 
 
+LegatoStatus()
+{
+    if IsRunning supervisor
+    then
+        echo "Legato framework is running."
+        exit 0
+    else
+        echo "Legato framework is not running."
+        exit 0
+    fi
+}
+
+
 StartLegato()
 {
     # Make sure it isn't running already.
@@ -53,7 +69,7 @@ StartLegato()
     # Configure the Supervisor to start the sysProcs.
     mkdir -p $SUPERVISOR_CONFIG_ROOT &&
     > $SUPERVISOR_CONFIG_ROOT/sysProcs
-    for procName in serviceDirectory logCtrlDaemon configTree audioDaemon modemDaemon posDaemon dcsDaemon cnetDaemon agent
+    for procName in serviceDirectory logCtrlDaemon configTree watchdog
     do
         if [ ! -f "/usr/local/bin/$procName" ]
         then
@@ -91,21 +107,50 @@ StopLegato()
         echo "Stopping Legato... "
 
         # Tell the Supervisor to shutdown Legato.
-        appCtrl "stopLegato" 2> /dev/null
+        appCtrl "stopLegato" 2> /dev/null &
+        appCtrlPid=$!
+
+        # wait for supervisor shutdown
+        countDown=$StopLegatoTimeout
+        while [ $countDown -ne 0 ]
+        do
+            if IsRunning supervisor
+            then
+                sleep 1
+            else
+                break
+            fi
+            countDown=`expr $countDown - 1`
+        done
+
+        # make sure supervisor shut down
+        if IsRunning supervisor
+        then
+            if $PS | grep $appCtrlPid | grep appCtrl | grep -v grep > /dev/null
+            then
+                echo "appCtrl still trying to shut down supervisor after 10 seconds"
+            else
+                wait $appCtrlPid
+                echo "appCtrl exited with code $? and supervisor still running after 10 seconds."
+            fi
+
+            echo "Killing supervisor ..."
+            killall supervisor > /dev/null 2>&1
+        fi
 
         # Delete the Configuration Tree we built in /tmp.
         rm -rf $SUPERVISOR_CONFIG_ROOT
+    fi
 
-        echo "DONE."
-    elif IsRunning serviceDirectory
+    # Make sure the serviceDirectory isn't still running.
+    if IsRunning serviceDirectory
     then
-        echo "Supervisor isn't running, but the Service Directory is.  Killing it now..."
-
-        # Stop the Service Directory.  This will cause everything else to shutdown.
+        echo "Service Directory still running. Killing it now ..."
         killall serviceDirectory > /dev/null 2>&1
     else
         echo "Legato wasn't running."
     fi
+    echo "DONE."
 }
 
 
@@ -121,6 +166,10 @@ stop)
 restart)
     StopLegato
     StartLegato
+    ;;
+
+status)
+    LegatoStatus
     ;;
 
 help | --help | -h)

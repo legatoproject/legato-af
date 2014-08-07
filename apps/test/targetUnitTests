@@ -1,0 +1,31 @@
+#!/bin/bash
+
+TARGET_ADDR=$1
+ORIG_DIR=$PWD
+SCRIPT_DIR=$(readlink -f $(dirname ${BASH_SOURCE[0]}))
+
+function RunTest()
+{
+    TEST_FILE_DIR=$(dirname $1)
+    TEST_FILE_NAME=$(basename $1)
+
+    # Go to the directory of the test file.
+    cd $SCRIPT_DIR/$TEST_FILE_DIR
+
+    # Run the test.
+    ./$TEST_FILE_NAME $TARGET_ADDR
+
+    # Check the return code.
+    RETVAL=$?
+    if [ $RETVAL -ne 0 ]; then
+        echo -e $COLOR_ERROR "Test '$TEST_FILE_NAME' Failed!" $COLOR_RESET
+        exit $RETVAL
+    fi
+}
+
+# Run tests.  All tests should take the target's IP address as the first parameter.
+RunTest framework/supervisor/supervisorTest.sh
+RunTest framework/watchdog/watchdogTest.sh
+RunTest framework/configTree/configTargetTests.sh
+
+cd $ORIG_DIR

@@ -1,23 +1,10 @@
-/** @page demoApps Legato Demo Applications
-
-@ref demoSetup <br>
-@ref demoInstall <br>
-@ref demoCmds <br>
-@ref demoWhatsNext
+/** @page demoApps Demo Applications
 
 @section demoSetup Setup Demo
 
-- Ensure SIM is registered to network. See @ref simUsageCommands.
+- Ensure SIM is registered to network. See @ref cmSimUsage.
 
-- Ensure APN name has been set. See @ref demoAPNUsage.
-
-- In modemDemo.adef file (only applies to modemDemo), modify "<please enter number here>" with your number:
-
-@code
-processes:      
-    run: ( send "<please enter number here>" "Welcome to modemDemo app")
-    run: ( modemDemo )
-@endcode
+- Ensure APN name has been set. See @ref cmDataUsage.
 
 @section demoInstall Install Demo
 
@@ -25,7 +12,9 @@ There are two sample applications included with Legato code to demo various serv
 
 If you're using an AR7 module in your device, substitute @c ar7 for @c wp7.
 
-@subsection demo1 AirVantage demo
+@note All sample applications are built along with Legato, you can find them in @c build/\<target\>/bin/samples.
+
+@subsection airvantageDemo AirVantage demo
 
 @warning You must setup an AirVantage connection to your Legato device before installing the AirVantage demo: @ref connectingAirVantage.
 
@@ -34,26 +23,26 @@ To install and use this app:
 @verbatim
 $ cd apps/sample/airvantageDemo
 $ make wp7
-$ instapp airvantageDemo.wp7 <ipaddress>
+$ instapp airvantageDemo.wp7 <ip address>
 @endverbatim
 
-where @c ipaddress is the address of your target device.
+where @c \<ip address\> is the address of your target device.
 
-@subsection demo2 modemDemo Sample App
+@subsection modemDemo Modem demo
 
 To install and use this app:
 
 @verbatim
 $ cd apps/sample/modemDemo
 $ make wp7
-$ instapp modemDemo <ipaddress>
+$ instapp modemDemo <ip address>
 @endverbatim
 
-where @c ipaddress is the address of your target device.
+where @c \<ip address\> is the address of your target device.
 
-@section demoCmds Demo Commands
+@subsubsection modemDemoCmds Demo Commands
 
-The @b modemDemo app accepts several commands (through sending the target a sms message) and will reply with the results: 
+The @b modemDemo app accepts several commands (through sending the target a SMS message) and will reply with the results: 
 
 - <b>Status</b> - return some status information of the target like radio is on/off and signal strength
 - <b>Sim</b> - returns sim state/info (iccid and imsi)
@@ -62,10 +51,25 @@ The @b modemDemo app accepts several commands (through sending the target a sms 
 - <b>Offline</b> - turns off data connection 
 - <b>TestDataConnection</b> - test data connection
 
+@subsubsection modemDemoCustom Customization
+
+This sample app can be customized by editing the @c modemDemo.adef and related C source files.
+
+For instance, in @c modemDemo.adef, adding a @c send execution on start-up will make the system notify you when the app is running.
+In order to do that, uncomment the @c run line and replace @c +18005550199 by your own cell number.
+
+@code
+processes:
+    run: ( modemDemo )
+    run: ( send "+18005550199" "Welcome to modemDemo app")
+@endcode
+
+In @c modemDemo/demo.c, it is also possible to extend the list of processed commands.
+
 @section demoWhatsNext What's Next?
 
-@subpage connectingAirVantage  <br>
-@subpage demoPushData
+@subpage demoPushData  <br>
+@ref connectingAirVantage 
 
 <HR>
 

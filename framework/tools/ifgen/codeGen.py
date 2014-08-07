@@ -905,7 +905,6 @@ def WriteCommonInterface(fp,
                          importList,
                          fileName,
                          genericFunctions,
-                         userIncludeFile,
                          headerComments,
                          genAsync):
 
@@ -924,16 +923,6 @@ def WriteCommonInterface(fp,
         for i in importList:
             print >>fp, '#include "%s"' % i
         print >>fp, '\n'
-
-    # If it was specified, include the customizable user include file.  This is needed so that user
-    # specific C type definitions can be included.  Eventually, this will be replaced by a mechanism
-    # to define types within the interface file.
-    #
-    # todo: Once the transition to defined types is complete, the --user-include option will be removed.
-    #       Initially, the --user-include option was ignored if there were any defined types, but this
-    #       makes it harder to have a gradual transition.
-    if userIncludeFile:
-        print >>fp, '// User customizable include file\n#include "%s"\n\n' % userIncludeFile
 
     # Write out the prototypes for the generic functions
     for s in genericFunctions:
@@ -980,7 +969,6 @@ def WriteInterfaceHeaderFile(pf,
                              ph,
                              pt,
                              importList,
-                             userIncludeFile,
                              genericFunctions,
                              fileName,
                              headerComments):
@@ -993,7 +981,6 @@ def WriteInterfaceHeaderFile(pf,
                          importList,
                          fileName,
                          genericFunctions,
-                         userIncludeFile,
                          headerComments,
                          False)
 
@@ -1200,7 +1187,7 @@ static _ClientThreadData_t* InitClientThreadData
  * If the current thread does not have a session ref, then create it.
  */
 //--------------------------------------------------------------------------------------------------
-static le_msg_SessionRef_t GetCurrentSessionRef
+__attribute__((unused)) static le_msg_SessionRef_t GetCurrentSessionRef
 (
     void
 )
@@ -1607,7 +1594,6 @@ def WriteServerHeaderFile(pf,
                           importList,
                           genericFunctions,
                           fileName,
-                          userIncludeFile,
                           genAsync):
 
     if genAsync:
@@ -1623,7 +1609,6 @@ def WriteServerHeaderFile(pf,
                          importList,
                          fileName,
                          genericFunctions,
-                         userIncludeFile,
                          [],
                          genAsync)
 
@@ -1821,7 +1806,7 @@ def WriteAllCode(commandArgs, parsedData, hashValue):
 
     # Create the generic client functions
     startClientFunc = codeTypes.FunctionData(
-        "StartClient"+commandArgs.serviceTag,
+        "StartClient",
         "void",
         # todo: Is there any need to have min/max sizes for the service instance name
         [ codeTypes.StringData( "serviceInstanceName", codeTypes.DIR_IN ) ],
@@ -1829,7 +1814,7 @@ def WriteAllCode(commandArgs, parsedData, hashValue):
     )
 
     stopClientFunc = codeTypes.FunctionData(
-        "StopClient"+commandArgs.serviceTag,
+        "StopClient",
         "void",
         [ codeTypes.VoidData() ],
         FormatHeaderComment("Stop the service for the current client thread")
@@ -1841,7 +1826,7 @@ def WriteAllCode(commandArgs, parsedData, hashValue):
 
     # Create the generic server functions
     startServerFunc = codeTypes.FunctionData(
-        "StartServer"+commandArgs.serviceTag,
+        "StartServer",
         "void",
         # todo: Is there any need to have min/max sizes for the service instance name
         [ codeTypes.StringData( "serviceInstanceName", codeTypes.DIR_IN ) ],
@@ -1849,14 +1834,14 @@ def WriteAllCode(commandArgs, parsedData, hashValue):
     )
 
     getServiceRef = codeTypes.FunctionData(
-        "GetServiceRef"+commandArgs.serviceTag,
+        "GetServiceRef",
         "le_msg_ServiceRef_t",
         [ codeTypes.VoidData() ],
         FormatHeaderComment("Get the server service reference")
     )
 
     getSessionRef = codeTypes.FunctionData(
-        "GetClientSessionRef"+commandArgs.serviceTag,
+        "GetClientSessionRef",
         "le_msg_SessionRef_t",
         [ codeTypes.VoidData() ],
         FormatHeaderComment("Get the client session reference for the current message")
@@ -1870,11 +1855,15 @@ def WriteAllCode(commandArgs, parsedData, hashValue):
     outputFileList = GetOutputFileNames(commandArgs.filePrefix)
     interfaceFname, localFname, clientFname, serverFname, serverIncludeFname = outputFileList
 
-    # Map the imported files to the appropriate include file names
-    importList = [ GetOutputFileNames(i.name)[0] for i in importList ]
+    # Map the imported files to the appropriate include file names.  Use the client version for
+    # the client header file, and server version for the server header file.
+    clientImportList = [ GetOutputFileNames(i.name)[0] for i in importList ]
+    serverImportList = [ GetOutputFileNames(i.name)[4] for i in importList ]
 
     # If the output directory option was specified, then prepend to the output files names
     if commandArgs.outputDir:
+        if not os.path.exists(commandArgs.outputDir):
+            os.makedirs(commandArgs.outputDir)
         outputFileList = [ os.path.join( commandArgs.outputDir, fn ) for fn in outputFileList ]
     interfaceFpath, localFpath, clientFpath, serverFpath, serverIncludeFpath = outputFileList
 
@@ -1891,10 +1880,10 @@ def WriteAllCode(commandArgs, parsedData, hashValue):
         WriteInterfaceHeaderFile(parsedFunctions,
                                  parsedHandlers,
                                  parsedTypes,
-                                 importList,
-                                 commandArgs.userInclude,
+                                 clientImportList,
                                  genericFuncList,
-                                 interfaceFname,
+                                 os.path.splitext( os.path.basename(commandArgs.interfaceFile) )[0],
+                                 # interfaceFname,
                                  headerComments)
         open(interfaceFpath, 'w').write( InterfaceHeaderFileText.getvalue() )
 
@@ -1913,13 +1902,20 @@ def WriteAllCode(commandArgs, parsedData, hashValue):
         open(clientFpath, 'w').write( ClientFileText.getvalue() )
 
     if commandArgs.genServerInterface:
+        # If there are no functions or handlers defined, then don't put the generic server
+        # function prototypes in the server interface header file.
+        if not parsedFunctions and not parsedHandlers:
+            genericFuncList = []
+        else:
+            genericFuncList = genericServerFunctions
+
         WriteServerHeaderFile(parsedFunctions,
                               parsedHandlers,
                               parsedTypes,
-                              importList,
-                              genericServerFunctions,
-                              serverIncludeFname,
-                              commandArgs.userInclude,
+                              serverImportList,
+                              genericFuncList,
+                              os.path.splitext( os.path.basename(commandArgs.interfaceFile) )[0],
+                              # serverIncludeFname,
                               commandArgs.async)
         open(serverIncludeFpath, 'w').write( ServerIncludeFileText.getvalue() )
 

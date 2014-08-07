@@ -1,9 +1,13 @@
--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 -- Copyright (c) 2012 Sierra Wireless and others.
 -- All rights reserved. This program and the accompanying materials
 -- are made available under the terms of the Eclipse Public License v1.0
--- which accompanies this distribution, and is available at
--- http://www.eclipse.org/legal/epl-v10.html
+-- and Eclipse Distribution License v1.0 which accompany this distribution.
+--
+-- The Eclipse Public License is available at
+--   http://www.eclipse.org/legal/epl-v10.html
+-- The Eclipse Distribution License is available at
+--   http://www.eclipse.org/org/documents/edl-v10.php
 --
 -- Contributors:
 --     Laurent Barthelemy for Sierra Wireless - initial API and implementation
@@ -126,7 +130,7 @@
 
     -- Application Container
     appcon={}
-    appcon.activate = true
+    appcon.activate = false
     -- Tcp Port to connect to appmon_daemon.
     -- No need to use this config value if using appmon_daemon default port (4242)
     --appcon.port = 4243
@@ -150,10 +154,10 @@
     data = { }
     data.activate = true
     data.policy = { }
-    data.policy.default  = { latency = 5, onboot=30 }
+    data.policy.default  = { latency = 5, onboot = 30 }
     data.policy.hourly   = { latency = 60*60 }
     data.policy.daily    = { latency = 24*60*60 }
-    data.policy.never    = { 'manual' }
-    data.policy.now      = { latency = 5, onboot=30 }
-    data.policy.on_boot  = { onboot=30 }
+    data.policy.never    = { manual  = true }
+    data.policy.now      = { latency = 5, onboot = 30 }
+    data.policy.onboot   = { onboot  = 30 }
     return config

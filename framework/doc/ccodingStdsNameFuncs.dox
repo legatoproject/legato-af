@@ -1,8 +1,4 @@
-/** @page ccodingStdsNameFuncs C Naming Functions 
-
-@ref cstdsFuncsPrefix  <br>
-@ref cstdsCamelCaseName  <br>
-@ref cstdsVerbage  
+/** @page ccodingStdsNameFuncs  Functions 
 
 Other C language standards' pages: 
 

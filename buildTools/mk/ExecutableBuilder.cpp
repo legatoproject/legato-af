@@ -2,13 +2,129 @@
 /**
  * Implementation of the routines for building Executables.
  *
- * Copyright (C) 201 Sierra Wireless Inc., all rights reserved.
+ * Copyright (C) 2013-2014, Sierra Wireless Inc.  Use of this work is subject to license.
  */
 //--------------------------------------------------------------------------------------------------
 
 #include "LegatoObjectModel.h"
 #include "ExecutableBuilder.h"
 #include "Utilities.h"
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Generate component initializer declarations and functions calls for a given component
+ * and all its sub-functions.
+ */
+//--------------------------------------------------------------------------------------------------
+static void GenerateInitFunctionCalls
+(
+    legato::Component& component,
+    std::set<std::string>& completedSet,    ///< Set of components already initialized.
+    std::stringstream& compInitDeclBuffer,  ///< Buffer to put init function declarations in.
+    std::stringstream& compInitBuffer       ///< Buffer to put init function calls in.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    std::string componentInitFuncName = mk::GetComponentInitName(component);
+
+    // If I haven't already been initialized,
+    if (completedSet.find(componentInitFuncName) == completedSet.end())
+    {
+        // Check if I am my own ancestor.
+        if (component.BeingProcessed())
+        {
+            throw legato::DependencyException("Dependency loop detected: " + component.Name());
+        }
+
+        // Flag myself as being processed.
+        component.BeingProcessed(true);
+
+        // Go down to the next level first (depth first traversal).
+        for (auto& mapEntry : component.SubComponents())
+        {
+            legato::Component* subComponentPtr = mapEntry.second;
+
+            if (subComponentPtr == NULL)
+            {
+                throw legato::Exception("Unresolved sub-component '" + mapEntry.first + "'"
+                                        " of component '" + component.Name() + "'.");
+            }
+
+            try
+            {
+                GenerateInitFunctionCalls(*subComponentPtr,
+                                          completedSet,
+                                          compInitDeclBuffer,
+                                          compInitBuffer);
+            }
+            catch (legato::DependencyException e)
+            {
+                throw legato::DependencyException(std::string(e.what()) + " <- "
+                                                  + component.Name());
+            }
+        }
+
+        // Generate forward declaration of the component initializer.
+        compInitDeclBuffer << "void " << componentInitFuncName << "(void);" << std::endl;
+
+        // Generate call to queue the initialization function to the event loop.
+        compInitBuffer << "    event_QueueComponentInit(" << componentInitFuncName << ");"
+                       << std::endl;
+
+        // Add myself to the list of things that have already been initialized.
+        completedSet.insert(componentInitFuncName);
+
+        // Flag myself as finished being processed.
+        component.BeingProcessed(false);
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Generate component initializer declarations and functions calls for all components in an
+ * executable.
+ */
+//--------------------------------------------------------------------------------------------------
+static void GenerateInitFunctionCalls
+(
+    legato::Executable& executable,
+    std::stringstream& compInitDeclBuffer,  ///< Buffer to put init function declarations in.
+    std::stringstream& compInitBuffer       ///< Buffer to put init function calls in.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // Use a recursive, depth-first tree walk over the tree starting with the list of
+    // Component Instances and their Components, and going down through sub-components.
+    // So that initialization happens in the correct order (lower-level
+    // stuff gets initialized before the higher-level stuff that uses it).
+
+    // Use a set to keep track of which components have already been initialized, so we
+    // don't initialize the same component twice.
+    std::set<std::string> completedSet;
+
+    for (auto& componentInstance : executable.ComponentInstances())
+    {
+        GenerateInitFunctionCalls(componentInstance.GetComponent(),
+                                  completedSet,
+                                  compInitDeclBuffer,
+                                  compInitBuffer);
+    }
+
+    // If the Default Component has at least one source file (besides the one we are
+    // auto-generating right now),
+    const legato::Component& defaultComponent = executable.DefaultComponent();
+    if (!(defaultComponent.CSourcesList().empty()))
+    {
+        // Generate forward declaration of the component initializer.
+        std::string componentInitFuncName = mk::GetComponentInitName(defaultComponent);
+        compInitDeclBuffer << "void " << componentInitFuncName << "(void);" << std::endl;
+
+        // Queue up the component initializer to be called when the Event Loop starts.
+        compInitBuffer << "    event_QueueComponentInit(" << componentInitFuncName << ");"
+                       << std::endl;
+    }
+}
 
 
 //--------------------------------------------------------------------------------------------------
@@ -53,7 +169,11 @@ void ExecutableBuilder_t::GenerateMain
     std::stringstream compInitDeclBuffer,
                       sessionBuffer,
                       filterBuffer,
+                      serverInitDeclBuffer,
+                      clientInitDeclBuffer,
                       logInitBuffer,
+                      serverInitBuffer,
+                      clientInitBuffer,
                       compInitBuffer;
 
     // Make sure that the various sections are commented to make the generated code a little
@@ -61,20 +181,22 @@ void ExecutableBuilder_t::GenerateMain
     compInitDeclBuffer<< "// Declare all component initializers." << std::endl;
     sessionBuffer     << "// Declare component log session variables." << std::endl;
     filterBuffer      << "// Declare log filter level pointer variables." << std::endl;
+    serverInitDeclBuffer << "// Declare server-side IPC API initializers." << std::endl;
+    clientInitDeclBuffer << "// Declare client-side IPC API initializers." << std::endl;
     logInitBuffer     << "    // Initialize all log sessions." << std::endl;
+    serverInitBuffer  << "    // Initialize all server-side IPC API interfaces." << std::endl;
+    clientInitBuffer  << "    // Initialize all client-side IPC API interfaces." << std::endl;
     compInitBuffer    << "    // Schedule component initializers for execution by the event loop."
                       << std::endl;
 
-    // Iterate over the list of Component Instances, in reverse order so that initialization
-    // happens in the correct order (lower-level stuff gets initialized before the higher-level
-    // stuff that uses it).
-    // TODO: Do proper sorting of the initialization functions based on dependencies.
-    // TODO: Check for dependency loops and halt the build (or find a tricky way to break the loop).
-    auto componentList = executable.ComponentInstanceList();
+    // iterate over the list of Component Instances,
+    auto componentList = executable.ComponentInstances();
     for (auto i = componentList.crbegin(); i != componentList.crend(); i++)
     {
-        const legato::Component& component = i->GetComponent();
-        auto name = component.CName();
+        const legato::ComponentInstance& componentInstance = *i;
+        const legato::Component& component = componentInstance.GetComponent();
+
+        const auto& name = component.CName();
 
         // Define the component's Log Session Reference variable.
         sessionBuffer  << "le_log_SessionRef_t " << name << "_LogSession;" << std::endl;
@@ -87,17 +209,47 @@ void ExecutableBuilder_t::GenerateMain
                        << name << "\", &" << name << "_LogLevelFilterPtr);"
                        << std::endl;
 
-        // Generate forward declaration of the component initializer.
-        compInitDeclBuffer << "void " << mk::GetComponentInitName(component) << "(void);"
-                           << std::endl;
+        // For each of the component instance's server-side interfaces,
+        for (const auto& mapEntry : componentInstance.ProvidedApis())
+        {
+            const auto& interface = mapEntry.second;
 
-        // Queue up the component initializer to be called when the Event Loop starts.
-        compInitBuffer << "    event_QueueComponentInit(" << mk::GetComponentInitName(component)
-                       << ");" << std::endl;
+            // Skip this interface if it is marked for manual start.
+            if (!interface.ManualStart())
+            {
+                // Declare the server-side interface initialization function.
+                serverInitDeclBuffer << "void " << interface.InternalName()
+                                     << "_StartServer(const char* serviceName);" << std::endl;
+
+                // Call the server-side interface initialization function.
+                serverInitBuffer << "    " << interface.InternalName() << "_StartServer(\""
+                                 << interface.ServiceInstanceName() << "\");" << std::endl;
+            }
+        }
+
+        // For each of the component instance's client-side interfaces,
+        for (const auto& mapEntry : componentInstance.RequiredApis())
+        {
+            const auto& interface = mapEntry.second;
+
+            // Skip this interface if we're only using the type definitions from this .api or it
+            // is marked for manual start.
+            if ((!interface.TypesOnly()) && (!interface.ManualStart()))
+            {
+                // Declare the client-side interface initialization function.
+                clientInitDeclBuffer << "void " << interface.InternalName()
+                                     << "_StartClient(const char* serviceName);" << std::endl;
+
+                // Call the client-side interface initialization function.
+                clientInitBuffer << "    " << interface.InternalName() << "_StartClient(\""
+                                 << interface.ServiceInstanceName() << "\");" << std::endl;
+            }
+        }
     }
 
     // Now do the above for the default component.
     const legato::Component& defaultComponent = executable.DefaultComponent();
+
     {
         auto name = defaultComponent.CName();
 
@@ -112,19 +264,10 @@ void ExecutableBuilder_t::GenerateMain
                        << name << "\", &" << name << "_LogLevelFilterPtr);"
                        << std::endl;
 
-        // If the Default Component has at least one source file (besides the one we are
-        // auto-generating right now),
-        if (!(defaultComponent.CSourcesList().empty()))
-        {
-            std::string componentInitFuncName = mk::GetComponentInitName(defaultComponent);
-            // Generate forward declaration of the component initializer.
-            compInitDeclBuffer << "void " << componentInitFuncName << "(void);" << std::endl;
-
-            // Queue up the component initializer to be called when the Event Loop starts.
-            compInitBuffer << "    event_QueueComponentInit(" << componentInitFuncName << ");"
-                           << std::endl;
-        }
     }
+
+    // Queue up the component initializers to be called when the Event Loop starts.
+    GenerateInitFunctionCalls(executable, compInitDeclBuffer, compInitBuffer);
 
     // Now that we have all of our subsections filled out, dump all of the generated code
     // and the static template code to the target output file.
@@ -140,6 +283,9 @@ void ExecutableBuilder_t::GenerateMain
 
                 << std::endl
                 << std::endl
+
+                << serverInitDeclBuffer.str() << std::endl
+                << clientInitDeclBuffer.str() << std::endl
 
                 << compInitDeclBuffer.str() << std::endl
 
@@ -157,7 +303,15 @@ void ExecutableBuilder_t::GenerateMain
 
                 << logInitBuffer.str() << std::endl
                 << "    // Connect to the log control daemon." << std::endl
-                << "    log_ConnectToControlDaemon();" << std::endl
+                << "    // Note that there are some rare cases where we don't want the" << std::endl
+                << "    // process to try to connect to the Log Control Daemon (e.g.," << std::endl
+                << "    // the Supervisor and the Service Directory shouldn't)." << std::endl
+                << "    // The NO_LOG_CONTROL macro can be used to control that." << std::endl
+                << "    #ifndef NO_LOG_CONTROL" << std::endl
+                << "        log_ConnectToControlDaemon();" << std::endl
+                << "    #else" << std::endl
+                << "        LE_DEBUG(\"Not connecting to the Log Control Daemon.\");" << std::endl
+                << "    #endif" << std::endl
                 << std::endl
                 << "    LE_DEBUG(\"== Log sessions registered. ==\");" << std::endl
                 << std::endl
@@ -170,6 +324,20 @@ void ExecutableBuilder_t::GenerateMain
                 << compInitBuffer.str() << std::endl
                 << std::endl
 
+                // Start server-side IPC interfaces now.  Any events that are caused by
+                // this will get handled after the component initializers because those
+                // are already on the event queue.
+                << serverInitBuffer.str() << std::endl
+
+                // Start client-side IPC interfaces now.  If there are any clients in
+                // this thread that are bound to services provided by servers in this thread,
+                // then at least we won't have the initialization deadlock of clients blocked
+                // waiting for services that are yet to be advertised by the same thread.
+                // However, until we support component-specific event loops and side-processing
+                // of other components' events while blocked, we will still have deadlocks
+                // if bound-together clients and servers are running in the same thread.
+                << clientInitBuffer.str() << std::endl
+
                 << "    LE_DEBUG(\"== Starting Event Processing Loop ==\");" << std::endl
                 << "    le_event_RunLoop();" << std::endl
                 << "    LE_FATAL(\"== SHOULDN'T GET HERE! ==\");" << std::endl
@@ -179,6 +347,94 @@ void ExecutableBuilder_t::GenerateMain
     // executable (as part of its "default" component).
     executable.AddCSourceFile(path);
 }
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add to the build command-line link directives for the component libraries for all
+ * sub-components of a given component instance and all components they are directly or
+ * indirectly dependent on.
+ */
+//--------------------------------------------------------------------------------------------------
+static void LinkComponent
+(
+    legato::Component& component,
+    std::stringstream& commandLine
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // Link the component.
+    commandLine << " -l" << component.Name();
+
+    // Link all the sub-components it depends on.
+    for (auto& mapEntry : component.SubComponents())
+    {
+        legato::Component* componentPtr = mapEntry.second;
+
+        if (componentPtr == NULL)
+        {
+            throw legato::Exception("Unresolved sub-component '" + mapEntry.first + "'"
+                                    " of component '" + component.Name() + "'.");
+        }
+
+        LinkComponent(*componentPtr, commandLine);
+    }
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add to the build command-line link directives for the component libraries for
+ * a given component instance and all components it is directly or indirectly dependent on.
+ */
+//--------------------------------------------------------------------------------------------------
+static void LinkComponentInstance
+(
+    legato::ComponentInstance& componentInstance,
+    std::stringstream& commandLine
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // Link all server-side APIs (because they'll call functions defined in the component lib).
+    for (auto& mapEntry : componentInstance.ProvidedApis())
+    {
+        auto& interface = mapEntry.second;
+
+        commandLine << " -l" << interface.Lib().ShortName();
+    }
+
+    // Link the component library and all its sub-components.
+    LinkComponent(componentInstance.GetComponent(), commandLine);
+
+    // Re-link all the async and manual-start server-side APIs (because there are functions
+    // in there that the component will need to call).
+    for (auto& mapEntry : componentInstance.ProvidedApis())
+    {
+        auto& interface = mapEntry.second;
+
+        if (interface.IsAsync() || interface.ManualStart())
+        {
+            commandLine << " -l" << interface.Lib().ShortName();
+        }
+    }
+
+    // Link all the client-side APIs (because they contain functions that the component calls).
+    for (auto& mapEntry : componentInstance.RequiredApis())
+    {
+        auto& interface = mapEntry.second;
+
+        // Skip this interface if we're only using the type definitions from this .api.
+        if (!interface.TypesOnly())
+        {
+            const legato::Library& lib = interface.Lib();
+
+            commandLine << " -l" << lib.ShortName();
+        }
+    }
+}
+
 
 
 //--------------------------------------------------------------------------------------------------
@@ -210,7 +466,7 @@ void ExecutableBuilder_t::Build
         std::cout << "Compiling and linking executable '" << outputPath << "'." << std::endl;
     }
 
-    auto instanceList = executable.ComponentInstanceList();
+    auto instanceList = executable.ComponentInstances();
 
     // Specify the compiler command and the output file path.
     commandLine << mk::GetCompilerPath(m_Params.Target()) <<" -o " << outputPath;
@@ -248,7 +504,8 @@ void ExecutableBuilder_t::Build
     commandLine << " -DLE_LOG_LEVEL_FILTER_PTR=" << defaultComponent.Name() << "_LogLevelFilterPtr ";
 
     // Define the COMPONENT_INIT for the default component.
-    commandLine << " \"-DCOMPONENT_INIT=void " << mk::GetComponentInitName(defaultComponent) << "()\"";
+    commandLine << " \"-DCOMPONENT_INIT=LE_CI_LINKAGE void "
+                << mk::GetComponentInitName(defaultComponent) << "()\"";
 
     // Add all the default component's source files to the command-line (compile them now).
     // TODO: Change to pre-compile the .c files to .o files and then just include the .o files here.
@@ -263,11 +520,11 @@ void ExecutableBuilder_t::Build
         commandLine << " -L" << m_Params.LibOutputDir();
     }
 
-    // Link with each component instance's component library.
-    for (auto i : instanceList)
+    // Link with each component instance's component library and interface libraries,
+    // as well as any component libraries for components it depends on.
+    for (auto componentInstance : instanceList)
     {
-        const auto& component = i.GetComponent();
-        commandLine << " -l" << component.Name();
+        LinkComponentInstance(componentInstance, commandLine);
     }
 
     // Link with other libraries that are needed by the default component.
@@ -280,29 +537,37 @@ void ExecutableBuilder_t::Build
     commandLine << " -L$LEGATO_ROOT/build/" << m_Params.Target() << "/bin/lib" << " -llegato";
 
     // Link with other libraries added to components included in this executable.
-    for (auto i : instanceList)
+    for (const auto& i : instanceList)
     {
         auto libList = i.GetComponent().LibraryList();
         for (auto lib : libList)
         {
-            commandLine << " \"" << lib << "\"";
+            commandLine << " -l" << lib;
         }
     }
 
-    // Link with the real-time library and the pthreads library, just in case they're needed too.
-    commandLine << " -lpthread -lrt";
+    // Link with the real-time library, pthreads library, and the math library, just in case they're
+    // needed too.
+    // NOTE: Must link libm before libstdc++, or some math functions (like atan2()) won't be
+    //       resolved properly .
+    commandLine << " -lpthread -lrt -lm";
+
+    if (executable.HasCppSources())
+    {
+        // If this is a C++ app, grab the C++ standard lib too.
+        commandLine << " -lstdc++";
+    }
 
     // Insert LDFLAGS on the command-line.
-    commandLine << " " << m_Params.LinkerFlags();
+    commandLine << m_Params.LinkerFlags();
 
     // On the localhost, set the DT_RUNPATH variable inside the executable to include the
     // expected locations of the libraries needed.
     if (m_Params.Target() == "localhost")
     {
         commandLine << " -Wl,--enable-new-dtags"
-                    << ",-rpath=\"\\$ORIGIN/../lib:$LEGATO_LOCALHOST_LIB_PATH";
-        // TODO: Add filtered (duplicates removed) list of component library search paths?
-        commandLine <<"\"";
+                    << ",-rpath=\"\\$ORIGIN/../lib:" << m_Params.LibOutputDir()
+                                                     << ":$LEGATO_ROOT/build/localhost/bin/lib\"";
     }
     // On embedded targets, set the DT_RUNPATH variable inside the executable to include the
     // expected location of libraries bundled in this application (this is needed for unsandboxed
@@ -312,11 +577,11 @@ void ExecutableBuilder_t::Build
         commandLine << " -Wl,--enable-new-dtags,-rpath=\"\\$ORIGIN/../lib\"";
     }
 
-    // Run the command.
     if (m_Params.IsVerbose())
     {
-        std::cout << commandLine.str() << std::endl;
+        std::cout << std::endl << "$ " << commandLine.str() << std::endl << std::endl;
     }
+
     mk::ExecuteCommandLine(commandLine);
 }
 

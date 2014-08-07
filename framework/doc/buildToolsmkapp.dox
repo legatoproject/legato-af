@@ -1,38 +1,30 @@
-/** @page buildToolsmkapp Make Application
+/** @page buildToolsmkapp mkapp (Make Application)
 
+Run @b mkapp to generate an application bundle that can be installed on a target and run.
 
-Run @b mkapp to build the executable and bundle it into an application.
+Application bundles are compressed archives containing everything that needs to be sent to your
+target device to install your application.
 
-Available command line parameters:
+The main input for @c mkapp is an @ref defFilesAdef ".adef file".  This file contains a definition
+of
+ - what executables should be built when your application is built,
+ - what components and/or other files should be built into those executables,
+ - what other files should be included as a part of your application,
+ - whether or not your application should run in a sandbox,
+ - if sandboxed, what does your application need access to outside of its sandbox,
+ - what executables should be run when your application is started,
+ - what command-line arguments and environment variables should be passed to those programs,
+ - and what limits should be placed on your application (CPU limits, memory limits, etc.).
 
-@b -c \<string\> - @a component @a search - (multiple, optional) Add a directory to the component search path.
+@c mkapp will parse the .adef file, figure out what components, interface definitions, and other
+source files are needed, build those into the libraries and executables required, generate the
+on-target configuration data needed, and bundle everything into an application bundle
+for installation on the target device.
 
-@b -i \<string\> - @a interface @a search - (multiple, optional) Add a directory to the interface search path.
+Run @c mkapp with the --help or -h option for a description of the command-line arguments it
+accepts.
 
-@b -o \<string\> - @a output @a directory - (optional) Specify the directory for build the application file (ready to be install on target).
-
-@b -t \<string\> - @a target - (optional) Set the compile target (localhost|wp7 or ar7).
-
-@b -v - @a verbose - (optional) Set into verbose mode for extra diagnostic information.
-
-@b -w \<string\> - @a object @a directory - (optional) Specify the directory for any intermediate build artifacts (e.g., .o files, generated source code).
- 
-
-@c mkapp completes the following functions:
-
-- HandleDebugArg
-- GetCommandLineArgs 
-- ConstructObjectModel 
-- CopyToStaging
-- GenerateAppLimitsConfig 
-- GenerateGroupsConfig
-- GenerateSingleFileMappingConfig
-- GenerateFileMappingConfig
-- GenerateProcessEnvVarsConfig 
-- GenerateProcessConfig
-- GenerateSupervisorConfig 
-- Build
-- MakeApp
+@ref defFilesAdef "This page" has more information on @ref defFilesAdef files.
 
 <HR>
 

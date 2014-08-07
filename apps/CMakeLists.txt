@@ -1,9 +1,6 @@
-#*******************************************************************************
-# Copyright (C) 2013, Sierra Wireless Inc., all rights reserved. 
-#
-# Contributors:
-#     Sierra Wireless - initial API and implementation
-#*******************************************************************************
+#************************************************************************************
+# Copyright 2013-2014, Sierra Wireless Inc.  Use of this work is subject to license.
+#************************************************************************************
 
 # Samples
 add_subdirectory(sample EXCLUDE_FROM_ALL)

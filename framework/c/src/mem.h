@@ -1,7 +1,7 @@
 //--------------------------------------------------------------------------------------------------
 /** @file mem.h
  *
- * Legato memory mManagement module's inter-module include file.
+ * Legato memory management module's inter-module include file.
  *
  * This file exposes interfaces that are for use by other modules inside the framework
  * implementation, but must not be used outside of the framework implementation.
@@ -11,43 +11,6 @@
  */
 #ifndef MEM_INCLUDE_GUARD
 #define MEM_INCLUDE_GUARD
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * The maximum size of the pool name.
- */
-//--------------------------------------------------------------------------------------------------
-#define MEM_MAX_POOL_NAME_BYTES         32
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Definition of a memory pool.
- */
-//--------------------------------------------------------------------------------------------------
-typedef struct le_mem_Pool
-{
-    le_dls_Link_t poolLink;             // This pool's link in the list of memory pools.
-    struct le_mem_Pool* superPoolPtr;   // A pointer to our super pool if we are a sub-pool. NULL
-                                        // if we are not a sub-pool.
-    le_sls_List_t freeList;             // The list of free memory blocks.
-    size_t userDataSize;                // The size of the object requested by the client in bytes.
-    size_t totalBlockSize;              // The number of bytes in a block, including all overhead.
-    uint64_t numAllocations;            // The total number of times an object has been allocated
-                                        // from this pool.
-    size_t numOverflows;                // The number of times le_mem_ForceAlloc() had to expand the
-                                        // pool.
-    size_t totalBlocks;                 // The total number of blocks in this pool including free
-                                        // and allocated blocks.
-    size_t numBlocksInUse;              // Number of currently allocated blocks.
-    size_t maxNumBlocksUsed;            // Maximum number of allocated blocks at any one time.
-    size_t numBlocksToForce;            // The number of blocks that is added when Force Alloc
-                                        // expands the pool.
-    le_mem_Destructor_t destructor;     // The destructor for objects in this pool.
-    char name[MEM_MAX_POOL_NAME_BYTES]; // The name of the pool.
-}
-MemPool_t;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -67,15 +30,73 @@ void mem_Init
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Returns a pointer to the list of pools.
- *
- * @note
- *      On failure, the process exits.
+ * Objects of this type are used to refer to a list of memory pools and can be used to iterate over
+ * the list of available memory pools in a remote process.
  */
 //--------------------------------------------------------------------------------------------------
-void* mem_GetListOfPools
+typedef struct mem_iter_t* mem_Iter_Ref_t;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Creates an iterator that can be used to iterate over the list of available memory pools for a
+ * specific process.
+ *
+ * @note
+ *      The specified pid must be greater than zero.
+ *
+ *      The calling process must be root or have appropriate capabilities for this function and all
+ *      subsequent operations on the iterator to succeed.
+ *
+ *      If NULL is returned the errorPtr will be set appropriately.  Possible values are:
+ *      LE_NOT_POSSIBLE if the specified process is not a Legato process.
+ *      LE_FAULT if there was some other error.
+ *
+ *      errorPtr can be NULL if the error code is not needed.
+ *
+ * @return
+ *      An iterator to the list of memory pools for the specified process.
+ *      NULL if there was an error.
+ */
+//--------------------------------------------------------------------------------------------------
+mem_Iter_Ref_t mem_iter_Create
 (
-    void
+    pid_t pid,                  ///< [IN] The process to get the iterator for.
+    le_result_t *errorPtr       ///< [OUT] Error code.  See comment block for more details.
 );
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets the next memory pool from the specified iterator.  The first time this function is called
+ * after mem_iter_Create() is called the first memory pool in the list is returned.  The second
+ * time this function is called the second memory pool is returned and so on.
+ *
+ * @warning
+ *      The memory pool returned by this function belongs to the remote process.  Do not attempt to
+ *      expand the pool or allocate objects from the pool, doing so will lead to memory leaks in
+ *      the calling process.
+ *
+ * @return
+ *      A memory pool from the iterator's list of memory pools.
+ *      NULL if there are no more memory pools in the list.
+ */
+//--------------------------------------------------------------------------------------------------
+le_mem_PoolRef_t mem_iter_GetNextPool
+(
+    mem_Iter_Ref_t iterator     ///< [IN] The iterator to get the next mem pool from.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Deletes the iterator.
+ */
+//--------------------------------------------------------------------------------------------------
+void mem_iter_Delete
+(
+    mem_Iter_Ref_t iterator     ///< [IN] The iterator to delete.
+);
+
 
 #endif  // MEM_INCLUDE_GUARD

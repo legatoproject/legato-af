@@ -7,7 +7,8 @@ Detailed info: <br>
 
 API info is here: @ref swi_airvantage.h
 
-Complete AirVantage documentation: https://doc.airvantage.net/display/USERGUIDE/Getting+Started
+Complete AirVantage documentation: 
+https://doc.airvantage.net/display/USERGUIDE/Getting+Started
 
 @section overviewAVIConnect Overview Info
 
@@ -20,9 +21,10 @@ Once you are connected to your AirVantage account, you can do the following step
 Create a new System in AirVantage Server:
 - From the `Inventory menu`, choose `Systems`.
 - Click the Create button (+ symbol): enter a Name (used for retrieval).
-- In the `Gateway` tab, click Create a New Gateway (+ symbol), a new windows will appear: enter the IMEI of your device.
+- In the `Gateway` tab, click Create a New Gateway (+ symbol), a new windows will appear: 
+enter the IMEI of your device.
 - Click `Create`.
-- Once you got back on system creation window, Click on the `Application` field  select 'Legato_Beta'.
+- Once you got back on system creation window, click the `Application` field  select 'Legato_Beta'.
 - Select "I want to activate my system after creating it".
 - Click `Create`.
   
@@ -35,7 +37,8 @@ Force a connection using the Agent Shell:
 - Verify that the URL is set to "tcp://na.airvantage.net:44900"
 - then request a connection ":agent.srvcon.connect()"
 
-This manually forces a connection to the server. You can also set up automatic connections or make user applications to trigger connections.
+This manually forces a connection to the server. You can also set up automatic connections or 
+make user applications to trigger connections.
 
 Check device status on the AirVantage Server:
 

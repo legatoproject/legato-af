@@ -1,5 +1,5 @@
 #*******************************************************************************
-# Copyright (C) 2013, Sierra Wireless Inc., all rights reserved. 
+# Copyright (C) 2013, Sierra Wireless Inc., all rights reserved.
 #
 # Contributors:
 #     Sierra Wireless - initial API and implementation
@@ -7,13 +7,12 @@
 
 find_package(Legato REQUIRED)
 
-set(APP_COMPONENT signalEventsTest)
 set(APP_TARGET testFwSignalEvents)
-set(APP_SOURCES
-    signalEventsTest.c
-)
 
-set_legato_component(${APP_COMPONENT})
-add_legato_executable(${APP_TARGET} ${APP_SOURCES})
+mkexe(${APP_TARGET}
+            signalEventsTest.c
+        DEPENDS
+            signalEventsTest.c
+        )
 
 add_test(${APP_TARGET} ${EXECUTABLE_OUTPUT_PATH}/${APP_TARGET})

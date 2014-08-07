@@ -1,21 +1,3 @@
-/**
- * @page c_info Modem Information API
- *
- * @ref le_info.h "Click here for the API reference documentation."
- *
- * <HR>
- *
- * This file contains prototype definitions for Modem Information APIs. 
- * 
- * It's used to retrieve the International Mobile Equipment Identity (IMEI).
- *
- *
- * <HR>
- *
- * Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
- */
-
-
 /** @file le_info.h
  *
  * Legato @ref c_info include file.

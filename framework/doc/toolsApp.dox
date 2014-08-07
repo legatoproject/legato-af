@@ -1,0 +1,29 @@
+/** @page toolsApp App
+
+The @c app tool provides an easy method to run commonly-needed functions. 
+
+<h1>Usage</h1>
+
+<b><c> app [OPTION] APP_NAME [APP_NAME...] </c></b>
+
+@verbatim app [start|stop|restart|remove|status|version] APP_NAME [ APP_NAME ... ] @endverbatim
+> For these actions, multiple application names can be specified.
+> A wildcard '*' can be used instead of a list of apps to designate that the action should be applied to all apps.
+
+@warning
+Be careful not to accidentally remove system services apps that you might need (such as the "modemService" app).
+
+@verbatim app install APP_NAME @endverbatim
+> Install app.
+
+@verbatim app list @endverbatim
+> Lists apps.  
+
+@verbatim app status @endverbatim
+> List apps and their current status.
+
+<HR>
+
+Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+
+**/

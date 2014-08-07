@@ -6,7 +6,7 @@ executables:
 
 processes:
     // Test that the defaults are set correctly.
-    run: (defaultLimitsTest 512 10 100 16777216 90112 256 8192 8192 131072)
+    run: (defaultLimitsTest 512 10 100 90112 256 8192 8192 131072)
 
 // The arguments is the list of expected resource limit values in this order.
-// mqueueSize, numProcs, rtSignalQueueSize, vMemSize, maxFileSize, numFds, memLockSize, coreFileSize, fileSystemSize
+// mqueueSize, numProcs, rtSignalQueueSize, maxFileSize, numFds, memLockSize, coreFileSize, fileSystemSize

@@ -1,10 +1,4 @@
-/** @page ccodingStdsAbbr C Abbreviations
-
-Other C language standards' pages: 
-
-@ref ccodingStdsNaming  <br>
-@ref ccodingStdsParam  <br>
-@ref ccodingStdsMain 
+/** @page ccodingStdsAbbr Abbreviations
 
 To maintain manageable-length identifiers, developers often abbreviate words when constructing identifiers.  
 If these abbreviations are not carefully chosen, they can create confusion.
@@ -40,6 +34,12 @@ Original Word  @b abbreviation
 - timer @b tmr 
 - transaction @b txn 
 - transmit @b tx 
+
+Other C language standards' pages: 
+
+@ref ccodingStdsNaming  <br>
+@ref ccodingStdsParam  <br>
+@ref ccodingStdsMain 
 
 <HR>
 

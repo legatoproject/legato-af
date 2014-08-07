@@ -1,0 +1,14 @@
+sources:
+
+    supervisor.c
+    config.c
+
+export:
+
+    le_sup_ctrl.api [async] [manual-start]
+    le_sup_state.api        [manual-start]
+    le_sup_wdog.api [async] [manual-start]
+
+import:
+
+    le_cfg.api [manual-start]

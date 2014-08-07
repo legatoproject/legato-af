@@ -1,12 +1,5 @@
 /** @page basicRuntimeArch Runtime Architecture
 
-@ref supervisor <br>
-@ref logControlDaemon <br>
-@ref serviceDirectory <br>
-@ref configTree <br>
-@ref applications <br>
-@ref runtimeWhatsNext 
-
 Legato's runtime architecture manages each application in its own sandbox. 
 
 @image html LayeredArchitecture.png
@@ -33,7 +26,7 @@ See @ref c_logging
 The Service Directory provides a secure way for client processes to find servers that offer the services they need.
 The Service Directory ensures that only authorized connections are established.
 
-See @ref legatoServices
+See @ref legatoServices and @ref basicInterfaces
 
 @section configTree Configuration Tree
 
@@ -44,14 +37,20 @@ See @ref Configuration and @ref api_config
 
 @section applications Applications
 
-An application is a collection of executable files, libraries, and/or other resource files (e.g., audio files, web pages) 
-that can be deployed to a target device. Once installed on a device, an application can be started and stopped.
+An application is a collection of executable files, libraries, and/or other resource files 
+ (e.g., audio files, web pages) that can be deployed to a target device. Once installed
+ on a device, an application can be started and stopped.
  
 By default, each application runs in its own sandbox.  When an application is constructed, all
-the files and IPC services it needs to access are declared (these should be examined and approved before 
-installed on the target).  At runtime, the Supervisor and the Service Directory enforce that only those approved files and IPC services
-are accessed by that application.
+ the files and IPC services it needs to access are declared (these should be examined and approved
+ before installed on the target).  At runtime, the Supervisor and the Service Directory enforce
+ that only those approved files and IPC services are accessed by that application.
 
+@section watchDog Watchdog
+
+Legato has a service that provides a kickable watchdog with a timeout that can be 
+configured in @ref defFilesAdef or specified at run time.  If a kick is not received in the 
+specified time out, the supervisor signals to perform the action given in WatchdogAction.
 Applications are assembled from components.
 
 @section runtimeWhatsNext What's Next?

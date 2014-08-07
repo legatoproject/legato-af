@@ -1,0 +1,11 @@
+import:
+
+    le_sms.api
+    le_mdmDefs.api [types-only]
+
+sources:
+
+    main.c
+    smsMO.c
+    smsMT.c
+

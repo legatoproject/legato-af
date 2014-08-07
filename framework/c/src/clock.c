@@ -202,17 +202,17 @@ le_clk_Time_t le_clk_Multiply
  * the destination buffer are undefined, and the value returned in numBytesPtr is zero.
  *
  * @return
- *      - LE_OK if the formatted string was copied to destStr
- *      - LE_OVERFLOW if the formatted string would not fit in destStr
+ *      - LE_OK if the formatted string was copied to destStrPtr
+ *      - LE_OVERFLOW if the formatted string would not fit in destStrPtr
  */
 //--------------------------------------------------------------------------------------------------
 static le_result_t FormatBrokenTime
 (
     le_clk_Time_t absoluteTime,    ///< [IN]  Absolute time.
     struct tm brokenTime,          ///< [IN}  The broken-down time based on the absolute time.
-    const char* formatSpecStr,     ///< [IN]  Format specifier string, using conversion
+    const char* formatSpecStrPtr,  ///< [IN]  Format specifier string, using conversion
                                    ///        specifiers defined for strftime().
-    char*   destStr,               ///< [OUT] Destination for the formatted date/time string
+    char*   destStrPtr,            ///< [OUT] Destination for the formatted date/time string
     size_t  destSize,              ///< [IN]  Size of the destination buffer in bytes.
     size_t* numBytesPtr            ///< [OUT] Number of bytes copied, not including NULL-terminator.
                                    ///        This parameter can be set to NULL if the number of
@@ -236,14 +236,14 @@ static le_result_t FormatBrokenTime
 
     // Handle extra conversion specifications %J and %K for ms and us, respectively.
     origIdx = copyIdx = 0;
-    while ( (formatSpecStr[origIdx] != '\0') && (copyIdx < copySize) )
+    while ( (formatSpecStrPtr[origIdx] != '\0') && (copyIdx < copySize) )
     {
-        if (formatSpecStr[origIdx] == '%')
+        if (formatSpecStrPtr[origIdx] == '%')
         {
             charsLeft = copySize-copyIdx;
 
             // Check if this is a conversion specification that we need to handle
-            switch ( formatSpecStr[origIdx+1] )
+            switch ( formatSpecStrPtr[origIdx+1] )
             {
                 case 'J':
                     // fill in ms
@@ -278,18 +278,18 @@ static le_result_t FormatBrokenTime
                 case '%':
                     // Preserve double %.  This needs to be handled here because it could precede
                     // a J or K. I.e., we don't want to interpret "%%J" as "%J" or "%%K" as "%K".
-                    copyFormatSpecStr[copyIdx++] = formatSpecStr[origIdx++];
-                    copyFormatSpecStr[copyIdx++] = formatSpecStr[origIdx++];
+                    copyFormatSpecStr[copyIdx++] = formatSpecStrPtr[origIdx++];
+                    copyFormatSpecStr[copyIdx++] = formatSpecStrPtr[origIdx++];
                     break;
 
                 default:
-                    copyFormatSpecStr[copyIdx++] = formatSpecStr[origIdx++];
+                    copyFormatSpecStr[copyIdx++] = formatSpecStrPtr[origIdx++];
                     break;
             }
         }
         else
         {
-            copyFormatSpecStr[copyIdx++] = formatSpecStr[origIdx++];
+            copyFormatSpecStr[copyIdx++] = formatSpecStrPtr[origIdx++];
         }
     }
 
@@ -304,7 +304,7 @@ static le_result_t FormatBrokenTime
     copyFormatSpecStr[copyIdx] = '\0';
 
     // Process the standard conversion specifiers.
-    numChars = strftime(destStr, destSize, copyFormatSpecStr, &brokenTime);
+    numChars = strftime(destStrPtr, destSize, copyFormatSpecStr, &brokenTime);
 
     // Assume that numChars==0 always indicates an error.  Note that according to the documentation
     // for strftime(), this may not always be the case. However, it is very unlikely that a format
@@ -341,9 +341,9 @@ static le_result_t FormatBrokenTime
 //--------------------------------------------------------------------------------------------------
 le_result_t le_clk_GetUTCDateTimeString
 (
-    const char* formatSpecStr,     ///< [IN]  Format specifier string, using conversion
+    const char* formatSpecStrPtr,  ///< [IN]  Format specifier string, using conversion
                                    ///        specifiers defined for strftime().
-    char*   destStr,               ///< [OUT] Destination for the formatted date/time string
+    char*   destStrPtr,            ///< [OUT] Destination for the formatted date/time string
     size_t  destSize,              ///< [IN]  Size of the destination buffer in bytes.
     size_t* numBytesPtr            ///< [OUT] Number of bytes copied, not including NULL-terminator.
                                    ///        This parameter can be set to NULL if the number of
@@ -351,20 +351,12 @@ le_result_t le_clk_GetUTCDateTimeString
 
 )
 {
-    struct tm brokenTime;
     le_clk_Time_t absTime;
-    le_result_t result;
 
     // Get the time broken down into UTC year, month, day, and so on.
     absTime = le_clk_GetAbsoluteTime();
-    if (gmtime_r(&absTime.sec, &brokenTime) == NULL)
-    {
-        LE_FATAL("Cannot convert Absolute time into UTC broken down time.");
-    }
 
-    result = FormatBrokenTime(absTime, brokenTime, formatSpecStr, destStr, destSize, numBytesPtr);
-
-    return result;
+    return le_clk_ConvertToUTCString(absTime,formatSpecStrPtr,destStrPtr,destSize,numBytesPtr);
 }
 
 
@@ -380,39 +372,116 @@ le_result_t le_clk_GetUTCDateTimeString
  * the destination buffer are undefined, and the value returned in numBytesPtr is zero.
  *
  * @return
- *      - LE_OK if the formatted string was copied to destStr
- *      - LE_OVERFLOW if the formatted string would not fit in destStr
+ *      - LE_OK if the formatted string was copied to destStrPtr
+ *      - LE_OVERFLOW if the formatted string would not fit in destStrPtr
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_clk_GetLocalDateTimeString
 (
-    const char* formatSpecStr,     ///< [IN]  Format specifier string, using conversion
+    const char* formatSpecStrPtr,  ///< [IN]  Format specifier string, using conversion
                                    ///        specifiers defined for strftime().
-    char*   destStr,               ///< [OUT] Destination for the formatted date/time string
+    char*   destStrPtr,            ///< [OUT] Destination for the formatted date/time string
     size_t  destSize,              ///< [IN]  Size of the destination buffer in bytes.
     size_t* numBytesPtr            ///< [OUT] Number of bytes copied, not including NULL-terminator.
                                    ///        This parameter can be set to NULL if the number of
                                    ///        bytes copied is not needed.
 )
 {
-    struct tm brokenTime;
     le_clk_Time_t absTime;
-    le_result_t result;
-
-    // According to the documentation for localtime_r(), for portable code, tzset() should be
-    // called before localtime_r().
-    tzset();
 
     // Get the time broken down into local year, month, day, and so on.
     absTime = le_clk_GetAbsoluteTime();
-    if (localtime_r(&absTime.sec, &brokenTime) == NULL)
+
+    return le_clk_ConvertToLocalTimeString(absTime,formatSpecStrPtr,destStrPtr,destSize,numBytesPtr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Generate a printable string representation of a given absolute date/time value as UTC time
+ * (no timezone offset applied).
+ *
+ * The formatted date/time string, including NULL-terminator, will be copied to the destination
+ * buffer, provided it fits, and the number of bytes copied (not including the NULL-terminator)
+ * will be returned in numBytesPtr.
+ *
+ * If the formatted date/time string does not fit in the destination buffer, the contents of
+ * the destination buffer will be undefined and the value returned in numBytesPtr will be zero.
+ *
+ * @return
+ *      - LE_OK if the formatted string was copied to destStrPtr
+ *      - LE_OVERFLOW if the formatted string would not fit in destStrPtr
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_clk_ConvertToUTCString
+(
+    le_clk_Time_t time,            ///< [IN]  date/time to convert
+    const char* formatSpecStrPtr,  ///< [IN]  Format specifier string, using conversion
+                                   ///        specifiers defined for strftime().
+    char*   destStrPtr,            ///< [OUT] Destination for the formatted date/time string
+    size_t  destSize,              ///< [IN]  Size of the destination buffer in bytes.
+    size_t* numBytesPtr            ///< [OUT] Number of bytes copied, not including NULL-terminator.
+                                   ///        Parameter can be set to NULL if the number of
+                                   ///        bytes copied is not needed.
+
+)
+{
+    struct tm brokenTime;
+    le_result_t result;
+
+    if (gmtime_r(&time.sec, &brokenTime) == NULL)
     {
-        LE_FATAL("Cannot convert Absolute time into local broken down time.");
+        LE_FATAL("Cannot convert time into UTC broken down time.");
     }
 
-    result = FormatBrokenTime(absTime, brokenTime, formatSpecStr, destStr, destSize, numBytesPtr);
+    result = FormatBrokenTime(time, brokenTime, formatSpecStrPtr, destStrPtr, destSize, numBytesPtr);
 
     return result;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Generate a printable string representation of a given absolute date/time value as a local time
+ * (with timezone offset applied).
+ *
+ * The formatted date/time string, including NULL-terminator, will be copied to the destination
+ * buffer, provided it fits, and the number of bytes copied (not including the NULL-terminator)
+ * will be returned in numBytesPtr.
+ *
+ * If the formatted date/time string does not fit in the destination buffer, then the contents of
+ * the destination buffer are undefined, and the value returned in numBytesPtr is zero.
+ *
+ * @return
+ *      - LE_OK if the formatted string was copied to destStrPtr
+ *      - LE_OVERFLOW if the formatted string would not fit in destStrPtr
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_clk_ConvertToLocalTimeString
+(
+    le_clk_Time_t time,            ///< [IN]  date/time to convert
+    const char* formatSpecStrPtr,  ///< [IN]  Format specifier string, using conversion
+                                   ///        specifiers defined for strftime().
+    char*   destStrPtr,            ///< [OUT] Destination for the formatted date/time string
+    size_t  destSize,              ///< [IN]  Size of the destination buffer in bytes.
+    size_t* numBytesPtr            ///< [OUT] Number of bytes copied, not including NULL-terminator.
+                                   ///        Parameter can be set to NULL if the number of
+                                   ///        bytes copied is not needed.
+
+)
+{
+    struct tm brokenTime;
+    le_result_t result;
+    // According to the documentation for localtime_r(), for portable code, tzset() should be
+    // called before localtime_r().
+    tzset();
+
+    if (localtime_r(&time.sec, &brokenTime) == NULL)
+    {
+        LE_FATAL("Cannot convert Absolute time into local broken down time.");
+    }
+
+    result = FormatBrokenTime(time, brokenTime, formatSpecStrPtr, destStrPtr, destSize, numBytesPtr);
+
+    return result;
+}
 

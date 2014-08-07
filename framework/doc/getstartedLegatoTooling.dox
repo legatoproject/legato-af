@@ -1,22 +1,35 @@
 /** @page getstartedLegatoTooling Developer Studio
 
+Developer studio is an integrated development environment built on Eclipse™ 
+with tools for coding, debugging, target download, and target monitoring. 
+
+It’s recommended that you read the Developer Studio help. 
+Open Developer Studio, go to Help-> Help Contents-> Developer Studio User Guide.
+
+<HR>
+
+Complete the procedures in this section to install, configure, and run Developer Studio on a dev host.
+
+@ref devStudBoot  <br>
 @ref instDevStud <br>
 @ref configDevStud <br>
 @ref usingDevStud
 
-@section instDevStud Install Developer Studio
+@section devStudBoot Run from Bootable USB
+
+If you’re running the bootable USB stick, you'll find a desktop icon that starts Dev Studio. It comes installed and configured ready 
+to use.
+
+A Developer Studio cheat sheet is available from Dev Studio's online help. Choose the Help menu->Cheat Sheets to display guidance for some tasks. 
+
+@section instDevStud Install on Dev Host
 
 See Developer Studio installation: http://developer.sierrawireless.com/developerstudio
 
 @note You’ll need to install the IDE for Legato Application Framework feature to 
 develop Legato applications and connect to Legato devices.
 
-@section configDevStud Configure Developer Studio
-
-Before you can develop Legato applications, there's some config
-steps to complete.
-
-<b>Configure Developer Studio toolchain path</b> 
+@section configDevStud Configure Dev Studio toolchain 
 
 Legato Linux GCC path has to be configured in Developer Studio so it can build Legato applications. 
 Dev Studio needs to find the @c arm-poky-linux-gnueabi-gcc compiler.
@@ -33,10 +46,10 @@ See @ref getstartedInstallPackages for toolchain installation info.
 
 <b>Configure Legato package</b>
 
-Developer Studio needs the location of the Legato Framework package build directory so it can use it.
+Developer Studio needs the location of the Legato Framework package build directory so it can use it. 
 In the Package Manager perspective, click on the Add Repository button of the Available Packages view. 
-
-You'll need to point on the Legato Package directory.
+You’ll need to point on the Legato Package directory. Click on @a Folder and browse to where you copied Legato Application Framework 
+(e.g., /home/mylogin/legato-af-master).
 
 @note Build the Legato Framework before installing Developer Studio.
 

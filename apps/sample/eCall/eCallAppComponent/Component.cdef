@@ -1,0 +1,10 @@
+import:
+    le_pos.api
+    le_ecall.api
+    le_cfg.api
+
+export:
+    ecallApp.api
+
+sources:
+    eCallApp.c

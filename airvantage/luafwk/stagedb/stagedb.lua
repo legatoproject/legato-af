@@ -1,9 +1,13 @@
--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 -- Copyright (c) 2012 Sierra Wireless and others.
 -- All rights reserved. This program and the accompanying materials
 -- are made available under the terms of the Eclipse Public License v1.0
--- which accompanies this distribution, and is available at
--- http://www.eclipse.org/legal/epl-v10.html
+-- and Eclipse Distribution License v1.0 which accompany this distribution.
+--
+-- The Eclipse Public License is available at
+--   http://www.eclipse.org/legal/epl-v10.html
+-- The Eclipse Distribution License is available at
+--   http://www.eclipse.org/org/documents/edl-v10.php
 --
 -- Contributors:
 --     Fabien Fleutot for Sierra Wireless - initial API and implementation
@@ -11,11 +15,17 @@
 
 local sdb_core = require 'stagedb.core'
 local m3da = require 'm3da.bysant'
+local system = require 'utils.system'
+local md5 = require 'crypto.md5'
+
 
 require 'checks'
 require 'ltn12'
 
---function printf(...) return print(string.format(...)) end
+if global then global 'LUA_AF_RW_PATH' end
+local sdb_path = (LUA_AF_RW_PATH or "./").."sdb/"
+system.mktree(sdb_path)
+
 
 local SDB_TABLE = { __type='stagedb.table' }; SDB_TABLE.__index = SDB_TABLE
 
@@ -81,23 +91,34 @@ function SDB_TABLE :serializeandreset()
     else return nil, msg end
 end
 
+
+--helper function to define the file to store the sdb
+local function computefilename(id, storage)
+    if storage=="file" then
+        return sdb_path..(md5():update(id):digest())..".sdb" -- generate a unique filename name
+    else
+        return nil
+    end
+end
+
 -- Create a consolidation table
-function SDB_TABLE :newconsolidation(id, sm, columns)
-    checks('stagedb.table', 'string', 'string', 'table')
-    local sdb, msg = sdb_core.newconsolidation(self.sdb, id, sm, columns)
+function SDB_TABLE :newconsolidation(idsm, columns)
+    checks('stagedb.table', 'string', 'table')
+    local sm, id = idsm :match '^(.-):(.+)$'
+    local filename = computefilename(id, sm)
+    if not sm then error "Invalid identifier" end
+    local sdb, msg = sdb_core.newconsolidation(self.sdb, filename or id, sm, columns)
     if not sdb then return nil, msg end
-    return setmetatable({sdb=sdb}, SDB_TABLE)
+    return setmetatable({sdb=sdb, file=filename}, SDB_TABLE)
 end
 
--- get the path of table
-function SDB_TABLE :getpath()
-    checks('stagedb.table')
-    local path = sdb_core.getpath(self.sdb)
-    if not path then return nil, "path not found in table" end
-    return path
+function SDB_TABLE:delete()
+  local s, err = self.sdb:close()
+  if s and self.file then os.execute("rm -f "..self.file) end
+  return s, err
 end
 
-for _, name in pairs{ 'state', 'close', 'reset', 'consolidate', 'row', 'trim',
+for _, name in pairs{ 'state', 'reset', 'close', 'consolidate', 'row', 'trim',
     'serialize_cancel' } do
     local f = sdb_core[name]
     SDB_TABLE[name] = function(self, ...)
@@ -126,11 +147,14 @@ end
 -- @param idsm (string) String in format "<storage method>:<identifier>".
 -- @param columns (table) sequence of @{racon.table.columnspec}.
 --------------------------------------------------------------------------------
-function stagedb(id, sm, columns)
-    checks('string', 'string','table')
-    local sdb, msg = sdb_core.init(id, sm, columns);
+function stagedb(idsm, columns)
+    checks('string', 'table')
+    local sm, id = idsm :match '^(.-):(.+)$'
+    local filename = computefilename(id, sm)
+    if not sm then error "Invalid identifier" end
+    local sdb, msg = sdb_core.init(filename or id, sm, columns);
     if not sdb then return nil, msg end
-    return setmetatable({sdb=sdb}, SDB_TABLE)
+    return setmetatable({sdb=sdb, file=filename}, SDB_TABLE)
 end
 
 return stagedb

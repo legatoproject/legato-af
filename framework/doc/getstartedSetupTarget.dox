@@ -1,0 +1,86 @@
+/** @page getstartedSetupTarget Setup Target
+
+Here's how to set up and run your target:
+
+@section serialCmn Setup Serial Communication to Target
+
+You need to install a serial commmunication program (e.g., Minicom) to access the target and obtain an IP address. 
+
+Check the @ref devBoardCables UART1 settings are correct. If you're using Minicom, you access the config and initialize menus through
+CTRL+A Z. Run @c ifconfig to display the IP address values. 
+
+Once you have IP addresses for the dev host and target, you can complete the target setup.
+ 
+@section copyStartScripts Copy Startup Scripts to Target 
+
+Startup scripts are copied automatically when @c instlegato is run the first time, or you can copy
+them manually by following the procedure below.
+
+Using ssh, access the target:
+
+@code ssh root@<target ip address> @endcode
+When prompted for a password, press enter.
+
+Then create the startup directory:
+@code mkdir -p  /mnt/flash/startup @endcode
+
+Then copy the startup files to the target by running the following from the dev host:
+@code
+scp targetFiles/mdm-9x15/startup/fg_* root@<device ip addr>:/mnt/flash/startup
+@endcode
+
+Scripts beginning with @c fg_ are run first during startup, and then everything else is runs in the background. 
+You can add more scripts to customize your target. @c fg_ scripts must have executable permissions or they will not run.
+
+See @ref getstartedInstallNotes for helpful target setup tips.
+
+@note In the rare case you need to prevent legato starting automatically, run
+@code touch /mnt/flash/startup/STOPLEGATO @endcode 
+
+@section rebootTarget Reboot Target
+
+Wait for the target to fully reboot. The target IP address may have changed. Check it using 
+@c ifconfig through the serial console before proceeding.
+
+@section copyLibExe Copy Libraries and Executables
+
+@b Run this to copy the Legato framework libraries and executables onto the target, and 
+start the Legato runtime components:
+
+@code 
+$ instlegato build/wp7 <target ip address>  
+@endcode
+
+If target startup scripts don't exist or don't match the ones in:
+@code targetFiles/mdm-9x15/startup @endcode
+... they'll be copied to the target.
+Old startup files from the target will be copied to the host and can be found in:
+@code targetFiles/mdm-9x15/backup @endcode
+
+After updating startup files the target will reboot. Once the target restarts you must run 
+@c instlegato again to complete installation.
+
+@section startApps Start Apps
+
+To start an app on the target, run:
+
+@verbatim
+root@swi-mdm9x15:~# app start <app name>
+@endverbatim
+
+To stop an app on the target, run:
+@verbatim
+root@swi-mdm9x15:~# app stop <app name>
+@endverbatim
+
+Run @c app @c help for options.
+
+<HR>
+
+These are @subpage getstartedTargetDirs installed.
+
+<HR>
+
+Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+
+**/

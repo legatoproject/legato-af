@@ -7,17 +7,14 @@
 find_package(Legato REQUIRED)
 find_package(CUnit REQUIRED)
 
-set(APP_COMPONENT semaphoreTest)
 set(APP_TARGET testFwSemaphore)
-set(APP_SOURCES
-    test_le_semaphore.c
-)
 
-include_directories(${CUNIT_INCLUDE_DIRS})
-
-set_legato_component(${APP_COMPONENT})
-add_legato_executable(${APP_TARGET} ${APP_SOURCES})
-
-target_link_libraries(${APP_TARGET} ${CUNIT_LIBRARIES})
+mkexe(  ${APP_TARGET}
+            test_le_semaphore.c
+            -i ${CUNIT_INSTALL}/include
+            ${CUNIT_LIBRARIES}
+        DEPENDS
+            test_le_semaphore.c
+        )
 
 add_test(${APP_TARGET} ${EXECUTABLE_OUTPUT_PATH}/${APP_TARGET})

@@ -2,8 +2,12 @@
  * Copyright (c) 2012 Sierra Wireless and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+ * and Eclipse Distribution License v1.0 which accompany this distribution.
+ *
+ * The Eclipse Public License is available at
+ *   http://www.eclipse.org/legal/epl-v10.html
+ * The Eclipse Distribution License is available at
+ *   http://www.eclipse.org/org/documents/edl-v10.php
  *
  * Contributors:
  *     Fabien Fleutot for Sierra Wireless - initial API and implementation
@@ -368,8 +372,4 @@ sdb_ncolumn_t sdb_getcolnum( sdb_table_t *tbl, const char *name) {
 const char *sdb_getcolname( sdb_table_t *tbl, sdb_ncolumn_t icol) {
   if( (tbl->state == SDB_ST_BROKEN) || (tbl->state == SDB_ST_UNCONFIGURED)) return NULL;
     return tbl->conf_strings + tbl->columns[icol].label_offset;
-}
-
-const char *sdb_getpath( sdb_table_t *tbl) {
-  return tbl->conf_strings ;
 }

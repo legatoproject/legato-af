@@ -4,8 +4,12 @@
 # Copyright (c) 2012 Sierra Wireless and others.
 # All rights reserved. This program and the accompanying materials
 # are made available under the terms of the Eclipse Public License v1.0
-# which accompanies this distribution, and is available at
-# http://www.eclipse.org/legal/epl-v10.html
+# and Eclipse Distribution License v1.0 which accompany this distribution.
+#
+# The Eclipse Public License is available at
+#   http://www.eclipse.org/legal/epl-v10.html
+# The Eclipse Distribution License is available at
+#   http://www.eclipse.org/org/documents/edl-v10.php
 #
 # Contributors:
 #     Sierra Wireless - initial API and implementation
@@ -98,6 +102,7 @@ shift $(($OPTIND - 1))
 # Choose where to build
 if [ $# -gt 0 ]; then
     DESTDIR=$1
+    
 else
     NOW=$(date +"%Y%m%d%H%M%S")
     DESTDIR="$INITIAL_WD/tests$NOW"
@@ -115,6 +120,7 @@ else
 fi
 
 cd $DESTDIR
+DESTDIR=$(pwd)
 
 #cmake Mihini
 cmake -DPLATFORM=default $RA_SVNDIR

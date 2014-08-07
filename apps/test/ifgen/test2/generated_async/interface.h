@@ -192,6 +192,22 @@ void allParameters
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Test file descriptors as IN and OUT parameters
+ */
+//--------------------------------------------------------------------------------------------------
+void FileTest
+(
+    int dataFile,
+        ///< [IN]
+        ///< file descriptor as IN parameter
+
+    int* dataOutPtr
+        ///< [OUT]
+        ///< file descriptor as OUT parameter
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This function fakes an event, so that the handler will be called.
  * Only needed for testing.  Would never exist on a real system.
  */

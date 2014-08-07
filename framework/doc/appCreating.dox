@@ -1,8 +1,5 @@
 /** @page appCreating Create Applications
 
-@ref appOverview  <br>
-@ref appCreatingWhatsNext  <br>
-
 @section appOverview Overview
 
 An application is a collection of one or more processes running one or more executables.

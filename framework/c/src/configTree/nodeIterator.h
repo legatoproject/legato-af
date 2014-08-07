@@ -5,8 +5,8 @@
  *
  *  Module that handles the configuration tree iterator functionality.
  *
- *  Copyright (C) Sierra Wireless, Inc. 2013, 2014. All rights reserved. Use of this work is subject
- *  to license.
+ *  Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved.
+ *  Use of this work is subject to license.
  */
 // -------------------------------------------------------------------------------------------------
 
@@ -76,11 +76,11 @@ void ni_Init
 //--------------------------------------------------------------------------------------------------
 ni_IteratorRef_t ni_CreateIterator
 (
-    le_msg_SessionRef_t sessionRef,  ///< The user session this request occured on.
-    tu_UserRef_t userRef,            ///< Create the iterator for this user.
-    tdb_TreeRef_t treeRef,           ///< The tree to create the iterator with.
-    ni_IteratorType_t type,          ///< The type of iterator we are creating, read or write?
-    const char* initialPathRef       ///< The node to move to in the specified tree.
+    le_msg_SessionRef_t sessionRef,  ///< [IN] The user session this request occured on.
+    tu_UserRef_t userRef,            ///< [IN] Create the iterator for this user.
+    tdb_TreeRef_t treeRef,           ///< [IN] The tree to create the iterator with.
+    ni_IteratorType_t type,          ///< [IN] The type of iterator we are creating, read or write?
+    const char* initialPathPtr       ///< [IN] The node to move to in the specified tree.
 );
 
 
@@ -93,7 +93,7 @@ ni_IteratorRef_t ni_CreateIterator
 //--------------------------------------------------------------------------------------------------
 le_cfg_IteratorRef_t ni_CreateRef
 (
-    ni_IteratorRef_t iteratorRef  ///< The iterator to generate a reference for.
+    ni_IteratorRef_t iteratorRef  ///< [IN] The iterator to generate a reference for.
 );
 
 
@@ -106,8 +106,8 @@ le_cfg_IteratorRef_t ni_CreateRef
 //--------------------------------------------------------------------------------------------------
 ni_IteratorRef_t ni_InternalRefFromExternalRef
 (
-    tu_UserRef_t userRef,             ///< We're getting an iterator for this user.
-    le_cfg_IteratorRef_t iteratorRef  ///< The reference we're to look up.
+    tu_UserRef_t userRef,             ///< [IN] We're getting an iterator for this user.
+    le_cfg_IteratorRef_t externalRef  ///< [IN] The reference we're to look up.
 );
 
 
@@ -120,7 +120,7 @@ ni_IteratorRef_t ni_InternalRefFromExternalRef
 //--------------------------------------------------------------------------------------------------
 void ni_Commit
 (
-    ni_IteratorRef_t iteratorRef  ///< The iterator to commit to the tree.
+    ni_IteratorRef_t iteratorRef  ///< [IN] The iterator to commit to the tree.
 );
 
 
@@ -134,7 +134,7 @@ void ni_Commit
 //--------------------------------------------------------------------------------------------------
 void ni_Release
 (
-    ni_IteratorRef_t iteratorRef  ///< Free the resources used by this iterator.
+    ni_IteratorRef_t iteratorRef  ///< [IN] Free the resources used by this iterator.
 );
 
 
@@ -144,13 +144,18 @@ void ni_Release
 /**
  *  Close an iterator object and invalidate it's external safe reference.  (If there is one.)  Once
  *  done, this iterator is no longer accessable from outside of the process.
+ *
+ *  An iterator is closed with out releasing in the case where you have an open write iterator on a
+ *  tree with open reads.  The iterator is closed, but it's data is not yet mergable into the tree.
+ *
+ *  So, the iterator is marked as closed and it's external ref is invalidated so no more work can be
+ *  done with that iterator.
  */
 //--------------------------------------------------------------------------------------------------
 void ni_Close
 (
-    ni_IteratorRef_t iteratorRef  ///< The iterator object to close.
+    ni_IteratorRef_t iteratorRef  ///< [IN] The iterator object to close.
 );
-
 
 
 
@@ -158,12 +163,12 @@ void ni_Close
 /**
  *  Check to see if the iterator has been previously closed.
  *
- *  @return True if the iterator has been closed, false if not.
+ *  @return True if the tierator is closed, false if not.
  */
 //--------------------------------------------------------------------------------------------------
 bool ni_IsClosed
 (
-    ni_ConstIteratorRef_t iteratorRef  ///< The iterator object to check.
+    ni_ConstIteratorRef_t iteratorRef  ///< [IN] The iterator object to check.
 );
 
 
@@ -172,11 +177,13 @@ bool ni_IsClosed
 //--------------------------------------------------------------------------------------------------
 /**
  *  Check to see if the iterator is ment to allow writes.
+ *
+ *  @return True if the iterator is writeable, false if not.
  */
 //--------------------------------------------------------------------------------------------------
 bool ni_IsWriteable
 (
-    ni_ConstIteratorRef_t iteratorRef  ///< Does this iterator represent a write transaction?
+    ni_ConstIteratorRef_t iteratorRef  ///< [IN] Does this iterator represent a write transaction?
 );
 
 
@@ -191,7 +198,7 @@ bool ni_IsWriteable
 //--------------------------------------------------------------------------------------------------
 le_msg_SessionRef_t ni_GetSession
 (
-    ni_ConstIteratorRef_t iteratorRef  ///< The iterator object to read.
+    ni_ConstIteratorRef_t iteratorRef  ///< [IN] The iterator object to read.
 );
 
 
@@ -206,7 +213,7 @@ le_msg_SessionRef_t ni_GetSession
 //--------------------------------------------------------------------------------------------------
 tu_UserRef_t ni_GetUser
 (
-    ni_ConstIteratorRef_t iteratorRef  ///< The iterator object to read.
+    ni_ConstIteratorRef_t iteratorRef  ///< [IN] The iterator object to read.
 );
 
 
@@ -221,7 +228,7 @@ tu_UserRef_t ni_GetUser
 //--------------------------------------------------------------------------------------------------
 tdb_TreeRef_t ni_GetTree
 (
-    ni_ConstIteratorRef_t iteratorRef  ///< The iterator object to read.
+    ni_ConstIteratorRef_t iteratorRef  ///< [IN] The iterator object to read.
 );
 
 
@@ -237,9 +244,9 @@ tdb_TreeRef_t ni_GetTree
 // -------------------------------------------------------------------------------------------------
 void ni_ForEachIter
 (
-    itr_ForEachHandler functionRef,  ///< The function to call with our matches.
-    void* contextPtr                 ///< Pass along any extra information the callback function
-                                     ///<   may require.
+    itr_ForEachHandler functionPtr,  ///< [IN] The function to call with our matches.
+    void* contextPtr                 ///< [IN] Pass along any extra information the callback
+                                     ///<      function may require.
 );
 
 
@@ -255,8 +262,8 @@ void ni_ForEachIter
 //--------------------------------------------------------------------------------------------------
 le_result_t ni_GoToNode
 (
-    ni_IteratorRef_t iteratorRef,  ///< The iterator object to access.
-    const char* newPathPtr         ///< Path to the new location in the tree to jump to.
+    ni_IteratorRef_t iteratorRef,  ///< [IN] The iterator object to access.
+    const char* newPathPtr         ///< [IN] Path to the new location in the tree to jump to.
 );
 
 
@@ -271,9 +278,9 @@ le_result_t ni_GoToNode
 //--------------------------------------------------------------------------------------------------
 tdb_NodeRef_t ni_GetNode
 (
-    ni_IteratorRef_t iteratorRef,  ///< The iterator object to access.
-    const char* subPathPtr         ///< Optional, can be used to specify a node relative to the
-                                   ///<   current one.
+    ni_IteratorRef_t iteratorRef,  ///< [IN] The iterator object to access.
+    const char* subPathPtr         ///< [IN] Optional, can be used to specify a node relative to the
+                                   ///<      current one.
 );
 
 
@@ -288,9 +295,9 @@ tdb_NodeRef_t ni_GetNode
 //--------------------------------------------------------------------------------------------------
 bool ni_NodeExists
 (
-    ni_IteratorRef_t iteratorRef,  ///< The iterator object to access.
-    const char* newPathPtr         ///< Optional, can be used to specify a node relative to the
-                                   ///<   current one.
+    ni_IteratorRef_t iteratorRef,  ///< [IN] The iterator object to access.
+    const char* newPathPtr         ///< [IN] Optional, can be used to specify a node relative to the
+                                   ///<      current one.
 );
 
 
@@ -305,9 +312,9 @@ bool ni_NodeExists
 //--------------------------------------------------------------------------------------------------
 bool ni_IsEmpty
 (
-    ni_IteratorRef_t iteratorRef,  ///< The iterator object to access.
-    const char* newPathPtr         ///< Optional, can be used to specify a node relative to the
-                                   ///<   current one.
+    ni_IteratorRef_t iteratorRef,  ///< [IN] The iterator object to access.
+    const char* newPathPtr         ///< [IN] Optional, can be used to specify a node relative to the
+                                   ///<      current one.
 );
 
 
@@ -320,9 +327,9 @@ bool ni_IsEmpty
 //--------------------------------------------------------------------------------------------------
 void ni_SetEmpty
 (
-    ni_IteratorRef_t iteratorRef,  ///< The iterator object to access.
-    const char* newPathPtr         ///< Optional, can be used to specify a node relative to the
-                                   ///<   current one.
+    ni_IteratorRef_t iteratorRef,  ///< [IN] The iterator object to access.
+    const char* newPathPtr         ///< [IN] Optional, can be used to specify a node relative to the
+                                   ///< [IN] current one.
 );
 
 
@@ -335,9 +342,9 @@ void ni_SetEmpty
 //--------------------------------------------------------------------------------------------------
 void ni_DeleteNode
 (
-    ni_IteratorRef_t iteratorRef,  ///< The iterator object to access.
-    const char* newPathPtr         ///< Optional, can be used to specify a node relative to the
-                                   ///<   current one.
+    ni_IteratorRef_t iteratorRef,  ///< [IN] The iterator object to access.
+    const char* newPathPtr         ///< [IN] Optional, can be used to specify a node relative to the
+                                   ///<      current one.
 );
 
 
@@ -352,7 +359,7 @@ void ni_DeleteNode
 //--------------------------------------------------------------------------------------------------
 le_result_t ni_GoToParent
 (
-    ni_IteratorRef_t iteratorRef  ///< The iterator object to access.
+    ni_IteratorRef_t iteratorRef  ///< [IN] The iterator object to access.
 );
 
 
@@ -367,7 +374,7 @@ le_result_t ni_GoToParent
 //--------------------------------------------------------------------------------------------------
 le_result_t ni_GoToFirstChild
 (
-    ni_IteratorRef_t iteratorRef  ///< The iterator object to access.
+    ni_IteratorRef_t iteratorRef  ///< [IN] The iterator object to access.
 );
 
 
@@ -382,7 +389,7 @@ le_result_t ni_GoToFirstChild
 //--------------------------------------------------------------------------------------------------
 le_result_t ni_GoToNextSibling
 (
-    ni_IteratorRef_t iteratorRef  ///< The iterator object to access.
+    ni_IteratorRef_t iteratorRef  ///< [IN] The iterator object to access.
 );
 
 
@@ -400,11 +407,11 @@ le_result_t ni_GoToNextSibling
 //--------------------------------------------------------------------------------------------------
 le_result_t ni_GetPathForNode
 (
-    ni_IteratorRef_t iteratorRef,  ///< The iterator object to access.
-    const char* subPathPtr,        ///< Optional, can be used to specify a node relative to the
-                                   ///<   current one.
-    char* destBufferPtr,           ///< The buffer to copy string data into.
-    size_t bufferMax               ///< The maximum size of the string buffer.
+    ni_IteratorRef_t iteratorRef,  ///< [IN]  The iterator object to access.
+    const char* subPathPtr,        ///< [IN]  Optional, can be used to specify a node relative to
+                                   ///<       the current one.
+    char* destBufferPtr,           ///< [OUT] The buffer to copy string data into.
+    size_t bufferMax               ///< [IN]  The maximum size of the string buffer.
 );
 
 
@@ -422,9 +429,9 @@ le_result_t ni_GetPathForNode
 //--------------------------------------------------------------------------------------------------
 le_cfg_nodeType_t ni_GetNodeType
 (
-    ni_IteratorRef_t iteratorRef,  ///< The iterator object to access.
-    const char* pathPtr            ///< Optional.  If specified, this path can refer to another node
-                                   ///<   in the tree.
+    ni_IteratorRef_t iteratorRef,  ///< [IN] The iterator object to access.
+    const char* pathPtr            ///< [IN] Optional.  If specified, this path can refer to another
+                                   ///<      node in the tree.
 );
 
 
@@ -440,10 +447,10 @@ le_cfg_nodeType_t ni_GetNodeType
 //--------------------------------------------------------------------------------------------------
 le_result_t ni_GetNodeName
 (
-    ni_IteratorRef_t iteratorRef,  ///< The iterator object to access.
-    const char* pathPtr,           ///< Optional path to another node in the tree.
-    char* destBufferPtr,           ///< The buffer to copy string data into.
-    size_t bufferMax               ///< The maximum size of the string buffer.
+    ni_IteratorRef_t iteratorRef,  ///< [IN]  The iterator object to access.
+    const char* pathPtr,           ///< [IN]  Optional path to another node in the tree.
+    char* destBufferPtr,           ///< [OUT] The buffer to copy string data into.
+    size_t bufferMax               ///< [IN]  The maximum size of the string buffer.
 );
 
 
@@ -454,15 +461,16 @@ le_result_t ni_GetNodeName
  *  Set the name of a given node in the tree, or if a path is not specified the iterator's current
  *  node is used.
  *
- *  @return LE_OK if the set is successful.  LE_FORMAT_ERROR if the name contains illegial
- *          characters, or otherwise would not work as a node name.
+ *  @return LE_OK if the set is successful.  LE_FORMAT_ERROR if the name contains illegal
+ *          characters, or otherwise would not work as a node name.  LE_OVERFLOW if the name is too
+ *          long.  LE_DUPLICATE, if there is another node with the new name in the same collection.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t ni_SetNodeName
 (
-    ni_IteratorRef_t iteratorRef,  ///< The iterator object to access.
-    const char* pathPtr,           ///< Optional path to another node in the tree.
-    const char* namePtr            ///< The new name to use.
+    ni_IteratorRef_t iteratorRef,  ///< [IN] The iterator object to access.
+    const char* pathPtr,           ///< [IN] Optional path to another node in the tree.
+    const char* namePtr            ///< [IN] The new name to use.
 );
 
 
@@ -477,11 +485,11 @@ le_result_t ni_SetNodeName
 //--------------------------------------------------------------------------------------------------
 le_result_t ni_GetNodeValueString
 (
-    ni_IteratorRef_t iteratorRef,  ///< The iterator object to access.
-    const char* pathPtr,           ///< Optional path to another node in the tree.
-    char* destBufferPtr,           ///< The buffer to copy string data into.
-    size_t bufferMax,              ///< The maximum size of the string buffer.
-    const char* defaultPtr         ///< If the value can not be found, use this one instead.
+    ni_IteratorRef_t iteratorRef,  ///< [IN]  The iterator object to access.
+    const char* pathPtr,           ///< [IN]  Optional path to another node in the tree.
+    char* destBufferPtr,           ///< [OUT] The buffer to copy string data into.
+    size_t bufferMax,              ///< [IN]  The maximum size of the string buffer.
+    const char* defaultPtr         ///< [IN]  If the value can not be found, use this one instead.
 );
 
 
@@ -494,9 +502,9 @@ le_result_t ni_GetNodeValueString
 //--------------------------------------------------------------------------------------------------
 void ni_SetNodeValueString
 (
-    ni_IteratorRef_t iteratorRef,  ///< The iterator object to access.
-    const char* pathPtr,           ///< Optional path to another node in the tree.
-    const char* valuePtr           ///< Write this value into the tree.
+    ni_IteratorRef_t iteratorRef,  ///< [IN] The iterator object to access.
+    const char* pathPtr,           ///< [IN] Optional path to another node in the tree.
+    const char* valuePtr           ///< [IN] Write this value into the tree.
 );
 
 
@@ -513,9 +521,9 @@ void ni_SetNodeValueString
 //--------------------------------------------------------------------------------------------------
 int32_t ni_GetNodeValueInt
 (
-    ni_IteratorRef_t iteratorRef,  ///< The iterator object to access.
-    const char* pathPtr,           ///< Optional path to another node in the tree.
-    int32_t defaultValue           ///< If the value can not be found, use this one instead.
+    ni_IteratorRef_t iteratorRef,  ///< [IN] The iterator object to access.
+    const char* pathPtr,           ///< [IN] Optional path to another node in the tree.
+    int32_t defaultValue           ///< [IN] If the value can not be found, use this one instead.
 );
 
 
@@ -528,9 +536,9 @@ int32_t ni_GetNodeValueInt
 //--------------------------------------------------------------------------------------------------
 void ni_SetNodeValueInt
 (
-    ni_IteratorRef_t iteratorRef,  ///< The iterator object to access.
-    const char* pathPtr,           ///< Optional path to another node in the tree.
-    int32_t value                  ///< The value to write.
+    ni_IteratorRef_t iteratorRef,  ///< [IN] The iterator object to access.
+    const char* pathPtr,           ///< [IN] Optional path to another node in the tree.
+    int32_t value                  ///< [IN] The value to write.
 );
 
 
@@ -547,9 +555,9 @@ void ni_SetNodeValueInt
 //--------------------------------------------------------------------------------------------------
 double ni_GetNodeValueFloat
 (
-    ni_IteratorRef_t iteratorRef,  ///< The iterator object to access.
-    const char* pathPtr,           ///< Optional path to another node in the tree.
-    double defaultValue            ///< If the value can not be found, use this one instead.
+    ni_IteratorRef_t iteratorRef,  ///< [IN] The iterator object to access.
+    const char* pathPtr,           ///< [IN] Optional path to another node in the tree.
+    double defaultValue            ///< [IN] If the value can not be found, use this one instead.
 );
 
 
@@ -562,9 +570,9 @@ double ni_GetNodeValueFloat
 //--------------------------------------------------------------------------------------------------
 void ni_SetNodeValueFloat
 (
-    ni_IteratorRef_t iteratorRef,  ///< The iterator object to access.
-    const char* pathPtr,           ///< Optional path to another node in the tree.
-    double value                   ///< The value to write.
+    ni_IteratorRef_t iteratorRef,  ///< [IN] The iterator object to access.
+    const char* pathPtr,           ///< [IN] Optional path to another node in the tree.
+    double value                   ///< [IN] The value to write.
 );
 
 
@@ -580,9 +588,9 @@ void ni_SetNodeValueFloat
 //--------------------------------------------------------------------------------------------------
 bool ni_GetNodeValueBool
 (
-    ni_IteratorRef_t iteratorRef,  ///< The iterator object to access.
-    const char* pathPtr,           ///< Optional path to another node in the tree.
-    bool defaultValue              ///< If the value can not be found, use this one instead.
+    ni_IteratorRef_t iteratorRef,  ///< [IN] The iterator object to access.
+    const char* pathPtr,           ///< [IN] Optional path to another node in the tree.
+    bool defaultValue              ///< [IN] If the value can not be found, use this one instead.
 );
 
 
@@ -595,9 +603,9 @@ bool ni_GetNodeValueBool
 //--------------------------------------------------------------------------------------------------
 void ni_SetNodeValueBool
 (
-    ni_IteratorRef_t iteratorRef,  ///< The iterator object to access.
-    const char* pathPtr,           ///< Optional path to another node in the tree.
-    bool value                     ///< The value to write.
+    ni_IteratorRef_t iteratorRef,  ///< [IN] The iterator object to access.
+    const char* pathPtr,           ///< [IN] Optional path to another node in the tree.
+    bool value                     ///< [IN] The value to write.
 );
 
 

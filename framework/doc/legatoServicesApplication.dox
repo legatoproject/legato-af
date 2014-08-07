@@ -1,0 +1,19 @@
+/** @page legatoServicesApplication Application 
+
+Application services provide easy-to-use interfaces to various application-level system and modem resources.
+Many of these services also perform resource arbitration amongst applications so multiple
+applications can share the same resources.
+
+Legato application services: <br>
+ @subpage c_le_data <br>
+ @subpage c_le_cellnet <br>
+ @subpage c_le_voicecall <br>
+  @subpage api_wdog  
+
+Application services are built on top of foundation services.
+
+<HR>
+
+Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+
+**/

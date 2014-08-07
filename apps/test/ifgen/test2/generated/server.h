@@ -15,7 +15,7 @@
 #include "legato.h"
 
 // Interface specific includes
-#include "common_interface.h"
+#include "common_server.h"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -184,6 +184,22 @@ void allParameters
 
     size_t moreNumElements
         ///< [IN]
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test file descriptors as IN and OUT parameters
+ */
+//--------------------------------------------------------------------------------------------------
+void FileTest
+(
+    int dataFile,
+        ///< [IN]
+        ///< file descriptor as IN parameter
+
+    int* dataOutPtr
+        ///< [OUT]
+        ///< file descriptor as OUT parameter
 );
 
 //--------------------------------------------------------------------------------------------------

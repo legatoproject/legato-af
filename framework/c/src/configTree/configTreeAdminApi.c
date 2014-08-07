@@ -3,28 +3,31 @@
 /**
  *  @file configTreeAdminApi.c
  *
- *  Copyright (C) Sierra Wireless, Inc. 2013, 2014. All rights reserved. Use of this work is subject
- *  to license.
+ *  Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved.
+ *  Use of this work is subject to license.
  */
 // -------------------------------------------------------------------------------------------------
 
 #include "legato.h"
+#include "limit.h"
 #include "interfaces.h"
+#include "treePath.h"
 #include "treeDb.h"
 #include "treeUser.h"
 #include "nodeIterator.h"
+#include "treeIterator.h"
 
 
 
 
 // -------------------------------------------------------------------------------------------------
 /**
- *  Get an iterator pointer from an iterator reference.
+ *  Get an iterator pointer from an iterator refereLIMIT_MAX_USER_NAME_LENnce.
  */
 // -------------------------------------------------------------------------------------------------
 static ni_IteratorRef_t GetIteratorFromRef
 (
-    le_cfg_IteratorRef_t externalRef  ///< The iterator reference to extract a pointer from.
+    le_cfg_IteratorRef_t externalRef  ///< [IN] Iterator reference to extract a pointer from.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -33,7 +36,7 @@ static ni_IteratorRef_t GetIteratorFromRef
 
     if (iteratorRef == NULL)
     {
-        tu_TerminateClient(le_cfgAdmin_GetClientSessionRef(), "Bad iterator reference.");
+        tu_TerminateConfigAdminClient(le_cfgAdmin_GetClientSessionRef(), "Bad iterator reference.");
     }
 
     return iteratorRef;
@@ -51,34 +54,34 @@ static ni_IteratorRef_t GetIteratorFromRef
 
 // -------------------------------------------------------------------------------------------------
 /**
- *  Read a subset of the configuration tree from the given filePath.  That tree then overwrites the
+ *  Read a subset of the configuration tree from the given filePath. That tree then overwrites the
  *  node at the given nodePath.
  *
- *  This function will import a sub-tree as part of the iterator's current transaction.  This allows
- *  you to create an iterator on a given node.  Import a sub-tree, and then examine the contents of
+ *  This function will import a sub-tree as part of the iterator's current transaction. This allows
+ *  you to create an iterator on a given node. Import a sub-tree, and then examine the contents of
  *  the import before deciding to commit the new data.
  *
  *  \b Responds \b With:
  *
- *  This function will respond with one of the following values:
+ *  Responds with one of the following values:
  *
- *          - LE_OK            - The commit was completed successfuly.
+ *          - LE_OK            - Commit was completed successfuly.
  *          - LE_NOT_PERMITTED - Attempted to import to a section of the tree the connection doesn't
  *                               have access to.
  *          - LE_FAULT         - An I/O error occured while reading the data.
- *          - LE_FORMAT_ERROR  - The configuration data being imported appears corrupted.
+ *          - LE_FORMAT_ERROR  - Configuration data being imported appears corrupted.
  */
 // -------------------------------------------------------------------------------------------------
 void le_cfgAdmin_ImportTree
 (
-    le_cfgAdmin_ServerCmdRef_t commandRef,  ///< Reference used to generate a reply for this
-                                            ///<   request.
-    le_cfg_IteratorRef_t externalRef,       ///< The write iterator that is being used for the
-                                            ///<   import.
-    const char* filePathPtr,                ///< Import the tree data from the this file.
-    const char* nodePathPtr                 ///< Where in the tree should this import happen?  Leave
-                                            ///<   as an empty string to use the iterator's current
-                                            ///<   node.
+    le_cfgAdmin_ServerCmdRef_t commandRef,  ///< [IN] Reference used to generate a reply for this
+                                            ///<      request.
+    le_cfg_IteratorRef_t externalRef,       ///< [IN] Write iterator that is being used for the
+                                            ///<      import.
+    const char* filePathPtr,                ///< [IN] Import the tree data from the this file.
+    const char* nodePathPtr                 ///< [IN] Where in the tree should this import happen?
+                                            ///<      Leave as an empty string to use the iterator's
+                                            ///<      current node.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -160,10 +163,10 @@ void le_cfgAdmin_ImportTree
  *
  *  \b Responds \b With:
  *
- *  This function will respond with one of the following values:
+ *  Responds with one of the following values:
  *
- *          - LE_OK            - The commit was completed successfuly.
- *          - LE_BAD_PARAMETER - The specified path does not exist in the config tree.
+ *          - LE_OK            - Commit was completed successfuly.
+ *          - LE_BAD_PARAMETER - Sspecified path does not exist in the config tree.
  *          - LE_NOT_PERMITTED - Attempted to export from a section of the tree the connection
  *                               doesn't have access to.
  *          - LE_FAULT         - An I/O error occured while writing the data.
@@ -171,14 +174,14 @@ void le_cfgAdmin_ImportTree
 // -------------------------------------------------------------------------------------------------
 void le_cfgAdmin_ExportTree
 (
-    le_cfgAdmin_ServerCmdRef_t commandRef,  ///< Reference used to generate a reply for this
-                                            ///<   request.
-    le_cfg_IteratorRef_t externalRef,       ///< The write iterator that is being used for the
-                                            ///<   export.
-    const char* filePathPtr,                ///< Import the tree data from the this file.
-    const char* nodePathPtr                 ///< Where in the tree should this export happen?  Leave
-                                            ///<   as an empty string to use the iterator's current
-                                            ///<   node.
+    le_cfgAdmin_ServerCmdRef_t commandRef,  ///< [IN] Reference used to generate a reply for this
+                                            ///<      request.
+    le_cfg_IteratorRef_t externalRef,       ///< [IN] Write iterator that is being used for the
+                                            ///<      export.
+    const char* filePathPtr,                ///< [IN] Import the tree data from the this file.
+    const char* nodePathPtr                 ///< [IN] Where in the tree should this export happen?
+                                            ///<      Leave as an empty string to use the iterator's
+                                            ///<      current node.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -240,14 +243,86 @@ void le_cfgAdmin_ExportTree
 
 
 // -------------------------------------------------------------------------------------------------
-//  Listing configuration trees.
+//  Tree maintenance.
 // -------------------------------------------------------------------------------------------------
 
 
 
 
-/// Ref to the treeDb's hash of trees iterator.
-le_hashmap_It_Ref_t TreeIterRef = NULL;
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Delete a tree from the system, both from the filesystem and from memory.
+ */
+// -------------------------------------------------------------------------------------------------
+void le_cfgAdmin_DeleteTree
+(
+    le_cfgAdmin_ServerCmdRef_t commandRef,  ///< [IN] Reference used to generate a reply for this
+                                            ///<      request.
+    const char* treeName                    ///< [IN] Name of the tree to delete.
+)
+// -------------------------------------------------------------------------------------------------
+{
+    tdb_DeleteTree(tdb_GetTree(treeName));
+    le_cfgAdmin_DeleteTreeRespond(commandRef);
+}
+
+
+
+
+// -------------------------------------------------------------------------------------------------
+//  Iterating configuration trees.
+// -------------------------------------------------------------------------------------------------
+
+
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Create a new iterator object for iterating over the list of trees currently managed by the
+ *  config tree daemon.
+ *
+ *  \b Responds \b With:
+ *
+ *  A newly created reference to a newly created tree iterator object.
+ */
+// -------------------------------------------------------------------------------------------------
+void le_cfgAdmin_CreateTreeIterator
+(
+    le_cfgAdmin_ServerCmdRef_t commandRef  ///< [IN] Reference used to generate a reply for this
+                                           ///<      request.
+)
+// -------------------------------------------------------------------------------------------------
+{
+    le_cfgAdmin_CreateTreeIteratorRespond(commandRef,
+                                          ti_CreateIterator(le_cfgAdmin_GetClientSessionRef()));
+}
+
+
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Release the iterator and free its memory back to the system.
+ */
+// -------------------------------------------------------------------------------------------------
+void le_cfgAdmin_ReleaseTreeIterator
+(
+    le_cfgAdmin_ServerCmdRef_t commandRef,  ///< [IN] Reference used to generate a reply for this
+                                            ///<      request.
+    le_cfgAdmin_IteratorRef_t iteratorRef   ///< [IN] Iterator object to release.
+)
+// -------------------------------------------------------------------------------------------------
+{
+    le_msg_SessionRef_t sessionRef = le_cfgAdmin_GetClientSessionRef();
+    ti_TreeIteratorRef_t internalRef = ti_InternalRefFromExternalRef(sessionRef, iteratorRef);
+
+    if (internalRef != NULL)
+    {
+        ti_ReleaseIterator(internalRef);
+    }
+
+    le_cfgAdmin_ReleaseTreeIteratorRespond(commandRef);
+}
 
 
 
@@ -258,37 +333,37 @@ le_hashmap_It_Ref_t TreeIterRef = NULL;
  *
  *  \b Responds \b With:
  *
- *  This function will respond with one of the following values:
- *
- *    - LE_OK if there is enough room to copy the name into the supplied buffer.
- *    - LE_OVERFLOW if not.
+ *  LE_OK if there is enough room to copy the name into the supplied buffer.  LE_OVERFLOW if
+ *  not.  LE_NOT_FOUND is returned if the list is empty or if the iterator hasn't been moved
+ *  onto the first item yet.
  */
 // -------------------------------------------------------------------------------------------------
 void le_cfgAdmin_GetTreeName
 (
-    le_cfgAdmin_ServerCmdRef_t commandRef,      ///< Reference used to generate a reply for this
-                                                ///<   request.
-    size_t maxNameLength                        ///< Size of the return buffer.
+    le_cfgAdmin_ServerCmdRef_t commandRef,  ///< [IN] Reference used to generate a reply for this
+                                            ///<      request.
+    le_cfgAdmin_IteratorRef_t iteratorRef,  ///< [IN] Iterator object to read.
+    size_t nameSize                         ///< [IN] Size of the client's name buffer.
 )
 // -------------------------------------------------------------------------------------------------
 {
-    // Are we in the middle of an iteration?  If not, start one now.
-    if (TreeIterRef == NULL)
-    {
-        TreeIterRef = tdb_GetTreeIterRef();
-    }
+    le_msg_SessionRef_t sessionRef = le_cfgAdmin_GetClientSessionRef();
+    ti_TreeIteratorRef_t internalRef = ti_InternalRefFromExternalRef(sessionRef, iteratorRef);
 
-    // Get the current tree name.  Let the caller know if it'll fit.
-    char* namePtr = (char*)le_hashmap_GetKey(TreeIterRef);
+    char treeName[MAX_TREE_NAME_BYTES] = "";
     le_result_t result = LE_OK;
 
-    if (strlen(namePtr) >= maxNameLength)
+    if (nameSize > MAX_TREE_NAME_BYTES)
     {
-        result = LE_OVERFLOW;
+        nameSize = MAX_TREE_NAME_BYTES;
     }
 
-    // Let the caller know what happened.
-    le_cfgAdmin_GetTreeNameRespond(commandRef, result, namePtr);
+    if (internalRef != NULL)
+    {
+        result = ti_GetCurrent(internalRef, treeName, nameSize);
+    }
+
+    le_cfgAdmin_GetTreeNameRespond(commandRef, result, treeName);
 }
 
 
@@ -296,39 +371,30 @@ void le_cfgAdmin_GetTreeName
 
 // -------------------------------------------------------------------------------------------------
 /**
- *  Move onto the next tree in the list.  If there are no more trees this function returns false,
- *  otherwise true is returned.
+ *  Move onto the next tree in the list.  f there are no more trees, returns false,
+ *  otherwise returns true.
  *
  *  \b Responds \b With:
  *
- *  This function will respond with one of the following values:
- *
- *    - LE_OK if there are more trees to iterate through.
- *    - LE_NOT_FOUND if not.
- *    - LE_FAULT if the tree collection was changed in the middle of an iterator.
+ *  LE_OK if there are more trees to iterate through.  LE_NOT_FOUND if not.
  */
 // -------------------------------------------------------------------------------------------------
 void le_cfgAdmin_NextTree
 (
-    le_cfgAdmin_ServerCmdRef_t commandRef  ///< Reference used to generate a reply for this request.
+    le_cfgAdmin_ServerCmdRef_t commandRef,  ///< [IN] Reference used to generate a reply for this
+                                            ///<      request.
+    le_cfgAdmin_IteratorRef_t iteratorRef   ///< [IN] Iterator to iterate.
 )
 // -------------------------------------------------------------------------------------------------
 {
-    // If we haven't started an iteration yet, start one now.
-    if (TreeIterRef == NULL)
+    le_msg_SessionRef_t sessionRef = le_cfgAdmin_GetClientSessionRef();
+    ti_TreeIteratorRef_t internalRef = ti_InternalRefFromExternalRef(sessionRef, iteratorRef);
+
+    le_result_t result = LE_OK;
+
+    if (internalRef != NULL)
     {
-        TreeIterRef = tdb_GetTreeIterRef();
-        le_cfgAdmin_NextTreeRespond(commandRef, LE_OK);
-
-        return;
-    }
-
-    // Looks like we're in the middle of an iteration.  So, let's continue.
-    le_result_t result = le_hashmap_NextNode(TreeIterRef);
-
-    if (result != LE_OK)
-    {
-        TreeIterRef = NULL;
+        result = ti_MoveNext(internalRef);
     }
 
     le_cfgAdmin_NextTreeRespond(commandRef, result);

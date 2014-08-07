@@ -2,7 +2,7 @@
 /**
  * Utility functions used by the mk tools.
  *
- * Copyright (C) 201 Sierra Wireless Inc., all rights reserved.
+ * Copyright (C) 2013-2014, Sierra Wireless Inc.  Use of this work is subject to license.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -16,6 +16,8 @@
 #include <list>
 #include "LegatoObjectModel.h"
 #include "Utilities.h"
+#include "../Parser/Parser.h"
+#include <string.h>
 
 extern "C" {
     #include <unistd.h>
@@ -24,6 +26,34 @@ extern "C" {
 
 namespace mk
 {
+
+
+/// Map of API file paths (after env var substitution) to protocol hashes.
+static std::map<std::string, std::string> ApiHashCache;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Fetch the value of a given environment variable.
+ *
+ * @return  The value ("" if not found).
+ */
+//--------------------------------------------------------------------------------------------------
+std::string GetEnvValue
+(
+    const std::string& name  ///< The name of the environment variable.
+)
+{
+    const char* value = getenv(name.c_str());
+
+    if (value == nullptr)
+    {
+        return "";
+    }
+
+    return value;
+}
+
 
 
 //--------------------------------------------------------------------------------------------------
@@ -56,7 +86,7 @@ std::string GetRequiredEnvValue
 /**
  * Get the command-line path to use to invoke the (cross) compiler for a given target.
  *
- * @return  The target.
+ * @return  The path to the compiler.
  *
  * @throw   legato::Exception if target not recognized.
  */
@@ -86,9 +116,105 @@ std::string GetCompilerPath
         return legato::CombinePath(envValue, "arm-poky-linux-gnueabi-gcc");
     }
 
-    throw std::runtime_error("Attempting to build for target '" + target + ", but '" + varName + "' is not set.");
+    throw std::runtime_error("Attempting to build for target '" + target + ", but '"
+                             + varName + "' is not set.");
 }
 
+
+
+//----------------------------------------------------------------------------------------------
+/**
+ * Get the sysroot path to use when linking for a given target.
+ *
+ * @return  The path to the sysroot base directory.
+ *
+ * @throw   legato::Exception if target not recognized.
+ */
+//----------------------------------------------------------------------------------------------
+std::string GetSysRootPath
+(
+    const std::string& target  ///< Name of the target platform (e.g., "localhost" or "ar7").
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // Convert the target name to all-caps.
+    std::string allCapsTarget = target;
+    std::transform(allCapsTarget.begin(), allCapsTarget.end(), allCapsTarget.begin(), ::toupper);
+
+    std::string envValue;
+
+    // See if there's a XXXX_SYSROOT_DIR variable defined.
+    std::string varName = allCapsTarget + "_SYSROOT_DIR";
+    envValue = GetEnvValue(varName);
+    if (!envValue.empty())
+    {
+        return envValue;
+    }
+
+    // Since there's no specific variable defined for the sysroot, try to figure it out from
+    // the compiler.
+    std::string compilerPath = GetCompilerPath(target);
+    std::string commandLine = compilerPath + " --print-sysroot";
+
+    FILE* output = popen(commandLine.c_str(), "r");
+
+    if (output == NULL)
+    {
+        throw legato::Exception("Could not exec '" + commandLine + "' to get sysroot path.");
+    }
+
+    char buffer[1024] = { 0 };
+    static const size_t bufferSize = sizeof(buffer);
+
+    if (fgets(buffer, bufferSize, output) != buffer)
+    {
+        std::cerr << "Warning: Failed to receive sysroot path from compiler '" << compilerPath
+                  << "' (errno: " << strerror(errno) << ").  Assuming '/'." << std::endl;
+        buffer[0] = '/';
+        buffer[1] = '\0';
+    }
+    else
+    {
+        // Remove any trailing newline character.
+        size_t len = strlen(buffer);
+        if (buffer[len - 1] == '\n')
+        {
+            buffer[len - 1] = '\0';
+        }
+    }
+
+    // Close the connection and collect the exit code from ifgen.
+    int result;
+    do
+    {
+        result = pclose(output);
+
+    } while ((result == -1) && (errno == EINTR));
+
+    if (result == -1)
+    {
+        std::stringstream msg;
+        msg << "Failed to receive the sysroot path from the compiler '" << compilerPath
+            << "'. pclose() errno = " << strerror(errno);
+        throw legato::Exception(msg.str());
+    }
+    else if (!WIFEXITED(result))
+    {
+        std::stringstream msg;
+        msg << "Failed to receive the sysroot path from the compiler '" << compilerPath
+            << "'. Compiler was interrupted by something.";
+        throw legato::Exception(msg.str());
+    }
+    else if (WEXITSTATUS(result) != EXIT_SUCCESS)
+    {
+        std::stringstream msg;
+        msg << "Failed to receive the sysroot path from the compiler '" << compilerPath
+            << "'. Compiler '' exited with code " << WEXITSTATUS(result);
+        throw legato::Exception(msg.str());
+    }
+
+    return buffer;
+}
 
 
 //----------------------------------------------------------------------------------------------
@@ -106,8 +232,6 @@ void SetTargetSpecificEnvVars
 )
 //--------------------------------------------------------------------------------------------------
 {
-
-
     if (setenv("LEGATO_TARGET", target.c_str(), true /* overwrite existing */) != 0)
     {
         throw std::runtime_error("Failed to set LEGATO_TARGET environment variable to '"
@@ -130,61 +254,6 @@ void SetTargetSpecificEnvVars
     }
 }
 
-
-
-#if 0
-//--------------------------------------------------------------------------------------------------
-/**
- *  .
- */
-//--------------------------------------------------------------------------------------------------
-std::string IpcLibName
-(
-    const std::string& componentName,  ///
-    const std::string& niceName,       ///
-    legato::InterfaceRef::Type type    ///
-)
-{
-    return componentName + "." + niceName + ".ipc." + IpcTypeStr(niceName, type);
-}
-
-
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- *  .
- */
-//--------------------------------------------------------------------------------------------------
-std::string IpcInitFuncName
-(
-    const std::string& componentName,  ///
-    const std::string& niceName,       ///
-    legato::InterfaceRef::Type type    ///
-)
-{
-    std::string name;
-
-    switch (type)
-    {
-        case legato::InterfaceRef::IMPORT:
-            name = "Client";
-            break;
-
-        case legato::InterfaceRef::EXPORT:
-            name = "Server";
-            break;
-
-        default:
-            throw std::runtime_error("Unknown interface type for, '" + niceName + ".'");
-    }
-
-    return /*componentName + "_" +*/ niceName + "_Start" + name;
-}
-
-
-
-#endif
 
 
 
@@ -238,6 +307,8 @@ void ExecuteCommandLine
 /**
  * Generates the identifier that is to be used for the component initialization function for a
  * given component.
+ *
+ * @return The name of the function.
  */
 //--------------------------------------------------------------------------------------------------
 std::string GetComponentInitName
@@ -246,100 +317,104 @@ std::string GetComponentInitName
 )
 //--------------------------------------------------------------------------------------------------
 {
-    return "_" + component.CName() + "_Init_Function";
+    return "_" + component.CName() + "_COMPONENT_INIT";
 }
-
 
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Generate IPC API code for a given protocol in a given directory.
- */
+ * Gets the API protocol hash string for the framework's Config API.
+ *
+ * @return the hash string.
+ **/
 //--------------------------------------------------------------------------------------------------
-static void GenerateApiCode
+const std::string& ConfigApiHash
 (
-    const std::string& instanceName,    ///< Name of the interface instance.
-    const std::string& protocolFile,    ///< Path to the .api file.
-    const std::string& outputDir,       ///< Directory into which the library will go.
-    const std::string& clientOrServer,  ///< "client" or "server"
-    bool isVerbose                      ///< If true, write troubleshooting info to stdout.
+    const legato::BuildParams_t& buildParams
 )
 //--------------------------------------------------------------------------------------------------
 {
-    std::stringstream commandLine;
+    using namespace legato;
 
-    // Use the ifgen tool to generate the API code.
-    commandLine << "ifgen --gen-local --gen-interface";
+    static const char filePath[] = "$LEGATO_ROOT/interfaces/le_cfg.api";
 
-    if(clientOrServer == "server")
+    static const Api_t* apiPtr = parser::GetApiObject(DoEnvVarSubstitution(filePath), buildParams);
+
+    return apiPtr->Hash();
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets the API protocol hash string for the framework's Watchdog API.
+ *
+ * @return the hash string.
+ **/
+//--------------------------------------------------------------------------------------------------
+const std::string& WatchdogApiHash
+(
+    const legato::BuildParams_t& buildParams
+)
+//--------------------------------------------------------------------------------------------------
+{
+    using namespace legato;
+
+    static const char filePath[] = "$LEGATO_ROOT/interfaces/le_wdog.api";
+
+    static const Api_t* apiPtr = parser::GetApiObject(DoEnvVarSubstitution(filePath), buildParams);
+
+    return apiPtr->Hash();
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Copy a file or directory from the build host's file system to the application's staging
+ * directory.
+ **/
+//--------------------------------------------------------------------------------------------------
+void CopyToStaging
+(
+    const std::string& sourcePath,      ///< Build host file system path to source file.
+    const std::string& stagingDirPath,  ///< Build host file system path to staging directory.
+    const std::string& sandboxPath,     ///< Must be an absolute path in the app's runtime sandbox.
+    bool isVerbose                      ///< true if progress should be printed to stdout.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    bool isDirectory = legato::DirectoryExists(sourcePath);
+
+    // Generate the destination path in the build host's file system.
+    std::string destPath = stagingDirPath + sandboxPath;
+
+    // First we have to make sure that the containing directory exists in the staging area
+    // before trying to copy anything into it.
+    auto pos = destPath.rfind('/');
+    legato::MakeDir(destPath.substr(0, pos));
+
+    // Construct the copy shell command to use.
+    std::string copyCommand = "cp";
+
+    if (isDirectory)
     {
-        commandLine << " --gen-server --gen-server-interface";
-    }
-    else if(clientOrServer == "client")
-    {
-        commandLine << " --gen-client";
+        copyCommand += " -r";
     }
 
-    // Set the C identifier prefix to the instance name, followed by an underscore.
-    commandLine << " --name-prefix " << instanceName << "_";
-
-    // Set the generated file name prefix to the instance name, followed by an underscore.
-    commandLine << " --file-prefix " << instanceName << "_";
-
-    // Specify the output directory.
-    commandLine << " --output-dir " << outputDir;
-
-    // Specify the path to the protocol file.
-    commandLine << " " << protocolFile;
+    copyCommand += " \"";
+    copyCommand += sourcePath;
+    copyCommand += "\" \"";
+    copyCommand += destPath;
+    copyCommand += "\"";
 
     if (isVerbose)
     {
-        std::cout << commandLine.str() << std::endl;
+        std::cout << std::endl << "$ " << copyCommand << std::endl << std::endl;
     }
 
-    // Execute the command.
-    ExecuteCommandLine(commandLine.str());
+    mk::ExecuteCommandLine(copyCommand);
 }
 
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Generate IPC API client code for a given protocol in a given directory.
- */
-//--------------------------------------------------------------------------------------------------
-void GenerateApiClientCode
-(
-    const std::string& instanceName,    ///< Name of the interface instance.
-    const std::string& protocolFile,    ///< Path to the .api file.
-    const std::string& outputDir,       ///< Directory into which the library will go.
-    bool isVerbose                      ///< If true, write troubleshooting info to stdout.
-)
-//--------------------------------------------------------------------------------------------------
-{
-    GenerateApiCode(instanceName, protocolFile, outputDir, "client", isVerbose);
-}
-
-
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Generate IPC API server code for a given protocol in a given directory.
- */
-//--------------------------------------------------------------------------------------------------
-void GenerateApiServerCode
-(
-    const std::string& instanceName,    ///< Name of the interface instance.
-    const std::string& protocolFile,    ///< Path to the .api file.
-    const std::string& outputDir,       ///< Directory into which the library will go.
-    bool isVerbose                      ///< If true, write troubleshooting info to stdout.
-)
-//--------------------------------------------------------------------------------------------------
-{
-    GenerateApiCode(instanceName, protocolFile, outputDir, "server", isVerbose);
-}
 
 
 

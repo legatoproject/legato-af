@@ -1,0 +1,6 @@
+
+executables:
+    reader ( configTestAclApp )
+
+processes:
+    run: (reader system)

@@ -1,9 +1,9 @@
 /** @page c_semaphore Semaphore API
  *
- * @ref le_semaphore.h "Click here for the API Reference documentation."
+ * @ref le_semaphore.h "API Reference documentation"
  *
  * <HR>
- * 
+ *
  * @ref create_semaphore <br>
  * @ref use_semaphore <br>
  * @ref delete_semaphore <br>
@@ -48,6 +48,7 @@
  *  - @c le_sem_Post()
  *  - @c le_sem_Wait()
  *  - @c le_sem_TryWait()
+ *  - @c le_sem_WaitWithTimeOut()
  *
  * Function to get semaphores values is:
  *  - @c le_sem_GetValue()
@@ -66,16 +67,16 @@
  *
  * Both Normal and Traceable semaphores have some diagnostics capabilities.
  *
- * The command-line diagnostic tool @ref tool_lssemaphore "lssemaphore" can be used to list the
+ * The command-line diagnostic tool lssemaphore can be used to list the
  * semaphores that currently exist inside a given process.
  * The state of each semaphore can be seen, including a list of any threads that
  * might be waiting for that semaphore.
  *
- * The tool @ref tool_threadlook "threadlook" will show if a given thread is currently
+ * The tool threadlook will show if a given thread is currently
  * waiting for a semaphore, and will name that semaphore.
  *
  * If there are Traceable semaphores in a process, then it will be possible to use the
- * @ref tool_log "log" tool to enable or disable tracing on that semaphore.
+ * log tool to enable or disable tracing on that semaphore.
  * The trace keyword name is the name of the process, the name of the component,
  * and the name of the semaphore, separated by slashes (e.g., "process/component/semaphore").
  *
@@ -180,6 +181,23 @@ void le_sem_Wait
 le_result_t le_sem_TryWait
 (
     le_sem_Ref_t    semaphorePtr   ///< [IN] Pointer to the semaphore.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Wait for a semaphore with a limit on how long to wait.
+ *
+ * @return
+ *      - LE_OK         The function succeed
+ *      - LE_TIMEOUT    timeToWait elapsed
+ *
+ * @note When LE_TIMEOUT occurs the semaphore is not decremented.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_sem_WaitWithTimeOut
+(
+    le_sem_Ref_t    semaphorePtr,   ///< [IN] Pointer to the semaphore.
+    le_clk_Time_t   timeToWait      ///< [IN] Time to wait
 );
 
 //--------------------------------------------------------------------------------------------------

@@ -9,6 +9,7 @@
  * @ref c_test_setup <br>
  * @ref c_test_testing <br>
  * @ref c_test_result <br>
+ * @ref c_test_multiThread <br>
  * @ref c_test_multiProcess <br>
  *
  * Unit testing is an important aspect of a quantifiable quality assurance methodology.  Although
@@ -43,7 +44,7 @@
  *
  * @section c_test_setup Setting Up the Test Framework
  *
- * To setup the Legato Test Framework, call the @c LE_TEST_INIT macro, 
+ * To setup the Legato Test Framework, call the @c LE_TEST_INIT macro,
  * once before any tests are started.
  *
  * @section c_test_testing Performing Tests
@@ -55,6 +56,7 @@
  * For example:
  *
  * @code
+ * #include "legato.h"
  *
  * // Returns true if the test passes, otherwise returns false.
  * bool Test1(void)
@@ -94,47 +96,77 @@
  *     LE_TEST(Test2());
  *
  *     // Exit with the number of failed tests as the exit code.
- *     LE_TEST_SUMMARY;
+ *     LE_TEST_EXIT;
  * }
  * @endcode
  *
- * @section c_test_result Test Summary
+ * @section c_test_exit Exiting a Test Program
  *
- * This code sample shows @c LE_TEST_SUMMARY was called after all tests have been performed.  The
- * LE_TEST_SUMMARY macro will cause the process to exit with the number of failed tests as the exit
+ * When a test program is finished executing tests and needs to exit, it should always exit
+ * using the LE_TEST_EXIT macro.
+ *
+ * It's also okay to exit using LE_FATAL(), LE_FATAL_IF() or LE_ASSERT(), if the test must be
+ * halted immeditately due to some failure that cannot be recovered from.
+ *
+ * @section c_test_result Test Results
+ *
+ * The LE_TEST_EXIT macro will cause the process to exit with the number of failed tests as the exit
  * code.
  *
  * Also, LE_TEST will log an error message if the test fails and will log an info message if the
  * test passes.
  *
- * If the unit test in the example above was ran in pass through mode and Test1 failed
- * and Test2 passed, the logs will contain the messages:
+ * If the unit test in the example above was run in "pass-through mode" (continue even when a
+ * test fails) and Test1 failed and Test2 passed, the logs will contain the messages:
  *
 @verbatim
  =ERR= | Unit Test Failed: 'Test1()'
   INFO | Unit Test Passed: 'Test2()'
-
-  And the return code would be 1.
 @endverbatim
+ *
+ * And the return code would be 1.
  *
  * @note The log message format depends on the current log settings.
  *
- * @section c_test_multiProcess Flexible Test Scenarios
+ * @section c_test_multiThread Multi-Threaded Tests
  *
- * The Legato Test Framework is designed to be flexible because developers may find that structuring
- * unit tests as a single thread, multiple threads or multiple processes is more natural for
- * certain unit tests.
- *
- * For unit tests that have multiple threads run the various tests, the normal testing procedure
+ * For unit tests that contain multiple threads run the various tests, the normal testing procedure
  * will work because all the macros in this test framework are thread safe.
  *
- * For unit tests using multiple processes to run the various tests, the return codes for all
- * processes must be summed to get the total number of test failures.  This is easy if the processes
- * all have a common parent.
+ * @section c_test_multiProcess Multi-Process Tests
  *
- * In the case where multiple processes run the various tests but do not share a common parent, the
- * macro @c LE_TEST_NUM_FAILURES can be used to get the number of failures in the process and pass this
- * to another process using some other method (ie. sockets, shared memory, etc.).
+ * For unit tests that require the use of multiple concurrent processes, a single process can
+ * fork the other processes using LE_TEST_FORK() and then wait for them to terminate using
+ * LE_TEST_JOIN().
+ *
+ * When a child that is being waited for terminates, LE_TEST_JOIN() will look at the child's
+ * termination status and add the results to the running test summary.
+ *
+ * If the child process exits normally with a non-negative exit code, that exit code will be
+ * considered a count of the number of test failures that occurred in that child process.
+ *
+ * If the child exits normally with a negative exit code or if the child is terminated due to
+ * a signal (which can be caused by a segmentation fault, etc.), LE_TEST_JOIN() will count one test
+ * failure for that child process.
+ *
+ * @code
+ * COMPONENT_INIT
+ * {
+ *     // Setup the Legato Test Framework.
+ *     LE_TEST_INIT;
+ *
+ *     // Run the test programs.
+ *     le_test_ChildRef_t test1 = LE_TEST_FORK("test1");
+ *     le_test_ChildRef_t test2 = LE_TEST_FORK("test2");
+ *
+ *     // Wait for the test programs to finish and tally the results.
+ *     LE_TEST_JOIN(test1);
+ *     LE_TEST_JOIN(test2);
+ *
+ *     // Exit with the number of failed tests as the exit code.
+ *     LE_TEST_EXIT;
+ * }
+ * @endcode
  *
  * <HR>
  *
@@ -155,6 +187,14 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Reference to a forked child process.  See LE_TEST_FORK() and LE_TEST_JOIN().
+ **/
+//--------------------------------------------------------------------------------------------------
+typedef struct le_test_Child* le_test_ChildRef_t;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * @name Local definitions that should not be used directly.
  *
  * @{
@@ -163,6 +203,8 @@
 void _le_test_Init(void);
 void _le_test_Fail(void);
 int _le_test_GetNumFailures(void);
+le_test_ChildRef_t _le_test_Fork(const char* exePath, ...);
+void _le_test_Join(le_test_ChildRef_t child);
 // @}
 
 
@@ -198,16 +240,37 @@ int _le_test_GetNumFailures(void);
  * Exits the process and returns the number of failed tests.
  */
 //--------------------------------------------------------------------------------------------------
-#define LE_TEST_SUMMARY             exit(_le_test_GetNumFailures());
+#define LE_TEST_EXIT                exit(_le_test_GetNumFailures());
+
+/// <b> *DEPRECATED* </b> old name for LE_TEST_EXIT.
+#define LE_TEST_SUMMARY LE_TEST_EXIT
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Number of failed tests.
- */
+ * Fork a child process and have it execute a given program.
+ *
+ * @param exePath [in] String containing the path to the program to be executed.  If this is not
+ *                     an absolute path (doesn't start with a slash '/'), then the PATH environment
+ *                     variable will be used to search for the executable.
+ *
+ * A variable list of subsequent parameters is allowed, each of which will be passed as a
+ * command-line argument to the child program when it is executed.
+ *
+ * @return A reference to the child process (see LE_TEST_JOIN()).
+ **/
 //--------------------------------------------------------------------------------------------------
-#define LE_TEST_NUM_FAILURES        _le_test_GetNumFailures()
+#define LE_TEST_FORK(...)       _le_test_Fork(__VA_ARGS__ ,NULL)
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Wait for a given child process to terminate and add its results to the running test summary.
+ *
+ * @param child [IN] Child process reference returned by LE_TEST_FORK().
+ **/
+//--------------------------------------------------------------------------------------------------
+#define LE_TEST_JOIN(child)     _le_test_Join(child)
 
 
 #endif // LEGATO_TEST_INCLUDE_GUARD

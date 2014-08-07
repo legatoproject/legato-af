@@ -37,10 +37,10 @@ static pthread_mutex_t Mutex = PTHREAD_MUTEX_INITIALIZER;
 //--------------------------------------------------------------------------------------------------
 typedef struct le_msg_Protocol
 {
-    le_sls_Link_t link;                         ///< Used to link this into the Protocol List.
-    char id[LE_SVCDIR_MAX_PROTOCOL_ID_SIZE];    ///< Unique identifier for the protocol.
-    size_t maxPayloadSize;                      ///< Max payload size (in bytes) in this protocol.
-    le_mem_PoolRef_t messagePoolRef;            ///< Pool of Message objects.
+    le_sls_Link_t link;                     ///< Used to link this into the Protocol List.
+    char id[LIMIT_MAX_PROTOCOL_ID_BYTES];   ///< Unique identifier for the protocol.
+    size_t maxPayloadSize;                  ///< Max payload size (in bytes) in this protocol.
+    le_mem_PoolRef_t messagePoolRef;        ///< Pool of Message objects.
 }
 Protocol_t;
 

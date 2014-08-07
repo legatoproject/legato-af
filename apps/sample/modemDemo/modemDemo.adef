@@ -1,16 +1,22 @@
 executables:
-    modemDemo ( "demoComponent"
-                "$LEGATO_BUILD/bin/lib/lible_mdm_client.so"
-                "$LEGATO_BUILD/bin/lib/lible_data_client.so" )
+    modemDemo ( "demoComponent" )
     send      ( "sendComponent" )
-
-import:
-    // mount libraries to sandbox
-    "/usr/local/lib/lible_mdm_client.so"        "/lib/"
-    "/usr/local/lib/lible_data_client.so"       "/lib/"
 
 processes:
     run: ( modemDemo )
-    run: ( send "<Input number>" "Welcome to modemDemo app")
+
+// To have the app send you an SMS upon start,
+// please uncomment this line and replace <Input number> by your cell number
+//	run: ( send "<input number>" "Welcome to modemDemo app")
 
 start: auto
+
+bindings:
+
+    send.sendComponent.send -> modemDemo.demoComponent.send
+
+    modemDemo.demoComponent.le_mdc -> modemService.le_mdc
+    modemDemo.demoComponent.le_mrc -> modemService.le_mrc
+    modemDemo.demoComponent.le_sim -> modemService.le_sim
+    modemDemo.demoComponent.le_sms -> modemService.le_sms
+    modemDemo.demoComponent.le_data -> dataConnectionService.le_data

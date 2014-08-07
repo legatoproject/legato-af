@@ -1,0 +1,6 @@
+executables:
+    dogTestRevertAfterTimeout (dogTestRevertAfterTimeout)
+
+processes:
+    run: (dogTestRevertAfterTimeout 32000 31000)
+

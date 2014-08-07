@@ -1,21 +1,18 @@
 //--------------------------------------------------------------------------------------------------
 /**
- * Implementation of the Configuration Installer component.
+ * Implementation of the Configuration Installer functionality of the appConfig component.
  *
- * Copyright 2013, Sierra Wireless Inc., all rights reserved.
+ * Copyright 2013-2014, Sierra Wireless Inc., Use of this work is subject to license.
  **/
 //--------------------------------------------------------------------------------------------------
 
 #include "legato.h"
 #include "../inc/configInstaller.h"
-#include "le_cfg_interface.h"
-#include "le_cfgAdmin_interface.h"
+#include "interfaces.h"
 
 
 COMPONENT_INIT
 {
-    le_cfg_Initialize();
-    le_cfgAdmin_Initialize();
 }
 
 
@@ -69,8 +66,12 @@ void cfgInstall_Remove
 {
     LE_INFO("Removing configuration for application '%s'.", appName);
 
+    // Remove the app configuration from the system tree.
     le_cfg_IteratorRef_t i = le_cfg_CreateWriteTxn("/apps");
 
     le_cfg_DeleteNode(i, appName);
     le_cfg_CommitTxn(i);
+
+    // Now delete the app specific tree.
+    le_cfgAdmin_DeleteTree(appName);
 }

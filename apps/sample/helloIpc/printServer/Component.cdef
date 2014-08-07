@@ -1,0 +1,7 @@
+sources:
+
+    server.c
+
+export:
+
+    printer = printer.api

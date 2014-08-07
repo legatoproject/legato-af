@@ -17,35 +17,65 @@
 #
 # To enable coverage testing, run make with "TEST_COVERAGE=1" on the command-line.
 #
-# Copyright (C) 2013, Sierra Wireless, Inc. All rights reserved. Use of this work is subject to license.
+# Copyright (C) 2013-2014, Sierra Wireless, Inc.  Use of this work is subject to license.
 # --------------------------------------------------------------------------------------------------
 
 # List of target devices supported:
-TARGETS = localhost ar6 ar7 wp7 raspi
-
-VERSION := $(shell if git describe > /dev/null ; \
-                   then \
-                       git describe --tags | tee version ; \
-                   elif [ -e version ] ; \
-                   then \
-                       cat version ; \
-                   else \
-                       echo "unknown" ; \
-                       exit 1; \
-                   fi)
+TARGETS := localhost ar6 ar7 wp7 raspi
 
 # By default, build for the localhost and build the documentation.
 .PHONY: default
 default: localhost docs
 
-export LEGATO_ROOT = $(CURDIR)
+# Define the LEGATO_ROOT environment variable.
+export LEGATO_ROOT := $(CURDIR)
+
+# Add the framework's bin directory to the PATH environment variable.
+export PATH := $(PATH):$(LEGATO_ROOT)/bin
+
+# Define paths to various platform adaptors' directories.
+AUDIO_PA_DIR := $(LEGATO_ROOT)/components/audio/platformAdaptor
+MODEM_PA_DIR := $(LEGATO_ROOT)/components/modemServices/platformAdaptor
+GNSS_PA_DIR := $(LEGATO_ROOT)/components/positioning/platformAdaptor
+
+# Configure appropriate QMI platform adaptor build variables.
+#   Sources:
+export LEGATO_QMI_AUDIO_PA_SRC := $(AUDIO_PA_DIR)/mdm9x15/le_pa_audio
+export LEGATO_QMI_MODEM_PA_SRC := $(MODEM_PA_DIR)/qmi/le_pa
+export LEGATO_QMI_GNSS_PA_SRC := $(GNSS_PA_DIR)/qmi/le_pa_gnss
+#   Pre-built binaries:
+export LEGATO_QMI_AUDIO_PA_BIN = $(AUDIO_PA_DIR)/pre-built/$(TARGET)/le_pa_audio
+export LEGATO_QMI_MODEM_PA_BIN = $(MODEM_PA_DIR)/pre-built/$(TARGET)/le_pa
+export LEGATO_QMI_GNSS_PA_BIN = $(GNSS_PA_DIR)/pre-built/$(TARGET)/le_pa_gnss
+#   If the QMI PA sources are not available, use the pre-built binaries.
+ifneq (,$(wildcard $(LEGATO_QMI_AUDIO_PA_SRC)/*))
+  export LEGATO_QMI_AUDIO_PA = $(LEGATO_QMI_AUDIO_PA_SRC)
+else
+  export LEGATO_QMI_AUDIO_PA = $(LEGATO_QMI_AUDIO_PA_BIN)
+endif
+ifneq (,$(wildcard $(LEGATO_QMI_MODEM_PA_SRC)/*))
+  export LEGATO_QMI_MODEM_PA = $(LEGATO_QMI_MODEM_PA_SRC)
+else
+  export LEGATO_QMI_MODEM_PA = $(LEGATO_QMI_MODEM_PA_BIN)
+endif
+ifneq (,$(wildcard $(LEGATO_QMI_GNSS_PA_SRC)/*))
+  export LEGATO_QMI_GNSS_PA = $(LEGATO_QMI_GNSS_PA_SRC)
+else
+  export LEGATO_QMI_GNSS_PA = $(LEGATO_QMI_GNSS_PA_BIN)
+endif
+
+# Define the default platform adaptors to use if not otherwise specified for a given target.
+export LEGATO_AUDIO_PA = $(AUDIO_PA_DIR)/stub/le_pa_audio
+export LEGATO_MODEM_PA = $(MODEM_PA_DIR)/at/le_pa
+export LEGATO_GNSS_PA = $(GNSS_PA_DIR)/at/le_pa_gnss
+
+# Default AirVantage build to be ON
+INCLUDE_AIRVANTAGE ?= 1
 
 # ========== TARGET-SPECIFIC VARIABLES ============
 
-# If the user specified a goal other than "clean", ensure that
-#  - COMPILER_DIR is set to the file system path of the directory containing the appropriate
-#    build tool chain for the target device.
-#  - TARGET is set to the target device family (e.g., ar7).
+# If the user specified a goal other than "clean", ensure that all required target-specific vars
+# are defined.
 ifneq ($(MAKECMDGOALS),clean)
 
   HOST_ARCH := $(shell arch)
@@ -74,6 +104,9 @@ ifneq ($(MAKECMDGOALS),clean)
   endif
   ar7: export COMPILER_DIR = $(AR7_TOOLCHAIN_DIR)
   ar7: export TARGET := ar7
+  ar7: export LEGATO_AUDIO_PA = $(LEGATO_QMI_AUDIO_PA)
+  ar7: export LEGATO_MODEM_PA = $(LEGATO_QMI_MODEM_PA)
+  ar7: export LEGATO_GNSS_PA = $(LEGATO_QMI_GNSS_PA)
   ar7: export AV_CONFIG := -DCMAKE_TOOLCHAIN_FILE=../../../cmake/toolchain.yocto.cmake
 
   # WP7
@@ -85,6 +118,9 @@ ifneq ($(MAKECMDGOALS),clean)
   endif
   wp7: export COMPILER_DIR = $(WP7_TOOLCHAIN_DIR)
   wp7: export TARGET := wp7
+  wp7: export LEGATO_AUDIO_PA = $(LEGATO_QMI_AUDIO_PA)
+  wp7: export LEGATO_MODEM_PA = $(LEGATO_QMI_MODEM_PA)
+  wp7: export LEGATO_GNSS_PA = $(LEGATO_QMI_GNSS_PA)
   wp7: export AV_CONFIG := -DCMAKE_TOOLCHAIN_FILE=../../../cmake/toolchain.yocto.cmake
 
   # Raspberry Pi
@@ -116,6 +152,24 @@ clean:
 	rm -rf interfaces/config/c/configTypes.h \
 		   interfaces/configAdmin/c/configAdminTypes.h
 
+# Version related rules.
+.PHONY: build_version
+build_version:
+	$(eval GIT_VERSION := $(shell git describe --tags 2> /dev/null))
+	$(eval CURRENT_VERSION := $(shell cat version 2> /dev/null))
+
+	@if [ -n "$(GIT_VERSION)" ] ; then \
+		if test "$(GIT_VERSION)" != "$(CURRENT_VERSION)" ; then \
+			echo "Version: $(GIT_VERSION)" ; \
+			echo "$(GIT_VERSION)" > version  ; \
+		fi \
+	elif ! [ -e version ] ; then \
+		echo "unknown" > version ; \
+	fi
+	@echo "version=`cat version`" > package.properties
+
+version: build_version
+package.properties: build_version
 
 # Goal for building all documentation.
 .PHONY: docs user_docs implementation_docs
@@ -126,46 +180,48 @@ user_docs: TARGET := localhost
 implementation_docs: TARGET := localhost
 
 # Docs for people who don't want to be distracted by the internal implementation details.
-user_docs: build/localhost/Makefile
+user_docs: localhost
 	$(MAKE) -C build/localhost doc
 	ln -sf build/localhost/bin/doc/user/html Documentation
 
 # Docs for people who want or need to know the internal implementation details.
-implementation_docs: build/localhost/Makefile
+implementation_docs: localhost
 	$(MAKE) -C build/localhost implementation_doc
 
 
 # Rule for how to build the build tools.
 .PHONY: tools
-tools:
+tools: version
 	mkdir -p build/tools && cd build/tools && cmake ../../buildTools && make
 	mkdir -p bin
 	ln -sf $(CURDIR)/build/tools/bin/mk* bin/
+	ln -sf mk bin/mkif
+	ln -sf mk bin/mkcomp
 	ln -sf mk bin/mkexe
 	ln -sf mk bin/mkapp
+	ln -sf mk bin/mksys
 	ln -sf $(CURDIR)/framework/tools/scripts/* bin/
 	ln -sf $(CURDIR)/framework/tools/ifgen/ifgen bin/
 
-
 # Rule for creating a build directory
-build/%:
+build/%/bin/apps build/%/bin/lib build/%/airvantage:
 	mkdir -p $@
-ifeq ($(INCLUDE_AIRVANTAGE), 1)
-	mkdir -p build/$(TARGET)/airvantage
-endif
 
 # Rule for running the build for a given target using the Makefiles generated by CMake.
 # This depends on the build tools and the CMake-generated Makefile.
-build_%: tools build/%/Makefile
+build_%: tools version build/%/Makefile
 	make -C build/$(TARGET)
 ifeq ($(INCLUDE_AIRVANTAGE), 1)
 	make -j`getconf _NPROCESSORS_ONLN` legato_airvantage -C build/$(TARGET)/airvantage
+	make -C apps/airvantage
 endif
 	make -C build/$(TARGET) samples
 
 # Rule for invoking CMake to generate the Makefiles inside the build directory.
 # Depends on the build directory being there.
-$(foreach target,$(TARGETS),build/$(target)/Makefile): build/%/Makefile: build/%
+$(foreach target,$(TARGETS),build/$(target)/Makefile): build/%/Makefile: build/%/bin/apps \
+																		 build/%/bin/lib \
+																		 build/%/airvantage
 	# Configure Legato
 	export PATH=$(COMPILER_DIR):$(PATH) && \
 		cd `dirname $@` && \
@@ -201,58 +257,16 @@ stage_localhost:
 
 # List of executables to install from the build's bin directory to the /usr/local/bin directory
 # on the target.
-BIN_INSTALL_LIST =  supervisor       \
-					serviceDirectory \
-					logCtrlDaemon    \
-					log              \
-					configTree       \
-					config           \
-					audioDaemon      \
-					modemDaemon      \
-					posDaemon        \
-					dcsDaemon        \
-					cnetDaemon       \
-					appCfgInstall	 \
-					appCfgRemove     \
-					data             \
-					appCtrl          \
-					sim              \
-					inspect          \
-                                        apn
-
-
+BIN_INSTALL_LIST =  $(shell ls build/$(TARGET)/bin)
 
 # List of libraries to install from the build's bin/lib directory to the /usr/local/lib directory
 # on the target.
-LIB_INSTALL_LIST =  liblegato.so            \
-					lible_pa.so             \
-					lible_pa_gnss.so        \
-					lible_mdm_services.so   \
-					lible_mdm_client.so     \
-					lible_pos_services.so   \
-					lible_pos_client.so     \
-					lible_pa_audio.so       \
-					lible_audio_services.so \
-					lible_audio_client.so   \
-					lible_data_client.so    \
-					lible_cellnet_client.so    \
-					lible_cfg_api.so        \
-					lible_cfgAdmin_api.so   \
-					libappConfig.so         \
-					lible_sup_api.so
+LIB_INSTALL_LIST =  $(shell ls build/$(TARGET)/bin/lib)
 
+# List of applications to install from the build's bin/apps directory to the /usr/local/bin/apps
+# directory on the target.
+APP_INSTALL_LIST =  $(shell ls build/$(TARGET)/bin/apps)
 
-# List of libraries to install from the AirVantage Agent lib directory to the /usr/local/lib directory
-# on the target.
-ifeq ($(INCLUDE_AIRVANTAGE), 1)
-AV_AGENT_LIB_INSTALL_LIST = libSwi_AirVantage.so \
-							libEmp.so            \
-							libyajl.so           \
-							libSwi_log.so        \
-							libSwi_DSet.so       \
-							libSwi_DeviceTree.so \
-							libreturncodes.so
-endif
 
 # Construct the staging directory with common files
 .PHONY: stage_common
@@ -271,31 +285,12 @@ stage_common:
 	do \
 	    install build/$(TARGET)/bin/lib/$$library -D build/$(TARGET)/staging/usr/local/lib ; \
 	done
-ifeq ($(INCLUDE_AIRVANTAGE), 1)
-	install build/$(TARGET)/bin/lib/lible_tree_hdlr.so -D build/$(TARGET)/staging/usr/local/lib
-	install -d build/$(TARGET)/staging/usr/local/agent-runtime
-	cp -frPp build/$(TARGET)/airvantage/runtime/* build/$(TARGET)/staging/usr/local/agent-runtime
-	mv build/$(TARGET)/staging/usr/local/agent-runtime/bin/agent build/$(TARGET)/staging/usr/local/bin
-	install -d build/$(TARGET)/staging/opt/legato/agent
-	mv build/$(TARGET)/airvantage/runtime/envVars build/$(TARGET)/staging/opt/legato/agent
-	# Install Legato Tree Handler
-	mkdir -p build/$(TARGET)/staging/usr/local/agent-runtime/lua/agent/treemgr/handlers/extvars
-	cp build/$(TARGET)/bin/lib/lible_tree_hdlr.so build/$(TARGET)/staging/usr/local/agent-runtime/lua/agent/treemgr/handlers/extvars/lible_tree_hdlr.so
-	cp interfaces/legatoTreeHandler/c/legatoTreeHdlr.map build/$(TARGET)/staging/usr/local/agent-runtime/resources/legatoTreeHdlr.map
-	# move AirVantage Agent public libs to correct folder on the target
-	for library in $(AV_AGENT_LIB_INSTALL_LIST) ; \
+	mkdir -p build/$(TARGET)/staging/usr/local/bin/apps
+	for app in $(APP_INSTALL_LIST) ; \
 	do \
-	    rm -f build/$(TARGET)/staging/usr/local/agent-runtime/lib/$$library ; \
-	    cp --update build/$(TARGET)/airvantage/runtime/lib/$$library build/$(TARGET)/staging/usr/local/lib ; \
+	    install build/$(TARGET)/bin/apps/$$app -D build/$(TARGET)/staging/usr/local/bin/apps ; \
 	done
-endif
 	tar -C build/$(TARGET)/staging -cf build/$(TARGET)/legato-runtime.tar .
-
-# Stage AT-related files
-.PHONY: stage_at
-stage_at:
-	install build/$(TARGET)/bin/lib/lible_mdm_atmgr.so -D build/$(TARGET)/staging/usr/local/lib
-	install build/$(TARGET)/bin/lib/lible_uart.so -D build/$(TARGET)/staging/usr/local/lib
 
 # ==== AR7 and WP7 (9x15-based Sierra Wireless modules) ====
 
@@ -305,12 +300,12 @@ stage_ar7 stage_wp7: stage_common
 # ==== AR6 (Ykem-based Sierra Wireless modules) ====
 
 .PHONY: stage_ar6
-stage_ar6: stage_common stage_at
+stage_ar6: stage_common
 
 # ==== Raspberry Pi ====
 
 .PHONY: stage_raspi
-stage_raspi: stage_common stage_at
+stage_raspi: stage_common
 
 # ========== RELEASE ============
 
@@ -319,37 +314,38 @@ stage_raspi: stage_common stage_at
 .PHONY: release
 
 # Define a regex specifying a set of directories that must be excluded from releases.
-release: EXCLUDE_PATTERN := 'proprietary|qmi|jenkins-build'
+release: EXCLUDE_PATTERN := 'proprietary|qmi/le_pa|mdm9x15/le_pa|jenkins-build|^airvantage$$'
 
-# Define a bunch of variables that are only used for release builds.
+# Define output directory
 release: RELEASE_DIR := releases
-release: STAGE_NAME := legato-$(VERSION)
-release: STAGE_DIR := $(RELEASE_DIR)/$(STAGE_NAME)
-release: PKG_NAME := $(STAGE_NAME).tar.bz2
 
 # We never build for coverage testing when building a release.
 release: override TEST_COVERAGE=0
 
-
 # Clean first, then build for localhost and selected embedded targets and generate the documentation
 # before packaging it all up into a compressed tarball.
-release: clean localhost ar7 wp7 docs
+release: version package.properties clean localhost ar7 wp7 docs
+	$(eval VERSION := $(shell cat version))
+	$(eval STAGE_NAME := legato-$(VERSION))
+	$(eval STAGE_DIR := $(RELEASE_DIR)/$(STAGE_NAME))
+	$(eval PKG_NAME := $(STAGE_NAME).tar.bz2)
 	@echo "Version = $(VERSION)"
 	@echo "Preparing package in $(STAGE_DIR)"
 	rm -rf $(STAGE_DIR)
 	mkdir -p $(STAGE_DIR)
-	@echo "version=$(VERSION)" | tee $(STAGE_DIR)/package.properties
 	git ls-tree -r --name-only HEAD | egrep -v $(EXCLUDE_PATTERN) | while read LINE ; \
 	do \
-		install -D $$LINE $(STAGE_DIR)/$$LINE ; \
+		install -D "$$LINE" "$(STAGE_DIR)/$$LINE" ; \
 	done
-	install -D build/ar7/bin/lib/lible_pa.so $(STAGE_DIR)/components/modemServices/platformAdaptor/qmi/lib/lible_pa.ar7.so
-	install -D build/wp7/bin/lib/lible_pa.so $(STAGE_DIR)/components/modemServices/platformAdaptor/qmi/lib/lible_pa.wp7.so
-	install -D build/ar7/bin/lib/lible_pa_gnss.so $(STAGE_DIR)/components/positioning/platformAdaptor/qmi/lib/lible_pa_gnss.ar7.so
-	install -D build/wp7/bin/lib/lible_pa_gnss.so $(STAGE_DIR)/components/positioning/platformAdaptor/qmi/lib/lible_pa_gnss.wp7.so
-	install -D build/ar7/bin/lib/lible_pa_audio.so $(STAGE_DIR)/components/audio/platformAdaptor/qmi/lib/lible_pa_audio.ar7.so
-	install -D build/wp7/bin/lib/lible_pa_audio.so $(STAGE_DIR)/components/audio/platformAdaptor/qmi/lib/lible_pa_audio.wp7.so
+	install -D build/ar7/platformServices/apps/audio/staging/lib/lible_pa_audio.so $(STAGE_DIR)/components/audio/platformAdaptor/pre-built/ar7/le_pa_audio/
+	install -D build/wp7/platformServices/apps/audio/staging/lib/lible_pa_audio.so $(STAGE_DIR)/components/audio/platformAdaptor/pre-built/wp7/le_pa_audio/
+	install -D build/ar7/platformServices/apps/modem/staging/lib/lible_pa.so $(STAGE_DIR)/components/modemServices/platformAdaptor/pre-built/ar7/le_pa/
+	install -D build/wp7/platformServices/apps/modem/staging/lib/lible_pa.so $(STAGE_DIR)/components/modemServices/platformAdaptor/pre-built/wp7/le_pa/
+	install -D build/ar7/platformServices/apps/positioning/staging/lib/lible_pa_gnss.so $(STAGE_DIR)/components/positioning/platformAdaptor/pre-built/ar7/le_pa_gnss/
+	install -D build/wp7/platformServices/apps/positioning/staging/lib/lible_pa_gnss.so $(STAGE_DIR)/components/positioning/platformAdaptor/pre-built/wp7/le_pa_gnss/
 	cp -R airvantage $(STAGE_DIR)
 	cp version $(STAGE_DIR)
+	cp package.properties $(STAGE_DIR)
+	find $(STAGE_DIR) -name ".git" | xargs -i rm -rf {}
 	@echo "Creating release package $(RELEASE_DIR)/$(PKG_NAME)"
 	cd $(RELEASE_DIR) && tar jcf $(PKG_NAME) $(STAGE_NAME)

@@ -1,11 +1,14 @@
+/* Copyright (c) 2013-2014, Sierra Wireless Inc. Use of this work is subject to license. */
+
 %option yylineno
 
-
-file-path-element   [-0-9A-Za-z._+?]+
-
-file-path    \/?{file-path-element}(\/{file-path-element})*\/?
-
 name   [A-Za-z_][0-9A-Za-z_]*
+
+env-var             "$"({name}|"{"{name}"}")
+
+file-path-element   ({env-var}|([-0-9A-Za-z:;._+?]+))+
+
+file-path    (\/?{file-path-element}(\/{file-path-element})*\/?)|\/
 
 %x COMMENT
 %x IN_SINGLE_QUOTES
@@ -34,12 +37,23 @@ const char* cyy_FileName = "";
 %%
 
 
-sources        { return SOURCES; }
-import         { return IMPORT; }
-export         { return EXPORT; }
-files          { return FILES; }
-pools          { return POOLS; }
-config         { return CONFIG; }
+sources[ \t\n]*:        { return SOURCES_SECTION_LABEL; }
+import[ \t\n]*:         { return IMPORT_SECTION_LABEL; }
+export[ \t\n]*:         { return EXPORT_SECTION_LABEL; }
+requires[ \t\n]*:       { return REQUIRES_SECTION_LABEL; }
+provides[ \t\n]*:       { return PROVIDES_SECTION_LABEL; }
+bundles[ \t\n]*:        { return BUNDLES_SECTION_LABEL; }
+api[ \t\n]*:            { return API_SECTION_LABEL; }
+"[async]"               { return ASYNC_MODIFIER; }
+"[types-only]"          { return TYPES_ONLY_MODIFIER; }
+"[manual-start]"        { return MANUAL_START_MODIFIER; }
+file[ \t\n]*:           { return FILE_SECTION_LABEL; }
+dir[ \t\n]*:            { return DIR_SECTION_LABEL; }
+lib[ \t\n]*:            { return LIB_SECTION_LABEL; }
+component[ \t\n]*:      { return COMPONENT_SECTION_LABEL; }
+files[ \t\n]*:          { return FILES_SECTION_LABEL; }
+pools[ \t\n]*:          { return POOLS_SECTION_LABEL; }
+config[ \t\n]*:         { return CONFIG_SECTION_LABEL; }
 
 "/*"            BEGIN COMMENT;
 <COMMENT>"*/"   BEGIN INITIAL;
@@ -51,7 +65,7 @@ config         { return CONFIG; }
 [\"]            { BEGIN IN_DOUBLE_QUOTES; }
 <IN_DOUBLE_QUOTES>([^\"]|\n)*\"   { cyy_lval.string = strndup(yytext, yyleng - 1); BEGIN INITIAL; return FILE_PATH; }
 
-"["[rwxp]+"]"   { cyy_lval.string = strdup(yytext); return PERMISSIONS; }
+"["[rwx]+"]"    { cyy_lval.string = strdup(yytext); return PERMISSIONS; }
 
 {name}          { cyy_lval.string = strdup(yytext); return NAME; }
 
@@ -60,7 +74,7 @@ config         { return CONFIG; }
 {file-path}     { cyy_lval.string = strdup(yytext); return FILE_PATH; }
 
                 /* Pass these back to the parser as themselves. */
-[=:]            { return yytext[0]; }
+[=:{}()]        { return yytext[0]; }
 
                 /* ignore whitespace */
 [ \t]           ;
@@ -78,6 +92,7 @@ config         { return CONFIG; }
 %%
 //--------------------------------------------------------------------------------------------------
 
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Error handling function.  Prints an error message to the standard error stream and counts
@@ -90,7 +105,7 @@ void cyy_error
 )
 //--------------------------------------------------------------------------------------------------
 {
-    fprintf(stderr, "%s: line %d: %s\n", cyy_FileName, cyy_lineno, errorString);
+    fprintf(stderr, "%s:%d: %s\n", cyy_FileName, cyy_lineno, errorString);
 
     cyy_ErrorCount++;
 

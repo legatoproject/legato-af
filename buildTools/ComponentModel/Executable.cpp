@@ -2,7 +2,7 @@
 /**
  * Implementation of the Executable object.
  *
- * Copyright (C) 2013 Sierra Wireless Inc., all rights reserved.
+ * Copyright (C) 2013-2014, Sierra Wireless Inc.  Use of this work is subject to license.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -40,7 +40,7 @@ legato::Executable::Executable
 :   m_OutputPath(std::move(original.m_OutputPath)),
     m_CName(std::move(original.m_CName)),
     m_IsDebuggingEnabled(std::move(original.m_IsDebuggingEnabled)),
-    m_ComponentInstanceList(std::move(original.m_ComponentInstanceList)),
+    m_ComponentInstances(std::move(original.m_ComponentInstances)),
     m_DefaultComponent(std::move(original.m_DefaultComponent))
 //--------------------------------------------------------------------------------------------------
 {
@@ -64,7 +64,7 @@ legato::Executable& legato::Executable::operator =
         m_OutputPath = std::move(original.m_OutputPath);
         m_CName = std::move(original.m_CName);
         m_IsDebuggingEnabled = std::move(original.m_IsDebuggingEnabled);
-        m_ComponentInstanceList = std::move(original.m_ComponentInstanceList);
+        m_ComponentInstances = std::move(original.m_ComponentInstances);
         m_DefaultComponent = std::move(original.m_DefaultComponent);
     }
 
@@ -138,13 +138,15 @@ const std::string& legato::Executable::CName() const
  * Add a Component Instance to the list of Component Instances to be included in this executable.
  */
 //--------------------------------------------------------------------------------------------------
-void legato::Executable::AddComponentInstance
+legato::ComponentInstance& legato::Executable::AddComponentInstance
 (
     ComponentInstance&& instance
 )
 //--------------------------------------------------------------------------------------------------
 {
-    m_ComponentInstanceList.push_back(instance);
+    m_ComponentInstances.push_back(instance);
+
+    return m_ComponentInstances.back();
 }
 
 
@@ -155,16 +157,43 @@ void legato::Executable::AddComponentInstance
  * @return A reference to the list.
  */
 //--------------------------------------------------------------------------------------------------
-const std::list<legato::ComponentInstance>& legato::Executable::ComponentInstanceList
+const std::list<legato::ComponentInstance>& legato::Executable::ComponentInstances
 (
     void
 )
 const
 //--------------------------------------------------------------------------------------------------
 {
-    return m_ComponentInstanceList;
+    return m_ComponentInstances;
 }
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Search for an instance of a component in the executable's list of component instances.
+ *
+ * @return A reference to the component instance.
+ *
+ * @throw legato::Exception if not found.
+ **/
+//--------------------------------------------------------------------------------------------------
+legato::ComponentInstance& legato::Executable::FindComponentInstance
+(
+    const std::string& name
+)
+//--------------------------------------------------------------------------------------------------
+{
+    for (auto& c : m_ComponentInstances)
+    {
+        if (c.Name() == name)
+        {
+            return c;
+        }
+    }
+
+    throw legato::Exception("Executable '" + m_OutputPath
+                            + "' doesn't contain component '" + name + "'.");
+}
 
 
 //--------------------------------------------------------------------------------------------------
@@ -185,7 +214,7 @@ void legato::Executable::AddLibrary
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Add a C source code file directly to the executable's "default" component instance.
+ * Add a C/C++ source code file directly to the executable's "default" component instance.
  */
 //--------------------------------------------------------------------------------------------------
 void legato::Executable::AddCSourceFile
@@ -195,4 +224,67 @@ void legato::Executable::AddCSourceFile
 //--------------------------------------------------------------------------------------------------
 {
     m_DefaultComponent.AddSourceFile(path);
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Does the current executable have C language sources?
+ *
+ * @return True if the executable or any of it's sub-components have C code in them.
+ */
+//--------------------------------------------------------------------------------------------------
+bool legato::Executable::HasCSources
+(
+)
+const
+//--------------------------------------------------------------------------------------------------
+{
+    if (m_DefaultComponent.HasCSources())
+    {
+        return true;
+    }
+
+    for (const auto& componentInstance : m_ComponentInstances)
+    {
+        if (componentInstance.GetComponent().HasCSources())
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Does the current executable have C++ language sources?
+ *
+ * @return True if the executable or any of it's sub-components have C++ code in them.
+ */
+//--------------------------------------------------------------------------------------------------
+bool legato::Executable::HasCppSources
+(
+)
+const
+//--------------------------------------------------------------------------------------------------
+{
+    if (m_DefaultComponent.HasCppSources())
+    {
+        return true;
+    }
+
+    for (const auto& componentInstance : m_ComponentInstances)
+    {
+        if (componentInstance.GetComponent().HasCppSources())
+        {
+            return true;
+        }
+    }
+
+    return false;
 }

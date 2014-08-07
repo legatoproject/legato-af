@@ -1,0 +1,31 @@
+/** @page buildToolsmksys mksys (Make System)
+
+@note Support for @c mksys is incomplete.
+
+Run @b mksys to generate a system bundle that can be installed on a target and run.
+
+System bundles are compressed archives containing a collection of applications and access control
+configuration settings to allow them to interact with each other, as defined within an
+@ref defFilesSdef ".sdef file".
+
+The main input for @c mksys is an @ref defFilesSdef ".sdef file".  This file contains a definition
+of
+ - what applications should be deployed to the target device,
+ - what inter-application communication is permitted,
+ - what application limits, environment variables, and configuration settings should be added or
+   overridden.
+
+@c mksys will parse the .sdef file, find the .adef files for the applications, build the
+applications, generate on-target access control configuration settings, and bundle everything
+into a system bundle for installation on the target device.
+
+Run @c mksys with the --help or -h option for a description of the command-line arguments it
+accepts.
+
+@ref defFilesSdef or @ref defFilesSdef files for more info.
+
+<HR>
+
+Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+
+**/

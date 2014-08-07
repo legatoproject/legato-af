@@ -209,35 +209,73 @@ if ( {parm.value} > {parm.maxValue} ) LE_FATAL("{parm.value} > {parm.maxValue}")
         # Always an input parameter
         self.direction = DIR_IN
 
-        # Name when used in parameter list
-        self.parmName = self.name
-        self.parmType = self.type
-
-        self.numBytes = "sizeof(%s)" % self.type
-        self.address = "&%s" % self.name
-        self.value = self.name
-
-        # todo: maybe should change the "unpack" prefix to "handler", since this
-        #       seems to be more appropriate, and would also deal with the case
-        #       of out parameters, which are packed by the handler.
-        self.unpackName = self.name
-        self.unpackType = self.type
-        self.unpackAddr = self.address
-        self.unpackCallName = self.name
-
-        # For support of server-side async functions
-        self.asyncServerCallName = self.name
-
         # Comment is initially empty
         self.comment = ""
+
+
+    # The following getter() functions allow determining the attribute value when accessed rather
+    # than when the object is created.  This reduces to need for redefining some of the attributes
+    # in the classes that inherit from this class.  If a class that inherits from this class wants
+    # a different value, then it should explicitly define the attribute.
+
+    # Name when used in parameter list
+    @Getter
+    def parmName(self):
+        return self.name
+
+    # Type when used in parameter list
+    @Getter
+    def parmType(self):
+        return self.type
+
+    @Getter
+    def numBytes(self):
+        return "sizeof(%s)" % self.type
+
+    @Getter
+    def address(self):
+        return "&%s" % self.name
+
+    @Getter
+    def value(self):
+        return self.name
+
+
+    # todo: maybe should change the "unpack" prefix to "handler", since this
+    #       seems to be more appropriate, and would also deal with the case
+    #       of out parameters, which are packed by the handler.
+
+    @Getter
+    def unpackName(self):
+        return self.name
+
+    @Getter
+    def unpackType(self):
+        return self.type
+
+    @Getter
+    def unpackAddr(self):
+        return self.address
+
+    @Getter
+    def unpackCallName(self):
+        return self.name
+
+    #
+    # For support of server-side async functions
+    #
+
+    @Getter
+    def asyncServerParmName(self):
+        return self.parmName
 
     @Getter
     def asyncServerParmType(self):
         return self.parmType
 
     @Getter
-    def asyncServerParmName(self):
-        return self.parmName
+    def asyncServerCallName(self):
+        return self.name
 
 
     def __str__(self):
@@ -282,18 +320,58 @@ class PointerData(SimpleData):
         self.parmName = self.name+"Ptr"
         self.parmType = self.type+'*'
 
-        self.numBytes = "sizeof(%s)" % self.type
         self.address = self.parmName
         self.value = '*'+self.parmName
 
-        self.unpackName = self.name
-        self.unpackType = self.type
         self.unpackAddr = "&%s" % self.name
         self.unpackCallName = self.unpackAddr
 
         # For support of server-side async functions
         self.asyncServerParmType = self.type
         self.asyncServerParmName = self.name
+
+
+
+class FileInData(SimpleData):
+
+    def __init__(self, name, direction):
+        super(FileInData, self).__init__(name, 'int')
+
+        # todo: should probably verify that direction is one of the two
+        #       allowable values: DIR_IN or DIR_OUT.
+        self.direction = direction
+
+        self.clientPack = """\
+le_msg_SetFd(_msgRef, {parm.parmName});\
+"""
+
+        self.handlerUnpack = """\
+{parm.parmType} {parm.parmName};
+{parm.parmName} = le_msg_GetFd(_msgRef);\
+"""
+
+
+class FileOutData(PointerData):
+
+    def __init__(self, name, direction):
+        super(FileOutData, self).__init__(name, 'int', direction)
+
+        # todo: should probably verify that direction is one of the two
+        #       allowable values: DIR_IN or DIR_OUT.
+        self.direction = direction
+
+    clientUnpack = """\
+{parm.value} = le_msg_GetFd(_responseMsgRef);\
+"""
+
+    handlerPack = """\
+le_msg_SetFd(_msgRef, {parm.name});\
+"""
+
+    asyncServerPack = """\
+le_msg_SetFd(_msgRef, {parm.name});
+"""
+
 
 
 class ArrayData(SimpleData):
@@ -322,9 +400,7 @@ class ArrayData(SimpleData):
         self.address = self.parmName
 
         self.unpackName = "%s[%s]" % (self.name, self.sizeVar)
-        self.unpackType = self.type
         self.unpackAddr = self.name
-        self.unpackCallName = self.name
 
         # Some details depend on direction
         if self.direction == DIR_IN:
@@ -362,12 +438,12 @@ class StringData(SimpleData):
         self.direction = direction
 
         if self.direction == DIR_IN:
-            self.initInString(name, maxSize, minSize)
+            self.initInString(maxSize, minSize)
         else:
-            self.initOutString(name, minSize)
+            self.initOutString(minSize)
 
 
-    def initInString(self, name, maxSize=None, minSize=None):
+    def initInString(self, maxSize=None, minSize=None):
         # For strings, the "value" of the parameter is actually the string length.
         # self.value is used when comparing against minValue/maxValue;
         self.value = "strlen(%s)" % self.name
@@ -380,18 +456,11 @@ class StringData(SimpleData):
             self.minValue = minSize
 
         # todo: Should we add "Str" suffix here?
-        self.parmName = self.name
+        #self.parmName = self.name
         self.parmType = self.type+'*'
 
         # IN strings should be "const"
         self.parmType = "const " + self.parmType
-
-        #self.numBytes = "%s*sizeof(%s)" % (size, self.type.rstrip('*'))
-        #self.address = self.name
-        #self.unpackName = "%s[%s]" % (self.name, size)
-        #self.unpackType = self.type.rstrip('*')
-        #self.unpackAddr = self.address
-        self.unpackCallName = self.name
 
         self.clientPack = """\
 _msgBufPtr = PackString( _msgBufPtr, {parm.parmName} );\
@@ -403,7 +472,7 @@ _msgBufPtr = UnpackString( _msgBufPtr, &{parm.name} );\
 """
 
 
-    def initOutString(self, name, minSize=None):
+    def initOutString(self, minSize=None):
         # todo: The code in this method was copied from ArrayParm; might need some cleanup ...
 
         # OUT strings only have a minSize, similar to Arrays, however, need to add 1 to account
@@ -412,8 +481,7 @@ _msgBufPtr = UnpackString( _msgBufPtr, &{parm.name} );\
             self.baseMinSize = minSize
             self.minSize = eval('minSize+1')
 
-        # Name when used in parameter list
-        self.parmName = self.name
+        # Type when used in parameter list
         self.parmType = self.type+'*'
 
         # Name of auto-generated size variable
@@ -423,9 +491,7 @@ _msgBufPtr = UnpackString( _msgBufPtr, &{parm.name} );\
         self.address = self.parmName
 
         self.unpackName = "%s[%s]" % (self.name, self.sizeVar)
-        self.unpackType = self.type
         self.unpackAddr = self.name
-        self.unpackCallName = self.name
 
         # todo:
         # Originally OUT strings were handled the same as any other data, and used the regular

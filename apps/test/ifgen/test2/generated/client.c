@@ -650,6 +650,62 @@ void allParameters
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Test file descriptors as IN and OUT parameters
+ */
+//--------------------------------------------------------------------------------------------------
+void FileTest
+(
+    int dataFile,
+        ///< [IN]
+        ///< file descriptor as IN parameter
+
+    int* dataOutPtr
+        ///< [OUT]
+        ///< file descriptor as OUT parameter
+)
+{
+    le_msg_MessageRef_t _msgRef;
+    le_msg_MessageRef_t _responseMsgRef;
+    _Message_t* _msgPtr;
+
+    // Will not be used if no data is sent/received from server.
+    __attribute__((unused)) uint8_t* _msgBufPtr;
+
+
+
+    // Range check values, if appropriate
+
+
+    // Create a new message object and get the message buffer
+    _msgRef = le_msg_CreateMsg(GetCurrentSessionRef());
+    _msgPtr = le_msg_GetPayloadPtr(_msgRef);
+    _msgPtr->id = _MSGID_FileTest;
+    _msgBufPtr = _msgPtr->buffer;
+
+    // Pack the input parameters
+    le_msg_SetFd(_msgRef, dataFile);
+
+    // Send a request to the server and get the response.
+    LE_DEBUG("Sending message to server and waiting for response");
+    _responseMsgRef = le_msg_RequestSyncResponse(_msgRef);
+    // It is a serious error if we don't get a valid response from the server
+    LE_FATAL_IF(_responseMsgRef == NULL, "Valid response was not received from server");
+
+    // Process the result and/or output parameters, if there are any.
+    _msgPtr = le_msg_GetPayloadPtr(_responseMsgRef);
+    _msgBufPtr = _msgPtr->buffer;
+
+
+    // Unpack any "out" parameters
+    *dataOutPtr = le_msg_GetFd(_responseMsgRef);
+
+    // Release the message object, now that all results/output has been copied.
+    le_msg_ReleaseMsg(_responseMsgRef);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This function fakes an event, so that the handler will be called.
  * Only needed for testing.  Would never exist on a real system.
  */

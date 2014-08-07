@@ -1,0 +1,27 @@
+/** @page legatoServicesOther Other 
+
+Here are some other useful services:
+
+@subsection positioning Positioning
+
+@subpage c_posCtrl <br>
+@subpage c_pos <br>
+
+@subsection audio Audio
+
+@subpage c_audio <br>
+
+@subsection pa Platform Adaptors
+
+@subpage c_pa <br>
+@subpage c_pa_gnss <br>
+
+<HR>
+ 
+Handy @subpage c_sampleCode
+
+<HR>
+
+Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+
+**/

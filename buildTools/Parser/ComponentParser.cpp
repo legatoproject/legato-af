@@ -2,7 +2,7 @@
 /**
  * Main file for the Component Parser.
  *
- * Copyright (C) 2013 Sierra Wireless Inc., all rights reserved.
+ * Copyright (C) 2013-2014, Sierra Wireless Inc., Use of this work is subject to license.
  **/
 //--------------------------------------------------------------------------------------------------
 
@@ -16,6 +16,7 @@ extern "C"
     #include "ComponentParserInternals.h"
     #include <string.h>
     #include <stdio.h>
+    #include "lex.cyy.h"
 }
 
 
@@ -61,42 +62,44 @@ namespace parser
 //--------------------------------------------------------------------------------------------------
 void ParseComponent
 (
-    Component& component,               ///< The Component object to populate.
+    Component* componentPtr,            ///< The Component object to populate.
     const BuildParams_t& buildParams    ///< Build parameters obtained from the command line.
 )
 //--------------------------------------------------------------------------------------------------
 {
-    ComponentPtr = &component;
+    ComponentPtr = componentPtr;
     BuildParamsPtr = &buildParams;
 
     // Open the component's Component.cdef file for reading.
-    std::string path = FindComponent(component.Name(), buildParams.ComponentDirs());
+    std::string path = FindComponent(componentPtr->Path(), buildParams.ComponentDirs());
     if (path == "")
     {
-        throw Exception("Couldn't find component '" + component.Name() + "'.");
+        throw Exception("Couldn't find component '" + componentPtr->Path() + "'.");
     }
-    component.Path(path);
-    path += "/Component.cdef";
-    FILE* file = fopen(path.c_str(), "r");
+    componentPtr->Path(path);
+
+    std::string cdefFilePath = CombinePath(path, "/Component.cdef");
+    FILE* file = fopen(cdefFilePath.c_str(), "r");
     if (file == NULL)
     {
         int error = errno;
         std::stringstream errorMessage;
-        errorMessage << "Failed to open file '" << path << "'." <<
+        errorMessage << "Failed to open file '" << cdefFilePath << "'." <<
                         " Errno = " << error << "(" << strerror(error) << ").";
         throw Exception(errorMessage.str());
     }
 
     if (buildParams.IsVerbose())
     {
-        std::cout << "Parsing '" << path << "'\n";
+        std::cout << "Parsing '" << cdefFilePath << "'\n";
     }
 
     // Tell the parser to reset itself and connect to the new file stream for future parsing.
-    cyy_FileName = path.c_str();
+    cyy_FileName = cdefFilePath.c_str();
     cyy_IsVerbose = (BuildParamsPtr->IsVerbose() ? 1 : 0);
     cyy_EndOfFile = 0;
     cyy_ErrorCount = 0;
+    cyy_set_lineno(1);
     cyy_restart(file);
 
     // Until the parsing is done,
@@ -114,14 +117,26 @@ void ParseComponent
     // Halt if there were errors.
     if (cyy_ErrorCount > 0)
     {
-        throw Exception("Errors encountered while parsing '" + path + "'.");
+        throw Exception("Errors encountered while parsing '" + cdefFilePath + "'.");
     }
 
     ComponentPtr = NULL;
 
     if (buildParams.IsVerbose())
     {
-        std::cout << "Finished parsing '" << path << "'\n";
+        std::cout << "Finished parsing '" << cdefFilePath << "'\n";
+    }
+
+    // Recursively, for each of the new component's sub-components,
+    for (auto& mapEntry : componentPtr->SubComponents())
+    {
+        // If the sub-component has not yet been parsed, create an object for it and parse it now.
+        if (mapEntry.second == NULL)
+        {
+            mapEntry.second = Component::CreateComponent(mapEntry.first);
+
+            ParseComponent(mapEntry.second, buildParams);
+        }
     }
 }
 
@@ -148,7 +163,25 @@ void cyy_AddSourceFile
 {
     try
     {
-        ComponentPtr->AddSourceFile(filePath);
+        std::string path = legato::DoEnvVarSubstitution(filePath);
+
+        // If env var substitution happened.
+        if (path != filePath)
+        {
+            if (cyy_IsVerbose)
+            {
+                std::cout << "Environment variable substitution of '" << filePath
+                          << "' resulted in '" << path << "'." << std::endl;
+            }
+
+            // If the result was an empty string, ignore it.
+            if (path == "")
+            {
+                return;
+            }
+        }
+
+        ComponentPtr->AddSourceFile(path);
     }
     catch (legato::Exception e)
     {
@@ -159,30 +192,24 @@ void cyy_AddSourceFile
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Add a file mapping to a Component.
+ * Add a required file to a Component.  This is a file that is expected to exist outside the
+ * application's sandbox in the target file system and that the component needs access to.
  */
 //--------------------------------------------------------------------------------------------------
-void cyy_AddFileMapping
+void cyy_AddRequiredFile
 (
-    const char* permissions,///< String representing the permissions.
+    const char* permissions,///< String representing the permissions required ("[rwx]").
     const char* sourcePath, ///< The file path in the target file system, outside sandbox.
     const char* destPath    ///< The file path in the target file system, inside sandbox.
 )
 //--------------------------------------------------------------------------------------------------
 {
-    if (cyy_IsVerbose)
-    {
-        printf("  Importing '%s' from the target file system to '%s' %s inside the sandbox.\n",
-               sourcePath,
-               destPath,
-               permissions);
-    }
-
     try
     {
-        ComponentPtr->AddImportedFile( {    yy_GetPermissionFlags(permissions),
-                                            yy_StripQuotes(sourcePath),
-                                            yy_StripQuotes(destPath)    } );
+        ComponentPtr->AddRequiredFile(yy_CreateRequiredFileMapping(permissions,
+                                                                   sourcePath,
+                                                                   destPath,
+                                                                   *BuildParamsPtr) );
     }
     catch (legato::Exception e)
     {
@@ -193,11 +220,143 @@ void cyy_AddFileMapping
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Add an included file to a Component.  This is a file that should be bundled into any app that
- * this component is a part of.
+ * Add a required directory to a Component.  This is a directory that is expected to exist outside
+ * the application's sandbox in the target file system and that the component needs access to.
  */
 //--------------------------------------------------------------------------------------------------
-void cyy_AddIncludedFile
+void cyy_AddRequiredDir
+(
+    const char* permissions,///< String representing the permissions required ("[rwx]").
+    const char* sourcePath, ///< The directory path in the target file system, outside sandbox.
+    const char* destPath    ///< The directory path in the target file system, inside sandbox.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    try
+    {
+        ComponentPtr->AddRequiredDir(yy_CreateRequiredDirMapping(permissions,
+                                                                 sourcePath,
+                                                                 destPath,
+                                                                 *BuildParamsPtr) );
+    }
+    catch (legato::Exception e)
+    {
+        cyy_error(e.what());
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add a required library to a Component.  This is a library that is expected to exist outside
+ * the application's sandbox in the target file system and that the component needs access to.
+ *
+ * Furthermore, this library will be linked with any executable that this component is a part of.
+ * At link time, the library search path with be searched for the library in the build host file
+ * system.
+ */
+//--------------------------------------------------------------------------------------------------
+void cyy_AddRequiredLib
+(
+    const char* libName     ///< The name of the library.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    try
+    {
+        std::string libraryPath = legato::DoEnvVarSubstitution(libName);
+
+        // If env var substitution happened.
+        if (libraryPath != libName)
+        {
+            if (cyy_IsVerbose)
+            {
+                std::cout << "Environment variable substitution of '" << libName
+                          << "' resulted in '" << libraryPath << "'." << std::endl;
+            }
+
+            // If the result was an empty string, ignore it.
+            if (libraryPath == "")
+            {
+                return;
+            }
+        }
+
+        ComponentPtr->AddLibrary(libraryPath);
+    }
+    catch (legato::Exception e)
+    {
+        cyy_error(e.what());
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add a required component to a component.  This is another component that is used by the
+ * component that is currently being parsed.
+ *
+ * This will add that component to the component's list of subcomponents. Any executable
+ * that includes a component also includes all of that component's subcomponents and their
+ * subcomponents, etc.
+ */
+//--------------------------------------------------------------------------------------------------
+void cyy_AddRequiredComponent
+(
+    const char* path        ///< The path to the component.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    try
+    {
+        std::string componentPath = legato::DoEnvVarSubstitution(path);
+
+        // If env var substitution happened.
+        if (componentPath != path)
+        {
+            if (cyy_IsVerbose)
+            {
+                std::cout << "Environment variable substitution of '" << path
+                          << "' resulted in '" << componentPath << "'." << std::endl;
+            }
+
+            // If the result was an empty string, ignore it.
+            if (componentPath == "")
+            {
+                return;
+            }
+        }
+
+        std::string dirPath = legato::FindComponent(componentPath,
+                                                    BuildParamsPtr->ComponentDirs());
+
+        if (dirPath == "")
+        {
+            throw legato::Exception("Subcomponent '" + componentPath + "' not found.");
+        }
+
+        // Add the component to the list of sub-components.  We try to find a pre-existing,
+        // Component object for the component path, in case this Component has already
+        // been parsed, but if it hasn't been parsed yet, then we leave a NULL pointer in
+        // the list of sub-components to indicate that this one still needs to be parsed.
+        // We can't parse it now, because we are in the middle of parsing another component.
+        // We will parse all the sub-components when we are done parsing this one.
+        ComponentPtr->AddSubComponent(dirPath, legato::Component::FindComponent(dirPath));
+    }
+    catch (legato::Exception e)
+    {
+        cyy_error(e.what());
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add to a Component a file from the build host file system that should be bundled into any
+ * app that this component is a part of.
+ */
+//--------------------------------------------------------------------------------------------------
+void cyy_AddBundledFile
 (
     const char* permissions,///< String representing the permissions.
     const char* sourcePath, ///< The file path in the build host file system.
@@ -205,19 +364,12 @@ void cyy_AddIncludedFile
 )
 //--------------------------------------------------------------------------------------------------
 {
-    if (cyy_IsVerbose)
-    {
-        printf("Any app that includes this component will include '%s' (at '%s' %s in the sandbox).\n",
-               sourcePath,
-               destPath,
-               permissions);
-    }
-
     try
     {
-        ComponentPtr->AddIncludedFile( {    yy_GetPermissionFlags(permissions),
-                                            yy_StripQuotes(sourcePath),
-                                            yy_StripQuotes(destPath)    } );
+        ComponentPtr->AddBundledFile(yy_CreateBundledFileMapping(permissions,
+                                                                 sourcePath,
+                                                                 destPath,
+                                                                 *BuildParamsPtr) );
     }
     catch (legato::Exception e)
     {
@@ -228,30 +380,22 @@ void cyy_AddIncludedFile
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Add an imported interface to a Component.
- **/
+ * Add to a Component a directory from the build host file system that should be bundled into
+ * any app that this component is a part of.
+ */
 //--------------------------------------------------------------------------------------------------
-void cyy_AddImportedInterface
+void cyy_AddBundledDir
 (
-    const char* instanceName,
-    const char* apiFile
+    const char* sourcePath, ///< The file path in the build host file system.
+    const char* destPath    ///< The file path in the target file system, inside sandbox.
 )
 //--------------------------------------------------------------------------------------------------
 {
-    if (cyy_IsVerbose)
-    {
-        printf("  Importing API '%s' with local instance name '%s'\n", apiFile, instanceName);
-    }
-
     try
     {
-        std::string apiFilePath = legato::FindFile(apiFile, BuildParamsPtr->InterfaceDirs());
-        if (apiFilePath.empty())
-        {
-            throw legato::Exception("Couldn't find API file '" + std::string(apiFile) + "'.");
-        }
-
-        ComponentPtr->AddImportedInterface(instanceName, apiFilePath);
+        ComponentPtr->AddBundledDir(yy_CreateBundledDirMapping(sourcePath,
+                                                               destPath,
+                                                               *BuildParamsPtr) );
     }
     catch (legato::Exception e)
     {
@@ -262,33 +406,371 @@ void cyy_AddImportedInterface
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Add an exported interface to a Component.
+ * Find a given API file in the build host file system.
+ *
+ * @return The path to the file.
+ *
+ * @throw legato::Exception if the file can't be found.
  **/
 //--------------------------------------------------------------------------------------------------
-void cyy_AddExportedInterface
+static std::string FindApiFile
 (
-    const char* instanceName,
     const char* apiFile
 )
 //--------------------------------------------------------------------------------------------------
 {
-    if (cyy_IsVerbose)
+    std::string apiFilePath(legato::DoEnvVarSubstitution(apiFile));
+
+    if (apiFilePath.rfind(".api") != apiFilePath.length() - 4)
     {
-        printf("  Exporting API '%s' with local instance name '%s'\n", apiFile, instanceName);
+        throw legato::Exception("File name '" + apiFilePath + "'"
+                                " doesn't look like a .api file.");
     }
 
+    apiFilePath = legato::FindFile(apiFile, BuildParamsPtr->InterfaceDirs());
+    if (apiFilePath.empty())
+    {
+        throw legato::Exception("Couldn't find API file '" + std::string(apiFile) + "'.");
+    }
+
+    return legato::AbsolutePath(apiFilePath);
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Generate a default IPC interface instance name from a .api file path.
+ *
+ * @return The interface instance name.
+ **/
+//--------------------------------------------------------------------------------------------------
+static std::string InterfaceInstanceFromFilePath
+(
+    const char* apiFile
+)
+//--------------------------------------------------------------------------------------------------
+{
+    std::string instanceStr = legato::GetLastPathNode(apiFile);
+
+    size_t suffixPos = instanceStr.rfind('.');
+
+    return instanceStr.substr(0, suffixPos);
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add a required (client-side) IPC API interface to a Component.
+ *
+ * @return Reference to the Imported Interface object created.
+ **/
+//--------------------------------------------------------------------------------------------------
+static legato::ImportedInterface& AddRequiredApi
+(
+    const char* instanceName,   ///< Interface instance name or
+                                ///  NULL if should be derived from .api file name.
+
+    const char* apiFile         ///< Path to the .api file.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    std::string apiFilePath = FindApiFile(apiFile);
+
+    std::string instanceStr;
+    if (instanceName == NULL)
+    {
+        instanceStr = InterfaceInstanceFromFilePath(apiFile);
+    }
+    else
+    {
+        instanceStr = instanceName;
+    }
+
+    return ComponentPtr->AddRequiredApi(instanceStr,
+                                        legato::parser::GetApiObject(apiFilePath, *BuildParamsPtr));
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add a required (client-side) IPC API interface to a Component.
+ **/
+//--------------------------------------------------------------------------------------------------
+void cyy_AddRequiredApi
+(
+    const char* instanceName,   ///< Interface instance name or
+                                ///  NULL if should be derived from .api file name.
+
+    const char* apiFile         ///< Path to the .api file.
+)
+//--------------------------------------------------------------------------------------------------
+{
     try
     {
-        std::string apiFilePath = legato::FindFile(apiFile, BuildParamsPtr->InterfaceDirs());
-        if (apiFilePath.empty())
-        {
-            throw legato::Exception("Couldn't find API file '" + std::string(apiFile) + "'.");
-        }
+        auto& interface = AddRequiredApi(instanceName, apiFile);
 
-        ComponentPtr->AddExportedInterface(instanceName, apiFilePath);
+        if (cyy_IsVerbose)
+        {
+            std::cout << "  Client of API defined in '" << interface.Api().FilePath()
+                      << "' with local interface name '" << interface.InternalName() << "'"
+                      << std::endl;
+        }
     }
     catch (legato::Exception e)
     {
         cyy_error(e.what());
     }
 }
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add a types-only required (client-side) IPC API interface to a Component.
+ *
+ * This only imports the type definitions from the .api file without generating the client-side IPC
+ * library or automatically calling the client-side IPC initialization function.
+ **/
+//--------------------------------------------------------------------------------------------------
+void cyy_AddTypesOnlyRequiredApi
+(
+    const char* instanceName,   ///< Prefix to apply to the definitions, or
+                                ///  NULL if prefix should be derived from .api file name.
+
+    const char* apiFile         ///< Path to the .api file.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    try
+    {
+        auto& interface = AddRequiredApi(instanceName, apiFile);
+
+        if (cyy_IsVerbose)
+        {
+            std::cout << "  Using data types from API defined in '" << interface.Api().FilePath()
+                      << "' with local prefix '" << interface.InternalName() << "_'"
+                      << std::endl;
+        }
+
+        interface.MarkTypesOnly();
+    }
+    catch (legato::Exception e)
+    {
+        cyy_error(e.what());
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add a manual-start required (client-side) IPC API interface to a Component.
+ *
+ * The client-side IPC code will be generated, but the initialization code will not be run
+ * automatically by the executable's main function.
+ **/
+//--------------------------------------------------------------------------------------------------
+void cyy_AddManualStartRequiredApi
+(
+    const char* instanceName,   ///< Prefix to apply to the definitions, or
+                                ///  NULL if prefix should be derived from .api file name.
+
+    const char* apiFile         ///< Path to the .api file.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    try
+    {
+        auto& interface = AddRequiredApi(instanceName, apiFile);
+
+        if (cyy_IsVerbose)
+        {
+            std::cout << "  Client of API defined in '" << interface.Api().FilePath()
+                      << "' with local interface name '" << interface.InternalName() << "'"
+                      << std::endl;
+        }
+
+        interface.MarkManualStart();
+    }
+    catch (legato::Exception e)
+    {
+        cyy_error(e.what());
+    }
+
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add a provided (server-side) IPC API interface to a Component.
+ *
+ * @return Reference to the newly created Exported Interface object.
+ **/
+//--------------------------------------------------------------------------------------------------
+static legato::ExportedInterface& AddProvidedApi
+(
+    const char* instanceName,   ///< Interface instance name or
+                                ///  NULL if should be derived from .api file name.
+
+    const char* apiFile         ///< Path to the .api file.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    std::string apiFilePath = FindApiFile(apiFile);
+
+    std::string instanceStr;
+    if (instanceName == NULL)
+    {
+        instanceStr = InterfaceInstanceFromFilePath(apiFile);
+    }
+    else
+    {
+        instanceStr = instanceName;
+    }
+
+    return ComponentPtr->AddProvidedApi(instanceStr,
+                                        legato::parser::GetApiObject(apiFilePath, *BuildParamsPtr));
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add a provided (server-side) IPC API interface to a Component.
+ **/
+//--------------------------------------------------------------------------------------------------
+void cyy_AddProvidedApi
+(
+    const char* instanceName,   ///< Interface instance name or
+                                ///  NULL if should be derived from .api file name.
+
+    const char* apiFile         ///< Path to the .api file.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    try
+    {
+        auto& interface = AddProvidedApi(instanceName, apiFile);
+
+        if (cyy_IsVerbose)
+        {
+            std::cout << "  Serving API defined in '" << interface.Api().FilePath()
+                      << "' with local interface name '" << interface.InternalName() << "'"
+                      << std::endl;
+        }
+    }
+    catch (legato::Exception e)
+    {
+        cyy_error(e.what());
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add an asynchronous provided (server-side) IPC API interface to a Component.
+ **/
+//--------------------------------------------------------------------------------------------------
+void cyy_AddAsyncProvidedApi
+(
+    const char* instanceName,   ///< Interface instance name or
+                                ///  NULL if should be derived from .api file name.
+
+    const char* apiFile         ///< Path to the .api file.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    try
+    {
+        auto& interface = AddProvidedApi(instanceName, apiFile);
+
+        if (cyy_IsVerbose)
+        {
+            std::cout << "  Serving (asynchronously) API defined in '" << interface.Api().FilePath()
+                      << "' with local interface name '" << interface.InternalName() << "'"
+                      << std::endl;
+        }
+
+        interface.MarkAsync();
+    }
+    catch (legato::Exception e)
+    {
+        cyy_error(e.what());
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add a manual-start provided (server-side) IPC API interface to a Component.
+ *
+ * The server-side IPC code will be generated, but the initialization code will not be run
+ * automatically by the executable's main function.
+ **/
+//--------------------------------------------------------------------------------------------------
+void cyy_AddManualStartProvidedApi
+(
+    const char* instanceName,   ///< Interface instance name or
+                                ///  NULL if should be derived from .api file name.
+
+    const char* apiFile         ///< Path to the .api file.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    try
+    {
+        auto& interface = AddProvidedApi(instanceName, apiFile);
+
+        if (cyy_IsVerbose)
+        {
+            std::cout << "  Serving API defined in '" << interface.Api().FilePath()
+                      << "' with local interface name '" << interface.InternalName() << "'"
+                      << std::endl;
+        }
+
+        interface.MarkManualStart();
+    }
+    catch (legato::Exception e)
+    {
+        cyy_error(e.what());
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add a manual-start, asynchronous provided (server-side) IPC API interface to a Component.
+ *
+ * The server-side IPC code will be generated, but the initialization code will not be run
+ * automatically by the executable's main function.
+ **/
+//--------------------------------------------------------------------------------------------------
+void cyy_AddManualStartAsyncProvidedApi
+(
+    const char* instanceName,   ///< Interface instance name or
+                                ///  NULL if should be derived from .api file name.
+
+    const char* apiFile         ///< Path to the .api file.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    try
+    {
+        auto& interface = AddProvidedApi(instanceName, apiFile);
+
+        if (cyy_IsVerbose)
+        {
+            std::cout << "  Serving (asynchronously) API defined in '" << interface.Api().FilePath()
+                      << "' with local interface name '" << interface.InternalName() << "'"
+                      << std::endl;
+        }
+
+        interface.MarkAsync();
+        interface.MarkManualStart();
+    }
+    catch (legato::Exception e)
+    {
+        cyy_error(e.what());
+    }
+}
+
+

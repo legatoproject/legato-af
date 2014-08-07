@@ -1,0 +1,7 @@
+executables:
+
+    server (printServer)
+
+processes:
+
+    run: (server)

@@ -22,7 +22,6 @@ typedef enum
     PERMISSION_READABLE   = 1,
     PERMISSION_WRITEABLE  = 2,
     PERMISSION_EXECUTABLE = 4,
-    PERMISSION_PERSISTENT = 8 + 2, // Survives reset (implies writeable).
 }
 permission_Flags_t;
 

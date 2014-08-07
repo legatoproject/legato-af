@@ -1,8 +1,5 @@
 /** @page basicConcepts Basic Concepts
 
-@ref basicOverview  <br>
-@ref nextSteps
-
 @section basicOverview Overview
 
 Legato is designed to make developing component-based software for embedded devices in the
@@ -20,6 +17,7 @@ Other basic concepts topics:
 @subpage basicComponents  <br>
 @subpage basicInterfaces  <br>
 @subpage eventBasics  <br>
+@subpage bindingConfig  <br>
 @subpage sandboxGen
 
 Or move to the <b>next level</b>: @ref appCreating.

@@ -23,7 +23,7 @@
 typedef struct ServerCmd* ServerCmdRef_t;
 
 // Interface specific includes
-#include "common_interface.h"
+#include "common_server.h"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -176,6 +176,28 @@ void allParameters
     const char* label,
     size_t responseNumElements,
     size_t moreNumElements
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Server-side respond function for FileTest
+ */
+//--------------------------------------------------------------------------------------------------
+void FileTestRespond
+(
+    ServerCmdRef_t _cmdRef,
+    int dataOut
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Prototype for server-side async interface function
+ */
+//--------------------------------------------------------------------------------------------------
+void FileTest
+(
+    ServerCmdRef_t _cmdRef,
+    int dataFile
 );
 
 //--------------------------------------------------------------------------------------------------

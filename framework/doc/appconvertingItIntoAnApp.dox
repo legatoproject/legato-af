@@ -1,7 +1,6 @@
 /** @page appconvertingItIntoAnApp Converting to an App
 
-
-@section convertingItIntoAnApp Converting it Into an App
+@section convertingItIntoAnApp Converting to an App
 
 Now take the source code file (hello.c) and make an application out of it.
 
@@ -23,11 +22,13 @@ processes:
     run: (helloWorld)
 @endverbatim
 
-This defines one executable called helloWorld implemented by hello.c, 
+This defines one executable called helloWorld implemented by hello.c,
 and then starts one instance of the helloWorld executable.
 
 If your executable has multiple source files, add more files inside the
       parentheses after the executable name: "helloWorld ( hello.c foo.c )".
+
+@section buildApp Build App
 
 Run @c mkapp to build the executable and bundle it into an application.
 
@@ -44,8 +45,9 @@ $ mkapp -t wp7 helloWorld.adef
 
 @note If you're building an AR7 app, substitute @c ar7 for @c wp7 in the mkapp run command.
 
-Now, you have a file called helloWorld.wp7.  Use "instapp" to install it on your target 
-so it can be started automatically by the Supervisor when the device boots up.
+@section instApp Install App
+
+Use @c instapp to install it on your target.
 
 @verbatim
 $ instapp helloWorld.wp7 <ip addr>
@@ -54,14 +56,32 @@ $ instapp helloWorld.wp7 <ip addr>
 The second argument tells the target device host address from where to run the application.
 This will connect to the target, upload the application, and start it.
 
-Your installed application output will display in /var/log/messages in the target device,
- not on the terminal you used to install the application.
+@section runLogs Run Logs
+
+Your installed application's @c LE_INFO log message will appear in the system log ("syslog") on
+the target device.
+
+Run @a logread (on the target) to view the system log.
+
+@verbatim
+# logread
+@endverbatim
+
+Use logread's @a -f option to start monitoring the logs and display messages as they are logged.
+
+@verbatim
+# logread -f
+@endverbatim
+
+@section rmApp Remove App
 
 Use "rmapp" to uninstall your application.
 
 @verbatim
 $ rmapp helloWorld.wp7 <ip addr>
 @endverbatim
+
+@section lsApp List App
 
 Use "lsapp" to list the applications installed on a target.
 
@@ -71,6 +91,6 @@ $ lsapp <ip addr>
 
 <HR>
 
-Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
 
 **/

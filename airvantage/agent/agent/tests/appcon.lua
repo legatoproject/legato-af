@@ -1,9 +1,13 @@
--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 -- Copyright (c) 2012 Sierra Wireless and others.
 -- All rights reserved. This program and the accompanying materials
 -- are made available under the terms of the Eclipse Public License v1.0
--- which accompanies this distribution, and is available at
--- http://www.eclipse.org/legal/epl-v10.html
+-- and Eclipse Distribution License v1.0 which accompany this distribution.
+--
+-- The Eclipse Public License is available at
+--   http://www.eclipse.org/legal/epl-v10.html
+-- The Eclipse Distribution License is available at
+--   http://www.eclipse.org/org/documents/edl-v10.php
 --
 -- Contributors:
 --     Laurent Barthelemy for Sierra Wireless - initial API and implementation
@@ -319,8 +323,7 @@ local function create_app(runnable)
     os.execute("rm -rf "..tmpfolder)
     tmpfolder = tmpfolder..'_dir'
     u.assert(tmpfolder, "cannot create tmp folder to put app")
-    local res, err = os.execute("mkdir "..tmpfolder)
-    u.assert(res == 0, err or "unknown error")
+    u.assert(lfs.mkdir(tmpfolder))
     local file, err = io.open(tmpfolder.."/file1", "w+")
     u.assert(file, err)
     u.assert(file:write(tmpfile_content1))
@@ -444,14 +447,12 @@ function t_appcon:test_03_reinstall_no_purge()
     u.assert_equal( 0, res, err or "cannot modify file in install folder")
 
     -- now add a folder in app folder with the same name than file #2  (#4)
-    res, err = os.execute("mkdir apps/"..id.."/unit_test_app_3_file_2")
-    u.assert_equal( 0, res, err or "cannot add new folder in app folder")
+    u.assert(lfs.mkdir("apps/"..id.."/unit_test_app_3_file_2"))
     -- add new file in app folder (#5)
     res, err = os.execute("touch apps/"..id.."/unit_test_app_3_file_3")
     u.assert_equal( 0, res, err or "cannot add new file in app folder")
     -- now add new folder in  install folder (#6)
-    res, err = os.execute("mkdir "..path.."/unit_test_app_3_file_3")
-    u.assert_equal( 0, res, err or "cannot add new file in app folder")
+    u.assert(lfs.mkdir(path.."/unit_test_app_3_file_3"))
 
     -- reinstall app
     res,err = appcon.install(id, path)

@@ -1,4 +1,6 @@
-/** @page defFilesProcessesAdef adef processes
+/** @page defFilesAdefProcessesSubsections .adef processes
+
+<c>.adef</c> files' @c processes sections can contain these subsections:
 
 @ref processRun <br>
 @ref processenvVars <br>
@@ -10,45 +12,10 @@
 @ref faultAction <br>
 
 
-Specify processes to run when the app is started. The processes section of the .adef has optional subsections.
-
-Contains environment variables, limits, and handling actions that apply to all the processes listed.
-If different processes have different variables, they must be in a separate processes: sections.
-
-@code
-processes:
-
-    // Start up these processes when the app starts
-    run: myProc1 ( myExe --foo -b 43 )
-    run: myProc2 ( myExe –bar --b 92 )
-    run: ( myExe2 "Hello, world." )  // If no proc name is specified, uses the exe name by default.
-
-    // Env var settings (name = value) for all processes in this section.
-    envVars:
-        LE_LOG_LEVEL = DEBUG
-        LE_LOG_LOCATION = "stderr + syslog"
-
-    priority: medium    // Starting (and maximum) scheduling priority.  Process can only lower its priority from here.
-
-    coreFileSize: 100K  // Maximum size of core dump files.
-    maxFileSize: 50K    // Files are not allowed to grow bigger than this.
-    memLockSize: 32K    // Maximum number of bytes allowed to be locked into physical memory using mlock().
-    numFds: 20          // Maximum number of file descriptors allowed to be open at the same time.
-
-processes:
-
-    run: ( realTimeExe )
-
-    priority: rt10
-
-    /*-- Exception handling policy for processes in this section. --*/
-    faultAction: restart   // Restart the process if it fails.
-    watchdogAction: restart  // If the process doesn't kick its watchdog timer, kill it and restart it.
- @endcode
-
 @section processRun run
 
-Names a process to be started by the Supervisor when the app is started. Also specifies executable and command-line arguments.
+Names a process to be started by the Supervisor when the app is started. Also specifies executable
+and command-line arguments.
 
 @code
 run: myProc1 ( myExe --foo -b 43 )
@@ -68,62 +35,61 @@ Command-line arguments passed to the process when started can appear after the e
 run: ( myexe --foo ) @endcode
 
 @code
-run: ( myexe --bar  // Note that the command-line can be broken into multiple lines for readability.
+run: ( myexe --bar  // Note that the command-line can be broken into multiple
+                    // lines for readability.
            --toto ) // And it can be commented too. @endcode
 
 Runtime process name is the same as the executable by default.
-If the process name should be different, add the process name before the executable name.
+If the process name should be different, add the process name before the opening parenthesis.
 
 @code
 run: procA ( myexe2 --foo )
 run: procB ( myexe2 --bar ) @endcode
 
 Executable names can be the ones listed in the app’s “executables:” section,
-listed in the “import:” section or the "files:" section, in Component.cdef “files:” section of an included component.
+listed in the “import:” section or in Component.cdef “files:” section of an included component.
 
-Quotation marks (either single ' or double ") can be used if white-space (spaces, tabs, //, /*, etc.)
-is needed inside a command-line argument, or if an empty argument is needed ("").
+Quotation marks (either single @b' or double @b") can be used if white-space (spaces, tabs, //, etc.)
+is needed inside a command-line argument, or if an empty argument is needed \(""\).
+
+
+@section processenvVars envVars
+
+Environment variables appear as "name = value" pairs. The first value is the environment variable
+name; the second part is the variable value.
+Enclose the value in quotation marks (either single ' or double ") if white-space is required.
 
 @code
-    run: ( greet "Hello world" )
-    run: ( greet "Hello \"Mr. Smarty-pants\"" )
-    run: ( greet 'Hello "Mr. Smarty-pants"' )
-    run: ( fetchFromSmbShare "\\\\Server\\Share\\Directory\\file" )
-    @endcode
-
-
-@section processenvVars environment variarbles
-
-Environment variables appear as "name = value" pairs. The first value is the environment variable name; the second part is the variable value. Enclose the value in quotation marks (either single ' or double ") if white-space is required (spaces, tabs, //, /*, etc.).
-@code
-    envVars:
-        LE_LOG_LEVEL = DEBUG
-        LE_LOG_LOCATION = "stderr + syslog"
+envVars:
+    LE_LOG_LEVEL = DEBUG
 @endcode
 
 
 @section processPriority priority
 
 Specifies the starting (and maximum) scheduling priority. A running app process can only lower
- its priority from this point. Once it has lowered its priority, it can't raise it again. If the process starts at
- medium priority and reduces to low priority, it can't go back to medium priority. Default is @b medium.
+its priority from this point. Once it has lowered its priority, it can't raise it again (e.g., if
+the process starts at medium priority and reduces to low priority, it can't go back to medium
+priority). The default is @b medium.
 
- Values:
-- @b idle -  for very low priority processes that only get CPU time if no other processes waiting for the CPU.
+Values:
+- @b idle - for very low priority processes that only get CPU time if no other processes are waiting
+for the CPU.
 - @b low, @b medium, @b high - intended for normal processes that contend for the CPU.
 Processes with these priorities don't preempt each other, but their priorities affect how they're
-inserted into the schdeduling queue (high to low).
+inserted into the scheduling queue (high to low).
 - @b rt1 to @b rt32  - intended for (soft) realtime processes. A higher realtime priority
- will pre-empt a lower realtime priority (ie. "rt2" would pre-empt "rt1").
- Processes with any realtime priority will pre-empt processes with high, medium, low and idle priorities.
- Processes with these realtime priorities pre-empt the Legato framework processes.
- Ensure design lets realtime processes relinquish the CPU appropriately.
+will preempt a lower realtime priority (ie. "rt2" would preempt "rt1").
+Processes with any realtime priority will preempt processes with high, medium, low and idle priorities.
+Processes with these realtime priorities preempt the Legato framework processes.
+Ensures the design lets realtime processes relinquish the CPU appropriately.
 
 @code
 priority: medium
 @endcode
 
-@section processcoreFileSize core dump files
+
+@section processcoreFileSize coreFileSize
 
 Specifies the maximum size of core dump files that can be created when processes crash.
 The @a K suffix permits specifying in kilobytes (multiples of 1024 bytes). Default is @b zero.
@@ -132,49 +98,77 @@ The @a K suffix permits specifying in kilobytes (multiples of 1024 bytes). Defau
 coreFileSize: 100K
 @endcode
 
-@section processmaxFileSize max file size
 
-Specifies the maximum size processes can make files. The @a K suffix permits specifying in kilobytes (multiples of 1024 bytes). Default is @b 88K.
+@section processmaxFileSize maxFileSize
+
+Specifies the maximum size processes can make files. The @a K suffix permits specifying in
+kilobytes (multiples of 1024 bytes). Default is @b 88K.
 
 @code
 maxFileSize: 50K
 @endcode
 
-@section processmemLockSize max memory lock
 
-Specifies the maximum bytes of memory the process can lock into physical RAM (e.g., using mlock () ).  Default is @b 8K.
+@section processmemLockSize memLockSize
+
+Specifies the maximum bytes of memory the process can lock into physical RAM
+(e.g., using @c mlock() ).  Default is @b 8K.
 
 @code
 memLockSize: 32K
 @endcode
 
-@section processnumFds file descriptors
 
-Specifies the maximum number of file descriptors a process can have open at one time.  Default is @b 256.
+@section processnumFds numFds
+
+Specifies the maximum number of file descriptors a process can have open at one time.
+Default is @b 256.
 
 @code
 numFds: 20
 @endcode
 
+
 @section faultAction faultAction
 
-This subsection specifies the action that the Supervisor should take when the process terminates with a non-zero exit code or because of an un-caught signal (e.g., SIGSEGV, SIGBUS, SIGKILL). Default is @b ignore.
+This subsection specifies the action that the Supervisor should take when the process terminates
+with a non-zero exit code or because of an un-caught signal (e.g., SIGSEGV, SIGBUS, SIGKILL).
+Default is @b ignore.
 
 Possible values are:
 
  - "ignore" - the Supervisor just logs a warning message but will take no further action.
  - "restart" - log a critical message and then restart the process.
  - "restartApp" - log a critical message and then restart the entire application.
- - "terminateApp" - log a critical message then terminate the entire application (send all processes the SIGTERM signal, followed shortly by SIGKILL).
+ - "stopApp" - log a critical message then terminate the entire application (send all processes
+the SIGTERM signal, followed shortly by SIGKILL).
  - "reboot" - log an emergency message and reboot the system.
 
 @code
 faultAction: restart
 @endcode
 
- <br>
-<HR>
 
+@section watchdogTimeout watchdogTimeout
+
+This section specifies the length of the timeout (in milliseconds) for watchdogs called by
+processes in the enclosing processes section. Once a process has called @c le_wdog_Kick() it is
+registered with the software watchdog service and if it then fails to call @c le_wdog_Kick()
+within the given timeoutout, the Supervisor will be notified and the Supervisor will take the
+action specified in @ref watchdogAction.
+
+
+@section watchdogAction watchdogAction
+
+This subsection specifies what action the Supervisor should take when a process that has subscribed
+to the watchdog service fails to kick the watchdog before it expires.
+The possible values are the same as in @ref faultAction with the addition of:
+
+ - "stop" - the Supervisor terminates the process if it is still running.
+
+If no watchdog action has been supplied then the default action is to restart the process. 
+
+<HR>
 
 Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
 

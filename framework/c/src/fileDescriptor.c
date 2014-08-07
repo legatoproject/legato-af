@@ -90,10 +90,11 @@ void fd_Close
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Closes all file descriptors in the calling process.
+ * Closes all file descriptors in the calling process except for the file descriptors 0, 1 and 2
+ * which are usually the standard file descriptors, stdin, stdout, stderr.
  */
 //--------------------------------------------------------------------------------------------------
-void fd_CloseAll
+void fd_CloseAllNonStd
 (
     void
 )
@@ -105,7 +106,6 @@ void fd_CloseAll
         maxNumFds = LIMIT_MAX_NUM_PROCESS_FD;
     }
 
-    // @todo Leaves the standard fds open for testing for now.  Need to remove this later.
     int fd;
     for (fd = 3; fd < maxNumFds; fd++)
     {

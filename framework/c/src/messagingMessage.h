@@ -19,9 +19,28 @@ typedef struct le_msg_Message
 {
     le_dls_Link_t               link;       ///< Used to link onto message queues.
     le_msg_SessionRef_t         sessionRef; ///< The session to which this message belongs.
-    le_msg_ResponseCallback_t   completionCallback; ///< Function to call when transaction finishes.
-                                                    ///  NULL if no response expected.
-    void*                       contextPtr; ///< Opaque ptr value to pass to completion callback.
+
+    union
+    {
+        /// Fields needed on the client side only
+        struct
+        {
+            le_msg_ResponseCallback_t   completionCallback; ///< Function to call when txn finishes.
+                                                            ///  NULL if no response expected.
+            void*                       contextPtr; ///< Opaque ptr to pass to completion callback.
+        }
+        client;
+
+        /// Fields needed on the server side only.
+        struct
+        {
+            int responseFd;    ///< fd to send back with the response message. (-1 = no fd)
+        }
+        server;
+    }
+    clientServer;
+
+    int                         fd;         ///< File descriptor to send or received (-1 = no fd)
     void*                       txnId;      ///< Safe reference value used as a transaction ID.
     void*                       payload[0]; ///< Variable-length payload buffer appears at the end.
 }
@@ -77,6 +96,7 @@ le_result_t msgMessage_Send
  *
  * @return
  * - LE_OK if successful.
+ * - LE_WOULD_BLOCK if there's nothing there to receive and the socket is set non-blocking.
  * - LE_CLOSED if the connection has closed.
  * - LE_COMM_ERROR if an error was encountered.
  */

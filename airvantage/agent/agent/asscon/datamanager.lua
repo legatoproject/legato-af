@@ -1,9 +1,13 @@
--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 -- Copyright (c) 2012 Sierra Wireless and others.
 -- All rights reserved. This program and the accompanying materials
 -- are made available under the terms of the Eclipse Public License v1.0
--- which accompanies this distribution, and is available at
--- http://www.eclipse.org/legal/epl-v10.html
+-- and Eclipse Distribution License v1.0 which accompany this distribution.
+--
+-- The Eclipse Public License is available at
+--   http://www.eclipse.org/legal/epl-v10.html
+-- The Eclipse Distribution License is available at
+--   http://www.eclipse.org/org/documents/edl-v10.php
 --
 -- Contributors:
 --     Julien Desgats     for Sierra Wireless - initial API and implementation
@@ -15,8 +19,8 @@
 -- asset library.
 --------------------------------------------------------------------------------
 
-require 'stagedb'
-require 'persist'
+local stagedb  = require 'stagedb'
+local persist  = require 'persist'
 local niltoken = require 'niltoken'
 local asscon   = require 'agent.asscon'
 local srvcon   = require 'agent.srvcon'
@@ -39,8 +43,7 @@ local errnum   = require 'returncodes'.tonumber
 
 local POLICIES      = { }
 local TABLES        = { }
---local LOCKED_POLICIES = { }
---local LOCKED_TABLES = { }
+local FILE_TABLES -- persited table of file stored SDB so that they can be reloaded at init time (see init function)
 
 local M = { }
 
@@ -76,6 +79,43 @@ local function record_support (record)
     return columns, with_subrecords
 end
 
+
+local sdb_sendings_in_progress = { }
+--------------------------------------------------------------------------------
+-- Checks whether some data coming from a sdb is being sent to the server, if so
+-- and `wait` parameter is given, this function also waits for the server
+-- communication to finish.
+--
+-- *NOTE*: this function should not be useful anymore when a full-fledged mechanism to support
+-- adding data to sdb while sending its content will have been implemented.
+--
+-- @param sdb the sdb to check
+-- @param timeout, optional integer: the number of seconds for the sdb not being
+-- used anymore, if absent no wait is done.
+-- @return "ok" when the sdb was already ready to push some data in.
+-- @return "resumed" when the sdb was busy, after waiting it is now ready to push some data in.
+-- @return nil, 'BUSY' otherwise
+--------------------------------------------------------------------------------
+local function wait_sdb_ready(sdb, wait)
+    if not sdb_sendings_in_progress[sdb] then return "ok"
+    else
+        log("DATAMGR", "DEBUG", "sdb_sendings_in_progress %s", sprint(sdb))
+        wait = tonumber(wait)
+        if not wait then return nil, 'BUSY' end
+        local attempts = wait
+        while attempts > 0 and sdb_sendings_in_progress[sdb] do
+            attempts = attempts -1
+            sched.wait(1)
+        end
+        if sdb_sendings_in_progress[sdb] then
+            log("DATAMGR", "WARNING", "Waiting for ready sdb table failed: all attempts exhausted")
+            return nil, 'BUSY'
+        else
+            return "resumed"
+        end
+    end
+end
+
 --------------------------------------------------------------------------------
 -- Register a record in the policy
 --------------------------------------------------------------------------------
@@ -99,55 +139,65 @@ local function record_insert(P, columns, path, record)
 
     -- Create the table if necessary before pushing data in it.
     if not sdb then
-        sdb, msg = stagedb(path, 'ram', columns)
+        sdb, msg = stagedb('ram:'..support, columns)
         if not sdb then return nil, msg end
         P.records[support] = sdb
         local r
         r, msg = sdb :row (record)
-        if r then sdb :trim() else return nil, msg end
-    else return sdb :row (record) end
+        if r then sdb :trim() end
+        return r, msg
+    else
+        --TODO remove this active wait on sdb when a full-fledged mechanism to support
+        --adding data to sdb while sending its content will have been implemented.
+        local res, err = wait_sdb_ready(sdb, 15) --check sdb ready, wait 15s at most.
+        if res == "resumed" then --the sdb was not ready ( data sending was in progress), it will be collected (and maybe re-created) soon: let's apply record_insert logic again
+            return record_insert(P, columns, path, record)
+        elseif not res then
+            return res, err
+        end
+        return sdb :row (record)
+    end
 end
 
 local function get_table_id(path, storage, columns)
     local names = { }
-    for k, v in pairs(columns) do
+    for _, v in ipairs(columns) do
         local name
-        if type(k)=='string' then name=k
-        elseif type(v)=='string' then name=v
+        if type(v)=='string' then name=v
         elseif type(v)=='table' then name=v.name end
         assert(name, "Invalid column")
         table.insert(names, name)
     end
-    table.sort(names)
     return storage .. ":" .. path .. '-' .. table.concat(names, '-') .. '.tbl'
 end
 
 --------------------------------------------------------------------------------
 -- Check whether the proposed column set is compatible with an existing table.
 -- Currently, only column count and name is tested, not serialization settings.
+-- Columns are ordered
 -- @param tbl existing table to check
 -- @param columns columnspec list to check against `tbl`
 -- @return true if `tbl` has the same columns as `columns`
 --------------------------------------------------------------------------------
 local function match_columns(tbl, columns)
     local tblcols = tbl.sdb:state().columns
-    local newcols = { } -- column names list for the new table
 
-    for key, col in pairs(columns) do
-        -- column name is key for consolidation, value for short columnspec or name field for full columnspec
-        table.insert(newcols, type(key) == 'string' and key or (type(col) == 'string' and col or col.name))
-    end
+    -- compare length (both are list)
+    if #columns ~= #tblcols then return false end
 
-    if #newcols ~= #tblcols then return false end
     -- both table has same length, compare names
-    table.sort(newcols)
-    table.sort(tblcols)
     for i=1, #columns do
-        if newcols[i] ~= tblcols[i] then return false end
+        local name = type(columns[i]) == "table" and columns[i].name or columns[i]
+        if name ~= tblcols[i] then return false end
     end
     return true
 end
 
+
+local function markfiletable(ft, path, columns)
+  local t = {columns = columns, file=ft.sdb.file, policy=ft.send_policy.name, path=path}
+  FILE_TABLES[ft.id] = t
+end
 --------------------------------------------------------------------------------
 -- Create a new table, which can be filled with command tablerow, and will
 -- be flushed
@@ -178,14 +228,15 @@ function handle.TableNew(asset, x)
     -- create table if not exists or purged
     if not t then
         log('DATAMGR', 'DEBUG', "Create new table %s", table_id)
-        local sdb, errmsg = stagedb(path, x.storage, x.columns)
+        local sdb, errmsg = stagedb(table_id, x.columns)
         if not sdb then return errnum 'UNSPECIFIED_ERROR', errmsg end
-        t = { id=table_id, sdb=sdb }
+        t = { id=table_id, path=path, sdb=sdb }
     else log('DATAMGR', 'DEBUG', "Retrieving existing table %s", table_id) end
 
     t.send_policy=P
     P.tables[table_id] = t
     TABLES[table_id] = t
+    markfiletable(t, path, x.columns)
     return 0, table_id
 end
 
@@ -227,20 +278,32 @@ function handle.PData(asset, x)
     local function put_in_records(path, record)
         local columns, with_subrecords = record_support (record)
         if not columns then return errnum 'BAD_PARAMETER', with_subrecords end -- support error
+        if not next(columns) then log('DATAMGR', 'INFO', "Asset [%s] pushed an empty table (ignored). Pushed data: [ %s ]", asset, sprint(x.data)) return 0 end -- if there is nothing to push just return silently
         if not with_subrecords then
-            record_insert(P, columns, path, record)
+            local r, err = record_insert(P, columns, path, record)
+            if not r then --if record_insert returned known return code str then use it, otherwise defaults to BAD_PARAMETER
+                r = errnum(err)
+                return r > 0 and errnum 'BAD_PARAMETER' or r, err
+            end
         else -- separate top-level record from sub-records
             local top_record = { }
             for k, v in pairs(record) do
                 if type(v)=='table' then
                     local r, err = put_in_records(path..'.'..k, v)
-                    if not r then return errnum 'BAD_PARAMETER', err end
+                    if r ~= 0 then return errnum 'BAD_PARAMETER', err end
                 elseif string.find(k, '.', 1, true) then -- multi-segment key
                     local suffix, k2 = upath.split(k, -1)
-                    put_in_records(path..'.'..suffix, { [k2] = v})
+                    local r, err = put_in_records(path..'.'..suffix, { [k2] = v})
+                    if r ~= 0 then return errnum 'BAD_PARAMETER', err end
                 else top_record[k] = v end
             end
-            if next(top_record) then record_insert(P, columns, path, record) end
+            if next(top_record) then
+              local r, err = record_insert(P, columns, path, record)
+              if not r then --if record_insert returned known return code str then use it, otherwise defaults to BAD_PARAMETER
+                  r = errnum(err)
+                  return r > 0 and errnum 'BAD_PARAMETER' or r, err
+              end
+            end
         end
         return 0
     end
@@ -252,6 +315,7 @@ function handle.PData(asset, x)
         local path, key = upath.split(x.path, -1)
         r, msg = put_in_records(upath.concat(asset, path), {[key]=record})
     end
+    
     local f = P.latency_trigger
     if f then f() end
     return r, msg
@@ -280,9 +344,8 @@ end
 --------------------------------------------------------------------------------
 -- Send an sdb to the server through srvcon, unless it is already being sent.
 --------------------------------------------------------------------------------
-local sdb_sendings_in_progress = { }
 
-local function sdb2srv(sdb, policy_to_kill, key_to_kill, dont_reset)
+local function sdb2srv(path, sdb, policy_to_kill, key_to_kill, dont_reset)
     if sdb_sendings_in_progress[sdb] then return nil, "already sending" end
     sdb_sendings_in_progress[sdb] = true
     local function src_factory()
@@ -299,7 +362,7 @@ local function sdb2srv(sdb, policy_to_kill, key_to_kill, dont_reset)
             local buff = { }
             assert(bss :setwriter(buff))
             assert(bss :object 'Message')
-            assert(bss (sdb:getpath() ))
+            assert(bss (path))
             assert(bss (0))
             return table.concat(buff)
         end
@@ -324,7 +387,7 @@ local function sdb2srv(sdb, policy_to_kill, key_to_kill, dont_reset)
             sdb :serialize_cancel() -- just to be sure
             log('DATAMGR', 'ERROR', "Server emission error: %s", errmsg)
         elseif policy_to_kill then -- destroy the (undeclared) table altogether
-            sdb :close() -- no need to wait for GC for resource release
+            sdb :delete() -- no need to wait for GC for resource release
             policy_to_kill[key_to_kill] = nil
         elseif not dont_reset then -- empty the table, but leave it there
             sdb :reset()
@@ -342,7 +405,7 @@ end
 
 -- simpler wrapper for sdb2srv to be consistent with consolidate for predeclared tables.
 local function tbl2srv(t, dont_reset)
-    return sdb2srv(t.sdb, nil, nil, dont_reset)
+    return sdb2srv(t.path, t.sdb, nil, nil, dont_reset)
 end
 
 --------------------------------------------------------------------------------
@@ -433,7 +496,8 @@ local function send_policy(P)
 
     -- 1/ flush undeclared data record tables
     for support, sdb in pairs(P.records) do
-        c = sdb2srv(sdb, P.records, support) or c
+        local path = support :match("^[^:]+")
+        c = sdb2srv(path, sdb, P.records, support) or c
     end
 
     -- 2/ consolidate tables
@@ -480,6 +544,9 @@ end
 function handle.TableRow (asset, x)
     local t = TABLES[x.table]
     if not t then return nil, "no such table" end
+    --TODO remove this active wait on sdb when a full-fledged mechanism to support
+    --adding data to sdb while sending its content will have been implemented.
+    if not wait_sdb_ready(t.sdb, 15) then return errnum 'BUSY' end --check sdb ready, wait 15s at most.
     local r, msg = t.sdb :row (x.row)
     local maxrows = t.maxrows
     if maxrows then
@@ -491,7 +558,7 @@ function handle.TableRow (asset, x)
     end
     local f = t.send_policy.latency_trigger
     if f then f() end
-    return r and 0 or 1, msg
+    return r and 0 or errnum 'BAD_PARAMETER', msg
 end
 
 --------------------------------------------------------------------------------
@@ -510,7 +577,10 @@ function handle.PFlush(asset, x)
         if not P then return errnum 'BAD_PARAMETER', "no such policy" end
         c = send_policy(P)
     end
-    if c then return 0, srvcon.connect() end
+    if c then
+        local s, err = srvcon.connect()
+        if not s then return  errnum 'COMMUNICATION_ERROR', err end
+    end
     return 0
 end
 
@@ -518,7 +588,7 @@ function handle.ConsoNew(asset, x)
     local src_table_id = x.src
     local src = TABLES[src_table_id]
     if not src then return errnum 'BAD_PARAMETER', "no such source table" end
-    local assetname = upath.split( src.sdb:getpath(), 1 );
+    local assetname = upath.split(src.path, 1)
 
     local dst_path = upath.concat(assetname, x.path)
     local dst_table_id = get_table_id (dst_path, x.storage, x.columns)
@@ -549,9 +619,9 @@ function handle.ConsoNew(asset, x)
 
     if not dst then
         log('DATAMGR', 'DEBUG', "Creating consolidation table %s for %s", dst_table_id, src_table_id)
-        local dst_sdb, errmsg = src.sdb :newconsolidation(dst_path, x.storage, x.columns)
+        local dst_sdb, errmsg = src.sdb :newconsolidation(dst_table_id, x.columns)
         if not dst_sdb then return errnum 'UNSPECIFIED_ERROR', errmsg end
-        dst = { id=dst_table_id, sdb=dst_sdb, src_table=src }
+        dst = { id=dst_table_id, path=dst_path, sdb=dst_sdb, src_table=src }
     end
 
     dst.send_policy=SP
@@ -630,7 +700,7 @@ local function configpolicy(P, pname, cfg)
       end
     elseif pname == 'on_boot' or pname == 'onboot' then -- must contain onboot trigger
       if not cfg.onboot  then
-          log('DATAMGR', 'ERROR', "Missing mandatory onboot param in data.policy.on_boot policy, reverting to default onboot=30")
+          log('DATAMGR', 'ERROR', "Missing mandatory onboot param in data.policy.onboot policy, reverting to default onboot=30")
           cfg = {onboot=30}
       end
     elseif pname == 'never' then -- must not contain any trigger but manual
@@ -717,7 +787,7 @@ function M.close_table(asset_name, table_id)
         TABLES[table_id] = nil
         -- if the table to close is a source of a consolidation, then break the link
         if t.conso_table then t.conso_table.src_table = nil end
-        return t.sdb :close()
+        return t.sdb :delete()
     end
 end
 
@@ -737,12 +807,6 @@ function M.init(cfg)
 
     for pname, pcfg in pairs(cfg.policy) do M.new_policy(pname, pcfg) end
 
-    -- Each function in the `handle` table must be attached, under its name,
-    -- as an EMP handler.
-    for name, f in pairs(handle) do
-        asscon.registercmd(name, f)
-    end
-
     -- Listen to changes on the policy config tree, in order to reconfigure them on the fly.
     local tm = require 'agent.treemgr'
     local function updatepolicy(changelist)
@@ -754,10 +818,44 @@ function M.init(cfg)
         if POLICIES[k] then M.update_policy(k, policycfg[k])
         else M.new_policy(k, policycfg[k]) end
       end
+      return "ok"
     end
     tm.register("config.data.policy", "", updatepolicy)
 
-    
+
+    -- Look into the persisted sdb table list and automatically reload stored tables
+    FILE_TABLES = persist.table.new("SDB_File_Tables")
+    for table_id, td in pairs(FILE_TABLES) do
+        log("DATAMGR", "DETAIL", "Auto loading sdb table %s", table_id)
+        local sdb, err = stagedb(table_id, td.columns)
+        if not sdb then
+            log("DATAMGR", "ERROR", "Failed to load sdb table %s (err=%s), skiping and purging the table", table_id, tostring(err))
+            FILE_TABLES[table_id] = nil
+            if td.file then os.execute("rm -f ".. td.file) end
+
+        elseif sdb:state().nrows == 0 then
+            log("DATAMGR", "DETAIL", "Loaded table %s but it is empty, skip it and delete the file", table_id)
+            FILE_TABLES[table_id] = nil
+            sdb:delete()
+            if td.file then os.execute("rm -f ".. td.file) end
+
+        else -- no prb detected, actually load the sdb table and schedule the policy trigger, if any.
+            local P = POLICIES[td.policy] or POLICIES['default']
+            local t = {id=table_id, path=td.path, sdb=sdb, policy=P}
+            P.tables[table_id] = t
+            TABLES[table_id] = t
+            local f = P.latency_trigger
+            if f then sched.sigonce("Agent", "InitDone", f) end
+        end
+    end
+
+
+    -- Each function in the `handle` table must be attached, under its name,
+    -- as an EMP handler.
+    for name, f in pairs(handle) do
+        asscon.registercmd(name, f)
+    end
+
     return true
 end
 

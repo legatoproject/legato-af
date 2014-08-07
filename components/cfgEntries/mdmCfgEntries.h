@@ -19,40 +19,50 @@
 #define LIMIT_MAX_PATH_BYTES            (LIMIT_MAX_PATH_LEN + 1)
 
 
-#define LEGATO_CONFIG_TREE_ROOT_DIR  ""
+#define LEGATO_CONFIG_TREE_ROOT_DIR  "system:"
 
 #define CFG_NODE_MODEMSERVICE       "modemServices"
 
 #define CFG_MODEMSERVICE_PATH       LEGATO_CONFIG_TREE_ROOT_DIR"/"CFG_NODE_MODEMSERVICE
-
-#define CFG_NODE_MDC                "modemDataConnection"
-#define CFG_NODE_APN                "accessPointName"
-#define CFG_NODE_PDP                "packetDataProtocol"
-#define CFG_NODE_AUTH               "authentication"
-#define CFG_NODE_PAP                "pap"
-#define CFG_NODE_CHAP               "chap"
-#define CFG_NODE_ENABLE             "enable"
-#define CFG_NODE_USER               "userName"
-#define CFG_NODE_PWD                "password"
-
-#define CFG_MODEMSERVICE_MDC_PATH   CFG_MODEMSERVICE_PATH"/"CFG_NODE_MDC
 
 #define CFG_NODE_SIM                "sim"
 #define CFG_NODE_PIN                "pin"
 
 #define CFG_MODEMSERVICE_SIM_PATH   CFG_MODEMSERVICE_PATH"/"CFG_NODE_SIM
 
-#define CFG_NODE_MRC                "radioControl"
-#define CFG_NODE_PREFERREDLIST      "preferredList"
+#define CFG_NODE_MRC                "radio"
+#define CFG_NODE_PREF_OPERATORS     "preferredOperators"
 #define CFG_NODE_MCC                "mcc"
 #define CFG_NODE_MNC                "mnc"
 #define CFG_NODE_RAT                "rat"
 #define CFG_NODE_SCANMODE           "scanMode"
 #define CFG_NODE_MANUAL             "manual"
+#define CFG_NODE_MRC_PREFS          "preferences"
+#define CFG_NODE_BAND               "band"
+#define CFG_NODE_LTE_BAND           "lteBand"
+#define CFG_NODE_TDSCDMA_BAND       "tdScdmaBand"
 
+#define CFG_MODEMSERVICE_MRC_PATH               CFG_MODEMSERVICE_PATH"/"CFG_NODE_MRC
+#define CFG_MODEMSERVICE_MRC_PREFS_PATH         CFG_MODEMSERVICE_MRC_PATH"/"CFG_NODE_MRC_PREFS
+#define CFG_MODEMSERVICE_MRC_RAT_PATH           CFG_MODEMSERVICE_MRC_PREFS_PATH"/"CFG_NODE_RAT
+#define CFG_MODEMSERVICE_MRC_BAND_PATH          CFG_MODEMSERVICE_MRC_PREFS_PATH"/"CFG_NODE_BAND
+#define CFG_MODEMSERVICE_MRC_LTE_BAND_PATH      CFG_MODEMSERVICE_MRC_PREFS_PATH"/"CFG_NODE_LTE_BAND
+#define CFG_MODEMSERVICE_MRC_TDSCDMA_BAND_PATH  CFG_MODEMSERVICE_MRC_PREFS_PATH"/"CFG_NODE_TDSCDMA_BAND
 
+#define CFG_NODE_SMS                "sms"
+#define CFG_NODE_SMSC               "smsc"
 
-#define CFG_MODEMSERVICE_MRC_PATH   CFG_MODEMSERVICE_PATH"/"CFG_NODE_MRC
+#define CFG_MODEMSERVICE_SMS_PATH   CFG_MODEMSERVICE_PATH"/"CFG_NODE_SMS
 
+#define CFG_NODE_ECALL                "eCall"
+#define CFG_NODE_PSAP                 "psap"
+#define CFG_NODE_PUSHPULL             "pushPull"
+#define CFG_NODE_MAX_REDIAL_ATTEMPTS  "maxRedialAttempts"
+#define CFG_NODE_MSDVERSION           "msdVersion"
+#define CFG_NODE_VEH                  "vehicleType"
+#define CFG_NODE_VIN                  "vin"
+#define CFG_NODE_PROP                 "propulsionType"
+
+#define CFG_MODEMSERVICE_ECALL_PATH CFG_MODEMSERVICE_PATH"/"CFG_NODE_ECALL
 
 #endif // LEGATO_MDMCFGENTRIES_INCLUDE_GUARD

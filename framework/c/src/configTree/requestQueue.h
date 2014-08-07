@@ -7,8 +7,8 @@
  *  config tree API.  So, if a request can not be handled right away, it is queued for later
  *  processing.
  *
- *  Copyright (C) Sierra Wireless, Inc. 2013, 2014. All rights reserved. Use of this work is subject
- *  to license.
+ *  Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved.
+ *  Use of this work is subject to license.
  */
 // -------------------------------------------------------------------------------------------------
 
@@ -39,7 +39,7 @@ void rq_Init
 // -------------------------------------------------------------------------------------------------
 void rq_CleanUpForSession
 (
-    le_msg_SessionRef_t sessionRef  ///< Reference to the session that's going away.
+    le_msg_SessionRef_t sessionRef  ///< [IN] Reference to the session that's going away.
 );
 
 
@@ -52,12 +52,12 @@ void rq_CleanUpForSession
 // -------------------------------------------------------------------------------------------------
 void rq_HandleCreateTxnRequest
 (
-    tu_UserRef_t userRef,              ///< The user to read.
-    tdb_TreeRef_t treeRef,             ///< The tree we're working with.
-    le_msg_SessionRef_t sessionRef,    ///< The user session this request occured on.
-    le_cfg_ServerCmdRef_t commandRef,  ///< THe reply context.
-    ni_IteratorType_t iterType,        ///< What kind of iterator are we creating?
-    const char* pathPtr                ///< Initial path the iterator is pointed at.
+    tu_UserRef_t userRef,              ///< [IN] The user to read.
+    tdb_TreeRef_t treeRef,             ///< [IN] The tree we're working with.
+    le_msg_SessionRef_t sessionRef,    ///< [IN] The user session this request occured on.
+    le_cfg_ServerCmdRef_t commandRef,  ///< [IN] THe reply context.
+    ni_IteratorType_t iterType,        ///< [IN] What kind of iterator are we creating?
+    const char* pathPtr                ///< [IN] Initial path the iterator is pointed at.
 );
 
 
@@ -71,8 +71,8 @@ void rq_HandleCreateTxnRequest
 // -------------------------------------------------------------------------------------------------
 void rq_HandleCommitTxnRequest
 (
-    le_cfg_ServerCmdRef_t commandRef,  ///< Context for the commit reply.
-    ni_IteratorRef_t iteratorRef       ///< Pointer to the iterator that's being committed.
+    le_cfg_ServerCmdRef_t commandRef,  ///< [IN] Context for the commit reply.
+    ni_IteratorRef_t iteratorRef       ///< [IN] Pointer to the iterator that's being committed.
 );
 
 
@@ -85,8 +85,8 @@ void rq_HandleCommitTxnRequest
 // -------------------------------------------------------------------------------------------------
 void rq_HandleCancelTxnRequest
 (
-    le_cfg_ServerCmdRef_t commandRef,  ///< Context for the commit reply.
-    ni_IteratorRef_t iteratorRef       ///< Pointer to the iterator that's being deleted.
+    le_cfg_ServerCmdRef_t commandRef,  ///< [IN] Context for the commit reply.
+    ni_IteratorRef_t iteratorRef       ///< [IN] Pointer to the iterator that's being deleted.
 );
 
 
@@ -99,12 +99,12 @@ void rq_HandleCancelTxnRequest
 // -------------------------------------------------------------------------------------------------
 void rq_HandleQuickDeleteNode
 (
-    le_msg_SessionRef_t sessionRef,    ///< The session this request occured on.
-    le_cfg_ServerCmdRef_t commandRef,  ///< This handle is used to generate the reply for this
-                                       ///<   message.
-    tu_UserRef_t userRef,              ///< The user that's requesting the action.
-    tdb_TreeRef_t treeRef,             ///< The tree that we're peforming the action on.
-    const char* pathPtr                ///< The path to the node to delete.
+    le_msg_SessionRef_t sessionRef,    ///< [IN] The session this request occured on.
+    le_cfg_ServerCmdRef_t commandRef,  ///< [IN] This handle is used to generate the reply for this
+                                       ///<      message.
+    tu_UserRef_t userRef,              ///< [IN] The user that's requesting the action.
+    tdb_TreeRef_t treeRef,             ///< [IN] The tree that we're peforming the action on.
+    const char* pathPtr                ///< [IN] The path to the node to delete.
 );
 
 
@@ -117,12 +117,12 @@ void rq_HandleQuickDeleteNode
 // -------------------------------------------------------------------------------------------------
 void rq_HandleQuickSetEmpty
 (
-    le_msg_SessionRef_t sessionRef,    ///< The session this request occured on.
-    le_cfg_ServerCmdRef_t commandRef,  ///< This handle is used to generate the reply for this
-                                       ///<   message.
-    tu_UserRef_t userRef,              ///< The user that's requesting the action.
-    tdb_TreeRef_t treeRef,             ///< The tree that we're peforming the action on.
-    const char* pathPtr                ///< The path to the node to clear.
+    le_msg_SessionRef_t sessionRef,    ///< [IN] The session this request occured on.
+    le_cfg_ServerCmdRef_t commandRef,  ///< [IN] This handle is used to generate the reply for this
+                                       ///<      message.
+    tu_UserRef_t userRef,              ///< [IN] The user that's requesting the action.
+    tdb_TreeRef_t treeRef,             ///< [IN] The tree that we're peforming the action on.
+    const char* pathPtr                ///< [IN] The path to the node to clear.
 );
 
 
@@ -135,14 +135,14 @@ void rq_HandleQuickSetEmpty
 // -------------------------------------------------------------------------------------------------
 void rq_HandleQuickGetString
 (
-    le_msg_SessionRef_t sessionRef,    ///< The session this request occured on.
-    le_cfg_ServerCmdRef_t commandRef,  ///< This handle is used to generate the reply for this
-                                       ///<   message.
-    tu_UserRef_t userRef,              ///< The user that's requesting the action.
-    tdb_TreeRef_t treeRef,             ///< The tree that we're peforming the action on.
-    const char* pathPtr,               ///< The path to the node to access.
-    size_t maxString,                  ///< Maximum string the caller can handle.
-    const char* defaultValuePtr        ///< If the value doesn't exist use this value instead.
+    le_msg_SessionRef_t sessionRef,    ///< [IN] The session this request occured on.
+    le_cfg_ServerCmdRef_t commandRef,  ///< [IN] This handle is used to generate the reply for this
+                                       ///<      message.
+    tu_UserRef_t userRef,              ///< [IN] The user that's requesting the action.
+    tdb_TreeRef_t treeRef,             ///< [IN] The tree that we're peforming the action on.
+    const char* pathPtr,               ///< [IN] The path to the node to access.
+    size_t maxString,                  ///< [IN] Maximum string the caller can handle.
+    const char* defaultValuePtr        ///< [IN] If the value doesn't exist use this value instead.
 );
 
 
@@ -155,13 +155,13 @@ void rq_HandleQuickGetString
 // -------------------------------------------------------------------------------------------------
 void rq_HandleQuickSetString
 (
-    le_msg_SessionRef_t sessionRef,    ///< The session this request occured on.
-    le_cfg_ServerCmdRef_t commandRef,  ///< This handle is used to generate the reply for this
-                                       ///<   message.
-    tu_UserRef_t userRef,              ///< The user that's requesting the action.
-    tdb_TreeRef_t treeRef,             ///< The tree that we're peforming the action on.
-    const char* pathPtr,               ///< The path to the node to access.
-    const char* valuePtr               ///< The value to set.
+    le_msg_SessionRef_t sessionRef,    ///< [IN] The session this request occured on.
+    le_cfg_ServerCmdRef_t commandRef,  ///< [IN] This handle is used to generate the reply for this
+                                       ///<      message.
+    tu_UserRef_t userRef,              ///< [IN] The user that's requesting the action.
+    tdb_TreeRef_t treeRef,             ///< [IN] The tree that we're peforming the action on.
+    const char* pathPtr,               ///< [IN] The path to the node to access.
+    const char* valuePtr               ///< [IN] The value to set.
 );
 
 
@@ -174,13 +174,13 @@ void rq_HandleQuickSetString
 // -------------------------------------------------------------------------------------------------
 void rq_HandleQuickGetInt
 (
-    le_msg_SessionRef_t sessionRef,    ///< The session this request occured on.
-    le_cfg_ServerCmdRef_t commandRef,  ///< This handle is used to generate the reply for this
-                                       ///<   message.
-    tu_UserRef_t userRef,              ///< The user that's requesting the action.
-    tdb_TreeRef_t treeRef,             ///< The tree that we're peforming the action on.
-    const char* pathPtr,               ///< The path to the node to access.
-    int32_t defaultValue               ///< If the value doesn't exist use this value instead.
+    le_msg_SessionRef_t sessionRef,    ///< [IN] The session this request occured on.
+    le_cfg_ServerCmdRef_t commandRef,  ///< [IN] This handle is used to generate the reply for this
+                                       ///<      message.
+    tu_UserRef_t userRef,              ///< [IN] The user that's requesting the action.
+    tdb_TreeRef_t treeRef,             ///< [IN] The tree that we're peforming the action on.
+    const char* pathPtr,               ///< [IN] The path to the node to access.
+    int32_t defaultValue               ///< [IN] If the value doesn't exist use this value instead.
 );
 
 
@@ -193,13 +193,13 @@ void rq_HandleQuickGetInt
 // -------------------------------------------------------------------------------------------------
 void rq_HandleQuickSetInt
 (
-    le_msg_SessionRef_t sessionRef,    ///< The session this request occured on.
-    le_cfg_ServerCmdRef_t commandRef,  ///< This handle is used to generate the reply for this
-                                       ///<   message.
-    tu_UserRef_t userRef,              ///< The user that's requesting the action.
-    tdb_TreeRef_t treeRef,             ///< The tree that we're peforming the action on.
-    const char* pathPtr,               ///< The path to the node to access.
-    int32_t value                      ///< The value to set.
+    le_msg_SessionRef_t sessionRef,    ///< [IN] The session this request occured on.
+    le_cfg_ServerCmdRef_t commandRef,  ///< [IN] This handle is used to generate the reply for this
+                                       ///<      message.
+    tu_UserRef_t userRef,              ///< [IN] The user that's requesting the action.
+    tdb_TreeRef_t treeRef,             ///< [IN] The tree that we're peforming the action on.
+    const char* pathPtr,               ///< [IN] The path to the node to access.
+    int32_t value                      ///< [IN] The value to set.
 );
 
 
@@ -212,13 +212,13 @@ void rq_HandleQuickSetInt
 // -------------------------------------------------------------------------------------------------
 void rq_HandleQuickGetFloat
 (
-    le_msg_SessionRef_t sessionRef,    ///< The session this request occured on.
-    le_cfg_ServerCmdRef_t commandRef,  ///< This handle is used to generate the reply for this
-                                       ///<   message.
-    tu_UserRef_t userRef,              ///< The user that's requesting the action.
-    tdb_TreeRef_t treeRef,             ///< The tree that we're peforming the action on.
-    const char* pathPtr,               ///< The path to the node to access.
-    double defaultValue                ///< If the value doesn't exist use this value instead.
+    le_msg_SessionRef_t sessionRef,    ///< [IN] The session this request occured on.
+    le_cfg_ServerCmdRef_t commandRef,  ///< [IN] This handle is used to generate the reply for this
+                                       ///<      message.
+    tu_UserRef_t userRef,              ///< [IN] The user that's requesting the action.
+    tdb_TreeRef_t treeRef,             ///< [IN] The tree that we're peforming the action on.
+    const char* pathPtr,               ///< [IN] The path to the node to access.
+    double defaultValue                ///< [IN] If the value doesn't exist use this value instead.
 );
 
 
@@ -231,13 +231,13 @@ void rq_HandleQuickGetFloat
 // -------------------------------------------------------------------------------------------------
 void rq_HandleQuickSetFloat
 (
-    le_msg_SessionRef_t sessionRef,    ///< The session this request occured on.
-    le_cfg_ServerCmdRef_t commandRef,  ///< This handle is used to generate the reply for this
-                                       ///<   message.
-    tu_UserRef_t userRef,              ///< The user that's requesting the action.
-    tdb_TreeRef_t treeRef,             ///< The tree that we're peforming the action on.
-    const char* pathPtr,               ///< The path to the node to access.
-    double value                       ///< The value to set.
+    le_msg_SessionRef_t sessionRef,    ///< [IN] The session this request occured on.
+    le_cfg_ServerCmdRef_t commandRef,  ///< [IN] This handle is used to generate the reply for this
+                                       ///<      message.
+    tu_UserRef_t userRef,              ///< [IN] The user that's requesting the action.
+    tdb_TreeRef_t treeRef,             ///< [IN] The tree that we're peforming the action on.
+    const char* pathPtr,               ///< [IN] The path to the node to access.
+    double value                       ///< [IN] The value to set.
 );
 
 
@@ -250,13 +250,13 @@ void rq_HandleQuickSetFloat
 // -------------------------------------------------------------------------------------------------
 void rq_HandleQuickGetBool
 (
-    le_msg_SessionRef_t sessionRef,    ///< The session this request occured on.
-    le_cfg_ServerCmdRef_t commandRef,  ///< This handle is used to generate the reply for this
-                                       ///<   message.
-    tu_UserRef_t userRef,              ///< The user that's requesting the action.
-    tdb_TreeRef_t treeRef,             ///< The tree that we're peforming the action on.
-    const char* pathPtr,               ///< The path to the node to access.
-    bool defaultValue                  ///< If the value doesn't exist use this value instead.
+    le_msg_SessionRef_t sessionRef,    ///< [IN] The session this request occured on.
+    le_cfg_ServerCmdRef_t commandRef,  ///< [IN] This handle is used to generate the reply for this
+                                       ///<      message.
+    tu_UserRef_t userRef,              ///< [IN] The user that's requesting the action.
+    tdb_TreeRef_t treeRef,             ///< [IN] The tree that we're peforming the action on.
+    const char* pathPtr,               ///< [IN] The path to the node to access.
+    bool defaultValue                  ///< [IN] If the value doesn't exist use this value instead.
 );
 
 
@@ -269,13 +269,13 @@ void rq_HandleQuickGetBool
 // -------------------------------------------------------------------------------------------------
 void rq_HandleQuickSetBool
 (
-    le_msg_SessionRef_t sessionRef,    ///< The session this request occured on.
-    le_cfg_ServerCmdRef_t commandRef,  ///< This handle is used to generate the reply for this
-                                       ///<   message.
-    tu_UserRef_t userRef,              ///< The user that's requesting the action.
-    tdb_TreeRef_t treeRef,             ///< The tree that we're peforming the action on.
-    const char* pathPtr,               ///< The path to the node to access.
-    bool value                         ///< The value to set.
+    le_msg_SessionRef_t sessionRef,    ///< [IN] The session this request occured on.
+    le_cfg_ServerCmdRef_t commandRef,  ///< [IN] This handle is used to generate the reply for this
+                                       ///<      message.
+    tu_UserRef_t userRef,              ///< [IN] The user that's requesting the action.
+    tdb_TreeRef_t treeRef,             ///< [IN] The tree that we're peforming the action on.
+    const char* pathPtr,               ///< [IN] The path to the node to access.
+    bool value                         ///< [IN] The value to set.
 );
 
 

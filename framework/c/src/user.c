@@ -976,13 +976,20 @@ static le_result_t CreateGroup
 static le_result_t CreateUserAndGroup
 (
     const char* namePtr,    ///< [IN] Pointer to the name of user and group to create.
-    const char* homeDirPtr, ///< [IN] Pointer to the home directory for the user.
     uid_t uid,              ///< [IN] The uid for the user.
     gid_t gid,              ///< [IN] The gid for the group.
     FILE* passwdFilePtr,    ///< [IN] Pointer to the passwd file.
     FILE* groupFilePtr      ///< [IN] Pointer to the group file.
 )
 {
+    // Generate home directory path.
+    char homeDir[LIMIT_MAX_PATH_BYTES];
+    if ( snprintf(homeDir, sizeof(homeDir), "/home/%s", namePtr) >= sizeof(homeDir))
+    {
+        LE_ERROR("Home directory path too long for user '%s'. ", namePtr);
+        return LE_FAULT;
+    }
+
     // Create a backup file for the passwd file.
     if (MakeBackup(passwdFilePtr, BACKUP_PASSWORD_FILE) != LE_OK)
     {
@@ -995,7 +1002,7 @@ static le_result_t CreateUserAndGroup
                                .pw_uid = uid,
                                .pw_gid = gid,
                                .pw_gecos = (char*)namePtr,
-                               .pw_dir = (char*)homeDirPtr,
+                               .pw_dir = (char*)homeDir,
                                .pw_shell = "/"};    // No shell.
 
     if (putpwent(&passEntry, passwdFilePtr) == -1)
@@ -1038,11 +1045,11 @@ static le_result_t CreateUserAndGroup
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Creates a user with the specified name, and home directory.  A group with the same name as the
- * username will also be created and the group will be set as the user's primary group.  If the user
- * and group are successfully created the user ID and group ID are stored at the location pointed to
- * by uidPtr and gidPtr respectively.  If there was an error the user is not created and the values
- * at uidPtr and gidPtr are undefined.
+ * Creates a user account and home directory for a user with the specified name.
+ * A group with the same name as the username will also be created and the group will be set as
+ * the user's primary group.  If the user and group are successfully created the user ID and
+ * group ID are stored at the location pointed to by uidPtr and gidPtr respectively.  If there
+ * was an error the user is not created and the values at uidPtr and gidPtr are undefined.
  *
  * @return
  *      LE_OK if successful.
@@ -1053,7 +1060,6 @@ static le_result_t CreateUserAndGroup
 le_result_t user_Create
 (
     const char* usernamePtr,    ///< [IN] Pointer to the name of the user and group to create.
-    const char* homeDirPtr,     ///< [IN] Pointer to the home directory for this user.
     uid_t* uidPtr,              ///< [OUT] Pinter to a location to store the uid for the created
                                 ///        user.  This can be NULL if the uid is not needed.
     gid_t* gidPtr               ///< [OUT] Pointer to a location to store the gid for the created
@@ -1094,7 +1100,7 @@ le_result_t user_Create
     }
 
     // Create the user and the group.
-    result = CreateUserAndGroup(usernamePtr, homeDirPtr, uid, gid, passwdFilePtr, groupFilePtr);
+    result = CreateUserAndGroup(usernamePtr, uid, gid, passwdFilePtr, groupFilePtr);
 
     if (result == LE_OK)
     {
@@ -1692,7 +1698,7 @@ le_result_t user_GetAppName
  *      LE_OVERFLOW if the provided buffer is too small and only part of the name was copied.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t user_ConvertToUserName
+le_result_t user_AppNameToUserName
 (
     const char* appName,        ///< [IN] The application's name.
     char* nameBufPtr,           ///< [OUT] The buffer to store the user name in.

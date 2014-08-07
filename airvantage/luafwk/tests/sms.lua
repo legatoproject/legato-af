@@ -1,9 +1,13 @@
--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 -- Copyright (c) 2012 Sierra Wireless and others.
 -- All rights reserved. This program and the accompanying materials
 -- are made available under the terms of the Eclipse Public License v1.0
--- which accompanies this distribution, and is available at
--- http://www.eclipse.org/legal/epl-v10.html
+-- and Eclipse Distribution License v1.0 which accompany this distribution.
+--
+-- The Eclipse Public License is available at
+--   http://www.eclipse.org/legal/epl-v10.html
+-- The Eclipse Distribution License is available at
+--   http://www.eclipse.org/org/documents/edl-v10.php
 --
 -- Contributors:
 --     Romain Perier for Sierra Wireless - initial API and implementation
@@ -43,7 +47,7 @@ function t :test_Register()
    end
    assert(type(s) == "number" and s > 0)
    regId = s
-   rpc.newclient():call('sched.signal', 'messaging', 'sms', {message="TEST MESSAGE", address="33606060606"})
+   rpc.newclient("localhost", 2012):call('sched.signal', 'messaging', 'sms', {message="TEST MESSAGE", address="33606060606"})
 end
 
 function t: test_Unregister()

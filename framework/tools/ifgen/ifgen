@@ -70,21 +70,10 @@ def GetArguments():
                         help='''optional prefix for generated functions/types; defaults to input
                         filename''')
 
-    # todo: Is this option still needed, or is the --name-prefix option sufficient?
-    parser.add_argument('--service-tag',
-                        dest="serviceTag",
-                        default='',
-                        help='optional short name for service')
-
     parser.add_argument('--file-prefix',
                         dest="filePrefix",
                         default='',
                         help='optional prefix for generated files; defaults to input file name')
-
-    parser.add_argument('--user-include',
-                        dest="userInclude",
-                        default='',
-                        help='optional C include file for extra definitions')
 
     parser.add_argument('--output-dir',
                         dest="outputDir",
@@ -143,6 +132,11 @@ def GetArguments():
     if args.filePrefix and args.filePrefix[-1] == '_':
         args.filePrefix = args.filePrefix[:-1]
 
+   # fix relative paths for all paths that aren't ''
+    args.importDirs = [ os.path.abspath(path) if path else path for path in args.importDirs ]
+    if args.outputDir:
+        args.outputDir = os.path.abspath(args.outputDir)
+
     return args
 
 
@@ -153,20 +147,22 @@ def ProcessImportList(importList, importDirs):
 
     for i in importList:
         name = i.name+".api"
+
+        # NOTE: Don't remove this.  The mk tools depend on it.
         print "importing", name
 
         # Try to find the imported file in the given directory list
         found = False
         for d in importDirs:
             path = os.path.join(d, name)
-            if os.path.exists(path):
+            if os.path.isfile(path):
                 found = True
                 break
 
         if not found:
-            print "ERROR: '%s' not found in %s" % (name, importDirs)
+            sys.stderr.write("ERROR: '%s' not found in %s" % (name, importDirs))
             sys.exit(1)
-              
+
         data = open(path, 'r').read()
 
         # In the current .api file, the imported types will be referenced using "name.",
@@ -184,14 +180,14 @@ def ProcessImportList(importList, importDirs):
         codeList = parsedCode['codeList']
         importedCodeList += codeList
 
- 
+
         # todo: If given the appropriate option, may also want to generate the imported file,
         #       but for now, don't do anything with the imported data.
         # todo: Does it make sense to generate the imported file if it contains non-type
         #       definitions.  If it contains FUNCTIONs, etc, it should already be generated
         #       by some other means.
-        # todo: If we do generate the imported file here, should it be done once all files are 
-        #       parsed, or after the individual file is parsed.  This is only an issue if errors 
+        # todo: If we do generate the imported file here, should it be done once all files are
+        #       parsed, or after the individual file is parsed.  This is only an issue if errors
         #       are encountered.
 
     return importedCodeList
@@ -199,19 +195,19 @@ def ProcessImportList(importList, importDirs):
 
 #
 # Main
-# 
+#
 def Main():
     args = GetArguments()
     #print args
 
     data = open(args.interfaceFile, 'r').read()
 
-    # Process all the imported files first.  
+    # Process all the imported files first.
     importDirs = [ os.path.split(args.interfaceFile)[0] ] + args.importDirs
     importList =  interfaceParser.getImportList(data)
     importedCodeList = ProcessImportList(importList, importDirs)
 
-    # Set the name prefix first.  This has to be done before the interface is actually 
+    # Set the name prefix first.  This has to be done before the interface is actually
     # parsed, since the resulting parsedCode will use the prefix.  Also, reset the
     # import name, since this is the main file.
     codeTypes.SetNamePrefix(args.namePrefix)
@@ -235,7 +231,7 @@ def Main():
         sys.exit(0)
 
     # Calculate the hashValue, as it is always needed
-    hashValue = codeTypes.GetHash(allCodeList) 
+    hashValue = codeTypes.GetHash(allCodeList)
 
     # Handle the --hash argument here.  No need to generate any code
     if args.hash:

@@ -1,31 +1,20 @@
-/** @page buildToolsmkexe Make Executable
+/** @page buildToolsmkexe mkexe (Make Executable)
 
 
-Run @b mkexe to create an executable.
+Run <b> @c mkexe </b> to create an executable program.
 
-Available command line parameters:
+Normally, this program is not needed.  Instead, @ref buildToolsmkapp or @ref buildToolsmksys should
+be used to build an entire application or system of interacting applications that can be deployed
+to a target device.
 
-@b -c \<string\> @a component @a search  - (multiple, optional) Add a directory to the component search path.
+@c mkexe is only needed to build an executable program that can be copied onto a target device and
+run outside of any application.  This can sometimes come in handy to build
+ - command-line tools that can be run by the root user via @c ssh or
+ - programs that get executed by other on-target programs (such as scripts that run when a DHCP
+   client is granted or loses a DHCP lease) after the Legato framework has started up.
 
-@b -i \<string\> @a interface @a search - (multiple, optional) Add a directory to the interface search path.
-
-@b -l \<string\> @a library @a output @a directory - (optional) Specify the directory for any generated runtime libraries.
-
-@b -o \<string\> @a output - Path of the executable file to generate.
-
-@b -t \<string\> @a target - (optional) Specify the target device to build for (localhost | wp 7 or ar7).
-
-@b -v - @a verbose - (optional) Set into verbose mode for extra diagnostic information.
-
-@b -w \<string\> @a object @a directory - (optional) Specify the directory for any intermediate build artifacts (e.g., .o files, generated source code).
-
-@c mkexe  completes the following functions:
-
-- GetCommandLineArgs 
-- GetComponent 
-- ConstructObjectModel 
-- Build
-- MakeExecutable
+Run @c mkexe with the --help or -h option for a description of the command-line arguments it
+accepts.
 
 <HR>
 

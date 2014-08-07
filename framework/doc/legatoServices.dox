@@ -1,39 +1,13 @@
-/** @page legatoServices Legato Services
+/** @page legatoServices Services
 
-@section applicationServices Application Services
+@subpage legatoServicesConfigTree services to manage target's configuration database. 
 
-Application services provide easy-to-use interfaces to various system and modem resources.
-Many of these services also perform resource arbitration amongst applications so multiple
-applications can share the same resources.
+@subpage legatoServicesFoundation services to interface with foundation-level system and modem resources.
 
-Legato application services: <br>
-@subpage c_le_data
+@subpage legatoServicesApplication services to interface with application-level system and modem resources.
 
-Applcation services are built on top of foundation services.
-
-@section foundationServices Foundation Services
-
-Foundation services provide a full-featured interface to various system and modem resources.
-
-@subsection Modem 
-
- @subpage c_sms <br>
- @subpage c_sim <br>
- @subpage c_mrc <br>
- @subpage c_mdc <br>
- @subpage c_mcc <br>
- @subpage c_info <br>
- @subpage c_remoteMgmt <br>
+@subpage legatoServicesOther for audio and positioning and a few other services.
  
-@subsection positioning Positioning 
-
-@subpage c_pos
-
-@subsection audio Audio 
-
-@subpage c_audio
-
-
 <HR>
 
 Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.

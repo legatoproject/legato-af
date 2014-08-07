@@ -42,11 +42,11 @@ void user_RestoreBackup
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Creates a user with the specified name, and home directory.  A group with the same name as the
- * username will also be created and the group will be set as the user's primary group.  If the user
- * and group are successfully created the user ID and group ID are stored at the location pointed to
- * by uidPtr and gidPtr respectively.  If there was an error the user is not created and the values
- * at uidPtr and gidPtr are undefined.
+ * Creates a user account and home directory for a user with the specified name.
+ * A group with the same name as the username will also be created and the group will be set as
+ * the user's primary group.  If the user and group are successfully created the user ID and
+ * group ID are stored at the location pointed to by uidPtr and gidPtr respectively.  If there
+ * was an error the user is not created and the values at uidPtr and gidPtr are undefined.
  *
  * @return
  *      LE_OK if successful.
@@ -57,7 +57,6 @@ void user_RestoreBackup
 le_result_t user_Create
 (
     const char* usernamePtr,    ///< [IN] Pointer to the name of the user and group to create.
-    const char* homeDirPtr,     ///< [IN] Pointer to the home directory for this user.
     uid_t* uidPtr,              ///< [OUT] Pinter to a location to store the uid for the created
                                 ///        user.  This can be NULL if the uid is not needed.
     gid_t* gidPtr               ///< [OUT] Pointer to a location to store the gid for the created
@@ -215,7 +214,7 @@ le_result_t user_GetGroupName
  * @return
  *      LE_OK if successful.
  *      LE_OVERFLOW if the provided buffer is too small and only part of the name was copied.
- *      LE_NOT_FOUND if the user does not have an application.
+ *      LE_NOT_FOUND if the user does not have an application or may have multiple applications.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t user_GetAppName
@@ -235,7 +234,7 @@ le_result_t user_GetAppName
  *      LE_OVERFLOW if the provided buffer is too small and only part of the name was copied.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t user_ConvertToUserName
+le_result_t user_AppNameToUserName
 (
     const char* appName,        ///< [IN] The application's name.
     char* nameBufPtr,           ///< [OUT] The buffer to store the user name in.

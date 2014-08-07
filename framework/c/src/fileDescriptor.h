@@ -48,15 +48,14 @@ void fd_Close
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Closes all file descriptors in the calling process.
+ * Closes all file descriptors in the calling process except for the file descriptors 0, 1 and 2
+ * which are usually the standard file descriptors, stdin, stdout, stderr.
  */
 //--------------------------------------------------------------------------------------------------
-void fd_CloseAll
+void fd_CloseAllNonStd
 (
     void
 );
-
-
 
 
 #endif // LE_FILE_DESCRIPTOR_H_INCLUDE_GUARD

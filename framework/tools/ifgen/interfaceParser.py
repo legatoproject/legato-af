@@ -82,7 +82,9 @@ KeywordDirIn = pyparsing.Keyword(codeTypes.DIR_IN)
 KeywordDirOut = pyparsing.Keyword(codeTypes.DIR_OUT)
 Direction = KeywordDirIn | KeywordDirOut
 
+# Define keywords for built-in types
 KeywordString = pyparsing.Keyword('string')
+KeywordFile = pyparsing.Keyword('file')
 
 # Define these string literals as variables, since they are used in several places
 StringFunction = 'FUNCTION'
@@ -92,6 +94,10 @@ StringAddHandlerParams = 'ADD_HANDLER_PARAMS'
 StringReference = 'REFERENCE'
 StringDefine = 'DEFINE'
 StringEnum = 'ENUM'
+
+# Originally, the keyword was 'IMPORT', but this was changed to 'USETYPES' to better convey what
+# actually happens when importing a .api file.  Within the implementation, this is still called
+# importing.
 StringImport = 'USETYPES'
 
 # Convert the string literals to pyparsing keywords
@@ -328,6 +334,20 @@ StringParm = ( KeywordString
 StringParm.setParseAction(ProcessStringParm)
 
 
+def ProcessFileParm(tokens):
+    #print tokens
+
+    if tokens.direction == codeTypes.DIR_IN:
+        return codeTypes.FileInData( tokens.name, tokens.direction )
+    elif tokens.direction == codeTypes.DIR_OUT:
+        return codeTypes.FileOutData( tokens.name, tokens.direction )
+
+FileParm = ( KeywordFile
+             + Identifier('name')
+             + Direction('direction') )
+FileParm.setParseAction(ProcessFileParm)
+
+
 def ProcessFunc(tokens):
     #print tokens
 
@@ -345,7 +365,7 @@ def ProcessFunc(tokens):
 def MakeFuncExpr():
 
     # The expressions are checked in the given order, so the order must not be changed.
-    all_parameters = StringParm | ArrayParm | SimpleParm
+    all_parameters = StringParm | ArrayParm | FileParm | SimpleParm
 
     # The function type is optional but it doesn't seem work with Optional(), so need to
     # specify two separate expressions.

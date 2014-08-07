@@ -1,0 +1,8 @@
+import:
+
+    le_sup_state.api    [manual-start]
+    le_cfg.api
+
+sources:
+
+    execInApp.c

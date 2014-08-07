@@ -166,7 +166,7 @@ static void ClientStart
 
 
 // Component initialization function.
-LE_EVENT_INIT_HANDLER
+COMPONENT_INIT
 {
     LE_INFO("======= Test 1: Server and Client in same process ========");
 

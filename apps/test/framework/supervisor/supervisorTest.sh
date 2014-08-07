@@ -23,45 +23,62 @@ checkLogStr () {
     fi
 }
 
+function CheckRet
+{
+    RETVAL=$?
+    if [ $RETVAL -ne 0 ]; then
+        echo -e $COLOR_ERROR "Exit Code $RETVAL" $COLOR_RESET
+        exit $RETVAL
+    fi
+}
+
 # List of apps
 appsList="FaultApp RestartApp StopApp NonSandboxedFaultApp NonSandboxedRestartApp NonSandboxedStopApp"
 
-# Build all the apps.
+echo "******** Supervisor Test Starting ***********"
+
+echo "Build all the apps."
 for app in $appsList
 do
     mkapp $app.adef -t ar7
+    CheckRet
 done
 
-# Make sure Legato is running.
+echo "Make sure Legato is running."
 ssh root@$targetAddr "/usr/local/bin/legato start"
+CheckRet
 
-# Install all the apps.
+echo "Install all the apps."
 for app in $appsList
 do
     instapp $app.ar7 $targetAddr
+    CheckRet
 done
 
-# Stop all other apps.
+echo "Stop all other apps."
 ssh root@$targetAddr "/usr/local/bin/app stop \"*\""
 sleep 1
 
-# Clear the logs.
+echo "Clear the logs."
 ssh root@$targetAddr "killall syslogd"
+CheckRet
 ssh root@$targetAddr "/sbin/syslogd -C1000"
+CheckRet
 
-# Run the apps.
+echo "Run the apps."
 for app in $appsList
 do
     ssh root@$targetAddr  "/usr/local/bin/app start $app"
+    CheckRet
 done
 
 # Wait for all the apps to finish running.
 sleep 3
 
-# Uninstall all apps.
+echo "Uninstall all apps."
 ssh root@$targetAddr  "/usr/local/bin/app stop \"*\""
 
-# Grep the logs to check the results.
+echo "Grepping the logs to check the results."
 checkLogStr "==" 1 "======== Start 'FaultApp/noExit' Test ========"
 checkLogStr "==" 1 "======== Start 'FaultApp/noFault' Test ========"
 checkLogStr "==" 1 "======== Test 'FaultApp/noFault' Ended Normally ========"

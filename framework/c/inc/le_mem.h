@@ -2,7 +2,7 @@
 @page c_memory Dynamic Memory Allocation API
 
 
-@ref le_mem.h "Click here for the API Reference documentation."
+@ref le_mem.h "API Reference documentation"
 
 <HR>
 
@@ -372,12 +372,12 @@ You'll see errors in your logs if you do that.
 
 Sub-Pools automatically inherit their parent's destructor function.
 
-Note: You can't create sub-pools of sub-pools (i.e., sub-pools that get their blocks from another
+@note You can't create sub-pools of sub-pools (i.e., sub-pools that get their blocks from another
 sub-pool).
 
 <HR>
 
-Copyright (C) Sierra Wireless, Inc. 2012. All rights reserved. Use of this work is subject to license.
+Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
 
 */
 
@@ -428,9 +428,11 @@ typedef void (*le_mem_Destructor_t)
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
-    uint64_t    numAllocs;      ///< Number of times an object has been allocated from this pool.
-    size_t      numFree;        ///< Number of free objects currently available in this pool.
-    size_t      numOverflows;   ///< Number of times le_mem_ForceAlloc() had to expand the pool.
+    size_t      numBlocksInUse;     ///< Number of currently allocated blocks.
+    size_t      maxNumBlocksUsed;   ///< Maximum number of allocated blocks at any one time.
+    size_t      numOverflows;       ///< Number of times le_mem_ForceAlloc() had to expand the pool.
+    uint64_t    numAllocs;          ///< Number of times an object has been allocated from this pool.
+    size_t      numFree;            ///< Number of free objects currently available in this pool.
 }
 le_mem_PoolStats_t;
 
@@ -625,6 +627,38 @@ void le_mem_ResetStats
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Gets the memory pool's name.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_OVERFLOW if the name was truncated to fit in the provided buffer.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mem_GetName
+(
+    le_mem_PoolRef_t    pool,       ///< [IN] The memory pool.
+    char*               namePtr,    ///< [OUT] Buffer to store the name of the memory pool.
+    size_t              bufSize     ///< [IN] Size of the buffer namePtr points to.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Checks if the specified pool is a sub-pool.
+ *
+ * @return
+ *      true if it is a sub-pool.
+ *      false if it is not a sub-pool.
+ */
+//--------------------------------------------------------------------------------------------------
+const bool le_mem_IsSubPool
+(
+    le_mem_PoolRef_t    pool        ///< [IN] The memory pool.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Fetches the number of objects a specified pool can hold (this includes both the number of
  * free and in-use objects).
  *
@@ -649,6 +683,20 @@ size_t le_mem_GetTotalNumObjs
 size_t le_mem_GetObjectSize
 (
     le_mem_PoolRef_t    pool        ///< [IN] Pool where object size is to be fetched.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Fetches the total size of the object including all the memory overhead in a given pool (in bytes).
+ *
+ * @return
+ *      Total object memory size, in bytes.
+ */
+//--------------------------------------------------------------------------------------------------
+size_t le_mem_GetObjectFullSize
+(
+    le_mem_PoolRef_t    pool        ///< [IN] The pool whose object memory size is to be fetched.
 );
 
 

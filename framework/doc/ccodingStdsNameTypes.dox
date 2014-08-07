@@ -1,12 +1,4 @@
-/** @page ccodingStdsNameTypes C Naming Types
-
-@ref cstdsNameSuffix  <br>
-@ref cstdsNameTypesPrefix  <br>
-@ref cstdsNameType  <br>
-@ref cstdsCardinalTypes  <br>
-@ref cstdsEnumerationMembers  <br>
-@ref cstdsStructandUnionNamespaces  <br>
-@ref cstdsStructandUnionMembers  
+/** @page ccodingStdsNameTypes Types
 
 Other C language standards' pages: 
 
@@ -19,7 +11,7 @@ Other C language standards' pages:
 Types are distinctly different from instances, but it's possible to choose name so it's hard to know whether something is a type or a variable.  
 Naming conflicts can occur between types and variables and even between types and functions. 
 
-Type names are always given @c_t suffix.
+Type names are always given @c _t suffix.
 
 @section cstdsNameTypesPrefix Prefix
 

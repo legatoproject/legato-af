@@ -15,7 +15,7 @@
  * display error or warning messages and don't have a human user monitoring them.
  * Even when a device does have a display and a user watching it, the log
  * messages often don't help the device's primary user.
- * And displaying messages on a screen doesn't support 
+ * And displaying messages on a screen doesn't support
  * remote troubleshooting; especially when the device is hidden from view inside
  * a piece of equipment or located in remote geographic regions.
  *
@@ -31,10 +31,10 @@
  * @ref c_log_loging_fatals <br>
  * @ref c_log_tracing <br>
  * @ref c_log_resultTxt
- * 
+ *
  * @subsection c_log_levels Levels
  *
- * Log messages are categorized according to the severity of the information being logged.  
+ * Log messages are categorized according to the severity of the information being logged.
  * A log message may be purely informational, describing something that is
  * expected to occur from time-to-time during normal operation; or it may be a report of a fault
  * that might have a significant negative impact on the operation of the system.  To
@@ -196,7 +196,7 @@
  * @ref c_log_control_env_level <br>
  * @ref c_log_control_env_trace <br>
  * @ref c_log_control_functions <br>
- * 
+ *
  * Log level filtering and tracing can be controlled at runtime using:
  *  - the command-line Log Control Tool ("log")
  *  - configuration settings
@@ -285,7 +285,7 @@ $ export LE_LOG_TRACE=framework/fdMonitor:framework/logControl
  * @subsection c_log_control_functions Programmatic Log Control
  *
  * Normally, configuration settings and the log control tool should suffice for controlling
- * logging functionality.  In some situations, it can be convenient 
+ * logging functionality.  In some situations, it can be convenient
  * to control logging programmatically in C.
  *
  * To set the log filter level, @ref le_log_SetFilterLevel() is provided.
@@ -389,6 +389,9 @@ void _le_log_SetFilterLevel
  *       variable for each component.
  */
 //--------------------------------------------------------------------------------------------------
+#ifdef __cplusplus
+extern
+#endif
 le_log_SessionRef_t LE_LOG_SESSION;
 
 //--------------------------------------------------------------------------------------------------
@@ -399,6 +402,9 @@ le_log_SessionRef_t LE_LOG_SESSION;
  *       variable for each component.
  */
 //--------------------------------------------------------------------------------------------------
+#ifdef __cplusplus
+extern
+#endif
 le_log_Level_t* LE_LOG_LEVEL_FILTER_PTR;
 
 /* @endcond */

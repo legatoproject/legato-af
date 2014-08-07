@@ -13,6 +13,9 @@ a comment */
 files:
         files/xyz  /usr/share/files/
         files/xyz  /usr/share/files/abc
+        files/     /
+//        files      /
+//        files/xyz/  /
     [r] libexternal/libexternal.so  /lib/
 
 executables:

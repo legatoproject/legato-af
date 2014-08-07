@@ -1,0 +1,944 @@
+/**
+ * @page c_mrc Modem Radio Control
+ *
+ * @ref le_mrc_interface.h "Click here for the API reference documentation."
+ *
+ * <HR>
+ *
+ * This file contains the the prototype definitions of the high level Modem Radio Control (MRC)
+ * APIs.
+ *
+ * @ref le_mrc_power <br>
+ * @ref le_mrc_rat <br>
+ * @ref le_mrc_registration <br>
+ * @ref le_mrc_signal <br>
+ * @ref le_mrc_network_information <br>
+ * @ref le_mrc_networkScan <br>
+ * @ref le_mrc_ngbr <br>
+ * @ref le_mrc_configdb <br>
+ *
+ * It's important for many M2M apps to know details about cellular network environments (like
+ * network registration and signal quality).
+ * It allows you to limit some M2M services based on the reliability of the network environment, and
+ * provides information to control power consumption (power on or shutdown the radio module).
+ *
+ * @section le_mrc_power Radio Power Management
+ * @c le_mrc_SetRadioPower() API allows the application to power up or shutdown the radio module.
+ *
+ * @c le_mrc_GetRadioPower() API displays radio module power state.
+ *
+ * @section le_mrc_rat Radio Access Technology
+ * @c le_mrc_GetRadioAccessTechInUse() API retrieves the current active Radio Access Technology.
+ *
+ * The application can register a handler function to retrieve the Radio Access Technology each time
+ * the RAT changes.
+ *
+ * @c le_mrc_AddRatChangeHandler() API installs a RAT change handler.
+ *
+ * @c le_mrc_RemoveRatChangeHandler() API uninstalls the handler function.
+ *
+ * @section le_mrc_registration Network Registration
+ * @c le_mrc_GetNetRegState() API retrieves the radio module network registration status.
+ *
+ * The application can register a handler function to retrieve the registration status each time the
+ * registration state changes.
+ *
+ * @c le_mrc_AddNetRegStateHandler() API installs a registration state handler.
+ *
+ * @c le_mrc_RemoveNetRegStateHandler() API uninstalls the handler function.
+ * @note If only one handler is registered, the le_mrc_RemoveNetRegStateHandler() API
+ *       resets the registration mode to its original value before any handler functions were added.
+ *
+ * @c le_mrc_RegisterCellularNetwork() API registers on a cellular network.
+ *
+ * @section le_mrc_signal Signal Quality
+ * @c le_mrc_GetSignalQual() retrieves the received signal strength details.
+ *
+ * @section le_mrc_network_information Home Network Information
+ * @c le_mrc_GetHomeNetworkName() retrieves the Home Network Name. This value can be empty even if
+ * connected to a GSM network.
+ * @note Maybe need to provide an API to get 'Mobile country code' and 'Mobile Network Code'.
+ *
+ * @section le_mrc_networkScan Network Scan
+ *
+ * Call @c le_mrc_PerformCellularNetworkScan() to fill a list of all network in sight.
+ * You can go through all Scan Information by calling @c le_mrc_GetFirstCellularNetworkScan() and
+ * @c le_mrc_GetNextCellularNetworkScan().
+ *
+ * For each Scan Information, you can call:
+ *
+ *  - @c le_mrc_GetCellularNetworkMccMnc() to have the operator code.
+ *  - @c le_mrc_GetCellularNetworkName() to get the operator name.
+ *  - @c le_mrc_IsCellularNetworkRatAvailable() to check is this is the radio access technology.
+ *  - @c le_mrc_IsCellularNetworkInUse() to check if this is currently in use by the network.
+ *  - @c le_mrc_IsCellularNetworkAvailable() to check if this is available.
+ *  - @c le_mrc_IsCellularNetworkHome() to check if this is in home status.
+ *  - @c le_mrc_IsCellularNetworkForbidden() to check if this is forbidden by the network.
+ *
+ * @c le_mrc_DeleteCellularNetworkScan() should be called when you do not need the list anymore.
+ *
+ *
+ * Usage example:
+@code
+
+    le_mrc_ScanInformationListRef_t scanInformationList = NULL;
+
+    scanInformationList = le_mrc_PerformCellularNetworkScan(LE_MRC_RAT_ALL);
+
+    if (!scanInformationList)
+    {
+        fprintf(stdout, "Could not perform scan\n");
+        return;
+    }
+
+    le_mrc_ScanInformationRef_t cellRef;
+
+    uint32_t i;
+    for (i=1;i<LE_MRC_RAT_ALL;i=i<<1)
+    {
+
+        for (cellRef=le_mrc_GetFirstCellularNetworkScan(scanInformationList);
+             cellRef!=NULL;
+             cellRef=le_mrc_GetNextCellularNetworkScan(scanInformationList))
+        {
+            char mcc[4],mnc[4];
+            char name[100];
+
+            if (le_mrc_IsCellularNetworkRatAvailable(cellRef,i)) {
+
+                if (le_mrc_GetCellularNetworkMccMnc(cellRef,mcc,sizeof(mcc),mnc,sizeof(mnc))!=LE_OK)
+                {
+                    fprintf(stdout, "Failed to get operator code.\n");
+                }
+                else
+                {
+                    fprintf(stdout, "[%s-%s] ",mcc,mnc);
+                }
+
+                if (le_mrc_GetCellularNetworkName(cellRef, name, sizeof(name)) != LE_OK)
+                {
+                    fprintf(stdout, "Failed to get operator name.\n");
+                }
+                else
+                {
+                    fprintf(stdout, "%-32s",name);
+                }
+
+                fprintf(stdout,"%-15s,",le_mrc_IsCellularNetworkInUse(cellRef)?"Is used":"Is not used");
+
+                fprintf(stdout,"%-20s,",le_mrc_IsCellularNetworkAvailable(cellRef)?"Is available":"Is not available");
+
+                fprintf(stdout,"%-10s,",le_mrc_IsCellularNetworkHome(cellRef)?"Home":"Roaming");
+
+                fprintf(stdout,"%-10s]\n",le_mrc_IsCellularNetworkForbidden(cellRef)?"Forbidden":"Allowed");
+            }
+        }
+    }
+
+    le_mrc_DeleteCellularNetworkScan(scanInformationList);
+
+@endcode
+ *
+ *
+ * @section le_mrc_ngbr Neighboring Cells Information
+ * You must call @c le_mrc_GetNeighborCellsInfo() to retrieve the neighboring cells
+ * information. It returns a reference of @c le_mrc_NeighborCellsRef_t type.
+ *
+ * When the neighboring cells information is no longer needed, you must call
+ * @c le_mrc_DeleteNeighborCellsInfo() to free all allocated ressources associated with the
+ * object.
+ *
+ * Then, you can use the following function to get the information:
+ * @c le_mrc_GetFirstNeighborCellInfo() and @c le_mrc_GetFirstNeighborCellInfo() allow to go among
+ * the single cell information retrieved with @c le_mrc_GetNeighborCellsInfo(). These two functions
+ * return a reference of @c le_mrc_CellInfoRef_t type.
+ * @c le_mrc_GetNeighborCellId() gets the identifier of the cell specified with the
+ * @c le_mrc_CellInfoRef_t parameter.
+ * @c le_mrc_GetNeighborCellLac() gets the location area code of the cell specified with the
+ * @c le_mrc_CellInfoRef_t parameter.
+ * @c le_mrc_GetNeighborCellRxLevel() gets the signal strength (in dBm) of the cell specified
+ * @c le_mrc_CellInfoRef_t parameter.
+ *
+ * @section le_mrc_configdb Radio configuration tree
+ * @copydoc le_mrc_configdbPage_Hide
+ *
+ * <HR>
+ *
+ * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ */
+
+/**
+ * @interface le_mrc_configdbPage_Hide
+ *
+ * The configuration database path for the Radio is:
+ *
+ * @verbatim
+    /
+        modemServices/
+            radio/
+                preferredOperators/
+                    0/
+                        mcc<int> = <MCC_VALUE>
+                        mnc<int> = <MNC_VALUE>
+                        rat/
+                            0<string> = <RAT_VALUE>
+                            1<string> = <RAT_VALUE>
+                            ...
+                    1/
+                        mcc<int> = <MCC_VALUE>
+                        mnc<int> = <MNC_VALUE>
+                        rat/
+                            0<string> = <RAT_VALUE>
+                            1<string> = <RAT_VALUE>
+                            ...
+                    ...
+
+                scanMode/
+                    manual<bool>
+                    mcc<int> = <MCC_VALUE>
+                    mnc<int> = <MNC_VALUE>
+
+                preferences/
+                    rat/
+                        0<string> == <Rat>
+                        1<string> == <Rat>
+                        2<string> == <Rat>
+                        ...
+                    band/
+                        0<string> == <Band>
+                        1<string> == <Band>
+                        2<string> == <Band>
+                        ...
+                    lteBand/
+                        0<string> == <LteBand>
+                        1<string> = <LteBand>
+                        2<string> = <LteBand>
+                        ...
+                    tdScdmaBand/
+                        0<string> = <TdScdmaBand>
+                        1<string> = <TdScdmaBand>
+                        2<string> = <TdScdmaBand>
+                        ...
+   @endverbatim
+ *
+ * The preferred operators can be set using the following choices (string type):
+ *  - MCC_VALUE is the Mobile Country Code
+ *  - MNC_VALUE is the Mobile Network Code
+ *  - RAT_VALUE is the Radio Access technology.Possible values are:
+ *      - "GSM"
+ *      - "UMTS"
+ *      - "LTE"
+ *
+ * The Radio Access Technology preferences can be set with the following choices (string type):
+ * - "CDMA" (CDMA2000-1X + CDMA2000-HRPD)
+ * - "GSM"
+ * - "UMTS" (UMTS + TD-SCDMA)
+ * - "LTE"
+ *
+ * The 2G/3G Band preferences can be set with the following choices (string type):
+ * - "Band-Class-0-A-System"
+ * - "Band-Class-0-B-System"
+ * - "Band-Class-1-All-Blocks"
+ * - "Band-Class-2-Placeholder"
+ * - "Band-Class-3-A-System"
+ * - "Band-Class-4-All-Blocks"
+ * - "Band-Class-5-All-Blocks"
+ * - "Band-Class-6"
+ * - "Band-Class-7"
+ * - "Band-Class-8"
+ * - "Band-Class-9"
+ * - "Band-Class-10"
+ * - "Band-Class-11"
+ * - "Band-Class-12"
+ * - "Band-Class-13"
+ * - "Band-Class-14"
+ * - "Band-Class-15"
+ * - "Band-Class-16"
+ * - "Band-Class-17"
+ * - "Band-Class-18"
+ * - "Band-Class-19"
+ * - "GSM-DCS-1800"
+ * - "E-GSM-900" (for Extended GSM 900 band)
+ * - "Primary-GSM-900"
+ * - "GSM-450"
+ * - "GSM-480"
+ * - "GSM-750"
+ * - "GSM-850"
+ * - "GSMR-900" (for GSM Railways GSM 900 band)
+ * - "GSM-PCS-1900"
+ * - "WCDMA-EU-J-CH-IMT-2100" (for WCDMA Europe, Japan, and China IMT 2100 band)
+ * - "WCDMA-US-PCS-1900" (for WCDMA U.S. PCS 1900 band)
+ * - "WCDMA-EU-CH-DCS-1800" (for WCDMA Europe and China DCS 1800 band)
+ * - "WCDMA-US-1700" (for WCDMA U.S. 1700 band)
+ * - "WCDMA-US-850" (for WCDMA U.S. 850 band)
+ * - "WCDMA-J-800" (for WCDMA Japan 800 band)
+ * - "WCDMA-EU-2600" (for WCDMA Europe 2600 band)
+ * - "WCDMA-EU-J-900" (for WCDMA Europe and Japan 900 band)
+ * - "WCDMA-J-1700" (for WCDMA Japan 1700 band)
+ *
+ * The LTE Band preferences can be set by specifying the number of E-UTRA operating band, 0 to 43
+ * except: 15, 16, 22, 23, and 26 to 32.
+ *
+ * The TD-SCDMA Band preferences can be set with the following choices (string type): "A" to "F".
+ */
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * @file le_mrc_interface.h
+ *
+ * Legato @ref c_mrc include file.
+ *
+ * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ */
+//--------------------------------------------------------------------------------------------------
+
+// NOTE: string sizes are set to an arbitrary value.  The correct values
+//       still need to be filled in.
+
+
+// Mobile Country Code length (without null terminator)
+DEFINE  MCC_LEN     = 3;
+
+// Mobile Country Code length (with null terminator)
+DEFINE  MCC_BYTES   = (MCC_LEN + 1);
+
+// Mobile network Code length (without null terminator)
+DEFINE  MNC_LEN     = 3;
+
+// Mobile network Code length (with null terminator)
+DEFINE  MNC_BYTES   = (MNC_LEN + 1);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Radio Access Technology Bit Mask
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE  BITMASK_RAT_CDMA        = 0x01;
+DEFINE  BITMASK_RAT_GSM         = 0x02;
+DEFINE  BITMASK_RAT_UMTS        = 0x04;
+DEFINE  BITMASK_RAT_LTE         = 0x08;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Band Bit Mask
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE  BITMASK_BAND_CLASS_0_A_SYSTEM        = 0x0000000000000001;
+DEFINE  BITMASK_BAND_CLASS_0_B_SYSTEM        = 0x0000000000000002;
+DEFINE  BITMASK_BAND_CLASS_1_ALL_BLOCKS      = 0x0000000000000004;
+DEFINE  BITMASK_BAND_CLASS_2_PLACEHOLDER     = 0x0000000000000008;
+DEFINE  BITMASK_BAND_CLASS_3_A_SYSTEM        = 0x0000000000000010;
+DEFINE  BITMASK_BAND_CLASS_4_ALL_BLOCKS      = 0x0000000000000020;
+DEFINE  BITMASK_BAND_CLASS_5_ALL_BLOCKS      = 0x0000000000000040;
+DEFINE  BITMASK_BAND_CLASS_6                 = 0x0000000000000080;
+DEFINE  BITMASK_BAND_CLASS_7                 = 0x0000000000000100;
+DEFINE  BITMASK_BAND_CLASS_8                 = 0x0000000000000200;
+DEFINE  BITMASK_BAND_CLASS_9                 = 0x0000000000000400;
+DEFINE  BITMASK_BAND_CLASS_10                = 0x0000000000000800;
+DEFINE  BITMASK_BAND_CLASS_11                = 0x0000000000001000;
+DEFINE  BITMASK_BAND_CLASS_12                = 0x0000000000002000;
+DEFINE  BITMASK_BAND_CLASS_14                = 0x0000000000004000;
+DEFINE  BITMASK_BAND_CLASS_15                = 0x0000000000008000;
+DEFINE  BITMASK_BAND_CLASS_16                = 0x0000000000010000;
+DEFINE  BITMASK_BAND_CLASS_17                = 0x0000000000020000;
+DEFINE  BITMASK_BAND_CLASS_18                = 0x0000000000040000;
+DEFINE  BITMASK_BAND_CLASS_19                = 0x0000000000080000;
+DEFINE  BITMASK_BAND_GSM_DCS_1800            = 0x0000000000100000;
+DEFINE  BITMASK_BAND_EGSM_900                = 0x0000000000200000;
+DEFINE  BITMASK_BAND_PRI_GSM_900             = 0x0000000000400000;
+DEFINE  BITMASK_BAND_GSM_450                 = 0x0000000000800000;
+DEFINE  BITMASK_BAND_GSM_480                 = 0x0000000001000000;
+DEFINE  BITMASK_BAND_GSM_750                 = 0x0000000002000000;
+DEFINE  BITMASK_BAND_GSM_850                 = 0x0000000004000000;
+DEFINE  BITMASK_BAND_GSMR_900                = 0x0000000008000000;
+DEFINE  BITMASK_BAND_GSM_PCS_1900            = 0x0000000010000000;
+DEFINE  BITMASK_BAND_WCDMA_EU_J_CH_IMT_2100  = 0x0000000020000000;
+DEFINE  BITMASK_BAND_WCDMA_US_PCS_1900       = 0x0000000040000000;
+DEFINE  BITMASK_BAND_WCDMA_EU_CH_DCS_1800    = 0x0000000080000000;
+DEFINE  BITMASK_BAND_WCDMA_US_1700           = 0x0000000100000000;
+DEFINE  BITMASK_BAND_WCDMA_US_850            = 0x0000000200000000;
+DEFINE  BITMASK_BAND_WCDMA_J_800             = 0x0000000400000000;
+DEFINE  BITMASK_BAND_WCDMA_EU_2600           = 0x0000000800000000;
+DEFINE  BITMASK_BAND_WCDMA_EU_J_900          = 0x0000001000000000;
+DEFINE  BITMASK_BAND_WCDMA_J_1700            = 0x0000002000000000;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * LTE Band Bit Mask
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE  BITMASK_LTE_BAND_E_UTRA_OP_BAND_1    = 0x0000000000000001;
+DEFINE  BITMASK_LTE_BAND_E_UTRA_OP_BAND_2    = 0x0000000000000002;
+DEFINE  BITMASK_LTE_BAND_E_UTRA_OP_BAND_3    = 0x0000000000000004;
+DEFINE  BITMASK_LTE_BAND_E_UTRA_OP_BAND_4    = 0x0000000000000008;
+DEFINE  BITMASK_LTE_BAND_E_UTRA_OP_BAND_5    = 0x0000000000000010;
+DEFINE  BITMASK_LTE_BAND_E_UTRA_OP_BAND_6    = 0x0000000000000020;
+DEFINE  BITMASK_LTE_BAND_E_UTRA_OP_BAND_7    = 0x0000000000000040;
+DEFINE  BITMASK_LTE_BAND_E_UTRA_OP_BAND_8    = 0x0000000000000080;
+DEFINE  BITMASK_LTE_BAND_E_UTRA_OP_BAND_9    = 0x0000000000000100;
+DEFINE  BITMASK_LTE_BAND_E_UTRA_OP_BAND_10   = 0x0000000000000200;
+DEFINE  BITMASK_LTE_BAND_E_UTRA_OP_BAND_11   = 0x0000000000000400;
+DEFINE  BITMASK_LTE_BAND_E_UTRA_OP_BAND_12   = 0x0000000000000800;
+DEFINE  BITMASK_LTE_BAND_E_UTRA_OP_BAND_13   = 0x0000000000001000;
+DEFINE  BITMASK_LTE_BAND_E_UTRA_OP_BAND_14   = 0x0000000000002000;
+DEFINE  BITMASK_LTE_BAND_E_UTRA_OP_BAND_17   = 0x0000000000004000;
+DEFINE  BITMASK_LTE_BAND_E_UTRA_OP_BAND_18   = 0x0000000000008000;
+DEFINE  BITMASK_LTE_BAND_E_UTRA_OP_BAND_19   = 0x0000000000010000;
+DEFINE  BITMASK_LTE_BAND_E_UTRA_OP_BAND_20   = 0x0000000000020000;
+DEFINE  BITMASK_LTE_BAND_E_UTRA_OP_BAND_21   = 0x0000000000040000;
+DEFINE  BITMASK_LTE_BAND_E_UTRA_OP_BAND_24   = 0x0000000000080000;
+DEFINE  BITMASK_LTE_BAND_E_UTRA_OP_BAND_25   = 0x0000000000100000;
+DEFINE  BITMASK_LTE_BAND_E_UTRA_OP_BAND_33   = 0x0000000000200000;
+DEFINE  BITMASK_LTE_BAND_E_UTRA_OP_BAND_34   = 0x0000000000400000;
+DEFINE  BITMASK_LTE_BAND_E_UTRA_OP_BAND_35   = 0x0000000000800000;
+DEFINE  BITMASK_LTE_BAND_E_UTRA_OP_BAND_36   = 0x0000000001000000;
+DEFINE  BITMASK_LTE_BAND_E_UTRA_OP_BAND_37   = 0x0000000002000000;
+DEFINE  BITMASK_LTE_BAND_E_UTRA_OP_BAND_38   = 0x0000000004000000;
+DEFINE  BITMASK_LTE_BAND_E_UTRA_OP_BAND_39   = 0x0000000008000000;
+DEFINE  BITMASK_LTE_BAND_E_UTRA_OP_BAND_40   = 0x0000000010000000;
+DEFINE  BITMASK_LTE_BAND_E_UTRA_OP_BAND_41   = 0x0000000020000000;
+DEFINE  BITMASK_LTE_BAND_E_UTRA_OP_BAND_42   = 0x0000000040000000;
+DEFINE  BITMASK_LTE_BAND_E_UTRA_OP_BAND_43   = 0x0000000080000000;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * TDSCDMA Band Bit Mask
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE  BITMASK_TDSCDMA_BAND_A  = 0x01;
+DEFINE  BITMASK_TDSCDMA_BAND_B  = 0x02;
+DEFINE  BITMASK_TDSCDMA_BAND_C  = 0x04;
+DEFINE  BITMASK_TDSCDMA_BAND_D  = 0x08;
+DEFINE  BITMASK_TDSCDMA_BAND_E  = 0x10;
+DEFINE  BITMASK_TDSCDMA_BAND_F  = 0x20;
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Reference type for referring to MRC Scan Information objects.
+ */
+//--------------------------------------------------------------------------------------------------
+REFERENCE ScanInformation;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Reference type for Scan Information Listing.
+ */
+//--------------------------------------------------------------------------------------------------
+REFERENCE ScanInformationList;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Reference type for one Cell Information.
+ */
+//--------------------------------------------------------------------------------------------------
+REFERENCE CellInfo;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Reference type for all Neighboring Cells Information.
+ */
+//--------------------------------------------------------------------------------------------------
+REFERENCE NeighborCells;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Network Registration states.
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM NetRegState
+{
+    REG_NONE,           ///< Not registered and not currently searching for new operator.
+    REG_HOME,           ///< Registered, home network.
+    REG_SEARCHING,      ///< Not registered but currently searching for a new operator.
+    REG_DENIED,         ///< Registration was denied, usually because of invalid access credentials.
+    REG_ROAMING,        ///< Registered to a roaming network.
+    REG_UNKNOWN         ///< Unknown state.
+};
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Radio Access Technology
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM Rat
+{
+    RAT_UNKNOWN,     ///< Unknown
+    RAT_GSM,         ///< GSM network
+    RAT_UMTS,        ///< UMTS network
+    RAT_UMTS_GSM,
+    RAT_LTE,         ///< LTE network
+    RAT_LTE_GSM,
+    RAT_LTE_UMTS,
+    RAT_LTE_UMTS_GSM,
+    RAT_CDMA,       ///< CDMA  network
+    RAT_CDMA_GSM,
+    RAT_CDMA_UMTS,
+    RAT_CDMA_UMTS_GSM,
+    RAT_CDMA_LTE,
+    RAT_CDMA_LTE_GSM,
+    RAT_CDMA_LTE_UMTS,
+    RAT_ALL
+};
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler for Network registration state changes.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+HANDLER NetRegStateHandler
+{
+    HANDLER_PARAMS
+    (
+        le_mrc_NetRegState_t state ///< Parameter ready to receive the Network Registration state.
+    );
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler for Radio Access Technologie changes.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+HANDLER RatChangeHandler
+{
+    HANDLER_PARAMS
+    (
+        le_mrc_Rat_t rat    ///< Parameter ready to receive the Radio Access Technology.
+    );
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the network registration state.
+ *
+ * @return LE_NOT_POSSIBLE  Function failed to get the Network registration state.
+ * @return LE_OK            Function succeeded.
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetNetRegState
+(
+    le_mrc_NetRegState_t state OUT  ///< Network Registration state.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the signal quality.
+ *
+ * @return LE_NOT_POSSIBLE  Function failed to obtain the signal quality.
+ * @return LE_OK            Function succeeded.
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetSignalQual
+(
+    uint32 quality OUT      ///< [OUT] Received signal strength quality (0 = no signal strength,
+                            ///        5 = very good signal strength).
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the power of the Radio Module.
+ *
+ * @return LE_FAULT  Function failed.
+ * @return LE_OK     Function succeed.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetRadioPower
+(
+    le_onoff_t power ///< The power state.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Must be called to get the Radio Module power state.
+ *
+ * @return LE_NOT_POSSIBLE  Function failed to get the Radio Module power state.
+ * @return LE_OK            Function succeeded.
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetRadioPower
+(
+    le_onoff_t power OUT ///< Power state.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to register on a cellular network [mcc;mnc]
+ *
+ * @return LE_NOT_POSSIBLE  The function failed to register on the network.
+ * @return LE_OK            The function succeeded.
+ *
+ * @note If one code is too long (max 3 digits), it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t RegisterCellularNetwork
+(
+    string mcc[3] IN,   ///< Mobile Country Code
+    string mnc[3] IN    ///< Mobile Network Code
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to perform a cellular network scan.
+ *
+ * @return
+ *      Reference to the List object. Null pointer if the scan failed.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_mrc_ScanInformationListRef_t PerformCellularNetworkScan
+(
+    le_mrc_Rat_t ratMask ///< Technology mask
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the first Scan Information object reference in the list of
+ * scan Information retrieved with le_mrc_PerformNetworkScan().
+ *
+ * @return NULL                         No scan information found.
+ * @return le_mrc_ScanInformationRef_t  The Scan Information object reference.
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_mrc_ScanInformationRef_t GetFirstCellularNetworkScan
+(
+    le_mrc_ScanInformationListRef_t  scanInformationListRef ///< The list of scan information.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the next Scan Information object reference in the list of
+ * scan Information retrieved with le_mrc_PerformNetworkScan().
+ *
+ * @return NULL                         No scan information found.
+ * @return le_mrc_ScanInformationRef_t  The Scan Information object reference.
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_mrc_ScanInformationRef_t GetNextCellularNetworkScan
+(
+    le_mrc_ScanInformationListRef_t  scanInformationListRef ///< The list of scan information.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to delete the list of the Scan Information retrieved with
+ * le_mrc_PerformNetworkScan().
+ *
+ * @note
+ *      On failure, the process exits, so you don't have to worry about checking the returned
+ *      reference for validity.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION void DeleteCellularNetworkScan
+(
+    le_mrc_ScanInformationListRef_t  scanInformationListRef ///< The list of scan information.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the Cellular Network Code [mcc:mnc]
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_NOT_POSSIBLE for all other errors
+ *
+ * @note
+ *      On failure, the process exits, so you don't have to worry about checking the returned
+ *      reference for validity.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetCellularNetworkMccMnc
+(
+    le_mrc_ScanInformationRef_t scanInformationRef,     ///< Scan information reference
+    string mccPtr[3] OUT,                               ///< Mobile Country Code
+    string mncPtr[3] OUT                                ///< Mobile Network Code
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the Cellular Network Name.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_OVERFLOW if the operator name would not fit in buffer
+ *      - LE_NOT_POSSIBLE for all other errors
+ *
+ * @note
+ *      On failure, the process exits, so you don't have to worry about checking the returned
+ *      reference for validity.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetCellularNetworkName
+(
+    le_mrc_ScanInformationRef_t scanInformationRef,     ///< Scan information reference
+    string namePtr[100] OUT                             ///< Name of operator
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to know if the radio control access is in scanInformationRef.
+ *
+ * @return
+ *      - true the radio access technology is available
+ *      - false otherwise
+ *
+ * @note
+ *      On failure, the process exits.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION bool IsCellularNetworkRatAvailable
+(
+    le_mrc_ScanInformationRef_t scanInformationRef,     ///< Scan information reference
+    le_mrc_Rat_t                 rat                    ///< The Radio Access Technology
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to check if a cellular network is currently in use.
+ *
+ * @return true     The network is in use
+ * @return false    The network is not in use
+ *
+ * @note
+ *      On failure, the process exits, so you don't have to worry about checking the returned
+ *      reference for validity.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION bool IsCellularNetworkInUse
+(
+    le_mrc_ScanInformationRef_t scanInformationRef ///< Scan information reference
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to check if a cellular network is available.
+ *
+ * @return true     The network is available
+ * @return false    The network is not available
+ *
+ * @note
+ *      On failure, the process exits, so you don't have to worry about checking the returned
+ *      reference for validity.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION bool IsCellularNetworkAvailable
+(
+    le_mrc_ScanInformationRef_t scanInformationRef ///< Scan information reference
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to check if a cellular network is currently in home mode.
+ *
+ * @return true     The network is home
+ * @return false    The network is roaming
+ *
+ * @note
+ *      On failure, the process exits, so you don't have to worry about checking the returned
+ *      reference for validity.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION bool IsCellularNetworkHome
+(
+    le_mrc_ScanInformationRef_t scanInformationRef ///< Scan information reference
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to check if a cellular network is forbidden by the operator.
+ *
+ * @return true     The network is forbidden
+ * @return false    The network is allowed
+ *
+ * @note
+ *      On failure, the process exits, so you don't have to worry about checking the returned
+ *      reference for validity.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION bool IsCellularNetworkForbidden
+(
+    le_mrc_ScanInformationRef_t scanInformationRef ///< Scan information reference
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the Home Network Name information.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_OVERFLOW if the Home Network Name can't fit in nameStr
+ *      - LE_NOT_POSSIBLE on any other failure
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetHomeNetworkName
+(
+    string nameStr[100] OUT     ///< the home network Name
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the current Radio Access Technology in use.
+ *
+ * @return LE_NOT_POSSIBLE  Function failed to get the Radio Access Technology.
+ * @return LE_OK            Function succeeded.
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetRadioAccessTechInUse
+(
+    le_mrc_Rat_t   rat  OUT     ///< The Radio Access Technology.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to retrieve the Neighboring Cells information. It creates and
+ * returns a reference to the Neighboring Cells information.
+ *
+ * @return A reference to the Neighboring Cells information.
+ * @return NULL if no Cells Information are available.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_mrc_NeighborCellsRef_t GetNeighborCellsInfo
+(
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to delete the Neighboring Cells information.
+ *
+ * @note
+ *      On failure, the process exits, so you don't have to worry about checking the returned
+ *      reference for validity.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION DeleteNeighborCellsInfo
+(
+    le_mrc_NeighborCellsRef_t ngbrCellsRef IN  ///< The Neighboring Cells reference.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the first Cell Information reference in the list of
+ * Neighboring Cells information retrieved with le_mrc_GetNeighborCellsInfo().
+ *
+ * @return NULL                   No Cell information object found.
+ * @return le_mrc_CellInfoRef_t   The Cell information object reference.
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_mrc_CellInfoRef_t GetFirstNeighborCellInfo
+(
+    le_mrc_NeighborCellsRef_t ngbrCellsRef IN  ///< The Neighboring Cells reference.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the next Cell Information reference in the list of
+ * Neighboring Cells information retrieved with le_mrc_GetNeighborCellsInfo().
+ *
+ * @return NULL                   No Cell information object found.
+ * @return le_mrc_CellInfoRef_t   The Cell information object reference.
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_mrc_CellInfoRef_t GetNextNeighborCellInfo
+(
+    le_mrc_NeighborCellsRef_t ngbrCellsRef IN  ///< The Neighboring Cells reference.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the Cell Identifier.
+ *
+ * @return The Cell Identifier.
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION uint32_t GetNeighborCellId
+(
+    le_mrc_CellInfoRef_t     ngbrCellInfoRef IN    ///< The Cell information reference.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the Location Area Code of a cell.
+ *
+ * @return The Location Area Code of a cell.
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION uint32_t GetNeighborCellLocAreaCode
+(
+    le_mrc_CellInfoRef_t     ngbrCellInfoRef IN    ///< The Cell information reference.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the signal strength of a cell.
+ *
+ * @return The signal strength of a cell.
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION int32_t GetNeighborCellRxLevel
+(
+    le_mrc_CellInfoRef_t     ngbrCellInfoRef IN    ///< The Cell information reference.
+);

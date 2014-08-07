@@ -138,4 +138,29 @@ le_msg_SessionRef_t msgSession_CreateServerSideSession
 );
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Attempt to synchronously open a session with a service, but just quietly return an error
+ * code if the Service Directory is not running or is unreachable for some other reason.
+ *
+ * This is needed by the Log API, since logging should work even if the Service Directory isn't
+ * running.
+ *
+ * @return  LE_OK if successful.
+ *          LE_COMM_ERROR if the Service Directory cannot be reached.
+ *
+ * @note    Only clients open sessions.  Servers' must patiently wait for clients to open sessions
+ *          with them.
+ *
+ * @warning If the client and server do not agree on the maximum message size for the protocol,
+ *          then an attempt to open a session between that client and server will result in a fatal
+ *          error being logged and the client process being killed.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t msgSession_TryOpenSessionSync
+(
+    le_msg_SessionRef_t             sessionRef      ///< [in] Reference to the session.
+);
+
+
 #endif // LE_MESSAGING_SESSION_H_INCLUDE_GUARD

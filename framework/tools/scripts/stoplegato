@@ -4,8 +4,8 @@
 # It outputs "Wasn't running." if they were not running.  It outputs "Stopped." if they were
 # stopped.  It outputs "***ERROR: ", followed by an error message (to standard error) if it fails.
 
-LOG_CONTROL_DAEMON_PID=$(pgrep -f logCtrlDaemon)
-if [ $LOG_CONTROL_DAEMON_PID ]
+LOG_CONTROL_DAEMON_PID=$(pgrep logCtrlDaemon)
+if [ "$LOG_CONTROL_DAEMON_PID" ]
 then
     if ! kill -SIGTERM $LOG_CONTROL_DAEMON_PID
     then
@@ -16,8 +16,8 @@ then
     STOPPED=true
 fi
 
-SERVICE_DIRECTORY_PID=$(pgrep -f -n serviceDirectory)
-if [ $SERVICE_DIRECTORY_PID ]
+SERVICE_DIRECTORY_PID=$(pgrep -n serviceDir)
+if [ "$SERVICE_DIRECTORY_PID" ]
 then
     if ! kill -SIGTERM $SERVICE_DIRECTORY_PID
     then
@@ -28,7 +28,7 @@ then
     STOPPED=true
 fi
 
-if [ $STOPPED ]
+if [ "$STOPPED" ]
 then
     echo "Stopped."
 else

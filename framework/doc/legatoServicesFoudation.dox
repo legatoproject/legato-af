@@ -1,0 +1,21 @@
+/** @page legatoServicesFoundation Foundation 
+
+Foundation services provide a full-featured interface to various foundational system and modem resources.
+
+ @subpage c_sms <br>
+ @subpage c_sim <br>
+ @subpage c_mrc <br>
+ @subpage c_mdc <br>
+ @subpage c_mcc <br>
+ @subpage c_info <br>
+ @subpage c_fwupdate <br>
+ @subpage c_ecall <br>
+
+
+
+
+<HR>
+
+Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+
+**/

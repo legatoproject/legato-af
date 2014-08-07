@@ -7,6 +7,28 @@
  * ====================== WARNING ======================
  */
 
+/**
+ * @page c_info Modem Information API
+ *
+ * @ref info_interface.h "Click here for the API reference documentation."
+ *
+ * <HR>
+ *
+ * This file contains prototype definitions for Modem Information APIs.
+ *
+ * It's used to retrieve the International Mobile Equipment Identity (IMEI).
+ *
+ *
+ * <HR>
+ *
+ * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ */
+/** @file info_interface.h
+ *
+ * Legato @ref c_info include file.
+ *
+ * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ */
 
 #ifndef INFO_INTERFACE_H_INCLUDE_GUARD
 #define INFO_INTERFACE_H_INCLUDE_GUARD
@@ -40,12 +62,22 @@ void le_info_StopClient
 );
 
 //--------------------------------------------------------------------------------------------------
-
+/**
+ * Retrieve the International Mobile Equipment Identity (IMEI).
+ *
+ * @return LE_FAULT       Function failed to retrieve the IMEI.
+ * @return LE_OVERFLOW     IMEI length exceed the maximum length.
+ * @return LE_OK          Function succeeded.
+ *
+ * @note If the caller passes a bad pointer into this function, it's a fatal error; the
+ *       function will not return.
+ */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_info_GetImei
 (
     char* imei,
         ///< [OUT]
+        ///< IMEI string.
 
     size_t imeiNumElements
         ///< [IN]

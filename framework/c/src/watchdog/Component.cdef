@@ -1,0 +1,12 @@
+export:
+
+    le_wdog.api
+
+import:
+
+    le_cfg.api
+    supervisor/le_sup_wdog.api [manual-start]
+
+sources:
+
+    watchdog.c

@@ -1,5 +1,7 @@
 #!/bin/bash
 
+commandName=$(basename $0)
+
 # Generates a key pair, configures the local user's account to use that key to talk to the
 # specified IP address, and installs the public key in that target device's root account's
 # list of authorized keys.
@@ -13,7 +15,24 @@ TARGET_IP=$1
 
 function PrintUsage()
 {
-    echo "Usage: $(basename $0) TARGET_IP_ADDR"
+    echo "NAME"
+    echo "        $commandName - Configure secure shell access to target device."
+    echo
+    echo "SYNOPSYS"
+    echo "        $commandName [TARGET_IP_ADDR]"
+    echo
+    echo "DESCRIPTION"
+    echo "        If the TARGET_IP_ADDR is not provided as an argument, then $commandName"
+    echo "        will try to use the contents of the DEST_IP environment variable."
+    echo
+    echo "        Follow the interactive instructions provided by the tool."
+}
+
+function ExitWithError()
+{
+    echo "***ERROR: $1"
+    echo "Try '$commandName --help' for usage instructions."
+    exit 1
 }
 
 
@@ -27,17 +46,18 @@ fi
 # Did they specify too many arguments?
 if [ $# -gt 1 ]
 then
-    echo "***ERROR: Too many arguments."
-    PrintUsage
-    exit 1
+    ExitWithError "Too many arguments."
 fi
 
 # Make sure they gave us a target IP address.
-if ! [ $TARGET_IP ]
+if ! [ "$TARGET_IP" ]
 then
-    echo "***ERROR: Target IP address not provided."
-    PrintUsage
-    exit 1
+    if ! [ "DEST_IP" ]
+    then
+        ExitWithError "Target IP address not provided."
+    fi
+
+    TARGET_IP=$DEST_IP
 fi
 
 # If there isn't already a key file for Legato targets, create one.

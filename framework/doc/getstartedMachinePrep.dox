@@ -1,11 +1,6 @@
-/** @page getstartedMachinePrep Prep Dev Machine
+/** @page getstartedMachinePrep Prep Dev Host
 
-@ref instLinuxPackages  <br>
-@ref uninstCache  <br>
-@ref defSysShell  <br>
-@ref devmachineWhatsNext
-
-The Linux development host needs a few things to be set up:
+The Linux development host needs a few things to be set up.
 
 @section instLinuxPackages Install Linux Packages
 
@@ -16,7 +11,7 @@ Run the following to install necessary packages:
 
 @section uninstCache Uninstall ccache
 
-If @c ccache is installed, you must uninstall it  so you can build some target images: 
+If @c ccache is installed, you must uninstall it so you can build some target images: 
 @verbatim
 $ sudo apt-get remove ccache @endverbatim
 
@@ -28,10 +23,6 @@ Change the system shell to use bash:
 $ sudo dpkg-reconfigure dash @endverbatim
 
 Answer "No" to the question.
-
-@section devmachineWhatsNext What's Next?
-
-@ref getstartedConnectDevKit
 
 <HR>
 

@@ -1,11 +1,4 @@
-/** @page basicOther General Legato Basics
-
-@ref Configuration <br>
-@ref calibration <br>
-@ref Security <br>
-@ref Internationalization <br>
-@ref powerManagement <br>
-@ref basicOtherWhatsNext
+/** @page basicOther General Basics
 
 @section Configuration
 

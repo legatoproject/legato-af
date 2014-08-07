@@ -15,90 +15,228 @@
 
 
 
-static le_mcc_call_Ref_t       testCallRef;
+static le_mcc_call_ObjRef_t TestCallRef;
 
-static le_audio_StreamRef_t mdmRxAudioRef = NULL;
-static le_audio_StreamRef_t mdmTxAudioRef = NULL;
-static le_audio_StreamRef_t feInRef = NULL;
-static le_audio_StreamRef_t feOutRef = NULL;
+static le_audio_StreamRef_t MdmRxAudioRef = NULL;
+static le_audio_StreamRef_t MdmTxAudioRef = NULL;
+static le_audio_StreamRef_t FeInRef = NULL;
+static le_audio_StreamRef_t FeOutRef = NULL;
+static le_audio_StreamRef_t FileAudioRef = NULL;
 
-static le_audio_ConnectorRef_t audioInputConnectorRef = NULL;
-static le_audio_ConnectorRef_t audioOutputConnectorRef = NULL;
+static le_audio_ConnectorRef_t AudioInputConnectorRef = NULL;
+static le_audio_ConnectorRef_t AudioOutputConnectorRef = NULL;
 
-static char  DEST_TEST_PATTERN[LE_TEL_NMBR_MAX_LEN];
-static char  TYPE_TEST_PATTERN[16];
+static char  DestinationNumber[LE_MDMDEFS_PHONE_NUM_MAX_LEN];
+static char  AudioTestCase[16];
+static char  MainAudioSoundPath[16];
+static char  AudioFilePath[129];
+static int   AudioFileFd = -1;
+
 
 static void ConnectAudioToUsb
 (
-    le_mcc_call_Ref_t callRef
+    le_mcc_call_ObjRef_t callRef
 )
 {
     le_result_t res;
 
-    mdmRxAudioRef = le_mcc_call_GetRxAudioStream(callRef);
-    LE_ERROR_IF((mdmRxAudioRef==NULL), "GetRxAudioStream returns NULL!");
-    mdmTxAudioRef = le_mcc_call_GetTxAudioStream(callRef);
-    LE_ERROR_IF((mdmTxAudioRef==NULL), "GetTxAudioStream returns NULL!");
+    MdmRxAudioRef = le_mcc_call_GetRxAudioStream(callRef);
+    LE_ERROR_IF((MdmRxAudioRef==NULL), "GetRxAudioStream returns NULL!");
+    MdmTxAudioRef = le_mcc_call_GetTxAudioStream(callRef);
+    LE_ERROR_IF((MdmTxAudioRef==NULL), "GetTxAudioStream returns NULL!");
 
     // Redirect audio to the USB.
-    feOutRef = le_audio_OpenUsbTx();
-    LE_ERROR_IF((feOutRef==NULL), "OpenUsbTx returns NULL!");
-    feInRef = le_audio_OpenUsbRx();
-    LE_ERROR_IF((feInRef==NULL), "OpenUsbRx returns NULL!");
+    FeOutRef = le_audio_OpenUsbTx();
+    LE_ERROR_IF((FeOutRef==NULL), "OpenUsbTx returns NULL!");
+    FeInRef = le_audio_OpenUsbRx();
+    LE_ERROR_IF((FeInRef==NULL), "OpenUsbRx returns NULL!");
 
-    audioInputConnectorRef = le_audio_CreateConnector();
-    LE_ERROR_IF((audioInputConnectorRef==NULL), "audioInputConnectorRef is NULL!");
-    audioOutputConnectorRef = le_audio_CreateConnector();
-    LE_ERROR_IF((audioOutputConnectorRef==NULL), "audioOutputConnectorRef is NULL!");
+    AudioInputConnectorRef = le_audio_CreateConnector();
+    LE_ERROR_IF((AudioInputConnectorRef==NULL), "AudioInputConnectorRef is NULL!");
+    AudioOutputConnectorRef = le_audio_CreateConnector();
+    LE_ERROR_IF((AudioOutputConnectorRef==NULL), "AudioOutputConnectorRef is NULL!");
 
-    if (mdmRxAudioRef && mdmTxAudioRef && feOutRef && feInRef &&
-        audioInputConnectorRef && audioOutputConnectorRef)
+    if (MdmRxAudioRef && MdmTxAudioRef && FeOutRef && FeInRef &&
+        AudioInputConnectorRef && AudioOutputConnectorRef)
     {
-        res = le_audio_Connect(audioInputConnectorRef, feInRef);
+        res = le_audio_Connect(AudioInputConnectorRef, FeInRef);
         LE_ERROR_IF((res!=LE_OK), "Failed to connect USB Rx on Input connector!");
-        res = le_audio_Connect(audioInputConnectorRef, mdmTxAudioRef);
+        res = le_audio_Connect(AudioInputConnectorRef, MdmTxAudioRef);
         LE_ERROR_IF((res!=LE_OK), "Failed to connect mdmTx on Input connector!");
-        res = le_audio_Connect(audioOutputConnectorRef, feOutRef);
+        res = le_audio_Connect(AudioOutputConnectorRef, FeOutRef);
         LE_ERROR_IF((res!=LE_OK), "Failed to connect USB Tx on Output connector!");
-        res = le_audio_Connect(audioOutputConnectorRef, mdmRxAudioRef);
+        res = le_audio_Connect(AudioOutputConnectorRef, MdmRxAudioRef);
         LE_ERROR_IF((res!=LE_OK), "Failed to connect mdmRx on Output connector!");
+    }
+}
+
+
+static void ConnectAudioToFileRemotePlay
+(
+    le_mcc_call_ObjRef_t callRef
+)
+{
+    le_result_t res;
+    if ((AudioFileFd=open(AudioFilePath, O_RDONLY)) == -1)
+    {
+        LE_ERROR("Open file %s failure: errno.%d (%s)",  AudioFilePath, errno, strerror(errno));
+    }
+    else
+    {
+        LE_INFO("Open file %s with AudioFileFd.%d",  AudioFilePath, AudioFileFd);
+    }
+
+    // Play Remote on input connector.
+    FileAudioRef = le_audio_OpenFilePlayback(AudioFileFd);
+    LE_ERROR_IF((FileAudioRef==NULL), "OpenFilePlayback returns NULL!");
+
+    if (FileAudioRef && AudioInputConnectorRef)
+    {
+        res = le_audio_Connect(AudioInputConnectorRef, FileAudioRef);
+        if(res!=LE_OK)
+        {
+            LE_ERROR("Failed to connect FilePlayback on input connector!");
+        }
+        else
+        {
+            LE_INFO("FilePlayback is now connected.");
+        }
+    }
+}
+
+static void ConnectAudioToFileRemoteRec
+(
+    le_mcc_call_ObjRef_t callRef
+)
+{
+    le_result_t res;
+    if ((AudioFileFd=open(AudioFilePath, O_WRONLY | O_CREAT | O_TRUNC)) == -1)
+    {
+        LE_ERROR("Open file %s failure: errno.%d (%s)",  AudioFilePath, errno, strerror(errno));
+    }
+    else
+    {
+        LE_INFO("Open file %s with AudioFileFd.%d",  AudioFilePath, AudioFileFd);
+    }
+
+    // Capture Remote on output connector.
+    FileAudioRef = le_audio_OpenFileRecording(AudioFileFd);
+    LE_ERROR_IF((FileAudioRef==NULL), "OpenFileRecording returns NULL!");
+
+    if (FileAudioRef && AudioOutputConnectorRef)
+    {
+        res = le_audio_Connect(AudioOutputConnectorRef, FileAudioRef);
+        if(res!=LE_OK)
+        {
+            LE_ERROR("Failed to connect FileRecording on output connector!");
+        }
+        else
+        {
+            LE_INFO("FileRecording is now connected.");
+        }
+    }
+}
+
+static void ConnectAudioToFileLocalPlay
+(
+    le_mcc_call_ObjRef_t callRef
+)
+{
+    le_result_t res;
+    if ((AudioFileFd=open(AudioFilePath, O_RDONLY)) == -1)
+    {
+        LE_ERROR("Open file %s failure: errno.%d (%s)",  AudioFilePath, errno, strerror(errno));
+    }
+    else
+    {
+        LE_INFO("Open file %s with AudioFileFd.%d",  AudioFilePath, AudioFileFd);
+    }
+
+    // Play local on output connector.
+    FileAudioRef = le_audio_OpenFilePlayback(AudioFileFd);
+    LE_ERROR_IF((FileAudioRef==NULL), "OpenFilePlayback returns NULL!");
+
+    if (FileAudioRef && AudioOutputConnectorRef)
+    {
+        res = le_audio_Connect(AudioOutputConnectorRef, FileAudioRef);
+        if(res!=LE_OK)
+        {
+            LE_ERROR("Failed to connect FilePlayback on output connector!");
+        }
+        else
+        {
+            LE_INFO("FilePlayback is now connected.");
+        }
+    }
+}
+
+static void ConnectAudioToFileLocalRec
+(
+    le_mcc_call_ObjRef_t callRef
+)
+{
+    le_result_t res;
+    if ((AudioFileFd=open(AudioFilePath, O_WRONLY | O_CREAT | O_TRUNC)) == -1)
+    {
+        LE_ERROR("Open file %s failure: errno.%d (%s)",  AudioFilePath, errno, strerror(errno));
+    }
+    else
+    {
+        LE_INFO("Open file %s with AudioFileFd.%d",  AudioFilePath, AudioFileFd);
+    }
+
+    // Capture local on input connector.
+    FileAudioRef = le_audio_OpenFileRecording(AudioFileFd);
+    LE_ERROR_IF((FileAudioRef==NULL), "OpenFileRecording returns NULL!");
+
+    if (FileAudioRef && AudioInputConnectorRef)
+    {
+        res = le_audio_Connect(AudioInputConnectorRef, FileAudioRef);
+        if(res!=LE_OK)
+        {
+            LE_ERROR("Failed to connect FileRecording on input connector!");
+        }
+        else
+        {
+            LE_INFO("FileRecording is now connected.");
+        }
     }
 }
 
 #ifdef ENABLE_CODEC
 static void ConnectAudioToCodec
 (
-    le_mcc_call_Ref_t callRef
+    le_mcc_call_ObjRef_t callRef
 )
 {
     le_result_t res;
 
-    mdmRxAudioRef = le_mcc_call_GetRxAudioStream(callRef);
-    LE_ERROR_IF((mdmRxAudioRef==NULL), "GetRxAudioStream returns NULL!");
-    mdmTxAudioRef = le_mcc_call_GetTxAudioStream(callRef);
-    LE_ERROR_IF((mdmTxAudioRef==NULL), "GetTxAudioStream returns NULL!");
+    MdmRxAudioRef = le_mcc_call_GetRxAudioStream(callRef);
+    LE_ERROR_IF((MdmRxAudioRef==NULL), "GetRxAudioStream returns NULL!");
+    MdmTxAudioRef = le_mcc_call_GetTxAudioStream(callRef);
+    LE_ERROR_IF((MdmTxAudioRef==NULL), "GetTxAudioStream returns NULL!");
 
     // Redirect audio to the in-built Microphone and Speaker.
-    feOutRef = le_audio_OpenSpeaker();
-    LE_ERROR_IF((feOutRef==NULL), "OpenSpeaker returns NULL!");
-    feInRef = le_audio_OpenMic();
-    LE_ERROR_IF((feInRef==NULL), "OpenMic returns NULL!");
+    FeOutRef = le_audio_OpenSpeaker();
+    LE_ERROR_IF((FeOutRef==NULL), "OpenSpeaker returns NULL!");
+    FeInRef = le_audio_OpenMic();
+    LE_ERROR_IF((FeInRef==NULL), "OpenMic returns NULL!");
 
-    audioInputConnectorRef = le_audio_CreateConnector();
-    LE_ERROR_IF((audioInputConnectorRef==NULL), "audioInputConnectorRef is NULL!");
-    audioOutputConnectorRef = le_audio_CreateConnector();
-    LE_ERROR_IF((audioOutputConnectorRef==NULL), "audioOutputConnectorRef is NULL!");
+    AudioInputConnectorRef = le_audio_CreateConnector();
+    LE_ERROR_IF((AudioInputConnectorRef==NULL), "AudioInputConnectorRef is NULL!");
+    AudioOutputConnectorRef = le_audio_CreateConnector();
+    LE_ERROR_IF((AudioOutputConnectorRef==NULL), "AudioOutputConnectorRef is NULL!");
 
-    if (mdmRxAudioRef && mdmTxAudioRef && feOutRef && feInRef &&
-        audioInputConnectorRef && audioOutputConnectorRef)
+    if (MdmRxAudioRef && MdmTxAudioRef && FeOutRef && FeInRef &&
+        AudioInputConnectorRef && AudioOutputConnectorRef)
     {
-        res = le_audio_Connect(audioInputConnectorRef, feInRef);
+        res = le_audio_Connect(AudioInputConnectorRef, FeInRef);
         LE_ERROR_IF((res!=LE_OK), "Failed to connect Mic on Input connector!");
-        res = le_audio_Connect(audioInputConnectorRef, mdmTxAudioRef);
+        res = le_audio_Connect(AudioInputConnectorRef, MdmTxAudioRef);
         LE_ERROR_IF((res!=LE_OK), "Failed to connect mdmTx on Input connector!");
-        res = le_audio_Connect(audioOutputConnectorRef, feOutRef);
+        res = le_audio_Connect(AudioOutputConnectorRef, FeOutRef);
         LE_ERROR_IF((res!=LE_OK), "Failed to connect Speaker on Output connector!");
-        res = le_audio_Connect(audioOutputConnectorRef, mdmRxAudioRef);
+        res = le_audio_Connect(AudioOutputConnectorRef, MdmRxAudioRef);
         LE_ERROR_IF((res!=LE_OK), "Failed to connect mdmRx on Output connector!");
     }
 }
@@ -106,139 +244,258 @@ static void ConnectAudioToCodec
 
 static void ConnectAudioToPcm
 (
-    le_mcc_call_Ref_t callRef
+    le_mcc_call_ObjRef_t callRef
 )
 {
     le_result_t res;
 
-    mdmRxAudioRef = le_mcc_call_GetRxAudioStream(callRef);
-    LE_ERROR_IF((mdmRxAudioRef==NULL), "GetRxAudioStream returns NULL!");
-    mdmTxAudioRef = le_mcc_call_GetTxAudioStream(callRef);
-    LE_ERROR_IF((mdmTxAudioRef==NULL), "GetTxAudioStream returns NULL!");
+    MdmRxAudioRef = le_mcc_call_GetRxAudioStream(callRef);
+    LE_ERROR_IF((MdmRxAudioRef==NULL), "GetRxAudioStream returns NULL!");
+    MdmTxAudioRef = le_mcc_call_GetTxAudioStream(callRef);
+    LE_ERROR_IF((MdmTxAudioRef==NULL), "GetTxAudioStream returns NULL!");
 
     // Redirect audio to the PCM interface.
-    feOutRef = le_audio_OpenPcmTx(0);
-    LE_ERROR_IF((feOutRef==NULL), "OpenPcmTx returns NULL!");
-    feInRef = le_audio_OpenPcmRx(0);
-    LE_ERROR_IF((feInRef==NULL), "OpenPcmRx returns NULL!");
+    FeOutRef = le_audio_OpenPcmTx(0);
+    LE_ERROR_IF((FeOutRef==NULL), "OpenPcmTx returns NULL!");
+    FeInRef = le_audio_OpenPcmRx(0);
+    LE_ERROR_IF((FeInRef==NULL), "OpenPcmRx returns NULL!");
 
-    audioInputConnectorRef = le_audio_CreateConnector();
-    LE_ERROR_IF((audioInputConnectorRef==NULL), "audioInputConnectorRef is NULL!");
-    audioOutputConnectorRef = le_audio_CreateConnector();
-    LE_ERROR_IF((audioOutputConnectorRef==NULL), "audioOutputConnectorRef is NULL!");
+    AudioInputConnectorRef = le_audio_CreateConnector();
+    LE_ERROR_IF((AudioInputConnectorRef==NULL), "AudioInputConnectorRef is NULL!");
+    AudioOutputConnectorRef = le_audio_CreateConnector();
+    LE_ERROR_IF((AudioOutputConnectorRef==NULL), "AudioOutputConnectorRef is NULL!");
 
-    if (mdmRxAudioRef && mdmTxAudioRef && feOutRef && feInRef &&
-        audioInputConnectorRef && audioOutputConnectorRef)
+    if (MdmRxAudioRef && MdmTxAudioRef && FeOutRef && FeInRef &&
+        AudioInputConnectorRef && AudioOutputConnectorRef)
     {
-        res = le_audio_Connect(audioInputConnectorRef, feInRef);
+        res = le_audio_Connect(AudioInputConnectorRef, FeInRef);
         LE_ERROR_IF((res!=LE_OK), "Failed to connect PCM RX on Input connector!");
-        res = le_audio_Connect(audioInputConnectorRef, mdmTxAudioRef);
+        res = le_audio_Connect(AudioInputConnectorRef, MdmTxAudioRef);
         LE_ERROR_IF((res!=LE_OK), "Failed to connect mdmTx on Input connector!");
-        res = le_audio_Connect(audioOutputConnectorRef, feOutRef);
+        res = le_audio_Connect(AudioOutputConnectorRef, FeOutRef);
         LE_ERROR_IF((res!=LE_OK), "Failed to connect PCM TX on Output connector!");
-        res = le_audio_Connect(audioOutputConnectorRef, mdmRxAudioRef);
+        res = le_audio_Connect(AudioOutputConnectorRef, MdmRxAudioRef);
         LE_ERROR_IF((res!=LE_OK), "Failed to connect mdmRx on Output connector!");
     }
 }
 
 static void ConnectAudioToI2s
 (
-    le_mcc_call_Ref_t callRef
+    le_mcc_call_ObjRef_t callRef
 )
 {
     le_result_t res;
 
-    mdmRxAudioRef = le_mcc_call_GetRxAudioStream(callRef);
-    LE_ERROR_IF((mdmRxAudioRef==NULL), "GetRxAudioStream returns NULL!");
-    mdmTxAudioRef = le_mcc_call_GetTxAudioStream(callRef);
-    LE_ERROR_IF((mdmTxAudioRef==NULL), "GetTxAudioStream returns NULL!");
+    MdmRxAudioRef = le_mcc_call_GetRxAudioStream(callRef);
+    LE_ERROR_IF((MdmRxAudioRef==NULL), "GetRxAudioStream returns NULL!");
+    MdmTxAudioRef = le_mcc_call_GetTxAudioStream(callRef);
+    LE_ERROR_IF((MdmTxAudioRef==NULL), "GetTxAudioStream returns NULL!");
 
     // Redirect audio to the I2S interface.
-    feOutRef = le_audio_OpenI2sTx(0);
-    LE_ERROR_IF((feOutRef==NULL), "OpenI2sTx returns NULL!");
-    feInRef = le_audio_OpenI2sRx(0);
-    LE_ERROR_IF((feInRef==NULL), "OpenI2sRx returns NULL!");
+    FeOutRef = le_audio_OpenI2sTx(0);
+    LE_ERROR_IF((FeOutRef==NULL), "OpenI2sTx returns NULL!");
+    FeInRef = le_audio_OpenI2sRx(0);
+    LE_ERROR_IF((FeInRef==NULL), "OpenI2sRx returns NULL!");
 
-    LE_INFO("Open I2s: feInRef.%p feOutRef.%p", feInRef, feOutRef);
+    LE_INFO("Open I2s: FeInRef.%p FeOutRef.%p", FeInRef, FeOutRef);
 
-    audioInputConnectorRef = le_audio_CreateConnector();
-    LE_ERROR_IF((audioInputConnectorRef==NULL), "audioInputConnectorRef is NULL!");
-    audioOutputConnectorRef = le_audio_CreateConnector();
-    LE_ERROR_IF((audioOutputConnectorRef==NULL), "audioOutputConnectorRef is NULL!");
+    AudioInputConnectorRef = le_audio_CreateConnector();
+    LE_ERROR_IF((AudioInputConnectorRef==NULL), "AudioInputConnectorRef is NULL!");
+    AudioOutputConnectorRef = le_audio_CreateConnector();
+    LE_ERROR_IF((AudioOutputConnectorRef==NULL), "AudioOutputConnectorRef is NULL!");
 
-    if (mdmRxAudioRef && mdmTxAudioRef && feOutRef && feInRef &&
-        audioInputConnectorRef && audioOutputConnectorRef)
+    if (MdmRxAudioRef && MdmTxAudioRef && FeOutRef && FeInRef &&
+        AudioInputConnectorRef && AudioOutputConnectorRef)
     {
-        res = le_audio_Connect(audioInputConnectorRef, feInRef);
+        res = le_audio_Connect(AudioInputConnectorRef, FeInRef);
         LE_ERROR_IF((res!=LE_OK), "Failed to connect I2S RX on Input connector!");
-        res = le_audio_Connect(audioInputConnectorRef, mdmTxAudioRef);
+        res = le_audio_Connect(AudioInputConnectorRef, MdmTxAudioRef);
         LE_ERROR_IF((res!=LE_OK), "Failed to connect mdmTx on Input connector!");
-        res = le_audio_Connect(audioOutputConnectorRef, feOutRef);
+        res = le_audio_Connect(AudioOutputConnectorRef, FeOutRef);
         LE_ERROR_IF((res!=LE_OK), "Failed to connect I2S TX on Output connector!");
-        res = le_audio_Connect(audioOutputConnectorRef, mdmRxAudioRef);
+        res = le_audio_Connect(AudioOutputConnectorRef, MdmRxAudioRef);
         LE_ERROR_IF((res!=LE_OK), "Failed to connect mdmRx on Output connector!");
     }
-    LE_INFO("Open I2s: feInRef.%p feOutRef.%p", feInRef, feOutRef);
-
+    LE_INFO("Open I2s: FeInRef.%p FeOutRef.%p", FeInRef, FeOutRef);
 }
 
-static void DisconnectAllAudio
+
+static void ConnectAudio
 (
-    le_mcc_call_Ref_t callRef
+    le_mcc_call_ObjRef_t callRef
 )
 {
-    // mdmRxAudioRef and mdmTxAudioRef become null
-    mdmRxAudioRef = le_mcc_call_GetRxAudioStream(callRef);
-    mdmTxAudioRef = le_mcc_call_GetTxAudioStream(callRef);
 
-    if (audioInputConnectorRef)
+#ifdef ENABLE_CODEC
+    if (strcmp(AudioTestCase,"MIC")==0)
     {
-        LE_INFO("Disconnect %p from connector.%p", feInRef, audioInputConnectorRef);
-        if (feInRef)
+        LE_INFO("Connect MIC and SPEAKER ");
+        ConnectAudioToCodec(callRef);
+    }
+    else
+#endif
+    if (strcmp(AudioTestCase,"PCM")==0)
+    {
+        LE_INFO("Connect PCM ");
+        ConnectAudioToPcm(callRef);
+    }
+    else if (strcmp(AudioTestCase,"I2S")==0)
+    {
+        LE_INFO("Connect I2S");
+        ConnectAudioToI2s(callRef);
+    }
+    else if (strcmp(AudioTestCase,"USB")==0)
+    {
+        LE_INFO("Connect USB ");
+        ConnectAudioToUsb(callRef);
+    }
+    else if ((strncmp(AudioTestCase,"R-",2)==0) || (strncmp(AudioTestCase,"L-",2)==0))
+    {
+#ifdef ENABLE_CODEC
+        if (strcmp(MainAudioSoundPath,"MIC")==0)
         {
-            le_audio_Disconnect(audioInputConnectorRef, feInRef);
+            LE_INFO("Connect MIC and SPEAKER ");
+            ConnectAudioToCodec(callRef);
         }
-        LE_INFO("Disconnect %p from connector.%p", mdmTxAudioRef, audioInputConnectorRef);
-        if(mdmTxAudioRef)
+        else
+#endif
+        if (strcmp(MainAudioSoundPath,"PCM")==0)
         {
-            le_audio_Disconnect(audioInputConnectorRef, mdmTxAudioRef);
+            LE_INFO("Connect PCM ");
+            ConnectAudioToPcm(callRef);
+        }
+        else if (strcmp(MainAudioSoundPath,"I2S")==0)
+        {
+            LE_INFO("Connect I2S");
+            ConnectAudioToI2s(callRef);
+        }
+        else if (strcmp(MainAudioSoundPath,"USB")==0)
+        {
+            LE_INFO("Connect USB ");
+            ConnectAudioToUsb(callRef);
+        }
+        else
+        {
+            LE_INFO("Error in format could not connect audio");
+        }
+
+        // Connect SW-PCM
+        if (strcmp(AudioTestCase,"R-PB")==0)
+        {
+            LE_INFO("Connect Remote Play");
+            ConnectAudioToFileRemotePlay(callRef);
+        }
+        else
+        if (strcmp(AudioTestCase,"R-REC")==0)
+        {
+            LE_INFO("Connect Remote Rec ");
+            ConnectAudioToFileRemoteRec(callRef);
+        }
+        else if (strcmp(AudioTestCase,"L-PB")==0)
+        {
+            LE_INFO("Connect Local Play");
+            ConnectAudioToFileLocalPlay(callRef);
+        }
+        else if (strcmp(AudioTestCase,"L-REC")==0)
+        {
+            LE_INFO("Connect Local Rec ");
+            ConnectAudioToFileLocalRec(callRef);
+        }
+        else
+        {
+            LE_INFO("Error in format could not connect audio");
         }
     }
-    if(audioOutputConnectorRef)
+    else if (strcmp(AudioTestCase,"NONE")==0)
     {
-        LE_INFO("Disconnect %p from connector.%p", feOutRef, audioOutputConnectorRef);
-        if(feOutRef)
+        LE_INFO("NO audio connection ");
+    }
+    else
+    {
+        LE_INFO("Error in format could not connect audio");
+    }
+
+}
+static void DisconnectAllAudio
+(
+    le_mcc_call_ObjRef_t callRef
+)
+{
+    if (AudioInputConnectorRef)
+    {
+        if(FileAudioRef)
         {
-            le_audio_Disconnect(audioOutputConnectorRef, feOutRef);
+            LE_INFO("Disconnect %p from connector.%p", FileAudioRef, AudioInputConnectorRef);
+            le_audio_Disconnect(AudioInputConnectorRef, FileAudioRef);
         }
-        LE_INFO("Disconnect %p from connector.%p", mdmRxAudioRef, audioOutputConnectorRef);
-        if(mdmRxAudioRef)
+        if (FeInRef)
         {
-            le_audio_Disconnect(audioOutputConnectorRef, mdmRxAudioRef);
+            LE_INFO("Disconnect %p from connector.%p", FeInRef, AudioInputConnectorRef);
+            le_audio_Disconnect(AudioInputConnectorRef, FeInRef);
+        }
+        if(MdmTxAudioRef)
+        {
+            LE_INFO("Disconnect %p from connector.%p", MdmTxAudioRef, AudioInputConnectorRef);
+            le_audio_Disconnect(AudioInputConnectorRef, MdmTxAudioRef);
+        }
+    }
+    if(AudioOutputConnectorRef)
+    {
+        if(FileAudioRef)
+        {
+            LE_INFO("Disconnect %p from connector.%p", FileAudioRef, AudioOutputConnectorRef);
+            le_audio_Disconnect(AudioOutputConnectorRef, FileAudioRef);
+        }
+        if(FeOutRef)
+        {
+            LE_INFO("Disconnect %p from connector.%p", FeOutRef, AudioOutputConnectorRef);
+            le_audio_Disconnect(AudioOutputConnectorRef, FeOutRef);
+        }
+        if(MdmRxAudioRef)
+        {
+            LE_INFO("Disconnect %p from connector.%p", MdmRxAudioRef, AudioOutputConnectorRef);
+            le_audio_Disconnect(AudioOutputConnectorRef, MdmRxAudioRef);
         }
     }
 
-    if(audioInputConnectorRef)
+    if(AudioInputConnectorRef)
     {
-        le_audio_DeleteConnector(audioInputConnectorRef);
-        audioInputConnectorRef = NULL;
+        le_audio_DeleteConnector(AudioInputConnectorRef);
+        AudioInputConnectorRef = NULL;
     }
-    if(audioOutputConnectorRef)
+    if(AudioOutputConnectorRef)
     {
-        le_audio_DeleteConnector(audioOutputConnectorRef);
-        audioOutputConnectorRef = NULL;
+        le_audio_DeleteConnector(AudioOutputConnectorRef);
+        AudioOutputConnectorRef = NULL;
     }
 
-    if(feInRef)
+    if(FileAudioRef)
     {
-        le_audio_Close(feInRef);
-        feInRef = NULL;
+        le_audio_Close(FileAudioRef);
+        FeOutRef = NULL;
     }
-    if(feOutRef)
+    if(FeInRef)
     {
-        le_audio_Close(feOutRef);
-        feOutRef = NULL;
+        le_audio_Close(FeInRef);
+        FeInRef = NULL;
     }
+    if(FeOutRef)
+    {
+        le_audio_Close(FeOutRef);
+        FeOutRef = NULL;
+    }
+    if(MdmRxAudioRef)
+    {
+        le_audio_Close(MdmRxAudioRef);
+        FeOutRef = NULL;
+    }
+    if(MdmTxAudioRef)
+    {
+        le_audio_Close(MdmTxAudioRef);
+        FeOutRef = NULL;
+    }
+
+    close(AudioFileFd);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -247,20 +504,21 @@ static void DisconnectAllAudio
  *
  */
 //--------------------------------------------------------------------------------------------------
-static int32_t getTel(void)
+static int32_t GetTel(void)
 {
     char *strPtr;
+
+    memset(DestinationNumber, 0, LE_MDMDEFS_PHONE_NUM_MAX_LEN);
 
     do
     {
         fprintf(stderr, "Please enter the destination's telephone number to start a call or 'stop' to exit: \n");
-        strPtr=fgets ((char*)DEST_TEST_PATTERN, 16, stdin);
+        strPtr=fgets ((char*)DestinationNumber, 16, stdin);
     }while (strlen(strPtr) == 0);
 
+    DestinationNumber[strlen(DestinationNumber)-1]='\0';
 
-    DEST_TEST_PATTERN[strlen(DEST_TEST_PATTERN)-1]='\0';
-
-    if (!strcmp(DEST_TEST_PATTERN, "stop"))
+    if (!strcmp(DestinationNumber, "stop"))
     {
         return -1;
     }
@@ -270,38 +528,103 @@ static int32_t getTel(void)
     }
 }
 
-
 //--------------------------------------------------------------------------------------------------
 /**
- * This function gets the output for sound from the User.
+ * This function gets the audio file's name from the User.
  *
  */
 //--------------------------------------------------------------------------------------------------
-static int32_t getOutputSound(void)
+static int32_t GetAudioFileName(void)
 {
     char *strPtr;
+
+    memset(AudioFilePath, 0, 129);
+
+    do
+    {
+        fprintf(stderr, "Please enter the file's name for audio playback/recording or 'stop' to exit: \n");
+        strPtr=fgets ((char*)AudioFilePath, 129, stdin);
+    }while (strlen(strPtr) == 0);
+
+    AudioFilePath[strlen(AudioFilePath)-1]='\0';
+
+    if (!strcmp(AudioFilePath, "stop"))
+    {
+        return -1;
+    }
+    else
+    {
+        return 0;
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function gets the audio Interface choice from the User.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static int32_t GetAudioTestCaseChoice(void)
+{
+    char *strPtr;
+
+    memset(AudioTestCase, 0, 16);
 
     do
     {
 #ifdef ENABLE_CODEC
-        fprintf(stderr, "AR7 platform, please enter the sound path or 'stop' to exit: \n");
+        fprintf(stderr, "AR7 platform, please choose the test case or digit 'stop' to exit: \n");
         fprintf(stderr, " - MIC (for mic/speaker) \n");
 #else
-        fprintf(stderr, "WP7 platform, please enter the sound path or 'stop' to exit: \n");
+        fprintf(stderr, "WP7 platform, please choose the test case or digit 'stop' to exit: \n");
 #endif
         fprintf(stderr, " - PCM (for devkit's codec use, execute 'wm8940_demo --pcm' command) \n");
         fprintf(stderr, " - I2S (for devkit's codec use, execute 'wm8940_demo --i2s' command) \n");
         fprintf(stderr, " - USB (for USB) \n");
+        fprintf(stderr, " - R-PB (for Remote playback) \n");
+        fprintf(stderr, " - R-REC (for Remote recording) \n");
+        fprintf(stderr, " - L-PB (for Local playback) \n");
+        fprintf(stderr, " - L-REC (for Local recording) \n");
         fprintf(stderr, " - NONE (No pre-configured path, you must use 'amix' commands) \n");
-        strPtr=fgets ((char*)TYPE_TEST_PATTERN, 16, stdin);
-    }while (strlen(strPtr) == 0);
+        strPtr=fgets ((char*)AudioTestCase, 16, stdin);
+    } while (strlen(strPtr) == 0);
+    AudioTestCase[strlen(AudioTestCase)-1]='\0';
 
-
-    TYPE_TEST_PATTERN[strlen(TYPE_TEST_PATTERN)-1]='\0';
-
-    if (!strcmp(TYPE_TEST_PATTERN, "stop"))
+    if (!strcmp(AudioTestCase, "stop"))
     {
         return -1;
+    }
+    else if ((!strncmp(AudioTestCase, "R-", 2)) || (!strncmp(AudioTestCase, "L-", 2)))
+    {
+        if (GetAudioFileName())
+        {
+            return -1;
+        }
+        memset(MainAudioSoundPath, 0, 16);
+
+        do
+        {
+#ifdef ENABLE_CODEC
+            fprintf(stderr, "AR7 platform, please choose the main audio path or digit 'stop' to exit: \n");
+            fprintf(stderr, " - MIC (for mic/speaker) \n");
+#else
+            fprintf(stderr, "WP7 platform, please choose the main audio path or digit 'stop' to exit: \n");
+#endif
+            fprintf(stderr, " - PCM (for devkit's codec use, execute 'wm8940_demo --pcm' command) \n");
+            fprintf(stderr, " - I2S (for devkit's codec use, execute 'wm8940_demo --i2s' command) \n");
+            fprintf(stderr, " - USB (for USB) \n");
+            strPtr=fgets ((char*)MainAudioSoundPath, 16, stdin);
+        } while (strlen(strPtr) == 0);
+        MainAudioSoundPath[strlen(MainAudioSoundPath)-1]='\0';
+
+        if (!strcmp(MainAudioSoundPath, "stop"))
+        {
+            return -1;
+        }
+        else
+        {
+            return 0;
+        }
     }
     else
     {
@@ -319,81 +642,50 @@ static int32_t getOutputSound(void)
 //--------------------------------------------------------------------------------------------------
 static void MyCallEventHandler
 (
-    le_mcc_call_Ref_t   callRef,
+    le_mcc_call_ObjRef_t   callRef,
     le_mcc_call_Event_t callEvent,
     void*               contextPtr
 )
 {
     le_result_t         res;
 
-    if (callEvent == LE_MCC_EVENT_ALERTING)
+    if (callEvent == LE_MCC_CALL_EVENT_ALERTING)
     {
-        LE_INFO("Call event is LE_MCC_EVENT_ALERTING.");
+        LE_INFO("Call event is LE_MCC_CALL_EVENT_ALERTING.");
     }
-    else if (callEvent == LE_MCC_EVENT_CONNECTED)
+    else if (callEvent == LE_MCC_CALL_EVENT_CONNECTED)
     {
-        LE_INFO("Call event is LE_MCC_EVENT_CONNECTED.");
-
-#ifdef ENABLE_CODEC
-        if (strcmp(TYPE_TEST_PATTERN,"MIC")==0)
-        {
-            LE_INFO("Connect MIC and SPEAKER ");
-            ConnectAudioToCodec(callRef);
-        }
-        else
-#endif
-        if (strcmp(TYPE_TEST_PATTERN,"PCM")==0)
-        {
-            LE_INFO("Connect PCM ");
-            ConnectAudioToPcm(callRef);
-        }
-        else if (strcmp(TYPE_TEST_PATTERN,"I2S")==0)
-        {
-            LE_INFO("Connect I2S");
-            ConnectAudioToI2s(callRef);
-        }
-        else if (strcmp(TYPE_TEST_PATTERN,"USB")==0)
-        {
-            LE_INFO("Connect USB ");
-            ConnectAudioToUsb(callRef);
-        }
-        else if (strcmp(TYPE_TEST_PATTERN,"NONE")==0)
-        {
-            LE_INFO("Connect NONE ");
-        }
-        else
-        {
-            LE_INFO("Error in format could not connect audio");
-        }
+        LE_INFO("Call event is LE_MCC_CALL_EVENT_CONNECTED.");
+        ConnectAudio(callRef);
     }
-    else if (callEvent == LE_MCC_EVENT_TERMINATED)
+    else if (callEvent == LE_MCC_CALL_EVENT_TERMINATED)
     {
-        LE_INFO("Call event is LE_MCC_EVENT_TERMINATED.");
+        LE_INFO("Call event is LE_MCC_CALL_EVENT_TERMINATED.");
         le_mcc_call_TerminationReason_t term = le_mcc_call_GetTerminationReason(callRef);
         switch(term)
         {
-            case LE_MCC_TERM_NETWORK_FAIL:
-                LE_INFO("Termination reason is LE_MCC_TERM_NETWORK_FAIL");
+            case LE_MCC_CALL_TERM_NETWORK_FAIL:
+                LE_INFO("Termination reason is LE_MCC_CALL_TERM_NETWORK_FAIL");
                 break;
 
-            case LE_MCC_TERM_BAD_ADDRESS:
-                LE_INFO("Termination reason is LE_MCC_TERM_BAD_ADDRESS");
+            case LE_MCC_CALL_TERM_BAD_ADDRESS:
+                LE_INFO("Termination reason is LE_MCC_CALL_TERM_BAD_ADDRESS");
                 break;
 
-            case LE_MCC_TERM_BUSY:
-                LE_INFO("Termination reason is LE_MCC_TERM_BUSY");
+            case LE_MCC_CALL_TERM_BUSY:
+                LE_INFO("Termination reason is LE_MCC_CALL_TERM_BUSY");
                 break;
 
-            case LE_MCC_TERM_LOCAL_ENDED:
-                LE_INFO("Termination reason is LE_MCC_TERM_LOCAL_ENDED");
+            case LE_MCC_CALL_TERM_LOCAL_ENDED:
+                LE_INFO("Termination reason is LE_MCC_CALL_TERM_LOCAL_ENDED");
                 break;
 
-            case LE_MCC_TERM_REMOTE_ENDED:
-                LE_INFO("Termination reason is LE_MCC_TERM_REMOTE_ENDED");
+            case LE_MCC_CALL_TERM_REMOTE_ENDED:
+                LE_INFO("Termination reason is LE_MCC_CALL_TERM_REMOTE_ENDED");
                 break;
 
-            case LE_MCC_TERM_NOT_DEFINED:
-                LE_INFO("Termination reason is LE_MCC_TERM_NOT_DEFINED");
+            case LE_MCC_CALL_TERM_NOT_DEFINED:
+                LE_INFO("Termination reason is LE_MCC_CALL_TERM_NOT_DEFINED");
                 break;
 
             default:
@@ -405,43 +697,13 @@ static void MyCallEventHandler
 
         le_mcc_call_Delete(callRef);
     }
-    else if (callEvent == LE_MCC_EVENT_INCOMING)
+    else if (callEvent == LE_MCC_CALL_EVENT_INCOMING)
     {
-        LE_INFO("Call event is LE_MCC_EVENT_INCOMING.");
+        LE_INFO("Call event is LE_MCC_CALL_EVENT_INCOMING.");
         res = le_mcc_call_Answer(callRef);
         if (res == LE_OK)
         {
-#ifdef ENABLE_CODEC
-            if (strcmp(TYPE_TEST_PATTERN,"MIC")==0)
-            {
-                LE_INFO("Connect MIC and SPEAKER ");
-                ConnectAudioToCodec(callRef);
-            }
-            else
-#endif
-            if (strcmp(TYPE_TEST_PATTERN,"PCM")==0)
-            {
-                LE_INFO("Connect PCM ");
-                ConnectAudioToPcm(callRef);
-            }
-            else if (strcmp(TYPE_TEST_PATTERN,"I2S")==0)
-            {
-                LE_INFO("Connect I2S");
-                ConnectAudioToI2s(callRef);
-            }
-            else if (strcmp(TYPE_TEST_PATTERN,"USB")==0)
-            {
-                LE_INFO("Connect USB ");
-                ConnectAudioToUsb(callRef);
-            }
-            else if (strcmp(TYPE_TEST_PATTERN,"NONE")==0)
-            {
-                LE_INFO("Connect NONE ");
-            }
-            else
-            {
-                LE_INFO("Error in format could not connect audio");
-            }
+            ConnectAudio(callRef);
         }
         else
         {
@@ -457,7 +719,7 @@ static void MyCallEventHandler
 
 static void* HandlerThread(void* contextPtr)
 {
-    le_mcc_profile_Ref_t profileRef = contextPtr;
+    le_mcc_profile_ObjRef_t profileRef = contextPtr;
 
     le_mcc_profile_AddCallEventHandler(profileRef, MyCallEventHandler, NULL);
 
@@ -468,8 +730,8 @@ static void* HandlerThread(void* contextPtr)
 
 static void* TestAudioMccClientService(void* contextPtr)
 {
-    le_mcc_profile_Ref_t profileRef;
-    int32_t              stopTest = 0;
+    le_mcc_profile_ObjRef_t profileRef;
+    int32_t                 stopTest = 0;
 
 
     profileRef=le_mcc_profile_GetByName("Modem-Sim1");
@@ -484,15 +746,16 @@ static void* TestAudioMccClientService(void* contextPtr)
 
     while(!stopTest)
     {
-        stopTest = getTel();
+        stopTest = GetTel();
         if (!stopTest)
         {
-            testCallRef=le_mcc_profile_CreateCall(profileRef, DEST_TEST_PATTERN);
+            TestCallRef=le_mcc_profile_CreateCall(profileRef, DestinationNumber);
 
-            stopTest = getOutputSound();
+            stopTest = GetAudioTestCaseChoice();
+
             if (!stopTest)
             {
-                le_mcc_call_Start(testCallRef);
+                le_mcc_call_Start(TestCallRef);
             }
             else
             {
@@ -511,7 +774,7 @@ static void* TestAudioMccClientService(void* contextPtr)
 }
 
 
-LE_EVENT_INIT_HANDLER
+COMPONENT_INIT
 {
     // Note that this init should be done in the main thread, and in particular, should not be done
     // in the same thread as the tests.

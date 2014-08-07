@@ -520,6 +520,19 @@ le_result_t unixSocket_ReceiveDataMsg
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Fetches the socket error state code (SO_ERROR).
+ *
+ * @return The SO_ERROR value, or EBADE if failed.
+ */
+//--------------------------------------------------------------------------------------------------
+int unixSocket_GetErrorState
+(
+    int localSocketFd       ///< [IN] fd of local socket that will be used to receive the message.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Enables authentication of credentials on a socket.  This must be called for a socket before
  * that socket can receive credentials.
  *
@@ -533,6 +546,7 @@ le_result_t unixSocket_EnableAuthentication
 (
     int fd              ///< [IN] fd of the socket that will be used to receive credentials.
 );
+
 
 
 #endif // LEGATO_UNIX_SOCKET_INCLUDE_GUARD

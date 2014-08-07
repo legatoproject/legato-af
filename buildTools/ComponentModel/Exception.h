@@ -32,6 +32,11 @@ class Exception : public std::runtime_error
 };
 
 
+class DependencyException : public Exception
+{
+    public:
+        DependencyException(const std::string&);
+};
 
 
 }

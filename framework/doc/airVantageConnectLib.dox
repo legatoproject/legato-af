@@ -4,12 +4,6 @@ API info is here: @ref swi_airvantage.h
 
 The info here covers details on data connections with AirVantage.
 
-@ref avConnectOverview <br>
-@ref NewInstance <br>
-@ref SendingData <br>
-@ref ReceivingData <br>
-@ref AgentIntVar
-
 @section avConnectOverview Overview
 
 The AirVantage Agent Connector library provides access to the AirVantage M2M
@@ -33,7 +27,6 @@ As a general principle, the Agent takes responsibility for the data
 that have been passed to it: it is in charge of optimizing their
 encoding and regrouping, of handling acknowledgements, of securing them
 in non-volatile memory if asked to, etc.
-
 
 @section NewInstance Create a New Asset Instance, Initialize a New Asset
 
@@ -68,14 +61,6 @@ instance, if the variable "foo" is written under path "bar" in the asset
 "myAsset", the complete path as seen by the server is "myAsset.bar.foo".
 
 @section SendingData Sending Data
-
-@ref SendingEvents  <br>
-@ref SendPolicies <br>
-@ref PolicyConfigSamples <br>
-@ref SendingUndeclaredData <br>
-@ref PredeclaredDataTables <br>
-@ref PushingRows <br>
-@ref ForcingPolicyFlush
 
 Data can be sent with two different APIs:
 
@@ -329,7 +314,7 @@ rc_ReturnCode_t swi_av_TriggerPolicy( const char* policyPtr);
 @endcode
 
 If `policyPtr` is passed as NULL, the default policy is used. If the
-special name @c`"*"` is passed, all policies are flushed.
+special name @c `"*"` is passed, all policies are flushed.
 
 @section ReceivingData Receiving Data
 

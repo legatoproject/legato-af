@@ -1,0 +1,22 @@
+executables:
+    audioCallPbRecApp ( "audioCallPbRecApp.c"
+                 "$LEGATO_BUILD/bin/lib/lible_mdm_client.so"
+                 "$LEGATO_BUILD/bin/lib/lible_audio_client.so" )
+
+import:
+    // mount libraries to sandbox
+    "/usr/local/lib/lible_mdm_client.so"        "/lib/"
+    "/usr/local/lib/lible_audio_client.so"      "/lib/"
+    "/tmp"                                      "/record"
+
+files:
+    [r]     audio/male.wav     /usr/share/sounds/
+
+processes:
+    envVars:
+        LE_LOG_LEVEL = DEBUG
+
+    run: (audioCallPbRecApp "<tel number>")
+
+start:
+    manual

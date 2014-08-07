@@ -1,0 +1,16 @@
+import:
+
+    le_cfg.api
+
+export:
+
+    le_pos.api
+    le_posCtrl.api
+
+sources:
+
+    le_pos.c
+
+requires:
+
+    component: { $LEGATO_GNSS_PA }

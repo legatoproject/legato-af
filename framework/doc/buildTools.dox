@@ -1,43 +1,48 @@
 /** @page buildTools Build Tools
 
+@section buildToolsOverview Overview
 
-@ref buildSequence   <br>
-@ref buildDirectory   <br>
-@ref buildWhatsNext
+Legato build tools are used to:
+ - generate boiler-plate code
+ - simplify component-based software development
+ - package applications and config settings to deploy to targets.
 
-@section buildSequence Sequence Summary 
+@section buildToolsMkTools mk tools
 
-Legato has build tools that'll help you get your applications up and running quickly. 
+These tools are used to build components, executables, apps and app systems, and all start with @c mk:
+ - @subpage buildToolsmksys  <br>
+ - @subpage buildToolsmkapp  <br>
+ - @subpage buildToolsmkexe  <br>
+ - @subpage buildToolsmkcomp
 
-Generally, you create a Legato application using this build processing sequence:
+Most developers will usually only need @ref buildToolsmkapp and @ref buildToolsmksys.
 
-- write source code (in C) - must include one instance of @c COMPONENT_INIT .
-- write @c Components.cdef file
-- write [application name].adef file 
-- build application using @c mkapp
+@ref buildToolsmkexe is only needed to build an executable for a target without packaging it
+as an application.  This can be useful for building command-line tools you want to copy onto
+a target or bundle in a root file system image.
 
+@ref buildToolsmkcomp can be used to build libraries from component sources, if you need to do 
+that as a separate step as a part of a complex, custom, staged build system 
+(instead of letting mksys, mkapp, or mkexe handle it).
 
-@section buildDirectory Directory Structure
+@section buildToolsIfgen ifgen
 
-See the Samples directories in the demo applications to view the directory structure.
+The @c ifgen tool generates code that parses interface definition (<c>.api</c>) files,
+and generates include files and IPC code (as needed) in various programming languages.
 
-See the @ref demoApps  topic for details on the sample demo.
-@section buildWhatsNext What's Next?
+@c ifgen can be used manually to generate code, but usually it is invoked automatically by
+the @ref buildToolsMkTools.
 
-These are the main Legato build tools:
+More info about ifgen: @ref languageIndependentAPIs.
 
-@subpage buildToolsmkexe  <br>
-@subpage buildToolsmkapp
-
-Related topics:
+@section buildToolsSeeAlso Related Info
 
 @ref defFiles   <br>
 @ref appCreating   <br>
 @ref componentWriting   <br>
 @ref demoApps
 
- 
 <HR>
-Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+Copyright (C) Sierra Wireless, Inc. 2014.  All rights reserved. Use of this work is subject to license.
 
 **/

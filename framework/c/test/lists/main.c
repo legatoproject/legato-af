@@ -9,7 +9,7 @@
   * - link removal.
   * - Accessing nodes.
   * - Checking list consistencies.
-  * 
+  *
   * Copyright (C) Sierra Wireless, Inc. 2012.  All rights reserved. Use of this work is subject to license.
   */
 
@@ -59,7 +59,7 @@ static le_result_t TestDoublyLinkLists(size_t maxListSize)
     typedef struct
     {
         le_dls_Link_t link;
-        uint32_t id;  
+        uint32_t id;
     }
     idRecord_t;
 
@@ -97,14 +97,14 @@ static le_result_t TestDoublyLinkLists(size_t maxListSize)
     //
     {
         idRecord_t* newNodePtr;
-        
+
         // Insert to the tail
         for (i = 0; i < maxListSize; i++)
         {
             // Create the new node
             newNodePtr = (idRecord_t*)malloc(sizeof(idRecord_t));
             newNodePtr->id = i;
-            
+
             // Initialize the link.
             newNodePtr->link = LE_DLS_LINK_INIT;
 
@@ -112,14 +112,14 @@ static le_result_t TestDoublyLinkLists(size_t maxListSize)
             le_dls_Queue(&list0, &(newNodePtr->link));
         }
         printf("%zu nodes were added to the tail of list0.\n", maxListSize);
-        
+
         // Insert to the head
         for (i = 0; i < maxListSize; i++)
         {
             // Create the new node
             newNodePtr = (idRecord_t*)malloc(sizeof(idRecord_t));
             newNodePtr->id = i;
-            
+
             // Initialize the link.
             newNodePtr->link = LE_DLS_LINK_INIT;
 
@@ -136,13 +136,13 @@ static le_result_t TestDoublyLinkLists(size_t maxListSize)
         idRecord_t* nodePtr;
         le_dls_Link_t* link0Ptr = le_dls_Peek(&list0);
         le_dls_Link_t* link1Ptr = le_dls_PeekTail(&list1);
-        
+
         if ( (link0Ptr == NULL) || (link1Ptr == NULL) )
         {
             printf("Link error: %d", __LINE__);
             return LE_FAULT;
         }
-        
+
         i = 0;
         do
         {
@@ -172,7 +172,7 @@ static le_result_t TestDoublyLinkLists(size_t maxListSize)
             i++;
 
         } while (link0Ptr != NULL);
-        
+
         // Make sure everything is correct.
         if ( (i != maxListSize) || (link1Ptr != NULL) )
         {
@@ -180,9 +180,9 @@ static le_result_t TestDoublyLinkLists(size_t maxListSize)
             return LE_FAULT;
         }
     }
-    
+
     printf("Checked that all nodes added to the head and tails are all correct.\n");
-    
+
 
     //
     // Remove random nodes
@@ -190,13 +190,13 @@ static le_result_t TestDoublyLinkLists(size_t maxListSize)
 
     //seed the random number generator with the clock
     srand((unsigned int)clock());
-    
+
     {
         // Start at the end of the lists and randomly remove links.
         le_dls_Link_t* linkToRemovePtr;
         le_dls_Link_t* link0Ptr = le_dls_PeekTail(&list0);
         le_dls_Link_t* link1Ptr = le_dls_Peek(&list1);
-        
+
         int r0 = 0;
         int r1 = 0;
         do
@@ -206,13 +206,13 @@ static le_result_t TestDoublyLinkLists(size_t maxListSize)
             {
                 // Mark this node for removal.
                 linkToRemovePtr = link0Ptr;
-                
+
                 // Move to the next node.
                 link0Ptr = le_dls_PeekPrev(&list0, link0Ptr);
-                
+
                 // Remove the node.
                 le_dls_Remove(&list0, linkToRemovePtr);
-                
+
                 // Store the removed node for later use.
                 removedLinksPtr0[r0++] = linkToRemovePtr;
             }
@@ -221,20 +221,20 @@ static le_result_t TestDoublyLinkLists(size_t maxListSize)
                 // Just move one
                 link0Ptr = le_dls_PeekPrev(&list0, link0Ptr);
             }
-            
-            
+
+
             // For list 1
             if ( (rand() < REMOVE_THRESHOLD) && (r1 < REMOVE_SIZE) )
             {
                 // Mark this node for removal.
                 linkToRemovePtr = link1Ptr;
-                
+
                 // Move to the next node.
                 link1Ptr = le_dls_PeekNext(&list1, link1Ptr);
-                
+
                 // Remove the node.
                 le_dls_Remove(&list1, linkToRemovePtr);
-                
+
                 // Store the removed node for later use.
                 removedLinksPtr1[r1++] = linkToRemovePtr;
             }
@@ -244,7 +244,7 @@ static le_result_t TestDoublyLinkLists(size_t maxListSize)
                 link1Ptr = le_dls_PeekNext(&list1, link1Ptr);
             }
         } while (link0Ptr != NULL);
-        
+
         printf("Randomly removed %d nodes from list0.\n", r0);
         printf("Randomly removed %d nodes from list1.\n", r1);
     }
@@ -255,7 +255,7 @@ static le_result_t TestDoublyLinkLists(size_t maxListSize)
     //
     {
         int numNodesRemoved = 0;
-        
+
         // For list 0.
         // Check that the nodes in the removed nodes are indeed not in the list.
         for (i = 0; i < REMOVE_SIZE; i++)
@@ -264,23 +264,23 @@ static le_result_t TestDoublyLinkLists(size_t maxListSize)
             {
                 break;
             }
-            
+
             if (le_dls_IsInList(&list0, removedLinksPtr0[i]))
             {
                 printf("Node removal incorrect: %d", __LINE__);
                 return LE_FAULT;
             }
-            
+
             numNodesRemoved++;
         }
-        
+
         // Compare the list count.
         if ( (numNodesRemoved != maxListSize - le_dls_NumLinks(&list0)) || (le_dls_NumLinks(&list0) == maxListSize) )
         {
             printf("Node removal incorrect: %d", __LINE__);
             return LE_FAULT;
         }
-        
+
         // For list 1.
         // Check that the nodes in the removed nodes are indeed not in the list.
         numNodesRemoved = 0;
@@ -290,16 +290,16 @@ static le_result_t TestDoublyLinkLists(size_t maxListSize)
             {
                 break;
             }
-            
+
             if (le_dls_IsInList(&list1, removedLinksPtr1[i]))
             {
                 printf("Node removal incorrect: %d", __LINE__);
                 return LE_FAULT;
             }
-            
+
             numNodesRemoved++;
         }
-        
+
         // Compare the list count.
         if ( (numNodesRemoved != maxListSize - le_dls_NumLinks(&list1)) || (le_dls_NumLinks(&list1) == maxListSize) )
         {
@@ -307,17 +307,17 @@ static le_result_t TestDoublyLinkLists(size_t maxListSize)
             return LE_FAULT;
         }
     }
-    
+
     printf("Checked that nodes were removed correctly.\n");
-    
-    
+
+
     //
     // Add the randomly removed nodes back in.
     //
-    {        
+    {
         idRecord_t *nodePtr, *removedNodePtr;
         le_dls_Link_t* linkPtr;
-     
+
         // For list 0.
         for (i = 0; i < REMOVE_SIZE; i++)
         {
@@ -325,36 +325,36 @@ static le_result_t TestDoublyLinkLists(size_t maxListSize)
             {
                 break;
             }
-            
+
             removedNodePtr = CONTAINER_OF(removedLinksPtr0[i], idRecord_t, link);
-            
+
             if (removedNodePtr->id == maxListSize-1)
             {
                 le_dls_Queue(&list0, removedLinksPtr0[i]);
             }
             else
-            {            
-                // Search the list for the place to insert this.            
+            {
+                // Search the list for the place to insert this.
                 linkPtr = le_dls_PeekTail(&list0);
                 do
                 {
                     // Get the node
                     nodePtr = CONTAINER_OF(linkPtr, idRecord_t, link);
-                    
+
                     // Find the id that is just before this one.
                     if (nodePtr->id == removedNodePtr->id + 1)
                     {
                         le_dls_AddBefore(&list0, linkPtr, removedLinksPtr0[i]);
                         break;
                     }
-                    
+
                     linkPtr = le_dls_PeekPrev(&list0, linkPtr);
-                    
+
                 } while (linkPtr != NULL);
             }
         }
-        
-        
+
+
         // For list 1.
         for (i = 0; i < REMOVE_SIZE; i++)
         {
@@ -362,50 +362,50 @@ static le_result_t TestDoublyLinkLists(size_t maxListSize)
             {
                 break;
             }
-            
+
             removedNodePtr = CONTAINER_OF(removedLinksPtr1[i], idRecord_t, link);
-            
+
             if (removedNodePtr->id == maxListSize-1)
             {
                 le_dls_Stack(&list1, removedLinksPtr1[i]);
             }
             else
-            {            
-                // Search the list for the place to insert this.            
+            {
+                // Search the list for the place to insert this.
                 linkPtr = le_dls_Peek(&list1);
                 do
                 {
                     // Get the node
                     nodePtr = CONTAINER_OF(linkPtr, idRecord_t, link);
-                    
+
                     // Find the id that is just before this one.
                     if (nodePtr->id == removedNodePtr->id + 1)
                     {
                         le_dls_AddAfter(&list1, linkPtr, removedLinksPtr1[i]);
                         break;
                     }
-                    
+
                     linkPtr = le_dls_PeekNext(&list1, linkPtr);
-                    
+
                 } while (linkPtr != NULL);
             }
         }
     }
-    
+
     printf("Added all randomly removed nodes back in.\n");
-    
+
     //Check that the list is correct.
     {
         idRecord_t* nodePtr;
         le_dls_Link_t* link0Ptr = le_dls_Peek(&list0);
         le_dls_Link_t* link1Ptr = le_dls_PeekTail(&list1);
-        
+
         if ( (link0Ptr == NULL) || (link1Ptr == NULL) )
         {
             printf("Link error: %d", __LINE__);
             return LE_FAULT;
         }
-        
+
         i = 0;
         do
         {
@@ -418,7 +418,7 @@ static le_result_t TestDoublyLinkLists(size_t maxListSize)
                 printf("Link error: %d", __LINE__);
                 return LE_FAULT;
             }
-            
+
             // Get the node from list 1
             nodePtr = CONTAINER_OF(link1Ptr, idRecord_t, link);
 
@@ -427,15 +427,15 @@ static le_result_t TestDoublyLinkLists(size_t maxListSize)
             {
                 printf("Link error: %d", __LINE__);
                 return LE_FAULT;
-            }        
-            
+            }
+
             // Move to the next node.
             link0Ptr = le_dls_PeekNext(&list0, link0Ptr);
             link1Ptr = le_dls_PeekPrev(&list1, link1Ptr);
             i++;
-            
+
         } while (link0Ptr != NULL);
-        
+
         // Make sure everything is correct.
         if ( (i != maxListSize) || (link1Ptr != NULL) )
         {
@@ -443,28 +443,28 @@ static le_result_t TestDoublyLinkLists(size_t maxListSize)
             return LE_FAULT;
         }
     }
-    
+
     printf("Checked that all nodes are now added back in in the correct order.\n");
-    
-    
+
+
     //
     // Swap nodes.
     //
     {
         //Swap all the nodes in the list so the list is in reverse order.
         le_dls_Link_t* linkPtr, *tmpLinkPtr;
-        le_dls_Link_t* otherlinkPtr;    
+        le_dls_Link_t* otherlinkPtr;
         idRecord_t* nodePtr, *otherNodePtr;
 
         // For list 0.
         linkPtr = le_dls_Peek(&list0);
-        otherlinkPtr = le_dls_PeekTail(&list0);    
+        otherlinkPtr = le_dls_PeekTail(&list0);
         for (i = 0; i < (le_dls_NumLinks(&list0) / 2); i++)
         {
             nodePtr = CONTAINER_OF(linkPtr, idRecord_t, link);
             otherNodePtr = CONTAINER_OF(otherlinkPtr, idRecord_t, link);
-            
-            if (nodePtr->id < otherNodePtr->id) 
+
+            if (nodePtr->id < otherNodePtr->id)
             {
                 le_dls_Swap(&list0, linkPtr, otherlinkPtr);
             }
@@ -472,12 +472,12 @@ static le_result_t TestDoublyLinkLists(size_t maxListSize)
             {
                 break;
             }
-            
+
             // switch the pointers back but not the links.
             tmpLinkPtr = linkPtr;
             linkPtr = otherlinkPtr;
             otherlinkPtr = tmpLinkPtr;
-            
+
             linkPtr = le_dls_PeekNext(&list0, linkPtr);
             otherlinkPtr = le_dls_PeekPrev(&list0, otherlinkPtr);
         }
@@ -485,13 +485,13 @@ static le_result_t TestDoublyLinkLists(size_t maxListSize)
 
         // For list 1.
         linkPtr = le_dls_Peek(&list1);
-        otherlinkPtr = le_dls_PeekTail(&list1);    
+        otherlinkPtr = le_dls_PeekTail(&list1);
         for (i = 0; i < (le_dls_NumLinks(&list1) / 2); i++)
         {
             nodePtr = CONTAINER_OF(linkPtr, idRecord_t, link);
             otherNodePtr = CONTAINER_OF(otherlinkPtr, idRecord_t, link);
-            
-            if (nodePtr->id > otherNodePtr->id) 
+
+            if (nodePtr->id > otherNodePtr->id)
             {
                 le_dls_Swap(&list1, linkPtr, otherlinkPtr);
             }
@@ -499,31 +499,31 @@ static le_result_t TestDoublyLinkLists(size_t maxListSize)
             {
                 break;
             }
-            
+
             // switch the pointers back but not the links.
             tmpLinkPtr = linkPtr;
             linkPtr = otherlinkPtr;
             otherlinkPtr = tmpLinkPtr;
-            
+
             linkPtr = le_dls_PeekNext(&list1, linkPtr);
             otherlinkPtr = le_dls_PeekPrev(&list1, otherlinkPtr);
         }
     }
-    
+
     printf("Reversed the order of both lists using swap.\n");
-    
+
     //Check that the list is correct.
     {
         idRecord_t* nodePtr;
         le_dls_Link_t* link0Ptr = le_dls_PeekTail(&list0);
         le_dls_Link_t* link1Ptr = le_dls_Peek(&list1);
-        
+
         if ( (link0Ptr == NULL) || (link1Ptr == NULL) )
         {
             printf("Link error: %d", __LINE__);
             return LE_FAULT;
         }
-        
+
         i = 0;
         do
         {
@@ -536,7 +536,7 @@ static le_result_t TestDoublyLinkLists(size_t maxListSize)
                 printf("Link error: %d", __LINE__);
                 return LE_FAULT;
             }
-            
+
             // Get the node from list 1
             nodePtr = CONTAINER_OF(link1Ptr, idRecord_t, link);
 
@@ -545,15 +545,15 @@ static le_result_t TestDoublyLinkLists(size_t maxListSize)
             {
                 printf("Link error: %d", __LINE__);
                 return LE_FAULT;
-            }        
+            }
 
             // Move to the next node.
             link0Ptr = le_dls_PeekPrev(&list0, link0Ptr);
             link1Ptr = le_dls_PeekNext(&list1, link1Ptr);
             i++;
-            
+
         } while (link0Ptr != NULL);
-        
+
         // Make sure everything is correct.
         if ( (i != maxListSize) || (link1Ptr != NULL) )
         {
@@ -561,9 +561,9 @@ static le_result_t TestDoublyLinkLists(size_t maxListSize)
             return LE_FAULT;
         }
     }
-    
+
     printf("Checked that all nodes are now correctly in the reverse order.\n");
-    
+
 
     //
     // Pop nodes.
@@ -582,24 +582,24 @@ static le_result_t TestDoublyLinkLists(size_t maxListSize)
             // pop the first link.
             le_dls_Pop(&list0);
         }
-        
-        
+
+
         //pop half the list.
         for (i = 0; i < (maxListSize / 2); i++)
         {
             le_dls_PopTail(&list1);
         }
     }
-    
+
     printf("Popped all the nodes except one from the head of list0.\n");
     printf("Popped half the nodes from the tail of list1.\n");
-    
+
     // Check that the list is still in tact.
     {
         idRecord_t* nodePtr;
-        
+
         // For list 0.
-        le_dls_Link_t* linkPtr = le_dls_Peek(&list0); 
+        le_dls_Link_t* linkPtr = le_dls_Peek(&list0);
         nodePtr = CONTAINER_OF(linkPtr, idRecord_t, link);
 
         if (nodePtr->id != maxListSize-1)
@@ -613,23 +613,23 @@ static le_result_t TestDoublyLinkLists(size_t maxListSize)
             printf("Wrong number of links: %d", __LINE__);
             return LE_FAULT;
         }
-        
+
         // For list1.
-        linkPtr = le_dls_Peek(&list1); 
+        linkPtr = le_dls_Peek(&list1);
         i = 0;
         do
         {
             nodePtr = CONTAINER_OF(linkPtr, idRecord_t, link);
-            
+
             if (nodePtr->id != i++)
             {
                 printf("Link error: %d", __LINE__);
                 return LE_FAULT;
             }
-            
+
             linkPtr = le_dls_PeekNext(&list1, linkPtr);
         } while(linkPtr != NULL);
-        
+
         // Check that the number of links left is correct.
         if (i != maxListSize - (maxListSize / 2))
         {
@@ -637,7 +637,7 @@ static le_result_t TestDoublyLinkLists(size_t maxListSize)
             return LE_FAULT;
         }
     }
-    
+
     printf("Checked that all nodes were properly popped from the lists.\n");
 
 
@@ -646,7 +646,7 @@ static le_result_t TestDoublyLinkLists(size_t maxListSize)
     //
     {
         le_dls_Link_t* linkPtr;
-        
+
         if (le_dls_IsListCorrupted(&list1))
         {
             printf("List1 is corrupt but shouldn't be: %d", __LINE__);
@@ -663,11 +663,12 @@ static le_result_t TestDoublyLinkLists(size_t maxListSize)
             printf("List1 is not corrupted but should be: %d", __LINE__);
             return LE_FAULT;
         }
+        printf("List1 is supposed to be corrupted.  CRIT log message can be ignored.\n");
     }
 
     printf("Checked lists for corruption.\n");
 
-    
+
     printf("*** Unit Test for le_doublyLinkedList module passed. ***\n");
     printf("\n");
     return LE_OK;
@@ -680,7 +681,7 @@ static le_result_t TestSinglyLinkLists(size_t maxListSize)
     typedef struct
     {
         le_sls_Link_t link;
-        uint32_t id;  
+        uint32_t id;
     }
     idRecord_t;
 
@@ -716,14 +717,14 @@ static le_result_t TestSinglyLinkLists(size_t maxListSize)
     {
         idRecord_t* newNodePtr;
         le_sls_Link_t* prevLinkPtr;
-        
+
         // Queue nodes to list0.
         for (i = 0; i < maxListSize; i++)
         {
             // Create the new node
             newNodePtr = (idRecord_t*)malloc(sizeof(idRecord_t));
             newNodePtr->id = i;
-            
+
             // Initialize the link.
             newNodePtr->link = LE_SLS_LINK_INIT;
 
@@ -741,14 +742,14 @@ static le_result_t TestSinglyLinkLists(size_t maxListSize)
             prevLinkPtr = &(newNodePtr->link);
         }
         printf("%zu nodes were queued to the tail of list0.\n", maxListSize);
-        
+
         // Stack nodes to list1.
         for (i = 0; i < maxListSize; i++)
         {
             // Create the new node
             newNodePtr = (idRecord_t*)malloc(sizeof(idRecord_t));
             newNodePtr->id = i;
-            
+
             // Initialize the link.
             newNodePtr->link = LE_SLS_LINK_INIT;
 
@@ -765,13 +766,13 @@ static le_result_t TestSinglyLinkLists(size_t maxListSize)
         idRecord_t* nodePtr;
         le_sls_Link_t* link0Ptr = le_sls_Peek(&list0);
         le_sls_Link_t* link1Ptr = le_sls_Peek(&list1);
-        
+
         if ( (link0Ptr == NULL) || (link1Ptr == NULL) )
         {
             printf("Link error: %d", __LINE__);
             return LE_FAULT;
         }
-        
+
         i = 0;
         do
         {
@@ -801,7 +802,7 @@ static le_result_t TestSinglyLinkLists(size_t maxListSize)
             i++;
 
         } while (link0Ptr != NULL);
-        
+
         // Make sure everything is correct.
         if ( (i != maxListSize) || (link1Ptr != NULL) )
         {
@@ -809,9 +810,9 @@ static le_result_t TestSinglyLinkLists(size_t maxListSize)
             return LE_FAULT;
         }
     }
-    
+
     printf("Checked that all nodes added to the head and tails are all correct.\n");
-   
+
 
     //
     // Pop nodes.
@@ -823,15 +824,15 @@ static le_result_t TestSinglyLinkLists(size_t maxListSize)
             le_sls_Pop(&list0);
         }
     }
-    
+
     printf("Popped half the nodes from the head of list0.\n");
-    
+
     // Check that the list is still in tact.
     {
         idRecord_t* nodePtr;
-        
+
         // For list 0.
-        le_sls_Link_t* linkPtr = le_sls_Peek(&list0);    
+        le_sls_Link_t* linkPtr = le_sls_Peek(&list0);
         i = maxListSize/2;
         do
         {
@@ -842,10 +843,10 @@ static le_result_t TestSinglyLinkLists(size_t maxListSize)
                 printf("Link error: %d", __LINE__);
                 return LE_FAULT;
             }
-            
+
             linkPtr = le_sls_PeekNext(&list0, linkPtr);
         } while (linkPtr != NULL);
-        
+
         // Check that the number of links left is correct.
         if (i != maxListSize)
         {
@@ -861,7 +862,7 @@ static le_result_t TestSinglyLinkLists(size_t maxListSize)
     //
     {
         le_sls_Link_t* linkPtr;
-        
+
         if (le_sls_IsListCorrupted(&list0))
         {
             printf("List0 is corrupt but shouldn't be: %d", __LINE__);
@@ -881,7 +882,7 @@ static le_result_t TestSinglyLinkLists(size_t maxListSize)
     }
 
     printf("Checked lists for corruption.\n");
-    
+
     printf("*** Unit Test for le_singlyLinkedList module passed. ***\n");
     printf("\n");
     return LE_OK;

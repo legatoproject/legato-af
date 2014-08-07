@@ -1,0 +1,11 @@
+executables:
+    sms  ( smsClient )
+
+processes:
+    run: ( sms )
+
+start: manual
+
+bindings:
+
+    sms.smsClient.le_sms -> <root>.le_sms

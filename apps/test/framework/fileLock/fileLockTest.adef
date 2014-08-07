@@ -1,7 +1,9 @@
+start: manual
+
 executables:
 
     fileLockTest ( fileLockTest.c )
 
-start:
+processes:
 
-    fileLockTest
+    run: (fileLockTest)

@@ -4,7 +4,7 @@
  *
  *  Run 'mkapp --help' for command-line options and usage help.
  *
- *  Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ *  Copyright (C) Sierra Wireless, Inc. 2013-2014.  Use of this work is subject to license.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -21,8 +21,7 @@
 #include "LegatoObjectModel.h"
 #include "Parser.h"
 #include "mkapp.h"
-#include "ComponentBuilder.h"
-#include "ExecutableBuilder.h"
+#include "ApplicationBuilder.h"
 #include "Utilities.h"
 
 
@@ -34,6 +33,9 @@ static legato::BuildParams_t BuildParams;
 /// Path to the directory into which the final, built application file should be placed.
 static std::string OutputDir;
 
+/// Suffix to append to the application version.
+static std::string VersionSuffix;
+
 /// The root object for this application's object model.
 static legato::App App;
 
@@ -44,70 +46,6 @@ static std::map<std::string, uint16_t> DebugProcMap;
 /// since multiple processes can't share the same port number.
 static std::set<uint16_t> DebugPortSet;
 
-
-#if 0
-//--------------------------------------------------------------------------------------------------
-/**
- *  .
- */
-//--------------------------------------------------------------------------------------------------
-static std::string GetIfHash
-(
-    const std::list<std::string>& searchDirs,  ///
-    const std::string& name,                   ///
-    const bool isVerbose
-)
-{
-    std::string path = FindFile(name, searchDirs);
-
-    if (path.empty())
-    {
-        throw std::runtime_error("Could not find interface file, '" + name + "'.");
-    }
-
-    std::stringstream commandLine;
-
-    static const size_t bufferSize = 256;
-    char buffer[bufferSize] = { 0 };
-
-
-    commandLine << "ifgen --hash " << path;
-
-    if (isVerbose)
-    {
-        std::cout << commandLine << std::endl;
-    }
-
-    FILE* output = popen(commandLine.str().c_str(), "r");
-
-    if (output == NULL)
-    {
-        throw std::runtime_error("Could not exec ifgen to generate an interface hash.");
-    }
-
-    if (fgets(buffer, bufferSize, output) != buffer)
-    {
-        throw std::runtime_error("Failed to receive the interface hash from ifgen.");
-    }
-    pclose(output);
-
-    std::string hash = buffer;
-
-    if (hash.back() == '\n')
-    {
-        hash.erase(hash.length() - 1);
-    }
-
-    if (isVerbose)
-    {
-        std::cout << "Interface '" << path << "' has hash " << hash << std::endl;
-    }
-
-    return hash;
-}
-
-
-#endif
 
 
 //--------------------------------------------------------------------------------------------------
@@ -205,13 +143,31 @@ static void GetCommandLineArgs
     std::string cFlags;  // C compiler flags.
     std::string ldFlags; // Linker flags.
 
+    // Lambda function that gets called once for each occurence of the --append-to-version (or -a)
+    // argument on the command line.
+    auto versionPush = [&](const char* arg) { VersionSuffix += arg; };
+
+    // Lambda function that gets called once for each occurence of the --cflags (or -C)
+    // argument on the command line.
+    auto cFlagsPush = [&](const char* arg) { cFlags += " ";  cFlags += arg; };
+
+    // Lambda function that gets called once for each occurence of the --ldflags (or -L)
+    // argument on the command line.
+    auto ldFlagsPush = [&](const char* arg) { ldFlags += " ";  ldFlags += arg; };
+
     // Lambda function that gets called once for each occurence of the interface search path
     // argument on the command line.
-    auto ifPathPush = [&](const char* path) { BuildParams.AddInterfaceDir(path); };
+    auto ifPathPush = [&](const char* path)
+        {
+            BuildParams.AddInterfaceDir(legato::DoEnvVarSubstitution(path));
+        };
 
     // Lambda function that gets called once for each occurence of the source/component search path
     // argument on the command line.
-    auto compPathPush = [&](const char* path) { BuildParams.AddComponentDir(path); };
+    auto compPathPush = [&](const char* path)
+        {
+            BuildParams.AddComponentDir(legato::DoEnvVarSubstitution(path));
+        };
 
     // Lambda function that gets called once for each occurence of a .adef file name on the
     // command line.
@@ -223,11 +179,20 @@ static void GetCommandLineArgs
                     throw legato::Exception("Only one app definition (.adef) file allowed.");
                 }
                 matched = true;
-                App.DefFilePath(param);
+                App.DefFilePath(legato::DoEnvVarSubstitution(param));
             };
 
     // TODO: Change the Args module to display a "USAGE: ..." line and optionally, a SYNOPSIS.
     // TODO: le_arg_AddHelpSynopsis("Blah blah blah...");
+
+    le_arg_AddMultipleString('a',
+                             "append-to-version",
+                             "Specify a suffix to append to the application version specified"
+                             " in the .adef file.  Will automatically insert a '.' between the"
+                             " .adef's version string and any version strings specified on the"
+                             " command-line.  Multiple occurences of this argument will be"
+                             " combined into a single string.",
+                             versionPush);
 
     le_arg_AddOptionalString(&OutputDir,
                              ".",
@@ -250,7 +215,12 @@ static void GetCommandLineArgs
 
     le_arg_AddMultipleString('c',
                              "component-search",
-                             "Add a directory to the component search path.",
+                             "Add a directory to the component search path (same as -s).",
+                             compPathPush);
+
+    le_arg_AddMultipleString('s',
+                             "source-search",
+                             "Add a directory to the source search path (same as -c).",
                              compPathPush);
 
     le_arg_AddMultipleString('g',
@@ -271,18 +241,16 @@ static void GetCommandLineArgs
                            "verbose",
                            "Set into verbose mode for extra diagnostic information.");
 
-    le_arg_AddOptionalString(&cFlags,
-                             "",
-                             'C',
+    le_arg_AddMultipleString('C',
                              "cflags",
-                             "Specify extra flags to be passed to the C compiler.");
+                             "Specify extra flags to be passed to the C compiler.",
+                             cFlagsPush);
 
-    le_arg_AddOptionalString(&ldFlags,
-                             "",
-                             'L',
+    le_arg_AddMultipleString('L',
                              "ldflags",
                              "Specify extra flags to be passed to the linker when linking "
-                             "executables.");
+                             "executables.",
+                             ldFlagsPush);
 
     // Any remaining parameters on the command-line are treated as the .adef file path.
     // Note: there should only be one parameter not prefixed by an argument identifier.
@@ -303,16 +271,13 @@ static void GetCommandLineArgs
         objectFilesDir = "./_build_" + App.Name() + "/" + target;
     }
     BuildParams.ObjOutputDir(objectFilesDir);
+    BuildParams.StagingDir(legato::CombinePath(objectFilesDir, "staging"));
 
     // Add the directory containing the .adef file to the list of component search directories
     // and the list of interface search directories.
     std::string appDefFileDir = legato::GetContainingDir(App.DefFilePath());
     BuildParams.AddComponentDir(appDefFileDir);
     BuildParams.AddInterfaceDir(appDefFileDir);
-
-    // Add the Legato framework include directory to the include path so people don't have
-    // to keep doing it themselves.
-    BuildParams.AddInterfaceDir("$LEGATO_ROOT/framework/c/inc");
 
     // Store other build params specified on the command-line.
     if (isVerbose)
@@ -339,7 +304,23 @@ static void ConstructObjectModel
 {
     // Parse the .adef file and any Component.cdef files that it refers to.
     // This constructs the object model under the App object that we give it.
-    legato::parser::ParseApp(App, BuildParams);
+    legato::parser::ParseApp(&App, BuildParams);
+
+    // Append the version suffix to the App's version.
+    if (VersionSuffix != "")
+    {
+        // If the app has a version string already (from the .adef file), then make sure there's
+        // a '.' separating the .adef version from the suffix.
+        if (App.Version() != "")
+        {
+            if ((App.Version().back() != '.') && (VersionSuffix.front() != '.'))
+            {
+                App.Version() += ".";
+            }
+        }
+
+        App.Version() += VersionSuffix;
+    }
 
     // For every process in every process environment in the app, check if debugging has been
     // enabled (via command-line arguments), and if so, store the port number in the Process
@@ -385,452 +366,6 @@ static void ConstructObjectModel
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Copy a file from the build host's file system to the application's staging directory.
- **/
-//--------------------------------------------------------------------------------------------------
-static void CopyToStaging
-(
-    const std::string& sourcePath,      ///< Build host file system path to source file.
-    const std::string& stagingDirPath,  ///< Build host file system path to staging directory.
-    const std::string& sandboxPath      ///< Must be an absolute path in the app's runtime sandbox.
-)
-//--------------------------------------------------------------------------------------------------
-{
-    // Generate the destination path in the build host's file system.
-    std::string destPath = stagingDirPath + sandboxPath;
-
-    // First we have to make sure that the directory exists in the staging area before trying to
-    // copy the file into it.
-    auto pos = destPath.rfind('/');
-    legato::MakeDir(destPath.substr(0, pos));
-
-    // Now construct the copy command line and do the copy.
-    std::string copyCommand = "cp \"";
-    copyCommand += sourcePath;
-    copyCommand += "\" \"";
-    copyCommand += stagingDirPath + sandboxPath;
-    copyCommand += "\"";
-    if (BuildParams.IsVerbose())
-    {
-        std::cout << "Including file '" << sourcePath
-                  << "' in the application bundle." << std::endl;
-        std::cout << copyCommand << std::endl;
-    }
-    mk::ExecuteCommandLine(copyCommand);
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Generate the configuration for the application-wide limits (including the start-up modes).
- **/
-//--------------------------------------------------------------------------------------------------
-static void GenerateAppLimitsConfig
-(
-    std::ofstream& cfgStream
-)
-//--------------------------------------------------------------------------------------------------
-{
-    if (App.IsSandboxed() == false)
-    {
-        cfgStream << "  \"sandboxed\" !f" << std::endl;
-    }
-
-    if (App.Debug() == true)
-    {
-        cfgStream << "  \"debug\" !t" << std::endl;
-    }
-
-    if (App.StartMode() == legato::App::MANUAL)
-    {
-        cfgStream << "  \"deferLaunch\" !t" << std::endl;
-    }
-
-    if (App.NumProcs() != SIZE_MAX)
-    {
-        cfgStream << "  \"numProcessesLimit\" [" << App.NumProcs() << "]" << std::endl;
-    }
-
-    if (App.MqueueSize() != SIZE_MAX)
-    {
-        cfgStream << "  \"totalPosixMsgQueueSizeLimit\" [" << App.MqueueSize() << "]" << std::endl;
-    }
-
-    if (App.RtSignalQueueSize() != SIZE_MAX)
-    {
-        cfgStream << "  \"rtSignalQueueSizeLimit\" [" << App.RtSignalQueueSize() << "]" << std::endl;
-    }
-
-    if (App.MemLimit() != SIZE_MAX)
-    {
-        cfgStream << "\"memLimit\" [" << App.MemLimit() << "]" << std::endl;
-    }
-
-    if (App.CpuShare() != SIZE_MAX)
-    {
-        cfgStream << "\"cpuShare\" [" << App.CpuShare() << "]" << std::endl;
-    }
-
-    if (App.FileSystemSize() != SIZE_MAX)
-    {
-        // This is not supported for unsandboxed apps.
-        if (App.IsSandboxed() == false)
-        {
-            std::cerr << "**** Warning: File system size limit being ignored for unsandboxed"
-                      << " application '" << App.Name() << "'." << std::endl;
-        }
-        else
-        {
-            cfgStream << "  \"fileSystemSizeLimit\" [" << App.FileSystemSize() << "]" << std::endl;
-        }
-    }
-}
-
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Generate the configuration for the list of groups that the application's user should be a
- * member of.
- **/
-//--------------------------------------------------------------------------------------------------
-static void GenerateGroupsConfig
-(
-    std::ofstream& cfgStream
-)
-//--------------------------------------------------------------------------------------------------
-{
-    const auto& groupsList = App.Groups();
-
-    // If the groups list is empty, nothing needs to be done.
-    if (groupsList.empty())
-    {
-        return;
-    }
-
-    // If the application is sandboxed, warn if there's group membership configuration,
-    // and ignore it.
-    if (App.IsSandboxed())
-    {
-        std::cerr << "**** Warning: Groups list being ignored for sandboxed application '"
-                  << App.Name() << "'." << std::endl;
-        return;
-    }
-
-    // Group names are specified by inserting empty leaf nodes under the "groups" branch
-    // of the application's configuration tree.
-    cfgStream << "  \"groups\"" << std::endl;
-    cfgStream << "  {" << std::endl;
-
-    for (auto groupName : groupsList)
-    {
-        cfgStream << "  \"" << groupName << "\" \"\"" << std::endl;
-    }
-
-    cfgStream << "  }" << std::endl << std::endl;
-}
-
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Generates the configuration for a single file mapping.
- **/
-//--------------------------------------------------------------------------------------------------
-static void GenerateSingleFileMappingConfig
-(
-    std::ofstream& cfgStream,   ///< Stream to send the configuration to.
-    size_t          index,      ///< The index of the file in the files list in the configuration.
-    const legato::FileMapping& mapping  ///< The file mapping.
-)
-//--------------------------------------------------------------------------------------------------
-{
-    cfgStream << "    \"" << index++ << "\"" << std::endl;
-    cfgStream << "    {" << std::endl;
-    cfgStream << "      \"src\" \"" << mapping.m_SourcePath << "\"" << std::endl;
-    cfgStream << "      \"dest\" \"" << mapping.m_DestPath << "\"" << std::endl;
-    cfgStream << "    }" << std::endl;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Generate the configuration for all file mappings from outside the application sandbox to inside
- * the sandbox.
- **/
-//--------------------------------------------------------------------------------------------------
-static void GenerateFileMappingConfig
-(
-    std::ofstream& cfgStream
-)
-//--------------------------------------------------------------------------------------------------
-{
-    size_t index = 0;
-
-    // Create nodes under "files", where each node is named with an index, starting a 0,
-    // and contains a "src" node and a "dest" node.
-    cfgStream << "  \"files\"" << std::endl;
-    cfgStream << "  {" << std::endl;
-
-    // Import the standard libraries that everyone needs.
-    const char* libList[] = {   "/lib/ld-linux.so.3",
-                                "/lib/libc.so.6",
-                                "/lib/libpthread.so.0",
-                                "/lib/librt.so.1",
-                                "/usr/local/lib/liblegato.so"
-                            };
-    legato::FileMapping mapping({ legato::PERMISSION_READABLE, "", "/lib/" });
-    for (size_t i = 0; i < (sizeof(libList) / sizeof(libList[0])); i++)
-    {
-        mapping.m_SourcePath = libList[i];
-        GenerateSingleFileMappingConfig(cfgStream, index++, mapping);
-    }
-
-    // Import the files specified in the .adef file.
-    for (const auto& mapping : App.ImportedFiles())
-    {
-        GenerateSingleFileMappingConfig(cfgStream, index++, mapping);
-    }
-    // Included files also need to be imported into the application sandbox.
-    // But, the import is from a point relative to the app's install directory.
-    // On the target, the source file will be found in the application's install directory,
-    // under a directory whose path is the same as the directory in which the file will appear
-    // inside the sandbox.  For example, if the app is installed under /opt/legato/apps/myApp/,
-    // then the file /opt/legato/apps/myApp/usr/share/beep.wav would appear inside the sandbox
-    // under the directory /usr/share/.
-    for (const auto& mapping : App.IncludedFiles())
-    {
-        legato::FileMapping importMapping = mapping;
-
-        // Extract the name of the source file, as it will appear in the application's install
-        // directory on target.
-        std::string sourceFileName = legato::GetLastPathNode(mapping.m_SourcePath);
-
-        // If the destination is a directory name, the file's name in the application sandbox will
-        // be the same as the file's name in the application install directory, and the
-        // Supervisor will automatically add the file name onto the end of the destination path.
-        if (mapping.m_DestPath.back() == '/')
-        {
-            // The source path must be a relative path from the application install directory,
-            // so skip over the leading '/' in the destination path (which must be absolute)
-            // and copy the rest to the source path.
-            importMapping.m_SourcePath = importMapping.m_DestPath.substr(1);
-
-            // Append the original source path's file name to the new source path.
-            importMapping.m_SourcePath += sourceFileName;
-
-        }
-        // But, if the destination is a file name, the file name in the sandbox (dest path) may be
-        // different from the file name in the application install directory (source path)
-        else
-        {
-            // Get the directory path that is the same relative to both the root of the sandbox
-            // and the application's install directory.  (Skip the leading '/' in the dest path
-            // and strip off the file name.)
-            std::string dirPath = legato::GetContainingDir(importMapping.m_DestPath.substr(1));
-
-            // Generate the file mapping's source path relative to the application's install
-            // directory.
-            importMapping.m_SourcePath = dirPath + '/' + sourceFileName;
-
-            // Note: the destination path requires no modification in this case.  It will already
-            // be an absolute path to a file inside the sandbox.
-        }
-
-        GenerateSingleFileMappingConfig(cfgStream, index++, importMapping);
-    }
-
-    // Import all the files specified for all the components.
-    for (const auto& pair : App.ComponentMap())
-    {
-        for (const auto& mapping : pair.second.ImportedFiles())
-        {
-            GenerateSingleFileMappingConfig(cfgStream, index++, mapping);
-        }
-
-        // Included files also need to be imported into the application sandbox.
-        // But, the import is from a point relative to the app's install directory.
-        // TODO: Allow the destination file name to be different than the source file name?
-        for (const auto& mapping : pair.second.IncludedFiles())
-        {
-            legato::FileMapping importMapping = mapping;
-            std::string sourceFileName = legato::GetLastPathNode(mapping.m_SourcePath);
-            importMapping.m_SourcePath = importMapping.m_DestPath.substr(1) + sourceFileName;
-
-            GenerateSingleFileMappingConfig(cfgStream, index++, importMapping);
-        }
-    }
-
-    cfgStream << "  }" << std::endl << std::endl;
-}
-
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Generate the configuration for the environment variable settings for a process.
- **/
-//--------------------------------------------------------------------------------------------------
-static void GenerateProcessEnvVarsConfig
-(
-    std::ofstream& cfgStream,
-    const legato::ProcessEnvironment& procEnv
-)
-//--------------------------------------------------------------------------------------------------
-{
-    // The PATH environment variable has to be handled specially.  If no PATH variable is
-    // specified in the .adef, we must provide one.
-    bool pathSpecified = false;
-
-    // Any environment variables are declared under a node called "envVars".
-    // Each env var has its own node, with the name of the node being the name of
-    // the environment variable.
-    cfgStream << "      \"envVars\"" << std::endl;
-    cfgStream << "      {" << std::endl;
-    for (const auto& pair : procEnv.EnvVarList())
-    {
-        if (pair.first == "PATH")
-        {
-            pathSpecified = true;
-        }
-
-        cfgStream << "        \"" << pair.first << "\" \"" << pair.second << "\""
-                  << std::endl;
-    }
-
-    if (!pathSpecified)
-    {
-        // The default path depends on whether the application is sandboxed or not.
-        std::string path = "/usr/local/bin:/usr/bin:/bin";
-        if (App.IsSandboxed() == false)
-        {
-            path = "/opt/legato/apps/" + App.Name() + "/bin:" + path;
-        }
-        cfgStream << "        \"PATH\" \"" << path << "\"" << std::endl;
-    }
-
-    cfgStream << "      }" << std::endl;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Generate the configuration for all the processes that the Supervisor should start when the
- * application is started.
- **/
-//--------------------------------------------------------------------------------------------------
-static void GenerateProcessConfig
-(
-    std::ofstream& cfgStream
-)
-//--------------------------------------------------------------------------------------------------
-{
-    // Create nodes under "procs", where each process has its own node, named after the process.
-    cfgStream << "  \"procs\"" << std::endl;
-    cfgStream << "  {" << std::endl;
-
-    for (const auto& procEnv : App.ProcEnvironments())
-    {
-        for (const auto& process : procEnv.ProcessList())
-        {
-            cfgStream << "    \"" << process.Name() << "\"" << std::endl;
-            cfgStream << "    {" << std::endl;
-
-            // If the process has debugging enabled, then add a "debug" configuration
-            // node for this process that contains the debug port number to be used.
-            if (process.IsDebuggingEnabled())
-            {
-                cfgStream << "      \"debug\" [" << process.DebugPort() << "]" << std::endl;
-            }
-
-            // The command-line argument list is an indexed list of arguments under a node called
-            // "args", where the first argument (0) must be the executable to run.
-            cfgStream << "      \"args\"" << std::endl;
-            cfgStream << "      {" << std::endl;
-            cfgStream << "        \"0\" \"" << process.ExePath() << "\"" << std::endl;
-            int argIndex = 1;
-            for (const auto& arg : process.CommandLineArgs())
-            {
-                cfgStream << "        \"" << argIndex << "\" \"" << arg << "\"" << std::endl;
-                argIndex++;
-            }
-            cfgStream << "      }" << std::endl;
-
-            GenerateProcessEnvVarsConfig(cfgStream, procEnv);
-
-            // Generate the priority, fault action, and limits configuration.
-            if (procEnv.FaultAction() != "")
-            {
-                cfgStream << "      \"faultAction\" \"" << procEnv.FaultAction() << "\"" << std::endl;
-            }
-            if (procEnv.Priority() != "")
-            {
-                cfgStream << "      \"priority\" \"" << procEnv.Priority() << "\"" << std::endl;
-            }
-            if (procEnv.CoreFileSize() != SIZE_MAX)
-            {
-                cfgStream << "      \"coreDumpFileSizeLimit\" [" << procEnv.CoreFileSize() << "]" << std::endl;
-            }
-            if (procEnv.MaxFileSize() != SIZE_MAX)
-            {
-                cfgStream << "      \"maxFileSizeLimit\" [" << procEnv.MaxFileSize() << "]" << std::endl;
-            }
-            if (procEnv.MemLockSize() != SIZE_MAX)
-            {
-                cfgStream << "      \"memLockSizeLimit\" [" << procEnv.MemLockSize() << "]" << std::endl;
-            }
-            if (procEnv.NumFds() != SIZE_MAX)
-            {
-                cfgStream << "      \"numFileDescriptorsLimit\" [" << procEnv.NumFds() << "]" << std::endl;
-            }
-
-            cfgStream << "    }" << std::endl;
-        }
-    }
-
-    cfgStream << "  }" << std::endl << std::endl;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Generate the configuration that the Supervisor needs for this app.  This is the configuration
- * that will be installed in the root configuration tree by the installer when the app is
- * installed on the target.
- **/
-//--------------------------------------------------------------------------------------------------
-static void GenerateSupervisorConfig
-(
-    const std::string& stagingDirPath   ///< Path to the root of the app's staging directory.
-)
-//--------------------------------------------------------------------------------------------------
-{
-    std::string path = stagingDirPath + "/root.cfg";
-
-    if (BuildParams.IsVerbose())
-    {
-        std::cout << "Generating Supervisor configuration for this app under '"
-                  << path << "'." << std::endl;
-    }
-
-    std::ofstream cfgStream(path, std::ofstream::trunc);
-
-    cfgStream << "{" << std::endl << std::endl;
-
-    GenerateAppLimitsConfig(cfgStream);
-
-    GenerateGroupsConfig(cfgStream);
-
-    GenerateFileMappingConfig(cfgStream);
-
-    GenerateProcessConfig(cfgStream);
-
-    cfgStream << "}" << std::endl;
-}
-
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Build the application.
  */
 //--------------------------------------------------------------------------------------------------
@@ -840,98 +375,11 @@ static void Build
 )
 //--------------------------------------------------------------------------------------------------
 {
-    // Set the target-specific environment variables (e.g., LEGATO_TARGET).
-    mk::SetTargetSpecificEnvVars(BuildParams.Target());
+    // Create an Application Builder object.
+    ApplicationBuilder_t appBuilder(BuildParams);
 
-    // Create an Executable Builder object and a Component Builder object for later use.
-    ExecutableBuilder_t exeBuilder(BuildParams);
-    ComponentBuilder_t componentBuilder(BuildParams);
-
-    // Construct the working directory structure, which consists of an "obj" directory and
-    // a "staging" directory.  Inside the "staging" directory, there is "lib", "bin", and "config".
-    // The "obj" directory is for intermediate build output, like generated .c files and .o files.
-    // The "staging" directory will get tar-compressed to become the actual application file.
-
-    if (BuildParams.IsVerbose())
-    {
-        std::cout << "Creating working directories under '" << BuildParams.ObjOutputDir() << "'." << std::endl;
-    }
-    std::string stagingDirPath = BuildParams.ObjOutputDir() + "/staging";
-    BuildParams.LibOutputDir(stagingDirPath + "/lib");
-    BuildParams.ExeOutputDir(stagingDirPath + "/bin");
-    BuildParams.ObjOutputDir(BuildParams.ObjOutputDir() + "/work");
-
-    legato::MakeDir(BuildParams.ObjOutputDir());
-    legato::MakeDir(BuildParams.LibOutputDir());
-    legato::MakeDir(BuildParams.ExeOutputDir());
-
-
-    // For each executable,
-    auto& exeList = App.Executables();
-    for (auto i = exeList.begin(); i != exeList.end(); i++)
-    {
-        legato::Executable& exe = (*i).second;
-
-        // Auto-generate the source code file containing main() and add it to the default component.
-        exeBuilder.GenerateMain(exe);
-    }
-
-    // For each component in the application.
-    auto& map = App.ComponentMap();
-    for (auto& i : map)
-    {
-        // Generate the IPC import/export code.
-        componentBuilder.GenerateInterfaceCode(i.second);
-
-        // Build the component.
-        componentBuilder.Build(i.second);
-
-        // Copy all included files into the staging area.
-        auto& includedFilesList = i.second.IncludedFiles();
-        for (auto fileMapping : includedFilesList)
-        {
-            CopyToStaging(fileMapping.m_SourcePath, stagingDirPath, fileMapping.m_DestPath);
-        }
-    }
-
-    // Do the final build step for all the executables.
-    // Note: All the components need to be built before this.
-    for (auto i = exeList.begin(); i != exeList.end(); i++)
-    {
-        legato::Executable& exe = (*i).second;
-
-        // Build the executable.
-        exeBuilder.Build(exe);
-    }
-
-    // Copy in any files from the "files:" section of the .adef.
-    for (auto& fileMapping : App.IncludedFiles())
-    {
-        CopyToStaging(fileMapping.m_SourcePath, stagingDirPath, fileMapping.m_DestPath);
-    }
-
-    // Generate the configuration.
-    GenerateSupervisorConfig(stagingDirPath);
-
-    // TODO: Generate the application's configuration tree (containing all its pool sizes,
-    //       and anything else listed under the "config:" section of the .adef.)
-
-    // TODO: Copy in the metadata (.adef and Component.cdef) files so they can be retrieved
-    //       by Developer Studio.
-
-    // Zip it all up.
-    std::string outputPath = legato::CombinePath(OutputDir, App.Name() + "." + BuildParams.Target());
-    if (!legato::IsAbsolutePath(outputPath))
-    {
-        outputPath = legato::GetWorkingDir() + "/" + outputPath;
-    }
-    std::string tarCommandLine = "tar cjf \"" + outputPath + "\" -C \"" + stagingDirPath + "\" .";
-    if (BuildParams.IsVerbose())
-    {
-        std::cout << "Packaging application into '" << outputPath << "'." << std::endl;
-        std::cout << tarCommandLine << std::endl;
-    }
-    mk::ExecuteCommandLine(tarCommandLine);
+    // Tell it to build the app.
+    appBuilder.Build(App, OutputDir);
 }
 
 
@@ -949,6 +397,9 @@ void MakeApp
 //--------------------------------------------------------------------------------------------------
 {
     GetCommandLineArgs(argc, argv);
+
+    // Set the target-specific environment variables (e.g., LEGATO_TARGET).
+    mk::SetTargetSpecificEnvVars(BuildParams.Target());
 
     ConstructObjectModel();
 

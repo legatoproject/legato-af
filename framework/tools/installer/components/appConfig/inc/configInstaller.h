@@ -1,8 +1,8 @@
 //--------------------------------------------------------------------------------------------------
 /**
- * Implementation of the Configuration Installer component.
+ * Configuration Installer API provided by the appConfig component.
  *
- * Copyright 2013, Sierra Wireless Inc., all rights reserved.
+ * Copyright 2013-2014, Sierra Wireless Inc., Use of this work is subject to license.
  **/
 //--------------------------------------------------------------------------------------------------
 

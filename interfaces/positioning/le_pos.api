@@ -1,0 +1,524 @@
+/**
+ * @page c_pos Positioning Service
+ *
+ * @ref le_pos_interface.h "Click here for the positioning API reference documentation." <br>
+ *
+ * <HR>
+ *
+ * @ref le_pos_fix <br>
+ * @ref le_pos_navigation <br>
+ * @ref le_pos_xtra <br>
+ * @ref le_pos_configdb <br>
+ *
+ * This API provides access to the device's physical position and movement information.
+ *
+ * @note    Enabling and disabling the positioning system is a privileged operation available
+ *          only through the @ref c_posCtrl.
+ *
+ * @section le_pos_fix Fix On Demand
+ * The @c le_pos_Get2DLocation() function gets the last updated latitude, longitude
+ * and the horizontal accuracy values:
+ *
+ * - latitude is in degrees, positive North.
+ * - longitude is in degrees, positive East.
+ * - horizontal accuracy is in metres.
+ *
+ * The latitude and longitude are given in degrees with 6 decimal places like:
+ * - Latitude +48858300  = 48.858300 degrees North
+ * - Longitude +2294400 =  2.294400 degrees East
+ *
+ * The @c le_pos_Get3DLocation() function gets the last updated latitude, longitude,
+ * altitude and their associated accuracy values.
+ * - altitude is in metres, above Mean Sea Level, with 3 decimal places (3047 = 3.047 metres).
+ * - horizontal and vertical accuracies are in metres.
+ *
+ * The @c le_pos_GetMotion() function gets the last updated horizontal and vertical
+ * speed values and the associated accuracy values:
+ *
+ * - horizontal speed is in m/sec.
+ * - vertical speed is in m/sec, positive up.
+ *
+ * The @c le_pos_GetHeading() function gets the last updated heading value in
+ * degrees (where 0 is True North) and its associated accuracy value. Heading is the direction that
+ * the vehicle/person is facing.
+ *
+ * The @c le_pos_GetDirection() function gets the last updated direction value in
+ * degrees (where 0 is True North) and its associated accuracy value. Direction of movement is the
+ * direction that the vehicle/person is actually moving.
+ *
+ * @section le_pos_navigation Navigation
+ * To be notified when the device is in motion, you must register an handler function
+ * to get the new position's data. The @c le_pos_AddMovementHandler() API registers
+ * that handler. The horizontal and vertical change is measured in metres so only movement over
+ * the threshhold will trigger notification (0 means we don't care about changes).
+ *
+ * The handler will give a reference to the position sample object that has triggered the
+ * notification. You can then access parameters using accessor functions, and release
+ * the object when done with it.
+ *
+ * The accessor functions are:
+ * - le_pos_sample_Get2DLocation()
+ * - le_pos_sample_GetAltitude()
+ * - le_pos_sample_GetHorizontalSpeed()
+ * - le_pos_sample_GetVerticalSpeed()
+ * - le_pos_sample_GetHeading()
+ * - le_pos_sample_GetDirection()
+ *
+ * @c le_pos_sample_Release() releases the object.
+ *
+ * You can uninstall the handler function by calling the le_pos_RemoveMovementHandler() API.
+ * @note The le_pos_RemoveMovementHandler() API does not delete the Position Object. The caller has
+ *       to delete it by calling the le_pos_sample_Release() function.
+ *
+ *
+ * In the following code sample, the function InstallGeoFenceHandler() installs an handler function
+ * that triggers an alarm if the device leaves a designated location.
+ *
+ * @code
+ *
+ * #define GEOFENCE_CENTRE_LATITUDE            +48070380  // Latitude 48.070380 degrees North
+ * #define GEOFENCE_CENTRE_LONGITUDE           -11310000  // Longitude 11.310000 degrees West
+ * #define MAX_METRES_FROM_GEOFENCE_CENTRE     150
+ *
+ * static le_event_HandlerRef_t GeoFenceHandlerRef;
+ *
+ * void InstallGeoFenceHandler()
+ * {
+ *     // I set my home latitude and longitude where my device is located
+ *     SetHomeLocation(HOME_LATITUDE, HOME_LONGITUDE);
+ *
+ *     MyPositionUpdateHandlerRef = le_pos_AddMovementHandler(50, // 50 metres
+ *                                                            0,  // I don't care about changes of altitude.
+ *                                                            MyPositionUpdateHandler,
+ *                                                            NULL);
+ * }
+ *
+ *
+ * static void MyPositionUpdateHandler
+ * (
+ *     le_pos_SampleRef_t     positionSampleRef,
+ *     void*                  contextPtr
+ * )
+ * {
+ *     int32_t metresFromCentre;
+ *
+ *     int32_t accuracyMetres;
+ *     int32_t latitude;
+ *     int32_t longitude;
+ *
+ *     le_pos_sample_Get2DLocation(positionSampleRef, &latitude, &longitude, &accuracyMetres);
+ *
+ *     metresFromCentre = le_pos_ComputeDistance(GEOFENCE_CENTRE_LATITUDE, GEOFENCE_CENTRE_LONGITUDE
+ *                                               latitude, longitude);
+ *
+ *     if (metresFromCentre > MAX_METRES_FROM_GEOFENCE_CENTRE)
+ *     {
+ *         // Check it doesn't just look like we are outside the fence because of bad accuracy.
+ *         if (  (accuracyMetres > metresFromCentre) ||
+ *               ((metresFromCentre - accuracyMetres) < MAX_METRES_FROM_GEOFENCE_CENTRE)  )
+ *         {
+ *             // Could be outside the fence, but we also could be inside the fence.
+ *         }
+ *         else
+ *         {
+ *             // Definitely outside the fence!
+ *             RaiseAlarm(positionSampleRef);
+ *         }
+ *     }
+ *
+ *     le_pos_sample_Release(positionSampleRef);
+ * }
+ *
+ * @endcode
+ *
+ * @section le_pos_xtra Positioning Xtra injection
+ *
+ * With @ref le_pos_LoadXtra() , you can load a xtra.bin file from the filesystem. You have
+ * to download the file before loading it.
+ *
+ * with @ref le_pos_GetXtraValidity(), you will retrieve the date between the xtra is still
+ * validate.
+ *
+ * Example:
+ *
+ * @code
+ *
+ *   #define XTRA_PATH     "/tmp/xtra.bin"
+ *
+ *   le_clk_Time_t start,stop;
+ *   char startTime[100] = {0};
+ *   char StopTime[100] = {0};
+ *
+ *   // download file into XTRA_PATH
+ *   DownloadXtraFile(XTRA_PATH);
+ *
+ *   if ( le_pos_LoadXtra(XTRA_PATH) != LE_OK )
+ *   {
+ *      LE_WARN("Could not load '%s'",XTRA_PATH);
+ *   }
+ *
+ *   if ( le_pos_GetXtraValidity(&start,&stop) != LE_OK )
+ *   {
+ *      LE_WARN("Could get the validity");
+ *   }
+ *
+ *   if ( le_clk_ConvertToUTCString(start,
+ *                                  LE_CLK_STRING_FORMAT_DATE_TIME,
+ *                                  startTime,
+ *                                  sizeof(startTime),
+ *                                  NULL) != LE_OK )
+ *   {
+ *       LE_INFO("Could not convert start time");
+ *   }
+ *   if ( le_clk_ConvertToUTCString(stop,
+ *                                  LE_CLK_STRING_FORMAT_DATE_TIME,
+ *                                  StopTime,
+ *                                  sizeof(StopTime),
+ *                                  NULL) != LE_OK )
+ *   {
+ *       LE_INFO("Could not convert stop time");
+ *   }
+ *
+ *   LE_INFO("Validity Start time  %s",startTime);
+ *   LE_INFO("Validity Stop time %s",StopTime);
+ *
+ * @endcode
+ *
+ * @section le_pos_configdb Positioning configuration tree
+ * @copydoc le_pos_configdbPage_Hide
+ *
+ * <HR>
+ *
+ * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ */
+
+/**
+ * @interface le_pos_configdbPage_Hide
+ *
+ * The configuration database path for Positioning is:
+ * @verbatim
+   /
+       positioning/
+           acquisitionRate<int> == 5
+   @endverbatim
+ *
+ *  - 'acquisitionRate' is the fix acquisition rate in seconds.
+ *
+ * @note
+ *  If there is no configuration for 'acquisitionRate', it will be automatically set to 5 seconds.
+ */
+
+/** @file le_pos_interface.h
+ *
+ * Legato @ref c_pos include file.
+ *
+ * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ */
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Reference type for dealing with Position samples.
+ */
+//--------------------------------------------------------------------------------------------------
+REFERENCE Sample;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler for Movement changes.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+HANDLER MovementHandler
+{
+    ADD_HANDLER_PARAMS
+    (
+        uint32 horizontalMagnitude IN, ///< Horizontal magnitude in metres.
+                                       ///<       0 means that I don't care about
+                                       ///<      changes in the latitude and longitude.
+        uint32 verticalMagnitude IN ///< Vertical magnitude in metres.
+                                    ///<       0 means that I don't care about
+                                    ///<       changes in the altitude.
+    );
+
+    HANDLER_PARAMS
+    (
+        Sample positionSampleRef ///< Position's sample reference
+    );
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the 2D location's data (Latitude, Longitude, Horizontal
+ * accuracy).
+ *
+ * @return LE_FAULT         Function failed to get the 2D location's data
+ * @return LE_OUT_OF_RANGE  One of the retrieved parameter is invalid (set to INT32_MAX).
+ * @return LE_OK            Function succeeded.
+ *
+ * @note latitudePtr, longitudePtr, hAccuracyPtr can be set to NULL if not needed.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Get2DLocation
+(
+    int32 latitude OUT,     ///< Latitude in degrees, positive North.
+    int32 longitude OUT,    ///< Longitude in degrees, positive East.
+    int32 hAccuracy OUT     ///< Horizontal position's accuracy in metres.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the 3D location's data (Latitude, Longitude, Altitude,
+ * Horizontal accuracy, Vertical accuracy).
+ *
+ * @return LE_FAULT         Function failed to get the 3D location's data
+ * @return LE_OUT_OF_RANGE  One of the retrieved parameter is invalid (set to INT32_MAX).
+ * @return LE_OK            Function succeeded.
+ *
+ * @note latitudePtr, longitudePtr,hAccuracyPtr, altitudePtr, vAccuracyPtr can be set to NULL
+ *       if not needed.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Get3DLocation
+(
+    int32 latitude OUT,     ///< Latitude in degrees, positive North.
+    int32 longitude OUT,    ///< Longitude in degrees, positive East.
+    int32 hAccuracy OUT,    ///< Horizontal position's accuracy in metres.
+    int32 altitude OUT,     ///< Altitude in metres, above Mean Sea Level.
+    int32 vAccuracy OUT     ///< Vertical position's accuracy in metres.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the motion's data (Horizontal Speed, Horizontal Speed's
+ * accuracy, Vertical Speed, Vertical Speed's accuracy).
+ *
+ * @return LE_FAULT         Function failed to get the motion's data.
+ * @return LE_OUT_OF_RANGE  One of the retrieved parameter is invalid (set to INT32_MAX, UINT32_MAX).
+ * @return LE_OK            Function succeeded.
+ *
+ * @note hSpeedPtr, hSpeedAccuracyPtr, vSpeedPtr, vSpeedAccuracyPtr can be set to NULL if not needed.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetMotion
+(
+    uint32 hSpeedPtr OUT,           ///< Horizontal Speed in m/sec.
+    int32 hSpeedAccuracyPtr OUT,    ///< Horizontal Speed's accuracy in m/sec.
+    int32 vSpeedPtr OUT,            ///< Vertical Speed in m/sec, positive up.
+    int32 vSpeedAccuracyPtr OUT     ///< Vertical Speed's accuracy in m/sec.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the heading indication.
+ *
+ * @return LE_FAULT         Function failed to get the heading indication.
+ * @return LE_OUT_OF_RANGE  One of the retrieved parameter is invalid (set to INT32_MAX).
+ * @return LE_OK            Function succeeded.
+ *
+ * @note headingPtr, headingAccuracyPtr can be set to NULL if not needed.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetHeading
+(
+    int32 heading OUT,          ///< Heading in degrees (where 0 is True North).
+    int32 headingAccuracy OUT   ///< Heading's accuracy in degrees.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the direction indication. Direction of movement is the
+ * direction that the vehicle/person is actually moving.
+ *
+ * @return LE_FAULT         Function failed to get the direction indication.
+ * @return LE_OUT_OF_RANGE  One of the retrieved parameter is invalid (set to INT32_MAX).
+ * @return LE_OK            Function succeeded.
+ *
+ * @note directionPtr, directionAccuracyPtr can be set to NULL if not needed.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetDirection
+(
+    int32 direction OUT,            ///< Direction indication in degrees (where 0 is True North).
+    int32 directionAccuracy OUT     ///< Direction's accuracy in degrees.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the position sample's 2D location (latitude, longitude,
+ * horizontal accuracy).
+ *
+ * @return LE_FAULT         Function failed to find the positionSample.
+ * @return LE_OUT_OF_RANGE  One of the retrieved parameter is invalid (set to INT32_MAX).
+ * @return LE_OK            Function succeeded.
+ *
+ * @note If the caller is passing an invalid Position reference into this function,
+ *       it is a fatal error, the function will not return.
+ *
+ * @note latitudePtr, longitudePtr, horizontalAccuracyPtr can be set to NULL if not needed.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t sample_Get2DLocation
+(
+    Sample positionSampleRef,           ///< Position sample's reference.
+    int32 latitude OUT,                 ///< Latitude in degrees.
+    int32 longitude OUT,                ///< Longitude in degrees.
+    int32 horizontalAccuracy OUT        ///< Horizontal's accuracy estimate in metres.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the position sample's altitude.
+ *
+ * @return LE_FAULT         Function failed to find the positionSample.
+ * @return LE_OUT_OF_RANGE  One of the retrieved parameter is invalid (set to INT32_MAX).
+ * @return LE_OK            Function succeeded.
+ *
+ * @note If the caller is passing an invalid Position reference into this function,
+ *       it is a fatal error, the function will not return.
+ *
+ * @note altitudePtr, altitudeAccuracyPtr can be set to NULL if not needed.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t sample_GetAltitude
+(
+    Sample positionSampleRef,           ///< Position sample's reference.
+    int32 altitude OUT,                 ///< Altitude in metres.
+    int32 altitudeAccuracy OUT          ///< Altitude's accuracy estimate in metres.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the position sample's horizontal speed.
+ *
+ * @return LE_FAULT         Function failed to find the positionSample.
+ * @return LE_OUT_OF_RANGE  One of the retrieved parameter is invalid (set to INT32_MAX, UINT32_MAX).
+ * @return LE_OK            Function succeeded.
+ *
+ * @note If the caller is passing an invalid Position reference into this function,
+ *       it is a fatal error, the function will not return.
+ *
+ * @note hSpeedPtr, hSpeedAccuracyPtr can be set to NULL if not needed.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t sample_GetHorizontalSpeed
+(
+    Sample positionSampleRef,           ///< Position sample's reference.
+    uint32 hspeed OUT,                  ///< Horizontal speed.
+    int32 hspeedAccuracy OUT            ///< Horizontal speed's accuracy estimate.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the position sample's vertical speed.
+ *
+ * @return LE_FAULT         The function failed to find the positionSample.
+ * @return LE_OUT_OF_RANGE  One of the retrieved parameter is not valid (set to INT32_MAX).
+ * @return LE_OK            The function succeeded.
+ *
+ * @note If the caller is passing an invalid Position reference into this function,
+ *       it is a fatal error, the function will not return.
+ *
+ * @note vSpeedPtr, vSpeedAccuracyPtr can be set to NULL if not needed.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t sample_GetVerticalSpeed
+(
+    Sample positionSampleRef,           ///< Position sample's reference.
+    int32 vspeed OUT,                   ///< Vertical speed.
+    int32 vspeedAccuracy OUT            ///< Vertical speed's accuracy estimate.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the position sample's heading. Heading is the direction that
+ * the vehicle/person is facing.
+ *
+ * @return LE_FAULT         Function failed to find the positionSample.
+ * @return LE_OUT_OF_RANGE  One of the retrieved parameter is invalid (set to INT32_MAX).
+ * @return LE_OK            TFunction succeeded.
+ *
+ * @note If the caller is passing an invalid Position reference into this function,
+ *       it is a fatal error, the function will not return.
+ *
+ * @note headingPtr, headingAccuracyPtr can be set to NULL if not needed.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t sample_GetHeading
+(
+    Sample positionSampleRef,           ///< Position sample's reference.
+    int32 heading OUT,                  ///< Heading in degrees (where 0 is True North).
+    int32 headingAccuracy OUT           ///< Heading's accuracy estimate in degrees.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the position sample's direction. Direction of movement is the
+ * direction that the vehicle/person is actually moving.
+ *
+ * @return LE_FAULT         Function failed to find the positionSample.
+ * @return LE_OUT_OF_RANGE  One of the retrieved parameter is invalid (set to INT32_MAX).
+ * @return LE_OK            Function succeeded.
+ *
+ * @note If the caller is passing an invalid Position reference into this function,
+ *       it is a fatal error, the function will not return.
+ *
+ * @note directionPtr, directionAccuracyPtr can be set to NULL if not needed.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t sample_GetDirection
+(
+    Sample positionSampleRef,           ///< Position sample's reference.
+    int32 direction OUT,                ///< Direction in degrees (where 0 is True North).
+    int32 directionAccuracy OUT         ///< Direction's accuracy estimate in degrees.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Release the position sample.
+ *
+ * @note If the caller is passing an invalid Position reference into this function,
+ *       it is a fatal error, the function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION sample_Release
+(
+    Sample positionSampleRef            ///< Position sample's reference.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to load xtra.bin file into the gnss.
+ *
+ * @return LE_FAULT         The function failed to inject the xtra.bin file
+ * @return LE_OK            The function succeeded.
+ *
+ * @note If the caller is passing an invalid Position reference into this function,
+ *       it is a fatal error, the function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t LoadXtra
+(
+    string xtraFilePathPtr[100] IN ///< xtra.bin file path
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the validity of the last xtra.bin injected
+ *
+ * @return LE_FAULT         The function failed to get the validity
+ * @return LE_OK            The function succeeded.
+ *
+ * @note If the caller is passing an invalid Position reference into this function,
+ *       it is a fatal error, the function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetXtraValidity
+(
+    le_clk_Time_t startTimePtr OUT,     ///< Start time
+    le_clk_Time_t stopTimePtr OUT       ///< Stop time
+);

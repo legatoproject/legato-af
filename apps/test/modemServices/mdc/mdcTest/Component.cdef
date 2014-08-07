@@ -1,0 +1,7 @@
+sources:
+
+    mdcTest.c
+
+import:
+
+    le_mdc.api

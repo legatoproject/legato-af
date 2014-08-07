@@ -1,0 +1,14 @@
+/** @page getstartedLegatoApps Legato Apps
+
+There are a few easy ways to get started with Legato apps: 
+
+- Run the @ref demoApps located in the app/sample/ directories: airvantageDemo, helloWorld, modemDemo. 
+- Clone the apps from GitHub: https://github.com/legatoproject 
+- Develop your own apps: @ref apphelloWorld and @ref appconvertingItIntoAnApp
+- Open Dev Studio on the bootable USB.
+
+<HR>
+
+Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+
+**/

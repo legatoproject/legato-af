@@ -41,7 +41,7 @@ static void TestArgs(void)
 }
 
 
-LE_EVENT_INIT_HANDLER
+COMPONENT_INIT
 {
     LE_INFO("======== Begin Command Line Arguments Test ========");
 

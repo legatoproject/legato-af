@@ -2,8 +2,12 @@
  * Copyright (c) 2013 Sierra Wireless and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+ * and Eclipse Distribution License v1.0 which accompany this distribution.
+ *
+ * The Eclipse Public License is available at
+ *   http://www.eclipse.org/legal/epl-v10.html
+ * The Eclipse Distribution License is available at
+ *   http://www.eclipse.org/org/documents/edl-v10.php
  *
  * Contributors:
  *     Laurent Barthelemy for Sierra Wireless - initial API and implementation
@@ -27,6 +31,8 @@
 #include "log.h"
 #include "args.h"
 #include "eventLoop.h"
+/* init functions implemented in other files */
+#include "agent_platform_core.h"
 
 static char *argv[] = { "AirVantage" };
 

@@ -1,9 +1,6 @@
-#*******************************************************************************
-# Copyright (C) 2013, Sierra Wireless Inc., all rights reserved.
-#
-# Contributors:
-#     Sierra Wireless - initial API and implementation
-#*******************************************************************************
+#---------------------------------------------------------------------------------------------------
+# Copyright (C) 2013 - 2014, Sierra Wireless Inc.  Use of this work is subject to license.
+#---------------------------------------------------------------------------------------------------
 
 find_package(Legato REQUIRED)
 
@@ -58,6 +55,11 @@ mkexe(  ${TEST_NAME}-server
             messagingTest3-server.c
         )
 
-# This test needs to be run manually.
-#add_test(${TEST_NAME} ${EXECUTABLE_OUTPUT_PATH}/${TEST_NAME})
+mkexe(  ${TEST_NAME}
+            messagingTest3.c
+        DEPENDS
+            messagingTest3.c
+        )
+
+add_test(${TEST_NAME} ${EXECUTABLE_OUTPUT_PATH}/${TEST_NAME})
 

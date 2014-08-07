@@ -1,7 +1,7 @@
 
 #include "legato.h"
 
-LE_EVENT_INIT_HANDLER
+COMPONENT_INIT
 {
     LE_INFO("======== BEGIN SAFE REFERENCES TEST ========");
 

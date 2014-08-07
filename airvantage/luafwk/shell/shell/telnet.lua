@@ -1,9 +1,13 @@
--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 -- Copyright (c) 2012 Sierra Wireless and others.
 -- All rights reserved. This program and the accompanying materials
 -- are made available under the terms of the Eclipse Public License v1.0
--- which accompanies this distribution, and is available at
--- http://www.eclipse.org/legal/epl-v10.html
+-- and Eclipse Distribution License v1.0 which accompany this distribution.
+--
+-- The Eclipse Public License is available at
+--   http://www.eclipse.org/legal/epl-v10.html
+-- The Eclipse Distribution License is available at
+--   http://www.eclipse.org/org/documents/edl-v10.php
 --
 -- Contributors:
 --     Cuero Bugot        for Sierra Wireless - initial API and implementation
@@ -38,10 +42,11 @@ local tostring = tostring
 local type = type
 local unpack = unpack
 local pathutils = require 'utils.path'
+local checks = require 'checks'
 
-module(...)
+local M = {}
 
-SHELL = {
+M.CONFIG = {
    auth     = false,  -- do not do authentification by default
    prompt   = "> ",
    prompt2  = "+ ",
@@ -50,6 +55,10 @@ SHELL = {
    runningtasks = {}, -- used to record what is the task calling print coming from
 }
 
+local captureprint -- capture print function. Define to a function when capture is activated. Only one shell instance can capture prints
+                   -- see M.capturemode() for more details on the feature
+  
+local SHELL = M.CONFIG -- shortcut to access the shell default config table
 
 local function autocomplete(path, env)
     env = env or _G
@@ -127,14 +136,21 @@ end
 
 -- Redefine the print function so that it get printed on the shell
 local origprint = _G.print
-local function print(...)
-    local self = getcurrentshell()
-    if not self then return origprint(...) end -- fallback on standard printer if the shell is closed
+
+local function shellprint(self, ...)
     local t = {}
     local args = table.pack(...)
     for k = 1, args.n do table.insert(t, tostring(args[k])) end
     self.ts:output(table.concat(t, '\t')..'\r\n')
     interpret(self)
+end
+
+local function print(...)
+    local self = getcurrentshell()
+    if captureprint then captureprint(self, ...) end -- handles the case where print are captured (it does not change the original print !)
+    if not self then return origprint(...) end -- fallback on standard printer if the shell is closed
+    
+   return shellprint(self, ...)
 end
 _G.print = print
 
@@ -231,7 +247,7 @@ local function try_to_compile_and_run(self)
                 end
             else
                 out = "Job #"..tostring(self.runningjobs[task]).." finished\r\n"
-                if not results[1] then log("SHELL", "ERROR", "Background task(%s) failed with err=%s", tostring(task), results[2]) end
+                if not results[1] then log("SHELL", "ERROR", "Background task(%s) failed with err=%s", tostring(task), tostring(results[2])) end
                 self.runningjobs[self.runningjobs[task]] = nil
                 self.runningjobs[task] = nil
             end
@@ -303,7 +319,7 @@ end
 
 
 -- Instantiate and run a new shell
-function run(sock, config)
+function M.run(sock, config)
 
     local self = setmetatable({}, {__index=SHELL})
     self.sock = sock
@@ -333,6 +349,7 @@ function run(sock, config)
     sched.signal(self, 'close') -- in case it was the read task that died first, ensure the other task is also killed...
     sock:close()
     sched.kill(self.acthook)
+    self.sock = nil
     log("SHELL", "INFO", "Shell connection closed")
 end
 
@@ -348,10 +365,46 @@ function _G.jobs()
 end
 
 function _G.killjob(jobid)
+    checks("number")
+  
     local self = getcurrentshell()
     if not self then return end
     if not self.runningjobs[jobid] then error("No job with id "..jobid) end
     sched.kill(self.runningjobs[jobid])
+end
+
+
+-- Capture print function in the current shell. Capture by default unhandled print (print done by a sched task not attached to any shell)
+-- Note: it is not possible to uncapture prints, however killing the shell obviously stop the capture.
+-- @param mode string or boolean (optional) contains characters to modify the capture mode:
+--    'a' : add capture of all print
+--    'l' : add capture of logs (if log module is available)
+function _G.capturemode(mode)
+      checks("?string")
+      
+      local self = getcurrentshell()
+      if not self then return nil, "not in a shell" end
+
+      
+      local pa = mode and mode:find("a", 1, true)
+      
+      captureprint = function(attached, ...)
+          if not self.sock then captureprint = nil ; return end
+          if pa or not attached then shellprint(self, ...) end
+      end
+
+      if mode and mode:find("l", 1, true) and not self.capturelogflag then
+          local s, log = pcall (require, 'log')
+          if s then
+              local odl = log.displaylogger
+              self.capturelogflag = true -- make sure log are captured only once !
+              function log.displaylogger(a, b, ...)
+                  if not self.sock then log.displaylogger = odl
+                  else shellprint(self, ...) end
+                  return odl(a, b, ...)
+              end
+          end
+      end
 end
 
 -- Start the server socket so that new shell can be instanciated on new connections
@@ -360,12 +413,14 @@ end
 --   port: local port to bind to (default : 2000)
 --   editmode: "edit" or "line". "line" is the trivial default no-editable shell
 --   historysize: the number of line that history must be able to handle. Only valid when editmode="edit" (default: 0 = no history)
-function init(config)
+function M.init(config)
    local function on_accept(client, server)
       log("SHELL", "INFO", "Shell connection from client (%s)", client:getpeername())
-      run(client, config)
+      M.run(client, config)
   end
    log("SHELL", "INFO", "Binding a shell server at address %s, port %s",  config.address or "?localhost", config.port or "?2000")
    assert(socket.bind(config.address or "localhost", config.port or 2000, on_accept))
    return "ok"
 end
+
+return M

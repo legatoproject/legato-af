@@ -163,7 +163,6 @@
  *
  * apps
  *      appName1
- *          debug (true, false)
  *          sandboxed (true, false)
  *          defer launch (true, false)
  *          fileSystemSizeLimit (integer)
@@ -208,19 +207,17 @@
  *                      varValueN (string)
  *
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless, Inc. 2013 - 2014. Use of this work is subject to license.
  */
 #include "legato.h"
+#include "interfaces.h"
 #include "limit.h"
-#include "le_cfg_interface.h"
 #include "user.h"
 #include "app.h"
 #include "proc.h"
 #include "fileDescriptor.h"
-#include "le_sup_server.h"
 #include "config.h"
 #include "cgroups.h"
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -262,7 +259,7 @@
  * The file the Supervisor uses to ensure that only a single instance of the Supervisor is running.
  */
 //--------------------------------------------------------------------------------------------------
-#define SUPERVISOR_INSTANCE_FILE            LE_RUNTIME_DIR "supervisorInst"
+#define SUPERVISOR_INSTANCE_FILE            STRINGIZE(LE_RUNTIME_DIR) "supervisorInst"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -294,9 +291,9 @@ typedef struct _appObjRef
 {
     app_Ref_t              appRef;         // Reference to the application.
     AppStopHandler_t       stopHandler;    // Handler function that gets called when the app stops.
-    le_sup_ServerCmdRef_t  stopCmdRef;     // Stores the reference to the command that requested
-                                           // this app be stopped.  This reference must be sent in the
-                                           // response to the stop app command.
+    le_sup_ctrl_ServerCmdRef_t  stopCmdRef;// Stores the reference to the command that requested
+                                           // this app be stopped.  This reference must be sent in
+                                           // the response to the stop app command.
     le_dls_Link_t          link;           // Link in the list of applications.
 }
 AppObj_t;
@@ -374,7 +371,7 @@ static le_dls_List_t SysProcsList = LE_DLS_LIST_INIT;
  * The command reference for the Stop Legato command.
  */
 //--------------------------------------------------------------------------------------------------
-static le_sup_ServerCmdRef_t StopLegatoCmdRef = NULL;
+static le_sup_ctrl_ServerCmdRef_t StopLegatoCmdRef = NULL;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -435,14 +432,28 @@ static bool IsEmptyString
 //--------------------------------------------------------------------------------------------------
 /**
  * Daemonizes the calling process.
+ *
+ * @note    This function only returns in the child process.  In the parent, it waits until the
+ *          child process closes the pipe between the processes, then terminates itself with
+ *          a 0 (EXIT_SUCCESS) exit code.
+ *
+ * @return  File descriptor for pipe to be closed when the framework is ready to use.
  */
 //--------------------------------------------------------------------------------------------------
-static void Daemonize(void)
+static int Daemonize(void)
 {
+    // Create a pipe to use to synchronize the parent and the child.
+    int syncPipeFd[2];
+    LE_FATAL_IF(pipe(syncPipeFd) != 0, "Could not create synchronization pipe.  %m.");
+
     if (getppid() == 1)
     {
         // Already a daemon.
-        return;
+
+        // Close the read end of the pipe and return the write end to be closed later.
+        fd_Close(syncPipeFd[0]);
+
+        return syncPipeFd[1];
     }
 
     // Fork off the parent process.
@@ -453,10 +464,25 @@ static void Daemonize(void)
     // If we got a good PID, are the parent process.
     if (pid > 0)
     {
+        // The parent does not need the write end of the pipe so close it.
+        fd_Close(syncPipeFd[1]);
+
+        // Do a blocking read on the read end of the pipe.
+        int readResult;
+        do
+        {
+            int junk;
+            readResult = read(syncPipeFd[0], &junk, sizeof(junk));
+
+        } while ((readResult == -1) && (errno == EINTR));
+
         exit(EXIT_SUCCESS);
     }
 
     // Only the child gets here.
+
+    // The child does not need the read end of the pipe so close it.
+    fd_Close(syncPipeFd[0]);
 
     // Start a new session and become the session leader, the process group leader which will free
     // us from any controlling terminals.
@@ -469,11 +495,21 @@ static void Daemonize(void)
     // up another filesystem and prevent it from being unmounted.
     LE_FATAL_IF(chdir("/") < 0, "Failed to set supervisor's working directory to root.  %m.");
 
-    // Redirect standard fds to /dev/null.
+    // Redirect standard fds to /dev/null except for stderr which goes to /dev/console.
+    if (freopen("/dev/console", "w", stderr) == NULL)
+    {
+        LE_WARN("Could not redirect stderr to /dev/console, redirecting it to /dev/null instead.");
+
+        LE_FATAL_IF(freopen("/dev/null", "w", stderr) == NULL,
+                    "Failed to redirect stderr to /dev/null.  %m.");
+    }
+
     LE_FATAL_IF( (freopen("/dev/null", "w", stdout) == NULL) ||
-                 (freopen("/dev/null", "w", stderr) == NULL) ||
                  (freopen("/dev/null", "r", stdin) == NULL),
-                "Failed to redirect standard files to /dev/null.  %m.");
+                "Failed to redirect stdout and stdin to /dev/null.  %m.");
+                
+    // Return the write end of the pipe to be closed when the framework is ready for use.
+    return syncPipeFd[1];
 }
 
 
@@ -542,7 +578,7 @@ static void RespondToStopAppCmd
     DeleteAppObj(appObjRef);
 
     // Respond to the requesting process.
-    le_sup_StopAppRespond(cmdRef, LE_OK);
+    le_sup_ctrl_StopAppRespond(cmdRef, LE_OK);
 }
 
 
@@ -936,8 +972,8 @@ needs to be %d bytes.", sizeof(killCmd), s);
                 fd_Close(syncPipeFd[1]);
             }
 
-            // Close all other fds.
-            fd_CloseAll();
+            // Close all non-standard fds.
+            fd_CloseAllNonStd();
 
             // @todo:  Run all sysprocs as non-root.  Nobody really needs to be root except the
             //         Supervisor and the Installer (because it needs to create the user).  Also,
@@ -986,23 +1022,66 @@ needs to be %d bytes.", sizeof(killCmd), s);
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Load the current IPC binding configuration into the Service Directory.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void LoadIpcBindingConfig
+(
+    void
+)
+{
+    int result = system("sdir load");
+
+    if (result == -1)
+    {
+        LE_FATAL("Failed to fork child process. (%m)");
+    }
+    else if (WIFEXITED(result))
+    {
+        int exitCode = WEXITSTATUS(result);
+
+        if (exitCode != 0)
+        {
+            LE_FATAL("Couldn't load IPC binding config. `sdir load` exit code: %d.", exitCode);
+        }
+    }
+    else if (WIFSIGNALED(result))
+    {
+        int sigNum = WTERMSIG(result);
+
+        LE_FATAL("Couldn't load IPC binding config. `sdir load` received signal: %d.", sigNum);
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Starts all system processes and user apps.
  */
 //--------------------------------------------------------------------------------------------------
 static void StartFramework
 (
-    void
+    int syncFd ///< File descriptor for pipe to be closed when the framework is ready to use.
 )
 {
     // Launch all system processes.
     LaunchAllSystemProcs();
     LE_INFO("All sys procs ready.");
 
-    LE_DEBUG("---- Initializing the configuration API ----");
-    le_cfg_Initialize();
+    // Load the current IPC binding configuration into the Service Directory.
+    LoadIpcBindingConfig();
 
-    LE_DEBUG("---- Initializing the Supervisor's API ----");
-    le_sup_StartServer(LE_SUPERVISOR_API);
+    // Close the synchronization pipe that is connected to the parent process.
+    // This signals to the parent process that it is now safe to start using the framework.
+    fd_Close(syncFd);
+
+    LE_DEBUG("---- Initializing the configuration API ----");
+    le_cfg_StartClient("le_cfg");
+
+    LE_DEBUG("---- Initializing the Supervisor's APIs ----");
+    le_sup_ctrl_StartServer(LE_SUP_CTRL_API_NAME);
+    le_sup_wdog_StartServer(LE_SUP_WDOG_API_NAME);
+    le_sup_state_StartServer(LE_SUP_STATE_API_NAME);
 
     // Launch all user apps in the config tree that should be launched on system startup.
     LaunchAllStartupApps();
@@ -1068,7 +1147,7 @@ static void StopSysProcs
         if (StopLegatoCmdRef != NULL)
         {
             // Respond to the requesting process to tell it that the Legato framework has stopped.
-            le_sup_StopLegatoRespond(StopLegatoCmdRef, LE_OK);
+            le_sup_ctrl_StopLegatoRespond(StopLegatoCmdRef, LE_OK);
         }
 
         SysProcObj_t* sysProcPtr = CONTAINER_OF(sysProcLinkPtr, SysProcObj_t, link);
@@ -1105,6 +1184,13 @@ static void StopFramework
         // Stop the first app.  This will kick off the chain of callback handlers that will stop
         // all processes and then stop all system processes.
         app_Stop(appPtr->appRef);
+
+        // If the application has already stopped then call its stop handler here.  Otherwise the
+        // stop handler will be called from the SigChildHandler() when the app actually stops.
+        if (app_GetState(appPtr->appRef) == APP_STATE_STOPPED)
+        {
+            appPtr->stopHandler(appPtr);
+        }
     }
     else
     {
@@ -1325,7 +1411,7 @@ static void SysProcsSoftKillExpiryHandler
  *
  * @note
  *   The result code for this command should be sent back to the requesting process via
- *   le_sup_StartAppRespond().  The possible result codes are:
+ *   le_sup_ctrl_StartAppRespond().  The possible result codes are:
  *
  *      LE_OK if the application is successfully started.
  *      LE_DUPLICATE if the application is already running.
@@ -1333,16 +1419,16 @@ static void SysProcsSoftKillExpiryHandler
  *      LE_FAULT if there was an error and the application could not be launched.
  */
 //--------------------------------------------------------------------------------------------------
-void le_sup_StartApp
+void le_sup_ctrl_StartApp
 (
-    le_sup_ServerCmdRef_t _cmdRef,  ///< [IN] The command reference that must be passed to this
-                                    ///       command's response function.
-    const char* appName             ///< [IN] The name of the application to start.
+    le_sup_ctrl_ServerCmdRef_t _cmdRef, ///< [IN] The command reference that must be passed to this
+                                        ///       command's response function.
+    const char* appName                 ///< [IN] The name of the application to start.
 )
 {
     LE_DEBUG("Received request to start application '%s'.", appName);
 
-    le_sup_StartAppRespond(_cmdRef, LaunchApp(appName));
+    le_sup_ctrl_StartAppRespond(_cmdRef, LaunchApp(appName));
 }
 
 
@@ -1353,17 +1439,17 @@ void le_sup_StartApp
  *
  * @note
  *   The result code for this command should be sent back to the requesting process via
- *   le_sup_StopAppRespond().  The possible result codes are:
+ *   le_sup_ctrl_StopAppRespond().  The possible result codes are:
  *
  *      LE_OK if successful.
  *      LE_NOT_FOUND if the application could not be found.
  */
 //--------------------------------------------------------------------------------------------------
-void le_sup_StopApp
+void le_sup_ctrl_StopApp
 (
-    le_sup_ServerCmdRef_t _cmdRef,  ///< [IN] The command reference that must be passed to this
-                                    ///       command's response function.
-    const char* appName             ///< [IN] The name of the application to stop.
+    le_sup_ctrl_ServerCmdRef_t _cmdRef, ///< [IN] The command reference that must be passed to this
+                                        ///       command's response function.
+    const char* appName                 ///< [IN] The name of the application to stop.
 )
 {
     LE_DEBUG("Received request to stop application '%s'.", appName);
@@ -1375,7 +1461,7 @@ void le_sup_StopApp
     {
         LE_WARN("Application '%s' is not running and cannot be stopped.", appName);
 
-        le_sup_StopAppRespond(_cmdRef, LE_NOT_FOUND);
+        le_sup_ctrl_StopAppRespond(_cmdRef, LE_NOT_FOUND);
         return;
     }
 
@@ -1386,9 +1472,15 @@ void le_sup_StopApp
     // process that requested this app be stopped.
     appPtr->stopHandler = RespondToStopAppCmd;
 
-    // Stop the process.  This is an asynchronous call that returns right away.  When the app
-    // actually stops the appPtr->stopHandler() will be called.
+    // Stop the process.  This is an asynchronous call that returns right away.
     app_Stop(appPtr->appRef);
+
+    // If the application has already stopped then call its stop handler here.  Otherwise the stop
+    // handler will be called from the SigChildHandler() when the app actually stops.
+    if (app_GetState(appPtr->appRef) == APP_STATE_STOPPED)
+    {
+        appPtr->stopHandler(appPtr);
+    }
 }
 
 
@@ -1398,9 +1490,9 @@ void le_sup_StopApp
  * separate process requests to stop the Legato framework.
  */
 //--------------------------------------------------------------------------------------------------
-void le_sup_StopLegato
+void le_sup_ctrl_StopLegato
 (
-    le_sup_ServerCmdRef_t _cmdRef
+    le_sup_ctrl_ServerCmdRef_t _cmdRef
 )
 {
     LE_DEBUG("Received request to stop Legato.");
@@ -1409,7 +1501,7 @@ void le_sup_StopLegato
     {
         // Someone else has already requested that the framework should be stopped so we should just
         // return right away.
-        le_sup_StopLegatoRespond(_cmdRef, LE_DUPLICATE);
+        le_sup_ctrl_StopLegatoRespond(_cmdRef, LE_DUPLICATE);
     }
     else
     {
@@ -1422,6 +1514,140 @@ void le_sup_StopLegato
         // Start the process of shutting down the framework.
         StopFramework();
     }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * A watchdog has timed out. This function determines the watchdogAction to take and applies it.
+ * The action to take is first delegated to the app (and proc layers) and actions not handled by
+ * or not appropriate for lower layers are handled here.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_sup_wdog_WatchdogTimedOut
+(
+    le_sup_wdog_ServerCmdRef_t _cmdRef,
+    uint32_t userId,
+    uint32_t procId
+)
+{
+    le_sup_wdog_WatchdogTimedOutRespond(_cmdRef);
+    LE_INFO("Handling watchdog expiry for: userId %d, procId %d", userId, procId);
+
+    // Search for the process in the list of apps.
+    le_dls_Link_t* appLinkPtr = le_dls_Peek(&AppsList);
+
+    while (appLinkPtr != NULL)
+    {
+        AppObj_t* appPtr = CONTAINER_OF(appLinkPtr, AppObj_t, link);
+        wdog_action_WatchdogAction_t watchdogAction;
+        LE_FATAL_IF(appPtr==NULL,"I got a NULL AppPtr from CONTAINER_OF");
+        if (app_WatchdogTimeoutHandler(appPtr->appRef, procId, &watchdogAction) == LE_OK)
+        {
+            // Handle the fault.
+            switch (watchdogAction)
+            {
+                case WATCHDOG_ACTION_NOT_FOUND:
+                    // This case should already have been dealt with in lower layers, should never
+                    // get here.
+                    LE_FATAL("Unhandled watchdog action not found caught by supervisor.");
+                case WATCHDOG_ACTION_IGNORE:
+                case WATCHDOG_ACTION_HANDLED:
+                    // Do nothing.
+                    break;
+
+                case WATCHDOG_ACTION_RESTART_APP:
+                    if (app_GetState(appPtr->appRef) != APP_STATE_STOPPED)
+                    {
+                        // Stop the app if it hasn't already stopped.
+                        app_Stop(appPtr->appRef);
+                    }
+
+                    // Set the handler to restart the app when the app stops.
+                    appPtr->stopHandler = RestartApp;
+                    break;
+
+                case WATCHDOG_ACTION_STOP_APP:
+                    if (app_GetState(appPtr->appRef) != APP_STATE_STOPPED)
+                    {
+                        // Stop the app if it hasn't already stopped.
+                        app_Stop(appPtr->appRef);
+                    }
+                    break;
+
+                case WATCHDOG_ACTION_REBOOT:
+                    Reboot();
+
+                // This should never happen
+                case WATCHDOG_ACTION_ERROR:
+                    LE_FATAL("Unhandled watchdog action error caught by supervisor.");
+                    break;
+
+                // this should never happen
+                default:
+                    LE_FATAL("Unknown watchdog action %d.", watchdogAction);
+            }
+
+            // Check if the app has stopped.
+            if ( (app_GetState(appPtr->appRef) == APP_STATE_STOPPED) &&
+                    (appPtr->stopHandler != NULL) )
+            {
+                // The application has stopped.  Call the app stop handler.
+                appPtr->stopHandler(appPtr);
+            }
+
+            // Stop searching the other apps.
+            break;
+        }
+
+        appLinkPtr = le_dls_PeekNext(&AppsList, appLinkPtr);
+    }
+
+    if (appLinkPtr == NULL)
+    {
+        // We exhausted the app list without taking any action for this process
+        LE_CRIT("Process pid:%d was not started by the framework. No watchdog action can be taken", procId);
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets the state of the specified application.
+ *
+ * @return
+ *      The state of the specified application.
+ */
+//--------------------------------------------------------------------------------------------------
+le_sup_state_State_t le_sup_state_GetAppState
+(
+    const char* appName
+        ///< [IN]
+        ///< Name of the application.
+)
+{
+    // Search the list of apps.
+    le_dls_Link_t* appLinkPtr = le_dls_Peek(&AppsList);
+
+    while (appLinkPtr != NULL)
+    {
+        AppObj_t* appPtr = CONTAINER_OF(appLinkPtr, AppObj_t, link);
+
+        if (strcmp(app_GetName(appPtr->appRef), appName) == 0)
+        {
+            if (app_GetState(appPtr->appRef) == APP_STATE_RUNNING)
+            {
+                return LE_SUP_STATE_RUNNING;
+            }
+            else
+            {
+                return LE_SUP_STATE_STOPPED;
+            }
+        }
+
+        appLinkPtr = le_dls_PeekNext(&AppsList, appLinkPtr);
+    }
+
+    return LE_SUP_STATE_STOPPED;
 }
 
 
@@ -1447,7 +1673,7 @@ COMPONENT_INIT
                 "Could not set the nice level.  %m.");
 
     // Daemonize ourself.
-    Daemonize();
+    int syncFd = Daemonize();
 
     // Create timer to handle graceful shutdown
     KillTimerRef = le_timer_Create("SupervisorKill");
@@ -1455,8 +1681,8 @@ COMPONENT_INIT
 
     le_timer_SetHandler(KillTimerRef, SysProcsSoftKillExpiryHandler);
 
-    // Create the Legato runtime directory if it doesn't already exists.
-    LE_ASSERT(le_dir_Make(LE_RUNTIME_DIR, S_IRWXU | S_IXOTH) != LE_FAULT);
+    // Create the Legato runtime directory if it doesn't already exist.
+    LE_ASSERT(le_dir_Make(STRINGIZE(LE_RUNTIME_DIR), S_IRWXU | S_IXOTH) != LE_FAULT);
 
     // Create and lock a dummy file used to ensure that only a single instance of the Supervisor
     // will run.  If we cannot lock the file than another instance of the Supervisor must be running
@@ -1480,5 +1706,5 @@ COMPONENT_INIT
     // Register a signal event handler for SIGCHLD so we know when processes die.
     le_sig_SetEventHandler(SIGCHLD, SigChildHandler);
 
-    StartFramework();
+    StartFramework(syncFd);
 }

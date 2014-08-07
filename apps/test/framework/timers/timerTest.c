@@ -240,7 +240,7 @@ void timerEventLoopTest(void)
 }
 
 
-LE_EVENT_INIT_HANDLER
+COMPONENT_INIT
 {
     LE_INFO("\n");
     LE_INFO("====  Unit test for le_timer module. ====");

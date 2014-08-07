@@ -172,7 +172,7 @@ void* NewThread
 }
 
 
-LE_EVENT_INIT_HANDLER
+COMPONENT_INIT
 {
     // Init IPC for the main thread
     StartClient("Test 2");

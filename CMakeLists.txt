@@ -26,6 +26,11 @@ endif()
 
 message("Building Legato for target ${LEGATO_TARGET}")
 
+# Import platform adapter environment variables.
+set(LEGATO_AUDIO_PA $ENV{LEGATO_AUDIO_PA})
+set(LEGATO_MODEM_PA $ENV{LEGATO_MODEM_PA})
+set(LEGATO_GNSS_PA $ENV{LEGATO_GNSS_PA})
+
 # Default Target configuration
 set(LEGATO_COMPONENTS_MODEM "AT" CACHE STRING "Legato Modem Platform-Adapter to build")
 set(LEGATO_COMPONENTS_GNSS "AT" CACHE STRING "Legato Gnss Platform-Adapter to build")
@@ -41,12 +46,14 @@ if(LEGATO_TARGET MATCHES "ar6")
 # Target: ar7
 elseif(LEGATO_TARGET MATCHES "ar7")
     set(LEGATO_EMBEDDED "true")
+    set(AUTOMOTIVE_TARGET "true")
     set(CMAKE_TOOLCHAIN_FILE "${CMAKE_CURRENT_SOURCE_DIR}/cmake/toolchain.yocto.cmake")
     set(LEGATO_COMPONENTS_MODEM "QMI")
     set(LEGATO_COMPONENTS_GNSS "QMI")
     set(LEGATO_COMPONENTS_AUDIO "ar7")
     add_definitions(-DLEGATO_EMBEDDED)
     add_definitions(-DLEGATO_DEBUG)
+    add_definitions(-DAUTOMOTIVE_TARGET)
 
 # Target: wp7
 elseif(LEGATO_TARGET MATCHES "wp7")
@@ -82,6 +89,7 @@ set(Legato_DIR ${PROJECT_SOURCE_DIR}/cmake)
 ## Output
 set(EXECUTABLE_OUTPUT_PATH      ${PROJECT_BINARY_DIR}/bin)
 set(LIBRARY_OUTPUT_PATH         ${PROJECT_BINARY_DIR}/bin/lib)
+set(APP_OUTPUT_PATH             ${PROJECT_BINARY_DIR}/bin/apps)
 set(DOCUMENTATION_OUTPUT_PATH   ${PROJECT_BINARY_DIR}/bin/doc)
 set(READYAGENT_OUTPUT_PATH      ${PROJECT_BINARY_DIR}/bin/readyagent)
 
@@ -93,10 +101,11 @@ set(CUnit_DIR ${PROJECT_SOURCE_DIR}/3rdParty/CUnit/)
 # Global definitions
 find_package(Legato REQUIRED)
 
-# Set the git revision if it exists
-get_git_revision(GIT_REVISION)
-message(STATUS "Git Revision: ${GIT_REVISION}")
-add_definitions(-DGIT_REV=\"${GIT_REVISION}\")
+# Version
+file(READ version LEGATO_VERSION)
+string(REPLACE "\n" "" LEGATO_VERSION ${LEGATO_VERSION})
+message(STATUS "Version: ${LEGATO_VERSION}")
+add_definitions(-DLEGATO_VERSION=\"${LEGATO_VERSION}\")
 
 # Debug/Release
 if(CMAKE_BUILD_TYPE MATCHES "Release")
@@ -135,6 +144,9 @@ else()
     message(STATUS "Coverage reporting (TEST_COVERAGE): Disabled")
 endif()
 
+set(LEGATO_COMPONENTS_MODEM_TARGET          le_pa)
+set(LEGATO_COMPONENTS_GNSS_TARGET           le_pa_gnss)
+
 ## Pre-compiled targets
 if(${LEGATO_COMPONENTS_MODEM} MATCHES "QMI" AND NOT EXISTS ${LEGATO_COMPONENTS_MODEM_DIR}/qmi/src)
     add_library(${LEGATO_COMPONENTS_MODEM_TARGET} SHARED IMPORTED GLOBAL)
@@ -143,10 +155,22 @@ if(${LEGATO_COMPONENTS_GNSS} MATCHES "QMI" AND NOT EXISTS ${LEGATO_COMPONENTS_GN
     add_library(${LEGATO_COMPONENTS_GNSS_TARGET} SHARED IMPORTED GLOBAL)
 endif()
 
+## Paths to AT Manager include files needed by various platform adapters that use it.
+### TODO: Move the Platform Adapters together under their own subdirectory.
+set (LEGATO_COMPONENTS_AT_MANAGER_INCLUDE_DIRS
+        modemServices/platformAdaptor/at/atManager/inc
+        modemServices/platformAdaptor/at/atManager/devices/adapter_layer/inc
+        modemServices/platformAdaptor/at/atManager/devices/uart/inc
+        )
+
 ## Building
 
 # Build Documentation
+add_subdirectory(interfaces)
 add_subdirectory(framework/doc)
+
+# Build 3rd party libs.
+add_subdirectory(3rdParty/jansson-2.6)
 
 # Build C Framework
 add_subdirectory(framework/c)
@@ -154,6 +178,9 @@ add_subdirectory(framework/tools)
 
 # Build Components
 add_subdirectory(components)
+
+# Build Platform Services (modem, positioning, audio, etc. services).
+add_subdirectory(platformServices)
 
 # Build Applications
 add_subdirectory(apps)

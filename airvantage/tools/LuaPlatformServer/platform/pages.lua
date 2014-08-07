@@ -182,7 +182,6 @@ web.site['response/edit'] = web.template 'default' {
 
 web.site['response/submit'] = {
     header = function(env)
-        p(env.params)
         env.response = "HTTP/1.1 302 REDIRECT"
         local success, result
         local f, result = loadstring('return '..env.params.source)

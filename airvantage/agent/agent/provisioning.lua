@@ -1,7 +1,8 @@
 local security   = require 'm3da.session.security'
 local write_keys = require 'crypto.keystore'
-local md5       = require 'crypto.md5'
+local md5        = require 'crypto.md5'
 local lfs        = require 'lfs'
+local system     = require 'utils.system'
 
 local M = { }
 
@@ -32,7 +33,7 @@ end
 
 local function create_directory_if_needed()
     local cryptopath = (LUA_AF_RW_PATH or lfs.currentdir())
-    assert(os.execute('mkdir -p '..cryptopath..'/'..'crypto'), "Can't create crypto folder")
+    assert(system.mktree(cryptopath..'/crypto'))
 end
 
 -------------------------------------------------------------------------------

@@ -1,0 +1,7 @@
+import:
+
+    le_wdog.api
+
+sources:
+
+    dogTestRevertAfterTimeout.c

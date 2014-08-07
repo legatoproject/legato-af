@@ -105,4 +105,18 @@ le_result_t le_dir_RemoveRecursive
 );
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Checks if the path refers to a directory.
+ *
+ * @return
+ *      true if the path refers to a directory.  false otherwise.
+ */
+//--------------------------------------------------------------------------------------------------
+bool le_dir_IsDir
+(
+    const char* pathNamePtr     ///< [IN] The path to the directory.
+);
+
+
 #endif // LEGATO_DIR_INCLUDE_GUARD

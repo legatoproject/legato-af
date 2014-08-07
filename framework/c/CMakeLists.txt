@@ -21,23 +21,29 @@ set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--enable-new-dtags")
 # Includes
 include_directories(inc)
 include_directories(src/logDaemon)
+include_directories(src/security)
 include_directories(src/supervisor)
 include_directories(src/serviceDirectory)
 
 # Definitions
-add_definitions(-DLEGATO_FRAMEWORK_NICE_LEVEL=-19)
-add_definitions(-DLE_RUNTIME_DIR="/tmp/legato/")
-add_definitions(-DLE_SVCDIR_SERVER_SOCKET_NAME=LE_RUNTIME_DIR"serviceDirectoryServer")
-add_definitions(-DLE_SVCDIR_CLIENT_SOCKET_NAME=LE_RUNTIME_DIR"serviceDirectoryClient")
+set(LEGATO_FRAMEWORK_NICE_LEVEL -19)
+set(LE_RUNTIME_DIR /tmp/legato/)
+set(LE_SVCDIR_SERVER_SOCKET_NAME ${LE_RUNTIME_DIR}serviceDirectoryServer)
+set(LE_SVCDIR_CLIENT_SOCKET_NAME ${LE_RUNTIME_DIR}serviceDirectoryClient)
+
+add_definitions(-DLEGATO_FRAMEWORK_NICE_LEVEL=${LEGATO_FRAMEWORK_NICE_LEVEL})
+add_definitions(-DLE_RUNTIME_DIR=${LE_RUNTIME_DIR})
+add_definitions(-DLE_SVCDIR_SERVER_SOCKET_NAME="${LE_SVCDIR_SERVER_SOCKET_NAME}")
+add_definitions(-DLE_SVCDIR_CLIENT_SOCKET_NAME="${LE_SVCDIR_CLIENT_SOCKET_NAME}")
 
 # Subdirectories
 add_subdirectory(liblegato)
 add_subdirectory(src/logDaemon)
+add_subdirectory(src/security)
 add_subdirectory(src/supervisor)
 add_subdirectory(src/serviceDirectory)
 add_subdirectory(src/configTree)
-add_subdirectory(src/configApi)
-add_subdirectory(src/configAdminApi)
+add_subdirectory(src/watchdog)
 
 # Tests
 enable_testing()
@@ -45,7 +51,6 @@ set(EXECUTABLE_OUTPUT_PATH ${LEGATO_BINARY_DIR}/bin/tests)
 
 add_subdirectory(test/clock)
 add_subdirectory(test/lists)
-#add_subdirectory(test/log)  # Needs full multi-component support.
 add_subdirectory(test/memPool)
 add_subdirectory(test/utf8)
 

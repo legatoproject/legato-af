@@ -13,12 +13,13 @@
  * @ref c_messagingStartUp <br>
  * @ref c_messagingMemoryManagement <br>
  * @ref c_messagingSecurity <br>
- * @ref c_messagingRemoteUserChecking <br>
+ * @ref c_messagingClientUserIdChecking <br>
+ * @ref c_messagingSendingFileDescriptors <br>
  * @ref c_messagingTroubleshooting <br>
  * @ref c_messagingFutureEnhancements <br>
  * @ref c_messagingDesignNotes <br>
  *
- * Message-based interfaces in Legato are implemented in layers. 
+ * Message-based interfaces in Legato are implemented in layers.
  * This low-level messaging API is at the bottom layer.
  * It's designed to support higher layers of the messaging system.  But it's also
  * intended to be easy to hand-code low-level messaging in C, when necessary.
@@ -75,10 +76,10 @@
  * Communication between client and server is done using a message-based protocol. This protocol
  * is defined at a higher layer than this API, so this API doesn't know the structure of the
  * message payloads or the correct message sequences. That means this API can't check
- * for error on the traffic it carries. It does provide a basic mechanism for detecting protocol
- * mismatches by forcing both client and server to tell it the
- * name and version number of the protocol to be used.  The client and server must also provide
- * the maximum message size, as an extra check.
+ * for errors in the traffic it carries. However, it does provide a basic mechanism for detecting
+ * protocol mismatches by forcing both client and server to provide the protocol identifier
+ * of the protocol to be used.  The client and server must also provide
+ * the maximum message size, as an extra sanity check.
  *
  * To make this possible, the client and server must independently call
  * @c le_msg_GetProtocolRef(), to get a reference to a "Protocol" object that encapsulates these
@@ -99,38 +100,6 @@
  * a session (by calling le_msg_CreateSession()), they are required to provide a reference to a
  * Protocol object that they obtained from le_msg_GetProtocolRef().
  *
- * Notice that this allows the messaging API to match a client session to the correct service,
- * running the same protocol, even if there are multiple services with the same service instance
- * name. It also allows a server to provide multiple services using the same service name, if they
- * are running different protocols (where different versions of the same protocol are considered
- * to be different protocols).
- *
- * <b> For example,</b> if an audio playback server that supports two different audio control
- * protocols:
- *
- * -# "audioControl.2" = Audio Control Protocol, version 2
- * -# "mediaStreamControl.1" = Media Stream Control Protocol, version 1
- *
- * and it offers playback on two devices called:
- *
- * -# "speaker"
- * -# "handset"
- *
- * The server could advertise 4 services:
- * - audioControl.2, speaker
- * - audioControl.2, handset
- * - mediaStreamControl.1, speaker
- * - mediaStreamControl.1, handset
- *
- * If a client knows Audio Control Protocol, version 2, it could open a session with the "speaker"
- * service and the messaging system would ensure that it was connected to the correct version of
- * that service (i.e., the one that is running the Audio Control Protocol, version 2).  Likewise,
- * a client that knows Media Stream Control Protocol, version 1 could also open a session with the
- * "speaker" service, and it would automatically be connected to the other "speaker" service (the
- * one that speaks Media Stream Control Protocol, version 1).  However, a client trying to use
- * the "audioControl.1" protocol (Audio Control Protocol, version 1) would not find a service
- * called "speaker", because there isn't such a service running that version of that protocol.
- *
  * @section c_messagingClientUsage Client Usage Model
  *
  * @ref c_messagingClientSending <br>
@@ -138,7 +107,7 @@
  * @ref c_messagingClientClosing <br>
  * @ref c_messagingClientMultithreading <br>
  * @ref c_messagingClientExample
- * 
+ *
  * Clients that want to use a service do the following:
  *  -# Get a reference to the protocol they want to use by calling @c le_msg_GetProtocolRef().
  *  -# Create a session using @c le_msg_CreateSession(), passing in the protocol reference and
@@ -397,7 +366,7 @@
  * @endcode
  *
  * @section c_messagingServerUsage Server Usage Model
- * 
+ *
  * @ref c_messagingServerProcessingMessages <br>
  * @ref c_messagingServerSendingNonResponse <br>
  * @ref c_messagingServerCleanUp <br>
@@ -740,7 +709,7 @@
  *
  * @todo Specify how messaging ACLs are configured.
  *
- * @section c_messagingRemoteUserChecking Client User ID Checking
+ * @section c_messagingClientUserIdChecking Client User ID Checking
  *
  * In rare cases, a server may wish to check the user ID of the remote client.  Generally,
  * this is not necessary because the IPC system enforces user-based access control restrictions
@@ -753,7 +722,7 @@
  *
  * @code
  * uid_t clientUserId;
- * if (le_msg_GetRemoteUserId(sessionRef, &clientUserId) != LE_OK)
+ * if (le_msg_GetClientUserId(sessionRef, &clientUserId) != LE_OK)
  * {
  *     // The session must have closed.
  *     ...
@@ -763,6 +732,28 @@
  *     LE_INFO("My client has user ID %ud.", clientUserId);
  * }
  * @endcode
+ *
+ * @section c_messagingSendingFileDescriptors Sending File Descriptors
+ *
+ * It is possible to send an open file descriptor through an IPC session by adding an fd to a
+ * message before sending it.  On the sender's side, le_msg_SetFd() is used to set the
+ * file descriptor to be sent.  On the receiver's side, le_msg_GetFd() is used to get the fd
+ * from the message.
+ *
+ * The IPC API will close the original fd in the sender's address space once it has
+ * been sent, so if the sender still needs the fd open on its side, it should duplicate the fd
+ * (e.g., using dup() ) before sending it.
+ *
+ * On the receiving side, if the fd is not extracted from the message, it will be closed when
+ * the message is released.  The fd can only be extracted from the message once.  Subsequent
+ * calls to le_msg_GetFd() will return -1.
+ *
+ * As a denial-of-service prevention measure, receiving of file descriptors is disabled by
+ * default on servers.  To enable receiving of file descriptors, the server must call
+ * le_msg_EnableFdReception() on their service.
+ *
+ * @warning DO NOT SEND DIRECTORY FILE DESCRIPTORS.  That can be exploited to break out of chroot()
+ *          jails.
  *
  * @section c_messagingTroubleshooting Troubleshooting
  *
@@ -803,7 +794,7 @@
  *
  * <HR>
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless, Inc. 2013-2014. Use of this work is subject to license.
  */
 
 
@@ -811,7 +802,7 @@
  *
  * Legato @ref c_messaging include file.
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless, Inc. 2013-2014. Use of this work is subject to license.
  */
 
 #ifndef LE_MESSAGING_H_INCLUDE_GUARD
@@ -1096,19 +1087,17 @@ void le_msg_OpenSession
  * Synchronously open a session with a service.  Blocks until the session is open or the attempt
  * is rejected.
  *
- * @note    Only clients open sessions.  Servers must patiently wait for clients to open sessions
+ * This function logs a fatal error and terminates the calling process if unsuccessful.
+ *
+ * @note    Only clients open sessions.  Servers' must patiently wait for clients to open sessions
  *          with them.
  *
- * @warning If the client and server don't agree on the maximum message size for the protocol,
+ * @warning If the client and server do not agree on the maximum message size for the protocol,
  *          then an attempt to open a session between that client and server will result in a fatal
  *          error being logged and the client process being killed.
- *
- * @return  LE_OK if successful.
- *          LE_NOT_PERMITTED if permission to access the service has been denied.
- *          LE_COMM_ERROR if failed to communicate with the Service Directory.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_msg_OpenSessionSync
+void le_msg_OpenSessionSync
 (
     le_msg_SessionRef_t             sessionRef      ///< [in] Reference to the session.
 );
@@ -1150,7 +1139,6 @@ le_msg_ServiceRef_t le_msg_GetSessionService
     le_msg_SessionRef_t sessionRef  ///< [in] Reference to the session.
 );
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Fetches the user ID of the client at the far end of a given IPC session.
@@ -1166,6 +1154,39 @@ le_result_t le_msg_GetClientUserId
     le_msg_SessionRef_t sessionRef, ///< [in] Reference to the session.
     uid_t*              userIdPtr   ///< [out] Ptr to where the result is to be stored on success.
 );
+//--------------------------------------------------------------------------------------------------
+/**
+ * Fetches the user PID of the client at the far end of a given IPC session.
+ *
+ * @warning This function can only be called for the server-side of a session.
+ *
+ * @return LE_OK if successful.
+ *         LE_CLOSED if the session has closed.
+ **/
+//--------------------------------------------------------------------------------------------------
+le_result_t le_msg_GetClientProcessId
+(
+    le_msg_SessionRef_t sessionRef,   ///< [in] Reference to the session.
+    pid_t*              processIdPtr  ///< [out] Ptr to where the result is to be stored on success.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Fetches the user creds of the client at the far end of a given IPC session.
+ *
+ * @warning This function can only be called for the server-side of a session.
+ *
+ * @return LE_OK if successful.
+ *         LE_CLOSED if the session has closed.
+ **/
+//--------------------------------------------------------------------------------------------------
+le_result_t le_msg_GetClientUserCreds
+(
+    le_msg_SessionRef_t sessionRef,   ///< [in] Reference to the session.
+    uid_t*              userIdPtr,    ///< [out] Ptr to where the uid is to be stored on success.
+    pid_t*              processIdPtr  ///< [out] Ptr to where the pid is to be stored on success.
+);
+
 
 
 // =======================================
@@ -1254,6 +1275,37 @@ void* le_msg_GetPayloadPtr
  */
 //--------------------------------------------------------------------------------------------------
 size_t le_msg_GetMaxPayloadSize
+(
+    le_msg_MessageRef_t msgRef      ///< [in] Reference to the message.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets the file descriptor to be sent with this message.
+ *
+ * This file descriptor will be closed when the message is sent (or when it is deleted without
+ * being sent).
+ *
+ * At most one file descriptor is allowed to be sent per message.
+ **/
+//--------------------------------------------------------------------------------------------------
+void le_msg_SetFd
+(
+    le_msg_MessageRef_t msgRef,     ///< [in] Reference to the message.
+    int                 fd          ///< [in] File descriptor.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Fetches a received file descriptor from the message.
+ *
+ * @return The file descriptor, or -1 if no file descriptor was sent with this message or if the
+ *         fd was already fetched from the message.
+ **/
+//--------------------------------------------------------------------------------------------------
+int le_msg_GetFd
 (
     le_msg_MessageRef_t msgRef      ///< [in] Reference to the message.
 );
@@ -1406,6 +1458,20 @@ void le_msg_SetServiceOpenHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Gets the currently registered service open handler and it's context pointer, or NULL if none are
+ * currently registered.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_msg_GetServiceOpenHandler
+(
+    le_msg_ServiceRef_t             serviceRef, ///< [in]  Reference to the service.
+    le_msg_SessionEventHandler_t*   handlerFunc,///< [out] Handler function.
+    void**                          contextPtr  ///< [out] Opaque pointer value to pass to handler.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Registers a function to be called whenever one of this service's sessions is closed by
  * the client.
  *
@@ -1417,6 +1483,20 @@ void le_msg_SetServiceCloseHandler
     le_msg_ServiceRef_t             serviceRef, ///< [in] Reference to the service.
     le_msg_SessionEventHandler_t    handlerFunc,///< [in] Handler function.
     void*                           contextPtr  ///< [in] Opaque pointer value to pass to handler.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets the currently registered service close handler and it's context pointer, or NULL if none are
+ * currently registered.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_msg_GetServiceCloseHandler
+(
+    le_msg_ServiceRef_t             serviceRef, ///< [in]  Reference to the service.
+    le_msg_SessionEventHandler_t*   handlerFunc,///< [out] Handler function.
+    void**                          contextPtr  ///< [out] Opaque pointer value to pass to handler.
 );
 
 

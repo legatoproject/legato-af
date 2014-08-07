@@ -1,9 +1,13 @@
--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 -- Copyright (c) 2012 Sierra Wireless and others.
 -- All rights reserved. This program and the accompanying materials
 -- are made available under the terms of the Eclipse Public License v1.0
--- which accompanies this distribution, and is available at
--- http://www.eclipse.org/legal/epl-v10.html
+-- and Eclipse Distribution License v1.0 which accompany this distribution.
+--
+-- The Eclipse Public License is available at
+--   http://www.eclipse.org/legal/epl-v10.html
+-- The Eclipse Distribution License is available at
+--   http://www.eclipse.org/org/documents/edl-v10.php
 --
 -- Contributors:
 --     Laurent Barthelemy for Sierra Wireless - initial API and implementation
@@ -286,27 +290,28 @@ end
 -- This command reads the value associated with a node in the tree, and
 -- returns it as a result.
 function M.ReadNode(asset, values)
-    local path, policy = unpack(values)
-    path = path and tostring(path) or ""
-    log("RACON-ASSET-TREE", "INFO", "ReadNode: read path %q from asset %s's tree",
-        path, asset.id)
-    local store = asset.tree
-    for i,segment in ipairs(utils_path.segments(path)) do
-        if type(store) ~= "table" then return nil, "path not found" end
-        store = store[segment]
-    end
-    if type(store)=='table' then
-        local function treefilter(k, v)
-            local t = type(v)
-            if t=="function" or t=="userdata" or t=="thread" then return nil end
-            return v
-        end
-        store = utils_table.map(store, treefilter, true, false)
-    end
     if log.musttrace('RACON-ASSET-TREE', 'DETAIL') then
-        log('RACON-ASSET-TREE', 'DETAIL', "path: '%s' = '%s'", path, sprint(store))
+        log('RACON-ASSET-TREE', 'DETAIL', "ReadNode received for asset: '%s', will retrieve: '%s'", asset.id, sprint(values))
     end
-    assert(asset :pushdata(path, store, policy or 'now'))
+    --ReadNode can request several paths, the paths are put in a list.
+    for i, path in ipairs(values) do
+        if type(path) ~= "string" then return nil, "BAD_PARAMETER: ReadNode expects path to be a string" end
+        log("RACON-ASSET-TREE", "INFO", "ReadNode: read path %q from asset %s's tree", path, asset.id)
+        local store = utils_path.get(asset.tree, path)
+        if not store then return nil, "path not found" end
+        if type(store)=='table' then
+            local function treefilter(k, v)
+                local t = type(v)
+                if t=="function" or t=="userdata" or t=="thread" then return nil end
+                return v
+            end
+            store = utils_table.map(store, treefilter, true, false)
+        end
+        if log.musttrace('RACON-ASSET-TREE', 'DETAIL') then
+            log('RACON-ASSET-TREE', 'DETAIL', "path: '%s' = '%s'", path, sprint(store))
+        end
+        assert(asset :pushdata(path, store, 'now'))
+    end
     return 0
 end
 

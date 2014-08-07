@@ -44,6 +44,33 @@ void test1(void)
     LE_PRINT_ARRAY("%i", length, output);
     LE_PRINT_VALUE("%s", response);
     LE_PRINT_VALUE("%s", more);
+
+    // Test file descriptors
+    int fdToServer;
+    int fdFromServer;
+
+    // Open a file known to exist
+    fdToServer = open("/usr/include/stdio.h", O_RDONLY);
+
+    LE_PRINT_VALUE("%i", fdToServer);
+    FileTest(fdToServer, &fdFromServer);
+    LE_PRINT_VALUE("%i", fdFromServer);
+
+    // Read and print out whatever is read from the server fd
+    char buffer[1000];
+    ssize_t numRead;
+
+    numRead = read(fdFromServer, buffer, sizeof(buffer));
+    if (numRead == -1)
+    {
+        LE_INFO("Read error: %s", strerror(errno));
+    }
+    else
+    {
+        buffer[numRead] = '\0';
+        LE_PRINT_VALUE("%zd", numRead);
+        LE_PRINT_VALUE("%s", buffer);
+    }
 }
 
 static TestARef_t HandlerRef;
@@ -123,7 +150,7 @@ void StartTest
     test2();
 }
 
-LE_EVENT_INIT_HANDLER
+COMPONENT_INIT
 {
     StartClient("Test 2");
 

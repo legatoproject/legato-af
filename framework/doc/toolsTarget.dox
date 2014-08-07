@@ -1,0 +1,19 @@
+/** @page toolsTarget Target
+
+Legato has these tools for the target:
+
+@subpage toolsApp <br>
+@subpage toolsCellModem <br>
+@subpage toolsConfigDB <br>
+@subpage toolsExecInApp <br>
+@subpage toolsFWUpdateTarget <br>
+@subpage toolsInspect <br>
+@subpage toolsLogging <br>
+@subpage toolsSdirTool <br>
+
+
+<HR>
+
+Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+
+**/

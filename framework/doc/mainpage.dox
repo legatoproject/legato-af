@@ -1,50 +1,39 @@
-/** @mainpage Welcome
+/** @mainpage Use Legato
+
+Legato is an open source embedded platform built on Linux designed to simplify 
+embedded M2M development.
 
 @section Overview
 
-Legato is an open source embedded platform built on Linux designed to simplify 
-embedded M2M development. 
-
 Legato has everything you need to connect M2M fast:
- - programming language APIs
- - target runtime environment
- - development and build tools
- - automated tests.
 
-Legato's APIs and development tools let you easily write new software components and specify 
-how applications will use those components.
-
-Legato's runtime environment has a set of daemon processes that cooperatively 
-implement execution sandboxes, secure IPC, fault monitoring, and autonomous recovery on your 
-target devices operating in the field.
-
+Programming language APIs<br>
+Legato's APIs and development tools let you easily write new software components 
+and specify how applications will use those components.
+ 
+Target runtime environment <br> 
+Legato's runtime environment has a set of daemon processes that 
+ cooperatively implement execution sandboxes, secure IPC, fault monitoring, and autonomous 
+ recovery on your target devices operating in the field.
+ 
+Development and build tools <br> 
 Legato's build tools turn new code into applications ready packaged 
 for deployment to target devices. And there are other development tools that ease things like 
 testing, troubleshooting, and installing your new software on your devices.
 
-Legato comes with a raft of documentation in a no nonsense format to show you what to do, 
-and automated tests ready to use in your development environment.
+Documentation and automated tests <br> 
+Legato comes with a raft of documentation in a no nonsense 
+ format to show you what to do, and automated tests ready to use in your development environment.
 
-@section gettingStarted Start developing with Legato
+@section summaryMain Documentation
 
-@subpage getstartedMain for installation and setup information.
+@subpage getstartedMain with installation and setup information.
 
-@subpage basicConcepts to learn the basics. 
+@subpage learnBasics of Legato.
 
-After that, move on to:
+@subpage learnAdvanced Legato features.
 
-@subpage appCreating  <br>
-@subpage componentWriting <br>
-@subpage languageIndependentAPIs <br>
-@subpage defFiles <br>
-@subpage buildTools <br>
-@subpage demoApps <br>
-@subpage tools <br>
-@subpage connectingAirVantage <br>
-@subpage legatoServices
-
-
-@section legatoAPIs Legato APIs
+<HR>
 
 The C Programming Language is directly supported by Legato.
 
@@ -53,6 +42,10 @@ Legato @subpage c_APIs.
 Support for other languages like Python, Java, and others will be added in the future.
 
 Other APIs: @ref legatoServices
+
+<HR>
+
+@subpage aboutLegato Legato
 
 <HR>
 

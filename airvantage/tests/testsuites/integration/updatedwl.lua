@@ -11,6 +11,7 @@ local sprint        = sprint
 local table         = table
 local http          = require 'socket.http'
 local loader        = require 'utils.loader' 
+local system        = require 'utils.system'
 
 
 local t = u.newtestsuite 'Server Connector'
@@ -187,7 +188,7 @@ local function setup_test(pkgname, expectedresult, producePkg)
     end
 
     -- copy test package to drop directory
-    os.execute("mkdir -p " .. targetManager.targetdir .. "/runtime/update/drop/")
+    system.mktree(targetManager.targetdir .. "/runtime/update/drop/")
     producePkg(pkgname)
 
     --     if (expectedresult ~= 453) then

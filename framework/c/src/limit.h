@@ -110,6 +110,15 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Maximum string length and byte storage size of memory pool names.
+ */
+//--------------------------------------------------------------------------------------------------
+#define LIMIT_MAX_MEM_POOL_NAME_LEN             31
+#define LIMIT_MAX_MEM_POOL_NAME_BYTES           (LIMIT_MAX_MEM_POOL_NAME_LEN+1)
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Maximum string length and byte storage size of environment variable names.
  */
 //--------------------------------------------------------------------------------------------------
@@ -122,7 +131,7 @@
  * Maximum string length and byte storage size of priority names.
  */
 //--------------------------------------------------------------------------------------------------
-#define LIMIT_MAX_PRIORITY_NAME_LEN             4
+#define LIMIT_MAX_PRIORITY_NAME_LEN             6
 #define LIMIT_MAX_PRIORITY_NAME_BYTES           (LIMIT_MAX_PRIORITY_NAME_LEN+1)
 
 
@@ -172,7 +181,24 @@
  * Maximum number of bytes in a mount entry.
  */
 //--------------------------------------------------------------------------------------------------
-#define LIMIT_MAX_MNT_ENTRY_BYTES               3*LIMIT_MAX_PATH_BYTES
+#define LIMIT_MAX_MNT_ENTRY_BYTES               (3 * LIMIT_MAX_PATH_BYTES)
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum size of an IPC service protocol identity string, including the null terminator byte.
+ */
+//--------------------------------------------------------------------------------------------------
+#define LIMIT_MAX_PROTOCOL_ID_BYTES     128
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum size of an IPC service instance name string, including the null terminator byte.
+ */
+//--------------------------------------------------------------------------------------------------
+#define LIMIT_MAX_SERVICE_NAME_BYTES    128
+
 
 
 #endif // LE_SRC_LIMITS_INCLUDE_GUARD

@@ -243,7 +243,7 @@ static void TestMemoryAudioService
 }
 
 
-LE_EVENT_INIT_HANDLER
+COMPONENT_INIT
 {
     if (le_arg_NumArgs() == 1) {
 

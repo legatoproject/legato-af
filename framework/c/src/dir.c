@@ -180,3 +180,31 @@ le_result_t le_dir_RemoveRecursive
 
     return LE_OK;
 }
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Checks if the path refers to a directory.
+ *
+ * @return
+ *      true if the path refers to a directory.  false otherwise.
+ */
+//--------------------------------------------------------------------------------------------------
+bool le_dir_IsDir
+(
+    const char* pathNamePtr     ///< [IN] The path to the directory.
+)
+{
+    struct stat stats;
+    if (stat(pathNamePtr, &stats) == -1)
+    {
+        if ( (errno == ENOENT) || (errno == ENOTDIR) )
+        {
+            return false;
+        }
+
+        LE_FATAL("Could not stat path '%s'.  %m", pathNamePtr);
+    }
+
+    return S_ISDIR(stats.st_mode);
+}

@@ -2,8 +2,12 @@
  * Copyright (c) 2013 Sierra Wireless and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+ * and Eclipse Distribution License v1.0 which accompany this distribution.
+ *
+ * The Eclipse Public License is available at
+ *   http://www.eclipse.org/legal/epl-v10.html
+ * The Eclipse Distribution License is available at
+ *   http://www.eclipse.org/org/documents/edl-v10.php
  *
  * Contributors:
  *     Romain Perier for Sierra Wireless - initial API and implementation
@@ -11,21 +15,23 @@
 
 #include "lauxlib.h"
 #include "legato.h"
+#include <libgen.h>
 
-#define leLogBinder(level)						                 \
-static int l_LE_##level(lua_State *L)                                                    \
-{                                                                                        \
-    const char *module = luaL_checkstring(L, 1);                                         \
-    const char *msg = luaL_checkstring(L, 2);                                            \
-    lua_Debug ar;                                                                        \
-    /* Get the stack frame context at the given level */                                 \
-    lua_getstack(L, 5, &ar);                                                             \
-    /* Get the filename and the currentline */                                           \
-    lua_getinfo(L, "Sl", &ar);                                                           \
-    char source[32];                                                                     \
-    snprintf(source, sizeof(source), "%s(%s)", module, basename((char*)ar.source));      \
-    _le_log_Send(LE_LOG_##level, NULL, LE_LOG_SESSION, source, "", ar.currentline, msg); \
-    return 0;                                                                            \
+
+#define leLogBinder(level)                                                                     \
+static int l_LE_##level(lua_State *L)                                                          \
+{                                                                                              \
+    const char *module = luaL_checkstring(L, 1);                                               \
+    const char *msg = luaL_checkstring(L, 2);                                                  \
+    lua_Debug ar;                                                                              \
+    /* Get the stack frame context at the given level */                                       \
+    lua_getstack(L, 5, &ar);                                                                   \
+    /* Get the filename and the currentline */                                                 \
+    lua_getinfo(L, "Sl", &ar);                                                                 \
+    char source[32];                                                                           \
+    snprintf(source, sizeof(source), "%s(%s)", module, basename((char*)ar.source));            \
+    _le_log_Send(LE_LOG_##level, NULL, LE_LOG_SESSION, source, "", ar.currentline, "%s", msg); \
+    return 0;                                                                                  \
 }
 
 leLogBinder(DEBUG)

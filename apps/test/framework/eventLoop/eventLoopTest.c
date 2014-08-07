@@ -100,7 +100,7 @@ static void CheckTestResults
 }
 
 
-LE_EVENT_INIT_HANDLER
+COMPONENT_INIT
 {
     Report_t* reportPtr;
 

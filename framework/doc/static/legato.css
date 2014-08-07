@@ -15,7 +15,8 @@ body {
 /* @group Heading Levels */
 
 .contents h1,
-.contents h2 {
+.contents h2,
+.contents h3 {
     border-spacing: 0px;
     padding: 0px;
     text-transform: uppercase;
@@ -35,11 +36,11 @@ h1 {
 }
 
 h2 {
-    font-size: 98%;
+    font-size: 85%;
 }
 
 h3 {
-	font-size: 95%;
+	font-size: 70%;
 }
 
 dt {
@@ -966,3 +967,14 @@ dl.citelist dd {
   }
 }
 
+/* Legato */
+
+div.tool-option
+{
+    margin-left: 50px;
+}
+
+code, pre.fragment
+{
+    word-spacing: -2px;
+}

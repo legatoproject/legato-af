@@ -1,0 +1,12 @@
+sandboxed: false
+
+executables:
+
+    audioDaemon (   $LEGATO_ROOT/components/audio
+                    $LEGATO_AUDIO_PA
+                )
+
+processes:
+
+    run: (audioDaemon)
+    faultAction: restart

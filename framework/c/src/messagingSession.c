@@ -512,6 +512,14 @@ static void CloseSession
 {
     sessionPtr->state = LE_MSG_SESSION_STATE_CLOSED;
 
+    // Always notify the server on close.
+    if (sessionPtr->isClient == false)
+    {
+        // Note: This needs to be done before the FD is closed, incase someone wants to check the
+        //       credentials in their callback.
+        msgService_CallCloseHandler(sessionPtr->serviceRef, sessionPtr);
+    }
+
     // Delete the socket and the FD Monitor.
     if (sessionPtr->fdMonitorRef != NULL)
     {
@@ -526,6 +534,7 @@ static void CloseSession
     PurgeTxnList(sessionPtr);
     PurgeTransmitQueue(sessionPtr);
     PurgeReceiveQueue(sessionPtr);
+
 }
 
 
@@ -585,16 +594,24 @@ static int CreateSocket
 /**
  * Connect a local socket to the Service Directory's client connection socket.
  *
- * @return  LE_OK if successful.
+ * Calls LE_FATAL() on error.
  **/
 //--------------------------------------------------------------------------------------------------
-static le_result_t ConnectToServiceDirectory
+static void ConnectToServiceDirectory
 (
     int fd  ///< [IN] File descriptor of socket to be connected.
 )
 //--------------------------------------------------------------------------------------------------
 {
-    return unixSocket_Connect(fd, LE_SVCDIR_CLIENT_SOCKET_NAME);
+    le_result_t result = unixSocket_Connect(fd, LE_SVCDIR_CLIENT_SOCKET_NAME);
+
+    if (result != LE_OK)
+    {
+        LE_FATAL("Failed to connect to Service Directory. Result = %d (%s).",
+                 result,
+                 LE_RESULT_TXT(result));
+    }
+
 }
 
 
@@ -649,6 +666,7 @@ static inline void DisableWriteabilityNotification
     if (sessionPtr->writeabilityHandlerRef != NULL)
     {
         le_event_ClearFdHandler(sessionPtr->writeabilityHandlerRef);
+        sessionPtr->writeabilityHandlerRef = NULL;
     }
 }
 
@@ -670,8 +688,8 @@ static void RetryOpen
 
     le_msg_ServiceRef_t serviceRef = le_msg_GetSessionService(sessionPtr);
     LE_ERROR("Retrying service (%s:%s)...",
-             le_msg_GetProtocolIdStr(le_msg_GetServiceProtocol(serviceRef)),
-             le_msg_GetServiceName(serviceRef));
+             le_msg_GetServiceName(serviceRef),
+             le_msg_GetProtocolIdStr(le_msg_GetServiceProtocol(serviceRef)));
 
     AttemptOpen(sessionPtr);
 }
@@ -708,8 +726,8 @@ static le_result_t ReceiveSessionOpenResponse
 
         le_msg_ServiceRef_t serviceRef = le_msg_GetSessionService(sessionPtr);
         TRACE("Session opened with service (%s:%s)",
-              le_msg_GetProtocolIdStr(le_msg_GetServiceProtocol(serviceRef)),
-              le_msg_GetServiceName(serviceRef));
+              le_msg_GetServiceName(serviceRef),
+              le_msg_GetProtocolIdStr(le_msg_GetServiceProtocol(serviceRef)));
     }
 
     return result;
@@ -796,8 +814,8 @@ static void ProcessMessageFromServer
     else
     {
         LE_WARN("Discarding indication message from server (%s:%s).",
-                le_msg_GetProtocolIdStr(le_msg_GetServiceProtocol(sessionPtr->serviceRef)),
-                le_msg_GetServiceName(sessionPtr->serviceRef));
+                le_msg_GetServiceName(sessionPtr->serviceRef),
+                le_msg_GetProtocolIdStr(le_msg_GetServiceProtocol(sessionPtr->serviceRef)));
         le_msg_ReleaseMsg(msgRef);
     }
 }
@@ -847,8 +865,8 @@ static void ClientSocketHangUp
     Session_t* sessionPtr = le_event_GetContextPtr();
 
     TRACE("Socket closed for session with service (%s:%s).",
-          le_msg_GetProtocolIdStr(le_msg_GetServiceProtocol(sessionPtr->serviceRef)),
-          le_msg_GetServiceName(sessionPtr->serviceRef));
+          le_msg_GetServiceName(sessionPtr->serviceRef),
+          le_msg_GetProtocolIdStr(le_msg_GetServiceProtocol(sessionPtr->serviceRef)));
 
     switch (sessionPtr->state)
     {
@@ -870,8 +888,8 @@ static void ClientSocketHangUp
             else
             {
                 LE_FATAL("Session closed by server (%s:%s).",
-                         le_msg_GetProtocolIdStr(le_msg_GetServiceProtocol(sessionPtr->serviceRef)),
-                         le_msg_GetServiceName(sessionPtr->serviceRef));
+                         le_msg_GetServiceName(sessionPtr->serviceRef),
+                         le_msg_GetProtocolIdStr(le_msg_GetServiceProtocol(sessionPtr->serviceRef)));
             }
             break;
 
@@ -899,8 +917,8 @@ static void ClientSocketError
     Session_t* sessionPtr = le_event_GetContextPtr();
 
     LE_ERROR("Error detected on socket for session with service (%s:%s).",
-             le_msg_GetProtocolIdStr(le_msg_GetSessionProtocol(sessionPtr)),
-             le_msg_GetServiceName(sessionPtr->serviceRef));
+             le_msg_GetServiceName(sessionPtr->serviceRef),
+             le_msg_GetProtocolIdStr(le_msg_GetSessionProtocol(sessionPtr)));
 
     switch (sessionPtr->state)
     {
@@ -978,12 +996,8 @@ static void ServerSocketHangUp
                 sessionPtr->state);
 
     TRACE("Connection closed by client of service (%s:%s).",
-          le_msg_GetProtocolIdStr(le_msg_GetServiceProtocol(sessionPtr->serviceRef)),
-          le_msg_GetServiceName(sessionPtr->serviceRef));
-
-    // Because the session is closing without the server asking for it to be closed,
-    // notify the server of the closure, if the server wants to know.
-    msgService_CallCloseHandler(sessionPtr->serviceRef, sessionPtr);
+          le_msg_GetServiceName(sessionPtr->serviceRef),
+          le_msg_GetProtocolIdStr(le_msg_GetServiceProtocol(sessionPtr->serviceRef)));
 
     DeleteSession(sessionPtr);
 }
@@ -1004,16 +1018,12 @@ static void ServerSocketError
     Session_t* sessionPtr = le_event_GetContextPtr();
 
     LE_ERROR("Error detected on socket for session with service (%s:%s).",
-             le_msg_GetProtocolIdStr(le_msg_GetSessionProtocol(sessionPtr)),
-             le_msg_GetServiceName(sessionPtr->serviceRef));
+             le_msg_GetServiceName(sessionPtr->serviceRef),
+             le_msg_GetProtocolIdStr(le_msg_GetSessionProtocol(sessionPtr)));
 
     LE_FATAL_IF(sessionPtr->state != LE_MSG_SESSION_STATE_OPEN,
                 "Unexpected session state (%d).",
                 sessionPtr->state);
-
-    // Because the session is closing without the server asking for it to be closed,
-    // notify the server of the closure, if the server wants to know.
-    msgService_CallCloseHandler(sessionPtr->serviceRef, sessionPtr);
 
     DeleteSession(sessionPtr);
 }
@@ -1297,13 +1307,7 @@ static void AttemptOpen
     sessionPtr->socketFd = CreateSocket();
 
     // Connect to the Service Directory's client socket.
-    le_result_t result = ConnectToServiceDirectory(sessionPtr->socketFd);
-    if (result != LE_OK)
-    {
-        LE_FATAL("Failed to connect to Service Directory. Result = %d (%s).",
-                 result,
-                 LE_RESULT_TXT(result));
-    }
+    ConnectToServiceDirectory(sessionPtr->socketFd);
 
     // Send the service identification information to the Service Directory.
     msgService_SendServiceId(sessionPtr->serviceRef, sessionPtr->socketFd);
@@ -1864,19 +1868,17 @@ void le_msg_OpenSession
  * Synchronously open a session with a service.  Blocks until the session is open or the attempt
  * is rejected.
  *
+ * This function logs a fatal error and terminates the calling process if unsuccessful.
+ *
  * @note    Only clients open sessions.  Servers' must patiently wait for clients to open sessions
  *          with them.
  *
  * @warning If the client and server do not agree on the maximum message size for the protocol,
  *          then an attempt to open a session between that client and server will result in a fatal
  *          error being logged and the client process being killed.
- *
- * @return  LE_OK if successful.
- *          LE_NOT_PERMITTED if permission to access the service has been denied.
- *          LE_COMM_ERROR if failed to communicate with the Service Directory.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_msg_OpenSessionSync
+void le_msg_OpenSessionSync
 (
     le_msg_SessionRef_t             sessionRef      ///< [in] Reference to the session.
 )
@@ -1886,26 +1888,21 @@ le_result_t le_msg_OpenSessionSync
 
     sessionRef->state = LE_MSG_SESSION_STATE_OPENING;
 
-    // Create a socket for the session.
-    sessionRef->socketFd = CreateSocket();
-
-    // Connect to the Service Directory's client socket.
-    result = ConnectToServiceDirectory(sessionRef->socketFd);
-
-    if (result != LE_OK)
+    do
     {
-        LE_DEBUG("Failed to connect to Service Directory. Result = %d (%s).",
-                 result,
-                 LE_RESULT_TXT(result));
-        result = LE_COMM_ERROR;
-    }
-    else
-    {
+        // Create a socket for the session.
+        sessionRef->socketFd = CreateSocket();
+
+        // Connect to the Service Directory's client socket.
+        ConnectToServiceDirectory(sessionRef->socketFd);
+
         // Send the service identification information to the Service Directory.
         msgService_SendServiceId(sessionRef->serviceRef, sessionRef->socketFd);
 
         // Block until a response is received.
         result = ReceiveSessionOpenResponse(sessionRef);
+
+        // If a server accepted us,
         if (result == LE_OK)
         {
             // Set the socket non-blocking for future operation.
@@ -1919,21 +1916,99 @@ le_result_t le_msg_OpenSessionSync
 
             sessionRef->state = LE_MSG_SESSION_STATE_OPEN;
         }
+        // Failed attempt.  Retry.
         else
         {
-            le_msg_ServiceRef_t serviceRef = sessionRef->serviceRef;
-            LE_ERROR("Failed to open session with service (%s:%s). Result code = %s.",
-                    le_msg_GetProtocolIdStr(le_msg_GetServiceProtocol(serviceRef)),
-                    le_msg_GetServiceName(serviceRef),
-                    LE_RESULT_TXT(result));
-
             CloseSession(sessionRef);
 
-            result = LE_NOT_PERMITTED;  // Assume that the reason was permissions.
-        }
-    }
+            le_msg_ServiceRef_t serviceRef = le_msg_GetSessionService(sessionRef);
+            LE_ERROR("Retrying service (%s:%s)...",
+                     le_msg_GetServiceName(serviceRef),
+                     le_msg_GetProtocolIdStr(le_msg_GetServiceProtocol(serviceRef)));
 
-    return result;
+        }
+
+    } while (result != LE_OK);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Attempt to synchronously open a session with a service, but just quietly return an error
+ * code if the Service Directory is not running or is unreachable for some other reason.
+ *
+ * This is needed by the Log API, since logging should work even if the Service Directory isn't
+ * running.
+ *
+ * @return  LE_OK if successful.
+ *          LE_COMM_ERROR if the Service Directory cannot be reached.
+ *
+ * @note    Only clients open sessions.  Servers' must patiently wait for clients to open sessions
+ *          with them.
+ *
+ * @warning If the client and server do not agree on the maximum message size for the protocol,
+ *          then an attempt to open a session between that client and server will result in a fatal
+ *          error being logged and the client process being killed.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t msgSession_TryOpenSessionSync
+(
+    le_msg_SessionRef_t             sessionRef      ///< [in] Reference to the session.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    le_result_t result;
+
+    sessionRef->state = LE_MSG_SESSION_STATE_OPENING;
+
+    do
+    {
+        // Create a socket for the session.
+        sessionRef->socketFd = CreateSocket();
+
+        // Connect to the Service Directory's client socket.
+        result = unixSocket_Connect(sessionRef->socketFd, LE_SVCDIR_CLIENT_SOCKET_NAME);
+        if (result != LE_OK)
+        {
+            LE_DEBUG("Failed to open connection to Service Directory (%s).", LE_RESULT_TXT(result));
+            return LE_COMM_ERROR;
+        }
+
+        // Send the service identification information to the Service Directory.
+        msgService_SendServiceId(sessionRef->serviceRef, sessionRef->socketFd);
+
+        // Block until a response is received.
+        result = ReceiveSessionOpenResponse(sessionRef);
+
+        // If a server accepted us,
+        if (result == LE_OK)
+        {
+            // Set the socket non-blocking for future operation.
+            fd_SetNonBlocking(sessionRef->socketFd);
+
+            // Start monitoring for events on this socket.
+            StartSocketMonitoring(sessionRef,
+                                  ClientSocketReadable,
+                                  ClientSocketHangUp,
+                                  ClientSocketError);
+
+            sessionRef->state = LE_MSG_SESSION_STATE_OPEN;
+        }
+        // Failed attempt.  Retry.
+        else
+        {
+            CloseSession(sessionRef);
+
+            le_msg_ServiceRef_t serviceRef = le_msg_GetSessionService(sessionRef);
+            LE_ERROR("Retrying service (%s:%s)...",
+                     le_msg_GetServiceName(serviceRef),
+                     le_msg_GetProtocolIdStr(le_msg_GetServiceProtocol(serviceRef)));
+
+        }
+
+    } while (result != LE_OK);
+
+    return LE_OK;
 }
 
 
@@ -1993,7 +2068,6 @@ le_msg_ServiceRef_t le_msg_GetSessionService
     return sessionRef->serviceRef;
 }
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Fetches the user ID of the client at the far end of a given IPC session.
@@ -2008,6 +2082,45 @@ le_result_t le_msg_GetClientUserId
 (
     le_msg_SessionRef_t sessionRef, ///< [in] Reference to the session.
     uid_t*              userIdPtr   ///< [out] Ptr to where the result is to be stored on success.
+)
+{
+    return le_msg_GetClientUserCreds( sessionRef, userIdPtr, NULL);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Fetches the user PID of the client at the far end of a given IPC session.
+ *
+ * @warning This function can only be called for the server-side of a session.
+ *
+ * @return LE_OK if successful.
+ *         LE_CLOSED if the session has closed.
+ **/
+//--------------------------------------------------------------------------------------------------
+le_result_t le_msg_GetClientProcessId
+(
+    le_msg_SessionRef_t sessionRef,   ///< [in] Reference to the session.
+    pid_t*              processIdPtr  ///< [out] Ptr to where the result is to be stored on success.
+)
+{
+    return le_msg_GetClientUserCreds( sessionRef, NULL, processIdPtr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Fetches the user credentials of the client at the far end of a given IPC session.
+ *
+ * @warning This function can only be called for the server-side of a session.
+ *
+ * @return LE_OK if successful.
+ *         LE_CLOSED if the session has closed.
+ **/
+//--------------------------------------------------------------------------------------------------
+le_result_t le_msg_GetClientUserCreds
+(
+    le_msg_SessionRef_t sessionRef,   ///< [in] Reference to the session.
+    uid_t*              userIdPtr,    ///< [out] Ptr to where the uid is to be stored on success.
+    pid_t*              processIdPtr  ///< [out] Ptr to where the pid is to be stored on success.
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -2034,7 +2147,15 @@ le_result_t le_msg_GetClientUserId
         }
     }
 
-    *userIdPtr = credentials.uid;
+    if (userIdPtr)
+    {
+        *userIdPtr = credentials.uid;
+    }
+
+    if (processIdPtr)
+    {
+        *processIdPtr = credentials.pid;
+    }
 
     return LE_OK;
 }

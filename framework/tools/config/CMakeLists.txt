@@ -8,12 +8,15 @@
 find_package(Legato REQUIRED)
 
 
-set(INTERFACE_DIR "${PROJECT_SOURCE_DIR}/interfaces/")
+set(JANSSON_INC_DIR "${CMAKE_BINARY_DIR}/3rdParty/jansson-2.6/include/")
 
-include_directories("${INTERFACE_DIR}/config/c" "${INTERFACE_DIR}/configAdmin/c")
+mkexe(  config
+            ../config
+            -i ${JANSSON_INC_DIR}
+            -i ../../c/src
+            --ldflags=-ljansson
+        DEPENDS
+            config.c
+        )
 
-
-set_legato_component(config)
-add_legato_internal_executable(config config.c)
-
-target_link_libraries(config le_cfg_api le_cfgAdmin_api)
+target_link_libraries(config le_cfg_api le_cfgAdmin_api jansson)

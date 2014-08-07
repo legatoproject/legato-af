@@ -1,9 +1,4 @@
-/** @page sandboxGen Legato Sandboxes 
-
-Also see 
-
-@ref Security  <br>
-@ref basicRuntimeArch
+/** @page sandboxGen Sandboxes 
 
 @section sandboxGen Legato Sandboxes and Security
  
@@ -25,6 +20,11 @@ Bind-mounted files are updated when the file is updated in the root file system.
 A Legato sandboxed app can access services outside its sandbox, although not directly. All available services are advertised by the 
 Service Directory. Apps connect to services through a request to the Service Directory. The Service Directory grants access only if the 
 app is in the specified service’s access control list (ACL). 
+
+Related info
+
+@ref Security  <br>
+@ref basicRuntimeArch
 
 <HR>
 

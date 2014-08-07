@@ -8,7 +8,7 @@ targetAddr=$1
 # params:
 #       logStr      The log string to search for.
 checkLogStr () {
-    ssh root@$targetAddr "grep \"$1\" /var/log/messages"
+    ssh root@$targetAddr "/sbin/logread | grep \"$1\""
 
     if [ $? != 0 ]
     then
@@ -36,7 +36,8 @@ ssh root@$targetAddr "/usr/local/bin/app stop \"*\""
 sleep 1
 
 # Clear the logs.
-ssh root@$targetAddr "rm /var/log/messages"
+ssh root@$targetAddr "killall syslogd"
+ssh root@$targetAddr "/sbin/syslogd -C1000"
 
 # Run the apps.
 ssh root@$targetAddr  "/usr/local/bin/app start defaultLimitsTest"
@@ -48,10 +49,10 @@ ssh root@$targetAddr  "/usr/local/bin/app start zeroFileSysSize"
 sleep 2
 
 # Grep the logs to check the results.
-checkLogStr "_defaultLimitsTestDefault_Init_Function() .* | ======== Passed ========"
-checkLogStr "_limitsTestDefault_Init_Function() .* | ======== Passed ========"
-checkLogStr "_largeValuesTestDefault_Init_Function() .* | ======== Passed ========"
-checkLogStr "_zeroFileSysSizeTestDefault_Init_Function() .* | ======== Passed ========"
+checkLogStr ".* defaultLimitsTest.* | ======== Passed ========"
+checkLogStr ".* limitsTest.* | ======== Passed ========"
+checkLogStr ".* largeValuesTest.* | ======== Passed ========"
+checkLogStr ".* zeroFileSysSizeTest.* | ======== Passed ========"
 
 
 echo "Limits Test Passed!"

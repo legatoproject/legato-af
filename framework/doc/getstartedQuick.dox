@@ -1,0 +1,21 @@
+/** @page getstartedQuick Quick Start
+
+To run the framework and development environment, there are two quick start options:
+- bootable USB stick
+- development host install.
+
+You'll need to @subpage getstartedConnectDevKit beforehand.
+
+@subpage getstartedBootableUSB  <br>
+@subpage getstartedDevHostInstall  
+
+Both options also require you to @subpage getstartedSetupTarget.
+
+After you've installed everything, you can start working with @subpage getstartedLegatoApps.
+
+If you need to rebuild or customize the target, see @ref getstartedAdvanced topics.
+<HR>
+
+Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+
+**/

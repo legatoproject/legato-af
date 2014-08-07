@@ -1,0 +1,5 @@
+sources:
+    client.c
+
+import:
+    hello = greet.api

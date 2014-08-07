@@ -2,7 +2,7 @@
   * This module implements the le_pos's unit tests.
   *
   *
-  * Copyright (C) Sierra Wireless, Inc. 2013.  All rights reserved. Use of this work is subject to license.
+  * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
   *
   */
 
@@ -173,7 +173,11 @@ void Testle_pos_Fix()
     LE_INFO("Check le_pos_Get3DLocation latitude.%d, longitude.%d, hAccuracy.%d, altitude.%d, vAccuracy.%d", latitude, longitude, hAccuracy, altitude, vAccuracy);
 
     res = le_pos_GetMotion(&hSpeed, &hSpeedAccuracy, &vSpeed, &vSpeedAccuracy);
+#if ENABLE_SIMUL
     CU_ASSERT_EQUAL(res, LE_OUT_OF_RANGE); // No vertical speed available with gnss-AT
+#else
+    CU_ASSERT_EQUAL(res, LE_OK);
+#endif
     LE_INFO("Check le_pos_GetMotion hSpeed.%d, hSpeedAccuracy.%d, vSpeed.%d, vSpeedAccuracy.%d", hSpeed, hSpeedAccuracy, vSpeed, vSpeedAccuracy);
 
     res = le_pos_GetHeading(&heading, NULL);
@@ -195,7 +199,11 @@ void Testle_pos_Fix()
     LE_INFO("Check le_pos_Get3DLocation latitude.%d, longitude.%d, hAccuracy.%d, altitude.%d, vAccuracy.%d", latitude, longitude, hAccuracy, altitude, vAccuracy);
 
     res = le_pos_GetMotion(&hSpeed, &hSpeedAccuracy, &vSpeed, &vSpeedAccuracy);
+#if ENABLE_SIMUL
     CU_ASSERT_EQUAL(res, LE_OUT_OF_RANGE); // No vertical speed available with gnss-AT
+#else
+    CU_ASSERT_EQUAL(res, LE_OK);
+#endif
     LE_INFO("Check le_pos_GetMotion hSpeed.%d, hSpeedAccuracy.%d, vSpeed.%d, vSpeedAccuracy.%d", hSpeed, hSpeedAccuracy, vSpeed, vSpeedAccuracy);
 
     res = le_pos_GetHeading(&heading, NULL);

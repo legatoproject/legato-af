@@ -4,7 +4,7 @@
  *
  *  Run 'mkexe --help' for command-line options and usage help.
  *
- *  Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ *  Copyright (C) Sierra Wireless, Inc. 2013-2014.  Use of this work is subject to license.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -13,6 +13,7 @@
 #include "LegatoObjectModel.h"
 #include "Parser.h"
 #include "mkexe.h"
+#include "InterfaceBuilder.h"
 #include "ComponentBuilder.h"
 #include "ExecutableBuilder.h"
 #include "Utilities.h"
@@ -66,11 +67,28 @@ static void GetCommandLineArgs
     std::string cFlags;  // C compiler flags.
     std::string ldFlags; // Linker flags.
 
+    // Lambda function that gets called once for each occurence of the --cflags (or -C)
+    // argument on the command line.
+    auto cFlagsPush = [&](const char* arg) { cFlags += " "; cFlags += arg; };
+
+    // Lambda function that gets called once for each occurence of the --ldflags (or -L)
+    // argument on the command line.
+    auto ldFlagsPush = [&](const char* arg) { ldFlags += " ";  ldFlags += arg; };
+
     // Lambda functions for handling arguments that can appear more than once on the
     // command line.
-    auto interfaceDirPush = [&](const char* path) { BuildParams.AddInterfaceDir(path); };
-    auto componentDirPush = [&](const char* path) { BuildParams.AddComponentDir(path); };
-    auto contentPush = [&](const char* param) { ContentNames.push_back(param); };
+    auto interfaceDirPush = [&](const char* path)
+        {
+            BuildParams.AddInterfaceDir(legato::DoEnvVarSubstitution(path));
+        };
+    auto componentDirPush = [&](const char* path)
+        {
+            BuildParams.AddComponentDir(legato::DoEnvVarSubstitution(path));
+        };
+    auto contentPush = [&](const char* param)
+        {
+            ContentNames.push_back(legato::DoEnvVarSubstitution(param));
+        };
 
     // Register all our arguments with the argument parser.
     le_arg_AddString(&ExePath,
@@ -105,7 +123,12 @@ static void GetCommandLineArgs
 
     le_arg_AddMultipleString('c',
                              "component-search",
-                             "Add a directory to the component search path.",
+                             "Add a directory to the component search path (same as -s).",
+                             componentDirPush);
+
+    le_arg_AddMultipleString('s',
+                             "source-search",
+                             "Add a directory to the source search path (same as -c).",
                              componentDirPush);
 
     le_arg_AddOptionalFlag(&isVerbose,
@@ -113,18 +136,16 @@ static void GetCommandLineArgs
                            "verbose",
                            "Set into verbose mode for extra diagnostic information.");
 
-    le_arg_AddOptionalString(&cFlags,
-                             "",
-                             'C',
+    le_arg_AddMultipleString('C',
                              "cflags",
-                             "Specify extra flags to be passed to the C compiler.");
+                             "Specify extra flags to be passed to the C compiler.",
+                             cFlagsPush);
 
-    le_arg_AddOptionalString(&ldFlags,
-                             "",
-                             'L',
+    le_arg_AddMultipleString('L',
                              "ldflags",
                              "Specify extra flags to be passed to the linker when linking "
-                             "executables and libraries.");
+                             "executables.",
+                             ldFlagsPush);
 
 
     // Any remaining parameters on the command-line are treated as content items to be included
@@ -139,10 +160,6 @@ static void GetCommandLineArgs
     BuildParams.AddComponentDir(".");
     BuildParams.AddInterfaceDir(".");
 
-    // Add the Legato framework include directory to the include path so people don't have
-    // to keep doing it themselves.
-    BuildParams.AddInterfaceDir("$LEGATO_ROOT/framework/c/inc");
-
     // Store other build params specified on the command-line.
     if (isVerbose)
     {
@@ -153,37 +170,6 @@ static void GetCommandLineArgs
     BuildParams.ObjOutputDir(objOutputDir);
     BuildParams.CCompilerFlags(cFlags);
     BuildParams.LinkerFlags(ldFlags);
-}
-
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Get a Component object for a given component path.
- *
- * @return reference to the Component object.
- */
-//--------------------------------------------------------------------------------------------------
-static legato::Component& GetComponent
-(
-    const std::string& name     ///< Name of the component.
-)
-//--------------------------------------------------------------------------------------------------
-{
-    auto& map = App.ComponentMap();
-
-    // Check if we have already parsed a component with the same name.
-    // If so, it's an error!
-    if (map.find(name) != map.end())
-    {
-        throw legato::Exception("Multiple components with the same name (" + name + ").");
-    }
-
-    // Tell the App to create a new Component object for us and then get the parser to populate it.
-    legato::Component& component = App.CreateComponent(name);
-    legato::parser::ParseComponent(component, BuildParams);
-
-    return component;
 }
 
 
@@ -240,8 +226,7 @@ static legato::Executable& ConstructObjectModel
             // NOTE: For now, we only support one instance of a component per executable, and it is
             //       identified by the file system path to that component (relative to a directory
             //       somewhere in the component search path).
-            legato::Component& component = GetComponent(contentName);
-            exe.AddComponentInstance(legato::ComponentInstance(component));
+            legato::parser::AddComponentToExe(&App, &exe, contentName, BuildParams);
         }
         else
         {
@@ -249,6 +234,12 @@ static legato::Executable& ConstructObjectModel
 
             std::cerr << "** ERROR: Couldn't identify content item '"
                       << contentName << "'." << std::endl;
+
+            std::cerr << "Searched in the followind locations:" << std::endl;
+            for (auto path : BuildParams.ComponentDirs())
+            {
+                std::cerr << "    " << path << std::endl;
+            }
 
             errorFound = true;
         }
@@ -280,26 +271,20 @@ static void Build
 )
 //--------------------------------------------------------------------------------------------------
 {
-    // Set the target-specific environment variables (e.g., LEGATO_TARGET).
-    mk::SetTargetSpecificEnvVars(BuildParams.Target());
-
     // Auto-generate the source code file containing main() and add it to the default component.
     ExecutableBuilder_t exeBuilder(BuildParams);
     exeBuilder.GenerateMain(exe);
 
-    // Build all the components.
+    // Build all the components and their sub-components.
+    // Note that this will also generate and build all the interface code needed by the components.
     ComponentBuilder_t componentBuilder(BuildParams);
-    for (auto componentInstance : exe.ComponentInstanceList())
+    for (auto componentInstance : exe.ComponentInstances())
     {
-        // Generate the IPC import/export code.
-        componentBuilder.GenerateInterfaceCode(componentInstance.GetComponent());
-
-        // Build the component.
         componentBuilder.Build(componentInstance.GetComponent());
     }
 
     // Do the final build step for the executable.
-    // Note: All the components need to be built before this.
+    // Note: All the component libraries and interface libraries need to be built before this.
     exeBuilder.Build(exe);
 }
 
@@ -318,6 +303,9 @@ void MakeExecutable
 //--------------------------------------------------------------------------------------------------
 {
     GetCommandLineArgs(argc, argv);
+
+    // Set the target-specific environment variables (e.g., LEGATO_TARGET).
+    mk::SetTargetSpecificEnvVars(BuildParams.Target());
 
     Build(ConstructObjectModel());
 }

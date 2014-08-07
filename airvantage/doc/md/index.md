@@ -20,6 +20,7 @@ This page regroups all stable specifications that are linked to the Embedded fra
     - [Time services](agent/Time_services.html)
     - [Tree Manager](agent/Tree_Manager.html)
         - [Using treemgr handlers for asset management](agent/Using_treemgr_handlers_for_asset_management.html)
+    - [Rest](agent/Rest.html)
 
 - Agent connector libraries
     - [AirVantage Agent Connector library](agent_connector_libraries/Agent_Connector_Library.html)

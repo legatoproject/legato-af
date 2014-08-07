@@ -2,7 +2,7 @@
 /**
  * Definition of the Executable object.
  *
- * Copyright (C) 201 Sierra Wireless Inc., all rights reserved.
+ * Copyright (C) 2013-2014 Sierra Wireless Inc.  Use of this work is subject to license.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -25,13 +25,16 @@ class Executable
 
         /// List of instances of components that will be started by this executable.
         /// (Including one instance of the default component.)
-        std::list<ComponentInstance> m_ComponentInstanceList;
+        std::list<ComponentInstance> m_ComponentInstances;
 
         /// The "default" component that every executable has.
         /// Auto-generated code (such as main()) and all source files added directly to
         /// the executable are all in the "default" component.  There will always be exactly one
         /// instance of the default component, and it is treated differently than other components
-        /// in that it does not get linked to a shared library file.
+        /// in that it gets statically linked into the executable, while other libs get
+        /// dynamically linked
+        /// TODO: Change to treat more like a regular component instance when --static-link option
+        ///       is supported in mk tools.
         Component m_DefaultComponent;
 
     public:
@@ -54,18 +57,23 @@ class Executable
         void EnableDebugging() { m_IsDebuggingEnabled = true; }
         bool IsDebuggingEnabled() const { return m_IsDebuggingEnabled; }
 
-        void AddComponentInstance(ComponentInstance&& instance);
-        const std::list<ComponentInstance>& ComponentInstanceList() const;
+        ComponentInstance& AddComponentInstance(ComponentInstance&& instance);
+        const std::list<ComponentInstance>& ComponentInstances() const;
+        std::list<ComponentInstance>& ComponentInstances() { return m_ComponentInstances; }
+        ComponentInstance& FindComponentInstance(const std::string& name);
 
         /// Add a library directly to the executable's "default" component instance.
         void AddLibrary(std::string path);
 
-        /// Add a C source code file directly to the executable's "default" component instance.
+        /// Add a C/C++ source code file directly to the executable's "default" component instance.
         void AddCSourceFile(std::string path);
 
         /// Fetch a reference to the executable's "default component".
         Component& DefaultComponent() { return m_DefaultComponent; }
         const Component& DefaultComponent() const { return m_DefaultComponent; }
+
+        bool HasCSources() const;
+        bool HasCppSources() const;
 };
 
 

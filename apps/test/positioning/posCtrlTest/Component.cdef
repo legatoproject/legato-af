@@ -1,0 +1,7 @@
+sources:
+
+    posServiceTest.c
+
+import:
+
+    le_posser.api

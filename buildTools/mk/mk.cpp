@@ -2,7 +2,7 @@
 /**
  * Implementation of the "mk" tool, which actually implements both 'mkexe' and 'mkapp'.
  *
- * Copyright (C) 201 Sierra Wireless Inc., all rights reserved.
+ * Copyright (C) 2013-2014 Sierra Wireless Inc.  Use of this work is subject to license.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -12,8 +12,11 @@
 #include <stdexcept>
 
 #include "LegatoObjectModel.h"
+//#include "mkif.h"
+#include "mkcomp.h"
 #include "mkexe.h"
 #include "mkapp.h"
+//#include "mksys.h"
 
 using namespace legato;
 
@@ -32,10 +35,20 @@ int main(int argc, const char** argv)
         {
             MakeExecutable(argc, argv);
         }
+        else if (fileName == "mkcomp")
+        {
+            MakeComponent(argc, argv);
+        }
         else if (fileName == "mkapp")
         {
             MakeApp(argc, argv);
         }
+/*
+        else if (fileName == "mksys")
+        {
+            MakeSystem(argc, argv);
+        }
+*/
         else
         {
             std::cerr << "** ERROR: unknown command name '" << fileName << "'." << std::endl;

@@ -801,6 +801,59 @@ void le_event_ClearFdHandler
     LOCK
     le_ref_DeleteRef(HandlerRefMap, handlerPtr->safeRef);
     UNLOCK
+    handlerPtr->safeRef = NULL;
+
+    // Disable the monitoring of this event.
+    DisableFdMonitoring(monitorPtr, eventType);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Deregisters a handler for a file descriptor event.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_event_ClearFdHandlerByEventType
+(
+    le_event_FdMonitorRef_t  monitorRef, ///< [in] Reference to the File Descriptor Monitor object.
+    le_event_FdEventType_t   eventType   ///< [in] The type of event to clear the handler for.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    LE_ASSERT(eventType < LE_EVENT_NUM_FD_EVENT_TYPES);
+
+    // Look up the File Descriptor Monitor object using the safe reference provided.
+    // Note that the safe reference map is shared by all threads in the process, so it
+    // must be protected using the mutex.  The File Descriptor Monitor objects, on the other
+    // hand, are only allowed to be accessed by the one thread that created them, so it is
+    // safe to unlock the mutex after doing the safe reference lookup.
+    LOCK
+    FdMonitor_t* monitorPtr = le_ref_Lookup(FdMonitorRefMap, monitorRef);
+    UNLOCK
+
+    LE_FATAL_IF(monitorPtr == NULL, "File Descriptor Monitor %p doesn't exist!", monitorRef);
+    LE_FATAL_IF(thread_GetEventRecPtr() != monitorPtr->threadRecPtr,
+                "FD Monitor '%s' (fd %d) is owned by another thread.",
+                monitorPtr->name,
+                monitorPtr->fd);
+
+    // Get a pointer to the Handler object in the appropriate spot for this type of event in the
+    // FD Monitor's array of handlers.
+    Handler_t* handlerPtr = &(monitorPtr->handlerArray[eventType]);
+
+    LE_CRIT_IF(handlerPtr->handlerFunc == NULL,
+               "Handler cleared when not set for FD Monitor '%s' (fd %d), event type %d.",
+               monitorPtr->name,
+               monitorPtr->fd,
+               eventType);
+
+    // Clear the Handler object.
+    handlerPtr->handlerFunc = NULL;
+    handlerPtr->contextPtr = NULL;
+    LOCK
+    le_ref_DeleteRef(HandlerRefMap, handlerPtr->safeRef);
+    UNLOCK
+    handlerPtr->safeRef = NULL;
 
     // Disable the monitoring of this event.
     DisableFdMonitoring(monitorPtr, eventType);

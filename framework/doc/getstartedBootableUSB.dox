@@ -1,0 +1,31 @@
+/** @page getstartedBootableUSB Bootable USB Stick
+
+Legato is available on a self-contained bootable USB stick. This lets you check out how Legato does things without the need to install anything. 
+It’s persistent, so you can muck about: your work will still be saved.
+
+Everything needed to run the Legato framework and development environment is contained on the USB, 
+which includes an installed and configured copy of Developer Studio.
+
+To run the bootable USB:
+
+- Insert USB and power on the dev host.
+- Go to your BIOS configuration tool and open the PC’s Boot Menu. This is different on different hardware models based on the BIOS software and settings. Common hot keys to get to the boot menu include: ESC, F1, F10, F12.
+- Choose the USB stick.
+- Wait for the Ubuntu Install Welcome message to display.
+- Click the Try Ubuntu button (English is the only language option available). After the first use, this no longer displays.
+- Wait for the Desktop to open.
+- Open a terminal, and cd legato. You’ll find these directories: 
+  - legato [version]
+  - legato-airvantage-Sample-master
+  - legato-helloworld-master
+  - legato-modemSample-master
+
+You’ll need to @ref getstartedConnectDevKit, @ref getstartedSetupTarget, and then you’ll be able to start developing and running @ref getstartedLegatoApps.
+
+@warning Don’t try to use the bootable USB to install Legato or Ubuntu – it won’t work and will likely cause grief!
+
+<HR>
+
+Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+
+**/

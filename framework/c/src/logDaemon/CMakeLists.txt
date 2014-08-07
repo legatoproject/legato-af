@@ -5,8 +5,13 @@
 #     Sierra Wireless - initial API and implementation
 #*******************************************************************************
 
-# Don't try to connect to the Log Control Daemon.
-add_definitions(-DNO_LOG_CONTROL)
 
-set_legato_component(logCtrlDaemon)
-add_legato_internal_executable(logCtrlDaemon logDaemon.c)
+mkexe(  logCtrlDaemon
+            ../logDaemon
+            --cflags=-DNO_LOG_CONTROL
+            -i ..
+            -v
+        DEPENDS
+            Component.cdef
+            logDaemon.c
+        )

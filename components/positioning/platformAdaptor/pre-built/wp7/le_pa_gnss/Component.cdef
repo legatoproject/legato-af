@@ -1,0 +1,7 @@
+bundles:
+
+    file: [r] lible_pa_gnss.so  /lib/
+
+requires:
+
+    component: ${LEGATO_MODEM_PA}

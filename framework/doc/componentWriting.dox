@@ -1,9 +1,5 @@
 /** @page componentWriting Write Components
 
-@ref writebasicComponents  <br>
-@ref writecomponentWhatsNext
-
-
 @section writebasicComponents Legato Components
 
 Software components are collections of functionally related software that communicate with
@@ -47,8 +43,8 @@ Other component writing topics:
 Or move to the <b>next level</b>: 
 
 @ref defFiles  <br>
- @ref legatoServices  <br>
- @ref legatoAPIs
+@ref legatoServices  <br>
+@ref c_APIs
 
 <HR>
 

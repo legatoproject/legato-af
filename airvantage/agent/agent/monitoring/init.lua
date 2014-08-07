@@ -1,9 +1,13 @@
--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 -- Copyright (c) 2012 Sierra Wireless and others.
 -- All rights reserved. This program and the accompanying materials
 -- are made available under the terms of the Eclipse Public License v1.0
--- which accompanies this distribution, and is available at
--- http://www.eclipse.org/legal/epl-v10.html
+-- and Eclipse Distribution License v1.0 which accompany this distribution.
+--
+-- The Eclipse Public License is available at
+--   http://www.eclipse.org/legal/epl-v10.html
+-- The Eclipse Distribution License is available at
+--   http://www.eclipse.org/org/documents/edl-v10.php
 --
 -- Contributors:
 --     Sierra Wireless - initial API and implementation
@@ -23,6 +27,7 @@ local os        = require 'os'
 local persist   = require 'persist'
 local utilst    = require 'utils.table'
 local table     = require 'table'
+local system    = require 'utils.system'
 
 local type = type
 local loadstring = loadstring
@@ -422,7 +427,7 @@ function _M.init()
     
     -- Setup installation path
     store_path = (LUA_AF_RW_PATH or "./").."monitoring/"
-    os.execute("mkdir -p "..store_path)
+    system.mktree(store_path)
     
     -- Load predefined monitoring scripts, if any
     local resources_path = (LUA_AF_RO_PATH or "./").."resources/monitoring/"

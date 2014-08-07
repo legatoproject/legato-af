@@ -126,8 +126,10 @@ agent.signalport = 18888
 #### Server connection settings
 
 ~~~{.lua}
---URL on which the agent will try the server connection. This parameter is only relevant for HTTP transport protocol
-server.url = "http://m2mop.net/device/com"
+--URL on which the agent will try the server connection.
+-- Determines the protocol, host, port, and optionally other things such
+-- as path, user, password
+server.url = "tcp://airvantage.net"
 
 --When the device is behind a proxy this settings defines a HTTP proxy.
 -- This parameter is only relevant for HTTP transport protocol
@@ -226,13 +228,15 @@ rest.restricted_uri = {}
 rest.restricted_uri["*"] = true
 
 -- Or per URI
-rest.restricted_uri["devicetree/[%w.]+"] = true
-rest.restricted_uri["application$"] = true
-rest.restricted_uri["application/[%w%.]+"] = true
-rest.restricted_uri["application/[%w%.]+/start"] = true
-rest.restricted_uri["application/[%w%.]+/stop"] = true
-rest.restricted_uri["application/[%w%.]+/configure"] = true
-rest.restricted_uri["update[/%w%?]*$"] = true
+rest.restricted_uri["^devicetree"] = true
+rest.restricted_uri["^server/?$"] = true
+rest.restricted_uri["^application/?$"] = true
+rest.restricted_uri["^application/[%w%.%-_]+/?$"] = true
+rest.restricted_uri["^application/[%w%.%-_]+/start/?$"] = true
+rest.restricted_uri["^application/[%w%.%-_]+/stop/?$"] = true
+rest.restricted_uri["^application/[%w%.%-_]+/configure/?$"] = true
+rest.restricted_uri["^application/[%w%.%-_]+/uninstall/?$"] = true
+rest.restricted_uri["^update/?$"] = true
 ~~~
 
 #### Time related settings
@@ -242,7 +246,7 @@ rest.restricted_uri["update[/%w%?]*$"] = true
 time.activate = true
 
 --timezone: signed integer representing quarter(s) of hour to be added
-to UTC time (examples: -4 for UTC-1, 23 for UTC+5:45, ...)
+--to UTC time (examples: -4 for UTC-1, 23 for UTC+5:45, ...)
 time.timezone = 0
 -- daylight time saving: signed integer (1, -1) to be added to UTC
 time.dst = 0
@@ -435,10 +439,10 @@ data.policy = { } -- list of available Data policies
 -- latency: data sending is triggered some times after a data push. Set to the maximum number of seconds to trigger the data sending after the data has been pushed.
 -- period: data sending is triggered at a given period. Set to the number of second period.
 -- onboot: data sending is triggered after the agent boots. Set to the number of seconds after the agent has boot up.
-data.policy.default = { manual = true } -- default data queue to use when no policy name is used when sending data
+data.policy.default = { latency = 5, onboot = 30 } -- default data queue to use when no policy name is used when sending data
 data.policy.hourly = { latency = 60 * 60 }
 data.policy.daily = { latency = 24 * 60 * 60 }
 data.policy.never = { manual = true }
-data.policy.now = { latency = 5 }
+data.policy.now = { latency = 5, onboot = 30 }
 data.policy.onboot = { onboot = 30 }
 ~~~

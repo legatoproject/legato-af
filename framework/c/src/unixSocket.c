@@ -272,9 +272,14 @@ le_result_t unixSocket_CreateSeqPacketPair
  *
  * @return
  * - LE_OK if successful.
+ * - LE_WOULD_BLOCK if socket is non-blocking and could not be immediately connected.
  * - LE_NOT_FOUND if the path provided does not refer to a listening socket.
  * - LE_NOT_PERMITTED if the calling process does not have permission to connect to that socket.
  * - LE_FAULT if failed for some other reason (check your logs).
+ *
+ * @note In non-blocking mode, if LE_WOULD_BLOCK is returned, monitor the socket fd for
+ *       writeability, and when it becomes writeable, call unixSocket_GetErrorState() to
+ *       find out if the connection succeeded or failed.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t unixSocket_Connect
@@ -312,6 +317,9 @@ le_result_t unixSocket_Connect
 
             case ECONNREFUSED:
                 return LE_NOT_FOUND;
+
+            case EINPROGRESS:
+                return LE_WOULD_BLOCK;
 
             default:
                 LE_ERROR("Connect failed with errno %d (%m).", errno);
@@ -454,7 +462,7 @@ le_result_t unixSocket_SendMsg
     {
         switch (errno)
         {
-            case EAGAIN:
+            case EAGAIN:  // Same as EWOULDBLOCK
                 return LE_NO_MEMORY;
 
             case ENOTCONN:
@@ -612,6 +620,10 @@ le_result_t unixSocket_ReceiveMsg
         {
             return LE_WOULD_BLOCK;
         }
+        else if (errno == ECONNRESET)
+        {
+            return LE_CLOSED;
+        }
         else
         {
             LE_ERROR("recvmsg() failed with errno %d (%m).", errno);
@@ -692,3 +704,31 @@ le_result_t unixSocket_ReceiveDataMsg
                                  NULL,          // fdPtr
                                  NULL);         // credPtr
 }
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Fetches the socket error state code (SO_ERROR).
+ *
+ * @return The SO_ERROR value, or EBADE if failed.
+ */
+//--------------------------------------------------------------------------------------------------
+int unixSocket_GetErrorState
+(
+    int localSocketFd       ///< [IN] fd of local socket that will be used to receive the message.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    int errCode;
+    socklen_t errCodeSize = sizeof(errCode);
+
+    if (getsockopt(localSocketFd, SOL_SOCKET, SO_ERROR, &errCode, &errCodeSize) == -1)
+    {
+        LE_ERROR("Failed to read socket option SOL_ERROR (%m) for fd %d.", localSocketFd);
+        return EFAULT;
+    }
+
+    return errCode;
+}
+

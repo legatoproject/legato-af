@@ -58,7 +58,7 @@ void test_le_hex_BinaryToString(void)
     CU_PASS("le_hex_BinaryToString");
 }
 
-LE_EVENT_INIT_HANDLER
+COMPONENT_INIT
 {
     CU_TestInfo test_array[] = {
     { "Convert HexString to binary" , test_le_hex_StringToBinary },

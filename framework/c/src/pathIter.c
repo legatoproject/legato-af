@@ -473,6 +473,11 @@ static le_result_t AppendNode
 
         ssize_t position = FindPrevNodeIndex(iterPtr, iterPtr->pathSize);
 
+        if (position > iterPtr->separatorSize)
+        {
+            position -= iterPtr->separatorSize;
+        }
+
         iterPtr->path[position] = 0;
         iterPtr->pathSize = position;
 
@@ -940,9 +945,20 @@ void le_pathIter_Truncate
 
     LE_ASSERT(iterPtr->currNodeIndex <= iterPtr->pathSize);
 
+    // Clear out the path at the current node index.
     iterPtr->path[iterPtr->currNodeIndex] = 0;
     iterPtr->pathSize = iterPtr->currNodeIndex;
 
+    // If there is a seperator at the end of the path, remove it now.
+    if (   (EndsWithSeparator(iterPtr) == true)
+        && ((iterPtr->currNodeIndex - iterPtr->separatorSize) > iterPtr->firstNodeIndex))
+    {
+        iterPtr->currNodeIndex -= iterPtr->separatorSize;
+        iterPtr->path[iterPtr->currNodeIndex] = 0;
+        iterPtr->pathSize = iterPtr->currNodeIndex;
+    }
+
+    // Reset the iterator to match the new reality.
     ResetIterator(iterPtr);
 }
 

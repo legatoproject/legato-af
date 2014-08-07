@@ -355,16 +355,29 @@ static void TestUnixStyleIterator(void)
 }
 
 
+static bool TestPath
+(
+    le_pathIter_Ref_t iteratorRef,
+    const char* pathStrPtr
+)
+{
+    char fullPath[LARGE_BUFFER_SIZE] = { 0 };
+
+    LE_ASSERT(le_pathIter_GetPath(iteratorRef, fullPath, LARGE_BUFFER_SIZE) == LE_OK);
+    LE_INFO("Compare path, got: '%s', expected: '%s'", fullPath, pathStrPtr);
+
+    return strcmp(fullPath, pathStrPtr) == 0;
+}
+
+
 static void TestUnixStyleAppends(void)
 {
     LE_INFO("======== Test Unix Style Appends.");
-    char fullPath[LARGE_BUFFER_SIZE] = { 0 };
 
     {
         le_pathIter_Ref_t iteratorRef = le_pathIter_CreateForUnix("/a/b/c");
         LE_TEST(le_pathIter_Append(iteratorRef, "x/y/z") == LE_OK);
-        LE_TEST(le_pathIter_GetPath(iteratorRef, fullPath, LARGE_BUFFER_SIZE) == LE_OK);
-        LE_TEST(strcmp(fullPath, "/a/b/c/x/y/z") == 0);
+        LE_TEST(TestPath(iteratorRef, "/a/b/c/x/y/z"));
         LE_TEST(le_pathIter_IsAbsolute(iteratorRef) == true);
         le_pathIter_Delete(iteratorRef);
     }
@@ -372,8 +385,7 @@ static void TestUnixStyleAppends(void)
     {
         le_pathIter_Ref_t iteratorRef = le_pathIter_CreateForUnix("/a/b/c");
         LE_TEST(le_pathIter_Append(iteratorRef, "../x/y/z") == LE_OK);
-        LE_TEST(le_pathIter_GetPath(iteratorRef, fullPath, LARGE_BUFFER_SIZE) == LE_OK);
-        LE_TEST(strcmp(fullPath, "/a/b/x/y/z") == 0);
+        LE_TEST(TestPath(iteratorRef, "/a/b/x/y/z"));
         LE_TEST(le_pathIter_IsAbsolute(iteratorRef) == true);
         le_pathIter_Delete(iteratorRef);
     }
@@ -381,8 +393,7 @@ static void TestUnixStyleAppends(void)
     {
         le_pathIter_Ref_t iteratorRef = le_pathIter_CreateForUnix("/a/b/c");
         LE_TEST(le_pathIter_Append(iteratorRef, "../../x/y/z") == LE_OK);
-        LE_TEST(le_pathIter_GetPath(iteratorRef, fullPath, LARGE_BUFFER_SIZE) == LE_OK);
-        LE_TEST(strcmp(fullPath, "/a/x/y/z") == 0);
+        LE_TEST(TestPath(iteratorRef, "/a/x/y/z"));
         LE_TEST(le_pathIter_IsAbsolute(iteratorRef) == true);
         le_pathIter_Delete(iteratorRef);
     }
@@ -390,8 +401,7 @@ static void TestUnixStyleAppends(void)
     {
         le_pathIter_Ref_t iteratorRef = le_pathIter_CreateForUnix("/a/b/c");
         LE_TEST(le_pathIter_Append(iteratorRef, "../../../x/y/z") == LE_OK);
-        LE_TEST(le_pathIter_GetPath(iteratorRef, fullPath, LARGE_BUFFER_SIZE) == LE_OK);
-        LE_TEST(strcmp(fullPath, "/x/y/z") == 0);
+        LE_TEST(TestPath(iteratorRef, "/x/y/z"));
         LE_TEST(le_pathIter_IsAbsolute(iteratorRef) == true);
         le_pathIter_Delete(iteratorRef);
     }
@@ -399,8 +409,7 @@ static void TestUnixStyleAppends(void)
     {
         le_pathIter_Ref_t iteratorRef = le_pathIter_CreateForUnix("/a/b/c");
         LE_TEST(le_pathIter_Append(iteratorRef, "../../../../x/y/z") == LE_UNDERFLOW);
-        LE_TEST(le_pathIter_GetPath(iteratorRef, fullPath, LARGE_BUFFER_SIZE) == LE_OK);
-        LE_TEST(strcmp(fullPath, "/") == 0);
+        LE_TEST(TestPath(iteratorRef, "/"));
         LE_TEST(le_pathIter_IsAbsolute(iteratorRef) == true);
         le_pathIter_Delete(iteratorRef);
     }
@@ -408,8 +417,7 @@ static void TestUnixStyleAppends(void)
     {
         le_pathIter_Ref_t iteratorRef = le_pathIter_CreateForUnix("a/b/c");
         LE_TEST(le_pathIter_Append(iteratorRef, "../../../x/y/z") == LE_OK);
-        LE_TEST(le_pathIter_GetPath(iteratorRef, fullPath, LARGE_BUFFER_SIZE) == LE_OK);
-        LE_TEST(strcmp(fullPath, "x/y/z") == 0);
+        LE_TEST(TestPath(iteratorRef, "x/y/z"));
         LE_TEST(le_pathIter_IsAbsolute(iteratorRef) == false);
         le_pathIter_Delete(iteratorRef);
     }
@@ -417,8 +425,7 @@ static void TestUnixStyleAppends(void)
     {
         le_pathIter_Ref_t iteratorRef = le_pathIter_CreateForUnix("a/b/c");
         LE_TEST(le_pathIter_Append(iteratorRef, "../../../../x/y/z") == LE_OK);
-        LE_TEST(le_pathIter_GetPath(iteratorRef, fullPath, LARGE_BUFFER_SIZE) == LE_OK);
-        LE_TEST(strcmp(fullPath, "../x/y/z") == 0);
+        LE_TEST(TestPath(iteratorRef, "../x/y/z"));
         LE_TEST(le_pathIter_IsAbsolute(iteratorRef) == false);
         le_pathIter_Delete(iteratorRef);
     }
@@ -426,8 +433,7 @@ static void TestUnixStyleAppends(void)
     {
         le_pathIter_Ref_t iteratorRef = le_pathIter_CreateForUnix("/a/b/c");
         LE_TEST(le_pathIter_Append(iteratorRef, "/x/y/z") == LE_OK);
-        LE_TEST(le_pathIter_GetPath(iteratorRef, fullPath, LARGE_BUFFER_SIZE) == LE_OK);
-        LE_TEST(strcmp(fullPath, "/x/y/z") == 0);
+        LE_TEST(TestPath(iteratorRef, "/x/y/z"));
         LE_TEST(le_pathIter_IsAbsolute(iteratorRef) == true);
         le_pathIter_Delete(iteratorRef);
     }
@@ -435,8 +441,7 @@ static void TestUnixStyleAppends(void)
     {
         le_pathIter_Ref_t iteratorRef = le_pathIter_CreateForUnix("a/b/c");
         LE_TEST(le_pathIter_Append(iteratorRef, "/x/y/z") == LE_OK);
-        LE_TEST(le_pathIter_GetPath(iteratorRef, fullPath, LARGE_BUFFER_SIZE) == LE_OK);
-        LE_TEST(strcmp(fullPath, "/x/y/z") == 0);
+        LE_TEST(TestPath(iteratorRef, "/x/y/z"));
         LE_TEST(le_pathIter_IsAbsolute(iteratorRef) == true);
         le_pathIter_Delete(iteratorRef);
     }
@@ -444,8 +449,7 @@ static void TestUnixStyleAppends(void)
     {
         le_pathIter_Ref_t iteratorRef = le_pathIter_CreateForUnix("a/b/c");
         LE_TEST(le_pathIter_Append(iteratorRef, "./x/y/z") == LE_OK);
-        LE_TEST(le_pathIter_GetPath(iteratorRef, fullPath, LARGE_BUFFER_SIZE) == LE_OK);
-        LE_TEST(strcmp(fullPath, "a/b/c/x/y/z") == 0);
+        LE_TEST(TestPath(iteratorRef, "a/b/c/x/y/z"));
         LE_TEST(le_pathIter_IsAbsolute(iteratorRef) == false);
         le_pathIter_Delete(iteratorRef);
     }
@@ -453,8 +457,7 @@ static void TestUnixStyleAppends(void)
     {
         le_pathIter_Ref_t iteratorRef = le_pathIter_CreateForUnix("");
         LE_TEST(le_pathIter_Append(iteratorRef, "./x/y/./z") == LE_OK);
-        LE_TEST(le_pathIter_GetPath(iteratorRef, fullPath, LARGE_BUFFER_SIZE) == LE_OK);
-        LE_TEST(strcmp(fullPath, "./x/y/z") == 0);
+        LE_TEST(TestPath(iteratorRef, "./x/y/z"));
         LE_TEST(le_pathIter_IsAbsolute(iteratorRef) == false);
         le_pathIter_Delete(iteratorRef);
     }
@@ -462,8 +465,7 @@ static void TestUnixStyleAppends(void)
     {
         le_pathIter_Ref_t iteratorRef = le_pathIter_CreateForUnix("");
         LE_TEST(le_pathIter_Append(iteratorRef, "/a//path/to/a///some/../place") == LE_OK);
-        LE_TEST(le_pathIter_GetPath(iteratorRef, fullPath, LARGE_BUFFER_SIZE) == LE_OK);
-        LE_TEST(strcmp(fullPath, "/a/path/to/a/place") == 0);
+        LE_TEST(TestPath(iteratorRef, "/a/path/to/a/place"));
         LE_TEST(le_pathIter_IsAbsolute(iteratorRef) == true);
         le_pathIter_Delete(iteratorRef);
     }
@@ -471,8 +473,7 @@ static void TestUnixStyleAppends(void)
     {
         le_pathIter_Ref_t iteratorRef = le_pathIter_Create("", "::", "^^", "__");
         LE_TEST(le_pathIter_Append(iteratorRef, "__::a::::path::to::__::a::some::^^::place") == LE_OK);
-        LE_TEST(le_pathIter_GetPath(iteratorRef, fullPath, LARGE_BUFFER_SIZE) == LE_OK);
-        LE_TEST(strcmp(fullPath, "__::a::path::to::a::place") == 0);
+        LE_TEST(TestPath(iteratorRef, "__::a::path::to::a::place"));
         LE_TEST(le_pathIter_IsAbsolute(iteratorRef) == false);
         le_pathIter_Delete(iteratorRef);
     }
@@ -480,8 +481,7 @@ static void TestUnixStyleAppends(void)
     {
         le_pathIter_Ref_t iteratorRef = le_pathIter_Create("::", "::", "^^", "__");
         LE_TEST(le_pathIter_Append(iteratorRef, "__::a::::path::to::__::a::some::^^::place") == LE_OK);
-        LE_TEST(le_pathIter_GetPath(iteratorRef, fullPath, LARGE_BUFFER_SIZE) == LE_OK);
-        LE_TEST(strcmp(fullPath, "::a::path::to::a::place") == 0);
+        LE_TEST(TestPath(iteratorRef, "::a::path::to::a::place"));
         LE_TEST(le_pathIter_IsAbsolute(iteratorRef) == true);
         le_pathIter_Delete(iteratorRef);
     }
@@ -489,8 +489,7 @@ static void TestUnixStyleAppends(void)
     {
         le_pathIter_Ref_t iteratorRef = le_pathIter_Create("", "/", NULL, NULL);
         LE_TEST(le_pathIter_Append(iteratorRef, "/a//path/./to/a///some/../place") == LE_OK);
-        LE_TEST(le_pathIter_GetPath(iteratorRef, fullPath, LARGE_BUFFER_SIZE) == LE_OK);
-        LE_TEST(strcmp(fullPath, "/a/path/./to/a/some/../place") == 0);
+        LE_TEST(TestPath(iteratorRef, "/a/path/./to/a/some/../place"));
         LE_TEST(le_pathIter_IsAbsolute(iteratorRef) == true);
         le_pathIter_Delete(iteratorRef);
     }
@@ -498,8 +497,7 @@ static void TestUnixStyleAppends(void)
     {
         le_pathIter_Ref_t iteratorRef = le_pathIter_CreateForUnix("");
         LE_TEST(le_pathIter_Append(iteratorRef, "../../../a//path/") == LE_OK);
-        LE_TEST(le_pathIter_GetPath(iteratorRef, fullPath, LARGE_BUFFER_SIZE) == LE_OK);
-        LE_TEST(strcmp(fullPath, "../../../a/path") == 0);
+        LE_TEST(TestPath(iteratorRef, "../../../a/path"));
         LE_TEST(le_pathIter_IsAbsolute(iteratorRef) == false);
         le_pathIter_Delete(iteratorRef);
     }
@@ -507,8 +505,7 @@ static void TestUnixStyleAppends(void)
     {
         le_pathIter_Ref_t iteratorRef = le_pathIter_CreateForUnix("");
         LE_TEST(le_pathIter_Append(iteratorRef, "/a//path/to/a///some/../place") == LE_OK);
-        LE_TEST(le_pathIter_GetPath(iteratorRef, fullPath, LARGE_BUFFER_SIZE) == LE_OK);
-        LE_TEST(strcmp(fullPath, "/a/path/to/a/place") == 0);
+        LE_TEST(TestPath(iteratorRef, "/a/path/to/a/place"));
         LE_TEST(le_pathIter_IsAbsolute(iteratorRef) == true);
 
         LE_TEST(le_pathIter_GoToStart(iteratorRef) == LE_OK);
@@ -521,8 +518,7 @@ static void TestUnixStyleAppends(void)
 
         LE_TEST(le_pathIter_Append(iteratorRef, "nowhere") == LE_OK);
 
-        LE_TEST(le_pathIter_GetPath(iteratorRef, fullPath, LARGE_BUFFER_SIZE) == LE_OK);
-        LE_TEST(strcmp(fullPath, "/a/path/to/nowhere") == 0);
+        LE_TEST(TestPath(iteratorRef, "/a/path/to/nowhere"));
 
         le_pathIter_Delete(iteratorRef);
     }
@@ -530,21 +526,91 @@ static void TestUnixStyleAppends(void)
     {
         le_pathIter_Ref_t iteratorRef = le_pathIter_CreateForUnix("");
         LE_TEST(le_pathIter_Append(iteratorRef, "/a//path/to/a///some/../place") == LE_OK);
-        LE_TEST(le_pathIter_GetPath(iteratorRef, fullPath, LARGE_BUFFER_SIZE) == LE_OK);
-        LE_TEST(strcmp(fullPath, "/a/path/to/a/place") == 0);
+        LE_TEST(TestPath(iteratorRef, "/a/path/to/a/place"));
         LE_TEST(le_pathIter_IsAbsolute(iteratorRef) == true);
 
         LE_TEST(le_pathIter_Append(iteratorRef, "../../nowhere") == LE_OK);
 
-        LE_TEST(le_pathIter_GetPath(iteratorRef, fullPath, LARGE_BUFFER_SIZE) == LE_OK);
-        LE_TEST(strcmp(fullPath, "/a/path/to/nowhere") == 0);
+        LE_TEST(TestPath(iteratorRef, "/a/path/to/nowhere"));
 
+        le_pathIter_Delete(iteratorRef);
+    }
+
+    {
+        le_pathIter_Ref_t iteratorRef = le_pathIter_CreateForUnix("/a/b/c");
+        LE_TEST(TestPath(iteratorRef, "/a/b/c"));
+        LE_TEST(le_pathIter_Append(iteratorRef, "..") == LE_OK);
+        LE_TEST(TestPath(iteratorRef, "/a/b"));
+        LE_TEST(le_pathIter_IsAbsolute(iteratorRef) == true);
+        le_pathIter_Delete(iteratorRef);
+    }
+
+    {
+        le_pathIter_Ref_t iteratorRef = le_pathIter_CreateForUnix("/a/b/c/");
+        LE_TEST(TestPath(iteratorRef, "/a/b/c"));
+        LE_TEST(le_pathIter_Append(iteratorRef, "..") == LE_OK);
+        LE_TEST(TestPath(iteratorRef, "/a/b"));
+        LE_TEST(le_pathIter_IsAbsolute(iteratorRef) == true);
+        le_pathIter_Delete(iteratorRef);
+    }
+
+    {
+        le_pathIter_Ref_t iteratorRef = le_pathIter_CreateForUnix("a/b/c");
+        LE_TEST(TestPath(iteratorRef, "a/b/c"));
+        LE_TEST(le_pathIter_Append(iteratorRef, "..") == LE_OK);
+        LE_TEST(TestPath(iteratorRef, "a/b"));
+        LE_TEST(le_pathIter_IsAbsolute(iteratorRef) == false);
+        le_pathIter_Delete(iteratorRef);
+    }
+
+    {
+        le_pathIter_Ref_t iteratorRef = le_pathIter_CreateForUnix("a/b/c/");
+        LE_TEST(TestPath(iteratorRef, "a/b/c"));
+        LE_TEST(le_pathIter_Append(iteratorRef, "..") == LE_OK);
+        LE_TEST(TestPath(iteratorRef, "a/b"));
+        LE_TEST(le_pathIter_IsAbsolute(iteratorRef) == false);
+        le_pathIter_Delete(iteratorRef);
+    }
+
+    {
+        le_pathIter_Ref_t iteratorRef = le_pathIter_CreateForUnix("/a");
+        LE_TEST(TestPath(iteratorRef, "/a"));
+        LE_TEST(le_pathIter_Append(iteratorRef, "..") == LE_OK);
+        LE_TEST(TestPath(iteratorRef, "/"));
+        LE_TEST(le_pathIter_IsAbsolute(iteratorRef) == true);
+        le_pathIter_Delete(iteratorRef);
+    }
+
+    {
+        le_pathIter_Ref_t iteratorRef = le_pathIter_CreateForUnix("/a/");
+        LE_TEST(TestPath(iteratorRef, "/a"));
+        LE_TEST(le_pathIter_Append(iteratorRef, "..") == LE_OK);
+        LE_TEST(TestPath(iteratorRef, "/"));
+        LE_TEST(le_pathIter_IsAbsolute(iteratorRef) == true);
+        le_pathIter_Delete(iteratorRef);
+    }
+
+    {
+        le_pathIter_Ref_t iteratorRef = le_pathIter_CreateForUnix("a");
+        LE_TEST(TestPath(iteratorRef, "a"));
+        LE_TEST(le_pathIter_Append(iteratorRef, "..") == LE_OK);
+        LE_TEST(TestPath(iteratorRef, ""));
+        LE_TEST(le_pathIter_IsAbsolute(iteratorRef) == false);
+        le_pathIter_Delete(iteratorRef);
+    }
+
+    {
+        le_pathIter_Ref_t iteratorRef = le_pathIter_CreateForUnix("a/");
+        LE_TEST(TestPath(iteratorRef, "a"));
+        LE_TEST(le_pathIter_Append(iteratorRef, "..") == LE_OK);
+        LE_TEST(TestPath(iteratorRef, ""));
+        LE_TEST(le_pathIter_IsAbsolute(iteratorRef) == false);
         le_pathIter_Delete(iteratorRef);
     }
 }
 
 
-LE_EVENT_INIT_HANDLER
+COMPONENT_INIT
 {
     LE_TEST_INIT;
 

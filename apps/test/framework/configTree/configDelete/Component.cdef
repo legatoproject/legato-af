@@ -1,0 +1,8 @@
+import:
+
+    le_cfg.api
+    le_cfgAdmin.api
+
+sources:
+
+    configDelete.c

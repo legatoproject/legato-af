@@ -10,87 +10,24 @@ set(LEGATO_INCLUDE_DIRS_PRIV) #TODO: Handle "Private" option
 
 # Build targets & defines
 set(LEGATO_FRAMEWORK_TARGET                 legato)
+set(LEGATO_ROOT                             ${LEGATO_SOURCE_DIR})
 set(LEGATO_FRAMEWORK_DIR                    ${LEGATO_SOURCE_DIR}/framework/c)
-
-set(LEGATO_TREE_HDLR_TARGET                 le_tree_hdlr)
-set(LEGATO_TREE_HDLR_DIR                    ${LEGATO_SOURCE_DIR}/components/legatoTreeHandler/implementation)
-
-set(LEGATO_CONFIGTREE_API_TARGET            le_cfg_api)
-set(LEGATO_CONFIGTREE_API_DIR               ${LEGATO_SOURCE_DIR}/framework/c/src/configApi)
-
-set(LEGATO_CONFIGTREE_ENTRIES_DIR           ${LEGATO_SOURCE_DIR}/components/cfgEntries)
-
-set(LEGATO_SERVICES_MODEM_TARGET            le_mdm_services)
-set(LEGATO_SERVICES_MODEM_DIR               ${LEGATO_SOURCE_DIR}/components/modemServices/implementation)
-set(LEGATO_SERVICES_MODEM_CLIENT_TARGET     le_mdm_client)
-
-set(LEGATO_SERVICES_POSITIONING_TARGET      le_pos_services)
-set(LEGATO_SERVICES_POSITIONING_DIR         ${LEGATO_SOURCE_DIR}/components/positioning/implementation)
-set(LEGATO_SERVICES_POSITIONING_CLIENT_TARGET     le_pos_client)
-
-set(LEGATO_SERVICES_DCS_CLIENT_TARGET       le_data_client)
-
-set(LEGATO_SERVICES_CNET_CLIENT_TARGET      le_cellnet_client)
-
-set(LEGATO_COMPONENTS_MODEM_TARGET          le_pa)
-set(LEGATO_COMPONENTS_MODEM_DIR             ${LEGATO_SOURCE_DIR}/components/modemServices/platformAdaptor)
-set(LEGATO_COMPONENTS_MODEM_AT_SRC_DIR      ${LEGATO_COMPONENTS_MODEM_DIR}/at/implementation/src)
-
-set(LEGATO_COMPONENTS_AT_MANAGER_TARGET     le_mdm_atmgr)
-set(LEGATO_COMPONENTS_AT_MANAGER_DIR        ${LEGATO_SOURCE_DIR}/components/modemServices/platformAdaptor/at/atManager)
-set(LEGATO_COMPONENTS_AT_MANAGER_INCLUDE_DIRS
-    ${LEGATO_COMPONENTS_AT_MANAGER_DIR}/inc
-    ${LEGATO_COMPONENTS_AT_MANAGER_DIR}/devices/adapter_layer/inc
-    ${LEGATO_COMPONENTS_AT_MANAGER_DIR}/devices/uart/inc
-)
-
-set(LEGATO_SERVICES_AUDIO_TARGET            le_audio_services)
-set(LEGATO_SERVICES_AUDIO_DIR               ${LEGATO_SOURCE_DIR}/components/audio/implementation)
-set(LEGATO_SERVICES_AUDIO_CLIENT_TARGET     le_audio_client)
-
-set(LEGATO_COMPONENTS_AUDIO_TARGET          le_pa_audio)
-set(LEGATO_COMPONENTS_AUDIO_DIR             ${LEGATO_SOURCE_DIR}/components/audio/platformAdaptor)
-
-set(LEGATO_UART_TARGET                      le_uart)
-set(LEGATO_UART_TARGET_DIR                  ${LEGATO_COMPONENTS_AT_MANAGER_DIR}/devices/uart)
-
-set(LEGATO_COMPONENTS_GNSS_TARGET           le_pa_gnss)
-set(LEGATO_COMPONENTS_GNSS_DIR              ${LEGATO_SOURCE_DIR}/components/positioning/platformAdaptor)
+set(LEGATO_LIBRARIES                        ${LIBRARY_OUTPUT_PATH}/liblegato.so -lpthread -lrt)
 
 # Tools
 set(LEGATO_TOOL_IFGEN                       ${LEGATO_SOURCE_DIR}/bin/ifgen)
 set(LEGATO_TOOL_MKAPP                       ${LEGATO_SOURCE_DIR}/bin/mkapp)
 set(LEGATO_TOOL_MKEXE                       ${LEGATO_SOURCE_DIR}/bin/mkexe)
-
-# AirVantage
-if(INCLUDE_AIRVANTAGE)
-    set(AIRVANTAGE_INCLUDE_DIR              ${LEGATO_BINARY_DIR}/airvantage/runtime/itf)
-    set(AIRVANTAGE_LIBRARY_DIR              ${LEGATO_BINARY_DIR}/airvantage/runtime/lib)
-endif()
+set(LEGATO_TOOL_MKCOMP                      ${LEGATO_SOURCE_DIR}/bin/mkcomp)
+set(LEGATO_TOOL_MKSYS                       ${LEGATO_SOURCE_DIR}/bin/mksys)
 
 # C Framework
 set(LEGATO_INCLUDE_DIRS ${LEGATO_INCLUDE_DIRS}
     ${LEGATO_FRAMEWORK_DIR}/inc
 )
 
-# C Framework: Private
-set(LEGATO_INCLUDE_DIRS_PRIV ${LEGATO_INCLUDE_DIRS_PRIV}
-    ${LEGATO_FRAMEWORK_DIR}/src
-    ${LEGATO_FRAMEWORK_DIR}/src/logDaemon
-)
-
-# High-Level Interfaces
-set(LEGATO_INCLUDE_DIRS ${LEGATO_INCLUDE_DIRS}
-    ${LEGATO_SOURCE_DIR}/interfaces/legatoTreeHandler/c
-    ${LEGATO_SOURCE_DIR}/interfaces/modemServices/c
-    ${LEGATO_SOURCE_DIR}/interfaces/positioning/c
-    ${LEGATO_SOURCE_DIR}/interfaces/audio/c
-    ${LEGATO_SOURCE_DIR}/interfaces/dataConnectionService/c
-    ${LEGATO_SOURCE_DIR}/interfaces/cellNetService/c
-    ${LEGATO_SOURCE_DIR}/interfaces/config/c
-)
-
 # Low-Level Interfaces
+# TODO: Get rid of this.
 set(LEGATO_INCLUDE_DIRS_PRIV ${LEGATO_INCLUDE_DIRS_PRIV}
 
     # Components
@@ -104,15 +41,12 @@ set(LEGATO_INCLUDE_DIRS_PRIV ${LEGATO_INCLUDE_DIRS_PRIV}
 
     # Apps
     ${LEGATO_SERVICES_AUDIO_DIR}/src
-    ${LEGATO_SERVICES_MODEM_DIR}/src
+    ${LEGATO_SERVICES_MODEM_DIR}/MdmSvc
     ${LEGATO_SERVICES_POSITIONING_DIR}/src
+    ${LEGATO_SERVICES_VOICECALL_DIR}/src
 
     # ConfigDB entries
     ${LEGATO_CONFIGTREE_ENTRIES_DIR}
-)
-
-set(LEGATO_LIBRARIES
-    ${LEGATO_FRAMEWORK_TARGET}
 )
 
 # Function to add a compile flag for a given target.
@@ -125,6 +59,7 @@ function(add_compile_flags COMPILE_TARGET)
 endfunction()
 
 function(set_legato_component APP_COMPONENT)
+    message("WARNING: Deprecated CMake function used (set_legato_component).")
     # Log Configuration
     add_definitions(-DLE_COMPONENT_NAME=${APP_COMPONENT})
     add_definitions(-DLE_LOG_SESSION=${APP_COMPONENT}_LogSession)
@@ -132,49 +67,21 @@ function(set_legato_component APP_COMPONENT)
 endfunction()
 
 function(clear_legato_component APP_COMPONENT)
+    message("WARNING: Deprecated CMake function used (clear_legato_component).")
     remove_definitions(-DLE_COMPONENT_NAME=${APP_COMPONENT})
     remove_definitions(-DLE_LOG_SESSION=${APP_COMPONENT}_LogSession)
     remove_definitions(-DLE_LOG_LEVEL_FILTER_PTR=${APP_COMPONENT}_LogLevelFilterPtr)
 endfunction()
 
-# Function to compile applications
-function(add_legato_executable EXE_TARGET)
 
-    # Other arguments are sources
-    set(EXE_SOURCES ${ARGN})
+# If embedded, need to build C/C++ code with LEGATO_EMBEDDED defined.
+if(LEGATO_EMBEDDED)
+    set (LEGATO_EMBEDDED_OPTION --cflags=-DLEGATO_EMBEDDED)
+endif()
 
-    # Legato Includes
-    include_directories(${LEGATO_INCLUDE_DIRS})
-
-    # Compile
-    add_executable(${EXE_TARGET}
-        ${LEGATO_SOURCE_DIR}/framework/c/codegen/_le_main.c
-        ${EXE_SOURCES}
-    )
-
-    # Link
-    target_link_libraries(${EXE_TARGET}
-        ${LEGATO_LIBRARIES}
-    )
-
-    # Dependencies
-    add_dependencies(${EXE_TARGET} ${LEGATO_FRAMEWORK_TARGET})
-
-    # Compile flags
-    add_compile_flags(${EXE_TARGET} "-DLE_EXECUTABLE_NAME=${EXE_TARGET}")
-
-endfunction()
-
-# Function to compile internal applications
-function(add_legato_internal_executable)
-
-    # Legato Private Includes
-    include_directories(${LEGATO_INCLUDE_DIRS_PRIV})
-
-    add_legato_executable(${ARGN})
-
-endfunction()
-
+if(AUTOMOTIVE_TARGET)
+    set (LEGATO_AUTOMOTIVE_TARGET_OPTION --cflags=-DAUTOMOTIVE_TARGET)
+endif()
 
 # Function to build a Legato executable using mkexe.
 # The executable will be put in the appropriate target's bin directory.
@@ -188,10 +95,13 @@ function(mkexe EXE_NAME)
             COMMAND ${LEGATO_TOOL_MKEXE}
                           -o ${EXECUTABLE_OUTPUT_PATH}/${EXE_NAME}
                           -w ${CMAKE_CURRENT_BINARY_DIR}
+                          -c ${CMAKE_CURRENT_BINARY_DIR}
+                          -i ${CMAKE_CURRENT_SOURCE_DIR}
                           -l ${LIBRARY_OUTPUT_PATH}
                           -t ${LEGATO_TARGET}
-                          -i ${PROJECT_SOURCE_DIR}/framework/c/inc
-                          -c ${CMAKE_CURRENT_BINARY_DIR}
+                          ${LEGATO_EMBEDDED_OPTION}
+                          ${LEGATO_AUTOMOTIVE_TARGET_OPTION}
+                          -v
                           ${ARGN}
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
             COMMENT "mkexe '${EXE_NAME}': ${EXECUTABLE_OUTPUT_PATH}/${EXE_NAME}"
@@ -202,14 +112,20 @@ function(mkexe EXE_NAME)
             DEPENDS ${EXECUTABLE_OUTPUT_PATH}/${EXE_NAME}
     )
 
+    # Dependencies
+    add_dependencies(${EXE_NAME} ${LEGATO_FRAMEWORK_TARGET})
+
 endfunction()
+
 
 # Function to build a Legato application using mkapp
 # Any subsequent parameters will be passed as-is to mkapp on its command line.
-function(mkapp APP_NAME ADEF)
+function(mkapp ADEF)
 
-    get_filename_component(APP_FILE ${ADEF} NAME_WE)
-    set(APP_PKG "${EXECUTABLE_OUTPUT_PATH}/${APP_FILE}.${LEGATO_TARGET}")
+    get_filename_component(APP_NAME ${ADEF} NAME_WE)
+    set(APP_PKG "${APP_OUTPUT_PATH}/${APP_NAME}.${LEGATO_TARGET}")
+
+    message("mkapp : ${APP_NAME} = ${APP_PKG}")
 
     add_custom_command(
             OUTPUT ${APP_PKG}
@@ -221,7 +137,9 @@ function(mkapp APP_NAME ADEF)
                         -w ${CMAKE_CURRENT_BINARY_DIR}
                         -i ${CMAKE_CURRENT_SOURCE_DIR}
                         -c ${CMAKE_CURRENT_SOURCE_DIR}
-                        -o ${EXECUTABLE_OUTPUT_PATH}
+                        -o ${APP_OUTPUT_PATH}
+                        ${LEGATO_EMBEDDED_OPTION}
+                        ${LEGATO_AUTOMOTIVE_TARGET_OPTION}
                         -v
                         ${ARGN}
             COMMAND
@@ -235,4 +153,92 @@ function(mkapp APP_NAME ADEF)
             DEPENDS ${APP_PKG}
     )
 
+    # Dependencies
+    add_dependencies(${APP_NAME} ${LEGATO_FRAMEWORK_TARGET})
+
 endfunction()
+
+
+# Function to build a Legato component library using mkcomp
+# Any subsequent parameters will be passed as-is to mkapp on its command line.
+function(mkcomp COMP_PATH)
+
+    get_filename_component(COMP_NAME ${COMP_PATH} NAME_WE)
+    set(COMPONENT_LIB "${LIBRARY_OUTPUT_PATH}/lib${COMP_NAME}.so")
+
+    message("mkcomp: ${COMP_NAME} = ${COMPONENT_LIB} (from ${COMP_PATH})")
+
+    add_custom_command(
+            OUTPUT ${COMPONENT_LIB}
+            COMMAND
+                PATH=${LEGATO_SOURCE_DIR}/bin:$ENV{PATH}
+                ${LEGATO_TOOL_MKCOMP}
+                        ${COMP_PATH}
+                        -t ${LEGATO_TARGET}
+                        -w ${CMAKE_CURRENT_BINARY_DIR}
+                        -i ${CMAKE_CURRENT_SOURCE_DIR}
+                        -c ${CMAKE_CURRENT_SOURCE_DIR}
+                        -l ${LIBRARY_OUTPUT_PATH}
+                        ${LEGATO_EMBEDDED_OPTION}
+                        ${LEGATO_AUTOMOTIVE_TARGET_OPTION}
+                        -v
+                        ${ARGN}
+            DEPENDS ${COMP_PATH}/Component.cdef
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+            COMMENT "mkcomp '${COMP_NAME}': ${COMPONENT_LIB}"
+    )
+
+    add_custom_target(${COMP_NAME}
+            ALL
+            DEPENDS ${COMPONENT_LIB}
+    )
+
+    # Dependencies
+    add_dependencies(${COMP_NAME} ${LEGATO_FRAMEWORK_TARGET})
+
+endfunction()
+
+
+# Function to compile applications
+function(add_legato_executable EXE_TARGET)
+
+    message("WARNING: Deprecated CMake function used (add_legato_executable).  Consider changing to mkexe.")
+
+    # Other arguments are sources
+    set(EXE_SOURCES ${ARGN})
+
+    # Legato Includes
+    include_directories(${LEGATO_INCLUDE_DIRS})
+
+    # Compile
+    add_executable(${EXE_TARGET}
+        ${LEGATO_SOURCE_DIR}/framework/c/codegen/_le_main.c
+        ${EXE_SOURCES}
+   )
+
+    # Link
+    target_link_libraries(${EXE_TARGET}
+        ${LEGATO_LIBRARIES}
+    )
+
+    # Dependencies
+    add_dependencies(${EXE_TARGET} ${LEGATO_FRAMEWORK_TARGET} )
+
+    # Compile flags
+    add_compile_flags(${EXE_TARGET} "-DLE_EXECUTABLE_NAME=${EXE_TARGET}")
+
+endfunction()
+
+# Function to compile internal applications
+function(add_legato_internal_executable)
+
+    message("WARNING: Deprecated CMake function used (add_legato_internal_executable).  Consider changing to mkexe.")
+
+    # Legato Private Includes
+    include_directories(${LEGATO_INCLUDE_DIRS_PRIV})
+
+    add_legato_executable(${ARGN})
+
+endfunction()
+
+

@@ -1,0 +1,94 @@
+/** @page defFilesSdef System Definition (.sdef) Files
+
+<c>.sdef</c> files can contain these sections:
+
+@ref defFilesSdefApp <br>
+@ref defFilesSdefBindings
+
+@note Support for @c .sdef files is incomplete.
+
+@section defFilesSdefApp app
+
+An <c>app:</c> section is used to declare than an application is to be deployed to the target
+system.  Furthermore, each `app:` section can be used to override limits and other settings
+for that application.
+
+For example, to deploy a web server and limit its share of the CPU under heavy load to 500
+(see @ref cpuShare),
+
+@verbatim
+app: webServer
+
+    cpuShare: 500
+@endverbatim
+
+Any of the following <c>.adef</c> sections and subsections can also be used as @b subsections of an
+<c>.sdef</c> <c>app:</c> section:
+
+@ref processcoreFileSize <br>
+@ref cpuShare <br>
+@ref faultAction <br>
+@ref fileSystemSize <br>
+@ref groupsAdef <br>
+@ref processmaxFileSize <br>
+@ref memLimit <br>
+@ref processmemLockSize <br>
+@ref mqueueSize <br>
+@ref processnumFds <br>
+@ref numProcs <br>
+@ref processPriority <br>
+@ref rtSignalQueueSize <br>
+@ref sandboxed <br>
+@ref start <br>
+
+Use of one of these in the @c .sdef "app:" section will override the equivalent setting
+for all processes in that application.
+
+
+@section defFilesSdefBindings bindings
+
+This section contains a list of IPC “bindings”, which are essentially connections between
+applications’ external IPC interfaces (listed in the “requires” and “provides” sections of their
+@c .adef files).  Each binding connects one client-side (required) interface to one server-side
+provided interface.
+
+Interfaces are identified using the application name and the interface name, separated
+by a period (‘.’).  The two bound-together interfaces are separated by an equals
+sign (‘=’).
+
+For example,
+
+@verbatim
+app: vavController
+
+app: thermostat
+
+app: airHandlerProxy
+
+bindings:
+    // Connect the VAV controller to the thermostat
+    vavController.temp = thermostat.temp
+    vavController.setpoint = thermostat.setpoint
+
+    // Connect the VAV controller to the supply air duct temperature sensor
+    vavController.ductTemp = ductTemperatureSensor.temp
+
+    // Hook up the VAV control outputs to the damper actuators.
+    vavController.supplyDamper = supplyAirDamper.damper
+    vavController.returnDamper = returnAirDamper.damper
+
+    // Use a network proxy to request duct temperature changes from the Air Handling Unit.
+    vavController.airHandler = airHandlerProxy.airHandler
+@endverbatim
+
+Note that, for security reasons, automatic binding between applications is never performed.
+
+Beware that if an app's required interface instance is left unbound, the process or processes
+that require that interface may not be able to run.
+
+
+<HR>
+
+Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+
+**/

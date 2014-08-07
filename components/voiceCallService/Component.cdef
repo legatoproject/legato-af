@@ -1,0 +1,15 @@
+export:
+
+    le_voicecall.api
+
+import:
+
+    le_mcc_call.api
+    le_mcc_profile.api
+    le_audio.api [types-only]
+    le_mdmDefs.api [types-only]
+
+sources:
+
+    voiceCallServiceServer.c
+

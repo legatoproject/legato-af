@@ -1,0 +1,13 @@
+export:
+
+    le_cellnet.api
+
+import:
+
+    le_sim.api
+    le_mrc.api
+    le_cfg.api
+
+sources:
+
+    cellNetServiceServer.c

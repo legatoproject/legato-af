@@ -219,16 +219,16 @@ le_clk_Time_t le_clk_Multiply
  * the destination buffer will be undefined and the value returned in numBytesPtr will be zero.
  *
  * @return
- *      - LE_OK if the formatted string was copied to destStr
- *      - LE_OVERFLOW if the formatted string would not fit in destStr
+ *      - LE_OK if the formatted string was copied to destStrPtr
+ *      - LE_OVERFLOW if the formatted string would not fit in destStrPtr
  *
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_clk_GetUTCDateTimeString
 (
-    const char* formatSpecStr,     ///< [IN]  Format specifier string, using conversion
+    const char* formatSpecStrPtr,  ///< [IN]  Format specifier string, using conversion
                                    ///        specifiers defined for strftime().
-    char*   destStr,               ///< [OUT] Destination for the formatted date/time string
+    char*   destStrPtr,            ///< [OUT] Destination for the formatted date/time string
     size_t  destSize,              ///< [IN]  Size of the destination buffer in bytes.
     size_t* numBytesPtr            ///< [OUT] Number of bytes copied, not including NULL-terminator.
                                    ///        Parameter can be set to NULL if the number of
@@ -249,20 +249,83 @@ le_result_t le_clk_GetUTCDateTimeString
  * the destination buffer will be undefined, and the value returned in numBytesPtr will be zero.
  *
  * @return
- *      - LE_OK if the formatted string was copied to destStr.
- *      - LE_OVERFLOW if the formatted string would not fit in destStr.
+ *      - LE_OK if the formatted string was copied to destStrPtr.
+ *      - LE_OVERFLOW if the formatted string would not fit in destStrPtr.
  *
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_clk_GetLocalDateTimeString
 (
-    const char* formatSpecStr,     ///< [IN]  Format specifier string, using conversion
+    const char* formatSpecStrPtr,  ///< [IN]  Format specifier string, using conversion
                                    ///        specifiers defined for strftime().
-    char*   destStr,               ///< [OUT] Destination for the formatted date/time string
+    char*   destStrPtr,            ///< [OUT] Destination for the formatted date/time string
     size_t  destSize,              ///< [IN]  Size of the destination buffer in bytes.
     size_t* numBytesPtr            ///< [OUT] Number of bytes copied, not including NULL-terminator.
                                    ///        Parameter can be set to NULL if the number of
                                    ///        bytes copied is not needed.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Generate a printable string representation of a given absolute date/time value as UTC time
+ * (no timezone offset applied).
+ *
+ * The formatted date/time string, including NULL-terminator, will be copied to the destination
+ * buffer, provided it fits, and the number of bytes copied (not including the NULL-terminator)
+ * will be returned in numBytesPtr.
+ *
+ * If the formatted date/time string does not fit in the destination buffer, the contents of
+ * the destination buffer will be undefined and the value returned in numBytesPtr will be zero.
+ *
+ * @return
+ *      - LE_OK if the formatted string was copied to destStrPtr
+ *      - LE_OVERFLOW if the formatted string would not fit in destStrPtr
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_clk_ConvertToUTCString
+(
+    le_clk_Time_t time,            ///< [IN]  date/time to convert
+    const char* formatSpecStrPtr,  ///< [IN]  Format specifier string, using conversion
+                                   ///        specifiers defined for strftime().
+    char*   destStrPtr,            ///< [OUT] Destination for the formatted date/time string
+    size_t  destSize,              ///< [IN]  Size of the destination buffer in bytes.
+    size_t* numBytesPtr            ///< [OUT] Number of bytes copied, not including NULL-terminator.
+                                   ///        Parameter can be set to NULL if the number of
+                                   ///        bytes copied is not needed.
+
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Generate a printable string representation of a given absolute date/time value as a local time
+ * (with timezone offset applied).
+ *
+ * The formatted date/time string, including NULL-terminator, will be copied to the destination
+ * buffer, provided it fits, and the number of bytes copied (not including the NULL-terminator)
+ * will be returned in numBytesPtr.
+ *
+ * If the formatted date/time string does not fit in the destination buffer, then the contents of
+ * the destination buffer are undefined, and the value returned in numBytesPtr is zero.
+ *
+ * @return
+ *      - LE_OK if the formatted string was copied to destStrPtr
+ *      - LE_OVERFLOW if the formatted string would not fit in destStrPtr
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_clk_ConvertToLocalTimeString
+(
+    le_clk_Time_t time,            ///< [IN]  date/time to convert
+    const char* formatSpecStrPtr,  ///< [IN]  Format specifier string, using conversion
+                                   ///        specifiers defined for strftime().
+    char*   destStrPtr,            ///< [OUT] Destination for the formatted date/time string
+    size_t  destSize,              ///< [IN]  Size of the destination buffer in bytes.
+    size_t* numBytesPtr            ///< [OUT] Number of bytes copied, not including NULL-terminator.
+                                   ///        Parameter can be set to NULL if the number of
+                                   ///        bytes copied is not needed.
+
 );
 
 #endif // LEGATO_CLK_INCLUDE_GUARD

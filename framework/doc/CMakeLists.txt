@@ -44,6 +44,7 @@ if(DOXYGEN_FOUND)
             COMMAND cp ${CMAKE_CURRENT_SOURCE_DIR}/static/search.css                             ${DOXYGEN_OUTPUT}/html/search
             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
             COMMENT ${DOC_TITLE} VERBATIM
+            DEPENDS api_headers
         )
 
     endfunction()

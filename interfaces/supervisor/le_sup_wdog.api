@@ -1,0 +1,30 @@
+// -------------------------------------------------------------------------------------------------
+/**
+ * A Supervisor API used by the Watchdog daemon to let the Supervisor know that a watched
+ * process has timed out
+ *
+ * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ */
+// -------------------------------------------------------------------------------------------------
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ * This is a singleton service, only one instance, for private use between watchdog and supervisor.
+ * This is the name by which the service will be registered and by which it can be subscribed to.
+ */
+// -------------------------------------------------------------------------------------------------
+DEFINE API_NAME = "SupervisorWatchdogAPI";
+
+// -------------------------------------------------------------------------------------------------
+/**
+ * WatchdogTimedOut is called by the Watchdog Daemon to alert the Supervisor that a watchdog has
+ * timed out and the Supervisor should check for configured actions for that app/process and
+ * execute them.
+ */
+// -------------------------------------------------------------------------------------------------
+FUNCTION void WatchdogTimedOut
+(
+    uint32 userId,   ///< [IN] The Id of the user that owns the process
+    uint32 procId    ///< [IN] The Id of the process that timed out
+);

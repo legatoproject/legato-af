@@ -47,7 +47,7 @@
  * }
  * @endcode
  *
- * The table does not take control of the keys or values. The map only stores the pointers 
+ * The table does not take control of the keys or values. The map only stores the pointers
  * to these values, not the values themselves. It's the responsibility of the caller to manage
  * the actual data storage.
  *
@@ -102,6 +102,9 @@
  * This code sample shows the callback function must also be aware of the
  * types stored in the table.
  *
+ * However, keep in mind that it is unsafe and undefined to modify the map during
+ * this style of iteration.
+ *
  * Alternatively, the calling function can control the iteration by first
  * calling @c le_hashmap_GetIterator(). This returns an iterator that is ready
  * to return each key/value pair in the map in the order in which they are
@@ -111,6 +114,16 @@
  *
  * @note There is only one iterator per hashtable. Calling le_hashmap_GetIterator()
  * will simply re-initialize the current iterator
+ *
+ * It is possible to add and remove items during this style of iteration.  When
+ * adding items during an iteration it is not guaranteed that the newly added item
+ * will be iterated over.  It's very possible that the newly added item is added in
+ * an earlier location than the iterator is curently pointed at.
+ *
+ * When removing items during an iteration you also have to keep in mind that the
+ * iterator's current item may be the one removed.  If this is the case,
+ * le_hashmap_GetKey, and le_hashmap_GetValue will return NULL until either,
+ * le_hashmap_NextNode, or le_hashmap_PrevNode are called.
  *
  * For example (assuming a table of string/string):
  *
@@ -131,8 +144,6 @@
  * }
  * @endcode
  *
- * Don't modify the contents of the table while iterating. This
- * will lead to the iterator returning an error.
  * If you need to control access to the hashmap, then a mutex can be used.
  *
  * @section c_hashmap_tracing Tracing a map
@@ -140,7 +151,7 @@
  * Hashmaps can be traced using the logging system.
  *
  * If @c le_hashmap_MakeTraceable() is called for a specified hashmap object, the name of that
- * hashmap (the name passed into le_hashmap_Create() ) becomes a trace keyword 
+ * hashmap (the name passed into le_hashmap_Create() ) becomes a trace keyword
  * to enable and disable tracing of that particular hashmap.
  *
  * If @c le_hashmap_EnableTrace() is called for a hashmap object, tracing is
@@ -231,7 +242,7 @@ typedef bool (*le_hashmap_ForEachHandler_t)
 //--------------------------------------------------------------------------------------------------
 /**
  * Create a HashMap.
- * 
+ *
  * If you create a hashmap with a smaller capacity than you actually use, then
  * the map will continue to work, but performance will degrade the more you put in the map.
  *
@@ -391,11 +402,8 @@ le_hashmap_It_Ref_t le_hashmap_GetIterator
 /**
  * Moves the iterator to the next key/value pair in the map. Order is dependent
  * on the hash algorithm and the order of inserts, and is not sorted at all.
- * If the hashmap is modified during iteration, this function will return an error.
  *
  * @return  Returns LE_OK unless you go past the end of the map, then returns LE_NOT_FOUND.
- *          If the iterator has been invalidated by the map changing or you have previously
- *          received a LE_NOT_FOUND then this returns LE_FAULT
  *
  */
 //--------------------------------------------------------------------------------------------------
@@ -406,11 +414,26 @@ le_result_t le_hashmap_NextNode
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Moves the iterator to the previous key/value pair in the map. Order is dependent
+ * on the hash algorithm and the order of inserts, and is not sorted at all.
+ *
+ * @return  Returns LE_OK unless you go past the beginning of the map, then returns LE_NOT_FOUND.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_hashmap_PrevNode
+(
+    le_hashmap_It_Ref_t iteratorRef        ///< [IN] Reference to the iterator
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Retrieves a pointer to the key where the iterator is currently pointing.
  * If the iterator has just been initialized and le_hashmap_NextNode() has not been
  * called, or if the iterator has been invalidated, this will return NULL.
  *
- * @return  Pointer to the current key, or NULL if the iterator has been invalidated or is not ready.
+ * @return  Pointer to the current key, or NULL if the iterator has been invalidated or is not
+ *          ready.
  *
  */
 //--------------------------------------------------------------------------------------------------
@@ -425,7 +448,8 @@ void const * le_hashmap_GetKey
  * If the iterator has just been initialized and le_hashmap_NextNode() has not been
  * called, or if the iterator has been invalidated, this will return NULL.
  *
- * @return  Pointer to the current value, or NULL if the iterator has been invalidated or is not ready.
+ * @return  Pointer to the current value, or NULL if the iterator has been invalidated or is not
+ *          ready.
  *
  */
 //--------------------------------------------------------------------------------------------------
@@ -447,11 +471,11 @@ void const * le_hashmap_GetValue
  *
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_hashmap_GetFirstNode 
+le_result_t le_hashmap_GetFirstNode
 (
     le_hashmap_Ref_t mapRef,   ///< [in] Reference to the map
-    void **firstKeyPtr,        ///> [out] Pointer to the first key
-    void **firstValuePtr       ///> [out] Pointer to the first value
+    void **firstKeyPtr,        ///< [out] Pointer to the first key
+    void **firstValuePtr       ///< [out] Pointer to the first value
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -462,7 +486,7 @@ le_result_t le_hashmap_GetFirstNode
  * if new keys have been added to the map.
  * If NULL is passed as the nextValuePtr then only the key will be returned.
  *
- * @return  LE_OK if the next node is returned. If the keyPtr is not found in the 
+ * @return  LE_OK if the next node is returned. If the keyPtr is not found in the
  *          map then LE_BAD_PARAMETER is returned. LE_NOT_FOUND is returned if the passed
  *          in key is the last one in the map.
  *
@@ -472,8 +496,8 @@ le_result_t le_hashmap_GetNodeAfter
 (
     le_hashmap_Ref_t mapRef,   ///< [in] Reference to the map
     const void* keyPtr,        ///< [in] Pointer to the key to be searched for
-    void **nextKeyPtr,         ///> [out] Pointer to the first key
-    void **nextValuePtr        ///> [out] Pointer to the first value
+    void **nextKeyPtr,         ///< [out] Pointer to the first key
+    void **nextValuePtr        ///< [out] Pointer to the first value
 );
 
 

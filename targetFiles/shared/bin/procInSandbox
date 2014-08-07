@@ -1,0 +1,41 @@
+#!/bin/sh
+
+PrintHelp()
+{
+    PROG_NAME=$(basename $0)
+
+    echo "NAME"
+    echo "        $PROG_NAME - list processes currently inside an application's sandbox directory."
+    echo
+    echo "SYNOPSIS"
+    echo "        $PROG_NAME APP_NAME"
+    echo
+    echo "DESCRIPTION"
+    echo "        APP_NAME is the name of the application."
+}
+
+
+if [ $# -ne 1 ]
+then
+    echo "ERROR: Invalid number of arguments." 1>&2
+    exit 1
+fi
+
+if [ "$1" = "--help" -o "$1" = "-h" ]
+then
+    PrintHelp
+    exit 0
+fi
+
+APP_NAME=$1
+
+for process in `ls -d /proc/[1234567890]* 2> /dev/null`
+do
+    cwd=`ls -l $process/cwd 2> /dev/null | awk '{ print $11 }'`
+
+    if echo "$cwd" | grep /legato/sandboxes/$APP_NAME > /dev/null 2>&1
+    then
+        pid=`basename $process`
+        echo $pid
+    fi
+done

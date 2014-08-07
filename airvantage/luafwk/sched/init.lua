@@ -1,9 +1,13 @@
--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 -- Copyright (c) 2012 Sierra Wireless and others.
 -- All rights reserved. This program and the accompanying materials
 -- are made available under the terms of the Eclipse Public License v1.0
--- which accompanies this distribution, and is available at
--- http://www.eclipse.org/legal/epl-v10.html
+-- and Eclipse Distribution License v1.0 which accompany this distribution.
+--
+-- The Eclipse Public License is available at
+--   http://www.eclipse.org/legal/epl-v10.html
+-- The Eclipse Distribution License is available at
+--   http://www.eclipse.org/org/documents/edl-v10.php
 --
 -- Contributors:
 --     Laurent Barthelemy for Sierra Wireless - initial API and implementation
@@ -68,7 +72,7 @@
 -- in the standard multithreading model, which is preemptive concurrency
 -- with shared memory: we still think that no one can write correct
 -- programs in a language where a=a+1 is not deterministic_"
--- [[pdf](http://www.lua.org/doc/hopl.pdf)]. Hence, Lua coroutines share
+-- ([pdf](http://www.lua.org/doc/hopl.pdf)). Hence, Lua coroutines share
 -- their memory, but give up non-deterministic preemptive scheduling.
 --
 --
@@ -78,7 +82,7 @@
 -- Other languages make the complementary choice: for instance, Erlang
 -- retains preemptive concurrency, but forbids shared memory; although
 -- such languages allow to reach unmatched levels of reliability
--- [[pdf](http://www.sics.se/~joe/thesis/armstrong_thesis_2003.pdf)],
+-- ([pdf](http://www.sics.se/~joe/thesis/armstrong_thesis_2003.pdf)),
 -- they deeply change the way programmers have to model their
 -- programs. They are therefore less suitable to a generalist audience.
 --
@@ -89,7 +93,7 @@
 --
 -- Finally, some process oriented (separate memory and message-passing)
 -- multi-tasking systems are available in Lua, most notably Luaproc
--- [[pdf](http://www.inf.puc-rio.br/~roberto/docs/ry08-05.pdf)]. Although
+-- ([pdf](http://www.inf.puc-rio.br/~roberto/docs/ry08-05.pdf)). Although
 -- such systems make more sense for computation-intensive jobs on
 -- multi-core and distributed architectures, it is possible to make it
 -- cohabit with sched's multitasking (having several Luaproc

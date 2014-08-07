@@ -7,7 +7,7 @@
 
 #define AT_PORT     "/tmp/modem_gnss"
 
-LE_EVENT_INIT_HANDLER
+COMPONENT_INIT
 {
     uint32_t cpt = 5;
     pa_Gnss_Position_t position;

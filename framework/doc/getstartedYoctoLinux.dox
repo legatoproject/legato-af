@@ -1,27 +1,24 @@
 /** @page getstartedYoctoLinux Yocto Linux
 
-
-@ref yoctoDirectories <br>
-@ref prebuiltYoctoImages <br>
-@ref rebuildYoctoImages <br>
-@ref flashYoctoImages <br>
-@ref custYoctoImages <br>
-@subpage getstartedInstallNotes
-
-
-You'll need to complete these steps if you need to setup your board for Yocto.
+You'll need to complete these steps if you need to set up your board for Yocto.
 
 The Yocto Project is an open source collaboration project that provides templates, 
 tools and methods to help you create custom Linux-based systems for embedded products regardless of the hardware architecture.
 
 Legato is compatible with Yocto 1.4.1.
 
+@ref yoctoDirectories <br>
+@ref prebuiltYoctoImages <br>
+@ref rebuildYoctoImages <br>
+@ref flashYoctoImages <br>
+@ref custYoctoImages <br>
+
 @section yoctoDirectories Yocto Linux Directories
 
-Untar the file @b Legato-Linux-Source-mdm9x15-14.1.tar.bz2 to a directory: 
+Untar the file @b Legato-Dist-Source-mdm9x15-14.04.tar.bz2 to a directory: 
 @code 
 $ cd <some directory> 
-$ tar xvjf Legato-Linux-Source-mdm9x15-14.1.tar.bz2
+$ tar xvjf Legato-Linux-Dist-mdm9x15-14.04.tar.bz2
 @endcode
 
 These file/directories will be extracted: 
@@ -59,6 +56,7 @@ Once the build is complete, you'll find new images in the directory:
 ../build/tmp/deploy/images @endcode
 
 Links are created at the end of the build to point to the latest kernel (kernel) and root file system (rootfs)
+@warning You can’t rebuild Yocto images on Ubuntu 13.10.
 
 @section flashYoctoImages Flash Yocto Image
 

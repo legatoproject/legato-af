@@ -36,7 +36,7 @@ Original library can be found [here](http://www.tecgraf.puc-rio.br/~lhf/ftp/lua/
 
 @usage require"pack"
 local bindata = string.pack("zf", "foo", 4.2)
-local mystring,myfloat = string.unpack(bindata, "zf")
+local _, mystring, myfloat = string.unpack(bindata, "zf")
  */
 
 

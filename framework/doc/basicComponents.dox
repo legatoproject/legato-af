@@ -1,8 +1,4 @@
-/** @page basicComponents Legato Components
-
-@ref componentBased  <br>
-@ref programmingModel <br>
-@ref compWhatsNext <br>
+/** @page basicComponents Components
  
 In Legato, a component is a collection of code and other files that are functionally related,
 along with one or more licenses that apply to the component's files.

@@ -1,0 +1,628 @@
+/**
+ * @page c_mdc Modem Data Control
+ *
+ * @ref le_mdc_interface.h "Click here for the API Reference documentation."
+ *
+ * <HR>
+ *
+ * @ref le_mdc_profile <br>
+ * @ref le_mdc_session <br>
+ * @ref le_mdc_dataStatistics <br>
+ *
+ *
+ * A data session is useful for  applications that need to send or receive data over a network
+ * where SMS messages are insufficient.  To start a data session, a data profile must
+ * be configured as specified by the target network.
+ *
+ * The Modem Data Control (mdc) API is used to manage data profiles and data sessions.
+ *
+ *
+ * @section le_mdc_profile Data Profiles
+ *
+ * If a pre-defined data profile has been configured then this profile can
+ * be loaded using @ref le_mdc_GetProfile.
+ * The maximum number of data profiles supported is modem dependent and can be retrieved with
+ * @ref le_mdc_NumProfiles.
+ *
+ * The following data profile parameters can be retrieved:
+ *  - Packet Data Protocol using @ref le_mdc_GetPDP.
+ *  - Access Point Name using @ref le_mdc_GetAPN.
+ *  - Authentication settings using @ref le_mdc_GetAuthentication.
+ *
+ * The following data profile parameters can be set:
+ *  - Packet Data Protocol using @ref le_mdc_SetPDP.
+ *  - Access Point Name using @ref le_mdc_SetAPN.
+ *  - Authentication settings using @ref le_mdc_SetAuthentication.
+ *
+ * @todo
+ *  - Other profile parameters will be configurable in a future version.
+ *
+ * @section le_mdc_session Data Sessions
+ *
+ * A data session can be started using @ref le_mdc_StartSession.  To start a data session, a
+ * data profile must be created and written to the modem, or  an existing data profile
+ * can be used.  A data session can be stopped using @ref le_mdc_StopSession.  The number of
+ * simultaneous data sessions supported is dependent on the modem, but cannot be more than the
+ * maximum number of supported profiles.
+ *
+ * The current state of a data session can be queried using @ref le_mdc_GetSessionState. An application
+ * can also a register handler to be notified when the session state changes. The handler
+ * can be managed using @ref le_mdc_AddSessionStateHandler and @ref le_mdc_RemoveSessionStateHandler.
+ *
+ * Once a data session starts, a Linux network interface is created.  It's the application's responsibility
+ * to configure the network interface, usually through a DHCP client. Query the
+ * interface name using @ref le_mdc_GetInterfaceName.  The IP Preference can be checked with
+ * @ref le_mdc_IsIPv4 or @ref le_mdc_IsIPv6 when the profile is connected. The IP address for the current data session
+ * can be retreived by  @ref le_mdc_GetIPv4Address or @ref le_mdc_GetIPv6Address. The Gateway and DNS
+ * addresses can be retrieved using @ref le_mdc_GetIPv4GatewayAddress, @ref le_mdc_GetIPv4DNSAddresses or
+ * @ref le_mdc_GetIPv6GatewayAddress, @ref le_mdc_GetIPv6DNSAddresses.
+ * The Access Point Name can be retrieved by @ref le_mdc_GetAPN. The Data bearer
+ * Technology can be retreived by @ref le_mdc_GetDataBearerTechnology.
+ *
+ * @section le_mdc_dataStatistics Data Statistics
+ *
+ * Data bytes received/transmitted can be access through @ref le_mdc_GetBytesCounters.
+ * These values correspond to the number of bytes received/transmitted since the last software reset
+ * or the last @ref le_mdc_ResetBytesCounter called.
+ * Making these value persistent after a software reboot is the client responsibility.
+ *
+ * <HR>
+ *
+ * Copyright (C) Sierra Wireless, Inc 2014. Use of this work is subject to license.
+ */
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * @file le_mdc_interface.h
+ *
+ * Legato @ref c_mdc include file.
+ *
+ * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ */
+//--------------------------------------------------------------------------------------------------
+
+// NOTE: string sizes are set to an arbitrary value.  The correct values
+//       still need to be filled in.
+
+/// Maximum number of bytes in a interface name (not including the null-terminator).
+DEFINE  INTERFACE_NAME_MAX_LEN = 10;
+
+/// Maximum number of bytes in a profile name (including the null-terminator).
+DEFINE  INTERFACE_NAME_MAX_BYTES  = (INTERFACE_NAME_MAX_LEN + 1);
+
+/// Maximum number of bytes in an IPv4 address (not including the null-terminator).
+DEFINE  IPV4_ADDR_MAX_LEN = 15;
+
+/// Maximum number of bytes in an IPv4 address (including the null-terminator).
+DEFINE  IPV4_ADDR_MAX_BYTES  = (IPV4_ADDR_MAX_LEN + 1);
+
+/// Maximum number of bytes in an IPv6 address (not including the null-terminator).
+DEFINE  IPV6_ADDR_MAX_LEN = 39;
+
+/// Maximum number of bytes in an IPv6 address (including the null-terminator).
+DEFINE  IPV6_ADDR_MAX_BYTES  = (IPV6_ADDR_MAX_LEN + 1);
+
+/// Maximum number of bytes in a apn name (not including the null-terminator).
+DEFINE  APN_NAME_MAX_LEN = 100;
+
+/// Maximum number of bytes in a apn name (including the null-terminator).
+DEFINE  APN_NAME_MAX_BYTES  = (APN_NAME_MAX_LEN + 1);
+
+/// Maximum number of bytes in a user name (not including the null-terminator).
+DEFINE  USER_NAME_MAX_LEN = 64;
+
+/// Maximum number of bytes in a user name (including the null-terminator).
+DEFINE  USER_NAME_MAX_BYTES  = (USER_NAME_MAX_LEN + 1);
+
+/// Maximum number of bytes in a password name (not including the null-terminator).
+DEFINE  PASSWORD_NAME_MAX_LEN = 100;
+
+/// Maximum number of bytes in a password name (including the null-terminator).
+DEFINE  PASSWORD_NAME_MAX_BYTES  = (PASSWORD_NAME_MAX_LEN + 1);
+
+/// Reference to a modem data connection profile.
+REFERENCE Profile;
+
+
+/// Enumeration of data bearer technologies.
+ENUM DataBearerTechnology
+{
+    DATA_BEARER_TECHNOLOGY_UNKNOWN,               ///< Unknown
+    DATA_BEARER_TECHNOLOGY_GSM,                   ///< GSM
+    DATA_BEARER_TECHNOLOGY_GPRS,                  ///< GPRS
+    DATA_BEARER_TECHNOLOGY_EGPRS,                 ///< Enhanced GPRS (EDGE)
+    DATA_BEARER_TECHNOLOGY_WCDMA,                 ///< WCDMA (UMTS)
+    DATA_BEARER_TECHNOLOGY_HSPA,                  ///< HSPA
+    DATA_BEARER_TECHNOLOGY_HSPA_PLUS,             ///< HSPA+
+    DATA_BEARER_TECHNOLOGY_DC_HSPA_PLUS,          ///< Dual Cell - HSPA+
+    DATA_BEARER_TECHNOLOGY_LTE,                   ///< LTE
+    DATA_BEARER_TECHNOLOGY_TD_SCDMA,              ///< TD-SCDMA
+    DATA_BEARER_TECHNOLOGY_CDMA2000_1X,           ///< CDMA2000 1X
+    DATA_BEARER_TECHNOLOGY_CDMA2000_EVDO,         ///< CDMA2000 HRPD (1xEV-DO)
+    DATA_BEARER_TECHNOLOGY_CDMA2000_EVDO_REVA,    ///< CDMA2000 HRPD (1xEV-DO RevA)
+    DATA_BEARER_TECHNOLOGY_CDMA2000_EHRPD         ///< CDMA2000 EHRPD
+
+};
+
+
+/// Enumeration of Packet Data Protocol.
+ENUM Pdp
+{
+    PDP_UNKNOWN,    ///< Unknown
+    PDP_IPV4,       ///< IPv4
+    PDP_IPV6,       ///< IPv6
+    PDP_IPV4V6      ///< IPv4 and IPv6
+};
+
+
+/// Enumeration of Authentication.
+ENUM Auth
+{
+    AUTH_NONE,    ///< no authentication
+    AUTH_PAP,     ///< PAP protocol
+    AUTH_CHAP     ///< CHAP protocol
+};
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler for Data session connection state changes.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+HANDLER SessionStateHandler
+{
+    ADD_HANDLER_PARAMS
+    (
+        Profile profileRef  ///< The profile object of interest
+    );
+
+    HANDLER_PARAMS
+    (
+        bool   isConnected      ///< Data session connection status.
+    );
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get Profile Reference for index
+ *
+ * @return
+ *      - Reference to the data profile
+ *      - NULL if the profile index does not exist
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION Profile GetProfile
+(
+    uint32 index ///< index of the profile.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the index for the given Profile.
+ *
+ * @return
+ *      - index of the profile in the modem
+ *
+ * @note
+ *      The process exits, if an invalid profile object is given
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION uint32 GetProfileIndex
+(
+    Profile profileRef ///< Query this profile object
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Start profile data session.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_DUPLICATE if the data session is already connected for the given profile
+ *      - LE_NOT_POSSIBLE for other failures
+ *
+ * @note
+ *      The process exits, if an invalid profile object is given
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t StartSession
+(
+    Profile profileRef  ///< Start data session for this profile object
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stop profile data session.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_DUPLICATE if the data session has already been stopped (i.e. it is disconnected)
+ *      - LE_NOT_POSSIBLE for other failures
+ *
+ * @note
+ *      The process exits, if an invalid profile object is given
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t StopSession
+(
+    Profile profileRef ///< Stop data session for this profile object
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the current data session state.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_NOT_POSSIBLE on failure
+ *
+ * @note
+ *      The process exits, if an invalid profile object is given
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetSessionState
+(
+    Profile profileRef,     ///< Query this profile object
+    bool    isConnected OUT ///< The data session state
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the network interface name, if the data session is connected.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_OVERFLOW if the interface name can't fit in interfaceNameStr
+ *      - LE_NOT_POSSIBLE on any other failure
+ *
+ * @note
+ *      The process exits, if an invalid profile object is given
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetInterfaceName
+(
+    Profile profileRef,                                 ///< Query this profile object
+    string  interfaceName[INTERFACE_NAME_MAX_LEN] OUT   ///< The name of the network interface
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the IPv4 address for the given profile, if the data session is connected and has an IPv4
+ * address.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_OVERFLOW if the IP address would not fit in ipAddrStr
+ *      - LE_NOT_POSSIBLE for all other errors
+ *
+ * @note
+ *      The process exits, if an invalid profile object is given
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetIPv4Address
+(
+    Profile profileRef,                     ///< Query this profile object
+    string  ipAddr[IPV4_ADDR_MAX_LEN] OUT   ///< The IP address in dotted format
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the gateway IPv4 address for the given profile, if the data session is connected and has an
+ * IPv4 address.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_OVERFLOW if the IP address would not fit in gatewayAddrStr
+ *      - LE_NOT_POSSIBLE for all other errors
+ *
+ * @note
+ *      The process exits, if an invalid profile object is given
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetIPv4GatewayAddress
+(
+    Profile profileRef,                         ///< Query this profile object
+    string  gatewayAddr[IPV4_ADDR_MAX_LEN] OUT  ///< The gateway IP address in dotted format
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the primary/secondary DNS v4 addresses for the given profile, if the data session is
+ * connected and has an IPv4 address.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_OVERFLOW if the IP address would not fit in buffer
+ *      - LE_NOT_POSSIBLE for all other errors
+ *
+ * @note
+ *      - If only one DNS address is available, then it will be returned, and an empty string will
+ *        be returned for the unavailable address
+ *      - The process exits, if an invalid profile object is given
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetIPv4DNSAddresses
+(
+    Profile profileRef,                         ///< Query this profile object
+    string  dns1AddrStr[IPV4_ADDR_MAX_LEN] OUT, ///< The primary DNS IP address in dotted format
+    string  dns2AddrStr[IPV4_ADDR_MAX_LEN] OUT  ///< The secondary DNS IP address in dotted format
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the IPv6 address for the given profile, if the data session is connected and has an IPv6
+ * address.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_OVERFLOW if the IP address would not fit in ipAddrStr
+ *      - LE_NOT_POSSIBLE for all other errors
+ *
+ * @note
+ *      The process exits, if an invalid profile object is given
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetIPv6Address
+(
+    Profile profileRef,                     ///< Query this profile object
+    string  ipAddr[IPV6_ADDR_MAX_LEN] OUT   ///< The IP address in dotted format
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the gateway IPv6 address for the given profile, if the data session is connected and has an
+ * IPv6 address.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_OVERFLOW if the IP address would not fit in gatewayAddrStr
+ *      - LE_NOT_POSSIBLE for all other errors
+ *
+ * @note
+ *      The process exits, if an invalid profile object is given
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetIPv6GatewayAddress
+(
+    Profile profileRef,                         ///< Query this profile object
+    string  gatewayAddr[IPV6_ADDR_MAX_LEN] OUT  ///< The gateway IP address in dotted format
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the primary/secondary DNS v6 addresses, if the data session is connected and has an IPv6
+ * address.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_OVERFLOW if the IP address can't fit in buffer
+ *      - LE_NOT_POSSIBLE for all other errors
+ *
+ * @note
+ *      - If only one DNS address is available, it will be returned, and an empty string will
+ *        be returned for the unavailable address.
+ *      - The process exits, if an invalid profile object is given
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetIPv6DNSAddresses
+(
+    Profile profileRef,                         ///< Query this profile object
+    string  dns1AddrStr[IPV6_ADDR_MAX_LEN] OUT, ///< The primary DNS IP address in dotted format
+    string  dns2AddrStr[IPV6_ADDR_MAX_LEN] OUT  ///< The secondary DNS IP address in dotted format
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Allow the caller to know if the given profile is actually supporting IPv4, if the data session
+ * is connected.
+ *
+ * @return TRUE if PDP type is IPv4, FALSE otherwise.
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION bool IsIPv4
+(
+    Profile profileRef     ///< Query this profile object
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Allow the caller to know if the given profile is actually supporting IPv6, if the data session
+ * is connected.
+ *
+ * @return TRUE if PDP type is IPv6, FALSE otherwise.
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION bool IsIPv6
+(
+    Profile profileRef     ///< Query this profile object
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Data Bearer Technology for the given profile, if the data session is connected.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_NOT_POSSIBLE for all other errors
+ *
+ * @note
+ *      The process exits, if an invalid profile object is given
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetDataBearerTechnology
+(
+    Profile                       profileRef,                    ///< Query this profile object
+    le_mdc_DataBearerTechnology_t downlinkDataBearerTechPtr OUT, ///< downlink data bearer technology
+    le_mdc_DataBearerTechnology_t uplinkDataBearerTechPtr OUT    ///< uplink data bearer technology
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get number of bytes received/transmitted without error since the last reset.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_NOT_POSSIBLE for all other errors
+ *
+ * @note
+ *      - The process exits, if an invalid pointer is given
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetBytesCounters
+(
+    uint64 rxBytes OUT,     ///< bytes amount received since the last counter reset
+    uint64 txBytes OUT      ///< bytes amount transmitted since the last counter reset
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Reset received/transmitted data flow statistics
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_NOT_POSSIBLE for all other errors
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t ResetBytesCounter
+(
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the Packet Data Protocol (PDP) for the given profile.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_BAD_PARAMETER if the PDP is not supported
+ *      - LE_NOT_POSSIBLE if the data session is currently connected for the given profile
+ *
+ * @note
+ *      The process exits, if an invalid profile object is given
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetPDP
+(
+    Profile      profileRef,    ///< Query this profile object
+    le_mdc_Pdp_t pdp            ///< The Packet Data Protocol
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Packet Data Protocol (PDP) for the given profile.
+ *
+ * @return
+ *      - packet data protocol value
+ *
+ * @note
+ *      The process exits, if an invalid profile object is given
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_mdc_Pdp_t GetPDP
+(
+    Profile profileRef     ///< Query this profile object
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the Access Point Name (APN) for the given profile.
+ *
+ * The APN must be an ASCII string.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_NOT_POSSIBLE if the data session is currently connected for the given profile
+ *
+ * @note If APN is too long (max APN_NAME_MAX_LEN digits), it is a fatal error, the
+ *       function will not return.
+ * @note
+ *      The process exits, if an invalid profile object is given
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetAPN
+(
+    Profile profileRef,                 ///< Query this profile object
+    string  apnStr[APN_NAME_MAX_LEN] IN ///< The Access Point Name
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Access Point Name (APN) for the given profile.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_OVERFLOW if the APN is is too long
+ *      - LE_NOT_POSSIBLE on failed
+ *
+ * @note
+ *      The process exits, if an invalid profile object is given
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetAPN
+(
+    Profile profileRef,                     ///< Query this profile object
+    string  apnStr[APN_NAME_MAX_LEN] OUT    ///< The Access Point Name
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set authentication property
+ *
+ * @return
+ *      - LE_OK on success
+ *
+ * @note
+ *      - The process exits, if userName or password are NULL when type is not PA_MDC_AUTH_NONE
+ *      - The process exits, if an invalid profile object is given
+ * @note If userName is too long (max USER_NAME_MAX_LEN digits), it is a fatal error, the
+ *       function will not return.
+ * @note If password is too long (max PASSWORD_NAME_MAX_LEN digits), it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetAuthentication
+(
+    Profile       profileRef,                           ///< Query this profile object
+    le_mdc_Auth_t type,                                 ///< Authentication type
+    string        userName[USER_NAME_MAX_LEN] IN,       ///< UserName used by authentication
+    string        password[PASSWORD_NAME_MAX_LEN] IN    ///< Password used by authentication
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get authentication property
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_OVERFLOW userName or password are too small
+ *      - LE_NOT_POSSIBLE on failed
+ *
+ * @note
+ *      The process exits, if an invalid profile object is given
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetAuthentication
+(
+    Profile       profileRef,                           ///< Query this profile object
+    le_mdc_Auth_t type OUT,                             ///< Authentication type
+    string        userName[USER_NAME_MAX_LEN] OUT,      ///< UserName used by authentication
+    string        password[PASSWORD_NAME_MAX_LEN] OUT   ///< Password used by authentication
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the number of profiles on the modem.
+ *
+ * @return
+ *      - number of profiles existing on modem
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION uint32 NumProfiles
+(
+);

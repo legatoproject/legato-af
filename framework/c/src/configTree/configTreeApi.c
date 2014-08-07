@@ -5,8 +5,8 @@
  *
  *  Highlevel impoementation of the configuration Tree API.
  *
- *  Copyright (C) Sierra Wireless, Inc. 2013, 2014. All rights reserved. Use of this work is subject
- *  to license.
+ *  Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved.
+ *  Use of this work is subject to license.
  */
 // -------------------------------------------------------------------------------------------------
 
@@ -30,20 +30,29 @@
 // -------------------------------------------------------------------------------------------------
 static void CreateTransaction
 (
-    le_cfg_ServerCmdRef_t commandRef,  ///< Message context for the request.
-    ni_IteratorType_t request,         ///< The requested iterator type to create.
-    const char* pathPtr                ///< Initial path for the transaction.
+    le_cfg_ServerCmdRef_t commandRef,  ///< [IN] Message context for the request.
+    ni_IteratorType_t request,         ///< [IN] The requested iterator type to create.
+    const char* pathPtr                ///< [IN] Initial path for the transaction.
 )
 // -------------------------------------------------------------------------------------------------
 {
     // Check to see if this user has access to the tree/path in question.
     tu_UserRef_t userRef = tu_GetCurrentConfigUserInfo();
-    tdb_TreeRef_t treeRef = tu_GetRequestedTree(userRef, pathPtr);
+    tdb_TreeRef_t treeRef = NULL;
+
+    if (request == NI_WRITE)
+    {
+        treeRef = tu_GetRequestedTree(userRef, TU_TREE_WRITE, pathPtr);
+    }
+    else
+    {
+        treeRef = tu_GetRequestedTree(userRef, TU_TREE_READ, pathPtr);
+    }
 
     if (treeRef == NULL)
     {
-        tu_TerminateClient(le_cfg_GetClientSessionRef(),
-                           "A configuration tree could not be opened for a new transaction.");
+        tu_TerminateConfigClient(le_cfg_GetClientSessionRef(),
+                                 "A configuration tree could not be opened for a new transaction.");
     }
     else
     {
@@ -71,7 +80,7 @@ static void CreateTransaction
 // -------------------------------------------------------------------------------------------------
 static ni_IteratorRef_t GetIteratorFromRef
 (
-    le_cfg_IteratorRef_t externalRef  ///< The iterator reference to extract a pointer from.
+    le_cfg_IteratorRef_t externalRef  ///< [IN] The iterator reference to extract a pointer from.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -80,7 +89,7 @@ static ni_IteratorRef_t GetIteratorFromRef
 
     if (iteratorRef == NULL)
     {
-        tu_TerminateClient(le_cfg_GetClientSessionRef(), "Bad iterator reference.");
+        tu_TerminateConfigClient(le_cfg_GetClientSessionRef(), "Bad iterator reference.");
     }
 
     return iteratorRef;
@@ -99,7 +108,7 @@ static ni_IteratorRef_t GetIteratorFromRef
 // -------------------------------------------------------------------------------------------------
 static ni_IteratorRef_t GetWriteIteratorFromRef
 (
-    le_cfg_IteratorRef_t externalRef  ///< The iterator reference to extract a pointer from.
+    le_cfg_IteratorRef_t externalRef  ///< [IN] The iterator reference to extract a pointer from.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -108,8 +117,8 @@ static ni_IteratorRef_t GetWriteIteratorFromRef
     if (   (iteratorRef != NULL)
         && (ni_IsWriteable(iteratorRef) == false))
     {
-        tu_TerminateClient(le_cfg_GetClientSessionRef(),
-                           "This operation requires a write iterator.");
+        tu_TerminateConfigClient(le_cfg_GetClientSessionRef(),
+                                 "This operation requires a write iterator.");
 
         return NULL;
     }
@@ -127,14 +136,14 @@ static ni_IteratorRef_t GetWriteIteratorFromRef
 // -------------------------------------------------------------------------------------------------
 static bool CheckPathForSpecifier
 (
-    const char* pathPtr  ///< The path string to check.
+    const char* pathPtr  ///< [IN] The path string to check.
 )
 // -------------------------------------------------------------------------------------------------
 {
     if (tp_PathHasTreeSpecifier(pathPtr))
     {
-        tu_TerminateClient(le_cfg_GetClientSessionRef(),
-                           "Can not change trees in the middle of a transaction.");
+        tu_TerminateConfigClient(le_cfg_GetClientSessionRef(),
+                                 "Can not change trees in the middle of a transaction.");
 
         return true;
     }
@@ -153,7 +162,7 @@ static bool CheckPathForSpecifier
 // -------------------------------------------------------------------------------------------------
 static size_t MaxStr
 (
-    size_t requestedMax  ///< The requested maximum string size.
+    size_t requestedMax  ///< [IN] The requested maximum string size.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -164,6 +173,37 @@ static size_t MaxStr
     }
 
     return requestedMax;
+}
+
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Called by the "Quick" functions to get a reference to the tree the user wants.  If the tree
+ *  retreival fails for any reason, (as in, permission error,) terminate the client.
+ *
+ *  @note If the permission check fails, then terminate client will be called.
+ *
+ *  @return A reference to the requested tree.  Otherwise, NULL, If the permission check fails.
+ */
+// -------------------------------------------------------------------------------------------------
+static tdb_TreeRef_t QuickGetTree
+(
+    tu_UserRef_t userRef,            ///< [IN] Get a tree for this user.
+    tu_TreePermission_t permission,  ///< [IN] Try to get a tree with this permission.
+    const char* pathPtr              ///< [IN] The path to check.
+)
+// -------------------------------------------------------------------------------------------------
+{
+    tdb_TreeRef_t treeRef = tu_GetRequestedTree(userRef, permission, pathPtr);
+
+    if (treeRef == NULL)
+    {
+        tu_TerminateConfigClient(le_cfg_GetClientSessionRef(),
+                                 "The requested configuration tree could not be opened.");
+    }
+
+    return treeRef;
 }
 
 
@@ -185,8 +225,9 @@ static size_t MaxStr
 // -------------------------------------------------------------------------------------------------
 void le_cfg_CreateReadTxn
 (
-    le_cfg_ServerCmdRef_t commandRef,  ///< Reference used to generate a reply for this request.
-    const char* basePathPtr            ///< Path to the location to create the new iterator.
+    le_cfg_ServerCmdRef_t commandRef,  ///< [IN] Reference used to generate a reply for this
+                                       ///<      request.
+    const char* basePathPtr            ///< [IN] Path to the location to create the new iterator.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -217,8 +258,9 @@ void le_cfg_CreateReadTxn
 // -------------------------------------------------------------------------------------------------
 void le_cfg_CreateWriteTxn
 (
-    le_cfg_ServerCmdRef_t commandRef,  ///< Reference used to generate a reply for this request.
-    const char* basePathPtr            ///< Path to the location to create the new iterator.
+    le_cfg_ServerCmdRef_t commandRef,  ///< [IN] Reference used to generate a reply for this
+                                       ///<      request.
+    const char* basePathPtr            ///< [IN] Path to the location to create the new iterator.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -239,8 +281,9 @@ void le_cfg_CreateWriteTxn
 // -------------------------------------------------------------------------------------------------
 void le_cfg_CommitTxn
 (
-    le_cfg_ServerCmdRef_t commandRef,  ///< Reference used to generate a reply for this request.
-    le_cfg_IteratorRef_t externalRef   ///< Iterator object to commit.
+    le_cfg_ServerCmdRef_t commandRef,  ///< [IN] Reference used to generate a reply for this
+                                       ///<      request.
+    le_cfg_IteratorRef_t externalRef   ///< [IN] Iterator object to commit.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -271,8 +314,9 @@ void le_cfg_CommitTxn
 // -------------------------------------------------------------------------------------------------
 void le_cfg_CancelTxn
 (
-    le_cfg_ServerCmdRef_t commandRef,  ///< Reference used to generate a reply for this request.
-    le_cfg_IteratorRef_t externalRef   ///< Iterator object to close.
+    le_cfg_ServerCmdRef_t commandRef,  ///< [IN] Reference used to generate a reply for this
+                                       ///<      request.
+    le_cfg_IteratorRef_t externalRef   ///< [IN] Iterator object to close.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -304,9 +348,11 @@ void le_cfg_CancelTxn
 // -------------------------------------------------------------------------------------------------
 void le_cfg_GoToNode
 (
-    le_cfg_ServerCmdRef_t commandRef,  ///< Reference used to generate a reply for this request.
-    le_cfg_IteratorRef_t externalRef,  ///< Iterator to move.
-    const char* newPathPtr             ///< Absolute or relative path from the current location
+    le_cfg_ServerCmdRef_t commandRef,  ///< [IN] Reference used to generate a reply for this
+                                       ///<      request.
+    le_cfg_IteratorRef_t externalRef,  ///< [IN] Iterator to move.
+    const char* newPathPtr             ///< [IN] Absolute or relative path from the current
+                                       ///<      location.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -321,13 +367,13 @@ void le_cfg_GoToNode
 
         if (result == LE_UNDERFLOW)
         {
-            tu_TerminateClient(le_cfg_GetClientSessionRef(),
-                               "An attempt was made to traverse up past the root node.");
+            tu_TerminateConfigClient(le_cfg_GetClientSessionRef(),
+                                     "An attempt was made to traverse up past the root node.");
         }
         else if (result == LE_OVERFLOW)
         {
-            tu_TerminateClient(le_cfg_GetClientSessionRef(),
-                               "Internal path buffer overflow.");
+            tu_TerminateConfigClient(le_cfg_GetClientSessionRef(),
+                                     "Internal path buffer overflow.");
         }
     }
 
@@ -351,8 +397,9 @@ void le_cfg_GoToNode
 // -------------------------------------------------------------------------------------------------
 void le_cfg_GoToParent
 (
-    le_cfg_ServerCmdRef_t commandRef,  ///< Reference used to generate a reply for this request.
-    le_cfg_IteratorRef_t externalRef   ///< Iterator to move.
+    le_cfg_ServerCmdRef_t commandRef,  ///< [IN] Reference used to generate a reply for this
+                                       ///<      request.
+    le_cfg_IteratorRef_t externalRef   ///< [IN] Iterator to move.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -391,8 +438,9 @@ void le_cfg_GoToParent
 // -------------------------------------------------------------------------------------------------
 void le_cfg_GoToFirstChild
 (
-    le_cfg_ServerCmdRef_t commandRef,  ///< Reference used to generate a reply for this request.
-    le_cfg_IteratorRef_t externalRef   ///< Iterator object to move.
+    le_cfg_ServerCmdRef_t commandRef,  ///< [IN] Reference used to generate a reply for this
+                                       ///<      request.
+    le_cfg_IteratorRef_t externalRef   ///< [IN] Iterator object to move.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -438,8 +486,9 @@ void le_cfg_GoToFirstChild
 // -------------------------------------------------------------------------------------------------
 void le_cfg_GoToNextSibling
 (
-    le_cfg_ServerCmdRef_t commandRef,  ///< Reference used to generate a reply for this request.
-    le_cfg_IteratorRef_t externalRef   ///< Iterator to iterate.
+    le_cfg_ServerCmdRef_t commandRef,  ///< [IN] Reference used to generate a reply for this
+                                       ///<      request.
+    le_cfg_IteratorRef_t externalRef   ///< [IN] Iterator to iterate.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -496,10 +545,11 @@ void le_cfg_GoToNextSibling
 // -------------------------------------------------------------------------------------------------
 void le_cfg_GetPath
 (
-    le_cfg_ServerCmdRef_t commandRef,  ///< Reference used to generate a reply for this request.
-    le_cfg_IteratorRef_t externalRef,  ///< Iterator to move.
-    const char* pathPtr,               ///< Absolute or relative path to read from.
-    size_t maxNewPath                  ///< Maximum size of the result string.
+    le_cfg_ServerCmdRef_t commandRef,  ///< [IN] Reference used to generate a reply for this
+                                       ///<      request.
+    le_cfg_IteratorRef_t externalRef,  ///< [IN] Iterator to move.
+    const char* pathPtr,               ///< [IN] Absolute or relative path to read from.
+    size_t maxNewPath                  ///< [IN] Maximum size of the result string.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -533,9 +583,10 @@ void le_cfg_GetPath
 // -------------------------------------------------------------------------------------------------
 void le_cfg_GetNodeType
 (
-    le_cfg_ServerCmdRef_t commandRef,  ///< Reference used to generate a reply for this request.
-    le_cfg_IteratorRef_t externalRef,  ///< Iterator object to use to read from the tree.
-    const char* pathPtr                ///< Absolute or relative path to read from.
+    le_cfg_ServerCmdRef_t commandRef,  ///< [IN] Reference used to generate a reply for this
+                                       ///<      request.
+    le_cfg_IteratorRef_t externalRef,  ///< [IN] Iterator object to use to read from the tree.
+    const char* pathPtr                ///< [IN] Absolute or relative path to read from.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -571,10 +622,11 @@ void le_cfg_GetNodeType
 // -------------------------------------------------------------------------------------------------
 void le_cfg_GetNodeName
 (
-    le_cfg_ServerCmdRef_t commandRef,  ///< Reference used to generate a reply for this request.
-    le_cfg_IteratorRef_t externalRef,  ///< Iterator object to use to read from the tree.
-    const char* pathPtr,               ///< Absolute or relative path to read from.
-    size_t maxName                     ///< Maximum size of the result string.
+    le_cfg_ServerCmdRef_t commandRef,  ///< [IN] Reference used to generate a reply for this
+                                       ///<      request.
+    le_cfg_IteratorRef_t externalRef,  ///< [IN] Iterator object to use to read from the tree.
+    const char* pathPtr,               ///< [IN] Absolute or relative path to read from.
+    size_t maxName                     ///< [IN] Maximum size of the result string.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -605,18 +657,20 @@ void le_cfg_GetNodeName
  *
  *  This function will respond with one of the following values:
  *
- *          - LE_OK           Write was completed successfully.
- *          - LE_FORMAT_ERROR The new name included illegial characters, '/' or used one of the
- *                            reserved names: '.', or '..'.  Format error is also returned if the
- *                            new name is NULL or empty.
+ *      - LE_OK           Write was completed successfully.
+ *      - LE_FORMAT_ERROR The new name included illegal characters, '/', or ':'.   Or used one of
+ *                        the reserved names: '.', or '..'.  Format error is also returned if the
+ *                        new name is empty.
+ *      - LE_DUPLICATE    If there is another node with the new name in the same collection.
  */
 // -------------------------------------------------------------------------------------------------
 void le_cfg_SetNodeName
 (
-    le_cfg_ServerCmdRef_t commandRef,  ///< Reference used to generate a reply for this request.
-    le_cfg_IteratorRef_t externalRef,  ///< Iterator object to use to read from the tree.
-    const char* pathPtr,               ///< Absolute or relative path to read from.
-    const char* namePtr                ///< New name for the node object.
+    le_cfg_ServerCmdRef_t commandRef,  ///< [IN] Reference used to generate a reply for this
+                                       ///<      request.
+    le_cfg_IteratorRef_t externalRef,  ///< [IN] Iterator object to use to read from the tree.
+    const char* pathPtr,               ///< [IN] Absolute or relative path to read from.
+    const char* namePtr                ///< [IN] New name for the node object.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -655,14 +709,36 @@ void le_cfg_SetNodeName
 // -------------------------------------------------------------------------------------------------
 le_cfg_ChangeHandlerRef_t le_cfg_AddChangeHandler
 (
-    const char* newPathPtr,                 ///< Path to the object to watch.
-    le_cfg_ChangeHandlerFunc_t handlerPtr,  ///< Function to call back.
-    void* contextPtr                        ///< Context to give the function when called.
+    const char* newPathPtr,                 ///< [IN] Path to the object to watch.
+    le_cfg_ChangeHandlerFunc_t handlerPtr,  ///< [IN] Function to call back.
+    void* contextPtr                        ///< [IN] Context to give the function when called.
 )
 // -------------------------------------------------------------------------------------------------
 {
-    LE_WARN("*******  le_cfg_AddChangeHandler is currently unimplemented.  *******");
-    return NULL;
+    tu_UserRef_t userRef = tu_GetCurrentConfigUserInfo();
+    le_cfg_ChangeHandlerRef_t handlerRef = NULL;
+
+    if (userRef != NULL)
+    {
+        tdb_TreeRef_t treeRef = tu_GetRequestedTree(userRef, TU_TREE_READ, newPathPtr);
+
+        if (treeRef != NULL)
+        {
+            handlerRef = tdb_AddChangeHandler(treeRef,
+                                              le_cfg_GetClientSessionRef(),
+                                              newPathPtr,
+                                              handlerPtr,
+                                              contextPtr);
+        }
+    }
+
+    if (handlerRef == NULL)
+    {
+        tu_TerminateConfigClient(le_cfg_GetClientSessionRef(),
+                                 "Change handler registration failed.");
+    }
+
+    return handlerRef;
 }
 
 
@@ -675,11 +751,11 @@ le_cfg_ChangeHandlerRef_t le_cfg_AddChangeHandler
 //--------------------------------------------------------------------------------------------------
 void le_cfg_RemoveChangeHandler
 (
-    le_cfg_ChangeHandlerRef_t handlerRef  ///< The previously registered handler to remove.
+    le_cfg_ChangeHandlerRef_t handlerRef  ///< [IN] The previously registered handler to remove.
 )
 // -------------------------------------------------------------------------------------------------
 {
-    LE_WARN("*******  le_cfg_RemoveChangeHandler is currently unimplemented.  *******");
+    tdb_RemoveChangeHandler(handlerRef, le_cfg_GetClientSessionRef());
 }
 
 
@@ -704,11 +780,12 @@ void le_cfg_RemoveChangeHandler
 // -------------------------------------------------------------------------------------------------
 void le_cfg_DeleteNode
 (
-    le_cfg_ServerCmdRef_t commandRef,  ///< Reference used to generate a reply for this request.
-    le_cfg_IteratorRef_t externalRef,  ///< Iterator to use as a basis for the transaction.
-    const char* pathPtr                ///< Absolute or relative path to the node to delete.  If
-                                       ///<   Absolute path is given, it is rooted off of the
-                                       ///<   user's root node.
+    le_cfg_ServerCmdRef_t commandRef,  ///< [IN] Reference used to generate a reply for this
+                                       ///<      request.
+    le_cfg_IteratorRef_t externalRef,  ///< [IN] Iterator to use as a basis for the transaction.
+    const char* pathPtr                ///< [IN] Absolute or relative path to the node to delete.
+                                       ///<      If absolute path is given, it is rooted off of the
+                                       ///<      user's root node.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -745,9 +822,10 @@ void le_cfg_DeleteNode
 // -------------------------------------------------------------------------------------------------
 void le_cfg_IsEmpty
 (
-    le_cfg_ServerCmdRef_t commandRef,  ///< Reference used to generate a reply for this request.
-    le_cfg_IteratorRef_t externalRef,  ///< Iterator to use as a basis for the transaction.
-    const char* pathPtr                ///< Absolute or relative path to read from.
+    le_cfg_ServerCmdRef_t commandRef,  ///< [IN] Reference used to generate a reply for this
+                                       ///<      request.
+    le_cfg_IteratorRef_t externalRef,  ///< [IN] Iterator to use as a basis for the transaction.
+    const char* pathPtr                ///< [IN] Absolute or relative path to read from.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -781,9 +859,10 @@ void le_cfg_IsEmpty
 // -------------------------------------------------------------------------------------------------
 void le_cfg_SetEmpty
 (
-    le_cfg_ServerCmdRef_t commandRef,  ///< Reference used to generate a reply for this request.
-    le_cfg_IteratorRef_t externalRef,  ///< Iterator to use as a basis for the transaction.
-    const char* pathPtr                ///< Absolute or relative path to read from.
+    le_cfg_ServerCmdRef_t commandRef,  ///< [IN] Reference used to generate a reply for this
+                                       ///<      request.
+    le_cfg_IteratorRef_t externalRef,  ///< [IN] Iterator to use as a basis for the transaction.
+    const char* pathPtr                ///< [IN] Absolute or relative path to read from.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -815,9 +894,10 @@ void le_cfg_SetEmpty
 // -------------------------------------------------------------------------------------------------
 void le_cfg_NodeExists
 (
-    le_cfg_ServerCmdRef_t commandRef,  ///< Reference used to generate a reply for this request.
-    le_cfg_IteratorRef_t externalRef,  ///< Iterator to use as a basis for the transaction.
-    const char* pathPtr                ///< Absolute or relative path to read from.
+    le_cfg_ServerCmdRef_t commandRef,  ///< [IN] Reference used to generate a reply for this
+                                       ///<      request.
+    le_cfg_IteratorRef_t externalRef,  ///< [IN] Iterator to use as a basis for the transaction.
+    const char* pathPtr                ///< [IN] Absolute or relative path to read from.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -858,11 +938,13 @@ void le_cfg_NodeExists
 // -------------------------------------------------------------------------------------------------
 void le_cfg_GetString
 (
-    le_cfg_ServerCmdRef_t commandRef,  ///< Reference used to generate a reply for this request.
-    le_cfg_IteratorRef_t externalRef,  ///< Iterator to use as a basis for the transaction.
-    const char* pathPtr,                  ///< Absolute or relative path to read from.
-    size_t maxString,                  ///< Maximum size of the result string.
-    const char* defaultValue           ///< The default value to use if the original can not be.
+    le_cfg_ServerCmdRef_t commandRef,  ///< [IN] Reference used to generate a reply for this
+                                       ///<      request.
+    le_cfg_IteratorRef_t externalRef,  ///< [IN] Iterator to use as a basis for the transaction.
+    const char* pathPtr,               ///< [IN] Absolute or relative path to read from.
+    size_t maxString,                  ///< [IN] Maximum size of the result string.
+    const char* defaultValue           ///< [IN] The default value to use if the original can not
+                                       ///<      be.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -899,10 +981,11 @@ void le_cfg_GetString
 // -------------------------------------------------------------------------------------------------
 void le_cfg_SetString
 (
-    le_cfg_ServerCmdRef_t commandRef,  ///< Reference used to generate a reply for this request.
-    le_cfg_IteratorRef_t externalRef,  ///< Iterator to use as a basis for the transaction.
-    const char* pathPtr,               ///< Full or relative path to the value to write.
-    const char* value                  ///< Value to write.
+    le_cfg_ServerCmdRef_t commandRef,  ///< [IN] Reference used to generate a reply for this
+                                       ///<      request.
+    le_cfg_IteratorRef_t externalRef,  ///< [IN] Iterator to use as a basis for the transaction.
+    const char* pathPtr,               ///< [IN] Full or relative path to the value to write.
+    const char* value                  ///< [IN] Value to write.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -941,10 +1024,11 @@ void le_cfg_SetString
 // -------------------------------------------------------------------------------------------------
 void le_cfg_GetInt
 (
-    le_cfg_ServerCmdRef_t commandRef,  ///< Reference used to generate a reply for this request.
-    le_cfg_IteratorRef_t externalRef,  ///< Iterator to use as a basis for the transaction.
-    const char* pathPtr,               ///< Full or relative path to the value to read.
-    int32_t defaultValue               ///< The default value to use if the original can not be.
+    le_cfg_ServerCmdRef_t commandRef,  ///< [IN] Reference used to generate a reply for this
+                                       ///<      request.
+    le_cfg_IteratorRef_t externalRef,  ///< [IN] Iterator to use as a basis for the transaction.
+    const char* pathPtr,               ///< [IN] Full or relative path to the value to read.
+    int32_t defaultValue               ///< [IN] The default value to use if the original can not be.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -976,10 +1060,11 @@ void le_cfg_GetInt
 // -------------------------------------------------------------------------------------------------
 void le_cfg_SetInt
 (
-    le_cfg_ServerCmdRef_t commandRef,  ///< Reference used to generate a reply for this request.
-    le_cfg_IteratorRef_t externalRef,  ///< Iterator to use as a basis for the transaction.
-    const char* pathPtr,                  ///< Full or relative path to the value to write.
-    int32_t value                      ///< Value to write.
+    le_cfg_ServerCmdRef_t commandRef,  ///< [IN] Reference used to generate a reply for this
+                                       ///<      request.
+    le_cfg_IteratorRef_t externalRef,  ///< [IN] Iterator to use as a basis for the transaction.
+    const char* pathPtr,               ///< [IN] Full or relative path to the value to write.
+    int32_t value                      ///< [IN] Value to write.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -1014,10 +1099,11 @@ void le_cfg_SetInt
 // -------------------------------------------------------------------------------------------------
 void le_cfg_GetFloat
 (
-    le_cfg_ServerCmdRef_t commandRef,  ///< Reference used to generate a reply for this request.
-    le_cfg_IteratorRef_t externalRef,  ///< Iterator to use as a basis for the transaction.
-    const char* pathPtr,               ///< Full or relative path to the value to read.
-    double defaultValue                ///< The default value to use if the original can not be.
+    le_cfg_ServerCmdRef_t commandRef,  ///< [IN] Reference used to generate a reply for this
+                                       ///<      request.
+    le_cfg_IteratorRef_t externalRef,  ///< [IN] Iterator to use as a basis for the transaction.
+    const char* pathPtr,               ///< [IN] Full or relative path to the value to read.
+    double defaultValue                ///< [IN] The default value to use if the original can not be.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -1049,10 +1135,11 @@ void le_cfg_GetFloat
 // -------------------------------------------------------------------------------------------------
 void le_cfg_SetFloat
 (
-    le_cfg_ServerCmdRef_t commandRef,  ///< Reference used to generate a reply for this request.
-    le_cfg_IteratorRef_t externalRef,  ///< Iterator to use as a basis for the transaction.
-    const char* pathPtr,               ///< Full or relative path to the value to write.
-    double value                       ///< Value to write.
+    le_cfg_ServerCmdRef_t commandRef,  ///< [IN] Reference used to generate a reply for this
+                                       ///<      request.
+    le_cfg_IteratorRef_t externalRef,  ///< [IN] Iterator to use as a basis for the transaction.
+    const char* pathPtr,               ///< [IN] Full or relative path to the value to write.
+    double value                       ///< [IN] Value to write.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -1088,10 +1175,11 @@ void le_cfg_SetFloat
 // -------------------------------------------------------------------------------------------------
 void le_cfg_GetBool
 (
-    le_cfg_ServerCmdRef_t commandRef,  ///< Reference used to generate a reply for this request.
-    le_cfg_IteratorRef_t externalRef,  ///< Iterator to use as a basis for the transaction.
-    const char* pathPtr,               ///< Full or relative path to the value to read.
-    bool defaultValue                  ///< The default value to use if the original can not be.
+    le_cfg_ServerCmdRef_t commandRef,  ///< [IN] Reference used to generate a reply for this
+                                       ///<      request.
+    le_cfg_IteratorRef_t externalRef,  ///< [IN] Iterator to use as a basis for the transaction.
+    const char* pathPtr,               ///< [IN] Full or relative path to the value to read.
+    bool defaultValue                  ///< [IN] The default value to use if the original can not be.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -1124,10 +1212,11 @@ void le_cfg_GetBool
 // -------------------------------------------------------------------------------------------------
 void le_cfg_SetBool
 (
-    le_cfg_ServerCmdRef_t commandRef,  ///< Reference used to generate a reply for this request.
-    le_cfg_IteratorRef_t externalRef,  ///< Iterator to use as a basis for the transaction.
-    const char* pathPtr,               ///< Full or relative path to the value to write.
-    bool value                         ///< Value to write.
+    le_cfg_ServerCmdRef_t commandRef,  ///< [IN] Reference used to generate a reply for this
+                                       ///<      request.
+    le_cfg_IteratorRef_t externalRef,  ///< [IN] Iterator to use as a basis for the transaction.
+    const char* pathPtr,               ///< [IN] Full or relative path to the value to write.
+    bool value                         ///< [IN] Value to write.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -1167,19 +1256,25 @@ void le_cfg_SetBool
 // -------------------------------------------------------------------------------------------------
 void le_cfg_QuickDeleteNode
 (
-    le_cfg_ServerCmdRef_t commandRef,  ///< Reference used to generate a reply for this request.
-    const char* pathPtr                ///< Path to the node to delete.
+    le_cfg_ServerCmdRef_t commandRef,  ///< [IN] Reference used to generate a reply for this
+                                       ///<      request.
+    const char* pathPtr                ///< [IN] Path to the node to delete.
 )
 // -------------------------------------------------------------------------------------------------
 {
     LE_DEBUG("** Deleting node at \"%p\".", pathPtr);
 
     tu_UserRef_t userRef = tu_GetCurrentConfigUserInfo();
-    rq_HandleQuickDeleteNode(le_cfg_GetClientSessionRef(),
-                             commandRef,
-                             userRef,
-                             tu_GetRequestedTree(userRef, pathPtr),
-                             tp_GetPathOnly(pathPtr));
+    tdb_TreeRef_t treeRef = QuickGetTree(userRef, TU_TREE_WRITE, pathPtr);
+
+    if (treeRef != NULL)
+    {
+        rq_HandleQuickDeleteNode(le_cfg_GetClientSessionRef(),
+                                 commandRef,
+                                 userRef,
+                                 treeRef,
+                                 tp_GetPathOnly(pathPtr));
+    }
 }
 
 
@@ -1193,19 +1288,25 @@ void le_cfg_QuickDeleteNode
 // -------------------------------------------------------------------------------------------------
 void le_cfg_QuickSetEmpty
 (
-    le_cfg_ServerCmdRef_t commandRef,  ///< Reference used to generate a reply for this request.
-    const char* pathPtr                ///< Absolute or relative path to read from.
+    le_cfg_ServerCmdRef_t commandRef,  ///< [IN] Reference used to generate a reply for this
+                                       ///<      request.
+    const char* pathPtr                ///< [IN] Absolute or relative path to read from.
 )
 // -------------------------------------------------------------------------------------------------
 {
     LE_DEBUG("** Quick clear node at \"%p\".", pathPtr);
 
     tu_UserRef_t userRef = tu_GetCurrentConfigUserInfo();
-    rq_HandleQuickSetEmpty(le_cfg_GetClientSessionRef(),
-                           commandRef,
-                           userRef,
-                           tu_GetRequestedTree(userRef, pathPtr),
-                           tp_GetPathOnly(pathPtr));
+    tdb_TreeRef_t treeRef = QuickGetTree(userRef, TU_TREE_WRITE, pathPtr);
+
+    if (treeRef != NULL)
+    {
+        rq_HandleQuickSetEmpty(le_cfg_GetClientSessionRef(),
+                               commandRef,
+                               userRef,
+                               treeRef,
+                               tp_GetPathOnly(pathPtr));
+    }
 }
 
 
@@ -1226,23 +1327,29 @@ void le_cfg_QuickSetEmpty
 // -------------------------------------------------------------------------------------------------
 void le_cfg_QuickGetString
 (
-    le_cfg_ServerCmdRef_t commandRef,  ///< Reference used to generate a reply for this request.
-    const char* pathPtr,               ///< Path to read from.
-    size_t maxString,                  ///< Maximum string to return.
-    const char* defaultValuePtr        ///< The default value to use if the original can not be.
+    le_cfg_ServerCmdRef_t commandRef,  ///< [IN] Reference used to generate a reply for this
+                                       ///<      request.
+    const char* pathPtr,               ///< [IN] Path to read from.
+    size_t maxString,                  ///< [IN] Maximum string to return.
+    const char* defaultValuePtr        ///< [IN] The default value to use if the original can not be.
 )
 // -------------------------------------------------------------------------------------------------
 {
     LE_DEBUG("** Quick get node string value at \"%p\".", pathPtr);
 
     tu_UserRef_t userRef = tu_GetCurrentConfigUserInfo();
-    rq_HandleQuickGetString(le_cfg_GetClientSessionRef(),
-                            commandRef,
-                            userRef,
-                            tu_GetRequestedTree(userRef, pathPtr),
-                            tp_GetPathOnly(pathPtr),
-                            MaxStr(maxString),
-                            defaultValuePtr);
+    tdb_TreeRef_t treeRef = QuickGetTree(userRef, TU_TREE_READ, pathPtr);
+
+    if (treeRef != NULL)
+    {
+        rq_HandleQuickGetString(le_cfg_GetClientSessionRef(),
+                                commandRef,
+                                userRef,
+                                treeRef,
+                                tp_GetPathOnly(pathPtr),
+                                MaxStr(maxString),
+                                defaultValuePtr);
+    }
 }
 
 
@@ -1255,21 +1362,27 @@ void le_cfg_QuickGetString
 // -------------------------------------------------------------------------------------------------
 void le_cfg_QuickSetString
 (
-    le_cfg_ServerCmdRef_t commandRef,  ///< Reference used to generate a reply for this request.
-    const char* pathPtr,               ///< Path to the value to write.
-    const char* valuePtr               ///< Value to write.
+    le_cfg_ServerCmdRef_t commandRef,  ///< [IN] Reference used to generate a reply for this
+                                       ///<      request.
+    const char* pathPtr,               ///< [IN] Path to the value to write.
+    const char* valuePtr               ///< [IN] Value to write.
 )
 // -------------------------------------------------------------------------------------------------
 {
     LE_DEBUG("** Quick get node string value at \"%p\".", pathPtr);
 
     tu_UserRef_t userRef = tu_GetCurrentConfigUserInfo();
-    rq_HandleQuickSetString(le_cfg_GetClientSessionRef(),
-                            commandRef,
-                            userRef,
-                            tu_GetRequestedTree(userRef, pathPtr),
-                            tp_GetPathOnly(pathPtr),
-                            valuePtr);
+    tdb_TreeRef_t treeRef = QuickGetTree(userRef, TU_TREE_WRITE, pathPtr);
+
+    if (treeRef != NULL)
+    {
+        rq_HandleQuickSetString(le_cfg_GetClientSessionRef(),
+                                commandRef,
+                                userRef,
+                                treeRef,
+                                tp_GetPathOnly(pathPtr),
+                                valuePtr);
+    }
 }
 
 
@@ -1286,21 +1399,27 @@ void le_cfg_QuickSetString
 // -------------------------------------------------------------------------------------------------
 void le_cfg_QuickGetInt
 (
-    le_cfg_ServerCmdRef_t commandRef,  ///< Reference used to generate a reply for this request.
-    const char* pathPtr,               ///< Path to the value to write.
-    int32_t defaultValue               ///< The default value to use if the original can not be.
+    le_cfg_ServerCmdRef_t commandRef,  ///< [IN] Reference used to generate a reply for this
+                                       ///<      request.
+    const char* pathPtr,               ///< [IN] Path to the value to write.
+    int32_t defaultValue               ///< [IN] The default value to use if the original can not be.
 )
 // -------------------------------------------------------------------------------------------------
 {
     LE_DEBUG("** Quick get node int value at \"%p\".", pathPtr);
 
     tu_UserRef_t userRef = tu_GetCurrentConfigUserInfo();
-    rq_HandleQuickGetInt(le_cfg_GetClientSessionRef(),
-                         commandRef,
-                         userRef,
-                         tu_GetRequestedTree(userRef, pathPtr),
-                         tp_GetPathOnly(pathPtr),
-                         defaultValue);
+    tdb_TreeRef_t treeRef = QuickGetTree(userRef, TU_TREE_READ, pathPtr);
+
+    if (treeRef != NULL)
+    {
+        rq_HandleQuickGetInt(le_cfg_GetClientSessionRef(),
+                             commandRef,
+                             userRef,
+                             treeRef,
+                             tp_GetPathOnly(pathPtr),
+                             defaultValue);
+    }
 }
 
 
@@ -1313,21 +1432,27 @@ void le_cfg_QuickGetInt
 // -------------------------------------------------------------------------------------------------
 void le_cfg_QuickSetInt
 (
-    le_cfg_ServerCmdRef_t commandRef,  ///< Reference used to generate a reply for this request.
-    const char* pathPtr,               ///< Path to the value to write.
-    int32_t value                      ///< Value to write.
+    le_cfg_ServerCmdRef_t commandRef,  ///< [IN] Reference used to generate a reply for this
+                                       ///<      request.
+    const char* pathPtr,               ///< [IN] Path to the value to write.
+    int32_t value                      ///< [IN] Value to write.
 )
 // -------------------------------------------------------------------------------------------------
 {
     LE_DEBUG("** Quick set node int value at \"%p\".", pathPtr);
 
     tu_UserRef_t userRef = tu_GetCurrentConfigUserInfo();
-    rq_HandleQuickSetInt(le_cfg_GetClientSessionRef(),
-                         commandRef,
-                         userRef,
-                         tu_GetRequestedTree(userRef, pathPtr),
-                         tp_GetPathOnly(pathPtr),
-                         value);
+    tdb_TreeRef_t treeRef = QuickGetTree(userRef, TU_TREE_WRITE, pathPtr);
+
+    if (treeRef != NULL)
+    {
+        rq_HandleQuickSetInt(le_cfg_GetClientSessionRef(),
+                             commandRef,
+                             userRef,
+                             treeRef,
+                             tp_GetPathOnly(pathPtr),
+                             value);
+    }
 }
 
 
@@ -1344,21 +1469,27 @@ void le_cfg_QuickSetInt
 // -------------------------------------------------------------------------------------------------
 void le_cfg_QuickGetFloat
 (
-    le_cfg_ServerCmdRef_t commandRef,  ///< Reference used to generate a reply for this request.
-    const char* pathPtr,               ///< Path to the value to write.
-    double defaultValue                ///< The default value to use if the original can not be.
+    le_cfg_ServerCmdRef_t commandRef,  ///< [IN] Reference used to generate a reply for this
+                                       ///<      request.
+    const char* pathPtr,               ///< [IN] Path to the value to write.
+    double defaultValue                ///< [IN] The default value to use if the original can not be.
 )
 // -------------------------------------------------------------------------------------------------
 {
     LE_DEBUG("** Quick get node float value at \"%p\".", pathPtr);
 
     tu_UserRef_t userRef = tu_GetCurrentConfigUserInfo();
-    rq_HandleQuickGetFloat(le_cfg_GetClientSessionRef(),
-                           commandRef,
-                           userRef,
-                           tu_GetRequestedTree(userRef, pathPtr),
-                           tp_GetPathOnly(pathPtr),
-                           defaultValue);
+    tdb_TreeRef_t treeRef = QuickGetTree(userRef, TU_TREE_READ, pathPtr);
+
+    if (treeRef != NULL)
+    {
+        rq_HandleQuickGetFloat(le_cfg_GetClientSessionRef(),
+                               commandRef,
+                               userRef,
+                               treeRef,
+                               tp_GetPathOnly(pathPtr),
+                               defaultValue);
+    }
 }
 
 
@@ -1371,21 +1502,27 @@ void le_cfg_QuickGetFloat
 // -------------------------------------------------------------------------------------------------
 void le_cfg_QuickSetFloat
 (
-    le_cfg_ServerCmdRef_t commandRef,  ///< Reference used to generate a reply for this request.
-    const char* pathPtr,               ///< Path to the value to write.
-    double value                       ///< Value to write.
+    le_cfg_ServerCmdRef_t commandRef,  ///< [IN] Reference used to generate a reply for this
+                                       ///<      request.
+    const char* pathPtr,               ///< [IN] Path to the value to write.
+    double value                       ///< [IN] Value to write.
 )
 // -------------------------------------------------------------------------------------------------
 {
     LE_DEBUG("** Quick set node float value at \"%p\".", pathPtr);
 
     tu_UserRef_t userRef = tu_GetCurrentConfigUserInfo();
-    rq_HandleQuickSetFloat(le_cfg_GetClientSessionRef(),
-                           commandRef,
-                           userRef,
-                           tu_GetRequestedTree(userRef, pathPtr),
-                           tp_GetPathOnly(pathPtr),
-                           value);
+    tdb_TreeRef_t treeRef = QuickGetTree(userRef, TU_TREE_WRITE, pathPtr);
+
+    if (treeRef != NULL)
+    {
+        rq_HandleQuickSetFloat(le_cfg_GetClientSessionRef(),
+                               commandRef,
+                               userRef,
+                               treeRef,
+                               tp_GetPathOnly(pathPtr),
+                               value);
+    }
 }
 
 
@@ -1401,21 +1538,27 @@ void le_cfg_QuickSetFloat
 // -------------------------------------------------------------------------------------------------
 void le_cfg_QuickGetBool
 (
-    le_cfg_ServerCmdRef_t commandRef,  ///< Reference used to generate a reply for this request.
-    const char* pathPtr,               ///< Path to the value to write.
-    bool defaultValue                  ///< The default value to use if the original can not be.
+    le_cfg_ServerCmdRef_t commandRef,  ///< [IN] Reference used to generate a reply for this
+                                       ///<      request.
+    const char* pathPtr,               ///< [IN] Path to the value to write.
+    bool defaultValue                  ///< [IN] The default value to use if the original can not be.
 )
 // -------------------------------------------------------------------------------------------------
 {
     LE_DEBUG("** Quick get node bool value at \"%p\".", pathPtr);
 
     tu_UserRef_t userRef = tu_GetCurrentConfigUserInfo();
-    rq_HandleQuickGetBool(le_cfg_GetClientSessionRef(),
-                          commandRef,
-                          userRef,
-                          tu_GetRequestedTree(userRef, pathPtr),
-                          tp_GetPathOnly(pathPtr),
-                          defaultValue);
+    tdb_TreeRef_t treeRef = QuickGetTree(userRef, TU_TREE_READ, pathPtr);
+
+    if (treeRef != NULL)
+    {
+        rq_HandleQuickGetBool(le_cfg_GetClientSessionRef(),
+                              commandRef,
+                              userRef,
+                              treeRef,
+                              tp_GetPathOnly(pathPtr),
+                              defaultValue);
+    }
 }
 
 
@@ -1428,19 +1571,25 @@ void le_cfg_QuickGetBool
 // -------------------------------------------------------------------------------------------------
 void le_cfg_QuickSetBool
 (
-    le_cfg_ServerCmdRef_t commandRef,  ///< Reference used to generate a reply for this request.
-    const char* pathPtr,               ///< Path to the value to write.
-    bool value                         ///< Value to write.
+    le_cfg_ServerCmdRef_t commandRef,  ///< [IN] Reference used to generate a reply for this
+                                       ///<      request.
+    const char* pathPtr,               ///< [IN] Path to the value to write.
+    bool value                         ///< [IN] Value to write.
 )
 // -------------------------------------------------------------------------------------------------
 {
     LE_DEBUG("** Quick set node bool value at \"%p\".", pathPtr);
 
     tu_UserRef_t userRef = tu_GetCurrentConfigUserInfo();
-    rq_HandleQuickSetBool(le_cfg_GetClientSessionRef(),
-                          commandRef,
-                          userRef,
-                          tu_GetRequestedTree(userRef, pathPtr),
-                          tp_GetPathOnly(pathPtr),
-                          value);
+    tdb_TreeRef_t treeRef = QuickGetTree(userRef, TU_TREE_WRITE, pathPtr);
+
+    if (treeRef != NULL)
+    {
+        rq_HandleQuickSetBool(le_cfg_GetClientSessionRef(),
+                              commandRef,
+                              userRef,
+                              treeRef,
+                              tp_GetPathOnly(pathPtr),
+                              value);
+    }
 }

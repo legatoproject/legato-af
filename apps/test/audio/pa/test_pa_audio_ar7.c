@@ -298,7 +298,8 @@ void Test_pa_audio_ResetDspAudioPath()
     {
         for(idxOutput=0;idxOutput<PA_AUDIO_IF_END+1;idxOutput++)
         {
-            res = pa_audio_ResetDspAudioPath(idxInput,idxOutput);
+            res = pa_audio_FlagForResetDspAudioPath(idxInput,idxOutput);
+            pa_audio_ResetDspAudioPath();
 
             if (((idxInput==PA_AUDIO_IF_DSP_BACKEND_MODEM_VOICE_RX) && (idxOutput == PA_AUDIO_IF_DSP_FRONTEND_USB_TX))
                 ||
@@ -522,7 +523,7 @@ static void init()
 
 }
 
-LE_EVENT_INIT_HANDLER
+COMPONENT_INIT
 {
     init();
 }
