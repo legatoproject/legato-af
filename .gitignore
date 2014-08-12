@@ -8,8 +8,6 @@
 doxygen.*.log
 doxygen.*.err
 _build_*
-# /interfaces/config/c/
-# /interfaces/configAdmin/c/
 
 # ... per target
 *.localhost
@@ -25,9 +23,14 @@ _build_*
 .cproject
 .project
 .settings
+package.properties
+wmnew.opt
 
 # KDev4
 *.kdev4
 
 # Python
 *.pyc
+/Debug
+# Target files backup
+targetFiles/*/backup_*
