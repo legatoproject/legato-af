@@ -6,7 +6,7 @@ Welcome to Legato!
   - Ubuntu 12.04 or newer.
   - Packages required:
 
-        bison build-essential chrpath cifs-utils cmake coreutils curl desktop-file-utils
+        bison flex build-essential chrpath cifs-utils cmake coreutils curl desktop-file-utils
         diffstat docbook-utils doxygen fakeroot flex g++ gawk gcc git-core gitk graphviz
         help2man libgmp3-dev libmpfr-dev libreadline6-dev libtool libxml2-dev libxml-libxml-perl
         make m4 python-pip python-jinja2 python-pysqlite2 quilt samba scons sed subversion
