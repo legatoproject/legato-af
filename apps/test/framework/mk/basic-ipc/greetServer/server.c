@@ -21,8 +21,6 @@ COMPONENT_INIT
     }
 
     LE_INFO("Using '%s' as the greeting.", Greeting);
-
-    hello_StartServer("server.hi");
 }
 
 

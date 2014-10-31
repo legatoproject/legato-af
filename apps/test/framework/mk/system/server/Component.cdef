@@ -1,0 +1,22 @@
+// Server component.
+
+requires:
+{
+    api:
+    {
+        le_cfg.api
+    }
+}
+
+provides:
+{
+    api:
+    {
+        bar = foo.api
+    }
+}
+
+sources:
+{
+    server.c
+}

@@ -54,9 +54,9 @@ static void ConnectAudioToI2s
     le_result_t res;
 
     // Redirect audio to the I2S interface.
-    FeOutRef = le_audio_OpenI2sTx(0);
+    FeOutRef = le_audio_OpenI2sTx(LE_AUDIO_I2S_STEREO);
     LE_ERROR_IF((FeOutRef==NULL), "OpenI2sTx returns NULL!");
-    FeInRef = le_audio_OpenI2sRx(0);
+    FeInRef = le_audio_OpenI2sRx(LE_AUDIO_I2S_STEREO);
     LE_ERROR_IF((FeInRef==NULL), "OpenI2sRx returns NULL!");
 
     LE_INFO("Open I2s: FeInRef.%p FeOutRef.%p", FeInRef, FeOutRef);
@@ -320,7 +320,7 @@ static int32_t GetTel(void)
     do
     {
         // Get command or destination number.
-        fprintf(stderr, "Set Destination Number or command: (stop) release, (answer) hang-up or (exit) to exit of application\n");
+        fprintf(stderr, "Set Destination Number or command: stop (hang-up), answer (pick-up) or exit to exit of application\n");
         strPtr=fgets ((char*)Destination, DESTINATION_LEN_MAX, stdin);
     } while (strlen(strPtr) == 0);
 
@@ -345,9 +345,13 @@ static int32_t GetTel(void)
     }
 }
 
-
 static void* HandlerThread(void* contextPtr)
 {
+
+    // Connect to the services required by this thread
+    le_voicecall_ConnectService();
+    le_audio_ConnectService();
+
     // Add voice call event handler function.
     VoiceCallHandlerRef = le_voicecall_AddStateHandler(MyCallEventHandler, contextPtr );
 

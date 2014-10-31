@@ -1,9 +1,11 @@
 start: manual
 
 executables:
-
-    fileLockTest ( fileLockTest.c )
+{
+    fileLockTest = ( fileLockTest.c )
+}
 
 processes:
-
-    run: (fileLockTest)
+{
+    run: { (fileLockTest) }
+}

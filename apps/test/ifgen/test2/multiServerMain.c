@@ -159,7 +159,7 @@ void RemoveBugTest
 COMPONENT_INIT
 {
     TriggerEvent = le_event_CreateId("Server Trigger", sizeof(int32_t));
-    
-    StartServer("Test 2");
+
+    AdvertiseService();
 }
 

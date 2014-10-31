@@ -1,0 +1,14 @@
+// Client component.
+
+requires:
+{
+    api:
+    {
+        foo.api
+    }
+}
+
+sources:
+{
+    client.c
+}

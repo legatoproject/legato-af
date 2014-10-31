@@ -1,24 +1,31 @@
 groups:
+{
  www-data
  jokers
+}
 
 groups:
+{
+}
 
-fileSystemSize: 100K
+maxFileSystemBytes: 100K
 
 processes:
-
-  run: hey ( hello )
-
+{
+  run: { hey = ( hello ) }
+}
 
 
 executables:
-
-  hello ( helloWorld.c )
+{
+  hello = ( helloWorld.c )
+}
 
 groups:
+{
   dialout
+}
 
-groups:
+groups:{}
 
 sandboxed: false

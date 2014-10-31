@@ -53,12 +53,14 @@ static int thisopen (const char* path)
 
     if ((sockfd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
         perror("socket");
-        exit(1);
+        return sockfd;
     }
 
     if (connect(sockfd, (struct sockaddr* )&that, sizeof(that)) < 0) /* error */
     {
         perror("connect");
+        close(sockfd);
+        sockfd = -1;
     }
 
     return sockfd;
@@ -121,9 +123,9 @@ int init_suite(void)
     return 0;
 }
 
-static void pa_sms_NewMsgHdlrFunc(uint32_t* msgRef)
+static void pa_sms_NewMsgHdlrFunc(pa_sms_NewMessageIndication_t* msgRef)
 {
-    le_mem_Release(msgRef);
+
 }
 
 void test_pa_sms_SetNewMsgHandler()
@@ -246,7 +248,7 @@ void test_pa_sms_SendPduMsg()
 {
     uint32_t  msgref;
 
-    msgref = pa_sms_SendPduMsg(29,message);
+    msgref = pa_sms_SendPduMsg(PA_SMS_PROTOCOL_GSM,29,message);
     CU_ASSERT_EQUAL(msgref,15);
 }
 
@@ -256,7 +258,7 @@ void test_pa_sms_RdPDUMsgFromMem()
     pa_sms_Pdu_t pdu;
     int32_t i;
 
-    result = pa_sms_RdPDUMsgFromMem(1,&pdu);
+    result = pa_sms_RdPDUMsgFromMem(1,PA_SMS_PROTOCOL_GSM,PA_SMS_STORAGE_SIM,&pdu);
     CU_ASSERT_EQUAL(result,LE_OK);
     CU_ASSERT_EQUAL(pdu.status,LE_SMS_RX_UNREAD);
     CU_ASSERT_EQUAL(pdu.dataLen,sizeof(message));
@@ -272,11 +274,11 @@ void test_pa_sms_ListMsgFromMem()
     uint32_t  tab[99]={0};
     int32_t i;
 
-    result = pa_sms_ListMsgFromMem(LE_SMS_RX_READ,&size,tab);
+    result = pa_sms_ListMsgFromMem(LE_SMS_RX_READ, PA_SMS_PROTOCOL_GSM, &size, tab, PA_SMS_STORAGE_SIM);
     CU_ASSERT_EQUAL(result,LE_OK);
     CU_ASSERT_EQUAL(size,0);
 
-    result = pa_sms_ListMsgFromMem(LE_SMS_RX_READ,&size,tab);
+    result = pa_sms_ListMsgFromMem(LE_SMS_RX_READ, PA_SMS_PROTOCOL_GSM, &size, tab, PA_SMS_STORAGE_SIM);
     CU_ASSERT_EQUAL(result,LE_OK);
     CU_ASSERT_EQUAL(size,3);
     for(i=0;i<size;i++) {
@@ -289,7 +291,7 @@ void test_pa_sms_DelMsgFromMem()
 {
     le_result_t result;
 
-    result = pa_sms_DelMsgFromMem(5);
+    result = pa_sms_DelMsgFromMem(5,PA_SMS_PROTOCOL_GSM,PA_SMS_STORAGE_SIM);
     CU_ASSERT_EQUAL(result,LE_OK);
 }
 
@@ -380,8 +382,44 @@ static void* simtest(void* context)
     exit(EXIT_SUCCESS);
 }
 
+int Exists(const char *fname)
+{
+    int file;
+    file = thisopen(fname);
+    if (file != -1)
+    {
+        thisclose(file);
+        return 1;
+    }
+    return 0;
+}
+
 static void init()
 {
+    // Wait for CUSTOM_PORT to be available
+    {
+        int i;
+        for (i=10;i>0;i--)
+        {
+            if (!Exists(CUSTOM_PORT))
+            {
+                int sec = 1;
+                // Wait 1 seconds and retry
+                fprintf(stdout,"%s does not exist, retry in %d sec\n",CUSTOM_PORT,sec);
+                sleep(sec);
+            }
+            else
+            {
+                fprintf(stdout,"%s exist, can continue the test\n",CUSTOM_PORT);
+                break;
+            }
+        }
+        if (i==0)
+        {
+            exit(EXIT_FAILURE);
+        }
+    }
+
     atmgr_Start();
 
     atcmdsync_Init();

@@ -25,6 +25,7 @@ mkexe(${APP_TARGET}
             mccTest/main.c
             mccTest/main.h
             mccTest/le_mccTest.c
+            ${LEGATO_ROOT}/interfaces/modemServices/le_mdmDefs.api
             )
 
 if(NOT ${LEGATO_TARGET} STREQUAL "localhost")

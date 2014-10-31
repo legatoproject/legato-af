@@ -1,6 +1,13 @@
 
 executables:
-    reader ( configTestAclApp )
+{
+    reader = ( configTestAclApp )
+}
 
 processes:
-    run: (reader cfgSelfRead)
+{
+    run:
+    {
+        (reader cfgSelfRead)
+    }
+}

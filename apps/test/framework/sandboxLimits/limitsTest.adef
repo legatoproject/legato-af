@@ -1,22 +1,28 @@
 start: manual
 
-mqueueSize: 10
-numProcs: 10
-rtSignalQueueSize: 10
-fileSystemSize: 10000
+maxMQueueBytes: 10
+maxThreads: 10
+maxQueuedSignals: 10
+maxFileSystemBytes: 10000
 
 executables:
-
-    limitsTest ( limitsTest.c )
+{
+    limitsTest = ( limitsTest.c )
+}
 
 processes:
-    maxFileSize: 10
-    numFds: 10
-    memLockSize: 10
-    coreFileSize: 10
+{
+    maxFileBytes: 10
+    maxFileDescriptors: 10
+    maxLockedMemoryBytes: 10
+    maxCoreDumpFileBytes: 10
 
-    run: (limitsTest 10 10 10 10 10 10 10 10000)
+    run:
+    {
+        (limitsTest 10 10 10 10 10 10 10 10000)
+    }
 
 // The arguments is the list of expected resource limit values in this order.
-// mqueueSize, numProcs, rtSignalQueueSize, maxFileSize, numFds, memLockSize, coreFileSize, fileSystemSize
+// maxMQueueBytes, maxThreads, maxQueuedSignals, maxFileBytes, maxFileDescriptors, maxLockedMemoryBytes, maxCoreDumpFileBytes, maxFileSystemBytes
 
+}

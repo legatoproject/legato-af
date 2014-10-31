@@ -13,6 +13,7 @@
 #include "legato.h"
 
 #include "forkJoinMutex.h"
+#include "externalThreadApi.h"
 
 const char TestNameStr[] = "Thread Test";
 
@@ -26,8 +27,6 @@ static void FinishTest
 )
 // -------------------------------------------------------------------------------------------------
 {
-    bool allTestsPassed = true;
-
     const char** stringPtrPtr = objPtr;
     LE_INFO("objPtr = %p.", objPtr);
     LE_INFO("*stringPtrPtr = %p.", *stringPtrPtr);
@@ -36,9 +35,8 @@ static void FinishTest
     LE_INFO("All tests have signalled completion.  Thread '%s' is checking results...",
             le_thread_GetMyName());
 
-    allTestsPassed = (fjm_CheckResults() == LE_OK) && allTestsPassed;
-
-    LE_ASSERT(allTestsPassed);
+    fjm_CheckResults();
+    eta_CheckResults();
 
     LE_INFO("======== MULTI-THREADING TESTS PASSED ========");
     exit(EXIT_SUCCESS);
@@ -59,6 +57,10 @@ COMPONENT_INIT
     *objPtr = TestNameStr;
     LE_INFO("objPtr = %p.", objPtr);
     LE_INFO("*stringPtrPtr = %p.", *objPtr);
-    
-    fjm_Init(objPtr);
+
+    fjm_Start(objPtr);
+
+    eta_Start(objPtr);
+
+    le_mem_Release(objPtr);
 }

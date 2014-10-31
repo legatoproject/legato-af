@@ -11,6 +11,7 @@
 #include <unistd.h>
 #include <ctype.h>
 #include <semaphore.h>
+#include <interfaces.h>
 
 // Header files for CUnit
 #include "Console.h"
@@ -27,6 +28,7 @@
 //--------------------------------------------------------------------------------------------------
 static void* test(void* context)
 {
+
     // Init the test case / test suite data structures
     CU_TestInfo mrctest[] =
     {
@@ -47,6 +49,7 @@ static void* test(void* context)
         CU_SUITE_INFO_NULL,
     };
 
+    le_mrc_ConnectService();
 
     // Initialize the CUnit test registry and register the test suite
     if (CUE_SUCCESS != CU_initialize_registry())

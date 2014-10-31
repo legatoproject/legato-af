@@ -11,7 +11,7 @@
 
 
 /* Cellular Network Services (Client) */
-#include "le_cellnet_interface.h"
+#include "interfaces.h"
 
 
 

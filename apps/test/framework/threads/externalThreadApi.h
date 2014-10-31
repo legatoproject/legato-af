@@ -1,0 +1,34 @@
+// -------------------------------------------------------------------------------------------------
+// Header file for external thread API compatibility test.
+//
+// (C) Copyright 2014, Sierra Wireless Inc.  Use of this work is subject to license.
+// -------------------------------------------------------------------------------------------------
+
+#ifndef EXTERNAL_THREAD_API_TEST_H_INCLUDE_GUARD
+#define EXTERNAL_THREAD_API_TEST_H_INCLUDE_GUARD
+
+// -------------------------------------------------------------------------------------------------
+/**
+ * Starts the test.
+ *
+ * Increments the reference count on a given memory pool object, then releases it when the test is
+ * complete.
+ */
+// -------------------------------------------------------------------------------------------------
+void eta_Start
+(
+    void* objPtr    ///< [in] Pointer to the object whose reference count is used to signal
+                    ///       the completion of the test.
+);
+
+// -------------------------------------------------------------------------------------------------
+/**
+ * Checks the completion status of the test.
+ */
+// -------------------------------------------------------------------------------------------------
+void eta_CheckResults
+(
+    void
+);
+
+#endif // EXTERNAL_THREAD_API_TEST_H_INCLUDE_GUARD

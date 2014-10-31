@@ -85,6 +85,12 @@ void atmachinemanager_SendCommand(void *reportPtr)
     AtCmdPtr = reportPtr;
 }
 
+// NOTE: Stub function
+void atmachinemanager_CancelCommand(void *report)
+{
+    return;
+}
+
 static int my_open( const char* path)
 {
     mkfifo(path,0666);

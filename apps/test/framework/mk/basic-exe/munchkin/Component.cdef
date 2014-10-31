@@ -1,22 +1,7 @@
 
 
-
-
-files :
-
-    [rxp] foo/bar /usr/local/share/
-    baz /usr/local/toto
-
 sources
 
-:
-warp.c
+:{
+warp.c}
 
-/*
-junk
-junk2 junk3
-junk4
-junk5
-
-foo:
-*/

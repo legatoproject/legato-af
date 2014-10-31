@@ -1,8 +1,14 @@
 sources:
-
+{
     le_simTest.c
     main.c
+}
 
-import:
-
-    le_sim.api
+requires:
+{
+    api:
+    {
+        le_sim.api
+        le_mrc.api
+    }
+}

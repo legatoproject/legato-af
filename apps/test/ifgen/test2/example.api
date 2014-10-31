@@ -23,6 +23,17 @@ DEFINE SOME_STRING = "some string";
 
 
 /**
+ * BITMASK example
+ */
+BITMASK BitMaskExample
+{
+    A,      ///< first
+    B,      ///< second
+    C       ///< third
+};
+
+
+/**
  * Handler definition
  */
 HANDLER TestA

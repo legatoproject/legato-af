@@ -1,5 +1,12 @@
 sources:
+{
     magicClient.c
+}
 
-import:
-    magic.api
+requires:
+{
+    api:
+    {
+        magic.api
+    }
+}

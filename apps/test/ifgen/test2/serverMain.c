@@ -145,5 +145,5 @@ void RemoveBugTest
 
 COMPONENT_INIT
 {
-    StartServer("Test 2");
+    AdvertiseService();
 }

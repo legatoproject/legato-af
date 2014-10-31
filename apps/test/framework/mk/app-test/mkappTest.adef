@@ -1,51 +1,66 @@
-/* This is a comment. */
+// This is a comment.
 
 /* This is
-a comment */
+// a comment */
 
- /*
- This
- is also
- a
- comment
-*/
+ // this is a comment.
 
-files:
+bundles:
+{
+    file:
+    {
         files/xyz  /usr/share/files/
         files/xyz  /usr/share/files/abc
-        files/     /
+//        files/     /
 //        files      /
 //        files/xyz/  /
-    [r] libexternal/libexternal.so  /lib/
+    [r] libexternal/libexternal.$TARGET.so  /lib/
+    }
+
+    dir:
+    {
+//        files/xyz  /usr/share/files/
+//        files/xyz  /usr/share/files/abc
+//          files/     /
+          files      /
+//          files/xyz/  /
+    [r] libexternal  /lib/
+    }
+}
 
 executables:
-
-    fromSource ( fromSource1.c "from Source 2.c" 'from Source 3.c' )
-    fromComponents ( foo bar foo )
-    mix (fromSource1.c "from Source 2.c" "from Source 3.c" foo )
-    extern (libexternal/libexternal.so externalLibInit.c)
+{
+    fromSource = ( fromSource1.c "from Source 2.c" 'from Source 3.c' )
+    fromComponents = ( foo bar foo )
+    mix = (fromSource1.c "from Source 2.c" "from Source 3.c" foo )
+    extern = (libexternal/libexternal.$TARGET.so externalLibInit.c)
+}
 
 processes:
-
+{
     envVars:
-
+    {
         LE_LOG_LOCATION = "stderr + syslog"
+    }
 
-    run: proc1 ( "fromSource" 'foo' "'bar'" - '"jam"' "--crazy=12" "-c 9")
-    run: proc2 ( /bin/fromSource "foo bar - jam --crazy=12 -c 9" )
-    run: (/bin/fromSource)
-    run: ( mix foo
+    run:
+    {
+        proc1 = ( "fromSource" 'foo' "'bar'" - '"jam"' "--crazy=12" "-c 9")
+        proc2 = ( /bin/fromSource "foo /* bar - jam --crazy=12 -c 9" )
+        (/bin/fromSource)
+        ( mix foo
      bar /* some random
             comment mess */
      - jam --crazy  // Three args on one line with a C++ comment.
     )
-
-    envVars:  LE_LOG_LEVEL = DEBUG
-    FOO = BAR
+    }
+/**/
+    envVars:{  LE_LOG_LEVEL = DEBUG
+    FOO /****/=/**/BAR
+}}
 
 start: manual
 
 processes:
-
-processes:
-
+{
+}

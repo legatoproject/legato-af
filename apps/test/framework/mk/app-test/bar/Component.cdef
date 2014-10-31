@@ -1,1 +1,1 @@
-sources: bar.c
+sources: { bar.c}

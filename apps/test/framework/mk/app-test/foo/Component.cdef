@@ -1,4 +1,9 @@
-sources: foo.c
+sources: {foo.c }
 
-files:
-[r] foo.c  /usr/src/
+bundles:
+{
+    file:
+    {
+        [r] foo.c  /usr/src/
+    }
+}

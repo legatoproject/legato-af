@@ -1,0 +1,12 @@
+requires:
+{
+    api:
+    {
+        le_sms.api
+    }
+}
+
+sources:
+{
+    smsDeletion.c
+}

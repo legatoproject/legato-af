@@ -1,5 +1,5 @@
 executables:
-
+{
     // Component "greetClient" requires api "hello".
     // Component "greetServer" provides api "hello".
 
@@ -7,39 +7,50 @@ executables:
     // Component "magicServer" provides api "magic".
 
     // Client-only executables
-    hello (greetClient)
-    helloInternal (greetClient)
-    magic (magicClient)
-    magicHello (magicClient greetClient )
+    hello = (greetClient)
+    helloInternal = (greetClient)
+    magic = (magicClient)
+    magicHello = (magicClient greetClient )
 
     // Server-only executables
-    internalGreetServer (greetServer)
+    internalGreetServer = (greetServer)
+}
 
 processes:
+{
+    run:
+    {
+        (hello)
+        (helloInternal)
+        (magic)
+        (magicHello)
 
-    run: (hello)
-    run: (helloInternal)
-    run: (magic)
-    run: (magicHello)
-
-    run: (internalGreetServer "I love myself!")
+        (internalGreetServer "I love myself!")
+    }
+}
 
 bindings:
-
+{
     // Connect helloInternal to the internal greet server.
     helloInternal.greetClient.hello -> internalGreetServer.greetServer.hello
 
     // Connect magicHello's "hello" client-side interface to the internal greet server.
     magicHello.greetClient.hello -> internalGreetServer.greetServer.hello
+}
 
 requires:
-
-//    api: hello { hello.greetClient.hello }
-//    api: magic { magic.magicClient.magic }
-//    api: magic { magicHello.magicClient.magic }
+{
+    api:
+    {
+//      hello = hello.greetClient.hello
+//      magic = magic.magicClient.magic
+//      magic = magicHello.magicClient.magic
+    }
+}
 
 bindings:
-
+{
     hello.greetClient.hello -> server.hello
     magic.magicClient.magic -> server.magic
     magicHello.magicClient.magic -> server.magic
+}

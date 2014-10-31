@@ -1,5 +1,12 @@
 sources:
+{
     server.c
+}
 
-export:
-    magic.api
+provides:
+{
+    api:
+    {
+        magic.api
+    }
+}

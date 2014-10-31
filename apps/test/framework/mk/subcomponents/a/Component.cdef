@@ -1,0 +1,12 @@
+sources:
+{
+    a.c
+}
+
+requires:
+{
+    component:
+    {
+        c d
+    }
+}

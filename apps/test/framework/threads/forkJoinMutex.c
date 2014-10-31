@@ -32,7 +32,7 @@
 //      create another FAN_OUT threads, so there will be FAN_OUT * FAN_OUT threads at that level.
 //  - At the third nesting level, there will be FAN_OUT * FAN_OUT * FAN_OUT threads.
 //  - Etc.
-// So, 
+// So,
 static size_t GetExpectedCounterValue
 (
     void
@@ -55,7 +55,7 @@ static size_t GetExpectedCounterValue
     }
 
     LE_INFO("Expecting %zu threads to be created in total.", result);
-        
+
     return result;
 }
 
@@ -78,14 +78,14 @@ LE_MUTEX_DECLARE_REF(MutexRef);
  * Thread context blocks.
  *
  * A parent thread creates one of these, fills it with info, and passes it to all its children,
- * echo of whom releases it once.  When all children 
+ * echo of whom releases it once.  When all children
  */
 // -------------------------------------------------------------------------------------------------
 typedef struct
 {
     size_t depth;           // Indicates what nesting level the thread is at.
                             // 1 = children of process main thread.
-    
+
     void*  completionObjPtr;// Ptr to the object whose reference count is used to terminate the test.
                             // This must have its reference count incremented before being passed
                             // to a new child thread, and every thread must release its reference
@@ -153,7 +153,7 @@ static void SpawnChildren
 (
     size_t depth,           // Indicates what nesting level the thread is at.
                             // 1 = children of the process main thread.
-    
+
     void*  completionObjPtr // Ptr to the object whose ref count is used to terminate the test.
 )
 // -------------------------------------------------------------------------------------------------
@@ -166,7 +166,7 @@ static void SpawnChildren
     for (i = 0; i < FAN_OUT; i++)
     {
         le_thread_Ref_t threadRef;
-        
+
         Context_t* contextPtr = le_mem_ForceAlloc(ContextPoolRef);
         contextPtr->depth = depth;
         contextPtr->completionObjPtr = completionObjPtr;
@@ -207,7 +207,7 @@ static void SpawnChildren
     for (i = 0; i < FAN_OUT; i++)
     {
         void* threadReturnValue;
-        
+
         snprintf(childName, sizeof(childName), "%s-%d", le_thread_GetMyName(), i + 1);
         LE_INFO("Joining with thread '%s'.", childName);
 
@@ -253,7 +253,7 @@ static void* ThreadMainFunction
 // -------------------------------------------------------------------------------------------------
 {
     Context_t* contextPtr = objPtr;
-    
+
     LE_INFO("Thread '%s' started.", le_thread_GetMyName());
 
     IncrementCounter();
@@ -273,13 +273,13 @@ static void* ThreadMainFunction
 
 // -------------------------------------------------------------------------------------------------
 /**
- * Initializes the Create/Join/Mutex tests.
+ * Starts the Create/Join/Mutex tests.
  *
  * Increments the use count on a given memory pool object, then releases it when the test is
  * complete.
  */
 // -------------------------------------------------------------------------------------------------
-void fjm_Init
+void fjm_Start
 (
     void* completionObjPtr  ///< [in] Pointer to the object whose reference count is used to signal
                             ///       the completion of the test.
@@ -288,50 +288,40 @@ void fjm_Init
 {
     // Compute the expected ending counter value.
     ExpectedCounterValue = GetExpectedCounterValue();
-    
+
     // Create the mutex.
     MutexRef = le_mutex_CreateNonRecursive("fork-join-mutex-test");
 
     LE_INFO("completionObjPtr = %p.", completionObjPtr);
-    
+
     // Create the Context Pool.
     ContextPoolRef = le_mem_CreatePool("FJM-ContextPool", sizeof(Context_t));
     le_mem_ExpandPool(ContextPoolRef, ExpectedCounterValue);
 
     // Spawn the first child thread.
     SpawnChildren(1, completionObjPtr);
-
-    // Release my reference to the completion object.
-    le_mem_Release(completionObjPtr);
 }
 
 
 // -------------------------------------------------------------------------------------------------
 /**
  * Checks the completion status of the Create/Join/Mutex tests.
- *
- * @return  LE_OK if everything looks good.
  */
 // -------------------------------------------------------------------------------------------------
-le_result_t fjm_CheckResults
+void fjm_CheckResults
 (
     void
 )
 // -------------------------------------------------------------------------------------------------
 {
-    le_result_t result = LE_OK;
-
     Lock();
 
     if (Counter != ExpectedCounterValue)
     {
-        LE_EMERG("**** FAILED - Counter value %zu should have been %zu.",
+        LE_FATAL("**** FAILED - Counter value %zu should have been %zu.",
                  Counter,
                  ExpectedCounterValue);
-        result = LE_OUT_OF_RANGE;
     }
 
     Unlock();
-
-    return result;
 }

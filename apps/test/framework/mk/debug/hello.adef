@@ -1,10 +1,14 @@
 processes:
-
-  run: hey ( hello )
-  run: hi ( hello )
-  run: allo ( hello )
+{
+  run:
+  {
+    hey = ( hello )
+    hi = ( hello )
+    allo = ( hello )
+  }
+}
 
 executables:
-
-  hello ( helloWorld.c )
-
+{
+  hello = ( helloWorld.c )
+}

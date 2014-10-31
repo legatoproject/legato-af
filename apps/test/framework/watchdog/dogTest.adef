@@ -2,7 +2,14 @@ watchdogTimeout: 5000
 watchdogAction: stop
 
 executables:
-    dogTest (dogTest)
+{
+    dogTest = (dogTest)
+}
 
 processes:
-    run: (dogTest 500 100)
+{
+    run:
+    {
+        (dogTest 500 100)
+    }
+}

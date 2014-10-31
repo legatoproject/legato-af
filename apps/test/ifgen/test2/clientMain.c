@@ -37,7 +37,7 @@ void test1(void)
                   "input string",
                   response,
                   sizeof(response),
-                  more, 
+                  more,
                   sizeof(more));
 
     LE_PRINT_VALUE("%i", value);
@@ -102,11 +102,22 @@ static void HandleTestA
     LE_DEBUG("Triggering TestA again");
     TriggerTestA();
 
-    // This should get a DBUG message, since the service instance name is the same
-    StartClient("Test 2");
- 
-    // This should get an ERROR message, since the service instance name is different
-    StartClient("Different Test 2");
+
+    // Test starting/stopping service connections
+
+    // Start a second connection
+    ConnectService();
+
+    // Disconnect the second connection, and try calling an API function. This should succeed.
+    LE_DEBUG("Disconnect test; success expected");
+    DisconnectService();
+    TriggerTestA();
+
+    // Disconnect the first connection, and try calling an API function.  This should fail.
+    LE_DEBUG("Disconnect test; fatal error expected");
+    DisconnectService();
+    TriggerTestA();
+
 }
 
 void test2(void)
@@ -138,13 +149,15 @@ void StartTest
     banner("Test 1");
     test1();
 
-    // Verify that the client session can be stopped.  A new session will be created
-    // as soon as any API function is called.
+    // Verify that the client session can be stopped.
     banner("Test Stop/Restart Client");
-    StopClient();
- 
+    DisconnectService();
+
     // Should get an error message if trying to stop the client a second time.
-    StopClient();
+    DisconnectService();
+
+    // Re-connect to the service to continue the test
+    ConnectService();
 
     banner("Test 2");
     test2();
@@ -152,7 +165,7 @@ void StartTest
 
 COMPONENT_INIT
 {
-    StartClient("Test 2");
+    ConnectService();
 
     // Start the test once the Event Loop is running.
     le_event_QueueFunction(StartTest, NULL, NULL);

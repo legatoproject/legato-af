@@ -1,1 +1,1 @@
-sources: foo.c
+sources: {foo.c}

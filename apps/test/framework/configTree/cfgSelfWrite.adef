@@ -1,6 +1,13 @@
 
 executables:
-    writer ( configTestWriteAclApp )
+{
+    writer = ( configTestWriteAclApp )
+}
 
 processes:
-    run: (writer cfgSelfWrite)
+{
+    run:
+    {
+        (writer cfgSelfWrite)
+    }
+}

@@ -8,8 +8,8 @@
  */
 
 
-#ifndef SERVER_H_INCLUDE_GUARD
-#define SERVER_H_INCLUDE_GUARD
+#ifndef EXAMPLE_H_INCLUDE_GUARD
+#define EXAMPLE_H_INCLUDE_GUARD
 
 
 #include "legato.h"
@@ -40,13 +40,12 @@ le_msg_SessionRef_t GetClientSessionRef
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Initialize and start the server.
+ * Initialize the server and advertise the service.
  */
 //--------------------------------------------------------------------------------------------------
-void StartServer
+void AdvertiseService
 (
-    const char* serviceInstanceName
-        ///< [IN]
+    void
 );
 
 
@@ -66,6 +65,25 @@ void StartServer
 
 //--------------------------------------------------------------------------------------------------
 #define SOME_STRING "some string"
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * BITMASK example
+ */
+//--------------------------------------------------------------------------------------------------
+typedef enum
+{
+    A = 0x1,
+        ///< first
+
+    B = 0x2,
+        ///< second
+
+    C = 0x4
+        ///< third
+}
+BitMaskExample_t;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -242,5 +260,5 @@ void RemoveBugTest
 );
 
 
-#endif // SERVER_H_INCLUDE_GUARD
+#endif // EXAMPLE_H_INCLUDE_GUARD
 

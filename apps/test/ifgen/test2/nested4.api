@@ -1,0 +1,5 @@
+/*
+ * This API file is used for testing nested USETYPES
+ */
+
+DEFINE ONE = 1;

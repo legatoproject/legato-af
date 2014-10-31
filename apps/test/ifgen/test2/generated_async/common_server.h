@@ -8,8 +8,8 @@
  */
 
 
-#ifndef COMMON_SERVER_H_INCLUDE_GUARD
-#define COMMON_SERVER_H_INCLUDE_GUARD
+#ifndef COMMON_H_INCLUDE_GUARD
+#define COMMON_H_INCLUDE_GUARD
 
 
 #include "legato.h"
@@ -61,5 +61,5 @@ typedef enum
 common_EnumExample_t;
 
 
-#endif // COMMON_SERVER_H_INCLUDE_GUARD
+#endif // COMMON_H_INCLUDE_GUARD
 

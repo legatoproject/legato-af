@@ -1,5 +1,12 @@
 sources:
+{
     client.c
+}
 
-import:
-    hello = greet.api
+requires:
+{
+    api:
+    {
+        hello = greet.api
+    }
+}

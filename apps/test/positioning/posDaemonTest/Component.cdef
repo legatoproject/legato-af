@@ -1,0 +1,16 @@
+sources:
+{
+    le_posTest.c
+    main.c
+}
+
+requires:
+{
+    api:
+    {
+        le_pos.api
+        le_posCtrl.api
+    }
+
+    component: { $LEGATO_ROOT/components/positioning/posDaemon }
+}

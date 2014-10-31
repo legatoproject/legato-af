@@ -1,0 +1,47 @@
+sandboxed: false
+
+executables:
+{
+    audioCallPbRecApp = ( $LEGATO_ROOT/apps/test/audio/audioCallPbRec/audioCallComp )
+}
+
+maxFileSystemBytes: 256K
+
+bundles:
+{
+    file:
+    {
+        [r]     audio/male.wav     /usr/share/sounds/
+        [w]     record/remote.wav  /record/
+    }
+}
+
+processes:
+{
+    envVars:
+    {
+        LE_LOG_LEVEL = DEBUG
+    }
+
+    run:
+    {
+        (audioCallPbRecApp "<tel number>")
+    }
+
+    maxFileBytes: 5000K
+}
+
+start:
+    manual
+
+bindings:
+{
+    audioCallPbRecApp.audioCallComp.le_audio -> audioService.le_audio
+    audioCallPbRecApp.audioCallComp.le_mcc_call -> modemService.le_mcc_call
+    audioCallPbRecApp.audioCallComp.le_mcc_profile -> modemService.le_mcc_profile
+}
+
+requires:
+{
+    configTree: { [w] system }
+}

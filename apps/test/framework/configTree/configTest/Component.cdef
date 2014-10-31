@@ -1,8 +1,13 @@
-import:
-
-    le_cfg.api
-    le_cfgAdmin.api
+requires:
+{
+    api:
+    {
+        le_cfg.api
+        le_cfgAdmin.api
+    }
+}
 
 sources:
-
+{
     configTest.c
+}

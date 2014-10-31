@@ -20,6 +20,8 @@ COMPONENT_INIT
 
     LE_INFO("======= Test 3: Server and Client in different processes, server kills client. ========");
 
+    system("testFwMessaging-Setup");
+
     le_test_ChildRef_t client = LE_TEST_FORK("testFwMessaging-Test3-client");
     le_test_ChildRef_t server = LE_TEST_FORK("testFwMessaging-Test3-server");
 

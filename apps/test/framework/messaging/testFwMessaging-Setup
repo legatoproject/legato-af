@@ -1,0 +1,23 @@
+#!/bin/bash
+
+echo "Clearing configuration."
+config delete /
+
+echo "Configuring bindings."
+
+# Configure bindings needed by test 1.
+config set users/$USER/bindings/BoeufMort1/user $USER
+config set users/$USER/bindings/BoeufMort1/interface BoeufMort1
+
+# Configure bindings needed by test 2.
+config set users/$USER/bindings/BoeufMort2/user $USER
+config set users/$USER/bindings/BoeufMort2/interface BoeufMort2
+
+# Configure bindings needed by test 2.
+config set users/$USER/bindings/messagingTest3/user $USER
+config set users/$USER/bindings/messagingTest3/interface messagingTest3
+
+echo "Loading binding configuration."
+sdir load
+
+echo "Ready to run Framework Messaging Tests."

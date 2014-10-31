@@ -1,5 +1,5 @@
 #*******************************************************************************
-# Copyright (C) 2013, Sierra Wireless Inc., all rights reserved. 
+# Copyright (C) 2013, Sierra Wireless Inc., all rights reserved.
 #
 # Contributors:
 #     Sierra Wireless - initial API and implementation
@@ -12,6 +12,7 @@ set(APP_TARGET testFwThread)
 set(APP_SOURCES
     main.c
     forkJoinMutex.c
+    externalThreadApi.c
 )
 
 set_legato_component(${APP_COMPONENT})

@@ -1,3 +1,4 @@
 executables:
-
-    nothing ( void)
+{
+    nothing = ( void)
+}

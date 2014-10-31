@@ -65,7 +65,6 @@ static void StartServer
 static int ResponseCount = 0; // Count of the number of responses received from the server.
 
 static const char ClientIndContextStr[] = "This is the client receiving an indication message.";
-static const char ClientRespContextStr[] = "This is the client receiving a response message.";
 static const char ClientOpenContextStr[] = "This is the client opening a session.";
 
 
@@ -215,6 +214,8 @@ static void StartClient
 COMPONENT_INIT
 {
     LE_INFO("======= Test 2: Server and Client in same process but different threads - Sync ========");
+
+    system("testFwMessaging-Setup");
 
     StartServer();
 

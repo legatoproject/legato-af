@@ -1,31 +1,49 @@
-files:
-        ../files/xyz  /usr/share/files/
-    [r] ../libexternal/libexternal.so  /lib
+bundles:
+{
+    file:
+    {
+            ../files/xyz  /usr/share/files/
+        [r] ../libexternal/libexternal.so  /lib
+    }
+}
 
-import:
-
-    [r] lib/libexternal.so /lib/libexternal.so.1
+requires:
+{
+    file:
+    {
+        /lib/libexternal.so /lib/libexternal.so.1
+    }
+}
 
 executables:
-
-    fromSource ( fromSource1.c "from Source 2.c" 'from Source 3.c' )
-    fromComponents ( foo bar foo )
-    mix (fromSource1.c "from Source 2.c" "from Source 3.c" foo )
-    extern (../libexternal/libexternal.so externalLibInit.c)
+{
+    fromSource = ( fromSource1.c "from Source 2.c" 'from Source 3.c' )
+    fromComponents = ( foo bar foo )
+    mix = (fromSource1.c "from Source 2.c" "from Source 3.c" foo )
+    extern = (../libexternal/libexternal.so externalLibInit.c)
+}
 
 processes:
+{
+    envVars:
+    {
+    }
+
+    run:
+    {
+        proc1 = ( "fromSource" 'foo' "'bar'" - '"jam"' "--crazy=12" "-c 9")
+        proc2 = ( "fromSource foo bar - jam --crazy=12 -c 9" )
+        (mix foo
+            bar // some random
+                // comment
+            - jam --crazy  // Three args on one line with a C++ comment.
+            )
+    }
 
     envVars:
-
-    run: proc1 ( "fromSource" 'foo' "'bar'" - '"jam"' "--crazy=12" "-c 9")
-    run: proc2 ( "fromSource foo bar - jam --crazy=12 -c 9" )
-    run: ( mix foo
-     bar /* some random 
-             comment */
-     - jam --crazy  // Three args on one line with a C++ comment.
-    )
-
-    envVars:
+    {
+    }
+}
 
 start: manual
 

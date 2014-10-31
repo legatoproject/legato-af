@@ -25,9 +25,10 @@ mkexe(${APP_TARGET}
             ## TODO: Remove this when the mk tools do dependency checking.
             smsPduTest/Component.cdef
             smsPduTest/smsPduTest.c
+            ${LEGATO_ROOT}/components/modemServices/modemDaemon/smsPdu.c
+            ${LEGATO_ROOT}/components/modemServices/modemDaemon/cdmaPdu.c
             )
 
-if(NOT ${LEGATO_TARGET} STREQUAL "localhost")
-    add_test(${APP_TARGET} ${EXECUTABLE_OUTPUT_PATH}/${APP_TARGET})
-    set_tests_properties(${APP_TARGET} PROPERTIES TIMEOUT 0)
-endif()
+
+add_test(${APP_TARGET} ${EXECUTABLE_OUTPUT_PATH}/${APP_TARGET})
+set_tests_properties(${APP_TARGET} PROPERTIES TIMEOUT 0)

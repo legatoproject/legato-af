@@ -1,5 +1,5 @@
 #*******************************************************************************
-# Copyright (C) 2014, Sierra Wireless Inc., all rights reserved.
+# Copyright (C) 2014, Sierra Wireless Inc.
 #
 # Contributors:
 #     Sierra Wireless - initial API and implementation
@@ -7,24 +7,17 @@
 
 find_package(Legato REQUIRED)
 
-set(APP_COMPONENT DcsTest)
 set(APP_TARGET testDcs)
 
-set(APP_SOURCES
-    dcsTest.c
-)
-
-set_legato_component(${APP_COMPONENT})
-add_legato_executable(${APP_TARGET} ${APP_SOURCES})
-
-include_directories(
-    ${LEGATO_INCLUDE_DIRS}
-    ${LEGATO_INCLUDE_DIRS_PRIV}
-)
-
-target_link_libraries(${APP_TARGET}
-    ${LEGATO_SERVICES_DCS_CLIENT_TARGET}
-)
+mkexe(${APP_TARGET}
+            dcsTest
+            -i ${LEGATO_ROOT}/interfaces/dataConnectionService
+        DEPENDS
+            legato
+            ## TODO: Remove this when the mk tools do dependency checking.
+            dcsTest/Component.cdef
+            dcsTest/dcsTest.c
+            )
 
 if(NOT ${LEGATO_TARGET} STREQUAL "localhost")
     add_test(${APP_TARGET} ${EXECUTABLE_OUTPUT_PATH}/${APP_TARGET})

@@ -1,0 +1,28 @@
+apps:
+{
+    app1
+}
+
+apps:
+{
+    app2.adef
+    {
+        groups:
+        {
+            groupA
+            groupB
+        }
+    }
+}
+
+bindings:
+{
+    <foo>.client -> app2.server
+    app1.client -> app2.server
+    app2.client -> <baz>.server
+    <bar>.client -> <baz>.server
+}
+
+bindings:
+{
+}

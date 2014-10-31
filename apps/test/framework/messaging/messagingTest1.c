@@ -170,6 +170,8 @@ COMPONENT_INIT
 {
     LE_INFO("======= Test 1: Server and Client in same process ========");
 
+    system("testFwMessaging-Setup");
+
     burgerServer_Start(SERVICE_INSTANCE_NAME, MAX_REQUEST_RESPONSE_TXNS);
 
     ClientStart(SERVICE_INSTANCE_NAME);

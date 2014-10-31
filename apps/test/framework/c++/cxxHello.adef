@@ -1,0 +1,15 @@
+
+executables:
+{
+    helloCpp = ( Hello.cpp )
+}
+
+processes:
+{
+    run:
+    {
+        ( helloCpp )
+    }
+}
+
+start: auto

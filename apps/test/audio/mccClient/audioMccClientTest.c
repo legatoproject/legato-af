@@ -1,7 +1,14 @@
 /**
  * This module is for unit testing of the MCC service component as a client of MS daemon.
  *
- * Copyright (C) Sierra Wireless, Inc. 2013.  All rights reserved. Use of this work is subject to license.
+ * New commands added to manage Calling Line Identification Restriction (CLIR) status on calls.
+ *  - clir_on : Set CLIR status to LE_ON for next calls.
+ *      Disable presentation of your target's phone number to remote.
+ *  - clir_off : Set CLIR status to LE_OFF for next calls.
+ *      Enable presentation of your target's phone number to remote.
+ *  - clir_default : No CLIR status set (Default value).
+ *
+ * Copyright (C) Sierra Wireless, Inc. 2013-2014. Use of this work is subject to license.
  *
  */
 
@@ -10,8 +17,7 @@
 #include <pthread.h>
 
 
-#include "le_mcc.h"
-#include "le_audio.h"
+#include "interfaces.h"
 
 
 
@@ -26,12 +32,89 @@ static le_audio_StreamRef_t FileAudioRef = NULL;
 static le_audio_ConnectorRef_t AudioInputConnectorRef = NULL;
 static le_audio_ConnectorRef_t AudioOutputConnectorRef = NULL;
 
-static char  DestinationNumber[LE_MDMDEFS_PHONE_NUM_MAX_LEN];
+static char  DestinationNumber[LE_MDMDEFS_PHONE_NUM_MAX_BYTES];
 static char  AudioTestCase[16];
 static char  MainAudioSoundPath[16];
 static char  AudioFilePath[129];
 static int   AudioFileFd = -1;
 
+typedef enum
+{
+    AUDIO_MCC_TEST_CLIR_DEFAULT,   ///< No CLIR status set (Default value).
+    AUDIO_MCC_TEST_CLIR_ON,        ///< Set CLIR status to LE_ON.
+    AUDIO_MCC_TEST_CLIR_OFF        ///< Set CLIR status to LE_OFF.
+}
+ClirStatus_t;
+
+static ClirStatus_t CurrentCLIRStatus;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Bindings functions.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+#define SERVICE_BASE_BINDINGS_CFG  "/users/root/bindings"
+
+typedef void (*LegatoServiceInit_t)(void);
+
+typedef struct {
+    const char * appNamePtr;
+    const char * serviceNamePtr;
+    LegatoServiceInit_t serviceInitPtr;
+} ServiceInitEntry_t;
+
+#define SERVICE_ENTRY(aPP, sVC) { aPP, #sVC, sVC##_ConnectService },
+
+const ServiceInitEntry_t ServiceInitEntries[] = {
+    SERVICE_ENTRY("modemService", le_mcc_profile)
+    SERVICE_ENTRY("modemService", le_mcc_call)
+    SERVICE_ENTRY("audioService", le_audio)
+};
+
+static void SetupBindings(void)
+{
+    int serviceIndex;
+    char cfgPath[512];
+    le_cfg_IteratorRef_t iteratorRef;
+
+    /* Setup bindings */
+    for(serviceIndex = 0; serviceIndex < NUM_ARRAY_MEMBERS(ServiceInitEntries); serviceIndex++ )
+    {
+        const ServiceInitEntry_t * entryPtr = &ServiceInitEntries[serviceIndex];
+
+        /* Update binding in config tree */
+        LE_INFO("-> Bind %s", entryPtr->serviceNamePtr);
+
+        snprintf(cfgPath, sizeof(cfgPath), SERVICE_BASE_BINDINGS_CFG "/%s", entryPtr->serviceNamePtr);
+
+        iteratorRef = le_cfg_CreateWriteTxn(cfgPath);
+
+        le_cfg_SetString(iteratorRef, "app", entryPtr->appNamePtr);
+        le_cfg_SetString(iteratorRef, "interface", entryPtr->serviceNamePtr);
+
+        le_cfg_CommitTxn(iteratorRef);
+    }
+
+    /* Tel legato to reload its bindings */
+    system("sdir load");
+}
+
+static void ConnectServices(void)
+{
+    int serviceIndex;
+
+    /* Init services */
+    for(serviceIndex = 0; serviceIndex < NUM_ARRAY_MEMBERS(ServiceInitEntries); serviceIndex++ )
+    {
+        const ServiceInitEntry_t * entryPtr = &ServiceInitEntries[serviceIndex];
+
+        LE_INFO("-> Init %s", entryPtr->serviceNamePtr);
+        entryPtr->serviceInitPtr();
+    }
+
+    LE_INFO("All services bound!");
+}
 
 static void ConnectAudioToUsb
 (
@@ -292,9 +375,9 @@ static void ConnectAudioToI2s
     LE_ERROR_IF((MdmTxAudioRef==NULL), "GetTxAudioStream returns NULL!");
 
     // Redirect audio to the I2S interface.
-    FeOutRef = le_audio_OpenI2sTx(0);
+    FeOutRef = le_audio_OpenI2sTx(LE_AUDIO_I2S_STEREO);
     LE_ERROR_IF((FeOutRef==NULL), "OpenI2sTx returns NULL!");
-    FeInRef = le_audio_OpenI2sRx(0);
+    FeInRef = le_audio_OpenI2sRx(LE_AUDIO_I2S_STEREO);
     LE_ERROR_IF((FeInRef==NULL), "OpenI2sRx returns NULL!");
 
     LE_INFO("Open I2s: FeInRef.%p FeOutRef.%p", FeInRef, FeOutRef);
@@ -414,8 +497,8 @@ static void ConnectAudio
     {
         LE_INFO("Error in format could not connect audio");
     }
-
 }
+
 static void DisconnectAllAudio
 (
     le_mcc_call_ObjRef_t callRef
@@ -508,18 +591,62 @@ static int32_t GetTel(void)
 {
     char *strPtr;
 
-    memset(DestinationNumber, 0, LE_MDMDEFS_PHONE_NUM_MAX_LEN);
+    memset(DestinationNumber, 0, LE_MDMDEFS_PHONE_NUM_MAX_BYTES);
 
+    /**
+     * New commands added to manage Calling Line Identification Restriction (CLIR) status on calls.
+     *  - clir_on : Set CLIR status to LE_OFF for next calls.
+     *  - clir_off : Set CLIR status to LE_ON for next calls.
+     *  - clir_default : No CLIR status set (Default value).
+     */
     do
     {
-        fprintf(stderr, "Please enter the destination's telephone number to start a call or 'stop' to exit: \n");
+        fprintf(stderr, "Please enter a command:\n"
+                        " - 'clir_on' : CLIR option will be set to LE_ON for next calls\n"
+                        " - 'clir_off': CLIR option will be set to LE_OFF for next calls\n"
+                        " - 'clir_default' : CLIR option will not be set for next calls\n"
+                        " - 'stop' to exit\n"
+                        " or enter the destination's telephone number to start a call:\n");
         strPtr=fgets ((char*)DestinationNumber, 16, stdin);
     }while (strlen(strPtr) == 0);
 
     DestinationNumber[strlen(DestinationNumber)-1]='\0';
 
+    /* Command  'Stop': exit */
     if (!strcmp(DestinationNumber, "stop"))
     {
+        return 1;
+    }
+    /**
+     * Command 'clir_on' : Set CLIR status to LE_ON
+     *  with le_mcc_call_SetCallerIdRestrict() API.
+     */
+    else if (!strcmp(DestinationNumber, "clir_on"))
+    {
+        CurrentCLIRStatus = AUDIO_MCC_TEST_CLIR_ON;
+        fprintf(stderr, "CLIR will be set to activated on next calls\n\n");
+        return -1;
+
+    }
+    /**
+     * Command 'clir_off' : Set CLIR status to LE_OFF
+     *  with le_mcc_call_SetCallerIdRestrict() API.
+     */
+    else if (!strcmp(DestinationNumber, "clir_off"))
+    {
+        CurrentCLIRStatus = AUDIO_MCC_TEST_CLIR_OFF;
+        fprintf(stderr, "CLIR will be set to deactivated on next calls\n\n");
+        return -1;
+    }
+    /**
+     * Command 'clir_default' : Doesn't set CLIR status
+     *  with le_mcc_call_SetCallerIdRestrict() API.
+     *  Mcc default value is used.
+     */
+    else if (!strcmp(DestinationNumber, "clir_default"))
+    {
+        CurrentCLIRStatus = AUDIO_MCC_TEST_CLIR_DEFAULT;
+        fprintf(stderr, "CLIR will not be set on next calls\n\n");
         return -1;
     }
     else
@@ -727,29 +854,71 @@ static void* HandlerThread(void* contextPtr)
     return NULL;
 }
 
-
-static void* TestAudioMccClientService(void* contextPtr)
+COMPONENT_INIT
 {
     le_mcc_profile_ObjRef_t profileRef;
     int32_t                 stopTest = 0;
 
+    LE_INFO("Init");
+
+    CurrentCLIRStatus = AUDIO_MCC_TEST_CLIR_DEFAULT;
+
+    SetupBindings();
+    ConnectServices();
 
     profileRef=le_mcc_profile_GetByName("Modem-Sim1");
     if ( profileRef == NULL )
     {
         LE_INFO("Unable to get the Call profile reference");
-        return NULL;
+        exit(1);
     }
 
     // Start the handler thread to monitor the call for the just created profile.
     le_thread_Start(le_thread_Create("MCC", HandlerThread, profileRef));
 
-    while(!stopTest)
+    while(stopTest <= 0)
     {
         stopTest = GetTel();
-        if (!stopTest)
+        if (stopTest == 0)
         {
-            TestCallRef=le_mcc_profile_CreateCall(profileRef, DestinationNumber);
+            le_result_t res;
+            le_onoff_t  clirState;
+            TestCallRef = le_mcc_profile_CreateCall(profileRef, DestinationNumber);
+
+            if (CurrentCLIRStatus == AUDIO_MCC_TEST_CLIR_ON)
+            {
+                res = le_mcc_call_SetCallerIdRestrict(TestCallRef,LE_ON);
+                if(res != LE_OK)
+                {
+                    LE_ERROR("le_mcc_call_SetCallerIdRestrict() return LE_NOT_FOUND" );
+                }
+            }
+            if (CurrentCLIRStatus == AUDIO_MCC_TEST_CLIR_OFF)
+            {
+                res = le_mcc_call_SetCallerIdRestrict(TestCallRef,LE_OFF);
+                if(res != LE_OK)
+                {
+                    LE_ERROR("le_mcc_call_SetCallerIdRestrict() return LE_NOT_FOUND" );
+                }
+            }
+
+            res = le_mcc_call_GetCallerIdRestrict(TestCallRef,&clirState);
+            if(res != LE_OK)
+            {
+                if (res ==  LE_NOT_FOUND)
+                {
+                    LE_ERROR("le_mcc_call_GetCallerIdRestrict() return LE_NOT_FOUND" );
+                }
+                else
+                {
+                    LE_ERROR("le_mcc_call_GetCallerIdRestrict() return ERROR" );
+                }
+            }
+            else
+            {
+                fprintf(stderr, "\nCurrent CLIR status on the call is %s\n",
+                                (clirState == LE_ON ? "LE_ON" : "LE_OFF" ));
+            }
 
             stopTest = GetAudioTestCaseChoice();
 
@@ -763,21 +932,13 @@ static void* TestAudioMccClientService(void* contextPtr)
                 exit(0);
             }
         }
-        else
+        else if (stopTest > 0)
         {
             LE_INFO("Exit Audio Test!");
             exit(0);
         }
     }
 
-    return NULL;
-}
 
-
-COMPONENT_INIT
-{
-    // Note that this init should be done in the main thread, and in particular, should not be done
-    // in the same thread as the tests.
-    le_thread_Start(le_thread_Create("TestAudioMccClient", TestAudioMccClientService, NULL));
 }
 

@@ -1,8 +1,13 @@
 sources:
-
+{
     le_mrcTest.c
     main.c
+}
 
-import:
-
-    le_mrc.api
+requires:
+{
+    api:
+    {
+        le_mrc.api
+    }
+}

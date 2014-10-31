@@ -5,14 +5,13 @@
 
 
 #define SMALL_STR_SIZE 5
-#define STR_SIZE 513
 
 #define TEST_NAME_SIZE 20
 #define TREE_NAME_MAX 65
 
 
 
-static char TestRootDir[STR_SIZE] = { 0 };
+static char TestRootDir[LE_CFG_STR_LEN_BYTES] = "";
 
 
 
@@ -59,7 +58,7 @@ static void DumpTree(le_cfg_IteratorRef_t iterRef, size_t indent)
         return;
     }
 
-    static char strBuffer[STR_SIZE] = { 0 };
+    static char strBuffer[LE_CFG_STR_LEN_BYTES] = "";
 
     do
     {
@@ -70,7 +69,7 @@ static void DumpTree(le_cfg_IteratorRef_t iterRef, size_t indent)
             printf(" ");
         }
 
-        le_cfg_GetNodeName(iterRef, "", strBuffer, STR_SIZE);
+        le_cfg_GetNodeName(iterRef, "", strBuffer, LE_CFG_STR_LEN_BYTES);
         le_cfg_nodeType_t type = le_cfg_GetNodeType(iterRef, "");
 
         switch (type)
@@ -89,7 +88,7 @@ static void DumpTree(le_cfg_IteratorRef_t iterRef, size_t indent)
 
             default:
                 printf("%s<%s> == ", strBuffer, NodeTypeStr(iterRef));
-                le_cfg_GetString(iterRef, "", strBuffer, STR_SIZE, "");
+                le_cfg_GetString(iterRef, "", strBuffer, LE_CFG_STR_LEN_BYTES, "");
                 printf("%s\n", strBuffer);
                 break;
         }
@@ -123,10 +122,10 @@ static void SetNameTest()
 {
     LE_INFO("---- Set Name Tests ----------------------------------------------------------------");
 
-    char pathBuffer[STR_SIZE] = "";
-    char nameBuffer[STR_SIZE] = "";
+    char pathBuffer[LE_CFG_STR_LEN_BYTES] = "";
+    char nameBuffer[LE_CFG_STR_LEN_BYTES] = "";
 
-    snprintf(pathBuffer, STR_SIZE, "%s/setNameTest/", TestRootDir);
+    snprintf(pathBuffer, LE_CFG_STR_LEN_BYTES, "%s/setNameTest/", TestRootDir);
     le_cfg_IteratorRef_t iterRef = le_cfg_CreateWriteTxn(pathBuffer);
 
     le_cfg_GoToNode(iterRef, "./testNode");
@@ -154,6 +153,7 @@ static void SetNameTest()
     LE_TEST(le_cfg_NodeExists(iterRef, "./path1/a/b/foo") == true);
     LE_TEST(le_cfg_NodeExists(iterRef, "./path1/a/b/c") == false);
     LE_TEST(le_cfg_NodeExists(iterRef, "./path1/a/b/baz") == false);
+    DumpTree(iterRef, 0);
     le_cfg_CommitTxn(iterRef);
 
     iterRef = le_cfg_CreateReadTxn("");
@@ -164,6 +164,33 @@ static void SetNameTest()
     LE_TEST(le_cfg_NodeExists(iterRef, "./path1/a/b") == true);
     LE_TEST(le_cfg_NodeExists(iterRef, "./path1/a/b/foo") == true);
     le_cfg_CommitTxn(iterRef);
+
+    char valueBuffer[LE_CFG_STR_LEN_BYTES] = "";
+
+    // Create a node with a value.
+    iterRef = le_cfg_CreateWriteTxn(pathBuffer);
+    le_cfg_SetString(iterRef, "./path2/a/b/c/d/e", "fhqwhgads");
+    LE_TEST(le_cfg_NodeExists(iterRef, "./path2/a/b/c/d/e") == true);
+    LE_TEST(le_cfg_GetString(iterRef, "./path2/a/b/c/d/e", valueBuffer, sizeof(valueBuffer), "") == LE_OK);
+    LE_TEST(strcmp(valueBuffer, "fhqwhgads") == 0);
+    DumpTree(iterRef, 0);
+    le_cfg_CommitTxn(iterRef);
+
+    iterRef = le_cfg_CreateWriteTxn(pathBuffer);
+    DumpTree(iterRef, 0);
+    LE_TEST(le_cfg_SetNodeName(iterRef, "./path2/a/b", "baz") == LE_OK);
+    LE_TEST(le_cfg_NodeExists(iterRef, "./path2/a/b/c/d/e") == false);
+    LE_TEST(le_cfg_NodeExists(iterRef, "./path2/a/baz/c/d/e") == true);
+    LE_TEST(le_cfg_GetString(iterRef, "./path2/a/baz/c/d/e", valueBuffer, sizeof(valueBuffer), "") == LE_OK);
+    LE_TEST(strcmp(valueBuffer, "fhqwhgads") == 0);
+    le_cfg_CommitTxn(iterRef);
+
+    iterRef = le_cfg_CreateReadTxn(pathBuffer);
+    DumpTree(iterRef, 0);
+    LE_TEST(le_cfg_NodeExists(iterRef, "./path2/a/baz/c/d/e") == true);
+    LE_TEST(le_cfg_GetString(iterRef, "./path2/a/baz/c/d/e", valueBuffer, sizeof(valueBuffer), "") == LE_OK);
+    LE_TEST(strcmp(valueBuffer, "fhqwhgads") == 0);
+    le_cfg_CommitTxn(iterRef);
 }
 
 
@@ -173,14 +200,14 @@ static void QuickFunctionTest()
 {
     le_result_t result;
 
-    char pathBuffer[STR_SIZE] = { 0 };
+    char pathBuffer[LE_CFG_STR_LEN_BYTES] = "";
 
     LE_INFO("---- Quick Function Test -----------------------------------------------------------");
 
     {
-        snprintf(pathBuffer, STR_SIZE, "%s/quickFunctions/strVal", TestRootDir);
+        snprintf(pathBuffer, LE_CFG_STR_LEN_BYTES, "%s/quickFunctions/strVal", TestRootDir);
 
-        char strBuffer[513] = { 0 };
+        char strBuffer[513] = "";
 
         result = le_cfg_QuickGetString(pathBuffer, strBuffer, 513, "");
         LE_FATAL_IF(result != LE_OK,
@@ -200,7 +227,7 @@ static void QuickFunctionTest()
     }
 
     {
-        snprintf(pathBuffer, STR_SIZE, "%s/quickFunctions/intVal", TestRootDir);
+        snprintf(pathBuffer, LE_CFG_STR_LEN_BYTES, "%s/quickFunctions/intVal", TestRootDir);
 
         int value = le_cfg_QuickGetInt(pathBuffer, 0);
         LE_DEBUG("<<< Get INT <%d>", value);
@@ -212,7 +239,7 @@ static void QuickFunctionTest()
     }
 
     {
-        snprintf(pathBuffer, STR_SIZE, "%s/quickFunctions/floatVal", TestRootDir);
+        snprintf(pathBuffer, LE_CFG_STR_LEN_BYTES, "%s/quickFunctions/floatVal", TestRootDir);
 
         double value = le_cfg_QuickGetFloat(pathBuffer, 0.0);
         LE_DEBUG("<<< Get FLOAT <%f>", value);
@@ -228,7 +255,7 @@ static void QuickFunctionTest()
     }
 
     {
-        snprintf(pathBuffer, STR_SIZE, "%s/quickFunctions/boolVal", TestRootDir);
+        snprintf(pathBuffer, LE_CFG_STR_LEN_BYTES, "%s/quickFunctions/boolVal", TestRootDir);
 
         bool value = le_cfg_QuickGetBool(pathBuffer, false);
         LE_DEBUG("<<< Get BOOL <%d>", value);
@@ -254,10 +281,10 @@ static void TestValue
     const char* expectedValue
 )
 {
-    static char strBuffer[STR_SIZE] = { 0 };
+    static char strBuffer[LE_CFG_STR_LEN_BYTES] = "";
 
-    le_cfg_GetString(iterRef, valueNamePtr, strBuffer, STR_SIZE, "");
-    LE_FATAL_IF(strncmp(strBuffer, expectedValue, STR_SIZE) != 0,
+    le_cfg_GetString(iterRef, valueNamePtr, strBuffer, LE_CFG_STR_LEN_BYTES, "");
+    LE_FATAL_IF(strncmp(strBuffer, expectedValue, LE_CFG_STR_LEN_BYTES) != 0,
                 "Test: %s - Expected '%s' but got '%s' instead.",
                 TestRootDir,
                 expectedValue,
@@ -269,9 +296,9 @@ static void TestValue
 
 static void DeleteTest()
 {
-    static char pathBuffer[STR_SIZE] = { 0 };
+    static char pathBuffer[LE_CFG_STR_LEN_BYTES] = "";
 
-    snprintf(pathBuffer, STR_SIZE, "%s/deleteTest/", TestRootDir);
+    snprintf(pathBuffer, LE_CFG_STR_LEN_BYTES, "%s/deleteTest/", TestRootDir);
 
     le_cfg_IteratorRef_t iterRef = le_cfg_CreateWriteTxn(pathBuffer);
 
@@ -317,14 +344,14 @@ static void StringSizeTest()
 {
     le_result_t result;
 
-    static char pathBuffer[STR_SIZE] = { 0 };
-    static char parentPathBuffer[STR_SIZE] = { 0 };
+    static char pathBuffer[LE_CFG_STR_LEN_BYTES] = "";
+    static char parentPathBuffer[LE_CFG_STR_LEN_BYTES] = "";
 
-    static char smallPathBuffer[SMALL_STR_SIZE + 1] = { 0 };
-    static char smallParentPathBuffer[SMALL_STR_SIZE + 1] = { 0 };
+    static char smallPathBuffer[SMALL_STR_SIZE + 1] = "";
+    static char smallParentPathBuffer[SMALL_STR_SIZE + 1] = "";
 
-    snprintf(pathBuffer, STR_SIZE, "%s/stringSizeTest/strVal", TestRootDir);
-    snprintf(parentPathBuffer, STR_SIZE, "%s/stringSizeTest/", TestRootDir);
+    snprintf(pathBuffer, LE_CFG_STR_LEN_BYTES, "%s/stringSizeTest/strVal", TestRootDir);
+    snprintf(parentPathBuffer, LE_CFG_STR_LEN_BYTES, "%s/stringSizeTest/", TestRootDir);
 
     strncpy(smallPathBuffer, pathBuffer, SMALL_STR_SIZE);
     strncpy(smallParentPathBuffer, parentPathBuffer, SMALL_STR_SIZE);
@@ -333,7 +360,7 @@ static void StringSizeTest()
     le_cfg_QuickSetString(pathBuffer, "This is a bigger string than may be usual for this test.");
 
 
-    static char buffer[STR_SIZE];
+    static char buffer[LE_CFG_STR_LEN_BYTES];
 
     le_cfg_IteratorRef_t iterRef = le_cfg_CreateReadTxn(pathBuffer);
 
@@ -357,7 +384,7 @@ static void StringSizeTest()
                 buffer);
 
 
-    result = le_cfg_GetPath(iterRef, "", buffer, STR_SIZE);
+    result = le_cfg_GetPath(iterRef, "", buffer, LE_CFG_STR_LEN_BYTES);
     LE_FATAL_IF(result != LE_OK,
                 "Test: %s - The buffer should have been big enough.",
                 TestRootDir);
@@ -366,7 +393,7 @@ static void StringSizeTest()
                 TestRootDir,
                 buffer);
 
-    result = le_cfg_GetString(iterRef, "", buffer, STR_SIZE, "");
+    result = le_cfg_GetString(iterRef, "", buffer, LE_CFG_STR_LEN_BYTES, "");
     LE_FATAL_IF(result != LE_OK, "Test: %s - The buffer should have been big enough.", TestRootDir);
     LE_FATAL_IF(strcmp(buffer, "This is a bigger string than may be usual for this test.") != 0,
                 "Test: %s - Unexpected value returned, %s",
@@ -386,7 +413,7 @@ static void StringSizeTest()
                 TestRootDir,
                 buffer);
 
-    result = le_cfg_QuickGetString(pathBuffer, buffer, STR_SIZE, "");
+    result = le_cfg_QuickGetString(pathBuffer, buffer, LE_CFG_STR_LEN_BYTES, "");
     LE_FATAL_IF(result != LE_OK,
                 "Test: %s - The buffer should have been big enough.",
                 TestRootDir);
@@ -509,13 +536,13 @@ static void TestImportExport()
             "} "
         };
 
-    static char pathBuffer[STR_SIZE] = { 0 };
-    snprintf(pathBuffer, STR_SIZE, "/%s/importExport", TestRootDir);
+    static char pathBuffer[LE_CFG_STR_LEN_BYTES] = "";
+    snprintf(pathBuffer, LE_CFG_STR_LEN_BYTES, "/%s/importExport", TestRootDir);
 
-    char nameTemplate[100] = { 0 };
+    char nameTemplate[100] = "";
     sprintf(nameTemplate, "./%s_testImportData.cfg", TestRootDir);
 
-    char filePath[PATH_MAX] = { 0 };
+    char filePath[PATH_MAX] = "";
     realpath(nameTemplate, filePath);
 
     WriteConfigData(filePath, testData);
@@ -560,16 +587,16 @@ static void TestImportExport()
 
 static void MultiTreeTest()
 {
-    char strBuffer[STR_SIZE] = { 0 };
+    char strBuffer[LE_CFG_STR_LEN_BYTES] = "";
 
-    static char pathBuffer[STR_SIZE] = { 0 };
-    snprintf(pathBuffer, STR_SIZE, "foo:/%s/quickMultiTreeTest/value", TestRootDir);
+    static char pathBuffer[LE_CFG_STR_LEN_BYTES] = "";
+    snprintf(pathBuffer, LE_CFG_STR_LEN_BYTES, "foo:/%s/quickMultiTreeTest/value", TestRootDir);
 
 
     le_cfg_QuickSetString(pathBuffer, "hello world");
 
 
-    le_result_t result = le_cfg_QuickGetString(pathBuffer, strBuffer, STR_SIZE, "");
+    le_result_t result = le_cfg_QuickGetString(pathBuffer, strBuffer, LE_CFG_STR_LEN_BYTES, "");
     LE_FATAL_IF(result != LE_OK,
                 "Test: %s - Could not read value from tree, foo.  Reason = %s",
                 TestRootDir,
@@ -584,8 +611,8 @@ static void MultiTreeTest()
 
 static void ExistAndEmptyTest()
 {
-    static char pathBuffer[STR_SIZE] = { 0 };
-    snprintf(pathBuffer, STR_SIZE, "%s/existAndEmptyTest/", TestRootDir);
+    static char pathBuffer[LE_CFG_STR_LEN_BYTES] = "";
+    snprintf(pathBuffer, LE_CFG_STR_LEN_BYTES, "%s/existAndEmptyTest/", TestRootDir);
 
     {
         le_cfg_IteratorRef_t iterRef = le_cfg_CreateWriteTxn(pathBuffer);
@@ -726,7 +753,7 @@ static void ListTreeTest()
 
     while (le_cfgAdmin_NextTree(iteratorRef) == LE_OK)
     {
-        char treeName[TREE_NAME_MAX] = { 0 };
+        char treeName[TREE_NAME_MAX] = "";
 
         LE_TEST(le_cfgAdmin_GetTreeName(iteratorRef, treeName, sizeof(treeName)) == LE_OK);
 
@@ -771,8 +798,8 @@ static void RootConfigCallbackFunction
 
 static void CallbackTest()
 {
-    static char pathBuffer[STR_SIZE] = { 0 };
-    snprintf(pathBuffer, STR_SIZE, "/%s/callbacks/", TestRootDir);
+    static char pathBuffer[LE_CFG_STR_LEN_BYTES] = "";
+    snprintf(pathBuffer, LE_CFG_STR_LEN_BYTES, "/%s/callbacks/", TestRootDir);
 
     LE_INFO("------- Callback Test --------------------------------------");
 
@@ -803,15 +830,15 @@ static void IncTestCount
 
 COMPONENT_INIT
 {
-    strncpy(TestRootDir, "/configTest", STR_SIZE);
+    strncpy(TestRootDir, "/configTest", LE_CFG_STR_LEN_BYTES);
 
     if (le_arg_NumArgs() == 1)
     {
-        char nameBuffer[TEST_NAME_SIZE] = { 0 };
+        char nameBuffer[TEST_NAME_SIZE] = "";
 
         if (le_arg_GetArg(0, nameBuffer, TEST_NAME_SIZE) == LE_OK)
         {
-            snprintf(TestRootDir, STR_SIZE, "/configTest_%s", nameBuffer);
+            snprintf(TestRootDir, LE_CFG_STR_LEN_BYTES, "/configTest_%s", nameBuffer);
         }
     }
 

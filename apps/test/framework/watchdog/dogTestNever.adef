@@ -1,7 +1,14 @@
 watchdogTimeout: never
 
 executables:
-    dogTestNever (dogTestNever)
+{
+    dogTestNever = (dogTestNever)
+}
 
 processes:
-    run: (dogTestNever)
+{
+    run:
+    {
+        (dogTestNever)
+    }
+}

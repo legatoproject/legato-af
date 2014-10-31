@@ -1,0 +1,7 @@
+/*
+ * This API file is used for testing nested USETYPES
+ */
+
+USETYPES nested4;
+
+DEFINE THREE = 2+nested4.ONE;

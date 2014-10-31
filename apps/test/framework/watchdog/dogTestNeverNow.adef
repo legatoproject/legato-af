@@ -1,6 +1,12 @@
 executables:
-    dogTestNeverNow (dogTestNeverNow)
+{
+    dogTestNeverNow = (dogTestNeverNow)
+}
 
 processes:
-    run: (dogTestNeverNow)
-
+{
+    run:
+    {
+        (dogTestNeverNow)
+    }
+}

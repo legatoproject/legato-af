@@ -38,7 +38,7 @@ void test1(void)
                   "input string",
                   response,
                   sizeof(response),
-                  more, 
+                  more,
                   sizeof(more));
 
     LE_PRINT_VALUE("%i", value);
@@ -122,14 +122,14 @@ void test3(void)
     char response[21];
     char more[21];
 
-    allParameters(COMMON_THREE, 
-                  &value, 
-                  data, 
-                  4, 
-                  output, 
-                  &length, 
-                  "new thread string", 
-                  response, 
+    allParameters(COMMON_THREE,
+                  &value,
+                  data,
+                  4,
+                  output,
+                  &length,
+                  "new thread string",
+                  response,
                   sizeof(response),
                   more,
                   sizeof(more));
@@ -157,6 +157,9 @@ void* NewThread
     void* contextPtr
 )
 {
+    // Init IPC for the new thread
+    ConnectService();
+
     banner("New Thread Started");
 
     // Wait a few seconds so that the output of the two tests does not overlap.  It makes it
@@ -175,7 +178,7 @@ void* NewThread
 COMPONENT_INIT
 {
     // Init IPC for the main thread
-    StartClient("Test 2");
+    ConnectService();
 
     // Get the client message from the first parameter on the command line
     le_arg_GetArg(0, ClientMessage, sizeof(ClientMessage));

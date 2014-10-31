@@ -53,12 +53,14 @@ static int thisopen (const char* path)
 
     if ((sockfd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
         perror("socket");
-        exit(1);
+        return sockfd;
     }
 
     if (connect(sockfd, (struct sockaddr* )&that, sizeof(that)) < 0) /* error */
     {
         perror("connect");
+        close(sockfd);
+        sockfd = -1;
     }
 
     return sockfd;
@@ -263,17 +265,17 @@ void test_pa_mrc_GetNetworkRegState()
     CU_ASSERT_EQUAL(value,LE_MRC_REG_ROAMING);
 }
 
-void test_pa_mrc_GetSignalQuality()
+void test_pa_mrc_GetSignalStrength()
 {
     le_result_t result;
     int32_t rssi=0;
 
-    result = pa_mrc_GetSignalQuality(&rssi);
+    result = pa_mrc_GetSignalStrength(&rssi);
     CU_ASSERT_EQUAL(result,LE_OK);
     fprintf(stdout,"rssi %d\n",rssi);
     CU_ASSERT_EQUAL(rssi,-113);
 
-    result = pa_mrc_GetSignalQuality(&rssi);
+    result = pa_mrc_GetSignalStrength(&rssi);
     CU_ASSERT_EQUAL(result,LE_OK);
     CU_ASSERT_EQUAL(rssi,-51);
 }
@@ -294,7 +296,7 @@ static void* rctest(void* context)
         { "Test GetNetworkReg", testGetNetworkReg },
         { "Test pa_mrc_GetNetworkRegConfig", test_pa_mrc_GetNetworkRegConfig },
         { "Test pa_mrc_GetNetworkRegState", test_pa_mrc_GetNetworkRegState },
-        { "Test pa_mrc_GetSignalQuality", test_pa_mrc_GetSignalQuality },
+        { "Test pa_mrc_GetSignalStrength", test_pa_mrc_GetSignalStrength },
         CU_TEST_INFO_NULL,
     };
 
@@ -332,8 +334,44 @@ static void* rctest(void* context)
     exit(EXIT_SUCCESS);
 }
 
+int Exists(const char *fname)
+{
+    int file;
+    file = thisopen(fname);
+    if (file != -1)
+    {
+        thisclose(file);
+        return 1;
+    }
+    return 0;
+}
+
 static void init()
 {
+    // Wait for CUSTOM_PORT to be available
+    {
+        int i;
+        for (i=10;i>0;i--)
+        {
+            if (!Exists(CUSTOM_PORT))
+            {
+                int sec = 1;
+                // Wait 1 seconds and retry
+                fprintf(stdout,"%s does not exist, retry in %d sec\n",CUSTOM_PORT,sec);
+                sleep(sec);
+            }
+            else
+            {
+                fprintf(stdout,"%s exist, can continue the test\n",CUSTOM_PORT);
+                break;
+            }
+        }
+        if (i==0)
+        {
+            exit(EXIT_FAILURE);
+        }
+    }
+
     atmgr_Start();
 
     atcmdsync_Init();

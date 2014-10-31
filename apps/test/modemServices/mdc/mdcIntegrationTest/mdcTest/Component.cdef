@@ -1,0 +1,12 @@
+sources:
+{
+    mdcTest.c
+}
+
+requires:
+{
+    api:
+    {
+        le_mdc.api
+    }
+}

@@ -135,20 +135,20 @@
         </resp>
     </test_pa_mrc_GetNetworkRegState_6>
 
-    <test_pa_mrc_GetSignalQuality_1>
+    <test_pa_mrc_GetSignalStrength_1>
         <ask>at+csq</ask>
         <resp>
             <ack>+CSQ: 0,0</ack>
             <ack>OK</ack>
         </resp>
-    </test_pa_mrc_GetSignalQuality_1>
-    <test_pa_mrc_GetSignalQuality_2>
+    </test_pa_mrc_GetSignalStrength_1>
+    <test_pa_mrc_GetSignalStrength_2>
         <ask>at+csq</ask>
         <resp>
             <ack>+CSQ: 31,0</ack>
             <ack>OK</ack>
         </resp>
-    </test_pa_mrc_GetSignalQuality_2>
+    </test_pa_mrc_GetSignalStrength_2>
 
 </tests>
 

@@ -258,16 +258,15 @@ le_msg_SessionRef_t GetClientSessionRef
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Initialize and start the server.
+ * Initialize the server and advertise the service.
  */
 //--------------------------------------------------------------------------------------------------
-void StartServer
+void AdvertiseService
 (
-    const char* serviceInstanceName
-        ///< [IN]
+    void
 )
 {
-    LE_DEBUG("======= Starting Server %s ========", serviceInstanceName);
+    LE_DEBUG("======= Starting Server %s ========", SERVICE_INSTANCE_NAME);
 
     le_msg_ProtocolRef_t protocolRef;
 
@@ -281,7 +280,7 @@ void StartServer
 
     // Start the server side of the service
     protocolRef = le_msg_GetProtocolRef(PROTOCOL_ID_STR, sizeof(_Message_t));
-    _ServerServiceRef = le_msg_CreateService(protocolRef, serviceInstanceName);
+    _ServerServiceRef = le_msg_CreateService(protocolRef, SERVICE_INSTANCE_NAME);
     le_msg_SetServiceRecvHandler(_ServerServiceRef, ServerMsgRecvHandler, NULL);
     le_msg_AdvertiseService(_ServerServiceRef);
 

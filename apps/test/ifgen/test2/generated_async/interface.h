@@ -22,8 +22,8 @@
  * Copyright (C) Sierra Wireless, Inc. 2013.  All rights reserved. Use of this work is subject to license.
  */
 
-#ifndef INTERFACE_H_INCLUDE_GUARD
-#define INTERFACE_H_INCLUDE_GUARD
+#ifndef EXAMPLE_H_INCLUDE_GUARD
+#define EXAMPLE_H_INCLUDE_GUARD
 
 
 #include "legato.h"
@@ -34,21 +34,20 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Start the service for the client main thread
+ * Connect the client to the service
  */
 //--------------------------------------------------------------------------------------------------
-void StartClient
+void ConnectService
 (
-    const char* serviceInstanceName
-        ///< [IN]
+    void
 );
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Stop the service for the current client thread
+ * Disconnect the client from the service
  */
 //--------------------------------------------------------------------------------------------------
-void StopClient
+void DisconnectService
 (
     void
 );
@@ -70,6 +69,25 @@ void StopClient
 
 //--------------------------------------------------------------------------------------------------
 #define SOME_STRING "some string"
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * BITMASK example
+ */
+//--------------------------------------------------------------------------------------------------
+typedef enum
+{
+    A = 0x1,
+        ///< first
+
+    B = 0x2,
+        ///< second
+
+    C = 0x4
+        ///< third
+}
+BitMaskExample_t;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -246,5 +264,5 @@ void RemoveBugTest
 );
 
 
-#endif // INTERFACE_H_INCLUDE_GUARD
+#endif // EXAMPLE_H_INCLUDE_GUARD
 

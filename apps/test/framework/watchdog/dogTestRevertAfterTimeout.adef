@@ -1,6 +1,12 @@
 executables:
-    dogTestRevertAfterTimeout (dogTestRevertAfterTimeout)
+{
+    dogTestRevertAfterTimeout = (dogTestRevertAfterTimeout)
+}
 
 processes:
-    run: (dogTestRevertAfterTimeout 32000 31000)
-
+{
+    run:
+    {
+        (dogTestRevertAfterTimeout 32000 31000)
+    }
+}

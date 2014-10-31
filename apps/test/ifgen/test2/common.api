@@ -26,6 +26,6 @@ ENUM EnumExample
     ZERO,     ///< first enum
     ONE,      ///< second enum
     TWO,      ///< third enum
-    THREE     ///< fourth enum
+    THREE,    ///< fourth enum
 };
 

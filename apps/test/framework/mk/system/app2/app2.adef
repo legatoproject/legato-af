@@ -1,0 +1,29 @@
+version: 2
+
+executables:
+{
+    exe = (server)
+}
+
+provides:
+{
+    api:
+    {
+        server = exe.server.bar
+    }
+}
+
+requires:
+{
+    api:
+    {
+        client = exe.server.le_cfg
+    }
+}
+
+groups:
+{
+    group1
+    group2
+    group3
+}

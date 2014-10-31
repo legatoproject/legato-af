@@ -34,12 +34,6 @@ if [ "$SERVER_PARAM" = "$SERVEROPT" ]; then
     sleep 1
     @LOG_CTRL_DAEMON_BIN@ &
     @CONFIG_TREE_BIN@ &
-else
-    # Ok, just start the configTree.  TODO: Remove this as the configTree should have been started
-    # automaticly by this point.
-
-    echo "Starting just the configTree."
-    @CONFIG_TREE_BIN@ &
 fi
 
 
@@ -52,8 +46,6 @@ function CleanUp
 
     if [ "$SERVER_PARAM" = "$SERVEROPT" ]; then
         killall serviceDirectory || true
-    else
-        killall configTree || true
     fi
 }
 

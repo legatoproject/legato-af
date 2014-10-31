@@ -1,5 +1,5 @@
 #*******************************************************************************
-# Copyright (C) 2013, Sierra Wireless Inc., all rights reserved.
+# Copyright (C) 2014, Sierra Wireless Inc., all rights reserved.
 #
 # Contributors:
 #     Sierra Wireless - initial API and implementation
@@ -12,41 +12,40 @@ if(${LEGATO_TARGET} STREQUAL "localhost")
 
     if(NOT DEFINED DISABLE_SIMUL)
 
-        include_directories(
-            ${CUNIT_INCLUDE_DIRS}
-            ${LEGATO_COMPONENTS_AT_MANAGER_INCLUDE_DIRS}
-            ${LEGATO_COMPONENTS_AT_MANAGER_DIR}/src
-            ${LEGATO_COMPONENTS_MODEM_AT_SRC_DIR}
-        )
+        message("CUNIT_INCLUDE_DIRS: ${CUNIT_INCLUDE_DIRS}")
 
-        set(APP_COMPONENT atmrctest)
         set(APP_TARGET testPaAtMrc)
-        set(APP_SOURCES
-        test_at_mrc.c
-        )
 
-        set_legato_component(${APP_COMPONENT})
-        add_legato_internal_executable(${APP_TARGET} ${APP_SOURCES})
+        mkexe(${APP_TARGET}
+                    .
+                    ${CUNIT_LIBRARIES}
+                    -i ${CUNIT_INSTALL}/include
+                    -i ${CUNIT_INSTALL}/include/CUnit
+                    -i ${LEGATO_ROOT}/components/modemServices/platformAdaptor/inc
+                    -i ${LEGATO_ROOT}/components/modemServices/platformAdaptor/at/le_pa
+                    -i ${LEGATO_ROOT}/components/atManager/inc
+                    -i ${LEGATO_ROOT}/components/atManager/devices/adapter_layer/inc
+                    -i ${LEGATO_ROOT}/components/atManager/devices/uart/inc
+                    -i ${LEGATO_ROOT}/components/atManager/src
+                    -i ${LEGATO_ROOT}/interfaces/modemServices
+                    -i ${LEGATO_ROOT}/components
+                DEPENDS
+                    legato
+                    Component.cdef
+                    test_at_mrc.c
+                 )
 
-        target_link_libraries(${APP_TARGET}
-        ${LEGATO_COMPONENTS_MODEM_TARGET}
-        ${LEGATO_COMPONENTS_AT_MANAGER_TARGET}
-        pthread
-        ${CUNIT_LIBRARIES}
-        )
-
-        set(SCRIPT_PATH       ${CMAKE_CURRENT_SOURCE_DIR}/../testLeAT.sh)
-        set(STUB_PATH         ${LEGATO_SOURCE_DIR}/apps/stub/modem/stub_modem.pl)
+        set(SCRIPT_PATH       ${LEGATO_ROOT}/apps/test/modem/at/testLeAT.sh)
+        set(STUB_PATH         ${LEGATO_ROOT}/apps/stub/modem/stub_modem.pl)
         set(TEST_APP_PATH     ${EXECUTABLE_OUTPUT_PATH}/${APP_TARGET})
         set(TEST_XML          ${CMAKE_CURRENT_SOURCE_DIR}/modem_mrc.xml)
         set(TEST_SOCKET       "/tmp/modem_mrc")
 
-# TODO: verify simulator since this test often fails with a timeout
-#        add_test(${APP_TARGET}
-#                 ${SCRIPT_PATH} ${STUB_PATH} ${TEST_APP_PATH} ${TEST_XML} ${TEST_SOCKET}
-#        )
-#
-#        set_tests_properties(${APP_TARGET} PROPERTIES TIMEOUT 10)
+        add_test(${APP_TARGET}
+                 ${SCRIPT_PATH} ${STUB_PATH} ${TEST_APP_PATH} ${TEST_XML} ${TEST_SOCKET}
+        )
+
+        set_tests_properties(${APP_TARGET} PROPERTIES TIMEOUT 30)
 
     endif()
 

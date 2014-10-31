@@ -1,0 +1,16 @@
+version: 1
+
+sandboxed: false
+
+executables:
+{
+    exe = (client)
+}
+
+requires:
+{
+    api:
+    {
+        client = exe.client.foo
+    }
+}

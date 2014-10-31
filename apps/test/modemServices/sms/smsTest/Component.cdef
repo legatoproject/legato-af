@@ -1,9 +1,13 @@
 sources:
-
+{
     le_smsTest.c
     main.c
+}
 
-import:
-
-    le_sms.api
-    le_mdmDefs.api [types-only]
+requires:
+{
+    api:
+    {
+        le_sms.api
+    }
+}

@@ -1,5 +1,12 @@
 sources:
+{
     server.c
+}
 
-export:
-    hello = greet.api
+provides:
+{
+    api:
+    {
+        hello = greet.api
+    }
+}

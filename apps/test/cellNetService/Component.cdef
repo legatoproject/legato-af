@@ -1,0 +1,12 @@
+requires:
+{
+    api:
+    {
+        le_cellnet.api
+    }
+}
+
+sources:
+{
+    cellNetServiceTest.c
+}

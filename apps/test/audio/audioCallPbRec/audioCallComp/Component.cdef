@@ -1,0 +1,14 @@
+sources:
+{
+    audioCallPbRecApp.c
+}
+
+requires:
+{
+    api:
+    {
+        le_audio.api
+        le_mcc_call.api
+        le_mcc_profile.api
+    }
+}

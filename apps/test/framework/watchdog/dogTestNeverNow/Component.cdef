@@ -1,7 +1,12 @@
-import:
-
-    le_wdog.api
+requires:
+{
+    api:
+    {
+        le_wdog.api
+    }
+}
 
 sources:
-
+{
     dogTestNeverNow.c
+}

@@ -1,7 +1,12 @@
 sources:
+{
+    posCtrlTest.c
+}
 
-    posServiceTest.c
-
-import:
-
-    le_posser.api
+requires:
+{
+    api:
+    {
+        le_posCtrl.api
+    }
+}

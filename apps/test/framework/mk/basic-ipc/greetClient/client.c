@@ -5,7 +5,5 @@ COMPONENT_INIT
 {
     LE_INFO("Greet Client started.");
 
-    hello_StartClient("server.hi");
-
     hello_Greet();
 }

@@ -1,0 +1,12 @@
+sources:
+{
+    dcsTest.c
+}
+
+requires:
+{
+    api:
+    {
+        le_data.api
+    }
+}

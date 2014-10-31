@@ -14,7 +14,9 @@
 
 #include "legato.h"
 
-#define PROTOCOL_ID_STR "1da15798caeb8ebeeb4bad7f34dd828b18f316c8e8e340652394e1b652215746"
+#define PROTOCOL_ID_STR "c9337ed4525894becbab4dd2c594a184a1016b4a356c0a4940880820f91d5897"
+
+#define SERVICE_INSTANCE_NAME "example"
 
 
 // todo: This will need to depend on the particular protocol, but the exact size is not easy to

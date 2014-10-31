@@ -1,8 +1,13 @@
 sources:
-
+{
     voiceCallTest.c
+}
 
-import:
-
-    le_voicecall.api
-    le_audio.api
+requires:
+{
+    api:
+    {
+        le_voicecall.api
+        le_audio.api
+    }
+}

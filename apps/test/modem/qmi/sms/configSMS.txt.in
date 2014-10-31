@@ -1,7 +1,0 @@
-[RootDirs]
-binRoot = ${LEGATO_BINARY_DIR}/bin
-targetRoot = ${TEST_DIR}
-
-[TestFiles]
-files = ${TEST_EXEC_LIST}
-binDir = tests

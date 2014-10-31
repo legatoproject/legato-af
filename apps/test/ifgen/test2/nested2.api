@@ -1,0 +1,10 @@
+/*
+ * This API file is used for testing nested USETYPES
+ */
+
+USETYPES nested3;
+USETYPES nested4;
+
+DEFINE THREE = 3;
+
+DEFINE FIVE = nested4.ONE + nested4.ONE + nested3.THREE ;

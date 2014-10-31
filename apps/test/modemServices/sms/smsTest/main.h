@@ -26,5 +26,4 @@ void Testle_sms_SendBinary();
 void Testle_sms_SendAsync();
 void Testle_sms_RxExt();
 void Testle_sms_ReceivedList();
-
-
+void Testle_sms_SetGetSmsCenterAddress();

@@ -1,0 +1,13 @@
+sources:
+{
+    remoteMgmtTest.c
+}
+
+requires:
+{
+    api:
+    {
+        le_cfg.api
+        le_remoteMgmt.api
+    }
+}

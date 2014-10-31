@@ -4,6 +4,9 @@
 
 find_package(Legato REQUIRED)
 
+### Copy test setup script to test program output directory.
+file( COPY testFwMessaging-Setup DESTINATION ${EXECUTABLE_OUTPUT_PATH} )
+
 
 ### TEST 1
 

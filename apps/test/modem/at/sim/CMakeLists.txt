@@ -12,40 +12,40 @@ if(${LEGATO_TARGET} STREQUAL "localhost")
 
     if(NOT DEFINED DISABLE_SIMUL)
 
-        include_directories(
-            ${CUNIT_INCLUDE_DIRS}
-            ${LEGATO_COMPONENTS_AT_MANAGER_INCLUDE_DIRS}
-            ${LEGATO_COMPONENTS_AT_MANAGER_DIR}/src
-            ${LEGATO_COMPONENTS_MODEM_AT_SRC_DIR}
-        )
+        message("CUNIT_INCLUDE_DIRS: ${CUNIT_INCLUDE_DIRS}")
 
-        set(APP_COMPONENT leatsimtest)
         set(APP_TARGET testPaAtSim)
-        set(APP_SOURCES
-            test_at_sim.c
-        )
 
-        set_legato_component(${APP_COMPONENT})
-        add_legato_internal_executable(${APP_TARGET} ${APP_SOURCES})
+        mkexe(${APP_TARGET}
+                    .
+                    ${CUNIT_LIBRARIES}
+                    -i ${CUNIT_INSTALL}/include
+                    -i ${CUNIT_INSTALL}/include/CUnit
+                    -i ${LEGATO_ROOT}/components/modemServices/platformAdaptor/inc
+                    -i ${LEGATO_ROOT}/components/modemServices/platformAdaptor/at/le_pa
+                    -i ${LEGATO_ROOT}/components/atManager/inc
+                    -i ${LEGATO_ROOT}/components/atManager/devices/adapter_layer/inc
+                    -i ${LEGATO_ROOT}/components/atManager/devices/uart/inc
+                    -i ${LEGATO_ROOT}/components/atManager/src
+                    -i ${LEGATO_ROOT}/components
+                    -i ${LEGATO_ROOT}/interfaces/modemServices
+                DEPENDS
+                    legato
+                    Component.cdef
+                    test_at_sim.c
+                 )
 
-        target_link_libraries(${APP_TARGET}
-            ${LEGATO_COMPONENTS_MODEM_TARGET}
-            ${LEGATO_COMPONENTS_AT_MANAGER_TARGET}
-            pthread
-            ${CUNIT_LIBRARIES}
-        )
-
-        set(SCRIPT_PATH       ${CMAKE_CURRENT_SOURCE_DIR}/../testLeAT.sh)
-        set(STUB_PATH         ${LEGATO_SOURCE_DIR}/apps/stub/modem/stub_modem.pl)
+        set(SCRIPT_PATH       ${LEGATO_ROOT}/apps/test/modem/at/testLeAT.sh)
+        set(STUB_PATH         ${LEGATO_ROOT}/apps/stub/modem/stub_modem.pl)
         set(TEST_APP_PATH     ${EXECUTABLE_OUTPUT_PATH}/${APP_TARGET})
         set(TEST_XML          ${CMAKE_CURRENT_SOURCE_DIR}/modem_sim.xml)
         set(TEST_SOCKET       "/tmp/modem_sim")
 
-#        add_test(${APP_TARGET}
-#            ${SCRIPT_PATH} ${STUB_PATH} ${TEST_APP_PATH} ${TEST_XML} ${TEST_SOCKET}
-#        )
-#
-#        set_tests_properties(${APP_TARGET} PROPERTIES TIMEOUT 10)
+        add_test(${APP_TARGET}
+                 ${SCRIPT_PATH} ${STUB_PATH} ${TEST_APP_PATH} ${TEST_XML} ${TEST_SOCKET}
+        )
+
+        set_tests_properties(${APP_TARGET} PROPERTIES TIMEOUT 30)
 
     endif()
 

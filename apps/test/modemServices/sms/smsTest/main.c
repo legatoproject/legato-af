@@ -24,12 +24,13 @@
  *
  */
 //--------------------------------------------------------------------------------------------------
-static void* test(void* context)
+static void test(void* context)
 {
     // Init the test case / test suite data structures
 
     CU_TestInfo smstest[] =
     {
+        { "Test le_sms_SetGetSmsCenterAddress()", Testle_sms_SetGetSmsCenterAddress },
         { "Test le_sms_SetGetText()",    Testle_sms_SetGetText },
         { "Test le_sms_SetGetBinary()",  Testle_sms_SetGetBinary },
         { "Test le_sms_SetGetPDU()",     Testle_sms_SetGetPDU },
@@ -76,10 +77,9 @@ static void* test(void* context)
         fprintf(stdout,"\n [STOP]List of Failure\n");
     }
 
-    le_event_RunLoop();
 }
 
 COMPONENT_INIT
 {
-    le_thread_Start(le_thread_Create("SMSTest",test,NULL));
+    test(NULL);
 }

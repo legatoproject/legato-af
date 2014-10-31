@@ -1,0 +1,12 @@
+requires:
+{
+    api:
+    {
+        le_audio.api
+    }
+}
+
+sources:
+{
+    audioMemoryTest.c
+}

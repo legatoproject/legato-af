@@ -1,0 +1,12 @@
+sources:
+{
+    audioCfgTest.c
+}
+
+requires:
+{
+    api:
+    {
+        le_audio.api
+    }
+}

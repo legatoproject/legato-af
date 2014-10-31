@@ -1,45 +1,54 @@
 start: manual
 
-numProcs: 20
+maxThreads: 20
 
-mqueueSize: 50
+maxMQueueBytes: 5000
 
-rtSignalQueueSize: 10
+maxQueuedSignals: 10
 
-fileSystemSize: 1001K
+maxFileSystemBytes: 1001K
 
+maxMemoryBytes: 2000K
 
 executables:
-
-    foo ( foo.c )
+{
+    foo = ( foo.c )
+}
 
 processes:
-
-    run: p1 (foo)
+{
+    run:{ p1 = (foo) }
 
     priority: low
 
-    vMemSize: 2000K
-    coreFileSize: 100000
-    maxFileSize:1K memLockSize:27K
-    numFds: 23
+    maxCoreDumpFileBytes: 100000
+
+    maxFileBytes: 1K maxLockedMemoryBytes: 27K
+
+    maxFileDescriptors: /**/23
 
     faultAction: ignore
+}
+
+maxMemoryBytes: 2004K
 
 processes:
-
-    envVars:    LD_LIBRARY_PATH=/lib
-                PATH=/bin
+{
+    envVars:
+    {
+        LD_LIBRARY_PATH=/lib
+        PATH=/bin
+    }
 
     priority: rt1
     faultAction: restart
 
-    run: p2 (foo)
+    run: { p2 = (foo)}
 
-    vMemSize: 2004K
-    coreFileSize: 0
-    maxFileSize:1000 memLockSize:1024K
+    maxCoreDumpFileBytes: 0
+    maxFileBytes: 1000 maxLockedMemoryBytes: 1024K
 
-    run: p3 (foo)
+    run: {p3 = (foo) }
 
-    numFds: 32
+    maxFileDescriptors: 32
+}

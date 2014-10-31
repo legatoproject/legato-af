@@ -1,7 +1,12 @@
-import:
-
-    le_cfg.api
+requires:
+{
+    api:
+    {
+        le_cfg.api
+    }
+}
 
 sources:
-
+{
     configTestAclApp.c
+}

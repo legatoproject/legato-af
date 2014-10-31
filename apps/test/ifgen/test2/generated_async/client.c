@@ -117,7 +117,8 @@ static le_mem_PoolRef_t _ClientDataPool;
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
-    le_msg_SessionRef_t sessionRef;          ///< Client Session Reference
+    le_msg_SessionRef_t sessionRef;     ///< Client Session Reference
+    int                 clientCount;    ///< Number of clients sharing this thread
 }
 _ClientThreadData_t;
 
@@ -166,21 +167,12 @@ __attribute__((unused)) static pthread_mutex_t _Mutex = PTHREAD_MUTEX_INITIALIZE
 
 
 //--------------------------------------------------------------------------------------------------
-/* Maximum size of a service instance name string, including the null terminator byte.
- *
- * Based on LE_SVCDIR_MAX_SERVICE_NAME_SIZE in serviceDirectoryProtocol.h
+/* This global flag is shared by all client threads, and is used to indicate whether the common
+ * data has been initialized.  It is only initialized once by the main thread, and is only read by
+ * the other threads.  Thus, a mutex is not needed for accesses to this variable.
  */
 //--------------------------------------------------------------------------------------------------
-#define MAX_SERVICE_NAME_SIZE    128
-
-
-//--------------------------------------------------------------------------------------------------
-/* The global service instance name is shared by all client threads.  It is only initialized once
- * by the main thread, and is only read by the other threads.  Thus, a mutex is not needed for
- * accesses to this variable.
- */
-//--------------------------------------------------------------------------------------------------
-static char GlobalServiceInstanceName[MAX_SERVICE_NAME_SIZE] = "";
+static bool CommonDataInitialized = false;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -197,26 +189,20 @@ static void ClientIndicationRecvHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Init thread specific data, and return a pointer to this data
+ * Init thread specific data
  */
 //--------------------------------------------------------------------------------------------------
-static _ClientThreadData_t* InitClientThreadData
+static void InitClientThreadData
 (
-    const char* serviceInstanceName
+    void
 )
 {
     // Open a session.
     le_msg_ProtocolRef_t protocolRef;
     le_msg_SessionRef_t sessionRef;
 
-    // The instance name must not be an empty string
-    if ( serviceInstanceName[0] == '\0' )
-    {
-        LE_FATAL("Undefined client service instance name (Was StartClient() called?)");
-    }
-
     protocolRef = le_msg_GetProtocolRef(PROTOCOL_ID_STR, sizeof(_Message_t));
-    sessionRef = le_msg_CreateSession(protocolRef, serviceInstanceName);
+    sessionRef = le_msg_CreateSession(protocolRef, SERVICE_INSTANCE_NAME);
     le_msg_SetSessionRecvHandler(sessionRef, ClientIndicationRecvHandler, NULL);
     le_msg_OpenSessionSync(sessionRef);
 
@@ -229,7 +215,24 @@ static _ClientThreadData_t* InitClientThreadData
         LE_FATAL("pthread_setspecific() failed!");
     }
 
-    return clientThreadPtr;
+    // This is the first client for the current thread
+    clientThreadPtr->clientCount = 1;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get a pointer to the client thread data for the current thread.
+ *
+ * If the current thread does not have client data, then NULL is returned
+ */
+//--------------------------------------------------------------------------------------------------
+static _ClientThreadData_t* GetClientThreadDataPtr
+(
+    void
+)
+{
+    return pthread_getspecific(_ThreadDataKey);
 }
 
 
@@ -237,22 +240,18 @@ static _ClientThreadData_t* InitClientThreadData
 /**
  * Return the sessionRef for the current thread.
  *
- * If the current thread does not have a session ref, then create it.
+ * If the current thread does not have a session ref, then this is a fatal error.
  */
 //--------------------------------------------------------------------------------------------------
-static le_msg_SessionRef_t GetCurrentSessionRef
+__attribute__((unused)) static le_msg_SessionRef_t GetCurrentSessionRef
 (
     void
 )
 {
-    _ClientThreadData_t* clientThreadPtr = pthread_getspecific(_ThreadDataKey);
+    _ClientThreadData_t* clientThreadPtr = GetClientThreadDataPtr();
 
-    // If the thread specific data is NULL, then the session ref has not been created yet.
-    if (clientThreadPtr == NULL)
-    {
-        LE_DEBUG("======= Starting Client %s ========", GlobalServiceInstanceName);
-        clientThreadPtr = InitClientThreadData(GlobalServiceInstanceName);
-    }
+    // If the thread specific data is NULL, then the session ref has not been created.
+    LE_FATAL_IF(clientThreadPtr==NULL, "No client session for current thread");
 
     return clientThreadPtr->sessionRef;
 }
@@ -263,7 +262,7 @@ static le_msg_SessionRef_t GetCurrentSessionRef
  * Init data that is common across all threads.
  */
 //--------------------------------------------------------------------------------------------------
-static void InitClient(void)
+static void InitCommonData(void)
 {
     // Allocate the client data pool
     _ClientDataPool = le_mem_CreatePool("ClientData", sizeof(_ClientData_t));
@@ -284,88 +283,81 @@ static void InitClient(void)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Start the service for the client main thread
+ * Connect the client to the service
  */
 //--------------------------------------------------------------------------------------------------
-void StartClient
-(
-    const char* serviceInstanceName
-        ///< [IN]
-)
-{
-    // The instance name must not be an empty string
-    if ( serviceInstanceName[0] == '\0' )
-    {
-        LE_FATAL("Service instance name is empty");
-    }
-
-    // If this is not the first time this function is called, compare against stored instance name.
-    if ( GlobalServiceInstanceName[0] != '\0' )
-    {
-        if ( strcmp(GlobalServiceInstanceName, serviceInstanceName) == 0 )
-        {
-            LE_DEBUG("Called with duplicate name");
-        }
-        else
-        {
-            // This is an error because the user application is likely not connecting to the
-            // service that they expect.
-            LE_ERROR("Service instance name cannot be changed from '%s' to '%s'",
-                     GlobalServiceInstanceName,
-                     serviceInstanceName);
-        }
-
-        // Since the function was called before, there is nothing further to do.
-        return;
-    }
-
-    // This is the first time the function is called.  Store the instance name and init the client.
-    LE_FATAL_IF(le_utf8_Copy(GlobalServiceInstanceName,
-                             serviceInstanceName,
-                             sizeof(GlobalServiceInstanceName),
-                             NULL) == LE_OVERFLOW,
-                "Service ID '%s' too long (should only be %zu bytes total).",
-                serviceInstanceName,
-                sizeof(GlobalServiceInstanceName));
-
-    LE_DEBUG("======= Starting Client %s ========", serviceInstanceName);
-    InitClient();
-
-    // Although InitClientThreadData() returns a value, it is not needed here.
-    InitClientThreadData(serviceInstanceName);
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Stop the service for the current client thread
- */
-//--------------------------------------------------------------------------------------------------
-void StopClient
+void ConnectService
 (
     void
 )
 {
-    _ClientThreadData_t* clientThreadPtr = pthread_getspecific(_ThreadDataKey);
+    // If this is the first time the function is called, init the client common data.
+    if ( ! CommonDataInitialized )
+    {
+        InitCommonData();
+        CommonDataInitialized = true;
+    }
+
+    _ClientThreadData_t* clientThreadPtr = GetClientThreadDataPtr();
 
     // If the thread specific data is NULL, then there is no current client session.
     if (clientThreadPtr == NULL)
     {
-        LE_ERROR("Trying to stop non-existent client session for '%s' service",
-                 GlobalServiceInstanceName);
+        InitClientThreadData();
+        LE_DEBUG("======= Starting client for '%s' service ========", SERVICE_INSTANCE_NAME);
     }
     else
     {
-        le_msg_CloseSession( clientThreadPtr->sessionRef );
+        // Keep track of the number of clients for the current thread.  There is only one
+        // connection per thread, and it is shared by all clients.
+        clientThreadPtr->clientCount++;
+        LE_DEBUG("======= Starting another client for '%s' service ========", SERVICE_INSTANCE_NAME);
+    }
+}
 
-        // Need to delete the thread specific data, since it is no longer valid.  If a new
-        // client session is started, new thread specific data will be allocated.
-        le_mem_Release(clientThreadPtr);
-        if (pthread_setspecific(_ThreadDataKey, NULL) != 0)
+//--------------------------------------------------------------------------------------------------
+/**
+ * Disconnect the client from the service
+ */
+//--------------------------------------------------------------------------------------------------
+void DisconnectService
+(
+    void
+)
+{
+    _ClientThreadData_t* clientThreadPtr = GetClientThreadDataPtr();
+
+    // If the thread specific data is NULL, then there is no current client session.
+    if (clientThreadPtr == NULL)
+    {
+        LE_CRIT("Trying to stop non-existent client session for '%s' service",
+                SERVICE_INSTANCE_NAME);
+    }
+    else
+    {
+        // This is the last client for this thread, so close the session.
+        if ( clientThreadPtr->clientCount == 1 )
         {
-            LE_FATAL("pthread_setspecific() failed!");
-        }
+            le_msg_CloseSession( clientThreadPtr->sessionRef );
 
-        LE_DEBUG("======= Stopping Client %s ========", GlobalServiceInstanceName);
+            // Need to delete the thread specific data, since it is no longer valid.  If a new
+            // client session is started, new thread specific data will be allocated.
+            le_mem_Release(clientThreadPtr);
+            if (pthread_setspecific(_ThreadDataKey, NULL) != 0)
+            {
+                LE_FATAL("pthread_setspecific() failed!");
+            }
+
+            LE_DEBUG("======= Stopping client for '%s' service ========", SERVICE_INSTANCE_NAME);
+        }
+        else
+        {
+            // There is one less client sharing this thread's connection.
+            clientThreadPtr->clientCount--;
+
+            LE_DEBUG("======= Stopping another client for '%s' service ========",
+                     SERVICE_INSTANCE_NAME);
+        }
     }
 }
 

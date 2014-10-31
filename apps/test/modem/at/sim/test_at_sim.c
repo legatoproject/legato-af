@@ -53,12 +53,14 @@ static int thisopen (const char* path)
 
     if ((sockfd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
         perror("socket");
-        exit(1);
+        return sockfd;
     }
 
     if (connect(sockfd, (struct sockaddr* )&that, sizeof(that)) < 0) /* error */
     {
         perror("connect");
+        close(sockfd);
+        sockfd = -1;
     }
 
     return sockfd;
@@ -610,8 +612,43 @@ static void* simtest(void* context)
     exit(EXIT_SUCCESS);
 }
 
+int Exists(const char *fname)
+{
+    int file;
+    file = thisopen(fname);
+    if (file != -1)
+    {
+        thisclose(file);
+        return 1;
+    }
+    return 0;
+}
+
 static void init()
 {
+    // Wait for CUSTOM_PORT to be available
+    {
+        int i;
+        for (i=10;i>0;i--)
+        {
+            if (!Exists(CUSTOM_PORT))
+            {
+                int sec = 1;
+                // Wait 1 seconds and retry
+                fprintf(stdout,"%s does not exist, retry in %d sec\n",CUSTOM_PORT,sec);
+                sleep(sec);
+            }
+            else
+            {
+                fprintf(stdout,"%s exist, can continue the test\n",CUSTOM_PORT);
+                break;
+            }
+        }
+        if (i==0)
+        {
+            exit(EXIT_FAILURE);
+        }
+    }
 
     atmgr_Start();
 

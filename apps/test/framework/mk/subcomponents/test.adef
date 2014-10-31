@@ -1,0 +1,4 @@
+executables:
+{
+    foo = (a b)
+}

@@ -4,7 +4,7 @@
  *
  * Burger Protocol Server functions.
  *
- * Copyright (C) 2013, Sierra Wireless, Inc. - All rights reserved. Use of this work is subject to license.
+ * Copyright (C) 2014, Sierra Wireless, Inc. Use of this work is subject to license.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -150,7 +150,7 @@ le_msg_ServiceRef_t burgerServer_Start
     serviceRef = le_msg_CreateService(protocolRef, serviceInstanceName);
     le_msg_SetServiceRecvHandler(serviceRef, MsgRecvHandler, contextPtr);
     LE_INFO("&ServiceOpenContextPtr = %p.", &ServiceOpenContextPtr);
-    le_msg_SetServiceOpenHandler(serviceRef, NewSessionHandler, &ServiceOpenContextPtr);
+    le_msg_AddServiceOpenHandler(serviceRef, NewSessionHandler, &ServiceOpenContextPtr);
     le_msg_AdvertiseService(serviceRef);
 
     return serviceRef;

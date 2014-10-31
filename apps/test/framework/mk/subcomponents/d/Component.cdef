@@ -1,0 +1,12 @@
+sources:
+{
+    d.c
+}
+
+requires:
+{
+    component:
+    {
+//        a     // Uncomment this to create dependency loops.
+    }
+}
