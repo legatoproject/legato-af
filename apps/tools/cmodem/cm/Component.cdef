@@ -1,15 +1,20 @@
-import:
-
-    le_cfg.api
-    le_mrc.api
-    le_mdc.api
-    le_sim.api
-    le_data.api
+requires:
+{
+    api:
+    {
+        le_cfg.api
+        le_mrc.api
+        le_mdc.api
+        le_sim.api
+        le_data.api
+    }
+}
 
 sources:
-
+{
     cmodem.c
     cm_mrc.c
     cm_sim.c
     cm_data.c
     cm_common.c
+}

@@ -1,0 +1,12 @@
+requires:
+{
+    api:
+    {
+        le_data.api
+    }
+}
+
+sources:
+{
+    clientMain.c
+}

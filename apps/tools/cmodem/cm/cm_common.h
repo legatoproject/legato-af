@@ -13,6 +13,17 @@
 #ifndef CMODEM_COMMON_INCLUDE_GUARD
 #define CMODEM_COMMON_INCLUDE_GUARD
 
+#define CMODEM_COMMON_SERVICE_STR_LEN       10
+#define CMODEM_COMMON_COMMAND_STR_LEN       25
+
+#define CMODEM_COMMON_RAT_STR_LEN           10
+#define CMODEM_COMMON_NETWORK_STR_LEN       25
+
+#define CMODEM_COMMON_PDP_STR_LEN           10
+#define CMODEM_COMMON_AUTH_STR_LEN          10
+#define CMODEM_COMMON_PROFILE_IDX_STR_LEN   5
+#define CMODEM_COMMON_TIMEOUT_STR_LEN       5
+
 
 // -------------------------------------------------------------------------------------------------
 /**

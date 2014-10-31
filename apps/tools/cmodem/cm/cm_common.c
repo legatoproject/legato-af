@@ -25,7 +25,7 @@ void cm_cmn_FormatPrint
     const char * desc     ///< [IN] Pointer to the description string to be printed
 )
 {
-    char sysInfoColon[25];
+    char sysInfoColon[30];
     snprintf(sysInfoColon, sizeof(sysInfoColon), "%s:", data);
     printf("%-10s %s\n", sysInfoColon, desc);
 }

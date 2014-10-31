@@ -74,7 +74,11 @@ sub launchDaemon
     my $file=$_[0];
     
     socket(SERV, PF_UNIX, SOCK_STREAM,0);
-    unlink $file;
+    if (-e $file)
+    {
+        print "$file exists, remove it\n";
+        unlink $file;
+    }
     bind(SERV,sockaddr_un($file)) or print "ERROR!";
 
     listen(SERV,1);
@@ -133,6 +137,7 @@ sub launchDaemon
                 sleep(1);
                 close CLIENT;
                 close SERV;
+                unlink $file;
                 exit;
             }
         }

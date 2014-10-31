@@ -1,7 +1,13 @@
-import:
-
-    le_fwupdate.api
+requires:
+{
+    api:
+    {
+        le_fwupdate.api
+        le_info.api
+    }
+}
 
 sources:
-
+{
     fwupdate.c
+}

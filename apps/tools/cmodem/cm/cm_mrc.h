@@ -53,13 +53,15 @@ int cm_mrc_GetModemStatus
 // -------------------------------------------------------------------------------------------------
 /**
 *  This function sets the radio access technology to use.
+*  An index of (-1) remove all preferences.
 *
 *  @return EXIT_SUCCESS if the call was successful, EXIT_FAILURE otherwise.
 */
 // -------------------------------------------------------------------------------------------------
 int cm_mrc_SetRat
 (
-    const char * rat    ///< [IN] Radio access technology
+    int8_t      index,      ///< [IN] RAT Index in config tree
+    const char *ratPtr      ///< [IN] Radio access technology
 );
 
 #endif

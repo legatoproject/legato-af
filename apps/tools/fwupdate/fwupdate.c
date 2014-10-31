@@ -105,16 +105,16 @@ static void QueryVersion
 )
 {
     le_result_t result;
-    char version[LE_FWUPDATE_MAX_VERS_LEN];
+    char version[LE_INFO_MAX_VERS_LEN];
     struct utsname linuxInfo;
 
-    result = le_fwupdate_GetFirmwareVersion(version, sizeof(version));
+    result = le_info_GetFirmwareVersion(version, sizeof(version));
     if ( result == LE_OK )
     {
         printf("Firmware Version: %s\n", version);
     }
 
-    result = le_fwupdate_GetBootloaderVersion(version, sizeof(version));
+    result = le_info_GetBootloaderVersion(version, sizeof(version));
     if ( result == LE_OK )
     {
         printf("Bootloader Version: %s\n", version);

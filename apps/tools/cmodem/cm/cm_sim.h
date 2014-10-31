@@ -116,6 +116,14 @@ int cm_sim_StorePin
     const char * pin    ///< [IN] PIN code
 );
 
+// -------------------------------------------------------------------------------------------------
+/**
+ *  This function will attempt to get the SIM info (Home PLMN, IMSI, phone number, ...).
+ *
+ *  @return EXIT_SUCCESS if the call was successful, EXIT_FAILURE otherwise.
+ */
+// -------------------------------------------------------------------------------------------------
+int cm_sim_GetSimInfo( void );
 
 #endif
 

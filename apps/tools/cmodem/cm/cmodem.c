@@ -14,6 +14,7 @@
 #include "cm_mrc.h"
 #include "cm_sim.h"
 #include "cm_data.h"
+#include "cm_common.h"
 
 #define MRC_SERVICE                 "radio"
 #define SIM_SERVICE                 "sim"
@@ -84,11 +85,34 @@ static void ProcessRadioCommand
     }
     else if (strcmp(command, "rat") == 0)
     {
-        if (EnoughCmdParam(1, numArgs, "RAT value missing. e.g. cm radio rat <CDMA/GSM/UMTS/LTE>"))
+        if (EnoughCmdParam(1, numArgs, "RAT value missing. e.g. cm radio rat <CDMA/GSM/UMTS/LTE> ... or MANUAL"))
         {
-            char rat[100];
-            le_arg_GetArg(2, rat, sizeof(rat));
-            exit(cm_mrc_SetRat(rat));
+            int index;
+            size_t length = numArgs - 2;
+
+            /* Clear list first */
+            if (cm_mrc_SetRat(-1, "") != EXIT_SUCCESS)
+            {
+                exit(EXIT_FAILURE);
+            }
+
+            for(index = 0; index < length; index++)
+            {
+                char rat[100];
+                le_arg_GetArg(2+index, rat, sizeof(rat));
+
+                if ( (index == 0) && (strcmp(rat, "MANUAL") == 0 || strcmp(rat, "manual") == 0) )
+                {
+                    exit(EXIT_SUCCESS);
+                }
+
+                if (cm_mrc_SetRat(index, rat) != EXIT_SUCCESS)
+                {
+                    exit(EXIT_FAILURE);
+                }
+            }
+
+            exit(EXIT_SUCCESS);
         }
     }
     else
@@ -119,7 +143,7 @@ static void ProcessSimCommand
     {
         if (EnoughCmdParam(1, numArgs, "PIN code missing. e.g. cm sim enterpin <pin>"))
         {
-            char pin[100] = "";
+            char pin[LE_SIM_PIN_MAX_LEN] = "";
             le_arg_GetArg(2, pin, sizeof(pin));
             exit(cm_sim_EnterPin(pin));
         }
@@ -128,8 +152,8 @@ static void ProcessSimCommand
     {
         if (EnoughCmdParam(2, numArgs, "PIN code missing. e.g. cm sim changepin <pin>"))
         {
-            char oldPin[10] = "";
-            char newPin[10] = "";
+            char oldPin[LE_SIM_PIN_MAX_LEN] = "";
+            char newPin[LE_SIM_PIN_MAX_LEN] = "";
 
             le_arg_GetArg(2, oldPin, sizeof(oldPin));
             le_arg_GetArg(3, newPin, sizeof(newPin));
@@ -140,7 +164,7 @@ static void ProcessSimCommand
     {
         if (EnoughCmdParam(1, numArgs, "PIN code missing. e.g. cm sim lock <pin>"))
         {
-            char pin[100] = "";
+            char pin[LE_SIM_PIN_MAX_LEN] = "";
             le_arg_GetArg(2, pin, sizeof(pin));
             exit(cm_sim_LockSim(pin));
         }
@@ -149,7 +173,7 @@ static void ProcessSimCommand
     {
         if (EnoughCmdParam(1, numArgs, "PIN code missing. e.g. cm sim unlock <pin>"))
         {
-            char pin[100] = "";
+            char pin[LE_SIM_PIN_MAX_LEN] = "";
             le_arg_GetArg(2, pin, sizeof(pin));
             exit(cm_sim_UnlockSim(pin));
         }
@@ -158,8 +182,8 @@ static void ProcessSimCommand
     {
         if (EnoughCmdParam(2, numArgs, "PUK/PIN code missing. e.g. cm sim unblock <puk> <newpin>"))
         {
-            char puk[100] = "";
-            char newpin[100] = "";
+            char puk[LE_SIM_PUK_LEN] = "";
+            char newpin[LE_SIM_PIN_MAX_LEN] = "";
             le_arg_GetArg(2, puk, sizeof(puk));
             le_arg_GetArg(3, newpin, sizeof(newpin));
             exit(cm_sim_UnblockSim(puk, newpin));
@@ -169,10 +193,14 @@ static void ProcessSimCommand
     {
         if (EnoughCmdParam(1, numArgs, "PIN code missing. e.g. cm sim storepin <pin>"))
         {
-            char pin[100] = "";
+            char pin[LE_SIM_PIN_MAX_LEN] = "";
             le_arg_GetArg(2, pin, sizeof(pin));
             exit(cm_sim_StorePin(pin));
         }
+    }
+    else if (strcmp(command, "info") == 0)
+    {
+        exit(cm_sim_GetSimInfo());
     }
     else
     {
@@ -202,9 +230,9 @@ static void ProcessDataCommand
     }
     else if (strcmp(command, "profile") == 0)
     {
-        if (EnoughCmdParam(1, numArgs, "Profile index missing. e.g. cm data profile <index> (Use cm data list to show you valid indexes)"));
+        if (EnoughCmdParam(1, numArgs, "Profile index missing. e.g. cm data profile <index> (Use cm data list to show you valid indexes)"))
         {
-            char profile[10];
+            char profile[CMODEM_COMMON_PROFILE_IDX_STR_LEN];
             le_arg_GetArg(2, profile, sizeof(profile));
             exit(cm_data_SetProfileInUse(atoi(profile)));
         }
@@ -217,7 +245,7 @@ static void ProcessDataCommand
         }
         else if (numArgs == 3)
         {
-            char timeout[100];
+            char timeout[CMODEM_COMMON_TIMEOUT_STR_LEN];
             le_arg_GetArg(2, timeout, sizeof(timeout));
             cm_data_StartDataConnection(timeout);
         }
@@ -231,7 +259,7 @@ static void ProcessDataCommand
     {
         if (EnoughCmdParam(1, numArgs, "APN name missing. e.g. cm data apn <apn name>"))
         {
-            char apn[100];
+            char apn[LE_MDC_APN_NAME_MAX_LEN];
             le_arg_GetArg(2, apn, sizeof(apn));
             exit(cm_data_SetApnName(apn));
         }
@@ -240,31 +268,31 @@ static void ProcessDataCommand
     {
         if (EnoughCmdParam(1, numArgs, "PDP type name missing. e.g. cm data pdp <pdp type>"))
         {
-            char pdpType[100];
+            char pdpType[CMODEM_COMMON_PDP_STR_LEN];
             le_arg_GetArg(2, pdpType, sizeof(pdpType));
             exit(cm_data_SetPdpType(pdpType));
         }
     }
     else if (strcmp(command, "auth") == 0)
     {
-        char type[10];
-        char user[100];
-        char pwd[100];
+        char auth[CMODEM_COMMON_AUTH_STR_LEN];
+        char user[LE_MDC_USER_NAME_MAX_LEN];
+        char pwd[LE_MDC_PASSWORD_NAME_MAX_LEN];
 
         // configure all authentication info
         if (numArgs == 5)
         {
-            le_arg_GetArg(2, type, sizeof(type));
+            le_arg_GetArg(2, auth, sizeof(auth));
             le_arg_GetArg(3, user, sizeof(user));
             le_arg_GetArg(4, pwd, sizeof(pwd));
 
-            exit(cm_data_SetAuthentication(type, user, pwd));
+            exit(cm_data_SetAuthentication(auth, user, pwd));
         }
         // for none option
         else if (numArgs == 3)
         {
-            le_arg_GetArg(2, type, sizeof(type));
-            exit(cm_data_SetAuthentication(type, user, pwd));
+            le_arg_GetArg(2, auth, sizeof(auth));
+            exit(cm_data_SetAuthentication(auth, user, pwd));
         }
         else
         {
@@ -299,7 +327,7 @@ COMPONENT_INIT
     // handle service info
     else if (le_arg_NumArgs() == 1)
     {
-        char service[64];
+        char service[CMODEM_COMMON_SERVICE_STR_LEN];
 
         le_arg_GetArg(0, service, sizeof(service));
 
@@ -328,8 +356,8 @@ COMPONENT_INIT
     // handle service commands
     else
     {
-        char service[64];
-        char command[64];
+        char service[CMODEM_COMMON_SERVICE_STR_LEN];
+        char command[CMODEM_COMMON_COMMAND_STR_LEN];
 
         le_arg_GetArg(0, service, sizeof(service));
         le_arg_GetArg(1, command, sizeof(command));

@@ -5,6 +5,8 @@
 #     Sierra Wireless - initial API and implementation
 #*******************************************************************************
 
+# TODO: Convert this into a "command-line app" when that feature is available.
+
 mkexe(  cm
             cm
             -i ${LEGATO_ROOT}/interfaces/modemServices
@@ -24,5 +26,6 @@ mkexe(  cm
             cm/Component.cdef
             ${LEGATO_ROOT}/interfaces/modemServices/le_mrc.api
             ${LEGATO_ROOT}/interfaces/modemServices/le_sim.api
+            ${LEGATO_ROOT}/interfaces/modemServices/le_mdmDefs.api
             ${LEGATO_ROOT}/interfaces/dataConnectionService/le_data.api
      )

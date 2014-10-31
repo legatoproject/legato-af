@@ -14,10 +14,6 @@
 #include "cm_data.h"
 #include "cm_common.h"
 
-// Hard coded: the default profile is the first one
-// @todo: add an API in DCS to know which profile is used.
-static int32_t DefaultProfile = 1;
-
 // -------------------------------------------------------------------------------------------------
 /**
  *  The data connection reference.
@@ -45,7 +41,7 @@ static bool IsTerminated = false;
  *  Note: When starting a data connection, it will only utilize the default profile index 1
  */
 // -------------------------------------------------------------------------------------------------
-#define PROFILE_IN_USE  "tools/cmodem/ProfileInUse"
+#define PROFILE_IN_USE  "tools/cmodem/profileInUse"
 
 
 // -------------------------------------------------------------------------------------------------
@@ -210,20 +206,34 @@ static le_result_t StartTimer
 *  Gets the profile in use from configDB
 */
 // -------------------------------------------------------------------------------------------------
-static int GetProfileInUse
+static uint32_t GetProfileInUse
 (
     void
 )
 {
+    uint32_t profileIndex;
+    const uint32_t defaultProfileIndex = 1;
+
     le_cfg_IteratorRef_t iteratorRef = le_cfg_CreateReadTxn(PROFILE_IN_USE);
 
     // if node does not exist, populate with default profile
-    if (!le_cfg_NodeExists(iteratorRef, ""))
+    if (le_cfg_NodeExists(iteratorRef, ""))
     {
-        return DefaultProfile;
+        profileIndex = le_cfg_GetInt(iteratorRef, "", defaultProfileIndex);
+    }
+    else
+    {
+        le_mdc_ProfileRef_t profileRef;
+
+        LE_FATAL_IF( (le_mdc_GetAvailableProfile(&profileRef) != LE_OK),
+            "Unable to get default profile from MDC");
+
+        profileIndex = le_mdc_GetProfileIndex(profileRef);
     }
 
-    return le_cfg_GetInt(iteratorRef, "", DefaultProfile);
+    le_cfg_CancelTxn(iteratorRef);
+
+    return profileIndex;
 }
 
 
@@ -358,7 +368,8 @@ int cm_data_SetApnName
     const char * apn        ///< [IN] Access point name
 )
 {
-    le_mdc_ProfileRef_t profileRef = le_mdc_GetProfile(GetProfileInUse());
+    uint32_t profileIndex = GetProfileInUse();
+    le_mdc_ProfileRef_t profileRef = le_mdc_GetProfile(profileIndex);
 
     if (profileRef == NULL)
     {
@@ -367,8 +378,8 @@ int cm_data_SetApnName
 
     if (le_mdc_SetAPN(profileRef, apn) != LE_OK)
     {
-        printf("Could not set APN '%s' for profile %d.\n"
-               "Maybe the profile is connected", apn, GetProfileInUse());
+        printf("Could not set APN '%s' for profile %u.\n"
+               "Maybe the profile is connected", apn, profileIndex);
         return EXIT_FAILURE;
     }
 
@@ -391,7 +402,8 @@ int cm_data_SetPdpType
     const char * pdpType    ///< [IN] Packet data protocol
 )
 {
-    le_mdc_ProfileRef_t profileRef = le_mdc_GetProfile(GetProfileInUse());
+    uint32_t profileIndex = GetProfileInUse();
+    le_mdc_ProfileRef_t profileRef = le_mdc_GetProfile(profileIndex);
 
     if (profileRef == NULL)
     {
@@ -401,7 +413,7 @@ int cm_data_SetPdpType
 
     le_mdc_Pdp_t pdp = LE_MDC_PDP_UNKNOWN;
 
-    char pdpTypeToUpper[100];
+    char pdpTypeToUpper[CMODEM_COMMON_PDP_STR_LEN];
     cm_cmn_toUpper(pdpType, pdpTypeToUpper, sizeof(pdpTypeToUpper));
 
     if (strcmp(pdpTypeToUpper, "IPV4") == 0)
@@ -424,8 +436,8 @@ int cm_data_SetPdpType
 
     if (le_mdc_SetPDP(profileRef, pdp) != LE_OK)
     {
-        printf("Could not set PDP '%s' for profile %d.\n"
-               "Maybe the profile is connected", pdpTypeToUpper, GetProfileInUse());
+        printf("Could not set PDP '%s' for profile %u.\n"
+               "Maybe the profile is connected", pdpTypeToUpper, profileIndex);
         return EXIT_FAILURE;
     }
 
@@ -451,7 +463,9 @@ int cm_data_SetAuthentication
 )
 {
     le_mdc_Auth_t auth;
-    le_mdc_ProfileRef_t profileRef = le_mdc_GetProfile(GetProfileInUse());
+
+    uint32_t profileIndex = GetProfileInUse();
+    le_mdc_ProfileRef_t profileRef = le_mdc_GetProfile(profileIndex);
 
     if (profileRef == NULL)
     {
@@ -489,6 +503,21 @@ int cm_data_SetAuthentication
     return EXIT_SUCCESS;
 }
 
+// -------------------------------------------------------------------------------------------------
+/**
+*  This function prints a profile index.
+*/
+// -------------------------------------------------------------------------------------------------
+static void PrintProfileIndex
+(
+    uint32_t profileIndex
+)
+{
+    char profileIndexStr[5];
+
+    snprintf(profileIndexStr, sizeof(profileIndexStr), "%u", profileIndex);
+    cm_cmn_FormatPrint("Index", profileIndexStr);
+}
 
 // -------------------------------------------------------------------------------------------------
 /**
@@ -497,7 +526,7 @@ int cm_data_SetAuthentication
 *  @return LE_OK if the call was successful
 */
 // -------------------------------------------------------------------------------------------------
-static le_result_t GetApnName
+static le_result_t PrintApnName
 (
     le_mdc_ProfileRef_t profileRef   ///< [IN] profile reference
 )
@@ -525,7 +554,7 @@ static le_result_t GetApnName
 *  @return LE_OK if the call was successful
 */
 // -------------------------------------------------------------------------------------------------
-static le_result_t GetPdpType
+static le_result_t PrintPdpType
 (
     le_mdc_ProfileRef_t profileRef    ///< [IN] profile reference
 )
@@ -549,7 +578,7 @@ static le_result_t GetPdpType
 *  @return LE_OK if the call was successful
 */
 // -------------------------------------------------------------------------------------------------
-static le_result_t GetAuthentication
+static le_result_t PrintAuthentication
 (
     le_mdc_ProfileRef_t profileRef    ///< [IN] profile reference
 )
@@ -557,8 +586,8 @@ static le_result_t GetAuthentication
     le_result_t res = LE_OK;
     le_mdc_Auth_t authenticationType;
 
-    char userName[100]={0};
-    char password[100]={0};
+    char userName[LE_MDC_USER_NAME_MAX_LEN]={0};
+    char password[LE_MDC_PASSWORD_NAME_MAX_LEN]={0};
 
     res = le_mdc_GetAuthentication(profileRef,
                                    &authenticationType,
@@ -598,37 +627,34 @@ int cm_data_GetProfileInfo
 {
     int exitStatus = EXIT_SUCCESS;
 
-    le_mdc_ProfileRef_t profileRef = le_mdc_GetProfile(GetProfileInUse());
+    uint32_t profileIndex = GetProfileInUse();
+    le_mdc_ProfileRef_t profileRef = le_mdc_GetProfile(profileIndex);
 
     if (profileRef == NULL)
     {
-        printf("Invalid profile\n");
+        printf("Invalid profile (%u)\n", profileIndex);
         return LE_NOT_FOUND;
     }
 
-    char defaultProfileName[32] = {0};
-    snprintf(defaultProfileName, sizeof(defaultProfileName)-1, "%d", GetProfileInUse());
-
     le_result_t res;
 
-    // defaulted
-    cm_cmn_FormatPrint("Profile", defaultProfileName);
+    PrintProfileIndex(profileIndex);
 
-    res = GetApnName(profileRef);
-
-    if (res != LE_OK)
-    {
-        exitStatus = EXIT_FAILURE;
-    }
-
-    res = GetPdpType(profileRef);
+    res = PrintApnName(profileRef);
 
     if (res != LE_OK)
     {
         exitStatus = EXIT_FAILURE;
     }
 
-    res = GetAuthentication(profileRef);
+    res = PrintPdpType(profileRef);
+
+    if (res != LE_OK)
+    {
+        exitStatus = EXIT_FAILURE;
+    }
+
+    res = PrintAuthentication(profileRef);
 
     if (res != LE_OK)
     {

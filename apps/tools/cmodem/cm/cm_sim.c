@@ -12,6 +12,7 @@
 #include "legato.h"
 #include "interfaces.h"
 #include "cm_sim.h"
+#include "cm_common.h"
 
 #define CFG_MODEMSERVICE_SIM_PATH "/modemServices/sim"
 #define CFG_NODE_PIN              "pin"
@@ -33,6 +34,8 @@ void cm_sim_PrintSimHelp
             "=========\n\n"
             "To get sim status:\n"
             "\tcm sim\n\n"
+            "To get sim information:\n"
+            "\tcm sim info\n\n"
             "To enter pin code:\n"
             "\tcm sim enterpin <pin>\n\n"
             "To change pin code:\n"
@@ -129,6 +132,51 @@ int cm_sim_GetSimStatus()
     return EXIT_SUCCESS;
 }
 
+// -------------------------------------------------------------------------------------------------
+/**
+*  This function will attempt to get the home network name.
+*
+*  @return LE_OK if the call was successful.
+*/
+// -------------------------------------------------------------------------------------------------
+static le_result_t GetNetworkOperator
+(
+    void
+)
+{
+    char homeNetwork[100];
+    le_result_t res;
+
+    res = le_sim_GetHomeNetworkOperator(homeNetwork, sizeof(homeNetwork));
+
+    if (res != LE_OK)
+    {
+        cm_cmn_FormatPrint("Home Network Operator", "");
+        return res;
+    }
+
+    cm_cmn_FormatPrint("Home Network Operator", homeNetwork);
+
+    return res;
+}
+
+// -------------------------------------------------------------------------------------------------
+/**
+ *  This function will attempt to get the SIM info (Home PLMN,...).
+ *
+ *  @return EXIT_SUCCESS if the call was successful, EXIT_FAILURE otherwise.
+ */
+// -------------------------------------------------------------------------------------------------
+int cm_sim_GetSimInfo( void )
+{
+    le_result_t res = LE_OK;
+
+    res = GetNetworkOperator();
+
+    // to be completed with IMSI, phone number, etc...
+
+    return res;
+}
 
 // -------------------------------------------------------------------------------------------------
 /**
