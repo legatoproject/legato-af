@@ -1,13 +1,9 @@
 /**
- * @page c_le_data Data Connection Service
+ * @page c_le_data Data Connection
  *
- * @ref le_data_interface.h "Click here for the API Reference documentation."
+ * @ref le_data_interface.h "API Reference"
  *
  * <HR>
- *
- *  - @ref c_le_data_default
- *  - @ref c_le_data_options
- *
  *
  * A data connection is needed for applications that exchange data with
  * devices where SMS messages are insufficient or not possible.  The data connection can

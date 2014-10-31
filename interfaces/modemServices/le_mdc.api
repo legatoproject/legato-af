@@ -1,14 +1,9 @@
 /**
  * @page c_mdc Modem Data Control
  *
- * @ref le_mdc_interface.h "Click here for the API Reference documentation."
+ * @ref le_mdc_interface.h "API Reference"
  *
  * <HR>
- *
- * @ref le_mdc_profile <br>
- * @ref le_mdc_session <br>
- * @ref le_mdc_dataStatistics <br>
- *
  *
  * A data session is useful for  applications that need to send or receive data over a network
  * where SMS messages are insufficient.  To start a data session, a data profile must
@@ -16,13 +11,14 @@
  *
  * The Modem Data Control (mdc) API is used to manage data profiles and data sessions.
  *
- *
  * @section le_mdc_profile Data Profiles
  *
  * If a pre-defined data profile has been configured then this profile can
  * be loaded using @ref le_mdc_GetProfile.
  * The maximum number of data profiles supported is modem dependent and can be retrieved with
  * @ref le_mdc_NumProfiles.
+ *
+ * @warning Ensure to check the list of supported data profiles for your specific platform.
  *
  * The following data profile parameters can be retrieved:
  *  - Packet Data Protocol using @ref le_mdc_GetPDP.
@@ -123,7 +119,6 @@ DEFINE  PASSWORD_NAME_MAX_BYTES  = (PASSWORD_NAME_MAX_LEN + 1);
 /// Reference to a modem data connection profile.
 REFERENCE Profile;
 
-
 /// Enumeration of data bearer technologies.
 ENUM DataBearerTechnology
 {
@@ -187,6 +182,8 @@ HANDLER SessionStateHandler
 /**
  * Get Profile Reference for index
  *
+ * @warning Ensure to check the list of supported data profiles for your specific platform.
+ *
  * @return
  *      - Reference to the data profile
  *      - NULL if the profile index does not exist
@@ -195,6 +192,25 @@ HANDLER SessionStateHandler
 FUNCTION Profile GetProfile
 (
     uint32 index ///< index of the profile.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Remove the data profile
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT if input parameter is incorrect
+ *      - LE_NOT_POSSIBLE for errors
+ *
+ * @note
+ * A profile can't be removed until a handler is subscribed on this profile, or a session
+ * is started
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t RemoveProfile
+(
+    Profile profileRef ///< profile to remove.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -237,7 +253,7 @@ FUNCTION le_result_t StartSession
  *
  * @return
  *      - LE_OK on success
- *      - LE_DUPLICATE if the data session has already been stopped (i.e. it is disconnected)
+ *      - LE_FAULT if the input parameter is not valid
  *      - LE_NOT_POSSIBLE for other failures
  *
  * @note
@@ -625,4 +641,18 @@ FUNCTION le_result_t GetAuthentication
 //--------------------------------------------------------------------------------------------------
 FUNCTION uint32 NumProfiles
 (
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get an available profile.
+ *
+ * @return
+ *      - LE_OK if a profileRef has been found
+ *      - LE_FAULT otherwise
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetAvailableProfile
+(
+    Profile profileRef OUT ///< Profile reference
 );

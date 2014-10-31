@@ -1,21 +1,11 @@
 /**
- * @page c_sms SMS Services
+ * @page c_sms SMS
  *
- * @ref le_sms_interface.h "Click here for the API reference documentation."
+ * @ref le_sms_interface.h "API reference"
  *
  * <HR>
  *
  * This file contains data structures and prototypes definitions for high level SMS APIs.
- *
- *
- * @ref le_sms_ops_creating_msg <br>
- * @ref le_sms_ops_deleting_msg <br>
- * @ref le_sms_ops_sending <br>
- * @ref le_sms_ops_receiving <br>
- * @ref le_sms_ops_listing <br>
- * @ref le_sms_ops_deleting <br>
- * @ref le_sms_configdb <br>
- * @ref le_sms_ops_samples <br>
  *
  * SMS is a common way to communicate in the M2M world.
  *
@@ -28,7 +18,8 @@
  * There are 3 kinds of supported messages: text messages, binary messages, and PDU messages.
  *
  * You must create a Message object by calling @c le_sms_Create() before using the message
- * APIs. It automatically allocates needed resources for the Message object, which is referenced by @c le_sms_MsgRef_t type.
+ * APIs. It automatically allocates needed resources for the Message object, which is referenced by
+ * @c le_sms_MsgRef_t type.
  *
  * When the Message object is no longer needed, call @c le_sms_Delete() to free all
  *  allocated resources associated with the object.
@@ -46,9 +37,10 @@
  * -  Text content with le_sms_SetText(), the total length are set as well with this API, maximum
  * 160 characters as only the 7-bit alphabet is supported.
  * - Binary content with le_sms_SetBinary(), total length is set with this API, maximum 140 bytes.
- * - PDU content with le_sms_SetPDU(), total length is set with this API, max 36 (header) + 140 (payload) bytes long.
+ * - PDU content with le_sms_SetPDU(), total length is set with this API, max 36 (header) + 140
+ *  (payload) bytes long.
  *
- * After the le_sms_MsgRef_t object is ready, call @c le_sms_Send().
+ * After the Msg object is ready, call @c le_sms_Send().
  *
  * @c le_sms_Send() is a blocking function, it will return once the Modem has given back a
  * positive or negative answer to the sending operation. The return of @c le_sms_Send() API
@@ -103,14 +95,14 @@
  * - le_sms_GetPDU() - get the message PDU data.
  *
  * @note If two (or more) registered handler functions exist, they are
- * all called and get the same message object reference.
+ * all called and get a different message object reference.
  *
  * If a succession of messages is received, a new Message object is created for each, and
  * the handler is called for each new message.
  *
  * Uninstall the handler function by calling @c le_sms_RemoveRxMessageHandler().
- * @note @c le_sms_RemoveRxMessageHandler() API does not delete the Message Object. The caller has to
- *       delete it.
+ * @note @c le_sms_RemoveRxMessageHandler() API does not delete the Message Object.
+ *  The caller has to delete it.
  *
  * @code
  *
@@ -121,7 +113,7 @@
  * static void myMsgHandler
  * (
  *      le_sms_MsgRef_t msgRef,
- *      void*            contextPtr*
+ *      void*           contextPtr*
  * )
  * {
  *     char   tel[LE_SMS_TEL_NMBR_MAX_LEN];
@@ -160,11 +152,9 @@
  * @endcode
  *
  * @section le_sms_ops_listing Listing  messages recorded in storage area
- * @note The default SMS message storage area is the SIM card. Change the storage setting through the
- *       SMS configuration APIs (available in a future version of API specification).
  *
  * Call @c le_sms_CreateRxMsgList() to create a List object that lists the received
- * messages present in the storage area, which is referenced by le_sms_MsgListRef_t
+ * messages present in the storage area, which is referenced by @c le_sms_MsgListRef_t
  * type.
  *
  * If messages are not present, the le_sms_CreateRxMsgList() returns NULL.
@@ -182,17 +172,25 @@
  * @c le_sms_MarkRead() and @c le_sms_MarkUnread().
  *
  * @section le_sms_ops_deleting Deleting a message from the storage area
- * @note The default SMS message storage area is the SIM card. Change this setting through the
- *       SMS configuration APIs (available in a future version of API specification).
  *
  * @c le_sms_DeleteFromStorage() deletes the message from the storage area. Message is
  * identified with @c le_sms_MsgRef_t object. The API returns an error if the message is not found
  * in the storage area.
  *
+ * @note If several users own the Message object on new reception
+ * (e.g., several handler functions registered for SMS message reception), the
+ * Message will be deleted from the storage area only after the last user deletes
+ * the Message object reference (not necessary from storage). API returns always LE_OK in this case.
  *
- * @section le_sms_configdb SMS configuration tree
- * @copydoc le_sms_configdbPage_Hide
+ * @note If one client creates a list and deletes all sms from storage, other clients won’t see sms
+ *  stored If they have not created a sms list too. Sms List creation locks and
+ *   delays sms deletion from storage until all references have been deleted.
  *
+ *
+ * @section le_sms_ops_configuration SMS configuration
+ *
+ *  Modem SMS Center Address can be set or get with le_sms_SetSmsCenterAddress() and
+ *   le_sms_GetSmsCenterAddress() functions
  *
  * @section le_sms_ops_samples Sample codes
  * A sample code that implements a function for Mobile Originated SMS message can be found in
@@ -243,21 +241,6 @@
  *
  */
 
-/**
- * @interface le_sms_configdbPage_Hide
- *
- * The configuration database path for the SMS is:
- * @verbatim
-   /
-       modemServices/
-           sms/
-               smsc<string> = <SMS Center Address>
-  @endverbatim
- *
- *  Where 'smsc' is the SMS Center Address.
- *
- */
-
 /** @file le_sms_interface.h
  *
  * Legato @ref c_sms include file.
@@ -265,8 +248,7 @@
  * Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved.
  */
 
-// NOTE: string sizes are set to an arbitrary value.  The correct values
-//       still need to be filled in.
+USETYPES le_mdmDefs.api;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -275,7 +257,8 @@
  * One extra byte is added for the null character.
  */
 //--------------------------------------------------------------------------------------------------
-DEFINE  TIMESTAMP_MAX_LEN   = (20+1);
+DEFINE  TIMESTAMP_MAX_LEN   = (20);
+DEFINE  TIMESTAMP_MAX_BYTES = (TIMESTAMP_MAX_LEN+1);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -283,7 +266,8 @@ DEFINE  TIMESTAMP_MAX_LEN   = (20+1);
  * One extra byte is added for the null character.
  */
 //--------------------------------------------------------------------------------------------------
-DEFINE  TEXT_MAX_LEN    = (160+1);
+DEFINE  TEXT_MAX_LEN    = (160);
+DEFINE  TEXT_MAX_BYTES  = (TEXT_MAX_LEN+1);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -292,7 +276,6 @@ DEFINE  TEXT_MAX_LEN    = (160+1);
  */
 //--------------------------------------------------------------------------------------------------
 DEFINE  BINARY_MAX_LEN  = (140);
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -372,7 +355,7 @@ HANDLER RxMessageHandler
 {
     HANDLER_PARAMS
     (
-        le_sms_MsgRef_t  msgRef ///< Message reference.
+        Msg  msgRef ///< Message reference.
     );
 };
 
@@ -387,7 +370,7 @@ HANDLER RxMessageHandler
  *      reference for validity.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION le_sms_MsgRef_t Create
+FUNCTION Msg Create
 (
 );
 
@@ -411,8 +394,8 @@ FUNCTION le_sms_MsgRef_t Create
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetDestination
 (
-    le_sms_MsgRef_t msgRef ,       ///< Reference to the message object.
-    string          dest[17] IN    ///< Telephone number string.
+    Msg     msgRef ,                              ///< Reference to the message object.
+    string  dest[le_mdmDefs.PHONE_NUM_MAX_LEN] IN ///< Telephone number string.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -432,8 +415,8 @@ FUNCTION le_result_t SetDestination
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetText
 (
-    le_sms_MsgRef_t msgRef,        ///< Reference to the message object.
-    string          text[160] IN   ///< SMS text.
+    Msg     msgRef,                 ///< Reference to the message object.
+    string  text[TEXT_MAX_LEN] IN   ///< SMS text.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -453,8 +436,8 @@ FUNCTION le_result_t SetText
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetBinary
 (
-    le_sms_MsgRef_t msgRef,        ///< Reference to the message object.
-    uint8           bin[140] IN    ///< Binary data.
+    Msg     msgRef,                 ///< Reference to the message object.
+    uint8   bin[BINARY_MAX_LEN] IN  ///< Binary data.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -474,8 +457,8 @@ FUNCTION le_result_t SetBinary
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetPDU
 (
-    le_sms_MsgRef_t msgRef,        ///< Reference to the message object.
-    uint8           pdu[176] IN    ///< PDU message.
+    Msg     msgRef,             ///< Reference to the message object.
+    uint8   pdu[PDU_MAX_LEN] IN ///< PDU message.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -496,7 +479,7 @@ FUNCTION le_result_t SetPDU
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t Send
 (
-    le_sms_MsgRef_t msgRef ///< Reference to the message object.
+    Msg msgRef ///< Reference to the message object.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -514,7 +497,7 @@ FUNCTION le_result_t Send
 //--------------------------------------------------------------------------------------------------
 FUNCTION Delete
 (
-    le_sms_MsgRef_t msgRef ///< Reference to the message object.
+    Msg msgRef ///< Reference to the message object.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -529,7 +512,7 @@ FUNCTION Delete
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_sms_Format_t GetFormat
 (
-    le_sms_MsgRef_t msgRef ///< Reference to the message object.
+    Msg msgRef ///< Reference to the message object.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -550,8 +533,8 @@ FUNCTION le_sms_Format_t GetFormat
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetSenderTel
 (
-    le_sms_MsgRef_t msgRef ,       ///< Reference to the message object.
-    string          tel[17] OUT    ///< Telephone number string.
+    Msg     msgRef ,                              ///< Reference to the message object.
+    string  tel[le_mdmDefs.PHONE_NUM_MAX_LEN] OUT ///< Telephone number string.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -572,10 +555,10 @@ FUNCTION le_result_t GetSenderTel
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetTimeStamp
 (
-    le_sms_MsgRef_t msgRef,            ///< Reference to the message object.
-    string          timestamp[20] OUT  ///< Message time stamp (in text mode).
-                                       ///<        string format: "yy/MM/dd,hh:mm:ss+/-zz"
-                                       ///<        (Year/Month/Day,Hour:Min:Seconds+/-TimeZone)
+    Msg     msgRef,                          ///< Reference to the message object.
+    string  timestamp[TIMESTAMP_MAX_LEN] OUT ///< Message time stamp (in text mode).
+                                             ///<      string format: "yy/MM/dd,hh:mm:ss+/-zz"
+                                             ///<      (Year/Month/Day,Hour:Min:Seconds+/-TimeZone)
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -591,7 +574,7 @@ FUNCTION le_result_t GetTimeStamp
 //--------------------------------------------------------------------------------------------------
 FUNCTION size_t GetUserdataLen
 (
-    le_sms_MsgRef_t msgRef ///< Reference to the message object.
+    Msg msgRef ///< Reference to the message object.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -611,8 +594,8 @@ FUNCTION size_t GetUserdataLen
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetText
 (
-    le_sms_MsgRef_t msgRef,        ///< Reference to the message object.
-    string          text[160] OUT  ///< SMS text.
+    Msg     msgRef,                 ///< Reference to the message object.
+    string  text[TEXT_MAX_LEN] OUT  ///< SMS text.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -633,8 +616,8 @@ FUNCTION le_result_t GetText
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetBinary
 (
-    le_sms_MsgRef_t msgRef,        ///< Reference to the message object.
-    uint8           bin[140] OUT   ///< Binary message.
+    Msg     msgRef,                 ///< Reference to the message object.
+    uint8   bin[BINARY_MAX_LEN] OUT ///< Binary message.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -655,8 +638,8 @@ FUNCTION le_result_t GetBinary
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetPDU
 (
-    le_sms_MsgRef_t msgRef,        ///< Reference to the message object.
-    uint8           pdu[176] OUT   ///< PDU message.
+    Msg   msgRef,               ///< Reference to the message object.
+    uint8 pdu[PDU_MAX_LEN] OUT  ///< PDU message.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -671,7 +654,7 @@ FUNCTION le_result_t GetPDU
 //--------------------------------------------------------------------------------------------------
 FUNCTION size_t GetPDULen
 (
-    le_sms_MsgRef_t msgRef ///< Reference to the message object.
+    Msg msgRef ///< Reference to the message object.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -692,7 +675,7 @@ FUNCTION size_t GetPDULen
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t DeleteFromStorage
 (
-    le_sms_MsgRef_t msgRef ///< Reference to the message object.
+    Msg msgRef ///< Reference to the message object.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -704,7 +687,7 @@ FUNCTION le_result_t DeleteFromStorage
  *      Reference to the List object. Null pointer if no messages have been retrieved.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION le_sms_MsgListRef_t CreateRxMsgList
+FUNCTION MsgList CreateRxMsgList
 (
 );
 
@@ -720,7 +703,7 @@ FUNCTION le_sms_MsgListRef_t CreateRxMsgList
 //--------------------------------------------------------------------------------------------------
 FUNCTION void DeleteList
 (
-    le_sms_MsgListRef_t msgListRef ///< Messages list.
+    MsgList msgListRef ///< Messages list.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -729,15 +712,15 @@ FUNCTION void DeleteList
  * retrieved with le_sms_CreateRxMsgList().
  *
  * @return NULL              No message found.
- * @return le_sms_MsgRef_t  Message object reference.
+ * @return Msg  Message object reference.
  *
  * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
  *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION le_sms_MsgRef_t GetFirst
+FUNCTION Msg GetFirst
 (
-    le_sms_MsgListRef_t msgListRef ///< Messages list.
+    MsgList msgListRef ///< Messages list.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -746,15 +729,15 @@ FUNCTION le_sms_MsgRef_t GetFirst
  * retrieved with le_sms_CreateRxMsgList().
  *
  * @return NULL              No message found.
- * @return le_sms_MsgRef_t  Message object reference.
+ * @return Msg  Message object reference.
  *
  * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
  *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION le_sms_MsgRef_t GetNext
+FUNCTION Msg GetNext
 (
-    le_sms_MsgListRef_t msgListRef ///< Messages list.
+    MsgList msgListRef ///< Messages list.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -770,7 +753,7 @@ FUNCTION le_sms_MsgRef_t GetNext
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_sms_Status_t GetStatus
 (
-    le_sms_MsgRef_t msgRef ///< Messages list.
+    Msg msgRef ///< Messages list.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -783,7 +766,7 @@ FUNCTION le_sms_Status_t GetStatus
 //--------------------------------------------------------------------------------------------------
 FUNCTION void MarkRead
 (
-    le_sms_MsgRef_t msgRef ///< Messages list.
+    Msg msgRef ///< Messages list.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -796,5 +779,43 @@ FUNCTION void MarkRead
 //--------------------------------------------------------------------------------------------------
 FUNCTION void MarkUnread
 (
-    le_sms_MsgRef_t msgRef ///< Messages list.
+    Msg msgRef ///< Messages list.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the SMS center address.
+ *
+ * Output parameter is updated with the SMS Service center address. If the Telephone number string exceeds
+ * the value of 'len' parameter,  LE_OVERFLOW error code is returned and 'tel' is filled until
+ * 'len-1' characters and a null-character is implicitly appended at the end of 'tel'.
+ *
+ * @return
+ *  - LE_FAULT         Service is not available.
+ *  - LE_OVERFLOW      Telephone number length exceed the maximum length.
+ *  - LE_OK            Function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetSmsCenterAddress
+(
+    string          tel[le_mdmDefs.PHONE_NUM_MAX_LEN] OUT    ///< SMS center address number string.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the SMS center address.
+ *
+ * SMS center address number is defined in ITU-T recommendations E.164/E.163.
+ * E.164 numbers can have a maximum of fifteen digits and are usually written with a '+' prefix.
+ *
+ * @return
+ *  - LE_FAULT         Service is not available..
+ *  - LE_OK            Function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetSmsCenterAddress
+(
+    string          tel[le_mdmDefs.PHONE_NUM_MAX_LEN] IN    ///< SMS center address number string.
 );

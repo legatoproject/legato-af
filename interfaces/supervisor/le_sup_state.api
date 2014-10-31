@@ -6,15 +6,14 @@
  *
  * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
  */
-// -------------------------------------------------------------------------------------------------
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * The Supervisor State API service name used to start the service.
+ 
+   /** @file le_sup_state_interface.h
+ *
+ * Legato @ref c_sup_state include file.
+ *
+ * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
  */
-//--------------------------------------------------------------------------------------------------
-DEFINE API_NAME = "SupervisorState";
+// -------------------------------------------------------------------------------------------------
 
 
 //--------------------------------------------------------------------------------------------------

@@ -1,7 +1,7 @@
 /**
  * @page c_mcc_call Modem Call Control
  *
- * @ref le_mcc_call_interface.h "Click here for the API Reference documentation."
+ * @ref le_mcc_call_interface.h "API Reference"
  *
  * <HR>
  *
@@ -247,13 +247,22 @@
  * This function can be used to hang-up any calls that have been initiated through another client
  * like AT commands.
  *
+ * @section le_mcc_ss Supplementary service.
  *
- * @todo Supplementary services will be available in a future release. Create simpler examples.
+ * Calling Line Identification Restriction (CLIR) can be activated or deactivated by
+ *  le_mcc_call_SetCallerIdRestrict API. The status is independent for each call object reference.
+ *  Status can be read with the le_mcc_call_GetCallerIdRestrict() API.
+ * Default value is LE_OFF (Enable presentation of own phone number to remote).
+ *
+ * @todo Other Supplementary services will be available in a future release. Create simpler examples.
+ *
  *
  * <HR>
  *
  * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
  */
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * @file le_mcc_call_interface.h
@@ -264,10 +273,7 @@
  */
 //--------------------------------------------------------------------------------------------------
 
-// NOTE: string sizes are set to an arbitrary value.  The correct values
-//       still need to be filled in.
-
-
+USETYPES le_mdmDefs.api;
 USETYPES le_audio.api;
 
 //--------------------------------------------------------------------------------------------------
@@ -325,7 +331,7 @@ REFERENCE Obj;
 //--------------------------------------------------------------------------------------------------
 FUNCTION Delete
 (
-    le_mcc_call_ObjRef_t callRef IN  ///< The call object to free.
+    Obj callRef IN  ///< The call object to free.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -347,7 +353,7 @@ FUNCTION Delete
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t Start
 (
-    le_mcc_call_ObjRef_t callRef IN  ///< Reference to the call object.
+    Obj callRef IN  ///< Reference to the call object.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -362,7 +368,7 @@ FUNCTION le_result_t Start
 //--------------------------------------------------------------------------------------------------
 FUNCTION bool IsConnected
 (
-    le_mcc_call_ObjRef_t callRef IN ///< The call reference to read.
+    Obj callRef IN ///< The call reference to read.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -382,8 +388,8 @@ FUNCTION bool IsConnected
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetRemoteTel
 (
-    le_mcc_call_ObjRef_t callRef IN,       ///<  The call reference to read from.
-    string               telPtr[17] OUT    ///< The telephone number string.
+    Obj     callRef IN,                                 ///<  The call reference to read from.
+    string  telPtr[le_mdmDefs.PHONE_NUM_MAX_LEN] OUT    ///< The telephone number string.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -396,9 +402,9 @@ FUNCTION le_result_t GetRemoteTel
  *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION le_mcc_call_TerminationReason_t GetTerminationReason
+FUNCTION TerminationReason GetTerminationReason
 (
-    le_mcc_call_ObjRef_t callRef IN ///< The call reference to read from.
+    Obj callRef IN ///< The call reference to read from.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -412,9 +418,9 @@ FUNCTION le_mcc_call_TerminationReason_t GetTerminationReason
  *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION le_audio_StreamRef_t GetTxAudioStream
+FUNCTION le_audio.Stream GetTxAudioStream
 (
-    le_mcc_call_ObjRef_t callRef IN ///< The call reference to read from.
+    Obj callRef IN ///< The call reference to read from.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -428,9 +434,9 @@ FUNCTION le_audio_StreamRef_t GetTxAudioStream
  *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION le_audio_StreamRef_t GetRxAudioStream
+FUNCTION le_audio.Stream GetRxAudioStream
 (
-    le_mcc_call_ObjRef_t callRef IN ///< The call reference to read from.
+    Obj callRef IN ///< The call reference to read from.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -446,7 +452,7 @@ FUNCTION le_audio_StreamRef_t GetRxAudioStream
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t Answer
 (
-    le_mcc_call_ObjRef_t callRef IN ///< The call reference.
+    Obj callRef IN ///< The call reference.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -463,7 +469,7 @@ FUNCTION le_result_t Answer
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t HangUp
 (
-    le_mcc_call_ObjRef_t callRef IN ///< The call to end.
+    Obj callRef IN ///< The call to end.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -478,4 +484,41 @@ FUNCTION le_result_t HangUp
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t HangUpAll
 (
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function return the Calling Line Identification Restriction (CLIR) status on the specific
+ *  call.
+ *
+ * The output parameter is updated with the CLIR status.
+ *    - LE_ON  Disable presentation of own phone number to remote.
+ *    - LE_OFF Enable presentation of own phone number to remote.
+ *
+ * @return
+ *    - LE_OK        The function succeed.
+ *    - LE_NOT_FOUND The call reference was not found.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetCallerIdRestrict
+(
+    le_mcc_call_ObjRef_t callRef IN, ///< The call reference.
+    le_onoff_t clirStatusPtr OUT        ///< the Calling Line Identification Restriction (CLIR) status
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function set the Calling Line Identification Restriction (CLIR) status on the specific call.
+ * Default value is LE_OFF (Enable presentation of own phone number to remote).
+ *
+ * @return
+ *     - LE_OK        The function succeed.
+ *     - LE_NOT_FOUND The call reference was not found.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetCallerIdRestrict
+(
+    le_mcc_call_ObjRef_t callRef IN, ///< The call reference.
+    le_onoff_t clirStatus IN         ///< The Calling Line Identification Restriction (CLIR) status.
 );

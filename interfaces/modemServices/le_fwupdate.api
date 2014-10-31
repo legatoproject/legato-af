@@ -1,12 +1,9 @@
 /**
  * @page c_fwupdate Modem Firmware Update
  *
- * @ref le_fwupdate_interface.h "Click here for the API Reference documentation."
+ * @ref le_fwupdate_interface.h "API Reference"
  *
  * <HR>
- *
- * @ref le_fwupdate_image <br>
- * @ref le_fwupdate_version <br>
  *
  * Firmware update allows the various firmware images to be updated from the application processor.
  * This includes the modem bootloader, modem firmware, and linux image, where the linux image 
@@ -32,16 +29,6 @@
  * processor has restarted, the @ref le_fwupdate_version APIs can be used to determine whether 
  * the firmware has been updated to the new version.
  *
- *
- * @section le_fwupdate_version Query Firmware Version
- *
- * le_fwupdate_GetFirmwareVersion() is used to query the current firmware version.  
- * le_fwupdate_GetBootloaderVersion() is used to query the current bootloader version.  
- * In both cases, the version is returned as a human readable string.
- * 
- * The linux kernel version can be queried using standard linux methods, such as the uname
- * command, or the uname() API.
- *
  * <HR>
  *
  * Copyright (C) Sierra Wireless, Inc 2014. Use of this work is subject to license.
@@ -61,46 +48,6 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Maximum length of a version string
- */
-//--------------------------------------------------------------------------------------------------
-DEFINE MAX_VERS_LEN = 256;
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Get the firmware version string
- *
- * @return
- *      - LE_OK on success
- *      - LE_NOT_FOUND if the version string is not available
- *      - LE_NOT_POSSIBLE for any other errors
- */
-//--------------------------------------------------------------------------------------------------
-FUNCTION le_result_t GetFirmwareVersion
-(
-    string version[MAX_VERS_LEN] OUT     ///< Firmware version string
-);
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Get the bootloader version string
- *
- * @return
- *      - LE_OK on success
- *      - LE_NOT_FOUND if the version string is not available
- *      - LE_NOT_POSSIBLE for any other errors
- */
-//--------------------------------------------------------------------------------------------------
-FUNCTION le_result_t GetBootloaderVersion
-(
-    string version[MAX_VERS_LEN] OUT     ///< Bootloader version string
-);
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Download the firmware image file to the modem.
  *
  * @return
@@ -115,4 +62,3 @@ FUNCTION le_result_t Download
 (
     file fd IN     ///< File descriptor of the image, opened to the start of the image.
 );
-

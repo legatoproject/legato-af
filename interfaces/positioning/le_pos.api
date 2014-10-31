@@ -1,14 +1,10 @@
 /**
- * @page c_pos Positioning Service
+ * @page c_pos Positioning
  *
- * @ref le_pos_interface.h "Click here for the positioning API reference documentation." <br>
+ * @ref le_pos_interface.h "Positioning API reference" <br>
+ * @subpage c_posCtrl "Positioning Control reference" 
  *
  * <HR>
- *
- * @ref le_pos_fix <br>
- * @ref le_pos_navigation <br>
- * @ref le_pos_xtra <br>
- * @ref le_pos_configdb <br>
  *
  * This API provides access to the device's physical position and movement information.
  *

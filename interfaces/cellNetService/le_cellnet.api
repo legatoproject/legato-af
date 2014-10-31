@@ -1,19 +1,9 @@
 /**
- * @page c_le_cellnet Cellular Network Service
+ * @page c_le_cellnet Cellular Network 
  *
- * @ref le_cellnet_interface.h "Click here for the API Reference documentation."
+ * @ref le_cellnet_interface.h "API Reference"
  *
  * <HR>
- *
- * @section c_le_cellnet_toc Table of Contents
- *
- *  - @ref c_le_cellnet_intro
- *  - @ref c_le_cellnet_requesting
- *  - @ref c_le_cellnet_options
- *  - @ref c_le_cellnet_configdb
- *
- *
- * @section c_le_cellnet_intro Introduction
  *
  * The Cellular Network service ensures that the modem is registered on the network when an user
  * application makes a request for network access. This includes:

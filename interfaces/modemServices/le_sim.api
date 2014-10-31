@@ -1,18 +1,11 @@
 /**
- * @page c_sim SIM Services
+ * @page c_sim SIM
  *
- * @ref le_sim_interface.h "Click here for the API reference documentation."
+ * @ref le_sim_interface.h "API reference"
  *
  * <HR>
  *
  * This file contains prototype definitions for high level SIM APIs.
- *
- * @ref le_sim_count <br>
- * @ref le_sim_create <br>
- * @ref le_sim_delete <br>
- * @ref le_sim_id <br>
- * @ref le_sim_auth <br>
- * @ref le_sim_state <br>
  *
  * A subscriber identity module or subscriber identification module (SIM) is an integrated circuit
  * that securely stores the international mobile subscriber identity (IMSI) and related key used
@@ -26,7 +19,8 @@
  * @c le_sim_GetSelectedCard() returns the selected SIM card number.
  *
  * @section le_sim_create Creating a SIM object
- * You must create a SIM object by calling le_sim_Create() first; the card socket number must be specified with a parameter.
+ * You must create a SIM object by calling le_sim_Create() first; the card socket number must be
+ * specified with a parameter.
  * This passes the card socket number to create the required corresponding object
  * to the selected SIM card. Resources are automatically allocated for the SIM
  * object, which is referenced by @c le_sim_ObjRef_t type.
@@ -63,11 +57,19 @@
  * on the value of the MCC. The remaining digits are the mobile subscription identification number
  * (MSIN) within the network's customer base.
  *
+ * \b Home \b Network \b Name:
+ * @c le_sim_GetHomeNetworkOperator() retrieves the Home Network Name.
+ *
  * @c le_sim_GetIMSI() API reads the international mobile subscriber identity (IMSI).
  *
  * \b Phone \b Number:
  * @c le_sim_GetSubscriberPhoneNumber() API reads the Phone Number associated to the SIM.
  * If the phone number has not been provisioned, it will return the empty string.
+ *
+ * \b Home \b Network \b Information:
+ * - @c le_sim_GetHomeNetworkOperator()function retrieves the Home Network Name.
+ * - @c le_sim_GetHomeNetworkMccMnc()function retrieves the Home Network MCC (Mobile Country Code)
+ *      and MNC (Mobile Network Code).
  *
  * @section le_sim_auth SIM Authentication
  * @c le_sim_EnterPIN() enters the PIN (Personal Identification Number) code that's
@@ -132,9 +134,7 @@
  * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
  */
 
-// NOTE: string sizes are set to an arbitrary value.  The correct values
-//       still need to be filled in.
-
+USETYPES le_mdmDefs.api;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -169,7 +169,8 @@ DEFINE  PUK_LEN     = 8;
  * According to GSM Phase 1
  */
 //--------------------------------------------------------------------------------------------------
-DEFINE  ICCID_LEN  = (20+1);
+DEFINE  ICCID_LEN  = (20);
+DEFINE  ICCID_BYTES  = (ICCID_LEN+1);
 
 
 //--------------------------------------------------------------------------------------------------
@@ -178,7 +179,8 @@ DEFINE  ICCID_LEN  = (20+1);
  *
  */
 //--------------------------------------------------------------------------------------------------
-DEFINE  IMSI_LEN    = (15+1);
+DEFINE  IMSI_LEN    = (15);
+DEFINE  IMSI_BYTES  = (IMSI_LEN+1);
 
 
 //--------------------------------------------------------------------------------------------------
@@ -217,7 +219,7 @@ HANDLER NewStateHandler
 {
     HANDLER_PARAMS
     (
-        le_sim_ObjRef_t simRef ///< SIM reference.
+        Obj simRef ///< SIM reference.
     );
 };
 
@@ -253,7 +255,7 @@ FUNCTION uint32 GetSelectedCard
  *      On failure, the process exits, so no need to check the return value for validity
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION le_sim_ObjRef_t Create
+FUNCTION Obj Create
 (
     uint32 cardNum IN           ///< The SIM card number. (1 or 2, it depends on the platform).
 );
@@ -273,7 +275,7 @@ FUNCTION le_sim_ObjRef_t Create
 //--------------------------------------------------------------------------------------------------
 FUNCTION Delete
 (
-    le_sim_ObjRef_t simRef IN      ///< The SIM object.
+    Obj simRef IN      ///< The SIM object.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -288,7 +290,7 @@ FUNCTION Delete
 //--------------------------------------------------------------------------------------------------
 FUNCTION uint32 GetSlotNumber
 (
-    le_sim_ObjRef_t simRef IN      ///< The SIM object.
+    Obj simRef IN      ///< The SIM object.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -305,8 +307,8 @@ FUNCTION uint32 GetSlotNumber
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetICCID
 (
-    le_sim_ObjRef_t simRef IN,           ///< The SIM object.
-    string          iccid[20] OUT        ///< ICCID
+    Obj     simRef IN,              ///< The SIM object.
+    string  iccid[ICCID_LEN] OUT    ///< ICCID
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -323,8 +325,8 @@ FUNCTION le_result_t GetICCID
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetIMSI
 (
-    le_sim_ObjRef_t simRef IN,           ///< The SIM object.
-    string          imsi[15] OUT         ///< IMSI
+    Obj     simRef IN,           ///< The SIM object.
+    string  imsi[IMSI_LEN] OUT   ///< IMSI
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -340,7 +342,7 @@ FUNCTION le_result_t GetIMSI
 //--------------------------------------------------------------------------------------------------
 FUNCTION bool IsPresent
 (
-    le_sim_ObjRef_t simRef IN      ///< The SIM object.
+    Obj simRef IN      ///< The SIM object.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -357,7 +359,7 @@ FUNCTION bool IsPresent
 //--------------------------------------------------------------------------------------------------
 FUNCTION bool IsReady
 (
-    le_sim_ObjRef_t simRef IN      ///< The SIM object.
+    Obj simRef IN      ///< The SIM object.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -378,8 +380,8 @@ FUNCTION bool IsReady
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t EnterPIN
 (
-    le_sim_ObjRef_t simRef IN,       ///< The SIM object.
-    string          pin[8] IN        ///< The PIN code.
+    Obj     simRef IN,          ///< The SIM object.
+    string  pin[PIN_MAX_LEN] IN ///< The PIN code.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -400,9 +402,9 @@ FUNCTION le_result_t EnterPIN
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t ChangePIN
 (
-    le_sim_ObjRef_t simRef IN,       ///< The SIM object.
-    string          oldpin[8] IN,    ///< The old PIN code.
-    string          newpin[8] IN     ///< The new PIN code.
+    Obj     simRef IN,              ///< The SIM object.
+    string  oldpin[PIN_MAX_LEN] IN, ///< The old PIN code.
+    string  newpin[PIN_MAX_LEN] IN  ///< The new PIN code.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -419,7 +421,7 @@ FUNCTION le_result_t ChangePIN
 //--------------------------------------------------------------------------------------------------
 FUNCTION int32 GetRemainingPINTries
 (
-    le_sim_ObjRef_t simRef IN   ///< The SIM object.
+    Obj simRef IN   ///< The SIM object.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -440,8 +442,8 @@ FUNCTION int32 GetRemainingPINTries
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t Unlock
 (
-    le_sim_ObjRef_t simRef,        ///< The SIM object.
-    string          pin[8] IN      ///< The PIN code.
+    Obj     simRef,             ///< The SIM object.
+    string  pin[PIN_MAX_LEN] IN ///< The PIN code.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -462,8 +464,8 @@ FUNCTION le_result_t Unlock
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t Lock
 (
-    le_sim_ObjRef_t simRef,        ///< The SIM object.
-    string          pin[8] IN      ///< The PIN code.
+    Obj     simRef,             ///< The SIM object.
+    string  pin[PIN_MAX_LEN] IN ///< The PIN code.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -485,9 +487,9 @@ FUNCTION le_result_t Lock
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t Unblock
 (
-    le_sim_ObjRef_t simRef,           ///< The SIM object.
-    string          puk[8] IN,        ///< The PUK code.
-    string          newpin[8] IN      ///< The PIN code.
+    Obj     simRef,                 ///< The SIM object.
+    string  puk[PUK_LEN] IN,        ///< The PUK code.
+    string  newpin[PIN_MAX_LEN] IN  ///< The PIN code.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -502,7 +504,7 @@ FUNCTION le_result_t Unblock
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_sim_States_t GetState
 (
-    le_sim_ObjRef_t simRef IN      ///< The SIM object.
+    Obj simRef IN      ///< The SIM object.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -520,6 +522,44 @@ FUNCTION le_sim_States_t GetState
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetSubscriberPhoneNumber
 (
-    le_sim_ObjRef_t simRef IN,             ///< The SIM object.
-    string          phoneNumberStr[17] OUT ///< The phone Number.
+    Obj     simRef IN,                                       ///< The SIM object.
+    string  phoneNumberStr[le_mdmDefs.PHONE_NUM_MAX_LEN] OUT ///< The phone Number.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the Home Network Name information.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_OVERFLOW if the Home Network Name can't fit in nameStr
+ *      - LE_NOT_POSSIBLE on any other failure
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetHomeNetworkOperator
+(
+    string nameStr[100] OUT     ///< the home network Name
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the Home Network MCC MNC.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_NOT_FOUND if Home Network has not been provisioned
+ *      - LE_FAULT for unexpected error
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetHomeNetworkMccMnc
+(
+    string mccPtr[3] OUT,       ///< Mobile Country Code
+    string mncPtr[3] OUT        ///< Mobile Network Code
 );

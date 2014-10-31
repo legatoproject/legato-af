@@ -1,29 +1,19 @@
 /**
- * @page c_ecall eCall API
+ * @page c_ecall eCall 
  *
- * @ref le_ecall_interface.h "Click here for the API Reference documentation."
+ * @ref le_ecall_interface.h "API Reference"
  *
  * <HR>
- *
- * @section le_ecall_toc Table of Contents
- *
- *  - @ref le_ecall_intro <br>
- *  - @ref le_ecall_session <br>
- *  - @ref le_ecall_msd <br>
- *  - @ref le_ecall_concurrency <br>
- *  - @ref le_ecall_samples <br>
- *  - @ref le_ecall_configdb <br>
- *
- * @section le_ecall_intro Introduction
- *
- * When a serious vehicle accident occurs, in-vehicle sensors will automatically trigger an eCall.
- * When activated, the in-vehicle system (IVS) establishes a 112-voice connection.
+ * eCall is a technology initiative intended to bring rapid assistance to auto 
+ * accidents anywhere in the European Union. When a serious vehicle accident occurs,
+ * sensors automatically trigger an eCall. When activated, the in-vehicle system (IVS) 
+ * establishes a 112-voice connection.
  *
  * The Mobile Network Operator handles the eCall like any other 112 call and routes the call to the
  * most appropriate emergency response centre - Public Safety Answering Point (PSAP).
  *
  * At the same time, a digital "minimum set of data" (MSD) message is sent over the voice call using
- * in-band modem signals. The MSD includes accident information, such as time, location, driving
+ * in-band modem signals. The MSD includes accident information like time, location, driving
  * direction, and vehicle description.
  *
  * The eCall can also be activated manually. The mobile network operator identifies that the 112
@@ -33,10 +23,10 @@
  *
  * @section le_ecall_session eCall Session
  *
- * In order to start an eCall session, an eCall object must be created by calling
- * @c le_ecall_Create(). An eCall session can be stopped using @c le_ecall_End().
+ * Start an eCall session by creating an eCall object that calls
+ * @c le_ecall_Create(). Stop an eCall session with @c le_ecall_End().
  *
- * The type of eCall and the kind of activation are specified using different functions to start an
+ * The type of eCall and the kind of activation are specified using different functions to start the
  * eCall session:
  * - @c le_ecall_StartManual(): initiate a manual eCall session (triggered by a passenger, can be
  * aborted by the passengers)
@@ -49,7 +39,7 @@
  * resources associated with the object.
  *
  * The current state of an eCall session can be queried using @c le_ecall_GetState().
- * Alternatively, an application can register a handler to be notified when the session state
+ * Alternatively, an application can register a handler be notified when the session state
  * changes. The handler can be managed using @c le_ecall_AddStateChangeHandler() and
  * @c le_ecall_RemoveStateChangeHandler().
  *
@@ -62,27 +52,26 @@
  *
  * The static values are retrieved from the configuration tree.
  *
- * Moreover it is possible to import a prepared MSD using the @c le_ecall_ImportMsd() function.
+ * It's possible to import a prepared MSD using the @c le_ecall_ImportMsd() function.
  * The prepared MSD must answer the requirements described in the "EN 15722:2013" publication (this
  * publication has been prepared by Technical Committee CEN/TC 278 “Intelligent Transport Systems").
  *
- * The MSD transmission will be performed automatically when the emergency call is established with
+ * @note The MSD transmission is performed automatically after the emergency call is established with
  * the PSAP.
  *
  * @section le_ecall_concurrency Concurrency
  *
- * If another application try to use the eCall service while a session is already in progress, the
+ * If another application tries to use the eCall service while a session is already in progress, the
  * @c le_ecall_StartManual(), @c le_ecall_StartAutomatic(), @c le_ecall_StartTest() and
- * @c le_ecall_End() functions will return a LE_DUPLICATE error. But, the eCall session in progress
- * won't be interrupted or disturbed in any manners. However, the application can follow the
- * progress of the session with the 'state' functions like @c le_ecall_GetState() and
- * @c le_ecall_AddStateChangeHandler().
- * Note that a manual eCall won't interrupt an automatic eCall, and vice versa an automatic eCall
- * won't interrupt a manual eCall.
+ * @c le_ecall_End() functions will return a LE_DUPLICATE error. The eCall session in progress
+ * won't be interrupted or disturbed. The application can follow the session progress with 'state' 
+ * functions like @c le_ecall_GetState() and @c le_ecall_AddStateChangeHandler().
+ * A manual eCall can't interrupt an automatic eCall, and an automatic eCall
+ * can't interrupt a manual eCall.
  *
  * @section le_ecall_samples Code sample
  *
- * The following code sample show how an eCall session is used.
+ * The following code sample shows how an eCall session is used:
  *
  * @code
  *
@@ -118,7 +107,7 @@
  *
  * <HR>
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
  */
 
 /**
@@ -186,7 +175,7 @@
  *
  * Legato @ref c_ecall include file.
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -206,6 +195,14 @@ REFERENCE Obj;
 //--------------------------------------------------------------------------------------------------
 // Symbol and Enum definitions.
 //--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * MSD message length in bytes.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE  MSD_MAX_LEN = (282);
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -273,8 +270,9 @@ FUNCTION Delete
 /**
  * Set the position transmitted by the MSD.
  *
- * The MSD is not actually transferred at this point. It is still up to the caller to call
- * le_ecall_LoadMsd() when the MSD is fully built with the le_ecall_SetMsdXxx() functions.
+ *
+ * MSD is transmitted only after an emergency call has been established.
+ *
  *
  * @return LE_OK on success
  * @return LE_DUPLICATE an MSD has been already imported
@@ -296,8 +294,7 @@ FUNCTION le_result_t SetMsdPosition
 /**
  * Set the number of passengers transmitted by the MSD.
  *
- * The MSD is not actually transferred at this point. It is still up to the caller to call
- * le_ecall_LoadMsd() when the MSD is fully built with the le_ecall_SetMsdXxx() functions.
+ * MSD is transmitted only after an emergency call has been established.
  *
  * @return LE_OK on success
  * @return LE_DUPLICATE an MSD has been already imported
@@ -316,8 +313,7 @@ FUNCTION le_result_t SetMsdPassengersCount
 /**
  * Import an already prepared MSD.
  *
- * The MSD is not actually transferred at this point, this functions only creates a new MSD object.
- * It is still up to the caller to call le_ecall_LoadMsd().
+ * MSD is transmitted only after an emergency call has been established.
  *
  * @return LE_OK on success
  * @return LE_DUPLICATE an MSD has been already imported
@@ -329,8 +325,8 @@ FUNCTION le_result_t SetMsdPassengersCount
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t ImportMsd
 (
-    Obj        ecallRef   IN, ///< eCall reference
-    uint8      msd[282]   IN  ///< the prepared MSD
+    Obj        ecallRef   IN,           ///< eCall reference
+    uint8      msd[MSD_MAX_LEN]   IN    ///< the prepared MSD
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -399,7 +395,7 @@ FUNCTION le_result_t End
 /**
  * Get the current state for the given eCall
  *
- * @return the current state for the given eCall
+ * @return The current state for the given eCall
  *
  * @note The process exits, if an invalid eCall reference is given
  */

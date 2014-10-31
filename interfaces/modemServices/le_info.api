@@ -1,14 +1,28 @@
 /**
- * @page c_info Modem Information API
+ * @page c_info Modem Information
  *
- * @ref le_info_interface.h "Click here for the API reference documentation."
+ * @ref le_info_interface.h "API reference"
  *
  * <HR>
  *
  * This file contains prototype definitions for Modem Information APIs.
  *
- * It's used to retrieve the International Mobile Equipment Identity (IMEI).
+ * @section le_info_version Query Firmware Version
  *
+ * le_info_GetFirmwareVersion() is used to query the current firmware version.
+ *  le_info_GetBootloaderVersion() is used to query the current bootloader version.
+ *  In both cases, the version is returned as a human readable string.
+ *
+ * The linux kernel version can be queried using standard linux methods, such as the uname
+ * command, or the uname() API.
+ *
+ * @section le_info_model Query Mobile Device Identity
+ *
+ * le_info_GetDeviceModel() is used to retrieve the target hardware platform identity.
+ *
+ * @section le_info_imei Query International Mobile Equipment Identity
+ *
+ * le_info_GetImei() is used to retrieve the International Mobile Equipment Identity (IMEI).
  *
  * <HR>
  *
@@ -32,8 +46,21 @@
  *
  */
 //--------------------------------------------------------------------------------------------------
-DEFINE  IMEI_MAX_LEN    = (15+1);
+DEFINE  IMEI_MAX_LEN    = (15);
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum length of a version string
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_VERS_LEN = 256;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum length of a model string
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_MODEL_LEN = 256;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -49,5 +76,53 @@ DEFINE  IMEI_MAX_LEN    = (15+1);
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetImei
 (
-    string   imei[15] OUT   ///< IMEI string.
+    string   imei[IMEI_MAX_LEN] OUT   ///< IMEI string.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the firmware version string
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_NOT_FOUND if the version string is not available
+ *      - LE_NOT_POSSIBLE for any other errors
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetFirmwareVersion
+(
+    string version[MAX_VERS_LEN] OUT     ///< Firmware version string
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the bootloader version string
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_NOT_FOUND if the version string is not available
+ *      - LE_NOT_POSSIBLE for any other errors
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetBootloaderVersion
+(
+    string version[MAX_VERS_LEN] OUT     ///< Bootloader version string
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the device model identity (Target Hardware Platform).
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to get the value.
+ *      - LE_OVERFLOW      The device model identity length exceed the maximum length.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetDeviceModel
+(
+    string modelPtr[MAX_MODEL_LEN] OUT     ///< The model identity string (null-terminated).
 );

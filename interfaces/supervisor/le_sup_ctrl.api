@@ -7,15 +7,13 @@
  *
  * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
  */
-// -------------------------------------------------------------------------------------------------
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * The Supervisor control API service name used to start the service.
+  /** @file le_sup_ctrl_interface.h
+ *
+ * Legato @ref c_sup_ctrl include file.
+ *
+ * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
  */
-//--------------------------------------------------------------------------------------------------
-DEFINE API_NAME = "SupervisorCtrl";
+// -------------------------------------------------------------------------------------------------
 
 
 // -------------------------------------------------------------------------------------------------

@@ -5,16 +5,15 @@
  *
  * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
  */
-// -------------------------------------------------------------------------------------------------
-
-
-// -------------------------------------------------------------------------------------------------
-/**
- * This is a singleton service, only one instance, for private use between watchdog and supervisor.
- * This is the name by which the service will be registered and by which it can be subscribed to.
+ 
+   /** @file le_sup_wdog_interface.h
+ *
+ * Legato @ref c_sup_wdog include file.
+ *
+ * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
  */
 // -------------------------------------------------------------------------------------------------
-DEFINE API_NAME = "SupervisorWatchdogAPI";
+
 
 // -------------------------------------------------------------------------------------------------
 /**

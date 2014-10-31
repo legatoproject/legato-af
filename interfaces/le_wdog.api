@@ -2,7 +2,7 @@
 /**
  *  @page api_wdog Watchdog Service
  *
- *  @ref le_wdog_interface.h "API reference documentation"
+ *  @ref le_wdog_interface.h "API reference"
  *
  * <HR>
  *
@@ -16,6 +16,12 @@
  *
  * Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to
  * license.
+ */
+ /** @file le_wdog_interface.h
+ *
+ * Legato @ref c_wdog include file.
+ *
+ * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
  */
 // -------------------------------------------------------------------------------------------------
 

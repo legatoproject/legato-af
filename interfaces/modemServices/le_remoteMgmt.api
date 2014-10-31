@@ -1,9 +1,5 @@
 /**
- * @page c_remoteMgmt AirVantage Modem Remote Management Services
- *
- *@ref le_remoteMgmt_wakeupindic <br>
- *@ref le_remoteMgmt_dontdisturb <br>
- *
+ * @page c_remoteMgmt AirVantage Modem Remote Management 
  *
  * The Modem platform embeds a client for wake up message requests from the Air Vantage
  * server.
@@ -38,82 +34,42 @@
  *
  * <HR>
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
  */
 
 /**
- * @file le_remoteMgmt.h
+ * @file remoteMgmt_interface.h
  *
  * Legato @ref c_remoteMgmt include file.
  *
- * Copyright (C) Sierra Wireless, Inc. 2013.  All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
  */
 
 
-#ifndef LEGATO_REMOTE_MGMT_INCLUDE_GUARD
-#define LEGATO_REMOTE_MGMT_INCLUDE_GUARD
-
-
-
 //--------------------------------------------------------------------------------------------------
-// Type definitions.
+// Objects references.
 //--------------------------------------------------------------------------------------------------
 
 //--------------------------------------------------------------------------------------------------
 /**
- *  Reference type for Wake-Up indications' Handler.
+ * Reference returned by Create function and used by other functions
  */
 //--------------------------------------------------------------------------------------------------
-typedef struct le_remoteMgmt_WakeUpIndicHandler* le_remoteMgmt_WakeUpIndicHandlerRef_t;
+REFERENCE Dnd;
+
+//--------------------------------------------------------------------------------------------------
+// Symbol and Enum definitions.
+//--------------------------------------------------------------------------------------------------
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Reference type for 'Do Not Disturb Sign' objects.
- */
-//--------------------------------------------------------------------------------------------------
-typedef struct le_remoteMgmt_Dnd* le_remoteMgmt_DndRef_t;
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Handler called whenever a Wake-Up indication occurs.
+ * Handler for Wake-up indications.
  *
- * @param contextPtr  Context information the event handler may require.
  */
 //--------------------------------------------------------------------------------------------------
-typedef void (*le_remoteMgmt_WakeUpIndicHandlerFunc_t)
-(
-    void*  contextPtr
-);
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Called to add an event handler for Wake-Up indications.
- *
- * @return Reference to the new event handler object.
- *
- * @note It's a fatal error if this function does succeed. If this function fails, it will not
- *       return.
- */
-//--------------------------------------------------------------------------------------------------
-le_remoteMgmt_WakeUpIndicHandlerRef_t le_remoteMgmt_AddWakeUpIndicHandler
-(
-    le_remoteMgmt_WakeUpIndicHandlerFunc_t  handlerFuncPtr,  ///< [IN] Event handler function.
-    void*                                    contextPtr       ///< [IN] Handlers context.
-);
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Remove the registered event handler. Call this function stop receiving
- * Wake-Up events.
- *
- * @note Doesn't return on failure, no need to check the return value for errors.
- */
-//--------------------------------------------------------------------------------------------------
-void le_remoteMgmt_RemoveWakeUpIndicHandler
-(
-    le_remoteMgmt_WakeUpIndicHandlerRef_t handlerRef   ///< [IN] Handler object to remove.
-);
+HANDLER WakeUpIndicHandler
+{
+};
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -124,9 +80,8 @@ void le_remoteMgmt_RemoveWakeUpIndicHandler
  * @return Reference to the 'Do Not Disturb Sign' object.
  */
 //--------------------------------------------------------------------------------------------------
-le_remoteMgmt_DndRef_t le_remoteMgmt_SetDoNotDisturbSign
+FUNCTION Dnd SetDoNotDisturbSign
 (
-    void
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -134,10 +89,8 @@ le_remoteMgmt_DndRef_t le_remoteMgmt_SetDoNotDisturbSign
  * Clears a 'Do Not Disturb' sign, the modem has permission to apply a firmware update now.
  */
 //--------------------------------------------------------------------------------------------------
-void le_remoteMgmt_ClearDoNotDisturbSign
+FUNCTION ClearDoNotDisturbSign
 (
-    le_remoteMgmt_DndRef_t   dndRef   ///< [IN] 'Do Not Disturb Sign' object reference.
+    Dnd   dndRef IN  ///< 'Do Not Disturb Sign' object reference.
 );
 
-
-#endif // LEGATO_REMOTE_MGMT_INCLUDE_GUARD
