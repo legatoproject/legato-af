@@ -27,6 +27,9 @@ le_result_t le_dir_Make
     mode_t mode                 ///< [IN] The permissions for the directory.
 )
 {
+    LE_ASSERT(pathNamePtr != NULL);
+    LE_ASSERT(pathNamePtr[0] != '\0');
+
     if (mkdir(pathNamePtr, mode) == -1)
     {
         if (errno == EEXIST)

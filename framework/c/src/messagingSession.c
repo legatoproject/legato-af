@@ -318,10 +318,13 @@ static void DeleteTxnId
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Adds a given message to a given session's transaction list and to the Transaction Map.
+ * Adds a given message to a given session's transaction list.
  *
- * @note    A side effect of this is that the Message object will now have a non-zero
- *          transaction ID.
+ * This is only done on the client side after the message has been written to the socket.
+ * The server side doesn't use a transaction list.
+ *
+ * @warning The Message object must have already had a transaction ID assigned to it using
+ *          CreateTxnId().
  */
 //--------------------------------------------------------------------------------------------------
 static void AddToTxnList
@@ -331,8 +334,6 @@ static void AddToTxnList
 )
 //--------------------------------------------------------------------------------------------------
 {
-    LE_ASSERT(sessionPtr->isClient);
-
     LOCK
 
     le_dls_Queue(&sessionPtr->txnList, msgMessage_GetQueueLinkPtr(msgRef));
@@ -366,7 +367,7 @@ static void RemoveFromTxnList
  * Removes all messages from the Transaction List, calls their completion callbacks (indicating
  * transaction failure for each) and deletes them.
  *
- * @note    This is used on both the client side and the server side.
+ * @note    This is used only on the server side.
  */
 //--------------------------------------------------------------------------------------------------
 static void PurgeTxnList
@@ -401,8 +402,8 @@ static void PurgeTxnList
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Removes all messages from the Transmit Queue and deletes them.  For those that are Request
- * messages that expect a response, their completion callback will be called (indicating
+ * Removes all messages from the Transmit Queue and deletes them.  On the client side, for those
+ * Request messages that expect a response, their completion callback will be called (indicating
  * transaction failure).
  *
  * @note    This is used on both the client side and the server side.
@@ -418,14 +419,22 @@ static void PurgeTransmitQueue
 
     while (NULL != (msgRef = PopTransmitQueue(sessionPtr)))
     {
-        // If the message is part of a transaction, that transaction is now terminated.
-        if (msgMessage_GetTxnId(msgRef) != NULL)
+        // On the client side,
+        if (sessionPtr->isClient)
         {
-            DeleteTxnId(msgRef);
+            // If the message is part of a transaction, that transaction is now terminated
+            // and its transaction ID needs to be deleted.
+            if ( (msgMessage_GetTxnId(msgRef) != NULL) )
+            {
+                DeleteTxnId(msgRef);
+            }
+
+            // Call the message's completion callback function, if it has one.
+            msgMessage_CallCompletionCallback(msgRef, NULL /* no response */);
         }
 
-        // Call the message's completion callback function, if it has one.
-        msgMessage_CallCompletionCallback(msgRef, NULL /* no response */);
+        // NOTE: Messages never have completion call-backs on the server side, and transaction IDs
+        //       are only created and deleted on the client-side.
 
         le_msg_ReleaseMsg(msgRef);
     }
@@ -515,7 +524,7 @@ static void CloseSession
     // Always notify the server on close.
     if (sessionPtr->isClient == false)
     {
-        // Note: This needs to be done before the FD is closed, incase someone wants to check the
+        // Note: This needs to be done before the FD is closed, in case someone wants to check the
         //       credentials in their callback.
         msgService_CallCloseHandler(sessionPtr->serviceRef, sessionPtr);
     }
@@ -531,10 +540,12 @@ static void CloseSession
 
     // If there are any messages stranded on the transmit queue, the pending transaction list,
     // or the receive queue, clean them all up.
-    PurgeTxnList(sessionPtr);
+    if (sessionPtr->isClient == false)
+    {
+        PurgeTxnList(sessionPtr);
+    }
     PurgeTransmitQueue(sessionPtr);
     PurgeReceiveQueue(sessionPtr);
-
 }
 
 
@@ -1063,7 +1074,7 @@ static void SendFromTransmitQueue
                 {
                     // If a response is expected from the other side later, then put this
                     // message on the Transaction List.
-                    if (msgMessage_GetTxnId(msgRef) != NULL)
+                    if (msgMessage_GetTxnId(msgRef) != 0)
                     {
                         AddToTxnList(sessionPtr, msgRef);
                     }
@@ -1768,7 +1779,7 @@ void le_msg_DeleteSession
 )
 //--------------------------------------------------------------------------------------------------
 {
-    LE_FATAL_IF(!sessionRef->isClient, "Server attempted to delete a session.");
+    LE_FATAL_IF(!(sessionRef->isClient), "Server attempted to delete a session.");
 
     DeleteSession(sessionRef);
 }
@@ -1813,7 +1824,7 @@ void le_msg_SetSessionRecvHandler
  * - If not set on the client side, then the framework assumes that the client is not designed
  *   to recover from the server terminating the session, and the client process will terminate
  *   if the session is terminated by the server.
- * - This is a client-only function.  Servers are expected to use le_msg_SetServiceCloseHandler()
+ * - This is a client-only function.  Servers are expected to use le_msg_AddServiceCloseHandler()
  *   instead.
  *
  * @todo    Should we allow servers to use le_msg_SetSessionCloseHandler() too?

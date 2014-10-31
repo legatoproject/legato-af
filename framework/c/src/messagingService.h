@@ -4,7 +4,7 @@
  *
  * See @ref messaging.c for an overview of the @ref c_messaging implementation.
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
  */
 
 #ifndef LE_MESSAGING_SERVICE_H_INCLUDE_GUARD
@@ -57,15 +57,14 @@ typedef struct le_msg_Service
 
     le_dls_List_t   sessionList;        ///< List of Session objects for open sessions with
                                         ///  clients (only used by the service's server thread).
-
-    le_msg_SessionEventHandler_t    openHandler;    ///< Handler function called when sessions open.
-    void*                           openContextPtr; ///< contextPtr parameter for openHandler.
-
-    le_msg_SessionEventHandler_t    closeHandler;   ///< Handler function for when sessions close.
-    void*                           closeContextPtr;///< contextPtr parameter for closeHandler.
-
     le_msg_ReceiveHandler_t         recvHandler;    ///< Handler for when messages are received.
     void*                           recvContextPtr; ///< contextPtr parameter for recvHandler.
+
+    le_dls_List_t                   openListPtr; ///< open List: list of open session handlers
+                                                 ///  called when a session is opened
+
+    le_dls_List_t                   closeListPtr; ///< open List: list of close session handlers
+                                                  ///  called when a session is opened
 }
 Service_t;
 

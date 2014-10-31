@@ -6,7 +6,7 @@
  *
  * @warning The code in this file @b must be thread safe and re-entrant.
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
  */
 
 #include "legato.h"
@@ -35,6 +35,12 @@
 //--------------------------------------------------------------------------------------------------
 static le_hashmap_Ref_t ServiceMapRef;
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Safe Reference Map for the handlers reference
+ */
+//--------------------------------------------------------------------------------------------------
+static le_ref_MapRef_t HandlersRefMap;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -43,6 +49,12 @@ static le_hashmap_Ref_t ServiceMapRef;
 //--------------------------------------------------------------------------------------------------
 static le_mem_PoolRef_t ServicePoolRef;
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Pool from which session event handler object are allocated.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mem_PoolRef_t  HandlerEventPoolRef;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -64,6 +76,22 @@ static pthread_mutex_t Mutex = PTHREAD_MUTEX_INITIALIZER;
  **/
 //--------------------------------------------------------------------------------------------------
 static pthread_key_t ThreadLocalRxMsgKey;
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * session event handler object
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct le_msg_SessionEventHandler
+{
+    le_msg_SessionEventHandler_t    handler;    ///< Handler function for when sessions close.
+    void*                           contextPtr; ///< ContextPtr parameter for closeHandler.
+    le_dls_List_t*                  listPtr;    ///< List containing the current node
+    le_msg_SessionEventHandlerRef_t ref;        ///< Handler safe reference.
+    le_dls_Link_t                   link;       ///< Node link
+} SessionEventHandler_t;
 
 
 // =======================================
@@ -150,14 +178,14 @@ static Service_t* CreateService
 
     servicePtr->sessionList = LE_DLS_LIST_INIT;
 
-    servicePtr->openHandler = NULL;
-    servicePtr->openContextPtr = NULL;
-
-    servicePtr->closeHandler = NULL;
-    servicePtr->closeContextPtr = NULL;
-
     servicePtr->recvHandler = NULL;
     servicePtr->recvContextPtr = NULL;
+
+    // Initialize the close handlers dls
+    servicePtr->closeListPtr = LE_DLS_LIST_INIT;
+
+    // Initialize the open handlers dls
+    servicePtr->openListPtr = LE_DLS_LIST_INIT;
 
     le_hashmap_Put(ServiceMapRef, &servicePtr->id, servicePtr);
 
@@ -221,9 +249,46 @@ static void ServiceDestructor
 )
 //--------------------------------------------------------------------------------------------------
 {
+    le_dls_Link_t* linkPtr = NULL;
+
     Service_t* servicePtr = objPtr;
 
     le_hashmap_Remove(ServiceMapRef, &servicePtr->id);
+
+    /* Release the close handlers dls */
+    do
+    {
+        linkPtr = le_dls_PopTail(&servicePtr->closeListPtr);
+
+        if (linkPtr)
+        {
+            SessionEventHandler_t* closeEventPtr = CONTAINER_OF(linkPtr, SessionEventHandler_t, link);
+
+            /* Delete the reference */
+            le_ref_DeleteRef(HandlersRefMap, closeEventPtr->ref);
+
+            /* Release the memory */
+            le_mem_Release(closeEventPtr);
+        }
+    }
+    while (linkPtr);
+
+    /* Release the open handlers dls */
+    do
+    {
+        linkPtr = le_dls_PopTail(&servicePtr->openListPtr);
+
+        if (linkPtr)
+        {
+            SessionEventHandler_t* openEventPtr = CONTAINER_OF(linkPtr, SessionEventHandler_t, link);
+
+            /* Delete the reference */
+            le_ref_DeleteRef(HandlersRefMap, openEventPtr->ref);
+
+            le_mem_Release(openEventPtr);
+        }
+    }
+    while (linkPtr);
 }
 
 
@@ -241,13 +306,21 @@ static void CallOpenHandler
 )
 //--------------------------------------------------------------------------------------------------
  {
-    // If there is an open handler function registered, call it now.
-    if (serviceRef->openHandler != NULL)
+    // If there is a Close Handler registered, call it now.
+    le_dls_Link_t* openLinkPtr = le_dls_Peek(&serviceRef->openListPtr);
+
+    while (openLinkPtr)
     {
-        serviceRef->openHandler(sessionRef, serviceRef->openContextPtr);
+        SessionEventHandler_t* openEventPtr = CONTAINER_OF(openLinkPtr, SessionEventHandler_t, link);
+
+        if (openEventPtr->handler != NULL)
+        {
+            openEventPtr->handler(sessionRef, openEventPtr->contextPtr);
+        }
+
+        openLinkPtr = le_dls_PeekNext(&serviceRef->openListPtr, openLinkPtr);
     }
 }
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -504,11 +577,20 @@ void msgService_Init
     le_mem_ExpandPool(ServicePoolRef, MAX_EXPECTED_SERVICES);
     le_mem_SetDestructor(ServicePoolRef, ServiceDestructor);
 
+    // Create and initialize the pool of event handlers objects.
+    HandlerEventPoolRef = le_mem_CreatePool("HandlerEventPool", sizeof(SessionEventHandler_t));
+    le_mem_ExpandPool(HandlerEventPoolRef, MAX_EXPECTED_SERVICES*6);
+
+    // Create safe reference map for add references.
+    HandlersRefMap = le_ref_CreateMap("HandlersRef", MAX_EXPECTED_SERVICES*6);
+
     // Create the Service Map.
     ServiceMapRef = le_hashmap_Create("MessagingServices",
                                       MAX_EXPECTED_SERVICES,
                                       ComputeServiceIdHash,
                                       AreServiceIdsTheSame);
+
+
 
     // Create the key to be used to identify thread-local data records containing the Message
     // Reference when running a Service's message receive handler.
@@ -662,9 +744,18 @@ void msgService_CallCloseHandler
 //--------------------------------------------------------------------------------------------------
 {
     // If there is a Close Handler registered, call it now.
-    if (serviceRef->closeHandler != NULL)
+    le_dls_Link_t* closeLinkPtr = le_dls_Peek(&serviceRef->closeListPtr);
+
+    while (closeLinkPtr)
     {
-        serviceRef->closeHandler(sessionRef, serviceRef->closeContextPtr);
+        SessionEventHandler_t* closeEventPtr = CONTAINER_OF(closeLinkPtr, SessionEventHandler_t, link);
+
+        if (closeEventPtr && (closeEventPtr->handler != NULL))
+        {
+            closeEventPtr->handler(sessionRef, closeEventPtr->contextPtr);
+        }
+
+        closeLinkPtr = le_dls_PeekNext(&serviceRef->closeListPtr, closeLinkPtr);
     }
 }
 
@@ -796,7 +887,7 @@ void le_msg_DeleteService
  * @note    This is a server-only function.
  */
 //--------------------------------------------------------------------------------------------------
-void le_msg_SetServiceOpenHandler
+le_msg_SessionEventHandlerRef_t le_msg_AddServiceOpenHandler
 (
     le_msg_ServiceRef_t             serviceRef, ///< [in] Reference to the service.
     le_msg_SessionEventHandler_t    handlerFunc,///< [in] Handler function.
@@ -811,36 +902,24 @@ void le_msg_SetServiceOpenHandler
                 serviceRef->id.name,
                 le_msg_GetProtocolIdStr(serviceRef->id.protocolRef));
 
-    serviceRef->openHandler = handlerFunc;
-    serviceRef->openContextPtr = contextPtr;
+    // Create the node.
+    SessionEventHandler_t* openEventPtr = le_mem_ForceAlloc(HandlerEventPoolRef);
+
+    // Initialize the node
+    openEventPtr->handler = handlerFunc;
+    openEventPtr->contextPtr = contextPtr;
+    openEventPtr->link = LE_DLS_LINK_INIT;
+    openEventPtr->listPtr = &serviceRef->openListPtr;
+
+    // Add the node to the head of the list by passing in the node's link.
+    le_dls_Stack(&serviceRef->openListPtr, &openEventPtr->link);
+
+    // Need to return a unique reference that will be used by the remove function.
+    openEventPtr->ref = le_ref_CreateRef(HandlersRefMap, &openEventPtr->link);
+
+    return openEventPtr->ref;
+
 }
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Gets the currently registered service open handler and it's context pointer, or NULL if none are
- * currently registered.
- */
-//--------------------------------------------------------------------------------------------------
-void le_msg_GetServiceOpenHandler
-(
-    le_msg_ServiceRef_t             serviceRef, ///< [in]  Reference to the service.
-    le_msg_SessionEventHandler_t*   handlerFunc,///< [out] Handler function.
-    void**                          contextPtr  ///< [out] Opaque pointer value to pass to handler.
-)
-//--------------------------------------------------------------------------------------------------
-{
-    LE_FATAL_IF(serviceRef == NULL,
-                "Service doesn't exist. Make sure service is started before setting handlers");
-    LE_FATAL_IF(serviceRef->serverThread != le_thread_GetCurrent(),
-                "Service (%s:%s) not owned by calling thread.",
-                serviceRef->id.name,
-                le_msg_GetProtocolIdStr(serviceRef->id.protocolRef));
-
-    *handlerFunc = serviceRef->openHandler;
-    *contextPtr = serviceRef->openContextPtr;
-}
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -850,7 +929,7 @@ void le_msg_GetServiceOpenHandler
  * @note    This is a server-only function.
  */
 //--------------------------------------------------------------------------------------------------
-void le_msg_SetServiceCloseHandler
+le_msg_SessionEventHandlerRef_t le_msg_AddServiceCloseHandler
 (
     le_msg_ServiceRef_t             serviceRef, ///< [in] Reference to the service.
     le_msg_SessionEventHandler_t    handlerFunc,///< [in] Handler function.
@@ -865,34 +944,59 @@ void le_msg_SetServiceCloseHandler
                 serviceRef->id.name,
                 le_msg_GetProtocolIdStr(serviceRef->id.protocolRef));
 
-    serviceRef->closeHandler = handlerFunc;
-    serviceRef->closeContextPtr = contextPtr;
+    // Create the node.
+    SessionEventHandler_t* closeEventPtr = le_mem_ForceAlloc(HandlerEventPoolRef);
+
+    // Initialize the node.
+    closeEventPtr->handler = handlerFunc;
+    closeEventPtr->contextPtr = contextPtr;
+    closeEventPtr->link = LE_DLS_LINK_INIT;
+    closeEventPtr->listPtr = &serviceRef->closeListPtr;
+
+    // Add the node to the head of the list by passing in the node's link.
+    le_dls_Stack(&serviceRef->closeListPtr, &closeEventPtr->link);
+
+    // Need to return a unique reference that will be used by the remove function.
+    closeEventPtr->ref = le_ref_CreateRef(HandlersRefMap, &closeEventPtr->link);
+
+    return closeEventPtr->ref;
 }
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Gets the currently registered service close handler and it's context pointer, or NULL if none are
- * currently registered.
+ * Remove a function previously registered by le_msg_AddServiceOpenHandler or
+ * le_msg_AddServiceCloseHandler.
+ *
+ * @note    This is a server-only function.
  */
 //--------------------------------------------------------------------------------------------------
-void le_msg_GetServiceCloseHandler
+void le_msg_RemoveServiceHandler
 (
-    le_msg_ServiceRef_t             serviceRef, ///< [in]  Reference to the service.
-    le_msg_SessionEventHandler_t*   handlerFunc,///< [out] Handler function.
-    void**                          contextPtr  ///< [out] Opaque pointer value to pass to handler.
+    le_msg_SessionEventHandlerRef_t handlerRef   ///< [in] Reference to a previously call of
+                                                 ///       le_msg_AddServiceCloseHandler()
 )
 //--------------------------------------------------------------------------------------------------
 {
-    LE_FATAL_IF(serviceRef == NULL,
-                "Service doesn't exist. Make sure service is started before setting handlers");
-    LE_FATAL_IF(serviceRef->serverThread != le_thread_GetCurrent(),
-                "Service (%s:%s) not owned by calling thread.",
-                serviceRef->id.name,
-                le_msg_GetProtocolIdStr(serviceRef->id.protocolRef));
+    le_dls_Link_t* linkPtr = le_ref_Lookup(HandlersRefMap, handlerRef);
 
-    *handlerFunc = serviceRef->closeHandler;
-    *contextPtr = serviceRef->closeContextPtr;
+    if ( linkPtr == NULL )
+    {
+        LE_ERROR("Invalid data request reference");
+    }
+    else
+    {
+        SessionEventHandler_t* eventPtr = CONTAINER_OF(linkPtr, SessionEventHandler_t, link);
+
+        /* Remove the link from the close handlers dls */
+        le_dls_Remove(eventPtr->listPtr, linkPtr);
+
+        /* Release memory */
+        le_mem_Release(eventPtr);
+
+        /* Delete the reference */
+        le_ref_DeleteRef(HandlersRefMap, handlerRef);
+    }
 }
 
 

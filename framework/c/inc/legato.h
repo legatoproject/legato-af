@@ -1,8 +1,8 @@
-/** @page c_APIs C APIs
+/** @page c_APIs C Runtime Library
  *
- * @section apiList Legato C APIs
- *
- * Legato has these C language APIs:
+ * @ref cApiOverview
+ * 
+ * Legato has these C language runtime APIs:
  *
  * @subpage c_basics  <br>
  * @subpage c_args  <br>
@@ -29,7 +29,9 @@
  * @subpage c_test  <br>
  * @subpage c_utf8  <br>
  *
- * @section OOD Object-Oriented Design
+ @section cApiOverview Overview
+ * 
+ * <b>Object-Oriented Design</b>
  *
  * The Legato framework is constructed in an object-oriented manner.
  *
@@ -43,7 +45,7 @@
  * you can never see the structure of those objects. The implementation is hidden from view.
  * Access to object properties is made available through accessor functions.
  *
- * @section opaqueTypes Opaque Types
+ * <b>Opaque Types</b>
  *
  * The basic "opaque data type" offered by the C programming language is the "void pointer" (void *).
  * The idea is that a pointer to an object of type @a T can be cast to point to a void type
@@ -75,11 +77,9 @@
  * is @a not necessarily interchangeable with another.  It won't allow a pointer to
  * an incomplete type to be used where a pointer to another type is expected.
  *
- *
- *
  * <HR>
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
  */
 
 

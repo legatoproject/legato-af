@@ -123,3 +123,127 @@ void fd_CloseAllNonStd
     }
 }
 
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Reads a specified number of bytes from the provided file descriptor into the provided buffer.
+ * This function will block until the specified number of bytes is read or an EOF is reached.
+ *
+ * @return
+ *      Number of bytes read.
+ *      LE_FAULT if there is an error.
+ */
+//--------------------------------------------------------------------------------------------------
+ssize_t fd_ReadSize
+(
+    int fd,                               ///<[IN] File to read.
+    void* bufPtr,                         ///<[OUT] Buffer to store the read bytes in.
+    size_t bufSize                        ///<[IN] Size of the buffer.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    LE_FATAL_IF(bufPtr == NULL, "Supplied NULL string pointer");
+    LE_FATAL_IF(fd < 0, "Supplied invalid file descriptor");
+
+    int bytesRd = 0, tempBufSize = 0, rdReq = bufSize;
+    char *tempStr;
+
+    // Requested zero bytes to read, return immediately
+    if (bufSize == 0)
+    {
+        return tempBufSize;
+    }
+
+    // TODO: Add timeout, this is needed to detect whether network link died
+    do
+    {
+        tempStr = (char *)(bufPtr);
+        tempStr = tempStr + tempBufSize;
+
+        bytesRd = read(fd, tempStr, rdReq);
+
+        if ((bytesRd == -1) && (errno != EINTR))
+        {
+            LE_ERROR("Error while reading file, errno: %d (%m)", errno);
+            return LE_FAULT;
+        }
+
+        //Reached End of file, so return what it reads upto EOF
+        if (bytesRd == 0)
+        {
+            return tempBufSize;
+        }
+
+        tempBufSize += bytesRd;
+        LE_DEBUG("Iterating read, bufsize: %zd , Requested: %d Read: %d", bufSize, rdReq, bytesRd);
+
+        if (tempBufSize < bufSize)
+        {
+            rdReq = bufSize - tempBufSize;
+        }
+    }
+    while (tempBufSize < bufSize);
+
+    return tempBufSize;
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Writes a specified number of bytes from the provided buffer to the provided file descriptor.
+ * This function will block until the specified number of bytes is written.
+ *
+ * @return
+ *      Number of bytes written.
+ *      LE_FAULT if there is an error.
+ */
+//--------------------------------------------------------------------------------------------------
+ssize_t fd_WriteSize
+(
+    int fd,                               ///<[IN] File to write.
+    void* bufPtr,                         ///<[IN] Buffer which will be written to file.
+    size_t bufSize                        ///<[IN] Size of the buffer.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    LE_FATAL_IF(bufPtr == NULL, "Supplied NULL String Pointer");
+    LE_FATAL_IF(fd < 0, "Supplied invalid file descriptor");
+
+    int bytesWr = 0, tempBufSize = 0, wrReq = bufSize;
+    char *tempStr;
+
+    // Requested zero bytes to write, returns immediately
+    if (bufSize == 0)
+    {
+        return tempBufSize;
+    }
+
+    do
+    {
+        tempStr = (char *)(bufPtr);
+        tempStr = tempStr + tempBufSize;
+
+        bytesWr= write(fd, tempStr, wrReq);
+
+        if ((bytesWr == -1) && (errno != EINTR))
+        {
+            LE_ERROR("Error while writing file, errno: %d (%m)", errno);
+            return LE_FAULT;
+        }
+
+        tempBufSize += bytesWr;
+
+        LE_DEBUG("Iterating write, bufsize: %zd , Requested: %d Write: %d", bufSize, wrReq, bytesWr);
+
+        if(tempBufSize < bufSize)
+        {
+            wrReq = bufSize - tempBufSize;
+        }
+    }
+    while (tempBufSize < bufSize);
+
+    return tempBufSize;
+}
+

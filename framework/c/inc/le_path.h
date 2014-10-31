@@ -110,6 +110,7 @@ char* le_path_GetBasenamePtr
  *      LE_OVERFLOW if there was not enough buffer space in pathPtr for all segments.
  */
 //--------------------------------------------------------------------------------------------------
+
 le_result_t le_path_Concat
 (
     const char* separatorPtr,       ///< [IN] Separator string.
@@ -118,7 +119,8 @@ le_result_t le_path_Concat
     size_t pathSize,                ///< [IN] Buffer size.
     ...                             ///< [IN] Path segments to concatenate.  The list of segments
                                     ///       must be terminated by (char*)NULL.
-);
+)
+__attribute__((__sentinel__));
 
 
 #endif // LEGATO_PATH_INCLUDE_GUARD

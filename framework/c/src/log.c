@@ -91,10 +91,10 @@ static le_mem_PoolRef_t SessionMemPool;
  **/
 //--------------------------------------------------------------------------------------------------
 static Session_t DefaultLogSession =    {
-                                            componentNamePtr: "<invalid>",
-                                            level: LOG_DEFAULT_LOG_FILTER,
-                                            keywordList: LE_SLS_LIST_INIT,
-                                            link: LE_SLS_LINK_INIT
+                                            .componentNamePtr="<invalid>",
+                                            .level=LOG_DEFAULT_LOG_FILTER,
+                                            .keywordList=LE_SLS_LIST_INIT,
+                                            .link=LE_SLS_LINK_INIT
                                         };
 
 
@@ -431,7 +431,7 @@ static void ReadLevelFromEnv
     {
         le_log_Level_t level = log_StrToSeverityLevel(envStrPtr);
 
-        if (level != -1)
+        if (level != (le_log_Level_t)-1)
         {
             DefaultLogSession.level = level;
         }
@@ -1003,7 +1003,7 @@ void _le_log_Send
         // Check that the message's log level is actually higher than the default filtering
         // level, since the logging macros probably weren't provided with a valid pointer
         // to a filtering level.
-        if ((level < logSession->level) && (level != -1))
+        if ((level < logSession->level) && (level != (le_log_Level_t)-1))
         {
             return;
         }

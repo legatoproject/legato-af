@@ -14,7 +14,6 @@
  *  @ref c_event_troubleshooting <br>
  *  @ref c_event_integratingLegacyPosix <br>
 
- *
  * The Event Loop API supports Legato's @ref programmingModel.  In this event-driven
  * programming model, a central <b> event loop </b> calls <b> event handler </b> functions in
  * response to <b>event reports</b>.
@@ -25,12 +24,6 @@
  *
  * Every event loop has an <b>event queue</b>, which is a queue of events waiting to be handled by that event loop.
  * The following different usage patterns are supported by the Event Loop API:
- *
- *  - @ref c_event_deferredFunctionCalls
- *  - @ref c_event_publishSubscribe
- *  - @ref c_event_layeredPublishSubscribe
- *  - @ref c_event_files
- *  - @ref c_event_dispatchingToOtherThreads
  *
  * @note When the process dies, all events, event loops, queues, reports, and handlers will be
  * automatically cleared.
@@ -303,7 +296,7 @@ COMPONENT_INIT
     le_event_FdMonitorRef_t fdMonitor = le_event_CreateFdMonitor("PortMonitor", fd);
 
     // Register a read handler (note: context pointer is unused in this example).
-    le_event_SetFdHandler(portMonitor, LE_EVENT_FD_READABLE, MyReadHandler);
+    le_event_SetFdHandler(fdMonitor, LE_EVENT_FD_READABLE, MyReadHandler);
 }
 
 
@@ -609,7 +602,7 @@ static void ContinueWriting(int fd)
  *
  * <HR>
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
  */
 
 //--------------------------------------------------------------------------------------------------
@@ -617,7 +610,7 @@ static void ContinueWriting(int fd)
  *
  * Legato @ref c_eventLoop include file.
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
  */
 
 #ifndef LEGATO_EVENTLOOP_INCLUDE_GUARD

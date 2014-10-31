@@ -14,8 +14,17 @@
  * Maximum string length and byte storage size of application names.
  */
 //--------------------------------------------------------------------------------------------------
-#define LIMIT_MAX_APP_NAME_LEN                  31
+#define LIMIT_MAX_APP_NAME_LEN                  47
 #define LIMIT_MAX_APP_NAME_BYTES                (LIMIT_MAX_APP_NAME_LEN + 1)
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum string length and byte storage size of system names.
+ */
+//--------------------------------------------------------------------------------------------------
+#define LIMIT_MAX_SYSTEM_NAME_LEN               63
+#define LIMIT_MAX_SYSTEM_NAME_BYTES             (LIMIT_MAX_SYSTEM_NAME_LEN + 1)
 
 
 //--------------------------------------------------------------------------------------------------
@@ -32,7 +41,7 @@
  * Maximum string length and byte storage size of process names.
  */
 //--------------------------------------------------------------------------------------------------
-#define LIMIT_MAX_PROCESS_NAME_LEN              31
+#define LIMIT_MAX_PROCESS_NAME_LEN              47
 #define LIMIT_MAX_PROCESS_NAME_BYTES            (LIMIT_MAX_PROCESS_NAME_LEN + 1)
 
 
@@ -41,7 +50,7 @@
  * Maximum string length and byte storage size of thread names.
  */
 //--------------------------------------------------------------------------------------------------
-#define LIMIT_MAX_THREAD_NAME_LEN               31
+#define LIMIT_MAX_THREAD_NAME_LEN               47
 #define LIMIT_MAX_THREAD_NAME_BYTES             (LIMIT_MAX_THREAD_NAME_LEN + 1)
 
 
@@ -50,7 +59,7 @@
  * Maximum string length and byte storage size of component names.
  */
 //--------------------------------------------------------------------------------------------------
-#define LIMIT_MAX_COMPONENT_NAME_LEN            31
+#define LIMIT_MAX_COMPONENT_NAME_LEN            47
 #define LIMIT_MAX_COMPONENT_NAME_BYTES          (LIMIT_MAX_COMPONENT_NAME_LEN + 1)
 
 

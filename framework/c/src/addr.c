@@ -49,12 +49,6 @@ le_result_t addr_GetLibDataSection
         return LE_FAULT;
     }
 
-    if (snprintfSize < 0)
-    {
-        LE_ERROR("snprintf encoding error.  %m.");
-        return LE_FAULT;
-    }
-
     // Open the maps file.
     int fd = open(fileName, O_RDONLY);
 

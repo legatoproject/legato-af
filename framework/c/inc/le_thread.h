@@ -11,6 +11,7 @@
  * @ref threadLocalData <br>
  * @ref threadSynchronization <br>
  * @ref threadDestructors <br>
+ * @ref threadLegatoizing <br>
  *
  *
  * Generally, using single-threaded, event-driven programming (registering callbacks to be called
@@ -78,7 +79,7 @@
  * le_thread_Join(T) blocks the calling thread until thread T exits.
  *
  * For a thread to be joinable, it must have its "joinable" attribute set (using
- * le_thread_SetJoinable()) prior to being started.  Normally, when a thread terminates, it 
+ * le_thread_SetJoinable()) prior to being started.  Normally, when a thread terminates, it
  * disappears.  But, a joinable thread doesn't disappear until another thread "joins" with it.
  * This also means that if a thread is joinable, someone must join with it, or its
  * resources will never get cleaned up (until the process terminates).
@@ -130,9 +131,28 @@
  * Multiple destructors can be registered for the same thread.  They will be called in reverse
  * order of registration (i.e, the last destructor to be registered will be called first).
  *
+ *
+ * @section threadLegatoizing Using Legato APIs from Non-Legato Threads
+ *
+ * If a thread is started using some other means besides le_thread_Start() (e.g., if
+ * pthread_create() is used directly), then the Legato thread-specific data will not have
+ * been initialized for that thread.  Therefore, if that thread tries to call some Legato APIs,
+ * a fatal error message like, "Legato threading API used in non-Legato thread!" may be seen.
+ *
+ * To work around this, a "non-Legato thread" can call le_thread_InitLegatoThreadData() to
+ * initialize the thread-specific data that the Legato framework needs.
+ *
+ * If you have done this for a thread, and that thread will die before the process it is inside
+ * dies, then that thread must call le_thread_CleanupLegatoThreadData() before it exits.  Otherwise
+ * the process will leak memory.  Furthermore, if the thread will ever be cancelled by another
+ * thread before the process dies, a cancellation clean-up handler can be used to ensure that
+ * the clean-up is done, if the thread's cancellation type is set to "deferred".
+ * See 'man 7 pthreads' for more information on cancellation and cancellation points.
+ *
+ *
  * <HR>
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless, Inc. 2014.  Use of this work is subject to license.
  */
 
 
@@ -140,7 +160,7 @@
  *
  * Legato @ref c_threading include file.
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless, Inc. 2014.  Use of this work is subject to license.
  */
 
 #ifndef LEGATO_THREAD_INCLUDE_GUARD
@@ -239,7 +259,7 @@ typedef void* (* le_thread_MainFunc_t)
 //--------------------------------------------------------------------------------------------------
 le_thread_Ref_t le_thread_Create
 (
-    const char*             name,       ///< [IN] Thread name.
+    const char*             name,       ///< [IN] Thread name (will be copied, so can be temporary).
     le_thread_MainFunc_t    mainFunc,   ///< [IN] Thread's main function.
     void*                   context     ///< [IN] Value to pass to mainFunc when it is called.
 );
@@ -472,6 +492,38 @@ void le_thread_AddChildDestructor
     le_thread_Ref_t         thread,     ///< [IN] Thread to attach the destructor to.
     le_thread_Destructor_t  destructor, ///< [IN] Function to be called.
     void*                   context     ///< [IN] Parameter to pass to the destructor.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Initialize the thread-specific data needed by the Legato framework for the calling thread.
+ *
+ * This is used to turn a non-Legato thread (a thread that was created using a non-Legato API,
+ * such as pthread_create() ) into a Legato thread.
+ *
+ * @note This is not needed if the thread was started using le_thread_Start().
+ **/
+//--------------------------------------------------------------------------------------------------
+void le_thread_InitLegatoThreadData
+(
+    const char* name    ///< [IN] A name for the thread (will be copied, so can be temporary).
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Clean-up the thread-specific data that was initialized using le_thread_InitLegatoThreadData().
+ *
+ * To prevent memory leaks, this must be called by the thread when it dies (unless the whole
+ * process is dying).
+ *
+ * @note This is not needed if the thread was started using le_thread_Start().
+ **/
+//--------------------------------------------------------------------------------------------------
+void le_thread_CleanupLegatoThreadData
+(
+    void
 );
 
 

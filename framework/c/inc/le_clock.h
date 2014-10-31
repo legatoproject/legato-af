@@ -1,7 +1,7 @@
 /**
-@page c_clock Real-time Clock API
+@page c_clock System Clock API
 
-@ref le_clock.h "Click here for the API Reference documentation."
+@ref le_clock.h "API Reference"
 
 <HR>
 
@@ -73,7 +73,7 @@ additional conversion specifications:
 
 <HR>
 
-Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
 
 */
 
@@ -82,7 +82,7 @@ Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work 
  *
  * Legato @ref c_clock include file.
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
  *
  */
 

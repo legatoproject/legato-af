@@ -1,21 +1,34 @@
 /** @file thread.c
  *
  * This thread implementation is based on PThreads but is structured slightly differently.  Threads
- * are first created then thread attributes are set and then the thread is started in a seperate
- * function call.
+ * are first created, then thread attributes are set, and finally the thread is started in a
+ * seperate function call.
  *
  * When a thread is created a ThreadObj_t object is created for that thread and used to maintain
  * such things as the thread's name, attributes, destructor list, local data list, etc.  The thread
  * object is the implementation of the opaque thread reference le_thread_Ref_t given to the user.
  *
  * When a thread is started the static function PThreadStartRoutine is always executed.  The
- * PThreadStartRoutine is responsible for pushing and popping the static function DefaultDestructor
- * onto and off of the pthread's clean up stack and calling the user's main thread function.  This
- * ensures that the DefaultDestructor is always called when a thread exits.  The DefaultDestructor
- * then calls the list of destructors registered for this thread and cleans up the thread object
- * itself.
+ * PThreadStartRoutine is responsible for pushing and popping the static function
+ * CleanupThread() onto and off of the pthread's clean up stack and calling the user's main
+ * thread function.  This ensures that the CleanupThread() is always called when a thread exits.
+ * The CleanupThread then calls the list of destructors registered for this thread and cleans
+ * up the thread object itself.
  *
- * Copyright (C) Sierra Wireless, Inc. 2012. All rights reserved. Use of this work is subject to license.
+ * Alternatively, if a thread is started using pthreads directly, or some other pthreads wrapper
+ * (such as a Boost thread object), that thread can call le_thread_InitLegatoThreadData() to
+ * create a ThreadObj_t for that thread and store a pointer to it as thread-specific data using
+ * the appropriate key.  This allows Legato APIs, such as the event loop, timers, and IPC to
+ * work in that thread.  Furthermore, if le_thread_InitLegatoThreadData() is called for a thread
+ * and that thread is to die a long time before the process dies, to prevent memory leaks
+ * le_thread_CleanupLegatoThreadData() can be called by that thread (which calls CleanupThread()
+ * manually).
+ *
+ * NOTE: If the thread only dies when the process dies, then the OS will clean up the
+ * thread-specific data, so le_thread_CleanupLegatoThreadData() doesn't need to be called in that
+ * case.
+ *
+ * Copyright (C) Sierra Wireless, Inc. 2012 - 2014.  Use of this work is subject to license.
  */
 
 #include "legato.h"
@@ -45,6 +58,10 @@ static le_ref_MapRef_t ThreadRefMap;
 //--------------------------------------------------------------------------------------------------
 /**
  * The legato thread structure containing all of the thread's attributes.
+ *
+ * @note    A Thread object created using le_thread_InitLegatoThreadData() will have its mainFunc
+ *          set to NULL, and will not be joinable using le_thread_Join(), regardless of the thread's
+ *          actual detach state.
  */
 //--------------------------------------------------------------------------------------------------
 typedef struct
@@ -175,12 +192,30 @@ static void AddDestructor
 
 //--------------------------------------------------------------------------------------------------
 /**
- * The default destructor for all threads.
+ * Delete a thread object.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void DeleteThread
+(
+    ThreadObj_t* threadPtr
+)
+{
+    // Destruct the thread attributes structure.
+    pthread_attr_destroy(&(threadPtr->attr));
+
+    // Release the Thread object back to the pool it was allocated from.
+    le_mem_Release(threadPtr);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Clean-up function that gets run by a thread just before it dies.
  */
 //--------------------------------------------------------------------------------------------------
-static void DefaultDestructor
+static void CleanupThread
 (
-    void* objPtr
+    void* objPtr    ///< Pointer to the Thread object.
 )
 {
     ThreadObj_t* threadObjPtr = objPtr;
@@ -218,7 +253,7 @@ static void DefaultDestructor
 
         Unlock();
 
-        le_mem_Release(threadObjPtr);
+        DeleteThread(threadObjPtr);
     }
 }
 
@@ -278,7 +313,7 @@ static void* PThreadStartRoutine
     }
 
     // Push the default destructor onto the thread's cleanup stack.
-    pthread_cleanup_push(DefaultDestructor, threadPtr);
+    pthread_cleanup_push(CleanupThread, threadPtr);
 
     // Perform thread specific init
     thread_InitThread();
@@ -774,7 +809,7 @@ le_result_t le_thread_Join
                     Lock();
                     le_ref_DeleteRef(ThreadRefMap, threadPtr->safeRef);
                     Unlock();
-                    le_mem_Release(threadPtr);
+                    DeleteThread(threadPtr);
 
                     return LE_OK;
 
@@ -973,4 +1008,73 @@ void le_thread_AddChildDestructor
                 threadPtr->name);
 
     AddDestructor(threadPtr, destructor, context);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Initialize the thread-specific data needed by the Legato framework for the calling thread.
+ *
+ * This is used to turn a non-Legato thread (a thread that was created using a non-Legato API,
+ * such as pthread_create() ) into a Legato thread.
+ *
+ * @note This is not needed if the thread was started using le_thread_Start().
+ **/
+//--------------------------------------------------------------------------------------------------
+void le_thread_InitLegatoThreadData
+(
+    const char* name    ///< [IN] A name for the thread (will be copied, so can be temporary).
+)
+//--------------------------------------------------------------------------------------------------
+{
+    LE_FATAL_IF(ThreadPool == NULL,
+                "Legato C Runtime Library (liblegato) has not been initialized!");
+
+    LE_FATAL_IF(pthread_getspecific(ThreadLocalDataKey) != NULL,
+                "Legato thread-specific data initialized more than once!");
+
+    // Create a Thread object for the calling thread.
+    ThreadObj_t* threadPtr = CreateThread(name, NULL, NULL);
+
+    // Initialize the members of the Thread object according to the current pthreads attributes.
+    threadPtr->isStarted = true;
+
+    // Store the Thread Object pointer in thread-specific storage so GetCurrentThreadPtr() can
+    // find it later.
+    if (pthread_setspecific(ThreadLocalDataKey, threadPtr) != 0)
+    {
+        LE_FATAL("pthread_setspecific() failed!");
+    }
+
+    // Perform thread-specific init
+    thread_InitThread();
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Clean-up the thread-specific data that was initialized using le_thread_InitLegatoThreadData().
+ *
+ * To prevent memory leaks, this must be called by the thread when it dies (unless the whole
+ * process is dying).
+ *
+ * @note This is not needed if the thread was started using le_thread_Start().
+ **/
+//--------------------------------------------------------------------------------------------------
+void le_thread_CleanupLegatoThreadData
+(
+    void
+)
+//--------------------------------------------------------------------------------------------------
+{
+    ThreadObj_t* threadPtr = GetCurrentThreadPtr();
+
+    if (threadPtr->mainFunc != NULL)
+    {
+        LE_CRIT("Thread was not initialized using le_thread_InitLegatoThreadData().");
+    }
+    else
+    {
+        CleanupThread(threadPtr);
+    }
 }

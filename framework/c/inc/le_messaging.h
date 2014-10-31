@@ -394,7 +394,7 @@
  * le_msg_SetServiceRecvHandler().
  *
  * Servers also have the option of being notified when sessions are opened by clients.  They
- * get this notification by registering a handler function using le_msg_SetServiceOpenHandler().
+ * get this notification by registering a handler function using le_msg_AddServiceOpenHandler().
  *
  * @code
  * // Function will be called whenever a client opens a session with our service.
@@ -416,7 +416,7 @@
  *     // Create my service and advertise it.
  *     protocolRef = le_msg_GetProtocolRef(PROTOCOL_ID, sizeof(myproto_Msg_t));
  *     serviceRef = le_msg_CreateService(protocolRef, PROTOCOL_SERVICE_NAME);
- *     le_msg_SetServiceOpenHandler(serviceRef, SessionOpenHandlerFunc, NULL);
+ *     le_msg_AddServiceOpenHandler(serviceRef, SessionOpenHandlerFunc, NULL);
  *     le_msg_AdvertiseService(serviceRef);
  * }
  * @endcode
@@ -519,7 +519,7 @@
  * to the session that client opened.  It could have got the session reference from a previous
  * message received from the client (by calling le_msg_GetSession() on that message).
  * Or, it could have got the session reference from a Session Open Handler callback (see
- * le_msg_SetServiceOpenHandler()).  Either way, once it has the session reference, it can call
+ * le_msg_AddServiceOpenHandler()).  Either way, once it has the session reference, it can call
  * le_msg_CreateMsg() to create a message from that session's server-side message pool.  The
  * message can then be populated and sent in the same way that a client would send a message
  * to the server using le_msg_GetPayloadPtr() and le_msg_Send().
@@ -552,7 +552,7 @@
  *     // Create my service and advertise it.
  *     protocolRef = le_msg_GetProtocolRef(PROTOCOL_ID, sizeof(myproto_Msg_t));
  *     serviceRef = le_msg_CreateService(protocolRef, PROTOCOL_SERVICE_NAME);
- *     le_msg_SetServiceOpenHandler(serviceRef, SessionOpenHandlerFunc, NULL);
+ *     le_msg_AddServiceOpenHandler(serviceRef, SessionOpenHandlerFunc, NULL);
  *     le_msg_AdvertiseService(serviceRef);
  * }
  * @endcode
@@ -562,7 +562,7 @@
  *
  * @subsection c_messagingServerCleanUp Cleaning up when Sessions Close
  *
- * If a server keeps state on behalf of its clients, it can call le_msg_SetServiceCloseHandler()
+ * If a server keeps state on behalf of its clients, it can call le_msg_AddServiceCloseHandler()
  * to ask to be notified when clients close sessions with a given service.  This allows the server
  * to clean up any state associated with a given session when the client closes that session
  * (or when the system closes the session because the client died).  The close handler is passed a
@@ -840,13 +840,19 @@ typedef struct le_msg_Session* le_msg_SessionRef_t;
 //--------------------------------------------------------------------------------------------------
 typedef struct le_msg_Message* le_msg_MessageRef_t;
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Reference returned by the add services functions and used by the remove services functions
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct le_msg_SessionEventHandler* le_msg_SessionEventHandlerRef_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Handler function prototype for handlers that take session references as their arguments.
  *
- * See le_msg_SetSessionCloseHandler(), le_msg_SetServiceOpenHandler(), and
- * le_msg_SetServiceCloseHandler().
+ * See le_msg_AddSessionCloseHandler(), le_msg_AddServiceOpenHandler(), and
+ * le_msg_AddServiceCloseHandler().
  *
  * @param sessionRef [in] Reference to the session that experienced the event.
  *
@@ -1046,7 +1052,7 @@ void le_msg_SetSessionRecvHandler
  * - If this isn't set on the client side, the framework assumes the client is not designed
  *   to recover from the server terminating the session, and the client process will terminate
  *   if the session is terminated by the server.
- * - This is a client-only function.  Servers are expected to use le_msg_SetServiceCloseHandler()
+ * - This is a client-only function.  Servers are expected to use le_msg_AddServiceCloseHandler()
  *   instead.
  *
  * @todo    Should we allow servers to use le_msg_SetSessionCloseHandler() too?
@@ -1440,7 +1446,6 @@ void le_msg_DeleteService
     le_msg_ServiceRef_t             serviceRef  ///< [in] Reference to the service.
 );
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Registers a function to be called when clients open sessions with this service.
@@ -1448,27 +1453,12 @@ void le_msg_DeleteService
  * @note    Server-only function.
  */
 //--------------------------------------------------------------------------------------------------
-void le_msg_SetServiceOpenHandler
+le_msg_SessionEventHandlerRef_t le_msg_AddServiceOpenHandler
 (
     le_msg_ServiceRef_t             serviceRef, ///< [in] Reference to the service.
     le_msg_SessionEventHandler_t    handlerFunc,///< [in] Handler function.
     void*                           contextPtr  ///< [in] Opaque pointer value to pass to handler.
 );
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Gets the currently registered service open handler and it's context pointer, or NULL if none are
- * currently registered.
- */
-//--------------------------------------------------------------------------------------------------
-void le_msg_GetServiceOpenHandler
-(
-    le_msg_ServiceRef_t             serviceRef, ///< [in]  Reference to the service.
-    le_msg_SessionEventHandler_t*   handlerFunc,///< [out] Handler function.
-    void**                          contextPtr  ///< [out] Opaque pointer value to pass to handler.
-);
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1478,27 +1468,26 @@ void le_msg_GetServiceOpenHandler
  * @note    Server-only function.
  */
 //--------------------------------------------------------------------------------------------------
-void le_msg_SetServiceCloseHandler
+le_msg_SessionEventHandlerRef_t le_msg_AddServiceCloseHandler
 (
     le_msg_ServiceRef_t             serviceRef, ///< [in] Reference to the service.
     le_msg_SessionEventHandler_t    handlerFunc,///< [in] Handler function.
     void*                           contextPtr  ///< [in] Opaque pointer value to pass to handler.
 );
 
-
 //--------------------------------------------------------------------------------------------------
 /**
- * Gets the currently registered service close handler and it's context pointer, or NULL if none are
- * currently registered.
+ * Remove a function previously registered by le_msg_AddServiceOpenHandler or
+ * le_msg_AddServiceCloseHandler.
+ *
+ * @note    This is a server-only function.
  */
 //--------------------------------------------------------------------------------------------------
-void le_msg_GetServiceCloseHandler
+void le_msg_RemoveServiceHandler
 (
-    le_msg_ServiceRef_t             serviceRef, ///< [in]  Reference to the service.
-    le_msg_SessionEventHandler_t*   handlerFunc,///< [out] Handler function.
-    void**                          contextPtr  ///< [out] Opaque pointer value to pass to handler.
+    le_msg_SessionEventHandlerRef_t handlerRef   ///< [in] Reference to a previously call of
+                                                 ///       le_msg_AddServiceCloseHandler()
 );
-
 
 //--------------------------------------------------------------------------------------------------
 /**
