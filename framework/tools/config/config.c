@@ -18,12 +18,6 @@
 
 
 
-/// Size of the string buffer used to communicate with the config tree.
-#define STRING_MAX 513
-
-
-
-
 /// Size of the command string used by the import/export command.
 #define COMMAND_MAX 16
 
@@ -58,7 +52,7 @@
 
 
 /// Name used to launch this program.
-static char ProgramName[STRING_MAX] = "";
+static char ProgramName[LE_CFG_STR_LEN_BYTES] = "";
 
 
 
@@ -115,6 +109,8 @@ static void DumpHelpText
            "\t%s rename <node path> <new name>\n\n"
            "To delete a node:\n"
            "\t%s delete <tree path>\n\n"
+           "To clear or create a new, empty node:\n"
+           "\t%s clear <tree path>\n\n"
            "To import config data:\n"
            "\t%s import <tree path> <file path> [--format=json]\n\n"
            "To export config data:\n"
@@ -155,6 +151,7 @@ static void DumpHelpText
            "\n"
            "\t    foo:/a/path/to/somewhere\n"
            "\n\n",
+           ProgramName,
            ProgramName,
            ProgramName,
            ProgramName,
@@ -297,7 +294,7 @@ static json_t* CreateJsonNodeFromIterator
 )
 // -------------------------------------------------------------------------------------------------
 {
-    char nodeName[STRING_MAX] = "";
+    char nodeName[LE_CFG_NAME_LEN_BYTES] = "";
 
     le_cfg_nodeType_t type = le_cfg_GetNodeType(iterRef, "");
     le_cfg_GetNodeName(iterRef, "", nodeName, sizeof(nodeName));
@@ -321,8 +318,8 @@ static json_t* CreateJsonNodeFromIterator
 
         case LE_CFG_TYPE_STRING:
             {
-                char strBuffer[STRING_MAX] = "";
-                le_cfg_GetString(iterRef, "", strBuffer, STRING_MAX, "");
+                char strBuffer[LE_CFG_STR_LEN_BYTES] = "";
+                le_cfg_GetString(iterRef, "", strBuffer, LE_CFG_STR_LEN_BYTES, "");
                 json_object_set_new(nodePtr, JSON_FIELD_VALUE, json_string(strBuffer));
             }
             break;
@@ -370,7 +367,7 @@ static void DumpTreeJSON
     // stack space.  The implication here is that we then have to be careful how it is later
     // accessed.  Also, this makes the function not thread safe.  But this trade off was made as
     // this was not intended to be a multi-threaded program.
-    static char strBuffer[STRING_MAX] = "";
+    static char strBuffer[LE_CFG_STR_LEN_BYTES] = "";
 
     // Build up the child array.
     json_t* childArrayPtr = json_array();
@@ -433,7 +430,7 @@ static void DumpTree
     // stack space.  The implication here is that we then have to be careful how it is later
     // accessed.  Also, this makes the function not thread safe.  But this trade off was made as
     // this was not intended to be a multi-threaded program.
-    static char strBuffer[STRING_MAX] = "";
+    static char strBuffer[LE_CFG_STR_LEN_BYTES] = "";
 
     do
     {
@@ -446,7 +443,7 @@ static void DumpTree
         }
 
         // Simply grab the name and the type of the current node.
-        le_cfg_GetNodeName(iterRef, "", strBuffer, STRING_MAX);
+        le_cfg_GetNodeName(iterRef, "", strBuffer, LE_CFG_STR_LEN_BYTES);
         le_cfg_nodeType_t type = le_cfg_GetNodeType(iterRef, "");
 
         switch (type)
@@ -494,7 +491,7 @@ static void DumpTree
             // value.
             default:
                 printf("%s<%s> == ", strBuffer, NodeTypeStr(le_cfg_GetNodeType(iterRef, "")));
-                le_cfg_GetString(iterRef, "", strBuffer, STRING_MAX, "");
+                le_cfg_GetString(iterRef, "", strBuffer, LE_CFG_STR_LEN_BYTES, "");
                 printf("%s\n", strBuffer);
                 break;
         }
@@ -605,20 +602,20 @@ static le_cfg_nodeType_t GetNewNodeTypeFromParam
 // -------------------------------------------------------------------------------------------------
 static le_result_t GetImpExpParams
 (
-    char* nodePathPtr,  ///< Buffer to hold the node path, must be at least STRING_MAX bytes in
+    char* nodePathPtr,  ///< Buffer to hold the node path, must be at least LE_CFG_STR_LEN_BYTES bytes in
                         ///<   size.
     char* filePathPtr,  ///< Bufer to hold the file path, must be at least PATH_MAX bytes in size.
     bool* isJSONPtr     ///< JSON format flag
 )
 // -------------------------------------------------------------------------------------------------
 {
-    char relativePath[STRING_MAX] = "";
-    char format[STRING_MAX] = "";
+    char relativePath[LE_CFG_STR_LEN_BYTES] = "";
+    char format[LE_CFG_STR_LEN_BYTES] = "";
 
     // Get the node path from our command line arguments.
     if (GetRequiredParameter(PARAM_IMP_EXP_NODE_PATH,
                              nodePathPtr,
-                             STRING_MAX,
+                             LE_CFG_STR_LEN_BYTES,
                              "node path") != LE_OK)
     {
         return LE_FAULT;
@@ -627,7 +624,7 @@ static le_result_t GetImpExpParams
     // Get the new value from the command line arguments.
     if (GetRequiredParameter(PARAM_IMP_EXP_FILE_PATH,
                              relativePath,
-                             STRING_MAX,
+                             LE_CFG_STR_LEN_BYTES,
                              "file path") != LE_OK)
     {
         return LE_FAULT;
@@ -641,7 +638,7 @@ static le_result_t GetImpExpParams
     {
         // Looks like they did.  Make sure that the param is the JSON format specifier.  (That's
         // the only alternative output format supported.)
-        if (strncmp(format, JSON_FORMAT, sizeof(JSON_FORMAT) != 0))
+        if (strncmp(format, JSON_FORMAT, sizeof(JSON_FORMAT)) != 0)
         {
             fprintf(stderr, "Bad format specifier, '%s'.", format);
             return LE_FAULT;
@@ -724,9 +721,9 @@ static int HandleGetUserFriendly
 
         default:
             {
-                char nodeValue[STRING_MAX] = "";
+                char nodeValue[LE_CFG_STR_LEN_BYTES] = "";
 
-                le_cfg_GetString(iterRef, "", nodeValue, STRING_MAX - 1, "");
+                le_cfg_GetString(iterRef, "", nodeValue, LE_CFG_STR_LEN_BYTES, "");
                 printf("%s\n", nodeValue);
             }
             break;
@@ -813,9 +810,9 @@ static int HandleGetJSON
         {
             case LE_CFG_TYPE_STEM:
                 {
-                    char strBuffer[STRING_MAX] = "";
-                    char nodeType[STRING_MAX] = "";
-                    le_cfg_GetNodeName(iterRef, "", strBuffer, STRING_MAX);
+                    char strBuffer[LE_CFG_STR_LEN_BYTES] = "";
+                    char nodeType[LE_CFG_STR_LEN_BYTES] = "";
+                    le_cfg_GetNodeName(iterRef, "", strBuffer, sizeof(strBuffer));
 
                     // If no name, we are dumping a complete tree.
                     if (strlen(strBuffer) == 0)
@@ -1022,8 +1019,8 @@ static int HandleGet
 )
 // -------------------------------------------------------------------------------------------------
 {
-    char nodePath[STRING_MAX] = "";
-    char format[STRING_MAX] = "";
+    char nodePath[LE_CFG_STR_LEN_BYTES] = "";
+    char format[LE_CFG_STR_LEN_BYTES] = "";
 
     // Get the node path from our command line arguments.
     if (GetRequiredParameter(PARAM_GET_NODE_PATH, nodePath, sizeof(nodePath), "node path") != LE_OK)
@@ -1036,7 +1033,7 @@ static int HandleGet
     {
         // Looks like they did.  Make sure that the param is the JSON format specifier.  (That's
         // the only alternative output format supported.)
-        if (strncmp(format, JSON_FORMAT, sizeof(JSON_FORMAT) != 0))
+        if (strncmp(format, JSON_FORMAT, sizeof(JSON_FORMAT)) != 0)
         {
             fprintf(stderr, "Bad format specifier, '%s'.", format);
             return EXIT_FAILURE;
@@ -1065,8 +1062,8 @@ static int HandleSet
 )
 // -------------------------------------------------------------------------------------------------
 {
-    char nodePath[STRING_MAX] = "";
-    char nodeValue[STRING_MAX] = "";
+    char nodePath[LE_CFG_STR_LEN_BYTES] = "";
+    char nodeValue[LE_CFG_STR_LEN_BYTES] = "";
 
     // Get the node path from our command line arguments.
     if (GetRequiredParameter(PARAM_SET_NODE_PATH, nodePath, sizeof(nodePath), "node path") != LE_OK)
@@ -1166,8 +1163,8 @@ static int HandleRename
 )
 // -------------------------------------------------------------------------------------------------
 {
-    char nodePath[STRING_MAX] = "";
-    char newName[MAX_NODE_NAME] = "";
+    char nodePath[LE_CFG_STR_LEN_BYTES] = "";
+    char newName[LE_CFG_NAME_LEN_BYTES] = "";
 
     // Get the node path, and the new name for the node from the command line arguments.
     if (GetRequiredParameter(PARAM_RN_NODE_PATH, nodePath, sizeof(nodePath), "node path") != LE_OK)
@@ -1239,7 +1236,7 @@ static int HandleImport
 )
 // -------------------------------------------------------------------------------------------------
 {
-    char nodePath[STRING_MAX] = "";
+    char nodePath[LE_CFG_STR_LEN_BYTES] = "";
     char filePath[PATH_MAX] = "";
     bool isJSON;
 
@@ -1289,7 +1286,7 @@ static int HandleExport
 )
 // -------------------------------------------------------------------------------------------------
 {
-    char nodePath[STRING_MAX] = "";
+    char nodePath[LE_CFG_STR_LEN_BYTES] = "";
     char filePath[PATH_MAX] = "";
     bool isJSON;
 
@@ -1337,7 +1334,7 @@ static int HandleDelete
 )
 // -------------------------------------------------------------------------------------------------
 {
-    char nodePath[STRING_MAX] = "";
+    char nodePath[LE_CFG_STR_LEN_BYTES] = "";
 
     // Get the node path from our command line arguments.
     if (GetRequiredParameter(PARAM_DEL_NODE_PATH, nodePath, sizeof(nodePath), "node path") != LE_OK)
@@ -1347,6 +1344,35 @@ static int HandleDelete
 
     // Ok, delete the node.
     le_cfg_QuickDeleteNode(nodePath);
+    return EXIT_SUCCESS;
+}
+
+
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Function called to handle clearing a node in the config tree.
+ *
+ *  @return EXIT_SUCCESS if the command completes properly.  EXIT_FAILURE otherwise.
+ */
+// -------------------------------------------------------------------------------------------------
+static int HandleClear
+(
+    void
+)
+// -------------------------------------------------------------------------------------------------
+{
+    char nodePath[LE_CFG_STR_LEN_BYTES] = "";
+
+    // Get the node path from our command line arguments.
+    if (GetRequiredParameter(PARAM_DEL_NODE_PATH, nodePath, sizeof(nodePath), "node path") != LE_OK)
+    {
+        return EXIT_FAILURE;
+    }
+
+    // Ok, clear the node.
+    le_cfg_QuickSetEmpty(nodePath);
     return EXIT_SUCCESS;
 }
 
@@ -1427,9 +1453,9 @@ static int HandleDeleteTree
 COMPONENT_INIT
 {
     // Read out the program name so that we can better format our error and help messages.
-    if (le_arg_GetProgramName(ProgramName, STRING_MAX, NULL) != LE_OK)
+    if (le_arg_GetProgramName(ProgramName, LE_CFG_STR_LEN_BYTES, NULL) != LE_OK)
     {
-        strncpy(ProgramName, "config", STRING_MAX);
+        strncpy(ProgramName, "config", LE_CFG_STR_LEN_BYTES);
     }
 
     // Get the name of the sub-command that the caller wants us to execute.
@@ -1470,6 +1496,10 @@ COMPONENT_INIT
     else if (strncmp(commandBuffer, "delete", bufferSize) == 0)
     {
         exit(HandleDelete());
+    }
+    else if (strncmp(commandBuffer, "clear", bufferSize) == 0)
+    {
+        exit(HandleClear());
     }
     else if (strncmp(commandBuffer, "list", bufferSize) == 0)
     {

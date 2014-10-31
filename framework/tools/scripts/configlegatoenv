@@ -8,40 +8,5 @@ else
     export LEGATO_ROOT=$PWD
     export PATH=$LEGATO_ROOT/bin:$PATH
 
-    # This variable is needed by the "mk" tools when building executables to run on localhost.
-    export LEGATO_LOCALHOST_LIB_PATH=$LEGATO_ROOT/build/localhost/bin/lib/
-
-    # Get setup for cross-building for Sierra Wireless AR7xxx and WP7xxx target devices.
-    # Note: they both use the same toolchain.
-    if [ "$AR7_TOOLCHAIN_DIR" = "" ]
-    then
-        if [ "$WP7_TOOLCHAIN_DIR" != "" ]
-        then
-            export AR7_TOOLCHAIN_DIR=$WP7_TOOLCHAIN_DIR
-            echo "AR7_TOOLCHAIN_DIR set to same as WP7_TOOLCHAIN_DIR ($AR7_TOOLCHAIN_DIR)."
-        else
-            export AR7_TOOLCHAIN_DIR=/opt/swi/y14-ext/tmp/sysroots/$(arch)-linux/usr/bin/armv7a-vfp-neon-poky-linux-gnueabi
-            echo "AR7_TOOLCHAIN_DIR set to default ($AR7_TOOLCHAIN_DIR)."
-            
-            if [ -d "/opt/swi/y14-ext/tmp/sysroots/" ] && ! [ -d "/opt/swi/y14-ext/tmp/sysroots/$(arch)-linux/" ]
-            then
-                echo "Warning: Host arch '$(arch)' is not supported by this toolchain."
-            fi
-        fi
-    fi
-    if [ "$WP7_TOOLCHAIN_DIR" = "" ]
-    then
-        export WP7_TOOLCHAIN_DIR=$AR7_TOOLCHAIN_DIR
-        echo "WP7_TOOLCHAIN_DIR set to same as AR7_TOOLCHAIN_DIR ($WP7_TOOLCHAIN_DIR)."
-    fi
-
-    # Double check that the toolchains are actually installed.
-    if ! [ -d $AR7_TOOLCHAIN_DIR ]
-    then
-        echo "*** WARNING: AR7 toolchain not installed!"
-    fi
-    if ! [ -d $WP7_TOOLCHAIN_DIR ]
-    then
-        echo "*** WARNING: WP7 toolchain not installed!"
-    fi
+    source $LEGATO_ROOT/framework/tools/scripts/configToolchainDirEnvVars
 fi

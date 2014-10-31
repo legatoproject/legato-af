@@ -5,6 +5,7 @@
 #
 
 import hashlib
+import sys
 
 
 #
@@ -56,6 +57,9 @@ DefinedInterfaceTypes = dict(
     int32   = "int32_t",
     int64   = "int64_t",
 
+    # boolean
+    bool = "bool",
+
     # string/char
     # todo: Maybe we should use string as the interface type, and map that into char for C.
     #       It may not matter that much, since it is only intended to be used internally.
@@ -70,6 +74,11 @@ def ConvertInterfaceType(interfaceType):
     # todo: Since user-defined interface types are not supported yet, map anything that is not
     #       pre-defined, back to the original value, which is hopefully a valid C type.  Once
     #       user-defined types are supported, this should probably raise an exception or something.
+
+    # todo: First step is to print a warning, but not ready for this yet, since warnings are also
+    #       getting generated for internal types.
+    #print >> sys.stderr, "WARNING: No definition found for '%s'; is this a C type?" % interfaceType
+
     return interfaceType
 
 
@@ -105,7 +114,14 @@ def AddDefinitionValue(name, value):
     # will magically pick up those values.
     if ImportName:
         if ImportName not in DefinedValues:
-            DefinedValues[ImportName] = Empty()
+            importedValues = Empty()
+            
+            # First, add any previously imported value objects into this newly created object
+            for k,v in DefinedValues.items():
+                if isinstance(v, Empty):
+                    setattr(importedValues, k, v)
+
+            DefinedValues[ImportName] = importedValues
 
         setattr(DefinedValues[ImportName], name, value)
     else:
@@ -867,29 +883,46 @@ class DefineData(BaseTypeData):
         return "%s %s" % (self.baseName, self.value)
 
 
-# Class for a single enum item/value
-class EnumValue(BaseTypeData):
+# Class for a single enum member
+class EnumMemberData(BaseTypeData):
 
     def __init__(self, name, comment=''):
         self.baseName = name
         self.name = AddNamePrefix(self.baseName).upper()
         self.comment = comment
 
+    def setValue(self, value):
+        # Note that value is expected to be a string, and not a number
+        self.value = value
+
 
 # Class for the complete enum definition
 class EnumData(BaseTypeData):
 
-    def __init__(self, name, valueList, comment=''):
+    def __init__(self, name, memberList, comment=''):
         self.baseName = name
         self.name = AddNamePrefix(self.baseName)
         self.typeName = self.name+"_t"
-        self.valueList = valueList
+        self.memberList = memberList
         self.comment = comment
 
         AddInterfaceType(self.baseName, self.typeName)
 
     def getHashString(self):
-        return self.baseName + ' ' + ' '.join( v.getHashString() for v in self.valueList )
+        return self.baseName + ' ' + ' '.join( v.getHashString() for v in self.memberList )
+
+
+# A bit mask is a type of enum, but the member values are pre-defined with the appropriate bit position.
+class BitMaskData(EnumData):
+
+    def __init__(self, name, memberList, comment=''):
+        super(BitMaskData, self).__init__(name, memberList, comment)
+
+        bitValue = 0x1
+        for m in memberList:
+            m.setValue( hex(bitValue) )
+            bitValue <<= 1
+            #print m.value
 
 
 

@@ -134,7 +134,7 @@ static void StartApp
     const char* appNamePtr
 )
 {
-    le_sup_ctrl_StartClient(LE_SUP_CTRL_API_NAME);
+    le_sup_ctrl_ConnectService();
 
     // Start the application.
     switch (le_sup_ctrl_StartApp(appNamePtr))
@@ -169,7 +169,7 @@ static void StopApp
     const char* appNamePtr
 )
 {
-    le_sup_ctrl_StartClient(LE_SUP_CTRL_API_NAME);
+    le_sup_ctrl_ConnectService();
 
     // Stop the application.
     switch (le_sup_ctrl_StopApp(appNamePtr))
@@ -199,7 +199,7 @@ static void StopLegato
     void
 )
 {
-    le_sup_ctrl_StartClient(LE_SUP_CTRL_API_NAME);
+    le_sup_ctrl_ConnectService();
 
     // Stop the framework.
     le_result_t result = le_sup_ctrl_StopLegato();
@@ -265,11 +265,11 @@ static void ListInstalledApps
     bool withStatus
 )
 {
-    le_cfg_StartClient("le_cfg");
+    le_cfg_ConnectService();
 
     if(withStatus)
     {
-        le_sup_state_StartClient(LE_SUP_STATE_API_NAME);
+        le_sup_state_ConnectService();
     }
 
     le_cfg_IteratorRef_t cfgIter = le_cfg_CreateReadTxn("/apps");
@@ -315,8 +315,8 @@ static void PrintAppState
     const char* appNamePtr      ///< [IN] Application name to get the status for.
 )
 {
-    le_sup_state_StartClient(LE_SUP_STATE_API_NAME);
-    le_cfg_StartClient("le_cfg");
+    le_sup_state_ConnectService();
+    le_cfg_ConnectService();
 
     le_cfg_IteratorRef_t cfgIter = le_cfg_CreateReadTxn("/apps");
 
@@ -345,7 +345,7 @@ static void PrintAppVersion
     const char* appNamePtr      ///< [IN] Application name to get the version for.
 )
 {
-    le_cfg_StartClient("le_cfg");
+    le_cfg_ConnectService();
 
     le_cfg_IteratorRef_t cfgIter = le_cfg_CreateReadTxn("/apps");
     le_cfg_GoToNode(cfgIter, appNamePtr);
@@ -398,7 +398,7 @@ static bool GetAppName
 (
     char* bufPtr,           ///< [OUT] Buffer to store the app name.
     size_t bufSize,         ///< [IN] Buffer size.
-    bool isOptional         ///< [IN] Is the app name optional ?
+    bool isOptional         ///< [IN] Is the app name optional ?
 )
 {
     le_result_t res;

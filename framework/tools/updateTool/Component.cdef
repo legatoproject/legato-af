@@ -1,0 +1,12 @@
+requires:
+{
+    api:
+    {
+        le_fwupdate.api  [manual-start]
+    }
+}
+sources:
+{
+    updateCtrl.c
+    manifest.c
+}

@@ -7,7 +7,6 @@
 
 mkexe(  execInApp
             ../execInApp
-            --ldflags=-lsecurity
             -i ${PROJECT_SOURCE_DIR}/framework/c/src
             -i ${PROJECT_SOURCE_DIR}/interfaces/supervisor
             -i ${PROJECT_SOURCE_DIR}/framework/c/src/security
@@ -17,5 +16,5 @@ mkexe(  execInApp
         DEPENDS
             execInApp.c
             Component.cdef
-            security
+            ../../c/src/security/*
             )

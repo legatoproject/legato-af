@@ -1,8 +1,21 @@
-import:
-
-    le_sup_state.api    [manual-start]
-    le_cfg.api
+requires:
+{
+    api:
+    {
+        le_sup_state.api    [manual-start]
+        le_cfg.api
+    }
+}
 
 sources:
-
+{
     execInApp.c
+}
+
+requires:
+{
+    component:
+    {
+        ../../c/src/security
+    }
+}

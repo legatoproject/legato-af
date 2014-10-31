@@ -302,6 +302,15 @@ static le_msg_MessageRef_t ConnectToLogControlDaemon
     }
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Declaration for compiler to know that the function never return.
+ */
+//--------------------------------------------------------------------------------------------------
+static void ExitWithErrorMsg
+(
+    const char* errorMsg
+) __attribute__ ((__noreturn__));
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -429,7 +438,7 @@ static void VerifyArgCount
 COMPONENT_INIT
 {
     char arg[LIMIT_MAX_PATH_LEN];
-    size_t n;
+    size_t n = 0;
 
     // Check if the user is asking for help.
     if (le_arg_GetArg(0, arg, LIMIT_MAX_PATH_LEN) != LE_OK)
@@ -542,7 +551,7 @@ COMPONENT_INIT
             {
                 // Check that string is one of the level strings.
                 le_log_Level_t level = ParseSeverityLevel(cmdParam);
-                if (level == -1)
+                if (level == (le_log_Level_t)-1)
                 {
                     ExitWithErrorMsg("log: Invalid log level.");
                 }

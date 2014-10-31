@@ -8,6 +8,7 @@
 import os
 import sys
 import argparse
+import collections
 
 import codeTypes
 import interfaceParser
@@ -75,10 +76,21 @@ def GetArguments():
                         default='',
                         help='optional prefix for generated files; defaults to input file name')
 
+    parser.add_argument('--service-name',
+                        dest="serviceName",
+                        default='',
+                        help='optional service instance name; defaults to input file name')
+
     parser.add_argument('--output-dir',
                         dest="outputDir",
                         default='',
                         help='optional output directory for generated files')
+
+    parser.add_argument('--get-import-list',
+                        dest="getImportList",
+                        action='store_true',
+                        default=False,
+                        help='print out the list of imported files')
 
     parser.add_argument('--import-dir',
                         dest="importDirs",
@@ -115,13 +127,19 @@ def GetArguments():
         args.genServerInterface=True
         args.genServer=True
 
+    # Get the base file name, without any extensions.
+    apiFileName = os.path.splitext( os.path.basename(args.interfaceFile) )[0]
+
     # If appropriate, use the default name or file prefixes
     if not args.noDefaultPrefix:
-        apiFileName = os.path.splitext( os.path.basename(args.interfaceFile) )[0]
         if not args.namePrefix:
             args.namePrefix = apiFileName
         if not args.filePrefix:
             args.filePrefix = apiFileName
+
+    # Use the default service instance name, if none is given.
+    if not args.serviceName:
+        args.serviceName = apiFileName
 
     # todo: Remove this once all callers are updated.
     #       The usage has changed slightly, so the trailing '_' will be added when necessary.
@@ -141,56 +159,73 @@ def GetArguments():
 
 
 
-def ProcessImportList(importList, importDirs):
-    #print importList
-    importedCodeList = []
+def MakeImportList(data, importDirs):
+    importNameList =  interfaceParser.GetImportList(data)
+    importPathList = []
 
-    for i in importList:
-        name = i.name+".api"
-
-        # NOTE: Don't remove this.  The mk tools depend on it.
-        print "importing", name
+    # The name does not contain any leading path or any suffix
+    for name in importNameList:
+        fullname = name+".api"
 
         # Try to find the imported file in the given directory list
         found = False
         for d in importDirs:
-            path = os.path.join(d, name)
+            path = os.path.join(d, fullname)
             if os.path.isfile(path):
                 found = True
                 break
 
         if not found:
-            sys.stderr.write("ERROR: '%s' not found in %s" % (name, importDirs))
+            sys.stderr.write("ERROR: '%s' not found in %s\n" % (fullname, importDirs))
             sys.exit(1)
+
+        # Found the imported file, so add it to the path list
+        importPathList.append(path)
+
+        # Process each imported file for nested imports.  The nested imported files
+        # are added to the beginning of the list, so that they get processed first.
+        data = open(path, 'r').read()
+        importPathList = MakeImportList(data, importDirs) + importPathList
+
+    # Ensure there are no duplicates in the list.  Any duplicates that appear later
+    # in the list should be removed.  We must maintain the order of the elements in 
+    # the list, since this determines the processing order.  For an OrderedDict:
+    #     "If a new entry overwrites an existing entry, the original insertion 
+    #      position is left unchanged"
+    d = collections.OrderedDict()
+    for p in importPathList:
+        d[p] = 1
+    importPathList = d.keys()
+
+    return importPathList
+
+
+
+def ProcessImportList(importList):
+    #print importList
+    importedCodeList = []
+
+    for path in importList:
+        fullname = os.path.basename(path)
+        name = os.path.splitext(fullname)[0]
+
+        # NOTE: Don't remove this.  The mk tools depend on it.
+        print "importing", fullname
 
         data = open(path, 'r').read()
 
         # In the current .api file, the imported types will be referenced using "name.",
         # whereas in the generated C code, the prefix will be "name_".
-        codeTypes.SetImportName(i.name)
-        codeTypes.SetNamePrefix(i.name)
+        codeTypes.SetImportName(name)
+        codeTypes.SetNamePrefix(name)
 
         # Parse the imported file, which implicitly populates the type translation data
-        # todo: Currently, nested imports are not supported.  Would this actually be useful?
-        # todo: Currently, no checks are made to ensure that imported files only contain
-        #       type related definitions, i.e. it could contain FUNCTIONs and HANDLERs.
-        #       Should these be allowed in imported files?  It does provide more flexibility,
-        #       but it might also cause problems later.
-        parsedCode = interfaceParser.parseCode(data)
+        parsedCode = interfaceParser.ParseCode(data, path)
         codeList = parsedCode['codeList']
         importedCodeList += codeList
 
-
-        # todo: If given the appropriate option, may also want to generate the imported file,
-        #       but for now, don't do anything with the imported data.
-        # todo: Does it make sense to generate the imported file if it contains non-type
-        #       definitions.  If it contains FUNCTIONs, etc, it should already be generated
-        #       by some other means.
-        # todo: If we do generate the imported file here, should it be done once all files are
-        #       parsed, or after the individual file is parsed.  This is only an issue if errors
-        #       are encountered.
-
     return importedCodeList
+
 
 
 #
@@ -202,10 +237,17 @@ def Main():
 
     data = open(args.interfaceFile, 'r').read()
 
-    # Process all the imported files first.
+    # Create a list of all the imported files.
     importDirs = [ os.path.split(args.interfaceFile)[0] ] + args.importDirs
-    importList =  interfaceParser.getImportList(data)
-    importedCodeList = ProcessImportList(importList, importDirs)
+    importList =  MakeImportList(data, importDirs)
+
+    # If we just want the import list, then print it out and exit
+    if args.getImportList:
+        print '\n'.join(importList)
+        sys.exit(0)
+
+    # Process all the imported files first.
+    importedCodeList = ProcessImportList(importList)
 
     # Set the name prefix first.  This has to be done before the interface is actually
     # parsed, since the resulting parsedCode will use the prefix.  Also, reset the
@@ -213,7 +255,7 @@ def Main():
     codeTypes.SetNamePrefix(args.namePrefix)
     codeTypes.SetImportName("")
 
-    parsedCode = interfaceParser.parseCode(data)
+    parsedCode = interfaceParser.ParseCode(data, args.interfaceFile)
     allCodeList = importedCodeList + parsedCode['codeList']
 
     # Dump info on the parsed file.  No need to generate any code.

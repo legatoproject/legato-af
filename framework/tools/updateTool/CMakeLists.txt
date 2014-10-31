@@ -7,16 +7,17 @@
 
 find_package(Legato REQUIRED)
 
-
 set(JANSSON_INC_DIR "${CMAKE_BINARY_DIR}/3rdParty/jansson-2.6/include/")
 
-mkexe(  config
-            ../config
-            -i ${JANSSON_INC_DIR}
+mkexe(  update
+            ../updateTool
             -i ../../c/src
+            -i ${JANSSON_INC_DIR}
+            -i ${PROJECT_SOURCE_DIR}/interfaces/modemServices
             --ldflags=-ljansson
         DEPENDS
-            config.c
+            updateCtrl.c
+            manifest.c
+            ${PROJECT_SOURCE_DIR}/interfaces/modemServices/le_fwupdate.api
+            Component.cdef
         )
-
-add_dependencies(config le_cfg_api le_cfgAdmin_api jansson)

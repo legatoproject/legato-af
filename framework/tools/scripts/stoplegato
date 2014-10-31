@@ -1,8 +1,21 @@
 #!/bin/bash
 
-# This script stops the Legato Service Directory and Log Control Daemon, if they are running.
+# This script stops the Legato Service Directory, Log Control Daemon, and Config Tree if they are
+# running.
 # It outputs "Wasn't running." if they were not running.  It outputs "Stopped." if they were
 # stopped.  It outputs "***ERROR: ", followed by an error message (to standard error) if it fails.
+
+CONFIG_TREE_PID=$(pgrep configTree)
+if [ "$CONFIG_TREE_PID" ]
+then
+    if ! kill -SIGTERM $CONFIG_TREE_PID
+    then
+        echo "***ERROR: Failed to stop the Config Tree." 1>&2
+        exit 1
+    fi
+
+    STOPPED=true
+fi
 
 LOG_CONTROL_DAEMON_PID=$(pgrep logCtrlDaemon)
 if [ "$LOG_CONTROL_DAEMON_PID" ]

@@ -1,29 +1,30 @@
 #!/bin/bash
 
-# This script installs the Legato framework in /usr/local on a target device using SCP.
+# This script installs the Legato framework in /usr/local on a target device using SSH.
 # It will also install the startup scripts if they are not present or they are different
 # from the startup scripts in the $LEGATO_ROOT dir on host.
-# Note: this implies that /usr/local must exist and be writeable on the target.
-# The legato framework must have also been built for the appropriate target device.
 
 # Exit codes
 # 0 - Success
 # 1 - General error
-# 42 - Startup files are copied and the target is rebooting.
+# 42 - Startup files were updated and the target must be rebooted before trying to run this script again.
 
 
 function PrintUsage()
 {
-    echo "USAGE: $(basename $0) SRC_DIR DEST_IP"
+    echo "USAGE: $(basename $0) BUILD_DIR [DEST_IP]"
     echo
-    echo "  where, SRC_DIR = the directory in which the target's built Legato files can be found."
-    echo "                   E.g., 'build/ar7'."
+    echo "  where, BUILD_DIR = the directory in which the target's built Legato files can be found."
+    echo "                     E.g., 'build/ar7'."
     echo
     echo "         DEST_IP = the IP address of the target device."
     echo
+    echo "If DEST_IP is not provided on the command-line, $(basename 0) will try to use the"
+    echo "contents of the DEST_IP environment variable."
+    echo
 }
 
-SRC_DIR=$1
+BUILD_DIR=$1
 TARGET_IP=$2
 
 # Check if they are asking for help.
@@ -34,39 +35,36 @@ then
 fi
 
 # Check that the first argument exists and is a directory.
-# If not, try sticking "$LEGATO_ROOT/build/" on the front and see if that's a directory.
-if ! [ -d "$SRC_DIR" ]
+# If not, try sticking "build/" on the front and see if that's a directory.
+if ! [ -d "$BUILD_DIR" ]
 then
-    SRC_DIR_TRY2="$LEGATO_ROOT/build/$SRC_DIR"
-    if ! [ -d "$SRC_DIR_TRY2" ]
+    BUILD_DIR_TRY2="build/$BUILD_DIR"
+    if ! [ -d "$BUILD_DIR_TRY2" ]
     then
         echo "***ERROR: First argument should be a directory."
-        echo "Directory '$SRC_DIR' not found."
+        echo "Directory '$BUILD_DIR' not found."
         echo "Perhaps it needs to be built?"
         echo
         PrintUsage
         exit 1
     else
-        SRC_DIR="$SRC_DIR_TRY2"
+        BUILD_DIR="$BUILD_DIR_TRY2"
     fi
 fi
 
-# If LEGATO_ROOT is not defined, try to deduce it from the (build) SRC_DIR
-if [ -z "$LEGATO_ROOT" ]
+# Must make sure we are using install scripts that match the version of the framework that we
+# are installing, so override LEGATO_ROOT based on the BUILD_DIR
+LEGATO_ROOT="$BUILD_DIR/../.."
+if ! [ -f "$LEGATO_ROOT/version" ] || ! [ -f "$LEGATO_ROOT/README.md" ]
 then
-    LEGATO_ROOT="$SRC_DIR/../.."
-    if ! [ -f "$LEGATO_ROOT/version" ] || ! [ -f "$LEGATO_ROOT/README.md" ]
-    then
-        echo "***ERROR: Unable to find LEGATO_ROOT."
-        echo "Please declare LEGATO_ROOT as your Legato source directory,"
-        echo "or use bin/legs."
-        echo
-        PrintUsage
-        exit 1
-    fi
+    echo "***ERROR: '$LEGATO_ROOT' does not appear to be a Legato framework directory."
+    echo
+    PrintUsage
+    exit 1
 fi
 
-# Check that the second argument is provided and can be pinged.
+# If the second argument is provided, use that as the target device IP address.
+# Otherwise, look for a DEST_IP environment variable.
 if ! [ $TARGET_IP ]
 then
     if ! [ $DEST_IP ]
@@ -79,173 +77,26 @@ then
     TARGET_IP=$DEST_IP
 fi
 
-if ! ping -c 1 -w 1 $TARGET_IP > /dev/null
-then
-    echo "***ERROR: Device address $TARGET_IP seems to be unreachable."
-    echo
-    exit 1
-fi
-
-function UpdateStartupFiles()
-{
-    reboot_pending=0
-    targetName=$1
-    target_md5sum=$2
-
-    case $targetName in
-    swi-mdm9x15)
-        srcpath=$LEGATO_ROOT/targetFiles/mdm-9x15
-        dstpath=root@$TARGET_IP:/mnt/flash/startup
-        ;;
-    *)
-        echo "Attempting to install legato on unrecognized target '$targetName'"
-        echo "This script will not be able to set up start up scripts on this platform."
-        echo "It is your responsibility to make sure the environment is configured correctly"
-        echo "to run legato."
-        return
-        ;;
-    esac
-
-    md5sum=($(cat $srcpath/startup/* | md5sum))
-    if [[ $# -eq 1 ]]
-    then
-        # There are no startup scripts. Copy them over
-        echo "Copying startup scripts to target"
-        scp $srcpath/startup/* $dstpath
-        if [[ $? != 0 ]]
-        then
-            echo "Copying failed. Check target."
-            exit 1
-        fi
-        reboot_pending=1
-    elif ! [[ $target_md5sum == ${md5sum[0]} ]]
-    then
-        # Startup scripts on target differ from host version.
-        # Over write with new files, and make a backup of the ones on target.
-        echo "Startup scripts have changed. Backing up old startup scripts to host."
-        if [[ -d $srcpath/backup ]]
-        then
-            timestamp=$(date +%F_%T)
-            tar -cjf  $srcpath/backup_$timestamp.bz2 -C $srcpath backup
-            rm $srcpath/backup/*
-        else
-            mkdir -p $srcpath/backup
-        fi
-        scp $dstpath/* $srcpath/backup/
-        if [[ $? != 0 ]]
-        then
-            echo "Backup of old startup scripts failed. Check target."
-            exit 1
-        fi
-        ssh root@$TARGET_IP 'rm /mnt/flash/startup/*'
-        echo "Copying new startup scripts to target"
-        scp $srcpath/startup/* $dstpath
-        if [[ $? != 0 ]]
-        then
-            echo "Copying failed. Check target."
-            exit 1
-        fi
-        echo "Old startup scripts from target are in $srcpath/backup/"
-        reboot_pending=1
-    else
-        echo "Startup scripts are up to date."
-    fi
-
-    if [[ $reboot_pending > 0 ]]
-    then
-        echo "Startup scripts have been updated and the target will reboot."
-        echo "Wait until the target has rebooted then execute this script again"
-        echo "to finish installing legato"
-        if ! ssh root@$TARGET_IP '/sbin/reboot >/dev/null &'
-        then
-            echo "Error while attempting to reboot target"
-            exit 1
-        else
-            # 42 is a semi-arbitrary value chosen as an exit code unlikely to occur in nature.
-            # It indicates that the target has new startup files copied to it and is now rebooting.
-            # If we are run by jenkins-build then the test script will wait and re-run
-            # instlegato if it receives this exit code.
-            exit 42
-        fi
-    fi
-}
-
-# Check for startup scripts
-echo "Checking startup scripts ..."
-result=$(ssh root@$TARGET_IP '
-    name=$(uname -n)
-    if [[ $name == "swi-mdm9x15" ]]
-    then
-        sfpath="/mnt/flash/startup"
-        if ! [ -d $sfpath ]
-        then
-            mkdir -p $sfpath
-        fi
-        cd $sfpath
-        if [ $(ls | wc -l) -ne 0 ]
-        then
-            local_md5sum=$(cat * 2> /dev/null | md5sum)
-        fi
-    fi
-
-    echo "$name $local_md5sum"
-    ')
-
-UpdateStartupFiles $result
-
-
-TAR_FILE="$SRC_DIR/legato-runtime.tar"
+TAR_FILE="$BUILD_DIR/legato-runtime.tar"
 
 if ! [ -f "$TAR_FILE" ]
 then
     echo "***ERROR: Runtime tarball '$TAR_FILE' not found."
-    echo "Are you sure '$SRC_DIR' is a target-specific Legato build directory and"
+    echo "Are you sure '$BUILD_DIR' is a target-specific Legato build directory and"
     echo "the build has completed successfully?"
     echo
     PrintUsage
     exit 1
 fi
 
-# 1. Stop the framework on target, if it is installed and running.
-# 2. Stream the tarball of the target device's staging area into place on the device.
-# 3. Update the ld.so.cache on target, so the Legato libs can be found by the dynamic linker/loader.
-# 4. Start the framework on target.
-# 5. Install and start the bundled applications.
-# 6. Remove the app package files for the bundled applications to save space in flash.
+echo "Installing Legato framework from: $BUILD_DIR"
+
+# Copy the legato script onto the target.
+scp -o ConnectTimeout=1 $LEGATO_ROOT/targetFiles/shared/bin/legato root@$TARGET_IP:/tmp/legatoInstaller &&
+
+# Start the legato script on target and stream the tarball of the target device's staging to it.
 cat "$TAR_FILE" |
-# NOTE: If the content of the script being sent to the target ssh shell is too long, it will
-#       reject it with a horrible, unclear error message.
-ssh root@$TARGET_IP '
-    if [ -f /usr/local/bin/legato ]
-    then
-        /usr/local/bin/legato stop
-    fi
-    rm -rf /usr/local/*
-    mkdir -p /usr/local/bin &&
-    cd / &&
-    tar x &&
-    chmod -R go-w /usr/local &&
-    chown -R root:root /usr &&
-    chown -R root:root /opt &&
-    chown root:root / &&
-    ( umount /etc/ld.so.cache || true ) &&
-    /sbin/ldconfig -v -C /var/run/ld.so.cache &&
-    mount --bind /var/run/ld.so.cache /etc/ld.so.cache &&
-    /usr/local/bin/legato start &&
-    (
-        for appFile in `ls /usr/local/bin/apps`
-        do
-            APP_NAME=$(basename "$appFile" | sed "s/\.[^.]*$//") &&
-            cat /usr/local/bin/apps/$appFile | /usr/local/bin/app install ""$APP_NAME""
-        done
-        for appFile in `ls /usr/local/bin/apps`
-        do
-            APP_NAME=$(basename "$appFile" | sed "s/\.[^.]*$//") &&
-            /usr/local/bin/app start $APP_NAME
-        done
-    )
-    rm -rf /usr/local/bin/apps
-    ' &&
-
-echo "DONE."
-
+ssh -o ConnectTimeout=1 root@$TARGET_IP '
+    chmod u+x /tmp/legatoInstaller
+    /tmp/legatoInstaller install
+    '

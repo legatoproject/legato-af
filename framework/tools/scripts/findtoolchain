@@ -1,0 +1,58 @@
+#!/bin/bash
+
+# Search in known locations for a cross-build tool chain.
+# The first argument is the target type (ar6, ar7, wp7)
+function PrintHelp()
+{
+cat << ENDHELP
+NAME
+        $(basename $0) - search for an installed cross-build toolchain for a given type of target.
+
+SYNOPSIS
+        $(basename $0) TARGET
+
+DESCRIPTION
+        Will output the toolchain directory path to stdout and exit with code 0 on success.
+
+        Prints an error message to stderr and exits with a non-zero exit code on error.
+ENDHELP
+}
+
+
+# Select the appropriate list of toolchain directories to search, in order of preference
+# (most preferred first) based on the target name given.
+case "$1" in
+ar7 | wp7)
+    TOOLCHAIN_DIRS=(
+        /opt/swi/y16-ext/sysroots/$(uname -m)-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi
+        /opt/swi/y14-ext/tmp/sysroots/$(uname -m)-linux/usr/bin/armv7a-vfp-neon-poky-linux-gnueabi
+        )
+    ;;
+ar6)
+    TOOLCHAIN_DIRS=(
+        /opt/poky/1.4.1/sdk/sysroots/$(uname -m)-pokysdk-linux/usr/bin/armv5te-poky-linux-gnueabi/
+        )
+    ;;
+help | --help | -h)
+    PrintHelp
+    exit 0
+    ;;
+*)
+    echo "****ERROR: Unrecognized target type '$1'." >&2
+    exit 1
+    ;;
+
+esac
+
+# Go down the list until we find one that exists.
+for dir in ${TOOLCHAIN_DIRS[*]}
+do
+    if [ -f "$dir/arm-poky-linux-gnueabi-gcc" ]
+    then
+        echo "$dir"
+        exit 0
+    fi
+done
+
+echo "No toolchain found for target '$1'." >&2
+exit 1

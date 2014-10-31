@@ -1,7 +1,7 @@
 #
 # C code generator functions
 #
-# Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+# Copyright (C) Sierra Wireless, Inc. 2013-2014. Use of this work is subject to license.
 #
 
 import os
@@ -15,20 +15,6 @@ import codeTypes
 
 # The new template system
 import jinja2
-
-#---------------------------------------------------------------------------------------------------
-# Utility Class Definitions
-#
-# todo: Could be moved to another file
-#---------------------------------------------------------------------------------------------------
-
-# Return the item rather than the key when iterating, so that iteration is more "list" like.
-class MyOrderedDict(collections.OrderedDict):
-
-    def __iter__(self):
-       keyIter = super(MyOrderedDict, self).__iter__()
-       for k in keyIter:
-           yield self[k]
 
 
 #---------------------------------------------------------------------------------------------------
@@ -400,7 +386,7 @@ EnumDefinitionTemplate = """
 //--------------------------------------------------------------------------------------------------
 typedef enum
 {
-    {{ enumDef.valueList | printEnumListWithComments | indent }}
+    {{ enumDef.memberList | printEnumListWithComments | indent }}
 }
 {{enumDef.typeName}};
 """
@@ -409,14 +395,19 @@ typedef enum
 #
 # Generates a properly formatted string for the enum value, along with any associated comments.
 #
-def FormatEnumValue(value, lastValue):
+def FormatEnumMember(member, lastMember):
     # Format the enum
-    s = value.name[:]
-    if not lastValue:
+    s = member.name[:]
+
+    if hasattr(member, 'value'):
+        #print member.value
+        s += ' = %s' % member.value
+
+    if not lastMember:
         s += ','
 
-    if value.comment:
-        commentLines = value.comment.splitlines()
+    if member.comment:
+        commentLines = member.comment.splitlines()
 
         # Indent the comments, relative to the parameter type/name
         commentStr = '\n'.join( ' '*4+c for c in commentLines )
@@ -429,11 +420,11 @@ def FormatEnumValue(value, lastValue):
 
 
 #
-# Define and register the filter for processing enum values with comments
+# Define and register the filter for processing enum members with comments
 #
-def PrintEnumListWithComments(valueList):
-    resultList = [ FormatEnumValue(v, False) for v in valueList[:-1] ]
-    resultList += [ FormatEnumValue(valueList[-1], True) ]
+def PrintEnumListWithComments(memberList):
+    resultList = [ FormatEnumMember(v, False) for v in memberList[:-1] ]
+    resultList += [ FormatEnumMember(memberList[-1], True) ]
     return '\n'.join( resultList )
 
 Environment.filters["printEnumListWithComments"] = PrintEnumListWithComments
@@ -925,11 +916,11 @@ def WriteCommonInterface(fp,
         print >>fp, '\n'
 
     # Write out the prototypes for the generic functions
-    for s in genericFunctions:
+    for s in genericFunctions.values():
         print >>fp, "%s;\n" % GetFuncPrototypeStr(s)
 
     # Write out the type definitions
-    for t in pt:
+    for t in pt.values():
         # Types that have a simple definition will have the appropriate attribute; otherwise call an
         # explicit function to write out the definition.
         if hasattr(t, "definition"):
@@ -941,11 +932,11 @@ def WriteCommonInterface(fp,
             pass
 
     # Write out the handler type definitions
-    for h in ph:
+    for h in ph.values():
         WriteHandlerTypeDef(fp, h)
 
     # Write out the function prototypes, and if required, the respond function prototypes
-    for f in pf:
+    for f in pf.values():
         #print f
 
         # The Add and Remove handler functions are never asynchronous.
@@ -993,6 +984,8 @@ LocalHeaderStartTemplate = """
 
 #define PROTOCOL_ID_STR "{{idString}}"
 
+#define SERVICE_INSTANCE_NAME "{{serviceName}}"
+
 
 // todo: This will need to depend on the particular protocol, but the exact size is not easy to
 //       calculate right now, so in the meantime, pick a reasonably large size.  Once interface
@@ -1008,15 +1001,17 @@ typedef struct
 _Message_t;
 """
 
-def WriteLocalHeaderFile(pf, ph, hashValue, fileName):
+def WriteLocalHeaderFile(pf, ph, hashValue, fileName, serviceName):
     WriteWarning(LocalHeaderFileText)
     WriteIncludeGuardBegin(LocalHeaderFileText, fileName)
 
-    print >>LocalHeaderFileText, FormatCode(LocalHeaderStartTemplate, idString=hashValue)
+    print >>LocalHeaderFileText, FormatCode(LocalHeaderStartTemplate,
+                                            idString=hashValue,
+                                            serviceName=serviceName)
 
     # Write out the message IDs for the functions
-    for i, f in enumerate(pf):
-        print >>LocalHeaderFileText, "#define _MSGID_%s %i" % (f.name, i)
+    for i, name in enumerate(pf):
+        print >>LocalHeaderFileText, "#define _MSGID_%s %i" % (name, i)
     print >>LocalHeaderFileText
 
     WriteIncludeGuardEnd(LocalHeaderFileText, fileName)
@@ -1064,7 +1059,8 @@ static le_mem_PoolRef_t _ClientDataPool;
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
-    le_msg_SessionRef_t sessionRef;          ///< Client Session Reference
+    le_msg_SessionRef_t sessionRef;     ///< Client Session Reference
+    int                 clientCount;    ///< Number of clients sharing this thread
 }
 _ClientThreadData_t;
 
@@ -1113,21 +1109,12 @@ __attribute__((unused)) static pthread_mutex_t _Mutex = PTHREAD_MUTEX_INITIALIZE
 
 
 //--------------------------------------------------------------------------------------------------
-/* Maximum size of a service instance name string, including the null terminator byte.
- *
- * Based on LE_SVCDIR_MAX_SERVICE_NAME_SIZE in serviceDirectoryProtocol.h
+/* This global flag is shared by all client threads, and is used to indicate whether the common
+ * data has been initialized.  It is only initialized once by the main thread, and is only read by
+ * the other threads.  Thus, a mutex is not needed for accesses to this variable.
  */
 //--------------------------------------------------------------------------------------------------
-#define MAX_SERVICE_NAME_SIZE    128
-
-
-//--------------------------------------------------------------------------------------------------
-/* The global service instance name is shared by all client threads.  It is only initialized once
- * by the main thread, and is only read by the other threads.  Thus, a mutex is not needed for
- * accesses to this variable.
- */
-//--------------------------------------------------------------------------------------------------
-static char GlobalServiceInstanceName[MAX_SERVICE_NAME_SIZE] = "";
+static bool CommonDataInitialized = false;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -1144,26 +1131,20 @@ static void ClientIndicationRecvHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Init thread specific data, and return a pointer to this data
+ * Init thread specific data
  */
 //--------------------------------------------------------------------------------------------------
-static _ClientThreadData_t* InitClientThreadData
+static void InitClientThreadData
 (
-    const char* serviceInstanceName
+    void
 )
 {
     // Open a session.
     le_msg_ProtocolRef_t protocolRef;
     le_msg_SessionRef_t sessionRef;
 
-    // The instance name must not be an empty string
-    if ( serviceInstanceName[0] == '\\0' )
-    {
-        LE_FATAL("Undefined client service instance name (Was StartClient() called?)");
-    }
-
     protocolRef = le_msg_GetProtocolRef(PROTOCOL_ID_STR, sizeof(_Message_t));
-    sessionRef = le_msg_CreateSession(protocolRef, serviceInstanceName);
+    sessionRef = le_msg_CreateSession(protocolRef, SERVICE_INSTANCE_NAME);
     le_msg_SetSessionRecvHandler(sessionRef, ClientIndicationRecvHandler, NULL);
     le_msg_OpenSessionSync(sessionRef);
 
@@ -1176,7 +1157,24 @@ static _ClientThreadData_t* InitClientThreadData
         LE_FATAL("pthread_setspecific() failed!");
     }
 
-    return clientThreadPtr;
+    // This is the first client for the current thread
+    clientThreadPtr->clientCount = 1;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get a pointer to the client thread data for the current thread.
+ *
+ * If the current thread does not have client data, then NULL is returned
+ */
+//--------------------------------------------------------------------------------------------------
+static _ClientThreadData_t* GetClientThreadDataPtr
+(
+    void
+)
+{
+    return pthread_getspecific(_ThreadDataKey);
 }
 
 
@@ -1184,7 +1182,7 @@ static _ClientThreadData_t* InitClientThreadData
 /**
  * Return the sessionRef for the current thread.
  *
- * If the current thread does not have a session ref, then create it.
+ * If the current thread does not have a session ref, then this is a fatal error.
  */
 //--------------------------------------------------------------------------------------------------
 __attribute__((unused)) static le_msg_SessionRef_t GetCurrentSessionRef
@@ -1192,14 +1190,10 @@ __attribute__((unused)) static le_msg_SessionRef_t GetCurrentSessionRef
     void
 )
 {
-    _ClientThreadData_t* clientThreadPtr = pthread_getspecific(_ThreadDataKey);
+    _ClientThreadData_t* clientThreadPtr = GetClientThreadDataPtr();
 
-    // If the thread specific data is NULL, then the session ref has not been created yet.
-    if (clientThreadPtr == NULL)
-    {
-        LE_DEBUG("======= Starting Client %s ========", GlobalServiceInstanceName);
-        clientThreadPtr = InitClientThreadData(GlobalServiceInstanceName);
-    }
+    // If the thread specific data is NULL, then the session ref has not been created.
+    LE_FATAL_IF(clientThreadPtr==NULL, "No client session for current thread");
 
     return clientThreadPtr->sessionRef;
 }
@@ -1210,7 +1204,7 @@ __attribute__((unused)) static le_msg_SessionRef_t GetCurrentSessionRef
  * Init data that is common across all threads.
  */
 //--------------------------------------------------------------------------------------------------
-static void InitClient(void)
+static void InitCommonData(void)
 {
     // Allocate the client data pool
     _ClientDataPool = le_mem_CreatePool("ClientData", sizeof(_ClientData_t));
@@ -1230,73 +1224,67 @@ static void InitClient(void)
 """
 
 ClientStartFuncCode = """
-{{ proto[0] }}
+{{ proto['startClientFunc'] }}
 {
-    // The instance name must not be an empty string
-    if ( serviceInstanceName[0] == '\\0' )
+    // If this is the first time the function is called, init the client common data.
+    if ( ! CommonDataInitialized )
     {
-        LE_FATAL("Service instance name is empty");
+        InitCommonData();
+        CommonDataInitialized = true;
     }
 
-    // If this is not the first time this function is called, compare against stored instance name.
-    if ( GlobalServiceInstanceName[0] != '\\0' )
-    {
-        if ( strcmp(GlobalServiceInstanceName, serviceInstanceName) == 0 )
-        {
-            LE_DEBUG("Called with duplicate name");
-        }
-        else
-        {
-            // This is an error because the user application is likely not connecting to the
-            // service that they expect.
-            LE_ERROR("Service instance name cannot be changed from '%s' to '%s'",
-                     GlobalServiceInstanceName,
-                     serviceInstanceName);
-        }
-
-        // Since the function was called before, there is nothing further to do.
-        return;
-    }
-
-    // This is the first time the function is called.  Store the instance name and init the client.
-    LE_FATAL_IF(le_utf8_Copy(GlobalServiceInstanceName,
-                             serviceInstanceName,
-                             sizeof(GlobalServiceInstanceName),
-                             NULL) == LE_OVERFLOW,
-                "Service ID '%s' too long (should only be %zu bytes total).",
-                serviceInstanceName,
-                sizeof(GlobalServiceInstanceName));
-
-    LE_DEBUG("======= Starting Client %s ========", serviceInstanceName);
-    InitClient();
-
-    // Although InitClientThreadData() returns a value, it is not needed here.
-    InitClientThreadData(serviceInstanceName);
-}
-
-{{ proto[1] }}
-{
-    _ClientThreadData_t* clientThreadPtr = pthread_getspecific(_ThreadDataKey);
+    _ClientThreadData_t* clientThreadPtr = GetClientThreadDataPtr();
 
     // If the thread specific data is NULL, then there is no current client session.
     if (clientThreadPtr == NULL)
     {
-        LE_ERROR("Trying to stop non-existent client session for '%s' service",
-                 GlobalServiceInstanceName);
+        InitClientThreadData();
+        LE_DEBUG("======= Starting client for '%s' service ========", SERVICE_INSTANCE_NAME);
     }
     else
     {
-        le_msg_CloseSession( clientThreadPtr->sessionRef );
+        // Keep track of the number of clients for the current thread.  There is only one
+        // connection per thread, and it is shared by all clients.
+        clientThreadPtr->clientCount++;
+        LE_DEBUG("======= Starting another client for '%s' service ========", SERVICE_INSTANCE_NAME);
+    }
+}
 
-        // Need to delete the thread specific data, since it is no longer valid.  If a new
-        // client session is started, new thread specific data will be allocated.
-        le_mem_Release(clientThreadPtr);
-        if (pthread_setspecific(_ThreadDataKey, NULL) != 0)
+{{ proto['stopClientFunc'] }}
+{
+    _ClientThreadData_t* clientThreadPtr = GetClientThreadDataPtr();
+
+    // If the thread specific data is NULL, then there is no current client session.
+    if (clientThreadPtr == NULL)
+    {
+        LE_CRIT("Trying to stop non-existent client session for '%s' service",
+                SERVICE_INSTANCE_NAME);
+    }
+    else
+    {
+        // This is the last client for this thread, so close the session.
+        if ( clientThreadPtr->clientCount == 1 )
         {
-            LE_FATAL("pthread_setspecific() failed!");
-        }
+            le_msg_CloseSession( clientThreadPtr->sessionRef );
 
-        LE_DEBUG("======= Stopping Client %s ========", GlobalServiceInstanceName);
+            // Need to delete the thread specific data, since it is no longer valid.  If a new
+            // client session is started, new thread specific data will be allocated.
+            le_mem_Release(clientThreadPtr);
+            if (pthread_setspecific(_ThreadDataKey, NULL) != 0)
+            {
+                LE_FATAL("pthread_setspecific() failed!");
+            }
+
+            LE_DEBUG("======= Stopping client for '%s' service ========", SERVICE_INSTANCE_NAME);
+        }
+        else
+        {
+            // There is one less client sharing this thread's connection.
+            clientThreadPtr->clientCount--;
+
+            LE_DEBUG("======= Stopping another client for '%s' service ========",
+                     SERVICE_INSTANCE_NAME);
+        }
     }
 }
 """
@@ -1315,17 +1303,18 @@ def WriteClientFile(headerFiles, pf, ph, genericFunctions):
     print >>ClientFileText, DefaultPackerUnpacker
     print >>ClientFileText, ClientGenericCode
 
-    protoList = [ GetFuncPrototypeStr(f) for f in genericFunctions ]
-    print >>ClientFileText, FormatCode(ClientStartFuncCode, proto=protoList)
+    # Note that this does not need to be an ordered dictionary, unlike genericFunctions
+    protoDict = { n: GetFuncPrototypeStr(f) for n,f in genericFunctions.items() }
+    print >>ClientFileText, FormatCode(ClientStartFuncCode, proto=protoDict)
 
     print >>ClientFileText, ClientStartClientCode
 
-    for f in pf:
+    for f in pf.values():
         #print f
         if f.addHandlerName:
             # Write out the handler first; there should only be one
             # todo: How can this be enforced
-            for h in ph:
+            for h in ph.values():
                 if h.name == f.addHandlerName:
                     WriteClientHandler(f, h, ClientHandlerTemplate)
                     break
@@ -1333,7 +1322,7 @@ def WriteClientFile(headerFiles, pf, ph, genericFunctions):
         # Write out the functions next
         WriteFuncCode(f, FuncImplTemplate)
 
-    addHandlerFuncs = [ f for f in pf if f.addHandlerName ]
+    addHandlerFuncs = [ f for f in pf.values() if f.addHandlerName ]
     WriteAsyncHandler(addHandlerFuncs, AsyncHandlerTemplate)
 
 
@@ -1492,21 +1481,21 @@ static void CleanupClientData
 """
 
 ServerStartFuncCode = """
-{{ proto[0] }}
+{{ proto['getServiceRef'] }}
 {
     return _ServerServiceRef;
 }
 
 
-{{ proto[1] }}
+{{ proto['getSessionRef'] }}
 {
     return _ClientSessionRef;
 }
 
 
-{{ proto[2] }}
+{{ proto['startServerFunc'] }}
 {
-    LE_DEBUG("======= Starting Server %s ========", serviceInstanceName);
+    LE_DEBUG("======= Starting Server %s ========", SERVICE_INSTANCE_NAME);
 
     le_msg_ProtocolRef_t protocolRef;
 
@@ -1520,12 +1509,12 @@ ServerStartFuncCode = """
 
     // Start the server side of the service
     protocolRef = le_msg_GetProtocolRef(PROTOCOL_ID_STR, sizeof(_Message_t));
-    _ServerServiceRef = le_msg_CreateService(protocolRef, serviceInstanceName);
+    _ServerServiceRef = le_msg_CreateService(protocolRef, SERVICE_INSTANCE_NAME);
     le_msg_SetServiceRecvHandler(_ServerServiceRef, ServerMsgRecvHandler, NULL);
     le_msg_AdvertiseService(_ServerServiceRef);
 
     // Register for client sessions being closed
-    le_msg_SetServiceCloseHandler(_ServerServiceRef, CleanupClientData, NULL);
+    le_msg_AddServiceCloseHandler(_ServerServiceRef, CleanupClientData, NULL);
 }
 """
 
@@ -1542,16 +1531,17 @@ def WriteServerFile(headerFiles, pf, ph, genericFunctions, genAsync):
     print >>ServerFileText, DefaultPackerUnpacker
     print >>ServerFileText, ServerGenericCode
 
-    protoList = [ GetFuncPrototypeStr(f) for f in genericFunctions ]
-    print >>ServerFileText, FormatCode(ServerStartFuncCode, proto=protoList)
+    # Note that this does not need to be an ordered dictionary, unlike genericFunctions
+    protoDict = { n: GetFuncPrototypeStr(f) for n,f in genericFunctions.items() }
+    print >>ServerFileText, FormatCode(ServerStartFuncCode, proto=protoDict)
 
     print >>ServerFileText, ServerStartClientCode
 
-    for f in pf:
+    for f in pf.values():
         #print f
         if f.addHandlerName:
             # Write out the handler first; there should only be one per function
-            for h in ph:
+            for h in ph.values():
                 if h.name == f.addHandlerName:
                     WriteAsyncFuncCode(f, h, FuncAsyncTemplate)
                     break
@@ -1563,7 +1553,7 @@ def WriteServerFile(headerFiles, pf, ph, genericFunctions, genAsync):
         else:
             WriteHandlerCode(f, FuncHandlerTemplate)
 
-    WriteMsgHandler(pf, MsgHandlerTemplate)
+    WriteMsgHandler(pf.values(), MsgHandlerTemplate)
 
 
 #---------------------------------------------------------------------------------------------------
@@ -1790,10 +1780,11 @@ def WriteAllCode(commandArgs, parsedData, hashValue):
     # Split the parsed data into three lists, and insert any AddHandlers/RemoveHandlers as needed
     # todo: I used to need an OrderedDict, so that I could easily look up functions by name.
     #       Not sure if I still need this functionality, so maybe I could just use a list here,
-    #       although I would have to update the code to use append() in a number of places.
-    parsedFunctions = MyOrderedDict()
-    parsedHandlers = MyOrderedDict()
-    parsedTypes = MyOrderedDict()
+    #       although I would have to update the code to expect a list instead of a dictionary.
+    parsedFunctions = collections.OrderedDict()
+    parsedHandlers = collections.OrderedDict()
+    parsedTypes = collections.OrderedDict()
+
     for f in parsedCode:
         if isinstance( f, codeTypes.HandlerFunctionData ):
             parsedHandlers[f.name] = f
@@ -1806,31 +1797,28 @@ def WriteAllCode(commandArgs, parsedData, hashValue):
 
     # Create the generic client functions
     startClientFunc = codeTypes.FunctionData(
-        "StartClient",
+        "ConnectService",
         "void",
-        # todo: Is there any need to have min/max sizes for the service instance name
-        [ codeTypes.StringData( "serviceInstanceName", codeTypes.DIR_IN ) ],
-        FormatHeaderComment("Start the service for the client main thread")
+        [ codeTypes.VoidData() ],
+        FormatHeaderComment("Connect the client to the service")
     )
 
     stopClientFunc = codeTypes.FunctionData(
-        "StopClient",
+        "DisconnectService",
         "void",
         [ codeTypes.VoidData() ],
-        FormatHeaderComment("Stop the service for the current client thread")
+        FormatHeaderComment("Disconnect the client from the service")
     )
 
-    # IMPORTANT:
-    # These functions must be in the same order as implemented in the ClientStartFuncCode template.
-    genericInterfaceFunctions = [ startClientFunc, stopClientFunc ]
+    genericInterfaceFunctions = collections.OrderedDict( ( ('startClientFunc', startClientFunc),
+                                                           ('stopClientFunc',  stopClientFunc) ) )
 
     # Create the generic server functions
     startServerFunc = codeTypes.FunctionData(
-        "StartServer",
+        "AdvertiseService",
         "void",
-        # todo: Is there any need to have min/max sizes for the service instance name
-        [ codeTypes.StringData( "serviceInstanceName", codeTypes.DIR_IN ) ],
-        FormatHeaderComment("Initialize and start the server.")
+        [ codeTypes.VoidData() ],
+        FormatHeaderComment("Initialize the server and advertise the service.")
     )
 
     getServiceRef = codeTypes.FunctionData(
@@ -1847,10 +1835,9 @@ def WriteAllCode(commandArgs, parsedData, hashValue):
         FormatHeaderComment("Get the client session reference for the current message")
     )
 
-    # IMPORTANT:
-    # These functions must be in the same order as implemented in the ServerStartFuncCode template.
-    genericServerFunctions = [ getServiceRef, getSessionRef, startServerFunc ]
-
+    genericServerFunctions = collections.OrderedDict( ( ('getServiceRef',   getServiceRef),
+                                                        ('getSessionRef',   getSessionRef),
+                                                        ('startServerFunc', startServerFunc) ) )
     # Get the output file names
     outputFileList = GetOutputFileNames(commandArgs.filePrefix)
     interfaceFname, localFname, clientFname, serverFname, serverIncludeFname = outputFileList
@@ -1873,15 +1860,15 @@ def WriteAllCode(commandArgs, parsedData, hashValue):
         # If there are no functions or handlers defined, then don't put the generic interface
         # function prototypes in the interface header file.
         if not parsedFunctions and not parsedHandlers:
-            genericFuncList = []
+            genericFunctions = {}
         else:
-            genericFuncList = genericInterfaceFunctions
+            genericFunctions = genericInterfaceFunctions
 
         WriteInterfaceHeaderFile(parsedFunctions,
                                  parsedHandlers,
                                  parsedTypes,
                                  clientImportList,
-                                 genericFuncList,
+                                 genericFunctions,
                                  os.path.splitext( os.path.basename(commandArgs.interfaceFile) )[0],
                                  # interfaceFname,
                                  headerComments)
@@ -1891,7 +1878,8 @@ def WriteAllCode(commandArgs, parsedData, hashValue):
         WriteLocalHeaderFile(parsedFunctions,
                              parsedHandlers,
                              hashValue,
-                             localFname)
+                             localFname,
+                             commandArgs.serviceName)
         open(localFpath, 'w').write( LocalHeaderFileText.getvalue() )
 
     if commandArgs.genClient:
@@ -1905,15 +1893,15 @@ def WriteAllCode(commandArgs, parsedData, hashValue):
         # If there are no functions or handlers defined, then don't put the generic server
         # function prototypes in the server interface header file.
         if not parsedFunctions and not parsedHandlers:
-            genericFuncList = []
+            genericFunctions = {}
         else:
-            genericFuncList = genericServerFunctions
+            genericFunctions = genericServerFunctions
 
         WriteServerHeaderFile(parsedFunctions,
                               parsedHandlers,
                               parsedTypes,
                               serverImportList,
-                              genericFuncList,
+                              genericFunctions,
                               os.path.splitext( os.path.basename(commandArgs.interfaceFile) )[0],
                               # serverIncludeFname,
                               commandArgs.async)

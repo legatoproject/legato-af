@@ -41,7 +41,7 @@ void userAddRemove_Add
     LE_INFO("Creating user '%s' for application '%s'.", userName, appName);
 
     // Start a read transaction and go to node /apps/app-name
-    le_cfg_StartClient("le_cfg");
+    le_cfg_ConnectService();
     le_cfg_IteratorRef_t i = le_cfg_CreateReadTxn("/apps");
     le_cfg_GoToNode(i, appName);
 
@@ -68,7 +68,7 @@ void userAddRemove_Add
         {
             // TODO: Verify correct groups configuration.
 
-            printf("User '%s' already exists (uid %u, gid%u).\n", userName, uid, gid);
+            printf("User '%s' already exists (uid %u, gid %u).\n", userName, uid, gid);
 
             le_cfg_CancelTxn(i);
 

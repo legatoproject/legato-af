@@ -241,8 +241,8 @@ static void ConfigureGdb
     size_t numProcs                 ///< [IN] Number of processes to remove from the app.
 )
 {
-    le_cfg_StartClient("le_cfg");
-    le_cfgAdmin_StartClient("le_cfgAdmin");
+    le_cfg_ConnectService();
+    le_cfgAdmin_ConnectService();
 
     // Get a write iterator to the application node.
     le_cfg_IteratorRef_t cfgIter = le_cfg_CreateWriteTxn("/apps");
@@ -296,8 +296,8 @@ static void ResetApp
     const char* appNamePtr
 )
 {
-    le_cfg_StartClient("le_cfg");
-    le_cfgAdmin_StartClient("le_cfgAdmin");
+    le_cfg_ConnectService();
+    le_cfgAdmin_ConnectService();
 
     // Get a write iterator to the application node.
     le_cfg_IteratorRef_t cfgIter = le_cfg_CreateWriteTxn("/apps");

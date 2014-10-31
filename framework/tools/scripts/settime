@@ -1,0 +1,29 @@
+#! /bin/sh
+if ! [ $LEGATO_ROOT ]; then echo "Run bin/legs first"; exit 1; fi
+#instead of sourcing this could be exported by bin/legs
+. "${LEGATO_ROOT}/framework/tools/scripts/shlib"
+
+PrintUsage()
+{
+cat << ENDHELP
+
+USAGE:
+    $commandName [DEST_IP]
+
+    Sets the target time to be the same as the host time. The time is syncronized on the basis of
+    UTC time but the time displayed by date or the time stamps in syslog will use timezone
+    information if set by settz.
+
+    DEST_IP = the IP address of the target device.  If DEST_IP is an available environment
+    variable it does not need to be passed in the command-line.
+
+ENDHELP
+}
+
+if SetTargetIP $1; then
+    StartFastSsh
+    FastSsh root@$TARGET_IP "date -u $(date -u +\"%m%d%H%M%Y.%S\")"
+    EndFastSsh
+else
+    PrintUsage
+fi

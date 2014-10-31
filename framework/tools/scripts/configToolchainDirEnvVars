@@ -1,0 +1,41 @@
+# Get setup for cross-building for Sierra Wireless AR7xxx and WP7xxx target devices.
+# Note: they both use the same toolchain.
+
+# If the AR7 toolchain dir is not set to anything,
+if [ "$AR7_TOOLCHAIN_DIR" = "" ]
+then
+    # Search for an installed toolchain.
+    export AR7_TOOLCHAIN_DIR=$(findtoolchain ar7)
+
+    if [ "$AR7_TOOLCHAIN_DIR" = "" ]
+    then
+        echo "Unable to find compatible cross-build toolchain."
+    else
+        echo "AR7_TOOLCHAIN_DIR set to default ($AR7_TOOLCHAIN_DIR)."
+    fi
+else
+    # Double check that the toolchain is actually installed.
+    if ! [ -f "$AR7_TOOLCHAIN_DIR/arm-poky-linux-gnueabi-gcc" ]
+    then
+        echo "*** WARNING: AR7 toolchain directory not found in '$AR7_TOOLCHAIN_DIR'"
+    fi
+fi
+
+# If the WP7 toolchain dir is not set to anything,
+if [ "$WP7_TOOLCHAIN_DIR" = "" ]
+then
+    export WP7_TOOLCHAIN_DIR=$(findtoolchain wp7)
+
+    if [ "$WP7_TOOLCHAIN_DIR" = "" ]
+    then
+        echo "Unable to find compatible cross-build toolchain."
+    else
+        echo "WP7_TOOLCHAIN_DIR set to default ($WP7_TOOLCHAIN_DIR)."
+    fi
+else
+    # Double check that the toolchain is actually installed.
+    if ! [ -f "$WP7_TOOLCHAIN_DIR/arm-poky-linux-gnueabi-gcc" ]
+    then
+        echo "*** WARNING: WP7 toolchain directory not found in '$WP7_TOOLCHAIN_DIR'"
+    fi
+fi

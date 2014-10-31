@@ -14,51 +14,8 @@ import codeTypes
 
 
 #-----------------------------------
-# Parser functions and definitions
+# Definitions
 #-----------------------------------
-
-def processComment(tokens):
-    #print tokens
-    parm = tokens[0]
-    if len(tokens) > 1:
-        # todo: would it be better to return a list of comment lines here?
-        parm.comment = '\n'.join(tokens[1:])
-    return parm
-
-
-def MakeListExpr(content, opener='(', closer=')'):
-    """
-    Based on pyparsing.nestedExpr, but intended for matching a list of expressions, such as the
-    parameter list of a function, or a list of enumerated values.  Each expression in the list
-    can also have associated comments, using a doxygen-like style.
-
-    Most of the original functionality has been stripped out, in favour of simplying the expression,
-    since nesting is not actually needed.  This is also similar to the delimitedList, but that can't
-    be used because of the need to include comments.
-    """
-
-    if isinstance(opener, basestring):
-        opener = pyparsing.Literal(opener).suppress()
-    if isinstance(closer, basestring):
-        closer = pyparsing.Literal(closer).suppress()
-    separator = pyparsing.Literal(',').suppress()
-
-    # todo: should use doxygenComment instead of pyparsing.cppStyleComment here?
-    # Handle the separator between parameter expressions
-    parameter_sep = content + separator + pyparsing.ZeroOrMore(pyparsing.cppStyleComment)
-    parameter_sep.setParseAction(processComment)
-
-    # The last parameter does not have any trailing separator
-    parameter = content + pyparsing.ZeroOrMore(pyparsing.cppStyleComment)
-    parameter.setParseAction(processComment)
-
-    # todo: Not sure which of these is better.  Using the 2nd because it is  more explicit
-    #ret = pyparsing.Group( opener
-    #                       + pyparsing.Optional( pyparsing.ZeroOrMore(content_sep) + content )
-    #                       + closer )
-    ret = pyparsing.Group( (opener + closer) |
-                           (opener + pyparsing.ZeroOrMore(parameter_sep) + parameter + closer) )
-    return ret
 
 
 # Define default value if a named token has not been found, and thus not been set
@@ -94,6 +51,7 @@ StringAddHandlerParams = 'ADD_HANDLER_PARAMS'
 StringReference = 'REFERENCE'
 StringDefine = 'DEFINE'
 StringEnum = 'ENUM'
+StringBitMask = 'BITMASK'
 
 # Originally, the keyword was 'IMPORT', but this was changed to 'USETYPES' to better convey what
 # actually happens when importing a .api file.  Within the implementation, this is still called
@@ -108,6 +66,7 @@ KeywordAddHandlerParams = pyparsing.Keyword(StringAddHandlerParams)
 KeywordReference = pyparsing.Keyword(StringReference)
 KeywordDefine = pyparsing.Keyword(StringDefine)
 KeywordEnum = pyparsing.Keyword(StringEnum)
+KeywordBitMask = pyparsing.Keyword(StringBitMask)
 KeywordImport = pyparsing.Keyword(StringImport)
 
 # List of valid keywords, used when handling parser errors in FailFunc()
@@ -118,6 +77,7 @@ KeywordList = [ StringFunction,
                 StringReference,
                 StringDefine,
                 StringEnum,
+                StringBitMask,
                 StringImport]
 
 # Define numbers
@@ -134,6 +94,11 @@ RangeExpr = ( pyparsing.Optional( (TypeIdentifier | Number)('minSize') + DotDot 
 
 
 
+#-----------------------------------
+# Utility functions
+#-----------------------------------
+
+
 #
 # Get the keyword at the start of the string.  This could either be:
 #  - a sequence of all-cap chars, along with underscore, or if not found,
@@ -148,6 +113,47 @@ def GetKeyword(s):
         keyword = s.split(None, 1)[0]
 
     return keyword
+
+
+
+def PrintContext(lines, lineNum, numContext):
+    # Line numbers start at 1
+    numberedLines = [ (i+1, l) for i, l in enumerate(lines) ]
+
+    startIndex = lineNum-numContext-1
+    if startIndex < 0:
+        startIndex = 0
+
+    endIndex = lineNum+numContext
+    if endIndex > len(numberedLines):
+        endIndex = len(numberedLines)
+
+    for n, l in numberedLines[startIndex:endIndex]:
+        prefix = ' '*3 if (n != lineNum) else '-> '
+        print '%s%05i : %s' % (prefix, n, l)
+
+
+
+def PrintErrorMessage(text, lineNum, col, errMsg):
+    lines = text.splitlines()
+
+    # lineNum could be more than number of lines, if the error is at the end of the file,
+    # so adjust it to the last line in this case.
+    if lineNum > len(lines):
+        lineNum = len(lines)
+
+    # User friendlier (hopefully) error message, with a few lines of context
+    divider = '-'*60
+    print "Parsing Error near line %s, column %s" % (lineNum, col)
+    print divider
+    print errMsg
+    print divider
+    PrintContext(lines, lineNum, 3)
+    print divider
+
+    # The GCC style error for those IDEs that understand it
+    print "%s:%s:%s: error: %s" % (CurrentFileName, lineNum, col, errMsg)
+
 
 
 #
@@ -211,6 +217,9 @@ def FailFunc(s, loc, expr, err, expected=''):
         #print '*'*80
         return
 
+    # Set default error message; may get overwritten below
+    errMsg = err.msg
+
     # If it is a valid keyword but not the expected one, then this is not an error.
     if keyword in KeywordList:
         if keyword != expected:
@@ -220,8 +229,11 @@ def FailFunc(s, loc, expr, err, expected=''):
             return
 
         # A valid failure/error has occurred.
-        # If the err data is valid, it will give a more accurate location.
-        if err:
+        # If the 'err' data is valid, it will give a more accurate location, as long as the 'loc'
+        # attribute has been set.  For exceptions generated within this file, 'loc' is not set.
+        # The default value of 'loc' is zero, so checking against zero should be a valid way of
+        # determining if it was set, since we should never get here if 'loc' is legitimately zero.
+        if err and err.loc != 0:
             lineno = err.lineno
             col = err.col
         else:
@@ -233,20 +245,84 @@ def FailFunc(s, loc, expr, err, expected=''):
         #print "Unknown keyword '%s'" % keyword
         lineno = pyparsing.lineno(loc, s)
         col = pyparsing.col(loc, s)
-        err = '** Unknown keyword "%s" (at char %s), (line:%s, col:%s) **' % (keyword, loc, lineno, col)
+        errMsg = "unknown keyword '%s'" % keyword
 
 
-    print "Parsing Error near line %s, column %s" % (lineno, col)
-    print '-'*60
-    print err
-    print '-'*60
-    print '\n'.join( s.splitlines()[lineno-1:] )
-
-    # No need to continue; stop parsing now
-    # todo: Got some odd behaviour.  This exception didn't actually stop the parsing when
-    #       trying to handle HANDLER definition errors.  Use just a regular exit instead.
-    #raise pyparsing.ParseFatalException('Stop Parsing')
+    # It is a real error, so print out the error message, and exit right away
+    PrintErrorMessage(s, lineno, col, errMsg)
     sys.exit(1)
+
+
+
+#
+# Wrapper around codeTypes.EvaluateDefinition, with exception handling
+#
+def EvaluateDefinition(expr):
+
+    try:
+        result = codeTypes.EvaluateDefinition(expr)
+
+    except NameError as error:
+        raise pyparsing.ParseException("name error in expression '%s' : %s" % (expr.strip(), error))
+
+    except SyntaxError as error:
+        raise pyparsing.ParseException("syntax error in expression '%s'" % expr.strip())
+
+    except:
+        raise pyparsing.ParseException("unknown error in expression '%s'" % expr.strip())
+
+    return result
+
+
+
+def ProcessComment(tokens):
+    #print tokens
+    parm = tokens[0]
+    if len(tokens) > 1:
+        # todo: would it be better to return a list of comment lines here?
+        parm.comment = '\n'.join(tokens[1:])
+    return parm
+
+
+
+def MakeListExpr(content, opener='(', closer=')', allowTrailingSep=False):
+    """
+    Based on pyparsing.nestedExpr, but intended for matching a list of expressions, such as the
+    parameter list of a function, or a list of enumerated values.  Each expression in the list
+    can also have associated comments, using a doxygen-like style.
+
+    Most of the original functionality has been stripped out, in favour of simplying the expression,
+    since nesting is not actually needed.  This is also similar to the delimitedList, but that can't
+    be used because of the need to include comments.
+    """
+
+    if isinstance(opener, basestring):
+        opener = pyparsing.Literal(opener).suppress()
+    if isinstance(closer, basestring):
+        closer = pyparsing.Literal(closer).suppress()
+    separator = pyparsing.Literal(',').suppress()
+
+    # todo: should use doxygenComment instead of pyparsing.cppStyleComment here?
+    # Handle the separator between parameter expressions
+    parameter_sep = content + separator + pyparsing.ZeroOrMore(pyparsing.cppStyleComment)
+    parameter_sep.setParseAction(ProcessComment)
+
+    # The last parameter does not have any trailing separator, but if a trailing separator is
+    # allowed, this last parameter is optional.
+    parameter = content + pyparsing.ZeroOrMore(pyparsing.cppStyleComment)
+    parameter.setParseAction(ProcessComment)
+    if allowTrailingSep:
+        parameter = pyparsing.Optional(parameter)
+
+    ret = pyparsing.Group( (opener + closer) |
+                           (opener + pyparsing.ZeroOrMore(parameter_sep) + parameter + closer) )
+    return ret
+
+
+
+#-------------------------------------------------------
+# Parser expressions and associated processing functions
+#-------------------------------------------------------
 
 
 def ProcessSimpleParm(tokens):
@@ -290,9 +366,9 @@ def ProcessMaxMinSize(tokens):
     # One or both of maxSize and minSize could be a previously DEFINEd value, in which case the
     # value would be a string giving the name.  This needs to be evaluated to get the actual value.
     if isinstance(maxSize, basestring):
-        maxSize = codeTypes.EvaluateDefinition(maxSize)
+        maxSize = EvaluateDefinition(maxSize)
     if isinstance(minSize, basestring):
-        minSize = codeTypes.EvaluateDefinition(minSize)
+        minSize = EvaluateDefinition(minSize)
 
     return maxSize, minSize
 
@@ -469,29 +545,35 @@ def MakeRefExpr():
 def ProcessDefine(tokens):
     #print tokens
 
-    # todo: Some additional checks should probably be done on value ...
-    if tokens.value == tokens.expression:
-        #print 'got expr', tokens.value
-        tokens.value = codeTypes.EvaluateDefinition(tokens.value)
-
     r = codeTypes.DefineData(tokens.name,
                              tokens.value,
                              tokens.comment)
 
     return r
 
+def ProcessDefineValue(tokens):
+    #print tokens
+
+    # todo: Some additional checks could probably be done on value ...
+    if tokens.value == tokens.expression:
+        #print 'In ProcessValue, got expr', tokens.value
+        tokens.value = EvaluateDefinition(tokens.value)
+
+    return tokens.value
+
 def MakeDefineExpr():
+
+    # The defined value can either be a string (double quotes), a character (single quotes)
+    # or an expression that should evaluate to a number.  The expression can contain
+    # previously DEFINEd symbols, and will be evaluated immediately.
+    valueExpr = ( pyparsing.quotedString | pyparsing.Regex(r"[^;]+")("expression") )("value")
+    valueExpr.setParseAction(ProcessDefineValue)
 
     all = ( pyparsing.Optional(pyparsing.cStyleComment)("comment")
             + KeywordDefine
             + Identifier("name")
             + Equal
-
-            # The defined value can either be a string (double quotes), a character (single quotes)
-            # or an expression that should evaluate to a number.  The expression can contain
-            # previously DEFINEd symbols, and will be evaluated immediately.
-            + ( pyparsing.quotedString | pyparsing.Regex(r"[^;]+")("expression") )("value")
-
+            + valueExpr
             + Semicolon )
 
     all.setParseAction(ProcessDefine)
@@ -501,23 +583,23 @@ def MakeDefineExpr():
 
 
 
-def ProcessEnumValue(tokens):
+def ProcessEnumMember(tokens):
     #print tokens
 
-    r = codeTypes.EnumValue(tokens.name,
-                            tokens.comment)
+    r = codeTypes.EnumMemberData(tokens.name,
+                                 tokens.comment)
 
     return r
 
-EnumValue = TypeIdentifier('name')
-EnumValue.setParseAction(ProcessEnumValue)
+EnumMember = Identifier('name')
+EnumMember.setParseAction(ProcessEnumMember)
 
 
 def ProcessEnum(tokens):
     #print tokens
 
     r = codeTypes.EnumData(tokens.name,
-                           tokens.valueList,
+                           tokens.memberList,
                            tokens.comment)
 
     return r
@@ -527,11 +609,34 @@ def MakeEnumExpr():
     all = ( pyparsing.Optional(pyparsing.cStyleComment)("comment")
             + KeywordEnum
             + Identifier("name")
-            + MakeListExpr(EnumValue, opener='{', closer='}')("valueList")
+            + MakeListExpr(EnumMember, opener='{', closer='}', allowTrailingSep=True)("memberList")
             + Semicolon )
 
     all.setParseAction(ProcessEnum)
     all.setFailAction(functools.partial(FailFunc, expected=StringEnum))
+
+    return all
+
+
+def ProcessBitMask(tokens):
+    #print tokens
+
+    r = codeTypes.BitMaskData(tokens.name,
+                              tokens.memberList,
+                              tokens.comment)
+
+    return r
+
+def MakeBitMaskExpr():
+
+    all = ( pyparsing.Optional(pyparsing.cStyleComment)("comment")
+            + KeywordBitMask
+            + Identifier("name")
+            + MakeListExpr(EnumMember, opener='{', closer='}', allowTrailingSep=True)("memberList")
+            + Semicolon )
+
+    all.setParseAction(ProcessBitMask)
+    all.setFailAction(functools.partial(FailFunc, expected=StringBitMask))
 
     return all
 
@@ -558,7 +663,7 @@ def MakeImportExpr(useFailAction=True):
     return all
 
 
-def processDoxygen(tokens):
+def ProcessDoxygen(tokens):
 
     # If the comment is being replaced by blank lines, need to know how many blank lines
     # to use.  This is necessary so that the line numbers match up for any parsing error
@@ -577,23 +682,28 @@ def processDoxygen(tokens):
 # Get the valid import statements, so that the imported files can be processed before the main file.
 # Any errors in the import statements will be caught during the normal processing of the main file.
 #
-def getImportList(codeDefn):
+def GetImportList(codeDefn):
     # Create the IMPORT expression, but ignore IMPORT statements in comments.
     importExpr = MakeImportExpr(useFailAction=False)
     importExpr.ignore(pyparsing.cppStyleComment)
 
-    # Exract valid import statements, and return the result as a simple list
+    # Extract valid import statements, and return the result as a simple list
     result = importExpr.searchString(codeDefn)
-    result = [ r[0] for r in result ]
+    result = [ r[0].name for r in result ]
     return result
 
 
-def parseCode(codeDefn):
+def ParseCode(codeDefn, filename):
+    # The file name is used when printing error messages
+    global CurrentFileName
+    CurrentFileName = filename
+
     funcExpr = MakeFuncExpr()
     handlerClassExpr = MakeHandlerClassExpr()
     refExpr = MakeRefExpr()
     defineExpr = MakeDefineExpr()
     enumExpr = MakeEnumExpr()
+    bitMaskExpr = MakeBitMaskExpr()
     importExpr = MakeImportExpr()
 
     # Define an expression containing all keywords that can be preceded by a doxygen-style comment.
@@ -604,7 +714,8 @@ def parseCode(codeDefn):
                  | KeywordHandler
                  | KeywordReference
                  | KeywordDefine
-                 | KeywordEnum )
+                 | KeywordEnum
+                 | KeywordBitMask )
 
     # The expressions are applied in the order listed, so give the more common expressions first.
     allcode = ( pyparsing.ZeroOrMore(pyparsing.cStyleComment + pyparsing.NotAny(keywords))
@@ -613,24 +724,22 @@ def parseCode(codeDefn):
                                         | refExpr
                                         | defineExpr
                                         | enumExpr
+                                        | bitMaskExpr
                                         | importExpr ) )
 
     # Pre-process to remove all comments except for doxygen comments.
-    pyparsing.cppStyleComment.setParseAction(processDoxygen)
+    pyparsing.cppStyleComment.setParseAction(ProcessDoxygen)
     codeDefn = pyparsing.cppStyleComment.transformString(codeDefn)
 
+    # Error handling is done in FailFunc() now.  However, just in case a parser exception slips
+    # through, handle it here, although the error message and/or location may not be as accurate
+    # as when handled by FailFunc().  In the rare case that another, unexpected, exception happens,
+    # then just let it crash the program so that we get a traceback.
     try:
         resultList =  allcode.parseString(codeDefn, parseAll=True)
-    except pyparsing.ParseException, error:
-        print "ERROR: stopped parsing at line %s, column %s" % (error.lineno, error.col)
-        print '-'*60
-        print error
-        print '-'*60
-        print '\n'.join( codeDefn.splitlines()[error.lineno-1:] )
-        sys.exit(1)
-    except pyparsing.ParseFatalException, error:
-        # Error message has already been printed out before this exception was raised, so no
-        # need to do anything further here.
+    except pyparsing.ParseException as error:
+        print "** Unexpected ParseException occurred **"
+        PrintErrorMessage(codeDefn, error.lineno, error.col, error.msg)
         sys.exit(1)
 
     # Need to separate the header comments from the code in the raw resultList, and return

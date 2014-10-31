@@ -1,6 +1,6 @@
 #!/bin/bash
 
-LEGATO_ROOT="$1"
+export LEGATO_ROOT="$1"
 
 # If the legato root directory was not specified on the command line, try to derive it from the
 # path of this script file (which is found in $0).
@@ -18,14 +18,15 @@ then
 
     # The legato root directory is most likely the parent directory of the directory in which
     # this script file resides, so strip off the script file name and one directory name.
-    LEGATO_ROOT=$(dirname $(dirname "$ABS_PATH_TO_THIS_SCRIPT"))
+    export LEGATO_ROOT=$(dirname $(dirname "$ABS_PATH_TO_THIS_SCRIPT"))
 fi
 echo "Using legato framework found under '$LEGATO_ROOT'"
 
 # Start a sub-shell and tell it to change to the legato root, source the file that sets up
 # the legato environment, and start interpreting stdin interactively.
 bash -i <<EOF
-source "$LEGATO_ROOT/bin/configlegatoenv"
+export PATH=$LEGATO_ROOT/bin:$PATH:$LEGATO_ROOT/build/localhost/bin
+source $LEGATO_ROOT/framework/tools/scripts/configToolchainDirEnvVars
 exec <> /dev/tty
 EOF
 

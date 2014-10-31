@@ -219,29 +219,31 @@ static le_result_t GetServerUid
     char userName[LIMIT_MAX_USER_NAME_BYTES];
 
     // If an app name is present in the binding config,
-    if (le_cfg_NodeExists(i, "server/app"))
+    if (le_cfg_NodeExists(i, "app"))
     {
-        if (le_cfg_NodeExists(i, "server/user"))
+        // Make sure there isn't also a user name.
+        if (le_cfg_NodeExists(i, "user"))
         {
             char path[LIMIT_MAX_PATH_BYTES];
-            le_cfg_GetPath(i, "server", path, sizeof(path));
+            le_cfg_GetPath(i, "", path, sizeof(path));
             LE_CRIT("Both server user and app nodes appear under binding (@ %s)", path);
             return LE_DUPLICATE;
         }
 
+        // Get the app name.
         char appName[LIMIT_MAX_APP_NAME_BYTES];
-        result = le_cfg_GetString(i, "server/app", appName, sizeof(appName), "");
+        result = le_cfg_GetString(i, "app", appName, sizeof(appName), "");
         if (result != LE_OK)
         {
             char path[LIMIT_MAX_PATH_BYTES];
-            le_cfg_GetPath(i, "server/app", path, sizeof(path));
+            le_cfg_GetPath(i, "app", path, sizeof(path));
             LE_CRIT("Server app name too big (@ %s)", path);
             return result;
         }
         if (appName[0] == '\0')
         {
             char path[LIMIT_MAX_PATH_BYTES];
-            le_cfg_GetPath(i, "server/app", path, sizeof(path));
+            le_cfg_GetPath(i, "app", path, sizeof(path));
             LE_CRIT("Server app name empty (@ %s)", path);
             return LE_NOT_FOUND;
         }
@@ -265,24 +267,31 @@ static le_result_t GetServerUid
         if (result != LE_OK)
         {
             LE_CRIT("Failed to convert app name '%s' into a user name.", appName);
+
             return result;
         }
     }
+    // If a server app name is not present in the binding config,
     else
     {
-        result = le_cfg_GetString(i, "server/user", userName, sizeof(userName), "");
+        // Get the server user name instead.
+        result = le_cfg_GetString(i, "user", userName, sizeof(userName), "");
         if (result != LE_OK)
         {
             char path[LIMIT_MAX_PATH_BYTES];
-            le_cfg_GetPath(i, "server/user", path, sizeof(path));
+
+            le_cfg_GetPath(i, "user", path, sizeof(path));
             LE_CRIT("Server user name too big (@ %s)", path);
+
             return result;
         }
         if (userName[0] == '\0')
         {
             char path[LIMIT_MAX_PATH_BYTES];
-            le_cfg_GetPath(i, "server", path, sizeof(path));
-            LE_CRIT("Server user name missing (@ %s)", path);
+
+            le_cfg_GetPath(i, "", path, sizeof(path));
+            LE_CRIT("Server user name or app name missing (@ %s)", path);
+
             return LE_NOT_FOUND;
         }
     }
@@ -291,12 +300,24 @@ static le_result_t GetServerUid
     result = user_GetUid(userName, uidPtr);
     if (result != LE_OK)
     {
-        char path[LIMIT_MAX_PATH_BYTES];
-        le_cfg_GetPath(i, "server", path, sizeof(path));
-        LE_CRIT("Couldn't convert server user name '%s' to UID (%s @ %s)",
-                userName,
-                LE_RESULT_TXT(result),
-                path);
+        // Note: This can happen if the server application isn't installed yet.
+        //       When the server application is installed, sdir load will be run
+        //       again and the bindings will be correctly set up at that time.
+        if (strncmp(userName, "app", 3) == 0)
+        {
+            LE_DEBUG("Couldn't get UID for application '%s'.  Perhaps it is not installed yet?",
+                     userName + 3);
+        }
+        else
+        {
+            char path[LIMIT_MAX_PATH_BYTES];
+            le_cfg_GetPath(i, "", path, sizeof(path));
+            LE_CRIT("Couldn't convert server user name '%s' to UID (%s @ %s)",
+                    userName,
+                    LE_RESULT_TXT(result),
+                    path);
+        }
+
         return result;
     }
 
@@ -337,23 +358,6 @@ static void SendBindRequest
         return;
     }
 
-    // Fetch the protocol ID.
-    result = le_cfg_GetString(i, "protocol", msgPtr->protocolId, sizeof(msgPtr->protocolId), "");
-    if (result != LE_OK)
-    {
-        char path[LIMIT_MAX_PATH_BYTES];
-        le_cfg_GetPath(i, "protocol", path, sizeof(path));
-        LE_CRIT("Protocol ID too big (@ %s)", path);
-        return;
-    }
-    if (msgPtr->protocolId[0] == '\0')
-    {
-        char path[LIMIT_MAX_PATH_BYTES];
-        le_cfg_GetPath(i, "protocol", path, sizeof(path));
-        LE_CRIT("Protocol ID missing (@ %s)", path);
-        return;
-    }
-
     // Fetch the server's user ID.
     result = GetServerUid(i, &msgPtr->server);
     if (result != LE_OK)
@@ -363,21 +367,21 @@ static void SendBindRequest
 
     // Fetch the server's service name.
     result = le_cfg_GetString(i,
-                              "server/interface",
+                              "interface",
                               msgPtr->serverServiceName,
                               sizeof(msgPtr->serverServiceName),
                               "");
     if (result != LE_OK)
     {
         char path[LIMIT_MAX_PATH_BYTES];
-        le_cfg_GetPath(i, "server/interface", path, sizeof(path));
+        le_cfg_GetPath(i, "interface", path, sizeof(path));
         LE_CRIT("Server interface name too big (@ %s)", path);
         return;
     }
     if (msgPtr->serverServiceName[0] == '\0')
     {
         char path[LIMIT_MAX_PATH_BYTES];
-        le_cfg_GetPath(i, "server/interface", path, sizeof(path));
+        le_cfg_GetPath(i, "interface", path, sizeof(path));
         LE_CRIT("Server interface name missing (@ %s)", path);
         return;
     }
@@ -456,6 +460,17 @@ static le_result_t GetAppUid
         return LE_OVERFLOW;
     }
 
+    // If this is an "unsandboxed" app, use the root user ID.
+    if (le_cfg_GetBool(i, "sandboxed", true) == false)
+    {
+        char path[256];
+        le_cfg_GetPath(i, "", path, sizeof(path));
+        LE_DEBUG("'%s' = <root>", path);
+
+        *uidPtr = 0;
+        return LE_OK;
+    }
+
     // Convert the app name into a user name by prefixing it with "app".
     char userName[LIMIT_MAX_USER_NAME_BYTES] = "app";
     result = le_utf8_Append(userName, appName, sizeof(userName), NULL);
@@ -496,7 +511,7 @@ static void Load
     }
 
     // Connect to the Configuration API server.
-    le_cfg_StartClient("le_cfg");
+    le_cfg_ConnectService();
 
     // Initialize the "User API".
     user_Init();

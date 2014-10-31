@@ -1,8 +1,13 @@
-import:
-
-    le_cfg.api      [manual-start]
-    le_cfgAdmin.api [manual-start]
+requires:
+{
+    api:
+    {
+        le_cfg.api      [manual-start]
+        le_cfgAdmin.api [manual-start]
+    }
+}
 
 sources:
-
+{
     gdbCfg.c
+}

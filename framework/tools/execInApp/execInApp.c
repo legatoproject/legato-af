@@ -418,7 +418,7 @@ static void GetProcArgsList
 //--------------------------------------------------------------------------------------------------
 static void GetAppIds
 (
-    app_Ref_t appRef,               ///< [IN] App ref.
+    app_Ref_t appRef,               ///< [IN] App ref.
     const char* appNamePtr,         ///< [IN] App name.
     uid_t* uidPtr,                  ///< [OUT] Location to store the app's user ID.
     gid_t* gidPtr,                  ///< [OUT] Location to store the app's primary group ID.
@@ -527,7 +527,7 @@ COMPONENT_INIT
     char appName[LIMIT_MAX_APP_NAME_BYTES];
     GetAppName(appName, sizeof(appName));
 
-    le_sup_state_StartClient(LE_SUP_STATE_API_NAME);
+    le_sup_state_ConnectService();
 
     le_sup_state_State_t appState;
     appState = le_sup_state_GetAppState(appName);

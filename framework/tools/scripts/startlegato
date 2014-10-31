@@ -107,6 +107,32 @@ else
     echo "WARNING: Log Control Daemon was already running." 1>&2
 fi
 
+# If the Config Tree isn't already running, start it.
+if ! pgrep configTree > /dev/null
+then
+    if [ "$LOG_FILE" != "" ]
+    then
+        $LEGATO_ROOT/build/$TARGET/bin/configTree 2>> "$LOG_FILE" &
+    else
+        $LEGATO_ROOT/build/$TARGET/bin/configTree &
+    fi
+
+    CONFIG_TREE_PID=$!
+
+    if ! kill -0 $CONFIG_TREE_PID 2> /dev/null
+    then
+        echo "***ERROR: Failed to start Config Tree." 1>&2
+        exit 2
+    fi
+
+    # Wait for start-up log spam to empty out.
+    sleep 0.2
+
+    STARTED=true
+else
+    echo "WARNING: Config Tree was already running." 1>&2
+fi
+
 if [ $STARTED ]
 then
     echo "Started."

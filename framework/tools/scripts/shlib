@@ -1,0 +1,62 @@
+# source this for functions only
+
+commandName=$(basename $0)
+
+# Set TARGET_IP based on either argument $1 or environment variable $DEST_IP
+SetTargetIP()
+{
+    TARGET_IP=$1
+    
+    # Check if the argument is provided and can be pinged.
+    if ! [ $TARGET_IP ]
+    then
+        if ! [ $DEST_IP ]
+        then
+            echo "***ERROR: Destination IP address not available."
+            return 1
+        fi
+
+        TARGET_IP=$DEST_IP
+    fi
+
+    if ! ping -c 1 -w 1 $TARGET_IP > /dev/null
+    then
+        echo "***ERROR: Device address $TARGET_IP seems to be unreachable."
+        if [ "$(type -t PrintUsage)" == "function" ];then
+            PrintUsage
+        fi
+        exit 1
+    fi
+    return 0
+}
+
+# Shared (Master) ssh
+# Socket name could be anything but should be unique for each target
+SSHSOCKET=""
+StartFastSsh()
+{
+    if [ x"$DEST_IP" = "x" ]; then
+        echo "StartFastSsh called before SetTargetIP"
+        exit 1
+    fi
+# more checking should be done for fail of this call and see if there is a stale ControlPath
+# from a bad close, e.g.
+    SSHSOCKET=~/.ssh/root@$DEST_IP
+    ssh -M -f -N -o ControlPath=$SSHSOCKET root@$TARGET_IP
+}
+
+FastSsh()
+{
+    ssh -o ControlPath=$SSHSOCKET "$@"
+}
+
+FastScp()
+{
+    scp -o ControlPath=$SSHSOCKET "$@"
+}
+
+# Close the master connection
+EndFastSsh()
+{
+    ssh -S $SSHSOCKET -O exit root@$TARGET_IP
+}
