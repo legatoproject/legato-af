@@ -1154,7 +1154,7 @@ static proc_FaultAction_t GetFaultAction
  *          WATCHDOG_ACTION_HANDLED   - no further action is required, it is already handled.
  */
 //--------------------------------------------------------------------------------------------------
-proc_FaultAction_t proc_GetWatchdogAction
+wdog_action_WatchdogAction_t proc_GetWatchdogAction
 (
     proc_Ref_t procRef             ///< [IN] The process reference.
 )

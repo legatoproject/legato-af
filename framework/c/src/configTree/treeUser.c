@@ -512,8 +512,8 @@ void tu_TerminateConfigClient
 
     LE_EMERG("A fatal error occured.  Killing config sesssion <%p> for user %s, <%u>.  Reason: %s",
              sessionRef,
-             userRef->userName,
-             userRef->userId,
+             tu_GetUserName(userRef),
+             tu_GetUserId(userRef),
              killMessage);
 
     le_msg_CloseSession(sessionRef);
@@ -538,8 +538,8 @@ void tu_TerminateConfigAdminClient
 
     LE_EMERG("A fatal error occured.  Killing admin sesssion <%p> for user %s, <%u>.  Reason: %s",
              sessionRef,
-             userRef->userName,
-             userRef->userId,
+             tu_GetUserName(userRef),
+             tu_GetUserId(userRef),
              killMessage);
 
     le_msg_CloseSession(sessionRef);

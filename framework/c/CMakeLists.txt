@@ -26,20 +26,19 @@ include_directories(src/supervisor)
 include_directories(src/serviceDirectory)
 
 # Definitions
-set(LEGATO_FRAMEWORK_NICE_LEVEL -19)
-set(LE_RUNTIME_DIR /tmp/legato/)
-set(LE_SVCDIR_SERVER_SOCKET_NAME ${LE_RUNTIME_DIR}serviceDirectoryServer)
-set(LE_SVCDIR_CLIENT_SOCKET_NAME ${LE_RUNTIME_DIR}serviceDirectoryClient)
+set(LEGATO_FRAMEWORK_NICE_LEVEL "$ENV{LEGATO_FRAMEWORK_NICE_LEVEL}")
+set(LE_RUNTIME_DIR "$ENV{LE_RUNTIME_DIR}")
 
-add_definitions(-DLEGATO_FRAMEWORK_NICE_LEVEL=${LEGATO_FRAMEWORK_NICE_LEVEL})
-add_definitions(-DLE_RUNTIME_DIR=${LE_RUNTIME_DIR})
+set(LE_SVCDIR_SERVER_SOCKET_NAME "$ENV{LE_SVCDIR_SERVER_SOCKET_NAME}")
 add_definitions(-DLE_SVCDIR_SERVER_SOCKET_NAME="${LE_SVCDIR_SERVER_SOCKET_NAME}")
+
+set(LE_SVCDIR_CLIENT_SOCKET_NAME "$ENV{LE_SVCDIR_CLIENT_SOCKET_NAME}")
 add_definitions(-DLE_SVCDIR_CLIENT_SOCKET_NAME="${LE_SVCDIR_CLIENT_SOCKET_NAME}")
+
 
 # Subdirectories
 add_subdirectory(liblegato)
 add_subdirectory(src/logDaemon)
-add_subdirectory(src/security)
 add_subdirectory(src/supervisor)
 add_subdirectory(src/serviceDirectory)
 add_subdirectory(src/configTree)

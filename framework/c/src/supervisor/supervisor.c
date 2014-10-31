@@ -158,54 +158,10 @@
  *
  * @section c_sup_configLayout Application Configuration
  *
- * All application configuration settings are stored in the Legato Configuration Database.  The
- * database is structured as follows:
+ * All application configuration settings are stored in the Legato Configuration Database.
+ * See @ref frameworkDB.
  *
- * apps
- *      appName1
- *          sandboxed (true, false)
- *          defer launch (true, false)
- *          fileSystemSizeLimit (integer)
- *          totalPosixMsgQueueSizeLimit (integer)
- *          numProcessesLimit (integer)
- *          rtSignalQueueSizeLimit (integer)
- *          groups
- *              groupName0
- *              groupName1
- *              ...
- *              groupNameN
- *          files
- *              0
- *                  src (string)
- *                  dest (string)
- *              1
- *                  src (string)
- *                  dest (string)
- *              ...
- *              N
- *          procs
- *              procName1
- *                  virtualMemoryLimit (integer)
- *                  coreDumpFileSizeLimit (integer)
- *                  maxFileSizeLimit (integer)
- *                  memLockSizeLimit (integer)
- *                  numFileDescriptorsLimit (integer)
- *              priority (string)
- *              faultAction (string)
- *              args
- *                  0 (string) -> must contain the executable path relative to the sandbox root.
- *                  1 (string)
- *                  ...
- *                  N (string)
- *              envVars
- *                  varName0
- *                      varValue0 (string)
- *                  varName1
- *                      varValue1 (string)
- *                  ...
- *                  varNameN
- *                      varValueN (string)
- *
+ * <hr>
  *
  * Copyright (C) Sierra Wireless, Inc. 2013 - 2014. Use of this work is subject to license.
  */
@@ -231,18 +187,18 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * The name of the node in the config tree that contains the applications defer launch value, used
+ * The name of the node in the config tree that contains the applications startManual value, used
  * to determine whether the application should be launched on system startup or if it should be
  * deferred for manual launch later.
  *
- * The defer value is either "yes" or "no".  If "yes" the application will be deferred and will not
- * be launched on startup.
+ * The startManual value is either true or false.  If true the application will not be launched on
+ * startup.
  *
- * If this entry in the config tree is missing or is empty, "no" will be taken as the default
- * deferLaunch value.
+ * If this entry in the config tree is missing or is empty, automatic start will be used as the
+ * default.
  */
 //--------------------------------------------------------------------------------------------------
-#define CFG_NODE_DEFER_LAUNCH                   "deferLaunch"
+#define CFG_NODE_START_MANUAL               "startManual"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -507,7 +463,7 @@ static int Daemonize(void)
     LE_FATAL_IF( (freopen("/dev/null", "w", stdout) == NULL) ||
                  (freopen("/dev/null", "r", stdin) == NULL),
                 "Failed to redirect stdout and stdin to /dev/null.  %m.");
-                
+
     // Return the write end of the pipe to be closed when the framework is ready for use.
     return syncPipeFd[1];
 }
@@ -798,7 +754,7 @@ static void LaunchAllStartupApps
     do
     {
         // Check the defer launch for this application.
-        if (!le_cfg_GetBool(appCfg, CFG_NODE_DEFER_LAUNCH, false))
+        if (!le_cfg_GetBool(appCfg, CFG_NODE_START_MANUAL, false))
         {
             // Get the app name.
             char appName[LIMIT_MAX_APP_NAME_BYTES];
@@ -1076,12 +1032,12 @@ static void StartFramework
     fd_Close(syncFd);
 
     LE_DEBUG("---- Initializing the configuration API ----");
-    le_cfg_StartClient("le_cfg");
+    le_cfg_ConnectService();
 
     LE_DEBUG("---- Initializing the Supervisor's APIs ----");
-    le_sup_ctrl_StartServer(LE_SUP_CTRL_API_NAME);
-    le_sup_wdog_StartServer(LE_SUP_WDOG_API_NAME);
-    le_sup_state_StartServer(LE_SUP_STATE_API_NAME);
+    le_sup_ctrl_AdvertiseService();
+    le_sup_wdog_AdvertiseService();
+    le_sup_state_AdvertiseService();
 
     // Launch all user apps in the config tree that should be launched on system startup.
     LaunchAllStartupApps();
@@ -1506,7 +1462,7 @@ void le_sup_ctrl_StopLegato
     else
     {
         // Disconnect ourselves from the config db.
-        le_cfg_StopClient();
+        le_cfg_DisconnectService();
 
         // Save the command reference to use in the response later.
         StopLegatoCmdRef = _cmdRef;

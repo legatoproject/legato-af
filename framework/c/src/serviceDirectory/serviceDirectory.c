@@ -15,9 +15,9 @@
  *
  * Implementation of the Service Directory daemon.  This daemon keeps track of what messaging
  * services exist in the system, what clients are currently waiting for services that don't yet
- * exist, and what pre-configured bindings exist between clients and services.
+ * exist, and what bindings exist between clients and services.
  *
- * The Service Directory implements @ref serviceDirectoryProtocol.h.
+ * The Service Directory implements @ref serviceDirectoryProtocol.h and @ref sdirToolProtocol.h.
  *
  *
  * @section sd_accessControl        Binding and Access Control
@@ -25,11 +25,6 @@
  * The Service Directory is a key component in the implementation of security within the Legato
  * framework.  No two sandboxed applications can access each others files, sockets, shared memory,
  * etc. directly until they have connected to each other through the Service Directory.
- *
- * The Service Directory grants or prohibits IPC connections between servers and clients based
- * on the configuration of IPC "bindings" (see @ref sd_accessControl).  Bindings can also be
- * used to connect (bind) a client "import" to a server "export" that has a different service
- * instance name.
  *
  * The Service Directory essentially creates namespaces for IPC services based on user IDs.
  * Clients in one namespace cannot see the services offered by services in other namespaces
@@ -42,6 +37,10 @@
  * namespace (running under the same effective user ID).  If a client attempts to open a service
  * and the Service Directory doesn't find a binding for that client interface, it will assume that
  * a server within the same namespace will eventually advertise that service (if it hasn't already).
+ *
+ * Note that bindings can also be used to connect (bind) a client interface to a server interface
+ * that has a different service instance name, so bindings can be useful even when the client and
+ * server are running with the same UID.
  *
  *
  * @section sd_toolService          "sdir" Tool
@@ -60,96 +59,93 @@
  * The Service Directory's internal (RAM) data structures look like this:
  *
 @verbatim
-
-                    +----------------------------------+<------------------------------------------+
-                    | [1..1]                           ^                                           |
-                    v                                  |                                           |
-User List ------> User --+---> Name                    |                                           |
-            [0..n]  ^    |                    [0..n]   |                                           |
-                    |    +---> Binding List ------> Binding -----> Service Name                    |
-                    |    |                             |[0..n]                                     |
-                    |    |                             |                                           |
-                    |    |                             |                                           |
-                    |    |                  [0..n]     v[1..1]                                     |
-                    |    +---> Service List ------> Service --------+---> Service Name             |
-                    |                                |   ^[1..1]    |                              |
-                    +--------------------------------+   |          +---> Protocol ID    +-------->+
-                                                         |          |                    |         ^
-                                                         |          +---> Server Connection ----+  |
-                                                         |          |                           |  |
-                                                         |          +---> Waiting Clients List  |  |
-                                                         |                       |              |  |
-                                                         |                       |              |  |
-                                                         |                       v [0..n]       |  |
-                                                         +<-------------- Client Connection ----|--+
-                                                         ^                                      |
-                                                         |                                      |
-                                                         +--------------------------------------+
+                    +-----------------------------+--------+--------+
+                    |                             |        |        |
+                    v                             |        |        |
+User List ------> User --+---> Name               |        |        |
+            [0..n]       |                        |        |        |
+                         |                        |        |        |
+                         +---> Service --*---> Server      |        |
+                         |     List            Connection  |        |
+                         |                        ^        |        |
+                         |                        |        |        |
+                         +---> Binding --*---> Binding ----+        |
+                         |     List               |                 |
+                         |                        v                 |
+                         |                     Waiting              |
+                         |                     Clients              |
+                         |                     List                 |
+                         |                        |                 |
+                         |                        *                 |
+                         |                        |                 |
+                         |                        v                 |
+                         +---> Unbound ---*--> Client --------------+
+                               Clients         Connection
+                               List
 @endverbatim
  *
  * The User object represents a single user account.  It has a unique ID which is used as the key
- * to find it in the User List.  Each User also has a list of Binding objects, which represent
- * bindings between a service name in the client and an actual service.  Each User also has a list
- * of services that it offers.
+ * to find it in the User List.  Each User also has
+ *  - list of bindings between a client-side service name and a server's user name and service name.
+ *  - list of services that it offers, and
+ *  - list of client connections that are waiting for a binding to be created for them.
+ *
+ * Binding objects are created for bindings that appear in the configuration data.  The 'sdir' tool
+ * is in charge of reading the configuration data and pushing updates to the Service Directory.
+ * The Service Directory creates and deletes Binding objects in response to messages received from
+ * the 'sdir' tool.  Each Binding object has a list of client connections that match that binding
+ * but are waiting for the server to advertise the service.
  *
  * Connection objects are used to keep track of the details of socket connections (e.g., the
- * file descriptor, File Descriptor Monitor object, etc.).  Server Connections keep track of
+ * file descriptor, File Descriptor Monitor object, etc.) and the service name, protocol ID, and
+ * maximum message size advertised or requested.  Server Connections keep track of
  * connections to servers.  Client Connections keep track of connections to clients.
- *
- * Binding objects are created for bindings that appear in the configuration data.
  *
  * Client Connection objects and Server Connection objects are created when clients and servers
  * connect to the Service Directory.
- *
- * A Service object can exist for any of the following reasons:
- * - A server is currently connected to the Service Directory and offering that service.
- *      In this case, a Server Connection is attached to the Service object.
- * - One or more clients are connected to the Service Directory and waiting for that service to
- *      be offered.  In this case, a list of Client Connections is attached to the Service object.
- * - A binding to this Service exists in the system configuration.  In this case there is a
- *      Binding object somewhere that points to this Service.
- *
- * Each Binding object and Connection object (Server and Client) holds a reference count on
- * a Service object.  Service objects will be deleted when all associated Binding objects
- * and Connection objects are deleted.
- *
- * Each Binding object, Service object, and Connection object holds a reference count on a
- * User object.  A User object will be deleted when all associated Binding objects, Service objects,
- * and Connection objects are deleted.
  *
  * Client Connection objects are deleted when the client disconnects or its connection is passed
  * to a server.
  *
  * Server Connection objects are deleted when the server disconnects.
  *
- * Binding objects are deleted when the binding is removed from the configuration.
+ * Each Binding object and Connection object holds a reference count on a User object.  A User
+ * object will be deleted when all associated Binding objects and Connection objects are deleted.
  *
  *
  * @section sd_theoryOfOperation Theory of Operation
  *
- * When the Config Tree starts up, the Service Directory loads the binding configuration settings
- * and builds the above structure in RAM (without any Client Connections or Server Connections yet).
- *
  * When a client connects and makes a request to open a service, the client's UID is looked up in
  * the User List.  The client User's Binding List is searched for the service name requested by
- * the client.  If a matching Binding object is found, it will refer to the Service that the client
- * is bound to.  If there's no binding for that service name, then the client's own Service List
- * will be searched for a Service object with the same name as the requested service name.  If not
- * found, a Service object will be created on that User's Service List (in anticipation of that
- * User eventually offering a matching service) and the Client Connection will be queued on that
- * Service's Waiting Clients List.
+ * the client.  If a matching Binding object is not found, the Client Connection object is added
+ * to the User object's Unbound Clients List.  If a matching Binding object is found, it will
+ * specify the server User object and service name.  The server's User's Service List will be
+ * searched for a matching Server Connection object.  If no matching Server Connection can be
+ * found, the Client Connection is added to the Binding object's Waiting Clients List.
  *
  * When a server connects and advertises a service, the server UID is looked-up in the User List.
- * The service name is then searched for in the Service List for that User.  If a Service object
- * is not found for that service name on that User, a new one is created and the Server Connection
- * is added to it.  If a Service object is found that already has a server connection, then the
- * new server connection is dropped.  If a Service object is found that doesn't have a Server
- * Connection already, the new server connection is added to that Service object, and if it has
- * waiting Client Connection objects, their connections are all passed to the new server.
+ * The service name is then searched for in the Service List for that User.  If a Server Connection
+ * object is not found for that service name on that User, the new one is is added to the list.
+ * Otherwise, the new server connection is dropped.
+ *
+ * When a new Server Connection is added to a Service List, all users' Binding Lists are
+ * searched for matching bindings, and if any that match have non-empty Waiting Clients Lists,
+ * all those Client Connections are removed from those lists and dispatched to the new Server
+ * Connection.
+ *
+ * When a Binding is added, it is added to the client's User object's Binding List.  That user's
+ * Unbound Clients List will then be checked for matches to the new binding, and if any are found,
+ * they will be removed from the Unbound Clients List and processed as though they are
+ * new client connections (see above).
+ *
+ * Likewise, if a Binding is deleted while it has Client Connections on its Waiting Clients List,
+ * those Client Connections will be removed from that list and processed as though they are new
+ * client connections (see above).
  *
  * NOTE: It is outside the Service Directory's scope to terminate client IPC connections that
  * were established through bindings that have been changed.  The Service Directory does not
- * keep track of client-server connections after they have been established.
+ * keep track of client-server connections after they have been established.  (However, this could
+ * be changed.)
  *
  *
  * @section sd_deathDetection       Detection of Client or Server Death
@@ -186,6 +182,8 @@ User List ------> User --+---> Name                    |                        
  *
  * @section sd_DesignNotes          Design Notes
  *
+ * @subsection sd_DesignNotesConfig     Binding Configuration
+ *
  * We considered making the Service Directory a client of the Config Tree and having the
  * Service Directory register "handler" call-backs to notify it when binding configuration
  * changes.  While this complicates the start-up sequence considerably, the real problem is
@@ -202,6 +200,13 @@ User List ------> User --+---> Name                    |                        
  *
  * So, instead, we created the "sdir load" tool and made the Supervisor run it before starting
  * any applications and made the installer run it after installing/removing any apps.
+ *
+ * @subsection sd_DesignNotesLateBind   Late Binding Updates
+ *
+ * Note that bindings can be updated after the client and/or server have already been started.
+ * Therefore, we must check the waiting clients list of a user whenever a binding of one of that
+ * user's client-side interfaces is added or removed, to see if the waiting client can now be
+ * connected to a server.
  *
  * <hr/>
  *
@@ -244,11 +249,12 @@ User List ------> User --+---> Name                    |                        
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
-    le_dls_Link_t       link;               ///< Used to link into the User List.
-    uid_t               uid;                ///< Unique Unix user ID.
-    char                name[LIMIT_MAX_USER_NAME_BYTES]; ///< Name of the user.
-    le_dls_List_t       bindingList;        ///< List of bindings of user's client i/fs to services.
-    le_dls_List_t       serviceList;        ///< List of services served up by this user.
+    le_dls_Link_t   link;               ///< Used to link into the User List.
+    uid_t           uid;                ///< Unique Unix user ID.
+    char            name[LIMIT_MAX_USER_NAME_BYTES]; ///< Name of the user.
+    le_dls_List_t   bindingList;        ///< List of bindings of user's client i/fs to services.
+    le_dls_List_t   serviceList;        ///< List of services served up by this user.
+    le_dls_List_t   unboundClientsList; ///< List of Client Connections waiting to be bound.
 }
 User_t;
 
@@ -260,80 +266,26 @@ static le_mem_PoolRef_t UserPoolRef;
 
 
 //--------------------------------------------------------------------------------------------------
-/**
- * The User List, in which all User objects are kept.
- */
+/// The User List, in which all User objects are kept.
 //--------------------------------------------------------------------------------------------------
 static le_dls_List_t UserList = LE_DLS_LIST_INIT;
 
 
 
-/// Forward declaration of the ServicePtr_t.  Needed because of bi-directional linkage between
-/// Service objects and Connection objects (they point to each other).
-typedef struct Service* ServicePtr_t;
-
-
 //--------------------------------------------------------------------------------------------------
 /**
- * Represents a binding from a user's client interface to a service.  Objects of this type are
- * allocated from the Binding Pool and are kept on a User object's Binding List.
+ * Represents a connection to a server process.  Objects of this type are allocated from
+ * the Server Connection Pool.
  */
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
-    le_dls_Link_t       link;               ///< Used to link into the User's Binding List.
-    User_t*             userPtr;            ///< Ptr to the client User whose Binding List I'm in.
-    char                serviceName[LIMIT_MAX_SERVICE_NAME_BYTES]; ///< Service name client uses.
-    ServicePtr_t        servicePtr;         ///< Ptr to Service object the client is bound to.
-}
-Binding_t;
-
-
-//--------------------------------------------------------------------------------------------------
-/// Pool from which Binding objects are allocated.
-//--------------------------------------------------------------------------------------------------
-static le_mem_PoolRef_t BindingPoolRef;
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Represents a connection to a client process.  Objects of this type are allocated from the
- * Client Connection Pool.
- */
-//--------------------------------------------------------------------------------------------------
-typedef struct
-{
-    le_dls_Link_t           link;           ///< Used to link onto a Service's waiting clients list.
+    le_dls_Link_t           link;           ///< Used to link onto user's Service List.
     int                     fd;             ///< Fd of the connection socket.
     le_event_FdMonitorRef_t fdMonitorRef;   ///< FD Monitor object monitoring this connection.
     User_t*                 userPtr;        ///< Pointer to the User object for the client uid.
     pid_t                   pid;            ///< Process ID of client process.
-    ServicePtr_t            servicePtr;     ///< Pointer to the service
-    ssize_t             maxProtocolMsgSize; ///< Max service protocol msg size (in bytes) or -1.
-}
-ClientConnection_t;
-
-
-//--------------------------------------------------------------------------------------------------
-/// Pool from which Client Connection objects are allocated.
-//--------------------------------------------------------------------------------------------------
-static le_mem_PoolRef_t ClientConnectionPoolRef;
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Represents a connection to a server process.  Objects of this type are allocated from the
- * Server Connection Pool.
- */
-//--------------------------------------------------------------------------------------------------
-typedef struct
-{
-    int                     fd;             ///< Fd of the connection socket.
-    le_event_FdMonitorRef_t fdMonitorRef;   ///< FD Monitor object monitoring this connection.
-    User_t*                 userPtr;        ///< Pointer to the User object for the server uid.
-    pid_t                   pid;            ///< Process ID of server process.
-    ServicePtr_t            servicePtr;     ///< Pointer to the service
-    ssize_t             maxProtocolMsgSize; ///< Max service protocol msg size (in bytes) or -1.
+    svcdir_ServiceId_t      serviceId;      ///< Service identifier.
 }
 ServerConnection_t;
 
@@ -346,26 +298,67 @@ static le_mem_PoolRef_t ServerConnectionPoolRef;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Represents a service.  Objects of this type are allocated from the Service Pool and are kept
- * on User objects' Service Lists.
+ * Represents a binding from a user's client interface to a service.  Objects of this type are
+ * allocated from the Binding Pool and are kept on a User object's Binding List.
  */
 //--------------------------------------------------------------------------------------------------
-typedef struct Service
+typedef struct
 {
-    le_dls_Link_t       link;               ///< Used to link into a User's Service List.
-    User_t*             userPtr;            ///< Ptr to the client User whose Service List I'm in.
-    char serviceName[LIMIT_MAX_SERVICE_NAME_BYTES];  ///< Service name advertised by server.
-    char protocolId[LIMIT_MAX_PROTOCOL_ID_BYTES];    ///< Protocol ID string (usually a hash).
-    ServerConnection_t* serverConnectionPtr;///< Ptr to server connection (NULL if no server yet).
-    le_dls_List_t       waitingClientsList; ///< List of Client Connectns waiting for this service.
+    le_dls_Link_t       link;               ///< Used to link into the User's Binding List.
+    User_t*             clientUserPtr;      ///< Ptr to the client User whose Binding List I'm in.
+    User_t*             serverUserPtr;      ///< Ptr to the User who serves the service.
+    char                clientServiceName[LIMIT_MAX_SERVICE_NAME_BYTES]; ///< Name client uses.
+    char                serverServiceName[LIMIT_MAX_SERVICE_NAME_BYTES]; ///< Name server uses.
+    ServerConnection_t* serverConnectionPtr;///< Ptr to Server Connection (NULL if service unavail.)
+    le_dls_List_t       waitingClientsList; ///< List of Client Connections waiting for the service.
 }
-Service_t;
+Binding_t;
 
 
 //--------------------------------------------------------------------------------------------------
-/// Pool from which Service objects are allocated.
+/// Pool from which Binding objects are allocated.
 //--------------------------------------------------------------------------------------------------
-static le_mem_PoolRef_t ServicePoolRef;
+static le_mem_PoolRef_t BindingPoolRef;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Enumeration of the different states that a client connection can be in.
+ **/
+//--------------------------------------------------------------------------------------------------
+typedef enum
+{
+    CLIENT_STATE_ID_UNKNOWN,    ///< Service ID not yet received from client. (START STATE)
+    CLIENT_STATE_UNBOUND,       ///< On user's Unbound Clients List.
+    CLIENT_STATE_WAITING,       ///< On a binding's Waiting Clients List.
+}
+ClientConnectionState_t;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Represents a connection to a client process.  Objects of this type are allocated from
+ * the Client Connection Pool.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    le_dls_Link_t           link;           ///< Used to link onto unbound or waiting clients lists.
+    ClientConnectionState_t state;          ///< State of the client connection.
+    int                     fd;             ///< Fd of the connection socket.
+    le_event_FdMonitorRef_t fdMonitorRef;   ///< FD Monitor object monitoring this connection.
+    User_t*                 userPtr;        ///< Pointer to the User object for the client uid.
+    pid_t                   pid;            ///< Process ID of client process.
+    svcdir_ServiceId_t      serviceId;      ///< Service identifier.
+    Binding_t*              bindingPtr;     ///< Ptr to Binding whose Waiting Clients List we are on
+}
+ClientConnection_t;
+
+
+//--------------------------------------------------------------------------------------------------
+/// Pool from which Client Connection objects are allocated.
+//--------------------------------------------------------------------------------------------------
+static le_mem_PoolRef_t ClientConnectionPoolRef;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -425,6 +418,7 @@ static User_t* CreateUser
 
     userPtr->bindingList = LE_DLS_LIST_INIT;
     userPtr->serviceList = LE_DLS_LIST_INIT;
+    userPtr->unboundClientsList = LE_DLS_LIST_INIT;
 
     // Add it to the User List.
     le_dls_Queue(&UserList, &userPtr->link);
@@ -435,12 +429,13 @@ static User_t* CreateUser
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Searches the User List for a particular Unix user ID.
+ * Searches the User List for a particular Unix user ID.  If found, increments the reference count
+ * on that object.  If not found, creates a new User object.
  *
- * @return Pointer to the User object or NULL if not found.
+ * @return Pointer to the User object.
  **/
 //--------------------------------------------------------------------------------------------------
-static User_t* FindUser
+static User_t* GetUser
 (
     uid_t uid   ///< [in] The user ID.
 )
@@ -454,13 +449,14 @@ static User_t* FindUser
 
         if (userPtr->uid == uid)
         {
+            le_mem_AddRef(userPtr);
             return userPtr;
         }
 
         linkPtr = le_dls_PeekNext(&UserList, linkPtr);
     }
 
-    return NULL;
+    return CreateUser(uid);
 }
 
 
@@ -503,7 +499,7 @@ static Binding_t* FindBinding
     {
         Binding_t* bindingPtr = CONTAINER_OF(linkPtr, Binding_t, link);
 
-        if (strcmp(bindingPtr->serviceName, serviceName) == 0)
+        if (strcmp(bindingPtr->clientServiceName, serviceName) == 0)
         {
             return bindingPtr;
         }
@@ -512,57 +508,6 @@ static Binding_t* FindBinding
     }
 
     return NULL;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Destructor function that runs when a Binding object's reference count reaches zero and
- * it is about to be released back into its Pool.
- */
-//--------------------------------------------------------------------------------------------------
-static void BindingDestructor
-(
-    void* objPtr
-)
-//--------------------------------------------------------------------------------------------------
-{
-    Binding_t* bindingPtr = objPtr;
-
-    // Remove the Binding object from the User's Binding List.
-    le_dls_Remove(&bindingPtr->userPtr->bindingList, &bindingPtr->link);
-
-    // Release the Binding's reference count on the Service object.
-    le_mem_Release(bindingPtr->servicePtr);
-    bindingPtr->servicePtr = NULL;
-
-    // Release the Binding's reference count on the User object.
-    le_mem_Release(bindingPtr->userPtr);
-    bindingPtr->userPtr = NULL;
-}
-
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Destructor function that runs when a Service object's reference count reaches zero and
- * it is about to be released back into its Pool.
- */
-//--------------------------------------------------------------------------------------------------
-static void ServiceDestructor
-(
-    void* objPtr
-)
-//--------------------------------------------------------------------------------------------------
-{
-    Service_t* servicePtr = objPtr;
-
-    // Remove the Service object from the User's Service List.
-    le_dls_Remove(&servicePtr->userPtr->serviceList, &servicePtr->link);
-
-    // Release the Service's reference count on the User object.
-    le_mem_Release(servicePtr->userPtr);
-    servicePtr->userPtr = NULL;
 }
 
 
@@ -675,113 +620,18 @@ static le_result_t ReceiveServiceId
 }
 
 
+
 //--------------------------------------------------------------------------------------------------
 /**
- * Create a Service object.
+ * Searches a User's Service List for a particular service name.
  *
- * @return A pointer to the new object.
- */
-//--------------------------------------------------------------------------------------------------
-static Service_t* CreateService
-(
-    User_t* userPtr,                    ///< [in] Pointer to the User who will serve this up.
-    const char* serviceName,            ///< [in] Service name string.
-    const char* protocolId              ///< [in] Protocol ID string.
-)
-//--------------------------------------------------------------------------------------------------
-{
-    Service_t* servicePtr = le_mem_ForceAlloc(ServicePoolRef);
-
-    servicePtr->link = LE_DLS_LINK_INIT;
-    servicePtr->waitingClientsList = LE_DLS_LIST_INIT;
-    servicePtr->serverConnectionPtr = NULL;
-    servicePtr->userPtr = userPtr;
-
-    // Store the service identity inside the object
-    // NOTE: We know that the serviceName and protocolId strings are the right length already.
-    le_utf8_Copy(servicePtr->serviceName, serviceName,  sizeof(servicePtr->serviceName), NULL);
-    le_utf8_Copy(servicePtr->protocolId, protocolId, sizeof(servicePtr->protocolId), NULL);
-
-    // Add the object to the User's Service List.
-    le_dls_Queue(&userPtr->serviceList, &servicePtr->link);
-
-    // The Service object holds a reference count on the User object.
-    le_mem_AddRef(userPtr);
-
-    return servicePtr;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Create a Service object, with one waiting client on its list of waiting clients.
- */
-//--------------------------------------------------------------------------------------------------
-static void CreateServiceWithWaitingClient
-(
-    ClientConnection_t* connectionPtr,      ///< [in] Pointer to client's connection.
-    const char* serviceName,            ///< [in] Service name string.
-    const char* protocolId              ///< [in] Protocol ID string.
-)
-//--------------------------------------------------------------------------------------------------
-{
-    Service_t* servicePtr = CreateService(connectionPtr->userPtr, serviceName, protocolId);
-
-    LE_DEBUG("Client (uid %u '%s', pid %d) is waiting for service '%s:%s'.",
-             connectionPtr->userPtr->uid,
-             connectionPtr->userPtr->name,
-             connectionPtr->pid,
-             serviceName,
-             protocolId);
-
-    // Add the client connection to the list of waiting clients.
-    // Note:    The Client Connection object takes over ownership of the first reference to the
-    //          Service object.
-    le_dls_Queue(&servicePtr->waitingClientsList, &connectionPtr->link);
-    connectionPtr->servicePtr = servicePtr;
-}
-
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Attaches a Server Connection to a given Service object for a service that it is advertising.
- *
- * NOTE: Does not increment the use count on the Service object.
+ * @return Pointer to the Server Connection object for the matching service.
  **/
 //--------------------------------------------------------------------------------------------------
-static void AttachServerToService
-(
-    ServerConnection_t* connectionPtr,      ///< [in] Pointer to the server's Connection object.
-    Service_t* servicePtr                   ///< [in] Pointer to the Service object.
-)
-//--------------------------------------------------------------------------------------------------
-{
-    // Attach this server to this service.
-    servicePtr->serverConnectionPtr = connectionPtr;
-    connectionPtr->servicePtr = servicePtr;
-
-    LE_DEBUG("Server (uid %u '%s', pid %d) now serving service '%s:%s'.",
-             connectionPtr->userPtr->uid,
-             connectionPtr->userPtr->name,
-             connectionPtr->pid,
-             servicePtr->serviceName,
-             servicePtr->protocolId);
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Searches a User's Service List for a particular service ID.
- *
- * @return Pointer to the Service object or NULL if not found.
- **/
-//--------------------------------------------------------------------------------------------------
-static Service_t* FindService
+static ServerConnection_t* FindService
 (
     const User_t* userPtr,      ///< [in] Ptr to the User object to search.
-    const char* serviceName,    ///< [in] Service name string.
-    const char* protocolId      ///< [in] Protocol ID string.
+    const char* serviceName     ///< [in] Service name string.
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -789,19 +639,11 @@ static Service_t* FindService
 
     while (linkPtr != NULL)
     {
-        Service_t* servicePtr = CONTAINER_OF(linkPtr, Service_t, link);
+        ServerConnection_t* serverConnectionPtr = CONTAINER_OF(linkPtr, ServerConnection_t, link);
 
-        if (strcmp(servicePtr->serviceName, serviceName) == 0)
+        if (strcmp(serverConnectionPtr->serviceId.serviceName, serviceName) == 0)
         {
-            if (strcmp(servicePtr->protocolId, protocolId) == 0)
-            {
-                return servicePtr;
-            }
-            else
-            {
-                LE_DEBUG("Service name '%s' found, but protocol ID doesn't match.",
-                         servicePtr->serviceName);
-            }
+            return serverConnectionPtr;
         }
 
         linkPtr = le_dls_PeekNext(&userPtr->serviceList, linkPtr);
@@ -813,75 +655,47 @@ static Service_t* FindService
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Creates a Binding object for a given binding between a client user's service name and a
- * Service.
+ * Checks whether a given server connection is offering a service that is already being
+ * offered by an older server connection.
+ *
+ * @return true if the service already exists.
  **/
 //--------------------------------------------------------------------------------------------------
-static void CreateBinding
+static bool IsDuplicateService
 (
-    User_t* clientPtr,              ///< [in] Pointer to the client's User object.
-    const char* clientServiceName,  ///< [in] Client's service name.
-    User_t* serverPtr,              ///< [in] Pointer to the server's User object.
-    const char* serviceName,        ///< [in] Service name string.
-    const char* protocolId          ///< [in] Protocol ID string.
+    ServerConnection_t* newConnectionPtr  ///< [in] Ptr to the newer server connection object.
 )
 //--------------------------------------------------------------------------------------------------
 {
-    Binding_t* bindingPtr = le_mem_ForceAlloc(BindingPoolRef);
+    ServerConnection_t* oldConnectionPtr = FindService(newConnectionPtr->userPtr,
+                                                       newConnectionPtr->serviceId.serviceName);
 
-    bindingPtr->link = LE_DLS_LINK_INIT;
-
-    // Copy the client's service name into the Binding object.
-    // Note: we know the service name and protocol ID strings are valid lengths.
-    le_utf8_Copy(bindingPtr->serviceName, clientServiceName, sizeof(bindingPtr->serviceName), NULL);
-
-    // Look for the service that the client service name is being bound to.
-    bindingPtr->servicePtr = FindService(serverPtr, serviceName, protocolId);
-
-    // If found,
-    if (bindingPtr->servicePtr != NULL)
+    if (oldConnectionPtr == NULL)
     {
-        // Count the Binding object's reference to the Service object.
-        le_mem_AddRef(bindingPtr->servicePtr);
+        return false;
     }
-    // If NOT found,
+
+    // Duplicate detected.  Report diagnostic info.
+    if (strcmp(newConnectionPtr->serviceId.protocolId, oldConnectionPtr->serviceId.protocolId) == 0)
+    {
+        LE_ERROR("Server (uid %u '%s', pid %d) already offers service '%s'.",
+                 oldConnectionPtr->userPtr->uid,
+                 oldConnectionPtr->userPtr->name,
+                 oldConnectionPtr->pid,
+                 oldConnectionPtr->serviceId.serviceName);
+    }
     else
     {
-        // Create a new Service object for this service.
-        bindingPtr->servicePtr = CreateService(serverPtr, serviceName, protocolId);
-
-        // Note: In this case, the Binding object takes ownership of the initial reference count
-        //       on the new Service object.
+        LE_ERROR("Server (uid %u '%s', pid %d) already offers service '%s', but with "
+                    "different protocol ID (%s).",
+                 oldConnectionPtr->userPtr->uid,
+                 oldConnectionPtr->userPtr->name,
+                 oldConnectionPtr->pid,
+                 oldConnectionPtr->serviceId.serviceName,
+                 oldConnectionPtr->serviceId.protocolId);
     }
 
-    // Add the Binding to the client User's Binding List.
-    le_dls_Queue(&clientPtr->bindingList, &bindingPtr->link);
-
-    // The Binding object holds a reference to the client User object.
-    bindingPtr->userPtr = clientPtr;
-    le_mem_AddRef(clientPtr);
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Add a client connection to the list of clients waiting for a given service to become available.
- *
- * @note This client will hold a reference to the Service object.
- */
-//--------------------------------------------------------------------------------------------------
-static void AddClientToWaitList
-(
-    Service_t*          servicePtr,         ///< [in] Pointer to the Service object.
-    ClientConnection_t* clientConnectionPtr ///< [in] Pointer to the client connection.
-)
-//--------------------------------------------------------------------------------------------------
-{
-    // Add the client to the list of waiting clients.
-    le_dls_Queue(&servicePtr->waitingClientsList, &clientConnectionPtr->link);
-
-    clientConnectionPtr->servicePtr = servicePtr;
-    le_mem_AddRef(servicePtr);
+    return true;
 }
 
 
@@ -889,103 +703,238 @@ static void AddClientToWaitList
 /**
  * Dispatch a client connection to a server connection.
  *
- * @return
- * - LE_OK if successful.
+ * @warning In some error cases, the client or server connection may be closed by this function.
+ *          To prevent possible loss of the Client Connection object, it should be on a Binding
+ *          object's Waiting Clients List when it is dispatched.  Then, if the dispatch fails,
+ *          due to server failure, the Client Connection will remain on the Waiting Clients List.
+ *          On the other hand, if the Client Connection is deleted, its destructor will remove it
+ *          from the Binding object's Waiting Clients List.
  *
- * @note If successful, this will delete the Client Connection object.
+ * @return  LE_CLOSED if the server connection went down and the Server Connection was deleted.
+ *          LE_OK otherwise.
  */
 //--------------------------------------------------------------------------------------------------
-static le_result_t DispatchClientToServer
+static le_result_t DispatchToServer
 (
-    ServerConnection_t* serverConnectionPtr, ///< [in] Server connection to dispatch client to.
-    ClientConnection_t* clientConnectionPtr  ///< [in] Client connection to be dispatched.
+    ClientConnection_t* clientConnectionPtr, ///< [in] Client connection to be dispatched.
+    ServerConnection_t* serverConnectionPtr  ///< [in] Server connection to dispatch client to.
 )
 //--------------------------------------------------------------------------------------------------
 {
-    // Send the one client connection fd to the server.
-    le_result_t result = unixSocket_SendMsg(serverConnectionPtr->fd,
-                                            NULL,   // dataPtr
-                                            0,      // dataSize
-                                            clientConnectionPtr->fd, // fdToSend
-                                            false); // sendCredentials
-
-    if (result == LE_OK)
+    // Check that the client agrees with the server on the protocol ID.
+    // If not, drop the client connection without dispatching it to the server.
+    if ( 0 != strcmp(clientConnectionPtr->serviceId.protocolId,
+                     serverConnectionPtr->serviceId.protocolId ) )
     {
-        LE_DEBUG("Client (uid %u '%s', pid %d) connected to server (uid %u '%s', pid %d) for "
-                    "service '%s:%s'.",
+        LE_ERROR("Client (uid %u '%s', pid %d) disagrees with server (uid %u '%s', pid %d) "
+                    "on protocol ID of service '%s' ('%s' vs. '%s').",
                  clientConnectionPtr->userPtr->uid,
                  clientConnectionPtr->userPtr->name,
                  clientConnectionPtr->pid,
                  serverConnectionPtr->userPtr->uid,
                  serverConnectionPtr->userPtr->name,
                  serverConnectionPtr->pid,
-                 serverConnectionPtr->servicePtr->serviceName,
-                 serverConnectionPtr->servicePtr->protocolId);
+                 clientConnectionPtr->serviceId.serviceName,
+                 clientConnectionPtr->serviceId.protocolId,
+                 serverConnectionPtr->serviceId.protocolId);
 
-        // Close the client connection (it has been handed off to the server now).
-        CloseClientConnection(clientConnectionPtr);
-
-        return LE_OK;
+        RejectClient(clientConnectionPtr);
     }
 
-    return LE_FAULT;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Dispatch all clients waiting for a given service to that service's server.
- */
-//--------------------------------------------------------------------------------------------------
-static void DispatchWaitingClients
-(
-    Service_t* servicePtr   ///< [in] Pointer to a Service object.
-)
-//--------------------------------------------------------------------------------------------------
-{
-    le_dls_Link_t* linkPtr;
-
-    // While there are still clients on the list of waiting clients for this service,
-    // get a pointer to the first one and dispatch it to the service's server.
-    while ((linkPtr = le_dls_Peek(&servicePtr->waitingClientsList)) != NULL)
+    // Check that the client agrees with the server on the protocol's maximum message size.
+    // If not, drop the client connection without dispatching it to the server.
+    else if (   clientConnectionPtr->serviceId.maxProtocolMsgSize
+        != serverConnectionPtr->serviceId.maxProtocolMsgSize )
     {
-        ClientConnection_t* clientConnectionPtr = CONTAINER_OF(linkPtr, ClientConnection_t, link);
+        LE_ERROR("Client (uid %u '%s', pid %d) disagrees with server (uid %u '%s', pid %d) "
+                    "on max message size (%zu vs. %zu) of service '%s:%s'.",
+                 clientConnectionPtr->userPtr->uid,
+                 clientConnectionPtr->userPtr->name,
+                 clientConnectionPtr->pid,
+                 serverConnectionPtr->userPtr->uid,
+                 serverConnectionPtr->userPtr->name,
+                 serverConnectionPtr->pid,
+                 clientConnectionPtr->serviceId.maxProtocolMsgSize,
+                 serverConnectionPtr->serviceId.maxProtocolMsgSize,
+                 clientConnectionPtr->serviceId.serviceName,
+                 clientConnectionPtr->serviceId.protocolId);
 
-        // Check that the client agrees with the server on the protocol's maximum message size.
-        // If not, drop the client connection without dispatching it to the server.
-        if (   clientConnectionPtr->maxProtocolMsgSize
-            != servicePtr->serverConnectionPtr->maxProtocolMsgSize )
+        RejectClient(clientConnectionPtr);
+    }
+
+    else
+    {
+        // Send the client connection fd to the server.
+        le_result_t result = unixSocket_SendMsg(serverConnectionPtr->fd,
+                                                NULL,   // dataPtr
+                                                0,      // dataSize
+                                                clientConnectionPtr->fd, // fdToSend
+                                                false); // sendCredentials
+
+        if (result == LE_OK)
         {
-            LE_ERROR("Client (uid %u '%s', pid %d) disagrees with server (uid %u '%s', pid %d) "
-                        "on max message size (%zu vs. %zu) of service '%s:%s'.",
+            LE_DEBUG("Client (uid %u '%s', pid %d) connected to server (uid %u '%s', pid %d) for "
+                        "service '%s' (protocol ID = '%s').",
                      clientConnectionPtr->userPtr->uid,
                      clientConnectionPtr->userPtr->name,
                      clientConnectionPtr->pid,
-                     servicePtr->serverConnectionPtr->userPtr->uid,
-                     servicePtr->serverConnectionPtr->userPtr->name,
-                     servicePtr->serverConnectionPtr->pid,
-                     clientConnectionPtr->maxProtocolMsgSize,
-                     servicePtr->serverConnectionPtr->maxProtocolMsgSize,
-                     servicePtr->serviceName,
-                     servicePtr->protocolId);
+                     serverConnectionPtr->userPtr->uid,
+                     serverConnectionPtr->userPtr->name,
+                     serverConnectionPtr->pid,
+                     serverConnectionPtr->serviceId.serviceName,
+                     serverConnectionPtr->serviceId.protocolId);
 
-            RejectClient(clientConnectionPtr);
+            // Close the client connection (it has been handed off to the server now).
+            CloseClientConnection(clientConnectionPtr);
         }
         else
         {
-            // Note: if successful, DispatchClientToServer() will close the client connection,
-            //       which will remove the client from the list of waiting clients.
-            //       Otherwise, the client will be left on the waiting list.
-            if (   DispatchClientToServer(servicePtr->serverConnectionPtr, clientConnectionPtr)
-                != LE_OK )
-            {
-                // The server seems to have failed.
-                // Leave the client on the waiting list, close the server connection, and
-                // abort the dispatching process.  The rest of the clients will have to wait
-                // for another server.
-                CloseServerConnection(servicePtr->serverConnectionPtr);
-                break;
-            }
+            // The server seems to have failed.
+            // Leave the client on the waiting list, close the server connection.
+            CloseServerConnection(serverConnectionPtr);
+
+            return LE_CLOSED;
+        }
+    }
+
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Processes a client connection by following a binding that matches that client connection.
+ *
+ * Either dispatches to a server or queues to the binding's list of waiting clients.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void FollowBinding
+(
+    Binding_t* bindingPtr,
+    ClientConnection_t* clientConnectionPtr
+)
+//--------------------------------------------------------------------------------------------------
+{
+    clientConnectionPtr->state = CLIENT_STATE_WAITING;
+
+    LE_DEBUG("FOLLOWING BINDING <%s>.%s -> <%s>.%s",
+            bindingPtr->clientUserPtr->name,
+            bindingPtr->clientServiceName,
+            bindingPtr->serverUserPtr->name,
+            bindingPtr->serverServiceName);
+
+    clientConnectionPtr->bindingPtr = bindingPtr;
+
+    le_dls_Queue(&bindingPtr->waitingClientsList, &clientConnectionPtr->link);
+
+    if (bindingPtr->serverConnectionPtr != NULL)
+    {
+        DispatchToServer(clientConnectionPtr, bindingPtr->serverConnectionPtr);
+    }
+    else
+    {
+        LE_DEBUG("Client user %s (uid %u) pid %d interface '%s' is waiting for"
+                    " server user %s (%u) to advertise service '%s'.",
+                 clientConnectionPtr->userPtr->name,
+                 clientConnectionPtr->userPtr->uid,
+                 clientConnectionPtr->pid,
+                 clientConnectionPtr->serviceId.serviceName,
+                 bindingPtr->serverUserPtr->name,
+                 bindingPtr->serverUserPtr->uid,
+                 bindingPtr->serverServiceName);
+    }
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Creates a Binding object for a given binding between a client user's service name and a
+ * Service.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void CreateBinding
+(
+    uid_t   clientUserId,           ///< [in] Client's user ID.
+    const char* clientServiceName,  ///< [in] Client's service name.
+    uid_t   serverUserId,           ///< [in] Server's user ID.
+    const char* serverServiceName   ///< [in] Server's service name.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    Binding_t* bindingPtr = le_mem_ForceAlloc(BindingPoolRef);
+
+    bindingPtr->link = LE_DLS_LINK_INIT;
+
+    // Copy the service names into the Binding object.
+    // Note: we know the service names are valid lengths.
+    le_utf8_Copy(bindingPtr->clientServiceName,
+                 clientServiceName,
+                 sizeof(bindingPtr->clientServiceName),
+                 NULL);
+    le_utf8_Copy(bindingPtr->serverServiceName,
+                 serverServiceName,
+                 sizeof(bindingPtr->serverServiceName),
+                 NULL);
+
+    // The Binding object holds a reference to the client and server User objects.
+    bindingPtr->clientUserPtr = GetUser(clientUserId);
+    bindingPtr->serverUserPtr = GetUser(serverUserId);
+
+    bindingPtr->serverConnectionPtr = NULL;
+    bindingPtr->waitingClientsList = LE_DLS_LIST_INIT;
+
+    // See if the client already has a bind for this service name.
+    Binding_t* oldBindingPtr = FindBinding(bindingPtr->clientUserPtr, clientServiceName);
+    if (oldBindingPtr != NULL)
+    {
+        LE_WARN("Replacing binding of <%s>.%s -> <%s>.%s with -> <%s>.%s.",
+                bindingPtr->clientUserPtr->name,
+                clientServiceName,
+                oldBindingPtr->serverUserPtr->name,
+                oldBindingPtr->serverServiceName,
+                bindingPtr->serverUserPtr->name,
+                bindingPtr->serverServiceName);
+
+        // Delete the old binding.
+        // NOTE: This should happen after the new binding gets a reference to the user to
+        //       avoid wasting time deleting the User object and then recreating it again.
+        le_mem_Release(oldBindingPtr);
+    }
+    else
+    {
+        LE_DEBUG("Creating binding: <%s>.%s -> <%s>.%s",
+                 bindingPtr->clientUserPtr->name,
+                 bindingPtr->clientServiceName,
+                 bindingPtr->serverUserPtr->name,
+                 bindingPtr->serverServiceName);
+    }
+
+    // Add the Binding to the client User's Binding List.
+    le_dls_Queue(&bindingPtr->clientUserPtr->bindingList, &bindingPtr->link);
+
+    // Look for a server serving the binding's destination service.
+    bindingPtr->serverConnectionPtr = FindService(bindingPtr->serverUserPtr, serverServiceName);
+
+    // Check for unbound client connections that match the new binding.
+    le_dls_List_t* unboundClientsListPtr = &(bindingPtr->clientUserPtr->unboundClientsList);
+    le_dls_Link_t* linkPtr = le_dls_Peek(unboundClientsListPtr);
+    while (linkPtr != NULL)
+    {
+        ClientConnection_t* clientConnectionPtr = CONTAINER_OF(linkPtr, ClientConnection_t, link);
+
+        // Move the linkPtr to the next node in the list now, in case we have to remove
+        // the node it currently points to.
+        linkPtr = le_dls_PeekNext(unboundClientsListPtr, linkPtr);
+
+        // If this is the binding this client has been waiting for,
+        if (strcmp(clientConnectionPtr->serviceId.serviceName, clientServiceName) == 0)
+        {
+            // Remove this client connection from the list of unbound clients and
+            // dispatch it via the binding.
+            // WARNING: Don't use linkPtr here, because it has been moved to the next node already.
+            le_dls_Remove(unboundClientsListPtr, &clientConnectionPtr->link);
+            FollowBinding(bindingPtr, clientConnectionPtr);
         }
     }
 }
@@ -993,42 +942,88 @@ static void DispatchWaitingClients
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Add a client connection to a service.
- */
-//--------------------------------------------------------------------------------------------------
-static void AddClientToService
-(
-    Service_t*          servicePtr,         ///< [in] Pointer to the Service object.
-    ClientConnection_t* clientConnectionPtr ///< [in] Pointer to the client connection.
-)
-//--------------------------------------------------------------------------------------------------
-{
-    // Add the client to the list of waiting clients.
-    AddClientToWaitList(servicePtr, clientConnectionPtr);
-
-    // If the service has a server,
-    if (servicePtr->serverConnectionPtr != NULL)
-    {
-        DispatchWaitingClients(servicePtr);
-    }
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Connects the Service Directory to the Config Tree service as a client.
+ * Create built-in, hard-coded bindings.
  **/
 //--------------------------------------------------------------------------------------------------
-/*
-static void ConnectToConfigTree
+static void CreateHardCodedBindings
 (
     void
 )
 //--------------------------------------------------------------------------------------------------
 {
+    uid_t uid = getuid();
 
+    CreateBinding(uid, "sdirTool", uid, "sdirTool");
+    CreateBinding(uid, "LogClient", uid, "LogClient");
+    CreateBinding(uid, "LogControl", uid, "LogControl");
+    CreateBinding(uid, "le_sup_ctrl", uid, "le_sup_ctrl");
+    CreateBinding(uid, "le_sup_state", uid, "le_sup_state");
+    CreateBinding(uid, "le_sup_wdog", uid, "le_sup_wdog");
+    CreateBinding(uid, "le_cfg", uid, "le_cfg");
+    CreateBinding(uid, "le_cfgAdmin", uid, "le_cfgAdmin");
 }
-*/
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Search for and associate bindings that refer to this service and dispatch any
+ * waiting clients to the new server.
+ */
+//--------------------------------------------------------------------------------------------------
+static void ResolveBindingsToServer
+(
+    ServerConnection_t* connectionPtr
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // For each user,
+    le_dls_Link_t* userLinkPtr = le_dls_Peek(&UserList);
+
+    while (userLinkPtr != NULL)
+    {
+        User_t* userPtr = CONTAINER_OF(userLinkPtr, User_t, link);
+
+        // For each of the user's bindings,
+        le_dls_Link_t* bindingLinkPtr = le_dls_Peek(&userPtr->bindingList);
+        while (bindingLinkPtr != NULL)
+        {
+            Binding_t* bindingPtr = CONTAINER_OF(bindingLinkPtr, Binding_t, link);
+
+            // If the binding is pointing at the new server's service,
+            if (   (connectionPtr->userPtr == bindingPtr->serverUserPtr)
+                && (0 == strcmp(connectionPtr->serviceId.serviceName,
+                                bindingPtr->serverServiceName))  )
+            {
+                bindingPtr->serverConnectionPtr = connectionPtr;
+
+                // While there's still a client connection on the Waiting Clients List, get
+                // a pointer to the first one, without removing it from the list, then try
+                // to dispatch that client to the server.
+                le_dls_Link_t* clientLinkPtr;
+                while (NULL != (clientLinkPtr = le_dls_Peek(&bindingPtr->waitingClientsList)))
+                {
+                    ClientConnection_t* clientConnectionPtr = CONTAINER_OF(clientLinkPtr,
+                                                                           ClientConnection_t,
+                                                                           link);
+                    if (DispatchToServer(clientConnectionPtr, connectionPtr) == LE_CLOSED)
+                    {
+                        // Server went down.  Client was left on the Waiting Clients List.
+                        // Server Connection destructor was run and it disconnected itself
+                        // from the Binding object.
+                        return;
+                    }
+                    // NOTE: If the server didn't go down, then the Client Connection has been
+                    // deleted and its destructor removed it from the Waiting Clients List.
+                }
+            }
+
+            bindingLinkPtr = le_dls_PeekNext(&userPtr->bindingList, bindingLinkPtr);
+        }
+
+        userLinkPtr = le_dls_PeekNext(&UserList, userLinkPtr);
+    }
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1039,54 +1034,39 @@ static void ConnectToConfigTree
 //--------------------------------------------------------------------------------------------------
 static void ProcessAdvertisementFromServer
 (
-    ServerConnection_t* connectionPtr,      ///< [in] Ptr to Connection to advertising server.
-    const svcdir_ServiceId_t* serviceIdPtr  ///< [in] Ptr to the service identity.
+    ServerConnection_t* connectionPtr       ///< [in] Ptr to Connection to advertising server.
 )
 //--------------------------------------------------------------------------------------------------
 {
-    // Store the server's maximum message size limit for later.
-    connectionPtr->maxProtocolMsgSize = serviceIdPtr->maxProtocolMsgSize;
-
-    Service_t* servicePtr = FindService(connectionPtr->userPtr,
-                                        serviceIdPtr->serviceName,
-                                        serviceIdPtr->protocolId);
-
-    // If the service didn't already exist in the user's service list, add it.
-    if (servicePtr == NULL)
+    // Check for a server already serving this same service.
+    if (IsDuplicateService(connectionPtr))
     {
-        servicePtr = CreateService(connectionPtr->userPtr,
-                                   serviceIdPtr->serviceName,
-                                   serviceIdPtr->protocolId);
+        LE_ERROR("Dropping connection to server (uid %u '%s', pid %d) of service '%s' (%s).",
+                 connectionPtr->userPtr->uid,
+                 connectionPtr->userPtr->name,
+                 connectionPtr->pid,
+                 connectionPtr->serviceId.serviceName,
+                 connectionPtr->serviceId.protocolId);
 
-        // Note:    The Server Connection object takes over ownership of the first reference to the
-        //          Service object.
-
-        AttachServerToService(connectionPtr, servicePtr);
+        CloseServerConnection(connectionPtr);
     }
-    // If the service was found on this user's service list,
+    // If there wasn't already a server for this service on the user's service list, add this
+    // connection to the service list.
     else
     {
-        // Check that it isn't a duplicate advertisement of the same service.
-        if (servicePtr->serverConnectionPtr != NULL)
-        {
-            LE_ERROR("Server (uid %u '%s', pid %d) already offers service '%s:%s'.",
-                     servicePtr->userPtr->uid,
-                     servicePtr->userPtr->name,
-                     servicePtr->serverConnectionPtr->pid,
-                     servicePtr->serviceName,
-                     servicePtr->protocolId);
-            LE_ERROR("Dropping connection to server (pid %d).", connectionPtr->pid);
+        // Add the object to the User's Service List.
+        le_dls_Queue(&connectionPtr->userPtr->serviceList, &connectionPtr->link);
 
-            CloseServerConnection(connectionPtr);
-        }
-        else
-        {
-            le_mem_AddRef(servicePtr);  // Server will hold a reference to the Service.
+        LE_DEBUG("Server (uid %u '%s', pid %d) now serving service '%s' (%s).",
+                 connectionPtr->userPtr->uid,
+                 connectionPtr->userPtr->name,
+                 connectionPtr->pid,
+                 connectionPtr->serviceId.serviceName,
+                 connectionPtr->serviceId.protocolId);
 
-            AttachServerToService(connectionPtr, servicePtr);
-
-            DispatchWaitingClients(servicePtr);
-        }
+        // Search for and associate bindings that refer to this service and dispatch any
+        // waiting clients to the new server.
+        ResolveBindingsToServer(connectionPtr);
     }
 }
 
@@ -1145,107 +1125,40 @@ static void ClientReadHangUpHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
- * If the client is root, attempt to find a match to the requested service, offered by any user.
- *
- * @todo    Remove auto-binding when support for Command-Line Apps is added to the mk tools.
- *          This doesn't fit with our Mandatory Access Control philosophy.
- *
- * @return  true if the connection was successfully auto-bound.
- **/
-//--------------------------------------------------------------------------------------------------
-static bool AutoBind
-(
-    ClientConnection_t* connectionPtr,      ///< [IN] Pointer to the Client Connection object.
-    const svcdir_ServiceId_t* serviceIdPtr  ///< [IN] Ptr to the service ID the client is opening.
-)
-//--------------------------------------------------------------------------------------------------
-{
-    // Only root is allowed to auto-bind.  No one can be allowed to bypass access control
-    // in this way.
-    if (connectionPtr->userPtr->uid == 0)
-    {
-        le_dls_Link_t* linkPtr = le_dls_Peek(&UserList);
-        while (linkPtr != NULL)
-        {
-            User_t* userPtr = CONTAINER_OF(linkPtr, User_t, link);
-
-            // Look up the Service in this user's list of services that it exports.
-            Service_t* servicePtr = FindService(userPtr,
-                                                serviceIdPtr->serviceName,
-                                                serviceIdPtr->protocolId);
-            // If a matching Service is found,
-            if (servicePtr != NULL)
-            {
-                AddClientToService(servicePtr, connectionPtr);
-                return true;
-            }
-
-            linkPtr = le_dls_PeekNext(&UserList, linkPtr);
-        }
-    }
-
-    return false;
-}
-
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Processes an "Open" request received from a client.
  **/
 //--------------------------------------------------------------------------------------------------
 static void ProcessOpenRequestFromClient
 (
-    ClientConnection_t* connectionPtr,      ///< [IN] Pointer to the Client Connection object.
-    const svcdir_ServiceId_t* serviceIdPtr  ///< [IN] Ptr to the service ID the client is opening.
+    ClientConnection_t* connectionPtr       ///< [IN] Pointer to the Client Connection object.
 )
 //--------------------------------------------------------------------------------------------------
 {
-    // Store the number of bytes that the client said it thinks is the maximum protocol message size
-    // for the service for later use.
-    connectionPtr->maxProtocolMsgSize = serviceIdPtr->maxProtocolMsgSize;
+    LE_DEBUG("Processing OPEN request from client pid %u <%s> for service '%s' (%s).",
+             connectionPtr->pid,
+             connectionPtr->userPtr->name,
+             connectionPtr->serviceId.serviceName,
+             connectionPtr->serviceId.protocolId);
 
-    // Look up the service ID in the User's Binding List.
-    Binding_t* bindingPtr = FindBinding(connectionPtr->userPtr, serviceIdPtr->serviceName);
+    // Look up the client's service name in the client User's Binding List.
+    Binding_t* bindingPtr = FindBinding(connectionPtr->userPtr,
+                                        connectionPtr->serviceId.serviceName);
 
-    // If a matching binding was found, add the client to the service it is bound to.
+    // If a matching binding was found, follow it.
     if (bindingPtr != NULL)
     {
-        LE_DEBUG("Following binding %s.%s=%s.%s:%s",
-                 bindingPtr->userPtr->name,
-                 bindingPtr->serviceName,
-                 bindingPtr->servicePtr->userPtr->name,
-                 bindingPtr->servicePtr->serviceName,
-                 bindingPtr->servicePtr->protocolId);
-
-        AddClientToService(bindingPtr->servicePtr, connectionPtr);
+        FollowBinding(bindingPtr, connectionPtr);
     }
-    // If not found,
+    // If not found, add the client connection to the user's list of unbound clients.
     else
     {
-        // Look up the Service in the client user's own list of services that it exports.
-        Service_t* servicePtr = FindService(connectionPtr->userPtr,
-                                            serviceIdPtr->serviceName,
-                                            serviceIdPtr->protocolId);
+        connectionPtr->state = CLIENT_STATE_UNBOUND;
 
-        // If a matching Service is found,
-        if (servicePtr != NULL)
-        {
-            AddClientToService(servicePtr, connectionPtr);
-        }
-        // If the Service object doesn't exist yet,
-        else
-        {
-            // Try to auto-bind.
-            if (!AutoBind(connectionPtr, serviceIdPtr))
-            {
-                // Auto-binding failed.
-                // Assume that this user will eventually serve up this service to itself.
-                CreateServiceWithWaitingClient(connectionPtr,
-                                               serviceIdPtr->serviceName,
-                                               serviceIdPtr->protocolId);
-            }
-        }
+        le_dls_Queue(&(connectionPtr->userPtr->unboundClientsList), &(connectionPtr->link));
+
+        LE_DEBUG("Client interface <%s>.%s is unbound.",
+                 connectionPtr->userPtr->name,
+                 connectionPtr->serviceId.serviceName);
     }
 }
 
@@ -1264,13 +1177,12 @@ static void ClientReadHandler
 //--------------------------------------------------------------------------------------------------
 {
     le_result_t result;
-    ClientConnection_t* connectionPtr = le_event_GetContextPtr();
+    ClientConnection_t* clientConnectionPtr = le_event_GetContextPtr();
 
-    LE_ASSERT(connectionPtr != NULL);
+    LE_ASSERT(clientConnectionPtr != NULL);
 
     // Receive the service identity from the client.
-    svcdir_ServiceId_t serviceId;
-    result = ReceiveServiceId(fd, &serviceId);
+    result = ReceiveServiceId(fd, &clientConnectionPtr->serviceId);
 
     // If the connection has closed or there is simply nothing left to be received
     // from the socket,
@@ -1279,39 +1191,37 @@ static void ClientReadHandler
         // We are done.
         // NOTE: If the connection closed, our hang-up handler will be called.
     }
+    // The client should only send us the service identification details once.  So, if we
+    // already have the service identification details, it means we shouldn't be receiving
+    // data from it.
+    else if (clientConnectionPtr->state != CLIENT_STATE_ID_UNKNOWN)
+    {
+        LE_ERROR("Client (uid %u '%s', pid %d) sent data while waiting for service "
+                    "'%s:%s'.",
+                 clientConnectionPtr->userPtr->uid,
+                 clientConnectionPtr->userPtr->name,
+                 clientConnectionPtr->pid,
+                 clientConnectionPtr->serviceId.serviceName,
+                 clientConnectionPtr->serviceId.protocolId);
+
+        // Drop connection to misbehaving client.
+        RejectClient(clientConnectionPtr);
+    }
+    else if (result == LE_OK)
+    {
+        ProcessOpenRequestFromClient(clientConnectionPtr);
+    }
+    // If an error occurred on the receive,
     else
     {
-        // The client should only send us the service identification details once, at which time
-        // we add the connection to the Service's list of waiting clients.  So, if this connection
-        // is already on a list of waiting clients, it means we shouldn't be receiving data from it.
-        if (connectionPtr->servicePtr != NULL)
-        {
-            LE_ERROR("Client (uid %u '%s', pid %d) sent data while waiting for service '%s:%s'.",
-                     connectionPtr->userPtr->uid,
-                     connectionPtr->userPtr->name,
-                     connectionPtr->pid,
-                     connectionPtr->servicePtr->serviceName,
-                     connectionPtr->servicePtr->protocolId);
+        LE_ERROR("Failed to receive service ID from client (uid %u '%s', pid %d).",
+                 clientConnectionPtr->userPtr->uid,
+                 clientConnectionPtr->userPtr->name,
+                 clientConnectionPtr->pid);
 
-            // Drop connection to misbehaving client.
-            RejectClient(connectionPtr);
-        }
-        else if (result == LE_OK)
-        {
-            ProcessOpenRequestFromClient(connectionPtr, &serviceId);
-        }
-        // If an error occurred on the receive,
-        else
-        {
-            LE_ERROR("Failed to receive service ID from client (uid %u '%s', pid %d).",
-                     connectionPtr->userPtr->uid,
-                     connectionPtr->userPtr->name,
-                     connectionPtr->pid);
-
-            // Drop the Client connection to trigger a recovery action by the client (or the
-            // Supervisor, if the client dies).
-            RejectClient(connectionPtr);
-        }
+        // Drop the Client connection to trigger a recovery action by the client (or the
+        // Supervisor, if the client dies).
+        RejectClient(clientConnectionPtr);
     }
 }
 
@@ -1329,29 +1239,18 @@ static void CreateClientConnection
 )
 //--------------------------------------------------------------------------------------------------
 {
-    User_t* userPtr = FindUser(uid);
-
-    // If a User object already exists for this user, then increment its reference count because
-    // this Connection object will hold a reference to it.  Otherwise, create a new User object
-    // and this Connection object will take over that first reference count.
-    if (userPtr != NULL)
-    {
-        le_mem_AddRef(userPtr);
-    }
-    else
-    {
-        userPtr = CreateUser(uid);
-    }
-
     // Allocate a new Client Connection object.
     ClientConnection_t* connectionPtr = le_mem_ForceAlloc(ClientConnectionPoolRef);
 
     connectionPtr->link = LE_DLS_LINK_INIT;
+    connectionPtr->state = CLIENT_STATE_ID_UNKNOWN;
     connectionPtr->fd = fd;
-    connectionPtr->userPtr = userPtr;
+    connectionPtr->userPtr = GetUser(uid);
     connectionPtr->pid = pid;
-    connectionPtr->servicePtr = NULL;   // No service for this connection, yet.
-    connectionPtr->maxProtocolMsgSize = -1; // Haven't received the "Open" request yet.
+    connectionPtr->bindingPtr = NULL;
+
+    // Haven't received ID yet, so clear it out.
+    memset(&connectionPtr->serviceId, 0, sizeof(connectionPtr->serviceId));
 
     // Set up a File Descriptor Monitor for this new connection, and monitor for hang-up,
     // error, and data arriving.
@@ -1392,16 +1291,25 @@ static void ClientConnectionDestructor
 {
     ClientConnection_t* connectionPtr = objPtr;
 
-    // If the connection is associated with a service, then it must be on that service's list
-    // of waiting clients.
-    if (connectionPtr->servicePtr != NULL)
+    switch (connectionPtr->state)
     {
-        // Remove the connection from the service's list of waiting connections.
-        le_dls_Remove(&connectionPtr->servicePtr->waitingClientsList, &connectionPtr->link);
+        case CLIENT_STATE_ID_UNKNOWN:
 
-        // Release the client's hold on the Service object.
-        le_mem_Release(connectionPtr->servicePtr);
-        connectionPtr->servicePtr = NULL;
+            break;
+
+        case CLIENT_STATE_UNBOUND:
+
+            // Remove the connection from the user's list of unbound client connections.
+            le_dls_Remove(&connectionPtr->userPtr->unboundClientsList, &connectionPtr->link);
+
+            break;
+
+        case CLIENT_STATE_WAITING:
+
+            // Remove the connection from the Binding object's list of waiting clients.
+            le_dls_Remove(&connectionPtr->bindingPtr->waitingClientsList, &connectionPtr->link);
+            connectionPtr->bindingPtr = NULL;
+            break;
     }
 
     // Delete the File Descriptor Monitor object.
@@ -1411,13 +1319,13 @@ static void ClientConnectionDestructor
         connectionPtr->fdMonitorRef = NULL;
     }
 
-    // Release the Connection object's reference to the User object.
-    le_mem_Release(connectionPtr->userPtr);
-    connectionPtr->userPtr = NULL;
-
     // Close the socket.
     fd_Close(connectionPtr->fd);
     connectionPtr->fd = -1;
+
+    // Release the Connection object's reference to the User object.
+    le_mem_Release(connectionPtr->userPtr);
+    connectionPtr->userPtr = NULL;
 }
 
 
@@ -1542,28 +1450,28 @@ static void ServerReadHandler
 
     LE_ASSERT(connectionPtr != NULL);
 
-    // Receive the service identity from the server.
-    svcdir_ServiceId_t serviceId;
-    result = ReceiveServiceId(fd, &serviceId);
+    bool alreadyReceivedServiceId = (connectionPtr->serviceId.serviceName[0] != '\0');
 
-    if (result == LE_CLOSED)
+    // Receive the service identity from the server.
+    result = ReceiveServiceId(fd, &connectionPtr->serviceId);
+
+    // If the connection has closed or there is simply nothing left to be received
+    // from the socket,
+    if ((result == LE_CLOSED) || (result == LE_WOULD_BLOCK))
     {
-        // Connection has closed.  Our Hang-Up handler will get called, so we don't have to
-        // do anything here.
+        // We are done.
+        // NOTE: If the connection closed, our hang-up handler will be called.
     }
-    else if (connectionPtr->servicePtr != NULL)
+    else if (alreadyReceivedServiceId)
     {
-        // The Server Connection is already associated with a Service object.
-        // The server should only send us the service identification details, and only once.
-        // After we get that, the Connection object becomes associated with a Service object.
-        // So, if this connection is already associated with a Service object, we shouldn't be
-        // receiving data from it.
-        LE_ERROR("Server sent extra data (uid %u '%s', pid %d, service %s[%s]).",
+        // The server should only send us the service identification details once.  So, if we
+        // already have the service identification details, it means we shouldn't be receiving
+        // data from it.
+        LE_ERROR("Server sent extra data (uid %u '%s', pid %d, service '%s').",
                  connectionPtr->userPtr->uid,
                  connectionPtr->userPtr->name,
                  connectionPtr->pid,
-                 connectionPtr->servicePtr->serviceName,
-                 connectionPtr->servicePtr->protocolId);
+                 connectionPtr->serviceId.serviceName);
 
         CloseServerConnection(connectionPtr);
     }
@@ -1579,7 +1487,7 @@ static void ServerReadHandler
     else
     {
         // Got the service advertisement.  Now process it.
-        ProcessAdvertisementFromServer(connectionPtr, &serviceId);
+        ProcessAdvertisementFromServer(connectionPtr);
     }
 }
 
@@ -1597,28 +1505,16 @@ static void CreateServerConnection
 )
 //--------------------------------------------------------------------------------------------------
 {
-    User_t* userPtr = FindUser(uid);
-
-    // If a User object already exists for this user, then increment its reference count because
-    // this Connection object will hold a reference to it.  Otherwise, create a new User object
-    // and this Connection object will take over that first reference count.
-    if (userPtr != NULL)
-    {
-        le_mem_AddRef(userPtr);
-    }
-    else
-    {
-        userPtr = CreateUser(uid);
-    }
-
     // Allocate a new Server Connection object.
     ServerConnection_t* connectionPtr = le_mem_ForceAlloc(ServerConnectionPoolRef);
 
+    connectionPtr->link = LE_DLS_LINK_INIT;
     connectionPtr->fd = fd;
-    connectionPtr->userPtr = userPtr;
+    connectionPtr->userPtr = GetUser(uid);
     connectionPtr->pid = pid;
-    connectionPtr->servicePtr = NULL;   // No service for this connection, yet.
-    connectionPtr->maxProtocolMsgSize = -1; // Haven't received the advertisement yet.
+
+    // Haven't received ID yet, so clear it out.
+    memset(&connectionPtr->serviceId, 0, sizeof(connectionPtr->serviceId));
 
     // Set up a File Descriptor Monitor for this new connection, and monitor for hang-up,
     // error, and data arriving.
@@ -1659,30 +1555,56 @@ static void ServerConnectionDestructor
 {
     ServerConnection_t* connectionPtr = objPtr;
 
-    // If the connection is associated with a service, then it must be the server for that service.
-    if (connectionPtr->servicePtr != NULL)
+    // Disassociate the Server Connection object from all Binding objects that refer to it...
+
+    // For each user,
+    le_dls_Link_t* userLinkPtr = le_dls_Peek(&UserList);
+
+    while (userLinkPtr != NULL)
     {
-        LE_ASSERT(connectionPtr->servicePtr->serverConnectionPtr == connectionPtr);
+        User_t* userPtr = CONTAINER_OF(userLinkPtr, User_t, link);
 
-        // Detach the server from the session.
-        connectionPtr->servicePtr->serverConnectionPtr = NULL;
-        LE_DEBUG("Server (uid %u '%s', pid %d) disconnected from service (%s:%s).",
-                 connectionPtr->userPtr->uid,
-                 connectionPtr->userPtr->name,
-                 connectionPtr->pid,
-                 connectionPtr->servicePtr->serviceName,
-                 connectionPtr->servicePtr->protocolId);
+        // For each of the user's bindings,
+        le_dls_Link_t* bindingLinkPtr = le_dls_Peek(&userPtr->bindingList);
+        while (bindingLinkPtr != NULL)
+        {
+            Binding_t* bindingPtr = CONTAINER_OF(bindingLinkPtr, Binding_t, link);
 
-        // Release the server's hold on the Service object.
-        le_mem_Release(connectionPtr->servicePtr);
-        connectionPtr->servicePtr = NULL;
+            // If the binding is associated with the deleted server connection,
+            if (connectionPtr == bindingPtr->serverConnectionPtr)
+            {
+                bindingPtr->serverConnectionPtr = NULL;
+            }
+
+            bindingLinkPtr = le_dls_PeekNext(&userPtr->bindingList, bindingLinkPtr);
+        }
+
+        userLinkPtr = le_dls_PeekNext(&UserList, userLinkPtr);
     }
-    else
+
+    if (connectionPtr->serviceId.serviceName[0] == '\0')
     {
         LE_DEBUG("Server (uid %u '%s', pid %d) disconnected without ever advertising a service.",
                  connectionPtr->userPtr->uid,
                  connectionPtr->userPtr->name,
                  connectionPtr->pid);
+    }
+    else
+    {
+        LE_DEBUG("Server (uid %u '%s', pid %d) withdrew service (%s:%s).",
+                 connectionPtr->userPtr->uid,
+                 connectionPtr->userPtr->name,
+                 connectionPtr->pid,
+                 connectionPtr->serviceId.serviceName,
+                 connectionPtr->serviceId.protocolId);
+
+        // Remove the Server Connection from the User's Service List, if it has been added.
+        // NOTE: If the connection is rejected because of a bad or duplicate advertisement,
+        //       then the connection will not have made it into the user's list of services.
+        if (le_dls_IsInList(&connectionPtr->userPtr->serviceList, &connectionPtr->link))
+        {
+            le_dls_Remove(&connectionPtr->userPtr->serviceList, &connectionPtr->link);
+        }
     }
 
     // Delete the File Descriptor Monitor object.
@@ -1692,13 +1614,13 @@ static void ServerConnectionDestructor
         connectionPtr->fdMonitorRef = NULL;
     }
 
-    // Release the Connection object's reference to the User object.
-    le_mem_Release(connectionPtr->userPtr);
-    connectionPtr->userPtr = NULL;
-
     // Close the socket.
     fd_Close(connectionPtr->fd);
     connectionPtr->fd = -1;
+
+    // Release the Connection object's reference to the User object.
+    le_mem_Release(connectionPtr->userPtr);
+    connectionPtr->userPtr = NULL;
 }
 
 
@@ -1749,6 +1671,44 @@ static void ServerConnectHandler
             // When that happens, our server fd event handler functions will be called.
         }
     }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Destructor function that runs when a Binding object's reference count reaches zero and
+ * it is about to be released back into its Pool.
+ */
+//--------------------------------------------------------------------------------------------------
+static void BindingDestructor
+(
+    void* objPtr
+)
+//--------------------------------------------------------------------------------------------------
+{
+    Binding_t* bindingPtr = objPtr;
+
+    // Remove the Binding object from the User's Binding List.
+    le_dls_Remove(&bindingPtr->clientUserPtr->bindingList, &bindingPtr->link);
+
+    // While the list of waiting clients is not empty, pop one off and process it.
+    le_dls_Link_t* linkPtr;
+    while (NULL != (linkPtr = le_dls_Pop(&(bindingPtr->waitingClientsList))))
+    {
+        ClientConnection_t* clientConnectionPtr = CONTAINER_OF(linkPtr, ClientConnection_t, link);
+
+        clientConnectionPtr->bindingPtr = NULL;
+
+        ProcessOpenRequestFromClient(clientConnectionPtr);
+    }
+
+    // Release the Binding's reference count on the client's User object.
+    le_mem_Release(bindingPtr->clientUserPtr);
+    bindingPtr->clientUserPtr = NULL;
+
+    // Release the Binding's reference count on the server's User object.
+    le_mem_Release(bindingPtr->serverUserPtr);
+    bindingPtr->serverUserPtr = NULL;
 }
 
 
@@ -1815,23 +1775,27 @@ static void SdirToolListServices
 
         le_dls_Link_t* serviceLinkPtr = le_dls_Peek(&userPtr->serviceList);
 
-        if (serviceLinkPtr != NULL)
-        {
-            dprintf(fd, "User %u (%s) is serving:\n", userPtr->uid, userPtr->name);
-        }
-
         while (serviceLinkPtr != NULL)
         {
-            Service_t* servicePtr = CONTAINER_OF(serviceLinkPtr, Service_t, link);
+            ServerConnection_t* connectionPtr = CONTAINER_OF(serviceLinkPtr,
+                                                             ServerConnection_t,
+                                                             link);
 
-            if (servicePtr->serverConnectionPtr != NULL)
+            // Print a description of the service.
+            if (strncmp(userPtr->name, "app", 3) == 0)
             {
-                dprintf(fd,
-                        "        %s:%s (max msg size: %zu bytes)\n",
-                        servicePtr->serviceName,
-                        servicePtr->protocolId,
-                        servicePtr->serverConnectionPtr->maxProtocolMsgSize);
+                dprintf(fd, "        %s", userPtr->name + 3);
             }
+            else
+            {
+                dprintf(fd, "        <%s>", userPtr->name);
+            }
+
+            dprintf(fd,
+                    ".%s  (protocol ID = '%s', max message size = %zu bytes)\n",
+                    connectionPtr->serviceId.serviceName,
+                    connectionPtr->serviceId.protocolId,
+                    connectionPtr->serviceId.maxProtocolMsgSize);
 
             serviceLinkPtr = le_dls_PeekNext(&userPtr->serviceList, serviceLinkPtr);
         }
@@ -1852,48 +1816,88 @@ static void SdirToolListWaitingClients
 )
 //--------------------------------------------------------------------------------------------------
 {
-    // Iterate over the User List, and for each user, iterate over their Service List,
-    // and for each Service, iterate over their Waiting Clients List.
+    // Iterate over the User List, and for each user,
     le_dls_Link_t* userLinkPtr = le_dls_Peek(&UserList);
 
     while (userLinkPtr != NULL)
     {
         User_t* userPtr = CONTAINER_OF(userLinkPtr, User_t, link);
 
-        le_dls_Link_t* serviceLinkPtr = le_dls_Peek(&userPtr->serviceList);
-
-        while (serviceLinkPtr != NULL)
+        // List all the unbound client connections:
+        le_dls_Link_t* clientLinkPtr = le_dls_Peek(&userPtr->unboundClientsList);
+        while (clientLinkPtr != NULL)
         {
-            Service_t* servicePtr = CONTAINER_OF(serviceLinkPtr, Service_t, link);
+            ClientConnection_t* connectionPtr = CONTAINER_OF(clientLinkPtr,
+                                                             ClientConnection_t,
+                                                             link);
 
-            le_dls_Link_t* connectionLinkPtr = le_dls_Peek(&servicePtr->waitingClientsList);
-
-            if (connectionLinkPtr != NULL)
+            if (strncmp(userPtr->name, "app", 3) == 0)
             {
                 dprintf(fd,
-                        "Waiting for user %u (%s) to offer service '%s:%s':\n",
-                        userPtr->uid,
+                        "        [pid %5d] %s.%s UNBOUND  (protocol ID = '%s')\n",
+                        connectionPtr->pid,
+                        userPtr->name + 3,
+                        connectionPtr->serviceId.serviceName,
+                        connectionPtr->serviceId.protocolId);
+            }
+            else
+            {
+                dprintf(fd,
+                        "        [pid %5d] <%s>.%s UNBOUND  (protocol ID = '%s')\n",
+                        connectionPtr->pid,
                         userPtr->name,
-                        servicePtr->serviceName,
-                        servicePtr->protocolId);
+                        connectionPtr->serviceId.serviceName,
+                        connectionPtr->serviceId.protocolId);
             }
 
-            while (connectionLinkPtr != NULL)
+            clientLinkPtr = le_dls_PeekNext(&userPtr->unboundClientsList, clientLinkPtr);
+        }
+
+        // For each binding in the user's Binding List,
+        le_dls_Link_t* bindingLinkPtr = le_dls_Peek(&userPtr->bindingList);
+
+        while (bindingLinkPtr != NULL)
+        {
+            Binding_t* bindingPtr = CONTAINER_OF(bindingLinkPtr, Binding_t, link);
+
+            // For each client connection on the binding's Waiting Clients List,
+            clientLinkPtr = le_dls_Peek(&bindingPtr->waitingClientsList);
+            while (clientLinkPtr != NULL)
             {
-                ClientConnection_t* connectionPtr = CONTAINER_OF(connectionLinkPtr,
+                ClientConnection_t* connectionPtr = CONTAINER_OF(clientLinkPtr,
                                                                  ClientConnection_t,
                                                                  link);
-                dprintf(fd,
-                        "        User %d (%s) pid %d\n",
-                        connectionPtr->userPtr->uid,
-                        connectionPtr->userPtr->name,
-                        connectionPtr->pid);
 
-                connectionLinkPtr = le_dls_PeekNext(&servicePtr->waitingClientsList,
-                                                    connectionLinkPtr);
+                // Print a description of the waiting connection and what it is waiting for.
+                if (strncmp(userPtr->name, "app", 3) == 0)
+                {
+                    dprintf(fd, "        [pid %5d] %s", connectionPtr->pid, userPtr->name + 3);
+                }
+                else
+                {
+                    dprintf(fd, "        [pid %5d] <%s>", connectionPtr->pid, userPtr->name);
+                }
+
+                dprintf(fd, ".%s WAITING for ", connectionPtr->serviceId.serviceName);
+
+                if (strncmp(bindingPtr->serverUserPtr->name, "app", 3) == 0)
+                {
+                    dprintf(fd, "%s", bindingPtr->serverUserPtr->name + 3);
+                }
+                else
+                {
+                    dprintf(fd, "<%s>", bindingPtr->serverUserPtr->name);
+                }
+
+                dprintf(fd,
+                        ".%s  (protocol ID = '%s')\n",
+                        bindingPtr->serverServiceName,
+                        connectionPtr->serviceId.protocolId);
+
+                clientLinkPtr = le_dls_PeekNext(&bindingPtr->waitingClientsList, clientLinkPtr);
             }
 
-            serviceLinkPtr = le_dls_PeekNext(&userPtr->serviceList, serviceLinkPtr);
+            bindingLinkPtr = le_dls_PeekNext(&userPtr->bindingList, bindingLinkPtr);
         }
 
         userLinkPtr = le_dls_PeekNext(&UserList, userLinkPtr);
@@ -1921,22 +1925,33 @@ static void SdirToolListBindings
 
         le_dls_Link_t* bindingLinkPtr = le_dls_Peek(&userPtr->bindingList);
 
-        if (bindingLinkPtr != NULL)
-        {
-            dprintf(fd, "User %u (%s):\n", userPtr->uid, userPtr->name);
-        }
-
         while (bindingLinkPtr != NULL)
         {
             Binding_t* bindingPtr = CONTAINER_OF(bindingLinkPtr, Binding_t, link);
 
-            dprintf(fd,
-                    "        %s.%s=%s.%s:%s\n",
-                    userPtr->name,
-                    bindingPtr->serviceName,
-                    bindingPtr->servicePtr->userPtr->name,
-                    bindingPtr->servicePtr->serviceName,
-                    bindingPtr->servicePtr->protocolId);
+            // Print the binding to the provided file descriptor.
+            // Use the same format as would be seen in a .sdef file.
+            if (strncmp(userPtr->name, "app", 3) == 0)
+            {
+                dprintf(fd, "        %s", userPtr->name + 3);
+            }
+            else
+            {
+                dprintf(fd, "        <%s>", userPtr->name);
+            }
+
+            dprintf(fd, ".%s -> ", bindingPtr->clientServiceName);
+
+            if (strncmp(bindingPtr->serverUserPtr->name, "app", 3) == 0)
+            {
+                dprintf(fd, "%s", bindingPtr->serverUserPtr->name + 3);
+            }
+            else
+            {
+                dprintf(fd, "<%s>", bindingPtr->serverUserPtr->name);
+            }
+
+            dprintf(fd, ".%s\n", bindingPtr->serverServiceName);
 
             bindingLinkPtr = le_dls_PeekNext(&userPtr->bindingList, bindingLinkPtr);
         }
@@ -1963,7 +1978,11 @@ static void SdirToolList
     }
     else
     {
-        dprintf(fd, "SERVICES\n\n");
+        dprintf(fd, "\nBINDINGS\n\n");
+
+        SdirToolListBindings(fd);
+
+        dprintf(fd, "\nSERVICES\n\n");
 
         SdirToolListServices(fd);
 
@@ -1971,9 +1990,7 @@ static void SdirToolList
 
         SdirToolListWaitingClients(fd);
 
-        dprintf(fd, "\nBINDINGS\n\n");
-
-        SdirToolListBindings(fd);
+        dprintf(fd, "\n");
 
         fd_Close(fd);
     }
@@ -2016,6 +2033,8 @@ static void SdirToolUnbindAll
         le_mem_Release(userPtr);
     }
 
+    // Re-create built-in, hard-coded bindings.
+    CreateHardCodedBindings();
 }
 
 
@@ -2052,54 +2071,10 @@ static void SdirToolBind
         }
         else
         {
-            len = strnlen(msgPtr->protocolId, LIMIT_MAX_PROTOCOL_ID_BYTES);
-            if (len == 0)
-            {
-                LE_KILL_CLIENT("Protocol ID empty.");
-            }
-            else if (len == LIMIT_MAX_PROTOCOL_ID_BYTES)
-            {
-                LE_KILL_CLIENT("Protocol ID not null terminated!");
-            }
-            else
-            {
-                User_t* clientPtr = FindUser(msgPtr->client);
-                if (clientPtr == NULL)
-                {
-                    clientPtr = CreateUser(msgPtr->client);
-                }
-
-                // See if the client already has a bind for this service name.
-                Binding_t* bindingPtr = FindBinding(clientPtr, msgPtr->clientServiceName);
-                if (bindingPtr != NULL)
-                {
-                    LE_WARN("Replacing duplicate binding of '%s' for client user %u '%s'.",
-                            msgPtr->clientServiceName,
-                            clientPtr->uid,
-                            clientPtr->name);
-                    // NOTE: we wait to delete the old binding until after the new one
-                    //       has been created.  This ensures that the reference count on
-                    //       the client User object doesn't drop to zero.
-                }
-
-                User_t* serverPtr = FindUser(msgPtr->server);
-                if (serverPtr == NULL)
-                {
-                    serverPtr = CreateUser(msgPtr->server);
-                }
-
-                CreateBinding(clientPtr,
-                              msgPtr->clientServiceName,
-                              serverPtr,
-                              msgPtr->serverServiceName,
-                              msgPtr->protocolId);
-
-                // If we are replacing a binding, delete the old binding now.
-                if (bindingPtr != NULL)
-                {
-                    le_mem_Release(bindingPtr);
-                }
-            }
+            CreateBinding(msgPtr->client,
+                          msgPtr->clientServiceName,
+                          msgPtr->server,
+                          msgPtr->serverServiceName);
         }
     }
 }
@@ -2179,7 +2154,6 @@ COMPONENT_INIT
     user_Init();    // Initialize the User module.
 
     // Get references to the pools.
-    ServicePoolRef = le_mem_CreatePool("Service", sizeof(Service_t));
     ClientConnectionPoolRef = le_mem_CreatePool("Client Connection", sizeof(ClientConnection_t));
     ServerConnectionPoolRef = le_mem_CreatePool("Server Connection", sizeof(ServerConnection_t));
     UserPoolRef = le_mem_CreatePool("User", sizeof(User_t));
@@ -2187,18 +2161,19 @@ COMPONENT_INIT
 
     /// Expand the pools to their expected maximum sizes.
     /// @todo Make this configurable.
-    le_mem_ExpandPool(ServicePoolRef, 30);
     le_mem_ExpandPool(ClientConnectionPoolRef, 100);
     le_mem_ExpandPool(ServerConnectionPoolRef, 30);
     le_mem_ExpandPool(UserPoolRef, 30);
     le_mem_ExpandPool(BindingPoolRef, 30);
 
     // Register destructor functions.
-    le_mem_SetDestructor(ServicePoolRef, ServiceDestructor);
     le_mem_SetDestructor(ClientConnectionPoolRef, ClientConnectionDestructor);
     le_mem_SetDestructor(ServerConnectionPoolRef, ServerConnectionDestructor);
     le_mem_SetDestructor(UserPoolRef, UserDestructor);
     le_mem_SetDestructor(BindingPoolRef, BindingDestructor);
+
+    // Create built-in, hard-coded bindings.
+    CreateHardCodedBindings();
 
     // Create the Legato runtime directory if it doesn't already exists.
     LE_ASSERT(le_dir_Make(STRINGIZE(LE_RUNTIME_DIR), S_IRWXU | S_IXOTH) != LE_FAULT);

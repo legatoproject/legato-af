@@ -59,7 +59,6 @@ typedef struct
     uid_t server;               ///< Unix user ID of the server.
     char clientServiceName[LIMIT_MAX_SERVICE_NAME_BYTES];   ///< Client's service name.
     char serverServiceName[LIMIT_MAX_SERVICE_NAME_BYTES];   ///< Server's service name.
-    char protocolId[LIMIT_MAX_PROTOCOL_ID_BYTES];           ///< Protocol identifier.
 }
 le_sdtp_Msg_t;
 

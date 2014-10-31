@@ -11,15 +11,13 @@ mkexe(  supervisor
             -i ${LEGATO_ROOT}/interfaces/supervisor
             -i ..
             -i ../security
+            -i ../serviceDirectory
             --cflags=-DNO_LOG_CONTROL
             --cflags=-DLEGATO_FRAMEWORK_NICE_LEVEL=${LEGATO_FRAMEWORK_NICE_LEVEL}
             --cflags=-DLE_RUNTIME_DIR='"${LE_RUNTIME_DIR}"'
-            --ldflags=-lsecurity
         DEPENDS
-            security
-            Component.cdef
-            supervisor.c
-            config.c
+            ../security/*
+            ./*
             ${LEGATO_ROOT}/interfaces/supervisor/le_sup_ctrl.api
             ${LEGATO_ROOT}/interfaces/supervisor/le_sup_state.api
             ${LEGATO_ROOT}/interfaces/supervisor/le_sup_wdog.api

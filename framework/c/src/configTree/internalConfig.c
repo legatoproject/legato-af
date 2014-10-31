@@ -101,7 +101,6 @@
 #include "treeDb.h"
 #include "treeUser.h"
 #include "nodeIterator.h"
-#include "stringBuffer.h"
 #include "internalConfig.h"
 
 
@@ -193,7 +192,7 @@ static bool CheckPermissionStr
     // report anything if the value wasn't set in the first place.
     if (strcmp(permissionStr, "") != 0)
     {
-        char pathStr[SB_SIZE] = "";
+        char pathStr[LE_CFG_STR_LEN_BYTES] = "";
 
         LE_ASSERT(ni_GetPathForNode(iteratorRef, "", pathStr, sizeof(pathStr)) == LE_OK);
         LE_WARN("Bad permission value, '%s', for node, '%s'.", permissionStr, pathStr);

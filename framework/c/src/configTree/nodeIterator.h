@@ -14,10 +14,12 @@
 #define CFG_NODE_ITERATOR_INCLUDE_GUARD
 
 
-
-
+#ifndef CFG_TREE_DB_INCLUDE_GUARD
 /// Raw pointer ref for a node iterator.
 typedef struct Iterator* ni_IteratorRef_t;
+
+#endif
+
 
 
 /// Const version of the iterator ref.
@@ -288,6 +290,23 @@ tdb_NodeRef_t ni_GetNode
 
 //--------------------------------------------------------------------------------------------------
 /**
+ *  Attempt to get the node in question.  However, if it doesn't exist, then try to create it.
+ *
+ *  @return A pointer to the requested node, if found, otherwise, NULL.
+ */
+//--------------------------------------------------------------------------------------------------
+tdb_NodeRef_t ni_TryCreateNode
+(
+    ni_IteratorRef_t iteratorRef,  ///< [IN] The iterator object to access.
+    const char* subPathPtr         ///< [IN] Optional, can be used to specify a node relative to the
+                                   ///<      current one.
+);
+
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  *  Use an iterator to check to see if a node exists within the configuration tree.
  *
  *  @return True if the node in question exists, false if not.
@@ -443,6 +462,8 @@ le_cfg_nodeType_t ni_GetNodeType
  *  current node.
  *
  *  @return LE_OK if the node name will fit within the supplied buffer, LE_OVERFLOW otherwise.
+ *          If a fatal problem is encountered and the client connection needs to be closed LE_FAULT
+ *          will be returned.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t ni_GetNodeName

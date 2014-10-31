@@ -95,8 +95,7 @@
 #include "interfaces.h"
 #include "user.h"
 #include "fileDescriptor.h"
-// TODO: Needed for workaround until #1233 is fixed
-#include "messagingService.h"
+
 
 
 //--------------------------------------------------------------------------------------------------
@@ -208,13 +207,6 @@ static void CleanUpClosedClient
     if (LE_OK == le_msg_GetClientUserCreds(sessionRef, &clientUserId, &clientProcId))
     {
         DeleteWatchdog(clientProcId);
-    }
-    // TODO: I manually call the old messaging cleanup handler I saved in COMPONENT_INIT
-    // This can be removed when #1233 is finished.
-    if (contextPtr != NULL)
-    {
-        le_msg_SessionEventHandler_t serviceClientCleanup = (le_msg_SessionEventHandler_t)contextPtr;
-        serviceClientCleanup(sessionRef, NULL);
     }
 }
 
@@ -628,15 +620,8 @@ COMPONENT_INIT
 {
     InitializeTimerContainer();
     SystemProcessNotifySupervisor();
-    le_sup_wdog_StartClient(LE_SUP_WDOG_API_NAME);
-    // TODO: le_msg_SetServiceCloseHandler stomps normal client cleanup handler.
-    // I grab the old closeHandler from the Service pointer and store it as the "context" for my new
-    // close handler so I can call it after my close handler. This isn't very clean and safe. For
-    // e.g. I KNOW the context pointer used in the server code is currently NULL so I can re-use it
-    // but that may not always be so.
-    // Waiting for #1233 to fix this.
-    Service_t* servicePtr = (Service_t*)le_wdog_GetServiceRef();
-    le_msg_SessionEventHandler_t oldCloseHandler = servicePtr->closeHandler;
-    le_msg_SetServiceCloseHandler (le_wdog_GetServiceRef(), CleanUpClosedClient, oldCloseHandler);
+    le_sup_wdog_ConnectService();
+
+    le_msg_AddServiceCloseHandler (le_wdog_GetServiceRef(), CleanUpClosedClient, NULL);
     LE_INFO("The watchdog service is ready");
 }

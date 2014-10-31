@@ -15,7 +15,6 @@ mkexe(  configTree
             configTree.c
             configTreeApi.c
             configTreeAdminApi.c
-            stringBuffer.c
             dynamicString.c
             requestQueue.c
             nodeIterator.c

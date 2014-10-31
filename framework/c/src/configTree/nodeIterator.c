@@ -12,7 +12,6 @@
 
 #include "legato.h"
 #include "interfaces.h"
-#include "stringBuffer.h"
 #include "treeDb.h"
 #include "treeUser.h"
 #include "internalConfig.h"
@@ -62,6 +61,7 @@ typedef struct Iterator
     ni_IteratorType_t type;          ///< The type of iterator we are creating, read or write?
 
     bool isClosed;                   ///< Has this iterator been closed?
+    bool isTerminated;               ///< Has the iterator been closed due to a fatal error?
 
     le_pathIter_Ref_t pathIterRef;   ///< Path to the iterator's current node.
     tdb_NodeRef_t currentNodeRef;    ///< The current node itself.
@@ -127,6 +127,12 @@ static void OnTransactionTimeout
         iterTypePtr = "Write";
     }
 
+    if (iteratorRef->isTerminated)
+    {
+        LE_DEBUG("Previously terminated iterator, <%p> timed out.", iteratorRef);
+        return;
+    }
+
     // Report the failure in the log, and close the client session.  Once the session is closed all
     // of that user's resources within the configTree will be naturally cleaned up.
     LE_EMERG("%s transaction <%p> timer expired, for user %s, <%d>.",
@@ -136,6 +142,71 @@ static void OnTransactionTimeout
              tu_GetUserId(iteratorRef->userRef));
 
     tu_TerminateConfigClient(iteratorRef->sessionRef, "Transaction timeout.");
+}
+
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Create a new path iterator based off of node iterators current path iterator.  Then optionally,
+ *  apply a sub-path to this new iterator.
+ *
+ *  @note   This function will terminate the client on any errors encountered.
+ *
+ *  @return LE_OK if all went to plan.  LE_OVERFLOW if the new path is too large to be held in an
+ *          iterator.  LE_UNDERFLOW if the applied sub-path attempts go to up past root.
+ *          The newly created iterator is returned as an out-parameter.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t CloneAndAppendPath
+(
+    ni_IteratorRef_t iteratorRef,         ///< [IN]  The iterator to read.
+    const char* subPathPtr,               ///< [IN]  Optionally, a sub-path to traverse to.
+    le_pathIter_Ref_t* newPathIterRefPtr  ///< [OUT] Pointer to a to-be newly created ref.  Must be
+                                          ///<       NULL on entry!
+)
+//--------------------------------------------------------------------------------------------------
+{
+    LE_ASSERT(*newPathIterRefPtr == NULL);
+
+
+    le_pathIter_Ref_t newPathRef = le_pathIter_Clone(iteratorRef->pathIterRef);
+    le_result_t result = LE_OK;
+
+    if (subPathPtr != NULL)
+    {
+        result = le_pathIter_Append(newPathRef, subPathPtr);
+    }
+
+    if (result != LE_OK)
+    {
+        char* terminateMessage;
+
+        switch (result)
+        {
+            case LE_OVERFLOW:
+                terminateMessage = "Specified path too large.";
+                break;
+
+            case LE_UNDERFLOW:
+                terminateMessage = "Specified path attempts to iterate below root.";
+                break;
+
+            default:
+                terminateMessage = "Unexpected error while appending path.";
+                break;
+        }
+
+        iteratorRef->isTerminated = true;
+        tu_TerminateConfigClient(iteratorRef->sessionRef, terminateMessage);
+
+        le_pathIter_Delete(newPathRef);
+        return result;
+    }
+
+    *newPathIterRefPtr = newPathRef;
+    return result;
 }
 
 
@@ -191,16 +262,26 @@ ni_IteratorRef_t ni_CreateIterator
     iteratorRef->type = type;
     iteratorRef->reference = NULL;
     iteratorRef->isClosed = false;
+    iteratorRef->isTerminated = false;
 
-    // Setup the timeout timer for this transaction.
-    le_clk_Time_t timeout = { ic_GetTransactionTimeout(), 0 };
-    iteratorRef->timerRef = le_timer_Create("Transaction Timer");
+    // Setup the timeout timer for this transaction, if it's been configured.
+    time_t configTimeout = ic_GetTransactionTimeout();
 
-    LE_ASSERT(le_timer_SetInterval(iteratorRef->timerRef, timeout) == LE_OK);
-    LE_ASSERT(le_timer_SetHandler(iteratorRef->timerRef, OnTransactionTimeout) == LE_OK);
-    LE_ASSERT(le_timer_SetContextPtr(iteratorRef->timerRef, iteratorRef) == LE_OK);
+    if (configTimeout > 0)
+    {
+        le_clk_Time_t timeout = { configTimeout, 0 };
+        iteratorRef->timerRef = le_timer_Create("Transaction Timer");
 
-    LE_ASSERT(le_timer_Start(iteratorRef->timerRef) == LE_OK);
+        LE_ASSERT(le_timer_SetInterval(iteratorRef->timerRef, timeout) == LE_OK);
+        LE_ASSERT(le_timer_SetHandler(iteratorRef->timerRef, OnTransactionTimeout) == LE_OK);
+        LE_ASSERT(le_timer_SetContextPtr(iteratorRef->timerRef, iteratorRef) == LE_OK);
+
+        LE_ASSERT(le_timer_Start(iteratorRef->timerRef) == LE_OK);
+    }
+    else
+    {
+        iteratorRef->timerRef = NULL;
+    }
 
     // If this is a write iterator, then shadow the tree instead of accessing it directly.
     if (iteratorRef->type == NI_WRITE)
@@ -577,35 +658,61 @@ tdb_NodeRef_t ni_GetNode
 )
 //--------------------------------------------------------------------------------------------------
 {
-    // Copy iterator's existing path, and append the new sub path to the existing path.  Once
+    // Copy iterator's existing path, and append the new sub path to the copied path.  Once
     // that's done, attempt to find the requested node in the tree.  If the node still can not be
     // found, return NULL.
-    le_pathIter_Ref_t newPathRef = le_pathIter_Clone(iteratorRef->pathIterRef);
-    tdb_NodeRef_t nodeRef = NULL;
-    le_result_t result = LE_OK;
+    le_pathIter_Ref_t newPathRef = NULL;
 
-    if (subPathPtr != NULL)
+    if (CloneAndAppendPath(iteratorRef, subPathPtr, &newPathRef) != LE_OK)
     {
-        result = le_pathIter_Append(newPathRef, subPathPtr);
+        return NULL;
     }
 
-    // Make sure that the append was successful.  If it is, get the node.
-    if (result == LE_OVERFLOW)
-    {
-        tu_TerminateConfigClient(iteratorRef->sessionRef, "Specified path too large.");
-    }
-    else if (result == LE_UNDERFLOW)
-    {
-        tu_TerminateConfigClient(iteratorRef->sessionRef,
-                                 "Specified path attempts to iterate below root.");
-    }
-    else
-    {
-        nodeRef = tdb_GetNode(tdb_GetRootNode(iteratorRef->treeRef), newPathRef);
-    }
+    tdb_NodeRef_t nodeRef = tdb_GetNode(tdb_GetRootNode(iteratorRef->treeRef), newPathRef);
 
     le_pathIter_Delete(newPathRef);
 
+    return nodeRef;
+}
+
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Attempt to get the node in question.  However, if it doesn't exist, then try to create it.
+ *
+ *  @return A pointer to the requested node, if found, otherwise, NULL.
+ */
+//--------------------------------------------------------------------------------------------------
+tdb_NodeRef_t ni_TryCreateNode
+(
+    ni_IteratorRef_t iteratorRef,  ///< [IN] The iterator object to access.
+    const char* subPathPtr         ///< [IN] Optional, can be used to specify a node relative to the
+                                   ///<      current one.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // Clone the iterator's original path and, if supplied, append the new sub path onto this new
+    // path.
+    le_pathIter_Ref_t newPathRef = NULL;
+
+    if (CloneAndAppendPath(iteratorRef, subPathPtr, &newPathRef) != LE_OK)
+    {
+        return NULL;
+    }
+
+    // Attempt to find the node in the tree.  If not found attempt to create the new node in the
+    // tree.
+    tdb_NodeRef_t rootNodeRef = tdb_GetRootNode(iteratorRef->treeRef);
+    tdb_NodeRef_t nodeRef = tdb_GetNode(rootNodeRef, newPathRef);
+
+    if (nodeRef == NULL)
+    {
+        nodeRef = tdb_CreateNodePath(rootNodeRef, newPathRef);
+    }
+
+    le_pathIter_Delete(newPathRef);
     return nodeRef;
 }
 
@@ -681,11 +788,12 @@ void ni_SetEmpty
 )
 //--------------------------------------------------------------------------------------------------
 {
-    tdb_NodeRef_t nodeRef = ni_GetNode(iteratorRef, newPathPtr);
+    tdb_NodeRef_t nodeRef = ni_TryCreateNode(iteratorRef, newPathPtr);
 
     if (nodeRef)
     {
         tdb_SetEmpty(nodeRef);
+        tdb_EnsureExists(nodeRef);
     }
 }
 
@@ -708,7 +816,7 @@ void ni_DeleteNode
     // Delete the requested node, and then see if we can find our way back to where we were.
     tdb_NodeRef_t nodeRef = ni_GetNode(iteratorRef, newPathPtr);
 
-    if (nodeRef)
+    if (nodeRef != NULL)
     {
         tdb_DeleteNode(nodeRef);
         iteratorRef->currentNodeRef = ni_GetNode(iteratorRef, "");
@@ -781,10 +889,10 @@ le_result_t ni_GoToFirstChild
 
         iteratorRef->currentNodeRef = newNodeRef;
 
-        char namePtr[MAX_NODE_NAME] = { 0 };
+        char name[LE_CFG_NAME_LEN_BYTES] = "";
 
-        tdb_GetNodeName(newNodeRef, namePtr, MAX_NODE_NAME);
-        le_pathIter_Append(iteratorRef->pathIterRef, namePtr);
+        tdb_GetNodeName(newNodeRef, name, sizeof(name));
+        le_pathIter_Append(iteratorRef->pathIterRef, name);
 
         return LE_OK;
     }
@@ -822,15 +930,15 @@ le_result_t ni_GoToNextSibling
         // Looks like we found a new node, so replace the node name at the end of the path.
         iteratorRef->currentNodeRef = newNodeRef;
 
-        char namePtr[MAX_NODE_NAME] = { 0 };
-        tdb_GetNodeName(newNodeRef, namePtr, MAX_NODE_NAME);
+        char name[LE_CFG_NAME_LEN_BYTES] = "";
+        tdb_GetNodeName(newNodeRef, name, sizeof(name));
 
         if (le_pathIter_GoToEnd(iteratorRef->pathIterRef) != LE_NOT_FOUND)
         {
             le_pathIter_Truncate(iteratorRef->pathIterRef);
         }
 
-        le_pathIter_Append(iteratorRef->pathIterRef, namePtr);
+        le_pathIter_Append(iteratorRef->pathIterRef, name);
 
         return LE_OK;
     }
@@ -928,6 +1036,8 @@ le_cfg_nodeType_t ni_GetNodeType
  *  current node.
  *
  *  @return LE_OK if the node name will fit within the supplied buffer, LE_OVERFLOW otherwise.
+ *          If a fatal problem is encountered and the client connection needs to be closed LE_FAULT
+ *          will be returned.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t ni_GetNodeName
@@ -949,21 +1059,40 @@ le_result_t ni_GetNodeName
     // path.
     tdb_NodeRef_t nodeRef = ni_GetNode(iteratorRef, pathPtr);
 
+    // If the iterator was closed during the GetNode, then that means there was a fatal problem
+    // encountered.
+    if (iteratorRef->isTerminated)
+    {
+        // At this point we know the client has been disconnected.  So just return fault so that the
+        // calling code can know this.
+        return LE_FAULT;
+    }
+
     if (nodeRef != NULL)
     {
         return tdb_GetNodeName(nodeRef, destBufferPtr, bufferMax);
     }
 
-    // Clear out the target buffer and attempt get the last named segment on our path string.  If
-    // that fails then we're on the root node and just return an empty string.
-    *destBufferPtr = 0;
+    // Looks like a node wasn't found.  So, try to get the name of the node from the sub-path.  Or
+    // if a sub-path was not specified, get the name from the iterator's base path.
+    *destBufferPtr = '\0';
 
-    if (le_pathIter_GoToEnd(iteratorRef->pathIterRef) != LE_OK)
+    if (strcmp(pathPtr, "") != 0)
     {
-        return le_pathIter_GetCurrentNode(iteratorRef->pathIterRef, destBufferPtr, bufferMax);
+        le_pathIter_Ref_t subPathIter = le_pathIter_CreateForUnix(pathPtr);
+        le_result_t result = le_pathIter_GoToEnd(iteratorRef->pathIterRef);
+
+        if (result == LE_OK)
+        {
+            result = le_pathIter_GetCurrentNode(subPathIter, destBufferPtr, bufferMax);
+        }
+
+        le_pathIter_Delete(subPathIter);
+        return result;
     }
 
-    return LE_OK;
+    LE_ASSERT(le_pathIter_GoToEnd(iteratorRef->pathIterRef) == LE_OK);
+    return le_pathIter_GetCurrentNode(iteratorRef->pathIterRef, destBufferPtr, bufferMax);
 }
 
 
@@ -987,27 +1116,68 @@ le_result_t ni_SetNodeName
 )
 //--------------------------------------------------------------------------------------------------
 {
-    // Try to get the node, and if found, set the name.
-    tdb_NodeRef_t nodeRef = ni_GetNode(iteratorRef, pathPtr);
+    // Try to get or create the requested node.  If the optional sub-path results in a new path that
+    // overflows, then the node get will fail.
+    tdb_NodeRef_t nodeRef = ni_TryCreateNode(iteratorRef, pathPtr);
     le_result_t result = LE_OK;
 
     if (nodeRef)
     {
-        // Looks like the node was found.  So, try to set the name, if successful make sure that the
-        // node isn't marked as deleted.
-        result = tdb_SetNodeName(nodeRef, namePtr);
+        // Ok, the existing path is ok.  Cache the existing node name, in case we have to revert it
+        // later, then set the new name.  We may have to revert the name later, because, while the
+        // new name itself may be ok.  The name may actually be too long for the path limit.
+        char oldName[LE_CFG_NAME_LEN_BYTES] = "";
+        LE_ASSERT(tdb_GetNodeName(nodeRef, oldName, sizeof(oldName)) == LE_OK);
 
+        result = tdb_SetNodeName(nodeRef, namePtr);
 
         if (result == LE_OK)
         {
-            // Make sure that this node is marked to exist past this transaction, and if the given
-            // node is our current node, then update our current path.
-            tdb_EnsureExists(nodeRef);
-
-            if (iteratorRef->currentNodeRef == nodeRef)
+            // The new name passed validation, now we have to make sure that the full path to the
+            // node is still ok.  So, first we have to check, was a relative path used.
+            if (strcmp(pathPtr, "") == 0)
             {
+                // Looks like the caller was using the iterator's current node.  So, remove the old
+                // name from the end of the iterator's current path, and append the new name.  If
+                // this fails, it's because the new absolute path is too long, so name change fails,
+                // and we have to revert the changes.
                 LE_ASSERT(le_pathIter_Append(iteratorRef->pathIterRef, "..") == LE_OK);
-                LE_ASSERT(le_pathIter_Append(iteratorRef->pathIterRef, namePtr) == LE_OK);
+                result = le_pathIter_Append(iteratorRef->pathIterRef, namePtr);
+
+                if (result != LE_OK)
+                {
+                    LE_ASSERT(le_pathIter_Append(iteratorRef->pathIterRef, oldName) == LE_OK);
+                }
+            }
+            else
+            {
+                // The user is accessing a node relative to the iterator's current node.  So, we
+                // need too build up a new path and validate that the new name still fits within our
+                // limits.  The new path ref is for validation only and can be safely discarded once
+                // the check is complete.
+                le_pathIter_Ref_t newPathRef = le_pathIter_Clone(iteratorRef->pathIterRef);
+                result = le_pathIter_Append(newPathRef, pathPtr);
+
+                if (result == LE_OK)
+                {
+                    LE_ASSERT(le_pathIter_Append(newPathRef, "..") == LE_OK);
+                    result = le_pathIter_Append(newPathRef, namePtr);
+                }
+
+                le_pathIter_Delete(newPathRef);
+            }
+
+            // If we got to this point and everything is ok, then we know that the name set was ok,
+            // and that the resultant path with the new name is also ok.  So, make sure that this
+            // node exists in the next commit.  Otherwise, revert the node to it's old name and
+            // report the error to the caller.
+            if (result == LE_OK)
+            {
+                tdb_EnsureExists(nodeRef);
+            }
+            else
+            {
+                LE_ASSERT(tdb_SetNodeName(nodeRef, oldName) == LE_OK);
             }
         }
     }
@@ -1061,7 +1231,7 @@ void ni_SetNodeValueString
 )
 //--------------------------------------------------------------------------------------------------
 {
-    tdb_NodeRef_t nodeRef = ni_GetNode(iteratorRef, pathPtr);
+    tdb_NodeRef_t nodeRef = ni_TryCreateNode(iteratorRef, pathPtr);
 
     if (nodeRef)
     {
@@ -1115,7 +1285,7 @@ void ni_SetNodeValueInt
 )
 //--------------------------------------------------------------------------------------------------
 {
-    tdb_NodeRef_t nodeRef = ni_GetNode(iteratorRef, pathPtr);
+    tdb_NodeRef_t nodeRef = ni_TryCreateNode(iteratorRef, pathPtr);
 
     if (nodeRef)
     {
@@ -1169,7 +1339,7 @@ void ni_SetNodeValueFloat
 )
 //--------------------------------------------------------------------------------------------------
 {
-    tdb_NodeRef_t nodeRef = ni_GetNode(iteratorRef, pathPtr);
+    tdb_NodeRef_t nodeRef = ni_TryCreateNode(iteratorRef, pathPtr);
 
     if (nodeRef)
     {
@@ -1222,7 +1392,7 @@ void ni_SetNodeValueBool
 )
 //--------------------------------------------------------------------------------------------------
 {
-    tdb_NodeRef_t nodeRef = ni_GetNode(iteratorRef, pathPtr);
+    tdb_NodeRef_t nodeRef = ni_TryCreateNode(iteratorRef, pathPtr);
 
     if (nodeRef)
     {

@@ -12,7 +12,6 @@
 
 #include "legato.h"
 #include "interfaces.h"
-#include "stringBuffer.h"
 #include "dynamicString.h"
 #include "treeDb.h"
 #include "treeUser.h"
@@ -56,7 +55,7 @@ static void CreateTransaction
     }
     else
     {
-        // Try to create the new iterator.  If it can not be created now, it'll be queued for
+        // Try to create the new iterator.  If it can't be created now, it'll be queued for
         // creation later.
         rq_HandleCreateTxnRequest(userRef,
                                   treeRef,
@@ -108,7 +107,7 @@ static ni_IteratorRef_t GetIteratorFromRef
 // -------------------------------------------------------------------------------------------------
 static ni_IteratorRef_t GetWriteIteratorFromRef
 (
-    le_cfg_IteratorRef_t externalRef  ///< [IN] The iterator reference to extract a pointer from.
+    le_cfg_IteratorRef_t externalRef  ///< [IN] Iterator reference to extract a pointer from.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -136,7 +135,7 @@ static ni_IteratorRef_t GetWriteIteratorFromRef
 // -------------------------------------------------------------------------------------------------
 static bool CheckPathForSpecifier
 (
-    const char* pathPtr  ///< [IN] The path string to check.
+    const char* pathPtr  ///< [IN] Path string to check.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -156,20 +155,23 @@ static bool CheckPathForSpecifier
 
 // -------------------------------------------------------------------------------------------------
 /**
- *  Check the size of a requested string buffer.  If it is larger than what we can handle
+ *  Check the size of a requested string buffer.  If it's larger than what we can handle
  *  internally, truncate it to what we can handle.
  */
 // -------------------------------------------------------------------------------------------------
 static size_t MaxStr
 (
-    size_t requestedMax  ///< [IN] The requested maximum string size.
+    size_t requestedMax  ///< [IN] Requested maximum string size.
 )
 // -------------------------------------------------------------------------------------------------
 {
-    if (requestedMax > SB_SIZE)
+    if (requestedMax > LE_CFG_STR_LEN_BYTES)
     {
-        LE_DEBUG("Truncating output string buffer from %zd to %zd.", requestedMax, SB_SIZE);
-        return SB_SIZE;
+        LE_DEBUG("Truncating output string buffer from %zd to %d.",
+                 requestedMax,
+                 LE_CFG_STR_LEN_BYTES);
+
+        return LE_CFG_STR_LEN_BYTES;
     }
 
     return requestedMax;
@@ -184,14 +186,14 @@ static size_t MaxStr
  *
  *  @note If the permission check fails, then terminate client will be called.
  *
- *  @return A reference to the requested tree.  Otherwise, NULL, If the permission check fails.
+ *  @return A reference to the requested tree.  Otherwise, NULL, if permission check fails.
  */
 // -------------------------------------------------------------------------------------------------
 static tdb_TreeRef_t QuickGetTree
 (
     tu_UserRef_t userRef,            ///< [IN] Get a tree for this user.
     tu_TreePermission_t permission,  ///< [IN] Try to get a tree with this permission.
-    const char* pathPtr              ///< [IN] The path to check.
+    const char* pathPtr              ///< [IN] Path to check.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -527,8 +529,8 @@ void le_cfg_GoToNextSibling
  *  /baseNode/childA/valueA
  *  @endcode
  *
- *  Optionally, a path to another node can be supplied to this function.  So, if the iterator is
- *  again on valueA and the relative path ".." is supplied then this function will return the
+ *  Optionally, a path to another node can be supplied to this function.  If the iterator is
+ *  again on valueA and the relative path "..." is supplied, this function will return the
  *  following path:
  *
  *  @code
@@ -557,7 +559,7 @@ void le_cfg_GetPath
     LE_DEBUG_IF((pathPtr != NULL) && (strlen(pathPtr) != 0), "** Offset by \"%s\"", pathPtr);
 
     ni_IteratorRef_t iteratorRef = GetIteratorFromRef(externalRef);
-    char strBuffer[SB_SIZE] = { 0 };
+    char strBuffer[LE_CFG_STR_LEN_BYTES] = "";
     le_result_t result = LE_OK;
 
     if (   (iteratorRef != NULL)
@@ -634,7 +636,7 @@ void le_cfg_GetNodeName
     LE_DEBUG_IF((pathPtr != NULL) && (strlen(pathPtr) != 0), "** Offset by \"%s\"", pathPtr);
 
     ni_IteratorRef_t iteratorRef = GetIteratorFromRef(externalRef);
-    char strBuffer[SB_SIZE] = { 0 };
+    char strBuffer[LE_CFG_STR_LEN_BYTES] = "";
     le_result_t result = LE_OK;
 
     if (   (iteratorRef != NULL)
@@ -701,8 +703,8 @@ void le_cfg_SetNodeName
 
 // -------------------------------------------------------------------------------------------------
 /**
- *  Register a call back on a given node object.  Once registered, if that node or if any of it's
- *  children are read from, written to, created or deleted, then this function will be called.
+ *  Register a call back on a given node object.  Once registered, this function is called if the
+ *  node or if any of it's children are read from, written to, created or deleted.
  *
  *  @return A handle to the event registration.
  */
@@ -746,12 +748,12 @@ le_cfg_ChangeHandlerRef_t le_cfg_AddChangeHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function removes a handler...
+ * This function removes a handler.
  */
 //--------------------------------------------------------------------------------------------------
 void le_cfg_RemoveChangeHandler
 (
-    le_cfg_ChangeHandlerRef_t handlerRef  ///< [IN] The previously registered handler to remove.
+    le_cfg_ChangeHandlerRef_t handlerRef  ///< [IN] Previously registered handler to remove.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -773,9 +775,9 @@ void le_cfg_RemoveChangeHandler
  *  Delete the node specified by the path.  If the node doesn't exist, nothing happens.  All child
  *  nodes are also deleted.
  *
- *  If the path is empty, then the iterator's current node is deleted.
+ *  If the path is empty, the iterator's current node is deleted.
  *
- *  This function is only valid during a write transaction.
+ *  Only valid during a write transaction.
  */
 // -------------------------------------------------------------------------------------------------
 void le_cfg_DeleteNode
@@ -784,7 +786,7 @@ void le_cfg_DeleteNode
                                        ///<      request.
     le_cfg_IteratorRef_t externalRef,  ///< [IN] Iterator to use as a basis for the transaction.
     const char* pathPtr                ///< [IN] Absolute or relative path to the node to delete.
-                                       ///<      If absolute path is given, it is rooted off of the
+                                       ///<      If absolute path is given, it's rooted off of the
                                        ///<      user's root node.
 )
 // -------------------------------------------------------------------------------------------------
@@ -811,9 +813,9 @@ void le_cfg_DeleteNode
  *  Check if the given node is empty.  A node is considered empty if it has no value.  A node is
  *  also considered empty if it doesn't yet exist.
  *
- *  If the path is empty, then the iterator's current node is queried for emptiness.
+ *  If the path is empty, the iterator's current node is queried for emptiness.
  *
- *  This function is valid for both read and write transactions.
+ *  Valid for both read and write transactions.
  *
  *  \b Responds \b With:
  *
@@ -851,10 +853,10 @@ void le_cfg_IsEmpty
 /**
  *  Clear out the nodes's value.  If it doesn't exist it will be created, but have no value.
  *
- *  If the path is empty, then the iterator's current node will be cleared.  If the node is a stem
- *  then all children will be removed from the tree.
+ *  If the path is empty, the iterator's current node will be cleared.  If the node is a stem,
+ *  all children will be removed from the tree.
  *
- *  This function is only valid during a write transaction.
+ *  Only valid during a write transaction.
  */
 // -------------------------------------------------------------------------------------------------
 void le_cfg_SetEmpty
@@ -922,11 +924,11 @@ void le_cfg_NodeExists
 // -------------------------------------------------------------------------------------------------
 /**
  *  Read a string value from the configuration tree.  If the value isn't a string, or if the node is
- *  empty or doesn't exist then the default value will be returned.
+ *  empty or doesn't exist, the default value will be returned.
  *
- *  This function is valid for both read and write transactions.
+ *  Valid for both read and write transactions.
  *
- *  If the path is empty, then the iterator's current node will be read.
+ *  If the path is empty, the iterator's current node will be read.
  *
  *  \b Responds \b With:
  *
@@ -943,8 +945,7 @@ void le_cfg_GetString
     le_cfg_IteratorRef_t externalRef,  ///< [IN] Iterator to use as a basis for the transaction.
     const char* pathPtr,               ///< [IN] Absolute or relative path to read from.
     size_t maxString,                  ///< [IN] Maximum size of the result string.
-    const char* defaultValue           ///< [IN] The default value to use if the original can not
-                                       ///<      be.
+    const char* defaultValue           ///< [IN] Default value to use if the original can't  be.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -952,7 +953,7 @@ void le_cfg_GetString
     LE_DEBUG_IF((pathPtr != NULL) && (strlen(pathPtr) != 0), "** Offset by \"%s\"", pathPtr);
 
     ni_IteratorRef_t iteratorRef = GetIteratorFromRef(externalRef);
-    char strBuffer[SB_SIZE] = { 0 };
+    char strBuffer[LE_CFG_STR_LEN_BYTES] = "";
     le_result_t result = LE_OK;
 
     if (   (iteratorRef != NULL)
@@ -973,10 +974,10 @@ void le_cfg_GetString
 
 // -------------------------------------------------------------------------------------------------
 /**
- *  Write a string value to the configuration tree.  This function is only valid during a write
+ *  Write a string value to the configuration tree.  Only valid during a write
  *  transaction.
  *
- *  If the path is empty, then the iterator's current node will be set.
+ *  If the path is empty, the iterator's current node will be set.
  */
 // -------------------------------------------------------------------------------------------------
 void le_cfg_SetString
@@ -1015,11 +1016,11 @@ void le_cfg_SetString
  *  If the underlying value is not an integer, the default value will be returned instead.  The
  *  default value is also returned if the node does not exist or if it's empty.
  *
- *  If the value is a floating point value, then it will be rounded and returned as an integer.
+ *  If the value is a floating point value, it will be rounded and returned as an integer.
  *
- *  This function is valid for both read and write transactions.
+ *  Valid for both read and write transactions.
  *
- *  If the path is empty, then the iterator's current node will be read.
+ *  If the path is empty, the iterator's current node will be read.
  */
 // -------------------------------------------------------------------------------------------------
 void le_cfg_GetInt
@@ -1028,7 +1029,7 @@ void le_cfg_GetInt
                                        ///<      request.
     le_cfg_IteratorRef_t externalRef,  ///< [IN] Iterator to use as a basis for the transaction.
     const char* pathPtr,               ///< [IN] Full or relative path to the value to read.
-    int32_t defaultValue               ///< [IN] The default value to use if the original can not be.
+    int32_t defaultValue               ///< [IN] Default value to use if the original can't be.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -1052,10 +1053,10 @@ void le_cfg_GetInt
 
 // -------------------------------------------------------------------------------------------------
 /**
- *  Write a signed integer value to the configuration tree.  This function is only valid during a
+ *  Write a signed integer value to the configuration tree.  Only valid during a
  *  write transaction.
  *
- *  If the path is empty, then the iterator's current node will be set.
+ *  If the path is empty, the iterator's current node will be set.
  */
 // -------------------------------------------------------------------------------------------------
 void le_cfg_SetInt
@@ -1091,10 +1092,10 @@ void le_cfg_SetInt
 /**
  *  Read a 64-bit floating point value from the configuration tree.
  *
- *  If the value is an integer then the value will be promoted to a float.  Otherwise, if the
+ *  If the value is an integer, the value will be promoted to a float.  Otherwise, if the
  *  underlying value is not a float or integer, the default value will be returned.
  *
- *  If the path is empty, then the iterator's current node will be read.
+ *  If the path is empty, the iterator's current node will be read.
  */
 // -------------------------------------------------------------------------------------------------
 void le_cfg_GetFloat
@@ -1103,7 +1104,7 @@ void le_cfg_GetFloat
                                        ///<      request.
     le_cfg_IteratorRef_t externalRef,  ///< [IN] Iterator to use as a basis for the transaction.
     const char* pathPtr,               ///< [IN] Full or relative path to the value to read.
-    double defaultValue                ///< [IN] The default value to use if the original can not be.
+    double defaultValue                ///< [IN] Default value to use if the original can't be.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -1127,10 +1128,10 @@ void le_cfg_GetFloat
 
 // -------------------------------------------------------------------------------------------------
 /**
- *  Write a 64-bit floating point value to the configuration tree.  This function is only valid
+ *  Write a 64-bit floating point value to the configuration tree.  Only valid
  *  during a write transaction.
  *
- *  If the path is empty, then the iterator's current node will be set.
+ *  If the path is empty, the iterator's current node will be set.
  */
 // -------------------------------------------------------------------------------------------------
 void le_cfg_SetFloat
@@ -1164,13 +1165,13 @@ void le_cfg_SetFloat
 
 // -------------------------------------------------------------------------------------------------
 /**
- *  Read a value from the tree as a boolean.  If the node is empty or doesn't exist then the default
+ *  Read a value from the tree as a boolean.  If the node is empty or doesn't exist, the default
  *  value is returned.  The default value is also returned if the node is of a different type than
  *  expected.
  *
- *  This function is valid for both read and write transactions.
+ *  Valid for both read and write transactions.
  *
- *  If the path is empty, then the iterator's current node will be read.
+ *  If the path is empty, the iterator's current node will be read.
  */
 // -------------------------------------------------------------------------------------------------
 void le_cfg_GetBool
@@ -1179,7 +1180,7 @@ void le_cfg_GetBool
                                        ///<      request.
     le_cfg_IteratorRef_t externalRef,  ///< [IN] Iterator to use as a basis for the transaction.
     const char* pathPtr,               ///< [IN] Full or relative path to the value to read.
-    bool defaultValue                  ///< [IN] The default value to use if the original can not be.
+    bool defaultValue                  ///< [IN] Default value to use if the original can't be.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -1187,7 +1188,7 @@ void le_cfg_GetBool
     LE_DEBUG_IF((pathPtr != NULL) && (strlen(pathPtr) != 0), "** Offset by \"%s\"", pathPtr);
 
     ni_IteratorRef_t iteratorRef = GetIteratorFromRef(externalRef);
-    bool value;
+    bool value = defaultValue;
 
     if (   (iteratorRef != NULL)
         && (CheckPathForSpecifier(pathPtr) == false))
@@ -1204,10 +1205,10 @@ void le_cfg_GetBool
 
 // -------------------------------------------------------------------------------------------------
 /**
- *  Write a boolean value to the configuration tree.  This function is only valid during a write
+ *  Write a boolean value to the configuration tree.  Only valid during a write
  *  transaction.
  *
- *  If the path is empty, then the iterator's current node will be set.
+ *  If the path is empty, the iterator's current node will be set.
  */
 // -------------------------------------------------------------------------------------------------
 void le_cfg_SetBool
@@ -1282,7 +1283,7 @@ void le_cfg_QuickDeleteNode
 
 // -------------------------------------------------------------------------------------------------
 /**
- *  Make a given node empty.  If the node doesn't currently exist then it is created as a new empty
+ *  Make a given node empty.  If the node doesn't currently exist, it's created as a new empty
  *  node.
  */
 // -------------------------------------------------------------------------------------------------
@@ -1315,7 +1316,7 @@ void le_cfg_QuickSetEmpty
 // -------------------------------------------------------------------------------------------------
 /**
  *  Read a string value from the configuration tree.  If the value isn't a string, or if the node is
- *  empty or doesn't exist then the default value will be returned.
+ *  empty or doesn't exist, the default value will be returned.
  *
  *  \b Responds \b With:
  *
@@ -1331,7 +1332,7 @@ void le_cfg_QuickGetString
                                        ///<      request.
     const char* pathPtr,               ///< [IN] Path to read from.
     size_t maxString,                  ///< [IN] Maximum string to return.
-    const char* defaultValuePtr        ///< [IN] The default value to use if the original can not be.
+    const char* defaultValuePtr        ///< [IN] Default value to use if the original can't be.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -1390,11 +1391,11 @@ void le_cfg_QuickSetString
 
 // -------------------------------------------------------------------------------------------------
 /**
- *  Read a signed integer value from the configuration tree.  If the value is a float, then it is
+ *  Read a signed integer value from the configuration tree.  If the value is a float, it's
  *  truncated.  Otherwise If the underlying value is not an integer or a float, the default value
  *  will be returned instead.
  *
- *  If the value is empty or the node doesn't exist then the default value is returned instead.
+ *  If the value is empty or the node doesn't exist, the default value is returned instead.
  */
 // -------------------------------------------------------------------------------------------------
 void le_cfg_QuickGetInt
@@ -1402,7 +1403,7 @@ void le_cfg_QuickGetInt
     le_cfg_ServerCmdRef_t commandRef,  ///< [IN] Reference used to generate a reply for this
                                        ///<      request.
     const char* pathPtr,               ///< [IN] Path to the value to write.
-    int32_t defaultValue               ///< [IN] The default value to use if the original can not be.
+    int32_t defaultValue               ///< [IN] Default value to use if the original can't be.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -1461,10 +1462,10 @@ void le_cfg_QuickSetInt
 // -------------------------------------------------------------------------------------------------
 /**
  *  Read a 64-bit floating point value from the configuration tree.  If the value is an integer,
- *  then it is promoted to a float.  Otherwise, if the underlying value is not a float, or an
+ *  it's promoted to a float.  Otherwise, if the underlying value is not a float, or an
  *  integer the default value will be returned.
  *
- *  If the value is empty or the node doesn't exist then the default value is returned.
+ *  If the value is empty or the node doesn't exist, the default value is returned.
  */
 // -------------------------------------------------------------------------------------------------
 void le_cfg_QuickGetFloat
@@ -1472,7 +1473,7 @@ void le_cfg_QuickGetFloat
     le_cfg_ServerCmdRef_t commandRef,  ///< [IN] Reference used to generate a reply for this
                                        ///<      request.
     const char* pathPtr,               ///< [IN] Path to the value to write.
-    double defaultValue                ///< [IN] The default value to use if the original can not be.
+    double defaultValue                ///< [IN] Default value to use if the original can't be.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -1530,10 +1531,10 @@ void le_cfg_QuickSetFloat
 
 // -------------------------------------------------------------------------------------------------
 /**
- *  Read a value from the tree as a boolean.  If the node is empty or doesn't exist then the default
+ *  Read a value from the tree as a boolean.  If the node is empty or doesn't exist, the default
  *  value is returned.  This is also true if the node is of a different type than expected.
  *
- *  If the value is empty or the node doesn't exist then the default value is returned instead.
+ *  If the value is empty or the node doesn't exist, the default value is returned instead.
  */
 // -------------------------------------------------------------------------------------------------
 void le_cfg_QuickGetBool
@@ -1541,7 +1542,7 @@ void le_cfg_QuickGetBool
     le_cfg_ServerCmdRef_t commandRef,  ///< [IN] Reference used to generate a reply for this
                                        ///<      request.
     const char* pathPtr,               ///< [IN] Path to the value to write.
-    bool defaultValue                  ///< [IN] The default value to use if the original can not be.
+    bool defaultValue                  ///< [IN] Default value to use if the original can't be.
 )
 // -------------------------------------------------------------------------------------------------
 {

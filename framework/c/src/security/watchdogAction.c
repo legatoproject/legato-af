@@ -4,7 +4,7 @@
  * a function to convert from the action string to the enumerated value for that action
  * (or to an error value).
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless, Inc. 2014.  Use of this work is subject to license.
  */
 
 #include "watchdogAction.h"
@@ -36,18 +36,19 @@ const char* wdog_action_GetConfigNode
  * A structure that associated a watchdog action string with the corresponding enum
  */
 //--------------------------------------------------------------------------------------------------
-struct NameToAction
+typedef struct
 {
     char* actionString;
     wdog_action_WatchdogAction_t action;
-};
+}
+NameToAction_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Table associating watchdog action strings to enums
  */
 //--------------------------------------------------------------------------------------------------
-struct NameToAction table[] =
+static NameToAction_t NameToActionTable[] =
 {
      // WATCHDOG_ACTION_NONE - not searched for. This is the default.
     {"",            WATCHDOG_ACTION_NOT_FOUND},
@@ -77,11 +78,11 @@ wdog_action_WatchdogAction_t wdog_action_EnumFromString
     wdog_action_WatchdogAction_t result = WATCHDOG_ACTION_ERROR;
     if (actionString)
     {
-        for (c = 0; c < NUM_ARRAY_MEMBERS(table); ++c)
+        for (c = 0; c < NUM_ARRAY_MEMBERS(NameToActionTable); ++c)
         {
-            if (strcmp(table[c].actionString, actionString) == 0)
+            if (strcmp(NameToActionTable[c].actionString, actionString) == 0)
             {
-                result = table[c].action;
+                result = NameToActionTable[c].action;
                 break;
             }
         }

@@ -96,7 +96,7 @@ void le_cfgAdmin_ImportTree
         return;
     }
 
-    tdb_NodeRef_t nodeRef = ni_GetNode(iteratorRef, nodePathPtr);
+    tdb_NodeRef_t nodeRef = ni_TryCreateNode(iteratorRef, nodePathPtr);
 
     if (nodeRef == NULL)
     {

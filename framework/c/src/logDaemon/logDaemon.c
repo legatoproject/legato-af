@@ -59,7 +59,7 @@
  * running process that belongs to an IPC session reference when the IPC system reports that
  * a session closed.  This is how the Log Control Daemon finds out that a client process died.
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
  */
 
 #include "legato.h"
@@ -382,7 +382,7 @@ static const char* GetLevelString
 )
 //--------------------------------------------------------------------------------------------------
 {
-    if (level == -1)
+    if (level == (le_log_Level_t)-1)
     {
         return "default";
     }
@@ -932,10 +932,15 @@ static bool ParseCmdPacket
                                                     &numBytes);
         if (result != LE_OK)
         {
-            LE_ERROR("Failed to extract process name from log command message '%s' (%s).",
+            LE_ERROR("Process name too long in log command message '%s' (%s).",
                      cmdPacketPtr,
                      LE_RESULT_TXT(result));
-            return false;
+
+            // Skip forward to '/' terminator.
+            while ((packetPtr[numBytes] != '/') && (packetPtr[numBytes] != '\0'))
+            {
+                numBytes++;
+            }
         }
 
         packetPtr += numBytes;
@@ -981,12 +986,16 @@ static bool ParseCmdPacket
                                                     &numBytes);
         if (result != LE_OK)
         {
-            LE_ERROR("Failed to extract component name from log command message '%s' (%s).",
+            LE_ERROR("Component too long in log command message '%s' (%s).",
                      cmdPacketPtr,
                      LE_RESULT_TXT(result));
             LE_ERROR("Component name was being extracted from substring '%s'.", packetPtr);
 
-            return false;
+            // Skip forward to '/' terminator.
+            while ((packetPtr[numBytes] != '/') && (packetPtr[numBytes] != '\0'))
+            {
+                numBytes++;
+            }
         }
 
         packetPtr += numBytes;
@@ -1071,7 +1080,7 @@ static void UpdateClientSessionSettings
     size_t byteCount;
 
     // First send the level update, if it's not -1 (default).
-    if (logSessionPtr->level != -1)
+    if (logSessionPtr->level != (le_log_Level_t)-1)
     {
         msgRef = le_msg_CreateMsg(runningProcObjPtr->ipcSessionRef);
         payloadPtr = le_msg_GetPayloadPtr(msgRef);
@@ -1806,7 +1815,7 @@ static void SetLevel
     // Parse the command data payload to get the level setting.
     le_log_Level_t level = log_StrToSeverityLevel(levelStr);
 
-    if (level == -1)
+    if (level == (le_log_Level_t)-1)
     {
         snprintf(message, sizeof(message), "***ERROR: Invalid log level '%s'.", levelStr);
         LE_WARN("%s", message);
@@ -2453,7 +2462,6 @@ static void ClientMsgReceiveHandler
                 LE_ERROR("Client attempted to issue a log control command (%c)!", command);
 
                 le_msg_CloseSession(ipcSessionRef);
-                ClientIpcSessionClosed(ipcSessionRef, NULL);
 
                 break;
 
@@ -2462,7 +2470,6 @@ static void ClientMsgReceiveHandler
                 LE_ERROR("Unknown command byte '%c' received from client.", command);
 
                 le_msg_CloseSession(ipcSessionRef);
-                ClientIpcSessionClosed(ipcSessionRef, NULL);
 
                 break;
         }
@@ -2470,7 +2477,6 @@ static void ClientMsgReceiveHandler
     else
     {
         le_msg_CloseSession(ipcSessionRef);
-        ClientIpcSessionClosed(ipcSessionRef, NULL);
     }
 
     le_msg_ReleaseMsg(msgRef);
@@ -2599,7 +2605,7 @@ COMPONENT_INIT
     // Create and advertise the client service.
     le_msg_ServiceRef_t serviceRef = le_msg_CreateService(protocolRef, LOG_CLIENT_SERVICE_NAME);
     le_msg_SetServiceRecvHandler(serviceRef, ClientMsgReceiveHandler, NULL);
-    le_msg_SetServiceCloseHandler(serviceRef, ClientIpcSessionClosed, NULL);
+    le_msg_AddServiceCloseHandler(serviceRef, ClientIpcSessionClosed, NULL);
     le_msg_AdvertiseService(serviceRef);
 
     // Create and advertise the log control service (the one the control tool uses).

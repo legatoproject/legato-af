@@ -19,11 +19,11 @@
  * The name of the node in the config tree that contains an application's limit on the application's
  * file system size (in bytes).
  *
- * If this entry in the config tree is missing or is empty, then DEFAULT_LIMIT_FILE_SYSTEM_SIZE
+ * If this entry in the config tree is missing or is empty, then DEFAULT_LIMIT_MAX_FILE_SYSTEM_BYTES
  * will be used.
  */
 //--------------------------------------------------------------------------------------------------
-#define CFG_NODE_LIMIT_FILE_SYSTEM_SIZE                 "fileSystemSizeLimit"
+#define CFG_NODE_LIMIT_MAX_FILE_SYSTEM_BYTES            "maxFileSystemBytes"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -32,44 +32,44 @@
  * limit.
  *
  * If this entry in the config tree is missing or is empty, then
- * DEFAULT_LIMIT_TOTAL_POSIX_MSG_QUEUE_SIZE will be used.
+ * DEFAULT_LIMIT_MAX_MQUEUE_BYTES will be used.
  */
 //--------------------------------------------------------------------------------------------------
-#define CFG_NODE_LIMIT_TOTAL_POSIX_MSG_QUEUE_SIZE       "totalPosixMsgQueueSizeLimit"
+#define CFG_NODE_LIMIT_MAX_MQUEUE_BYTES                 "maxMQueueBytes"
 
 
 //--------------------------------------------------------------------------------------------------
 /**
  * The name of the node in the config tree that contains a process's user's limit on the maximum
- * number of processes.
+ * number of threads.
  *
- * If this entry in the config tree is missing or is empty, then DEFAULT_LIMIT_NUM_PROCESSES
+ * If this entry in the config tree is missing or is empty, then DEFAULT_LIMIT_MAX_THREADS
  * will be used.
  */
 //--------------------------------------------------------------------------------------------------
-#define CFG_NODE_LIMIT_NUM_PROCESSES                    "numProcessesLimit"
+#define CFG_NODE_LIMIT_MAX_THREADS                      "maxThreads"
 
 
 //--------------------------------------------------------------------------------------------------
 /**
  * The name of the node in the config tree that contains a process's user's limit on the maximum
- * number of realtime signals that can be queued.
+ * number of signals that can be queued using sigqueue().
  *
- * If this entry in the config tree is missing or is empty, then DEFAULT_LIMIT_RT_SIGNAL_QUEUE_SIZE
+ * If this entry in the config tree is missing or is empty, then DEFAULT_LIMIT_MAX_QUEUED_SIGNALS
  * will be used.
  */
 //--------------------------------------------------------------------------------------------------
-#define CFG_NODE_LIMIT_RT_SIGNAL_QUEUE_SIZE             "rtSignalQueueSizeLimit"
+#define CFG_NODE_LIMIT_MAX_QUEUED_SIGNALS               "maxQueuedSignals"
 
 
 //--------------------------------------------------------------------------------------------------
 /**
  * The name of the node in the config tree that contains an application's memory limit.
  *
- * If this entry in the config tree is missing or is empty, DEFAULT_LIMIT_MEMORY is used.
+ * If this entry in the config tree is missing or is empty, DEFAULT_LIMIT_MAX_MEMORY_BYTES is used.
  */
 //--------------------------------------------------------------------------------------------------
-#define CFG_NODE_LIMIT_MEMORY                           "memLimit"
+#define CFG_NODE_LIMIT_MAX_MEMORY_BYTES                 "maxMemoryBytes"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -86,11 +86,11 @@
 /**
  * The name of the node in the config tree that contains a process's core dump file size limit.
  *
- * If this entry in the config tree is missing or is empty, DEFAULT_LIMIT_CORE_DUMP_FILE_SIZE is
- * used.
+ * If this entry in the config tree is missing or is empty, DEFAULT_LIMIT_MAX_CORE_DUMP_FILE_BYTES
+ * is used.
  */
 //--------------------------------------------------------------------------------------------------
-#define CFG_NODE_LIMIT_CORE_DUMP_FILE_SIZE              "coreDumpFileSizeLimit"
+#define CFG_NODE_LIMIT_MAX_CORE_DUMP_FILE_BYTES         "maxCoreDumpFileBytes"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -98,10 +98,10 @@
  * The name of the node in the config tree that contains a process's limit on the size of files that
  * it can create/expand.
  *
- * If this entry in the config tree is missing or is empty, DEFAULT_LIMIT_MAX_FILE_SIZE is used.
+ * If this entry in the config tree is missing or is empty, DEFAULT_LIMIT_MAX_FILE_BYTES is used.
  */
 //--------------------------------------------------------------------------------------------------
-#define CFG_NODE_LIMIT_MAX_FILE_SIZE                    "maxFileSizeLimit"
+#define CFG_NODE_LIMIT_MAX_FILE_BYTES                    "maxFileBytes"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -111,10 +111,11 @@
  *
  * In effect this limit is rounded down to the nearest multiple of the system page size.
  *
- * If this entry in the config tree is missing or is empty, DEFAULT_LIMIT_MEM_LOCK_SIZE is used.
+ * If this entry in the config tree is missing or is empty, DEFAULT_LIMIT_MAX_LOCKED_MEMORY_BYTES
+ * is used.
  */
 //--------------------------------------------------------------------------------------------------
-#define CFG_NODE_LIMIT_MEM_LOCK_SIZE                    "memLockSizeLimit"
+#define CFG_NODE_LIMIT_MAX_LOCKED_MEMORY_BYTES          "maxLockedMemoryBytes"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -122,29 +123,34 @@
  * The name of the node in the config tree that contains a process's limit on the number of file
  * descriptors that the process can have open.
  *
- * The configured value must be less than MAX_LIMIT_NUM_FD.
+ * The configured value must be less than MAX_LIMIT_FILE_DESCRIPTORS.
  *
- * If this entry in the config tree is missing or is empty, DEFAULT_LIMIT_NUM_FD is used.
+ * If this entry in the config tree is missing or is empty, DEFAULT_LIMIT_MAX_FILE_DESCRIPTORS
+ * is used.
  */
 //--------------------------------------------------------------------------------------------------
-#define CFG_NODE_LIMIT_NUM_FD                           "numFileDescriptorsLimit"
+#define CFG_NODE_LIMIT_MAX_FILE_DESCRIPTORS             "maxFileDescriptors"
 
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Resource limit defaults.
+ *
+ * @warning These limits are only used if the limits are missing from the application's
+ *          configuration.  However, they should always be present in the app config.  So, to
+ *          change the defaults, modify the build tools.
  */
 //--------------------------------------------------------------------------------------------------
-#define DEFAULT_LIMIT_FILE_SYSTEM_SIZE                  131072
-#define DEFAULT_LIMIT_TOTAL_POSIX_MSG_QUEUE_SIZE        512
-#define DEFAULT_LIMIT_NUM_PROCESSES                     20
-#define DEFAULT_LIMIT_RT_SIGNAL_QUEUE_SIZE              100
-#define DEFAULT_LIMIT_MEMORY                            40960
+#define DEFAULT_LIMIT_MAX_FILE_SYSTEM_BYTES             131072
+#define DEFAULT_LIMIT_MAX_MQUEUE_BYTES                  512
+#define DEFAULT_LIMIT_MAX_THREADS                       20
+#define DEFAULT_LIMIT_MAX_QUEUED_SIGNALS                100
+#define DEFAULT_LIMIT_MAX_MEMORY_BYTES                  40960000
 #define DEFAULT_LIMIT_CPU_SHARE                         1024
-#define DEFAULT_LIMIT_CORE_DUMP_FILE_SIZE               8192
-#define DEFAULT_LIMIT_MAX_FILE_SIZE                     90112
-#define DEFAULT_LIMIT_MEM_LOCK_SIZE                     8192
-#define DEFAULT_LIMIT_NUM_FD                            256
+#define DEFAULT_LIMIT_MAX_CORE_DUMP_FILE_BYTES          8192
+#define DEFAULT_LIMIT_MAX_FILE_BYTES                    90112
+#define DEFAULT_LIMIT_MAX_LOCKED_MEMORY_BYTES           8192
+#define DEFAULT_LIMIT_MAX_FILE_DESCRIPTORS              256
 
 
 //--------------------------------------------------------------------------------------------------
@@ -152,7 +158,7 @@
  * Maximum value that the limit on the number of file descriptors can be set to.
  */
 //--------------------------------------------------------------------------------------------------
-#define MAX_LIMIT_NUM_FD                                1024
+#define MAX_LIMIT_FILE_DESCRIPTORS                      1024
 
 
 //--------------------------------------------------------------------------------------------------
@@ -229,17 +235,17 @@ rlim_t resLim_GetSandboxedAppTmpfsLimit
 
     // Get the resource limit from the config tree.
     int fileSysLimit = GetCfgResourceLimit(appCfg,
-                                           CFG_NODE_LIMIT_FILE_SYSTEM_SIZE,
-                                           DEFAULT_LIMIT_FILE_SYSTEM_SIZE);
+                                           CFG_NODE_LIMIT_MAX_FILE_SYSTEM_BYTES,
+                                           DEFAULT_LIMIT_MAX_FILE_SYSTEM_BYTES);
 
     if (fileSysLimit == 0)
     {
         // Zero means unlimited for tmpfs mounts and is not allowed.  Use the default limit.
         LE_ERROR("Configured resource limit %s is zero, which is invalid.  Assuming the default value %d.",
-                 CFG_NODE_LIMIT_FILE_SYSTEM_SIZE,
-                 DEFAULT_LIMIT_FILE_SYSTEM_SIZE);
+                 CFG_NODE_LIMIT_MAX_FILE_SYSTEM_BYTES,
+                 DEFAULT_LIMIT_MAX_FILE_SYSTEM_BYTES);
 
-        fileSysLimit = DEFAULT_LIMIT_FILE_SYSTEM_SIZE;
+        fileSysLimit = DEFAULT_LIMIT_MAX_FILE_SYSTEM_BYTES;
     }
 
     le_cfg_CancelTxn(appCfg);
@@ -267,12 +273,12 @@ static void SetRLimit
     int limit = GetCfgResourceLimit(procCfg, resourceName, defaultValue);
 
     // Check that the limit does not exceed the maximum.
-    if ( (resourceID == RLIMIT_NOFILE) && (limit > MAX_LIMIT_NUM_FD) )
+    if ( (resourceID == RLIMIT_NOFILE) && (limit > MAX_LIMIT_FILE_DESCRIPTORS) )
     {
         LE_ERROR("Resource limit %s is greater than the maximum allowed limit (%d).  Using the \
-maximum allowed value.", resourceName, MAX_LIMIT_NUM_FD);
+maximum allowed value.", resourceName, MAX_LIMIT_FILE_DESCRIPTORS);
 
-        limit = MAX_LIMIT_NUM_FD;
+        limit = MAX_LIMIT_FILE_DESCRIPTORS;
     }
 
     // Hard and soft limits are the same.
@@ -342,9 +348,11 @@ le_result_t resLim_SetAppLimits
     }
 
     // Set the memory limit.
-    int memLimit = GetCfgResourceLimit(appCfg, CFG_NODE_LIMIT_MEMORY, DEFAULT_LIMIT_MEMORY);
+    int maxMemoryBytes = GetCfgResourceLimit(appCfg,
+                                             CFG_NODE_LIMIT_MAX_MEMORY_BYTES,
+                                             DEFAULT_LIMIT_MAX_MEMORY_BYTES);
 
-    if (cgrp_mem_SetLimit(userName, memLimit) != LE_OK)
+    if (cgrp_mem_SetLimit(userName, maxMemoryBytes / 1024) != LE_OK)
     {
         le_cfg_CancelTxn(appCfg);
         return LE_FAULT;
@@ -376,17 +384,17 @@ le_result_t resLim_SetProcLimits
     le_cfg_IteratorRef_t procCfg = le_cfg_CreateReadTxn(proc_GetConfigPath(procRef));
 
     // Set the process resource limits.
-    SetRLimit(pid, procCfg, CFG_NODE_LIMIT_CORE_DUMP_FILE_SIZE, RLIMIT_CORE,
-              DEFAULT_LIMIT_CORE_DUMP_FILE_SIZE);
+    SetRLimit(pid, procCfg, CFG_NODE_LIMIT_MAX_CORE_DUMP_FILE_BYTES, RLIMIT_CORE,
+              DEFAULT_LIMIT_MAX_CORE_DUMP_FILE_BYTES);
 
-    SetRLimit(pid, procCfg, CFG_NODE_LIMIT_MAX_FILE_SIZE, RLIMIT_FSIZE,
-              DEFAULT_LIMIT_MAX_FILE_SIZE);
+    SetRLimit(pid, procCfg, CFG_NODE_LIMIT_MAX_FILE_BYTES, RLIMIT_FSIZE,
+              DEFAULT_LIMIT_MAX_FILE_BYTES);
 
-    SetRLimit(pid, procCfg, CFG_NODE_LIMIT_MEM_LOCK_SIZE, RLIMIT_MEMLOCK,
-              DEFAULT_LIMIT_MEM_LOCK_SIZE);
+    SetRLimit(pid, procCfg, CFG_NODE_LIMIT_MAX_LOCKED_MEMORY_BYTES, RLIMIT_MEMLOCK,
+              DEFAULT_LIMIT_MAX_LOCKED_MEMORY_BYTES);
 
-    SetRLimit(pid, procCfg, CFG_NODE_LIMIT_NUM_FD, RLIMIT_NOFILE,
-              DEFAULT_LIMIT_NUM_FD);
+    SetRLimit(pid, procCfg, CFG_NODE_LIMIT_MAX_FILE_DESCRIPTORS, RLIMIT_NOFILE,
+              DEFAULT_LIMIT_MAX_FILE_DESCRIPTORS);
 
     // Set the application limits.
     //
@@ -397,14 +405,14 @@ le_result_t resLim_SetProcLimits
     le_cfg_GoToParent(procCfg);
     le_cfg_GoToParent(procCfg);
 
-    SetRLimit(pid, procCfg, CFG_NODE_LIMIT_TOTAL_POSIX_MSG_QUEUE_SIZE, RLIMIT_MSGQUEUE,
-              DEFAULT_LIMIT_TOTAL_POSIX_MSG_QUEUE_SIZE);
+    SetRLimit(pid, procCfg, CFG_NODE_LIMIT_MAX_MQUEUE_BYTES, RLIMIT_MSGQUEUE,
+              DEFAULT_LIMIT_MAX_MQUEUE_BYTES);
 
-    SetRLimit(pid, procCfg, CFG_NODE_LIMIT_NUM_PROCESSES, RLIMIT_NPROC,
-              DEFAULT_LIMIT_NUM_PROCESSES);
+    SetRLimit(pid, procCfg, CFG_NODE_LIMIT_MAX_THREADS, RLIMIT_NPROC,
+              DEFAULT_LIMIT_MAX_THREADS);
 
-    SetRLimit(pid, procCfg, CFG_NODE_LIMIT_RT_SIGNAL_QUEUE_SIZE, RLIMIT_SIGPENDING,
-              DEFAULT_LIMIT_RT_SIGNAL_QUEUE_SIZE);
+    SetRLimit(pid, procCfg, CFG_NODE_LIMIT_MAX_QUEUED_SIGNALS, RLIMIT_SIGPENDING,
+              DEFAULT_LIMIT_MAX_QUEUED_SIGNALS);
 
     le_cfg_CancelTxn(procCfg);
 

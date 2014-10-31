@@ -17,7 +17,6 @@
 
 #include "legato.h"
 #include "interfaces.h"
-#include "stringBuffer.h"
 #include "treeDb.h"
 #include "treeUser.h"
 #include "nodeIterator.h"
@@ -68,42 +67,42 @@ RequestType_t;
 // -------------------------------------------------------------------------------------------------
 typedef struct UpdateRequest
 {
-    RequestType_t type;                     ///< Request id.
+    RequestType_t type;                          ///< Request id.
 
-    tu_UserRef_t userRef;                   ///< User requesting the processing.
-    tdb_TreeRef_t treeRef;                  ///< The tree to be operated on.
+    tu_UserRef_t userRef;                        ///< User requesting the processing.
+    tdb_TreeRef_t treeRef;                       ///< The tree to be operated on.
 
-    le_msg_SessionRef_t sessionRef;         ///< The context for the session the message came in
-                                            ///<   on.
-    le_cfg_ServerCmdRef_t commandRef;       ///< Message context for the request.
+    le_msg_SessionRef_t sessionRef;              ///< The context for the session the message came
+                                                 ///<   in on.
+    le_cfg_ServerCmdRef_t commandRef;            ///< Message context for the request.
 
     union
     {
         struct
         {
-            char* pathPtr;                  ///< Initial path for the requested iterator.
+            char pathPtr[LE_CFG_STR_LEN_BYTES];  ///< Initial path for the requested iterator.
         }
-        createTxn;                          ///< Create new transaction info.
+        createTxn;                               ///< Create new transaction info.
 
         struct
         {
-            ni_IteratorRef_t iteratorRef;   ///< Ptr to the iterator to commit.
+            ni_IteratorRef_t iteratorRef;        ///< Ptr to the iterator to commit.
         }
         commitTxn;
 
         struct
         {
-            ni_IteratorRef_t iteratorRef;   ///< Ptr to the iterator to commit.
+            ni_IteratorRef_t iteratorRef;        ///< Ptr to the iterator to commit.
         }
         deleteTxn;
 
         struct
         {
-            char* pathPtr;                  ///< Path to the value to operate on.
+            char pathPtr[LE_CFG_STR_LEN_BYTES];  ///< Path to the value to operate on.
 
             union
             {
-                char* AsStringPtr;
+                char AsStringPtr[LE_CFG_STR_LEN_BYTES];
                 int AsInt;
                 float AsFloat;
                 bool AsBool;
@@ -183,51 +182,6 @@ static void ReleaseRequestBlock
 {
     LE_DEBUG("** Releasing request block <%p>.", requestPtr);
 
-    switch (requestPtr->type)
-    {
-        case RQ_CREATE_WRITE_TXN:
-            sb_Release(requestPtr->data.createTxn.pathPtr);
-            break;
-
-        case RQ_COMMIT_WRITE_TXN:
-            break;
-
-        case RQ_DELETE_TXN:
-            break;
-
-        case RQ_CREATE_READ_TXN:
-            sb_Release(requestPtr->data.createTxn.pathPtr);
-            break;
-
-        case RQ_DELETE_NODE:
-            sb_Release(requestPtr->data.writeReq.pathPtr);
-            break;
-
-        case RQ_SET_EMPTY:
-            sb_Release(requestPtr->data.writeReq.pathPtr);
-            break;
-
-        case RQ_SET_STRING:
-            sb_Release(requestPtr->data.writeReq.pathPtr);
-            sb_Release(requestPtr->data.writeReq.value.AsStringPtr);
-            break;
-
-        case RQ_SET_INT:
-            sb_Release(requestPtr->data.writeReq.pathPtr);
-            break;
-
-        case RQ_SET_FLOAT:
-            sb_Release(requestPtr->data.writeReq.pathPtr);
-            break;
-
-        case RQ_SET_BOOL:
-            sb_Release(requestPtr->data.writeReq.pathPtr);
-            break;
-
-        case RQ_INVALID:
-            LE_FATAL("Attempting to free invalid request block.");
-    }
-
     requestPtr->type = RQ_INVALID;
     le_mem_Release(requestPtr);
 }
@@ -273,7 +227,10 @@ static void QueueCreateTxnRequest
     RequestType_t type = iteratorType == NI_READ ? RQ_CREATE_READ_TXN : RQ_CREATE_WRITE_TXN;
     UpdateRequest_t* requestPtr = NewRequestBlock(type, userRef, treeRef, sessionRef, commandRef);
 
-    requestPtr->data.createTxn.pathPtr = sb_NewCopy(basePathPtr);
+    LE_ASSERT(le_utf8_Copy(requestPtr->data.createTxn.pathPtr,
+                           basePathPtr,
+                           sizeof(requestPtr->data.createTxn.pathPtr),
+                           NULL) == LE_OK);
 
     QueueRequest(tdb_GetRequestQueue(treeRef), requestPtr);
 }
@@ -753,7 +710,11 @@ void rq_HandleQuickDeleteNode
                                                       sessionRef,
                                                       commandRef);
 
-        requestPtr->data.writeReq.pathPtr = sb_NewCopy(pathPtr);
+        LE_ASSERT(le_utf8_Copy(requestPtr->data.writeReq.pathPtr,
+                               pathPtr,
+                               sizeof(requestPtr->data.writeReq.pathPtr),
+                               NULL) == LE_OK);
+
         QueueRequest(tdb_GetRequestQueue(treeRef), requestPtr);
     }
     else
@@ -799,7 +760,11 @@ void rq_HandleQuickSetEmpty
                                                       sessionRef,
                                                       commandRef);
 
-        requestPtr->data.writeReq.pathPtr = sb_NewCopy(pathPtr);
+        LE_ASSERT(le_utf8_Copy(requestPtr->data.writeReq.pathPtr,
+                               pathPtr,
+                               sizeof(requestPtr->data.writeReq.pathPtr),
+                               NULL) == LE_OK);
+
         QueueRequest(tdb_GetRequestQueue(treeRef), requestPtr);
     }
     else
@@ -845,7 +810,13 @@ void rq_HandleQuickGetString
                                                      NI_READ,
                                                      pathPtr);
 
-    char* strBufferPtr = sb_Get();
+    char strBufferPtr[LE_CFG_STR_LEN_BYTES] = "";
+
+    if (maxString > LE_CFG_STR_LEN_BYTES)
+    {
+        maxString = LE_CFG_STR_LEN_BYTES;
+    }
+
     le_result_t result = ni_GetNodeValueString(iteratorRef,
                                                pathPtr,
                                                strBufferPtr,
@@ -854,7 +825,6 @@ void rq_HandleQuickGetString
 
     le_cfg_QuickGetStringRespond(commandRef, result, strBufferPtr);
 
-    sb_Release(strBufferPtr);
     ni_Release(iteratorRef);
 }
 
@@ -886,8 +856,16 @@ void rq_HandleQuickSetString
                                                       sessionRef,
                                                       commandRef);
 
-        requestPtr->data.writeReq.pathPtr = sb_NewCopy(pathPtr);
-        requestPtr->data.writeReq.value.AsStringPtr = sb_NewCopy(valuePtr);
+        LE_ASSERT(le_utf8_Copy(requestPtr->data.writeReq.pathPtr,
+                               pathPtr,
+                               sizeof(requestPtr->data.writeReq.pathPtr),
+                               NULL) == LE_OK);
+
+        LE_ASSERT(le_utf8_Copy(requestPtr->data.writeReq.value.AsStringPtr,
+                               valuePtr,
+                               sizeof(requestPtr->data.writeReq.value.AsStringPtr),
+                               NULL) == LE_OK);
+
 
         QueueRequest(tdb_GetRequestQueue(treeRef), requestPtr);
     }
@@ -965,7 +943,11 @@ void rq_HandleQuickSetInt
                                                       sessionRef,
                                                       commandRef);
 
-        requestPtr->data.writeReq.pathPtr = sb_NewCopy(pathPtr);
+        LE_ASSERT(le_utf8_Copy(requestPtr->data.writeReq.pathPtr,
+                               pathPtr,
+                               sizeof(requestPtr->data.writeReq.pathPtr),
+                               NULL) == LE_OK);
+
         requestPtr->data.writeReq.value.AsInt = value;
 
         QueueRequest(tdb_GetRequestQueue(treeRef), requestPtr);
@@ -1044,7 +1026,11 @@ void rq_HandleQuickSetFloat
                                                       sessionRef,
                                                       commandRef);
 
-        requestPtr->data.writeReq.pathPtr = sb_NewCopy(pathPtr);
+        LE_ASSERT(le_utf8_Copy(requestPtr->data.writeReq.pathPtr,
+                               pathPtr,
+                               sizeof(requestPtr->data.writeReq.pathPtr),
+                               NULL) == LE_OK);
+
         requestPtr->data.writeReq.value.AsFloat = value;
 
         QueueRequest(tdb_GetRequestQueue(treeRef), requestPtr);
@@ -1123,7 +1109,11 @@ void rq_HandleQuickSetBool
                                                       sessionRef,
                                                       commandRef);
 
-        requestPtr->data.writeReq.pathPtr = sb_NewCopy(pathPtr);
+        LE_ASSERT(le_utf8_Copy(requestPtr->data.writeReq.pathPtr,
+                               pathPtr,
+                               sizeof(requestPtr->data.writeReq.pathPtr),
+                               NULL) == LE_OK);
+
         requestPtr->data.writeReq.value.AsBool = value;
 
         QueueRequest(tdb_GetRequestQueue(treeRef), requestPtr);

@@ -8,7 +8,7 @@
  *
  *  The tree structure looks like this:
  *
-@verbatim
+ * @verbatim
 
     Shadow Tree ------------+----------+  +------------------------+
                             |          |  |                        |
@@ -108,7 +108,7 @@
                                     .
                                     .
 
- * @endverbatim
+ @endverbatim
  *
  *  The system also employs the use of SafeRefs to keep track of each registered handler so that a
  *  handler can quickly and easily remove a handler as required.
@@ -128,7 +128,6 @@
 #include "legato.h"
 #include "limit.h"
 #include "interfaces.h"
-#include "stringBuffer.h"
 #include "dynamicString.h"
 #include "treePath.h"
 #include "treeDb.h"
@@ -139,7 +138,7 @@
 
 
 /// Maximum path size for the config tree.
-#define CFG_MAX_PATH_SIZE SB_SIZE
+#define CFG_MAX_PATH_SIZE LE_CFG_STR_LEN_BYTES
 
 
 
@@ -158,6 +157,8 @@ typedef struct Registration
 {
     char registrationPath[CFG_MAX_PATH_SIZE];  ///< Path to the node being watched.  This *must*
                                                ///<   also include the tree name.
+    bool triggered;                            ///< Has this registration been triggered for
+                                               ///<   callback?
 
     union
     {
@@ -175,11 +176,11 @@ Registration_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Change notification handler object structure. (aka "Handler objects")
+ *  Change notification handler object structure. (aka "Handler objects")
  *
- * Each one of these is used to keep track of a client's change notification handler function
- * registration for a particular tree node.  These are allocated from the Handler Pool and kept
- * on a Node object's Handler List.
+ *  Each one of these is used to keep track of a client's change notification handler function
+ *  registration for a particular tree node.  These are allocated from the Handler Pool and kept
+ *  on a Node object's Handler List.
  **/
 //--------------------------------------------------------------------------------------------------
 typedef struct Handler
@@ -811,8 +812,9 @@ static tdb_NodeRef_t GetRootParentNode
 
 // -------------------------------------------------------------------------------------------------
 /**
- *  Called to look for a named child in a collection.  If the given node shadows another and the
- *  child wasn't found in this collection the search then folloows up the shadow chain.
+ *  Called to look for a named child in a given node's child collection.
+ *
+ *  @return Reference to the found child node, or NULL if a node was not found.
  */
 // -------------------------------------------------------------------------------------------------
 static tdb_NodeRef_t GetNamedChild
@@ -833,21 +835,7 @@ static tdb_NodeRef_t GetNamedChild
         return nodeRef->parentRef;
     }
 
-    // If this is a shdadow node, and the current node isn't a stem, then convert this node into an
-    // empty stem node now.
-    if (   (IsShadow(nodeRef))
-        && (nodeRef->type != LE_CFG_TYPE_STEM))
-    {
-        if (nodeRef->type != LE_CFG_TYPE_EMPTY)
-        {
-            tdb_SetEmpty(nodeRef);
-        }
-
-        nodeRef->type = LE_CFG_TYPE_STEM;
-        nodeRef->info.children = LE_DLS_LIST_INIT;
-    }
-
-    // If the node still isn't a stem at this point then it can not possibly have children.
+    // If the current node isn't a stem, then this node can't have any children.
     if (nodeRef->type != LE_CFG_TYPE_STEM)
     {
         return NULL;
@@ -855,45 +843,69 @@ static tdb_NodeRef_t GetNamedChild
 
     // Search the child list for a node with the given name.
     tdb_NodeRef_t currentRef = tdb_GetFirstChildNode(nodeRef);
-    char* currentNameRef = sb_Get();
+    char currentNameRef[LE_CFG_NAME_LEN_BYTES] = "";
 
     while (currentRef != NULL)
     {
-        tdb_GetNodeName(currentRef, currentNameRef, SB_SIZE);
+        tdb_GetNodeName(currentRef, currentNameRef, sizeof(currentNameRef));
 
-        if (strncmp(currentNameRef, nameRef, SB_SIZE) == 0)
+        if (strncmp(currentNameRef, nameRef, sizeof(currentNameRef)) == 0)
         {
-            sb_Release(currentNameRef);
             return currentRef;
         }
 
         currentRef = tdb_GetNextSiblingNode(currentRef);
     }
 
-    sb_Release(currentNameRef);
+    // Looks like there was no node to return.
+    return NULL;
+}
 
-    // At this point the node has not been found.  Check to see if we can create a new node.  If we
-    // can, do so now and add it to the parent's list.  But mark is as deleted as this node does not
-    // officially exist yet.  (The deleted flag will be removed if this node or one if it's
-    // children has a value written to it.)
-    if (IsShadow(nodeRef))
+
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Called to create a named child in a nodes child collection.  However, this function will only
+ *  create nodes on shadow trees.
+ *
+ *  @return Reference to newly created child node, or NULL if it can not be created.
+ */
+// -------------------------------------------------------------------------------------------------
+static tdb_NodeRef_t CreateNamedChild
+(
+    tdb_NodeRef_t nodeRef,  ///< [IN] The node to search.
+    const char* nameRef     ///< [IN] The name we're searching for.
+)
+// -------------------------------------------------------------------------------------------------
+{
+    tdb_NodeRef_t childRef = NULL;
+
+    if (IsShadow(nodeRef) == true)
     {
-        tdb_NodeRef_t childRef = NewChildNode(nodeRef);
+        // If the node isn't a stem, then convert it into an empty one now.
+        if (   (nodeRef->type != LE_CFG_TYPE_STEM)
+            && (nodeRef->type != LE_CFG_TYPE_EMPTY))
+        {
+            tdb_SetEmpty(nodeRef);
+            nodeRef->type = LE_CFG_TYPE_STEM;
+            nodeRef->info.children = LE_DLS_LIST_INIT;
+        }
 
+        // Create the node, and set it's deleted flag as it hasn't been used for anything yet.
+        childRef = NewChildNode(nodeRef);
         SetDeletedFlag(childRef);
 
-        if (tdb_SetNodeName(childRef, nameRef) == LE_OK)
-        {
-            return childRef;
-        }
-        else
+        // Set the name of the new node, if that fails then the user had given us a bad name for the
+        // new node.  So in that case free the node and return NULL.
+        if (tdb_SetNodeName(childRef, nameRef) != LE_OK)
         {
             le_mem_Release(childRef);
+            childRef = NULL;
         }
     }
 
-    // Nope, no creation was allowed, so there is no node to return.
-    return NULL;
+    return childRef;
 }
 
 
@@ -914,13 +926,13 @@ static bool NodeExists
 // -------------------------------------------------------------------------------------------------
 {
     tdb_NodeRef_t currentRef = tdb_GetFirstChildNode(parentRef);
-    char currentName[MAX_NODE_NAME] = { 0 };
+    char currentName[LE_CFG_NAME_LEN_BYTES] = "";
 
     while (currentRef != NULL)
     {
-        tdb_GetNodeName(currentRef, currentName, MAX_NODE_NAME);
+        tdb_GetNodeName(currentRef, currentName, sizeof(currentName));
 
-        if (strncmp(currentName, namePtr, MAX_NODE_NAME) == 0)
+        if (strncmp(currentName, namePtr, sizeof(currentName)) == 0)
         {
             return true;
         }
@@ -929,6 +941,70 @@ static bool NodeExists
     }
 
     return false;
+}
+
+
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Check the given node type and see if it should have a string value.
+ *
+ *  @return True if the given node could hold a string value.  False if not.
+ */
+// -------------------------------------------------------------------------------------------------
+static bool IsStringType
+(
+    tdb_NodeRef_t nodeRef  ///< [IN] The node to read.
+)
+// -------------------------------------------------------------------------------------------------
+{
+    le_cfg_nodeType_t type = tdb_GetNodeType(nodeRef);
+
+    if (   (type == LE_CFG_TYPE_STRING)
+        || (type == LE_CFG_TYPE_BOOL)
+        || (type == LE_CFG_TYPE_INT)
+        || (type == LE_CFG_TYPE_FLOAT))
+    {
+        return true;
+    }
+
+    return false;
+}
+
+
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ *  This function will copy a string value from an original tree node into a node that has shadowed
+ *  it.
+ */
+// -------------------------------------------------------------------------------------------------
+static void PropagateValue
+(
+    tdb_NodeRef_t nodeRef  ///< [IN] The node ref to update.
+)
+// -------------------------------------------------------------------------------------------------
+{
+    // If the node doesn't even have a ref to an original node, then there's nothing left to do
+    // here.
+    tdb_NodeRef_t shadowRef = nodeRef->shadowRef;
+
+    if (shadowRef == NULL)
+    {
+        return;
+    }
+
+    // Ok, figure out the type for this node.  If it has a value, and the original
+    if (   (IsStringType(nodeRef) == true)
+        && (IsStringType(shadowRef) == true)
+        && (nodeRef->info.valueRef == NULL)
+        && (shadowRef->info.valueRef != NULL))
+    {
+        // Looks like the value hasn't been propagated or changed yet.  So, do so now.
+        nodeRef->info.valueRef = dstr_NewFromDstr(shadowRef->info.valueRef);
+    }
 }
 
 
@@ -956,9 +1032,9 @@ static void MergeNode
 
         if (shadowedParentRef != NULL)
         {
-            char name[MAX_NODE_NAME] = { 0 };
+            char name[LE_CFG_NAME_LEN_BYTES] = "";
 
-            tdb_GetNodeName(nodeRef, name, MAX_NODE_NAME);
+            tdb_GetNodeName(nodeRef, name, sizeof(name));
             nodeRef->shadowRef = GetNamedChild(shadowedParentRef, name);
         }
     }
@@ -1071,21 +1147,319 @@ static void TriggerCallbacks
         return;
     }
 
-    // Try to find a registration object for this path.
+    // Try to find a registration object for this path.  If one is found, flag it for calling once
+    // the merge is complete.
     Registration_t* foundRegistrationPtr = le_hashmap_Get(HandlerRegistrationMap, pathBuffer);
 
     if (foundRegistrationPtr != NULL)
     {
-        // An object was found, so iterate through the callbacks, calling each one in turn.
-        le_dls_Link_t* linkPtr = le_dls_Peek(&foundRegistrationPtr->handlerList);
+        foundRegistrationPtr->triggered = true;
+    }
+}
 
-        while (linkPtr != NULL)
+
+
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Go through all of the registered event callbacks, and fire the call backs for each of the
+ *  registrations that has been makred as triggered.
+ *
+ *  Once this is done, the triggered flag is cleared for next time.
+ */
+// -------------------------------------------------------------------------------------------------
+static void FireTriggeredCallbacks
+(
+    void
+)
+// -------------------------------------------------------------------------------------------------
+{
+    // Go through the registration map.
+    le_hashmap_It_Ref_t handlerIterRef = le_hashmap_GetIterator(HandlerRegistrationMap);
+
+    while (le_hashmap_NextNode(handlerIterRef) == LE_OK)
+    {
+        // For each registration, check to see if it was triggered.
+        Registration_t* registrationPtr = (Registration_t*)le_hashmap_GetValue(handlerIterRef);
+
+        if (registrationPtr->triggered)
         {
-            Handler_t* handlerObjectPtr = CONTAINER_OF(linkPtr, Handler_t, link);
+            // This registration has been triggered, so call all of the handlers attached to it.
+            le_dls_Link_t* linkPtr = le_dls_Peek(&registrationPtr->handlerList);
 
-            handlerObjectPtr->handlerPtr(handlerObjectPtr->contextPtr);
-            linkPtr = le_dls_PeekNext(&foundRegistrationPtr->handlerList, linkPtr);
+            while (linkPtr != NULL)
+            {
+                Handler_t* handlerObjectPtr = CONTAINER_OF(linkPtr, Handler_t, link);
+
+                handlerObjectPtr->handlerPtr(handlerObjectPtr->contextPtr);
+                linkPtr = le_dls_PeekNext(&registrationPtr->handlerList, linkPtr);
+            }
+
+            // Now that that's done, clear the triggered flag.
+            registrationPtr->triggered = false;
         }
+    }
+}
+
+
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Check the given node to see if it was renamed.
+ *
+ *  @return True if the node was renamed within this transaction.  False if not.
+ */
+// -------------------------------------------------------------------------------------------------
+static bool WasRenamed
+(
+    tdb_NodeRef_t nodeRef  ///< [IN] Check this node to see if it was renamed in this transaction.
+)
+// -------------------------------------------------------------------------------------------------
+{
+    if (IsModified(nodeRef) == false)
+    {
+        // The node wasn't even modified, so it can not have been renamed.
+        return false;
+    }
+
+    if (nodeRef->shadowRef == NULL)
+    {
+        // If the node doesn't have a shadow reference, then most likely this is a new node and not
+        // a rename of an existing one.
+        return false;
+    }
+
+    if (nodeRef->nameRef == NULL)
+    {
+        // The shadow node does not have a local copy of a name, so it can not have been renamed.
+        // It must have been modified for other reasons.
+        return false;
+    }
+
+    // Looks like the node has a new name.
+    return true;
+}
+
+
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Check the original non-shadow node to see if it will need to be cleared during the merge.
+ *
+ *  @return True if the merge will clear out the original value.  False if not.
+ */
+// -------------------------------------------------------------------------------------------------
+static bool OriginalToBeCleared
+(
+    tdb_NodeRef_t nodeRef  ///< [IN] The shadow node to check.
+)
+// -------------------------------------------------------------------------------------------------
+{
+    le_cfg_nodeType_t nodeType = tdb_GetNodeType(nodeRef);
+
+    if (   (nodeType == LE_CFG_TYPE_EMPTY)
+        || (nodeType != tdb_GetNodeType(nodeRef->shadowRef)))
+    {
+        return true;
+    }
+
+    return false;
+}
+
+
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Append the name of a node onto the end of a path object.
+ */
+// -------------------------------------------------------------------------------------------------
+static void AppendNodeName
+(
+    le_pathIter_Ref_t pathRef,  ///< [IN] The path we're appending to.
+    tdb_NodeRef_t nodeRef       ///< [IN] The node we're appending.
+)
+// -------------------------------------------------------------------------------------------------
+{
+    char nodeName[LE_CFG_NAME_LEN_BYTES] = "";
+
+    LE_ASSERT(tdb_GetNodeName(nodeRef, nodeName, sizeof(nodeName)) == LE_OK);
+    le_result_t result = le_pathIter_Append(pathRef, nodeName);
+
+    LE_WARN_IF(result != LE_OK,
+               "Could not append node '%s' onto the update callback tracking path.  "
+               "Reason: %d, '%s'.",
+               nodeName,
+               result,
+               LE_RESULT_TXT(result));
+}
+
+
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Create a new config path for the tree name given.
+ *
+ *  @return A new config path, rooted on the given tree.
+ */
+// -------------------------------------------------------------------------------------------------
+static le_pathIter_Ref_t CreateBasePath
+(
+    const char* treeNamePtr  ///< [IN] The tree name to use for the new path object.
+)
+// -------------------------------------------------------------------------------------------------
+{
+    char basePath[CFG_MAX_PATH_SIZE] = { 0 };
+
+    snprintf(basePath, sizeof(basePath), "%s:/", treeNamePtr);
+    return le_pathIter_CreateForUnix(basePath);
+}
+
+
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Generate a config path to the given node.
+ */
+// -------------------------------------------------------------------------------------------------
+static void GeneratePath
+(
+    le_pathIter_Ref_t pathRef,  ///< [IN] The path object we're updating.
+    tdb_NodeRef_t nodeRef       ///< [IN] The node we're creating a path for.
+)
+// -------------------------------------------------------------------------------------------------
+{
+    if (nodeRef == NULL)
+    {
+        return;
+    }
+
+    GeneratePath(pathRef, nodeRef->parentRef);
+    AppendNodeName(pathRef, nodeRef);
+}
+
+
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Trigger callbacks for this node and all of it's children.
+ */
+// -------------------------------------------------------------------------------------------------
+static void FireAllChildren
+(
+    le_pathIter_Ref_t pathRef,  ///< [IN] Path to the parent of the current node.
+    tdb_NodeRef_t nodeRef       ///< [IN] Node and any children to merge.
+)
+// -------------------------------------------------------------------------------------------------
+{
+    // Add this node to the path we're using to find registered callbacks.
+    AppendNodeName(pathRef, nodeRef);
+
+    // If the node is a stem then traverse it's children and try to trigger callbacks for them.  If
+    // there are no callbacks registered for those nodes, then nothing will happen.
+    if (nodeRef->type == LE_CFG_TYPE_STEM)
+    {
+        tdb_NodeRef_t childRef = tdb_GetFirstChildNode(nodeRef);
+
+        while (childRef != NULL)
+        {
+            FireAllChildren(pathRef, childRef);
+            childRef = tdb_GetNextSiblingNode(childRef);
+        }
+    }
+
+    // Like with the children, try to do the same for this node.  Then remove this node from the
+    // tracking path.
+    TriggerCallbacks(pathRef);
+    le_pathIter_Truncate(pathRef);
+}
+
+
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Check a given shadow node and the original node it's shadowing.  If the original has children
+ *  that will be lost because of a merge, then we need to fire callbacks for those nodes that are
+ *  about to go away.
+ *
+ *  The algorithm employed by this function is as follows:
+ *
+ *      1. Check the original node for the given shadow node.  If it exists and is a stem node,
+ *         mark all of the children as deleted.  (This is done with the expectation that the
+ *         original tree does not have nodes with the deleted flag set.)
+ *
+ *      2. Go through the shadow collection, and any shadow children that have links to the original
+ *         nodes, clear the deleted flag.  These nodes are still considered "live."
+ *
+ *      3. Travers the original children one more time.  For any node that is still marked as
+ *         deleted we queue up an event handler.  As this node has been removed from the colection
+ *         and will be removed as part of the final merge.  The delete flag is also cleared at this
+ *         step to ensure that there are no external side effects.
+ */
+// -------------------------------------------------------------------------------------------------
+static void FireLostChildren
+(
+    le_pathIter_Ref_t pathRef,   ///< [IN] Path to the parent of the current node.
+    tdb_NodeRef_t shadowNodeRef  ///< [IN] Node and any children to merge.
+)
+// -------------------------------------------------------------------------------------------------
+{
+    // Is the original a stem?  If no, then done.
+    tdb_NodeRef_t originalRef = shadowNodeRef->shadowRef;
+
+    if (originalRef->type != LE_CFG_TYPE_STEM)
+    {
+        return;
+    }
+
+    // Mark all originals deleted.
+    tdb_NodeRef_t originalChildRef = tdb_GetFirstChildNode(originalRef);
+
+    while (originalChildRef != NULL)
+    {
+        // Children in the original tree shouldn't currently be marked as deleted.
+        LE_ASSERT(IsDeleted(originalChildRef) == false);
+
+        SetDeletedFlag(originalChildRef);
+        originalChildRef = tdb_GetNextSiblingNode(originalChildRef);
+    }
+
+    // Follow through all of the shadow links and unmark deletions.
+    if (shadowNodeRef->type == LE_CFG_TYPE_STEM)
+    {
+        tdb_NodeRef_t shadowChildRef = tdb_GetFirstChildNode(shadowNodeRef);
+
+        while (shadowChildRef != NULL)
+        {
+            if (shadowChildRef->shadowRef != NULL)
+            {
+                ClearDeletedFlag(shadowChildRef->shadowRef);
+            }
+
+            shadowChildRef = tdb_GetNextSiblingNode(shadowChildRef);
+        }
+    }
+
+    // Fire on all original nodes still marked.  But also take care to clear the deleted flags here
+    // in order to leave everything as it was.
+    originalChildRef = tdb_GetFirstChildNode(originalRef);
+
+    while (originalChildRef != NULL)
+    {
+        if (IsDeleted(originalChildRef) == true)
+        {
+            FireAllChildren(pathRef, originalChildRef);
+            ClearDeletedFlag(originalChildRef);
+        }
+
+        originalChildRef = tdb_GetNextSiblingNode(originalChildRef);
     }
 }
 
@@ -1101,27 +1475,49 @@ static void TriggerCallbacks
 // -------------------------------------------------------------------------------------------------
 static bool InternalMergeTree
 (
+    const char* treeNamePtr,    ///< [IN] The name of the tree we're merging.
     le_pathIter_Ref_t pathRef,  ///< [IN] Path to the parent of hte current node.
-    tdb_NodeRef_t nodeRef       ///< [IN] Node and any children to merge.
+    tdb_NodeRef_t nodeRef,      ///< [IN] Node and any children to merge.
+    bool forceFire              ///< [IN] Should update handlers be fired for this node and all it's
+                                ///<      children, regardless of wether or not this node has been
+                                ///<      directly modified?
 )
 // -------------------------------------------------------------------------------------------------
 {
     bool isModified = IsModified(nodeRef);
+    bool renamed = WasRenamed(nodeRef);
 
+    // If this node was renamed, then all children also need to be triggered as well.
+    forceFire = renamed || forceFire;
 
+    // If this node has been renamed, marked as deleted or set empty, then all of the children need
+    // notifications fired on the original nodes.
+    if (   (renamed == true)
+        || (IsDeleted(nodeRef) == true)
+        || (OriginalToBeCleared(nodeRef) == true))
     {
-        char nodeName[MAX_NODE_NAME] = { 0 };
+        le_pathIter_Ref_t originalPathRef = CreateBasePath(treeNamePtr);
 
-        LE_ASSERT(tdb_GetNodeName(nodeRef, nodeName, MAX_NODE_NAME) == LE_OK);
-        le_result_t result = le_pathIter_Append(pathRef, nodeName);
+        if (nodeRef->shadowRef != NULL)
+        {
+            GeneratePath(originalPathRef, nodeRef->shadowRef->parentRef);
+            FireAllChildren(originalPathRef, nodeRef->shadowRef);
+        }
 
-        LE_WARN_IF(result != LE_OK,
-                   "Could not append node '%s' onto the update callback tracking path.  "
-                   "Reason: %d, '%s'.",
-                   nodeName,
-                   result,
-                   LE_RESULT_TXT(result));
+        le_pathIter_Delete(originalPathRef);
     }
+    else if (   (isModified == true)
+             && (nodeRef->type == LE_CFG_TYPE_STEM))
+    {
+        le_pathIter_Ref_t originalPathRef = CreateBasePath(treeNamePtr);
+
+        GeneratePath(originalPathRef, nodeRef->shadowRef);
+        FireLostChildren(originalPathRef, nodeRef);
+
+        le_pathIter_Delete(originalPathRef);
+    }
+
+    AppendNodeName(pathRef, nodeRef);
 
     // IF this node is modified, mearge it.  If this node is a stem, then merge it's children.  Keep
     // track of whether any of those children have been modified as well.
@@ -1139,14 +1535,14 @@ static bool InternalMergeTree
         {
             tdb_NodeRef_t nextNodeRef = tdb_GetNextSiblingNode(nodeRef);
 
-            isModified = InternalMergeTree(pathRef, nodeRef) || isModified;
+            isModified = InternalMergeTree(treeNamePtr, pathRef, nodeRef, forceFire) || isModified;
             nodeRef = nextNodeRef;
         }
     }
 
     // If this node, or any of it's children have been modified.  Try to fire any callbacks that may
     // be registered.
-    if (isModified)
+    if (isModified || forceFire)
     {
         TriggerCallbacks(pathRef);
     }
@@ -1229,10 +1625,12 @@ static void TreeDestructor
  *  @return A stringBuffer backed string containing the full path to the tree file.
  */
 // -------------------------------------------------------------------------------------------------
-static char* GetTreePath
+static void GetTreePath
 (
     const char* treeNameRef,  ///< [IN] The name of the tree we're generating a name for.
-    int revisionId            ///< [IN] Generate a name based on the tree revision.
+    int revisionId,           ///< [IN] Generate a name based on the tree revision.
+    char* pathBuffer,         ///< [IN] Buffer to hold the new path.
+    size_t pathSize           ///< [IN] Size of the path buffer.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -1241,20 +1639,15 @@ static char* GetTreePath
     // scissors --> paper      3 -> 1
 
     static const char* revNames[] = { "paper", "rock", "scissors" };
-    char* fullPathPtr = NULL;
 
     LE_ASSERT((revisionId >= 1) && (revisionId <= 3));
 
-    fullPathPtr = sb_Get();
-
-    snprintf(fullPathPtr,
-             SB_SIZE,
+    snprintf(pathBuffer,
+             pathSize,
              "%s/%s.%s",
              CFG_TREE_PATH,
              treeNameRef,
              revNames[revisionId - 1]);
-
-    return fullPathPtr;
 }
 
 
@@ -1274,7 +1667,8 @@ static bool TreeFileExists
 )
 // -------------------------------------------------------------------------------------------------
 {
-    char* fullPathPtr = GetTreePath(treeNameRef, revisionId);
+    char fullPathPtr[LE_CFG_STR_LEN_BYTES] = "";
+    GetTreePath(treeNameRef, revisionId, fullPathPtr, sizeof(fullPathPtr));
 
     // Make sure this part was successful.
     if (fullPathPtr == NULL)
@@ -1289,8 +1683,6 @@ static bool TreeFileExists
     {
         result = true;
     }
-
-    sb_Release(fullPathPtr);
 
     return result;
 }
@@ -1463,6 +1855,8 @@ static le_result_t ReadTextLiteral
     signed char next;
     size_t count = 0;
 
+    char* oldPtr = stringPtr;
+
     while ((next = fgetc(filePtr)) != terminal)
     {
         if (next == EOF)
@@ -1491,7 +1885,11 @@ static le_result_t ReadTextLiteral
         {
             *stringPtr = 0;
 
-            LE_ERROR("String literal too large.");
+            LE_ERROR("String literal, '%s', too large.  (%zd/%zd)",
+                     oldPtr,
+                     strlen(oldPtr),
+                     stringSize);
+
             return LE_FORMAT_ERROR;
         }
     }
@@ -1669,12 +2067,12 @@ static le_result_t InternalReadNode
 )
 // -------------------------------------------------------------------------------------------------
 {
-    static char stringBuffer[MAX_NODE_NAME] = { 0 };
+    static char stringBuffer[LE_CFG_STR_LEN_BYTES] = "";
 
     TokenType_t tokenType;
 
     // Try to read this node's value.
-    if (ReadToken(filePtr, stringBuffer, MAX_NODE_NAME, &tokenType) != LE_OK)
+    if (ReadToken(filePtr, stringBuffer, sizeof(stringBuffer), &tokenType) != LE_OK)
     {
         LE_ERROR("Unexpected EOF or bad token in file.");
         return LE_FORMAT_ERROR;
@@ -1712,7 +2110,7 @@ static le_result_t InternalReadNode
         case TT_OPEN_GROUP:
             while (tokenType != TT_CLOSE_GROUP)
             {
-                if (ReadToken(filePtr, stringBuffer, MAX_NODE_NAME, &tokenType) != LE_OK)
+                if (ReadToken(filePtr, stringBuffer, sizeof(stringBuffer), &tokenType) != LE_OK)
                 {
                     LE_ERROR("Unexpected EOF or bad token in file while looking for '}'.");
                     return LE_FORMAT_ERROR;
@@ -1863,7 +2261,8 @@ static void LoadTree
     // Ok, if we found a valid revision of the tree in the fs, try to load it now.
     if (treeRef->revisionId != 0)
     {
-        char* pathPtr = GetTreePath(treeRef->name, treeRef->revisionId);
+        char pathPtr[LE_CFG_STR_LEN_BYTES] = "";
+        GetTreePath(treeRef->name, treeRef->revisionId, pathPtr, sizeof(pathPtr));
 
         LE_DEBUG("** Loading configuration tree from <%s>.", pathPtr);
 
@@ -1900,8 +2299,6 @@ static void LoadTree
             }
             while ((retVal == -1) && (errno == EINTR));
         }
-
-        sb_Release(pathPtr);
     }
 }
 
@@ -2019,6 +2416,39 @@ static void DeleteTreeFile
 
 // -------------------------------------------------------------------------------------------------
 /**
+ *  Find the root node represented by the path ref.
+ *
+ *  If the path is an absolute path, then the base node for the reference is the root node of the
+ *  tree in question.
+ *
+ *  If the path is a relative path, then the base node of the request is the node given.
+ *
+ *  @return A reference to the base node of the operation.
+ */
+// -------------------------------------------------------------------------------------------------
+static tdb_NodeRef_t GetPathBaseNodeRef
+(
+    tdb_NodeRef_t nodeRef,         ///< [IN] The base node to start from.
+    le_pathIter_Ref_t nodePathRef  ///< [IN] The path we're searching for in the tree.
+)
+// -------------------------------------------------------------------------------------------------
+{
+    // If the path is absolute and the node we were given is NOT the root node of it's tree, find
+    // the root node of the tree.  Otherwise just return the node reference we were given.
+    if (   (le_pathIter_IsAbsolute(nodePathRef))
+        && (nodeRef->parentRef != NULL))
+    {
+        nodeRef = GetRootParentNode(nodeRef);
+    }
+
+    return nodeRef;
+}
+
+
+
+
+// -------------------------------------------------------------------------------------------------
+/**
  *  Initialize the tree DB subsystem, and automaticly load the system tree from the filesystem.
  */
 // -------------------------------------------------------------------------------------------------
@@ -2119,7 +2549,8 @@ void tdb_DeleteTree
     // Check to see if there are any active iterators on the tree.  If there are, simply mark the
     // tree for deletion for now.
     if (   (tdb_GetActiveWriteIter(treeRef) == NULL)
-        && (tdb_HasActiveReaders(treeRef) == 0))
+        && (tdb_HasActiveReaders(treeRef) == 0)
+        && (le_sls_IsEmpty(&treeRef->requestList)))
     {
         // Looks like there's no one on the tree, so delete any tree files that may exist.  Then
         // kill the tree itself.
@@ -2129,10 +2560,10 @@ void tdb_DeleteTree
         {
             if (TreeFileExists(treeRef->name, id))
             {
-                char* filePathPtr = GetTreePath(treeRef->name, id);
+                char filePathPtr[LE_CFG_STR_LEN_BYTES] = "";
+                GetTreePath(treeRef->name, id, filePathPtr, sizeof(filePathPtr));
 
                 DeleteTreeFile(filePathPtr);
-                sb_Release(filePathPtr);
             }
         }
 
@@ -2141,10 +2572,10 @@ void tdb_DeleteTree
     }
     else
     {
-        LE_DEBUG("** Configuration tree, '%s', deletion requested.  "
-                 "However there are still active iterators.  "
-                 "Marking for later deletion.",
-                 treeRef->name);
+        LE_WARN("** Configuration tree, '%s', deletion requested.  "
+                "However there are still active iterators.  "
+                "Marking for later deletion.",
+                treeRef->name);
 
         treeRef->isDeletePending = true;
     }
@@ -2408,38 +2839,34 @@ void tdb_MergeTree
 {
     // Get our shadow tree's root node and merge it's changes into the real tree.  Create a path
     // iterator to track the merge and allow for update handlers to be called.
-    le_pathIter_Ref_t pathRef = NULL;
     tdb_NodeRef_t nodeRef = shadowTreeRef->rootNodeRef;
+    le_pathIter_Ref_t pathRef = CreateBasePath(shadowTreeRef->originalTreeRef->name);
 
-    {
-        char basePath[CFG_MAX_PATH_SIZE] = { 0 };
-
-        snprintf(basePath, sizeof(basePath), "%s:/", shadowTreeRef->originalTreeRef->name);
-        pathRef = le_pathIter_CreateForUnix(basePath);
-    }
-
-    InternalMergeTree(pathRef, nodeRef);
+    InternalMergeTree(shadowTreeRef->originalTreeRef->name, pathRef, nodeRef, false);
     le_pathIter_Delete(pathRef);
+
+    // Now, go through and call the triggered callbacks.
+    FireTriggeredCallbacks();
 
     // Now increment revision of the tree and open a tree file for writing.
     tdb_TreeRef_t originalTreeRef = shadowTreeRef->originalTreeRef;
     int oldId = originalTreeRef->revisionId;
 
     IncrementRevision(originalTreeRef);
-    char* newFilePath = GetTreePath(originalTreeRef->name, originalTreeRef->revisionId);
 
-    LE_DEBUG("Changes mearged, now attempting to serialize the tree to <%s>.", newFilePath);
+    char filePath[LE_CFG_STR_LEN_BYTES] = "";
+    GetTreePath(originalTreeRef->name, originalTreeRef->revisionId, filePath, sizeof(filePath));
+
+    LE_DEBUG("Changes mearged, now attempting to serialize the tree to <%s>.", filePath);
 
     int fileRef = -1;
 
     do
     {
-        fileRef = open(newFilePath, O_RDWR | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
+        fileRef = open(filePath, O_RDWR | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
     }
     while (   (fileRef == -1)
            && (errno == EINTR));
-
-    sb_Release(newFilePath);
 
     if (fileRef == -1)
     {
@@ -2466,10 +2893,8 @@ void tdb_MergeTree
     if (   (oldId != 0)
         && (TreeFileExists(originalTreeRef->name, oldId)))
     {
-        char* oldFilePath = GetTreePath(originalTreeRef->name, oldId);
-
-        DeleteTreeFile(oldFilePath);
-        sb_Release(oldFilePath);
+        GetTreePath(originalTreeRef->name, oldId, filePath, sizeof(filePath));
+        DeleteTreeFile(filePath);
     }
 }
 
@@ -2622,9 +3047,9 @@ void tdb_WriteTreeNode
     }
 
     // Get the node's value as a string.
-    static char stringBuffer[MAX_NODE_NAME];
+    static char stringBuffer[LE_CFG_STR_LEN_BYTES];
 
-    tdb_GetValueAsString(nodeRef, stringBuffer, MAX_NODE_NAME, "");
+    tdb_GetValueAsString(nodeRef, stringBuffer, sizeof(stringBuffer), "");
 
     // Now, depending on the type of node, write out any required format information.
     switch (nodeRef->type)
@@ -2660,7 +3085,7 @@ void tdb_WriteTreeNode
 
                 while (childRef != NULL)
                 {
-                    tdb_GetNodeName(childRef, stringBuffer, MAX_NODE_NAME);
+                    tdb_GetNodeName(childRef, stringBuffer, sizeof(stringBuffer));
                     WriteStringValue(descriptor, '\"', '\"', stringBuffer);
 
                     tdb_WriteTreeNode(childRef, descriptor);
@@ -2700,24 +3125,19 @@ tdb_NodeRef_t tdb_GetNode
     LE_ASSERT(nodePathRef != NULL);
 
     // Check to see if we're starting at the given node, or that node's root node.
-    tdb_NodeRef_t currentRef = baseNodeRef;
-
-    if (le_pathIter_IsAbsolute(nodePathRef))
-    {
-        currentRef = GetRootParentNode(currentRef);
-    }
+    tdb_NodeRef_t currentRef = GetPathBaseNodeRef(baseNodeRef, nodePathRef);
 
     // Now start moving along the path, moving the current node along as we go.  The called function
     // also deals with . and .. names in the path as well, returning the current and parent nodes
     // respectivly.
-    char nameRef[MAX_NODE_NAME] = { 0 };
+    char nameRef[LE_CFG_NAME_LEN_BYTES] = "";
 
     le_result_t result = le_pathIter_GoToStart(nodePathRef);
 
     while (   (result != LE_NOT_FOUND)
            && (currentRef != NULL))
     {
-        result = le_pathIter_GetCurrentNode(nodePathRef, nameRef, MAX_NODE_NAME);
+        result = le_pathIter_GetCurrentNode(nodePathRef, nameRef, sizeof(nameRef));
 
         if (result == LE_OVERFLOW)
         {
@@ -2728,6 +3148,71 @@ tdb_NodeRef_t tdb_GetNode
         {
             currentRef = GetNamedChild(currentRef, nameRef);
             result = le_pathIter_GoToNext(nodePathRef);
+        }
+    }
+
+    // Finally return the last node we traversed to.
+    return currentRef;
+}
+
+
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Traverse the given path and create nodes as needed.
+ *
+ *  @return The found or newly created node at the end of the given path.
+ */
+// -------------------------------------------------------------------------------------------------
+tdb_NodeRef_t tdb_CreateNodePath
+(
+    tdb_NodeRef_t baseNodeRef,     ///< [IN] The base node to start from.
+    le_pathIter_Ref_t nodePathRef  ///< [IN] The path we're creating within the tree.
+)
+// -------------------------------------------------------------------------------------------------
+{
+    LE_ASSERT(baseNodeRef != NULL);
+    LE_ASSERT(nodePathRef != NULL);
+
+    // Check to see if we're starting at the given node, or that node's root node.
+    tdb_NodeRef_t currentRef = GetPathBaseNodeRef(baseNodeRef, nodePathRef);
+
+    // Now start moving along the path, moving the current node along as we go.  The called function
+    // also deals with . and .. names in the path as well, returning the current and parent nodes
+    // respectivly.
+    char nameRef[LE_CFG_NAME_LEN_BYTES] = "";
+
+    le_result_t result = le_pathIter_GoToStart(nodePathRef);
+
+    while (   (result != LE_NOT_FOUND)
+           && (currentRef != NULL))
+    {
+        result = le_pathIter_GetCurrentNode(nodePathRef, nameRef, sizeof(nameRef));
+
+        if (result == LE_OK)
+        {
+            tdb_NodeRef_t childRef = GetNamedChild(currentRef, nameRef);
+
+            if (childRef == NULL)
+            {
+                childRef = CreateNamedChild(currentRef, nameRef);
+            }
+
+            currentRef = childRef;
+            result = le_pathIter_GoToNext(nodePathRef);
+        }
+        else if (result == LE_OVERFLOW)
+        {
+            LE_ERROR("Path segment overflow on path.");
+            currentRef = NULL;
+        }
+        else
+        {
+            LE_ERROR("Unexpected error with path segment, '%s': %d.",
+                     LE_RESULT_TXT(result),
+                     result);
+            currentRef = NULL;
         }
     }
 
@@ -2840,7 +3325,7 @@ le_result_t tdb_SetNodeName
         return LE_FORMAT_ERROR;
     }
 
-    if (strlen(stringPtr) >= MAX_NODE_NAME)
+    if (strlen(stringPtr) > LE_CFG_NAME_LEN)
     {
         return LE_OVERFLOW;
     }
@@ -2874,7 +3359,11 @@ le_result_t tdb_SetNodeName
         tdb_GetFirstChildNode(nodeRef);
     }
 
-    // Make sure that we know to merge this node later.
+    // Make sure that we know to merge this node later.  Also, if the original node has a value,
+    // (that is, it's neither empty or a stem, but does have a value,) make sure that it's
+    // propagated over to this shadow node.  This is so that the merging code doesn't think we've
+    // emptied the value out over the course of this transaction.
+    PropagateValue(nodeRef);
     SetModifiedFlag(nodeRef);
 
     return LE_OK;
@@ -3585,6 +4074,8 @@ le_cfg_ChangeHandlerRef_t tdb_AddChangeHandler
         // Looks like a registration object hasn't been created yet.  So, do so now and add it to
         // our map.
         foundRegistrationPtr = le_mem_ForceAlloc(RegistrationPool);
+
+        foundRegistrationPtr->triggered = false;
 
         foundRegistrationPtr->handlerList = LE_DLS_LIST_INIT;
         le_utf8_Copy(foundRegistrationPtr->registrationPath,

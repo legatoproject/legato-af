@@ -1,12 +1,29 @@
-sources:
+cflags:
+{
+    "-DLEGATO_FRAMEWORK_NICE_LEVEL=${LEGATO_FRAMEWORK_NICE_LEVEL}"
+    "-DLE_RUNTIME_DIR=${LE_RUNTIME_DIR}"
+    "-DLE_SVCDIR_SERVER_SOCKET_NAME=${LE_SVCDIR_SERVER_SOCKET_NAME}"
+    "-DLE_SVCDIR_CLIENT_SOCKET_NAME=${LE_SVCDIR_CLIENT_SOCKET_NAME}"
+}
 
+sources:
+{
     resourceLimits.c
     sandbox.c
     cgroups.c
     app.c
     proc.c
     watchdogAction.c
+    init.c
+}
 
-import:
+requires:
+{
+    api:
+    {
+        /* The supervisor uses this library, so it will be loaded before the Service Directory is
+         * running.  Therefore, all interfaces it must be started manually. */
 
-    le_cfg.api
+        le_cfg.api  [manual-start]
+    }
+}

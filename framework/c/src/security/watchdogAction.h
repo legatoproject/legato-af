@@ -2,7 +2,7 @@
  *
  * Provides the functions and types relating to watchdog action
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless, Inc. 2014.  Use of this work is subject to license.
  */
 
 #ifndef WATCHDOG_ACTION_H_INCLUDE_GUARD
@@ -20,12 +20,12 @@ const char* wdog_action_GetConfigNode
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Enemerated values for watchdog action (and related error values)
+ * Enumerated values for watchdog action (and related error values)
  */
 //--------------------------------------------------------------------------------------------------
 typedef enum
 {
-    WATCHDOG_ACTION_NOT_FOUND,        ///< No action was found for wathcdog timeout.
+    WATCHDOG_ACTION_NOT_FOUND,        ///< No action was found for watchdog timeout.
     WATCHDOG_ACTION_ERROR,            ///< There was an error reading the timeout action.
     WATCHDOG_ACTION_HANDLED,          ///< Already been handled. No further action required.
     WATCHDOG_ACTION_IGNORE,           ///< Watchdog timedout but no further action is required.

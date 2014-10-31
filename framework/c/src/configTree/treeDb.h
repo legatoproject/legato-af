@@ -37,10 +37,6 @@
 #define CFG_TREE_PATH "/opt/legato/configTree"
 
 
-/// Max size of a node name.
-#define MAX_NODE_NAME (size_t)512
-
-
 /// Reference to a configuration tree.
 typedef struct Tree* tdb_TreeRef_t;
 
@@ -307,6 +303,22 @@ tdb_NodeRef_t tdb_GetNode
 (
     tdb_NodeRef_t baseNodeRef,     ///< [IN] The base node to start from.
     le_pathIter_Ref_t nodePathRef  ///< [IN] The path we're searching for in the tree.
+);
+
+
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Traverse the given path and create nodes as needed.
+ *
+ *  @return The found or newly created node at the end of the given path.
+ */
+// -------------------------------------------------------------------------------------------------
+tdb_NodeRef_t tdb_CreateNodePath
+(
+    tdb_NodeRef_t baseNodeRef,     ///< [IN] The base node to start from.
+    le_pathIter_Ref_t nodePathRef  ///< [IN] The path we're creating within the tree.
 );
 
 

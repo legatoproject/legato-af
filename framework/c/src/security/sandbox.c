@@ -147,6 +147,9 @@
 #include "fileDescriptor.h"
 
 
+#if ! defined LE_RUNTIME_DIR
+    #error LE_RUNTIME_DIR not defined.
+#endif
 //--------------------------------------------------------------------------------------------------
 /**
  * Location for all sandboxed apps.
@@ -217,6 +220,13 @@ typedef struct
 ImportObj_t;
 
 
+
+#if ! defined LE_SVCDIR_SERVER_SOCKET_NAME
+    #error LE_SVCDIR_SERVER_SOCKET_NAME not defined.
+#endif
+#if ! defined LE_SVCDIR_CLIENT_SOCKET_NAME
+    #error LE_SVCDIR_CLIENT_SOCKET_NAME not defined.
+#endif
 //--------------------------------------------------------------------------------------------------
 /**
  * Files and directories to import into all sandboxes by default.
@@ -403,7 +413,7 @@ static le_result_t AddToImportList
     const char* destPathPtr     ///< [IN] Relative location in the sandbox to import the file to.
 )
 {
-    LE_ASSERT(srcPathPtr[0] == '/');
+    LE_FATAL_IF(srcPathPtr[0] != '/', "Source path not absolute: '%s'", srcPathPtr);
 
     ImportObjListEntry_t* entryPtr;
 
@@ -861,6 +871,38 @@ static le_result_t ImportAllFiles
         }
     }
 
+    // Add the app's bin directory.
+    char pathBuff[LIMIT_MAX_PATH_BYTES] = "";
+    if (le_path_Concat("/", pathBuff, sizeof(pathBuff), app_GetInstallDirPath(appRef), "bin", NULL)
+        != LE_OK)
+    {
+        LE_FATAL("App's install dir path too long!");
+    }
+    if (AddToImportList(&importList,
+                        appRef,
+                        pathBuff,
+                        "/")
+        != LE_OK)
+    {
+        LE_FATAL("Failed to import app's own bin directory!");
+    }
+
+    // Add the app's lib directory.
+    pathBuff[0] = '\0';
+    if (le_path_Concat("/", pathBuff, sizeof(pathBuff), app_GetInstallDirPath(appRef), "lib", NULL)
+        != LE_OK)
+    {
+        LE_FATAL("App's install dir path too long!");
+    }
+    if (AddToImportList(&importList,
+                        appRef,
+                        pathBuff,
+                        "/")
+        != LE_OK)
+    {
+        LE_FATAL("Failed to import app's own lib directory!");
+    }
+
     // Create an iterator for our app.
     le_cfg_IteratorRef_t appCfg = le_cfg_CreateReadTxn(app_GetConfigPath(appRef));
 
@@ -869,34 +911,34 @@ static le_result_t ImportAllFiles
 
     if (le_cfg_GoToFirstChild(appCfg) != LE_OK)
     {
-        LE_ERROR("No files to import for application '%s'.", appName);
-
-        goto done;
+        LE_DEBUG("No files to import in config settings for application '%s'.", appName);
     }
-
-    do
+    else
     {
-        // Get source path.
-        char srcPath[LIMIT_MAX_PATH_BYTES];
-        if (GetImportSrcPath(appRef, appCfg, srcPath, sizeof(srcPath)) != LE_OK)
+        do
         {
-            goto done;
-        }
+            // Get source path.
+            char srcPath[LIMIT_MAX_PATH_BYTES];
+            if (GetImportSrcPath(appRef, appCfg, srcPath, sizeof(srcPath)) != LE_OK)
+            {
+                goto done;
+            }
 
-        // Get destination path.
-        char destPath[LIMIT_MAX_PATH_BYTES];
-        if (GetImportDestPath(appName, appCfg, destPath, sizeof(destPath)) != LE_OK)
-        {
-            goto done;
-        }
+            // Get destination path.
+            char destPath[LIMIT_MAX_PATH_BYTES];
+            if (GetImportDestPath(appName, appCfg, destPath, sizeof(destPath)) != LE_OK)
+            {
+                goto done;
+            }
 
-        // Add to the list of things to import into the sandbox.
-        if (AddToImportList(&importList, appRef, srcPath, destPath) != LE_OK)
-        {
-            goto done;
+            // Add to the list of things to import into the sandbox.
+            if (AddToImportList(&importList, appRef, srcPath, destPath) != LE_OK)
+            {
+                goto done;
+            }
         }
+        while (le_cfg_GoToNextSibling(appCfg) == LE_OK);
     }
-    while (le_cfg_GoToNextSibling(appCfg) == LE_OK);
 
     result = Import(&importList, sandboxPath);
 

@@ -5,6 +5,7 @@
  * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
  */
 #include "legato.h"
+#include "watchdogAction.h"
 
 #ifndef LEGATO_SRC_PROC_INCLUDE_GUARD
 #define LEGATO_SRC_PROC_INCLUDE_GUARD
@@ -300,7 +301,7 @@ proc_FaultAction_t proc_SigChildHandler
  *          WATCHDOG_ACTION_HANDLED   - no further action is required, it is already handled.
  */
 //--------------------------------------------------------------------------------------------------
-proc_FaultAction_t proc_GetWatchdogAction
+wdog_action_WatchdogAction_t proc_GetWatchdogAction
 (
     proc_Ref_t procRef             ///< [IN] The process reference.
 );
