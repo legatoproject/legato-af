@@ -1,14 +1,14 @@
-/** @page demoApps Demo Applications
+/** @page demoApps Demo Apps
 
 @section demoSetup Setup Demo
 
-- Ensure SIM is registered to network. See @ref cmSimUsage.
+- You need to register your SIM network. See @ref cmSimUsage.
 
-- Ensure APN name has been set. See @ref cmDataUsage.
+- You need to set an APN name. See @ref cmDataUsage.
 
 @section demoInstall Install Demo
 
-There are two sample applications included with Legato code to demo various services. 
+There are two sample applications included with Legato code to demo various services.
 
 If you're using an AR7 module in your device, substitute @c ar7 for @c wp7.
 
@@ -28,6 +28,8 @@ $ instapp airvantageDemo.wp7 <ip address>
 
 where @c \<ip address\> is the address of your target device.
 
+Then start your @subpage startApps.
+
 @subsection modemDemo Modem demo
 
 To install and use this app:
@@ -42,13 +44,13 @@ where @c \<ip address\> is the address of your target device.
 
 @subsubsection modemDemoCmds Demo Commands
 
-The @b modemDemo app accepts several commands (through sending the target a SMS message) and will reply with the results: 
+The @b modemDemo app accepts several commands (through sending the target a SMS message) and will reply with the results:
 
 - <b>Status</b> - return some status information of the target like radio is on/off and signal strength
 - <b>Sim</b> - returns sim state/info (iccid and imsi)
 - <b>Online</b> - turns on data connection
 - <b>Netinfo</b> - network information like gateway address
-- <b>Offline</b> - turns off data connection 
+- <b>Offline</b> - turns off data connection
 - <b>TestDataConnection</b> - test data connection
 
 @subsubsection modemDemoCustom Customization
@@ -60,19 +62,24 @@ In order to do that, uncomment the @c run line and replace @c +18005550199 by yo
 
 @code
 processes:
-    run: ( modemDemo )
-    run: ( send "+18005550199" "Welcome to modemDemo app")
+{
+    run:
+    {
+        ( modemDemo )
+        ( send "+18005550199" "Welcome to modemDemo app")
+    }
+}
 @endcode
 
 In @c modemDemo/demo.c, it is also possible to extend the list of processed commands.
 
-@section demoWhatsNext What's Next?
+<h3> What's Next?</h3>
 
 @subpage demoPushData  <br>
-@ref connectingAirVantage 
+@ref connectingAirVantage
 
 <HR>
 
-Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+Copyright (C) Sierra Wireless, Inc. 2014.  Use of this work is subject to license.
 
 **/

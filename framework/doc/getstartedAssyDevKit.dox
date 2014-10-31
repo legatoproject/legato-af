@@ -55,14 +55,9 @@ Be careful to align one side at a time: the cap posts only fit one way (logo wil
 Attach the socket board to the main dev kit board using the J100/J101 board connectors: press firmly into place.
  @image html devkit_board_pic.jpg 
 
-@section devkitAssyWhatsNext What's Next?
-
-@ref devBoardSwitches  <br>
-@ref getstartedInstallPackages
-
 <HR>
 
-Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
 
 **/
 

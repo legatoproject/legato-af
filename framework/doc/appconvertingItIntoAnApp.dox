@@ -1,39 +1,45 @@
-/** @page appconvertingItIntoAnApp Converting to an App
+/** @page appconvertingItIntoAnApp Make Apps
+
+After you've created your helloWord executable, you convert it into an app.
 
 @section convertingItIntoAnApp Converting to an App
 
-Now take the source code file (hello.c) and make an application out of it.
-
 Applications are described by an "application definition" text file ending
-with the suffix ".adef".  The format is intended to be easy to read
-and write.
+with the suffix @c .adef. The format is intended to be easy to read
+and write. See @ref defFiles
 
-To turn hello.c into an application, create an application definition
-file called "helloWorld.adef" that looks like this:
+Its' easy to take the source code file (hello.c) and make an application out of it.
+
+Create an application definition
+file called @c helloWorld.adef that looks like this:
 
 @verbatim
 executables:
-
-    helloWorld ( hello.c )
-
+{
+    helloWorld = ( hello.c )
+}
 
 processes:
-
-    run: (helloWorld)
+{
+    run:
+    {
+        (helloWorld)
+    }
+}
 @endverbatim
 
-This defines one executable called helloWorld implemented by hello.c,
+This defines one executable called helloWorld implemented by @c hello.c,
 and then starts one instance of the helloWorld executable.
 
 If your executable has multiple source files, add more files inside the
-      parentheses after the executable name: "helloWorld ( hello.c foo.c )".
+parentheses after the executable name: "helloWorld ( hello.c foo.c )".
+
 
 @section buildApp Build App
 
 Run @c mkapp to build the executable and bundle it into an application.
 
-
-Use the "-t" option to build a target other than the default "localhost"
+Use the @c -t option to build a target other than the default "localhost"
 target.
 
 This is how to build the helloWorld application for a device running the
@@ -83,7 +89,7 @@ $ rmapp helloWorld.wp7 <ip addr>
 
 @section lsApp List App
 
-Use "lsapp" to list the applications installed on a target.
+Use @c lsapp to list the applications installed on a target.
 
 @verbatim
 $ lsapp <ip addr>

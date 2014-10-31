@@ -1,0 +1,20 @@
+/** @page startApps Start App
+
+To start an app, run this on the target:
+
+@verbatim
+root@swi-mdm9x15:~# app start <app name>
+@endverbatim
+
+To stop an app on the target, run:
+@verbatim
+root@swi-mdm9x15:~# app stop <app name>
+@endverbatim
+
+Run @c app @c help for options.
+
+<HR>
+
+Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+
+**/

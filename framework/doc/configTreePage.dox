@@ -1,10 +1,6 @@
-/** @page configTreePage Configuration Tree Entries
+/** @page configTreePage Config Tree Entries
 
-@section configTrees_Intro Introduction
-
-Here are some parameters for Modem and Positioning targets' configuration trees:
-
-<br>
+Here are some parameters for modem services config trees:
 
 @section cellnetConfigTree Cellular Network Service
 @copydoc c_le_cellnet_configdbPage_Hide <br>
@@ -12,18 +8,14 @@ Here are some parameters for Modem and Positioning targets' configuration trees:
 @section mrcConfigTree Modem Radio Control
 @copydoc le_mrc_configdbPage_Hide <br>
 
-@section smsConfigTree SMS
-@copydoc le_sms_configdbPage_Hide <br>
-
 @section ecallConfigTree eCall
 @copydoc le_ecall_configdbPage_Hide <br>
 
 @section posConfigTree Positioning
 @copydoc le_pos_configdbPage_Hide <br>
 
-
 <HR>
 
-Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
 
 **/

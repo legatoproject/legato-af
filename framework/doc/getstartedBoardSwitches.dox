@@ -1,0 +1,22 @@
+/** @page getstartedBoardSwitches  Board Switches
+
+Dev kit board required switch settings:
+- XMODEM - off
+-  UART2 - on
+- CAN-2 LS - on
+- POWERON - high
+- BOOT - high
+- 5V_CAN - on
+- CAN-1 HS - on
+- SW300 - on
+- ETH - on
+- SDIO/CARD - on
+- AR7/WP7 - on (AR6/WP6 off)
+
+@image html 14_10board.png
+
+<HR>
+
+Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+
+**/

@@ -1,0 +1,90 @@
+/** @page defFilesFormat Common File Format
+
+All of the definition files have the same format. They're divided into sections with content 
+specific to each section. A section always starts with a section name followed by a colon (':').
+
+@code
+faultAction: restart
+
+maxFileSystemBytes: 200K
+@endcode
+
+Sections that can have lists of content items always have curly braces around the content item list.
+
+@code
+sources:
+{
+    helloWorld.c
+    object.cpp
+}
+@endcode
+
+All sections are optional (they can be empty or omitted).
+
+Sections can be in any order, multiple occurrences are permitted, and some sections have
+sub-sections.
+
+@code
+requires:
+{
+    file:
+    {
+        /dev/ttyS0  /dev/uart
+    }
+
+    file:
+    {
+        /tmp/foo  /tmp/
+    }
+
+    dir:
+    {
+    }
+}
+@endcode
+
+Tabs, spaces, new-lines, carriage-returns and comments act as token separators only, and are
+otherwise all ignored, so the author's choice of indentation and spacing style is relatively
+unrestricted.
+
+@section defFileFormatComments Comments
+
+Comments can be included using
+@code
+ // C++-style one-line comments.
+
+ /* or
+    C-style multi-line comments. */
+@endcode
+
+@section defFileFormatSample Sample
+@code
+/* Component.cdef file for a hypothetical web server component that provides a control API
+ * (defined in httpdCtrl.api) that allows other apps to start and stop the web server via IPC.
+ */
+
+bundles:
+{
+    // Include all the web pages from the build host in the application, and have them appear
+    // to the application under /var/www.
+    dir:
+    {
+        htdocs   /var/www
+    }
+}
+
+provides :     // Note that space is allowed between the section name and the colon.
+{
+    api:    {   httpdCtrl.api
+            }
+}
+
+sources:{httpd.c}
+@endcode
+
+
+<HR>
+
+Copyright (C) Sierra Wireless, Inc. 2014.  Use of this work is subject to license.
+
+**/

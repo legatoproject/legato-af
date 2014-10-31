@@ -1,6 +1,11 @@
 /** @page appCreating Create Applications
 
-@section appOverview Overview
+@subpage apphelloWorld  <br>
+@subpage appconvertingItIntoAnApp  <br>
+@subpage appaddingOtherThings  <br>
+@subpage appNotes
+
+<h2>Overview</h2>
 
 An application is a collection of one or more processes running one or more executables.
 Each executables can make use of libraries and other resource files bundled into the application.
@@ -19,25 +24,14 @@ But Legato provides the platform to do all that so you
 can focus on your business' unique value-add instead.
 
 The next topics will show you how to:
- - create a simple executable 
- - convert it into an application 
- - build and run it on the build host,
- - cross-build it and run it on a target device, and
+ - create a simple executable like helloWorld.
+ - convert it into an application. 
+ - build and run it on the build host.
+ - cross-build it and run it on a target device.
  - add third-party binaries and other resource files into an application.
-
-@section appCreatingWhatsNext What's Next?
-
-Other creating apps topics:
-
-@subpage apphelloWorld  <br>
-@subpage appconvertingItIntoAnApp  <br>
-@subpage appaddingOtherThings  <br>
-@subpage appNotes
-
-Or move to the <b>next level</b>:  @ref componentWriting.
 
 <HR>
 
-Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
 
 **/

@@ -1,0 +1,5 @@
+/**
+ * Example of nested .api file
+ */
+
+DEFINE SIX = 6;

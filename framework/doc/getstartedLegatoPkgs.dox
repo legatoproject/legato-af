@@ -1,0 +1,21 @@
+/** @page getstartedLegatoPkgs Software Packages
+
+Legato application framework and sample applications (with open source code) can be 
+downloaded from GitHub http://www.legato.io/
+
+Legato Packages can be downloaded from 
+http://developer.sierrawireless.com/Resources/Resources/Legato/Distribution.aspx 
+
+The following packages are available:
+
+- Legato Linux distribution for Sierra Wireless module
+- Legato toolchain for Sierra Wireless modules for Linux
+- Sierra Wireless WP7 modules drivers and firmware packages
+
+Legato Developer Zone has some links you might find helpful http://developer.sierrawireless.com/landing/legato.aspx
+
+<HR>
+
+Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+
+**/

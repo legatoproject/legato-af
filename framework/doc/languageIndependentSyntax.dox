@@ -35,6 +35,7 @@ The following user-defined types are supported:
 
  - DEFINE
  - ENUM
+ - BITMAP
  - REFERENCE
 
 Type definitions can also be shared between API files with USETYPES.
@@ -70,6 +71,12 @@ The @c elementList is a comma separated list of elements.  The elements should a
 Element values assigned are internally generated and can't be explicitly given.
 
 
+@subsection BITMASK
+
+A BITMASK is a special type of ENUM.  It is specified the same way as an ENUM, but the internally
+generated element values are bit positions, i.e. 0x1, 0x2, 0x4, etc.
+
+
 @subsection REFERENCE
 
 A REFERENCE is specified as:
@@ -84,20 +91,34 @@ opaque reference in C and an object instance or similar in other languages.
 
 @subsection USETYPES
 
-You can share the same type definitions between .api files with USETYPES. For example, suppose the
-file common.api contains:
+You can share type definitions between .api files with USETYPES. This is commonly referred to as
+importing, although only the type definitions are imported or used. Any code related definitions in
+a .api file, e.g. FUNCTION, are ignored.  These USETYPES can even be nested.
 
+As an example of usage, suppose the files defs.api, common.api and example.api are defined as
+follows:
+
+defs.api
 @verbatim
-DEFINE TEN = 10;
+DEFINE FIVE = 5;
 @endverbatim
 
-Then the file example.api can use this definition as follows:
+common.api
+@verbatim
+USETYPES defs.api;
 
+DEFINE TEN = defs.FIVE + 5;
+@endverbatim
+
+example.api
 @verbatim
 USETYPES common.api;
 
-DEFINE twenty = common.TEN + 10;
+DEFINE twenty = common.TEN + defs.FIVE + 5;
 @endverbatim
+
+This example illustrates that nesting causes an implicit USETYPES.  Thus, any definitions from
+defs.api, can be used in example.api, in the same way as if it had explicitly imported defs.api.
 
 
 @section function Specifying a Function
@@ -200,17 +221,22 @@ files, under the same conditions as function parameter comments.
 
 @section example API File Sample
 
-Here's the @c common.api file containing just type defintions:
+Here's the @c defn.api file containing just type defintions
+
+@verbinclude defn.api
+
+Here's the @c common.api file containing just type defintions, and using the types defined
+in @c defn.api
 
 @verbinclude common.api
 
 Here's the @c example.api file containing various definitions, and using the types defined
-in @c common.api
+in @c defn.api and @c common.api
 
 @verbinclude example.api
 
 <HR>
 
-Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
 
 **/

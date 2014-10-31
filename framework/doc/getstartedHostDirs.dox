@@ -36,7 +36,7 @@ source code for the Legato framework.
 pre-built audio, data, modem and positioning interfaces.
 
 <b>platformServices </b>
-pre-built definition files for audio, data, modem and positioning services.
+pre-built app definition files for audio, data, modem and positioning services.
 
 <b>targetFiles </b> - 
 files for installation on target devices. 
@@ -44,6 +44,6 @@ files for installation on target devices.
  
 <HR>
 
-Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
 
 **/

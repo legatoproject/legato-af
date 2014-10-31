@@ -4,16 +4,16 @@ Legato has these tools for the target:
 
 @subpage toolsApp <br>
 @subpage toolsCellModem <br>
-@subpage toolsConfigDB <br>
+@subpage toolsConfigTree <br>
 @subpage toolsExecInApp <br>
 @subpage toolsFWUpdateTarget <br>
 @subpage toolsInspect <br>
 @subpage toolsLogging <br>
 @subpage toolsSdirTool <br>
-
+@subpage toolsSetNet <br>
 
 <HR>
 
-Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
 
 **/

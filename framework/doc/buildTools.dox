@@ -1,19 +1,17 @@
 /** @page buildTools Build Tools
 
-@section buildToolsOverview Overview
-
 Legato build tools are used to:
  - generate boiler-plate code
  - simplify component-based software development
  - package applications and config settings to deploy to targets.
 
-@section buildToolsMkTools mk tools
+The tools are used to build components, executables, apps and app systems, and all start with @c mk: <br>
 
-These tools are used to build components, executables, apps and app systems, and all start with @c mk:
- - @subpage buildToolsmksys  <br>
- - @subpage buildToolsmkapp  <br>
- - @subpage buildToolsmkexe  <br>
- - @subpage buildToolsmkcomp
+@subpage buildToolsmksys  <br>
+@subpage buildToolsmkapp  <br>
+@subpage buildToolsmkexe  <br>
+@subpage buildToolsmkcomp
+@section buildToolsMkTools mk tools
 
 Most developers will usually only need @ref buildToolsmkapp and @ref buildToolsmksys.
 
@@ -35,14 +33,7 @@ the @ref buildToolsMkTools.
 
 More info about ifgen: @ref languageIndependentAPIs.
 
-@section buildToolsSeeAlso Related Info
-
-@ref defFiles   <br>
-@ref appCreating   <br>
-@ref componentWriting   <br>
-@ref demoApps
-
 <HR>
-Copyright (C) Sierra Wireless, Inc. 2014.  All rights reserved. Use of this work is subject to license.
+Copyright (C) Sierra Wireless, Inc. 2014.  Use of this work is subject to license.
 
 **/

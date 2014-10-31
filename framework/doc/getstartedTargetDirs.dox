@@ -8,7 +8,7 @@ logs for all target sessions.
 <b>[app directories] </b>-
  any installed applications.
  
- <b>root </b> has these directories - <br>
+<b>root </b> has these directories - <br>
 bin <br>
 boot <br>
 cdrom <br>
@@ -32,9 +32,8 @@ tmp <br>
 usr <br>
 var <br>
 
-
 <HR>
 
-Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
 
 **/

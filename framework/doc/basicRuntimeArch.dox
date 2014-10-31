@@ -15,6 +15,13 @@ The Supervisor is a privileged process running on the target device that:
  - acts as an application watchdog
  - performs fault recovery actions when applications fail (such as restarting the app).
 
+@section configTree Configuration Tree
+
+The Configuration Tree provides persistent configuration data
+storage organized in a tree structure.
+
+See @ref basicConfig and @ref api_config 
+
 @section logControlDaemon Log Control Daemon
 
 The Log Control Daemon provides a user-friendly way to control log message filtering for running Legato application processes.
@@ -28,24 +35,6 @@ The Service Directory ensures that only authorized connections are established.
 
 See @ref legatoServices and @ref basicInterfaces
 
-@section configTree Configuration Tree
-
-The Configuration Tree provides persistent configuration data
-storage organized in a tree structure.
-
-See @ref Configuration and @ref api_config 
-
-@section applications Applications
-
-An application is a collection of executable files, libraries, and/or other resource files 
- (e.g., audio files, web pages) that can be deployed to a target device. Once installed
- on a device, an application can be started and stopped.
- 
-By default, each application runs in its own sandbox.  When an application is constructed, all
- the files and IPC services it needs to access are declared (these should be examined and approved
- before installed on the target).  At runtime, the Supervisor and the Service Directory enforce
- that only those approved files and IPC services are accessed by that application.
-
 @section watchDog Watchdog
 
 Legato has a service that provides a kickable watchdog with a timeout that can be 
@@ -53,11 +42,19 @@ configured in @ref defFilesAdef or specified at run time.  If a kick is not rece
 specified time out, the supervisor signals to perform the action given in WatchdogAction.
 Applications are assembled from components.
 
-@section runtimeWhatsNext What's Next?
-@ref basicComponents
+@section applications Applications
+
+An application is a collection of executable files, libraries, and/or other resource files 
+ (e.g., audio files, web pages) that can be deployed to a target device. Once installed
+ on a device, an application can be started and stopped.
+ 
+By default, each application runs in its own @b sandbox.  When an application is constructed, all
+ the files and IPC services it needs to access are declared (these should be examined and approved
+ before installed on the target).  At runtime, the Supervisor and the Service Directory enforce
+ that only those approved files and IPC services are accessed by that application.
 
 <HR>
 
-Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
 
 **/

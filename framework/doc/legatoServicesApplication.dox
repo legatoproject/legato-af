@@ -5,15 +5,18 @@ Many of these services also perform resource arbitration amongst applications so
 applications can share the same resources.
 
 Legato application services: <br>
+
+ @subpage legatoServicesConfigTree
+
  @subpage c_le_data <br>
  @subpage c_le_cellnet <br>
  @subpage c_le_voicecall <br>
-  @subpage api_wdog  
+ @subpage api_wdog  
 
 Application services are built on top of foundation services.
 
 <HR>
 
-Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
 
 **/

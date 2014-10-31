@@ -1,14 +1,14 @@
-/** @page toolsHost Host 
+/** @page toolsHost Host
 
-A bunch of Host tools are located in the @c Legato/bin directory. They're pretty much self-explanatory 
-so just go to the directory to find out more.
+A bunch of Host tools are located in the Legato @c bin directory.
 
+You can run them with the --help option to get on-line help.
 
 Here's some detailed info on @subpage toolsFWUpdateHost <br>
 
 
 <HR>
 
-Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
 
 **/

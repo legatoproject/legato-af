@@ -1,38 +1,31 @@
 /** @page basicComponents Components
  
 In Legato, a component is a collection of code and other files that are functionally related,
-along with one or more licenses that apply to the component's files.
+along with one or more licenses that apply to the components' files.
 
-Components can be "built".  This generates output such as object code libraries and
-other files that can be incorporated into applications that run on a target device.
+Components can be "built" generating output like object code libraries and
+other files. These files can be incorporated into applications and run on a target device.
 
 Legato components can also have language-independent interfaces and configuration data.
 
 @section componentBased Component-based Approach
 
-It's important to manage complexity when building a successful non-trivial software system.
-The more complex the system becomes, the harder it is to ensure required system behaviour
-without unwanted effects.  If complexity is carefully compartmentalized 
-(broken into smaller pieces with like behaviour requirements), complexity can be reduced. 
-
-Software system complexity often creeps in due to unforseen details or future requirements.
-Hindsight lets us identify unnecessary complexity through careful analysis, and reduce it through refactoring and reengineering.
-Complexity can't be completely eliminated because it's inherent in the real-world problems
-that software systems solve.  The more complex the problem, the more complex
-the software. There's no avoiding this @a necessary @a complexity.
-And regardless of ardent intentions to recognize and eliminate unnecessary complexity, system
-complexity grows along with problem-solving ambition -  complexity management
-techniques are always required.
+It's important to manage complexity. The more complex a system becomes, 
+the harder it is to ensure required behaviour without unwanted effects. 
+The more complex the problem, the more complex the software, and there's 
+no avoiding this @a necessary @a complexity. 
+If complexity is carefully compartmentalized (broken into smaller pieces with 
+like behaviour requirements), complexity can be reduced. 
 
 Many approaches have been devised to reduce complexity like 'divide-and-conquer'
-where the system is gradually broken down into smaller, manageable parts that together provide the desired complete
-system behaviour.  It's proven that decoupling parts from
-each other (minimizing their interconnectedness) can dramatically reduce the overall system
-complexity and improve its maintainability. Modularization and packaging support this.
+where the system is broken down into small, manageable parts that together provide the 
+complete system behaviour.  t's proven that decoupling parts from each other (minimizing 
+interconnectedness) can dramatically reduce the overall system
+complexity and improve maintainability. Modularization and packaging support this.
 
-Component-based software development separates implementation from interface. That lets software components 
-be swapped out similar to hardware components.  For example, client components can be written to access 
-a standard telephony interface without knowing the implementation of the interface.  
+Component-based software development separates implementation from interface. That lets software 
+components be swapped out similar to hardware components (e.g., client components can be written to access 
+a standard telephony interface without knowing the implementation of the interface).  
 
 Legato is designed to make it easier to build systems using a component-based model. 
 
@@ -71,17 +64,13 @@ appropriate callbacks.
 After initialization functions run, Legato's event processing reacts to configured event handlers 
 and registered callbacks. This approach allows multiple components to be deployed to the same process, 
 reduces the risk of multi-threaded race conditions, and saves stack memory space.  
-
 Legato uses the term @a handler for an event handler, which is essentially a callback function.
 
-@section compWhatsNext What's Next
-
-@ref basicInterfaces  <br>
-@ref eventBasics
+See @ref eventBasics for more info.
 
 <HR>
 
-Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
 
 **/
 

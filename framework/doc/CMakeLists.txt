@@ -10,8 +10,8 @@ find_package(Doxygen)
 
 if(DOXYGEN_FOUND)
     # End-user framework documentation.
-    configure_file(${CMAKE_CURRENT_SOURCE_DIR}/doxygen.cfg.in
-                   ${CMAKE_CURRENT_BINARY_DIR}/doxygen.cfg
+    configure_file(${CMAKE_CURRENT_SOURCE_DIR}/doxygen.user.cfg.in
+                   ${CMAKE_CURRENT_BINARY_DIR}/doxygen.user.cfg
                    @ONLY
     )
 
@@ -23,7 +23,8 @@ if(DOXYGEN_FOUND)
 
     function(generate_doc DOC_TARGET DOC_TITLE DOXYGEN_OUTPUT DOXYGEN_CFG)
 
-        add_custom_target(${DOC_TARGET}
+        # HTML
+        add_custom_target("${DOC_TARGET}_docs"
             COMMAND cp ${CMAKE_CURRENT_SOURCE_DIR}/static/legato.css ${CMAKE_CURRENT_BINARY_DIR}
             COMMAND mkdir -p ${DOXYGEN_OUTPUT} && ${DOXYGEN_EXECUTABLE} ${DOXYGEN_CFG}
             COMMAND cp ${CMAKE_CURRENT_SOURCE_DIR}/static/navtree.css                            ${DOXYGEN_OUTPUT}/html
@@ -43,31 +44,31 @@ if(DOXYGEN_FOUND)
             COMMAND cp ${CMAKE_CURRENT_SOURCE_DIR}/static/resize.js                              ${DOXYGEN_OUTPUT}/html
             COMMAND cp ${CMAKE_CURRENT_SOURCE_DIR}/static/search.css                             ${DOXYGEN_OUTPUT}/html/search
             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-            COMMENT ${DOC_TITLE} VERBATIM
+            COMMENT "Generating HTML for ${DOC_TITLE}" VERBATIM
             DEPENDS api_headers
+        )
+        
+        # PDF
+        add_custom_target("${DOC_TARGET}_pdf"
+            COMMAND make > ${CMAKE_CURRENT_BINARY_DIR}/doxygen-${DOC_TARGET}.pdf.log && cp refman.pdf ${DOXYGEN_OUTPUT}/legato-${DOC_TARGET}.pdf
+            WORKING_DIRECTORY ${DOXYGEN_OUTPUT}/latex
+            DEPENDS "${DOC_TARGET}_docs"
+            COMMENT "Generating PDF for ${DOC_TITLE} (log @ ${CMAKE_CURRENT_BINARY_DIR}/doxygen-${DOC_TARGET}.pdf.log)"
         )
 
     endfunction()
 
-    # Doxygen Generation
-    generate_doc(implementation_doc
-        "Generating framework implementation documentation with Doxygen"
+    # Doc Generation
+    generate_doc(user
+        "API documentation"
+        ${DOCUMENTATION_OUTPUT_PATH}/user
+        ${CMAKE_CURRENT_BINARY_DIR}/doxygen.user.cfg
+    )
+
+    generate_doc(implementation
+        "framework implementation documentation"
         ${DOCUMENTATION_OUTPUT_PATH}/implementation
         ${CMAKE_CURRENT_BINARY_DIR}/doxygen.implementation.cfg
-    )
-
-    generate_doc(doc
-        "Generating API documentation with Doxygen"
-        ${DOCUMENTATION_OUTPUT_PATH}/user
-        ${CMAKE_CURRENT_BINARY_DIR}/doxygen.cfg
-    )
-
-    # PDF Generation
-    add_custom_target(pdf
-        COMMAND make > ${CMAKE_CURRENT_BINARY_DIR}/doxygen.pdf.log && cp refman.pdf ${DOCUMENTATION_OUTPUT_PATH}/user/legato.pdf
-        WORKING_DIRECTORY ${DOCUMENTATION_OUTPUT_PATH}/user/latex
-        DEPENDS doc
-        COMMENT "Generating PDF for API documentation (log @ ${CMAKE_CURRENT_BINARY_DIR}/doxygen.pdf.log)"
     )
 
 

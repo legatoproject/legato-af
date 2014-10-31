@@ -1,0 +1,38 @@
+/** @page getstartedDevKitCables  Dev Kit Cables
+
+
+The following cables are used for communication between a dev host and the dev kit/target:
+
+@b UART2
+
+This is a serial port to USB cable to the dev host. It provides serial console communication to embedded Linux. 
+It requires Minicom (or similar tool) to access device. 
+
+These are the UART2 port settings: <br>
+- Speed -115200 baud 
+- Parity - None 
+- Bits - 8 
+- Stop bits - 1 
+- Flow control - None 
+
+If you’re running Minicom, set these config options through the CTRL+A O (configure) serial port setup. 
+
+@b Ethernet
+
+The Ethernet cable lets you plug into a locat network for a direct connection. 
+It obtains a dynamic IP address for the target using DHCP. This matches subnet values between the 
+target and the host so ssh commands will be available.  
+
+@b Micro-USB
+
+This is a Micro-USB port to USB cable to the dev host. It provides access to IP 
+over USB after it's been configured for @c ecm. 
+
+The micro-USB provides access to fastboot, CDC-ECM, CDC-ACM (AT 
+commands), USB Audio, and Ethernet over USB (through an adapter). 
+
+<HR>
+
+Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+
+**/

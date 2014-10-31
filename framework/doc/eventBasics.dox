@@ -1,9 +1,5 @@
 /** @page eventBasics Event-driven Programming
 
-Also see @ref c_eventLoop
-
-@section eventBackground Background
-
 In event-drivent programming, the flow of a program is determined by events triggered through 
 a defined interaction (e.g., user interaction, exceeding threshold limit, etc. ).
 Usually, a main loop listens for events, and then triggers a callback function when an event is detected. 
@@ -30,29 +26,27 @@ multi-threading is also supported by Legato along with the usual thread synchron
 
 @section eventBasics
 
-Legato's Event Loop API uses a central <b> event loop </b> that calls <b> event handler </b> functions in
- * response to <b>event reports</b>.
- * 
- * Software components register their event handler functions with the event system (either
- * directly through the Event Loop API or indirectly through other APIs that use the Event Loop API)
- * so the central event loop knows the functions to call in response to defined events.
- *
- * Every event loop has an <b>event queue</b>, which is a queue of events waiting to be handled by that event loop.  
+Legato's Event Loop API uses a central <b> event loop </b> that calls <b> event handler </b> functions in 
+ response to <b>event reports</b>. See @ref c_eventLoop
  
- * The following different usage patterns are supported by the Event Loop API:
- *
- *  - @ref c_event_deferredFunctionCalls
- *  - @ref c_event_publishSubscribe
- *  - @ref c_event_layeredPublishSubscribe
- *  - @ref c_event_files
- *  - @ref c_event_dispatchingToOtherThreads
- 
-@section eventBasicsWhatsNext What's Next?
-@ref sandboxGen
+Software components register their event handler functions with the event system (either 
+directly through the Event Loop API or indirectly through other APIs that use the Event Loop API) 
+ so the central event loop knows the functions to call in response to defined events.
 
+Every event loop has an <b>event queue</b>, which is a queue of events waiting to be handled 
+by that event loop.  
+ 
+The following different usage patterns are supported by the Event Loop API:
+
+@ref c_event_deferredFunctionCalls <br>
+@ref c_event_publishSubscribe <br>
+@ref c_event_layeredPublishSubscribe <br>
+@ref c_event_files <br>
+@ref c_event_dispatchingToOtherThreads <br>
+ 
 <HR>
 
-Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
 
 **/
 

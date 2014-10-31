@@ -1,6 +1,11 @@
 /** @page componentWriting Write Components
 
-@section writebasicComponents Legato Components
+@subpage componentBasicComp  <br> 
+@subpage componenthelloIPC  <br>
+@subpage componentPuttingIntoApp  <br>
+@subpage componentmultiComponentExe
+
+<h2>Overview</h2>
 
 Software components are collections of functionally related software that communicate with
 other components via well-defined interfaces. See @ref componentBased for more background
@@ -31,24 +36,9 @@ But even when an entire project is written in the same language, using language-
 the component inherently more reusable, creates opportunities for function isolation in different processes or different
 application sandboxes, and automatically creates debugging trace points.
 
-@section writecomponentWhatsNext What's Next?
-
-Other component writing topics:
-
-@subpage componentBasicComp  <br> 
-@subpage componenthelloIPC  <br>
-@subpage componentPuttingIntoApp  <br>
-@subpage componentmultiComponentExe
-
-Or move to the <b>next level</b>: 
-
-@ref defFiles  <br>
-@ref legatoServices  <br>
-@ref c_APIs
-
 <HR>
 
-Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
 
 **/
 

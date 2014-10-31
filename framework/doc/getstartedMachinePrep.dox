@@ -17,8 +17,10 @@ $ sudo apt-get remove ccache @endverbatim
 
 @section defSysShell Set Default System Shell 
 
-Some versions of Ubuntu default to dash instead of bash, which will cause builds to fail. 
-Change the system shell to use bash: 
+Some versions of Ubuntu default to dash system shell instead of bash, which will cause 
+builds to fail. Run @c echo @c $0 to check your shell.
+
+If you need to change it to use bash, run: 
 @verbatim
 $ sudo dpkg-reconfigure dash @endverbatim
 
@@ -26,7 +28,7 @@ Answer "No" to the question.
 
 <HR>
 
-Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
 
 **/
 

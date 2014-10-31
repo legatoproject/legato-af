@@ -1,6 +1,6 @@
 /** @page languageIndependentAPIs Language-Independent APIs
 
-Legato components can export APIs for other components to use.  This can be done the conventional
+Legato components can provide APIs for other components to use.  This can be done the conventional
 way, by writing a C header file to define the interface, for example.  But, a C header file can
 only be used by components that are written in C, and functions defined in a C header file can
 only be implemented by C code.  Furthermore, C compilers won't generate IPC code for you, so
@@ -27,8 +27,8 @@ different languages, and multiple server implementations can be written in diffe
 and none of them would have to include any IPC code or language translation layer.
 
 When writing a client of an API, the programmer
- - imports the API into their component (add the <c>.api</c> file to the <c>import:</c> section of
-   the component's <c>Component.cdef</c> file)
+ - imports the API into their component (add the <c>.api</c> file to the <c>api:</c> subsection
+   of the @c requires: section of the component's <c>Component.cdef</c> file)
  - include/import the generated code into their program (e.g., in C: <c>\#include "interfaces.h"</c>)
  - call the functions in the API
 
@@ -37,8 +37,8 @@ allocation/release, message passing, synchronization between client and server t
 and sandbox security access control.
 
 When writing a server of an API, the programmer
- - exports the API from their component (add the <c>.api</c> file to the <c>export:</c> section of
-   the component's <c>Component.cdef</c> file)
+ - exports the API from their component (add the <c>.api</c> file to the <c>api:</c> subsection of
+   the @c provides: section of the component's <c>Component.cdef</c> file)
  - include/import the generated code into their program (e.g., in C: <c>\#include "interfaces.h"</c>)
  - implement the functions in the API
 
@@ -53,7 +53,7 @@ For more information:
 
 <HR>
 
-Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
 
 **/
 

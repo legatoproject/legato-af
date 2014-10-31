@@ -1,0 +1,14 @@
+/** @page basicsLearn Learn
+
+@subpage basicConcepts <br>
+@subpage appCreating <br>
+@subpage componentWriting <br>
+@subpage ccodingStdsMain <br>
+@subpage languageIndependentAPIs 
+
+If you already know the basics, @ref basicsDevelop
+
+<HR>
+Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+
+**/

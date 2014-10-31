@@ -1,0 +1,16 @@
+/** @page getstartedInstallLegato Install Legato 
+
+Legato can be installed and used on different platforms:
+
+@subpage getstartedDSinstall to install the Application Development Kit (ADK) to use Legato through 
+the Developer Studio IDE.
+ 
+@subpage getstartedComLine to install the ADK to use Legato through the command line.
+
+@subpage getstartedSourcePkgs to go deeper and build the Legato Framework from source packages.
+
+<HR>
+
+Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+
+**/

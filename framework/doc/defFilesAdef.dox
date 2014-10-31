@@ -1,359 +1,12 @@
-/** @page defFilesAdef Application Definition (.adef) Files
+/** @page defFilesAdef Application Definition .adef
 
-These sections are available in the .adef files (in alphabetical order):
+<c>.adef</c> can contain these sections:
 
-@ref bindings <br>
-@ref cpuShare <br>
-@ref executablesAdef <br>
-@ref filesAdef <br>
-@ref fileSystemSize <br>
-@ref groupsAdef <br>
-@ref importAdef <br>
-@ref memLimit <br>
-@ref mqueueSize <br>
-@ref numProcs <br>
-@ref provides <br>
-@ref refprocessesAdef <br>
-@ref requires <br>
-@ref rtSignalQueueSize <br>
-@ref sandboxed <br>
-@ref start <br>
-@ref version <br>
-@ref watchdogTimeoutAdef <br>
-@ref watchdogActionAdef <br>
+@section bindings Bindings
 
-
-@section version version
-
-Optional field that specifies a string to use as the application's version string.
-
-@note
- - <c>mkapp --append-to-version=XXXX</c> can be used to append "XXXX" onto the
-application's version string.
- - <c>app foo version</c> can be used on-target to get the app's version string.
-
-@verbatim
-version: 0.3a
-@endverbatim
-
-@section sandboxed sandboxed
-
-Specifies if the app will be launched inside a sandbox.
-
-Permitted content in this section is:
-
- - @b true - app will be run inside of a sandbox.
- - @b false - app won't be run in a sandbox.
-
-The default is @b true.
-
-If an app is not inside of a sandbox (unsandboxed), it can see the target device's real root file
-system.
-A sandboxed app can't see the target's real root file system; instead, a sandboxed app has its own,
-separate root file system (which it can't leave).
-
-Each app has its own user ID and primary group ID.  User name and primary group name is "appxxxx",
-where the "xxxx" is replaced with the name of the app.
-
-Sandboxed apps aren't allowed to be members of other groups
-and are not allowed to have any capabilities (see "man 7 capabilities") set on their executables.
-
-Unsandboxed apps are allowed to have executables with capabilities and be members of other groups
-(see the "groups:" section).
-
-While a user and/or group will be automatically created if missing for the specified app,
-only users and groups of sandboxed apps will be automatically deleted when those apps are
-uninstalled.
-
-@code
-sandboxed: false
-@endcode
-
-
-@section start start
-
-Specifies if the app should start automatically at start-up:
-"auto" sets the app to start automatically by the Supervisor.
-"manual" sets the app to start through a manual prompt to the Supervisor.
-Default is @b auto.
-
-@code
-start: auto
-@endcode
-
-
-@section numProcs numProcs
-
-Specifies the maximum number of processes and threads allowed to run at one time: an integer number.
-
-If fork() calls or pthread_create() calls start failing with error code @c EAGAIN (seen in strace
-output as @c clone() system calls), then you are probably running into this limit.
-
-Default is @b 20.
-
-@code
-numProcs: 4
-@endcode
-
-
-@section mqueueSize mqueueSize
-
-Specifies the maximum number of bytes that can be allocated for POSIX MQueues. Default is @b 512.
-
-@code
-mqueueSize: 22
-@endcode
-
-
-@section rtSignalQueueSize rtSignalQueueSize
-
-Specifies the maximum number of real-time signals that can be queued (waiting for delivery) to
-processes.
-This can be per thread in the app.
-
-Default is @b 100.
-
-@code
-rtSignalQueueSize: 10
-@endcode
-
-
-@section memLimit memLimit
-
-Specifies the maximum amount of memory (in kilobytes) that all processes in an app can share.
-Default is @b 40960.
-
-@code
-memLimit: 4000
-@endcode
-
-
-@section cpuShare cpuShare
-
-Specifies the relative cpu share for an application.
-
-Cpu share is used to calculate the cpu percentage for a process relative to all other processes
-in the system.  New cgroups and processes default value of @b 1024 if not otherwise configured.
-The actual percentage of the cpu allocated to a process is calculated like this:
-
- (share value of process) / (sum of shares from all processes contending for the cpu)
-
-All processes within a cgroup share the available cpu percentage share for that cgroup like this:
-
-cgroupA is configured with the default share value, 1024.
-cgroupB is configured with 512 as its share value.
-cgroupC is configured with 2048 as its share value.
-
-cgroupA has one process running.
-cgroupB has two processes running.
-cgroupC has one process running.
-
-This assumes all processes in cgroupA, cgroupB and cgroupC are running and not blocked waiting
-for an I/O or timer event, and another system process is also running.
-
-Sum of all shares (including the one system process) is 1024 + 512 + 2048 + 1024 = 4608
-
-The process in cgroupA will get 1024/4608 = 22% of the cpu.
-The two processes in cgroupB will share 512/4608 = 11% of the cpu, each process getting 5.5%.
-The process in cgroupC will get 2048/4608 = 44% of the cpu.
-The system process will get 1024/4608 = 22% of the cpu.
-
-@code
-cpuShare: 512
-@endcode
-
-
-@section fileSystemSize fileSystemSize
-
-Specifies the maximum amount of RAM that can be consumed by an app's temporary (volatile) file system at runtime.
-Default is @b 128K
-
-@code
-fileSystemSize: 120K
-@endcode
-
-
-@section filesAdef files
-
-Lists additional files or directories to be included in an app
-so they’re available at runtime (e.g., audio files, web pages, executable scripts or programs from
-external build system).
-
-Three things need to be specified for each file:
-- access permissions
-- build system path
-- target path
-
-<b>Access permissions</b> - any combination of one or more of the following letters, enclosed in
-square brackets:
-- r = readable
-- w = writeable
-- x = executable
-
-If permissions values are not specified, then read-only ([r]) is the default.
-
-@note Access permissions aren't implemented yet.  For now, everything that gets installed in the
-application's "bin" directory on target gets "rx" permission, and all other files get "r" while
-all directories get "rx".
-
-<b>Build system path</b> - file system path on the build PC where the file is located at build time.
-
-The path can be relative to the directory where the .adef file is located.
-
-<b>Target path</b> - file system path on the target where the file will appear at runtime.
-
-Paths of files included in the apps will be automatically installed on-target under
-"/opt/legato/apps/xxxx", where "xxxx" is replaced by the app name.  If the application runs inside
-a sandbox, it will appear
-
-File paths can be enclosed in quotation marks (either single ' or double ").
-This is required when the file path contains spaces.
-
-@verbatim
-files:
-
-    [r]     audio/alert.wav     /usr/share/sounds/
-    [rx]  third-party/foobar/bin/foobar   /bin/
-    htdocs/index.html   /var/www/
-    "stuff/file name with spaces"  /usr/share/stuff/
-    'stuff/another file'   /usr/share/stuff/
-@endverbatim
-
-<b>File Ownership and Set-UID Bits</b>
-
-When the application is installed on a target: <br>
-- the owner and group are set to @c root on all files in the app.
-- the @c setuid bit is cleared on everything in the application.
-
-
-@section executablesAdef executables
-
-Lists executables to be constructed and moved to the “bin” directory inside the app.
-
-An executable’s content is specified inside parentheses after the name, and can be one of these:
-- relative file system path to source code file (e.g., a .c, .java, or .lua file)
-- component
-- relative file system path to library file (e.g., .a or .so file).
-
-Only C/C++ source files, components, and libraries are currently supported.
-
-@code
-executables:
-
-    myexe1 ( file1.c libgoodstuff.so )
-    myexe2 ( foobar toto )
-@endcode
-
-If a component is included in an executable, then that component will be built and linked into
-the executable, and its COMPONENT_INIT function will be run at process start-up.
-Furthermore, that component’s runtime files (shared libraries, Lua source code, etc.) will be
-packaged inside the application for installation on the target.
-
-If a source file is included in an executable, the build tools will search for it in the file system
-according to the source search path. When found, it will be compiled (if written in a compiled
-language) and linked into the executable. Note that all the source files specified for an executable
-will together be considered a component (called "default"), and one of those source files will be
-expected to implement a COMPONENT_INIT function, which will get called at start-up.
-
-If a library is “included in” an executable in this way, that library is expected to be found in
-the “import” or “files” section of the application’s .adef file or in the “files” section
-of the Component.cdef file of a component that appears in the the .adef file.
-When the executable is linked, it will be linked with these “included” libraries in the order in
-which they are listed.  Note that it's permitted to list the same library more than once, as
-is sometimes necessary in order to satisfy all unresolved symbols, due to the single-pass nature
-of the linker.)
-
-The mechanism by which the executable is constructed will depend on the type of content and the
-target device.  For example, C files will be compiled and linked using the appropriate compiler
-tool chain, depending on what target device the application is being built for. The same goes
-for components written in C. Java code will be compiled to Java bytecode. Lua code will be
-simply copied into the application.
-
-@note In some cases, there may be incompatibilities between components or source code files that
-prevent them from being included in the same executable. For example, you may not be able to put
-Java sources and C sources into the same executable together. If you do violate one of these
-restrictions, the build tools will tell you about it.
-
-
-@section importAdef import
-
-The @b import section lists things  imported to the app’s sandbox at runtime from outside of the
-sandbox. The contents appear similar to the "files" section’s content, but meanings are different:
-Things listed in the “import” section are expected to be found on the target at runtime.
-They are not copied into the app at build time; they're made accessible to the app inside of
-its sandbox at runtime.
-
-Currently, only virtual file system objects (files, directories, named sockets and pipes,
-device files, etc.) are explicitly imported.  (Note: IPC interfaces are imported by components
-using the Component.cdef file’s “import” section.)
-
-This section is ignored if the app is not sandboxed (if sandboxed set to false).
-
-Items in the import section have essentially the same format as items in the files section,
-except the first path must be an absolute path (beginning with ‘/’).
-
-The first path is the object to be imported. This is an absolute path in the target’s file system,
-outside of the sandbox  (beginning with ‘/’).
-
-The second path is the absolute file system path inside the app’s sandbox where the object will
-appear at runtime.
-
-File paths can be enclosed in quotation marks (either single ' or double "). This is required when
-the file path contains spaces.
-
-@verbatim
-import:
-    // I get character stream input from outside via a named pipe (read-only)
-    /var/run/someNamedPipe  /var/run/
-
-    // I need read and write access to UART2.
-    /dev/ttyS1  /dev/
-
-    // I need to be able to play back audio files installed in /usr/local/share/audio.
-    "/usr/local/share/audio/error message.wav" /usr/share/audio/
-    '/usr/local/share/audio/success message.wav' /usr/share/audio/
-@endverbatim
-
-Permissions settings in import can't override permissions on the object in the target’s file system.
-If an object is read-only for the app’s user account in the root file system,
-it'll still be read-only accessible inside the app’s sandbox (even if imported “[rw]” in the app’s
-.adef file).
-
-File permissions and ownership (group and user) on the original file in the target system
-remain in effect inside the sandbox.
-
-
-@section groupsAdef groups
-
-Add an unsandboxed app's user to groups on the target system. Not permitted for sandboxed apps.
-
-@code
-groups:
-    www-data
-    modem
-@endcode
-
-@todo Allow for sandboxed apps.
-
-
-@section watchdogTimeoutAdef watchdogTimeout
-
-The watchdogTimeout section sets the default timeout in milliseconds for processes in this
-application. This value will be used if there is no value set in the processes section for
-a given process. See @ref watchdogTimeout in the processes section.
-
-
-@section watchdogActionAdef watchdogAction
-
-The watchdogAction section sets the recovery action to take if a process in this application
-expires its watchdog. This value will be used if there is no value set in the processes section
-for a given process. See @ref watchdogAction in the processes section.
-
-
-@section bindings
-
-This section allows IPC imports (listed in the “import” sections of Component.cdef files) to be
-"bound" to IPC exports (listed in the "export" sections of Component.cdef files).
+This section allows client-side IPC API interfaces (listed in the “requires" sections of
+Component.cdef files) to be "bound" to server-side interfaces (listed in the "provides" sections
+of Component.cdef files).
 
 This allows direct control over how IPC interfaces are interconnected, thereby allowing reusable
 components and/or apps to be "wired" together to form a working system.
@@ -369,12 +22,14 @@ are separated by a period (‘.’).
 The client interface always appears first, and an arrow (<c> -> </c>) is used to separate
 the client interface from the server interface.
 
-For example, to bind "clientExe.clientComponent.api" to "serverExe.serverComponent.api":
+For example, to bind "clientExe.clientComponent.clientInterface" to
+"serverExe.serverComponent.serverInterface":
 
 @verbatim
 bindings:
-
-    clientExe.clientComponent.api -> serverExe.serverComponent.api
+{
+    clientExe.clientComponent.clientInterface -> serverExe.serverComponent.serverInterface
+}
 @endverbatim
 
 External services provided by other apps are identified using the app name and the service name,
@@ -382,8 +37,9 @@ separated by a period ('.').
 
 @verbatim
 bindings:
-
-    clientExe.clientComponent.api -> otherApp.api
+{
+    clientExe.clientComponent.clientInterface -> otherApp.serverInterface
+}
 @endverbatim
 
 To bind to a service provided by a non-app user, the app name is replaced by a user name inside
@@ -391,70 +47,532 @@ angle brackets.
 
 @verbatim
 bindings:
-
-    clientExe.clientComponent.api -> <root>.api
+{
+    clientExe.clientComponent.clientInterface -> <root>.serverInterface
+}
 @endverbatim
 
-
-@section requires requires
-
-The "requires:" section is used to specify things that the application needs from its runtime
-environment.
-
-Eventually, this will support "file:", "dir:", "api:", and "configTree" subsections, but for now,
-only "api:" and "configTree:" subsections are supported.
-
-@subsection requiresApi api
-
-Declares that a client-side (imported) IPC API interface needs to be bound
-to a service provided by another app (or non-app user).
-
-For example, the following declares that the "temperature" interface on the "tempInput"
-component in the "controller" executable should be made into a bindable external interface
-called "airTemp":
+In the unlikely event that you built your client-side code using the @c ifgen tool or
+@ref buildToolsmkcomp or @ref buildToolsmkexe and then you used "requires" or "bundles" sections
+to get that client into your application, then the tool reading your .adef file won't know about
+the client-side interface.  In such cases, you'll have to use a special work-around to bind those
+interfaces:
 
 @verbatim
-requires:
-
-    api: airTemp {controller.tempInput.temperature}
+bindings:
+{
+    *.le_data -> dataConnectionService.le_data
+}
 @endverbatim
 
-Interface instances are identified using the executable name, component name, and the service
-instance name. These different parts of the interface instance identifier are separated by a
-period (‘.’).
+This would bind any unknown client-side "le_data" interfaces in the current app to the "le_data"
+server-side interface on the "dataConnectionService" app.
 
+@section bundlesAdef Bundles
 
-@subsection requiresConfigTree configTree
-
-Declares that the application requires access to a given configuration tree.
-Each application has its own configuration tree named after the application.
-In addition, there's a "system" configuration tree that contains privileged system data.
-
-Applications can be granted read access or both read and write access to trees.
-
-By default, an application only has read access to its own configuration tree.
-
-If access is granted to a tree, but the access mode ("[r]" or "[w]") is not specified,
-then only read permission will be granted.
+Lists additional files or directories to be copied from the build host into the application
+so they’re available to the app at runtime (e.g., audio files, web pages, executable scripts
+or programs built using some external build system).
 
 @verbatim
-requires:
+bundles:
+{
+    file:
+    {
+        // Include the web server executable (built using some other build tool) in the app's /bin.
+        [x] 3rdParty/webServer/bin/wwwServ  /bin/
 
-    configTree: { [w] myApp }   // I need write access to my configuration data.
-    configTree: { otherApp }    // I need read access to another app's configuration data.
+        // Put the company logo into the app's /var/www/ for read-only access by the web server.
+        images/abcCorpLogo.jpg  /var/www/
+
+        // Make the appropriate welcome page for the product appear at /var/www/index.html.
+        webContent/$PRODUCT_ID/welcome.html  /var/www/index.html
+
+        // Create a file to record persistent custom audio messages into.
+        [w] audio/defaultMessage.wav  /usr/share/sounds/customMessage.wav
+    }
+
+    dir:
+    {
+        // Recursively bundle the directory containing all the audio files into the application.
+        // It will appear to the app read-only under /usr/share/sounds/.
+        audio   /usr/share/sounds
+    }
+}
+@endverbatim
+
+Three things need to be specified for each file or directory:
+- access permissions
+- build system path
+- target path
+
+<b>Access permissions</b> - any combination of one or more of the following letters, enclosed in
+square brackets:
+- r = readable
+- w = writeable
+- x = executable
+
+If permissions values are not specified, then read-only ([r]) is the default.
+
+Directories always have executable permission set on them, so they can be traversed.  Setting the
+<c>[x]</c> permission in the "dir:" subsection causes the files under the directory to be made
+executable.
+
+Setting <c>[w]</c> in the "dir:" subsection causes all files under that directory to be writeable,
+but the directory itself will not be writeable.
+
+@warning    Access permissions aren't implemented yet.  For now, everything that gets installed in
+            the application's "bin" directory on target gets "rx" permission, and all other files
+            get "r" while all directories get "rx".
+
+@note   Directories in the persistent (flash) file system are never made writeable because the
+        on-target flash file system does not support usage quotas (yet).
+
+<b>Build system path</b> - file system path on the build PC where the file is located at build time.
+
+The path can be relative to the directory where the @c .adef file is located.
+
+@note   Environment variables can be used inside these paths.
+
+<b>Target path</b> - file system path on the target where the file will appear at runtime.
+
+This is an absolute path inside the application's sandbox file system.
+
+If this ends in a '/', then it is a directory path into which the source object (file or directory)
+will be copied, and the destination object will have the same name as the source object.
+
+If it does not end in a '/', it is a full destination object path and the destination object
+may have a different name than the source object.
+
+@note   If the application is running unsandboxed, the bundled files and directories can be found
+        in their installation location under "/opt/legato/apps/xxxx", where "xxxx" is replaced by
+        the app name.
+
+<b>Quoting Paths</b>
+
+File paths can be enclosed in quotation marks (either single ' or double ").
+This is required when the file path contains spaces or comment start sequences 
+@verbatim  
+"//" or  "/*" 
 @endverbatim
 
 
-@section provides provides
+<b>File Ownership and Set-UID Bits</b>
+
+When the application is installed on a target: <br>
+- the owner and group are set to @c root on all files in the app.
+- the @c setuid bit is cleared on everything in the application.
+
+@section cpuShare CPU Share
+
+Specifies the relative cpu share for an application.
+
+Cpu share is used to calculate the cpu percentage for a process relative to all other processes
+in the system.  New cgroups and processes default value of @b 1024 if not otherwise configured.
+The actual percentage of the cpu allocated to a process is calculated like this:
+
+ (share value of process) / (sum of shares from all processes contending for the cpu)
+
+All processes within a cgroup share the available cpu percentage share for that cgroup like this:
+
+- cgroupA is configured with the default share value, 1024.
+- cgroupB is configured with 512 as its share value.
+- cgroupC is configured with 2048 as its share value.
+
+- cgroupA has one process running.
+- cgroupB has two processes running.
+- cgroupC has one process running.
+
+This assumes all processes in cgroupA, cgroupB and cgroupC are running and not blocked waiting
+for an I/O or timer event, and another system process is also running.
+
+Sum of all shares (including the one system process) is 1024 + 512 + 2048 + 1024 = 4608
+
+The process in cgroupA will get 1024/4608 = 22% of the cpu.
+The two processes in cgroupB will share 512/4608 = 11% of the cpu, each process getting 5.5%.
+The process in cgroupC will get 2048/4608 = 44% of the cpu.
+The system process will get 1024/4608 = 22% of the cpu.
+
+@verbatim
+cpuShare: 512
+@endverbatim
+
+@section executablesAdef Executables
+
+Lists executables to be constructed and moved to the “bin” directory inside the app.
+
+An executable’s content is specified inside parentheses after the name, and can be one of these:
+- relative file system path to source code file (e.g., a .c, .java, or .lua file)
+- component
+- relative file system path to library file (e.g., .a or .so file).
+
+@warning    Only C/C++ source files, components, and libraries are currently supported.
+
+@verbatim
+executables:
+{
+    myexe1 = ( file1.c libgoodstuff.so )
+    myexe2 = ( foobar toto )
+}
+@endverbatim
+
+If a component is included in an executable, then that component will be built and linked into
+the executable, and its COMPONENT_INIT function will be run at process start-up.
+Furthermore, that component’s runtime files (shared libraries, Lua source code, etc.) will be
+packaged inside the application for installation on the target.
+
+If a source file is included in an executable, the build tools will search for it in the file system
+according to the source search path. When found, it will be compiled (if written in a compiled
+language) and linked into the executable. Note that all the source files specified for an executable
+will together be considered a component (which will have the same name as the executable), and one
+of those source files will be expected to implement a COMPONENT_INIT function, which will get
+called at start-up.
+
+If a library (@c .so or @c .a file) is “included in” an executable in this way, that library is
+expected to be found in the “requires” or “bundles” section of the application’s .adef file or
+the Component.cdef file of a component that is included in the application.
+When the executable is linked, it will be linked with these libraries in the order in
+which they are listed.  Note that it is permitted to list the same library more than once, as
+is sometimes necessary in order to satisfy all unresolved symbols, due to the single-pass nature
+of the linker.
+
+The mechanism by which the executable is constructed will depend on the type of content and the
+target device.  For example, C and C++ files will be compiled and linked using the appropriate
+compiler tool chain, depending on what target device the application is being built for.
+The same goes for components written in C and C++.  Java code will be compiled to Java bytecode.
+Interpreted code, such as Python code will be simply copied into the application.
+
+@note In some cases, there may be incompatibilities between components or source code files that
+prevent them from being included in the same executable. For example, you may not be able to put
+Java sources and C sources into the same executable together. If you do violate one of these
+restrictions, the build tools will tell you about it.
+
+@section groupsAdef Groups
+
+Add an app's user to groups on the target system.
+
+@verbatim
+groups:
+{
+    www-data
+    modem
+}
+@endverbatim
+
+@section maxFileSystemBytes Max File System Bytes
+
+Specifies the maximum amount of RAM that can be consumed by an app's temporary (volatile) file
+system at runtime.
+
+Default is @b 128K
+
+@verbatim
+maxFileSystemBytes: 120K
+@endverbatim
+
+@note The file system size will also be limited by the @ref maxMemoryBytes limit.
+
+@section maxMemoryBytes Max Memory Bytes
+
+Specifies the maximum amount of memory (in bytes) that all processes in an app can share.
+Default is @b 40960K (40MB).
+
+@verbatim
+maxMemoryBytes: 1000K
+@endverbatim
+
+@note Will be rounded to the nearest memory page boundary.
+@section maxMQueueBytes Max MQueue Bytes
+
+Specifies the maximum number of bytes that can be allocated for POSIX MQueues. Default is @b 512.
+
+@verbatim
+maxMQueueBytes: 16K
+@endverbatim
+
+@section maxQueuedSignals Max Queued Signals
+
+Specifies the maximum number of signals that can be waiting for delivery to processes in the app.
+
+This limit will only be enforced when using @c sigqueue() to send a signal.
+Signals sent using @c kill() are limited to at most one of each type of signal anyway.
+
+Default is @b 100.
+
+@verbatim
+maxQueuedSignals: 200
+@endverbatim
+
+@section maxThreads Max Threads
+
+Specifies the maximum number of threads allowed to run at one time: an integer number.
+
+@note A single-threaded process (a running program that doesn't start any
+threads other than the one running the <c>main()</c> function) counts as one thread.
+
+If fork() calls or pthread_create() calls start failing with error code @c EAGAIN (seen in strace
+output as @c clone() system calls), then you are probably running into this limit.
+
+Default is @b 20.
+
+@verbatim
+maxThreads: 4
+@endverbatim
+
+@section adefProcesses Processes
+
+A @c processes section specifies processes to run when the app is started, along with their
+environment variables, command-line arguments, limits, and fault handling actions.
+
+Content in the @c processes section is divided into subsections.
+
+If different processes have different variables, they must be in separate @c processes: sections.
+
+@verbatim
+processes:
+{
+    // Start up these processes when the app starts
+    run:
+    {
+        myProc1 = ( myExe --foo -b 43 )
+        myProc2 = ( myExe –bar --b 92 )
+        ( myExe2 "Hello, world." )  // If no proc name is specified, uses the exe name by default.
+    }
+
+    // Env var settings (name = value) for all processes in this section.
+    envVars:
+    {
+        LE_LOG_LEVEL = DEBUG
+    }
+
+    priority: medium    // Starting (and maximum) scheduling priority.
+                        // Process can only lower its priority from here.
+
+    maxCoreDumpFileBytes: 100K  // Maximum size of core dump files.
+    maxFileBytes: 50K           // Files are not allowed to grow bigger than this.
+    maxLockedMemoryBytes: 32K   // Can't mlock() more than this many bytes.
+    maxFileDescriptors: 20      // Can't have more than this number of FDs open at the same time.
+}
+
+processes:
+{
+    run:
+    {
+        ( realTimeExe )
+    }
+
+    priority: rt10   // Allow real-time scheduling (max priority 10) for processes in this section.
+
+    /*-- Exception handling policy for processes in this section. --*/
+    faultAction: restart   // Restart the process if it fails.
+}
+@endverbatim
+
+The .adef processes section has these subsections.
+
+@subsection processRun run
+
+Names a process to be started by the Supervisor when the app is started. Also specifies executable
+and command-line arguments.
+
+@code
+run:
+{
+    myProc1 = ( myExe --foo -b 43 )
+}
+@endcode
+
+Process name and command-line arguments are optional.
+
+@code
+run:
+{
+    ( myexe )
+}
+@endcode
+
+If the process name is not specified, then the process will be given the same name as the
+executable it is running (e.g.  @c myexe)
+
+A given executable can be launched multiple times.
+@code
+run:
+{
+    process1 = ( myexe )
+    process2 = ( myexe )
+}
+@endcode
+
+Command-line arguments passed to the process when started can appear after the executable name.
+@code
+run:
+{
+    ( myexe --foo )
+}
+@endcode
+
+@code
+run:
+{
+    ( myexe --bar  // Note that the command-line can be broken into multiple lines for readability.
+            --toto ) // And it can be commented too.
+}
+@endcode
+
+Executable names can be the ones listed in the app’s “executables:” section.
+They can also be the names of files that are "bundled" into the app with <c>[x]</c> (executable)
+permission.
+
+Quotation marks (either single @b ' or double @b ") can be used if white-space
+(spaces, tabs, @c //, etc.)  is needed inside a command-line argument, or if an empty argument is
+needed ("").
+
+@subsection processenvVars Env Vars
+
+Environment variables appear as "name = value" pairs. The first value is the environment variable
+name; the second part is the variable value.
+Enclose the value in quotation marks (either single ' or double ") if white-space is required.
+
+@code
+envVars:
+{
+    LE_LOG_LEVEL = DEBUG
+    MESSAGE = "The quick brown fox jumped over the lazy dog."
+}
+@endcode
+
+@subsection faultAction Fault Action
+
+This subsection specifies the action that the Supervisor should take when the process terminates
+with a non-zero exit code or because of an un-caught signal (e.g., SIGSEGV, SIGBUS, SIGKILL).
+
+Possible values are:
+
+ - @c ignore - the Supervisor just logs a warning message but will take no further action.
+ - @c restart - log a critical message and then restart the process.
+ - @c restartApp - log a critical message and then restart the entire application.
+ - @c stopApp - log a critical message then terminate the entire application (send all processes
+the SIGTERM signal, followed shortly by SIGKILL).
+ - @c reboot - log an emergency message and reboot the system.
+
+Default is @b ignore.
+
+@code
+faultAction: restart
+@endcode
+
+@subsection processPriority Priority
+
+Specifies the starting (and maximum) scheduling priority. A running app process can only lower
+its priority from this point. Once it has lowered its priority, it can't raise it again (e.g., if
+the process starts at medium priority and reduces to low priority, it can't go back to medium
+priority). The default is @b medium.
+
+Values:
+- @b idle - for very low priority processes that only get CPU time if no other processes are waiting
+for the CPU.
+- @b low, @b medium, @b high - intended for normal processes that contend for the CPU.
+Processes with these priorities don't preempt each other, but their priorities affect how they're
+inserted into the scheduling queue (high to low).
+- @b rt1 to @b rt32  - intended for (soft) realtime processes. A higher realtime priority
+will preempt a lower realtime priority (ie. "rt2" would preempt "rt1").
+Processes with any realtime priority will preempt processes with high, medium, low and
+idle priorities.
+
+@warning Processes with realtime priorities preempt the Legato framework processes.
+         Ensure that your design lets realtime processes relinquish the CPU appropriately.
+
+@code
+priority: medium
+@endcode
+
+@subsection processmaxCoreDumpFileBytes Max Core Dump File Bytes
+
+Specifies the maximum size (in bytes) of core dump files that can be generated by processes.
+
+Default is @b 8K
+
+@note   The core dump file size will also be limited by the @ref processmaxFileBytes. If the
+        the core file will be generated in the sandbox's temporary runtime file system, it will
+        be limited by @ref maxFileSystemBytes and @ref maxMemoryBytes.
+
+@code
+maxCoreDumpFileBytes: 100K
+maxFileBytes: 100K
+maxFileSystemBytes: 200K
+maxMemoryBytes: 100K
+@endcode
+
+@subsection processmaxFileBytes Max File Bytes
+
+Specifies the maximum size processes can make files. The @a K suffix permits specifying in
+kilobytes (multiples of 1024 bytes).
+
+Default is @b 88K
+
+@code
+maxFileBytes: 200K
+@endcode
+
+Exceeding this limit will result in a @c SIGXFSZ signal being sent to the process.  By default, this
+will kill the process, but it can be blocked or caught, in which case the code that tried
+to expand the file will receive an error with @c errno set to @c EFBIG.
+
+@note   If the file is in the sandbox's temporary runtime file system, the file size will also
+        be limited by @ref maxFileSystemBytes and @ref maxMemoryBytes.
+
+@subsection processmaxFileDescriptors Max File Descriptors
+
+Specifies the maximum number of file descriptors a process can have open at one time.
+
+Default is @b 256
+
+@code
+maxFileDescriptors: 100
+@endcode
+
+@subsection processmaxLockedMemoryBytes Max Locked Memory Bytes
+
+Specifies the maximum bytes of memory the process can lock into physical RAM
+(e.g., using @c mlock() ).
+
+Can't be higher than @ref maxMemoryBytes.
+
+Default is @b 8K
+
+@code
+maxLockedMemoryBytes: 100K
+@endcode
+
+@note   This also limits the maximum number of bytes of shared memory that the app can lock into
+        memory using @c shmctl().
+
+@subsection watchdogActionProc Watchdog Action
+
+This subsection specifies what action the Supervisor should take when a process that has subscribed 
+to the watchdog service fails to kick the watchdog before it expires. The possible values are the same 
+as in Fault Action with the addition of:
+
+@c stop - the Supervisor terminates the process if it is still running.
+If no watchdog action has been supplied then the default action is to restart the process.
+
+@subsection watchdogTimeoutProc Watchdog Timeout
+
+This subection specifies the length of the timeout (in milliseconds) for watchdogs called by processes 
+in the enclosing processes section. Once a process has called @c le_wdog_Kick() it is registered with 
+the software watchdog service and if it then fails to call @c le_wdog_Kick() within the given timeoutout, 
+the Supervisor will be notified and the Supervisor will take the action specified in Watchdog Action.
+
+@section providesAdef Provides
 
 The "provides:" section is used to specify things that the application provides to other apps
 (or non-app processes) in its runtime environment.
 
 For now, only "api:" subsections are supported.
 
-@subsection providesApi api
+@subsection providesApiAdef API
 
-This subsection declares that a server-side (exported) IPC API interface is available for other
+This subsection declares that a server-side IPC API interface is available for other
 apps (or non-app users) to use via @ref bindings.
 
 For example, the following declares that the "temperature" interface on the "thermistor"
@@ -463,59 +581,309 @@ called "spaceTemp":
 
 @verbatim
 provides:
-
-    api: spaceTemp {sensor.thermistor.temperature}
+{
+    api:
+    {
+        spaceTemp = sensor.thermistor.temperature
+    }
+}
 @endverbatim
 
-Interface instances are identified using the executable name, component name, and the service
-instance name. These different parts of the interface instance identifier are separated by a
-period (‘.’).
+If the application were called "thermometer", then other applications could bind their client-side
+interfaces to "thermometer.spaceTemp" to receive temperature readings from this sensor app.
 
+Internal interface instances are identified using the executable name, component name, and
+component's interface name. These different parts of the interface instance identifier are
+separated by a period (‘.’).
 
-@section refprocessesAdef processes
+@section requiresAdef Requires
 
-A @c processes section specifies processes to run when the app is started, along with their
-environment variables, command-line arguments, limits, and fault handling actions.
+The "requires:" section is used to specify things that the application needs from its runtime
+environment.
 
-Content in the @c processes section is divided into @ref defFilesAdefProcessesSubsections.
+It can contain various subsections:
 
-If different processes have different variables, they must be in separate "processes:" sections.
+@subsection requiresApiAdef API
 
+Declares that a client-side IPC API interface on an executable inside the app needs to be bound
+to a service provided by something outside the app.
+
+Interfaces inside the app are identified using the executable name, the component name, and the
+component's interface name, with each of these parts separated from the others by a period (‘.’).
+
+For example, the following declares that the "temperature" interface on the "tempInput"
+component in the "controller" executable should be made into a bindable external interface:
+
+@verbatim
+requires:
+{
+    api:
+    {
+        controller.tempInput.temperature
+    }
+}
+@endverbatim
+
+Outside the application, this client-side interface will be called "temperature" (thereby hiding
+from other apps the details of what executable and component implements the interface).
+
+If the application developer wants other apps to see this interface as having a different name,
+it can be given a different name by adding "alias = " in front of the interface specification.
 For example,
 
-@code
-processes:
+@verbatim
+requires:
+{
+    api:
+    {
+        airTemp = controller.tempInput.temperature
+    }
+}
+@endverbatim
 
-    // Start up these processes when the app starts
-    run: myProc1 ( myExe --foo -b 43 )
-    run: myProc2 ( myExe –bar --b 92 )
-    run: ( myExe2 "Hello, world." )  // If no proc name is specified, uses the exe name by default.
+If this app were called "thermostat", then in a @c .sdef file, the interface would be called
+"thermostat.airTemp".
 
-    // Env var settings (name = value) for all processes in this section.
-    envVars:
-        LE_LOG_LEVEL = DEBUG
+@subsection requiresConfigTree Config Tree
 
-    priority: medium    // Starting (and maximum) scheduling priority.  Process can only lower its priority from here.
+Declares that the application requires access to a given configuration tree.
+Each application has its own configuration tree named after the application.
+In addition, there's a "system" configuration tree that contains privileged system data.
 
-    coreFileSize: 100K  // Maximum size of core dump files.
-    maxFileSize: 50K    // Files are not allowed to grow bigger than this.
-    memLockSize: 32K    // Maximum number of bytes allowed to be locked into physical memory using mlock().
-    numFds: 20          // Maximum number of file descriptors allowed to be open at the same time.
+By default, an application only has read access to its own configuration tree.
 
-processes:
+Applications can be granted read access or both read and write access to trees using an optional
+access permission specifier:
 
-    run: ( realTimeExe )
+ - <c>[r]</c> - grant read-only access
+ - <c>[w]</c> - grant read and write access
 
-    priority: rt10   // Allow real-time scheduling (max priority 10) for processes in this section.
+If access is granted to a tree, but the access mode ("[r]" or "[w]") is not specified,
+then only read permission will be granted.
 
-    /*-- Exception handling policy for processes in this section. --*/
-    faultAction: restart   // Restart the process if it fails.
-@endcode
+A special tree name "." can be used to refer to the app's own configuration data tree.
 
-The processes section of the .adef also has sub-sections, see @subpage defFilesAdefProcessesSubsections.
+@verbatim
+requires:
+{
+    configTree:
+    {
+        [w] .       // I need write access to my configuration data.
+        otherApp    // I need read access to another app's configuration data.
+    }
+}
+@endverbatim
+
+@warning    Because configuration data may be saved to flash storage, granting write access to a
+            configuration tree can make it possible for the application to wear out
+            your flash device.  Also, remember that granting an application write access to another
+            application's configuration settings creates a security hole, because it
+            makes it possible for one application to interfere with the operation of another
+            application.  It is especially dangerous to grant write access to the "system" tree.
+            Doing so may make it possible to completely compromise the target device, either
+            accidentally or deliberately if a hacker breaks into the app.  Even read access may
+            be dangerous if any kind of security key, including PIN and PUK codes, are kept in
+            the system tree.  As a general rule, apps should @b never be given direct access
+            to the "system" tree.
+            
+@subsection requiresDir Dir
+
+Used to declare that certain directories that reside on the target device outside of the
+application are to be made accessible to the application.
+
+The location inside the application's sandbox at which the directory will appear is also specified.
+
+Things listed here are expected to be found on the target at runtime.
+They are not copied into the app at build time; they are made accessible to the app inside of
+its sandbox at runtime.
+
+Each entry consists of two file system paths:
+
+ - The @b first path is the path to the directory @b outside of the application.
+   This must be an absolute path (beginning with ‘/’) and can never end in a '/'.
+
+ - The @b second path is the absolute path @b inside the app’s sandbox where the directory
+   will appear at runtime.
+
+Paths can be enclosed in quotation marks (either single ' or double "). This is required when
+it contains spaces or character sequences that would start comments.
+
+If the second path ends in a '/', then it is specifying the directory into which the object will
+appear, and the object will have the same name inside the sandbox as it has outside the sandbox.
+
+@verbatim
+requires:
+{
+    dir:
+    {
+        // I need access to /proc for debugging.
+        /proc   /
+
+        // For now, I want access to all executables and libraries in /bin and /lib.
+        // Later I'll remove this and replace with just the files I really need in the field.
+        // Also, I don't want to hide the stuff that the tools automatically bundle into my app's
+        // /bin and /lib for me, so I'll make the root file system's /bin and /lib accessible as
+        // my app's /usr/bin and /usr/lib.
+        /bin    /usr/bin
+        /lib    /usr/lib
+    }
+}
+@endverbatim
+
+@note   Just because the directory is made to appear in the application's sandbox
+        doesn't mean that the application will be able to access it.  The permissions settings
+        on the directory must also allow it.  File permissions (both DAC and MAC) and ownership
+        (group and user) on the original files in the target system remain in effect inside
+        the sandbox.
+
+@warning    Any time anything is made accessible from inside an application sandbox, the security
+            risks must be considered carefully.  Ask yourself if access to the object can be
+            exploited by the app (or a hacker who has broken into the app) to access sensitive
+            information or launch a denial-of-service attack on other apps within the target
+            device or other devices connected to the target device?
+
+@note   It is not possible to put anything inside of a directory that was mapped into the
+        application from outside of the sandbox.  For example, if you "require" /bin to appear at
+        /usr/bin, you cannot then "bundle" a file into /usr/bin or "require" something to appear
+        in /usr/bin, since that would have an effect on the contents of the /bin directory outside
+        of the application.
+
+@subsection requiresFile File
+
+Used to declare that certain files that reside on the target device outside of the application
+are to be made accessible to the application.
+
+The location inside the application's sandbox at which the file will appear is also specified.
+
+Things listed here are expected to be found on the target at runtime.
+They are not copied into the app at build time; they are made accessible to the app inside of
+its sandbox at runtime.
+
+Each entry consists of two file system paths:
+
+ - The first path is the path to the object in the file system outside of the application.
+   This must be an absolute path (beginning with ‘/’).
+
+ - The second path is the absolute file system path inside the app’s sandbox where the object will
+   appear at runtime.
+
+A file path can be enclosed in quotation marks (either single ' or double "). This is required when
+it contains spaces or character sequences that would start comments.
+
+The first path can never end in a '/'.
+
+If the second path ends in a '/', then it is specifying the directory into which the object will
+appear, and the object will have the same name inside the sandbox as it has outside the sandbox.
+
+@verbatim
+requires:
+{
+    file:
+    {
+        // I get character stream input from outside via a named pipe (read-only)
+        /var/run/someNamedPipe  /var/run/
+
+        // I need read and write access to UART2.
+        /dev/ttyS1  /dev/
+
+        // I need to be able to play back audio files installed in /usr/local/share/audio.
+        "/usr/local/share/audio/error message.wav" /usr/share/audio/
+        '/usr/local/share/audio/success message.wav' /usr/share/audio/
+    }
+}
+@endverbatim
+
+@note   Just because the file system object is made to appear in the application's sandbox
+        doesn't mean that the application will be able to access it.  The permissions settings
+        on the file must also allow it.  File permissions (both DAC and MAC) and ownership
+        (group and user) on the original file in the target system remain in effect inside
+        the sandbox.
+
+It is also possible to give the object a different name inside the sandbox than it has outside
+the sandbox.  This is done by adding a name to the end of the second path.
+
+@verbatim
+requires:
+{
+    file:
+    {
+        /dev/ttyS0  /dev/port1     // Program uses /dev/port1, but UART0 is called /dev/ttyS0.
+    }
+}
+@endverbatim
+
+@warning    Any time anything is made accessible from inside an application sandbox, the security
+            risks must be considered carefully.  Ask yourself if access to the object can be
+            exploited by the app (or a hacker who has broken into the app) to access sensitive
+            information or launch a denial-of-service attack on other apps within the target
+            device or other devices connected to the target device?
+
+
+@section sandboxed Sandboxed
+
+Specifies if the app will be launched inside a sandbox.
+
+Permitted content in this section is:
+
+ - @b true - app will be run inside of a sandbox.
+ - @b false - app won't be run in a sandbox.
+
+The default is @b true.
+
+If an app is not inside of a sandbox (unsandboxed), it can see the target device's real root file
+system.
+A sandboxed app can't see the target's real root file system; instead, a sandboxed app has its own,
+separate root file system (which it can't leave).
+
+Each app has its own user ID and primary group ID.  The app's user name and primary group name
+are both "appxxxx", where the "xxxx" is replaced with the name of the app.
+
+While a user and/or group will be automatically created if missing for the specified app,
+only users and groups of sandboxed apps will be automatically deleted when those apps are
+uninstalled.
+
+@verbatim
+sandboxed: false
+@endverbatim
+
+@section start Start
+
+Specifies if the app should start automatically at start-up:
+"auto" sets the app to start automatically by the Supervisor.
+"manual" sets the app to start through a manual prompt to the Supervisor.
+Default is @b auto.
+
+@verbatim
+start: auto
+@endverbatim
+
+@section version Version
+
+Optional field that specifies a string to use as the application's version string.
+
+@verbatim
+version: 0.3a
+@endverbatim
+
+@note
+ - The @b <c>--append-to-version</c> option to @c mkapp can be used to add to the application's
+   version string.
+ - <b><c>app foo version</c></b> can be run on-target to get the version string of the app called "foo".
+
+@section watchdogActionAdef Watchdog Action
+
+The @c watchdogAction section sets the recovery action to take if a process in this application
+expires its watchdog. This value will be used if there is no value set in the processes section
+for a given process. See @ref watchdogActionProc in the processes section.
+
+@section watchdogTimeoutAdef Watchdog Timeout
+
+The @c watchdogTimeout section sets the default timeout in milliseconds for processes in this
+application. This value will be used if there is no value set in the processes section for
+a given process. See @ref watchdogTimeoutProc in the processes section.
 
 <HR>
 
-Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+Copyright (C) Sierra Wireless, Inc. 2014.  Use of this work is subject to license.
 
 **/

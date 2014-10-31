@@ -1,0 +1,61 @@
+/** @page getstartedComLine Command Line 
+
+You can install the Legato ADK through the Developer Studio 
+Software Package Manager command line.
+
+@section installSPMapt Setup apt sources
+Setup your @c apt sources as explained in http://developer.sierrawireless.com/developerstudio
+ 
+@section installSPM Install SPM
+ Install Software Package Manager for Legato by running:
+@verbatim
+sudo apt-get install devstudio-legato-spm
+@endverbatim
+
+@section installSPMuse Use SPM
+Here's how to use the SPM.
+
+@subsection installSPMoptions Run Options
+
+<b><c>legato-spm  [OPTION]</c></b>
+
+Options:
+
+@verbatim tree @endverbatim
+> Displays repository tree of available releases and modules. 
+
+@verbatim -r <release> -m <module> browse@endverbatim
+> Displays available packages that can be installed from the repository for a specified release and module.
+
+@verbatim -r <release> -m <module> install@endverbatim
+> Installs packages from the repository for a specified release and module.
+
+@verbatim list@endverbatim
+> Lists currently installed Legato packages.
+
+@subsection installSPMpkgs Packages Installed
+
+Packages are installed by default to your @c ~/.devstudio/packages directory:
+@verbatim
+legato.framework.* - Prebuilt Legato framework packages
+legato.toolchain.* - GCC cross compiler Toolchains
+legato.devimg.* - Device Images allowing to upgrade Legato devices system software
+@endverbatim
+
+@subsection installSPMconfig Config Legato
+
+Use this script to confirgure Legato:
+
+@verbatim
+source ~/.devstudio/packages/legato.sdk.VERSION/resources/configlegatoenv
+@endverbatim
+
+Your environment is now ready to @ref getstartedLegatoApps.
+
+ <br>
+  
+<HR>
+
+Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+
+**/

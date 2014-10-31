@@ -1,0 +1,137 @@
+/** @page getstartedConfigIPusb Micro-USB
+
+You can configure an IP address using the micro-USB cable. It requires @c usbmode class 
+and @c ecm configuration on the target (which sounds harder than it is).
+
+Connect serial, micro-USB, and power cables to the dev kit.
+
+<b>Target</b>
+
+In a terminal, run:
+@code minicom /dev/ttyUSB0 @endcode
+
+Press enter when Minicom starts.
+
+Sign on as @b root @b user (no password required).
+
+Press enter when prompted for a password.
+
+cd to @c /etc/legato. 
+
+Run @c ls to list the files in the directory. 
+
+If an @c usbmode file doesn't exist, create one; or edit the existing one.
+Use VI text editor  (already available on the target) to create or edit the usbmode file: 
+add 'ecm' to the usbmode file. 
+
+In vi, it should look like something like this:
+
+@verbatim
+ecm
+~
+~
+~
+~
+~
+- usbmode 1/1 100%
+@endverbatim
+
+Save @c usbmode to the /etc/legato location. 
+
+In VI, use commands @c ESC, then @c :x to save the @c usbmode file on the target.
+
+Reboot your target.
+
+On your target, run @c ifconfig. 
+It should look something like this:
+
+@verbatim
+root@swi-mdm9x15:~# ifconfig                                                    
+lo        Link encap:Local Loopback                                             
+          inet addr:127.0.0.1  Mask:255.0.0.0                                   
+          inet6 addr: ::1/128 Scope:Host                                        
+          UP LOOPBACK RUNNING  MTU:16436  Metric:1                              
+          RX packets:0 errors:0 dropped:0 overruns:0 frame:0                    
+          TX packets:0 errors:0 dropped:0 overruns:0 carrier:0                  
+          collisions:0 txqueuelen:0                                             
+          RX bytes:0 (0.0 B)  TX bytes:0 (0.0 B)                                
+                                                                                
+usb0      Link encap:Ethernet  HWaddr 32:E4:5E:6F:C4:3C                         
+          inet addr:192.168.1.2  Bcast:192.168.1.255  Mask:255.255.255.0        
+          inet6 addr: fe80::30e4:5eff:fe6f:c43c/64 Scope:Link                   
+          UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1                    
+          RX packets:197 errors:0 dropped:0 overruns:0 frame:0                  
+          TX packets:57 errors:0 dropped:0 overruns:0 carrier:0                 
+          collisions:0 txqueuelen:1000                                          
+          RX bytes:32111 (31.3 KiB)  TX bytes:6725 (6.5 KiB)  
+@endverbatim
+
+Note that usb0 has an inet addr value. If it doesn't display an inet value, try rebooting the target and rerun @c ifconfig
+
+<b>Host</b>
+
+Open a new terminal on the host.
+
+@c cd to your Legato directory.
+
+Run @c bin/legs to set the Legato environment.
+
+Run:
+@code
+ifconfig usb0 <target ip addr> up @endcode
+
+where the IP address @b subnet matches the target.
+
+You may have to use @c sudo
+
+@verbatim 
+local@LocalLinux:~$ sudo ifconfig usb0 192.168.1.20 up
+[sudo] password for local: 
+local@LocalLinux:~$ 
+@endverbatim
+
+Run @c ifconfig again, it should look something like this:
+
+@verbatim
+eth0      Link encap:Ethernet  HWaddr 28:d2:44:36:bd:f6  
+          UP BROADCAST MULTICAST  MTU:1500  Metric:1
+          RX packets:0 errors:0 dropped:0 overruns:0 frame:0
+          TX packets:0 errors:0 dropped:0 overruns:0 carrier:0
+          collisions:0 txqueuelen:1000 
+          RX bytes:0 (0.0 B)  TX bytes:0 (0.0 B)
+
+lo        Link encap:Local Loopback  
+          inet addr:127.0.0.1  Mask:255.0.0.0
+          inet6 addr: ::1/128 Scope:Host
+          UP LOOPBACK RUNNING  MTU:65536  Metric:1
+          RX packets:6407 errors:0 dropped:0 overruns:0 frame:0
+          TX packets:6407 errors:0 dropped:0 overruns:0 carrier:0
+          collisions:0 txqueuelen:0 
+          RX bytes:618870 (618.8 KB)  TX bytes:618870 (618.8 KB)
+
+usb0      Link encap:Ethernet  HWaddr 72:ee:fc:17:f3:61  
+          inet6 addr: fe80::70ee:fcff:fe17:f361/64 Scope:Link
+          UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1
+          RX packets:25 errors:0 dropped:0 overruns:0 frame:0
+          TX packets:210 errors:0 dropped:0 overruns:0 carrier:0
+          collisions:0 txqueuelen:1000 
+          RX bytes:5229 (5.2 KB)  TX bytes:42991 (42.9 KB)
+
+wlan0     Link encap:Ethernet  HWaddr 00:c2:c6:13:a2:f9  
+          inet addr:192.168.0.17  Bcast:192.168.0.255  Mask:255.255.255.0
+          inet6 addr: fe80::2c2:c6ff:fe13:a2f9/64 Scope:Link
+          UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1
+          RX packets:657272 errors:0 dropped:0 overruns:0 frame:0
+          TX packets:114077 errors:0 dropped:0 overruns:0 carrier:0
+          collisions:0 txqueuelen:1000 
+          RX bytes:244778069 (244.7 MB)  TX bytes:15624212 (15.6 MB)
+
+@endverbatim
+
+Ping target to host and vice versa to check everything is working.
+
+<HR>
+
+Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+
+**/

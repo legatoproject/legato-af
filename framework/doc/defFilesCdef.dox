@@ -1,78 +1,248 @@
-/** @page defFilesCdef Component Definition (.cdef) Files
+/** @page defFilesCdef Component Definition .cdef
 
 <c>Component.cdef</c> files can contain these sections:
 
-@ref defFilesCdefSources <br>
-@ref defFilesCdefImport <br>
-@ref defFilesCdefExport <br>
-@ref defFilesCdefFiles <br>
-@ref defFilesCdefRequires
+@section defFilesCdefBundles Bundles
 
+Lists additional files or directories to be copied from the build host into the application
+so they’re available to the app at runtime (e.g., audio files, web pages, executable scripts
+or programs built using some external build system).
 
-@section defFilesCdefSources sources
+This section is identical to @ref bundlesAdef "the section with the same name in the .adef file".
 
-Contains a list of source code files.
+@section defFilesCdefCFlags C Flags
 
-One source file must implement a @c COMPONENT_INIT function called at start-up.
+Provides a way to specify command-line arguments to pass to the compiler when compiling C source
+code files.
+
+Flags are separated by whitespace.
 
 @code
+cflags:
+{
+    -g -O0
+    -DDEBUG=1
+}
+@endcode
+
+@section defFilesCdefCxxFlags C++ Flags
+
+Provides a way to specify command-line arguments to pass to the compiler when compiling C++ source
+code files.
+
+Flags are separated by whitespace.
+
+@code
+cxxflags:
+{
+    -std=c++0x
+    -g -O0
+}
+@endcode
+
+
+@section defFilesCdefLdFlags Linker Flags
+
+Provides a way to specify command-line arguments to pass to the compiler when linking C/C++ object
+(.o) files together into a component shared library (.so) file.
+
+Flags are separated by whitespace.
+
+@code
+ldflags:
+{
+    -Lfoo/bar
+}
+@endcode
+
+@section defFilesCdefProvides Provides
+
+Lists things that this component provides (exports) to other software either inside or outside of
+the application.
+
+The only subsection supported today is the @c api subsection.
+
+
+@subsection defFilesCdefProvidesApi API
+
+Lists IPC services provided by this component to other components.
+
+Contents use the same syntax as the the
+@ref defFilesCdefRequiresApi "requires: api: section", except the options are different.
+
+@code
+provides:
+{
+    api:
+    {
+        greet.api   // We offer the Greet API to others so they can say “hello” to the world.
+        heat = digitalOutput.api
+        cool = digitalOutput.api
+    }
+}
+
 sources:
-
-    foo.c
-    bar.c
-    init.c      // This one implements the COMPONENT_INIT
+{
+    greetServer.c
+    tempControl.c
+}
 @endcode
 
+The component must implement the API functions being "provided".
 
-@section defFilesCdefImport import
+In C, the source code must \#include “interfaces.h” to get the auto-generated function prototype
+definitions and type definitions.  The function and type names defined in the @c .api files will
+be prefixed with the interface name and an underscore (much as they are for "required" APIs).
 
-Lists IPC API definitions required by this component from other components.
+In the above example, if <c> greet.api </c> defines a function called @c Send(), the C source
+code for the component (in @c greetServer.c) must implement a function called @c greet_Send().
 
-Each entry in the import list must have an interface definition (.api) file.
 
-Optionally, it may also contain an interface name followed by an equals sign ('=') in front of the
-@c .api file path.  If the interface name is omitted, the name of the @c .api file
-(minus the ".api" extension) will be used as the name of the interface.  All symbols (type names
-and function names) defined in the @c .api file will be prefixed with this interface name and
-an underscore.
+@subsubsection defFilesCdefProvidesApiManualStart [manual-start] Option
+
+Normally, to reduce the amount of initialization code a component writer needs to write,
+the build tools will automatically try to advertise the service when the executable is run.
+However, sometimes this is not the preferred behaviour.
+
+The @b @c [manual-start] option tells the build tools @b not to automatically advertise this API
+with the Service Directory when the process starts.  If this option is used, the component can
+control exactly when it wants to start offering the service to others by calling the
+@c xxxx_AdvertiseService() function explicitly in the component source code when it is ready.
 
 @code
-import:
-
-    hello = sample/greet.api    // Greet() from the API will appear as "hello_Greet()" in my code.
-    le_cfg.api                  // The interface name will be "le_cfg".
+provides:
+{
+    api:
+    {
+        foo.api [manual-start]
+    }
+}
 @endcode
 
-The build tools search for the interface definition (.api) file based on the interface search path.
 
-Inside the component’s source code, you can call API functions defined inside the @c .api files.
-The types and functions defined in the @c .api file will appear inside the component with the
-interface name (plus an underscore) prepended to them.
+@subsubsection defFilesCdefProvidesApiAsync [async] Option
 
-For example, if the <c> greet.api </c> file contains a function called @c Greet(), it will appear
-inside the component as @c hello_Greet().  And the @c StartReadTxn() function declared in
-<c> le_cfg.api </c> will appear to the component as @c le_cfg_StartReadTxn().
+Often, the server of a service can simply implement the functions as if they were called
+directly by the client (even though the client may be running inside another process).
+So, when the client calls an API function, the server's API function gets called, and when
+the server returns from the function, the function returns in the client process.
 
-In C/C++, source code must \#include “interfaces.h” to use the auto-generated function definitions.
+However, sometimes the server needs to hold onto the client request and do other things
+(perhaps handing requests from other clients in the meantime) before sending a response back to
+the client and allowing the client to continue.  This is called "asynchronous" mode, and it
+is enabled using the <c> [async] </c> keyword on the end of the @c api section entry.
 
-Multiple instances of the same API listed in the “import” section must have unique instance names,
+@code
+provides:
+{
+    api:
+    {
+        bar.api [async]
+    }
+}
+@endcode
+
+When asynchronous mode is enabled for a server-side interface, the generated code changes as
+follows:
+- A @c commandRef parameter is added to the beginning of all the API functions' parameter lists.
+- The return value is removed from every API function.
+- A @c Respond() function is generated for every API function.
+
+In async mode, the server responds to the client's call to API function @c F() by calling the
+associated @c FRespond() function.
+
+The @c Respond functions all take the @c commandRef as their first parameter.  If an
+API function has a return value, that return value is sent to the client via the second parameter
+of the @c Respond function.  Any output parameters defined in the API function are also passed
+as parameters to the @c Respond function.
+
+See @ref languageIndependentAPIs for more information, or try it and have a look at the generated
+header files.
+
+@section defFilesCdefRequires Requires
+
+The "requires:" section is used to specify things that the component needs from its runtime
+environment.
+
+It can contain various subsections:
+
+@subsection defFilesCdefRequiresApi API
+
+Lists IPC APIs used by this component.
+
+For example, if my component needs to use the Configuration Data API (defined in le_cfg.api) to
+read its configuration data:
+
+@code
+requires:
+{
+    api:
+    {
+        le_cfg.api
+    }
+}
+@endcode
+
+This creates a client-side IPC interface called "le_cfg" on this component, and it makes the
+functions and data types defined inside <c>le_cfg.api</c> available for use in the component's
+program code.
+
+The name of the @c .api file (minus the ".api" extension) will be used as the name of the interface,
+and in C code, the names of functions and data types defined in the @c .api file will be prefixed
+with the name of the interface (plus an underscore separator).
+
+@code
+requires:
+{
+    api:
+    {
+        print.api // WriteLine() from the API will appear in my C code as "print_WriteLine()".
+    }
+}
+@endcode
+
+To rename the interface, an interface name followed by an equals sign ('=') can be added
+in front of the @c .api file path.
+
+@code
+requires:
+{
+    api:
+    {
+        hello = greet.api // Send() from the API will appear as "hello_Send()" in my code.
+    }
+}
+@endcode
+
+Multiple instances of the same API listed in the @c api: section must have unique instance names,
 and will appear as separate functions with different prefixes.
 
 @code
-import:
-
-    heat = digitalOutput.api   // This is what we use to turn on and off the heater.
-    cool = digitalOutput.api   // This is what we use to turn on and off the cooling (A/C).
+requires:
+{
+    api:
+    {
+        heat = digitalOutput.api   // Used to turn on and off the heater.
+        cool = digitalOutput.api   // Used to turn on and off the cooling (A/C).
+    }
+}
 @endcode
 
 If <c> digitalOutput.api </c> defines two functions @c On() @c and Off(),
 then the component’s source code would have four functions available to it:
 @c heat_On(), @c heat_Off(), @c cool_On(), and @c cool_Off().
 
-@subsection defFilesCdefImportOptions Options
+C/C++ source code must \#include “interfaces.h” to use the auto-generated function definitions.
+The build tools will automatically generate a version of <c>interfaces.h</c> customized for
+your component that includes all the declarations for all the interfaces that your component uses.
 
-Normally, when an API is imported by a component, the component will want to use that API
-(i.e., call its functions), so the build tools will automatically generate the client-side IPC
+The build tools search for the interface definition (.api) file based on the interface search path.
+
+
+@subsection defFilesCdefRequiresApiOptions Options
+
+Normally, to reduce the amount of initialization code a component writer needs to write,
+the build tools will automatically generate the client-side IPC
 code for that API and automatically try to connect to the server when the executable is run.
 There are a couple of options that can be used to suppress this behaviour.
 
@@ -87,98 +257,34 @@ it wants to connect to the server by calling the @c xxxx_ConnectService() functi
 in the component source code.
 
 @code
-import:
-
-    foo.api [types-only]        // Only need typedefs from here.  Don't need IPC code generated.
-    bar.api [manual-start]      // I'll start this when I'm ready by calling bar_ConnectService().
+requires:
+{
+    api:
+    {
+        foo.api [types-only]    // Only need typedefs from here.  Don't need IPC code generated.
+        bar.api [manual-start]  // I'll start this when I'm ready by calling bar_ConnectService().
+    }
+}
 @endcode
 
 
-@section defFilesCdefExport export
+@subsection defFilesCdefRequiresFile File
 
-Lists IPC services provided by this component to other components.
-Contents use essentially the same syntax as the the @ref defFilesCdefImport section, except the
-options are different.
+Used to declare that certain files that reside on the target device outside of the application
+are to be made accessible to the application.
 
-@code
-export:
-
-    greet.api   // We offer the Greet API to others so they can say “hello” to the world.
-    heat = digitalOutput.api
-    cool = digitalOutput.api
-@endcode
-
-The component code must implement the functions defined inside the @c .api files.
-
-The function and data type names defined in the @c .api files must be prefixed with the
-interface name and an underscore.
-
-If <c> greet.api </c> defines a function called @c Greet(), the source code for the component
-must implement a function called @c hello_Greet().
-
-In C, the source code must \#include “interfaces.h” to get the function prototype definitions.
-
-@subsection defFilesCdefExportManualAdvertisement [manual-start] option
-
-The @b @c [manual-start] option tells the build tools not to automatically advertise this API
-with the Service Directory when the process starts.  If this option is used, the component can
-control exactly when it wants to start offering the service to others by calling the
-@c xxxx_AdvertiseService() function explicitly in the component source code when it is ready.
-
-@code
-export:
-
-    foo.api [manual-start]
-@endcode
+This section is the same as the @ref requiresFile "section with the same name in the .adef file".
 
 
-@subsection defFilesCdefExportAsync [async] option
+@subsection defFilesCdefRequiresDir Dir
 
-Often, the server of a service can simply implement the functions as if they were called
-directly by the client (even though the client may be running inside another process).
-So, when the client calls an API function, the server's API function gets called, and when
-the server returns from the function, the function returns in the client process.
+Used to declare that certain directories that reside on the target device outside of the
+application are to be made accessible to the application.
 
-However, sometimes the server needs to hold onto the client request and do other things
-(perhaps handing requests from other clients) before sending a response back to the client
-and allowing the client to continue.  This is called "asynchronous" mode, and it is enabled
-using the <c> [async] </c> keyword on the end of the @c export section entry.
-
-@code
-export:
-
-    bar.api [async]
-@endcode
-
-When asynchronous mode is enabled for an interface, the server-side generated code changes as
-follows:
-- A @c commandRef parameter is added to the beginning of all the API functions' parameter lists.
-- The return value is removed from every API function.
-- A @c Respond() function is generated for every API function.
-
-In async mode, the server responds to the client's call to API function @c F() by calling the
-associated @c FRespond() function.
-
-The @c Respond functions all take the @c commandRef as their first parameter.  If an
-API function has a return value, that return value is sent to the client via the second parameter
-of the @c Respond function.
+This section is the same as the @ref requiresDir "section with the same name in the .adef file".
 
 
-@section defFilesCdefFiles files
-
-The same as the @ref filesAdef section in @c .adef files.
-
-
-@section defFilesCdefRequires requires
-
-The @c requires: section is used to specify things that the component needs from its runtime
-environment.
-
-Eventually, this will support "file:", "dir:", "lib:", and "api:" subsections, but for now,
-only "lib:" subsections are supported.
-
-
-@subsection defFilesCdefRequiresLib lib
+@subsection defFilesCdefRequiresLib Lib
 
 The @c lib: subsection of the @c requires: section is used to add a required library to a Component.
 
@@ -188,14 +294,61 @@ the application's sandbox) that the component needs access to at runtime.
 Furthermore, this library will be linked with any executable that this component is a part of.
 The library name is specified without the leading "lib" or the trailing ".so".
 
-@verbatim
+@code
 requires:
+{
+    lib:
+    {
+        foo    // I need access to libfoo.so
+    }
+}
+@endcode
 
-    lib: foo    // I need access to libfoo.so
-@endverbatim
 
-<hr>
+@subsection defFilesCdefRequiresComponent Component
 
-Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+Declares that this component depends on another component.
+
+@code
+requires:
+{
+    component:
+    {
+        foo
+        bar
+    }
+}
+@endcode
+
+Any application that uses a component will also use any other components that component requires,
+and any components they require, etc.
+
+Furthermore, specifying a dependency on another component ensures that calls to component
+initialization functions ( @c COMPONENT_INIT in C/C++ components ) will be sorted in the correct
+order.  If component A depends on component B, then component B will be initialized first.
+
+Dependency loops are not allowed.  That is, a component C cannot depend on another component that
+(either directly or indirectly) depends on component C.  The build tools will detect dependency
+loops and report an error.
+
+@section defFilesCdefSources Sources
+
+Contains a list of source code files.
+
+If C or C++ code, one source file must implement a @c COMPONENT_INIT function.  The framework will
+automatically call that function at start-up.
+
+@code
+sources:
+{
+    foo.c
+    bar.c
+    init.c      // This one implements the COMPONENT_INIT
+}
+@endcode
+
+<HR>
+
+Copyright (C) Sierra Wireless, Inc. 2014.  Use of this work is subject to license.
 
 **/

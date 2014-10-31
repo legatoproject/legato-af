@@ -1,12 +1,11 @@
-/** @page componentPuttingIntoApp Components Into Apps
+/** @page componentPuttingIntoApp Make Components Into Apps
 
-
-Let's create a new application that contains our client and server programs, with their interfaces
-bound to each other.  It will look like this:
+After you've created your client and server programs with their interfaces
+bound to each other, let's create a new app.
 
 @image html HelloIPCApp.png
 
-To do this, we create an application definition file called "helloWorld.adef".
+To do this, we create an app definition file called @c helloWorld.adef.
 
 @verbatim
 $ gedit helloWorld.adef
@@ -16,35 +15,45 @@ It should look like this:
 
 @verbatim
 executables:
-
-    myServer ( greetServer )
-    myClient ( greetClient )
+{
+    myServer = ( greetServer )
+    myClient = ( greetClient )
+}
 
 processes:
+{
+    run:
+    {
+        (myServer)
+        (myClient)
+    }
+}
 
-    run: (myServer)
-    run: (myClient)
+bindings:
+{
+    myClient.greetClient.hello -> myServer.greetServer.hello
+}
 @endverbatim
 
-This defines two executable programs called myServer (containing the greetServer component)
-and myClient (containing the greetClient component).
+This defines two executable programs called @c myServer (containing the greetServer component)
+and @c myClient (containing the greetClient component).
 
-It then starts one instance of myServer and one instance of myClient.
+It then starts one instance of @c myServer and one instance of @c myClient, and binds
+@c myClient.greetClient.hello to @c myServer.greetServer.hello.
 
-Now we can run @c mkapp to build everything and package it up into an application.
+Now we can run @c mkapp to build everything and package it up into an app.
 
 @verbatim
 $ mkapp helloWorld.adef -t wp7
 @endverbatim
 
-You will now have a file called "helloWorld.wp7" that contains your application.
+You'll now have a file called "helloWorld.wp7" that contains your app.
 
 You can install and run it using instapp, see @ref appCreating for details.
 
 
 <HR>
 
-Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+Copyright (C) Sierra Wireless, Inc. 2014.  Use of this work is subject to license.
 
 **/
-

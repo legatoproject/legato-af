@@ -1,16 +1,7 @@
-/** @page getstartedInstallPackages Install Packages
+/** @page getstartedInstallandBuild Install and Build Legato
 
-Ensure you’ve completed all the steps in @ref getstartedMachinePrep before installing Legato packages.
-
-Ensure you have everything you need downloaded. Check @ref legatoPkgs.
-
-To access the Legato application framework, you'll need a GitHub account http://www.legato.io/
-
-Then @ref getstartedSetupTarget.
-
-Go to @ref getstartedAdvanced topics if you need to rebuild your Yocto target. 
-
-If you’re using the bootable USB, you can move on to developing and running @ref getstartedLegatoApps. 
+If you’ve downloaded the current software packages, setup the target, 
+and a have GitHub account, you're ready to install and build Legato!
 
 @section instToolchain Install Legato Toolchain
 
@@ -26,7 +17,7 @@ $ cd /opt/swi
 $ sudo tar xvjf [Legato-Toolchain-file-name]
 @endcode
 
-@section instLegato Install and Make Legato
+@section instLegato Install and Build Legato
 
 Install the Legato application framework on your dev host. 
 
@@ -48,7 +39,7 @@ You'll be prompted for your GitHub credentials.
 @note You must run this @a every time you open a new shell:
 @code $ bin/legs @endcode
 
-@section buildLegato Build Legato Target
+@section buildLegato Build Target
 
 @b Run this to build the framework and AirVantage agent for the target (substitute @c ar7 for @c wp7 if building an AR7 target): 
 @code $ make wp7 @endcode
@@ -58,6 +49,10 @@ Or run this to build the framework for the target without the AirVantage agent:
 
 <HR>
 
-Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+These are @subpage getstartedHostDirs installed.<br>
+
+<HR>
+
+Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
 
 **/

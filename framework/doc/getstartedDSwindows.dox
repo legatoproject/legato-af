@@ -1,0 +1,21 @@
+/** @page getstartedDSwindows Windows
+
+Download the Legato Application Development Kit (ADK) Installer for Windows from 
+http://developer.sierrawireless.com/developerstudio. <br>
+Ensure you review the requirements (hardware, system).
+
+Run the <b>Legato ADK Installer</b> and follow the steps to install the Legato ADK:
+
+These items will be installed:
+- Developer Studio
+- drivers
+- latest Legato version
+
+After installation completes, launch Developer Studio, and follow the provided interactive cheat sheet
+ to run your first Legato Hello World application on your target.
+ 
+<HR>
+
+Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+
+**/

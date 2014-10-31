@@ -1,94 +1,132 @@
-/** @page defFilesSdef System Definition (.sdef) Files
+/** @page defFilesSdef System Definition .sdef
 
 <c>.sdef</c> files can contain these sections:
 
-@ref defFilesSdefApp <br>
-@ref defFilesSdefBindings
+@section defFilesSdefApp App
 
-@note Support for @c .sdef files is incomplete.
+An <c>apps:</c> section is used to declare one or more applications are to be deployed to
+the target system.
 
-@section defFilesSdefApp app
+@code
+apps:
+{
+    webserver
+}
+@endcode
 
-An <c>app:</c> section is used to declare than an application is to be deployed to the target
-system.  Furthermore, each `app:` section can be used to override limits and other settings
-for that application.
+This will look for an application definition file called <c>webserver.adef</c> and include that
+application in the system.
+
+In addition, the `apps:` section can be used to override limits and other settings
+for the application.
 
 For example, to deploy a web server and limit its share of the CPU under heavy load to 500
 (see @ref cpuShare),
 
-@verbatim
-app: webServer
+@code
+apps:
+{
+    webServer
+    {
+        cpuShare: 500
+    }
+}
+@endcode
 
-    cpuShare: 500
-@endverbatim
+Any of the following subsections can be used in a <c>.sdef</c> <c>apps:</c> section:
 
-Any of the following <c>.adef</c> sections and subsections can also be used as @b subsections of an
-<c>.sdef</c> <c>app:</c> section:
+@ref cpuShare "cpuShare" <br>
+@ref faultAction "faultAction" <br>
+@ref groupsAdef "groups" <br>
+@ref processmaxCoreDumpFileBytes "maxCoreDumpFileBytes" <br>
+@ref processmaxFileBytes "maxFileBytes" <br>
+@ref processmaxFileDescriptors "maxFileDescriptors" <br>
+@ref maxFileSystemBytes "maxFileSystemBytes" <br>
+@ref processmaxLockedMemoryBytes "maxLockedMemoryBytes" <br>
+@ref maxMemoryBytes "maxMemoryBytes" <br>
+@ref maxMQueueBytes "maxMQueueBytes" <br>
+@ref maxQueuedSignals "maxQueuedSignals" <br>
+@ref sdef_maxPriority "maxPriority" <br>
+@ref maxThreads "maxThreads" <br>
+@ref sandboxed "sandboxed" <br>
+@ref start "start" <br>
+@ref watchdogActionAdef "watchdogAction" <br>
+@ref watchdogTimeoutAdef "watchdogTimeout" <br>
 
-@ref processcoreFileSize <br>
-@ref cpuShare <br>
-@ref faultAction <br>
-@ref fileSystemSize <br>
-@ref groupsAdef <br>
-@ref processmaxFileSize <br>
-@ref memLimit <br>
-@ref processmemLockSize <br>
-@ref mqueueSize <br>
-@ref processnumFds <br>
-@ref numProcs <br>
-@ref processPriority <br>
-@ref rtSignalQueueSize <br>
-@ref sandboxed <br>
-@ref start <br>
-
-Use of one of these in the @c .sdef "app:" section will override the equivalent setting
-for all processes in that application.
+Use of one of these in the @c .sdef will override the .adef setting for all processes
+in that application.
 
 
-@section defFilesSdefBindings bindings
+@subsection sdef_maxPriority Max Priority
+
+Sets the maximum priority level the application is allowed to run threads at.
+
+This acts as a ceiling.  That is, it will not raise the priority level for any of the processes
+in the application.  It will only lower the priority level if the application would have otherwise
+been allowed to use a higher priority.
+
+For example, if a process in the application was configured in the .adef to start at high priority,
+and the .sdef section for that app has maxPriority set to "medium",
+then the process will start at medium priority.  But, another process in the same .adef that is
+configured to start at low priority will still start at low priority.
+
+@code
+apps:
+{
+    foo
+    {
+        maxPriority: high
+    }
+}
+@endcode
+
+
+@section defFilesSdefBindings Bindings
 
 This section contains a list of IPC “bindings”, which are essentially connections between
 applications’ external IPC interfaces (listed in the “requires” and “provides” sections of their
 @c .adef files).  Each binding connects one client-side (required) interface to one server-side
-provided interface.
+(provided) interface.
 
-Interfaces are identified using the application name and the interface name, separated
-by a period (‘.’).  The two bound-together interfaces are separated by an equals
-sign (‘=’).
+Interfaces are identified using the application name and the interface name,
+separated by a period (‘.’).  The two bound-together interfaces are separated by an arrow ("->").
 
 For example,
 
-@verbatim
-app: vavController
-
-app: thermostat
-
-app: airHandlerProxy
+@code
+apps:
+{
+    vavController
+    thermostat
+    airHandlerProxy
+}
 
 bindings:
+{
     // Connect the VAV controller to the thermostat
-    vavController.temp = thermostat.temp
-    vavController.setpoint = thermostat.setpoint
+    vavController.temp -> thermostat.temp
+    vavController.setpoint -> thermostat.setpoint
 
     // Connect the VAV controller to the supply air duct temperature sensor
-    vavController.ductTemp = ductTemperatureSensor.temp
+    vavController.ductTemp -> ductTemperatureSensor.temp
 
     // Hook up the VAV control outputs to the damper actuators.
-    vavController.supplyDamper = supplyAirDamper.damper
-    vavController.returnDamper = returnAirDamper.damper
+    vavController.supplyDamper -> supplyAirDamper.damper
+    vavController.returnDamper -> returnAirDamper.damper
 
     // Use a network proxy to request duct temperature changes from the Air Handling Unit.
-    vavController.airHandler = airHandlerProxy.airHandler
-@endverbatim
+    vavController.airHandler -> airHandlerProxy.airHandler
+}
+@endcode
 
-Note that, for security reasons, automatic binding between applications is never performed.
+For security reasons, binding between applications is never performed unless explicitly
+specified in the @c .sdef or @c .adef files.
 
 Beware that if an app's required interface instance is left unbound, the process or processes
 that require that interface may not be able to run.
 
-
 <HR>
 
-Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+Copyright (C) Sierra Wireless, Inc. 2014.  Use of this work is subject to license.
 
 **/

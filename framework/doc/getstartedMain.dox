@@ -1,52 +1,17 @@
 /** @page getstartedMain Get Started
 
-Get Started info is organized for a Quick Start and for Advanced Users.
+First, you need to @subpage getstartedPrepTarget.
 
-Quick Start has two options: 
-- bootable USB stick to get up and running fast.
-- dev host installation for those needing a permanent installation on a Linux host.
-
-Advanced topics give power users info to tinker under the hood of the target device (e.g. flash or customize the Yocto image).
-
-@subpage getstartedQuick  <br>
-@subpage getstartedAdvanced  <br>
-
-See @subpage legatoRelNotesBeta for release-specific information.
-
-See @subpage legatoUpgradeBeta if you need to upgrade from a previous version.
-
-See Legato Developer Zone http://developer.sierrawireless.com/landing/legato.aspx
-
-@section sysReqs System Requirements
-
-If you’re running from the bootable USB stick, a minimum of 2GB RAM is suggested.
-
-If you’re installing the development environment and application framework on a development host, 
- recommended system requirements for the Ubuntu desktop is at least 768 MB of RAM and 5 GB of disk space.
-
-Ubuntu version 12.04 is officially supported, although you can try others (e.g., 14.04). 
-
-If you’re downloading Legato source and toolchain files, you’ll need a minimum Internet connection speed of 4 Mpbs.
-
-@section devHostReqs Dev Host Requirements
-
-Different options are available for development host PCs depending on needs. 
-You can build, install, and work with Legato entirely from a Linux dev host, but target device recovery is 
-only possible from Windows at this time. See @ref getstartedWindowsHost. 
-
-<b>Linux vs Windows tasks</b>
-
-Linux dev host is used to compile system software, flash Linux images, develop and debug applications.
-
-Windows Host is used to flash Linux images, flash new modem firmware, recover device.
-
-@section targetReqs Target Requirements
-
-Legato uses the AirPrime – AR and WP Series-Development Kit.
-<br>
+Then, you can @subpage getstartedInstallLegato.
 
 <HR>
 
-Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+These notes apply to both install versions: <br>
+@subpage legatoRelNotesBeta <br>
+@subpage legatoUpgradeBeta
+
+<HR>
+
+Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
 
 **/

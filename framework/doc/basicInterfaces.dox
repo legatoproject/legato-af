@@ -1,10 +1,8 @@
 /** @page basicInterfaces Interfaces
 
-@section intOverview Overview
-
 To maximize component reuse, it's vital components be designed for reuse.
 Reusability partly depends on portability, which the Legato framework provides, but it also
-depends largely on interoperability.  Reusable components must be designed for
+depends largely on interoperability. Reusable components must be designed for
 interoperability with as many other things as possible, including things that don't 
 exist <i>- yet! </i>
 
@@ -44,12 +42,9 @@ return codes into messages, and send them over the IPC system.
 
 See @ref languageIndependentAPIs for more information.
 
-@section intWhatsNext What's Next?
-@ref eventBasics
-
 <HR>
 
-Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
 
 **/
 

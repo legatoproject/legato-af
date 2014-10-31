@@ -102,9 +102,8 @@ precedence over the old one.
 By default, the device will enumerate an ECM port, an ACM port for AT commands and USB 
 audio. 
 
-
 <HR>
 
-Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
 
 **/

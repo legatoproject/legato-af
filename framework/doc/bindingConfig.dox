@@ -17,40 +17,33 @@ system:/
         <app name>/
             bindings/
                 <client interface name>
-                    protocol    <string>
-                    server/
-                            app         <string>
-                            user        <string>
-                            interface   <string>
+                        app         <string>
+                        user        <string>
+                        interface   <string>
     users/
         <user name>/
             bindings/
                 <client interface name>
-                    protocol    <string>
-                    server/
-                            app         <string>
-                            user        <string>
-                            interface   <string>
+                        app         <string>
+                        user        <string>
+                        interface   <string>
 
 @endverbatim
  *
- * Each <c>\<client interface name\></c> corresponds to an IPC interface imported by a component.
+ * Each <c>\<client interface name\></c> corresponds to an IPC interface required by a component
+ * (listed in the @c api: subsection of a @c requires: section in the component's @c Component.cdef file).
  *
- * The @c protocol is the globally unique protocol identifier of the interface protocol that the
- * client and server share.  This is usually a cryptographic hash that uniquely identifies the
- * protocol content, even if the name of the protocol changes.
+ * Either <c>app</c> or <c>user</c> must exist, but never both.
  *
- * Either <c>server/app</c> or <c>server/user</c> must exist, but never both.
+ * The <c>app</c> is the name of the application that will run the server on the target.
  *
- * The <c>server/app</c> is the name of the application that will run the server on the target.
+ * The <c>user</c> is the name of the user account that will run the server on the target.
  *
- * The <c>server/user</c> is the name of the user account that will run the server on the target.
- *
- * The <c>server/interface</c> names correspond to IPC interfaces exported by components.
+ * The <c>interface</c> name corresponds to the server IPC interface name.
  *
  * @note Changing the binding configuration in the configuration tree does not automatically
  *       result in changes to the actual IPC bindings that are in effect in the Service Directory.
- *       The @ref sdTool implements a @c sync command that can be used to update the Service
+ *       The @ref toolsSdirTool implements a @c load command that can be used to update the Service
  *       Directory with the latest binding configuration from the configuration tree.
  *
  * <hr>

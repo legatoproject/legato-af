@@ -18,26 +18,26 @@
 #include "legato.h"
 
 // Interface specific includes
+#include "defn_interface.h"
 #include "common_interface.h"
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Start the service for the client main thread
+ * Connect the client to the service
  */
 //--------------------------------------------------------------------------------------------------
-void example_StartClient
+void example_ConnectService
 (
-    const char* serviceInstanceName
-        ///< [IN]
+    void
 );
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Stop the service for the current client thread
+ * Disconnect the client from the service
  */
 //--------------------------------------------------------------------------------------------------
-void example_StopClient
+void example_DisconnectService
 (
     void
 );

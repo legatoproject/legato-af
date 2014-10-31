@@ -1,4 +1,4 @@
-/** @page toolsSdirTool Service Directory 
+/** @page toolsSdirTool Service Directory
 
 Use the @c sdir command line tool to interact with the Service Directory to
  control IPC bindings and do troubleshooting.
@@ -9,7 +9,7 @@ Use the @c sdir command line tool to interact with the Service Directory to
 
 @verbatim sdir list @endverbatim
 
-> The @c list command generates a listing of all the IPC services known by 
+> The @c list command generates a listing of all the IPC services known by
 > the Service Directory including which servers advertise them and which users are currently waiting for them to
 > be advertised.  Also lists all IPC bindings currently in effect.
 
@@ -20,6 +20,6 @@ Use the @c sdir command line tool to interact with the Service Directory to
 
 <HR>
 
-Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
 
 **/

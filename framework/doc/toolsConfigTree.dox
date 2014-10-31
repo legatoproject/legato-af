@@ -1,12 +1,9 @@
-/** @page toolsConfigDB Config Database
-
-@ref configDBcmds <br>
-@ref treePaths <br>
-@ref configSamples
-
-@section configDBcmds Config DB Commands
+/** @page toolsConfigTree Config Tree  
 
 Use the @c config command line tool to change a target's configuration database.
+
+@section configDBcmds Config Commands
+
 Functions supported include: inspect a tree, read/write values, and import/export
 enitre tree sections.
 
@@ -25,6 +22,9 @@ enitre tree sections.
 
 @verbatim config delete <tree path> @endverbatim
 > Delete a node.
+
+@verbatim config clear <tree path> @endverbatim
+> Clear a node.  Or create a new empty node if it didn't previously exist.
 
 @verbatim config import <tree path> <file path> [--format=json] @endverbatim
 > Import config data.
@@ -104,7 +104,7 @@ total 32
 
 The system, or root user, has its own tree; each application has a separate tree.
 
-@section configSamples Config DB Samples
+@section configSamples Config Code Samples
 
 To dump a tree, run this to get the default tree for the current user:
 
@@ -164,7 +164,6 @@ name and actual value:
 
 <HR>
 
-Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to
-license.
+Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
 
 **/

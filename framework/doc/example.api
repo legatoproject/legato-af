@@ -2,9 +2,12 @@
  * Example API file
  */
 
-USETYPES common;
+// The .api suffix is optional
+USETYPES defn;
+USETYPES common.api;
 
-DEFINE TEN = common.TEN;
+
+DEFINE TEN = common.FOUR + defn.SIX;
 DEFINE TWENTY = TEN + common.TEN;
 DEFINE SOME_STRING = "some string";
 

@@ -1,11 +1,11 @@
 /** @page portLegacyApps Porting Legacy Apps to Legato
 
-@section portSelfContained Porting Self-contained Apps
-
 Use this method for your legacy apps if:
 
 - the apps don't require root privileges.
 - you can't (or don't want to) make changes to source code.
+
+@section portSelfContained Porting Self-contained Apps
 
 Here's the high-level steps <b>porting your app to Legato</b>:
 
@@ -17,7 +17,8 @@ Here's the high-level steps <b>porting your app to Legato</b>:
 
 - Include files to be installed as part of the app (executables, libraries, configuration files, devices, etc.) in the @c files: section of .adef.
 
-- Include files that need to be imported into the sandbox from the target’s file system (e.g., /dev/zero, /dev/null) in the @c import: section of .adef.
+- Use the @c requires: section of the @c .adef file to include files and directories that need to
+  be imported into the sandbox from the target’s file system (e.g., /dev/zero, /dev/null).
 
 - Add @c run: lines in the @c processes: section in the .adef to define processes that should run in the app.
 
@@ -31,19 +32,30 @@ Here's the @c foo.adef file (for application foo) that has executables bar1 and 
 lib1. The application name should be the same as the .adef file name.
 
 @code
-files:
-    [rx] bar1   /bin/
-    [rx] bar2   /bin/
-    [r] lib1    /lib/
+bundles:
+{
+    file:
+    {
+        [x] bar1    /bin/
+        [x] bar2    /bin/
+        [r] lib1    /lib/
+    }
+}
+
 processes:
-    run: (bar1)
-    run: (bar2)
+{
+    run:
+    {
+        (bar1)
+        (bar2)
+    }
+}
 @endcode
 
 To build the app, run:
 @code mkapp foo.adef @endcode
 
-Other app settings (e.g., @c faultAction) can also be set in the .adef files. See @ref defFilesAdefProcessesSubsections.
+Other app settings (e.g., @c faultAction) can also be set in the .adef files. See @ref faultAction.
 
 @section portRootAccess Porting Apps with Root Access
 
@@ -80,11 +92,19 @@ Optionally, modify the source to use Legato signal handlers, memory pools, IPC, 
 
 @code
 executables:
-    bar1 ( bar1.c )
-    bar2 ( bar2.c )
+{
+    bar1 = ( bar1.c )
+    bar2 = ( bar2.c )
+}
+
 processes:
-    run: (bar1)
-    run: (bar2)
+{
+    run:
+    {
+        (bar1)
+        (bar2)
+    }
+}
 @endcode
 
 @b Build the app using <b>mkapp foo.adef -t target</b> where [target] is something like @c
@@ -128,7 +148,6 @@ Related info:
 
 <HR>
 
-Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+Copyright (C) Sierra Wireless, Inc. 2014.  Use of this work is subject to license.
 
 **/
-
