@@ -1,17 +1,33 @@
 executables:
-
-    cellNetService ( $LEGATO_ROOT/components/cellNetService )
+{
+    cellNetService = ( $LEGATO_ROOT/components/cellNetService )
+}
 
 processes:
+{
+    run:
+    {
+        (cellNetService)
+    }
 
-    run: (cellNetService)
     faultAction: restart
-    
-bindings:
+}
 
+bindings:
+{
     cellNetService.cellNetService.le_mrc -> modemService.le_mrc
     cellNetService.cellNetService.le_sim -> modemService.le_sim
+}
 
 requires:
-
+{
     configTree: { [r] system }
+}
+
+provides:
+{
+    api:
+    {
+        cellNetService.cellNetService.le_cellnet
+    }
+}

@@ -1,15 +1,30 @@
 sandboxed: false
 
 executables:
-
-    voiceCallService ( $LEGATO_ROOT/components/voiceCallService )
+{
+    voiceCallService = ( $LEGATO_ROOT/components/voiceCallService )
+}
 
 processes:
+{
+    run:
+    {
+        (voiceCallService)
+    }
 
-    run: (voiceCallService)
     faultAction: restart
-    
-bindings:
+}
 
+bindings:
+{
     voiceCallService.voiceCallService.le_mcc_call -> modemService.le_mcc_call
     voiceCallService.voiceCallService.le_mcc_profile -> modemService.le_mcc_profile
+}
+
+provides:
+{
+    api:
+    {
+        voiceCallService.voiceCallService.le_voicecall
+    }
+}

@@ -1,18 +1,44 @@
 sandboxed: false
 
 executables:
-
-    modemDaemon (   $LEGATO_ROOT/components/modemServices/modemDaemon    )
+{
+    modemDaemon = (   $LEGATO_ROOT/components/modemServices/modemDaemon    )
+}
 
 processes:
+{
+    run:
+    {
+        (modemDaemon)
+    }
 
-    run: (modemDaemon)
     faultAction: restart
-    
-bindings:
+}
 
+bindings:
+{
     modemDaemon.modemDaemon.le_audio -> audioService.le_audio
+}
 
 requires:
-
+{
     configTree: { [w] system }
+}
+
+
+provides:
+{
+    api:
+    {
+        modemDaemon.modemDaemon.le_ecall
+        modemDaemon.modemDaemon.le_fwupdate
+        modemDaemon.modemDaemon.le_info
+        modemDaemon.modemDaemon.le_mcc_call
+        modemDaemon.modemDaemon.le_mcc_profile
+        modemDaemon.modemDaemon.le_mdc
+        modemDaemon.modemDaemon.le_mrc
+        modemDaemon.modemDaemon.le_remoteMgmt
+        modemDaemon.modemDaemon.le_sim
+        modemDaemon.modemDaemon.le_sms
+    }
+}

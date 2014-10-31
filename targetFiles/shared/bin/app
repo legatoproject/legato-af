@@ -18,6 +18,15 @@ appStatus="unknown"
 export PATH=/usr/local/bin:$PATH
 
 
+# Check if ps supports arguments.  If so, we need to run "ps aux" to be able
+# to see the supervisor process if it is running.  Otherwise, we just run "ps".
+PS='ps aux'
+if ! $PS > /dev/null 2>&1
+then
+    PS=ps
+fi
+
+
 PrintUsage()
 {
     echo
@@ -134,7 +143,13 @@ InstallApp()
         mkdir -p "$APPS_ROOT/$1" &&
 
         # Unpack the app into the app's install directory.
-        tar xj -C "$APPS_ROOT/$1"
+        if ! which bsdtar > /dev/null 2>&1
+        then
+            tar xj -C "$APPS_ROOT/$1"
+        else
+            bsdtar xjop -f - -C "$APPS_ROOT/$1"
+        fi
+
     )
 
     if [ $? -ne 0 ]
@@ -146,7 +161,12 @@ InstallApp()
 
     (
         # Fix up the permissions.
-        ( chown -R root:root "$APPS_ROOT/$1" ) &&
+        (
+            if ! which bsdtar > /dev/null 2>&1
+            then
+                chown -R root:root "$APPS_ROOT/$1"
+            fi
+        ) &&
         ( find "$APPS_ROOT/$1" -type d | xargs chmod a+x-ws ) &&
         ( find "$APPS_ROOT/$1" ! -type d | xargs chmod a-xws ) &&
         ( chmod -R a+x "$APPS_ROOT/$1/bin" ) &&
@@ -218,7 +238,7 @@ RemoveApp()
 }
 
 # Before we do any work, see if the framework is running.
-ps | grep supervisor | grep -v grep > /dev/null
+$PS | grep supervisor | grep -v grep > /dev/null
 if [ $? -ne 0 ]
 then
     echo "The legato framework is not running. Please start it before proceeding."

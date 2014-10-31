@@ -46,14 +46,20 @@ if(LEGATO_TARGET MATCHES "ar6")
 # Target: ar7
 elseif(LEGATO_TARGET MATCHES "ar7")
     set(LEGATO_EMBEDDED "true")
-    set(AUTOMOTIVE_TARGET "true")
     set(CMAKE_TOOLCHAIN_FILE "${CMAKE_CURRENT_SOURCE_DIR}/cmake/toolchain.yocto.cmake")
     set(LEGATO_COMPONENTS_MODEM "QMI")
     set(LEGATO_COMPONENTS_GNSS "QMI")
     set(LEGATO_COMPONENTS_AUDIO "ar7")
     add_definitions(-DLEGATO_EMBEDDED)
     add_definitions(-DLEGATO_DEBUG)
-    add_definitions(-DAUTOMOTIVE_TARGET)
+
+    if(INCLUDE_ECALL EQUAL 1)
+        add_definitions(-DINCLUDE_ECALL)
+        set(LEGATO_MODEM_PA_ECALL $ENV{LEGATO_MODEM_PA_ECALL})
+        message("Including eCall to target ${LEGATO_TARGET}")
+    else()
+        message("Excluding eCall from target ${LEGATO_TARGET}")
+    endif()
 
 # Target: wp7
 elseif(LEGATO_TARGET MATCHES "wp7")
@@ -73,6 +79,11 @@ elseif(LEGATO_TARGET MATCHES "raspi")
 # Target: localhost
 elseif(LEGATO_TARGET MATCHES "localhost")
     add_definitions(-DLEGATO_DEBUG)
+
+    if(USE_CLANG EQUAL 1)
+        set(CMAKE_C_COMPILER clang)
+        set(CMAKE_CXX_COMPILER clang++)
+    endif()
 
 # Target: Unknown
 else()
@@ -114,8 +125,16 @@ else()
     add_definitions(-g -O0)
 endif()
 
-# All warnings and treat warnings as errors.
-add_definitions(-Wall -Werror)
+if(USE_CLANG EQUAL 1)
+    # All warnings
+    add_definitions(-Wall)
+else()
+    # All warnings and treat warnings as errors.
+    add_definitions(-Wall -Werror)
+endif()
+
+# Target sysroot
+get_compiler_target_sysroot(${CMAKE_C_COMPILER} TARGET_SYSROOT)
 
 # Coverage
 if(TEST_COVERAGE)
@@ -147,7 +166,7 @@ endif()
 set(LEGATO_COMPONENTS_MODEM_TARGET          le_pa)
 set(LEGATO_COMPONENTS_GNSS_TARGET           le_pa_gnss)
 
-## Pre-compiled targets
+## Pre-compiled targets
 if(${LEGATO_COMPONENTS_MODEM} MATCHES "QMI" AND NOT EXISTS ${LEGATO_COMPONENTS_MODEM_DIR}/qmi/src)
     add_library(${LEGATO_COMPONENTS_MODEM_TARGET} SHARED IMPORTED GLOBAL)
 endif()
@@ -175,9 +194,6 @@ add_subdirectory(3rdParty/jansson-2.6)
 # Build C Framework
 add_subdirectory(framework/c)
 add_subdirectory(framework/tools)
-
-# Build Components
-add_subdirectory(components)
 
 # Build Platform Services (modem, positioning, audio, etc. services).
 add_subdirectory(platformServices)

@@ -1,14 +1,30 @@
 sandboxed: false
 
 executables:
-
-    posDaemon ( $LEGATO_ROOT/components/positioning/posDaemon )
+{
+    posDaemon = ( $LEGATO_ROOT/components/positioning/posDaemon )
+}
 
 processes:
+{
+    run:
+    {
+        (posDaemon)
+    }
 
-    run: (posDaemon)
     faultAction: restart
-    
-requires:
+}
 
+requires:
+{
     configTree: { [w] system }
+}
+
+provides:
+{
+    api:
+    {
+        posDaemon.posDaemon.le_pos
+        posDaemon.posDaemon.le_posCtrl
+    }
+}

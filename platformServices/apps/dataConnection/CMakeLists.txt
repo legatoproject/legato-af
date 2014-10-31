@@ -28,4 +28,4 @@ mkapp(  dataConnectionService.adef
             ${LEGATO_ROOT}/interfaces/modemServices/le_sim.api
         )
 
-target_link_libraries(dataConnectionService jansson)
+add_dependencies(dataConnectionService jansson)

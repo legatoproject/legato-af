@@ -1,5 +1,14 @@
 #!/bin/sh
 
+# Check if ps supports arguments.  If so, we need to run "ps aux" to be able
+# to see the supervisor process if it is running.  Otherwise, we just run "ps".
+PS='ps aux'
+if ! $PS > /dev/null 2>&1
+then
+    PS=ps
+fi
+
+
 PrintHelp()
 {
     PROG_NAME=$(basename $0)
@@ -44,7 +53,7 @@ then
     echo "The following processes are currently inside the sandbox:"
     for pid in $procsInSandboxes
     do
-        ps | grep $pid | grep -v "grep $pid"
+        $PS | grep $pid | grep -v "grep $pid"
     done
     echo "Can't clean sandbox until these processes are terminated or moved out of the sandbox directory."
     exit 1

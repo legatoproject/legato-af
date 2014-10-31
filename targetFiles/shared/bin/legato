@@ -154,6 +154,179 @@ StopLegato()
 }
 
 
+AddUserToAppBinding()
+{
+    config set users/$1/bindings/$2/app        $3
+    config set users/root/bindings/$2/interface  $2
+}
+
+
+InstallLegato()
+{
+    # Make sure the old version of the framework is shut down.
+    StopLegato
+
+    echo "Cleaning..."
+
+    # Remove the old version of the Legato framework.
+    rm -rf /usr/local/*
+
+    # Remove the old default startup scripts.
+    rm -rf /mnt/flash/startupDefaults
+
+    echo "Checking target environment..."
+    mount | grep ' /usr/local ' > /dev/null
+    if [ $? -ne 0 ]
+    then
+        echo "Remapping /usr/local --> /mnt/flash/usr/local"
+        mkdir -p /mnt/flash/usr/local
+        mkdir -p /usr/local
+        mount --bind /mnt/flash/usr/local   /usr/local
+    fi
+
+    mount | grep ' /opt ' > /dev/null
+    if [ $? -ne 0 ]
+    then
+        # Make /opt actually be /mnt/flash/opt.
+        echo "Remapping /opt --> /mnt/flash/opt"
+        mkdir -p /mnt/flash/opt
+        mkdir -p /opt
+        mount --bind /mnt/flash/opt /opt
+    fi
+
+    echo "Unpacking..."
+
+    # Change to the root directory.  The tarball containing the new framework is rooted there.
+    cd / &&
+
+    # Un-tar the framework into place.
+    (
+    if ! which bsdtar > /dev/null 2>&1
+    then
+        tar x &&
+
+        # Make sure everything under /usr and /opt are owned by root and are in the root user's group.
+        # TODO: This must be removed when switching to read-only root file system.
+        # This can be removed when we have a better version of tar on target.
+        chmod -R go-w /usr/local &&
+        chown -R root:root /usr &&
+        chown -R root:root /opt &&
+        # Just in case busybox tar set non-root ownership of /
+        # TODO: This must be removed when switching to read-only root file system.
+        # This can be removed when we have a better version of tar on target.
+        chown root:root /
+    else
+        bsdtar xpo -f -
+    fi
+    ) &&
+
+    # Make sure the startup scripts are executable and owned by root.
+    chown -R root:root /mnt/flash/startupDefaults &&
+    chmod -R u+x /mnt/flash/startupDefaults || exit 1
+
+    # If there are no startup scripts installed yet, we can't continue until the scripts have
+    # been installed and the target has been rebooted.
+    if ! ls /mnt/flash/startup/* > /dev/null 2>&1
+    then
+        echo "STARTUP SCRIPTS MISSING."
+        echo "Installing startup scripts..."
+
+        mkdir -p /mnt/flash/startup
+        cp /mnt/flash/startupDefaults/* /mnt/flash/startup || exit 1
+
+        echo "DONE."
+        echo "**** REBOOT REQUIRED ****"
+        echo "Reboot target and restart legato framework installation process."
+        exit 42
+    fi
+
+    # If the startup scripts are out of date, we can't continue installation until the scripts
+    # have been updated and the target has been rebooted.
+    if ! diff /mnt/flash/startup /mnt/flash/startupDefaults
+    then
+        echo "STARTUP SCRIPTS OUT OF DATE."
+        echo "Backing up old startup scripts to /mnt/flash/startupBackups..."
+
+        rm -rf /mnt/flash/startupBackups
+        mv /mnt/flash/startup /mnt/flash/startupBackups || exit 1
+
+        echo "DONE."
+        echo "Installing new startup scripts..."
+
+        mkdir -p /mnt/flash/startup
+        cp /mnt/flash/startupDefaults/* /mnt/flash/startup || exit 1
+
+        echo "DONE."
+        echo "**** REBOOT REQUIRED ****"
+        echo "Reboot target and restart legato framework installation process."
+        exit 42
+    fi
+
+    # Update the ld library cache such that all the new framework libraries under /usr/local/lib
+    # can be found by the dynamic linker.
+    echo "Updating dynamic linker configuration..."
+    umount /etc/ld.so.cache
+    /sbin/ldconfig -v -C /var/run/ld.so.cache &&
+    mount --bind /var/run/ld.so.cache /etc/ld.so.cache &&
+
+    # Start up the new version of the framework.
+    StartLegato &&
+
+    # Add binding configuration needed by the framework tools.
+    # TODO: Remove this when the tools becomes command-line apps.
+    (
+        # cm tool
+        AddUserToAppBinding root le_mdc modemService &&
+        AddUserToAppBinding root le_mrc modemService &&
+        AddUserToAppBinding root le_sim modemService &&
+        AddUserToAppBinding root le_data dataConnectionService
+
+        # fwupdate tool
+        AddUserToAppBinding root le_info modemService &&
+        AddUserToAppBinding root le_fwupdate modemService
+        
+        # agent
+        AddUserToAppBinding root le_posCtrl positioningService &&
+        AddUserToAppBinding root le_pos positioningService
+    ) &&
+
+    # Install and start the bundled applications.
+    (
+        # Remove old versions of the bundled apps.
+        for appFile in `ls /usr/local/bin/apps`
+        do
+            APP_NAME=$(basename "$appFile" | sed "s/\.[^.]*$//") &&
+            /usr/local/bin/app remove ""$APP_NAME""
+        done
+
+        # Install new versions of the bundled apps.
+        for appFile in `ls /usr/local/bin/apps`
+        do
+            APP_NAME=$(basename "$appFile" | sed "s/\.[^.]*$//") &&
+            cat /usr/local/bin/apps/$appFile | /usr/local/bin/app install ""$APP_NAME""
+        done
+
+        # Start the bundled apps.
+        for appFile in `ls /usr/local/bin/apps`
+        do
+            APP_NAME=$(basename "$appFile" | sed "s/\.[^.]*$//") &&
+            /usr/local/bin/app start $APP_NAME
+        done
+    ) &&
+
+    # Remove the app package files for the bundled applications to save space in flash.
+    rm -rf /usr/local/bin/apps &&
+
+    if [ $? -eq 0 ]
+    then
+        echo "SUCCESS"
+    else
+        echo "FAILED"
+        exit 1
+    fi
+}
+
+
 case "$ACTION" in
 start)
     StartLegato
@@ -170,6 +343,10 @@ restart)
 
 status)
     LegatoStatus
+    ;;
+
+install)
+    InstallLegato
     ;;
 
 help | --help | -h)

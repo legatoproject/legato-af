@@ -14,7 +14,7 @@ set(LEGATO_ROOT                             ${LEGATO_SOURCE_DIR})
 set(LEGATO_FRAMEWORK_DIR                    ${LEGATO_SOURCE_DIR}/framework/c)
 set(LEGATO_LIBRARIES                        ${LIBRARY_OUTPUT_PATH}/liblegato.so -lpthread -lrt)
 
-# Tools
+# Tools
 set(LEGATO_TOOL_IFGEN                       ${LEGATO_SOURCE_DIR}/bin/ifgen)
 set(LEGATO_TOOL_MKAPP                       ${LEGATO_SOURCE_DIR}/bin/mkapp)
 set(LEGATO_TOOL_MKEXE                       ${LEGATO_SOURCE_DIR}/bin/mkexe)
@@ -134,7 +134,7 @@ function(mkapp ADEF)
                 ${LEGATO_TOOL_MKAPP}
                         ${ADEF}
                         -t ${LEGATO_TARGET}
-                        -w ${CMAKE_CURRENT_BINARY_DIR}
+                        -w ${CMAKE_CURRENT_BINARY_DIR}/${APP_NAME}.${LEGATO_TARGET}
                         -i ${CMAKE_CURRENT_SOURCE_DIR}
                         -c ${CMAKE_CURRENT_SOURCE_DIR}
                         -o ${APP_OUTPUT_PATH}
@@ -174,6 +174,7 @@ function(mkcomp COMP_PATH)
                 PATH=${LEGATO_SOURCE_DIR}/bin:$ENV{PATH}
                 ${LEGATO_TOOL_MKCOMP}
                         ${COMP_PATH}
+                        -o ${COMPONENT_LIB}
                         -t ${LEGATO_TARGET}
                         -w ${CMAKE_CURRENT_BINARY_DIR}
                         -i ${CMAKE_CURRENT_SOURCE_DIR}
@@ -240,5 +241,3 @@ function(add_legato_internal_executable)
     add_legato_executable(${ARGN})
 
 endfunction()
-
-

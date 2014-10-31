@@ -1,7 +1,7 @@
 Welcome to Legato!
 ==================
 
-#### Dependencies
+#### Dependencies
 
   - Ubuntu 12.04 or newer.
   - Packages required:
@@ -14,7 +14,7 @@ Welcome to Legato!
 
   - Cross toolchain(s).
 
-#### Installation
+#### Installation
 
  To install the Legato framework on your development PC,
 
@@ -51,13 +51,13 @@ Target |  Description                    | Environment variable
    ar7 | Sierra Wireless AR7xxx module   | ```AR7_TOOLCHAIN_DIR```
    wp7 | Sierra Wireless WP7xxx module   | ```WP7_TOOLCHAIN_DIR```
 
-#### Documentation
+#### Documentation
 
  Once you have completed the first three installation steps above, you will find a set of
  HTML documentation under the "Documentation" directory.  Point your web browser at
  ```Documentation/index.html``` to view it.
 
-#### Uninstallation
+#### Uninstallation
 
  To uninstall Legato from your development PC:
 
@@ -66,7 +66,7 @@ Target |  Description                    | Environment variable
     environment variables.
 
 
-#### Directory Structure
+#### Directory Structure
 
  The top level directory structure is as follows:
 

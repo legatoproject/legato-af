@@ -20,5 +20,6 @@ mkapp(  voiceCallService.adef
             ${LEGATO_ROOT}/interfaces/audio/le_audio.api
             ${LEGATO_ROOT}/interfaces/modemServices/le_mcc_call.api
             ${LEGATO_ROOT}/interfaces/modemServices/le_mcc_profile.api
+            ${LEGATO_ROOT}/interfaces/modemServices/le_mdmDefs.api
         )
 

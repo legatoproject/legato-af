@@ -7,4 +7,4 @@
 
 # Macros
 include("${CMAKE_MODULE_PATH}/GetGerritUser.cmake")
-include("${CMAKE_MODULE_PATH}/GetCompilerTarget.cmake")
+include("${CMAKE_MODULE_PATH}/GetCompilerOptions.cmake")

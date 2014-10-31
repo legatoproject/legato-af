@@ -30,8 +30,10 @@ if (LEGATO_GNSS_PA MATCHES ".*/pre-built/.*")
     set(LINK_DIRECTIVES     --ldflags=-lqmi_cci
                             --ldflags=-lqmiservices
                             --ldflags=-lloc_api
-                            --ldflags=/opt/swi/y14-ext/tmp/sysroots/swi-mdm9x15/usr/lib/libsierra_qapi.a
+                            --ldflags=${TARGET_SYSROOT}/usr/lib/libsierra_qapi.a
                             )
+                    
+    file(COPY ${LEGATO_GNSS_PA}/libComponent_le_pa_gnss.so DESTINATION ${LIBRARY_OUTPUT_PATH})
 
 elseif(NOT DEFINED LEGATO_COMPONENTS_GNSS)
 
@@ -54,7 +56,7 @@ elseif(LEGATO_COMPONENTS_GNSS MATCHES "QMI")
     set(LINK_DIRECTIVES     --ldflags=-lqmi_cci
                             --ldflags=-lqmiservices
                             --ldflags=-lloc_api
-                            --ldflags=/opt/swi/y14-ext/tmp/sysroots/swi-mdm9x15/usr/lib/libsierra_qapi.a
+                            --ldflags=${TARGET_SYSROOT}/usr/lib/libsierra_qapi.a
                             )
 
     set(PA_SOURCE_DIR ${LEGATO_GNSS_PA})
