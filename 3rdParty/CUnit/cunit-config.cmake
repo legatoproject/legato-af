@@ -15,7 +15,11 @@ set(CUNIT_ARCHIVE "CUnit-2.1-2-src.tar.bz2")
 set(CUNIT_ARCHIVE_MD5 "31c62bd7a65007737ba28b7aafc44d3a")
 set(CUNIT_INSTALL "${LEGATO_BINARY_DIR}/3rdParty/CUnit")
 set(CUNIT_SOURCE "${LEGATO_SOURCE_DIR}/3rdParty/CUnit/src")
-    
+
+if(CMAKE_VERSION VERSION_GREATER 3.0)
+    cmake_policy(SET CMP0045 OLD)
+endif()
+
 get_target_property(CUNIT_TARGET cunit TYPE)
 
 # Create target 'cunit' to build the library
@@ -24,7 +28,7 @@ if(${CUNIT_TARGET} MATCHES "CUNIT_TARGET-NOTFOUND")
     include(ExternalProject)
 
     if(CMAKE_CROSSCOMPILING)
-        include(GetCompilerTarget)
+        include(GetCompilerOptions)
         get_compiler_target(gcc TARGET_HOST)
         set(CUNIT_CONFIGURE_ARGS    "--host=${TARGET_HOST}")
     endif()
