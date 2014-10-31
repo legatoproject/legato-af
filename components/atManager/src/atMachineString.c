@@ -55,7 +55,7 @@ void atmachinestring_AddInList
                     patternListPtr[i],strlen(patternListPtr[i]),ATSTRING_SIZE);
 
         strncpy(newStringPtr->line,patternListPtr[i],ATSTRING_SIZE);
-        newStringPtr->line[ATSTRING_SIZE]='\0';
+        newStringPtr->line[ATSTRING_SIZE-1]='\0';
 
         newStringPtr->link = LE_DLS_LINK_INIT;
         le_dls_Queue(list,&(newStringPtr->link));

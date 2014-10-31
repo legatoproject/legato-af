@@ -1,5 +1,5 @@
 sources:
-
+{
     devices/uart/src/le_uart.c
 
     src/init.c
@@ -13,3 +13,4 @@ sources:
     src/atMachineString.c
     src/atMachineUnsolicited.c
     src/atPorts.c
+}

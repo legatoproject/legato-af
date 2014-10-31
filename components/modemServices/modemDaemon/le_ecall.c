@@ -31,7 +31,7 @@
  * MSD message length in bytes.
  */
 //--------------------------------------------------------------------------------------------------
-#define MSD_MAX_LEN      (282)
+#define MSD_MAX_LEN      LE_ECALL_MSD_MAX_LEN
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -68,7 +68,7 @@
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
-    char               psapNumber[LE_MDMDEFS_PHONE_NUM_MAX_LEN]; ///< PSAP telephone number
+    char               psapNumber[LE_MDMDEFS_PHONE_NUM_MAX_BYTES]; ///< PSAP telephone number
     le_ecall_State_t   state;                           ///< eCall state
     bool               isPushed;                        ///< True if the MSD is pushed by the IVS,
                                                         ///  false if the MSD is sent when requested
@@ -362,7 +362,7 @@ static le_result_t LoadECallSettings
 )
 {
     le_result_t res = LE_OK;
-    char psapStr[LE_MDMDEFS_PHONE_NUM_MAX_LEN] = {0};
+    char psapStr[LE_MDMDEFS_PHONE_NUM_MAX_BYTES] = {0};
     char configPath[LIMIT_MAX_PATH_BYTES];
     snprintf(configPath, sizeof(configPath), "%s", CFG_MODEMSERVICE_ECALL_PATH);
 
@@ -657,6 +657,9 @@ void le_ecall_Init
 {
     LE_INFO("le_ecall_Init called.");
 
+    LE_FATAL_IF((pa_ecall_Init() != LE_OK),
+                "Cannot initialize Platform Adaptor for eCall, cannot perform eCall!");
+
     // Create an event Id for eCall State notification
     ECallStateId = le_event_CreateId("ECallState", sizeof(le_ecall_State_t));
 
@@ -665,13 +668,28 @@ void le_ecall_Init
 
     IsSessionStopped = true;
 
+    // Initialize MSD structure
+    ECallObj.psapNumber[0] = '\0';
+    ECallObj.msd.msdMsg.msdStruct.vehIdentificationNumber.isowmi[0] = '\0';
+    ECallObj.msd.msdMsg.msdStruct.vehIdentificationNumber.isovds[0] = '\0';
+    ECallObj.msd.msdMsg.msdStruct.vehIdentificationNumber.isovisModelyear[0] ='\0';
+    ECallObj.msd.msdMsg.msdStruct.vehIdentificationNumber.isovisSeqPlant[0] = '\0';
+    ECallObj.msd.version = 1;
+    ECallObj.isPushed = true;
+    ECallObj.maxRedialAttempts = 10,
+    ECallObj.msd.msdMsg.msdStruct.control.vehType = MSD_VEHICLE_PASSENGER_M1;
+    ECallObj.msd.msdMsg.msdStruct.vehPropulsionStorageType.gasolineTankPresent = false;
+    ECallObj.msd.msdMsg.msdStruct.vehPropulsionStorageType.dieselTankPresent = false;
+    ECallObj.msd.msdMsg.msdStruct.vehPropulsionStorageType.compressedNaturalGas = false;
+    ECallObj.msd.msdMsg.msdStruct.vehPropulsionStorageType.liquidPropaneGas = false;
+    ECallObj.msd.msdMsg.msdStruct.vehPropulsionStorageType.electricEnergyStorage = false;
+    ECallObj.msd.msdMsg.msdStruct.vehPropulsionStorageType.hydrogenStorage = false;
+
     // Retrieve the eCall settings from the configuration tree, including the static values of MSD
     if (LoadECallSettings() != LE_OK)
     {
-        // TODO: LE_FATAL ?
         LE_ERROR("There are missing eCall settings, cannot perform eCall!");
     }
-
 
     LE_DEBUG("eCall settings: PSAP.%s, VIN.%17s, version.%d, isPushed.%d, maxRedialAttempts.%d, veh.%d",
              ECallObj.psapNumber,
@@ -703,8 +721,7 @@ void le_ecall_Init
 
     if (pa_ecall_SetPsapNumber(ECallObj.psapNumber) != LE_OK)
     {
-        // TODO: LE_FATAL ?
-        LE_ERROR("Unable to set the PSAP number, cannot perform eCall!");
+        LE_ERROR("Unable to set the desired PSAP number!");
     }
 
     if (pa_ecall_SetMaxRedialAttempts(ECallObj.maxRedialAttempts) != LE_OK)
@@ -723,8 +740,7 @@ void le_ecall_Init
     }
     if (pa_ecall_SetMsdTxMode(msdTxMode) != LE_OK)
     {
-        // TODO: LE_FATAL ?
-        LE_ERROR("Unable to set the PSAP number, cannot perform eCall!");
+        LE_WARN("Unable to select the Push/Pull mode!");
     }
 
     // Register a handler function for eCall state indications

@@ -106,15 +106,18 @@ static bool CheckSMSUnsolicited
 //--------------------------------------------------------------------------------------------------
 static void ReportMsgRef
 (
-    uint32_t  *msgRef  ///< [IN] message reference
+    uint32_t  msgRef  ///< [IN] message reference
 )
 {
-    uint32_t* newMsgRef = le_mem_ForceAlloc(SmsRefPoolRef);
+    pa_sms_NewMessageIndication_t messageIndication = {0};
 
-    *newMsgRef = *msgRef;
+    messageIndication.msgIndex = msgRef;
+    messageIndication.protocol = PA_SMS_PROTOCOL_GSM; // @todo Hard-coded
 
-    LE_DEBUG("Send new SMS Event with index %d in memory",*newMsgRef);
-    le_event_ReportWithRefCounting(EventNewSMSId,newMsgRef);
+    LE_DEBUG("Send new SMS Event with index %d in memory and protocol %d",
+                messageIndication.msgIndex,
+                messageIndication.protocol);
+    le_event_Report(EventNewSMSId,&messageIndication, sizeof(messageIndication));
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -135,7 +138,7 @@ static void SMSUnsolHandler
 
     if (CheckSMSUnsolicited(unsolPtr->line,&msgIdx))
     {
-        ReportMsgRef(&msgIdx);
+        ReportMsgRef(msgIdx);
     }
 }
 
@@ -157,8 +160,8 @@ le_result_t pa_sms_Init
         return LE_NOT_POSSIBLE;
     }
 
-    EventUnsolicitedId    = le_event_CreateId("SMSEventIdUnsol",sizeof(atmgr_UnsolResponse_t));
-    EventNewSMSId         = le_event_CreateIdWithRefCounting("SMSEventIdNewSMS");
+    EventUnsolicitedId = le_event_CreateId("SMSEventIdUnsol",sizeof(atmgr_UnsolResponse_t));
+    EventNewSMSId = le_event_CreateId("SMSEventIdNewSMS",sizeof(pa_sms_NewMessageIndication_t));
 
     le_event_AddHandler("SMSUnsolHandler",EventUnsolicitedId  ,SMSUnsolHandler);
 
@@ -474,8 +477,9 @@ le_result_t pa_sms_SetMsgFormat
 //--------------------------------------------------------------------------------------------------
 int32_t pa_sms_SendPduMsg
 (
-    uint32_t       length, ///< [IN] The length of the TP data unit in bytes.
-    const uint8_t* dataPtr ///< [IN] The message.
+    pa_sms_Protocol_t   protocol,   ///< [IN] protocol to use
+    uint32_t            length,     ///< [IN] The length of the TP data unit in bytes.
+    const uint8_t      *dataPtr     ///< [IN] The message.
 )
 {
     int32_t result=LE_NOT_POSSIBLE;
@@ -563,8 +567,10 @@ int32_t pa_sms_SendPduMsg
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_sms_RdPDUMsgFromMem
 (
-    uint32_t      index,        ///< [IN]  The place of storage in memory.
-    pa_sms_Pdu_t* msgPtr        ///< [OUT] The message.
+    uint32_t            index,      ///< [IN] The place of storage in memory.
+    pa_sms_Protocol_t   protocol,   ///< [IN] The protocol used.
+    pa_sms_Storage_t    storage,    ///< [IN] SMS Storage used.
+    pa_sms_Pdu_t*       msgPtr      ///< [OUT] The message.
 )
 {
     int32_t result=LE_NOT_POSSIBLE;
@@ -616,14 +622,16 @@ le_result_t pa_sms_RdPDUMsgFromMem
 
             msgPtr->status=(le_sms_Status_t)atoi(atcmd_GetLineParameter(line,2));
 
-            msgPtr->dataLen = le_hex_StringToBinary(pduPtr,strlen(pduPtr),msgPtr->data,LE_SMS_PDU_MAX_LEN);
-            if ( msgPtr->dataLen < 0)
+            int32_t dataSize = le_hex_StringToBinary(pduPtr,strlen(pduPtr),msgPtr->data,LE_SMS_PDU_MAX_LEN);
+            if ( dataSize < 0)
             {
                 LE_ERROR("Message cannot be converted");
                 result = LE_NOT_POSSIBLE;
-            } else
+            }
+            else
             {
                 LE_DEBUG("Fill message in binary mode");
+                msgPtr->dataLen = dataSize;
                 result = LE_OK;
             }
         } else {
@@ -655,10 +663,12 @@ le_result_t pa_sms_RdPDUMsgFromMem
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_sms_ListMsgFromMem
 (
-    le_sms_Status_t status, ///< [IN] The status of message in memory.
-    uint32_t*       numPtr, ///< [OUT] The number of indexes retrieved.
-    uint32_t*       idxPtr  ///< [OUT] The pointer to an array of indexes. The array is filled
-                            ///        with 'num' index values.
+    le_sms_Status_t     status,     ///< [IN] The status of message in memory.
+    pa_sms_Protocol_t   protocol,   ///< [IN] The protocol to read.
+    uint32_t           *numPtr,     ///< [OUT] The number of indexes retrieved.
+    uint32_t           *idxPtr,     ///< [OUT] The pointer to an array of indexes.
+                                    ///        The array is filled with 'num' index values.
+    pa_sms_Storage_t    storage     ///< [IN] SMS Storage used.
 )
 {
     le_result_t result=LE_NOT_POSSIBLE;
@@ -666,6 +676,8 @@ le_result_t pa_sms_ListMsgFromMem
     atcmdsync_ResultRef_t  resRef = NULL;
     char atcommand[ATCOMMAND_SIZE] ;
     const char* interRespPtr[] = {"+CMGL:",NULL};
+
+    // TODO: storage option to manage
 
     if (!numPtr && !idxPtr)
     {
@@ -732,10 +744,14 @@ le_result_t pa_sms_ListMsgFromMem
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_sms_DelMsgFromMem
 (
-    uint32_t  index   ///< [IN] Index of the message to be deleted.
+    uint32_t            index,    ///< [IN] Index of the message to be deleted.
+    pa_sms_Protocol_t   protocol, ///< [IN] protocol.
+    pa_sms_Storage_t    storage   ///< [IN] SMS Storage used..
 )
 {
     char atcommand[ATCOMMAND_SIZE] ;
+
+    // TODO: storage option to manage
 
     atcmdsync_PrepareString(atcommand,ATCOMMAND_SIZE,"at+cmgd=%d,0",index);
 
@@ -760,6 +776,8 @@ le_result_t pa_sms_DelAllMsg
     void
 )
 {
+    // TODO: storage option to manage
+
     return atcmdsync_SendStandard(atports_GetInterface(ATPORT_COMMAND),
                                   "at+cmgd=0,4",
                                   NULL,
@@ -820,11 +838,14 @@ le_result_t pa_sms_RestoreSettings
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_sms_ChangeMessageStatus
 (
-    uint32_t         index, ///< [IN] Index of the message to be deleted.
-    le_sms_Status_t  status ///< [IN] The status of message in memory.
+    uint32_t            index,    ///< [IN] Index of the message to be deleted.
+    pa_sms_Protocol_t   protocol, ///< [IN] protocol.
+    le_sms_Status_t     status,   ///< [IN] The status of message in memory.
+    pa_sms_Storage_t    storage   ///< [IN] SMS Storage used..
 )
 {
     char atcommand[ATCOMMAND_SIZE] ;
+    // TODO: storage option to manage
 
     switch (status)
     {
@@ -856,9 +877,10 @@ le_result_t pa_sms_ChangeMessageStatus
 /**
  * This function must be called to get the SMS center.
  *
- * @return LE_NOT_POSSIBLE The function failed.
- * @return LE_TIMEOUT      No response was received from the Modem.
- * @return LE_OK           The function succeeded.
+ * @return
+ *   - LE_FAULT        The function failed.
+ *   - LE_TIMEOUT      No response was received from the Modem.
+ *   - LE_OK           The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_sms_GetSmsc
@@ -867,16 +889,17 @@ le_result_t pa_sms_GetSmsc
     size_t       len       ///< [IN] The length of SMSC string.
 )
 {
-    return LE_NOT_POSSIBLE;
+    return LE_FAULT;
 }
 
 //--------------------------------------------------------------------------------------------------
 /**
  * This function must be called to set the SMS center.
  *
- * @return LE_NOT_POSSIBLE The function failed.
- * @return LE_TIMEOUT      No response was received from the Modem.
- * @return LE_OK           The function succeeded.
+ * @return
+ *   - LE_FAULT        The function failed.
+ *   - LE_TIMEOUT      No response was received from the Modem.
+ *   - LE_OK           The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_sms_SetSmsc
@@ -884,5 +907,6 @@ le_result_t pa_sms_SetSmsc
     const char*    smscPtr  ///< [IN] The Short message service center.
 )
 {
-    return LE_NOT_POSSIBLE;
+    return LE_FAULT;
 }
+

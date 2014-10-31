@@ -4,13 +4,14 @@
  *
  * This file contains the source code of the high level Audio API.
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless, Inc. 2013-2014. Use of this work is subject to license.
  */
 //--------------------------------------------------------------------------------------------------
 
 #include "legato.h"
 #include "interfaces.h"
 #include "pa_audio.h"
+
 
 //--------------------------------------------------------------------------------------------------
 // Symbol and Enum definitions.
@@ -32,7 +33,6 @@
 #define CONNECTOR_DEFAULT_POOL_SIZE     1
 #define HASHMAP_DEFAULT_POOL_SIZE       1
 
-static le_dls_List_t  AllConnectorList=LE_DLS_LIST_INIT;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -55,11 +55,35 @@ static le_dls_List_t  AllConnectorList=LE_DLS_LIST_INIT;
 //--------------------------------------------------------------------------------------------------
 #define FORMAT_NAME_MAX_LEN             30
 #define FORMAT_NAME_MAX_BYTES           (FORMAT_NAME_MAX_LEN+1)
+//--------------------------------------------------------------------------------------------------
+/**
+ * Macro to verify if an interface is an output interface.
+ */
+//--------------------------------------------------------------------------------------------------
+#define IS_OUTPUT_IF(interface)     (   (interface == PA_AUDIO_IF_CODEC_SPEAKER) || \
+                                        (interface == PA_AUDIO_IF_DSP_FRONTEND_USB_TX) || \
+                                        (interface == PA_AUDIO_IF_DSP_BACKEND_MODEM_VOICE_TX) || \
+                                        (interface == PA_AUDIO_IF_DSP_FRONTEND_PCM_TX) || \
+                                        (interface == PA_AUDIO_IF_DSP_FRONTEND_I2S_TX) \
+                                    )
 
 
 //--------------------------------------------------------------------------------------------------
 // Data structures.
 //--------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stream Reference Node structure (information related to DTMF detector handlers).
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    void*                 streamRef;
+    le_event_HandlerRef_t handlerRef;
+    le_dls_Link_t         link;
+} StreamRefNode_t;
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Audio stream structure.
@@ -78,6 +102,10 @@ typedef struct le_audio_Stream {
     int32_t          fd;                            ///< Audio file descriptor for playback or recording
     le_hashmap_Ref_t connectorList;                 ///< list of connectors to which the audio
                                                     ///  stream is tied to.
+    le_dls_List_t    streamRefWithDtmfHdlrList;     ///< List containing information related to
+                                                    ///  DTMF detector handlers
+    le_event_Id_t    dtmfDetectionEventId;          ///< Event ID to report detected DTMF
+    char             dtmfChar;                      ///< Detected DTMF
 } le_audio_Stream_t;
 
 //--------------------------------------------------------------------------------------------------
@@ -137,6 +165,13 @@ static le_mem_PoolRef_t AudioConnectorPool;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * List for all connector objects
+ */
+//--------------------------------------------------------------------------------------------------
+static le_dls_List_t  AllConnectorList=LE_DLS_LIST_INIT;
+
+//--------------------------------------------------------------------------------------------------
+/**
  * List for all HashMap objects
  */
 //--------------------------------------------------------------------------------------------------
@@ -148,6 +183,13 @@ static le_dls_List_t    AudioHashMapList;
  */
 //--------------------------------------------------------------------------------------------------
 static le_mem_PoolRef_t AudioHashMapPool;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The memory pool for stream reference node objects (used by DTMF add/remove handler functions)
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mem_PoolRef_t StreamRefNodePool;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -605,6 +647,8 @@ static le_result_t StopThreadsOnInputConnector
             {
                 if (currentConnectorPtr->captureThreadIsStarted)
                 {
+                    LE_DEBUG("Found currentStreamPtr->audioInterface.%d, return BUSY",
+                             currentStreamPtr->audioInterface);
                     return LE_BUSY;
                 }
             }
@@ -954,14 +998,6 @@ static void DestructStream
 
     DeleteAllConnectorPathsFromStream (streamPtr);
 
-    if (streamPtr->audioInterface == PA_AUDIO_IF_CODEC_MIC)
-    {
-        pa_audio_DisableCodecInput(streamPtr->audioInterface);
-    }
-    if (streamPtr->audioInterface == PA_AUDIO_IF_CODEC_SPEAKER)
-    {
-        pa_audio_DisableCodecOutput(streamPtr->audioInterface);
-    }
 
     le_hashmap_RemoveAll(streamPtr->connectorList);
     ReleaseHashMapElement(streamPtr->connectorList);
@@ -1011,8 +1047,8 @@ static void DestructStream
         case PA_AUDIO_IF_DSP_FRONTEND_REM_FILE_REC:
             FileRecStreamPtr = NULL;
             break;
-        case PA_AUDIO_IF_FILE_PLAYING:
-        case PA_AUDIO_IF_END:
+        case PA_AUDIO_NUM_INTERFACES:
+        case PA_AUDIO_IF_DSP_BACKEND_DTMF_RX:
             break;
     }
 }
@@ -1037,6 +1073,70 @@ static void DestructConnector
 
     ReleaseHashMapElement(connectorPtr->streamInList);
     ReleaseHashMapElement(connectorPtr->streamOutList);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The first-layer DTMF Event Handler.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void FirstLayerDtmfDetectorHandler
+(
+    void* reportPtr,
+    void* secondLayerHandlerFunc
+)
+{
+    le_audio_StreamRef_t*              streamRef = reportPtr;
+    le_audio_DtmfDetectorHandlerFunc_t clientHandlerFunc = secondLayerHandlerFunc;
+
+    le_audio_Stream_t*  streamPtr = le_ref_Lookup(AudioStreamRefMap, *streamRef);
+    if (streamPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid stream reference (%p) provided!", *streamRef);
+        return;
+    }
+
+    LE_DEBUG("[%c] DTMF detected!", streamPtr->dtmfChar);
+
+    clientHandlerFunc(*streamRef, streamPtr->dtmfChar, le_event_GetContextPtr());
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Internal Dtmf detector Handler.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void DtmfDetectorHandler
+(
+    char  dtmf
+)
+{
+    void*            streamRefTmp = NULL;
+    StreamRefNode_t* nodePtr;
+    le_dls_Link_t*   linkPtr;
+
+    LE_DEBUG("[%c] DTMF detected!", dtmf);
+
+    // Report DTMF to all registered handlers
+    linkPtr = le_dls_Peek(&(ModemVoiceRxStreamPtr->streamRefWithDtmfHdlrList));
+    while (linkPtr != NULL)
+    {
+        nodePtr = CONTAINER_OF(linkPtr, StreamRefNode_t, link);
+        LE_DEBUG("Found streamRef.%p", nodePtr->streamRef);
+        if(nodePtr->streamRef != streamRefTmp)
+        {
+            // Notify only once on one streamRef
+            ModemVoiceRxStreamPtr->dtmfChar=dtmf;
+
+            le_event_Report(ModemVoiceRxStreamPtr->dtmfDetectionEventId,
+                            &nodePtr->streamRef,
+                            sizeof(nodePtr->streamRef));
+            streamRefTmp = nodePtr->streamRef;
+        }
+        linkPtr = le_dls_PeekNext(&ModemVoiceRxStreamPtr->streamRefWithDtmfHdlrList, linkPtr);
+    }
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1073,6 +1173,12 @@ COMPONENT_INIT
 
     // Create the Safe Reference Map to use for Connector object Safe References.
     AudioConnectorRefMap = le_ref_CreateMap("AudioConMap", MAX_NUM_OF_CONNECTOR);
+    // Allocate the stream reference nodes pool (used by DTMF add/remove handler functions).
+    StreamRefNodePool = le_mem_CreatePool("StreamRefNodePool", sizeof(StreamRefNode_t));
+
+    // Register a handler function for Call Event indications
+    LE_FATAL_IF((pa_audio_SetDtmfDetectorHandler(DtmfDetectorHandler) != LE_OK),
+                "Add pa_audio_SetDtmfDetectorHandler failed");
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1096,13 +1202,6 @@ le_audio_StreamRef_t le_audio_OpenMic
         MicStreamPtr->audioInterface = PA_AUDIO_IF_CODEC_MIC;
         MicStreamPtr->isInput = true;
 
-        if ( pa_audio_EnableCodecInput(PA_AUDIO_IF_CODEC_MIC) != LE_OK )
-        {
-            LE_WARN("Cannot open Microphone");
-            le_mem_Release(MicStreamPtr);
-            MicStreamPtr = NULL;
-            return NULL;
-        }
     }
     else
     {
@@ -1135,13 +1234,6 @@ le_audio_StreamRef_t le_audio_OpenSpeaker
         SpeakerStreamPtr->audioInterface = PA_AUDIO_IF_CODEC_SPEAKER;
         SpeakerStreamPtr->isInput = false;
 
-        if ( pa_audio_EnableCodecOutput(PA_AUDIO_IF_CODEC_SPEAKER) != LE_OK )
-        {
-            LE_WARN("Cannot open Speaker");
-            le_mem_Release(SpeakerStreamPtr);
-            SpeakerStreamPtr = NULL;
-            return NULL;
-        }
     }
     else
     {
@@ -1460,7 +1552,7 @@ le_audio_StreamRef_t le_audio_OpenFileRecording
         le_mem_AddRef(FileRecStreamPtr);
     }
 
-    LE_DEBUG("Open the audio stream for local file recording (%p)", FileRecStreamPtr);
+    LE_DEBUG("Open the audio stream for local file recording (%p), fd.%d", FileRecStreamPtr, fd);
     // Create and return a Safe Reference for this stream object.
     return le_ref_CreateRef(AudioStreamRefMap, FileRecStreamPtr);
 }
@@ -1485,6 +1577,9 @@ le_audio_StreamRef_t le_audio_OpenModemVoiceRx
 
         ModemVoiceRxStreamPtr->audioInterface = PA_AUDIO_IF_DSP_BACKEND_MODEM_VOICE_RX;
         ModemVoiceRxStreamPtr->isInput = true;
+        ModemVoiceRxStreamPtr->streamRefWithDtmfHdlrList=LE_DLS_LIST_INIT;
+        ModemVoiceRxStreamPtr->dtmfDetectionEventId = le_event_CreateId("DtmfMdmVoiceRx",
+                                                                        sizeof(le_audio_StreamRef_t));
     }
     else
     {
@@ -1532,11 +1627,10 @@ le_audio_StreamRef_t le_audio_OpenModemVoiceTx
  * Get the audio format of an input or output stream.
  *
  * @return LE_FAULT         The function failed.
- * @return LE_BAD_PARAMETER The audio stream reference is invalid.
  * @return LE_OK            The function succeeded.
  *
- * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
- *       function will not return.
+ * @note The process exits, if an invalid audio stream reference is given or if the formatPtr
+ *       pointer is NULL.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_audio_GetFormat
@@ -1552,13 +1646,13 @@ le_result_t le_audio_GetFormat
     if (streamPtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", streamRef);
-        return LE_BAD_PARAMETER;
+        return LE_FAULT;
     }
 
     if (formatPtr == NULL)
     {
         LE_KILL_CLIENT("formatPtr is NULL !");
-        return LE_BAD_PARAMETER;
+        return LE_FAULT;
     }
 
     return (le_utf8_Copy(formatPtr, streamPtr->format, len, NULL));
@@ -1621,7 +1715,7 @@ le_result_t le_audio_SetGain
         return LE_BAD_PARAMETER;
     }
 
-    if ((gain < 0) || (gain > 100))
+    if (gain > 100)
     {
         return LE_OUT_OF_RANGE;
     }
@@ -1986,4 +2080,526 @@ void le_audio_Disconnect
         StopThreadsOnOutputConnector();
     }
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * le_audio_DtmfDetectorHandler handler ADD function
+ */
+//--------------------------------------------------------------------------------------------------
+le_audio_DtmfDetectorHandlerRef_t le_audio_AddDtmfDetectorHandler
+(
+    le_audio_StreamRef_t               streamRef,    ///< [IN] The audio stream reference.
+    le_audio_DtmfDetectorHandlerFunc_t handlerPtr,   ///< [IN] The DTMF detector handler function.
+    void*                              contextPtr    ///< [IN] The handler's context.
+)
+{
+    le_event_HandlerRef_t  handlerRef;
+    le_audio_Stream_t*     streamPtr = le_ref_Lookup(AudioStreamRefMap, streamRef);
+
+    if (streamPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid stream reference (%p) provided!", streamRef);
+        return NULL;
+    }
+    if (handlerPtr == NULL)
+    {
+        LE_KILL_CLIENT("Handler function is NULL !");
+        return NULL;
+    }
+
+    if (streamPtr->audioInterface != PA_AUDIO_IF_DSP_BACKEND_MODEM_VOICE_RX)
+    {
+        LE_ERROR("Interface not yet supported!");
+        return NULL;
+    }
+    else
+    {
+        LE_DEBUG("Add DTMF detector handler on interface %d.", streamPtr->audioInterface);
+
+        handlerRef = le_event_AddLayeredHandler("DtmfDecoderHandler",
+                                                streamPtr->dtmfDetectionEventId,
+                                                FirstLayerDtmfDetectorHandler,
+                                                (le_event_HandlerFunc_t)handlerPtr);
+
+        le_event_SetContextPtr(handlerRef, contextPtr);
+
+        // if list is void that means it is the first added handler
+        if (le_dls_Peek(&(ModemVoiceRxStreamPtr->streamRefWithDtmfHdlrList)) == NULL)
+        {
+            pa_audio_StartDtmfDecoder(PA_AUDIO_IF_DSP_BACKEND_DTMF_RX);
+        }
+
+        // Associate the handlerRef to the streamRef
+        StreamRefNode_t* streamRefNodePtr = le_mem_ForceAlloc(StreamRefNodePool);
+        streamRefNodePtr->streamRef = streamRef;
+        streamRefNodePtr->handlerRef = handlerRef;
+        streamRefNodePtr->link = LE_DLS_LINK_INIT;
+        le_dls_Queue(&(ModemVoiceRxStreamPtr->streamRefWithDtmfHdlrList),&(streamRefNodePtr->link));
+
+        return (le_audio_DtmfDetectorHandlerRef_t)(handlerRef);
+
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * le_audio_DtmfDetectorHandler handler REMOVE function
+ */
+//--------------------------------------------------------------------------------------------------
+void le_audio_RemoveDtmfDetectorHandler
+(
+    le_audio_DtmfDetectorHandlerRef_t addHandlerRef ///< [IN]
+)
+{
+    StreamRefNode_t* nodePtr;
+    le_dls_Link_t*   linkPtr;
+
+    // Remove corresponding node from the streamRefWithDtmfHdlrList
+    linkPtr = le_dls_Peek(&(ModemVoiceRxStreamPtr->streamRefWithDtmfHdlrList));
+    while (linkPtr != NULL)
+    {
+        nodePtr = CONTAINER_OF(linkPtr, StreamRefNode_t, link);
+        if (nodePtr->handlerRef == (le_event_HandlerRef_t)addHandlerRef)
+        {
+            le_dls_Remove(&(ModemVoiceRxStreamPtr->streamRefWithDtmfHdlrList), &nodePtr->link);
+            le_mem_Release(nodePtr);
+            break;
+        }
+        linkPtr = le_dls_PeekNext(&ModemVoiceRxStreamPtr->streamRefWithDtmfHdlrList, linkPtr);
+    }
+    // if No more DTMF handlers (list is void), stop DTMF decoder
+    if (le_dls_Peek(&(ModemVoiceRxStreamPtr->streamRefWithDtmfHdlrList)) == NULL)
+    {
+        pa_audio_StopDtmfDecoder(PA_AUDIO_IF_DSP_BACKEND_DTMF_RX);
+    }
+
+    // TODO: do the same loop on the other input interfaces
+
+    le_event_RemoveHandler((le_event_HandlerRef_t)addHandlerRef);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to enable the Noise Suppressor.
+ *
+ * @return LE_FAULT         Function failed.
+ * @return LE_OK            Function succeeded.
+ *
+ * @note The process exits, if an invalid audio stream reference is given.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_audio_EnableNoiseSuppressor
+(
+    le_audio_StreamRef_t    streamRef       ///< [IN] The audio stream reference.
+)
+{
+    le_audio_Stream_t* streamPtr = le_ref_Lookup(AudioStreamRefMap, streamRef);
+
+    if (streamPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", streamRef);
+        return LE_FAULT;
+    }
+
+    return pa_audio_NoiseSuppressorSwitch(streamPtr->audioInterface, LE_ON);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to disable the Noise Suppressor.
+ *
+ * @return LE_FAULT         Function failed.
+ * @return LE_OK            Function succeeded.
+ *
+ * @note The process exits, if an invalid audio stream reference is given.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_audio_DisableNoiseSuppressor
+(
+    le_audio_StreamRef_t    streamRef       ///< [IN] The audio stream reference.
+)
+{
+    le_audio_Stream_t* streamPtr = le_ref_Lookup(AudioStreamRefMap, streamRef);
+
+    if (streamPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", streamRef);
+        return LE_FAULT;
+    }
+
+    return pa_audio_NoiseSuppressorSwitch(streamPtr->audioInterface, LE_OFF);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to enable the Echo Canceller.
+ *
+ * @return LE_FAULT         Function failed.
+ * @return LE_OK            Function succeeded.
+ *
+ * @note The process exits, if an invalid audio stream reference is given.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_audio_EnableEchoCanceller
+(
+    le_audio_StreamRef_t    streamRef       ///< [IN] The audio stream reference.
+)
+{
+    le_audio_Stream_t* streamPtr = le_ref_Lookup(AudioStreamRefMap, streamRef);
+
+    if (streamPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", streamRef);
+        return LE_FAULT;
+    }
+
+    return pa_audio_EchoCancellerSwitch(streamPtr->audioInterface, LE_ON);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to disable the Echo Canceller.
+ *
+ * @return LE_FAULT         Function failed.
+ * @return LE_OK            Function succeeded.
+ *
+ * @note The process exits, if an invalid audio stream reference is given.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_audio_DisableEchoCanceller
+(
+    le_audio_StreamRef_t    streamRef       ///< [IN] The audio stream reference.
+)
+{
+    le_audio_Stream_t* streamPtr = le_ref_Lookup(AudioStreamRefMap, streamRef);
+
+    if (streamPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", streamRef);
+        return LE_FAULT;
+    }
+
+    return pa_audio_EchoCancellerSwitch(streamPtr->audioInterface, LE_OFF);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to enable the FIR (Finite Impulse Response) filter.
+ *
+ * @return LE_FAULT         Function failed.
+ * @return LE_OK            Function succeeded.
+ *
+ * @note The process exits, if an invalid audio stream reference is given.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_audio_EnableFirFilter
+(
+    le_audio_StreamRef_t    streamRef       ///< [IN] The audio stream reference.
+)
+{
+    le_audio_Stream_t* streamPtr = le_ref_Lookup(AudioStreamRefMap, streamRef);
+
+    if (streamPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", streamRef);
+        return LE_FAULT;
+    }
+
+    return pa_audio_FirFilterSwitch(streamPtr->audioInterface, LE_ON);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to disable the FIR (Finite Impulse Response) filter.
+ *
+ * @return LE_FAULT         Function failed.
+ * @return LE_OK            Function succeeded.
+ *
+ * @note The process exits, if an invalid audio stream reference is given.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_audio_DisableFirFilter
+(
+    le_audio_StreamRef_t    streamRef       ///< [IN] The audio stream reference.
+)
+{
+    le_audio_Stream_t* streamPtr = le_ref_Lookup(AudioStreamRefMap, streamRef);
+
+    if (streamPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", streamRef);
+        return LE_FAULT;
+    }
+
+    return pa_audio_FirFilterSwitch(streamPtr->audioInterface, LE_OFF);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to enable the FIR (Finite Impulse Response) filter.
+ *
+ * @return LE_FAULT         Function failed.
+ * @return LE_OK            Function succeeded.
+ *
+ * @note The process exits, if an invalid audio stream reference is given.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_audio_EnableIirFilter
+(
+    le_audio_StreamRef_t    streamRef       ///< [IN] The audio stream reference.
+)
+{
+    le_audio_Stream_t* streamPtr = le_ref_Lookup(AudioStreamRefMap, streamRef);
+
+    if (streamPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", streamRef);
+        return LE_FAULT;
+    }
+
+    return pa_audio_IirFilterSwitch(streamPtr->audioInterface, LE_ON);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to disable the IIR (Infinite Impulse Response) filter.
+ *
+ * @return LE_FAULT         Function failed.
+ * @return LE_OK            Function succeeded.
+ *
+ * @note The process exits, if an invalid audio stream reference is given.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_audio_DisableIirFilter
+(
+    le_audio_StreamRef_t    streamRef       ///< [IN] The audio stream reference.
+)
+{
+    le_audio_Stream_t* streamPtr = le_ref_Lookup(AudioStreamRefMap, streamRef);
+
+    if (streamPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", streamRef);
+        return LE_FAULT;
+    }
+
+    return pa_audio_IirFilterSwitch(streamPtr->audioInterface, LE_OFF);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to enable the automatic gain control on the selected audio stream.
+ *
+ * @return LE_FAULT         Function failed.
+ * @return LE_OK            Function succeeded.
+ *
+ * @note The process exits, if an invalid audio stream reference is given.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_audio_EnableAutomaticGainControl
+(
+    le_audio_StreamRef_t    streamRef       ///< [IN] The audio stream reference.
+)
+{
+    le_audio_Stream_t* streamPtr = le_ref_Lookup(AudioStreamRefMap, streamRef);
+
+    if (streamPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", streamRef);
+        return LE_FAULT;
+    }
+
+    return pa_audio_AutomaticGainControlSwitch(streamPtr->audioInterface, LE_ON);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to disable the automatic gain control on the selected audio stream.
+ *
+ * @return LE_FAULT         Function failed.
+ * @return LE_OK            Function succeeded.
+ *
+ * @note The process exits, if an invalid audio stream reference is given.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_audio_DisableAutomaticGainControl
+(
+    le_audio_StreamRef_t    streamRef       ///< [IN] The audio stream reference.
+)
+{
+    le_audio_Stream_t* streamPtr = le_ref_Lookup(AudioStreamRefMap, streamRef);
+
+    if (streamPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", streamRef);
+        return LE_FAULT;
+    }
+
+    return pa_audio_AutomaticGainControlSwitch(streamPtr->audioInterface, LE_OFF);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to set the audio profile.
+ *
+ * @return LE_FAULT         Function failed.
+ * @return LE_OK            Function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_audio_SetProfile
+(
+    le_audio_Profile_t profile   ///< [IN] The audio profile.
+)
+{
+    return pa_audio_SetProfile(profile);
+}
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the audio profile in use.
+ *
+ * @return LE_FAULT         Function failed.
+ * @return LE_OK            Function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_audio_GetProfile
+(
+    le_audio_Profile_t* profilePtr  ///< [OUT] The audio profile.
+)
+{
+    return pa_audio_GetProfile(profilePtr);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Configure the PCM Sampling Rate.
+ *
+ * @return LE_FAULT         Function failed.
+ * @return LE_OUT_OF_RANGE  Your platform does not support the setting's value.
+ * @return LE_BUSY          The PCM interface is already active.
+ * @return LE_OK            Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_audio_SetPcmSamplingRate
+(
+    uint32_t    rate         ///< [IN] Sampling rate in Hz.
+)
+{
+    return pa_audio_SetPcmSamplingRate(rate);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Configure the PCM Sampling Resolution.
+ *
+ * @return LE_FAULT         Function failed.
+ * @return LE_OUT_OF_RANGE  Your platform does not support the setting's value.
+ * @return LE_BUSY          The PCM interface is already active.
+ * @return LE_OK            Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_audio_SetPcmSamplingResolution
+(
+    uint32_t  bitsPerSample   ///< [IN] Sampling resolution (bits/sample).
+)
+{
+    return pa_audio_SetPcmSamplingResolution(bitsPerSample);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Configure the PCM Companding.
+ *
+ * @return LE_FAULT         Function failed.
+ * @return LE_OUT_OF_RANGE  Your platform does not support the setting's value.
+ * @return LE_BUSY          The PCM interface is already active.
+ * @return LE_OK            Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_audio_SetPcmCompanding
+(
+    le_audio_Companding_t companding   ///< [IN] Companding.
+)
+{
+    return pa_audio_SetPcmCompanding(companding);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Retrieve the PCM Sampling Rate.
+ *
+ * @return The sampling rate in Hz.
+ */
+//--------------------------------------------------------------------------------------------------
+uint32_t le_audio_GetPcmSamplingRate
+(
+    void
+)
+{
+    return pa_audio_GetPcmSamplingRate();
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Retrieve the PCM Sampling Resolution.
+ *
+ * @return The sampling resolution (bits/sample).
+ */
+//--------------------------------------------------------------------------------------------------
+uint32_t le_audio_GetPcmSamplingResolution
+(
+    void
+)
+{
+    return pa_audio_GetPcmSamplingResolution();
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Retrieve the PCM Companding.
+ *
+ * @return The PCM companding.
+ */
+//--------------------------------------------------------------------------------------------------
+le_audio_Companding_t le_audio_GetPcmCompanding
+(
+    void
+)
+{
+    return pa_audio_GetPcmCompanding();
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the default PCM time slot used on the current platform.
+ *
+ * @return the time slot number.
+ */
+//--------------------------------------------------------------------------------------------------
+uint32_t le_audio_GetDefaultPcmTimeSlot
+(
+    void
+)
+{
+    return pa_audio_GetDefaultPcmTimeSlot();
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the default I2S channel mode used on the current platform.
+ *
+ * @return the I2S channel mode.
+ */
+//--------------------------------------------------------------------------------------------------
+le_audio_I2SChannel_t le_audio_GetDefaultI2sMode
+(
+    void
+)
+{
+    return pa_audio_GetDefaultI2sMode();
+}
+
 

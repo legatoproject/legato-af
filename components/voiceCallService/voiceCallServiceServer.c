@@ -144,6 +144,14 @@ static le_mem_PoolRef_t VoiceCallPool = NULL;
 static le_hashmap_Ref_t VoiceCallCtxMap;
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Safe Reference for Mcc Call Handler reference and counter.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mcc_profile_CallEventHandlerRef_t MccCallEventHandlerRef;
+static uint32_t MccCallEventHandlerRefCount;
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -497,6 +505,10 @@ static void* VoiceCallThread
 {
     LE_INFO("Voice Call Thread started");
 
+    // Connect to the services required by this thread
+    le_mcc_call_ConnectService();
+    le_mcc_profile_ConnectService();
+
     // Register for command events
     le_event_AddHandler("VoiceCallProcessCommand", CommandEvent, ProcessCommand);
 
@@ -569,6 +581,15 @@ le_voicecall_StateHandlerRef_t le_voicecall_AddStateHandler
 
     le_event_SetContextPtr(handlerRef, contextPtr);
 
+    if ( MccCallEventHandlerRef == NULL)
+    {
+        MccCallEventHandlerRef = le_mcc_profile_AddCallEventHandler(ObjRef,
+                        VoiceSessionStateHandler, (void *) ObjRef);
+        LE_DEBUG("Mcc Call Event handler added");
+    }
+
+    MccCallEventHandlerRefCount++;
+
     return (le_voicecall_StateHandlerRef_t) (handlerRef);
 }
 
@@ -585,6 +606,15 @@ void le_voicecall_RemoveStateHandler
 )
 {
     le_event_RemoveHandler((le_event_HandlerRef_t) addHandlerRef);
+
+    MccCallEventHandlerRefCount--;
+
+    if (MccCallEventHandlerRefCount == 0)
+    {
+        le_mcc_profile_RemoveCallEventHandler(MccCallEventHandlerRef);
+        MccCallEventHandlerRef = NULL;
+        LE_DEBUG("Mcc Call Event handler removed");
+    }
 }
 
 
@@ -894,7 +924,6 @@ le_audio_StreamRef_t le_voicecall_GetTxAudioStream
 }
 
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  *  Server Init
@@ -902,6 +931,10 @@ le_audio_StreamRef_t le_voicecall_GetTxAudioStream
 //--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
+    // Init the Mcc Call Handler reference and handler counter.
+    MccCallEventHandlerRef = NULL;
+    MccCallEventHandlerRefCount = 0;
+
     // Create Pool to save Call contexts.
     VoiceCallPool = le_mem_CreatePool("CallServicePool", sizeof(VoiceCallContext_t));
 
@@ -931,11 +964,8 @@ COMPONENT_INIT
         LE_KILL_CLIENT("Unable to get the Call profile reference");
     }
 
-    le_mcc_profile_AddCallEventHandler(ObjRef, VoiceSessionStateHandler, (void *) ObjRef);
-
     // Start the voice call thread
     le_thread_Start(le_thread_Create("Voice Call Thread", VoiceCallThread, NULL));
 
     LE_INFO("Voice Call Service is ready");
 }
-

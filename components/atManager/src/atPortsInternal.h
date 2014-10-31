@@ -14,7 +14,7 @@
  *
  */
 //--------------------------------------------------------------------------------------------------
-inline void atports_SetInterface
+void atports_SetInterface
 (
     atports_t    name,
     atmgr_Ref_t  interfaceRef

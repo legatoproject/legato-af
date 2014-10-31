@@ -1,0 +1,13 @@
+sources:
+{
+    pa_ecall_stub.c
+}
+
+requires:
+{
+    api:
+    {
+        le_mdmDefs.api  [types-only]
+        le_ecall.api  [types-only]
+    }
+}

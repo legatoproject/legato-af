@@ -2,9 +2,7 @@
 /**
  *  Cellular Network Services Server
  *
- *  Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to
- *  license.
- *
+ *  Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
  */
 // -------------------------------------------------------------------------------------------------
 
@@ -477,6 +475,11 @@ static void* CellNetThread
     void* contextPtr
 )
 {
+    // Connect to the services required by this thread
+    le_cfg_ConnectService();
+    le_mrc_ConnectService();
+    le_sim_ConnectService();
+
     LE_INFO("CellNet Thread Started");
 
     // Register for command events

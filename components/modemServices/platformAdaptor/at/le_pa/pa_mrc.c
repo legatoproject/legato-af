@@ -531,16 +531,16 @@ le_result_t pa_mrc_GetNetworkRegState
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function gets the Signal Quality information.
+ * This function gets the Signal Strength information.
  *
  * @return LE_BAD_PARAMETER Bad parameter passed to the function
- * @return LE_OUT_OF_RANGE  The signal quality values are not known or not detectable.
+ * @return LE_OUT_OF_RANGE  The signal strength values are not known or not detectable.
  * @return LE_NOT_POSSIBLE  The function failed.
  * @return LE_TIMEOUT       No response was received.
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mrc_GetSignalQuality
+le_result_t pa_mrc_GetSignalStrength
 (
     int32_t*          rssiPtr    ///< [OUT] The received signal strength (in dBm).
 )
@@ -606,17 +606,17 @@ le_result_t pa_mrc_GetSignalQuality
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function must be called to get the Home Network Name information.
+ * This function must be called to get the current network name information.
  *
  * @return
  *      - LE_OK on success
- *      - LE_OVERFLOW if the Home Network Name can't fit in nameStr
+ *      - LE_OVERFLOW if the current network name can't fit in nameStr
  *      - LE_NOT_POSSIBLE on any other failure
  * @TODO
  *      implementation
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mrc_GetHomeNetworkName
+le_result_t pa_mrc_GetCurrentNetworkName
 (
     char       *nameStr,               ///< [OUT] the home network Name
     size_t      nameStrSize            ///< [IN] the nameStr size
@@ -656,7 +656,7 @@ void pa_mrc_DeleteScanInformation
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_mrc_PerformNetworkScan
 (
-    le_mrc_Rat_t        networkMask,           ///< [IN] The network mask
+    le_mrc_RatBitMask_t ratMask,               ///< [IN] The network mask
     pa_mrc_ScanType_t   scanType,              ///< [IN] the scan type
     le_dls_List_t      *scanInformationListPtr ///< [OUT] list of pa_mrc_ScanInformation_t
 )
@@ -700,9 +700,9 @@ le_result_t pa_mrc_GetScanInformationName
 le_result_t pa_mrc_AddPreferredOperators
 (
     le_dls_List_t      *PreferredOperatorsListPtr,   ///< [OUT] List of preferred network operator
-    char                mcc[LE_MRC_MCC_BYTES],      ///< [IN] Mobile Country Code
-    char                mnc[LE_MRC_MNC_BYTES],      ///< [IN] Mobile Network Code
-    le_mrc_Rat_t        ratMask                     ///< [IN] Radio Access Technology mask
+    char                mcc[LE_MRC_MCC_BYTES],       ///< [IN] Mobile Country Code
+    char                mnc[LE_MRC_MNC_BYTES],       ///< [IN] Mobile Network Code
+    le_mrc_RatBitMask_t ratMask                      ///< [IN] Radio Access Technology mask
 )
 {
     return LE_NOT_POSSIBLE;
@@ -784,7 +784,7 @@ le_result_t pa_mrc_SetAutomaticNetworkRegistration
 /**
  * This function gets the Radio Access Technology.
  *
- * @return LE_FAULT The function failed to get the Signal Quality information.
+ * @return LE_FAULT The function failed to get the Signal strength information.
  * @return LE_OK    The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
@@ -808,7 +808,7 @@ le_result_t pa_mrc_GetRadioAccessTechInUse
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_mrc_SetRatPreference
 (
-    uint8_t rats ///< [IN] A bit mask to set the Radio Access Technology preference.
+    le_mrc_RatBitMask_t ratMask ///< [IN] A bit mask to set the Radio Access Technology preference.
 )
 {
     // TODO: implement this function

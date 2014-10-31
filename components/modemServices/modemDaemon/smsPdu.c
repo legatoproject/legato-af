@@ -5,7 +5,25 @@
  * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
  */
 
+#include <time.h>
+#include "legato.h"
 #include "smsPdu.h"
+#include "cdmaPdu.h"
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Trace reference used for controlling tracing in this module.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_log_TraceRef_t TraceRef;
+
+/// Macro used to generate trace output in this module.
+/// Takes the same parameters as LE_DEBUG() et. al.
+#define TRACE(...) LE_TRACE(TraceRef, ##__VA_ARGS__)
+
+/// Macro used to query current trace state in this module
+#define IS_TRACE_ENABLED LE_IS_TRACE_ENABLED(TraceRef)
+
 
 /* Define Non-Printable Characters as a question mark */
 #define NPC7    63
@@ -14,6 +32,9 @@
 #ifndef min
 # define min(a, b) ((a)<(b) ? (a) : (b))
 #endif
+
+/* C.S0005-D v2.0 Table 2.7.1.3.2.4-4. Representation of DTMF Digits */
+static const char *DtmfChars = "D1234567890*#ABC";
 
 /**
  * Some terminal do not include the SMSC information in the PDU format string.
@@ -196,7 +217,7 @@ const uint8_t Ascii8to7[] = {
     NPC7,       /*   157                                              */
     NPC7,       /*   158                                              */
     89,         /*   159      uppercase Y dieresis or umlaut          */
-    32,         /*   160      non-breaking space                      */
+    32,         /*   160      non-breaking space                      */
     64,         /*   161    ¡ inverted exclamation mark               */
     99,         /*   162    ¢ cent sign                               */
     1,          /*   163    £ pound sterling sign                     */
@@ -451,6 +472,38 @@ const uint8_t Ascii7to8[] = {
 
 };
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Dump the PDU
+ */
+//--------------------------------------------------------------------------------------------------
+static void DumpPdu
+(
+    const char      *label,     ///< [IN] label
+    const uint8_t   *buffer,    ///< [IN] buffer
+    size_t           bufferSize ///< [IN] buffer size
+)
+{
+    if ( IS_TRACE_ENABLED )
+    {
+        uint32_t index = 0, i = 0;
+        char output[65] = {0};
+
+        LE_DEBUG("%s:",label);
+        for (i=0;i<bufferSize;i++)
+        {
+            index += sprintf(&output[index],"%02X",buffer[i]);
+            if ( !((i+1)%32) )
+            {
+                LE_DEBUG("%s",output);
+                index = 0;
+            }
+        }
+        LE_DEBUG("%s",output);
+    }
+}
+
+
 static inline unsigned int Read7Bits
 (
     const uint8_t* bufferPtr,
@@ -476,6 +529,7 @@ static inline void Write7Bits
     val &= 0x7F;
     uint8_t idx = pos/8;
 
+
     if (!(pos&7)) {
         bufferPtr[idx] = val;
     }
@@ -488,6 +542,38 @@ static inline void Write7Bits
     }
 }
 
+static inline unsigned int ReadCdma7Bits
+(
+    const uint8_t* bufferPtr,
+    uint32_t       pos
+)
+{
+    uint8_t idx = pos/8;
+
+    return (((bufferPtr[idx]<<(pos&7))&0xFF)|(bufferPtr[idx+1]>>(8-(pos&7))))>>1;
+}
+
+static inline void WriteCdma7Bits
+(
+    uint8_t* bufferPtr,
+    uint8_t  val,
+    uint32_t pos
+)
+{
+    val &= 0x7F;
+    uint8_t idx = pos/8;
+
+    if (!(pos&7)) {
+        bufferPtr[idx] = val << 1;
+    }
+    else if ((pos&7) == 1) {
+        bufferPtr[idx] = bufferPtr[idx] | val;
+    }
+    else {
+        bufferPtr[idx] = bufferPtr[idx] | (val>>((pos&7)-1));
+        bufferPtr[idx+1] = ((val<<(8-((pos&7)-1)))&0xff);
+    }
+}
 
 /**
  * Convert an ascii array into a 7bits array
@@ -792,16 +878,16 @@ static smsPdu_Encoding_t DetermineEncoding
  * Decode the content of dataPtr.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t smsPdu_Decode
+static le_result_t DecodeGsmPdu
 (
-    const uint8_t*    dataPtr,  ///< [IN] PDU data to decode
-    pa_sms_Message_t* smsPtr    ///< [OUT] Buffer to store decoded data
+    const uint8_t    *dataPtr,  ///< [IN] PDU data to decode
+    pa_sms_Message_t *smsPtr    ///< [OUT] Buffer to store decoded data
 )
 {
     int pos = 0;
     uint8_t firstByte;
-    char address[LE_MDMDEFS_PHONE_NUM_MAX_LEN] = {0};
-    char timestamp[LE_SMS_TIMESTAMP_MAX_LEN] = {0};
+    char address[LE_MDMDEFS_PHONE_NUM_MAX_BYTES] = {0};
+    char timestamp[LE_SMS_TIMESTAMP_MAX_BYTES] = {0};
     uint8_t addressLen;
     uint8_t tp_dcs;
     uint8_t tp_udl;
@@ -821,9 +907,11 @@ le_result_t smsPdu_Decode
     {
         case 0x00:
             smsPtr->type = PA_SMS_SMS_DELIVER;
+            smsPtr->smsDeliver.option = PA_SMS_OPTIONMASK_NO_OPTION;
             break;
         case 0x01:
             smsPtr->type = PA_SMS_SMS_SUBMIT;
+            smsPtr->smsSubmit.option = PA_SMS_OPTIONMASK_NO_OPTION;
             break;
         default:
             LE_ERROR("Decoding this message is not supported.");
@@ -845,7 +933,7 @@ le_result_t smsPdu_Decode
                     &dataPtr[pos],
                     (addressLen+1)>>1,
                     address,
-                    LE_MDMDEFS_PHONE_NUM_MAX_LEN);
+                    LE_MDMDEFS_PHONE_NUM_MAX_BYTES);
     }
 
     /* TP-PID: Protocol identifier (1 byte) */
@@ -861,7 +949,7 @@ le_result_t smsPdu_Decode
             &dataPtr[pos],
             7,
             timestamp,
-            LE_SMS_TIMESTAMP_MAX_LEN
+            LE_SMS_TIMESTAMP_MAX_BYTES
         );
     }
 
@@ -870,7 +958,7 @@ le_result_t smsPdu_Decode
 
     switch(encoding)
     {
-        case SMSPDU_GSM_7_BITS:
+        case SMSPDU_7_BITS:
         case SMSPDU_8_BITS:
             break;
         default:
@@ -906,7 +994,9 @@ le_result_t smsPdu_Decode
     {
         case PA_SMS_SMS_DELIVER:
             le_utf8_Copy(smsPtr->smsDeliver.oa, address, sizeof(smsPtr->smsDeliver.oa), NULL);
+            smsPtr->smsDeliver.option |= PA_SMS_OPTIONMASK_OA;
             le_utf8_Copy(smsPtr->smsDeliver.scts, timestamp, sizeof(smsPtr->smsDeliver.scts), NULL);
+            smsPtr->smsDeliver.option |= PA_SMS_OPTIONMASK_SCTS;
 
             destDataPtr = smsPtr->smsDeliver.data;
             destDataSize = sizeof(smsPtr->smsDeliver.data);
@@ -916,6 +1006,7 @@ le_result_t smsPdu_Decode
 
         case PA_SMS_SMS_SUBMIT:
             le_utf8_Copy(smsPtr->smsSubmit.da, address, sizeof(smsPtr->smsSubmit.da), NULL);
+            smsPtr->smsDeliver.option |= PA_SMS_OPTIONMASK_DA;
 
             destDataPtr = smsPtr->smsSubmit.data;
             destDataSize = sizeof(smsPtr->smsSubmit.data);
@@ -946,7 +1037,7 @@ le_result_t smsPdu_Decode
             }
             break;
 
-        case SMSPDU_GSM_7_BITS:
+        case SMSPDU_7_BITS:
             messageLen = (tp_udl*7 - tp_udhl*8) /7;
             if (messageLen <= 0) {
                 LE_ERROR("the message length %d is <0 ",messageLen);
@@ -979,7 +1070,7 @@ le_result_t smsPdu_Decode
  * Encode the content of messagePtr in PDU format.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t smsPdu_Encode
+static le_result_t EncodeGsmPdu
 (
     const uint8_t*      messagePtr,   ///< [IN] Data to encode
     size_t              length,       ///< [IN] Length of data
@@ -997,7 +1088,8 @@ le_result_t smsPdu_Encode
 
     if (length > maxSmsLength)
     {
-        LE_DEBUG("Message cannot be encoded, message with length > %d are not supported yet", maxSmsLength);
+        LE_DEBUG("Message cannot be encoded, message with length > %d are not supported yet",
+                 maxSmsLength);
         return LE_NOT_POSSIBLE;
     }
 
@@ -1032,9 +1124,9 @@ le_result_t smsPdu_Encode
 
     /* Prepare address */
     int addressLen = strlen(addressPtr);
-    if (addressLen > LE_MDMDEFS_PHONE_NUM_MAX_LEN) {
+    if (addressLen > LE_MDMDEFS_PHONE_NUM_MAX_BYTES) {
         LE_DEBUG("Address is too long %d. should be at max %d",
-                 addressLen, LE_MDMDEFS_PHONE_NUM_MAX_LEN-1);
+                 addressLen, LE_MDMDEFS_PHONE_NUM_MAX_BYTES-1);
         return LE_NOT_POSSIBLE;
     }
 
@@ -1054,7 +1146,7 @@ le_result_t smsPdu_Encode
     /* Prepare DCS */
     switch(encoding)
     {
-        case SMSPDU_GSM_7_BITS:
+        case SMSPDU_7_BITS: // GSM 7 bits encoding (GSM 03.38)
             tp_dcs = 0x00;
             break;
         case SMSPDU_8_BITS:
@@ -1097,7 +1189,10 @@ le_result_t smsPdu_Encode
             /* Type of address */
             WriteByte(pduPtr->data, pos++, addressToa);
             /* Number encoded */
-            pos += (ConvertPhoneNumberIntoBinary(addressPtr, &pduPtr->data[pos], LE_SMS_PDU_MAX_LEN-pos)+1) / 2;
+            pos += (ConvertPhoneNumberIntoBinary(addressPtr,
+                                                 &pduPtr->data[pos],
+                                                 LE_SMS_PDU_MAX_LEN-pos)
+                     +1) / 2;
         }
 
         if(messageType == PA_SMS_SMS_DELIVER)
@@ -1137,7 +1232,7 @@ le_result_t smsPdu_Encode
         /* TP-UD: User Data */
         switch(encoding)
         {
-            case SMSPDU_GSM_7_BITS:
+            case SMSPDU_7_BITS:
             {
                 uint8_t newMessageLen;
                 int size = Convert8BitsTo7Bits((const uint8_t*)messagePtr,
@@ -1183,4 +1278,1041 @@ le_result_t smsPdu_Encode
     }
 
     return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Decode the content of dataPtr.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t DecodeMessageGsm
+(
+    const uint8_t*    dataPtr,  ///< [IN] PDU data to decode
+    size_t            dataSize, ///< [IN] PDU data size
+    pa_sms_Message_t* smsPtr    ///< [OUT] Buffer to store decoded data
+)
+{
+    le_result_t result;
+
+    result = DecodeGsmPdu(dataPtr,smsPtr);
+
+    if (result != LE_OK)
+    {
+        LE_ERROR("Could not decode GSM PDU message");
+        return result;
+    }
+
+    return result;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Encode the content of dataPtr.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t EncodeMessageGsm
+(
+    const uint8_t*      messagePtr,   ///< [IN] Data to encode
+    size_t              length,       ///< [IN] Length of data
+    const char*         addressPtr,   ///< [IN] Phone Number
+    smsPdu_Encoding_t   encoding,     ///< [IN] Type of encoding to be used
+    pa_sms_MsgType_t    messageType,  ///< [IN] Message Type
+    pa_sms_Pdu_t*       pduPtr        ///< [OUT] Buffer for the encoded PDU
+)
+{
+    le_result_t result;
+
+    result = EncodeGsmPdu(messagePtr,length,addressPtr,encoding,messageType,pduPtr);
+
+    if (result != LE_OK)
+    {
+        LE_ERROR("Could not encode GSM PDU message");
+        return result;
+    }
+
+    return result;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Encode CDMA data in 7bits mode.
+ *
+ * @return LE_OK       Function success
+ * @return LE_OVERFLOW a7bitPtr is too small
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t EncodeCdma7BitsData
+(
+    const uint8_t *a8bitPtr,    ///< [IN] 8bits array to convert
+    int            a8bitPtrSize,///< [IN] size of 8bits byte conversion
+    uint8_t       *a7bitPtr,    ///< [OUT] 7bits array result
+    size_t         a7bitSize,   ///< [IN] 7bits array size
+    uint8_t       *a7bitsNumber ///< [OUT] number of char in 7bitsPtr
+)
+{
+    int read;
+    int write = 0;
+    int size = 0;
+
+    memset(a7bitPtr,0,a7bitSize);
+
+    for (read = 0; read < a8bitPtrSize; ++read)
+    {
+        if (size>a7bitSize)
+        {
+            return LE_OVERFLOW;
+        }
+
+        WriteCdma7Bits(a7bitPtr, a8bitPtr[read], write*7);
+        write++;
+
+        /* Number of 8 bit chars */
+        size = (write * 7);
+        size = (size % 8 != 0) ? (size/8 + 1) : (size/8);
+    }
+
+    /* Number of written chars */
+    *a7bitsNumber = write;
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Decode CDMA data in 7bits mode.
+ *
+ * @return LE_OK       Function success
+ * @return LE_OVERFLOW a8bitSize is too small
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t DecodeCdma7bitsData
+(
+    const uint8_t *a7bitPtr,     ///< [IN] 7bits array to convert
+    uint32_t       a7bitPtrSize, ///< [IN] number of 7bits byte convertion
+    uint8_t       *a8bitPtr,     ///< [OUT] 8bits array restul
+    size_t         a8bitSize,    ///< [IN] 8bits array size.
+    uint32_t      *a8bitNumber   ///< [OUT] number of char written
+)
+{
+    int read;
+    int write;
+
+    memset(a8bitPtr,0,a8bitSize);
+
+    for (read = 0, write = 0; read < a7bitPtrSize; read++, write++)
+    {
+        if (write < a8bitSize)
+        {
+            a8bitPtr[write] = ReadCdma7Bits(a7bitPtr, read*7);
+        }
+        else
+        {
+            return LE_OVERFLOW;
+        }
+    }
+
+    *a8bitNumber = write;
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Retrieved the Message type
+ *
+ * @return LE_OK        Function success
+ * @return LE_NOT_FOUND Message identifier is not present in CDMA message
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t GetCdmaMessageType
+(
+    const cdmaPdu_t         *cdmaMessage,   ///< [IN] cdma message
+    cdmaPdu_MessageType_t   *messageType    ///< [OUT] message type
+)
+{
+    if ( !(cdmaMessage->message.parameterMask & CDMAPDU_PARAMETERMASK_BEARER_DATA))
+    {
+        LE_INFO("No Bearer data in the message");
+        return LE_NOT_FOUND;
+    }
+
+    if (!(  cdmaMessage->message.bearerData.subParameterMask
+          & CDMAPDU_SUBPARAMETERMASK_MESSAGE_IDENTIFIER))
+    {
+        LE_INFO("No message identifier in the message");
+        return LE_NOT_FOUND;
+    }
+
+    *messageType = cdmaMessage->message.bearerData.messageIdentifier.messageType;
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Decode cdmaPdu_AddressParameter_t.
+ *
+ *
+ * @return LE_OK        function succeed
+ * @return LE_OVERFLOW  address is too small
+ * @return LE_FAULT     function failed
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t DecodeAddressParameter
+(
+    const cdmaPdu_AddressParameter_t *addressParameter,   ///< [IN] the address parameter
+    char                             *address,            ///< [OUT] address converted
+    size_t                            addressSize         ///< [IN] size of address
+)
+{
+    uint32_t i;
+    uint32_t numFields = addressParameter->fieldsNumber;
+    bool digitMode = addressParameter->digitMode;
+    bool numberMode = addressParameter->numberMode;
+
+    if (numFields>addressSize)
+    {
+        LE_WARN("Buffer overflow will occur (%d>%zd)",numFields,addressSize);
+        return LE_OVERFLOW;
+    }
+
+    for(i = 0; i < numFields; i++)
+    {
+        if (digitMode == 0)
+        {
+            // DTMF encoding
+            uint8_t addrDigit;
+            if (i%2)
+            {
+                addrDigit = (addressParameter->chari[i/2]&0x0F);
+            }
+            else
+            {
+                addrDigit = (addressParameter->chari[i/2]&0xF0) >> 4;
+            }
+            if (addrDigit==0)
+            {
+                LE_WARN("%d digit code is not possible", addrDigit);
+                return LE_FAULT;
+            }
+            address[i] = DtmfChars[addrDigit];
+        }
+        else
+        {
+            uint8_t addrDigit = addressParameter->chari[i];
+            if (numberMode == 0)
+            {
+                // ASCII representation with with the most significant bit set set to 0
+                address[i] = addrDigit;
+            }
+            else
+            {
+                if (addressParameter->numberType == CDMAPDU_NUMBERINGTYPE_INTERNET_EMAIL_ADDRESS)
+                {
+                    // 8 bit ASCII
+                    address[i] = addrDigit;
+                }
+                else if (addressParameter->numberType == CDMAPDU_NUMBERINGTYPE_INTERNET_PROTOCOL)
+                {
+                    // Binary value of an octet of the address
+                    address[i] = addrDigit;
+                }
+                else
+                {
+                    LE_WARN("Do not support this number type %d", addressParameter->numberType);
+                    return LE_FAULT;
+                }
+            }
+        }
+    }
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Encode cdmaPdu_AddressParameter_t.
+ *
+ * @return LE_OK        function succeed
+ * @return LE_OVERFLOW  address is too long
+ * @return LE_FAULT     function failed
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t EncodeAddressParameter
+(
+    cdmaPdu_AddressParameter_t *addressParameter,   ///< [OUT] the address parameter
+    const char                 *address,            ///< [IN] address converted
+    size_t                      addressSize         ///< [IN] size of address
+)
+{
+    uint32_t addressIndex = 0, i;
+
+    // Hard coded
+    addressParameter->digitMode = false;
+    addressParameter->numberMode = false;
+
+    size_t phoneLength = addressSize;
+
+    if (address[0] == '+') // International phone number
+    {
+        phoneLength--;
+        addressIndex++;
+    }
+
+    if (addressParameter->digitMode)
+    {
+        if (phoneLength>sizeof(addressParameter->chari))
+        {
+            LE_DEBUG("Buffer overflow");
+            return LE_OVERFLOW;
+        }
+    }
+    else
+    {
+        if (phoneLength>sizeof(addressParameter->chari)/2)
+        {
+            LE_DEBUG("Buffer overflow");
+            return LE_OVERFLOW;
+        }
+    }
+
+    addressParameter->fieldsNumber = phoneLength;
+
+    for (i = 0; i < addressParameter->fieldsNumber; i++)
+    {
+        // Fill address
+        if (addressParameter->digitMode)
+        {
+            addressParameter->chari[i] = address[i+addressIndex];
+        }
+        else
+        {
+            int pos = strchr(DtmfChars,address[i+addressIndex]) - DtmfChars;
+            if (i%2)
+            {
+                addressParameter->chari[i/2] |= pos;
+            }
+            else
+            {
+                addressParameter->chari[i/2] |= pos << 4;
+            }
+        }
+    }
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Convert the Originating address
+ *
+ * @return LE_OK        Function success
+ * @return LE_OVERFLOW  address is too small
+ * @return LE_NOT_FOUND Originating address not present in CDMA message
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t GetCdmaMessageOA
+(
+    const cdmaPdu_t *cdmaMessage,   ///< [IN] cdma message
+    char            *address,       ///< [OUT] address converted
+    size_t           addressSize    ///< [IN] size of address
+)
+{
+    if ( !(cdmaMessage->message.parameterMask & CDMAPDU_PARAMETERMASK_ORIGINATING_ADDR))
+    {
+        LE_INFO("No origination address in the message");
+        return LE_NOT_FOUND;
+    }
+
+    return DecodeAddressParameter(&cdmaMessage->message.originatingAddr, address, addressSize);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Convert the Destination address
+ *
+ * @return LE_OK        Function success
+ * @return LE_OVERFLOW  address is too small
+ * @return LE_NOT_FOUND Destination address not present in CDMA message
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t GetCdmaMessageDA
+(
+    const cdmaPdu_t *cdmaMessage,   ///< [IN] cdma message
+    char            *address,       ///< [OUT] address converted
+    size_t           addressSize    ///< [IN] size of address
+)
+{
+    if ( !(cdmaMessage->message.parameterMask & CDMAPDU_PARAMETERMASK_DESTINATION_ADDR))
+    {
+        LE_INFO("No destination address in the message");
+        return LE_NOT_FOUND;
+    }
+
+    return DecodeAddressParameter(&cdmaMessage->message.destinationAddr, address, addressSize);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Convert the Destination address
+ *
+ * @return LE_OK        Function success
+ * @return LE_FAULT     function failed
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t SetCdmaMessageDA
+(
+    const char  *address,       ///< [IN] address message
+    cdmaPdu_t   *cdmaMessage   ///< [OUT] message
+)
+{
+    le_result_t result = EncodeAddressParameter(&cdmaMessage->message.destinationAddr,
+                                                address,
+                                                strlen(address));
+    if (result != LE_OK)
+    {
+        LE_DEBUG("No destination address set in the message");
+        return LE_FAULT;
+    }
+
+    cdmaMessage->message.parameterMask |= CDMAPDU_PARAMETERMASK_DESTINATION_ADDR;
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Convert bytes into decimal.
+ *
+ * 0x41 hexa -> 41 decimal
+ *
+ * @return the decimal value
+ */
+//--------------------------------------------------------------------------------------------------
+static inline uint32_t ConvertFromByte
+(
+    const uint8_t byte   ///< [IN] the date parameter
+)
+{
+    return ( ( ((byte&0xF0)>>4) * 10) + (byte&0x0F) );
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Convert decimal into hexa.
+ *
+ * 41 decimal -> 0x41 hexa
+ *
+ * @return the hexa value
+ */
+//--------------------------------------------------------------------------------------------------
+static inline uint8_t ConvertToByte
+(
+    const uint32_t value   ///< [IN] the date parameter
+)
+{
+    return ( ( (value/10)<<4) | (value%10) );
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Decode cdmaPdu_AddressParameter_t.
+ *
+ * @return LE_OK        function succeed
+ * @return LE_OVERFLOW  address is too small
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t DecodeDate
+(
+    const cdmaPdu_Date_t *dateParameter,   ///< [IN] the date parameter
+    char                 *date,            ///< [OUT] date converted
+    size_t                dateSize         ///< [IN] size of date
+)
+{
+    uint32_t timestampSize;
+
+    timestampSize = 18;
+    if (timestampSize>dateSize)
+    {
+        LE_WARN("Buffer overflow will occur (%d>%zd)",timestampSize,dateSize);
+        return LE_OVERFLOW;
+    }
+
+    snprintf(date, timestampSize-1, "%d/%d/%d,%d:%d:%d",
+             ConvertFromByte(dateParameter->year),
+             ConvertFromByte(dateParameter->month),
+             ConvertFromByte(dateParameter->day),
+             ConvertFromByte(dateParameter->hours),
+             ConvertFromByte(dateParameter->minutes),
+             ConvertFromByte(dateParameter->seconds));
+    date[timestampSize] = '\0';
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Convert the Service center time stamp date
+ *
+ * @return LE_OK        Function success
+ * @return LE_OVERFLOW  address is too small
+ * @return LE_NOT_FOUND Message Service Time stamp not present in CDMA message
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t GetCdmaMessageServiceCenterTimeStamp
+(
+    const cdmaPdu_t *cdmaMessage,   ///< [IN] cdma message
+    char            *address,       ///< [OUT] address converted
+    size_t           addressSize    ///< [IN] size of address
+)
+{
+    if ( !(cdmaMessage->message.parameterMask & CDMAPDU_PARAMETERMASK_BEARER_DATA))
+    {
+        LE_INFO("No Bearer data in the message");
+        return LE_NOT_FOUND;
+    }
+
+    if (!(  cdmaMessage->message.bearerData.subParameterMask
+          & CDMAPDU_SUBPARAMETERMASK_MESSAGE_CENTER_TIME_STAMP))
+    {
+        LE_INFO("No service center time stamp in the message");
+        return LE_NOT_FOUND;
+    }
+
+    return DecodeDate(&cdmaMessage->message.bearerData.messageCenterTimeStamp,
+                      address, addressSize);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Convert the message data
+ *
+ * @return LE_OK        Function success
+ * @return LE_OVERFLOW  data is too small
+ * @return LE_FAULT     function failed
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t GetCdmaMessageData
+(
+    const cdmaPdu_t *cdmaMessage,   ///< [IN] cdma message
+    uint8_t         *data,          ///< [OUT] data converted
+    size_t           dataSize,      ///< [IN] size of data
+    uint32_t        *dataLen,       ///< [OUT] data length
+    le_sms_Format_t *format         ///< [OUT] format
+)
+{
+    cdmaPdu_Encoding_t encoding;
+
+    if ( !(cdmaMessage->message.parameterMask & CDMAPDU_PARAMETERMASK_BEARER_DATA))
+    {
+        LE_INFO("No Bearer data in the message");
+        return LE_NOT_POSSIBLE;
+    }
+
+    if ( !(cdmaMessage->message.bearerData.subParameterMask & CDMAPDU_SUBPARAMETERMASK_USER_DATA))
+    {
+        LE_INFO("No data in the message");
+        return LE_NOT_POSSIBLE;
+    }
+
+    encoding = cdmaMessage->message.bearerData.userData.messageEncoding;
+    switch (encoding)
+    {
+        case CDMAPDU_ENCODING_7BIT_ASCII:
+        {
+            le_result_t result = DecodeCdma7bitsData(cdmaMessage->message.bearerData.userData.chari,
+                                              cdmaMessage->message.bearerData.userData.fieldsNumber,
+                                              data,
+                                              dataSize,
+                                              dataLen);
+            if (result == LE_OVERFLOW)
+            {
+                LE_WARN("Overflow occur when decoding user data");
+                return LE_OVERFLOW;
+            }
+            *format = LE_SMS_FORMAT_TEXT;
+            break;
+        }
+        case CDMAPDU_ENCODING_OCTET:
+        {
+            if (cdmaMessage->message.bearerData.userData.fieldsNumber>dataSize-1)
+            {
+                LE_WARN("Overflow occur when decoding user data");
+                return LE_OVERFLOW;
+            }
+            memcpy(data,
+                   cdmaMessage->message.bearerData.userData.chari,
+                   cdmaMessage->message.bearerData.userData.fieldsNumber);
+            *dataLen = cdmaMessage->message.bearerData.userData.fieldsNumber;
+            *format = LE_SMS_FORMAT_BINARY;
+            break;
+        }
+        default:
+        {
+            LE_WARN("Do not support %d encoding",encoding);
+            return LE_FAULT;
+        }
+    }
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the Teleservice Id
+ *
+ * @return LE_OK        Function success
+ * @return LE_FAULT     function failed
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t SetCdmaMessageTeleserviceId
+(
+    uint16_t     teleserviceId, ///< [IN] address message
+    cdmaPdu_t   *cdmaMessage    ///< [OUT] message
+)
+{
+    cdmaMessage->message.teleServiceId = teleserviceId;
+    cdmaMessage->message.parameterMask |= CDMAPDU_PARAMETERMASK_TELESERVICE_ID;
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Convert the message id
+ *
+ * @return LE_OK        Function success
+ * @return LE_FAULT     function failed
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t SetCdmaMessageId
+(
+    cdmaPdu_MessageType_t type,         ///< [IN] type
+    uint16_t              id,           ///< [IN] id
+    cdmaPdu_t            *cdmaMessage   ///< [OUT] message
+)
+{
+    cdmaMessage->message.bearerData.messageIdentifier.messageType = type;
+    cdmaMessage->message.bearerData.messageIdentifier.messageIdentifier = id;
+    cdmaMessage->message.bearerData.messageIdentifier.headerIndication = false;
+
+    cdmaMessage->message.bearerData.subParameterMask |= CDMAPDU_SUBPARAMETERMASK_MESSAGE_IDENTIFIER;
+    cdmaMessage->message.parameterMask |= CDMAPDU_PARAMETERMASK_BEARER_DATA;
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Convert the time stamp
+ *
+ * @return LE_OK        Function success
+ * @return LE_FAULT     function failed
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t SetCdmaMessageTimeStamp
+(
+    cdmaPdu_t            *cdmaMessage   ///< [OUT] message
+)
+{
+    time_t currentTime;
+    struct tm ctime;
+
+    time(&currentTime);
+    localtime_r(&currentTime,&ctime);
+
+    if (ctime.tm_year>100) /* is > 2000 */
+    {
+        cdmaMessage->message.bearerData.messageCenterTimeStamp.year =
+                ConvertToByte(ctime.tm_year-100);
+    }
+    else
+    {
+        cdmaMessage->message.bearerData.messageCenterTimeStamp.year = ConvertToByte(ctime.tm_year);
+    }
+    cdmaMessage->message.bearerData.messageCenterTimeStamp.month = ConvertToByte(ctime.tm_mon);
+    cdmaMessage->message.bearerData.messageCenterTimeStamp.day = ConvertToByte(ctime.tm_mday);
+    cdmaMessage->message.bearerData.messageCenterTimeStamp.hours = ConvertToByte(ctime.tm_hour);
+    cdmaMessage->message.bearerData.messageCenterTimeStamp.minutes = ConvertToByte(ctime.tm_min);
+    cdmaMessage->message.bearerData.messageCenterTimeStamp.seconds = ConvertToByte(ctime.tm_sec);
+
+    cdmaMessage->message.bearerData.subParameterMask
+                    |= CDMAPDU_SUBPARAMETERMASK_MESSAGE_CENTER_TIME_STAMP;
+    cdmaMessage->message.parameterMask |= CDMAPDU_PARAMETERMASK_BEARER_DATA;
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Convert the message pririty
+ *
+ * @return LE_OK        Function success
+ * @return LE_FAULT     function failed
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t SetCdmaMessagePriority
+(
+    cdmaPdu_Priority_t  priority,     ///< [IN] priority
+    cdmaPdu_t          *cdmaMessage   ///< [OUT] message
+)
+{
+    cdmaMessage->message.bearerData.priority = priority;
+
+    cdmaMessage->message.bearerData.subParameterMask |= CDMAPDU_SUBPARAMETERMASK_PRIORITY;
+    cdmaMessage->message.parameterMask |= CDMAPDU_PARAMETERMASK_BEARER_DATA;
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Convert the message data
+ *
+ * @return LE_OK        Function success
+ * @return LE_OVERFLOW  address is too small
+ * @return LE_FAULT     function failed
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t SetCdmaMessageData
+(
+    const uint8_t       *dataPtr,   ///< [IN] text message
+    size_t               dataSize,  ///< [IN] size of data
+    smsPdu_Encoding_t    encoding,  ///< [IN] Type of encoding to be used
+    cdmaPdu_t           *messagePtr ///< [OUT] cdma message
+)
+{
+    switch (encoding)
+    {
+        case SMSPDU_7_BITS: // 7 bits ASCII encoding
+        {
+            le_result_t result = EncodeCdma7BitsData(dataPtr,
+                                             dataSize,
+                                             messagePtr->message.bearerData.userData.chari,
+                                             sizeof(messagePtr->message.bearerData.userData.chari),
+                                             &messagePtr->message.bearerData.userData.fieldsNumber);
+            if (result == LE_OVERFLOW)
+            {
+                LE_WARN("Overflow occur when encoding user data");
+                return LE_OVERFLOW;
+            }
+            messagePtr->message.bearerData.userData.messageEncoding = CDMAPDU_ENCODING_7BIT_ASCII;
+            break;
+        }
+        case SMSPDU_8_BITS:
+        {
+            if (dataSize>sizeof(messagePtr->message.bearerData.userData.chari))
+            {
+                LE_WARN("Overflow occur when encoding user data %zd>%zd",
+                         dataSize,sizeof(messagePtr->message.bearerData.userData.chari));
+                return LE_OVERFLOW;
+            }
+            memcpy(messagePtr->message.bearerData.userData.chari,dataPtr,dataSize);
+            messagePtr->message.bearerData.userData.fieldsNumber = dataSize;
+            messagePtr->message.bearerData.userData.messageEncoding = CDMAPDU_ENCODING_OCTET;
+            break;
+        }
+        default:
+        {
+            LE_WARN("Do not support %d encoding",encoding);
+            return LE_FAULT;
+        }
+    }
+
+    messagePtr->message.bearerData.subParameterMask |= CDMAPDU_SUBPARAMETERMASK_USER_DATA;
+    messagePtr->message.parameterMask |= CDMAPDU_PARAMETERMASK_BEARER_DATA;
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Decode the content of dataPtr.
+ *
+ * @return LE_OK        Function succeed
+ * @return LE_FAULT     Function Failed
+ * @return LE_OVERFLOW  An overflow occur
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t DecodeMessageCdma
+(
+    const uint8_t*    dataPtr,  ///< [IN] PDU data to decode
+    size_t            dataSize, ///< [IN] PDU data size
+    pa_sms_Message_t* smsPtr    ///< [OUT] Buffer to store decoded data
+)
+{
+    le_result_t result = LE_OK;
+    cdmaPdu_t message;
+    cdmaPdu_MessageType_t messageType;
+
+    result = cdmaPdu_Decode(dataPtr,dataSize,&message);
+
+    if (result != LE_OK)
+    {
+        LE_ERROR("Could not decode CDMA PDU message");
+        return LE_FAULT;
+    }
+
+    result = GetCdmaMessageType(&message,&messageType);
+
+    if (result != LE_OK)
+    {
+        return LE_FAULT;
+    }
+
+    // Initialize output parameter
+    memset(smsPtr, 0, sizeof(*smsPtr));
+
+    switch (messageType)
+    {
+        case CDMAPDU_MESSAGETYPE_DELIVER:
+        {
+            smsPtr->smsDeliver.option = PA_SMS_OPTIONMASK_NO_OPTION;
+
+            result = GetCdmaMessageOA(&message,smsPtr->smsDeliver.oa,sizeof(smsPtr->smsDeliver.oa));
+            if (result==LE_OK)
+            {
+                smsPtr->smsDeliver.option |= PA_SMS_OPTIONMASK_OA;
+            }
+
+            result = GetCdmaMessageServiceCenterTimeStamp(&message,
+                                                           smsPtr->smsDeliver.scts,
+                                                           sizeof(smsPtr->smsDeliver.scts));
+            if (result==LE_OK)
+            {
+                smsPtr->smsDeliver.option |= PA_SMS_OPTIONMASK_SCTS;
+            }
+
+            result = GetCdmaMessageData(&message,
+                                        smsPtr->smsDeliver.data,
+                                        sizeof(smsPtr->smsDeliver.data),
+                                        &smsPtr->smsDeliver.dataLen,
+                                        &smsPtr->smsDeliver.format);
+            if (result!=LE_OK)
+            {
+                LE_ERROR("Could not retrieve data");
+                return result;
+            }
+
+            smsPtr->type = PA_SMS_SMS_DELIVER;
+            break;
+        }
+        case CDMAPDU_MESSAGETYPE_SUBMIT:
+        {
+            result = GetCdmaMessageDA(&message,smsPtr->smsSubmit.da,sizeof(smsPtr->smsSubmit.da));
+            if (result==LE_OK)
+            {
+                smsPtr->smsDeliver.option |= PA_SMS_OPTIONMASK_DA;
+            }
+
+            result = GetCdmaMessageData(&message,
+                                        smsPtr->smsSubmit.data,
+                                        sizeof(smsPtr->smsSubmit.data),
+                                        &smsPtr->smsSubmit.dataLen,
+                                        &smsPtr->smsSubmit.format);
+            if (result!=LE_OK)
+            {
+                LE_ERROR("Could not retrieve data");
+                return result;
+            }
+
+            smsPtr->type = PA_SMS_SMS_SUBMIT;
+            break;
+        }
+        default:
+        {
+            LE_WARN("Do not support this message type %d", messageType);
+            result = LE_FAULT;
+        }
+    }
+
+    return result;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Encode the content of dataPtr.
+ *
+ * @return LE_OK    Function succeed
+ * @return LE_FAULT Function Failed
+ * @return LE_OVERFLOW  An overflow occur
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t EncodeMessageCdma
+(
+    const uint8_t*      messagePtr,   ///< [IN] Data to encode
+    size_t              length,       ///< [IN] Length of data
+    const char*         addressPtr,   ///< [IN] Phone Number
+    smsPdu_Encoding_t   encoding,     ///< [IN] Type of encoding to be used
+    pa_sms_MsgType_t    messageType,  ///< [IN] Message Type
+    pa_sms_Pdu_t*       pduPtr        ///< [OUT] Buffer for the encoded PDU
+)
+{
+    le_result_t result = LE_OK;
+    cdmaPdu_t message;
+
+    memset(&message,0,sizeof(message));
+
+    // Hard-coded
+    message.messageFormat = CDMAPDU_MESSAGEFORMAT_POINTTOPOINT;
+
+    // Hard-coded
+    result = SetCdmaMessageTeleserviceId(0x1002,&message);
+    if (result!=LE_OK)
+    {
+        LE_ERROR("Could not set Teleservice Id");
+        return result;
+    }
+
+    result = SetCdmaMessageDA(addressPtr,&message);
+    if (result!=LE_OK)
+    {
+        LE_ERROR("Could not set Destination Adress");
+        return result;
+    }
+
+    // Hard-coded
+    result = SetCdmaMessageId(CDMAPDU_MESSAGETYPE_SUBMIT,1,&message);
+    if (result!=LE_OK)
+    {
+        LE_ERROR("Could not set data");
+        return result;
+    }
+
+    result = SetCdmaMessageData(messagePtr,length,encoding,&message);
+    if (result!=LE_OK)
+    {
+        LE_ERROR("Could not set data");
+        return result;
+    }
+
+    // Hard-coded
+    result = SetCdmaMessageTimeStamp(&message);
+    if (result!=LE_OK)
+    {
+        LE_ERROR("Could not set data");
+        return result;
+    }
+
+    // Hard-coded
+    result = SetCdmaMessagePriority(CDMAPDU_PRIORITY_NORMAL,&message);
+    if (result!=LE_OK)
+    {
+        LE_ERROR("Could not set data");
+        return result;
+    }
+
+    result = cdmaPdu_Encode(&message,
+                            pduPtr->data,
+                            sizeof(pduPtr->data),
+                            &pduPtr->dataLen);
+    if (result != LE_OK)
+    {
+        LE_ERROR("Could not Encode CDMA PDU message");
+        return result;
+    }
+
+    return result;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Initialize the module.
+ *
+ * @return LE_OK
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t smsPdu_Initialize
+(
+    void
+)
+{
+    // Get a reference to the trace keyword that is used to control tracing in this module.
+    TraceRef = le_log_GetTraceRef("smsPdu");
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Decode the content of dataPtr.
+ *
+ * @return LE_OK            Function succeed
+ * @return LE_NOT_POSSIBLE  Protocol is not supported
+ * @return LE_FAULT         Function failed
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t smsPdu_Decode
+(
+    pa_sms_Protocol_t protocol, ///< [IN] decoding protocol
+    const uint8_t*    dataPtr,  ///< [IN] PDU data to decode
+    size_t            dataSize, ///< [IN] PDU data size
+    pa_sms_Message_t* smsPtr    ///< [OUT] Buffer to store decoded data
+)
+{
+    le_result_t result = LE_OK;
+
+    if (IS_TRACE_ENABLED)
+    {
+        DumpPdu("PDU to decode",dataPtr,dataSize);
+    }
+
+    if (protocol == PA_SMS_PROTOCOL_GSM)
+    {
+        result = DecodeMessageGsm(dataPtr,dataSize,smsPtr);
+    }
+    else if ( protocol == PA_SMS_PROTOCOL_CDMA)
+    {
+        result = DecodeMessageCdma(dataPtr,dataSize,smsPtr);
+    }
+    else
+    {
+        LE_WARN("Protocol %d not supported", protocol);
+        result = LE_NOT_POSSIBLE;
+    }
+
+    return result;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Encode the content of messagePtr in PDU format.
+ *
+ * @return LE_OK            Function succeed
+ * @return LE_NOT_POSSIBLE  Protocol is not supported
+ * @return LE_FAULT         Function failed
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t smsPdu_Encode
+(
+    pa_sms_Protocol_t   protocol,     ///< [IN] Encoding protocol
+    const uint8_t*      messagePtr,   ///< [IN] Data to encode
+    size_t              length,       ///< [IN] Length of data
+    const char*         addressPtr,   ///< [IN] Phone Number
+    smsPdu_Encoding_t   encoding,     ///< [IN] Type of encoding to be used
+    pa_sms_MsgType_t    messageType,  ///< [IN] Message Type
+    pa_sms_Pdu_t*       pduPtr        ///< [OUT] Buffer for the encoded PDU
+)
+{
+    le_result_t result = LE_OK;
+
+    if (protocol == PA_SMS_PROTOCOL_GSM)
+    {
+        result = EncodeMessageGsm(messagePtr,length,addressPtr,encoding,messageType,pduPtr);
+    }
+    else if ( protocol == PA_SMS_PROTOCOL_CDMA)
+    {
+        result = EncodeMessageCdma(messagePtr,length,addressPtr,encoding,messageType,pduPtr);
+    }
+    else
+    {
+        LE_WARN("Protocol %d not supported", protocol);
+        result = LE_NOT_POSSIBLE;
+    }
+
+    if (IS_TRACE_ENABLED)
+    {
+        DumpPdu("PDU Encoded",pduPtr->data,pduPtr->dataLen);
+    }
+
+    return result;
 }

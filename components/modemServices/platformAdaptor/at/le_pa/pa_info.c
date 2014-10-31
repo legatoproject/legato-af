@@ -14,9 +14,6 @@
 
 
 
-
-
-
 //--------------------------------------------------------------------------------------------------
 /**
  * This function get the International Mobile Equipment Identity (IMEI).
@@ -37,3 +34,62 @@ le_result_t pa_info_GetIMEI
 }
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the firmware version string
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_NOT_FOUND if the version string is not available
+ *      - LE_NOT_POSSIBLE for any other errors
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_info_GetFirmwareVersion
+(
+    char* versionPtr,        ///< [OUT] Firmware version string
+    size_t versionSize       ///< [IN] Size of version buffer
+)
+{
+    return LE_NOT_FOUND;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the bootloader version string
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_NOT_FOUND if the version string is not available
+ *      - LE_NOT_POSSIBLE for any other errors
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_info_GetBootloaderVersion
+(
+    char* versionPtr,        ///< [OUT] Firmware version string
+    size_t versionSize       ///< [IN] Size of version buffer
+)
+{
+    return LE_NOT_FOUND;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function gets the device model identity.
+ *
+ * @return
+ * - LE_NOT_POSSIBLE  The function failed to get the value.
+ * - LE_TIMEOUT       No response was received from the Modem.
+ * - LE_OK            The function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_info_GetDeviceModel
+(
+    pa_info_DeviceModel_t model   ///< [OUT] Model string (null-terminated).
+)
+{
+    //To do
+
+    return LE_NOT_POSSIBLE;
+}

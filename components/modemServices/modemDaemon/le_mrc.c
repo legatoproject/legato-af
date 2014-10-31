@@ -230,7 +230,7 @@ static void DeleteCellInfoSafeRefList
  * @return The TDSCDMA Band bit mask.
  */
 //--------------------------------------------------------------------------------------------------
-static uint8_t GetRatBitMask
+static le_mrc_RatBitMask_t GetRatBitMask
 (
     char* ratPtr
 )
@@ -638,7 +638,7 @@ static void LoadPreferencesFromConfigDb
 
     // Set the preferred Radio Access Technology
     mrcCfg = le_cfg_CreateReadTxn(CFG_MODEMSERVICE_MRC_RAT_PATH);
-    uint8_t ratMask = 0x00;
+    le_mrc_RatBitMask_t ratMask = 0x00;
     i = 0;
     sprintf (cfgNodeLoc, "%d", i);
     while (!le_cfg_IsEmpty(mrcCfg, cfgNodeLoc))
@@ -842,26 +842,30 @@ static void DeleteSafeRefList
  *
  */
 //--------------------------------------------------------------------------------------------------
-static le_mrc_Rat_t ConvertRatValue
+static le_mrc_RatBitMask_t ConvertRatValue
 (
     const char* ratValue
 )
 {
     if      ( strcmp(ratValue, "GSM") == 0 )
     {
-        return LE_MRC_RAT_GSM;
+        return LE_MRC_BITMASK_RAT_GSM;
     }
     else if ( strcmp(ratValue, "UMTS") == 0 )
     {
-        return LE_MRC_RAT_UMTS;
+        return LE_MRC_BITMASK_RAT_UMTS;
     }
     else if ( strcmp(ratValue, "LTE") == 0 )
     {
-        return LE_MRC_RAT_LTE;
+        return LE_MRC_BITMASK_RAT_LTE;
+    }
+    else if ( strcmp(ratValue, "CDMA") == 0 )
+    {
+        return LE_MRC_BITMASK_RAT_CDMA;
     }
 
     LE_WARN("This rat value '%s' is not supported",ratValue);
-    return LE_MRC_RAT_UNKNOWN;
+    return 0;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -872,8 +876,8 @@ static le_mrc_Rat_t ConvertRatValue
 //--------------------------------------------------------------------------------------------------
 static le_result_t LoadRatList
 (
-    const char   *ratPath,
-    le_mrc_Rat_t *ratMaskPtr
+    const char          *ratPath,
+    le_mrc_RatBitMask_t *ratMaskPtr
 )
 {
     uint32_t idx=0;
@@ -947,7 +951,7 @@ static void LoadPreferredOperators
     // Read all network from configDB
     do
     {
-        le_mrc_Rat_t ratMask;
+        le_mrc_RatBitMask_t ratMask;
         char mccNodePath[LIMIT_MAX_PATH_BYTES] = {0};
         char mncNodePath[LIMIT_MAX_PATH_BYTES] = {0};
         char ratNodePath[LIMIT_MAX_PATH_BYTES] = {0};
@@ -1460,7 +1464,7 @@ le_result_t le_mrc_GetSignalQual
         return LE_FAULT;
     }
 
-    if ((res=pa_mrc_GetSignalQuality(&rssi)) == LE_OK)
+    if ((res=pa_mrc_GetSignalStrength(&rssi)) == LE_OK)
     {
         for (i=0; i<thresholdsCount; i++)
         {
@@ -1475,18 +1479,18 @@ le_result_t le_mrc_GetSignalQual
             *qualityPtr = i;
         }
 
-        LE_DEBUG("pa_mrc_GetSignalQuality has returned rssi=%ddBm", rssi);
+        LE_DEBUG("pa_mrc_GetSignalStrength has returned rssi=%ddBm", rssi);
         return LE_OK;
     }
     else if (res == LE_OUT_OF_RANGE)
     {
-        LE_DEBUG("pa_mrc_GetSignalQuality has returned LE_OUT_OF_RANGE");
+        LE_DEBUG("pa_mrc_GetSignalStrength has returned LE_OUT_OF_RANGE");
         *qualityPtr = 0;
         return LE_OK;
     }
     else
     {
-        LE_ERROR("pa_mrc_GetSignalQuality has returned %d", res);
+        LE_ERROR("pa_mrc_GetSignalStrength has returned %d", res);
         *qualityPtr = 0;
         return LE_NOT_POSSIBLE;
     }
@@ -1494,10 +1498,11 @@ le_result_t le_mrc_GetSignalQual
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function must be called to get the Home Network Name information.
+ * This function must be called to get the Current Network Name information.
  *
  * @return
  *      - LE_OK on success
+ *      - LE_FAULT if nameStr is NULL
  *      - LE_OVERFLOW if the Home Network Name can't fit in nameStr
  *      - LE_NOT_POSSIBLE on any other failure
  *
@@ -1505,7 +1510,7 @@ le_result_t le_mrc_GetSignalQual
  *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_mrc_GetHomeNetworkName
+le_result_t le_mrc_GetCurrentNetworkName
 (
     char       *nameStr,               ///< [OUT] the home network Name
     size_t      nameStrSize            ///< [IN] the nameStr size
@@ -1517,8 +1522,10 @@ le_result_t le_mrc_GetHomeNetworkName
         return LE_FAULT;
     }
 
-    return pa_mrc_GetHomeNetworkName(nameStr,nameStrSize);
+    return pa_mrc_GetCurrentNetworkName(nameStr,nameStrSize);
 }
+
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1565,7 +1572,7 @@ le_result_t le_mrc_RegisterCellularNetwork
 //--------------------------------------------------------------------------------------------------
 le_mrc_ScanInformationListRef_t le_mrc_PerformCellularNetworkScan
 (
-    le_mrc_Rat_t ratMask ///< [IN] Technology mask
+    le_mrc_RatBitMask_t ratMask ///< [IN] Radio Access Technology bitmask
 )
 {
     le_result_t result;
@@ -1820,20 +1827,18 @@ le_result_t le_mrc_GetCellularNetworkName
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function must be called to know if the radio control access is in scanInformationRef.
+ * This function must be called to get the radio access technology of a scanInformationRef.
  *
  * @return
- *      - true the radio access technology is available
- *      - false otherwise
+ *      - the radio access technology
  *
  * @note
  *      On failure, the process exits.
  */
 //--------------------------------------------------------------------------------------------------
-bool le_mrc_IsCellularNetworkRatAvailable
+le_mrc_Rat_t le_mrc_GetCellularNetworkRat
 (
-    le_mrc_ScanInformationRef_t scanInformationRef,    ///< [IN] Scan information reference
-    le_mrc_Rat_t                rat                    ///< [IN] The Radio Access Technology
+    le_mrc_ScanInformationRef_t scanInformationRef    ///< [IN] Scan information reference
 )
 {
     pa_mrc_ScanInformation_t* scanInformationPtr = le_ref_Lookup(ScanInformationRefMap,
@@ -1845,7 +1850,7 @@ bool le_mrc_IsCellularNetworkRatAvailable
         return LE_FAULT;
     }
 
-    return (rat == scanInformationPtr->rat);
+    return scanInformationPtr->rat;
 }
 
 

@@ -13,18 +13,6 @@
 #include "pa_fwupdate_local.h"
 
 
-
-//==================================================================================================
-//  PRIVATE FUNCTIONS
-//==================================================================================================
-
-
-
-//==================================================================================================
-//  MODULE/COMPONENT FUNCTIONS
-//==================================================================================================
-
-
 //--------------------------------------------------------------------------------------------------
 /**
  * This function must be called to initialize the fwupdate module
@@ -40,51 +28,6 @@ le_result_t pa_fwupdate_Init
 )
 {
     return LE_OK;
-}
-
-
-//==================================================================================================
-//  PUBLIC API FUNCTIONS
-//==================================================================================================
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Get the firmware version string
- *
- * @return
- *      - LE_OK on success
- *      - LE_NOT_FOUND if the version string is not available
- *      - LE_NOT_POSSIBLE for any other errors
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t pa_fwupdate_GetFirmwareVersion
-(
-    char* versionPtr,        ///< [OUT] Firmware version string
-    size_t versionSize       ///< [IN] Size of version buffer
-)
-{
-    return LE_NOT_FOUND;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Get the bootloader version string
- *
- * @return
- *      - LE_OK on success
- *      - LE_NOT_FOUND if the version string is not available
- *      - LE_NOT_POSSIBLE for any other errors
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t pa_fwupdate_GetBootloaderVersion
-(
-    char* versionPtr,        ///< [OUT] Firmware version string
-    size_t versionSize       ///< [IN] Size of version buffer
-)
-{
-    return LE_NOT_FOUND;
 }
 
 
@@ -106,4 +49,3 @@ le_result_t pa_fwupdate_Download
 
     return LE_NOT_POSSIBLE;
 }
-

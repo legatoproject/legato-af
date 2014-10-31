@@ -50,6 +50,33 @@
 //--------------------------------------------------------------------------------------------------
 #define PA_MDC_MAX_PROFILE 5
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Minimum index value supported for 3GPP profile
+ */
+//--------------------------------------------------------------------------------------------------
+#define PA_MDC_MIN_INDEX_3GPP_PROFILE 1
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum index value supported for 3GPP profile
+ */
+//--------------------------------------------------------------------------------------------------
+#define PA_MDC_MAX_INDEX_3GPP_PROFILE 16
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Minimum index value supported for 3GPP2 profile
+ */
+//--------------------------------------------------------------------------------------------------
+#define PA_MDC_MIN_INDEX_3GPP2_PROFILE 101
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum index value supported for 3GPP profile
+ */
+//--------------------------------------------------------------------------------------------------
+#define PA_MDC_MAX_INDEX_3GPP2_PROFILE 106
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -104,6 +131,13 @@
  */
 //--------------------------------------------------------------------------------------------------
 #define PA_MDC_PWD_MAX_BYTES (PA_MDC_PWD_MAX_LEN+1)
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Abstract structure to reference the data session
+ */
+//--------------------------------------------------------------------------------------------------
+typedef void* pa_mdc_CallRef_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -236,8 +270,8 @@ le_result_t pa_mdc_WriteProfile
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_mdc_StartSessionIPV4
 (
-    uint32_t profileIndex,        ///< [IN] The profile to use
-    uint32_t* callRefPtr          ///< [OUT] Reference used for stopping the data session
+    uint32_t profileIndex,          ///< [IN] The profile to use
+    pa_mdc_CallRef_t* callRefPtr    ///< [OUT] Reference used for stopping the data session
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -253,7 +287,7 @@ le_result_t pa_mdc_StartSessionIPV4
 le_result_t pa_mdc_StartSessionIPV6
 (
     uint32_t profileIndex,        ///< [IN] The profile to use
-    uint32_t* callRefPtr          ///< [OUT] Reference used for stopping the data session
+    pa_mdc_CallRef_t* callRefPtr  ///< [OUT] Reference used for stopping the data session
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -269,7 +303,7 @@ le_result_t pa_mdc_StartSessionIPV6
 le_result_t pa_mdc_StartSessionIPV4V6
 (
     uint32_t profileIndex,        ///< [IN] The profile to use
-    uint32_t* callRefPtr          ///< [OUT] Reference used for stopping the data session
+    pa_mdc_CallRef_t* callRefPtr  ///< [OUT] Reference used for stopping the data session
 );
 
 
@@ -294,13 +328,13 @@ le_result_t pa_mdc_GetSessionType
  *
  * @return
  *      - LE_OK on success
- *      - LE_DUPLICATE if the data session has already been stopped (i.e. it is disconnected)
+ *      - LE_FAULT if the input parameter is not valid
  *      - LE_NOT_POSSIBLE for other failures
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_mdc_StopSession
 (
-    uint32_t callRef         ///< [IN] The call reference returned when starting the sessions
+    pa_mdc_CallRef_t callRef         ///< [IN] The call reference returned when starting the sessions
 );
 
 
@@ -332,7 +366,9 @@ le_result_t pa_mdc_GetSessionState
 //--------------------------------------------------------------------------------------------------
 void pa_mdc_SetSessionStateHandler
 (
-    pa_mdc_SessionStateHandler_t handlerRef ///< [IN] The session state handler function.
+    pa_mdc_SessionStateHandler_t handlerRef, ///< [IN] The session state handler function.
+    void*                        contextPtr  ///< [IN] The context to be given to the handler.
+
 );
 
 
@@ -475,6 +511,21 @@ le_result_t pa_mdc_GetDataFlowStatistics
 le_result_t pa_mdc_ResetDataFlowStatistics
 (
     void
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Check if the given profile index is reserved or not
+ *
+ * @return
+ *      - first available profile identifier
+ *      - LE_NOT_FOUND if no profile is available
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_mdc_IsProfileAllowed
+(
+    uint32_t  profileIndex,              ///< [IN] The profile to check
+    bool*     isAllowed                  ///< [OUT] profile using permission
 );
 
 #endif // LEGATO_PA_MDC_INCLUDE_GUARD

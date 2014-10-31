@@ -1,17 +1,22 @@
-import:
-
-    modemServices/le_mdmDefs.api    [types-only]
-    audio/le_audio.api              [types-only]
-    modemServices/le_mcc_call.api   [types-only]
-    modemServices/le_mdc.api        [types-only]
-    modemServices/le_mrc.api        [types-only]
-    modemServices/le_sim.api        [types-only]
-    modemServices/le_sms.api        [types-only]
-    modemServices/le_ecall.api      [types-only]
-    modemServices/le_fwupdate.api   [types-only]
+requires:
+{
+    api:
+    {
+        le_audio.api      [types-only]
+        le_mcc_call.api   [types-only]
+        le_mdc.api        [types-only]
+        le_mrc.api        [types-only]
+        le_sim.api        [types-only]
+        le_sms.api        [types-only]
+        le_ecall.api      [types-only]
+        le_fwupdate.api   [types-only]
+        le_remoteMgmt.api [types-only]
+        le_info.api       [types-only]
+    }
+}
 
 sources:
-
+{
     pa.c
     pa_common.c
     pa_info.c
@@ -22,7 +27,10 @@ sources:
     pa_sms.c
     pa_ecall.c
     pa_fwupdate.c
+    pa_remoteMgmt.c
+}
 
 requires:
-
+{
     component: { atManager }
+}

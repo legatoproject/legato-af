@@ -1,3 +1,7 @@
 bundles:
-
-    file: [r] lible_pa_audio.so /lib/
+{
+    file:
+    {
+        [r] libComponent_le_pa_audio.so /lib/
+    }
+}

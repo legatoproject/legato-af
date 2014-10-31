@@ -55,6 +55,22 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Option mask.
+ * It is used to know which option is present in the pa_sms_Message_t.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+typedef enum
+{
+    PA_SMS_OPTIONMASK_NO_OPTION = 0x0000, ///< No option
+    PA_SMS_OPTIONMASK_OA        = 0x0001, ///< oa option is present
+    PA_SMS_OPTIONMASK_SCTS      = 0x0002, ///< scts option is present
+    PA_SMS_OPTIONMASK_DA        = 0x0004, ///< da option is present
+}
+pa_sms_OptionMask_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Message Type Indicator.
  * It is used for the message service configuration.
  *
@@ -69,7 +85,33 @@ typedef enum
 }
 pa_sms_MsgType_t;
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Message Protocol.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+typedef enum
+{
+    PA_SMS_PROTOCOL_UNKNOWN = 0, ///< Unknown message protocol.
+    PA_SMS_PROTOCOL_GSM     = 1,  ///< GSM message protocol.
+    PA_SMS_PROTOCOL_CDMA    = 2,  ///< CDMA message protocol.
+}
+pa_sms_Protocol_t;
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Message SMS storage area.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+typedef enum
+{
+    PA_SMS_STORAGE_UNKNOWN = 0,  ///< Unknown storage.
+    PA_SMS_STORAGE_NV     = 1,   ///< Memory SMS storage.
+    PA_SMS_STORAGE_SIM    = 2,   ///< Sim SMS storage.
+}
+pa_sms_Storage_t;
 //--------------------------------------------------------------------------------------------------
 // APIs.
 //--------------------------------------------------------------------------------------------------
@@ -81,11 +123,12 @@ pa_sms_MsgType_t;
  */
 //--------------------------------------------------------------------------------------------------
 typedef struct {
+    pa_sms_OptionMask_t option;                           ///< Option mask
     le_sms_Status_t     status;                           ///< mandatory, status of msg in memory
-    char                oa[LE_MDMDEFS_PHONE_NUM_MAX_LEN];          ///< mandatory, originator address
-    char                scts[LE_SMS_TIMESTAMP_MAX_LEN];   ///< mandatory, service center timestamp
+    char                oa[LE_MDMDEFS_PHONE_NUM_MAX_BYTES]; ///< mandatory, originator address
+    char                scts[LE_SMS_TIMESTAMP_MAX_BYTES]; ///< mandatory, service center timestamp
     le_sms_Format_t     format;                           ///< mandatory, SMS user data format
-    uint8_t             data[LE_SMS_TEXT_MAX_LEN];        ///< mandatory, SMS user data
+    uint8_t             data[LE_SMS_TEXT_MAX_BYTES];      ///< mandatory, SMS user data
     uint32_t            dataLen;                          ///< mandatory, SMS user data length
 }
 pa_sms_SmsDeliver_t;
@@ -97,10 +140,11 @@ pa_sms_SmsDeliver_t;
  */
 //--------------------------------------------------------------------------------------------------
 typedef struct {
+    pa_sms_OptionMask_t option;                           ///< Option mask
     le_sms_Status_t     status;                           ///< mandatory, status of msg in memory
-    char                da[LE_MDMDEFS_PHONE_NUM_MAX_LEN]; ///< mandatory, destination address
+    char                da[LE_MDMDEFS_PHONE_NUM_MAX_BYTES]; ///< mandatory, destination address
     le_sms_Format_t     format;                           ///< mandatory, SMS user data format
-    uint8_t             data[LE_SMS_TEXT_MAX_LEN];        ///< mandatory, SMS user data
+    uint8_t             data[LE_SMS_TEXT_MAX_BYTES];      ///< mandatory, SMS user data
     uint32_t            dataLen;                          ///< mandatory, SMS user data length
 }
 pa_sms_SmsSubmit_t;
@@ -113,6 +157,7 @@ pa_sms_SmsSubmit_t;
 //--------------------------------------------------------------------------------------------------
 typedef struct {
     le_sms_Status_t     status;                           ///< mandatory, status of msg in memory
+    pa_sms_Protocol_t   protocol;                         ///< mandatory, protocol used for encoding
     uint8_t             data[LE_SMS_PDU_MAX_LEN];         ///< mandatory, SMS user data (in HEX)
     uint32_t            dataLen;                          ///< mandatory, number of characters
 }
@@ -136,6 +181,19 @@ pa_sms_Message_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Generic Message structure.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct {
+    uint32_t          msgIndex; ///< Message index
+    pa_sms_Protocol_t protocol; ///< protocol used
+    pa_sms_Storage_t  storage;  ///< SMS Storage used
+}
+pa_sms_NewMessageIndication_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Prototype for handler functions used to report that a new message has been received.
  *
  * @param msgRef The message reference in message storage.
@@ -143,7 +201,7 @@ pa_sms_Message_t;
 //--------------------------------------------------------------------------------------------------
 typedef void (*pa_sms_NewMsgHdlrFunc_t)
 (
-    uint32_t* msgRef
+    pa_sms_NewMessageIndication_t* msgRef
 );
 
 
@@ -185,8 +243,9 @@ le_result_t pa_sms_ClearNewMsgHandler
 //--------------------------------------------------------------------------------------------------
 int32_t pa_sms_SendPduMsg
 (
-    uint32_t       length, ///< [IN] The length of the TP data unit in bytes.
-    const uint8_t* dataPtr ///< [IN] The message.
+    pa_sms_Protocol_t   protocol,   ///< [IN] protocol to use
+    uint32_t            length,     ///< [IN] The length of the TP data unit in bytes.
+    const uint8_t      *dataPtr     ///< [IN] The message.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -201,8 +260,10 @@ int32_t pa_sms_SendPduMsg
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_sms_RdPDUMsgFromMem
 (
-    uint32_t        index,        ///< [IN]  The place of storage in memory.
-    pa_sms_Pdu_t*   msgPtr        ///< [OUT] The message.
+    uint32_t            index,      ///< [IN]  The place of storage in memory.
+    pa_sms_Protocol_t   protocol,   ///< [IN] The protocol used for this message
+    pa_sms_Storage_t    storage,    ///< [IN] SMS Storage used
+    pa_sms_Pdu_t*       msgPtr      ///< [OUT] The message.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -218,10 +279,12 @@ le_result_t pa_sms_RdPDUMsgFromMem
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_sms_ListMsgFromMem
 (
-    le_sms_Status_t        status, ///< [IN] The status of message in memory.
-    uint32_t*              numPtr, ///< [OUT] The number of indexes retrieved.
-    uint32_t*              idxPtr  ///< [OUT] The pointer to an array of indexes. The array is filled
-                                   ///        with 'num' index values.
+    le_sms_Status_t     status,     ///< [IN] The status of message in memory.
+    pa_sms_Protocol_t   protocol,   ///< [IN] The protocol to read
+    uint32_t           *numPtr,     ///< [OUT] The number of indexes retrieved.
+    uint32_t           *idxPtr,     ///< [OUT] The pointer to an array of indexes.
+                                    ///        The array is filled with 'num' index values.
+    pa_sms_Storage_t    storage     ///< [IN] SMS Storage used
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -236,7 +299,9 @@ le_result_t pa_sms_ListMsgFromMem
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_sms_DelMsgFromMem
 (
-    uint32_t  index   ///< [IN] Index of the message to be deleted.
+    uint32_t            index,    ///< [IN] Index of the message to be deleted.
+    pa_sms_Protocol_t   protocol, ///< [IN] protocol
+    pa_sms_Storage_t    storage   ///< [IN] SMS Storage used
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -264,17 +329,20 @@ le_result_t pa_sms_DelAllMsg
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_sms_ChangeMessageStatus
 (
-    uint32_t            index, ///< [IN] Index of the message to be deleted.
-    le_sms_Status_t     status ///< [IN] The status of message in memory.
+    uint32_t            index,    ///< [IN] Index of the message to be deleted.
+    pa_sms_Protocol_t   protocol, ///< [IN] protocol
+    le_sms_Status_t     status,   ///< [IN] The status of message in memory.
+    pa_sms_Storage_t    storage   ///< [IN] SMS Storage used
 );
 
 //--------------------------------------------------------------------------------------------------
 /**
  * This function must be called to get the SMS center.
  *
- * @return LE_NOT_POSSIBLE The function failed.
- * @return LE_TIMEOUT      No response was received from the Modem.
- * @return LE_OK           The function succeeded.
+ * @return
+ *   - LE_FAULT        The function failed.
+ *   - LE_TIMEOUT      No response was received from the Modem.
+ *   - LE_OK           The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_sms_GetSmsc
@@ -287,9 +355,10 @@ le_result_t pa_sms_GetSmsc
 /**
  * This function must be called to set the SMS center.
  *
- * @return LE_NOT_POSSIBLE The function failed.
- * @return LE_TIMEOUT      No response was received from the Modem.
- * @return LE_OK           The function succeeded.
+ * @return
+ *   - LE_FAULT        The function failed.
+ *   - LE_TIMEOUT      No response was received from the Modem.
+ *   - LE_OK           The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_sms_SetSmsc

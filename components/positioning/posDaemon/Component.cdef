@@ -1,16 +1,26 @@
-import:
+requires:
+{
+    api:
+    {
+        le_cfg.api
+    }
+}
 
-    le_cfg.api
-
-export:
-
-    le_pos.api
-    le_posCtrl.api
+provides:
+{
+    api:
+    {
+        le_pos.api
+        le_posCtrl.api
+    }
+}
 
 sources:
-
+{
     le_pos.c
+}
 
 requires:
-
+{
     component: { $LEGATO_GNSS_PA }
+}

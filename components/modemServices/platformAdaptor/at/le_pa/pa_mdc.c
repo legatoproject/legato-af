@@ -582,7 +582,7 @@ le_result_t pa_mdc_WriteProfile
 le_result_t pa_mdc_StartSessionIPV4
 (
     uint32_t profileIndex,        ///< [IN] The profile to use
-    uint32_t* callRefPtr          ///< [OUT] Reference used for stopping the data session
+    pa_mdc_CallRef_t* callRefPtr  ///< [OUT] Reference used for stopping the data session
 )
 {
     le_result_t result=LE_NOT_POSSIBLE;
@@ -615,7 +615,7 @@ le_result_t pa_mdc_StartSessionIPV4
 
     if (result==LE_OK) {
         SetCurrentDataSessionIndex(profileIndex);
-        *callRefPtr = profileIndex;
+        memcpy(callRefPtr, &profileIndex, sizeof(void*));
     } else {
         SetCurrentDataSessionIndex(INVALID_PROFILE_INDEX);
     }
@@ -639,7 +639,7 @@ le_result_t pa_mdc_StartSessionIPV4
 le_result_t pa_mdc_StartSessionIPV6
 (
     uint32_t profileIndex,        ///< [IN] The profile to use
-    uint32_t* callRefPtr          ///< [OUT] Reference used for stopping the data session
+    pa_mdc_CallRef_t* callRefPtr  ///< [OUT] Reference used for stopping the data session
 )
 {
     return LE_OK;
@@ -660,7 +660,7 @@ le_result_t pa_mdc_StartSessionIPV6
 le_result_t pa_mdc_StartSessionIPV4V6
 (
     uint32_t profileIndex,        ///< [IN] The profile to use
-    uint32_t* callRefPtr          ///< [OUT] Reference used for stopping the data session
+    pa_mdc_CallRef_t* callRefPtr  ///< [OUT] Reference used for stopping the data session
 )
 {
     return LE_OK;
@@ -694,33 +694,29 @@ le_result_t pa_mdc_GetSessionType
  *
  * @return
  *      - LE_OK on success
- *      - LE_DUPLICATE if the data session has already been stopped (i.e. it is disconnected)
+ *      - LE_FAULT if the input parameter is not valid
  *      - LE_NOT_POSSIBLE for other failures
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_mdc_StopSession
 (
-    uint32_t callRef         ///< [IN] The call reference returned when starting the sessions
+    pa_mdc_CallRef_t callRef         ///< [IN] The call reference returned when starting the sessions
 )
 {
-    le_result_t result=LE_NOT_POSSIBLE;
-
     if ( GetCurrentDataSessionIndex() == INVALID_PROFILE_INDEX )
-    {
-        return LE_DUPLICATE;
-    }
-
-    // Stop the PDP connection on modem side
-    if ( (result = StopPDPConnection()) != LE_OK)
     {
         return LE_NOT_POSSIBLE;
     }
 
-    if (result==LE_OK) {
-        SetCurrentDataSessionIndex(INVALID_PROFILE_INDEX);
+    // Stop the PDP connection on modem side
+    if (StopPDPConnection() != LE_OK)
+    {
+        return LE_NOT_POSSIBLE;
     }
 
-    return result;
+    SetCurrentDataSessionIndex(INVALID_PROFILE_INDEX);
+
+    return LE_OK;
 }
 
 
@@ -763,7 +759,8 @@ le_result_t pa_mdc_GetSessionState
 //--------------------------------------------------------------------------------------------------
 void pa_mdc_SetSessionStateHandler
 (
-    pa_mdc_SessionStateHandler_t handlerRef ///< [IN] The session state handler function.
+    pa_mdc_SessionStateHandler_t handlerRef, ///< [IN] The session state handler function.
+    void*                        contextPtr  ///< [IN] The context to be given to the handler.
 )
 {
     // Check if the old handler is replaced or deleted.
@@ -1088,4 +1085,24 @@ le_result_t pa_mdc_ResetDataFlowStatistics
 )
 {
     return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Check the availability of the given profile index
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_NOT_FOUND for all other errors
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_mdc_IsProfileAllowed
+(
+    uint32_t  profileIndex,              ///< [IN] The profile to check
+    bool*     isAllowed                  ///< [OUT] profile using permission
+)
+{
+    *isAllowed = false;
+
+    return LE_NOT_FOUND;
 }

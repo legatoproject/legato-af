@@ -20,6 +20,9 @@
  */
 //--------------------------------------------------------------------------------------------------
 
+#include <arpa/inet.h>
+#include <stdlib.h>
+
 #include "legato.h"
 
 #include "interfaces.h"
@@ -60,6 +63,12 @@
 // @TODO change the APN file when dataConnectionService become a sandboxed app.
 //#define APN_FILE "/usr/local/share/apns.json"
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * The linux system file to read for default gateway.
+ */
+//--------------------------------------------------------------------------------------------------
+#define ROUTE_FILE "/proc/net/route"
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -73,6 +82,7 @@
 //--------------------------------------------------------------------------------------------------
 // Data structures.
 //--------------------------------------------------------------------------------------------------
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Data associated with the above ConnStateEvent.
@@ -86,6 +96,31 @@ typedef struct
     char interfaceName[100+1];
 }
 ConnStateData_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Data associated to retreive the state before the DCS started managing the default connection.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    char defaultGateway[LE_MDC_IPV6_ADDR_MAX_LEN];
+    char defaultInterface[20];
+    char newDnsIPv4[2][LE_MDC_IPV4_ADDR_MAX_LEN];
+    char newDnsIPv6[2][LE_MDC_IPV6_ADDR_MAX_LEN];
+}
+InterfaceDataBackup_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Event callback for data session state changes.
+ */
+//--------------------------------------------------------------------------------------------------
+static void DataSessionStateHandler
+(
+    bool   isConnected,
+    void*  contextPtr
+);
 
 //--------------------------------------------------------------------------------------------------
 // Static declarations.
@@ -116,10 +151,16 @@ static le_event_Id_t ConnStateEvent;
 //--------------------------------------------------------------------------------------------------
 /**
  * Used profile when Mobile technology is selected
- *
  */
 //--------------------------------------------------------------------------------------------------
 static le_mdc_ProfileRef_t MobileProfileRef = NULL;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Store the mobile session state handler ref
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mdc_SessionStateHandlerRef_t MobileSessionStateHandlerRef = NULL;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -142,6 +183,20 @@ static uint32_t RequestCount = 0;
 //--------------------------------------------------------------------------------------------------
 static le_ref_MapRef_t RequestRefMap;
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Structure used to store data allowing to restore a functioning state upon disconnection.
+ */
+//--------------------------------------------------------------------------------------------------
+static InterfaceDataBackup_t InterfaceDataBackup;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Buffer to store resolv.conf cache.
+ */
+//--------------------------------------------------------------------------------------------------
+static char ResolvConfBuffer[256];
+
 // -------------------------------------------------------------------------------------------------
 /**
  *  This function will know if the APN name for profileName is empty.
@@ -159,7 +214,7 @@ static bool IsApnEmpty
     if ( le_mdc_GetAPN(profileRef,apnName,sizeof(apnName)) != LE_OK)
     {
         LE_WARN("APN was truncated");
-        return false;
+        return true;
     }
 
     return (strcmp(apnName,"")==0);
@@ -169,8 +224,9 @@ static bool IsApnEmpty
 /**
  *  This function will attempt to read apn definition for mcc/mnc in file apnFilePtr
  *
- * @return LE_OK    function succeed
- * @return LE_FAULT function failed
+ * @return LE_OK        Function was able to find an APN
+ * @return LE_NOT_FOUND Function was not able to find an APN for this (MCC,MNC)
+ * @return LE_FAULT     There was an issue with the APN source
  */
 // -------------------------------------------------------------------------------------------------
 static le_result_t FindApnFromFile
@@ -209,6 +265,7 @@ static le_result_t FindApnFromFile
         return result;
     }
 
+    result = LE_NOT_FOUND;
     for( i = 0; i < json_array_size(apnArray); i++ )
     {
         json_t *data, *mcc, *mnc, *apn;
@@ -219,6 +276,7 @@ static le_result_t FindApnFromFile
         if ( !json_is_object( data ))
         {
             LE_WARN("data %d is not an object",i);
+            result = LE_FAULT;
             break;
         }
 
@@ -254,53 +312,6 @@ static le_result_t FindApnFromFile
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function must be called to extrat mcc/mnc from the IMSI code
- *
- * @return
- *      - LE_OK on success
- *      - LE_OVERFLOW if the mcc or mnc would not fit in buffer
- *      - LE_NOT_POSSIBLE for all other errors
- *
- * @note
- *      On failure, the process exits, so you don't have to worry about checking the returned
- *      reference for validity.
- */
-//--------------------------------------------------------------------------------------------------
-static le_result_t ExtractMccMncFromImsi
-(
-    const char  *imsiPtr,       ///< [IN] IMSI to parse
-    char        *mccPtr,        ///< [OUT] Mobile Country Code
-    size_t       mccPtrSize,    ///< [IN] mccPtr buffer size
-    char        *mncPtr,        ///< [OUT] Mobile Network Code
-    size_t       mncPtrSize     ///< [IN] mncPtr buffer size
-)
-{
-
-    if ((mccPtrSize < LE_MRC_MCC_BYTES) || (mncPtrSize < LE_MRC_MNC_BYTES))
-    {
-        return LE_OVERFLOW;
-    }
-    // Copy mcc
-    memcpy(mccPtr,imsiPtr,3);
-    mccPtr[LE_MRC_MCC_LEN] = '\0';
-
-    uint32_t mcc = atoi(mccPtr);
-    if ( ( mcc >= 310 ) && ( mcc <= 316 ))
-    {
-        memcpy(mncPtr,&imsiPtr[3],3);
-        mncPtr[LE_MRC_MNC_LEN] = '\0';
-    }
-    else
-    {
-        memcpy(mncPtr,&imsiPtr[3],2);
-        mncPtr[LE_MRC_MNC_LEN-1] = '\0';
-    }
-
-    return LE_OK;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Set the APN for the profile by reading the APN file.
  */
 //--------------------------------------------------------------------------------------------------
@@ -310,10 +321,8 @@ static le_result_t SetApnFromFile
 )
 {
     le_sim_ObjRef_t sim1Ref;
-
-    char imsi[LE_SIM_IMSI_LEN] = {0};
-    char mcc[LE_MRC_MCC_BYTES];
-    char mnc[LE_MRC_MNC_BYTES];
+    char mccString[LE_MRC_MCC_BYTES]={0};
+    char mncString[LE_MRC_MNC_BYTES]={0};
     char mccMncApn[100+1] = {0};
 
     // Hard coded, supposed we use the sim-1, need to be improved ?
@@ -324,27 +333,21 @@ static le_result_t SetApnFromFile
         return LE_FAULT;
     }
 
-    // Get the IMSI
-    if ( le_sim_GetIMSI(sim1Ref,imsi,sizeof(imsi)) != LE_OK )
+    // Get MCC/MNC
+    if (le_sim_GetHomeNetworkMccMnc(mccString,
+                                    LE_MRC_MCC_BYTES,
+                                    mncString,
+                                    LE_MRC_MNC_BYTES) != LE_OK)
     {
-        LE_WARN("Could not get the IMSI for sim-1");
+        LE_WARN("Could not find MCC/MNC");
         return LE_FAULT;
     }
-    le_sim_Delete(sim1Ref);
-
-    // Extract [MCC/MNC] from IMSI
-    if ( ExtractMccMncFromImsi(imsi,mcc,sizeof(mcc),mnc,sizeof(mnc)) != LE_OK )
-    {
-        LE_WARN("Could not get the MCC/MNC from IMSI");
-        return LE_FAULT;
-    }
-
-    LE_DEBUG("Search of [%s:%s] into file %s",mcc,mnc,APN_FILE);
+    LE_DEBUG("Search of [%s:%s] into file %s",mccString,mncString,APN_FILE);
 
     // Find APN value for [MCC/MNC]
-    if ( FindApnFromFile(APN_FILE,mcc,mnc,mccMncApn,sizeof(mccMncApn)) != LE_OK )
+    if ( FindApnFromFile(APN_FILE,mccString,mncString,mccMncApn,sizeof(mccMncApn)) != LE_OK )
     {
-        LE_WARN("Could not find %s/%s in %s",mcc,mnc,APN_FILE);
+        LE_WARN("Could not find %s/%s in %s",mccString,mncString,APN_FILE);
         return LE_FAULT;
     }
 
@@ -366,31 +369,42 @@ static void LoadSelectedTechProfile
     // database
     if (!strncmp(techPtr, "cellular", DCS_TECH_BYTES))
     {
-        uint32_t profileIndex = 1;
+        le_result_t res;
+        le_mdc_ProfileRef_t profileRef;
 
-        LE_DEBUG("Try to use the first profile in the modem");
-        le_mdc_ProfileRef_t profileRef = le_mdc_GetProfile(profileIndex);
+        LE_DEBUG("Try to use the first profile available in the modem");
+        res = le_mdc_GetAvailableProfile(&profileRef);
 
-        if ( profileRef == NULL )
+        if ( (res != LE_OK) || (profileRef == NULL) )
         {
-            LE_CRIT("Profile index %d is not available", profileIndex);
-            return;
+            LE_FATAL("No profile available");
+        }
+
+        // Updating profileRef
+        if (profileRef != MobileProfileRef)
+        {
+            if (MobileSessionStateHandlerRef != NULL)
+            {
+                le_mdc_RemoveSessionStateHandler(MobileSessionStateHandlerRef);
+                MobileSessionStateHandlerRef = NULL;
+            }
+
+            MobileProfileRef = profileRef;
+
+            uint32_t profileIndex;
+            profileIndex = le_mdc_GetProfileIndex(MobileProfileRef);
+            LE_DEBUG("Working with profile %p at index %d", MobileProfileRef, profileIndex);
         }
 
         // MobileProfileRef is now referencing the default profile to use for data connection
-        if ( IsApnEmpty(profileRef) )
+        if ( IsApnEmpty(MobileProfileRef) )
         {
             LE_INFO("Search for APN in the database");
-            if ( SetApnFromFile(profileRef) != LE_OK )
+            if ( SetApnFromFile(MobileProfileRef) != LE_OK )
             {
-                LE_ERROR("Could not set APN from file");
-                return;
+                LE_WARN("Could not set APN from file");
             }
         }
-
-        // load the profile
-        MobileProfileRef = profileRef;
-        LE_DEBUG("profile at index %d is successfully loaded.", profileIndex);
     }
     else
     {
@@ -419,23 +433,205 @@ static void LoadPreferencesFromConfigDb
 
     if ( le_cfg_GetString(cfg, CFG_NODE_PREF_TECH, techStr, sizeof(techStr), "cellular") != LE_OK )
     {
-        LE_WARN("String value for '%s' too large." ,CFG_NODE_PREF_TECH);
-        le_cfg_CancelTxn(cfg);
-        return;
+        LE_WARN("String value for '%s' too large.", CFG_NODE_PREF_TECH);
     }
-
-    if ( strncmp(techStr, "", sizeof(techStr)) == 0 )
-    {
-        LE_WARN("No node value set for '%s'", CFG_NODE_PREF_TECH);
-        le_cfg_CancelTxn(cfg);
-        return;
-    }
-
+    
     le_cfg_CancelTxn(cfg);
 
-    LE_DEBUG("%s is the preferred technology for data connection.", techStr);
+    if (techStr[0] == '\0')
+    {
+        LE_WARN("No node value set for '%s'", CFG_NODE_PREF_TECH);
+        LE_ASSERT( LE_OK != le_utf8_Copy(techStr, "cellular", sizeof(techStr), NULL) );
+    }
+
+    LE_DEBUG("'%s' is the preferred technology for data connection.", techStr);
+
     LoadSelectedTechProfile(techStr);
+
+    LE_ASSERT( MobileProfileRef != NULL );
 }
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Check if a default gateway is set
+ *
+ * return
+ *      True or False
+ */
+//--------------------------------------------------------------------------------------------------
+static bool IsDefaultGatewayPresent
+(
+    void
+)
+{
+    bool result = false;
+    le_result_t openResult;
+    FILE *routeFile;
+    char line[100] , *ifacePtr , *destPtr, *gwPtr, *saveptr;
+
+    routeFile = le_flock_OpenStream(ROUTE_FILE , LE_FLOCK_READ, &openResult);
+
+    if (routeFile == NULL)
+    {
+        LE_WARN("le_flock_OpenStream failed with error %d", openResult);
+        return result;
+    }
+
+    while(fgets(line , sizeof(line) , routeFile))
+    {
+        ifacePtr = strtok_r(line , " \t", &saveptr);
+        destPtr  = strtok_r(NULL , " \t", &saveptr);
+        gwPtr    = strtok_r(NULL , " \t", &saveptr);
+
+        if(ifacePtr!=NULL && destPtr!=NULL)
+        {
+            if(strcmp(destPtr , "00000000") == 0)
+            {
+                if (gwPtr)
+                {
+                    result = true;
+                    break;
+                }
+            }
+        }
+    }
+
+    le_flock_CloseStream(routeFile);
+    return result;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Save the default route.
+ *
+ * return
+ *      LE_OK           Function succeed
+ *      LE_OVERFLOW     buffer provided are too small
+ *      LE_NOT_FOUND    No default gateway is set.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t SaveDefaultGateway
+(
+    char    *interfacePtr,
+    size_t   interfaceSize,
+    char    *gatewayPtr,
+    size_t   gatewaySize
+)
+{
+    le_result_t result;
+    FILE *routeFile;
+    char line[100] , *ifacePtr , *destPtr, *gwPtr, *saveptr;
+
+    routeFile = le_flock_OpenStream(ROUTE_FILE , LE_FLOCK_READ, &result);
+
+    if (routeFile == NULL)
+    {
+        return result;
+    }
+
+    // Initialize default value
+    interfacePtr[0] = '\0';
+    gatewayPtr[0] = '\0';
+
+    result = LE_NOT_FOUND;
+    while(fgets(line , sizeof(line) , routeFile))
+    {
+        ifacePtr = strtok_r(line , " \t", &saveptr);
+        destPtr  = strtok_r(NULL , " \t", &saveptr);
+        gwPtr    = strtok_r(NULL , " \t", &saveptr);
+
+        if(ifacePtr!=NULL && destPtr!=NULL)
+        {
+            if(strcmp(destPtr , "00000000") == 0)
+            {
+                if (gwPtr)
+                {
+                    char *pEnd;
+                    uint32_t ng=strtoul(gwPtr,&pEnd,16);
+                    struct in_addr addr;
+                    addr.s_addr=ng;
+
+                    result = le_utf8_Copy(interfacePtr,ifacePtr,interfaceSize,NULL);
+                    if (result != LE_OK)
+                    {
+                        LE_WARN("inferface buffer is too small");
+                        break;
+                    }
+
+                    result = le_utf8_Copy(gatewayPtr,inet_ntoa(addr),gatewaySize,NULL);
+                    if (result != LE_OK)
+                    {
+                        LE_WARN("gateway buffer is too small");
+                        break;
+                    }
+                }
+                break;
+            }
+        }
+    }
+
+    le_flock_CloseStream(routeFile);
+    return result;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the default gateway in the system.
+ *
+ * return
+ *      LE_OK           Function succeed
+ *      LE_NOT_POSSIBLE Function failed
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t SetDefaultGateway
+(
+    const char *interfacePtr,
+    const char *gatewayPtr,
+    bool isIpv6
+)
+{
+    const char *optionPtr = "";
+    char systemCmd[200] = {0};
+
+    LE_DEBUG("Try set the gateway %s on %s", gatewayPtr, interfacePtr);
+
+    if ( (strcmp(gatewayPtr,"")==0) || (strcmp(interfacePtr,"")==0) )
+    {
+        LE_WARN("Gateway or Interface are empty");
+        return LE_NOT_POSSIBLE;
+    }
+
+    if (IsDefaultGatewayPresent())
+    {
+        // Remove the last default GW.
+        LE_DEBUG("Execute '/sbin/route del default'");
+        if ( system("/sbin/route del default") == -1 )
+        {
+            LE_WARN("system '%s' failed", systemCmd);
+            return LE_NOT_POSSIBLE;
+        }
+    }
+
+    if ( isIpv6 )
+    {
+        optionPtr = "-A inet6";
+    }
+
+    // @TODO use of ioctl instead, should be done when rework the DCS.
+    snprintf(systemCmd, sizeof(systemCmd),
+             "/sbin/route %s add default gw %s %s", optionPtr, gatewayPtr, interfacePtr);
+
+    LE_DEBUG("Execute '%s", systemCmd);
+    if ( system(systemCmd) == -1 )
+    {
+        LE_WARN("system '%s' failed", systemCmd);
+        return LE_NOT_POSSIBLE;
+    }
+
+    return LE_OK;
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -451,19 +647,18 @@ static le_result_t SetRouteConfiguration
     le_mdc_ProfileRef_t profileRef
 )
 {
-    const char *optionPtr;
+    bool isIpv6 = false;
     char gatewayAddr[100] = {0};
     char interface[100] = {0};
-    char systemCmd[200] = {0};
     le_result_t (*getGatewayFunction)(le_mdc_ProfileRef_t,char*,size_t) = NULL;
 
     if ( le_mdc_IsIPv6(profileRef) ) {
-        optionPtr = "-A inet6";
+        isIpv6 = true;
         getGatewayFunction = le_mdc_GetIPv6GatewayAddress;
     }
     else if ( le_mdc_IsIPv4(profileRef) )
     {
-        optionPtr = "";
+        isIpv6 = false;
         getGatewayFunction = le_mdc_GetIPv4GatewayAddress;
     }
     else
@@ -481,31 +676,199 @@ static le_result_t SetRouteConfiguration
 
     if ( le_mdc_GetInterfaceName(profileRef, interface, sizeof(interface)) != LE_OK )
     {
-        LE_INFO("le_mdc_GetInterfaceName failed");
+        LE_WARN("le_mdc_GetInterfaceName failed");
         return LE_NOT_POSSIBLE;
     }
 
-    LE_DEBUG("set the gateway %s for interface %s",gatewayAddr, interface);
-    // Remove the last default GW.
-    LE_DEBUG("Execute 'route del default'");
-    if ( system("/sbin/route del default") == -1 )
+    // Set the default gateway retrieved from modem.
+    return SetDefaultGateway(interface,gatewayAddr, isIpv6);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Read DNS configuration from /etc/resolv.conf
+ *
+ * @return File content in a statically allocated string (shouldn't be freed)
+ */
+//--------------------------------------------------------------------------------------------------
+static char * ReadResolvConf
+(
+    void
+)
+{
+    int fd;
+    char * fileContent;
+    size_t fileSz;
+
+    fd = open("/etc/resolv.conf", O_RDONLY);
+    if (fd < 0)
     {
-        LE_WARN("system '%s' failed", systemCmd);
+        LE_WARN("fopen on /etc/resolv.conf failed");
+        return NULL;
+    }
+
+    fileSz = lseek(fd, 0, SEEK_END);
+    LE_FATAL_IF( (fileSz < 0), "Unable to get resolv.conf size" );
+
+    if (fileSz == 0)
+    {
+        return NULL;
+    }
+
+    LE_DEBUG("Caching resolv.conf: size[%zu]", fileSz);
+
+    lseek(fd, 0, SEEK_SET);
+
+    if (fileSz > (sizeof(ResolvConfBuffer)-1))
+    {
+        LE_ERROR("Buffer is too small (%zu), file will be truncated from %zu",
+                sizeof(ResolvConfBuffer), fileSz);
+        fileSz = sizeof(ResolvConfBuffer) - 1;
+    }
+
+    fileContent = ResolvConfBuffer;
+
+    if ( 0 > read(fd, fileContent, fileSz) )
+    {
+        LE_ERROR("Caching resolv.conf failed");
+        fileContent[0] = '\0';
+        fileSz = 0;
+    }
+    else
+    {
+        fileContent[fileSz] = '\0';
+    }
+
+    if ( close(fd) != 0 )
+    {
+        LE_FATAL("close failed");
+    }
+
+    LE_FATAL_IF( strlen(fileContent) > fileSz,
+                    "Content size (%zu) and File size (%zu) differ",
+                    strlen(fileContent), fileSz );
+
+    return fileContent;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Write the DNS configuration into /etc/resolv.conf
+ *
+ * @return
+ *      LE_NOT_POSSIBLE Function failed
+ *      LE_OK           Function succeed
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t AddNameserversToResolvConf
+(
+    const char *dns1Ptr,
+    const char *dns2Ptr
+)
+{
+    bool addDns1 = true;
+    bool addDns2 = true;
+
+    LE_INFO("Set DNS '%s' '%s'", dns1Ptr, dns2Ptr);
+
+    addDns1 = ('\0' != dns1Ptr[0]);
+    addDns2 = ('\0' != dns2Ptr[0]);
+
+    // Look for entries to add in the existing file
+    char* resolvConfSourcePtr = ReadResolvConf();
+
+    if (resolvConfSourcePtr != NULL)
+    {
+        char* currentLinePtr = resolvConfSourcePtr;
+        int currentLinePos = 0;
+
+        // For each line in source file
+        while (true)
+        {
+            if ( ('\0' == currentLinePtr[currentLinePos]) ||
+                 ('\n' == currentLinePtr[currentLinePos]) )
+            {
+                char sourceLineEnd = currentLinePtr[currentLinePos];
+                currentLinePtr[currentLinePos] = '\0';
+
+                if (NULL != strstr(currentLinePtr, dns1Ptr))
+                {
+                    LE_DEBUG("DNS 1 '%s' found in file", dns1Ptr);
+                    addDns1 = false;
+                }
+                else if (NULL != strstr(currentLinePtr, dns2Ptr))
+                {
+                    LE_DEBUG("DNS 2 '%s' found in file", dns2Ptr);
+                    addDns2 = false;
+                }
+
+                if (sourceLineEnd == '\0')
+                {
+                    break;
+                }
+                else
+                {
+                    currentLinePtr[currentLinePos] = sourceLineEnd;
+                    currentLinePtr += (currentLinePos+1); // Next line
+                    currentLinePos = 0;
+                }
+            }
+            else
+            {
+                currentLinePos++;
+            }
+        }
+    }
+
+    if ( !addDns1 && !addDns2 )
+    {
+        // No need to change the file
+        return LE_OK;
+    }
+
+    FILE* resolvConfPtr;
+
+    resolvConfPtr = fopen("/etc/resolv.conf", "w");
+    if (resolvConfPtr == NULL)
+    {
+        LE_WARN("fopen on /etc/resolv.conf failed");
         return LE_NOT_POSSIBLE;
     }
 
-    // @TODO use of ioctl instead, should be done when rework the DCS.
-    snprintf(systemCmd,
-             sizeof(systemCmd),
-             "/sbin/route %s add default gw %s %s",
-             optionPtr,
-             gatewayAddr,
-             interface);
-
-    LE_DEBUG("Execute '%s",systemCmd);
-    if ( system(systemCmd) == -1 )
+    // Set DNS 1 if needed
+    if ( addDns1 && (fprintf(resolvConfPtr, "nameserver %s\n", dns1Ptr) < 0) )
     {
-        LE_WARN("system '%s' failed", systemCmd);
+        LE_WARN("fprintf failed");
+        if ( fclose(resolvConfPtr) != 0 )
+        {
+            LE_WARN("fclose failed");
+        }
+        return LE_NOT_POSSIBLE;
+    }
+
+    // Set DNS 2 if needed
+    if ( addDns2 && (fprintf(resolvConfPtr, "nameserver %s\n", dns2Ptr) < 0) )
+    {
+        LE_WARN("fprintf failed");
+        if ( fclose(resolvConfPtr) != 0 )
+        {
+            LE_WARN("fclose failed");
+        }
+        return LE_NOT_POSSIBLE;
+    }
+
+    // Append rest of the file
+    if (resolvConfSourcePtr != NULL)
+    {
+        if ( 0 > fwrite(resolvConfSourcePtr, sizeof(char), strlen(resolvConfSourcePtr), resolvConfPtr) )
+        {
+            LE_FATAL("Writing resolv.conf failed");
+        }
+    }
+
+    if ( fclose(resolvConfPtr) != 0 )
+    {
+        LE_WARN("fclose failed");
         return LE_NOT_POSSIBLE;
     }
 
@@ -514,80 +877,83 @@ static le_result_t SetRouteConfiguration
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Write the DNS configuration into /etc/resolv.cof
+ * Write the DNS configuration into /etc/resolv.conf
  *
- * return
+ * @return
  *      LE_NOT_POSSIBLE Function failed
  *      LE_OK           Function succeed
  */
 //--------------------------------------------------------------------------------------------------
-static le_result_t WriteResolvFile
+static le_result_t RemoveNameserversFromResolvConf
 (
     const char *dns1Ptr,
     const char *dns2Ptr
 )
 {
-    char *linePtr = NULL;
-    size_t len = 0;
-    bool addDns1 = true;
-    bool addDns2 = true;
-    LE_INFO("Set DNS '%s' '%s'", dns1Ptr,dns2Ptr);
+    char* resolvConfSourcePtr = ReadResolvConf();
+    char* currentLinePtr = resolvConfSourcePtr;
+    int currentLinePos = 0;
 
-    FILE* resolvFilePtr;
+    FILE* resolvConfPtr;
 
-    resolvFilePtr = fopen("/etc/resolv.conf", "a+");
-    if (resolvFilePtr == NULL)
+    if (resolvConfSourcePtr == NULL)
+    {
+        // Nothing to remove
+        return LE_OK;
+    }
+
+    resolvConfPtr = fopen("/etc/resolv.conf", "w");
+    if (resolvConfPtr == NULL)
     {
         LE_WARN("fopen on /etc/resolv.conf failed");
         return LE_NOT_POSSIBLE;
     }
 
-    addDns1 = (strcmp(dns1Ptr,"") != 0);
-    addDns2 = (strcmp(dns2Ptr,"") != 0);
-    // Search in file if the DNS are already set.
-    while (getline(&linePtr, &len, resolvFilePtr) != -1)
+    // For each line in source file
+    while (true)
     {
-        if ( addDns1 && (strstr(linePtr, dns1Ptr) != NULL))
+        if ( ('\0' == currentLinePtr[currentLinePos]) ||
+             ('\n' == currentLinePtr[currentLinePos]) )
         {
-            LE_DEBUG("'%s' found in file",dns1Ptr);
-            addDns1 = false;
+            char sourceLineEnd = currentLinePtr[currentLinePos];
+            currentLinePtr[currentLinePos] = '\0';
+
+            // Got to the end of the source file
+            if ( (sourceLineEnd == '\0') && (currentLinePos == 0) )
+            {
+                break;
+            }
+
+            // If line doesn't contains an entry to remove,
+            // copy line to new content
+            if ( (NULL == strstr(currentLinePtr, dns1Ptr)) &&
+                 (NULL == strstr(currentLinePtr, dns2Ptr)) )
+            {
+                // The original file contents may not have the final line terminated by
+                // a new-line; always terminate with a new-line, since this is what is
+                // usually expected on linux.
+                currentLinePtr[currentLinePos] = '\n';
+                fwrite(currentLinePtr, sizeof(char), (currentLinePos+1), resolvConfPtr);
+            }
+
+            if (sourceLineEnd == '\0')
+            {
+                // This should only occur if the last line was not terminated by a new-line.
+                break;
+            }
+            else
+            {
+                currentLinePtr += (currentLinePos+1); // Next line
+                currentLinePos = 0;
+            }
         }
-        if ( addDns2 && (strstr(linePtr, dns2Ptr) != NULL))
+        else
         {
-            LE_DEBUG("'%s' found in file",dns2Ptr);
-            addDns2 = false;
+            currentLinePos++;
         }
     }
 
-    // Free the line
-    if (linePtr)
-    {
-        free(linePtr);
-    }
-
-    // Add dns1 if needed
-    if ( addDns1 && (fprintf(resolvFilePtr, "nameserver %s\n", dns1Ptr) < 0) )
-    {
-        LE_WARN("fprintf failed");
-        if ( fclose(resolvFilePtr) != 0 )
-        {
-            LE_WARN("fclose failed");
-        }
-        return LE_NOT_POSSIBLE;
-    }
-
-    // Add dns2 if needed
-    if ( addDns2 && (fprintf(resolvFilePtr, "nameserver %s\n", dns2Ptr) < 0) )
-    {
-        LE_WARN("fprintf failed");
-        if ( fclose(resolvFilePtr) != 0 )
-        {
-            LE_WARN("fclose failed");
-        }
-        return LE_NOT_POSSIBLE;
-    }
-
-    if ( fclose(resolvFilePtr) != 0 )
+    if ( fclose(resolvConfPtr) != 0 )
     {
         LE_WARN("fclose failed");
         return LE_NOT_POSSIBLE;
@@ -610,8 +976,8 @@ static le_result_t SetDnsConfiguration
     le_mdc_ProfileRef_t profileRef
 )
 {
-    char dns1Addr[100] = {0};
-    char dns2Addr[100] = {0};
+    char dns1Addr[LE_MDC_IPV6_ADDR_MAX_LEN] = {0};
+    char dns2Addr[LE_MDC_IPV6_ADDR_MAX_LEN] = {0};
 
     if ( le_mdc_IsIPv4(profileRef) )
     {
@@ -619,14 +985,23 @@ static le_result_t SetDnsConfiguration
                                         dns1Addr, sizeof(dns1Addr),
                                         dns2Addr, sizeof(dns2Addr)) != LE_OK )
         {
-            LE_INFO("le_mdc_GetDNSAddresses failed");
+            LE_INFO("IPv4: le_mdc_GetDNSAddresses failed");
             return LE_NOT_POSSIBLE;
         }
-        if ( WriteResolvFile(dns1Addr,dns2Addr) != LE_OK )
+
+        if ( AddNameserversToResolvConf(dns1Addr, dns2Addr) != LE_OK )
         {
-            LE_INFO("Could not write in resolv file");
+            LE_INFO("IPv4: Could not write in resolv file");
             return LE_NOT_POSSIBLE;
         }
+
+        strcpy(InterfaceDataBackup.newDnsIPv4[0], dns1Addr);
+        strcpy(InterfaceDataBackup.newDnsIPv4[1], dns2Addr);
+    }
+    else
+    {
+        InterfaceDataBackup.newDnsIPv4[0][0] = '\0';
+        InterfaceDataBackup.newDnsIPv4[1][0] = '\0';
     }
 
     if ( le_mdc_IsIPv6(profileRef) )
@@ -635,14 +1010,23 @@ static le_result_t SetDnsConfiguration
                                         dns1Addr, sizeof(dns1Addr),
                                         dns2Addr, sizeof(dns2Addr)) != LE_OK )
         {
-            LE_INFO("le_mdc_GetDNSAddresses failed");
+            LE_INFO("IPv6: le_mdc_GetDNSAddresses failed");
             return LE_NOT_POSSIBLE;
         }
-        if ( WriteResolvFile(dns1Addr,dns2Addr) != LE_OK )
+
+        if ( AddNameserversToResolvConf(dns1Addr, dns2Addr) != LE_OK )
         {
-            LE_INFO("Could not write in resolv file");
+            LE_INFO("IPv6: Could not write in resolv file");
             return LE_NOT_POSSIBLE;
         }
+
+        strcpy(InterfaceDataBackup.newDnsIPv6[0], dns1Addr);
+        strcpy(InterfaceDataBackup.newDnsIPv6[1], dns2Addr);
+    }
+    else
+    {
+        InterfaceDataBackup.newDnsIPv6[0][0] = '\0';
+        InterfaceDataBackup.newDnsIPv6[1][0] = '\0';
     }
 
     return LE_OK;
@@ -661,13 +1045,26 @@ static void TryStartDataSession
 {
     le_result_t          result;
 
+    // Reload MobileProfileRef
+    LoadPreferencesFromConfigDb();
+
+    // Register for data session state changes
+    // if there was an update of profileRef
+    if (MobileSessionStateHandlerRef == NULL)
+    {
+        MobileSessionStateHandlerRef = le_mdc_AddSessionStateHandler(MobileProfileRef, DataSessionStateHandler, &MobileProfileRef);
+    }
+
     result = le_mdc_StartSession(MobileProfileRef);
     if (result != LE_OK)
     {
-        if (le_timer_Start(timerRef) != LE_OK)
+        if (!le_timer_IsRunning(timerRef))
         {
-            LE_ERROR("Could not start the StartDcs timer!");
-            return;
+            if (le_timer_Start(timerRef) != LE_OK)
+            {
+                LE_ERROR("Could not start the StartDcs timer!");
+                return;
+            }
         }
     }
     else
@@ -675,23 +1072,37 @@ static void TryStartDataSession
         // First wait a few seconds for the default DHCP client.
         sleep(3);
 
+        // Save gateway configuration.
+        if ( SaveDefaultGateway(InterfaceDataBackup.defaultInterface, sizeof(InterfaceDataBackup.defaultInterface),
+                                InterfaceDataBackup.defaultGateway, sizeof(InterfaceDataBackup.defaultGateway)) != LE_OK)
+        {
+            LE_WARN("Could not save the default gateway");
+        }
+        LE_DEBUG("default gw is: '%s' on '%s'",InterfaceDataBackup.defaultGateway,InterfaceDataBackup.defaultInterface);
+
         if (SetRouteConfiguration(MobileProfileRef) != LE_OK)
         {
             LE_ERROR("Failed to get configuration route.");
-            if (le_timer_Start(timerRef) != LE_OK)
+            if (!le_timer_IsRunning(timerRef))
             {
-                LE_ERROR("Could not start the StartDcs timer!");
-                return;
+                if (le_timer_Start(timerRef) != LE_OK)
+                {
+                    LE_ERROR("Could not start the StartDcs timer!");
+                    return;
+                }
             }
         }
 
         if (SetDnsConfiguration(MobileProfileRef) != LE_OK)
         {
             LE_ERROR("Failed to get configuration DNS.");
-            if (le_timer_Start(timerRef) != LE_OK)
+            if (!le_timer_IsRunning(timerRef))
             {
-                LE_ERROR("Could not start the StartDcs timer!");
-                return;
+                if (le_timer_Start(timerRef) != LE_OK)
+                {
+                    LE_ERROR("Could not start the StartDcs timer!");
+                    return;
+                }
             }
         }
 
@@ -724,7 +1135,7 @@ static void StartDcsTimerHandler
     }
     else
     {
-        result=le_mdc_GetSessionState(MobileProfileRef, &sessionState);
+        result = le_mdc_GetSessionState(MobileProfileRef, &sessionState);
         if ((result == LE_OK) && (sessionState))
         {
             if (SetRouteConfiguration(MobileProfileRef) != LE_OK)
@@ -757,6 +1168,30 @@ static void StartDcsTimerHandler
     }
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Used the data backup upon connection to remove DNS entries locally added.
+ */
+//--------------------------------------------------------------------------------------------------
+static void RestoreInitialNameservers
+(
+    void
+)
+{
+    if ( ('\0' != InterfaceDataBackup.newDnsIPv4[0][0]) ||
+         ('\0' != InterfaceDataBackup.newDnsIPv4[1][0]) )
+    {
+        RemoveNameserversFromResolvConf(InterfaceDataBackup.newDnsIPv4[0],
+                                        InterfaceDataBackup.newDnsIPv4[1]);
+    }
+
+    if ( ('\0' != InterfaceDataBackup.newDnsIPv6[0][0]) ||
+         ('\0' != InterfaceDataBackup.newDnsIPv6[1][0]) )
+    {
+        RemoveNameserversFromResolvConf(InterfaceDataBackup.newDnsIPv6[0],
+                                        InterfaceDataBackup.newDnsIPv6[1]);
+    }
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -771,26 +1206,33 @@ static void TryStopDataSession
     bool        sessionState;
     le_result_t result;
 
-    result=le_mdc_GetSessionState(MobileProfileRef, &sessionState);
+    result = le_mdc_GetSessionState(MobileProfileRef, &sessionState);
     if ((result == LE_OK) && (!sessionState))
     {
         IsConnected = false;
+        RestoreInitialNameservers();
         return;
     }
     else
     {
-        // Try to shutdown the radio anyway
-        result=le_mdc_StopSession(MobileProfileRef);
+        // Try to shutdown the connection anyway
+        result = le_mdc_StopSession(MobileProfileRef);
         if (result != LE_OK)
         {
-            if (le_timer_Start(timerRef) != LE_OK)
+            if (!le_timer_IsRunning(timerRef))
             {
-                LE_ERROR("Could not start the StopDcs timer!");
+                if (le_timer_Start(timerRef) != LE_OK)
+                {
+                    LE_ERROR("Could not start the StopDcs timer!");
+                }
             }
         }
         else
         {
             IsConnected = false;
+
+            SetDefaultGateway(InterfaceDataBackup.defaultInterface, InterfaceDataBackup.defaultGateway, false);
+            RestoreInitialNameservers();
         }
     }
 }
@@ -817,11 +1259,11 @@ static void StopDcsTimerHandler
     }
     else
     {
-        result=le_mdc_GetSessionState(MobileProfileRef, &sessionState);
+        result = le_mdc_GetSessionState(MobileProfileRef, &sessionState);
         if ((result == LE_OK) && (!sessionState))
         {
             IsConnected = false;
-            // The radio is OFF, stop and delete the Timer.
+            // The data session is disconnected, stop and delete the Timer.
             le_timer_Stop(timerRef);
         }
         else
@@ -842,11 +1284,10 @@ static void SendConnStateEvent
     bool isConnected
 )
 {
-
     // Init the event data
     ConnStateData_t eventData;
     eventData.isConnected = isConnected;
-    if ( isConnected )
+    if (isConnected)
     {
         le_mdc_GetInterfaceName(MobileProfileRef,
                                 eventData.interfaceName,
@@ -858,8 +1299,9 @@ static void SendConnStateEvent
         eventData.interfaceName[0] = '\0';
     }
 
-    LE_PRINT_VALUE("%s", eventData.interfaceName);
-    LE_PRINT_VALUE("%i", eventData.isConnected);
+    LE_DEBUG("Reporting '%s' state[%i]",
+        eventData.interfaceName,
+        eventData.isConnected);
 
     // Send the event to interested applications
     le_event_Report(ConnStateEvent, &eventData, sizeof(eventData));
@@ -977,16 +1419,6 @@ static void CellNetStateHandler
         case LE_CELLNET_REG_ROAMING:
             if ((RequestCount > 0) && (!IsConnected))
             {
-                // If starting data session for first time, load the profile
-                if ( MobileProfileRef == NULL )
-                {
-                    // This will initialize MobileProfileRef
-                    LoadPreferencesFromConfigDb();
-                    
-                    // Register for data session state changes
-                    le_mdc_AddSessionStateHandler(MobileProfileRef,DataSessionStateHandler,&MobileProfileRef);
-                }
-
                 TryStartDataSession(StartDcsTimer);
             }
             break;
@@ -1006,6 +1438,13 @@ static void* DataThread
     void* contextPtr
 )
 {
+    // Connect to the services required by this thread
+    le_cellnet_ConnectService();
+    le_cfg_ConnectService();
+    le_mdc_ConnectService();
+    le_mrc_ConnectService();
+    le_sim_ConnectService();
+
     LE_INFO("Data Thread Started");
 
     // Register for command events
@@ -1015,6 +1454,9 @@ static void* DataThread
 
     // Register for Cellular Network Service state changes
     le_cellnet_AddStateHandler(CellNetStateHandler, NULL);
+
+    // Register for data session state changes
+    MobileSessionStateHandlerRef = le_mdc_AddSessionStateHandler(MobileProfileRef, DataSessionStateHandler, &MobileProfileRef);
 
     // Run the event loop
     le_event_RunLoop();
@@ -1142,7 +1584,6 @@ void le_data_Release
 }
 
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  *  Server Init
@@ -1158,9 +1599,12 @@ COMPONENT_INIT
     // the expected number of simultaneous data requests, so take a reasonable guess.
     RequestRefMap = le_ref_CreateMap("Requests", 5);
 
+    // Load the preferences from the configuration tree
+    LoadPreferencesFromConfigDb();
+
     // Set a timer to retry the start data session.
     StartDcsTimer = le_timer_Create("StartDcsTimer");
-    le_clk_Time_t  interval = {15, 0}; // 15 seconds
+    le_clk_Time_t interval = {15, 0}; // 15 seconds
 
     if ( (le_timer_SetHandler(StartDcsTimer, StartDcsTimerHandler) != LE_OK) ||
          (le_timer_SetRepeat(StartDcsTimer, 0) != LE_OK) ||
@@ -1185,4 +1629,3 @@ COMPONENT_INIT
 
     LE_INFO("Data Connection Server is ready");
 }
-

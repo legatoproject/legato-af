@@ -1,13 +1,22 @@
-export:
+provides:
+{
+    api:
+    {
+        le_cellnet.api
+    }
+}
 
-    le_cellnet.api
-
-import:
-
-    le_sim.api
-    le_mrc.api
-    le_cfg.api
+requires:
+{
+    api:
+    {
+        le_sim.api
+        le_mrc.api
+        le_cfg.api
+    }
+}
 
 sources:
-
+{
     cellNetServiceServer.c
+}

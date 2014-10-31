@@ -1,7 +1,17 @@
-export:
-
-    le_audio.api
+provides:
+{
+    api:
+    {
+        le_audio.api
+    }
+}
 
 sources:
-
+{
     le_audio.c
+}
+
+requires:
+{
+    component: { $LEGATO_AUDIO_PA }
+}

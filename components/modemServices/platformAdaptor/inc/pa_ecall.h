@@ -81,6 +81,19 @@ typedef void (*pa_ecall_EventHandlerFunc_t)
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * This function initializes the platform adapter layer for eCall services.
+ *
+ * @return LE_OK if successful.
+ * @return LE_FAULT if unsuccessful.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_ecall_Init
+(
+    void
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This function must be called to register a handler for eCall event notifications.
  *
  * @return A handler reference, which is only needed for later removal of the handler.
@@ -116,7 +129,7 @@ void pa_ecall_RemoveEventHandler
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_ecall_SetPsapNumber
 (
-    char psap[LE_MDMDEFS_PHONE_NUM_MAX_LEN] ///< [IN] Public Safely Answering Point number
+    char psap[LE_MDMDEFS_PHONE_NUM_MAX_BYTES] ///< [IN] Public Safely Answering Point number
 );
 
 //--------------------------------------------------------------------------------------------------

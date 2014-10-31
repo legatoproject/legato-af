@@ -1179,3 +1179,46 @@ le_result_t pa_sim_GetSubscriberPhoneNumber
 {
     return le_utf8_Copy(phoneNumberStr,"",phoneNumberStrSize, NULL);
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the Home Network Name information.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_OVERFLOW if the Home Network Name can't fit in nameStr
+ *      - LE_NOT_POSSIBLE on any other failure
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_sim_GetHomeNetworkOperator
+(
+    char       *nameStr,               ///< [OUT] the home network Name
+    size_t      nameStrSize            ///< [IN] the nameStr size
+)
+{
+    return LE_NOT_POSSIBLE;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the Home Network MCC MNC.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_OVERFLOW if the Home Network MCC/MNC can't fit in mccPtr and mncPtr
+ *      - LE_FAULT for unexpected error
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_sim_GetHomeNetworkMccMnc
+(
+    char     *mccPtr,                ///< [OUT] Mobile Country Code
+    size_t    mccPtrSize,            ///< [IN] mccPtr buffer size
+    char     *mncPtr,                ///< [OUT] Mobile Network Code
+    size_t    mncPtrSize             ///< [IN] mncPtr buffer size
+)
+{
+    return LE_FAULT;
+}

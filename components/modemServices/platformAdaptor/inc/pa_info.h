@@ -58,18 +58,40 @@
  * Maximum 'International Mobile Equipment Identity length.
  */
 //--------------------------------------------------------------------------------------------------
-#define PA_INFO_IMEI_MAX_LEN     15
+#define PA_INFO_IMEI_MAX_LEN     LE_INFO_IMEI_MAX_LEN
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum 'International Mobile Equipment Identity length.
+ */
+//--------------------------------------------------------------------------------------------------
+#define PA_INFO_IMEI_MAX_BYTES     PA_INFO_IMEI_MAX_LEN+1
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum number of characters (excluding null terminator) in a device model
+ * identification string.
+ **/
+//--------------------------------------------------------------------------------------------------
+#define PA_INFO_DEVICE_MODEL_MAX_LEN     256
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Type definition for an 'International Mobile Equipment Identity' (16 digits)
+ */
+//--------------------------------------------------------------------------------------------------
+typedef char pa_info_Imei_t[PA_INFO_IMEI_MAX_BYTES];
 
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Type definition for an 'International Mobile Equipment Identity (16 digits)
+ * Type definition for a 'Device Model ID'.
  */
 //--------------------------------------------------------------------------------------------------
-typedef char pa_info_Imei_t[PA_INFO_IMEI_MAX_LEN+1];
+typedef char pa_info_DeviceModel_t[PA_INFO_DEVICE_MODEL_MAX_LEN + 1];
 
 
 
@@ -80,11 +102,46 @@ typedef char pa_info_Imei_t[PA_INFO_IMEI_MAX_LEN+1];
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Get the firmware version string
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_NOT_FOUND if the version string is not available
+ *      - LE_NOT_POSSIBLE for any other errors
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_info_GetFirmwareVersion
+(
+    char* versionPtr,        ///< [OUT] Firmware version string
+    size_t versionSize       ///< [IN] Size of version buffer
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the bootloader version string
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_NOT_FOUND if the version string is not available
+ *      - LE_NOT_POSSIBLE for any other errors
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_info_GetBootloaderVersion
+(
+    char* versionPtr,        ///< [OUT] Firmware version string
+    size_t versionSize       ///< [IN] Size of version buffer
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This function get the International Mobile Equipment Identity (IMEI).
  *
- * @return  LE_NOT_POSSIBLE  The function failed to get the value.
- * @return  LE_TIMEOUT       No response was received from the Modem.
- * @return  LE_OK            The function succeeded.
+ * @return
+ * - LE_NOT_POSSIBLE  The function failed to get the value.
+ * - LE_TIMEOUT       No response was received from the Modem.
+ * - LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_info_GetIMEI
@@ -92,6 +149,20 @@ le_result_t pa_info_GetIMEI
     pa_info_Imei_t imei   ///< [OUT] IMEI value
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function gets the device model identity.
+ *
+ * @return
+ * - LE_NOT_POSSIBLE  The function failed to get the value.
+ * - LE_TIMEOUT       No response was received from the Modem.
+ * - LE_OK            The function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_info_GetDeviceModel
+(
+    pa_info_DeviceModel_t model   ///< [OUT] Model string (null-terminated).
+);
 
 
 

@@ -1,25 +1,31 @@
-import:
+requires:
+{
+    api:
+    {
+        le_cfg.api
+        le_audio.api
+    }
+}
 
-    le_cfg.api
-    le_audio.api
-    le_mdmDefs.api  [types-only]
-
-export:
-
-    le_info.api
-    le_sms.api
-    le_mrc.api
-    le_sim.api
-    le_mdc.api
-    le_mcc_profile.api
-    le_mcc_call.api
-    le_ecall.api
-    le_fwupdate.api
+provides:
+{
+    api:
+    {
+        le_info.api
+        le_sms.api
+        le_mrc.api
+        le_sim.api
+        le_mdc.api
+        le_mcc_profile.api
+        le_mcc_call.api
+        le_ecall.api
+        le_fwupdate.api
+        le_remoteMgmt.api
+    }
+}
 
 sources:
-
-    asn1Msd.c
-    le_ecall.c
+{
     le_fwupdate.c
     le_info.c
     le_mcc.c
@@ -29,7 +35,14 @@ sources:
     le_sim.c
     le_sms.c
     smsPdu.c
+    cdmaPdu.c
+    le_remoteMgmt.c
+    asn1Msd.c
+    le_ecall.c
+}
 
 requires:
-
+{
     component: { $LEGATO_MODEM_PA }
+    component: { $LEGATO_MODEM_PA_ECALL }
+}

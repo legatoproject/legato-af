@@ -22,22 +22,6 @@
 //--------------------------------------------------------------------------------------------------
 #define SIM_MAX_CARDS    2
 
-//--------------------------------------------------------------------------------------------------
-/**
- * ICCID maximum length.
- *
- */
-//--------------------------------------------------------------------------------------------------
-#define ICCID_MAX_LEN   20
-
-//--------------------------------------------------------------------------------------------------
-/**
- * IMSI maximum length.
- *
- */
-//--------------------------------------------------------------------------------------------------
-#define IMSI_MAX_LEN   16
-
 
 //--------------------------------------------------------------------------------------------------
 // Data structures.
@@ -51,11 +35,11 @@
 typedef struct le_sim_Obj
 {
     uint32_t        num;                       ///< The SIM card number.
-    char            ICCID[LE_SIM_ICCID_LEN];   ///< The integrated circuit card identifier.
-    char            IMSI[LE_SIM_IMSI_LEN];     ///< The international mobile subscriber identity.
+    char            ICCID[LE_SIM_ICCID_BYTES];   ///< The integrated circuit card identifier.
+    char            IMSI[LE_SIM_IMSI_BYTES];     ///< The international mobile subscriber identity.
     char            PIN[LE_SIM_PIN_MAX_LEN+1]; ///< The PIN code.
     char            PUK[LE_SIM_PUK_LEN+1];     ///< The PUK code.
-    char            phoneNumber[LE_MDMDEFS_PHONE_NUM_MAX_LEN]; /// < The Phone Number.
+    char            phoneNumber[LE_MDMDEFS_PHONE_NUM_MAX_BYTES]; /// < The Phone Number.
     bool            isPresent;                 ///< The 'isPresent' flag.
     le_dls_Link_t   link;                      ///< The Sim Object node link.
     void*           ref;                       ///< The safe reference for this object.
@@ -1338,7 +1322,7 @@ le_result_t le_sim_GetSubscriberPhoneNumber
 )
 {
     le_sim_States_t  state;
-    char             phoneNumber[LE_MDMDEFS_PHONE_NUM_MAX_LEN] = {0} ;
+    char             phoneNumber[LE_MDMDEFS_PHONE_NUM_MAX_BYTES] = {0} ;
     Sim_t*           simPtr = le_ref_Lookup(SimRefMap, simRef);
     le_result_t      res = LE_NOT_POSSIBLE;
 
@@ -1406,3 +1390,67 @@ le_result_t le_sim_GetSubscriberPhoneNumber
     return res;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the Home Network Name information.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_OVERFLOW if the Home Network Name can't fit in nameStr
+ *      - LE_NOT_POSSIBLE on any other failure
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_sim_GetHomeNetworkOperator
+(
+    char       *nameStr,               ///< [OUT] the home network Name
+    size_t      nameStrSize            ///< [IN] the nameStr size
+)
+{
+    if (nameStr == NULL)
+    {
+        LE_KILL_CLIENT("nameStr is NULL !");
+        return LE_FAULT;
+    }
+
+    return pa_sim_GetHomeNetworkOperator(nameStr,nameStrSize);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the Home Network MCC MNC.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_NOT_FOUND if Home Network has not been provisioned
+ *      - LE_FAULT for unexpected error
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+ le_result_t le_sim_GetHomeNetworkMccMnc
+(
+    char     *mccPtr,                ///< [OUT] Mobile Country Code
+    size_t    mccPtrSize,            ///< [IN] mccPtr buffer size
+    char     *mncPtr,                ///< [OUT] Mobile Network Code
+    size_t    mncPtrSize             ///< [IN] mncPtr buffer size
+)
+{
+    if (mccPtr == NULL)
+    {
+        LE_KILL_CLIENT("mccPtr is NULL");
+        return LE_FAULT;
+    }
+
+    if (mncPtr == NULL)
+    {
+        LE_KILL_CLIENT("mncPtr is NULL");
+        return LE_FAULT;
+    }
+
+    return pa_sim_GetHomeNetworkMccMnc(mccPtr, mccPtrSize, mncPtr, mncPtrSize);
+}

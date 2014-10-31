@@ -1,7 +1,15 @@
 bundles:
-
-    file: [r] lible_pa_gnss.so  /lib/
+{
+    file:
+    {
+        [r] libComponent_le_pa_gnss.so  /lib/
+    }
+}
 
 requires:
-
-    component: ${LEGATO_MODEM_PA}
+{
+    component:
+    {
+        ${LEGATO_MODEM_PA}
+    }
+}

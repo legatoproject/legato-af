@@ -42,40 +42,6 @@
 #include "legato.h"
 
 
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Get the firmware version string
- *
- * @return
- *      - LE_OK on success
- *      - LE_NOT_FOUND if the version string is not available
- *      - LE_NOT_POSSIBLE for any other errors
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t pa_fwupdate_GetFirmwareVersion
-(
-    char* versionPtr,        ///< [OUT] Firmware version string
-    size_t versionSize       ///< [IN] Size of version buffer
-);
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Get the bootloader version string
- *
- * @return
- *      - LE_OK on success
- *      - LE_NOT_FOUND if the version string is not available
- *      - LE_NOT_POSSIBLE for any other errors
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t pa_fwupdate_GetBootloaderVersion
-(
-    char* versionPtr,        ///< [OUT] Firmware version string
-    size_t versionSize       ///< [IN] Size of version buffer
-);
-
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Download the firmware image file to the modem.
@@ -90,6 +56,4 @@ le_result_t pa_fwupdate_Download
     int fd   ///< [IN] File descriptor of the image, opened to the start of the image.
 );
 
-
 #endif // LEGATO_PA_FWUPDATE_INCLUDE_GUARD
-

@@ -317,7 +317,7 @@ void atmachinemanager_Resume
 
     // Create a File Descriptor Monitor object for the serial port's file descriptor.
     snprintf(monitorName,64,"%s-Monitor",interfacePtr->atManager.curContext.atDevice.name);
-    monitorName[64]='\0';
+    monitorName[63]='\0';
     fdMonitorRef = le_event_CreateFdMonitor(monitorName,
                                             interfacePtr->atManager.curContext.atDevice.handle);
     // Register a read handler.

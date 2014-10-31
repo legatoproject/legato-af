@@ -449,7 +449,19 @@ int32_t msd_EncodeMsdMessage
     }
     else
     {
-        return (offset/8);
+        uint16_t msdMsgLen=0;
+        /* Convert MSD message length in bits to length in Bytes */
+        if(offset%8)
+        {
+            /* Modulo 8 bits requires a one Byte extension */
+            msdMsgLen = (offset/8)+1;
+        }
+        else
+        {
+            msdMsgLen = (offset/8);
+        }
+        LE_DEBUG("MSD length %d Bytes for %d Bits", msdMsgLen, offset);
+        return msdMsgLen;
     }
 }
 

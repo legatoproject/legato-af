@@ -1,7 +1,9 @@
 sources:
-
+{
     gnss_at.c
+}
 
 requires:
-
-    component: { atManager }
+{
+    component: { $LEGATO_ROOT/components/atManager }
+}

@@ -35,7 +35,7 @@
  * Define the maximum size of various profile related fields.
  */
 //--------------------------------------------------------------------------------------------------
-#define MCC_PROFILE_NAME_MAX_LEN    100
+#define MCC_PROFILE_NAME_MAX_LEN    LE_MCC_PROFILE_NAME_MAX_LEN
 #define MCC_PROFILE_NAME_MAX_BYTES  (MCC_PROFILE_NAME_MAX_LEN+1)
 
 //--------------------------------------------------------------------------------------------------
@@ -66,8 +66,10 @@ typedef struct le_mcc_profile_Obj
     char                           name[MCC_PROFILE_NAME_MAX_BYTES]; ///< Name of the profile
     le_mcc_profile_State_t         state;                            ///< State of the profile
     uint32_t                       profileIndex;                     ///< Index of the profile
-    le_event_Id_t                  stateChangeEventId;               ///< Profile's state change Event ID
-    le_mcc_call_ObjRef_t           callRef;                          ///< Reference for current call, if connected
+    le_event_Id_t                  stateChangeEventId;               ///< Profile's state change
+                                                                     ///<  Event ID
+    le_mcc_call_ObjRef_t           callRef;                          ///< Reference for current
+                                                                     ///<  call, if connected
     le_event_Id_t                  callEventId;                      ///< Call Event Id
 }
 le_mcc_Profile_t;
@@ -80,14 +82,18 @@ le_mcc_Profile_t;
 //--------------------------------------------------------------------------------------------------
 typedef struct le_mcc_call_Obj
 {
-    char                            telNumber[LE_MDMDEFS_PHONE_NUM_MAX_LEN]; ///< Telephone number
+    char                            telNumber[LE_MDMDEFS_PHONE_NUM_MAX_BYTES]; ///< Telephone number
     le_mcc_Direction_t              direction;                      ///< Call direction
     int16_t                         callId;                         ///< Outgoing call ID
-    le_mcc_Profile_t*               profile;                        ///< Profile to which the call belongs
+    le_mcc_Profile_t*               profile;                        ///< Profile to which the call
+                                                                    ///<  belongs
     le_mcc_call_Event_t             event;                          ///< Last Call event
     le_mcc_call_TerminationReason_t termination;                    ///< Call termination reason
-    le_audio_StreamRef_t            txAudioStreamRef;               ///< The transmitted audio stream reference
-    le_audio_StreamRef_t            rxAudioStreamRef;               ///< The received audio stream reference
+    le_audio_StreamRef_t            txAudioStreamRef;               ///< The transmitted audio
+                                                                    ///<  stream reference
+    le_audio_StreamRef_t            rxAudioStreamRef;               ///< The received audio stream
+                                                                    ///<  reference
+    pa_mcc_clir_t                   clirStatus;                     ///< Call CLIR status
 }
 le_mcc_Call_t;
 
@@ -295,6 +301,8 @@ static le_mcc_CallReference_t* CreateCallObject
     callPtr->termination = termination;
     callPtr->rxAudioStreamRef = NULL;
     callPtr->txAudioStreamRef = NULL;
+    callPtr->clirStatus = PA_MCC_DEACTIVATE_CLIR;
+
     le_mcc_CallReference_t* newReferencePtr = (le_mcc_CallReference_t*)le_mem_ForceAlloc(ReferencePool);
     // Create a Safe Reference for this Call object.
     newReferencePtr->callRef = le_ref_CreateRef(MccCallRefMap, callPtr);
@@ -855,9 +863,9 @@ le_mcc_call_ObjRef_t le_mcc_profile_CreateCall
         return NULL;
     }
 
-    if(strlen(destinationPtr) > (LE_MDMDEFS_PHONE_NUM_MAX_LEN-1))
+    if(strlen(destinationPtr) > (LE_MDMDEFS_PHONE_NUM_MAX_BYTES-1))
     {
-        LE_KILL_CLIENT("strlen(destinationPtr) > %d", (LE_MDMDEFS_PHONE_NUM_MAX_LEN-1));
+        LE_KILL_CLIENT("strlen(destinationPtr) > %d", (LE_MDMDEFS_PHONE_NUM_MAX_BYTES-1));
         return NULL;
     }
 
@@ -955,14 +963,14 @@ le_result_t le_mcc_call_Start
         return LE_NOT_FOUND;
     }
 
-    if (callPtr->telNumber == NULL)
+    if (callPtr->telNumber[0] == '\0')
     {
-        LE_KILL_CLIENT("callPtr->telNumber is NULL !");
+        LE_KILL_CLIENT("callPtr->telNumber is not set !");
         return LE_NOT_FOUND;
     }
 
     res =pa_mcc_VoiceDial(callPtr->telNumber,
-                          PA_MCC_ACTIVATE_CLIR,
+                          callPtr->clirStatus,
                           PA_MCC_ACTIVATE_CUG,
                           &callId);
 
@@ -1012,7 +1020,7 @@ bool le_mcc_call_IsConnected
  * The output parameter is updated with the Telephone number. If the Telephone number string exceed
  * the value of 'len' parameter, a LE_OVERFLOW error code is returned and 'telPtr' is filled until
  * 'len-1' characters and a null-character is implicitly appended at the end of 'telPtr'.
- * Note tht 'len' sould be at least equal to LE_MDMDEFS_PHONE_NUM_MAX_LEN, otherwise LE_OVERFLOW error code
+ * Note tht 'len' sould be at least equal to LE_MDMDEFS_PHONE_NUM_MAX_BYTES, otherwise LE_OVERFLOW error code
  * will be common.
  *
  * @return LE_OVERFLOW      The Telephone number length exceed the maximum length.
@@ -1160,7 +1168,7 @@ le_result_t le_mcc_call_Answer
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function will disconnect, or hang up the specifed call. Any active call disconnect handlers
+ * This function will disconnect, or hang up the specified call. Any active call disconnect handlers
  * will be notified.
  *
  * @return LE_TIMEOUT       No response was received from the Modem.
@@ -1211,3 +1219,87 @@ le_result_t le_mcc_call_HangUpAll
     return (pa_mcc_HangUpAll());
 }
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function return the Calling Line Identification Restriction (CLIR) status on the specific
+ *  call.
+ *
+ * The output parameter is updated with the CLIR status.
+ *    - LE_ON  Disable presentation of own phone number to remote.
+ *    - LE_OFF Enable presentation of own phone number to remote.
+ *
+ * @return
+ *    - LE_OK        The function succeed.
+ *    - LE_NOT_FOUND The call reference was not found.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mcc_call_GetCallerIdRestrict
+(
+    le_mcc_call_ObjRef_t callRef, ///< [IN] The call reference.
+    le_onoff_t* clirStatusPtr        ///< [OUT] the Calling Line Identification Restriction (CLIR) status
+)
+{
+    le_mcc_Call_t* callPtr = le_ref_Lookup(MccCallRefMap, callRef);
+
+    if (callPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", callRef);
+        return LE_NOT_FOUND;
+    }
+
+    if (clirStatusPtr == NULL)
+    {
+        LE_KILL_CLIENT("clirStatus is NULL !");
+        return LE_FAULT;
+    }
+
+    if (callPtr->clirStatus == PA_MCC_ACTIVATE_CLIR)
+    {
+        *clirStatusPtr = LE_ON;
+    }
+    else
+    {
+        *clirStatusPtr = LE_OFF;
+    }
+
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function set the Calling Line Identification Restriction (CLIR) status on the specific call.
+ * Default value is LE_OFF (Enable presentation of own phone number to remote).
+ *
+ * @return
+ *     - LE_OK        The function succeed.
+ *     - LE_NOT_FOUND The call reference was not found.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mcc_call_SetCallerIdRestrict
+(
+    le_mcc_call_ObjRef_t callRef, ///< [IN] The call reference.
+    le_onoff_t clirStatus         ///< [IN] The Calling Line Identification Restriction (CLIR) status.
+)
+{
+    le_mcc_Call_t* callPtr = le_ref_Lookup(MccCallRefMap, callRef);
+
+    if (callPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", callRef);
+        return LE_NOT_FOUND;
+    }
+
+    if (clirStatus == LE_ON)
+    {
+        callPtr->clirStatus = PA_MCC_ACTIVATE_CLIR;
+    }
+    else
+    {
+        callPtr->clirStatus = PA_MCC_DEACTIVATE_CLIR;
+    }
+
+    return LE_OK;
+}

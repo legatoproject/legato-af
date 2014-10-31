@@ -1,0 +1,13 @@
+sources:
+{
+    pa_mdc_stub.c
+}
+
+requires:
+{
+    api:
+    {
+        le_mdmDefs.api  [types-only]
+        le_mdc.api      [types-only]
+    }
+}

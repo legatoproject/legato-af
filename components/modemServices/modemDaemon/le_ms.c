@@ -15,10 +15,10 @@
 #include "le_sms_local.h"
 #include "le_mdc_local.h"
 #include "le_mcc_local.h"
-#ifdef AUTOMOTIVE_TARGET
+#ifdef INCLUDE_ECALL
 #include "le_ecall_local.h"
 #endif
-
+#include "le_remoteMgmt_local.h"
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -36,7 +36,8 @@ COMPONENT_INIT
     le_sms_Init();
     le_mdc_Init();
     le_mcc_Init();
-#ifdef AUTOMOTIVE_TARGET
+    le_remoteMgmt_Init();
+#ifdef INCLUDE_ECALL
     le_ecall_Init();
 #endif
 }

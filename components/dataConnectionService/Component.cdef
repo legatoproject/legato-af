@@ -1,15 +1,24 @@
-export:
+provides:
+{
+    api:
+    {
+        le_data.api
+    }
+}
 
-    le_data.api
-
-import:
-
-    le_mdc.api
-    le_mrc.api
-    le_sim.api
-    le_cellnet.api
-    le_cfg.api
+requires:
+{
+    api:
+    {
+        le_mdc.api
+        le_mrc.api
+        le_sim.api
+        le_cellnet.api
+        le_cfg.api
+    }
+}
 
 sources:
-
+{
     dcsServer.c
+}
