@@ -50,42 +50,24 @@ static void GenerateAppLimitsConfig
         cfgStream << "  \"sandboxed\" !f" << std::endl;
     }
 
-    if (app.Debug() == true)
-    {
-        cfgStream << "  \"debug\" !t" << std::endl;
-    }
-
     if (app.StartMode() == legato::App::MANUAL)
     {
-        cfgStream << "  \"deferLaunch\" !t" << std::endl;
+        cfgStream << "  \"startManual\" !t" << std::endl;
     }
 
-    if (app.NumProcs() != SIZE_MAX)
-    {
-        cfgStream << "  \"numProcessesLimit\" [" << app.NumProcs() << "]" << std::endl;
-    }
+    cfgStream << "  \"maxThreads\" [" << app.MaxThreads().Get() << "]" << std::endl;
 
-    if (app.MqueueSize() != SIZE_MAX)
-    {
-        cfgStream << "  \"totalPosixMsgQueueSizeLimit\" [" << app.MqueueSize() << "]" << std::endl;
-    }
+    cfgStream << "  \"maxMQueueBytes\" [" << app.MaxMQueueBytes().Get() << "]"
+              << std::endl;
 
-    if (app.RtSignalQueueSize() != SIZE_MAX)
-    {
-        cfgStream << "  \"rtSignalQueueSizeLimit\" [" << app.RtSignalQueueSize() << "]" << std::endl;
-    }
+    cfgStream << "  \"maxQueuedSignals\" [" << app.MaxQueuedSignals().Get() << "]"
+              << std::endl;
 
-    if (app.MemLimit() != SIZE_MAX)
-    {
-        cfgStream << "\"memLimit\" [" << app.MemLimit() << "]" << std::endl;
-    }
+    cfgStream << "  \"maxMemoryBytes\" [" << app.MaxMemoryBytes().Get() << "]" << std::endl;
 
-    if (app.CpuShare() != SIZE_MAX)
-    {
-        cfgStream << "\"cpuShare\" [" << app.CpuShare() << "]" << std::endl;
-    }
+    cfgStream << "  \"cpuShare\" [" << app.CpuShare().Get() << "]" << std::endl;
 
-    if (app.FileSystemSize() != SIZE_MAX)
+    if (app.MaxFileSystemBytes().IsSet())
     {
         // This is not supported for unsandboxed apps.
         if (app.IsSandboxed() == false)
@@ -95,16 +77,17 @@ static void GenerateAppLimitsConfig
         }
         else
         {
-            cfgStream << "  \"fileSystemSizeLimit\" [" << app.FileSystemSize() << "]" << std::endl;
+            cfgStream << "  \"maxFileSystemBytes\" [" << app.MaxFileSystemBytes().Get() << "]"
+                      << std::endl;
         }
     }
 
-    if (app.WatchdogTimeout().IsValid())
+    if (app.WatchdogTimeout().IsSet())
     {
         cfgStream << "  \"watchdogTimeout\" [" << app.WatchdogTimeout().Get() << "]" << std::endl;
     }
 
-    if (app.WatchdogAction().IsValid())
+    if (app.WatchdogAction().IsSet())
     {
         cfgStream << "  \"watchdogAction\" \"" << app.WatchdogAction().Get() << "\"" << std::endl;
     }
@@ -140,7 +123,7 @@ static void GenerateGroupsConfig
 
     for (auto groupName : groupsList)
     {
-        cfgStream << "  \"" << groupName << "\" \"\"" << std::endl;
+        cfgStream << "    \"" << groupName << "\" \"\"" << std::endl;
     }
 
     cfgStream << "  }" << std::endl << std::endl;
@@ -165,6 +148,24 @@ static void GenerateSingleFileMappingConfig
     cfgStream << "    {" << std::endl;
     cfgStream << "      \"src\" \"" << mapping.m_SourcePath << "\"" << std::endl;
     cfgStream << "      \"dest\" \"" << mapping.m_DestPath << "\"" << std::endl;
+    if (mapping.m_PermissionFlags)
+    {
+        cfgStream << "      \"permissions\"" << std::endl;
+        cfgStream << "      {" << std::endl;
+        if (mapping.m_PermissionFlags & legato::PERMISSION_READABLE)
+        {
+            cfgStream << "        \"read\" !t" << std::endl;
+        }
+        if (mapping.m_PermissionFlags & legato::PERMISSION_WRITEABLE)
+        {
+            cfgStream << "        \"write\" !t" << std::endl;
+        }
+        if (mapping.m_PermissionFlags & legato::PERMISSION_EXECUTABLE)
+        {
+            cfgStream << "        \"execute\" !t" << std::endl;
+        }
+        cfgStream << "      }" << std::endl;
+    }
     cfgStream << "    }" << std::endl;
 }
 
@@ -292,21 +293,6 @@ static void GenerateFileMappingConfig
         }
     }
 
-    // Map into the sandbox all the app's own executable binaries.
-    for (const auto& mapEntry : app.Executables())
-    {
-        const auto& exe = mapEntry.second;
-
-        legato::FileMapping importMapping =
-                                    {
-                                        legato::PERMISSION_READABLE | legato::PERMISSION_EXECUTABLE,
-                                        std::string("bin/") + exe.OutputPath(),
-                                        "/bin/"
-                                    };
-
-        GenerateSingleFileMappingConfig(cfgStream, index++, importMapping);
-    }
-
     cfgStream << "  }" << std::endl << std::endl;
 }
 
@@ -383,13 +369,6 @@ static void GenerateProcessConfig
             cfgStream << "    \"" << process.Name() << "\"" << std::endl;
             cfgStream << "    {" << std::endl;
 
-            // If the process has debugging enabled, then add a "debug" configuration
-            // node for this process that contains the debug port number to be used.
-            if (process.IsDebuggingEnabled())
-            {
-                cfgStream << "      \"debug\" [" << process.DebugPort() << "]" << std::endl;
-            }
-
             // The command-line argument list is an indexed list of arguments under a node called
             // "args", where the first argument (0) must be the executable to run.
             cfgStream << "      \"args\"" << std::endl;
@@ -406,42 +385,38 @@ static void GenerateProcessConfig
             GenerateProcessEnvVarsConfig(cfgStream, app, procEnv);
 
             // Generate the priority, fault action, and limits configuration.
-            if (procEnv.FaultAction() != "")
+            if (procEnv.FaultAction().IsSet())
             {
-                cfgStream << "      \"faultAction\" \"" << procEnv.FaultAction() << "\""
+                cfgStream << "      \"faultAction\" \"" << procEnv.FaultAction().Get() << "\""
                           << std::endl;
             }
-            if (procEnv.Priority() != "")
+            if (procEnv.StartPriority().IsSet())
             {
-                cfgStream << "      \"priority\" \"" << procEnv.Priority() << "\""
+                cfgStream << "      \"priority\" \"" << procEnv.StartPriority().Get() << "\""
                           << std::endl;
             }
-            if (procEnv.CoreFileSize() != SIZE_MAX)
-            {
-                cfgStream << "      \"coreDumpFileSizeLimit\" [" << procEnv.CoreFileSize() << "]"
-                          << std::endl;
-            }
-            if (procEnv.MaxFileSize() != SIZE_MAX)
-            {
-                cfgStream << "      \"maxFileSizeLimit\" [" << procEnv.MaxFileSize() << "]"
-                          << std::endl;
-            }
-            if (procEnv.MemLockSize() != SIZE_MAX)
-            {
-                cfgStream << "      \"memLockSizeLimit\" [" << procEnv.MemLockSize() << "]"
-                          << std::endl;
-            }
-            if (procEnv.NumFds() != SIZE_MAX)
-            {
-                cfgStream << "      \"numFileDescriptorsLimit\" [" << procEnv.NumFds() << "]"
-                          << std::endl;
-            }
-            if (procEnv.WatchdogTimeout().IsValid())
+
+            cfgStream << "      \"maxCoreDumpFileBytes\" ["
+                      << procEnv.MaxCoreDumpFileBytes().Get()
+                      << "]" << std::endl;
+
+            cfgStream << "      \"maxFileBytes\" [" << procEnv.MaxFileBytes().Get() << "]"
+                      << std::endl;
+
+            cfgStream << "      \"maxLockedMemoryBytes\" ["
+                      << procEnv.MaxLockedMemoryBytes().Get() << "]"
+                      << std::endl;
+
+            cfgStream << "      \"maxFileDescriptors\" ["
+                      << procEnv.MaxFileDescriptors().Get() << "]"
+                      << std::endl;
+
+            if (procEnv.WatchdogTimeout().IsSet())
             {
                 cfgStream << "      \"watchdogTimeout\" [" << procEnv.WatchdogTimeout().Get() << "]"
                           << std::endl;
             }
-            if (procEnv.WatchdogAction().IsValid())
+            if (procEnv.WatchdogAction().IsSet())
             {
                 cfgStream << "      \"watchdogAction\" \"" << procEnv.WatchdogAction().Get() << "\""
                           << std::endl;
@@ -465,7 +440,6 @@ static void GenerateSingleApiBindingToUser
 (
     std::ofstream& cfgStream,           ///< Stream to send the configuration to.
     const std::string& clientInterface, ///< Client interface name.
-    const std::string& protocolId,      ///< Protocol identifier string.
     const std::string& serverUserName,  ///< User name of the server.
     const std::string& serviceName      ///< Service instance name the server will advertise.
 )
@@ -473,12 +447,8 @@ static void GenerateSingleApiBindingToUser
 {
     cfgStream << "    \"" << clientInterface << "\"" << std::endl;
     cfgStream << "    {" << std::endl;
-    cfgStream << "      \"protocol\" \"" << protocolId << "\"" << std::endl;
-    cfgStream << "      \"server\"" << std::endl;
-    cfgStream << "      {" << std::endl;
-    cfgStream << "        \"user\" \"" << serverUserName << "\"" << std::endl;
-    cfgStream << "        \"interface\" \"" << serviceName << "\"" << std::endl;
-    cfgStream << "      }" << std::endl;
+    cfgStream << "      \"user\" \"" << serverUserName << "\"" << std::endl;
+    cfgStream << "      \"interface\" \"" << serviceName << "\"" << std::endl;
     cfgStream << "    }" << std::endl;
 }
 
@@ -492,7 +462,6 @@ static void GenerateSingleApiBindingToApp
 (
     std::ofstream& cfgStream,           ///< Stream to send the configuration to.
     const std::string& clientInterface, ///< Client interface name.
-    const std::string& protocolId,      ///< Protocol identifier string.
     const std::string& serverAppName,   ///< Name of the application running the server.
     const std::string& serviceName      ///< Service instance name the server will advertise.
 )
@@ -500,12 +469,8 @@ static void GenerateSingleApiBindingToApp
 {
     cfgStream << "    \"" << clientInterface << "\"" << std::endl;
     cfgStream << "    {" << std::endl;
-    cfgStream << "      \"protocol\" \"" << protocolId << "\"" << std::endl;
-    cfgStream << "      \"server\"" << std::endl;
-    cfgStream << "      {" << std::endl;
-    cfgStream << "        \"app\" \"" << serverAppName << "\"" << std::endl;
-    cfgStream << "        \"interface\" \"" << serviceName << "\"" << std::endl;
-    cfgStream << "      }" << std::endl;
+    cfgStream << "      \"app\" \"" << serverAppName << "\"" << std::endl;
+    cfgStream << "      \"interface\" \"" << serviceName << "\"" << std::endl;
     cfgStream << "    }" << std::endl;
 }
 
@@ -515,17 +480,31 @@ static void GenerateSingleApiBindingToApp
  * Generates the configuration for an External API Bind object for a given App.
  **/
 //--------------------------------------------------------------------------------------------------
-static void GenerateExternalApiBindConfig
+static void GenerateApiBindConfig
 (
     std::ofstream& cfgStream,       ///< Stream to send the configuration to.
     legato::App& app,               ///< The application being built.
-    const legato::ExternalApiBind& binding  ///< Binding to external user name and service name.
+    const legato::ExeToUserApiBind& binding  ///< Binding to external user name and service name.
 )
 //--------------------------------------------------------------------------------------------------
 {
-    std::cout << "under app '" << app.Name() << "'." << std::endl;
+    const std::string& clientInterfaceId = binding.ClientInterface();
 
-    const auto& interface = app.FindClientInterface(binding.ClientInterface());
+    std::string clientServiceName;
+
+    // If the binding is a wildcard binding (applies to everything with a given service name),
+    if (clientInterfaceId.compare(0, 2, "*.") == 0)
+    {
+        // Strip off the "*." wildcard specifier to get the service name.
+        clientServiceName = clientInterfaceId.substr(2);
+    }
+    // Otherwise, look-up the client interface and take the service name from there.
+    else
+    {
+        const auto& interface = app.FindClientInterface(clientInterfaceId);
+
+        clientServiceName = interface.ExternalName();
+    }
 
     // If there is no server user name,
     if (binding.ServerUserName().empty())
@@ -539,10 +518,9 @@ static void GenerateExternalApiBindConfig
         }
 
         GenerateSingleApiBindingToApp( cfgStream,
-                                       interface.ServiceInstanceName(),
-                                       interface.Api().Hash(),
+                                       clientServiceName,
                                        binding.ServerAppName(),
-                                       binding.ServerServiceName() );
+                                       binding.ServerInterfaceName() );
     }
     // If there is a server user name,
     else
@@ -556,11 +534,48 @@ static void GenerateExternalApiBindConfig
         }
 
         GenerateSingleApiBindingToUser( cfgStream,
-                                        interface.ServiceInstanceName(),
-                                        interface.Api().Hash(),
+                                        clientServiceName,
                                         binding.ServerUserName(),
-                                        binding.ServerServiceName() );
+                                        binding.ServerInterfaceName() );
     }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Generates the configuration for an Internal API Bind object for a given App.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void GenerateApiBindConfig
+(
+    std::ofstream& cfgStream,       ///< Stream to send the configuration to.
+    legato::App& app,               ///< The application being built.
+    const legato::ExeToExeApiBind& binding  ///< Binding to internal exe.component.interface.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    const std::string& clientInterfaceId = binding.ClientInterface();
+
+    std::string clientServiceName;
+
+    // If the binding is a wildcard binding (applies to everything with a given service name),
+    if (clientInterfaceId.compare(0, 2, "*.") == 0)
+    {
+        // Strip off the "*." wildcard specifier to get the service name.
+        clientServiceName = clientInterfaceId.substr(2);
+    }
+    // Otherwise, look-up the client interface and take the service name from there.
+    else
+    {
+        const auto& interface = app.FindClientInterface(clientInterfaceId);
+
+        clientServiceName = interface.ExternalName();
+    }
+
+    GenerateSingleApiBindingToApp( cfgStream,
+                                   clientServiceName,
+                                   app.Name(),
+                                   binding.ServerInterface() );
 }
 
 
@@ -588,33 +603,18 @@ static void GenerateIpcBindingConfig
         // Add a bind to the Log Client interface of the Log Control Daemon (which runs as root).
         GenerateSingleApiBindingToUser(cfgStream,
                                        "LogClient",
-                                       "LogControlProtocol",
                                        "root",
                                        "LogClient");
     }
 
-    // Add all the binds that were specified in the .adef file.
+    // Add all the binds that were specified in the .adef file or .sdef file for this app.
     for (const auto& mapEntry : app.ExternalApiBinds())
     {
-        GenerateExternalApiBindConfig(cfgStream, app, mapEntry.second);
+        GenerateApiBindConfig(cfgStream, app, mapEntry.second);
     }
-
-    // Add binds for framework APIs that are used.
-    if (app.UsesConfig())
+    for (const auto& mapEntry : app.InternalApiBinds())
     {
-        GenerateSingleApiBindingToUser(cfgStream,
-                                       "le_cfg",
-                                       mk::ConfigApiHash(buildParams),
-                                       "root",
-                                       "le_cfg");
-    }
-    if (app.UsesWatchdog())
-    {
-        GenerateSingleApiBindingToUser(cfgStream,
-                                       "le_wdog",
-                                       mk::WatchdogApiHash(buildParams),
-                                       "root",
-                                       "le_wdog");
+        GenerateApiBindConfig(cfgStream, app, mapEntry.second);
     }
 
     cfgStream << "  }" << std::endl << std::endl;
@@ -665,12 +665,12 @@ static void GenerateConfigTreeAclConfig
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Generate the configuration that the Supervisor needs for this app.  This is the configuration
- * that will be installed in the root configuration tree by the installer when the app is
+ * Generate the configuration that the framework needs for this app.  This is the configuration
+ * that will be installed in the system configuration tree by the installer when the app is
  * installed on the target.
  **/
 //--------------------------------------------------------------------------------------------------
-static void GenerateSupervisorConfig
+static void GenerateSystemConfig
 (
     const std::string& stagingDirPath,  ///< Path to the root of the app's staging directory.
     legato::App& app,                   ///< The app to generate the configuration for.
@@ -678,11 +678,13 @@ static void GenerateSupervisorConfig
 )
 //--------------------------------------------------------------------------------------------------
 {
+    // TODO: Rename this file to something that makes more sense (like "system.cfg", because it
+    // gets installed in the "system" config tree).
     std::string path = stagingDirPath + "/root.cfg";
 
     if (buildParams.IsVerbose())
     {
-        std::cout << "Generating Supervisor configuration for app '" << app.Name() << "' under '"
+        std::cout << "Generating system configuration data for app '" << app.Name() << "' in file '"
                   << path << "'." << std::endl;
     }
 
@@ -710,56 +712,6 @@ static void GenerateSupervisorConfig
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Build a component and all its sub-components (unless they've already been built).
- */
-//--------------------------------------------------------------------------------------------------
-static void BuildComponent
-(
-    legato::Component& component,
-    const legato::BuildParams_t& buildParams
-)
-//--------------------------------------------------------------------------------------------------
-{
-    // Make a copy of the Build Params for use by the Component Builder.
-    legato::BuildParams_t componentBuildParams(buildParams);
-
-    // Generate the path to the directory in which the generated files will go
-    // and store it in the Build Params object that will be given to the Component Builder.
-    componentBuildParams.ObjOutputDir(buildParams.ObjOutputDir()
-                                      + "/components/"
-                                      + component.Name());
-
-    // Build the component.
-    ComponentBuilder_t componentBuilder(componentBuildParams);
-    componentBuilder.Build(component);
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Builds all the components in an application and copies all their files into the staging area.
- **/
-//--------------------------------------------------------------------------------------------------
-static void BuildComponents
-(
-    legato::App& app,
-    const legato::BuildParams_t& buildParams
-)
-//--------------------------------------------------------------------------------------------------
-{
-    // For each component in the application.
-    auto& map = app.ComponentMap();
-    for (auto& mapEntry : map)
-    {
-        auto& componentPtr = mapEntry.second;
-
-        BuildComponent(*componentPtr, buildParams);
-    }
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Builds all the executables in an application and their IPC interface libs and copies all their
  * files into the staging area.
  **/
@@ -780,11 +732,134 @@ static void BuildExecutables
     {
         legato::Executable& exe = i->second;
 
+        // Put the intermediate build output files under a directory named after the executable.
+        std::string objOutputDir = legato::CombinePath(buildParams.ObjOutputDir(), exe.CName());
+
         // Auto-generate the source code file containing main() and add it to the default component.
-        exeBuilder.GenerateMain(exe);
+        exeBuilder.GenerateMain(exe, objOutputDir);
 
         // Build the executable.
-        exeBuilder.Build(exe);
+        exeBuilder.Build(exe, objOutputDir);
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Print a warning message to stderr for a given app.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void PrintWarning
+(
+    const legato::App& app,
+    const std::string& warning
+)
+//--------------------------------------------------------------------------------------------------
+{
+    std::cerr << "** Warning: application '" << app.Name() << "': " << warning << std::endl;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Checks all of an application's limits and prints warnings or errors to stderr if there are
+ * conflicts between them.
+ *
+ * @throw legato::Exception if there is a fatal error.
+ **/
+//--------------------------------------------------------------------------------------------------
+void CheckForLimitsConflicts
+(
+    const legato::App& app
+)
+//--------------------------------------------------------------------------------------------------
+{
+    size_t maxMemoryBytes = app.MaxMemoryBytes().Get();
+    size_t maxFileSystemBytes = app.MaxFileSystemBytes().Get();
+
+    for (const auto& procEnv : app.ProcEnvironments())
+    {
+        size_t maxLockedMemoryBytes = procEnv.MaxLockedMemoryBytes().Get();
+
+        if (maxLockedMemoryBytes > maxMemoryBytes)
+        {
+            std::stringstream warning;
+            warning << "maxLockedMemoryBytes (" << maxLockedMemoryBytes
+                    << ") will be limited by the maxMemoryBytes limit (" << maxMemoryBytes << ").";
+            PrintWarning(app, warning.str());
+        }
+
+        size_t maxFileBytes = procEnv.MaxFileBytes().Get();
+        size_t maxCoreDumpFileBytes = procEnv.MaxCoreDumpFileBytes().Get();
+
+        if (maxCoreDumpFileBytes > maxFileBytes)
+        {
+            std::stringstream warning;
+            warning << "maxCoreDumpFileBytes (" << maxCoreDumpFileBytes
+                    << ") will be limited by the maxFileBytes limit (" << maxFileBytes << ").";
+            PrintWarning(app, warning.str());
+        }
+
+        if (maxCoreDumpFileBytes > maxFileSystemBytes)
+        {
+            std::stringstream warning;
+            warning << "maxCoreDumpFileBytes (" << maxCoreDumpFileBytes
+                    << ") will be limited by the maxFileSystemBytes limit ("
+                    << maxFileSystemBytes << ") if the core file is inside the sandbox temporary"
+                    " file system.";
+            PrintWarning(app, warning.str());
+        }
+
+        if (maxFileBytes > maxFileSystemBytes)
+        {
+            std::stringstream warning;
+            warning << "maxFileBytes (" << maxFileBytes
+                    << ") will be limited by the maxFileSystemBytes limit ("
+                    << maxFileSystemBytes << ") if the file is inside the sandbox temporary"
+                    " file system.";
+            PrintWarning(app, warning.str());
+        }
+    }
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Build a component and all its sub-components and copy all their bundled files into the
+ * app's staging area.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void BuildAndBundleComponent
+(
+    legato::Component& component,
+    ComponentBuilder_t componentBuilder,
+    const std::string& appWorkingDir
+)
+//--------------------------------------------------------------------------------------------------
+{
+    if (component.IsBuilt() == false)
+    {
+        // Do sub-components first.
+        for (auto& mapEntry : component.SubComponents())
+        {
+            auto subComponentPtr = mapEntry.second;
+
+            BuildAndBundleComponent(*subComponentPtr, componentBuilder, appWorkingDir);
+        }
+
+        // Each component gets its own object file dir.
+        std::string objOutputDir = legato::CombinePath(appWorkingDir,
+                                                       "component/" + component.Name());
+
+        // Build the component.
+        // NOTE: This will detect if the component doesn't actually need to be built, either because
+        //       it doesn't have any source files that need to be compiled, or because they have
+        //       already been compiled.
+        componentBuilder.Build(component, objOutputDir);
+
+        // Copy all the bundled files and directories from the component into the staging area.
+        componentBuilder.Bundle(component);
     }
 }
 
@@ -802,6 +877,8 @@ void ApplicationBuilder_t::Build
 )
 //--------------------------------------------------------------------------------------------------
 {
+    CheckForLimitsConflicts(app);
+
     // Construct the working directory structure, which consists of an "work" directory and
     // a "staging" directory.  Inside the "staging" directory, there is "lib", "bin", and any
     // other directories required to hold files bundled by the application or one of its components.
@@ -829,8 +906,20 @@ void ApplicationBuilder_t::Build
     legato::MakeDir(buildParams.LibOutputDir());
     legato::MakeDir(buildParams.ExeOutputDir());
 
-    // Build all the components and copy their files into the staging area.
-    BuildComponents(app, buildParams);
+    // Build all the components in the application, each with its own working directory
+    // to avoid file name conflicts between .o files in different components, and copy all
+    // generated and bundled files into the application staging area.
+    // NOTE: Components have to be built before any other components that depend on them.
+    //       They also need to be bundled into the app in the same order, so that higher-layer
+    //       components can override files bundled by lower-layer components.
+    ComponentBuilder_t componentBuilder(buildParams);
+    auto& map = app.ComponentMap();
+    for (auto& mapEntry : map)
+    {
+        auto& componentPtr = mapEntry.second;
+
+        BuildAndBundleComponent(*componentPtr, componentBuilder, buildParams.ObjOutputDir());
+    }
 
     // Build all the executables and their IPC libs.
     BuildExecutables(app, buildParams);
@@ -852,8 +941,9 @@ void ApplicationBuilder_t::Build
                             m_Params.IsVerbose()    );
     }
 
-    // Generate the configuration.
-    GenerateSupervisorConfig(stagingDirPath, app, m_Params);
+    // Generate the app-specific configuration data that tells the framework what limits to place
+    // on the app when it is run, etc.
+    GenerateSystemConfig(stagingDirPath, app, m_Params);
 
     // TODO: Generate the application's configuration tree (containing all its pool sizes,
     //       and anything else listed under the "config:" section of the .adef.)

@@ -32,6 +32,13 @@ class Exception : public std::runtime_error
 };
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * An exception object used to report dependency loops.  Essentially the same as a regular
+ * Exception, but the different type makes it possible to catch only Dependency Exceptions and
+ * re-throw with more information appended to the error message.
+ **/
+//--------------------------------------------------------------------------------------------------
 class DependencyException : public Exception
 {
     public:

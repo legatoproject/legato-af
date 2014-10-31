@@ -19,10 +19,13 @@ legato::Executable::Executable
 (
 )
 //--------------------------------------------------------------------------------------------------
-:   m_IsDebuggingEnabled(false)
-//--------------------------------------------------------------------------------------------------
 {
-    m_DefaultComponent.Name("default");
+    m_DefaultComponent.Name("exe");
+
+    // Build the default component library as a static library (.a).  This saves the hassle of
+    // copying an extry library file around when building an executable that has only a default
+    // component.
+    m_DefaultComponent.Lib().IsStatic(true);
 }
 
 
@@ -39,7 +42,6 @@ legato::Executable::Executable
 //--------------------------------------------------------------------------------------------------
 :   m_OutputPath(std::move(original.m_OutputPath)),
     m_CName(std::move(original.m_CName)),
-    m_IsDebuggingEnabled(std::move(original.m_IsDebuggingEnabled)),
     m_ComponentInstances(std::move(original.m_ComponentInstances)),
     m_DefaultComponent(std::move(original.m_DefaultComponent))
 //--------------------------------------------------------------------------------------------------
@@ -63,7 +65,6 @@ legato::Executable& legato::Executable::operator =
     {
         m_OutputPath = std::move(original.m_OutputPath);
         m_CName = std::move(original.m_CName);
-        m_IsDebuggingEnabled = std::move(original.m_IsDebuggingEnabled);
         m_ComponentInstances = std::move(original.m_ComponentInstances);
         m_DefaultComponent = std::move(original.m_DefaultComponent);
     }
@@ -117,6 +118,8 @@ const std::string& legato::Executable::OutputPath() const
 void legato::Executable::CName(const std::string& name)
 {
     m_CName = name;
+
+    m_DefaultComponent.Name(name + "_exe");
 }
 
 
@@ -138,15 +141,38 @@ const std::string& legato::Executable::CName() const
  * Add a Component Instance to the list of Component Instances to be included in this executable.
  */
 //--------------------------------------------------------------------------------------------------
-legato::ComponentInstance& legato::Executable::AddComponentInstance
+legato::ComponentInstance* legato::Executable::AddComponentInstance
 (
-    ComponentInstance&& instance
+    Component* componentPtr ///< Pointer to component to create new instance of.
 )
 //--------------------------------------------------------------------------------------------------
 {
-    m_ComponentInstances.push_back(instance);
+    // NOTE: Currently, only singleton components are supported.  This means that only one
+    //       instance of each component is allowed in a single executable.  Later, we may be
+    //       able to support multiple instances of the same component in the same executable.
+    auto iter = m_Components.find(componentPtr->Path());
+    if (iter == m_Components.end())
+    {
+        // Make sure this component is in the map of Components in this executable.
+        m_Components[componentPtr->Path()] = componentPtr;
 
-    return m_ComponentInstances.back();
+        // Create a new instance of this component in the Component Instances list.
+        m_ComponentInstances.push_back({*componentPtr, this});
+
+        // Set the Exe pointer in the new component instance.
+        legato::ComponentInstance& instance = m_ComponentInstances.back();
+        instance.SetExe(this);
+
+        return &instance;
+    }
+    else
+    {
+        std::cerr << "NOTE: Component '" << componentPtr->Path() << "' is shared." << std::endl;
+
+        legato::ComponentInstance& instance = FindComponentInstance(componentPtr->Name());
+
+        return &instance;
+    }
 }
 
 
@@ -185,7 +211,7 @@ legato::ComponentInstance& legato::Executable::FindComponentInstance
 {
     for (auto& c : m_ComponentInstances)
     {
-        if (c.Name() == name)
+        if (c.GetComponent().Name() == name)
         {
             return c;
         }
@@ -207,17 +233,17 @@ void legato::Executable::AddLibrary
 )
 //--------------------------------------------------------------------------------------------------
 {
-    m_DefaultComponent.AddLibrary(path);
+    m_DefaultComponent.AddRequiredLib(path);
 }
 
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Add a C/C++ source code file directly to the executable's "default" component instance.
+ * Add a source code file directly to the executable's "default" component instance.
  */
 //--------------------------------------------------------------------------------------------------
-void legato::Executable::AddCSourceFile
+void legato::Executable::AddSourceFile
 (
     std::string path
 )
@@ -267,20 +293,20 @@ const
  * @return True if the executable or any of it's sub-components have C++ code in them.
  */
 //--------------------------------------------------------------------------------------------------
-bool legato::Executable::HasCppSources
+bool legato::Executable::HasCxxSources
 (
 )
 const
 //--------------------------------------------------------------------------------------------------
 {
-    if (m_DefaultComponent.HasCppSources())
+    if (m_DefaultComponent.HasCxxSources())
     {
         return true;
     }
 
     for (const auto& componentInstance : m_ComponentInstances)
     {
-        if (componentInstance.GetComponent().HasCppSources())
+        if (componentInstance.GetComponent().HasCxxSources())
         {
             return true;
         }

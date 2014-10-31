@@ -31,7 +31,6 @@ class Process
         std::string m_ExePath;
         Executable* m_ExePtr;   ///< Ptr to Executable object, or NULL if exe not built by mk tools.
         std::list<std::string> m_CommandLineArgs;
-        uint16_t m_DebugPort;   ///< gdb port number to use for debugging.  0 = no debugging.
 
     public:
         void Name(const std::string& name);
@@ -49,10 +48,6 @@ class Process
         void AddCommandLineArg(const std::string& arg) { m_CommandLineArgs.push_back(arg); }
         void AddCommandLineArg(std::string&& arg) { m_CommandLineArgs.push_back(arg); }
         const std::list<std::string>& CommandLineArgs() const { return m_CommandLineArgs; }
-
-        void EnableDebugging(uint16_t debugPortNumber) { m_DebugPort = debugPortNumber; }
-        bool IsDebuggingEnabled() const { return (m_DebugPort != 0); }
-        uint16_t DebugPort() const { return m_DebugPort; }
 };
 
 

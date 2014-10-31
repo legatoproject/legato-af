@@ -81,7 +81,40 @@ void cyy_error(const char* errorString);
 //--------------------------------------------------------------------------------------------------
 void cyy_AddSourceFile
 (
-    const char* filePath    ///< The file path.  Storage will never be freed.
+    const char* filePath    ///< The file path.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add a C compiler command-line argument to a Component.
+ */
+//--------------------------------------------------------------------------------------------------
+void cyy_AddCFlag
+(
+    const char* arg ///< The command-line argument.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add a C++ compiler command-line argument to a Component.
+ */
+//--------------------------------------------------------------------------------------------------
+void cyy_AddCxxFlag
+(
+    const char* arg ///< The command-line argument.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add a linker command-line argument to a Component.
+ */
+//--------------------------------------------------------------------------------------------------
+void cyy_AddLdFlag
+(
+    const char* arg ///< The command-line argument.
 );
 
 
@@ -93,7 +126,6 @@ void cyy_AddSourceFile
 //--------------------------------------------------------------------------------------------------
 void cyy_AddRequiredFile
 (
-    const char* permissions,///< String representing the permissions required ("[rwx]").
     const char* sourcePath, ///< The file path in the target file system, outside sandbox.
     const char* destPath    ///< The file path in the target file system, inside sandbox.
 );
@@ -107,7 +139,6 @@ void cyy_AddRequiredFile
 //--------------------------------------------------------------------------------------------------
 void cyy_AddRequiredDir
 (
-    const char* permissions,///< String representing the permissions required ("[rwx]").
     const char* sourcePath, ///< The directory path in the target file system, outside sandbox.
     const char* destPath    ///< The directory path in the target file system, inside sandbox.
 );
@@ -167,6 +198,7 @@ void cyy_AddBundledFile
 //--------------------------------------------------------------------------------------------------
 void cyy_AddBundledDir
 (
+    const char* permissions,///< String representing permissions to be applied to files in the dir.
     const char* sourcePath, ///< The file path in the build host file system.
     const char* destPath    ///< The file path in the target file system, inside sandbox.
 );

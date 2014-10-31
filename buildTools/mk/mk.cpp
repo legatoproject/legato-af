@@ -16,7 +16,7 @@
 #include "mkcomp.h"
 #include "mkexe.h"
 #include "mkapp.h"
-//#include "mksys.h"
+#include "mksys.h"
 
 using namespace legato;
 
@@ -43,15 +43,13 @@ int main(int argc, const char** argv)
         {
             MakeApp(argc, argv);
         }
-/*
         else if (fileName == "mksys")
         {
             MakeSystem(argc, argv);
         }
-*/
         else
         {
-            std::cerr << "** ERROR: unknown command name '" << fileName << "'." << std::endl;
+            std::cerr << "*** ERROR: unknown command name '" << fileName << "'." << std::endl;
             return EXIT_FAILURE;
         }
     }

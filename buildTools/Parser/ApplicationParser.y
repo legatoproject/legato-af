@@ -3,7 +3,7 @@
 %{
 
 #include <stdio.h>
-#include "ComponentParser.tab.h"
+#include "ApplicationParser.tab.h"
 #include "lex.ayy.h"
 #include "ApplicationParserInternals.h"
 
@@ -21,28 +21,26 @@
 %token  VERSION_SECTION_LABEL;
 %token  SANDBOXED_SECTION_LABEL;
 %token  START_SECTION_LABEL;
-%token  NUM_PROCS_SECTION_LABEL;
-%token  MQUEUE_SIZE_SECTION_LABEL;
-%token  RT_SIGNAL_QUEUE_SIZE_SECTION_LABEL;
-%token  MEMORY_LIMIT_SECTION_LABEL;
+%token  MAX_THREADS_SECTION_LABEL;
+%token  MAX_MQUEUE_BYTES_SECTION_LABEL;
+%token  MAX_QUEUED_SIGNALS_SECTION_LABEL;
+%token  MAX_MEMORY_BYTES_SECTION_LABEL;
 %token  CPU_SHARE_SECTION_LABEL;
-%token  FILE_SYSTEM_SIZE_SECTION_LABEL;
+%token  MAX_FILE_SYSTEM_BYTES_SECTION_LABEL;
 %token  COMPONENTS_SECTION_LABEL;
 %token  GROUPS_SECTION_LABEL;
-%token  FILES_SECTION_LABEL;
 %token  EXECUTABLES_SECTION_LABEL;
 %token  PROCESSES_SECTION_LABEL;
 %token  RUN_SECTION_LABEL;
 %token  ENV_VARS_SECTION_LABEL;
 %token  PRIORITY_SECTION_LABEL;
-%token  CORE_FILE_SIZE_SECTION_LABEL;
-%token  MAX_FILE_SIZE_SECTION_LABEL;
-%token  MEM_LOCK_SIZE_SECTION_LABEL;
-%token  NUM_FDS_SECTION_LABEL;
+%token  MAX_CORE_DUMP_FILE_BYTES_SECTION_LABEL;
+%token  MAX_FILE_BYTES_SECTION_LABEL;
+%token  MAX_LOCKED_MEMORY_BYTES_SECTION_LABEL;
+%token  MAX_FILE_DESCRIPTORS_SECTION_LABEL;
 %token  FAULT_ACTION_SECTION_LABEL;
 %token  WATCHDOG_ACTION_SECTION_LABEL;
 %token  WATCHDOG_TIMEOUT_SECTION_LABEL;
-%token  IMPORT_SECTION_LABEL;
 %token  POOLS_SECTION_LABEL;
 %token  CONFIG_SECTION_LABEL;
 %token  CONFIG_TREE_SECTION_LABEL;
@@ -59,7 +57,8 @@
 %token  <string> NAME;
 %token  <string> BIND_USER;
 %token  <string> NUMBER;
-%token  <string> DOTTED_STRING;
+
+%token END 0 "end of file"
 
 %type <string> file_path;
 %type <string> ver_string;
@@ -78,18 +77,16 @@ section
     : version_section
     | sandboxed_section
     | start_section
-    | num_procs_section
-    | mqueue_size_section
-    | rt_signal_queue_section
-    | memory_limit_section
+    | max_threads_section
+    | max_mqueue_bytes_section
+    | max_queued_signals_section
+    | max_memory_bytes_section
     | cpu_share_section
-    | file_system_size_section
+    | max_file_system_bytes_section
     | components_section
     | groups_section
-    | files_section
     | executables_section
     | processes_section
-    | import_section
     | pools_section
     | watchdog_timeout_subsection
     | watchdog_action_subsection
@@ -100,54 +97,43 @@ section
     ;
 
 version_section
-    : VERSION_SECTION_LABEL
-    | VERSION_SECTION_LABEL ver_string    { ayy_SetVersion($2); }
+    : VERSION_SECTION_LABEL ver_string    { ayy_SetVersion($2); }
     ;
 
 sandboxed_section
-    : SANDBOXED_SECTION_LABEL
-    | SANDBOXED_SECTION_LABEL NAME    { ayy_SetSandboxed($2); }
+    : SANDBOXED_SECTION_LABEL NAME    { ayy_SetSandboxed($2); }
     ;
 
 start_section
-    : START_SECTION_LABEL
-    | START_SECTION_LABEL NAME    { ayy_SetStartMode($2); }
+    : START_SECTION_LABEL NAME    { ayy_SetStartMode($2); }
     ;
 
-num_procs_section
-    : NUM_PROCS_SECTION_LABEL
-    | NUM_PROCS_SECTION_LABEL NUMBER      { ayy_SetNumProcsLimit(yy_GetNumber($2)); }
+max_threads_section
+    : MAX_THREADS_SECTION_LABEL NUMBER      { ayy_SetMaxThreads(yy_GetNumber($2)); }
     ;
 
-mqueue_size_section
-    : MQUEUE_SIZE_SECTION_LABEL
-    | MQUEUE_SIZE_SECTION_LABEL NUMBER    { ayy_SetMqueueSizeLimit(yy_GetNumber($2)); }
+max_mqueue_bytes_section
+    : MAX_MQUEUE_BYTES_SECTION_LABEL NUMBER { ayy_SetMaxMQueueBytes(yy_GetNumber($2)); }
     ;
 
-rt_signal_queue_section
-    : RT_SIGNAL_QUEUE_SIZE_SECTION_LABEL
-    | RT_SIGNAL_QUEUE_SIZE_SECTION_LABEL NUMBER { ayy_SetRTSignalQueueSizeLimit(yy_GetNumber($2)); }
+max_queued_signals_section
+    : MAX_QUEUED_SIGNALS_SECTION_LABEL NUMBER { ayy_SetMaxQueuedSignals(yy_GetNumber($2)); }
     ;
 
-memory_limit_section
-    : MEMORY_LIMIT_SECTION_LABEL
-    | MEMORY_LIMIT_SECTION_LABEL NUMBER   { ayy_SetMemoryLimit(yy_GetNumber($2)); }
+max_memory_bytes_section
+    : MAX_MEMORY_BYTES_SECTION_LABEL NUMBER   { ayy_SetMaxMemoryBytes(yy_GetNumber($2)); }
     ;
 
 cpu_share_section
-    : CPU_SHARE_SECTION_LABEL
-    | CPU_SHARE_SECTION_LABEL NUMBER   { ayy_SetCpuShare(yy_GetNumber($2)); }
+    : CPU_SHARE_SECTION_LABEL NUMBER   { ayy_SetCpuShare(yy_GetNumber($2)); }
     ;
 
-file_system_size_section
-    : FILE_SYSTEM_SIZE_SECTION_LABEL
-    | FILE_SYSTEM_SIZE_SECTION_LABEL NUMBER     { ayy_SetFileSystemSizeLimit(yy_GetNumber($2)); }
+max_file_system_bytes_section
+    : MAX_FILE_SYSTEM_BYTES_SECTION_LABEL NUMBER { ayy_SetMaxFileSystemBytes(yy_GetNumber($2)); }
     ;
 
 groups_section
-    : GROUPS_SECTION_LABEL
-    | GROUPS_SECTION_LABEL group_list
-    | GROUPS_SECTION_LABEL '{' group_list '}'
+    : GROUPS_SECTION_LABEL '{' group_list '}'
     ;
 
 group_list
@@ -160,41 +146,28 @@ group
     | NAME      { ayy_AddGroup($1); }
     ;
 
+
 components_section
-    : COMPONENTS_SECTION_LABEL
-    | COMPONENTS_SECTION_LABEL component_list
+    : COMPONENTS_SECTION_LABEL '{' '}'
     | COMPONENTS_SECTION_LABEL '{' component_list '}'
     ;
+
 
 component_list
     : component
     | component_list component
     ;
 
+
 component
     : NAME '=' file_path    { ayy_AddComponent($1, $3); }
     | file_path             { ayy_AddComponent("", $1); }
     ;
 
-files_section
-    : FILES_SECTION_LABEL file_list
-    | FILES_SECTION_LABEL
-    ;
-
-file_list
-    : file_include_mapping
-    | file_include_mapping file_list
-    ;
-
-file_include_mapping
-    : file_path file_path               { ayy_AddFile("[r]", $1, $2); }
-    | PERMISSIONS file_path file_path   { ayy_AddFile($1, $2, $3); }
-    ;
-
 
 bundles_section
-    : BUNDLES_SECTION_LABEL
-    | BUNDLES_SECTION_LABEL bundles_subsection_list
+    : BUNDLES_SECTION_LABEL '{' '}'
+    | BUNDLES_SECTION_LABEL '{' bundles_subsection_list '}'
     ;
 
 
@@ -207,45 +180,48 @@ bundles_subsection_list
 bundles_subsection
     : bundled_file_section
     | bundled_dir_section
-
-
-bundled_file_section
-    : FILE_SECTION_LABEL bundled_file
     ;
 
 
-bundled_dir_section
-    : DIR_SECTION_LABEL bundled_dir
+bundled_file_section
+    : FILE_SECTION_LABEL '{' '}'
+    | FILE_SECTION_LABEL '{' bundled_file_list '}'
+    ;
+
+
+bundled_file_list
+    : bundled_file
+    | bundled_file_list bundled_file
     ;
 
 
 bundled_file
-    : '{' file_path file_path '}'               { ayy_AddBundledFile("[r]", $2, $3); }
-    | '{' PERMISSIONS file_path file_path '}'   { ayy_AddBundledFile($2, $3, $4); }
-    | file_path file_path               { ayy_AddBundledFile("[r]", $1, $2); }
+    : file_path file_path               { ayy_AddBundledFile("[r]", $1, $2); }
     | PERMISSIONS file_path file_path   { ayy_AddBundledFile($1, $2, $3); }
     ;
 
 
+bundled_dir_section
+    : DIR_SECTION_LABEL
+    | DIR_SECTION_LABEL '{' '}'
+    | DIR_SECTION_LABEL '{' bundled_dir_list '}'
+    ;
+
+
+bundled_dir_list
+    : bundled_dir
+    | bundled_dir bundled_dir_list
+    ;
+
+
 bundled_dir
-    : '{' file_path file_path '}'       { ayy_AddBundledDir($2, $3); }
-    | '{' PERMISSIONS file_path file_path '}'
-            {
-                ayy_error("Permissions not allowed for bundled directories."
-                          "  They are always read-only at run time.");
-            }
-    | file_path file_path       { ayy_AddBundledDir($1, $2); }
-    | PERMISSIONS file_path file_path
-            {
-                ayy_error("Permissions not allowed for bundled directories."
-                          "  They are always read-only at run time.");
-            }
+    : file_path file_path               { ayy_AddBundledDir("[r]", $1, $2); }
+    | PERMISSIONS file_path file_path   { ayy_AddBundledDir($1, $2, $3); }
     ;
 
 
 executables_section
-    : EXECUTABLES_SECTION_LABEL
-    | EXECUTABLES_SECTION_LABEL executables_list
+    : EXECUTABLES_SECTION_LABEL '{' '}'
     | EXECUTABLES_SECTION_LABEL '{' executables_list '}'
     ;
 
@@ -255,8 +231,7 @@ executables_list
     ;
 
 exe_spec
-    : exe_name '(' exe_content_list ')'     { ayy_FinalizeExecutable(); }
-    | exe_name '{' exe_content_list '}'     { ayy_FinalizeExecutable(); }
+    : exe_name '=' '(' exe_content_list ')'     { ayy_FinalizeExecutable(); }
     ;
 
 exe_name
@@ -269,8 +244,7 @@ exe_content_list
     ;
 
 processes_section
-    : PROCESSES_SECTION_LABEL
-    | PROCESSES_SECTION_LABEL processes_subsection_list          { ayy_FinishProcessesSection(); }
+    : PROCESSES_SECTION_LABEL '{' '}'
     | PROCESSES_SECTION_LABEL '{' processes_subsection_list '}'  { ayy_FinishProcessesSection(); }
     ;
 
@@ -283,21 +257,28 @@ processes_subsection
     : run_subsection
     | env_vars_subsection
     | priority_subsection
-    | core_file_size_subsection
-    | max_file_size_subsection
-    | mem_lock_size_subsection
-    | num_fds_subsection
+    | max_core_dump_file_bytes_subsection
+    | max_file_bytes_subsection
+    | max_locked_memory_bytes_subsection
+    | max_file_descriptors_subsection
     | fault_action_subsection
     | watchdog_action_subsection
     | watchdog_timeout_subsection
     ;
 
 run_subsection
-    : RUN_SECTION_LABEL NAME '{' command_line '}'     { ayy_FinalizeProcess($2); }
-    | RUN_SECTION_LABEL '{' command_line '}'          { ayy_FinalizeProcess(NULL); }
-    | RUN_SECTION_LABEL NAME '(' command_line ')'     { ayy_FinalizeProcess($2); }
-    | RUN_SECTION_LABEL '(' command_line ')'          { ayy_FinalizeProcess(NULL); }
-    | RUN_SECTION_LABEL
+    : RUN_SECTION_LABEL '{' '}'
+    | RUN_SECTION_LABEL '{' process_list '}'
+    ;
+
+process_list
+    : process
+    | process process_list
+    ;
+
+process
+    : '(' command_line ')'              { ayy_FinalizeProcess(NULL); }
+    | NAME '=' '(' command_line ')'     { ayy_FinalizeProcess($1); }
     ;
 
 command_line
@@ -311,58 +292,51 @@ args_list
     ;
 
 env_vars_subsection
-    : ENV_VARS_SECTION_LABEL
-    | ENV_VARS_SECTION_LABEL env_var_list
+    : ENV_VARS_SECTION_LABEL '{' '}'
     | ENV_VARS_SECTION_LABEL '{' env_var_list '}'
     ;
 
 env_var_list
     : env_var
     | env_var_list env_var
-
+    ;
 
 env_var
     : NAME '=' file_path    { ayy_AddEnvVar($1, $3); }
     ;
 
 priority_subsection
-    : PRIORITY_SECTION_LABEL
-    | PRIORITY_SECTION_LABEL NAME     { ayy_SetPriority($2); }
+    : PRIORITY_SECTION_LABEL NAME     { ayy_SetPriority($2); }
     ;
 
-core_file_size_subsection
-    : CORE_FILE_SIZE_SECTION_LABEL
-    | CORE_FILE_SIZE_SECTION_LABEL NUMBER     { ayy_SetCoreFileSizeLimit(yy_GetNumber($2)); }
+max_core_dump_file_bytes_subsection
+    : MAX_CORE_DUMP_FILE_BYTES_SECTION_LABEL NUMBER
+                                                { ayy_SetMaxCoreDumpFileBytes(yy_GetNumber($2)); }
     ;
 
-max_file_size_subsection
-    : MAX_FILE_SIZE_SECTION_LABEL
-    | MAX_FILE_SIZE_SECTION_LABEL NUMBER      { ayy_SetMaxFileSizeLimit(yy_GetNumber($2)); }
+max_file_bytes_subsection
+    : MAX_FILE_BYTES_SECTION_LABEL NUMBER      { ayy_SetMaxFileBytes(yy_GetNumber($2)); }
     ;
 
-mem_lock_size_subsection
-    : MEM_LOCK_SIZE_SECTION_LABEL
-    | MEM_LOCK_SIZE_SECTION_LABEL NUMBER      { ayy_SetMemLockSizeLimit(yy_GetNumber($2)); }
+max_locked_memory_bytes_subsection
+    : MAX_LOCKED_MEMORY_BYTES_SECTION_LABEL NUMBER
+                                                { ayy_SetMaxLockedMemoryBytes(yy_GetNumber($2)); }
     ;
 
-num_fds_subsection
-    : NUM_FDS_SECTION_LABEL
-    | NUM_FDS_SECTION_LABEL NUMBER        { ayy_SetNumFdsLimit(yy_GetNumber($2)); }
+max_file_descriptors_subsection
+    : MAX_FILE_DESCRIPTORS_SECTION_LABEL NUMBER { ayy_SetMaxFileDescriptors(yy_GetNumber($2)); }
     ;
 
 fault_action_subsection
-    : FAULT_ACTION_SECTION_LABEL
-    | FAULT_ACTION_SECTION_LABEL NAME     { ayy_SetFaultAction($2); }
+    : FAULT_ACTION_SECTION_LABEL NAME     { ayy_SetFaultAction($2); }
     ;
 
 watchdog_action_subsection
-    : WATCHDOG_ACTION_SECTION_LABEL
-    | WATCHDOG_ACTION_SECTION_LABEL NAME  { ayy_SetWatchdogAction($2); }
+    : WATCHDOG_ACTION_SECTION_LABEL NAME  { ayy_SetWatchdogAction($2); }
     ;
 
 requires_section
-    : REQUIRES_SECTION_LABEL
-    | REQUIRES_SECTION_LABEL requires_subsection_list
+    : REQUIRES_SECTION_LABEL '{' '}'
     | REQUIRES_SECTION_LABEL '{' requires_subsection_list '}'
     ;
 
@@ -379,55 +353,69 @@ requires_subsection
     ;
 
 required_api_subsection
-    : API_SECTION_LABEL required_api_spec
+    : API_SECTION_LABEL '{' '}'
+    | API_SECTION_LABEL '{' required_api_list '}'
+    ;
+
+required_api_list
+    : required_api_spec
+    | required_api_list required_api_spec
     ;
 
 required_api_spec
-    : '(' file_path ')'        { ayy_AddRequiredApi(NULL, $2); }
-    | NAME '(' file_path ')'   { ayy_AddRequiredApi($1, $3); }
-    | '{' file_path '}'        { ayy_AddRequiredApi(NULL, $2); }
-    | NAME '{' file_path '}'   { ayy_AddRequiredApi($1, $3); }
+    : file_path             { ayy_AddRequiredApi(NULL, $1); }
+    | NAME '=' file_path    { ayy_AddRequiredApi($1, $3); }
     ;
 
 required_file_subsection
-    : FILE_SECTION_LABEL required_file_mapping
+    : FILE_SECTION_LABEL '{' '}'
+    | FILE_SECTION_LABEL '{' required_file_list '}'
     ;
 
+required_file_list
+    : required_file
+    | required_file required_file_list
+    ;
+
+
+required_file
+    : file_path file_path               { ayy_AddRequiredFile($1, $2); }
+    ;
+
+
 required_dir_subsection
-    : DIR_SECTION_LABEL required_dir_mapping
+    : DIR_SECTION_LABEL '{' '}'
+    | DIR_SECTION_LABEL '{' required_dir_list '}'
+    ;
+
+required_dir_list
+    : required_dir_mapping
+    | required_dir_list required_dir_mapping
     ;
 
 required_dir_mapping
-    : file_path file_path               { ayy_AddRequiredDir("[r]", $1, $2); }
-    | PERMISSIONS file_path file_path   { ayy_AddRequiredDir($1, $2, $3); }
+    : file_path file_path               { ayy_AddRequiredDir($1, $2); }
     ;
 
 required_config_tree_subsection
-    : CONFIG_TREE_SECTION_LABEL
-    | CONFIG_TREE_SECTION_LABEL '{' NAME '}'                { ayy_AddConfigTreeAccess("[r]", $3); }
-    | CONFIG_TREE_SECTION_LABEL '{' PERMISSIONS NAME '}'    { ayy_AddConfigTreeAccess($3, $4); }
+    : CONFIG_TREE_SECTION_LABEL '{' '}'
+    | CONFIG_TREE_SECTION_LABEL '{' required_config_tree_list '}'
+    ;
+
+required_config_tree_list
+    : required_config_tree
+    | required_config_tree_list required_config_tree
+    ;
+
+required_config_tree
+    : NAME                  { ayy_AddConfigTreeAccess("[r]", $1); }
+    | PERMISSIONS NAME      { ayy_AddConfigTreeAccess($1, $2); }
     ;
 
 watchdog_timeout_subsection
     : WATCHDOG_TIMEOUT_SECTION_LABEL
     | WATCHDOG_TIMEOUT_SECTION_LABEL NUMBER  { ayy_SetWatchdogTimeout(yy_GetNumber($2)); }
     | WATCHDOG_TIMEOUT_SECTION_LABEL NAME    { ayy_SetWatchdogDisabled($2); }
-    ;
-
-import_section
-    : IMPORT_SECTION_LABEL
-    | IMPORT_SECTION_LABEL import_list
-    | IMPORT_SECTION_LABEL '{' import_list '}'
-    ;
-
-import_list
-    : required_file_mapping
-    | import_list required_file_mapping
-    ;
-
-required_file_mapping
-    : file_path file_path               { ayy_AddRequiredFile("[r]", $1, $2); }
-    | PERMISSIONS file_path file_path   { ayy_AddRequiredFile($1, $2, $3); }
     ;
 
 file_path
@@ -437,8 +425,7 @@ file_path
     ;
 
 provides_section
-    : PROVIDES_SECTION_LABEL
-    | PROVIDES_SECTION_LABEL provides_subsection_list
+    : PROVIDES_SECTION_LABEL '{' '}'
     | PROVIDES_SECTION_LABEL '{' provides_subsection_list '}'
     ;
 
@@ -452,19 +439,22 @@ provides_subsection
     ;
 
 provided_api_subsection
-    : API_SECTION_LABEL provided_api_spec
+    : API_SECTION_LABEL '{' '}'
+    | API_SECTION_LABEL '{' provided_api_list '}'
+    ;
+
+provided_api_list
+    : provided_api_spec
+    | provided_api_list provided_api_spec
     ;
 
 provided_api_spec
-    : '(' file_path ')'        { ayy_AddProvidedApi(NULL, $2); }
-    | NAME '(' file_path ')'   { ayy_AddProvidedApi($1, $3); }
-    | '{' file_path '}'        { ayy_AddProvidedApi(NULL, $2); }
-    | NAME '{' file_path '}'   { ayy_AddProvidedApi($1, $3); }
+    : file_path             { ayy_AddProvidedApi(NULL, $1); }
+    | NAME '=' file_path    { ayy_AddProvidedApi($1, $3); }
     ;
 
 pools_section
-    : POOLS_SECTION_LABEL
-    | POOLS_SECTION_LABEL pool_list
+    : POOLS_SECTION_LABEL pool_list
     | POOLS_SECTION_LABEL '{' pool_list '}'
     ;
 
@@ -478,8 +468,7 @@ pool
     ;
 
 bindings_section
-    : BINDINGS_SECTION_LABEL
-    | BINDINGS_SECTION_LABEL bind_list
+    : BINDINGS_SECTION_LABEL '{' '}'
     | BINDINGS_SECTION_LABEL '{' bind_list '}'
     ;
 
@@ -495,9 +484,7 @@ bind_spec
 
 ver_string
     : file_path      { $$ = $1; }
-    | DOTTED_STRING  { $$ = $1; }
     ;
 
 
 %%
-

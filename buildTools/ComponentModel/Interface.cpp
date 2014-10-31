@@ -26,10 +26,10 @@ Interface::Interface
 )
 //--------------------------------------------------------------------------------------------------
 :   m_InternalName(name),
-    m_ServiceInstanceName(name),
     m_ApiPtr(apiPtr),
-    m_IsInterApp(false),
-    m_ManualStart(false)
+    m_IsExternalToApp(false),
+    m_ManualStart(false),
+    m_ComponentInstancePtr(NULL)
 //--------------------------------------------------------------------------------------------------
 {
 }
@@ -48,10 +48,10 @@ Interface::Interface
 )
 //--------------------------------------------------------------------------------------------------
 :   m_InternalName(std::move(name)),
-    m_ServiceInstanceName(m_InternalName),
     m_ApiPtr(apiPtr),
-    m_IsInterApp(false),
-    m_ManualStart(false)
+    m_IsExternalToApp(false),
+    m_ManualStart(false),
+    m_ComponentInstancePtr(NULL)
 //--------------------------------------------------------------------------------------------------
 {
 }
@@ -69,12 +69,12 @@ Interface::Interface
 )
 //--------------------------------------------------------------------------------------------------
 :   m_InternalName(original.m_InternalName),
-    m_ServiceInstanceName(original.m_ServiceInstanceName),
+    m_ExternalName(original.m_ExternalName),
     m_ApiPtr(original.m_ApiPtr),
-    m_AppUniqueName(original.m_AppUniqueName),
     m_Library(original.m_Library),
-    m_IsInterApp(original.m_IsInterApp),
-    m_ManualStart(original.m_ManualStart)
+    m_IsExternalToApp(original.m_IsExternalToApp),
+    m_ManualStart(original.m_ManualStart),
+    m_ComponentInstancePtr(original.m_ComponentInstancePtr)
 //--------------------------------------------------------------------------------------------------
 {
 }
@@ -92,12 +92,12 @@ Interface::Interface
 )
 //--------------------------------------------------------------------------------------------------
 :   m_InternalName(std::move(rvalue.m_InternalName)),
-    m_ServiceInstanceName(std::move(rvalue.m_ServiceInstanceName)),
+    m_ExternalName(std::move(rvalue.m_ExternalName)),
     m_ApiPtr(std::move(rvalue.m_ApiPtr)),
-    m_AppUniqueName(std::move(rvalue.m_AppUniqueName)),
     m_Library(std::move(rvalue.m_Library)),
-    m_IsInterApp(std::move(rvalue.m_IsInterApp)),
-    m_ManualStart(std::move(rvalue.m_ManualStart))
+    m_IsExternalToApp(std::move(rvalue.m_IsExternalToApp)),
+    m_ManualStart(std::move(rvalue.m_ManualStart)),
+    m_ComponentInstancePtr(std::move(rvalue.m_ComponentInstancePtr))
 //--------------------------------------------------------------------------------------------------
 {
 }
@@ -167,10 +167,89 @@ void Interface::SplitAppUniqueName
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Get the interface's external name (i.e., the name to use when talking to the Service Directory).
+ **/
+//--------------------------------------------------------------------------------------------------
+std::string Interface::ExternalName
+(
+    void
+)
+const
+//--------------------------------------------------------------------------------------------------
+{
+    // If no external name has been set yet,
+    if (m_ExternalName.empty())
+    {
+        // If the Component Instance pointer has been set, use the App-Wide Unique Name as
+        // the external name.
+        if (m_ComponentInstancePtr != NULL)
+        {
+            return AppUniqueName();
+        }
+        else
+        {
+            // Fall back to the Internal Name.
+            return m_InternalName;
+        }
+    }
+    else
+    {
+        return m_ExternalName;
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the component instance that the interface is associated with.
+ *
+ * A side effect of this is that the interface library name will change.
+ **/
+//--------------------------------------------------------------------------------------------------
+void Interface::ComponentInstancePtr
+(
+    const ComponentInstance* componentInstancePtr
+)
+//--------------------------------------------------------------------------------------------------
+{
+    m_ComponentInstancePtr = componentInstancePtr;
+
+    m_Library.ShortName("IF_" + componentInstancePtr->AppUniqueName() + "." + m_InternalName);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Generate the application-wide unique name for this interface.
+ *
+ * @note    Won't work if the ExecutablePtr and ComponentInstancePtr have not been set.
+ **/
+//--------------------------------------------------------------------------------------------------
+std::string Interface::AppUniqueName
+(
+    void
+)
+const
+//--------------------------------------------------------------------------------------------------
+{
+    if (m_ComponentInstancePtr == NULL)
+    {
+        throw legato::Exception("Component instance pointer not set on interface "
+                                + m_InternalName);
+    }
+
+    return m_ComponentInstancePtr->AppUniqueName() + "." + m_InternalName;
+}
+
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Constructor
  */
 //--------------------------------------------------------------------------------------------------
-ImportedInterface::ImportedInterface
+ClientInterface::ClientInterface
 (
     const std::string& name,
     Api_t* apiPtr
@@ -181,10 +260,7 @@ ImportedInterface::ImportedInterface
     m_TypesOnly(false)
 //--------------------------------------------------------------------------------------------------
 {
-    // NOTE: It's tempting to do framework API auto-binding here, but we don't have the
-    //       isVerbose flag available here, so instead we do it in the Application Parser.
-
-    m_Library.ShortName(m_InternalName + '_' + m_ApiPtr->Hash() + "_client");
+    m_Library.ShortName("IF_" + m_InternalName + "_client");
 }
 
 
@@ -193,9 +269,9 @@ ImportedInterface::ImportedInterface
  * Copy constructor
  */
 //--------------------------------------------------------------------------------------------------
-ImportedInterface::ImportedInterface
+ClientInterface::ClientInterface
 (
-    const ImportedInterface& original
+    const ClientInterface& original
 )
 //--------------------------------------------------------------------------------------------------
 :   Interface(original),
@@ -212,9 +288,9 @@ ImportedInterface::ImportedInterface
  * Move constructor
  */
 //--------------------------------------------------------------------------------------------------
-ImportedInterface::ImportedInterface
+ClientInterface::ClientInterface
 (
-    ImportedInterface&& rvalue
+    ClientInterface&& rvalue
 )
 //--------------------------------------------------------------------------------------------------
 :   Interface(rvalue),
@@ -233,21 +309,21 @@ ImportedInterface::ImportedInterface
  * @return A reference to the object assigned to.
  **/
 //--------------------------------------------------------------------------------------------------
-ImportedInterface& ImportedInterface::operator =
+ClientInterface& ClientInterface::operator =
 (
-    ImportedInterface&& rvalue
+    ClientInterface&& rvalue
 )
 //--------------------------------------------------------------------------------------------------
 {
     if (&rvalue != this)
     {
         m_InternalName = std::move(rvalue.m_InternalName);
-        m_ServiceInstanceName = std::move(rvalue.m_ServiceInstanceName);
+        m_ExternalName = std::move(rvalue.m_ExternalName);
         m_ApiPtr = std::move(rvalue.m_ApiPtr);
-        m_AppUniqueName = std::move(rvalue.m_AppUniqueName);
         m_Library = std::move(rvalue.m_Library);
-        m_IsInterApp = std::move(rvalue.m_IsInterApp);
+        m_IsExternalToApp = std::move(rvalue.m_IsExternalToApp);
         m_ManualStart = std::move(rvalue.m_ManualStart);
+        m_ComponentInstancePtr = std::move(rvalue.m_ComponentInstancePtr);
         m_IsBound = std::move(rvalue.m_IsBound);
         m_TypesOnly = std::move(rvalue.m_TypesOnly);
     }
@@ -264,21 +340,21 @@ ImportedInterface& ImportedInterface::operator =
  * @return A reference to the object assigned to.
  **/
 //--------------------------------------------------------------------------------------------------
-ImportedInterface& ImportedInterface::operator =
+ClientInterface& ClientInterface::operator =
 (
-    const ImportedInterface& original
+    const ClientInterface& original
 )
 //--------------------------------------------------------------------------------------------------
 {
     if (&original != this)
     {
         m_InternalName = original.m_InternalName;
-        m_ServiceInstanceName = original.m_ServiceInstanceName;
+        m_ExternalName = original.m_ExternalName;
         m_ApiPtr = original.m_ApiPtr;
-        m_AppUniqueName = original.m_AppUniqueName;
         m_Library = original.m_Library;
-        m_IsInterApp = original.m_IsInterApp;
+        m_IsExternalToApp = original.m_IsExternalToApp;
         m_ManualStart = original.m_ManualStart;
+        m_ComponentInstancePtr = original.m_ComponentInstancePtr;
         m_IsBound = original.m_IsBound;
         m_TypesOnly = original.m_TypesOnly;
     }
@@ -294,14 +370,14 @@ ImportedInterface& ImportedInterface::operator =
  *         external interface (i.e., binding has been deferred).
  **/
 //--------------------------------------------------------------------------------------------------
-bool ImportedInterface::IsSatisfied
+bool ClientInterface::IsSatisfied
 (
     void
 )
 const
 //--------------------------------------------------------------------------------------------------
 {
-    return (IsBound() || IsExternal());
+    return (IsBound() || IsExternalToApp());
 }
 
 
@@ -310,7 +386,7 @@ const
  * Constructor
  */
 //--------------------------------------------------------------------------------------------------
-ExportedInterface::ExportedInterface
+ServerInterface::ServerInterface
 (
     const std::string& name,
     Api_t* apiPtr
@@ -320,7 +396,7 @@ ExportedInterface::ExportedInterface
     m_IsAsync(false)
 //--------------------------------------------------------------------------------------------------
 {
-    m_Library.ShortName(m_InternalName + '_' + m_ApiPtr->Hash() + "_server");
+    m_Library.ShortName("IF_" + m_InternalName + "_server");
 }
 
 
@@ -329,9 +405,9 @@ ExportedInterface::ExportedInterface
  * Copy constructor
  */
 //--------------------------------------------------------------------------------------------------
-ExportedInterface::ExportedInterface
+ServerInterface::ServerInterface
 (
-    const ExportedInterface& original
+    const ServerInterface& original
 )
 //--------------------------------------------------------------------------------------------------
 :   Interface(original),
@@ -347,9 +423,9 @@ ExportedInterface::ExportedInterface
  * Move constructor
  */
 //--------------------------------------------------------------------------------------------------
-ExportedInterface::ExportedInterface
+ServerInterface::ServerInterface
 (
-    ExportedInterface&& rvalue
+    ServerInterface&& rvalue
 )
 //--------------------------------------------------------------------------------------------------
 :   Interface(rvalue),
@@ -367,21 +443,21 @@ ExportedInterface::ExportedInterface
  * @return A reference to the object assigned to.
  **/
 //--------------------------------------------------------------------------------------------------
-ExportedInterface& ExportedInterface::operator =
+ServerInterface& ServerInterface::operator =
 (
-    ExportedInterface&& rvalue
+    ServerInterface&& rvalue
 )
 //--------------------------------------------------------------------------------------------------
 {
     if (&rvalue != this)
     {
         m_InternalName = std::move(rvalue.m_InternalName);
-        m_ServiceInstanceName = std::move(rvalue.m_ServiceInstanceName);
+        m_ExternalName = std::move(rvalue.m_ExternalName);
         m_ApiPtr = std::move(rvalue.m_ApiPtr);
-        m_AppUniqueName = std::move(rvalue.m_AppUniqueName);
         m_Library = std::move(rvalue.m_Library);
-        m_IsInterApp = std::move(rvalue.m_IsInterApp);
+        m_IsExternalToApp = std::move(rvalue.m_IsExternalToApp);
         m_ManualStart = std::move(rvalue.m_ManualStart);
+        m_ComponentInstancePtr = std::move(rvalue.m_ComponentInstancePtr);
         m_IsAsync = std::move(rvalue.m_IsAsync);
     }
 
@@ -396,21 +472,21 @@ ExportedInterface& ExportedInterface::operator =
  * @return A reference to the object assigned to.
  **/
 //--------------------------------------------------------------------------------------------------
-ExportedInterface& ExportedInterface::operator =
+ServerInterface& ServerInterface::operator =
 (
-    const ExportedInterface& original
+    const ServerInterface& original
 )
 //--------------------------------------------------------------------------------------------------
 {
     if (&original != this)
     {
         m_InternalName = original.m_InternalName;
-        m_ServiceInstanceName = original.m_ServiceInstanceName;
+        m_ExternalName = original.m_ExternalName;
         m_ApiPtr = original.m_ApiPtr;
-        m_AppUniqueName = original.m_AppUniqueName;
         m_Library = original.m_Library;
-        m_IsInterApp = original.m_IsInterApp;
+        m_IsExternalToApp = original.m_IsExternalToApp;
         m_ManualStart = original.m_ManualStart;
+        m_ComponentInstancePtr = original.m_ComponentInstancePtr;
         m_IsAsync = original.m_IsAsync;
     }
 

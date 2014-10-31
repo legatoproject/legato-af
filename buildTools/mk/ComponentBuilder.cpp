@@ -14,12 +14,13 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Generates the interfaces.h header file for this component.
+ * Generates the custom interfaces.h header file for a given component.
  */
 //--------------------------------------------------------------------------------------------------
 void ComponentBuilder_t::GenerateInterfacesHeader
 (
-    legato::Component& component
+    legato::Component& component,
+    const std::string& outputDir    ///< Overrides the ObjOutputDir in the build params.
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -32,15 +33,14 @@ void ComponentBuilder_t::GenerateInterfacesHeader
     if (m_Params.IsVerbose())
     {
         std::cout << "Generating interfaces.h for component '" << component.Name()
-                  << "' in directory '" << m_Params.ObjOutputDir() << "'." << std::endl;
+                  << "' in directory '" << outputDir << "'." << std::endl;
     }
 
     // Make sure the working file output directory exists.
-    legato::MakeDir(m_Params.ObjOutputDir());
+    legato::MakeDir(outputDir);
 
     // Open the interfaces.h file for writing.
-    std::string interfacesHeaderFilePath = legato::CombinePath(m_Params.ObjOutputDir(),
-                                                               "interfaces.h");
+    std::string interfacesHeaderFilePath = legato::CombinePath(outputDir, "interfaces.h");
     std::ofstream interfaceHeaderFile(interfacesHeaderFilePath, std::ofstream::trunc);
     if (!interfaceHeaderFile.is_open())
     {
@@ -64,12 +64,12 @@ void ComponentBuilder_t::GenerateInterfacesHeader
                         << "#endif" << std::endl
                         << std::endl;
 
-    // For each interface imported by the component, #include the client-side IPC header files.
+    // For each of the component's client-side interfaces, #include the client-side IPC headers.
     ///@ todo Support other programming languages besides C/C++.
     const auto& importMap = component.RequiredApis();
     for (auto i = importMap.cbegin(); i != importMap.cend(); i++)
     {
-        const legato::ImportedInterface& interface = std::get<1>(*i);
+        const legato::ClientInterface& interface = std::get<1>(*i);
 
         // Add the interface code's header to the component's interface.h file.
         interfaceHeaderFile << "#include \"" << interface.InternalName() << "_interface.h" << "\""
@@ -81,7 +81,7 @@ void ComponentBuilder_t::GenerateInterfacesHeader
     const auto& exportMap = component.ProvidedApis();
     for (auto i = exportMap.cbegin(); i != exportMap.cend(); i++)
     {
-        const legato::ExportedInterface& interface = std::get<1>(*i);
+        const legato::ServerInterface& interface = std::get<1>(*i);
 
         interfaceHeaderFile << "#include \"" << interface.InternalName() << "_server.h" << "\""
                             << std::endl;
@@ -97,79 +97,60 @@ void ComponentBuilder_t::GenerateInterfacesHeader
 
 
     // Add the directory to the include search path so the compiler can find the "interface.h" file.
-    component.AddIncludeDir(m_Params.ObjOutputDir());
+    component.AddIncludeDir(outputDir);
 }
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Build IPC API libraries required by this component.
+ * Generate interface header files required in order to build the component.
  **/
 //--------------------------------------------------------------------------------------------------
-void ComponentBuilder_t::BuildInterfaces
+void ComponentBuilder_t::GenerateInterfaceHeaders
 (
-    legato::Component& component  ///< The component whose library is to be built.
+    legato::Component& component,
+    const std::string& outputDir   ///< Overrides the ObjOutputDir in the build params.
 )
 //--------------------------------------------------------------------------------------------------
 {
-    // Create an Interface Builder object.
-    InterfaceBuilder_t interfaceBuilder(m_Params);
+    legato::BuildParams_t interfaceBuildParams(m_Params);
+    interfaceBuildParams.ObjOutputDir(outputDir);
+    InterfaceBuilder_t interfaceBuilder(interfaceBuildParams);
 
-    if (m_Params.IsVerbose())
-    {
-        std::cout << "Building interfaces for component '" << component.Name() << "'." << std::endl;
-    }
-
-    // Build the IPC API libs and add them to the list of libraries that need
-    // to be bundled in the application.
-    for (auto& mapEntry : component.ProvidedApis())
-    {
-        auto& interface = mapEntry.second;
-        interfaceBuilder.Build(interface);
-
-        // Add the library to the list of files that need to be mapped into the sandbox.
-        component.AddRequiredFile({ legato::PERMISSION_READABLE,
-                                 "lib/lib" + interface.Lib().ShortName() + ".so",
-                                 "/lib/" });
-
-    }
+    // Generate interface headers for client-side interfaces.
     for (auto& mapEntry : component.RequiredApis())
     {
-        auto& interface = mapEntry.second;
-
-        interfaceBuilder.Build(interface);
-
-        if (!interface.TypesOnly())
-        {
-            // Add the library to the list of files that need to be mapped into the sandbox.
-            component.AddRequiredFile({ legato::PERMISSION_READABLE,
-                                     "lib/lib" + interface.Lib().ShortName() + ".so",
-                                     "/lib/" });
-        }
+        interfaceBuilder.GenerateApiHeaders(mapEntry.second, outputDir);
     }
+
+    // Generate interface headers for server-side interfaces.
+    for (auto& mapEntry : component.ProvidedApis())
+    {
+        interfaceBuilder.GenerateApiHeaders(mapEntry.second, outputDir);
+    }
+
+    // Generate custom "interfaces.h" for this component.
+    GenerateInterfacesHeader(component, outputDir);
 }
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Build the component library (.so file) for a given component.
+ * Build the .o files for a given component from its C/C++ sources.
  **/
 //--------------------------------------------------------------------------------------------------
-void ComponentBuilder_t::BuildComponentLib
+void ComponentBuilder_t::BuildObjectFiles
 (
-    legato::Component& component  ///< The component whose library is to be built.
+    legato::Component& component,
+    const std::string& outputDir   ///< Overrides the ObjOutputDir in the build params.
 )
 //--------------------------------------------------------------------------------------------------
 {
-    // First, generate the component's own interfaces.h header file.
-    /// @todo Support other languages.
-    GenerateInterfacesHeader(component);
-
-    // Essentially, when we build a component, we use gcc to build a library (.so) from a bunch
-    // of C source code files.  The library goes into the component's library output directory.
+    // Make sure the working file output directory exists.
+    legato::MakeDir(outputDir);
 
     // If the component doesn't have any C/C++ source files, then we don't need to do anything.
-    if (component.CSourcesList().empty())
+    if (component.CSources().empty() && component.CxxSources().empty())
     {
         if (m_Params.IsVerbose())
         {
@@ -179,34 +160,317 @@ void ComponentBuilder_t::BuildComponentLib
         return;
     }
 
-    // TODO: Check if files need recompiling.  Maybe change to use intermediate .o files
-    //       to break up compiling so it runs faster for large components that have had
-    //       only small changes to them.
+    // Generate the component's own interfaces.h header file.
+    /// @todo Support other languages.
+    GenerateInterfacesHeader(component, outputDir);
 
-    std::stringstream commandLine;
-    commandLine << mk::GetCompilerPath(m_Params.Target());
+    // Clear out the component's list of object files.  We'll reconstruct it as we compile sources.
+    component.ObjectFiles().clear();
 
-    // Specify the output file path.
-    // TODO: Add a version number to the library.
-    std::string libFileName = "lib" + component.Name() + ".so";
-    std::string libPath = legato::CombinePath(m_Params.LibOutputDir(), libFileName);
+    // Compile each C source file,
     if (m_Params.IsVerbose())
     {
-        std::cout << "Building component library '" << libPath << "'." << std::endl;
+        if (component.HasCSources())
+        {
+            std::cout << "Compiling C sources for component '" << component.Name() << "'."
+                      << std::endl;
+        }
     }
-    commandLine << " -o " << libPath
-                << " -shared"
-                << " -fPIC"
-                << " -Wall"
-                << " -Werror";
+    for (const auto& sourceFile : component.CSources())
+    {
+        CompileCSourceFile(component, sourceFile, outputDir);
+    }
+
+    // Compile each C++ source file,
+    if (m_Params.IsVerbose())
+    {
+        if (component.HasCxxSources())
+        {
+            std::cout << "Compiling C++ sources for component '" << component.Name() << "'."
+                      << std::endl;
+        }
+    }
+    for (const auto& sourceFile : component.CxxSources())
+    {
+        CompileCxxSourceFile(component, sourceFile, outputDir);
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Copies a component's (and all its sub-components') bundled files to the staging area.
+ */
+//--------------------------------------------------------------------------------------------------
+void ComponentBuilder_t::Bundle
+(
+    legato::Component& component
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // Copy lower-level components' (sub-components') files first so they can be overridden by
+    // higher-level components' bundled files.
+    try
+    {
+        for (auto& mapEntry : component.SubComponents())
+        {
+            Bundle(*(mapEntry.second));
+        }
+    }
+    catch (legato::DependencyException e)
+    {
+        throw legato::DependencyException(e.what() + std::string(" required by ")
+                                          + component.Name());
+    }
+
+    // Print progress message.
+    if (m_Params.IsVerbose())
+    {
+        std::cout << "Bundling files for component '" << component.Name() << "'." << std::endl;
+    }
+
+    // Copy all bundled files into the staging area.
+    auto& bundledFiles = component.BundledFiles();
+    for (auto fileMapping : bundledFiles)
+    {
+        mk::CopyToStaging(  fileMapping.m_SourcePath,
+                            m_Params.StagingDir(),
+                            fileMapping.m_DestPath,
+                            m_Params.IsVerbose()    );
+    }
+
+    // Copy all bundled directories into the staging area.
+    auto& bundledDirs = component.BundledDirs();
+    for (auto fileMapping : bundledDirs)
+    {
+        mk::CopyToStaging(  fileMapping.m_SourcePath,
+                            m_Params.StagingDir(),
+                            fileMapping.m_DestPath,
+                            m_Params.IsVerbose()    );
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Builds a component library.
+ */
+//--------------------------------------------------------------------------------------------------
+void ComponentBuilder_t::Build
+(
+    legato::Component& component,
+    const std::string& outputDir   ///< Overrides the ObjOutputDir in the build params.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // If the component was already built, then we don't need to do anything.
+    if (component.IsBuilt())
+    {
+        if (m_Params.IsVerbose())
+        {
+            std::cout << "Component '" << component.Name() << "' was already built."
+                      << std::endl;
+        }
+    }
+    else
+    {
+        // Print progress message.
+        if (m_Params.IsVerbose())
+        {
+            std::cout << "Building component '" << component.Name() << "'."
+                      << std::endl;
+        }
+
+        // Generate interface header files.
+        GenerateInterfaceHeaders(component, outputDir);
+
+        // Build the .o files from the component's sources.
+        BuildObjectFiles(component, outputDir);
+
+        // If the component doesn't have any object files, then we don't need to do anything else.
+        if (component.ObjectFiles().empty())
+        {
+            if (m_Params.IsVerbose())
+            {
+                std::cout << "Component '" << component.Name() << "' has no object files to link."
+                          << std::endl;
+            }
+        }
+        else
+        {
+            // Create the library from the compiled object files.
+            LinkLib(component);
+        }
+
+        component.MarkBuilt();
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Compile one of a component's C source code files into an object (.o) file.
+ *
+ * @note The object code file will have the same name as the .c file, with ".o" appended.
+ *       (foo.c compiles to foo.c.o.)
+ */
+//--------------------------------------------------------------------------------------------------
+void ComponentBuilder_t::CompileCSourceFile
+(
+    legato::Component& component,
+    const std::string& sourceFile,  ///< File to compile.
+    const std::string& outputDir    ///< Directory where the object file will be put.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // TODO: Check file timestamps to see if compiling is actually needed.
+
+    // Start the command line with the path to the appropriate compiler executable.
+    std::stringstream commandLine;
+    std::string compilerPath = mk::GetCompilerPath(m_Params.Target(), legato::LANG_C);
+    commandLine << compilerPath;
+
+    // Add the language-specific flags from the Component.cdef file to the command-line.
+    for (auto& arg : component.CFlags())
+    {
+        commandLine << " " << arg;
+    }
+
+    // Add the user-specfied, language-specific flags to the command-line.
+    commandLine << " " << m_Params.CCompilerFlags();
+
+    // Enable all warnings.
+    commandLine << " -Wall";
+
+    // Compile to position-independent code so it can be linked into a shared library.
+    commandLine << " -fPIC";
+
+    // Specify the source code file to be compiled.
+    commandLine << " -c \"" ;
+    if ((component.Path() != "") && (!legato::IsAbsolutePath(sourceFile)))
+    {
+        commandLine << legato::CombinePath(component.Path(), sourceFile);
+    }
+    else
+    {
+        commandLine << sourceFile;
+    }
+    commandLine << "\"";
+
+    // Specify the output (.o) file path.
+    std::string objectFile = legato::CombinePath(outputDir, legato::GetLastPathNode(sourceFile))
+                           + ".o";
+    commandLine << " -o \"" << objectFile << "\"";
+
+    // Add the object file to the Component's list.
+    component.ObjectFiles().push_back(objectFile);
+
+    // Treat all warnings as errors, unless using the clang compiler.
+    if (!mk::IsCompilerClang(compilerPath))
+    {
+        commandLine << " -Werror";
+    }
 
     // Add the include paths specified on the command-line.
+    for (auto i : m_Params.InterfaceDirs())
+    {
+        commandLine << " \"-I" << i << "\"";
+    }
+
+    // Add the include paths specific to the component.
+    for (auto i : component.IncludePath())
+    {
+        commandLine << " \"-I" << i << "\"";
+    }
+
+    // Define the component name, log session variable, and log filter variable.
+    commandLine << " -DLEGATO_COMPONENT=" << component.CName();
+    commandLine << " -DLE_LOG_SESSION=" << component.CName() << "_LogSession ";
+    commandLine << " -DLE_LOG_LEVEL_FILTER_PTR=" << component.CName() << "_LogLevelFilterPtr ";
+
+    // Define the COMPONENT_INIT.
+    commandLine << " \"-DCOMPONENT_INIT=LE_CI_LINKAGE void " << component.InitFuncName() << "()\"";
+
+    if (m_Params.IsVerbose())
+    {
+        std::cout << std::endl << "$ " << commandLine.str() << std::endl << std::endl;
+    }
+
+    mk::ExecuteCommandLine(commandLine);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Compile one of a component's C++ source code files into an object (.o) file.
+ *
+ * @note The object code file will have the same name as the source code file, with ".o" appended.
+ *       (foo.cpp compiles to foo.cpp.o.)
+ */
+//--------------------------------------------------------------------------------------------------
+void ComponentBuilder_t::CompileCxxSourceFile
+(
+    legato::Component& component,
+    const std::string& sourceFile,  ///< File to compile.
+    const std::string& outputDir    ///< Directory where the object file will be put.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // TODO: Check file timestamps to see if compiling is actually needed.
+
+    // Start the command line with the path to the appropriate compiler executable.
+    std::stringstream commandLine;
+    std::string compilerPath = mk::GetCompilerPath(m_Params.Target(), legato::LANG_CXX);
+    commandLine << compilerPath;
+
+    // Add the language-specific flags from the Component.cdef file to the command-line.
+    for (auto& arg : component.CxxFlags())
+    {
+        commandLine << " " << arg;
+    }
+
+    // Add the user-specfied, language-specific flags to the command-line.
+    commandLine << " " << m_Params.CxxCompilerFlags();
+
+    // Enable all warnings.
+    commandLine << " -Wall";
+
+    // Compile to position-independent code so it can be linked into a shared library.
+    commandLine << " -fPIC";
+
+    // Specify the source code file to be compiled.
+    commandLine << " -c \"" ;
+    if ((component.Path() != "") && (!legato::IsAbsolutePath(sourceFile)))
+    {
+        commandLine << legato::CombinePath(component.Path(), sourceFile);
+    }
+    else
+    {
+        commandLine << sourceFile;
+    }
+    commandLine << "\"";
+
+    // Specify the output (.o) file path.
+    std::string objectFile = legato::CombinePath(outputDir, legato::GetLastPathNode(sourceFile))
+                           + ".o";
+    commandLine << " -o \"" << objectFile << "\"";
+
+    // Add the object file to the Component's list.
+    component.ObjectFiles().push_back(objectFile);
+
+    // Treat all warnings as errors, unless using the clang compiler.
+    if (!mk::IsCompilerClang(compilerPath))
+    {
+        commandLine << " -Werror";
+    }
+
+    // Search include paths specified on the command-line.
     for (auto i : m_Params.InterfaceDirs())
     {
         commandLine << " -I" << i;
     }
 
-    // Add the include paths specific to the component.
+    // Search the include paths specific to the component.
     for (auto i : component.IncludePath())
     {
         commandLine << " -I" << i;
@@ -218,69 +482,100 @@ void ComponentBuilder_t::BuildComponentLib
     commandLine << " -DLE_LOG_LEVEL_FILTER_PTR=" << component.CName() << "_LogLevelFilterPtr ";
 
     // Define the COMPONENT_INIT.
-    commandLine << " \"-DCOMPONENT_INIT=LE_CI_LINKAGE void " << mk::GetComponentInitName(component)
-                << "()\"";
+    commandLine << " \"-DCOMPONENT_INIT=LE_CI_LINKAGE void " << component.InitFuncName() << "()\"";
 
-    // Add the CFLAGS to the command-line.
-    commandLine << " " << m_Params.CCompilerFlags();
-
-    // Add the list of C source code files to the command-line.
-    for (const auto& sourceFile : component.CSourcesList())
+    if (m_Params.IsVerbose())
     {
-        commandLine << " \"" ;
-
-        if ((component.Path() != "") && (!legato::IsAbsolutePath(sourceFile)))
-        {
-            commandLine << legato::CombinePath(component.Path(), sourceFile);
-        }
-        else
-        {
-            commandLine << sourceFile;
-        }
-
-        commandLine << "\"" ;
+        std::cout << std::endl << "$ " << commandLine.str() << std::endl << std::endl;
     }
 
-    // Add the library output path to the list of directories to be searched for library files.
-    commandLine << " -L" << m_Params.LibOutputDir();
+    mk::ExecuteCommandLine(commandLine);
+}
 
-    // Add the target's sysroot lib directory to the list of directories to search for libraries.
-    commandLine << " -L" << mk::GetSysRootPath(m_Params.Target());
 
-    // Add sub-components' libraries to the command-line.
-    for (const auto& mapEntry : component.SubComponents())
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Links a component's .o files together into a component library according to the settings
+ * in the Components object's Library object.
+ **/
+//--------------------------------------------------------------------------------------------------
+void ComponentBuilder_t::LinkLib
+(
+    legato::Component& component
+)
+//--------------------------------------------------------------------------------------------------
+{
+    if (m_Params.IsVerbose())
     {
-        commandLine << " -l" << mapEntry.second->CName();
+        std::cout << "Linking component '" << component.Name() << "'." << std::endl;
     }
 
-    // Add the list of client and server IPC API interface library files to the command-line.
-    for (const auto& mapEntry : component.RequiredApis())
+    // If the component library doesn't have its library output directory set yet, set it now to
+    // the library output directory in the build parameters.
+    auto& library = component.Lib();
+    if (library.BuildOutputDir().empty())
     {
-        auto& interface = mapEntry.second;
-
-        // If only the typedefs are being used, then skip this interface.
-        if (!interface.TypesOnly())
-        {
-            commandLine << " -l" << interface.Lib().ShortName();
-        }
-    }
-    for (const auto& mapEntry : component.ProvidedApis())
-    {
-        commandLine << " -l" << mapEntry.second.Lib().ShortName();
+        library.BuildOutputDir(m_Params.LibOutputDir());
     }
 
-    // Add the list of external library files to the command-line.
-    for (const auto& library : component.LibraryList())
+    if (library.IsStatic())
     {
-        commandLine << " -l" << library;
+        LinkStaticLib(component);
+    }
+    else
+    {
+        LinkSharedLib(component);
     }
 
-    // Add the standard runtime libs.
-    commandLine << " -L$LEGATO_BUILD/bin/lib -llegato -lpthread -lrt -lm";
+    library.MarkExisting();
+    library.MarkUpToDate();
+}
 
-    if (component.HasCppSources())
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Links a component's object files together to form a shared component instance library (.so) file.
+ *
+ * @note    The component library is not linked with any interface library, so the dependency on
+ *          the interfaces is not recorded in the library's ELF header.  Therefore it is up to
+ *          the component instance library to link the component library before the interface
+ *          libraries.
+ *
+ * @todo    Link with generic interface client/server shared libraries when they become available.
+ */
+//--------------------------------------------------------------------------------------------------
+void ComponentBuilder_t::LinkSharedLib
+(
+    legato::Component& component
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // TODO: Check file timestamps to see if linking is actually needed.
+
+    // Determine which programming language toolchain to use.
+    legato::ProgrammingLanguage_t language = legato::LANG_C;
+    if (component.HasCxxSources())
     {
-        commandLine << " -lstdc++";
+        language = legato::LANG_CXX;
+    }
+
+    // Start constructing the command-line.
+    std::stringstream commandLine;
+    commandLine << mk::GetCompilerPath(m_Params.Target(), language)
+                << " -shared"
+                << " -o \"" << component.Lib().BuildOutputPath() << "\"";
+
+    // Include all of the object (.o) files built from the component's source files.
+    for (const auto& objectFile : component.ObjectFiles())
+    {
+        commandLine << " \"" << objectFile << "\"";
+    }
+
+    // Add the linker flags from the Component.cdef file.
+    for (auto& arg : component.LdFlags())
+    {
+        commandLine << " " << arg;
     }
 
     // On the localhost, set the DT_RUNPATH variable inside the library to include the
@@ -288,15 +583,71 @@ void ComponentBuilder_t::BuildComponentLib
     if (m_Params.Target() == "localhost")
     {
         commandLine << " -Wl,--enable-new-dtags"
-                    << ",-rpath=\"\\$ORIGIN:" << m_Params.LibOutputDir()
-                                              << ":$LEGATO_ROOT/build/localhost/bin/lib\"";
+                    << ",-rpath=\"\\$ORIGIN:"
+                    << m_Params.LibOutputDir()
+                    << ":$LEGATO_ROOT/build/localhost/bin/lib\"";
     }
     // On embedded targets, set the DT_RUNPATH variable inside the library to include the
-    // expected location of libraries bundled in this application (this is needed for unsandboxed
-    // applications).
+    // expected location of libraries bundled in this application (this is needed for
+    // unsandboxed applications).
     else
     {
         commandLine << " -Wl,--enable-new-dtags,-rpath=\"\\$ORIGIN\"";
+    }
+
+    // Add the library output path to the list of directories to be searched for library files.
+    commandLine << " \"-L" << m_Params.LibOutputDir() << "\"";
+
+    // Include all of the library (.a and .so) files specified in the Component.cdefs of this
+    // component and sub-components.
+    mk::GetComponentLibLinkDirectives(commandLine, component);
+
+    // Link with external library files.
+    for (const auto& library : component.RequiredLibs())
+    {
+        commandLine << " -l" << library;
+    }
+
+    // Link with the standard runtime libs.
+    commandLine << " \"-L$LEGATO_BUILD/bin/lib\" -llegato -lpthread -lrt -lm";
+
+    if (m_Params.IsVerbose())
+    {
+        std::cout << std::endl << "$ " << commandLine.str() << std::endl << std::endl;
+    }
+
+    mk::ExecuteCommandLine(commandLine);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Links a component instance's object files together to form a static component library (.a) file.
+ */
+//--------------------------------------------------------------------------------------------------
+void ComponentBuilder_t::LinkStaticLib
+(
+    legato::Component& component
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // TODO: Check file timestamps to see if linking is actually needed.
+
+    // Remove the old version of the library to be safe.
+    legato::CleanFile(component.Lib().BuildOutputPath());
+
+    // Construct the link command line, beginning with the appropriate archiver, based on the
+    // target platform that we are building for.
+    std::stringstream commandLine;
+    commandLine << mk::GetArchiverPath(m_Params.Target());
+
+    // Add the archiver command flags and the path to the library file to construct.
+    commandLine << " rsc \"" << component.Lib().BuildOutputPath() << "\"";
+
+    // Include all of the object (.o) files built from the component's source files.
+    for (const auto& objectFile : component.ObjectFiles())
+    {
+        commandLine << " \"" << objectFile << "\"";
     }
 
     if (m_Params.IsVerbose())
@@ -305,90 +656,4 @@ void ComponentBuilder_t::BuildComponentLib
     }
 
     mk::ExecuteCommandLine(commandLine);
-
-    // Add the component library to the list of files that need to be mapped into the sandbox.
-    // NOTE: Technically speaking, this file is bundled as a part of the app, but because it is
-    // being built right into the app's staging area, it will get included in the application
-    // image anyway, so we just need to specify the mapping as an "external" file so it gets
-    // bind mounted into the sandbox when the app starts up.
-    // Source path is relative to app install dir.
-    component.AddRequiredFile({ legato::PERMISSION_READABLE,
-                              "lib/lib" + component.Lib().ShortName() + ".so",
-                              "/lib/" });
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Builds a component, including copying bundled files to the staging area, etc.
- */
-//--------------------------------------------------------------------------------------------------
-void ComponentBuilder_t::Build
-(
-    legato::Component& component  ///< The component to be built.
-)
-//--------------------------------------------------------------------------------------------------
-{
-    // If the component is already up-to-date, then we don't need to do anything.
-    if (component.Lib().IsUpToDate())
-    {
-        if (m_Params.IsVerbose())
-        {
-            std::cout << "Component '" << component.Name() << "' is up-to-date." << std::endl;
-        }
-        return;
-    }
-
-    // Do dependency loop detection.
-    if (component.BeingProcessed())
-    {
-        throw legato::DependencyException("Dependency loop detected in component: "
-                                          + component.Name());
-    }
-    component.BeingProcessed(true);
-
-    // Build the IPC API libraries needed by this component.
-    BuildInterfaces(component);
-
-    // Build sub-components needed by this component, before building this component.
-    // Note, we use a recursive, depth-first tree walk over the components dependency tree so
-    // that the build happens in the correct order (lower-level stuff gets built before the
-    // higher-level stuff that needs it).
-    try
-    {
-        for (auto& mapEntry : component.SubComponents())
-        {
-            Build(*(mapEntry.second));
-        }
-    }
-    catch (legato::DependencyException e)
-    {
-        throw legato::DependencyException(e.what() + std::string(" required by ")
-                                          + component.Name());
-    }
-
-    // Copy all bundled files into the staging area.
-    auto& bundledFilesList = component.BundledFiles();
-    for (auto fileMapping : bundledFilesList)
-    {
-        mk::CopyToStaging(  fileMapping.m_SourcePath,
-                            m_Params.StagingDir(),
-                            fileMapping.m_DestPath,
-                            m_Params.IsVerbose()    );
-    }
-
-    // Copy all bundled directories into the staging area.
-    auto& bundledDirsList = component.BundledDirs();
-    for (auto fileMapping : bundledDirsList)
-    {
-        mk::CopyToStaging(  fileMapping.m_SourcePath,
-                            m_Params.StagingDir(),
-                            fileMapping.m_DestPath,
-                            m_Params.IsVerbose()    );
-    }
-
-    // Build this component's library.
-    BuildComponentLib(component);
-
-    component.BeingProcessed(false);
 }

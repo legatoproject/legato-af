@@ -19,8 +19,7 @@ Process::Process
 (
 )
 //--------------------------------------------------------------------------------------------------
-:   m_ExePtr(NULL),
-    m_DebugPort(0)
+:   m_ExePtr(NULL)
 //--------------------------------------------------------------------------------------------------
 {
 }
@@ -39,8 +38,7 @@ Process::Process
 :   m_Name(std::move(original.m_Name)),
     m_ExePath(std::move(original.m_ExePath)),
     m_ExePtr(NULL),
-    m_CommandLineArgs(std::move(original.m_CommandLineArgs)),
-    m_DebugPort(std::move(original.m_DebugPort))
+    m_CommandLineArgs(std::move(original.m_CommandLineArgs))
 //--------------------------------------------------------------------------------------------------
 {
 }

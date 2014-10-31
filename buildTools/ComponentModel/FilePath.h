@@ -25,7 +25,7 @@ namespace legato
 //--------------------------------------------------------------------------------------------------
 /**
  * @return true if the path is valid (not empty and doesn't contain ".." elements that
- *              take it above its starting point).
+ *              take it above its starting point if it is an absolute path).
  */
 //--------------------------------------------------------------------------------------------------
 bool IsValidPath
@@ -205,7 +205,7 @@ bool IsCSource
  * @return true if this is a C++ source code file path.
  */
 //--------------------------------------------------------------------------------------------------
-bool IsCppSource
+bool IsCxxSource
 (
     const std::string& path
 );
@@ -220,6 +220,35 @@ bool IsCppSource
  */
 //--------------------------------------------------------------------------------------------------
 bool IsLibrary
+(
+    const std::string& path
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Figures out whether or not a given string is a shared library file path.
+ *
+ * @return true if this is a shared library file path.
+ */
+//--------------------------------------------------------------------------------------------------
+bool IsSharedLibrary
+(
+    const std::string& path
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the short name for a library by stripping off the directory path, the "lib" file name prefix
+ * and the ".so" or ".a" suffix.  E.g., "/usr/local/lib/libfoo.so", the short name is "foo".
+ *
+ * @return The short name.
+ *
+ * @throw legato::Exception on error.
+ **/
+//--------------------------------------------------------------------------------------------------
+std::string LibraryShortName
 (
     const std::string& path
 );
@@ -281,6 +310,23 @@ void MakeDir
  **/
 //--------------------------------------------------------------------------------------------------
 void CleanDir
+(
+    const std::string& path
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Delete a file.
+ *
+ * If nothing exists at the path, quietly returns without error.
+ *
+ * If something other than a file exists at the given path, it's an error.
+ *
+ * @throw legato::Exception if something goes wrong.
+ **/
+//--------------------------------------------------------------------------------------------------
+void CleanFile
 (
     const std::string& path
 );

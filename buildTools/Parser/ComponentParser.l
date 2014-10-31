@@ -6,9 +6,10 @@ name   [A-Za-z_][0-9A-Za-z_]*
 
 env-var             "$"({name}|"{"{name}"}")
 
-file-path-element   ({env-var}|([-0-9A-Za-z:;._+?]+))+
+/* Note: file-path-element must not start with a '*' because "/*" starts a comment. */
+file-path-element   ({env-var}|([-0-9A-Za-z:;._+?]+))({env-var}|([-0-9A-Za-z:;._+?]+)|[*])*
 
-file-path    (\/?{file-path-element}(\/{file-path-element})*\/?)|\/
+file-path           [*]?(\/?{file-path-element}(\/{file-path-element})*\/?)|\/
 
 %x COMMENT
 %x IN_SINGLE_QUOTES
@@ -38,6 +39,9 @@ const char* cyy_FileName = "";
 
 
 sources[ \t\n]*:        { return SOURCES_SECTION_LABEL; }
+cflags[ \t\n]*:         { return CFLAGS_SECTION_LABEL; }
+cxxflags[ \t\n]*:       { return CXXFLAGS_SECTION_LABEL; }
+ldflags[ \t\n]*:        { return LDFLAGS_SECTION_LABEL; }
 import[ \t\n]*:         { return IMPORT_SECTION_LABEL; }
 export[ \t\n]*:         { return EXPORT_SECTION_LABEL; }
 requires[ \t\n]*:       { return REQUIRES_SECTION_LABEL; }
@@ -105,7 +109,13 @@ void cyy_error
 )
 //--------------------------------------------------------------------------------------------------
 {
-    fprintf(stderr, "%s:%d: %s\n", cyy_FileName, cyy_lineno, errorString);
+    // Make error messages stand out from the clutter when running in verbose mode.
+    if (cyy_IsVerbose)
+    {
+        fprintf(stderr, " [-- ERROR --]\n");
+    }
+
+    fprintf(stderr, "%s:%d: ERROR: %s\n", cyy_FileName, cyy_lineno, errorString);
 
     cyy_ErrorCount++;
 

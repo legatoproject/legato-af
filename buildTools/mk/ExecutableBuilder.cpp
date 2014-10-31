@@ -8,6 +8,8 @@
 
 #include "LegatoObjectModel.h"
 #include "ExecutableBuilder.h"
+#include "ComponentBuilder.h"
+#include "ComponentInstanceBuilder.h"
 #include "Utilities.h"
 
 //--------------------------------------------------------------------------------------------------
@@ -18,64 +20,44 @@
 //--------------------------------------------------------------------------------------------------
 static void GenerateInitFunctionCalls
 (
-    legato::Component& component,
+    legato::ComponentInstance& instance,
     std::set<std::string>& completedSet,    ///< Set of components already initialized.
     std::stringstream& compInitDeclBuffer,  ///< Buffer to put init function declarations in.
     std::stringstream& compInitBuffer       ///< Buffer to put init function calls in.
 )
 //--------------------------------------------------------------------------------------------------
 {
-    std::string componentInitFuncName = mk::GetComponentInitName(component);
+    std::string initFuncName = instance.GetComponent().InitFuncName();
 
     // If I haven't already been initialized,
-    if (completedSet.find(componentInitFuncName) == completedSet.end())
+    if (completedSet.find(instance.AppUniqueName()) == completedSet.end())
     {
-        // Check if I am my own ancestor.
-        if (component.BeingProcessed())
-        {
-            throw legato::DependencyException("Dependency loop detected: " + component.Name());
-        }
-
-        // Flag myself as being processed.
-        component.BeingProcessed(true);
-
         // Go down to the next level first (depth first traversal).
-        for (auto& mapEntry : component.SubComponents())
+        for (auto subInstancePtr : instance.SubInstances())
         {
-            legato::Component* subComponentPtr = mapEntry.second;
-
-            if (subComponentPtr == NULL)
-            {
-                throw legato::Exception("Unresolved sub-component '" + mapEntry.first + "'"
-                                        " of component '" + component.Name() + "'.");
-            }
-
-            try
-            {
-                GenerateInitFunctionCalls(*subComponentPtr,
-                                          completedSet,
-                                          compInitDeclBuffer,
-                                          compInitBuffer);
-            }
-            catch (legato::DependencyException e)
-            {
-                throw legato::DependencyException(std::string(e.what()) + " <- "
-                                                  + component.Name());
-            }
+            GenerateInitFunctionCalls(*subInstancePtr,
+                                      completedSet,
+                                      compInitDeclBuffer,
+                                      compInitBuffer);
         }
 
-        // Generate forward declaration of the component initializer.
-        compInitDeclBuffer << "void " << componentInitFuncName << "(void);" << std::endl;
+        // If I have C or C++ sources or any bundled or required libraries,
+        auto& component = instance.GetComponent();
+        if (   component.HasCSources()
+            || component.HasCxxSources()
+            || (component.RequiredLibs().empty() == false)
+            || (component.BundledLibs().empty() == false)  )
+        {
+            // Generate forward declaration of the component initializer.
+            compInitDeclBuffer << "void " << initFuncName << "(void);" << std::endl;
 
-        // Generate call to queue the initialization function to the event loop.
-        compInitBuffer << "    event_QueueComponentInit(" << componentInitFuncName << ");"
-                       << std::endl;
+            // Generate call to queue the initialization function to the event loop.
+            compInitBuffer << "    event_QueueComponentInit(" << initFuncName << ");"
+                           << std::endl;
+        }
 
         // Add myself to the list of things that have already been initialized.
-        completedSet.insert(componentInitFuncName);
-
-        // Flag myself as finished being processed.
-        component.BeingProcessed(false);
+        completedSet.insert(instance.AppUniqueName());
     }
 }
 
@@ -95,17 +77,17 @@ static void GenerateInitFunctionCalls
 //--------------------------------------------------------------------------------------------------
 {
     // Use a recursive, depth-first tree walk over the tree starting with the list of
-    // Component Instances and their Components, and going down through sub-components.
-    // So that initialization happens in the correct order (lower-level
+    // Component Instances and their Sub-Instances, and going down through sub-instances
+    // so that initialization happens in the correct order (lower-level
     // stuff gets initialized before the higher-level stuff that uses it).
 
-    // Use a set to keep track of which components have already been initialized, so we
-    // don't initialize the same component twice.
+    // Use a set to keep track of which component instances have already been initialized, so we
+    // don't initialize the same component twice.  (Use the AppUniqueName as the set member.)
     std::set<std::string> completedSet;
 
     for (auto& componentInstance : executable.ComponentInstances())
     {
-        GenerateInitFunctionCalls(componentInstance.GetComponent(),
+        GenerateInitFunctionCalls(componentInstance,
                                   completedSet,
                                   compInitDeclBuffer,
                                   compInitBuffer);
@@ -114,14 +96,14 @@ static void GenerateInitFunctionCalls
     // If the Default Component has at least one source file (besides the one we are
     // auto-generating right now),
     const legato::Component& defaultComponent = executable.DefaultComponent();
-    if (!(defaultComponent.CSourcesList().empty()))
+    if (defaultComponent.HasCSources() || defaultComponent.HasCxxSources())
     {
         // Generate forward declaration of the component initializer.
-        std::string componentInitFuncName = mk::GetComponentInitName(defaultComponent);
-        compInitDeclBuffer << "void " << componentInitFuncName << "(void);" << std::endl;
+        std::string initFuncName = defaultComponent.InitFuncName();
+        compInitDeclBuffer << "void " << initFuncName << "(void);" << std::endl;
 
         // Queue up the component initializer to be called when the Event Loop starts.
-        compInitBuffer << "    event_QueueComponentInit(" << componentInitFuncName << ");"
+        compInitBuffer << "    event_QueueComponentInit(" << initFuncName << ");"
                        << std::endl;
     }
 }
@@ -134,20 +116,16 @@ static void GenerateInitFunctionCalls
 //--------------------------------------------------------------------------------------------------
 void ExecutableBuilder_t::GenerateMain
 (
-    legato::Executable& executable
+    legato::Executable& executable,
+    const std::string& objOutputDir     ///< Overrides the ObjOutputDir in the build params.
 )
 //--------------------------------------------------------------------------------------------------
 {
-    // Generate the path to the directory in which the generated files will go.
-    std::string path = m_Params.ObjOutputDir()
-                     + "/"
-                     + executable.CName();
-
     // Make sure the directory exists.
-    legato::MakeDir(path);
+    legato::MakeDir(objOutputDir);
 
     // Add "/_main.c" to get the path of the file to generate code into.
-    path += "/_main.c";
+    std::string path = legato::CombinePath(objOutputDir, "_main.c");
 
     if (m_Params.IsVerbose())
     {
@@ -189,7 +167,7 @@ void ExecutableBuilder_t::GenerateMain
     compInitBuffer    << "    // Schedule component initializers for execution by the event loop."
                       << std::endl;
 
-    // iterate over the list of Component Instances,
+    // Iterate over the list of Component Instances,
     auto componentList = executable.ComponentInstances();
     for (auto i = componentList.crbegin(); i != componentList.crend(); i++)
     {
@@ -219,11 +197,11 @@ void ExecutableBuilder_t::GenerateMain
             {
                 // Declare the server-side interface initialization function.
                 serverInitDeclBuffer << "void " << interface.InternalName()
-                                     << "_StartServer(const char* serviceName);" << std::endl;
+                                     << "_AdvertiseService(void);" << std::endl;
 
                 // Call the server-side interface initialization function.
-                serverInitBuffer << "    " << interface.InternalName() << "_StartServer(\""
-                                 << interface.ServiceInstanceName() << "\");" << std::endl;
+                serverInitBuffer << "    " << interface.InternalName()
+                                 << "_AdvertiseService();" << std::endl;
             }
         }
 
@@ -238,11 +216,11 @@ void ExecutableBuilder_t::GenerateMain
             {
                 // Declare the client-side interface initialization function.
                 clientInitDeclBuffer << "void " << interface.InternalName()
-                                     << "_StartClient(const char* serviceName);" << std::endl;
+                                     << "_ConnectService(void);" << std::endl;
 
                 // Call the client-side interface initialization function.
-                clientInitBuffer << "    " << interface.InternalName() << "_StartClient(\""
-                                 << interface.ServiceInstanceName() << "\");" << std::endl;
+                clientInitBuffer << "    " << interface.InternalName()
+                                 << "_ConnectService();" << std::endl;
             }
         }
     }
@@ -343,9 +321,9 @@ void ExecutableBuilder_t::GenerateMain
                 << "    LE_FATAL(\"== SHOULDN'T GET HERE! ==\");" << std::endl
                 << "}" << std::endl;
 
-    // Add the generated file to the list of C source code files to be compiled into this
+    // Add the generated file to the list of source code files to be compiled into this
     // executable (as part of its "default" component).
-    executable.AddCSourceFile(path);
+    executable.AddSourceFile(path);
 }
 
 
@@ -364,8 +342,12 @@ static void LinkComponent
 )
 //--------------------------------------------------------------------------------------------------
 {
-    // Link the component.
-    commandLine << " -l" << component.Name();
+    // If the component has C or C++ sources,
+    if (component.HasCSources() || component.HasCxxSources())
+    {
+        // Link the component.
+        commandLine << " -l" << component.Lib().ShortName();
+    }
 
     // Link all the sub-components it depends on.
     for (auto& mapEntry : component.SubComponents())
@@ -436,127 +418,94 @@ static void LinkComponentInstance
 }
 
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Builds the source files in the executable's default component and links everything together to
  * create the executable file.
+ *
+ * @note Assumes that all components other than the default component have been compiled and linked
+ *       into libraries already.
  */
 //--------------------------------------------------------------------------------------------------
 void ExecutableBuilder_t::Build
 (
-    const legato::Executable& executable
+    legato::Executable& executable,
+    const std::string& objOutputDir     ///< Overrides the ObjOutputDir in the build params.
 )
 //--------------------------------------------------------------------------------------------------
 {
-    std::stringstream commandLine;
-    std::string outputPath;
-    const legato::Component& defaultComponent = executable.DefaultComponent();
+    // Build all the component instances.
+    ComponentInstanceBuilder_t componentInstanceBuilder(m_Params);
+    for (auto& instance : executable.ComponentInstances())
+    {
+        componentInstanceBuilder.Build(instance);
+    }
+
+    // Build the default component, putting the library in the working directory (object file dir).
+    legato::Component& defaultComponent = executable.DefaultComponent();
+    defaultComponent.Lib().BuildOutputDir(objOutputDir);
+    ComponentBuilder_t componentBuilder(m_Params);
+    componentBuilder.Build(defaultComponent, objOutputDir);
+
+    // Now build the executable.
 
     // If the executable file path is a relative path, then it is relative to the
     // executable output directory.
+    std::string outputPath;
     if (! legato::IsAbsolutePath(executable.OutputPath()))
     {
         outputPath = m_Params.ExeOutputDir() + "/";
     }
     outputPath += executable.OutputPath();
 
+    // Print progress message.
     if (m_Params.IsVerbose())
     {
-        std::cout << "Compiling and linking executable '" << outputPath << "'." << std::endl;
+        std::cout << "Linking executable '" << outputPath << "'." << std::endl;
     }
-
-    auto instanceList = executable.ComponentInstances();
 
     // Specify the compiler command and the output file path.
-    commandLine << mk::GetCompilerPath(m_Params.Target()) <<" -o " << outputPath;
-
-    // Turn on all warnings and treat them as errors.
-    commandLine << " -Wall"
-                << " -Werror";
-
-    // If the executable is going to be debugged using gdb, turn off optimizations and turn
-    // on debug symbols in the output.
-    if (executable.IsDebuggingEnabled())
+    legato::ProgrammingLanguage_t language = legato::LANG_C;
+    if (executable.HasCxxSources())
     {
-        commandLine << " -g -O0";
+        language = legato::LANG_CXX;
     }
+    std::string compilerPath = mk::GetCompilerPath(m_Params.Target(), language);
+    std::stringstream commandLine;
+    commandLine << compilerPath << " -o " << outputPath;
 
-    // Add the CFLAGS to the command-line.
-    commandLine << " " << m_Params.CCompilerFlags();
-
-    // Add the include paths specified on the command-line.
-    for (auto i : m_Params.InterfaceDirs())
-    {
-        commandLine << " -I" << i;
-    }
-
-    // Add the include paths specific to the default component.
-    for (auto i : defaultComponent.IncludePath())
-    {
-        commandLine << " -I" << i;
-    }
-
-    // Define the component name, log session variable, and log filter variable for the default
-    // component.
-    commandLine << " -DLEGATO_COMPONENT=" << defaultComponent.CName();
-    commandLine << " -DLE_LOG_SESSION=" << defaultComponent.Name() << "_LogSession ";
-    commandLine << " -DLE_LOG_LEVEL_FILTER_PTR=" << defaultComponent.Name() << "_LogLevelFilterPtr ";
-
-    // Define the COMPONENT_INIT for the default component.
-    commandLine << " \"-DCOMPONENT_INIT=LE_CI_LINKAGE void "
-                << mk::GetComponentInitName(defaultComponent) << "()\"";
-
-    // Add all the default component's source files to the command-line (compile them now).
-    // TODO: Change to pre-compile the .c files to .o files and then just include the .o files here.
-    for (const auto& sourceFile : defaultComponent.CSourcesList())
-    {
-        commandLine << " \"" << sourceFile << "\"";
-    }
+    // Link with the default component's library.
+    commandLine << " " << defaultComponent.Lib().BuildOutputPath();
 
     // Add the library output directory as a library search directory.
-    for (auto instance : instanceList)
-    {
-        commandLine << " -L" << m_Params.LibOutputDir();
-    }
+    commandLine << " -L" << m_Params.LibOutputDir();
 
     // Link with each component instance's component library and interface libraries,
     // as well as any component libraries for components it depends on.
+    auto instanceList = executable.ComponentInstances();
     for (auto componentInstance : instanceList)
     {
         LinkComponentInstance(componentInstance, commandLine);
     }
 
     // Link with other libraries that are needed by the default component.
-    for (const auto& lib : defaultComponent.LibraryList())
+    for (const auto& lib : defaultComponent.RequiredLibs())
     {
         commandLine << " \"" << lib << "\"";
     }
 
-    // Link with the Legato C runtime library.
-    commandLine << " -L$LEGATO_ROOT/build/" << m_Params.Target() << "/bin/lib" << " -llegato";
-
     // Link with other libraries added to components included in this executable.
     for (const auto& i : instanceList)
     {
-        auto libList = i.GetComponent().LibraryList();
-        for (auto lib : libList)
-        {
-            commandLine << " -l" << lib;
-        }
+        mk::GetComponentLibLinkDirectives(commandLine, i.GetComponent());
     }
+
+    // Link with the Legato C runtime library.
+    commandLine << " \"-L$LEGATO_ROOT/build/" << m_Params.Target() << "/bin/lib\"" << " -llegato";
 
     // Link with the real-time library, pthreads library, and the math library, just in case they're
     // needed too.
-    // NOTE: Must link libm before libstdc++, or some math functions (like atan2()) won't be
-    //       resolved properly .
     commandLine << " -lpthread -lrt -lm";
-
-    if (executable.HasCppSources())
-    {
-        // If this is a C++ app, grab the C++ standard lib too.
-        commandLine << " -lstdc++";
-    }
 
     // Insert LDFLAGS on the command-line.
     commandLine << m_Params.LinkerFlags();
@@ -565,9 +514,9 @@ void ExecutableBuilder_t::Build
     // expected locations of the libraries needed.
     if (m_Params.Target() == "localhost")
     {
-        commandLine << " -Wl,--enable-new-dtags"
-                    << ",-rpath=\"\\$ORIGIN/../lib:" << m_Params.LibOutputDir()
-                                                     << ":$LEGATO_ROOT/build/localhost/bin/lib\"";
+        commandLine << " -Wl,--enable-new-dtags,-rpath=\"\\$ORIGIN/../lib:"
+                    << m_Params.LibOutputDir()
+                    << ":$LEGATO_ROOT/build/localhost/bin/lib\"";
     }
     // On embedded targets, set the DT_RUNPATH variable inside the executable to include the
     // expected location of libraries bundled in this application (this is needed for unsandboxed

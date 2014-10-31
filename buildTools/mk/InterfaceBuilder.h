@@ -19,16 +19,24 @@ class InterfaceBuilder_t
         InterfaceBuilder_t(const legato::BuildParams_t& params) : m_Params(params) {}
 
     public:
-        void GenerateApiClientHeaders(const legato::ImportedInterface& interface);
-        void GenerateApiServerHeaders(const legato::ExportedInterface& interface);
-        std::string GenerateApiClientCode(legato::ImportedInterface& interface);
-        std::string GenerateApiServerCode(legato::ExportedInterface& interface);
+        void GenerateApiHeaders(const legato::ClientInterface& interface,
+                                const std::string& outputDir) const;
+        void GenerateApiHeaders(const legato::ServerInterface& interface,
+                                const std::string& outputDir) const;
+        std::string GenerateApiCode(legato::ClientInterface& interface,
+                                    const std::string& outputDir) const;
+        std::string GenerateApiCode(legato::ServerInterface& interface,
+                                    const std::string& outputDir) const;
         void BuildInterfaceLibrary(legato::Interface& interface,
                                    const std::string& sourceFilePath);
 
     public:
-        void Build(legato::ExportedInterface& interface);
-        void Build(legato::ImportedInterface& interface);
+        void Build(legato::ClientInterface& interface, const std::string& objOutputDir);
+        void Build(legato::ServerInterface& interface, const std::string& objOutputDir);
+
+    private:
+        std::string GenerateImportDirArgs(const legato::Api_t& api) const;
+        void GenerateApiHeaders(const legato::Api_t& api, const std::string& outputDir) const;
 };
 
 

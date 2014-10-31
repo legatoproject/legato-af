@@ -32,18 +32,21 @@ class Component
 
         Library m_Library;                  ///< Details of the library file for this component.
 
-        std::list<std::string> m_CSourcesList; ///< List of paths of C source code files to include.
-        std::list<std::string> m_LibraryList;  ///< List of paths of external lib files to link to.
-        std::list<std::string> m_IncludePath;  ///< List of paths to include file search dirs.
+        std::list<std::string> m_CSources;  ///< List of paths of C source code files to include.
+        std::list<std::string> m_CxxSources;///< List of paths of C++ source code files.
+        std::list<std::string> m_ObjectFiles;///< List of paths of compiled .o files.
+        std::list<std::string> m_RequiredLibs;///< List of external libs to link component to.
+        std::list<std::string> m_BundledLibs;///< List of libs to link executable to.
+        std::list<std::string> m_IncludePath;///< List of paths to include file search dirs.
+        std::list<std::string> m_CFlags;     ///< Command-line args to pass to C compiler.
+        std::list<std::string> m_CxxFlags;   ///< Command-line args to pass to C++ compiler.
+        std::list<std::string> m_LdFlags;    ///< Command-line args to pass to linker.
 
-        bool m_HasCSources;
-        bool m_HasCppSources;
+        /// Map of client-side interface names to api files.
+        ClientInterfaceMap m_ClientInterfaces;
 
-        /// Map of import interface names to api files.
-        ImportedInterfaceMap m_ImportedInterfaces;
-
-        /// Map of export interface names to api files.
-        ExportedInterfaceMap m_ExportedInterfaces;
+        /// Map of server-side interface names to api files.
+        ServerInterfaceMap m_ServerInterfaces;
 
         /// List of files to be included in any application that includes this component.
         std::list<FileMapping> m_BundledFiles;
@@ -72,9 +75,12 @@ class Component
         /// This is used for dependency loop detection.
         bool m_BeingProcessed;
 
+        /// true if the component has been built already.
+        bool m_IsBuilt;
+
     public:
 
-        Component() : m_HasCSources(false), m_HasCppSources(false), m_BeingProcessed(false) {}
+        Component() : m_BeingProcessed(false), m_IsBuilt(false) {}
         Component(Component&& component);
         Component(const Component& component) = delete;
 
@@ -105,10 +111,16 @@ class Component
         Library& Lib() { return m_Library; }
 
         void AddSourceFile(const std::string& path);
-        const std::list<std::string>& CSourcesList() const { return m_CSourcesList; }
+        const std::list<std::string>& CSources() const { return m_CSources; }
+        const std::list<std::string>& CxxSources() const { return m_CxxSources; }
 
-        bool HasCSources() const { return m_HasCSources; }
-        bool HasCppSources() const { return m_HasCppSources; }
+        std::list<std::string>& ObjectFiles() { return m_ObjectFiles; }
+        const std::list<std::string>& ObjectFiles() const { return m_ObjectFiles; }
+
+        bool HasCSources() const { return !(m_CSources.empty()); }
+        bool HasCxxSources() const { return !(m_CxxSources.empty()); }
+
+        std::string InitFuncName() const { return "_" + CName() + "_COMPONENT_INIT"; }
 
         void AddBundledFile(FileMapping&& mapping);  ///< Include a file from the host file system.
         const std::list<FileMapping>& BundledFiles() const { return m_BundledFiles; }
@@ -122,8 +134,11 @@ class Component
         void AddRequiredDir(FileMapping&& mapping);  ///< Import a directory from outside sandbox.
         const std::list<FileMapping>& RequiredDirs() const { return m_RequiredDirs; }
 
-        void AddLibrary(const std::string& path);
-        const std::list<std::string>& LibraryList() const { return m_LibraryList; }
+        void AddRequiredLib(const std::string& path);
+        const std::list<std::string>& RequiredLibs() const { return m_RequiredLibs; }
+
+        void AddBundledLib(const std::string& path);
+        const std::list<std::string>& BundledLibs() const { return m_BundledLibs; }
 
         void AddSubComponent(const std::string& path, Component* componentPtr);
         const std::map<std::string, Component*>& SubComponents() const { return m_SubComponents; }
@@ -132,16 +147,28 @@ class Component
         void AddIncludeDir(const std::string& path);
         const std::list<std::string>& IncludePath() const { return m_IncludePath; }
 
-        ImportedInterface& AddRequiredApi(const std::string& name, Api_t* apiPtr);
-        const ImportedInterfaceMap& RequiredApis(void) const { return m_ImportedInterfaces; }
-        ImportedInterfaceMap& RequiredApis(void) { return m_ImportedInterfaces; }
+        void AddCFlag(const std::string& path);
+        const std::list<std::string>& CFlags() const { return m_CFlags; }
 
-        ExportedInterface& AddProvidedApi(const std::string& name, Api_t* apiPtr);
-        const ExportedInterfaceMap& ProvidedApis(void) const { return m_ExportedInterfaces; }
-        ExportedInterfaceMap& ProvidedApis(void) { return m_ExportedInterfaces; }
+        void AddCxxFlag(const std::string& path);
+        const std::list<std::string>& CxxFlags() const { return m_CxxFlags; }
+
+        void AddLdFlag(const std::string& path);
+        const std::list<std::string>& LdFlags() const { return m_LdFlags; }
+
+        ClientInterface& AddRequiredApi(const std::string& name, Api_t* apiPtr);
+        const ClientInterfaceMap& RequiredApis(void) const { return m_ClientInterfaces; }
+        ClientInterfaceMap& RequiredApis(void) { return m_ClientInterfaces; }
+
+        ServerInterface& AddProvidedApi(const std::string& name, Api_t* apiPtr);
+        const ServerInterfaceMap& ProvidedApis(void) const { return m_ServerInterfaces; }
+        ServerInterfaceMap& ProvidedApis(void) { return m_ServerInterfaces; }
 
         bool BeingProcessed() const { return m_BeingProcessed; }
         void BeingProcessed(bool beingProcessed) { m_BeingProcessed = beingProcessed; }
+
+        bool IsBuilt() const { return m_IsBuilt; }
+        void MarkBuilt() { m_IsBuilt = true; }
 
     public:
 
@@ -150,6 +177,11 @@ class Component
 
         // Lookup pre-existing component.
         static Component* FindComponent(const std::string& path);
+
+        // Fetch map containing all components used in the project.
+        // Key is the canonical path to the component.
+        // Value is the Component object.
+        static std::map<std::string, Component>& GetComponentMap();
 };
 
 

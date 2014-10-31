@@ -57,7 +57,7 @@ namespace parser
  * information garnered.
  *
  * @note    Expects the component's name to be set.  Will search for the Component.cdef based
- *          on the component search path in the buildParams.
+ *          on the source search path in the buildParams.
  */
 //--------------------------------------------------------------------------------------------------
 void ParseComponent
@@ -71,7 +71,7 @@ void ParseComponent
     BuildParamsPtr = &buildParams;
 
     // Open the component's Component.cdef file for reading.
-    std::string path = FindComponent(componentPtr->Path(), buildParams.ComponentDirs());
+    std::string path = FindComponent(componentPtr->Path(), buildParams.SourceDirs());
     if (path == "")
     {
         throw Exception("Couldn't find component '" + componentPtr->Path() + "'.");
@@ -130,6 +130,8 @@ void ParseComponent
     // Recursively, for each of the new component's sub-components,
     for (auto& mapEntry : componentPtr->SubComponents())
     {
+        mapEntry.second = Component::FindComponent(mapEntry.first);
+
         // If the sub-component has not yet been parsed, create an object for it and parse it now.
         if (mapEntry.second == NULL)
         {
@@ -141,9 +143,9 @@ void ParseComponent
 }
 
 
-}
+} // namespace parser
 
-}
+} // namespace legato
 
 //--------------------------------------------------------------------------------------------------
 // NOTE: The following functions are called from C code inside the bison-generated parser code.
@@ -192,13 +194,57 @@ void cyy_AddSourceFile
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Add a C compiler command-line argument to a Component.
+ */
+//--------------------------------------------------------------------------------------------------
+void cyy_AddCFlag
+(
+    const char* arg ///< The command-line argument.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    ComponentPtr->AddCFlag(arg);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add a C++ compiler command-line argument to a Component.
+ */
+//--------------------------------------------------------------------------------------------------
+void cyy_AddCxxFlag
+(
+    const char* arg ///< The command-line argument.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    ComponentPtr->AddCxxFlag(arg);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add a linker command-line argument to a Component.
+ */
+//--------------------------------------------------------------------------------------------------
+void cyy_AddLdFlag
+(
+    const char* arg ///< The command-line argument.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    ComponentPtr->AddLdFlag(arg);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Add a required file to a Component.  This is a file that is expected to exist outside the
  * application's sandbox in the target file system and that the component needs access to.
  */
 //--------------------------------------------------------------------------------------------------
 void cyy_AddRequiredFile
 (
-    const char* permissions,///< String representing the permissions required ("[rwx]").
     const char* sourcePath, ///< The file path in the target file system, outside sandbox.
     const char* destPath    ///< The file path in the target file system, inside sandbox.
 )
@@ -206,8 +252,7 @@ void cyy_AddRequiredFile
 {
     try
     {
-        ComponentPtr->AddRequiredFile(yy_CreateRequiredFileMapping(permissions,
-                                                                   sourcePath,
+        ComponentPtr->AddRequiredFile(yy_CreateRequiredFileMapping(sourcePath,
                                                                    destPath,
                                                                    *BuildParamsPtr) );
     }
@@ -226,7 +271,6 @@ void cyy_AddRequiredFile
 //--------------------------------------------------------------------------------------------------
 void cyy_AddRequiredDir
 (
-    const char* permissions,///< String representing the permissions required ("[rwx]").
     const char* sourcePath, ///< The directory path in the target file system, outside sandbox.
     const char* destPath    ///< The directory path in the target file system, inside sandbox.
 )
@@ -234,8 +278,7 @@ void cyy_AddRequiredDir
 {
     try
     {
-        ComponentPtr->AddRequiredDir(yy_CreateRequiredDirMapping(permissions,
-                                                                 sourcePath,
+        ComponentPtr->AddRequiredDir(yy_CreateRequiredDirMapping(sourcePath,
                                                                  destPath,
                                                                  *BuildParamsPtr) );
     }
@@ -251,8 +294,10 @@ void cyy_AddRequiredDir
  * Add a required library to a Component.  This is a library that is expected to exist outside
  * the application's sandbox in the target file system and that the component needs access to.
  *
- * Furthermore, this library will be linked with any executable that this component is a part of.
- * At link time, the library search path with be searched for the library in the build host file
+ * Furthermore, this library will be linked with the component library (if it has source files) and
+ * any executable that this component is a part of.
+ *
+ * At link time, the library search path will be searched for the library in the build host file
  * system.
  */
 //--------------------------------------------------------------------------------------------------
@@ -282,7 +327,7 @@ void cyy_AddRequiredLib
             }
         }
 
-        ComponentPtr->AddLibrary(libraryPath);
+        ComponentPtr->AddRequiredLib(libraryPath);
     }
     catch (legato::Exception e)
     {
@@ -328,20 +373,17 @@ void cyy_AddRequiredComponent
         }
 
         std::string dirPath = legato::FindComponent(componentPath,
-                                                    BuildParamsPtr->ComponentDirs());
+                                                    BuildParamsPtr->SourceDirs());
 
         if (dirPath == "")
         {
             throw legato::Exception("Subcomponent '" + componentPath + "' not found.");
         }
 
-        // Add the component to the list of sub-components.  We try to find a pre-existing,
-        // Component object for the component path, in case this Component has already
-        // been parsed, but if it hasn't been parsed yet, then we leave a NULL pointer in
-        // the list of sub-components to indicate that this one still needs to be parsed.
-        // We can't parse it now, because we are in the middle of parsing another component.
-        // We will parse all the sub-components when we are done parsing this one.
-        ComponentPtr->AddSubComponent(dirPath, legato::Component::FindComponent(dirPath));
+        // Add the component to the list of sub-components.  We leave a NULL pointer in
+        // the list of sub-components for now.  It will get resolved later when we are done
+        // parsing this component.
+        ComponentPtr->AddSubComponent(dirPath, NULL);
     }
     catch (legato::Exception e)
     {
@@ -386,6 +428,7 @@ void cyy_AddBundledFile
 //--------------------------------------------------------------------------------------------------
 void cyy_AddBundledDir
 (
+    const char* permissions,///< String representing permissions to be applied to files in the dir.
     const char* sourcePath, ///< The file path in the build host file system.
     const char* destPath    ///< The file path in the target file system, inside sandbox.
 )
@@ -393,7 +436,8 @@ void cyy_AddBundledDir
 {
     try
     {
-        ComponentPtr->AddBundledDir(yy_CreateBundledDirMapping(sourcePath,
+        ComponentPtr->AddBundledDir(yy_CreateBundledDirMapping(permissions,
+                                                               sourcePath,
                                                                destPath,
                                                                *BuildParamsPtr) );
     }
@@ -467,7 +511,7 @@ static std::string InterfaceInstanceFromFilePath
  * @return Reference to the Imported Interface object created.
  **/
 //--------------------------------------------------------------------------------------------------
-static legato::ImportedInterface& AddRequiredApi
+static legato::ClientInterface& AddRequiredApi
 (
     const char* instanceName,   ///< Interface instance name or
                                 ///  NULL if should be derived from .api file name.
@@ -607,7 +651,7 @@ void cyy_AddManualStartRequiredApi
  * @return Reference to the newly created Exported Interface object.
  **/
 //--------------------------------------------------------------------------------------------------
-static legato::ExportedInterface& AddProvidedApi
+static legato::ServerInterface& AddProvidedApi
 (
     const char* instanceName,   ///< Interface instance name or
                                 ///  NULL if should be derived from .api file name.

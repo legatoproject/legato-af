@@ -80,6 +80,82 @@ std::string GetRequiredEnvValue
     return value;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Determine if we should build with clang.
+ *
+ * @return  Should we use clang ?
+ */
+//--------------------------------------------------------------------------------------------------
+static bool ShouldUseClang
+(
+    void
+)
+//--------------------------------------------------------------------------------------------------
+{
+    std::string useClang;
+
+    useClang = GetEnvValue("USE_CLANG");
+
+    if (useClang == "1")
+    {
+        return true;
+    }
+
+    return false;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Determine if the compiler we are using is clang.
+ *
+ * @return  Is the specified compiler clang ?
+ */
+//--------------------------------------------------------------------------------------------------
+bool IsCompilerClang
+(
+    const std::string& compilerPath ///< Path to the compiler
+)
+//--------------------------------------------------------------------------------------------------
+{
+    return (compilerPath == "clang");
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the file system path of the directory containing the cross-build tool chain for a given
+ * target.
+ *
+ * @return The directory path.
+ *
+ * @throw Exception if the tool chain path cannot be determined.
+ **/
+//--------------------------------------------------------------------------------------------------
+static std::string GetCrossBuildToolChainDir
+(
+    const std::string& target  ///< Name of the target platform (e.g., "localhost" or "ar7").
+)
+//--------------------------------------------------------------------------------------------------
+{
+    std::string varName;
+    std::string envValue;
+
+    varName = target;
+    std::transform(varName.begin(), varName.end(), varName.begin(), ::toupper);
+
+    varName += "_TOOLCHAIN_DIR";
+    envValue = GetRequiredEnvValue(varName);
+
+    if(envValue.empty())
+    {
+        throw std::runtime_error("Attempting to build for target '" + target + ", but '"
+                                 + varName + "' is not set.");
+    }
+
+    return envValue;
+}
 
 
 //----------------------------------------------------------------------------------------------
@@ -93,38 +169,107 @@ std::string GetRequiredEnvValue
 //----------------------------------------------------------------------------------------------
 std::string GetCompilerPath
 (
-    const std::string& target  ///< Name of the target platform (e.g., "localhost" or "ar7").
+    const std::string& target,  ///< Name of the target platform (e.g., "localhost" or "ar7").
+    legato::ProgrammingLanguage_t language ///< The source code language.
 )
 //--------------------------------------------------------------------------------------------------
 {
+    std::string gnuCompiler;
+
+    switch (language)
+    {
+        case legato::LANG_C:
+
+            gnuCompiler = "gcc";
+            break;
+
+        case legato::LANG_CXX:
+
+            gnuCompiler = "g++";
+            break;
+    }
+
     if (target == "localhost")
     {
-        return "gcc";
+        if(ShouldUseClang())
+        {
+            switch (language)
+            {
+                case legato::LANG_C:
+
+                    return "clang";
+
+                case legato::LANG_CXX:
+
+                    return "clang++";
+            }
+        }
+
+        return gnuCompiler;
     }
 
-    std::string varName;
-    std::string envValue;
-
-    varName = target;
-    std::transform(varName.begin(), varName.end(), varName.begin(), ::toupper);
-
-    varName += "_TOOLCHAIN_DIR";
-    envValue = GetRequiredEnvValue(varName);
-
-    if(!envValue.empty())
-    {
-        return legato::CombinePath(envValue, "arm-poky-linux-gnueabi-gcc");
-    }
-
-    throw std::runtime_error("Attempting to build for target '" + target + ", but '"
-                             + varName + "' is not set.");
+    return legato::CombinePath(GetCrossBuildToolChainDir(target), "arm-poky-linux-gnueabi-")
+           + gnuCompiler;
 }
 
 
 
 //----------------------------------------------------------------------------------------------
 /**
- * Get the sysroot path to use when linking for a given target.
+ * Get the command-line path to use to invoke the (cross) linker for a given target.
+ *
+ * @return  The linker's file system path.
+ *
+ * @throw   legato::Exception if target not recognized.
+ */
+//----------------------------------------------------------------------------------------------
+std::string GetLinkerPath
+(
+    const std::string& target   ///< Name of the target platform (e.g., "localhost" or "ar7").
+)
+//--------------------------------------------------------------------------------------------------
+{
+    if (target == "localhost")
+    {
+        if(ShouldUseClang())
+        {
+            return "clang";
+        }
+
+        return "ld";
+    }
+
+    return legato::CombinePath(GetCrossBuildToolChainDir(target), "arm-poky-linux-gnueabi-ld");
+}
+
+
+//----------------------------------------------------------------------------------------------
+/**
+ * Get the command-line path to use to invoke the static library archiver for a given target.
+ *
+ * @return  The archiver's file system path.
+ *
+ * @throw   legato::Exception if target not recognized.
+ */
+//----------------------------------------------------------------------------------------------
+std::string GetArchiverPath
+(
+    const std::string& target   ///< Name of the target platform (e.g., "localhost" or "ar7").
+)
+//--------------------------------------------------------------------------------------------------
+{
+    if (target == "localhost")
+    {
+        return "ar";
+    }
+
+    return legato::CombinePath(GetCrossBuildToolChainDir(target), "arm-poky-linux-gnueabi-ar");
+}
+
+
+//----------------------------------------------------------------------------------------------
+/**
+ * Get the sysroot path to use when linking for a given compiler.
  *
  * @return  The path to the sysroot base directory.
  *
@@ -133,27 +278,16 @@ std::string GetCompilerPath
 //----------------------------------------------------------------------------------------------
 std::string GetSysRootPath
 (
-    const std::string& target  ///< Name of the target platform (e.g., "localhost" or "ar7").
+    const std::string& compilerPath ///< Path to the compiler
 )
 //--------------------------------------------------------------------------------------------------
 {
-    // Convert the target name to all-caps.
-    std::string allCapsTarget = target;
-    std::transform(allCapsTarget.begin(), allCapsTarget.end(), allCapsTarget.begin(), ::toupper);
-
-    std::string envValue;
-
-    // See if there's a XXXX_SYSROOT_DIR variable defined.
-    std::string varName = allCapsTarget + "_SYSROOT_DIR";
-    envValue = GetEnvValue(varName);
-    if (!envValue.empty())
+    // If compiler is clang, skip sysroot determination
+    if(IsCompilerClang(compilerPath))
     {
-        return envValue;
+        return "/";
     }
 
-    // Since there's no specific variable defined for the sysroot, try to figure it out from
-    // the compiler.
-    std::string compilerPath = GetCompilerPath(target);
     std::string commandLine = compilerPath + " --print-sysroot";
 
     FILE* output = popen(commandLine.c_str(), "r");
@@ -305,25 +439,6 @@ void ExecuteCommandLine
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Generates the identifier that is to be used for the component initialization function for a
- * given component.
- *
- * @return The name of the function.
- */
-//--------------------------------------------------------------------------------------------------
-std::string GetComponentInitName
-(
-    const legato::Component& component
-)
-//--------------------------------------------------------------------------------------------------
-{
-    return "_" + component.CName() + "_COMPONENT_INIT";
-}
-
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Gets the API protocol hash string for the framework's Config API.
  *
  * @return the hash string.
@@ -416,6 +531,78 @@ void CopyToStaging
 }
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Print to a given output stream the appropriate compiler/linker command-line directives to be
+ * used to link with a given library file.
+ **/
+//--------------------------------------------------------------------------------------------------
+void GetLinkDirectiveForLibrary
+(
+    std::ostream& outputStream,
+    const std::string& libraryPath
+)
+//--------------------------------------------------------------------------------------------------
+{
+    if (legato::IsSharedLibrary(libraryPath))
+    {
+        std::string dir = legato::GetContainingDir(libraryPath);
 
+        if (dir != "")
+        {
+            outputStream << " \"-L" << dir << "\"";
+        }
 
+        outputStream << " -l" << legato::LibraryShortName(libraryPath);
+    }
+    else
+    {
+        outputStream << " \"-l:" << legato::GetLastPathNode(libraryPath) << "\"";
+    }
 }
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Print to a given output stream a list of library link directives for libraries required or
+ * bundled by a given Component and all its sub-components.
+ **/
+//--------------------------------------------------------------------------------------------------
+void GetComponentLibLinkDirectives
+(
+    std::ostream& outputStream,
+    const legato::Component& component
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // Link with required libraries.
+    for (auto lib : component.RequiredLibs())
+    {
+        outputStream << " -l" << lib;
+    }
+
+    // Link with bundled libraries.
+    for (auto lib : component.BundledLibs())
+    {
+        mk::GetLinkDirectiveForLibrary(outputStream, lib);
+    }
+
+    // For each sub-component,
+    for (const auto& mapEntry : component.SubComponents())
+    {
+        auto componentPtr = mapEntry.second;
+
+        // If the component has itself been built into a library, link with that.
+        if (componentPtr->Lib().Exists())
+        {
+            outputStream << " -l" << componentPtr->Lib().ShortName();
+        }
+
+        // Link with whatever this component depends on, bundles, or requires.
+        GetComponentLibLinkDirectives(outputStream, *componentPtr);
+    }
+}
+
+
+}  // namespace mk

@@ -129,7 +129,7 @@ void le_arg_SetLooseParamHandler
 //--------------------------------------------------------------------------------------------------
 void le_arg_AddOptionalFlag
 (
-    int* flag,             /// Pointer to the flag value, it will be set to 1 if set, 0 otherwise.
+    bool* flag,            /// Ptr to flag value.  Will be set to true if set, false otherwise.
     const char shortName,  /// Simple name for this flag.
     const char* longName,  /// Longer more readable name for this flag.
     const char* doc        /// Help documentation for this param.

@@ -39,84 +39,6 @@ static std::string VersionSuffix;
 /// The root object for this application's object model.
 static legato::App App;
 
-/// Map of process names to debug port numbers.
-static std::map<std::string, uint16_t> DebugProcMap;
-
-/// Set of debug port numbers that are in use.  This is used to check for duplicates,
-/// since multiple processes can't share the same port number.
-static std::set<uint16_t> DebugPortSet;
-
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Process a --debug (-g) command-line argument.
- **/
-//--------------------------------------------------------------------------------------------------
-static void HandleDebugArg
-(
-    void*       contextPtr, ///< Not used.
-    const char* procAndPort ///< [in] Optional string containing a process name and a port number,
-                            ///       separated by a colon (e.g., "foo:1234").
-)
-//--------------------------------------------------------------------------------------------------
-{
-    // Put the app into debug mode.
-    App.SetDebug();
-
-    // If the argument is not empty, then parse out the process name and the port number and
-    // store them in the DebugProcessMap.
-    std::string arg(procAndPort);
-    if (!arg.empty())
-    {
-        size_t colonPos = arg.find(':');
-        if ((colonPos == arg.npos) || (colonPos == 0))
-        {
-            std::cerr << "**ERROR: Invalid content for --debug (-g) argument.  Expected process"
-                         " name and port number, separated by a colon (:)." << std::endl;
-            exit(EXIT_FAILURE);
-        }
-
-        std::string procName = arg.substr(0, colonPos);
-
-        std::string portNumStr(arg.substr(colonPos + 1));
-        std::istringstream portNumStream(portNumStr);
-        long int portNum;
-        portNumStream >> portNum;   // Convert the string into a number.
-        // If the conversion failed or there are unconverted bytes left at the end, then
-        // it's an error.
-        if (portNumStream.fail() || (portNumStream.eof() == false))
-        {
-            std::cerr << "**ERROR: Invalid port number '" << portNumStr
-                      << "' for --debug (-g) argument." << std::endl;
-            exit(EXIT_FAILURE);
-        }
-        // Port numbers must be greater than zero and no larger than 64K.
-        if ((portNum <= 0) || (portNum > 65535))
-        {
-            std::cerr << "**ERROR: Port number " << portNum
-                      << " out of range in --debug (-g) argument." << std::endl;
-            exit(EXIT_FAILURE);
-        }
-        // Port numbers lower than 1024 are reserved for special services, like HTTP, NFS, etc.
-        if (portNum < 1024)
-        {
-            std::cerr << "WARNING: Port number (" << portNum
-                      << ") less than 1024 in --debug (-g) argument may not be permitted"
-                         " by the target OS." << std::endl;
-        }
-
-        DebugProcMap[procName] = portNum;
-
-        // Check for duplicate port numbers.
-        if (DebugPortSet.insert(portNum).second == false)
-        {
-            std::cerr << "**ERROR: Debug port number " << portNum << " is used more than once."
-                      << std::endl;
-            exit(EXIT_FAILURE);
-        }
-    }
-};
 
 
 //--------------------------------------------------------------------------------------------------
@@ -134,14 +56,15 @@ static void GetCommandLineArgs
 //--------------------------------------------------------------------------------------------------
 {
     std::string target;
-    int isVerbose = 0;  // 0 = not verbose, non-zero = verbose.
+    bool isVerbose = false;
 
     // Path to the directory where intermediate build output files (such as generated
     // source code and object code files) should be put.
     std::string objectFilesDir;
 
-    std::string cFlags;  // C compiler flags.
-    std::string ldFlags; // Linker flags.
+    std::string cFlags;    // C compiler flags.
+    std::string cxxFlags;  // C++ compiler flags.
+    std::string ldFlags;   // Linker flags.
 
     // Lambda function that gets called once for each occurence of the --append-to-version (or -a)
     // argument on the command line.
@@ -150,6 +73,10 @@ static void GetCommandLineArgs
     // Lambda function that gets called once for each occurence of the --cflags (or -C)
     // argument on the command line.
     auto cFlagsPush = [&](const char* arg) { cFlags += " ";  cFlags += arg; };
+
+    // Lambda function that gets called for each occurence of the --cxxflags, (or -X) argument on
+    // the command line.
+    auto cxxFlagsPush = [&](const char* arg) { cxxFlags += " ";  cxxFlags += arg; };
 
     // Lambda function that gets called once for each occurence of the --ldflags (or -L)
     // argument on the command line.
@@ -162,11 +89,11 @@ static void GetCommandLineArgs
             BuildParams.AddInterfaceDir(legato::DoEnvVarSubstitution(path));
         };
 
-    // Lambda function that gets called once for each occurence of the source/component search path
+    // Lambda function that gets called once for each occurence of the source search path
     // argument on the command line.
-    auto compPathPush = [&](const char* path)
+    auto sourcePathPush = [&](const char* path)
         {
-            BuildParams.AddComponentDir(legato::DoEnvVarSubstitution(path));
+            BuildParams.AddSourceDir(legato::DoEnvVarSubstitution(path));
         };
 
     // Lambda function that gets called once for each occurence of a .adef file name on the
@@ -215,20 +142,13 @@ static void GetCommandLineArgs
 
     le_arg_AddMultipleString('c',
                              "component-search",
-                             "Add a directory to the component search path (same as -s).",
-                             compPathPush);
+                             "(DEPRECATED) Add a directory to the source search path (same as -s).",
+                             sourcePathPush);
 
     le_arg_AddMultipleString('s',
                              "source-search",
-                             "Add a directory to the source search path (same as -c).",
-                             compPathPush);
-
-    le_arg_AddMultipleString('g',
-                             "debug",
-                             "Start the app in debug mode and specify a process to debug and a port"
-                             " number for gdbserver to use.  e.g., '--debug=myProc:1234'.",
-                             HandleDebugArg,
-                             NULL);
+                             "Add a directory to the source search path.",
+                             sourcePathPush);
 
     le_arg_AddOptionalString(&target,
                              "localhost",
@@ -245,6 +165,11 @@ static void GetCommandLineArgs
                              "cflags",
                              "Specify extra flags to be passed to the C compiler.",
                              cFlagsPush);
+
+    le_arg_AddMultipleString('X',
+                             "cxxflags",
+                             "Specify extra flags to be passed to the C++ compiler.",
+                             cxxFlagsPush);
 
     le_arg_AddMultipleString('L',
                              "ldflags",
@@ -273,10 +198,10 @@ static void GetCommandLineArgs
     BuildParams.ObjOutputDir(objectFilesDir);
     BuildParams.StagingDir(legato::CombinePath(objectFilesDir, "staging"));
 
-    // Add the directory containing the .adef file to the list of component search directories
+    // Add the directory containing the .adef file to the list of source search directories
     // and the list of interface search directories.
     std::string appDefFileDir = legato::GetContainingDir(App.DefFilePath());
-    BuildParams.AddComponentDir(appDefFileDir);
+    BuildParams.AddSourceDir(appDefFileDir);
     BuildParams.AddInterfaceDir(appDefFileDir);
 
     // Store other build params specified on the command-line.
@@ -286,6 +211,7 @@ static void GetCommandLineArgs
     }
     BuildParams.SetTarget(target);
     BuildParams.CCompilerFlags(cFlags);
+    BuildParams.CxxCompilerFlags(cxxFlags);
     BuildParams.LinkerFlags(ldFlags);
 }
 
@@ -320,46 +246,6 @@ static void ConstructObjectModel
         }
 
         App.Version() += VersionSuffix;
-    }
-
-    // For every process in every process environment in the app, check if debugging has been
-    // enabled (via command-line arguments), and if so, store the port number in the Process
-    // object and flag the Executable object to be built for debugging.
-    for (auto& procEnv : App.ProcEnvironments())
-    {
-        for (auto& process : procEnv.ProcessList())
-        {
-            const auto debugMapIter = DebugProcMap.find(process.Name());
-            if (debugMapIter != DebugProcMap.end())
-            {
-                if (BuildParams.IsVerbose())
-                {
-                    std::cout << "Process '" << process.Name() << "' will be started in debug mode"
-                              " using port number " << debugMapIter->second << "." << std::endl;
-                }
-
-                process.EnableDebugging(debugMapIter->second);
-
-                auto exeMapIter = App.Executables().find(process.ExePath());
-                if (exeMapIter != App.Executables().end())
-                {
-                    if (BuildParams.IsVerbose())
-                    {
-                        std::cout << "Executable '" << process.ExePath() << "' will be built for"
-                                  " debugging (debug symbols included and optimization turned off)."
-                                  << std::endl;
-                    }
-
-                    exeMapIter->second.EnableDebugging();
-                }
-                else
-                {
-                    std::cerr << "WARNING: executable '" << process.ExePath()
-                              << "' is not built by this tool.  Please ensure that it has been"
-                              " built with debug symbols." << std::endl;
-                }
-            }
-        }
     }
 }
 

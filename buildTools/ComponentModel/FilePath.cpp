@@ -21,7 +21,7 @@ namespace legato
 //--------------------------------------------------------------------------------------------------
 /**
  * @return true if the path is valid (not empty and doesn't contain ".." elements that
- *              take it above its starting point).
+ *              take it above its starting point if it is an absolute path).
  */
 //--------------------------------------------------------------------------------------------------
 bool IsValidPath
@@ -34,6 +34,8 @@ bool IsValidPath
     {
         return false;
     }
+
+    bool isAbsolute = (path[0] == '/');
 
     int depthCount = 0;
 
@@ -54,7 +56,7 @@ bool IsValidPath
                 if (state == TWO_DOTS)
                 {
                     depthCount -= 1;
-                    if (depthCount < 0)
+                    if ((depthCount < 0) && isAbsolute)
                     {
                         return false;
                     }
@@ -77,6 +79,11 @@ bool IsValidPath
                 }
                 break;
 
+            case '\0':  // std::string can contain null chars in the middle.
+                break;
+
+            // TODO: check for characters not allowed in a file system path?
+
             default:
                 state = OTHER;
                 break;
@@ -86,7 +93,7 @@ bool IsValidPath
     if (state == TWO_DOTS)
     {
         depthCount -= 1;
-        if (depthCount < 0)
+        if ((depthCount < 0) && isAbsolute)
         {
             return false;
         }
@@ -310,7 +317,7 @@ bool HasSuffix
     {
         auto pos = path.rfind(suffix);
 
-        if (pos != string::npos)
+        if (pos != std::string::npos)
         {
             if (pos == path.size() - suffix.size())
             {
@@ -446,7 +453,7 @@ bool IsCSource
  * @return true if this is a C++ source code file path.
  */
 //--------------------------------------------------------------------------------------------------
-bool IsCppSource
+bool IsCxxSource
 (
     const std::string& path
 )
@@ -482,6 +489,69 @@ bool IsLibrary
     return HasSuffix(path, suffixes);
 }
 
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Figures out whether or not a given string is a shared library file path.
+ *
+ * @return true if this is a shared library file path.
+ */
+//--------------------------------------------------------------------------------------------------
+bool IsSharedLibrary
+(
+    const std::string& path
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // If it ends in ".so" then it's a shared library.
+    static const std::list<std::string> suffixes = { ".so" };
+
+    return HasSuffix(path, suffixes);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the short name for a library by stripping off the directory path, the "lib" file name prefix
+ * and the ".so" or ".a" suffix.  E.g., "/usr/local/lib/libfoo.so", the short name is "foo".
+ *
+ * @return The short name.
+ *
+ * @throw legato::Exception on error.
+ **/
+//--------------------------------------------------------------------------------------------------
+std::string LibraryShortName
+(
+    const std::string& path
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // Get just the file name.
+    std::string name = GetLastPathNode(path);
+
+    // Strip off the "lib" prefix.
+    if (name.compare(0, 3, "lib") != 0)
+    {
+        throw legato::Exception("Library file name '" + name + "' doesn't start with 'lib'.");
+    }
+    name = name.substr(3);
+
+    // If it ends in ".so",
+    if ( (name.length() > 3) && (name.substr(name.length() - 3).compare(".so") == 0) )
+    {
+        return name.substr(0, name.length() - 3);
+    }
+
+    // If it ends in ".a",
+    if ( (name.length() > 2) && (name.substr(name.length() - 2).compare(".a") == 0) )
+    {
+        return name.substr(0, name.length() - 2);
+    }
+
+    throw legato::Exception("Library file path '" + path
+                            + "' does not end in either '.a' or '.so'.");
+}
 
 
 //--------------------------------------------------------------------------------------------------
@@ -634,10 +704,69 @@ void CleanDir
                 throw legato::Exception(buffer.str());
             }
         }
+        else
+        {
+            throw legato::Exception("Object at path '" + path + "' is not a directory."
+                                    " Aborting deletion.");
+        }
     }
     else if (errno != ENOENT)
     {
         throw legato::Exception("Failed to delete directory at '" + path + "'"
+                                " (" + strerror(errno) + ").");
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Delete a file.
+ *
+ * If nothing exists at the path, quietly returns without error.
+ *
+ * If something other than a file exists at the given path, it's an error.
+ *
+ * @throw legato::Exception if something goes wrong.
+ **/
+//--------------------------------------------------------------------------------------------------
+void CleanFile
+(
+    const std::string& path
+)
+//--------------------------------------------------------------------------------------------------
+{
+    struct stat statBuffer;
+
+    if (path == "")
+    {
+        throw legato::Exception("Attempt to delete using an empty path.");
+    }
+
+    // Get the status of whatever exists at that path.
+    if (stat(path.c_str(), &statBuffer) == 0)
+    {
+        // If it's a regular file, delete it.
+        if (S_ISREG(statBuffer.st_mode))
+        {
+            std::string commandLine = "rm -f " + path;
+            int result = system(commandLine.c_str());
+            if (result != EXIT_SUCCESS)
+            {
+                std::stringstream buffer;
+                buffer << "Failed to execute command '" << commandLine << "'"
+                       << " result: " << result;
+                throw legato::Exception(buffer.str());
+            }
+        }
+        else
+        {
+            throw legato::Exception("Object at path '" + path + "' is not a file."
+                                    " Aborting deletion.");
+        }
+    }
+    else if (errno != ENOENT)
+    {
+        throw legato::Exception("Failed to delete file at '" + path + "'"
                                 " (" + strerror(errno) + ").");
     }
 }

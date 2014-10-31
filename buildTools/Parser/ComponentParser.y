@@ -18,6 +18,9 @@
 }
 
 %token  SOURCES_SECTION_LABEL;
+%token  CFLAGS_SECTION_LABEL;
+%token  CXXFLAGS_SECTION_LABEL;
+%token  LDFLAGS_SECTION_LABEL;
 %token  IMPORT_SECTION_LABEL;
 %token  EXPORT_SECTION_LABEL;
 %token  REQUIRES_SECTION_LABEL;
@@ -39,6 +42,8 @@
 %token  <string> NAME;
 %token  <string> NUMBER;
 
+%token  END 0 "end of file"
+
 %type <string> file_path;
 
 %%  // ---------------------------------------------------------------------------------------------
@@ -52,11 +57,17 @@ cdef
 
 section
     : sources_section
-    | import_section
-    | export_section
+    | cflags_section
+    | cxxflags_section
+    | ldflags_section
+    | import_section        { cyy_error("'import:' section no longer supported.  Use 'api:' "
+                                        "subsection in 'requires:' section instead."); }
+    | export_section        { cyy_error("'export:' section no longer supported.  Use 'api:' "
+                                        "subsection in 'provides:' section instead."); }
     | requires_section
     | provides_section
-    | files_section
+    | files_section         { cyy_error("'files:' section no longer supported.  Use 'file:' "
+                                        "subsection in 'bundles:' section instead."); }
     | bundles_section
     | pools_section
     | config_section
@@ -64,8 +75,8 @@ section
 
 
 sources_section
-    : SOURCES_SECTION_LABEL source_file_list
-    | SOURCES_SECTION_LABEL
+    : SOURCES_SECTION_LABEL '{' '}'
+    | SOURCES_SECTION_LABEL '{' source_file_list '}'
     ;
 
 
@@ -82,6 +93,39 @@ file_path
     ;
 
 
+cflags_section
+    : CFLAGS_SECTION_LABEL '{' '}'
+    | CFLAGS_SECTION_LABEL '{' cflags_list '}'
+    ;
+
+cflags_list
+    : file_path                 { cyy_AddCFlag($1); }
+    | file_path cflags_list     { cyy_AddCFlag($1); }
+    ;
+
+
+cxxflags_section
+    : CXXFLAGS_SECTION_LABEL '{' '}'
+    | CXXFLAGS_SECTION_LABEL '{' cxxflags_list '}'
+    ;
+
+cxxflags_list
+    : file_path                 { cyy_AddCxxFlag($1); }
+    | file_path cxxflags_list   { cyy_AddCxxFlag($1); }
+    ;
+
+
+ldflags_section
+    : LDFLAGS_SECTION_LABEL '{' '}'
+    | LDFLAGS_SECTION_LABEL '{' ldflags_list '}'
+    ;
+
+ldflags_list
+    : file_path                 { cyy_AddLdFlag($1); }
+    | file_path ldflags_list    { cyy_AddLdFlag($1); }
+    ;
+
+
 import_section
     : IMPORT_SECTION_LABEL import_list
     | IMPORT_SECTION_LABEL
@@ -95,12 +139,12 @@ import_list
 
 
 import
-    : NAME '=' file_path                        { cyy_AddRequiredApi($1, $3); }
-    | NAME '=' file_path TYPES_ONLY_MODIFIER    { cyy_AddTypesOnlyRequiredApi($1, $3); }
-    | NAME '=' file_path MANUAL_START_MODIFIER  { cyy_AddManualStartRequiredApi($1, $3); }
-    | file_path                                 { cyy_AddRequiredApi(NULL, $1); }
-    | file_path TYPES_ONLY_MODIFIER             { cyy_AddTypesOnlyRequiredApi(NULL, $1); }
-    | file_path MANUAL_START_MODIFIER           { cyy_AddManualStartRequiredApi(NULL, $1); }
+    : NAME '=' file_path
+    | NAME '=' file_path TYPES_ONLY_MODIFIER
+    | NAME '=' file_path MANUAL_START_MODIFIER
+    | file_path
+    | file_path TYPES_ONLY_MODIFIER
+    | file_path MANUAL_START_MODIFIER
     ;
 
 
@@ -117,47 +161,28 @@ export_list
 
 
 export
-    : NAME '=' file_path                { cyy_AddProvidedApi($1, $3); }
-
-    | NAME '=' file_path ASYNC_MODIFIER { cyy_AddAsyncProvidedApi($1, $3); }
-
+    : NAME '=' file_path
+    | NAME '=' file_path ASYNC_MODIFIER
     | NAME '=' file_path MANUAL_START_MODIFIER
-                                        { cyy_AddManualStartProvidedApi($1, $3); }
-
     | NAME '=' file_path ASYNC_MODIFIER MANUAL_START_MODIFIER
-                                        { cyy_AddManualStartAsyncProvidedApi($1, $3); }
-
     | NAME '=' file_path MANUAL_START_MODIFIER ASYNC_MODIFIER
-                                        { cyy_AddManualStartAsyncProvidedApi($1, $3); }
-    | file_path                         { cyy_AddProvidedApi(NULL, $1); }
-
-    | file_path ASYNC_MODIFIER          { cyy_AddAsyncProvidedApi(NULL, $1); }
-
-    | file_path MANUAL_START_MODIFIER   { cyy_AddManualStartProvidedApi(NULL, $1); }
-
+    | file_path
+    | file_path ASYNC_MODIFIER
+    | file_path MANUAL_START_MODIFIER
     | file_path ASYNC_MODIFIER MANUAL_START_MODIFIER
-                                        { cyy_AddManualStartAsyncProvidedApi(NULL, $1); }
-
     | file_path MANUAL_START_MODIFIER ASYNC_MODIFIER
-                                        { cyy_AddManualStartAsyncProvidedApi(NULL, $1); }
     ;
 
 
 files_section
-    : FILES_SECTION_LABEL bundled_files_list
+    : FILES_SECTION_LABEL bundled_file_list
     | FILES_SECTION_LABEL
     ;
 
 
-bundled_files_list
-    : bundled_file
-    | bundled_files_list bundled_file
-    ;
-
-
 bundles_section
-    : BUNDLES_SECTION_LABEL
-    | BUNDLES_SECTION_LABEL bundles_subsection_list
+    : BUNDLES_SECTION_LABEL '{' '}'
+    | BUNDLES_SECTION_LABEL '{' bundles_subsection_list '}'
     ;
 
 
@@ -170,15 +195,17 @@ bundles_subsection_list
 bundles_subsection
     : bundled_file_section
     | bundled_dir_section
-
+    ;
 
 bundled_file_section
-    : FILE_SECTION_LABEL bundled_file
+    : FILE_SECTION_LABEL '{' '}'
+    | FILE_SECTION_LABEL '{' bundled_file_list '}'
     ;
 
 
-bundled_dir_section
-    : DIR_SECTION_LABEL bundled_dir
+bundled_file_list
+    : bundled_file
+    | bundled_file_list bundled_file
     ;
 
 
@@ -188,19 +215,27 @@ bundled_file
     ;
 
 
+bundled_dir_section
+    : DIR_SECTION_LABEL '{' '}'
+    | DIR_SECTION_LABEL '{' bundled_dir_list '}'
+    ;
+
+
+bundled_dir_list
+    : bundled_dir
+    | bundled_dir_list bundled_dir
+    ;
+
+
 bundled_dir
-    : file_path file_path               { cyy_AddBundledDir($1, $2); }
-    | PERMISSIONS file_path file_path
-            {
-                cyy_error("Permissions not allowed for bundled directories."
-                          "  They are always read-only at run time.");
-            }
+    : file_path file_path               { cyy_AddBundledDir("[r]", $1, $2); }
+    | PERMISSIONS file_path file_path   { cyy_AddBundledDir($1, $2, $3); }
     ;
 
 
 requires_section
-    : REQUIRES_SECTION_LABEL
-    | REQUIRES_SECTION_LABEL requires_subsection_list
+    : REQUIRES_SECTION_LABEL '{' '}'
+    | REQUIRES_SECTION_LABEL '{' requires_subsection_list '}'
     ;
 
 
@@ -220,44 +255,98 @@ requires_subsection
 
 
 required_api_section
-    : API_SECTION_LABEL '{' file_path '}'               { cyy_AddRequiredApi(NULL, $3); }
+    : API_SECTION_LABEL '{' '}'
+    | API_SECTION_LABEL '{' required_api_list '}'
+    ;
 
-    | API_SECTION_LABEL '{' file_path TYPES_ONLY_MODIFIER '}'
-                                                        { cyy_AddTypesOnlyRequiredApi(NULL, $3); }
-    | API_SECTION_LABEL NAME '{' file_path '}'          { cyy_AddRequiredApi($2, $4); }
 
-    | API_SECTION_LABEL NAME '{' file_path TYPES_ONLY_MODIFIER '}'
-                                                        { cyy_AddTypesOnlyRequiredApi($2, $4); }
+required_api_list
+    : required_api
+    | required_api_list required_api
+    ;
+
+
+required_api
+    : file_path                                 { cyy_AddRequiredApi(NULL, $1); }
+    | file_path TYPES_ONLY_MODIFIER             { cyy_AddTypesOnlyRequiredApi(NULL, $1); }
+    | file_path MANUAL_START_MODIFIER           { cyy_AddManualStartRequiredApi(NULL, $1); }
+    | NAME '=' file_path                        { cyy_AddRequiredApi($1, $3); }
+    | NAME '=' file_path TYPES_ONLY_MODIFIER    { cyy_AddTypesOnlyRequiredApi($1, $3); }
+    | NAME '=' file_path MANUAL_START_MODIFIER  { cyy_AddManualStartRequiredApi($1, $3); }
     ;
 
 
 required_file_section
-    : FILE_SECTION_LABEL file_path file_path               { cyy_AddRequiredFile("[r]", $2, $3); }
-    | FILE_SECTION_LABEL PERMISSIONS file_path file_path   { cyy_AddRequiredFile($2, $3, $4); }
+    : FILE_SECTION_LABEL '{' '}'
+    | FILE_SECTION_LABEL '{' required_file_list '}'
+    ;
+
+
+required_file_list
+    : required_file
+    | required_file_list required_file
+    ;
+
+
+required_file
+    : file_path file_path               { cyy_AddRequiredFile($1, $2); }
     ;
 
 
 required_dir_section
-    : DIR_SECTION_LABEL file_path file_path               { cyy_AddRequiredDir("[r]", $2, $3); }
-    | DIR_SECTION_LABEL PERMISSIONS file_path file_path   { cyy_AddRequiredDir($2, $3, $4); }
+    : DIR_SECTION_LABEL '{' '}'
+    | DIR_SECTION_LABEL '{' required_dir_list '}'
+    ;
+
+
+required_dir_list
+    : required_dir
+    | required_dir_list required_dir
+    ;
+
+
+required_dir
+    : file_path file_path               { cyy_AddRequiredDir($1, $2); }
     ;
 
 
 required_lib_section
-    : LIB_SECTION_LABEL '{' file_path '}'       { cyy_AddRequiredLib($3); }
-    | LIB_SECTION_LABEL file_path               { cyy_AddRequiredLib($2); }
+    : LIB_SECTION_LABEL '{' '}'
+    | LIB_SECTION_LABEL '{' required_lib_list '}'
+    ;
+
+
+required_lib_list
+    : required_lib
+    | required_lib_list required_lib
+    ;
+
+
+required_lib
+    : file_path     { cyy_AddRequiredLib($1); }
     ;
 
 
 required_component_section
-    : COMPONENT_SECTION_LABEL '{' file_path '}'         { cyy_AddRequiredComponent($3); }
-    | COMPONENT_SECTION_LABEL file_path                 { cyy_AddRequiredComponent($2); }
+    : COMPONENT_SECTION_LABEL '{' '}'
+    | COMPONENT_SECTION_LABEL '{' required_component_list '}'
+    ;
+
+
+required_component_list
+    : required_component
+    | required_component_list required_component
+    ;
+
+
+required_component
+    : file_path                 { cyy_AddRequiredComponent($1); }
     ;
 
 
 provides_section
-    : PROVIDES_SECTION_LABEL
-    | PROVIDES_SECTION_LABEL provides_subsection_list
+    : PROVIDES_SECTION_LABEL '{' '}'
+    | PROVIDES_SECTION_LABEL '{' provides_subsection_list '}'
     ;
 
 
@@ -275,33 +364,32 @@ provides_subsection
 
 
 provided_api_section
-    : API_SECTION_LABEL '{' file_path '}'           { cyy_AddProvidedApi(NULL, $3); }
+    : API_SECTION_LABEL '{' '}'
+    | API_SECTION_LABEL '{' provided_api_list '}'
+    ;
 
-    | API_SECTION_LABEL '{' file_path ASYNC_MODIFIER '}'
-                                                    { cyy_AddAsyncProvidedApi(NULL, $3); }
 
-    | API_SECTION_LABEL '{' file_path MANUAL_START_MODIFIER '}'
-                                                    { cyy_AddManualStartProvidedApi(NULL, $3); }
+provided_api_list
+    : provided_api
+    | provided_api_list provided_api
+    ;
 
-    | API_SECTION_LABEL '{' file_path ASYNC_MODIFIER MANUAL_START_MODIFIER '}'
-                                                    { cyy_AddManualStartAsyncProvidedApi(NULL, $3); }
 
-    | API_SECTION_LABEL '{' file_path MANUAL_START_MODIFIER ASYNC_MODIFIER '}'
-                                                    { cyy_AddManualStartAsyncProvidedApi(NULL, $3); }
-
-    | API_SECTION_LABEL NAME '{' file_path '}'      { cyy_AddProvidedApi($2, $4); }
-
-    | API_SECTION_LABEL NAME '{' file_path ASYNC_MODIFIER '}'
-                                                    { cyy_AddAsyncProvidedApi($2, $4); }
-
-    | API_SECTION_LABEL NAME '{' file_path MANUAL_START_MODIFIER '}'
-                                                    { cyy_AddManualStartProvidedApi($2, $4); }
-
-    | API_SECTION_LABEL NAME '{' file_path ASYNC_MODIFIER MANUAL_START_MODIFIER '}'
-                                                    { cyy_AddManualStartAsyncProvidedApi($2, $4); }
-
-    | API_SECTION_LABEL NAME '{' file_path MANUAL_START_MODIFIER ASYNC_MODIFIER '}'
-                                                    { cyy_AddManualStartAsyncProvidedApi($2, $4); }
+provided_api
+    : file_path                         { cyy_AddProvidedApi(NULL, $1); }
+    | file_path ASYNC_MODIFIER          { cyy_AddAsyncProvidedApi(NULL, $1); }
+    | file_path MANUAL_START_MODIFIER   { cyy_AddManualStartProvidedApi(NULL, $1); }
+    | file_path ASYNC_MODIFIER MANUAL_START_MODIFIER
+                                                   { cyy_AddManualStartAsyncProvidedApi(NULL, $1); }
+    | file_path MANUAL_START_MODIFIER ASYNC_MODIFIER
+                                                   { cyy_AddManualStartAsyncProvidedApi(NULL, $1); }
+    | NAME '=' file_path                { cyy_AddProvidedApi($1, $3); }
+    | NAME '=' file_path ASYNC_MODIFIER { cyy_AddAsyncProvidedApi($1, $3); }
+    | NAME '=' file_path MANUAL_START_MODIFIER      { cyy_AddManualStartProvidedApi($1, $3); }
+    | NAME '=' file_path ASYNC_MODIFIER MANUAL_START_MODIFIER
+                                                    { cyy_AddManualStartAsyncProvidedApi($1, $3); }
+    | NAME '=' file_path MANUAL_START_MODIFIER ASYNC_MODIFIER
+                                                    { cyy_AddManualStartAsyncProvidedApi($1, $3); }
     ;
 
 
@@ -318,8 +406,8 @@ provided_dir_section
 
 
 pools_section
-    : POOLS_SECTION_LABEL pool_list
-    | POOLS_SECTION_LABEL { printf("Pools.\n"); }
+    : POOLS_SECTION_LABEL
+    | POOLS_SECTION_LABEL pool_list
     ;
 
 
@@ -330,12 +418,12 @@ pool_list
 
 
 pool
-    : NAME '=' NUMBER
+    : NAME '=' NUMBER   { cyy_error("'pools:' section not yet implemented."); }
     ;
 
 
 config_section
-    : CONFIG_SECTION_LABEL
+    : CONFIG_SECTION_LABEL  { cyy_error("'config:' section not yet implemented."); }
     ;
 
 %%

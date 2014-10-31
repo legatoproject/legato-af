@@ -19,8 +19,11 @@ class ExecutableBuilder_t
         ExecutableBuilder_t(const legato::BuildParams_t& params) : m_Params(params) {}
 
     public:
-        void GenerateMain(legato::Executable& executable);
-        void Build(const legato::Executable& executable);
+        void GenerateMain(legato::Executable& executable, const std::string& objOutputDir);
+        void Build(legato::Executable& executable, const std::string& objOutputDir);
+
+    private:
+        void Link(legato::Executable& executable);
 };
 
 

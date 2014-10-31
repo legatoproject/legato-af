@@ -6,11 +6,10 @@ name   [A-Za-z_][0-9A-Za-z_]*
 
 env-var             "$"({name}|"{"{name}"}")
 
-file-path-element   ({env-var}|([-0-9A-Za-z:;._+?]+))+
+/* Note: file-path-element must not start with a '*' because "/*" starts a comment. */
+file-path-element   ({env-var}|([-0-9A-Za-z:;._+?]+))({env-var}|([-0-9A-Za-z:;._+?]+)|[*])*
 
-file-path    (\/?{file-path-element}(\/{file-path-element})*\/?)|\/
-
-dotted-string   [0-9A-Za-z_.]*
+file-path           [*]?(\/?{file-path-element}(\/{file-path-element})*\/?)|\/
 
 %x COMMENT
 %x IN_SINGLE_QUOTES
@@ -42,28 +41,26 @@ const char* ayy_FileName = "";
 version[ \t\n]*:            { return VERSION_SECTION_LABEL; }
 sandboxed[ \t\n]*:          { return SANDBOXED_SECTION_LABEL; }
 start[ \t\n]*:              { return START_SECTION_LABEL; }
-numProcs[ \t\n]*:           { return NUM_PROCS_SECTION_LABEL; }
-mqueueSize[ \t\n]*:         { return MQUEUE_SIZE_SECTION_LABEL; }
-rtSignalQueueSize[ \t\n]*:  { return RT_SIGNAL_QUEUE_SIZE_SECTION_LABEL; }
-memLimit[ \t\n]*:           { return MEMORY_LIMIT_SECTION_LABEL; }
+maxThreads[ \t\n]*:         { return MAX_THREADS_SECTION_LABEL; }
+maxMQueueBytes[ \t\n]*:     { return MAX_MQUEUE_BYTES_SECTION_LABEL; }
+maxQueuedSignals[ \t\n]*:   { return MAX_QUEUED_SIGNALS_SECTION_LABEL; }
+maxMemoryBytes[ \t\n]*:     { return MAX_MEMORY_BYTES_SECTION_LABEL; }
 cpuShare[ \t\n]*:           { return CPU_SHARE_SECTION_LABEL; }
-fileSystemSize[ \t\n]*:     { return FILE_SYSTEM_SIZE_SECTION_LABEL; }
+maxFileSystemBytes[ \t\n]*: { return MAX_FILE_SYSTEM_BYTES_SECTION_LABEL; }
 components[ \t\n]*:         { return COMPONENTS_SECTION_LABEL; }
 groups[ \t\n]*:             { return GROUPS_SECTION_LABEL; }
-files[ \t\n]*:              { return FILES_SECTION_LABEL; }
 executables[ \t\n]*:        { return EXECUTABLES_SECTION_LABEL; }
 processes[ \t\n]*:          { return PROCESSES_SECTION_LABEL; }
 run[ \t\n]*:                { return RUN_SECTION_LABEL; }
 envVars[ \t\n]*:            { return ENV_VARS_SECTION_LABEL; }
 priority[ \t\n]*:           { return PRIORITY_SECTION_LABEL; }
-coreFileSize[ \t\n]*:       { return CORE_FILE_SIZE_SECTION_LABEL; }
-maxFileSize[ \t\n]*:        { return MAX_FILE_SIZE_SECTION_LABEL; }
-memLockSize[ \t\n]*:        { return MEM_LOCK_SIZE_SECTION_LABEL; }
-numFds[ \t\n]*:             { return NUM_FDS_SECTION_LABEL; }
+maxCoreDumpFileBytes[ \t\n]*:   { return MAX_CORE_DUMP_FILE_BYTES_SECTION_LABEL; }
+maxFileBytes[ \t\n]*:       { return MAX_FILE_BYTES_SECTION_LABEL; }
+maxLockedMemoryBytes[ \t\n]*:   { return MAX_LOCKED_MEMORY_BYTES_SECTION_LABEL; }
+maxFileDescriptors[ \t\n]*: { return MAX_FILE_DESCRIPTORS_SECTION_LABEL; }
 faultAction[ \t\n]*:        { return FAULT_ACTION_SECTION_LABEL; }
 watchdogAction[ \t\n]*:     { return WATCHDOG_ACTION_SECTION_LABEL; }
 watchdogTimeout[ \t\n]*:    { return WATCHDOG_TIMEOUT_SECTION_LABEL; }
-import[ \t\n]*:             { return IMPORT_SECTION_LABEL; }
 pools[ \t\n]*:              { return POOLS_SECTION_LABEL; }
 bindings[ \t\n]*:           { return BINDINGS_SECTION_LABEL; }
 config[ \t\n]*:             { return CONFIG_SECTION_LABEL; }
@@ -93,8 +90,6 @@ dir[ \t\n]*:                { return DIR_SECTION_LABEL; }
 -?(0x)?[0-9]+K? { ayy_lval.string = strdup(yytext); return NUMBER; }
 
 {file-path}     { ayy_lval.string = strdup(yytext); return FILE_PATH; }
-
-{dotted-string}   { ayy_lval.string = strdup(yytext); return DOTTED_STRING; }
 
                 /* Pass these back to the parser as themselves. */
 [=:(){}<>]      { return yytext[0]; }
@@ -130,7 +125,13 @@ void ayy_error
 )
 //--------------------------------------------------------------------------------------------------
 {
-    fprintf(stderr, "%s:%d: %s\n", ayy_FileName, ayy_lineno, errorString);
+    // Make error messages stand out from the clutter when running in verbose mode.
+    if (ayy_IsVerbose)
+    {
+        fprintf(stderr, " [-- ERROR --]\n");
+    }
+
+    fprintf(stderr, "%s:%d: ERROR: %s\n", ayy_FileName, ayy_lineno, errorString);
 
     ayy_ErrorCount++;
 

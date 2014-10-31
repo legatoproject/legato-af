@@ -54,7 +54,7 @@ struct ParamInfo
 
     union
     {
-        const int defaultInt;       /// Defualt value if this param is an integer.
+        const int defaultInt;       /// Default value if this param is an integer.
         const char* defaultString;  /// Default value if this param is a string.
 
         ValueCallback valueCallback;
@@ -263,7 +263,7 @@ static void SetParamValue
             }
             else
             {
-                *static_cast<int*>(info.valuePtr) = 1;
+                *static_cast<bool*>(info.valuePtr) = true;
             }
             break;
 
@@ -415,6 +415,9 @@ static void SetParamDefault
     switch (info.type)
     {
         case ParamInfo::FLAG:
+            *static_cast<bool*>(info.valuePtr) = false;
+            break;
+
         case ParamInfo::INT:
             *static_cast<int*>(info.valuePtr) = info.defaultInt;
             break;
@@ -439,6 +442,10 @@ static void DisplayHelp
 (
 )
 {
+    // TODO: Reformat into man page style and add functions to allow the client to set the
+    //       NAME and introductory DESCRIPTION text.  Ideally, the SYNOPSIS should be auto-
+    //       generated.
+
     std::cout << std::endl << "Command line parameters" << std::endl;
 
     for (auto param: Params)
@@ -610,8 +617,8 @@ void le_arg_Scan
 //--------------------------------------------------------------------------------------------------
 void le_arg_SetArgProcessedCallback
 (
-    le_arg_ProcessedCallback_t callbackPtr,  /// The function to call.
-    void* contextPtr                         /// The context to call it in.
+    le_arg_ProcessedCallback_t callbackPtr,  ///< The function to call.
+    void* contextPtr                         ///< The context to call it in.
 )
 {
     if (callbackPtr == NULL)
@@ -650,13 +657,13 @@ void le_arg_SetLooseParamHandler
 //--------------------------------------------------------------------------------------------------
 void le_arg_AddOptionalFlag
 (
-    int* flag,             /// Pointer to the flag value, it will be set to 1 if set, 0 otherwise.
-    const char shortName,  /// Simple name for this flag.
-    const char* longName,  /// Longer more readable name for this flag.
-    const char* doc        /// Help documentation for this param.
+    bool* flagPtr,         ///< Pointer to flag value. Will be set to true if set, false otherwise.
+    const char shortName,  ///< Simple name for this flag.
+    const char* longName,  ///< Longer more readable name for this flag.
+    const char* doc        ///< Help documentation for this param.
 )
 {
-    Params.insert(ParamInfo(shortName, longName, doc, ParamInfo::FLAG, true, flag, 0));
+    Params.insert(ParamInfo(shortName, longName, doc, ParamInfo::FLAG, true, flagPtr, 0));
 }
 
 
@@ -670,10 +677,10 @@ void le_arg_AddOptionalFlag
 //--------------------------------------------------------------------------------------------------
 void le_arg_AddInt
 (
-    int* value,      /// The pointed at value will be updated with the user specified int.
-    char shortName,  /// Simple name for this argument.
-    char* longName,  /// Longer more readable name for this argument.
-    const char* doc  /// Help documentation for this param.
+    int* value,      ///< The pointed at value will be updated with the user specified int.
+    char shortName,  ///< Simple name for this argument.
+    char* longName,  ///< Longer more readable name for this argument.
+    const char* doc  ///< Help documentation for this param.
 )
 {
     Params.insert(ParamInfo(shortName, longName, doc, ParamInfo::INT, false, value, 0));
@@ -689,11 +696,11 @@ void le_arg_AddInt
 //--------------------------------------------------------------------------------------------------
 void le_arg_AddOptionalInt
 (
-    int* value,              /// Value updated with either the command line value or the default.
-    const int defaultValue,  /// Default value for this argument.
-    const char shortName,    /// Simple name for this argument.
-    const char* longName,    /// Longer more readable name for this argument.
-    const char* doc          /// Help documentation for this param.
+    int* value,              ///< Value updated with either the command line value or the default.
+    const int defaultValue,  ///< Default value for this argument.
+    const char shortName,    ///< Simple name for this argument.
+    const char* longName,    ///< Longer more readable name for this argument.
+    const char* doc          ///< Help documentation for this param.
 )
 {
     Params.insert(ParamInfo(shortName,
@@ -715,10 +722,10 @@ void le_arg_AddOptionalInt
 //--------------------------------------------------------------------------------------------------
 void le_arg_AddString
 (
-    std::string* valuePtr, /// Value to be updated with the user specified string.
-    char shortName,        /// Simple name for this argument.
-    const char* longName,  /// Longer more readable name for this argument.
-    const char* doc        /// Help documentation for this param.
+    std::string* valuePtr, ///< Value to be updated with the user specified string.
+    char shortName,        ///< Simple name for this argument.
+    const char* longName,  ///< Longer more readable name for this argument.
+    const char* doc        ///< Help documentation for this param.
 )
 {
     Params.insert(ParamInfo(shortName,

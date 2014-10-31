@@ -13,13 +13,86 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Generate a string containing --import-dir arguments for ifgen.
+ *
+ * @return The string.
+ **/
+//--------------------------------------------------------------------------------------------------
+std::string InterfaceBuilder_t::GenerateImportDirArgs
+(
+    const legato::Api_t& api
+)
+const
+//--------------------------------------------------------------------------------------------------
+{
+    std::string commandLine;
+
+    // Specify all the interface search directories as places to look for .api files.
+    for (auto dir : m_Params.InterfaceDirs())
+    {
+        commandLine += " --import-dir \"" + dir + "\"";
+    }
+
+    // Specify the directory the .api file is in as a place to look for other .api files.
+    commandLine += " --import-dir \"" + legato::GetContainingDir(api.FilePath()) + "\"";
+
+    return commandLine;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Generate IPC API client header files for a given protocol in a given directory.
  */
 //--------------------------------------------------------------------------------------------------
-void InterfaceBuilder_t::GenerateApiClientHeaders
+void InterfaceBuilder_t::GenerateApiHeaders
 (
-    const legato::ImportedInterface& interface
+    const legato::Api_t& api,
+    const std::string& outputDir        ///< Directory where generated code should go.
 )
+const
+//--------------------------------------------------------------------------------------------------
+{
+    std::stringstream commandLine;
+
+    // Use the ifgen tool to generate the API code.
+    commandLine << "ifgen --gen-local --gen-interface";
+
+    // Specify the output directory.
+    commandLine << " --output-dir \"" << outputDir << "\"";
+
+    // Specify where ifgen should look for any additional .api files it might need.
+    commandLine << GenerateImportDirArgs(api);
+
+    // Specify the path to the protocol file.
+    commandLine << " \"" << api.FilePath() << "\"";
+
+    if (m_Params.IsVerbose())
+    {
+        std::cout << std::endl << "$ " << commandLine.str() << std::endl << std::endl;
+    }
+
+    mk::ExecuteCommandLine(commandLine.str());
+
+    // Now do the same for any other APIs that this API depends on.
+    for (auto apiPtr : api.Dependencies())
+    {
+        GenerateApiHeaders(*apiPtr, outputDir);
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Generate IPC API client header files for a given protocol in a given directory.
+ */
+//--------------------------------------------------------------------------------------------------
+void InterfaceBuilder_t::GenerateApiHeaders
+(
+    const legato::ClientInterface& interface,
+    const std::string& outputDir        ///< Directory where generated code should go.
+)
+const
 //--------------------------------------------------------------------------------------------------
 {
     std::stringstream commandLine;
@@ -33,17 +106,17 @@ void InterfaceBuilder_t::GenerateApiClientHeaders
     // Set the generated file name prefix the same as the C identifier prefix.
     commandLine << " --file-prefix " << interface.InternalName() << "_";
 
-    // Specify the output directory.
-    commandLine << " --output-dir " << m_Params.ObjOutputDir();
+    // Set the name to be used when talking to the Service Directory.
+    commandLine << " --service-name " << interface.ExternalName();
 
-    // Specify all the interface search directories as places to look for interface files.
-    for (auto dir : m_Params.InterfaceDirs())
-    {
-        commandLine << " --import-dir " << dir;
-    }
+    // Specify the output directory.
+    commandLine << " --output-dir \"" << outputDir << "\"";
+
+    // Specify where ifgen should look for any additional .api files it might need.
+    commandLine << GenerateImportDirArgs(interface.Api());
 
     // Specify the path to the protocol file.
-    commandLine << " " << interface.Api().FilePath();
+    commandLine << " \"" << interface.Api().FilePath() << "\"";
 
     if (m_Params.IsVerbose())
     {
@@ -51,6 +124,12 @@ void InterfaceBuilder_t::GenerateApiClientHeaders
     }
 
     mk::ExecuteCommandLine(commandLine.str());
+
+    // Now do the same for any other APIs that this API depends on.
+    for (auto apiPtr : interface.Api().Dependencies())
+    {
+        GenerateApiHeaders(*apiPtr, outputDir);
+    }
 }
 
 
@@ -59,10 +138,12 @@ void InterfaceBuilder_t::GenerateApiClientHeaders
  * Generate IPC API server header files for a given protocol in a given directory.
  */
 //--------------------------------------------------------------------------------------------------
-void InterfaceBuilder_t::GenerateApiServerHeaders
+void InterfaceBuilder_t::GenerateApiHeaders
 (
-    const legato::ExportedInterface& interface  ///< Interface for which code is to be generated.
+    const legato::ServerInterface& interface, ///< Interface for which code is to be generated.
+    const std::string& outputDir        ///< Directory where generated code should go.
 )
+const
 //--------------------------------------------------------------------------------------------------
 {
     std::string commandLine;
@@ -82,17 +163,17 @@ void InterfaceBuilder_t::GenerateApiServerHeaders
     // Set the generated file name prefix the same as the C identifier prefix.
     commandLine += " --file-prefix " + interface.InternalName() + "_";
 
+    // Set the name to be used when talking to the Service Directory.
+    commandLine += " --service-name " + interface.ExternalName();
+
     // Specify the output directory.
-    commandLine += " --output-dir " + m_Params.ObjOutputDir();
+    commandLine += " --output-dir \"" + outputDir + "\"";
 
-    // Specify the path to the protocol file.
-    commandLine += " " + interface.Api().FilePath();
+    // Specify the path to the .api file.
+    commandLine += " \"" + interface.Api().FilePath() + "\"";
 
-    // Specify all the interface search directories as places to look for interface files.
-    for (auto dir : m_Params.InterfaceDirs())
-    {
-        commandLine += " --import-dir " + dir;
-    }
+    // Specify where ifgen should look for any additional .api files it might need.
+    commandLine += GenerateImportDirArgs(interface.Api());
 
     if (m_Params.IsVerbose())
     {
@@ -113,16 +194,13 @@ void InterfaceBuilder_t::GenerateApiServerHeaders
         }
 
         // Specify the output directory.
-        commandLine += " --output-dir " + m_Params.ObjOutputDir();
+        commandLine += " --output-dir \"" + outputDir + "\"";
 
         // Specify the path to the protocol file.
-        commandLine += " " + apiPtr->FilePath();
+        commandLine += " \"" + apiPtr->FilePath() + "\"";
 
-        // Specify all the interface search directories as places to look for interface files.
-        for (auto dir : m_Params.InterfaceDirs())
-        {
-            commandLine += " --import-dir " + dir;
-        }
+        // Specify where ifgen should look for any additional .api files it might need.
+        commandLine += GenerateImportDirArgs(interface.Api());
 
         if (m_Params.IsVerbose())
         {
@@ -141,10 +219,12 @@ void InterfaceBuilder_t::GenerateApiServerHeaders
  * @return Path to the generated .c file.
  */
 //--------------------------------------------------------------------------------------------------
-std::string InterfaceBuilder_t::GenerateApiClientCode
+std::string InterfaceBuilder_t::GenerateApiCode
 (
-    legato::ImportedInterface& interface    ///< Interface object for which code is to be generated.
+    legato::ClientInterface& interface, ///< Interface object for which code is to be generated.
+    const std::string& outputDir        ///< Directory where generated code should go.
 )
+const
 //--------------------------------------------------------------------------------------------------
 {
     std::stringstream commandLine;
@@ -155,17 +235,17 @@ std::string InterfaceBuilder_t::GenerateApiClientCode
     // Set the C identifier prefix.
     commandLine << " --name-prefix " << interface.InternalName() << "_";
 
+    // Set the name to be used when talking to the Service Directory.
+    commandLine << " --service-name " << interface.ExternalName();
+
     // Specify the output directory.
-    commandLine << " --output-dir " << m_Params.ObjOutputDir();
+    commandLine << " --output-dir \"" << outputDir << "\"";
 
-    // Specify the path to the protocol file.
-    commandLine << " " << interface.Api().FilePath();
+    // Specify the path to the .api file.
+    commandLine << " \"" << interface.Api().FilePath() << "\"";
 
-    // Specify all the interface search directories as places to look for interface files.
-    for (auto dir : m_Params.InterfaceDirs())
-    {
-        commandLine << " --import-dir " << dir;
-    }
+    // Specify where ifgen should look for any additional .api files it might need.
+    commandLine << GenerateImportDirArgs(interface.Api());
 
     if (m_Params.IsVerbose())
     {
@@ -174,7 +254,7 @@ std::string InterfaceBuilder_t::GenerateApiClientCode
 
     mk::ExecuteCommandLine(commandLine.str());
 
-    return m_Params.ObjOutputDir() + "/" + interface.Api().Name() + "_client.c";
+    return legato::CombinePath(outputDir, interface.Api().Name() + "_client.c");
 }
 
 
@@ -187,10 +267,12 @@ std::string InterfaceBuilder_t::GenerateApiClientCode
  * @return Path to the generated .c file.
  */
 //--------------------------------------------------------------------------------------------------
-std::string InterfaceBuilder_t::GenerateApiServerCode
+std::string InterfaceBuilder_t::GenerateApiCode
 (
-    legato::ExportedInterface& interface    ///< Interface object for which code is to be generated.
+    legato::ServerInterface& interface, ///< Interface object for which code is to be generated.
+    const std::string& outputDir        ///< Directory where generated code should go.
 )
+const
 //--------------------------------------------------------------------------------------------------
 {
     std::string commandLine;
@@ -207,17 +289,17 @@ std::string InterfaceBuilder_t::GenerateApiServerCode
     // Set the C identifier prefix.
     commandLine += " --name-prefix " + interface.InternalName() + "_";
 
+    // Set the name to be used when talking to the service directory.
+    commandLine += " --service-name " + interface.ExternalName();
+
     // Specify the output directory.
-    commandLine += " --output-dir " + m_Params.ObjOutputDir();
+    commandLine += " --output-dir \"" + outputDir + "\"";
 
     // Specify the path to the protocol file.
-    commandLine += " " + interface.Api().FilePath();
+    commandLine += " \"" + interface.Api().FilePath() + "\"";
 
-    // Specify all the interface search directories as places to look for interface files.
-    for (auto dir : m_Params.InterfaceDirs())
-    {
-        commandLine += " --import-dir " + dir;
-    }
+    // Specify where ifgen should look for any additional .api files it might need.
+    commandLine += GenerateImportDirArgs(interface.Api());
 
     if (m_Params.IsVerbose())
     {
@@ -238,15 +320,15 @@ std::string InterfaceBuilder_t::GenerateApiServerCode
         }
 
         // Specify the output directory.
-        commandLine += " --output-dir " + m_Params.ObjOutputDir();
+        commandLine += " --output-dir \"" + outputDir + "\"";
 
         // Specify the path to the protocol file.
-        commandLine += " " + apiPtr->FilePath();
+        commandLine += " \"" + apiPtr->FilePath() + "\"";
 
         // Specify all the interface search directories as places to look for interface files.
         for (auto dir : m_Params.InterfaceDirs())
         {
-            commandLine += " --import-dir " + dir;
+            commandLine += " --import-dir \"" + dir + "\"";
         }
 
         if (m_Params.IsVerbose())
@@ -257,7 +339,7 @@ std::string InterfaceBuilder_t::GenerateApiServerCode
         mk::ExecuteCommandLine(commandLine);
     }
 
-    return m_Params.ObjOutputDir() + "/" + interface.Api().Name() + "_server.c";
+    return legato::CombinePath(outputDir, interface.Api().Name() + "_server.c");
 }
 
 
@@ -276,9 +358,10 @@ void InterfaceBuilder_t::BuildInterfaceLibrary
 {
     // Build the interface library from the generated code using the appropriate C/C++ compiler.
     std::stringstream commandLine;
-    commandLine << mk::GetCompilerPath(m_Params.Target());
+    std::string compilerPath = mk::GetCompilerPath(m_Params.Target(), legato::LANG_C);
+    commandLine << compilerPath;
 
-    const legato::Library& lib = interface.Lib();
+    legato::Library& lib = interface.Lib();
 
     if (m_Params.IsVerbose())
     {
@@ -287,9 +370,14 @@ void InterfaceBuilder_t::BuildInterfaceLibrary
     commandLine << " -o " << lib.BuildOutputPath()
                 << " -shared"
                 << " -fPIC"
-                << " -Wall"
-                << " -Werror"
-                << " -I$LEGATO_ROOT/framework/c/inc";
+                << " -Wall";
+
+    if(!mk::IsCompilerClang(compilerPath))
+    {
+        commandLine << " -Werror";
+    }
+
+    commandLine << " \"-I$LEGATO_ROOT/framework/c/inc\"";
 
     // Add the CFLAGS to the command-line.
     commandLine << " " << m_Params.CCompilerFlags();
@@ -298,7 +386,7 @@ void InterfaceBuilder_t::BuildInterfaceLibrary
     commandLine << " \"" << sourceFilePath << "\"" ;
 
     // Add the standard runtime libs.
-    commandLine << " -L$LEGATO_BUILD/bin/lib -llegato -lpthread -lrt -lm";
+    commandLine << " \"-L$LEGATO_BUILD/bin/lib\" -llegato -lpthread -lrt -lm";
 
     // On the localhost, set the DT_RUNPATH variable inside the library to include the
     // expected locations of the sub-libraries needed.
@@ -323,19 +411,21 @@ void InterfaceBuilder_t::BuildInterfaceLibrary
 
     mk::ExecuteCommandLine(commandLine);
 
-    interface.Lib().MarkUpToDate();
+    lib.MarkUpToDate();
+    lib.MarkExisting();
 }
 
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Generates the code and/or library required for an exported interface.
+ * Generates the code and/or library required for a provided (server-side) interface.
  */
 //--------------------------------------------------------------------------------------------------
 void InterfaceBuilder_t::Build
 (
-    legato::ExportedInterface& interface
+    legato::ServerInterface& interface,
+    const std::string& objOutputDir     ///< Directory where intermediate build artifacts go.
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -356,39 +446,30 @@ void InterfaceBuilder_t::Build
 
     if (m_Params.IsVerbose())
     {
-        // If the interface is for something generated outside of an app, then use the
-        // service instance name instead of the app-wide unique name.
-        std::string interfaceName = interface.AppUniqueName();
-        if (interfaceName.empty())
-        {
-            interfaceName = interface.InternalName();
-        }
-
         std::cout << "Generating";
         if (interface.IsAsync())
         {
             std::cout << " asynchronous";
         }
-        std::cout << " server-side IPC code for exported service '"
-                  << interfaceName
+        std::cout << " server-side IPC code for provided service '"
+                  << interface.ExternalName()
                   << "' using protocol '" << interface.Api().FilePath()
                   << "' with internal name '" << interface.InternalName()
                   << "'" << std::endl;
 
-        std::cout << "    into directory '" << m_Params.ObjOutputDir()
+        std::cout << "    into directory '" << objOutputDir
                   << "'." << std::endl;
     }
 
     // Make sure the directory exists.
-    legato::MakeDir(m_Params.ObjOutputDir());
+    legato::MakeDir(objOutputDir);
 
     // Set the library build output directory path (the directory where the library will be put).
-    // TODO: Add a version number to the library.
     interface.Lib().BuildOutputDir(m_Params.LibOutputDir());
 
-    GenerateApiServerHeaders(interface);
+    GenerateApiHeaders(interface, objOutputDir);
 
-    std::string sourceFilePath = GenerateApiServerCode(interface);
+    std::string sourceFilePath = GenerateApiCode(interface, objOutputDir);
 
     BuildInterfaceLibrary(interface, sourceFilePath);
 }
@@ -397,12 +478,13 @@ void InterfaceBuilder_t::Build
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Generates the code and/or library required for an imported interface.
+ * Generates the code and/or library required for a required (client-side) interface.
  */
 //--------------------------------------------------------------------------------------------------
 void InterfaceBuilder_t::Build
 (
-    legato::ImportedInterface& interface
+    legato::ClientInterface& interface,
+    const std::string& objOutputDir     ///< Directory where intermediate build artifacts go.
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -423,38 +505,30 @@ void InterfaceBuilder_t::Build
 
     if (m_Params.IsVerbose())
     {
-        // If the interface is for something generated outside of an app, then use the
-        // service instance name instead of the app-wide unique name.
-        std::string interfaceName = interface.AppUniqueName();
-        if (interfaceName.empty())
-        {
-            interfaceName = interface.InternalName();
-        }
-
         std::cout << "Generating client-side IPC code for interface '"
-                  << interfaceName
+                  << interface.ExternalName()
                   << "' using protocol '" << interface.Api().FilePath()
                   << "' with internal name '" << interface.InternalName()
+                  << "' and external name '" << interface.ExternalName()
                   << "'." << std::endl;
 
-        std::cout << "    into directory '" << m_Params.ObjOutputDir()
+        std::cout << "    into directory '" << objOutputDir
                   << "'." << std::endl;
     }
 
     // Make sure the directory exists.
-    legato::MakeDir(m_Params.ObjOutputDir());
+    legato::MakeDir(objOutputDir);
 
-    GenerateApiClientHeaders(interface);
+    GenerateApiHeaders(interface, objOutputDir);
 
     // If only the typedefs are being used, then don't build anything but the API headers for
     // this interface.
     if (!interface.TypesOnly())
     {
         // Set the library build output directory path (the directory where the library will be put).
-        // TODO: Add a version number to the library.
         interface.Lib().BuildOutputDir(m_Params.LibOutputDir());
 
-        std::string sourceFilePath = GenerateApiClientCode(interface);
+        std::string sourceFilePath = GenerateApiCode(interface, objOutputDir);
 
         BuildInterfaceLibrary(interface, sourceFilePath);
     }

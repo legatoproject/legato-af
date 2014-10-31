@@ -70,27 +70,6 @@ static legato::Process* ProcessPtr = NULL;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Set the application-wide unique name ("exe.componentInstance.interface") for an interface.
- **/
-//--------------------------------------------------------------------------------------------------
-static void SetInterfaceAppUniqueName
-(
-    legato::Interface& interface,
-    const legato::Executable& exe,
-    const legato::ComponentInstance& componentInstance
-)
-//--------------------------------------------------------------------------------------------------
-{
-    interface.AppUniqueName(exe.CName()
-                            + '.'
-                            + componentInstance.Name()
-                            + '.'
-                            + interface.ServiceInstanceName() );
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Tries to apply a framework API auto-binding on a given interface.
  *
  * @return true if the binding was applied.
@@ -98,18 +77,24 @@ static void SetInterfaceAppUniqueName
 //--------------------------------------------------------------------------------------------------
 static bool TryFrameworkApiAutoBind
 (
-    legato::ImportedInterface& interface,
+    legato::ClientInterface& interface,
     const std::string& frameworkServiceName
 )
 //--------------------------------------------------------------------------------------------------
 {
     if (interface.Api().Name() == frameworkServiceName)
     {
-        interface.MakeExternal(frameworkServiceName);
+        auto& autoBind = AppPtr->AddExternalApiBind(interface.AppUniqueName());
+
+        autoBind.ServerUserName("root");
+        autoBind.ServerInterfaceName(frameworkServiceName);
+
+        interface.MarkBound();
 
         if (BuildParamsPtr->IsVerbose())
         {
-            std::cout << "    Auto-binding required API '" << frameworkServiceName
+            std::cout << "    Auto-binding required API '" << frameworkServiceName << "' ("
+                      << interface.AppUniqueName()
                       << "' to framework service '<root>." << frameworkServiceName << "'."
                       << std::endl;
         }
@@ -129,38 +114,32 @@ static bool TryFrameworkApiAutoBind
 //--------------------------------------------------------------------------------------------------
 static void ApplyFrameworkApiAutoBind
 (
-    legato::ImportedInterface& interface
+    legato::ClientInterface& interface
 )
 //--------------------------------------------------------------------------------------------------
 {
-    // Don't apply this if the API has already been declared an external interface.
+    // Don't apply this if the API has already been declared an external interface or has already
+    // been explicitly bound.
     // We don't want to prevent people from doing something different than the default auto-bind.
-    if (!interface.IsExternal())
+    if ( (!interface.IsExternalToApp()) && (!interface.IsBound()) )
     {
-        if (TryFrameworkApiAutoBind(interface, "le_wdog"))
-        {
-            AppPtr->SetUsesWatchdog();
-        }
-        else if (TryFrameworkApiAutoBind(interface, "le_cfg"))
-        {
-            AppPtr->SetUsesConfig();
-        }
+           TryFrameworkApiAutoBind(interface, "le_cfg")
+        || TryFrameworkApiAutoBind(interface, "le_wdog");
     }
 }
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Apply an internal bind by changing the service name of the client-side interface to match
- * the service name that the server-side interface will advertise itself as.
+ * If a given client-side interface has been bound to a server-side interface inside the same
+ * app, mark the interface "bound" and check for error cases.
  *
- * @throw legato::Exception if there is an internal binding for this interface, but this interface
- *        has already been bound to something.
+ * @throw legato::Exception if an error is detected.
  **/
 //--------------------------------------------------------------------------------------------------
 static void ApplyInternalBind
 (
-    legato::ImportedInterface& interface
+    legato::ClientInterface& interface
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -178,7 +157,7 @@ static void ApplyInternalBind
         }
         // If the interface is supposed to be one of the app's external interfaces,
         // but it has also been bound to something inside this app, report an error.
-        else if (interface.IsExternal())
+        else if (interface.IsExternalToApp())
         {
             std::string errorMsg = "Client-side (required) interface '"
                                    + interface.AppUniqueName() + "' has been declared an"
@@ -191,7 +170,6 @@ static void ApplyInternalBind
 
         const auto& server = AppPtr->FindServerInterface(bind.ServerInterface());
 
-        interface.ServiceInstanceName(server.ServiceInstanceName());
         interface.MarkBound();
     }
 }
@@ -199,16 +177,15 @@ static void ApplyInternalBind
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Apply an external bind by changing the service name of the client-side interface to match
- * the service name that the server-side interface will advertise itself as.
+ * If a given client-side interface has been bound to a server-side interface outside the app,
+ * mark the interface "bound" and check for error cases.
  *
- * @throw legato::Exception if there is an external binding for this interface, but this interface
- *        has already been bound to something.
+ * @throw legato::Exception if an error is detected.
  **/
 //--------------------------------------------------------------------------------------------------
 static void ApplyExternalBind
 (
-    legato::ImportedInterface& interface
+    legato::ClientInterface& interface
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -225,7 +202,6 @@ static void ApplyExternalBind
                                     " has been bound more than once.");
         }
 
-        interface.ServiceInstanceName(bind.ServerServiceName());
         interface.MarkBound();
     }
 }
@@ -234,14 +210,14 @@ static void ApplyExternalBind
 //--------------------------------------------------------------------------------------------------
 /**
  * Check the binding lists to see if a given client-side interface has been explicitly bound
- * to something, and if so, apply the effects of that binding on the interface.
+ * to something, and if so, mark the interface "bound".
  *
  * @throw legato::Exception if an error is detected.
  **/
 //--------------------------------------------------------------------------------------------------
 static void ApplyExplicitBind
 (
-    legato::ImportedInterface& interface
+    legato::ClientInterface& interface
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -263,18 +239,15 @@ static void FinalizeApp
 )
 //--------------------------------------------------------------------------------------------------
 {
-    // Go through all the IPC API interfaces of all the executables and
+    // Go through all the client-side IPC API interfaces of all the executables and
     //
-    // 1. Prefix their service names with the exe name and component instance name to prevent
-    //    naming conflicts and accidental mis-bindings.
+    // 1. Perform auto-binding of client-side interfaces that use "built-in" framework APIs, like
+    //    le_cfg and le_wdog.
     //
-    // 2. Update their service names according to any bindings, so that generated IPC code will
-    //    use the correct service names when opening services.
-    //
-    // 3. Check that all client-side (required) interfaces have either been bound to something
+    // 2. Check that all client-side (required) interfaces have either been bound to something
     //    or declared an inter-app interface.
     //
-    // 4. Make sure each "required" external client-side interface is not also explicitly
+    // 3. Make sure each "required" external client-side interface is not also explicitly
     //    bound internally.
     //
 
@@ -288,30 +261,17 @@ static void FinalizeApp
             // For each component instance in the executable,
             for (auto& componentInstance : exe.ComponentInstances())
             {
-                // For each provided (server-side) interface,
-                for (auto& interfaceMapEntry : componentInstance.ProvidedApis())
-                {
-                    auto& interface = interfaceMapEntry.second;
-
-                    // Add the "exe.component." prefix to the interface's service name.
-                    SetInterfaceAppUniqueName(interface, exe, componentInstance);
-                }
-
                 // For each required (client-side) interface in the component instance,
                 for (auto& interfaceMapEntry : componentInstance.RequiredApis())
                 {
                     auto& interface = interfaceMapEntry.second;
 
+                    // Mark the interface "bound" if any explicit binding exists for this interface.
+                    ApplyExplicitBind(interface);
+
                     // If this is an auto-bound framework API, such as the Watchdog API
                     // or the Config API, then do the auto-binding now.
                     ApplyFrameworkApiAutoBind(interface);
-
-                    // Add the "exe.component." prefix to the interface's service name.
-                    SetInterfaceAppUniqueName(interface, exe, componentInstance);
-
-                    // Apply any binding that may exist for this interface so that the generated
-                    // code will try to use the correct service name when it opens the service.
-                    ApplyExplicitBind(interface);
 
                     // If the interface is not satisfied (either bound to something or declared
                     // an external interface that needs to be bound in a .sdef), generate an error.
@@ -440,7 +400,14 @@ void ayy_SetVersion
 )
 //--------------------------------------------------------------------------------------------------
 {
-    AppPtr->Version(version);
+    try
+    {
+        AppPtr->Version(version);
+    }
+    catch (legato::Exception e)
+    {
+        ayy_error(e.what());
+    }
 }
 
 
@@ -455,20 +422,25 @@ void ayy_SetSandboxed
 )
 //--------------------------------------------------------------------------------------------------
 {
-    if (strcmp(mode, "false") == 0)
+    try
     {
-        AppPtr->IsSandboxed(false);
+        if (strcmp(mode, "false") == 0)
+        {
+            AppPtr->IsSandboxed(false);
+        }
+        else if (strcmp(mode, "true") == 0)
+        {
+            AppPtr->IsSandboxed(true);
+        }
+        else
+        {
+            throw legato::Exception("Unrecognized content in 'sandboxed:' section: '"
+                                    + std::string(mode) + "'.  Expected 'true' or 'false'.");
+        }
     }
-    else if (strcmp(mode, "true") == 0)
+    catch (legato::Exception e)
     {
-        AppPtr->IsSandboxed(true);
-    }
-    else
-    {
-        std::string msg = "Unrecognized content in 'sandboxed:' section: '";
-        msg += mode;
-        msg += "'.  Expected 'true' or 'false'.";
-        ayy_error(msg.c_str());
+        ayy_error(e.what());
     }
 }
 
@@ -484,20 +456,24 @@ void ayy_SetStartMode
 )
 //--------------------------------------------------------------------------------------------------
 {
-    if (strcmp(mode, "auto") == 0)
+    try
     {
-        AppPtr->StartMode(legato::App::AUTO);
+        if (strcmp(mode, "auto") == 0)
+        {
+            AppPtr->StartMode(legato::App::AUTO);
+        }
+        else if (strcmp(mode, "manual") == 0)
+        {
+            AppPtr->StartMode(legato::App::MANUAL);
+        }
+        else
+        {
+            throw legato::Exception("Unrecognized start mode: '" + std::string(mode) + "'");
+        }
     }
-    else if (strcmp(mode, "manual") == 0)
+    catch (legato::Exception e)
     {
-        AppPtr->StartMode(legato::App::MANUAL);
-    }
-    else
-    {
-        std::string msg = "Unrecognized start mode: '";
-        msg += mode;
-        msg += "'";
-        ayy_error(msg.c_str());
+        ayy_error(e.what());
     }
 }
 
@@ -586,6 +562,7 @@ static legato::ProcessEnvironment& GetProcessEnvironment
     return *ProcEnvPtr;
 }
 
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Test if we are currently inside a 'processes' section
@@ -598,45 +575,6 @@ static bool InProcessEnvironment
 )
 {
     return ProcEnvPtr != NULL;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Add a file or directory from the build host file system to the application.
- *
- * If the sourcePath ends in a '/', then it is treated as a directory.
- * Otherwise, it is treated as a file.
- *
- * @warning This function is deprecated.
- */
-//--------------------------------------------------------------------------------------------------
-void ayy_AddFile
-(
-    const char* permissions,///< String representing the permissions.
-    const char* sourcePath, ///< The file path in the build host's file system.
-    const char* destPath    ///< The file path in the target file system, inside sandbox.
-)
-//--------------------------------------------------------------------------------------------------
-{
-    size_t sourcePathLen = strlen(sourcePath);
-
-    if ((sourcePathLen > 0) && (sourcePath[sourcePathLen - 1] == '/'))
-    {
-        if (strcmp(permissions, "[r]") != 0)
-        {
-            ayy_error("Permissions not allowed for bundled directories."
-                      "  They are always read-only at run time.");
-        }
-        else
-        {
-            ayy_AddBundledDir(sourcePath, destPath);
-        }
-    }
-    else
-    {
-        ayy_AddBundledFile(permissions, sourcePath, destPath);
-    }
 }
 
 
@@ -674,6 +612,7 @@ void ayy_AddBundledFile
 //--------------------------------------------------------------------------------------------------
 void ayy_AddBundledDir
 (
+    const char* permissions,///< String representing permissions to be applied to files in the dir.
     const char* sourcePath, ///< The path in the build host's file system.
     const char* destPath    ///< The path in the target file system, inside sandbox.
 )
@@ -681,7 +620,10 @@ void ayy_AddBundledDir
 {
     try
     {
-        AppPtr->AddBundledDir(yy_CreateBundledDirMapping(sourcePath, destPath, *BuildParamsPtr));
+        AppPtr->AddBundledDir(yy_CreateBundledDirMapping(   permissions,
+                                                            sourcePath,
+                                                            destPath,
+                                                            *BuildParamsPtr ));
     }
     catch (legato::Exception e)
     {
@@ -732,22 +674,34 @@ void ayy_AddExecutable
 )
 //--------------------------------------------------------------------------------------------------
 {
-    if (ayy_IsVerbose)
+    try
     {
-        std::cout << "  Creating executable '" << exePath << "'." << std::endl;
+        if (ayy_IsVerbose)
+        {
+            std::cout << "  Creating executable '" << exePath << "'." << std::endl;
+        }
+
+        legato::Executable& exe = AppPtr->CreateExecutable(exePath);
+
+        if (ayy_IsVerbose)
+        {
+            legato::Component& defaultComponent = exe.DefaultComponent();
+
+            std::cout << "    Default component for '" << exePath << "' is '";
+            std::cout << defaultComponent.Name() << "'." << std::endl;
+        }
+
+        ExePtr = &exe;
     }
-
-    legato::Executable& exe = AppPtr->CreateExecutable(exePath);
-
-    if (ayy_IsVerbose)
+    catch (legato::Exception e)
     {
-        legato::Component& defaultComponent = exe.DefaultComponent();
+        ayy_error(e.what());
 
-        std::cout << "    Default component for '" << exePath << "' is '";
-        std::cout << defaultComponent.Name() << "'." << std::endl;
+        if (ExePtr == NULL)
+        {
+            exit(EXIT_FAILURE);     // Can't continue safely if we don't have an Executable object.
+        }
     }
-
-    ExePtr = &exe;
 }
 
 
@@ -791,14 +745,14 @@ void ayy_AddExeContent
             contentType = "C source code";
 
             // Add the source code file to the default component.
-            ExePtr->AddCSourceFile(contentSpec);
+            ExePtr->AddSourceFile(contentSpec);
         }
-        else if (legato::IsCppSource(contentSpec))
+        else if (legato::IsCxxSource(contentSpec))
         {
             contentType = "C++ source code";
 
             // Add the source code file to the default component.
-            ExePtr->AddCSourceFile(contentSpec);
+            ExePtr->AddSourceFile(contentSpec);
         }
         else if (legato::IsLibrary(contentSpec))
         {
@@ -808,7 +762,7 @@ void ayy_AddExeContent
             // component.
             ExePtr->AddLibrary(contentSpec);
         }
-        else if (legato::IsComponent(contentSpec, BuildParamsPtr->ComponentDirs()))
+        else if (legato::IsComponent(contentSpec, BuildParamsPtr->SourceDirs()))
         {
             contentType = "component";
 
@@ -1033,7 +987,6 @@ void ayy_AddEnvVar
 //--------------------------------------------------------------------------------------------------
 void ayy_AddRequiredFile
 (
-    const char* permissions,///< String representing the permissions. (e.g., "[r]")
     const char* sourcePath, ///< The path in the target file system., outside the sandbox.
     const char* destPath    ///< The path in the target file system, inside the sandbox.
 )
@@ -1041,8 +994,7 @@ void ayy_AddRequiredFile
 {
     try
     {
-        AppPtr->AddRequiredFile(yy_CreateRequiredFileMapping(permissions,
-                                                             sourcePath,
+        AppPtr->AddRequiredFile(yy_CreateRequiredFileMapping(sourcePath,
                                                              destPath,
                                                              *BuildParamsPtr) );
     }
@@ -1062,7 +1014,6 @@ void ayy_AddRequiredFile
 //--------------------------------------------------------------------------------------------------
 void ayy_AddRequiredDir
 (
-    const char* permissions,///< String representing the permissions. (e.g., "[r]")
     const char* sourcePath, ///< The path in the target file system., outside the sandbox.
     const char* destPath    ///< The path in the target file system, inside the sandbox.
 )
@@ -1070,8 +1021,7 @@ void ayy_AddRequiredDir
 {
     try
     {
-        AppPtr->AddRequiredDir(yy_CreateRequiredDirMapping(permissions,
-                                                           sourcePath,
+        AppPtr->AddRequiredDir(yy_CreateRequiredDirMapping(sourcePath,
                                                            destPath,
                                                            *BuildParamsPtr) );
     }
@@ -1084,11 +1034,11 @@ void ayy_AddRequiredDir
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Set the maximum number of processes that this application is allowed to have running at any
+ * Set the maximum number of threads that this application is allowed to have running at any
  * given time.
  */
 //--------------------------------------------------------------------------------------------------
-void ayy_SetNumProcsLimit
+void ayy_SetMaxThreads
 (
     int limit   ///< Must be a positive integer.  May be overridden by system-wide settings.
 )
@@ -1096,17 +1046,12 @@ void ayy_SetNumProcsLimit
 {
     if (ayy_IsVerbose)
     {
-        std::cout << "  Maximum number of processes: " << limit << std::endl;
+        std::cout << "  Maximum number of threads: " << limit << std::endl;
     }
 
     try
     {
-        if (limit < 0)
-        {
-            throw legato::Exception("Limit on number of processes must be a non-negative number.");
-        }
-
-        AppPtr->NumProcs(static_cast<size_t>(limit));
+        AppPtr->MaxThreads(limit);
     }
     catch (legato::Exception e)
     {
@@ -1123,7 +1068,7 @@ void ayy_SetNumProcsLimit
  * in this application at any given time.
  */
 //--------------------------------------------------------------------------------------------------
-void ayy_SetMqueueSizeLimit
+void ayy_SetMaxMQueueBytes
 (
     int limit   ///< Must be a positive integer.  May be overridden by system-wide settings.
 )
@@ -1136,12 +1081,7 @@ void ayy_SetMqueueSizeLimit
 
     try
     {
-        if (limit < 0)
-        {
-            throw legato::Exception("POSIX MQueue size limit must be a non-negative number.");
-        }
-
-        AppPtr->MqueueSize(static_cast<size_t>(limit));
+        AppPtr->MaxMQueueBytes(limit);
     }
     catch (legato::Exception e)
     {
@@ -1154,11 +1094,11 @@ void ayy_SetMqueueSizeLimit
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Set the maximum number of real-time signals that are allowed to be queued-up waiting for
+ * Set the maximum number of signals that are allowed to be queued-up by sigqueue() waiting for
  * processes in this application at any given time.
  */
 //--------------------------------------------------------------------------------------------------
-void ayy_SetRTSignalQueueSizeLimit
+void ayy_SetMaxQueuedSignals
 (
     int limit   ///< Must be a positive integer.  May be overridden by system-wide settings.
 )
@@ -1166,17 +1106,12 @@ void ayy_SetRTSignalQueueSizeLimit
 {
     if (ayy_IsVerbose)
     {
-        std::cout << "  Maximum number of real-time signals: " << limit << std::endl;
+        std::cout << "  Maximum number of queued signals: " << limit << std::endl;
     }
 
     try
     {
-        if (limit < 0)
-        {
-            throw legato::Exception("Real-time signal queue size limit must be a non-negative number.");
-        }
-
-        AppPtr->RtSignalQueueSize(static_cast<size_t>(limit));
+        AppPtr->MaxQueuedSignals(limit);
     }
     catch (legato::Exception e)
     {
@@ -1189,11 +1124,11 @@ void ayy_SetRTSignalQueueSizeLimit
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Sets the maximum amount of memory (in kilobytes) the application is allowed to use for all of it
+ * Sets the maximum amount of memory (in bytes) the application is allowed to use for all of it
  * processes.
  */
 //--------------------------------------------------------------------------------------------------
-void ayy_SetMemoryLimit
+void ayy_SetMaxMemoryBytes
 (
     int limit   ///< Must be a positive integer.  May be overridden by system-wide settings.
 )
@@ -1201,17 +1136,12 @@ void ayy_SetMemoryLimit
 {
     if (ayy_IsVerbose)
     {
-        std::cout << "  Memory limit: " << limit << std::endl;
+        std::cout << "  Memory limit: " << limit << " bytes" << std::endl;
     }
 
     try
     {
-        if (limit < 0)
-        {
-            throw legato::Exception("Memory limit must be a non-negative number.");
-        }
-
-        AppPtr->MemLimit(static_cast<size_t>(limit));
+        AppPtr->MaxMemoryBytes(limit);
     }
     catch (legato::Exception e)
     {
@@ -1240,12 +1170,15 @@ void ayy_SetCpuShare
 
     try
     {
-        if (limit < 0)
-        {
-            throw legato::Exception("CPU share must be a non-negative number.");
-        }
+        AppPtr->CpuShare(limit);
 
-        AppPtr->CpuShare(static_cast<size_t>(limit));
+        // Warn if cpuShare and real-time are used together.
+        if (AppPtr->AreRealTimeThreadsPermitted())
+        {
+            yy_WarnAboutRealTimeAndCpuShare();
+            std::cerr << "App '" << AppPtr->Name()
+                      << "' has a cpuShare limit and is allowed real-time threads." << std::endl;
+        }
     }
     catch (legato::Exception e)
     {
@@ -1262,7 +1195,7 @@ void ayy_SetCpuShare
  * usage of its temporary sandbox file system.
  */
 //--------------------------------------------------------------------------------------------------
-void ayy_SetFileSystemSizeLimit
+void ayy_SetMaxFileSystemBytes
 (
     int limit   ///< Must be a positive integer.  May be overridden by system-wide settings.
 )
@@ -1270,17 +1203,13 @@ void ayy_SetFileSystemSizeLimit
 {
     if (ayy_IsVerbose)
     {
-        std::cout << "  Maximum size of sandbox temporary file system: " << limit << " (bytes)" << std::endl;
+        std::cout << "  Maximum size of sandbox temporary file system: " << limit << " bytes"
+                  << std::endl;
     }
 
     try
     {
-        if (limit < 0)
-        {
-            throw legato::Exception("File system size limit must be a non-negative number of bytes.");
-        }
-
-        AppPtr->FileSystemSize(static_cast<size_t>(limit));
+        AppPtr->MaxFileSystemBytes(limit);
     }
     catch (legato::Exception e)
     {
@@ -1331,26 +1260,15 @@ void ayy_SetPriority
     {
         legato::ProcessEnvironment& env = GetProcessEnvironment();
 
-        if (   (strcmp(priority, "idle") == 0)
-            || (strcmp(priority, "low") == 0)
-            || (strcmp(priority, "medium") == 0)
-            || (strcmp(priority, "high") == 0)
-           )
+        env.StartPriority(priority);
+
+        // Warn if cpuShare and real-time are used together.
+        if (   AppPtr->CpuShare().IsSet()
+            && (env.StartPriority().IsRealTime() || env.MaxPriority().IsRealTime()) )
         {
-            env.Priority(priority);
-        }
-        else if ((priority[0] == 'r') && (priority[1] == 't'))
-        {
-            int number = yy_GetNumber(priority + 2);
-            if ((number < 1) || (number > 32))
-            {
-                throw legato::Exception("Real-time priority level must be between rt1 and rt32, inclusive.");
-            }
-            env.Priority(priority);
-        }
-        else
-        {
-            throw legato::Exception(std::string("Unrecognized priority level '") + priority + "'.");
+            yy_WarnAboutRealTimeAndCpuShare();
+            std::cerr << "Starting priority set to '" << priority << "' for process in app '"
+                      << AppPtr->Name() << "'." << std::endl;
         }
     }
     catch (legato::Exception e)
@@ -1367,7 +1285,7 @@ void ayy_SetPriority
  * section can generate.
  */
 //--------------------------------------------------------------------------------------------------
-void ayy_SetCoreFileSizeLimit
+void ayy_SetMaxCoreDumpFileBytes
 (
     int limit   ///< Must be a positive integer.  May be overridden by system-wide settings.
 )
@@ -1382,12 +1300,7 @@ void ayy_SetCoreFileSizeLimit
     {
         legato::ProcessEnvironment& env = GetProcessEnvironment();
 
-        if (limit < 0)
-        {
-            throw legato::Exception("Maximum core dump file size limit must be a non-negative number of bytes.");
-        }
-
-        env.CoreFileSize(static_cast<size_t>(limit));
+        env.MaxCoreDumpFileBytes(limit);
     }
     catch (legato::Exception e)
     {
@@ -1402,7 +1315,7 @@ void ayy_SetCoreFileSizeLimit
  * Sets the maximum size (in bytes) that a process in the current processes section can make files.
  */
 //--------------------------------------------------------------------------------------------------
-void ayy_SetMaxFileSizeLimit
+void ayy_SetMaxFileBytes
 (
     int limit   ///< Must be a positive integer.  May be overridden by system-wide settings.
 )
@@ -1410,19 +1323,14 @@ void ayy_SetMaxFileSizeLimit
 {
     if (ayy_IsVerbose)
     {
-        std::cout << "    Maximum file size: " << limit << " (bytes)" << std::endl;
+        std::cout << "    Maximum file size: " << limit << " bytes" << std::endl;
     }
 
     try
     {
         legato::ProcessEnvironment& env = GetProcessEnvironment();
 
-        if (limit < 0)
-        {
-            throw legato::Exception("Maximum file size limit must be a non-negative number of bytes.");
-        }
-
-        env.MaxFileSize(static_cast<size_t>(limit));
+        env.MaxFileBytes(limit);
     }
     catch (legato::Exception e)
     {
@@ -1438,7 +1346,7 @@ void ayy_SetMaxFileSizeLimit
  * into physical memory.
  */
 //--------------------------------------------------------------------------------------------------
-void ayy_SetMemLockSizeLimit
+void ayy_SetMaxLockedMemoryBytes
 (
     int limit   ///< Must be a positive integer.  May be overridden by system-wide settings.
                 ///  Will be rounded down to the nearest system memory page size.
@@ -1447,19 +1355,15 @@ void ayy_SetMemLockSizeLimit
 {
     if (ayy_IsVerbose)
     {
-        std::cout << "    Maximum amount of locked physical memory: " << limit << " (bytes)" << std::endl;
+        std::cout << "    Maximum amount of locked physical memory: " << limit << " bytes"
+                  << std::endl;
     }
 
     try
     {
         legato::ProcessEnvironment& env = GetProcessEnvironment();
 
-        if (limit < 0)
-        {
-            throw legato::Exception("Locked memory size limit must be a non-negative number of bytes.");
-        }
-
-        env.MemLockSize(static_cast<size_t>(limit));
+        env.MaxLockedMemoryBytes(limit);
     }
     catch (legato::Exception e)
     {
@@ -1475,7 +1379,7 @@ void ayy_SetMemLockSizeLimit
  * allowed to have open at one time.
  */
 //--------------------------------------------------------------------------------------------------
-void ayy_SetNumFdsLimit
+void ayy_SetMaxFileDescriptors
 (
     int limit   ///< Must be a positive integer.  May be overridden by system-wide settings.
 )
@@ -1490,12 +1394,7 @@ void ayy_SetNumFdsLimit
     {
         legato::ProcessEnvironment& env = GetProcessEnvironment();
 
-        if (limit < 0)
-        {
-            throw legato::Exception("Number of file descriptors must be positive.");
-        }
-
-        env.NumFds(static_cast<size_t>(limit));
+        env.MaxFileDescriptors(limit);
     }
     catch (legato::Exception e)
     {
@@ -1519,6 +1418,8 @@ void ayy_SetNumFdsLimit
  *  "pauseApp"      - Send a SIGSTOP to all processes in the application, halting them in their
  *                    tracks, but not killing them.  This allows the processes to be inspected
  *                    for debugging purposes.
+ *
+ * @todo Implement "pauseApp" fault action and watchdog action.
  */
 //--------------------------------------------------------------------------------------------------
 void ayy_SetFaultAction
@@ -1536,20 +1437,7 @@ void ayy_SetFaultAction
     {
         legato::ProcessEnvironment& env = GetProcessEnvironment();
 
-        if (   (strcmp(action, "ignore") == 0)
-            || (strcmp(action, "restart") == 0)
-            || (strcmp(action, "restartApp") == 0)
-            || (strcmp(action, "stopApp") == 0)
-            || (strcmp(action, "reboot") == 0)
-            || (strcmp(action, "pauseApp") == 0)
-           )
-        {
-            env.FaultAction(action);
-        }
-        else
-        {
-            throw legato::Exception(std::string("Unknown fault action '") + action + "'.");
-        }
+        env.FaultAction(action);
     }
     catch (legato::Exception e)
     {
@@ -1563,12 +1451,21 @@ void ayy_SetFaultAction
 /**
  * Sets the action that should be taken if a process terminates due to a watchdog time-out.
  *
- * @todo Implement watchdog actions.
+ * Accepted actions are:
+ *  "ignore"        - Leave the process dead.
+ *  "restart"       - Restart the process.
+ *  "stop"          - Terminate the process if it is still running.
+ *  "restartApp"    - Terminate and restart the whole application.
+ *  "stopApp"       - Terminate the application and leave it stopped.
+ *  "reboot"        - Reboot the device.
+ *  "pauseApp"      - Send a SIGSTOP to all processes in the application, halting them in their
+ *                    tracks, but not killing them.  This allows the processes to be inspected
+ *                    for debugging purposes.
  */
 //--------------------------------------------------------------------------------------------------
 void ayy_SetWatchdogAction
 (
-    const char* action  ///< Accepted actions are TBD.
+    const char* action
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -1578,18 +1475,14 @@ void ayy_SetWatchdogAction
     }
     try
     {
+        if (InProcessEnvironment())
         {
-            AppPtr->UsesWatchdog();
-
-            if (InProcessEnvironment())
-            {
-                legato::ProcessEnvironment& env = GetProcessEnvironment();
-                env.WatchdogAction().Set(action);
-            }
-            else
-            {
-                AppPtr->WatchdogAction().Set(action);
-            }
+            legato::ProcessEnvironment& env = GetProcessEnvironment();
+            env.WatchdogAction(action);
+        }
+        else
+        {
+            AppPtr->WatchdogAction(action);
         }
     }
     catch (legato::Exception e)
@@ -1597,6 +1490,7 @@ void ayy_SetWatchdogAction
         ayy_error(e.what());
     }
 }
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1616,16 +1510,14 @@ void ayy_SetWatchdogTimeout
     }
     try
     {
-        AppPtr->UsesWatchdog();
-
         if (InProcessEnvironment())
         {
             legato::ProcessEnvironment& env = GetProcessEnvironment();
-            env.WatchdogTimeout().Set(static_cast<int32_t>(timeout));
+            env.WatchdogTimeout(timeout);
         }
         else
         {
-            AppPtr->WatchdogTimeout().Set(static_cast<int32_t>(timeout));
+            AppPtr->WatchdogTimeout(timeout);
         }
     }
     catch (legato::Exception e)
@@ -1634,15 +1526,15 @@ void ayy_SetWatchdogTimeout
     }
 }
 
+
 //--------------------------------------------------------------------------------------------------
 /**
- * Sets the timeout for the watchdogs be disabled in the case that a timeout of "never" is specified
- *
+ * Disables the watchdog timeout in the application.
  */
 //--------------------------------------------------------------------------------------------------
 void ayy_SetWatchdogDisabled
 (
-    const char* timeout  ///< if the string "never" is here the watchdog will be disabled
+    const char* timeout  ///< The only acceptable string is "never".
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -1652,16 +1544,14 @@ void ayy_SetWatchdogDisabled
     }
     try
     {
-        AppPtr->UsesWatchdog();
-
         if (InProcessEnvironment())
         {
             legato::ProcessEnvironment& env = GetProcessEnvironment();
-            env.WatchdogTimeout().Set(timeout);
+            env.WatchdogTimeout(timeout);
         }
         else
         {
-            AppPtr->WatchdogTimeout().Set(timeout);
+            AppPtr->WatchdogTimeout(timeout);
         }
     }
     catch (legato::Exception e)
@@ -1669,6 +1559,7 @@ void ayy_SetWatchdogDisabled
         ayy_error(e.what());
     }
 }
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1694,120 +1585,6 @@ void ayy_SetPoolSize
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Check that there's no illegal characters in an interface specification.
- *
- * @note This is necessary because the interface specifications are tokenized as FILE_PATH
- * tokens, which can have some characters that are not valid as parts of an interface
- * specification.
- *
- * @throw legato::Exception if there's a bad character.
- */
-//--------------------------------------------------------------------------------------------------
-static void CheckForBadCharsInInterfaceSpec
-(
-    const char* interfaceSpec
-)
-//--------------------------------------------------------------------------------------------------
-{
-    // NOTE: The parser won't accept whitespace in this stuff, so we don't have to check that.
-
-    const char illegalChars[] = "?-/+";
-    const char* badCharPtr;
-
-    badCharPtr = strpbrk(interfaceSpec, illegalChars);
-
-    if (badCharPtr != NULL)
-    {
-        std::string msg;
-
-        msg += "Illegal character '";
-        msg += *badCharPtr;
-        msg += "' in interface specification '";
-        msg += interfaceSpec;
-        msg += "'.";
-
-        throw legato::Exception(msg);
-    }
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Checks whether a given interface specifier is well formed.
- *
- * @throw legato::Exception if not.
- *
- * @return The number of parts it has (2 = "app.service", 3 = "exe.comp.interface").
- **/
-//--------------------------------------------------------------------------------------------------
-static size_t CheckInterfaceSpec
-(
-    const std::string& interfaceSpec    ///< Specifier of the form "exe.component.interface"
-)
-//--------------------------------------------------------------------------------------------------
-{
-    CheckForBadCharsInInterfaceSpec(interfaceSpec.c_str());
-
-    // Split the interface specifier into its component parts.
-    size_t firstPeriodPos = interfaceSpec.find('.');
-    if (firstPeriodPos == std::string::npos)
-    {
-        throw legato::Exception("Interface specifier '" + interfaceSpec + "'"
-                                " is missing its '.' separators.");
-    }
-    if (firstPeriodPos == 0)
-    {
-        throw legato::Exception("Nothing before '.' separator in"
-                                " interface specifier '" + interfaceSpec + "'.");
-    }
-
-    size_t secondPeriodPos = interfaceSpec.find('.', firstPeriodPos + 1);
-    if (secondPeriodPos == std::string::npos)
-    {
-        // This is an "app.service" external interface specifier.
-
-        // Make sure there's something after the separator.
-        if (interfaceSpec.substr(firstPeriodPos + 1).empty())
-        {
-            throw legato::Exception("Service name missing after '.' separator in external"
-                                    " interface specifier '" + interfaceSpec + "'.");
-        }
-
-        return 2;
-    }
-    else
-    {
-        // This is an "exe.component.interface" internal interface specifier.
-
-        // Make sure there's something between the '.' separators.
-        if (secondPeriodPos == firstPeriodPos + 1)
-        {
-            throw legato::Exception("Interface component name missing between '.' separators in"
-                                    " internal interface specifier '" + interfaceSpec + "'.");
-        }
-
-        // Make sure there's only two separators.
-        if (interfaceSpec.find('.', secondPeriodPos + 1) != std::string::npos)
-        {
-            throw legato::Exception("Interface specifier '" + interfaceSpec + "' contains too"
-                                    " many '.' separators.");
-        }
-
-        // Make sure there's something after the second separator.
-        if (interfaceSpec.substr(secondPeriodPos + 1).empty())
-        {
-            throw legato::Exception("Interface instance name missing after second '.' separator in"
-                                    " internal interface specifier '" + interfaceSpec + "'.");
-        }
-
-        return 3;
-    }
-
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Mark a client-side IPC API interface as an external interface that can be bound to other
  * apps or users using a given interface name.
  */
@@ -1821,7 +1598,7 @@ void ayy_AddRequiredApi
 {
     try
     {
-        if (CheckInterfaceSpec(clientInterfaceSpec) != 3)
+        if (yy_CheckInterfaceSpec(clientInterfaceSpec) != 3)
         {
             throw legato::Exception("Second '.' separator missing in internal interface"
                                     " specification '" + std::string(clientInterfaceSpec) + "'."
@@ -1834,7 +1611,7 @@ void ayy_AddRequiredApi
 
         if (externalAlias == NULL)
         {
-            interfaceName = interface.ServiceInstanceName();
+            interfaceName = interface.InternalName();
         }
         else
         {
@@ -1848,8 +1625,7 @@ void ayy_AddRequiredApi
                       << "' that must be bound to a service.'" << std::endl;
         }
 
-        // Set the interface's inter-app name.
-        interface.MakeExternal(interfaceName);
+        AppPtr->MakeInterfaceExternal(interface, interfaceName);
     }
     catch (legato::Exception e)
     {
@@ -1873,7 +1649,7 @@ void ayy_AddProvidedApi
 {
     try
     {
-        if (CheckInterfaceSpec(serverInterfaceSpec) != 3)
+        if (yy_CheckInterfaceSpec(serverInterfaceSpec) != 3)
         {
             throw legato::Exception("Second '.' separator missing in internal interface"
                                     " specification '" + std::string(serverInterfaceSpec) + "'."
@@ -1886,7 +1662,7 @@ void ayy_AddProvidedApi
 
         if (externalAlias == NULL)
         {
-            serviceName = interface.ServiceInstanceName();
+            serviceName = interface.InternalName();
         }
         else
         {
@@ -1900,8 +1676,7 @@ void ayy_AddProvidedApi
                       << "' available for other apps to bind to.'" << std::endl;
         }
 
-        // Set the interface's inter-app name.
-        interface.MakeExternal(serviceName);
+        AppPtr->MakeInterfaceExternal(interface, serviceName);
     }
     catch (legato::Exception e)
     {
@@ -1914,8 +1689,9 @@ void ayy_AddProvidedApi
 /**
  * Create an IPC API binding.
  *
- * The client interface specification is always expected to be of the form
- * "exe.component.interface".
+ * The client interface specification can be one of the following:
+ * - "exe.component.interface" = A specific interface.
+ * - "*.interface" = Any interface with a given interface name.
  *
  * The server interface specification can be one of the following:
  * - "exe.component.interface" = an internal bind (within the app).
@@ -1935,14 +1711,18 @@ void ayy_AddBind
         const std::string serverSpec(serverInterfaceSpec);
 
         // Check that the client and server interface specifications are valid.
-        size_t numParts = CheckInterfaceSpec(clientSpec);
-        if (numParts != 3)
+        size_t numParts = yy_CheckInterfaceSpec(clientSpec);
+        if (numParts == 2)
         {
-            throw legato::Exception("Too few parts in client interface specification. "
-                                    " Interface name missing from end of '"
-                                    + clientSpec + "'.");
+            // Must be of the form "*.interface".
+            if ((clientInterfaceSpec[0] != '*') || (clientInterfaceSpec[1] != '.'))
+            {
+                throw legato::Exception("Malformed client interface specification. Expected to be "
+                                        "in the form 'executable.component.interface' or "
+                                        "'*.interface'.  Got '" + clientSpec + "'.");
+            }
         }
-        numParts = CheckInterfaceSpec(serverSpec);
+        numParts = yy_CheckInterfaceSpec(serverSpec);
 
         // If there are three parts to the server interface specifier, then it must be an
         // internal binding.
@@ -1976,9 +1756,9 @@ void ayy_AddBind
                           << "'." << std::endl;
             }
 
-            legato::ExternalApiBind& binding = AppPtr->AddExternalApiBind(clientSpec);
+            legato::ExeToUserApiBind& binding = AppPtr->AddExternalApiBind(clientSpec);
             binding.ServerAppName(serverAppName);
-            binding.ServerServiceName(serverServiceName);
+            binding.ServerInterfaceName(serverServiceName);
         }
     }
     catch (legato::Exception e)
@@ -1993,15 +1773,16 @@ void ayy_AddBind
 /**
  * Create an IPC API binding to a service offered by a user.
  *
- * The client interface specification is expected to be of the form
- * "exe.component.interface".
+ * The client interface specification can be one of the following:
+ * - "exe.component.interface" = A specific interface.
+ * - "*.interface" = Any interface with a given interface name.
  */
 //--------------------------------------------------------------------------------------------------
 void ayy_AddBindOutToUser
 (
     const char* clientInterfaceSpec,    ///< [in] Client-side interface.
     const char* serverUserName,         ///< [in] Server-side user name.
-    const char* serverServiceName       ///< [in] Server-side service name.
+    const char* serverServiceName       ///< [in] Server-side service name (with extra '.' prefix).
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -2012,15 +1793,19 @@ void ayy_AddBindOutToUser
         std::string serviceName(serverServiceName);
 
         // First check that the interface specifications are valid.
-        size_t numParts = CheckInterfaceSpec(clientSpec);
-        if (numParts != 3)
+        size_t numParts = yy_CheckInterfaceSpec(clientSpec);
+        if (numParts == 2)
         {
-            throw legato::Exception("Too few parts in client interface specification. "
-                                    " Interface name missing from end of '"
-                                    + clientSpec + "'.");
+            // Must be of the form "*.interface".
+            if ((clientInterfaceSpec[0] != '*') || (clientInterfaceSpec[1] != '.'))
+            {
+                throw legato::Exception("Malformed client interface specification. Expected to be "
+                                        "in the form 'executable.component.interface' or "
+                                        "'*.interface'.  Got '" + clientSpec + "'.");
+            }
         }
-        CheckForBadCharsInInterfaceSpec(serverUserName);
-        CheckForBadCharsInInterfaceSpec(serverServiceName);
+        yy_CheckForBadCharsInInterfaceSpec(serverUserName);
+        yy_CheckForBadCharsInInterfaceSpec(serverServiceName);
 
         // Check that the server service name has exactly one '.' character at the beginning of it.
         if (serviceName.front() != '.')
@@ -2052,9 +1837,9 @@ void ayy_AddBindOutToUser
 
         // Application user names are the application name with "app" added to the front.
         // E.g., the user name for "MyApp" is "appMyApp".
-        legato::ExternalApiBind& binding = AppPtr->AddExternalApiBind(clientSpec);
+        legato::ExeToUserApiBind& binding = AppPtr->AddExternalApiBind(clientSpec);
         binding.ServerUserName(userName);
-        binding.ServerServiceName(serviceName);
+        binding.ServerInterfaceName(serviceName);
     }
     catch (legato::Exception e)
     {

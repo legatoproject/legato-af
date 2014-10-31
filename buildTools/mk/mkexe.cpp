@@ -15,6 +15,7 @@
 #include "mkexe.h"
 #include "InterfaceBuilder.h"
 #include "ComponentBuilder.h"
+#include "ComponentInstanceBuilder.h"
 #include "ExecutableBuilder.h"
 #include "Utilities.h"
 
@@ -54,8 +55,8 @@ static void GetCommandLineArgs
     // The target device (e.g., "ar7").
     std::string target = "localhost";
 
-    // Non-zero = say what we are doing on stdout.
-    int isVerbose = 0;
+    // true = say what we are doing on stdout.
+    bool isVerbose = false;
 
     // Path to the directory where generated runtime libs should be put.
     std::string libOutputDir = ".";
@@ -64,12 +65,17 @@ static void GetCommandLineArgs
     // source code and object code files) should be put.
     std::string objOutputDir = ".";
 
-    std::string cFlags;  // C compiler flags.
-    std::string ldFlags; // Linker flags.
+    std::string cFlags;    // C compiler flags.
+    std::string cxxFlags;  // C++ compiler flags.
+    std::string ldFlags;   // Linker flags.
 
     // Lambda function that gets called once for each occurence of the --cflags (or -C)
     // argument on the command line.
     auto cFlagsPush = [&](const char* arg) { cFlags += " "; cFlags += arg; };
+
+    // Lambda function that gets called for each occurence of the --cxxflags, (or -X) argument on
+    // the command line.
+    auto cxxFlagsPush = [&](const char* arg) { cxxFlags += " ";  cxxFlags += arg; };
 
     // Lambda function that gets called once for each occurence of the --ldflags (or -L)
     // argument on the command line.
@@ -81,9 +87,9 @@ static void GetCommandLineArgs
         {
             BuildParams.AddInterfaceDir(legato::DoEnvVarSubstitution(path));
         };
-    auto componentDirPush = [&](const char* path)
+    auto sourceDirPush = [&](const char* path)
         {
-            BuildParams.AddComponentDir(legato::DoEnvVarSubstitution(path));
+            BuildParams.AddSourceDir(legato::DoEnvVarSubstitution(path));
         };
     auto contentPush = [&](const char* param)
         {
@@ -123,13 +129,13 @@ static void GetCommandLineArgs
 
     le_arg_AddMultipleString('c',
                              "component-search",
-                             "Add a directory to the component search path (same as -s).",
-                             componentDirPush);
+                             "(DEPRECATED) Add a directory to the source search path (same as -s).",
+                             sourceDirPush);
 
     le_arg_AddMultipleString('s',
                              "source-search",
-                             "Add a directory to the source search path (same as -c).",
-                             componentDirPush);
+                             "Add a directory to the source search path.",
+                             sourceDirPush);
 
     le_arg_AddOptionalFlag(&isVerbose,
                            'v',
@@ -140,6 +146,11 @@ static void GetCommandLineArgs
                              "cflags",
                              "Specify extra flags to be passed to the C compiler.",
                              cFlagsPush);
+
+    le_arg_AddMultipleString('X',
+                             "cxxflags",
+                             "Specify extra flags to be passed to the C++ compiler.",
+                             cxxFlagsPush);
 
     le_arg_AddMultipleString('L',
                              "ldflags",
@@ -155,9 +166,9 @@ static void GetCommandLineArgs
     // Scan the arguments now.
     le_arg_Scan(argc, argv);
 
-    // Add the current working directory to the list of component search directories and the
+    // Add the current working directory to the list of source search directories and the
     // list of interface search directories.
-    BuildParams.AddComponentDir(".");
+    BuildParams.AddSourceDir(".");
     BuildParams.AddInterfaceDir(".");
 
     // Store other build params specified on the command-line.
@@ -169,7 +180,40 @@ static void GetCommandLineArgs
     BuildParams.LibOutputDir(libOutputDir);
     BuildParams.ObjOutputDir(objOutputDir);
     BuildParams.CCompilerFlags(cFlags);
+    BuildParams.CxxCompilerFlags(cxxFlags);
     BuildParams.LinkerFlags(ldFlags);
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Turn all of the executable's interfaces into external interfaces, using the internal name
+ * as the external name.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void MakeAllInterfacesExternal
+(
+    legato::Executable& exe
+)
+//--------------------------------------------------------------------------------------------------
+{
+    for (auto& instance : exe.ComponentInstances())
+    {
+        for (auto& mapEntry : instance.RequiredApis())
+        {
+            auto& interface = mapEntry.second;
+
+            interface.MakeExternalToApp(interface.InternalName());
+        }
+
+        for (auto& mapEntry : instance.ProvidedApis())
+        {
+            auto& interface = mapEntry.second;
+
+            interface.MakeExternalToApp(interface.InternalName());
+        }
+    }
 }
 
 
@@ -193,71 +237,120 @@ static legato::Executable& ConstructObjectModel
     if (BuildParams.IsVerbose())
     {
         std::cout << "Making executable '" << exe.OutputPath() << "'" << std::endl
-                  << "\t(using exe name '" << exe.CName() << "')" << std::endl
-                  << "\tcontaining:" << std::endl;
+                  << "\t(using exe name '" << exe.CName() << "')." << std::endl;
     }
 
     // For each item of content, we have to figure out what type of content it is and
     // handle it accordingly.
     for (auto contentName: ContentNames)
     {
-        const char* contentType;
-
         if (legato::IsCSource(contentName))
         {
-            contentType = "C source code";
+            if (BuildParams.IsVerbose())
+            {
+                std::cout << "Adding C source file '" << contentName << "' to executable."
+                          << std::endl;
+            }
 
             // Add the source code file to the default component.
-            exe.AddCSourceFile(legato::FindFile(contentName, BuildParams.ComponentDirs()));
+            exe.AddSourceFile(legato::FindFile(contentName, BuildParams.SourceDirs()));
+        }
+        else if (legato::IsCxxSource(contentName))
+        {
+            if (BuildParams.IsVerbose())
+            {
+                std::cout << "Adding C++ source file '" << contentName << "' to executable."
+                          << std::endl;
+            }
+
+            // Add the source code file to the default component.
+            exe.AddSourceFile(legato::FindFile(contentName, BuildParams.SourceDirs()));
         }
         else if (legato::IsLibrary(contentName))
         {
-            contentType = "library";
+            if (BuildParams.IsVerbose())
+            {
+                std::cout << "Adding library '" << contentName << "' to executable." << std::endl;
+            }
 
             // Add the library file to the list of libraries to be linked with the default
             // component.
             exe.AddLibrary(contentName);
         }
-        else if (legato::IsComponent(contentName, BuildParams.ComponentDirs()))
+        else if (legato::IsComponent(contentName, BuildParams.SourceDirs()))
         {
-            contentType = "component";
+            if (BuildParams.IsVerbose())
+            {
+                std::cout << "Adding component '" << contentName << "' to executable." << std::endl;
+            }
 
             // Find the component and add it to the executable's list of component instances.
             // NOTE: For now, we only support one instance of a component per executable, and it is
             //       identified by the file system path to that component (relative to a directory
-            //       somewhere in the component search path).
+            //       somewhere in the source search path).
             legato::parser::AddComponentToExe(&App, &exe, contentName, BuildParams);
         }
         else
         {
-            contentType = "** unknown **";
-
-            std::cerr << "** ERROR: Couldn't identify content item '"
+            std::cerr << "*** ERROR: Couldn't identify content item '"
                       << contentName << "'." << std::endl;
 
             std::cerr << "Searched in the followind locations:" << std::endl;
-            for (auto path : BuildParams.ComponentDirs())
+            for (auto path : BuildParams.SourceDirs())
             {
                 std::cerr << "    " << path << std::endl;
             }
 
             errorFound = true;
         }
-
-        if (BuildParams.IsVerbose())
-        {
-            std::cout << "\t\t'" << contentName << "' (" << contentType << ")" << std::endl;
-        }
     }
 
     if (errorFound)
     {
-        throw std::runtime_error("Unable to identify requested content.");
+        throw legato::Exception("Unable to identify one or more requested content items.");
     }
+
+    // Make all interfaces external, because the executable is outside of any app.
+    MakeAllInterfacesExternal(exe);
 
     return exe;
 }
 
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Build a component and all its sub-components.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void BuildComponent
+(
+    legato::Component& component,
+    ComponentBuilder_t componentBuilder,
+    const std::string& workingDir
+)
+//--------------------------------------------------------------------------------------------------
+{
+    if (component.IsBuilt() == false)
+    {
+        // Do sub-components first.
+        for (auto& mapEntry : component.SubComponents())
+        {
+            auto subComponentPtr = mapEntry.second;
+
+            BuildComponent(*subComponentPtr, componentBuilder, workingDir);
+        }
+
+        // Each component gets its own object file dir.
+        std::string objOutputDir = legato::CombinePath(workingDir, "component/" + component.Name());
+
+        // Build the component.
+        // NOTE: This will detect if the component doesn't actually need to be built, either because
+        //       it doesn't have any source files that need to be compiled, or because they have
+        //       already been compiled.
+        componentBuilder.Build(component, objOutputDir);
+    }
+}
 
 
 //--------------------------------------------------------------------------------------------------
@@ -271,21 +364,21 @@ static void Build
 )
 //--------------------------------------------------------------------------------------------------
 {
-    // Auto-generate the source code file containing main() and add it to the default component.
-    ExecutableBuilder_t exeBuilder(BuildParams);
-    exeBuilder.GenerateMain(exe);
-
-    // Build all the components and their sub-components.
-    // Note that this will also generate and build all the interface code needed by the components.
+    // Build all the components.
+    // NOTE: This has to be done recursively, with sub-components first, so that components can
+    //       be linked with the libraries from their sub-components.
     ComponentBuilder_t componentBuilder(BuildParams);
-    for (auto componentInstance : exe.ComponentInstances())
+    for (auto& mapEntry : legato::Component::GetComponentMap())
     {
-        componentBuilder.Build(componentInstance.GetComponent());
-    }
+        legato::Component& component = mapEntry.second;
 
-    // Do the final build step for the executable.
-    // Note: All the component libraries and interface libraries need to be built before this.
-    exeBuilder.Build(exe);
+        BuildComponent(component, componentBuilder, BuildParams.ObjOutputDir());
+    };
+
+    // Build the executable.
+    ExecutableBuilder_t exeBuilder(BuildParams);
+    exeBuilder.GenerateMain(exe, BuildParams.ObjOutputDir());
+    exeBuilder.Build(exe, BuildParams.ObjOutputDir());
 }
 
 

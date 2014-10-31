@@ -5,7 +5,7 @@
  * it holds everything in a single "processes:" section, except for the contents of any "run:"
  * subsections.
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless, Inc. 2013-2014.  Use of this work is subject to license.
  **/
 //--------------------------------------------------------------------------------------------------
 
@@ -13,7 +13,6 @@
 #define PROCESS_ENVIRONMENT_H_INCLUDE_GUARD
 
 #include "Process.h"
-#include "WatchdogConfig.h"
 
 
 namespace legato
@@ -39,20 +38,23 @@ class ProcessEnvironment
         std::map<std::string, std::string> m_EnvVarList;
 
         /// Priority to start processes at.
-        std::string m_Priority;
+        Priority_t m_StartPriority;
+
+        /// Maximum priority that any of the threads are allowed to run at.
+        Priority_t m_MaxPriority;
 
         /// Action to take when a process dies with a failure exit code.
-        std::string m_FaultAction;
+        FaultAction_t m_FaultAction;
 
-        // RLimits:
-        size_t m_CoreFileSize;
-        size_t m_MaxFileSize;
-        size_t m_MemLockSize;
-        size_t m_NumFds;
+        // Per-process rlimits:
+        NonNegativeIntLimit_t m_MaxFileBytes;         ///< Maximum file size in bytes.
+        NonNegativeIntLimit_t m_MaxCoreDumpFileBytes; ///< Maximum core dump file size in bytes.
+        NonNegativeIntLimit_t m_MaxLockedMemoryBytes; ///< Maximum bytes that can be locked in RAM.
+        PositiveIntLimit_t    m_MaxFileDescriptors;   ///< Maximum number of open file descriptors.
 
         /// Watchdog
-        WatchdogTimeoutConfig m_WatchdogTimeout;
-        WatchdogActionConfig m_WatchdogAction;
+        WatchdogTimeout_t m_WatchdogTimeout;
+        WatchdogAction_t  m_WatchdogAction;
 
     public:
         Process& CreateProcess() { m_ProcessList.emplace_back(); return m_ProcessList.back(); }
@@ -63,28 +65,34 @@ class ProcessEnvironment
         const std::map<std::string, std::string>& EnvVarList() const { return m_EnvVarList; }
 
         void FaultAction(std::string&& action) { m_FaultAction = action; }
-        const std::string& FaultAction() const { return m_FaultAction; }
+        const FaultAction_t& FaultAction() const { return m_FaultAction; }
 
-        void Priority(std::string&& priority) { m_Priority = priority; }
-        const std::string& Priority() const { return m_Priority; }
+        void StartPriority(const std::string& priority);
+        const Priority_t& StartPriority() const { return m_StartPriority; }
 
-        void CoreFileSize(size_t limit) { m_CoreFileSize = limit; }
-        size_t CoreFileSize() const { return m_CoreFileSize; }
+        void MaxPriority(const std::string& priority);
+        const Priority_t& MaxPriority() const { return m_MaxPriority; }
 
-        void MaxFileSize(size_t limit)       { m_MaxFileSize = limit; }
-        size_t MaxFileSize() const { return m_MaxFileSize; }
+        bool AreRealTimeThreadsPermitted() const;
 
-        void MemLockSize(size_t limit) { m_MemLockSize = limit; }
-        size_t MemLockSize() const { return m_MemLockSize; }
+        void MaxCoreDumpFileBytes(int limit) { m_MaxCoreDumpFileBytes = limit; }
+        const NonNegativeIntLimit_t& MaxCoreDumpFileBytes() const { return m_MaxCoreDumpFileBytes; }
 
-        void NumFds(size_t limit) { m_NumFds = limit; }
-        size_t NumFds() const { return m_NumFds; }
+        void MaxFileBytes(int limit) { m_MaxFileBytes = limit; }
+        const NonNegativeIntLimit_t& MaxFileBytes() const { return m_MaxFileBytes; }
 
-        WatchdogTimeoutConfig& WatchdogTimeout() { return m_WatchdogTimeout; }
-        const WatchdogTimeoutConfig& WatchdogTimeout() const { return m_WatchdogTimeout; }
+        void MaxLockedMemoryBytes(int limit) { m_MaxLockedMemoryBytes = limit; }
+        const NonNegativeIntLimit_t& MaxLockedMemoryBytes() const { return m_MaxLockedMemoryBytes; }
 
-        WatchdogActionConfig& WatchdogAction() { return m_WatchdogAction; }
-        const WatchdogActionConfig& WatchdogAction() const { return m_WatchdogAction; }
+        void MaxFileDescriptors(int limit) { m_MaxFileDescriptors = limit; }
+        const PositiveIntLimit_t& MaxFileDescriptors() const { return m_MaxFileDescriptors; }
+
+        void WatchdogTimeout(int timeout) { m_WatchdogTimeout = timeout; }
+        void WatchdogTimeout(const std::string& timeout) { m_WatchdogTimeout = timeout; }
+        const WatchdogTimeout_t& WatchdogTimeout() const { return m_WatchdogTimeout; }
+
+        void WatchdogAction(const std::string& action) { m_WatchdogAction = action; }
+        const WatchdogAction_t& WatchdogAction() const { return m_WatchdogAction; }
 };
 
 

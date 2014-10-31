@@ -19,6 +19,11 @@ extern "C"
 #include <limits.h>
 
 
+//=======================================================
+// FUNCTIONS INTERNAL TO THE LIBRARY
+//=======================================================
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * File permissions flags translation function.  Converts text like "[rwx]" into a number which
@@ -160,7 +165,6 @@ std::string yy_StripQuotes
 }
 
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Checks whether a given required file's on-target file system path (outside the app's runtime
@@ -169,7 +173,7 @@ std::string yy_StripQuotes
  * @throw legato::Exception if not.
  */
 //--------------------------------------------------------------------------------------------------
-void yy_CheckRequiredFilePathValidity
+static void CheckRequiredFilePathValidity
 (
     const std::string& path
 )
@@ -177,11 +181,20 @@ void yy_CheckRequiredFilePathValidity
 {
     if (!legato::IsValidPath(path))
     {
-        throw legato::Exception("'" + path + "' is not a valid path.");
+        throw legato::Exception("'" + path + "' is not a valid file system path.");
     }
+    if (!legato::IsAbsolutePath(path))
+    {
+        throw legato::Exception("External file system objects must be referred to by absolute"
+                                " path in the file system outside the application sandbox ('"
+                                + path + "' is not an absolute path).");
+    }
+
+    // A trailing slash is not permitted.
     if (path.back() == '/')
     {
-        throw legato::Exception("'" + path + "' has a trailing slash ('/').");
+        throw legato::Exception(std::string("External file system objects must be referred to by")
+                                + " their full path ('" + path + "' ends in a '/').");
     }
 }
 
@@ -194,7 +207,24 @@ void yy_CheckRequiredFilePathValidity
  * @throw legato::Exception if not.
  */
 //--------------------------------------------------------------------------------------------------
-void yy_CheckRequiredDirPathValidity
+static void CheckRequiredDirPathValidity
+(
+    const std::string& path
+)
+//--------------------------------------------------------------------------------------------------
+{
+    CheckRequiredFilePathValidity(path);    // The same rules apply to dirs as apply to files.
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Checks whether a given bundled file's build host file system path is valid.
+ *
+ * @throw legato::Exception if not.
+ */
+//--------------------------------------------------------------------------------------------------
+static void CheckBundledFilePathValidity
 (
     const std::string& path
 )
@@ -202,8 +232,32 @@ void yy_CheckRequiredDirPathValidity
 {
     if (!legato::IsValidPath(path))
     {
-        throw legato::Exception("'" + path + "' is not a valid path.");
+        throw legato::Exception("'" + path + "' is not a valid file system path.");
     }
+
+    // A trailing slash is not permitted.
+    if (path.back() == '/')
+    {
+        throw legato::Exception(std::string("External file system objects must be referred to by")
+                                + " their full path ('" + path + "' ends in a '/').");
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Checks whether a given bundled directory's build host file system path is valid.
+ *
+ * @throw legato::Exception if not.
+ */
+//--------------------------------------------------------------------------------------------------
+static void CheckBundledDirPathValidity
+(
+    const std::string& path
+)
+//--------------------------------------------------------------------------------------------------
+{
+    CheckBundledFilePathValidity(path);  // Same rules as for bundled files.
 }
 
 
@@ -215,20 +269,24 @@ void yy_CheckRequiredDirPathValidity
  * @throw legato::Exception if not.
  */
 //--------------------------------------------------------------------------------------------------
-void yy_CheckBindMountDestPathValidity
+static void CheckBindMountDestPathValidity
 (
     const std::string& path
 )
 //--------------------------------------------------------------------------------------------------
 {
+    // It must be a valid path,
     if (!legato::IsValidPath(path))
     {
-        throw legato::Exception("'" + path + "' is not a valid path.");
+        throw legato::Exception("In-app path '" + path + "' is not a valid path.");
     }
+
+    // And it must be an absolute path.
     if (!legato::IsAbsolutePath(path))
     {
-        throw legato::Exception("Destination path inside app must be an absolute path ('"
-                                + path + "' is not absolute).");
+        throw legato::Exception("File system objects must be mapped to an absolute"
+                                " path inside the application sandbox ('"
+                                + path + "' is not an absolute path).");
     }
 }
 
@@ -270,7 +328,6 @@ static void StripTrailingSlashes
 //--------------------------------------------------------------------------------------------------
 legato::FileMapping yy_CreateRequiredFileMapping
 (
-    const char* permissions,///< String representing the permissions required ("[rwx]").
     const char* sourcePath, ///< The file path in the target file system, outside sandbox.
     const char* destPath,   ///< The file path in the target file system, inside sandbox.
     const legato::BuildParams_t& buildParams ///< Build parameters in effect.
@@ -279,18 +336,26 @@ legato::FileMapping yy_CreateRequiredFileMapping
 {
     legato::FileMapping mapping;
 
-    mapping.m_PermissionFlags = yy_GetPermissionFlags(permissions);
+    mapping.m_PermissionFlags = 0;  // Permissions are set outside the app.
     mapping.m_SourcePath = legato::DoEnvVarSubstitution(yy_StripQuotes(sourcePath));
     mapping.m_DestPath = legato::DoEnvVarSubstitution(yy_StripQuotes(destPath));
 
-    yy_CheckRequiredFilePathValidity(mapping.m_SourcePath);
-    yy_CheckBindMountDestPathValidity(mapping.m_DestPath);
+    CheckRequiredFilePathValidity(mapping.m_SourcePath);
+    CheckBindMountDestPathValidity(mapping.m_DestPath);
 
     if (buildParams.IsVerbose())
     {
-        std::cout << "  Importing file '" << mapping.m_SourcePath
-                  << "' from the target file system to '" << mapping.m_DestPath
-                  << "' " << permissions << " inside the sandbox." << std::endl;
+        std::cout << "  Making file '" << mapping.m_SourcePath
+                  << "' from outside the sandbox in the target file system available ";
+        if (mapping.m_DestPath.back() == '/')
+        {
+            std::cout << "in directory '" << mapping.m_DestPath;
+        }
+        else
+        {
+            std::cout << "as '" << mapping.m_DestPath;
+        }
+        std::cout << "' inside the sandbox." << std::endl;
     }
 
     return mapping;
@@ -309,7 +374,6 @@ legato::FileMapping yy_CreateRequiredFileMapping
 //--------------------------------------------------------------------------------------------------
 legato::FileMapping yy_CreateRequiredDirMapping
 (
-    const char* permissions,///< String representing the permissions required ("[rwx]").
     const char* sourcePath, ///< The directory path in the target file system, outside sandbox.
     const char* destPath,   ///< The directory path in the target file system, inside sandbox.
     const legato::BuildParams_t& buildParams ///< Build parameters in effect.
@@ -318,20 +382,28 @@ legato::FileMapping yy_CreateRequiredDirMapping
 {
     legato::FileMapping mapping;
 
-    mapping.m_PermissionFlags = yy_GetPermissionFlags(permissions);
+    mapping.m_PermissionFlags = 0;  // Permissions are set outside the app.
     mapping.m_SourcePath = legato::DoEnvVarSubstitution(yy_StripQuotes(sourcePath));
     mapping.m_DestPath = legato::DoEnvVarSubstitution(yy_StripQuotes(destPath));
 
-    yy_CheckRequiredDirPathValidity(mapping.m_SourcePath);
-    yy_CheckBindMountDestPathValidity(mapping.m_DestPath);
+    CheckRequiredDirPathValidity(mapping.m_SourcePath);
+    CheckBindMountDestPathValidity(mapping.m_DestPath);
 
     StripTrailingSlashes(mapping.m_SourcePath);
 
     if (buildParams.IsVerbose())
     {
-        std::cout << "  Importing directory '" << mapping.m_SourcePath
-                  << "' from the target file system to '" << mapping.m_DestPath
-                  << "' " << permissions << " inside the sandbox." << std::endl;
+        std::cout << "  Making directory '" << mapping.m_SourcePath
+                  << "' from outside the sandbox in the target file system available ";
+        if (mapping.m_DestPath.back() == '/')
+        {
+            std::cout << "in directory '" << mapping.m_DestPath;
+        }
+        else
+        {
+            std::cout << "as '" << mapping.m_DestPath;
+        }
+        std::cout << "' inside the sandbox." << std::endl;
     }
 
     return mapping;
@@ -363,14 +435,22 @@ legato::FileMapping yy_CreateBundledFileMapping
     mapping.m_SourcePath = legato::DoEnvVarSubstitution(yy_StripQuotes(sourcePath));
     mapping.m_DestPath = legato::DoEnvVarSubstitution(yy_StripQuotes(destPath));
 
-    yy_CheckRequiredFilePathValidity(mapping.m_SourcePath);
-    yy_CheckBindMountDestPathValidity(mapping.m_DestPath);
+    CheckBundledFilePathValidity(mapping.m_SourcePath);
+    CheckBindMountDestPathValidity(mapping.m_DestPath);
 
     if (buildParams.IsVerbose())
     {
         std::cout << "Adding file '" << mapping.m_SourcePath
-                  << "' to the application bundle (to appear at '" << mapping.m_DestPath
-                  << "' " << permissions << " in the sandbox)." << std::endl;
+                  << "' to the application bundle (to appear ";
+        if (mapping.m_DestPath.back() == '/')
+        {
+            std::cout << "in directory '" << mapping.m_DestPath;
+        }
+        else
+        {
+            std::cout << "as '" << mapping.m_DestPath;
+        }
+        std::cout << "' inside the sandbox, with permissions " << permissions << "." << std::endl;
     }
 
     return mapping;
@@ -390,6 +470,7 @@ legato::FileMapping yy_CreateBundledFileMapping
 //--------------------------------------------------------------------------------------------------
 legato::FileMapping yy_CreateBundledDirMapping
 (
+    const char* permissions,///< String representing permissions to be applied to files in the dir.
     const char* sourcePath, ///< The directory path in the build host file system.
     const char* destPath,   ///< The directory path in the target file system, inside sandbox.
     const legato::BuildParams_t& buildParams ///< Build parameters in effect.
@@ -398,26 +479,27 @@ legato::FileMapping yy_CreateBundledDirMapping
 {
     legato::FileMapping mapping;
 
-    mapping.m_PermissionFlags = legato::PERMISSION_READABLE | legato::PERMISSION_EXECUTABLE;
+    mapping.m_PermissionFlags = yy_GetPermissionFlags(permissions);
     mapping.m_SourcePath = legato::DoEnvVarSubstitution(yy_StripQuotes(sourcePath));
     mapping.m_DestPath = legato::DoEnvVarSubstitution(yy_StripQuotes(destPath));
 
-    yy_CheckRequiredDirPathValidity(mapping.m_SourcePath);
-
-    StripTrailingSlashes(mapping.m_SourcePath);
-
-    if (mapping.m_SourcePath == "/")
-    {
-        throw legato::Exception("Not permitted to bundle the root directory into the app.");
-    }
-
-    yy_CheckBindMountDestPathValidity(mapping.m_DestPath);
+    CheckBundledDirPathValidity(mapping.m_SourcePath);
+    CheckBindMountDestPathValidity(mapping.m_DestPath);
 
     if (buildParams.IsVerbose())
     {
         std::cout << "Adding directory '" << mapping.m_SourcePath
-                  << "' to the application bundle (to appear at '" << mapping.m_DestPath
-                  << "' in the sandbox)." << std::endl;
+                  << "' to the application bundle (to appear ";
+        if (mapping.m_DestPath.back() == '/')
+        {
+            std::cout << "in directory '" << mapping.m_DestPath;
+        }
+        else
+        {
+            std::cout << "as '" << mapping.m_DestPath;
+        }
+        std::cout << "' inside the sandbox, with files inside it having permissions "
+                  << permissions << "." << std::endl;
     }
 
     return mapping;
@@ -426,17 +508,162 @@ legato::FileMapping yy_CreateBundledDirMapping
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Add an instance of a given component to an executable.
+ * Check that there's no illegal characters in an interface specification.
+ *
+ * @note This is necessary because the interface specifications are tokenized as FILE_PATH
+ * tokens, which can have some characters that are not valid as parts of an interface
+ * specification.
+ *
+ * @throw legato::Exception if there's a bad character.
  */
 //--------------------------------------------------------------------------------------------------
-void legato::parser::AddComponentToExe
+void yy_CheckForBadCharsInInterfaceSpec
 (
-    legato::App* appPtr,
-    legato::Executable* exePtr,
-    legato::Component* componentPtr ///< The component object.
+    const char* interfaceSpec
 )
 //--------------------------------------------------------------------------------------------------
 {
+    // NOTE: The parser won't accept whitespace in this stuff, so we don't have to check that.
+
+    const char illegalChars[] = "?-/+";
+    const char* badCharPtr;
+
+    badCharPtr = strpbrk(interfaceSpec, illegalChars);
+
+    if (badCharPtr != NULL)
+    {
+        std::string msg;
+
+        msg += "Illegal character '";
+        msg += *badCharPtr;
+        msg += "' in interface specification '";
+        msg += interfaceSpec;
+        msg += "'.";
+
+        throw legato::Exception(msg);
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Checks whether a given interface specifier is well formed.
+ *
+ * @throw legato::Exception if not.
+ *
+ * @return The number of parts it has (2 = "app.interface", 3 = "exe.comp.interface").
+ **/
+//--------------------------------------------------------------------------------------------------
+size_t yy_CheckInterfaceSpec
+(
+    const std::string& interfaceSpec    ///< Specifier of the form "exe.component.interface"
+)
+//--------------------------------------------------------------------------------------------------
+{
+    yy_CheckForBadCharsInInterfaceSpec(interfaceSpec.c_str());
+
+    // Split the interface specifier into its component parts.
+    size_t firstPeriodPos = interfaceSpec.find('.');
+    if (firstPeriodPos == std::string::npos)
+    {
+        throw legato::Exception("Interface specifier '" + interfaceSpec + "'"
+                                " is missing its '.' separators.");
+    }
+    if (firstPeriodPos == 0)
+    {
+        throw legato::Exception("Nothing before '.' separator in"
+                                " interface specifier '" + interfaceSpec + "'.");
+    }
+
+    size_t secondPeriodPos = interfaceSpec.find('.', firstPeriodPos + 1);
+    if (secondPeriodPos == std::string::npos)
+    {
+        // This is an "app.service" external interface specifier.
+
+        // Make sure there's something after the separator.
+        if (interfaceSpec.substr(firstPeriodPos + 1).empty())
+        {
+            throw legato::Exception("Service name missing after '.' separator in external"
+                                    " interface specifier '" + interfaceSpec + "'.");
+        }
+
+        return 2;
+    }
+    else
+    {
+        // This is an "exe.component.interface" internal interface specifier.
+
+        // Make sure there's something between the '.' separators.
+        if (secondPeriodPos == firstPeriodPos + 1)
+        {
+            throw legato::Exception("Interface component name missing between '.' separators in"
+                                    " internal interface specifier '" + interfaceSpec + "'.");
+        }
+
+        // Make sure there's only two separators.
+        if (interfaceSpec.find('.', secondPeriodPos + 1) != std::string::npos)
+        {
+            throw legato::Exception("Interface specifier '" + interfaceSpec + "' contains too"
+                                    " many '.' separators.");
+        }
+
+        // Make sure there's something after the second separator.
+        if (interfaceSpec.substr(secondPeriodPos + 1).empty())
+        {
+            throw legato::Exception("Interface instance name missing after second '.' separator in"
+                                    " internal interface specifier '" + interfaceSpec + "'.");
+        }
+
+        return 3;
+    }
+
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Prints a warning message to stderr about realtime processes and the cpuShare limit.
+ **/
+//--------------------------------------------------------------------------------------------------
+void yy_WarnAboutRealTimeAndCpuShare
+(
+    void
+)
+//--------------------------------------------------------------------------------------------------
+{
+    std::cerr << "**** WARNING: cpuShare setting ignored for threads running at real-time"
+              << " priority levels.  Real-time threads always share up to 95% of every second."
+              << " Only non-real-time threads will obey the cpuShare limit."
+              << std::endl;
+}
+
+
+
+//=======================================================
+// FUNCTIONS EXPORTED FROM LIBRARY
+//=======================================================
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add an instance of a given component to an executable.
+ */
+//--------------------------------------------------------------------------------------------------
+static legato::ComponentInstance* AddComponentToExe
+(
+    legato::App* appPtr,
+    legato::Executable* exePtr,
+    legato::Component* componentPtr,    ///< The component object.
+    bool isVerbose
+)
+//--------------------------------------------------------------------------------------------------
+{
+    if (isVerbose)
+    {
+        std::cout << "    Adding instance of '" << componentPtr->Name() << "' to exe '"
+                  << exePtr->CName() << "'." << std::endl;
+    }
+
     // If the component is not already in the application's list of components, add it.
     auto& map = appPtr->ComponentMap();
     auto i = map.find(componentPtr->Path());
@@ -446,21 +673,59 @@ void legato::parser::AddComponentToExe
     }
 
     // Create a new component instance and add it to the executable.
-    exePtr->AddComponentInstance(*componentPtr);
+    legato::ComponentInstance* instancePtr = exePtr->AddComponentInstance(componentPtr);
+
+    // Do dependency loop detection.
+    if (componentPtr->BeingProcessed())
+    {
+        throw legato::DependencyException("Dependency loop detected in component: '"
+                                          + componentPtr->Name() + "'");
+    }
+
+    // Mark this component as being processed, so that we can detect a dependency loop if we
+    // come back to this same component later.
+    componentPtr->BeingProcessed(true);
 
     // Recursively pull in all the sub-components too.
-    for (auto& mapEntry : componentPtr->SubComponents())
+    try
     {
-        AddComponentToExe(appPtr, exePtr, mapEntry.second);
+        for (auto& mapEntry : componentPtr->SubComponents())
+        {
+            if (isVerbose)
+            {
+                std::cout << "    '" << componentPtr->Name() << "' depends on '"
+                          << mapEntry.second->Name() << "'." << std::endl;
+            }
+
+            legato::ComponentInstance* subInstancePtr;
+
+            subInstancePtr = AddComponentToExe(appPtr, exePtr, mapEntry.second, isVerbose);
+
+            // Add the sub-instance to the instance's set of sub-instances.
+            instancePtr->SubInstances().insert(subInstancePtr);
+        }
     }
+    // If a dependency loop was detected at a deeper level, catch the exception that was thrown
+    // back up to us, append more info, and re-throw.
+    catch (legato::DependencyException e)
+    {
+        componentPtr->BeingProcessed(false);
+
+        throw legato::DependencyException(std::string(e.what()) + " used by '"
+                                          + componentPtr->Name() + "'");
+    }
+
+    // Done with this component now.  Un-mark the component so we don't get a false dependency loop
+    // detection later.
+    componentPtr->BeingProcessed(false);
+
+    return instancePtr;
 }
 
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Add an instance of a given component to an executable.
- *
- * @return Pointer to the Component Instance object.
  */
 //--------------------------------------------------------------------------------------------------
 void legato::parser::AddComponentToExe
@@ -472,7 +737,7 @@ void legato::parser::AddComponentToExe
 )
 //--------------------------------------------------------------------------------------------------
 {
-    std::string resolvedPath = legato::FindComponent(path, buildParams.ComponentDirs());
+    std::string resolvedPath = legato::FindComponent(path, buildParams.SourceDirs());
 
     legato::Component* componentPtr = Component::FindComponent(resolvedPath);
 
@@ -487,7 +752,7 @@ void legato::parser::AddComponentToExe
     }
 
     // Recursively add it and all its sub-components to the executable and the app.
-    AddComponentToExe(appPtr, exePtr, componentPtr);
+    ::AddComponentToExe(appPtr, exePtr, componentPtr, buildParams.IsVerbose());
 }
 
 
@@ -642,4 +907,3 @@ legato::Api_t* legato::parser::GetApiObject
         }
     }
 }
-

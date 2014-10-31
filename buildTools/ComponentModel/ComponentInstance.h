@@ -30,17 +30,23 @@ class ComponentInstance
 
         Component& m_Component;             ///< The static component that this is an instance of.
 
-        /// Map of client-side interface names to api files.  Needs its own copy of the Component's
-        /// list because the names could be changed by settings in the .adef file.
-        ImportedInterfaceMap m_RequiredApis;
+        /// Map of client-side interface names interface objects.
+        /// Copied here from the Component object when the Component Instance is created.
+        ClientInterfaceMap m_RequiredApis;
 
-        /// Map of server-side interface names to api files.  Needs its own copy of the Component's
-        /// list because the names could be changed by settings in the .adef file.
-        ExportedInterfaceMap m_ProvidedApis;
+        /// Map of server-side interface names to interface objects.
+        /// Copied here from the Component object when the Component Instance is created.
+        ServerInterfaceMap m_ProvidedApis;
+
+        /// Set of pointers to sub-component instances that this component instance depends on.
+        std::set<ComponentInstance*> m_SubInstances;
+
+        /// Pointer to the Executable that this component instance is a part of.
+        Executable* m_ExePtr;
 
     public:
 
-        ComponentInstance(Component& component);
+        ComponentInstance(Component& component, Executable* exePtr);
         ComponentInstance(const ComponentInstance& instance);
         ComponentInstance(ComponentInstance&& instance);
         virtual ~ComponentInstance();
@@ -51,20 +57,26 @@ class ComponentInstance
 
     public:
 
-        const std::string& Name() const;
-        void Name(const std::string& name);
+        std::string Name() const { return m_Component.Name(); /* Only singletons allowed for now */}
+        std::string AppUniqueName() const;
 
         Component& GetComponent() { return m_Component; }
         const Component& GetComponent() const { return m_Component; }
 
-        ImportedInterfaceMap& RequiredApis(void) { return m_RequiredApis; }
-        const ImportedInterfaceMap& RequiredApis(void) const { return m_RequiredApis; }
-        ExportedInterfaceMap& ProvidedApis(void) { return m_ProvidedApis; }
-        const ExportedInterfaceMap& ProvidedApis(void) const { return m_ProvidedApis; }
+        ClientInterfaceMap& RequiredApis(void) { return m_RequiredApis; }
+        const ClientInterfaceMap& RequiredApis(void) const { return m_RequiredApis; }
+        ServerInterfaceMap& ProvidedApis(void) { return m_ProvidedApis; }
+        const ServerInterfaceMap& ProvidedApis(void) const { return m_ProvidedApis; }
 
         Interface& FindInterface(const std::string& name);
-        ImportedInterface& FindClientInterface(const std::string& name);
-        ExportedInterface& FindServerInterface(const std::string& name);
+        ClientInterface& FindClientInterface(const std::string& name);
+        ServerInterface& FindServerInterface(const std::string& name);
+
+        const std::set<ComponentInstance*>& SubInstances() const { return m_SubInstances; }
+        std::set<ComponentInstance*>& SubInstances() { return m_SubInstances; }
+
+        void SetExe(Executable* exePtr);
+        Executable* Exe() { return m_ExePtr; }
 };
 
 

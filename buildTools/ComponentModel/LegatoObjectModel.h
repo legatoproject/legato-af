@@ -10,12 +10,19 @@
  *
  * @verbatim
 
+System --+--> Binds List --*--> User-to-User Bind
+         |
+         +--> App List --*--+
+                            |
+ +--------------------------+
+ |
+ V
 App --+--> File Imports List --*---------+
       |                                  +---------------------------------------------------+
       +--> Included Files List --*-------+                                                   |
       |                                                                      Api <-+         |
       +--> Component --*--> Component --+--> Sources List                          |         |
-      |    List                 ^       |                                Library <-+     |
+      |    List                 ^       |                                Library <-+         |
       |                         |       +--> Library List                          |         |
       |                         |       |                                          |         |
       |                         |       +--> Imported Interfaces Map --*--+        |         |
@@ -49,7 +56,7 @@ App --+--> File Imports List --*---------+
       |
       +--> Internal API Binds List --*--> Internal API Bind
       |
-      +--> External API Binds List --*--> External API Bind
+      +--> External API Binds List --*--> Exe-to-User API Bind
 
 @endverbatim
  *
@@ -71,7 +78,8 @@ App --+--> File Imports List --*---------+
 #include <fstream>
 #include <sstream>
 
-#include "Exception.h"   // Basic string exception type.
+#include "Exception.h"  // Basic string exception type.
+#include "Limit.h"      // Classes for various limits settings.
 #include "Library.h"
 #include "Api.h"
 #include "Permissions.h"
@@ -87,7 +95,8 @@ App --+--> File Imports List --*---------+
 #include "Process.h"
 #include "ProcessEnvironment.h"
 #include "App.h"
-#include "CLanguage.h"  // Helper functions related to the C programming language.
+#include "ProgrammingLanguage.h"  // Types and functions related to programming languages.
+#include "System.h"
 #include "BuildParams.h"    // Build parameters collected from the command line.
 
 

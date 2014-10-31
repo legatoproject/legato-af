@@ -18,6 +18,21 @@ namespace parser
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Parses a System Definition (.sdef) and populates a System object with the information
+ * garnered.
+ *
+ * @note    Expects the System's definition (.sdef) file path to be set.
+ */
+//--------------------------------------------------------------------------------------------------
+void ParseSystem
+(
+    System* systemPtr,                  ///< The object to be populated.
+    const BuildParams_t& buildParams    ///< Build parameters obtained from the command line.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Parses an Application Definition (.adef) and populates an App object with the information
  * garnered.
  *
@@ -50,28 +65,16 @@ void ParseComponent
 //--------------------------------------------------------------------------------------------------
 /**
  * Add an instance of a given component to an executable.
- */
-//--------------------------------------------------------------------------------------------------
-void AddComponentToExe
-(
-    legato::App* appPtr,
-    legato::Executable* exePtr,
-    legato::Component* componentPtr ///< The component object.
-);
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Add an instance of a given component to an executable.
  *
  * @return Pointer to the Component Instance object.
  */
 //--------------------------------------------------------------------------------------------------
 void AddComponentToExe
 (
-    legato::App* appPtr,
-    legato::Executable* exePtr,
+    App* appPtr,
+    Executable* exePtr,
     const std::string& path,    ///< The path to the component.
-    const legato::BuildParams_t& buildParams
+    const BuildParams_t& buildParams
 );
 
 
@@ -91,8 +94,8 @@ Api_t* GetApiObject
 );
 
 
-}
+}   // namespace parser
 
-}
+}   // namespace legato
 
 #endif // PARSER_H_INCLUDE_GUARD

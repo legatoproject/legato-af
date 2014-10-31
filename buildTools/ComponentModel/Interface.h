@@ -1,7 +1,12 @@
 //--------------------------------------------------------------------------------------------------
 /**
- * Definition of the Interface class, which represents an inter-component interface.
- * (NOT including the Bind objects that connect interface instances.  See Bind.h for that.)
+ * Definition of the Interface class and its sub-classes, which represent inter-component
+ * interfaces.
+ *
+ * (NOT including the Bind objects that connect interface instances.  See IpcBinding.h for that.)
+ *
+ * Currently, only "Singleton interfaces" are supported, of which are shared by all instances
+ * of the same component in the same executable.  Eventually, for client-side interfaces
  *
  * Copyright (C) Sierra Wireless, Inc. 2013-2014. Use of this work is subject to license.
  **/
@@ -12,6 +17,11 @@
 
 namespace legato
 {
+
+
+class App;
+class Executable;
+class ComponentInstance;
 
 
 /// Common base class for imported and exported interfaces.
@@ -32,12 +42,12 @@ class Interface
     protected:
 
         std::string m_InternalName; ///< Name used inside the component to refer to the interface.
-        std::string m_ServiceInstanceName;///< Name used when talking to the Service Directory.
+        std::string m_ExternalName; ///< Name used when talking to the Service Directory.
         const Api_t* m_ApiPtr;      ///< Pointer to the object representing the IPC API protocol.
-        std::string m_AppUniqueName;///< Fully qualified name within app (exe.component.interface).
         Library m_Library;          ///< The generated code library (.so) for the interface.
-        bool m_IsInterApp;   ///< true if this is one of the app's external interfaces.
+        bool m_IsExternalToApp;     ///< true if this is one of the app's external interfaces.
         bool m_ManualStart;  ///< true = IPC init function shouldn't be called by generated main().
+        const ComponentInstance* m_ComponentInstancePtr; ///< Comp. instance interface belongs to.
 
     public:
 
@@ -45,13 +55,12 @@ class Interface
         void InternalName(std::string&& name) { m_InternalName = std::move(name); }
         const std::string& InternalName() const { return m_InternalName; }
 
-        void ServiceInstanceName(const std::string& name) { m_ServiceInstanceName = name; }
-        void ServiceInstanceName(std::string&& name) { m_ServiceInstanceName = std::move(name); }
-        const std::string& ServiceInstanceName() const { return m_ServiceInstanceName; }
+        std::string ExternalName() const;
 
-        void AppUniqueName(const std::string& name) { m_AppUniqueName = name; }
-        void AppUniqueName(std::string&& name) { m_AppUniqueName = std::move(name); }
-        const std::string& AppUniqueName() const { return m_AppUniqueName; }
+        void ComponentInstancePtr(const ComponentInstance* componentInstancePtr);
+        const ComponentInstance* ComponentInstancePtr() const { return m_ComponentInstancePtr; }
+
+        std::string AppUniqueName() const;
 
         const Api_t& Api() const { return *m_ApiPtr; }
 
@@ -60,11 +69,11 @@ class Interface
         Library& Lib() { return m_Library; }
         const Library& Lib() const { return m_Library; }
 
-        void MakeExternal(const std::string& name) {    m_IsInterApp = true;
-                                                        m_ServiceInstanceName = name; }
-        void MakeExternal(std::string&& name) {     m_IsInterApp = true;
-                                                    m_ServiceInstanceName = std::move(name); }
-        bool IsExternal() const { return m_IsInterApp; }
+        void MakeExternalToApp(const std::string& name) {   m_IsExternalToApp = true;
+                                                            m_ExternalName = name; }
+        void MakeExternalToApp(std::string&& name) {    m_IsExternalToApp = true;
+                                                        m_ExternalName = std::move(name); }
+        bool IsExternalToApp() const { return m_IsExternalToApp; }
 
         bool ManualStart() const { return m_ManualStart; }
         void MarkManualStart() { m_ManualStart = true; }
@@ -79,16 +88,16 @@ class Interface
 
 
 /// Represents a client-side (required) IPC API Interface.
-class ImportedInterface : public Interface
+class ClientInterface : public Interface
 {
     public:
 
-        ImportedInterface(): m_IsBound(false) {};
-        ImportedInterface(const std::string& name, Api_t* apiPtr);
-        ImportedInterface(const ImportedInterface& original);
-        ImportedInterface(ImportedInterface&& rvalue);
+        ClientInterface(): m_IsBound(false) {};
+        ClientInterface(const std::string& name, Api_t* apiPtr);
+        ClientInterface(const ClientInterface& original);
+        ClientInterface(ClientInterface&& rvalue);
 
-        virtual ~ImportedInterface() { }
+        virtual ~ClientInterface() { }
 
     private:
 
@@ -97,8 +106,8 @@ class ImportedInterface : public Interface
 
     public:
 
-        ImportedInterface& operator=(const ImportedInterface& original);
-        ImportedInterface& operator=(ImportedInterface&& rvalue);
+        ClientInterface& operator=(const ClientInterface& original);
+        ClientInterface& operator=(ClientInterface&& rvalue);
 
     public:
 
@@ -114,23 +123,23 @@ class ImportedInterface : public Interface
 
 
 /// Represents a server-side (provided) IPC API Interface.
-class ExportedInterface : public Interface
+class ServerInterface : public Interface
 {
     public:
-        ExportedInterface() {};
-        ExportedInterface(const std::string& name, Api_t* apiPtr);
-        ExportedInterface(const ExportedInterface& original);
-        ExportedInterface(ExportedInterface&& rvalue);
+        ServerInterface() {};
+        ServerInterface(const std::string& name, Api_t* apiPtr);
+        ServerInterface(const ServerInterface& original);
+        ServerInterface(ServerInterface&& rvalue);
 
-        virtual ~ExportedInterface() { }
+        virtual ~ServerInterface() { }
 
     private:
 
         bool m_IsAsync; ///< true if the server needs to handle requests asynchronously.
 
     public:
-        ExportedInterface& operator=(const ExportedInterface& original);
-        ExportedInterface& operator=(ExportedInterface&& rvalue);
+        ServerInterface& operator=(const ServerInterface& original);
+        ServerInterface& operator=(ServerInterface&& rvalue);
 
     public:
 
@@ -140,10 +149,10 @@ class ExportedInterface : public Interface
 
 
 /// A map of interface names to client-side IPC API interface objects.
-typedef std::map<std::string, ImportedInterface> ImportedInterfaceMap;
+typedef std::map<std::string, ClientInterface> ClientInterfaceMap;
 
 /// A map of interface names to server-side IPC API interface objects.
-typedef std::map<std::string, ExportedInterface> ExportedInterfaceMap;
+typedef std::map<std::string, ServerInterface> ServerInterfaceMap;
 
 
 }

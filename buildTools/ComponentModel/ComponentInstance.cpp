@@ -20,14 +20,25 @@ namespace legato
 //--------------------------------------------------------------------------------------------------
 ComponentInstance::ComponentInstance
 (
-    Component& component
+    Component& component,
+    Executable* exePtr
 )
 //--------------------------------------------------------------------------------------------------
 :   m_Component(component),
     m_RequiredApis(component.RequiredApis()),
-    m_ProvidedApis(component.ProvidedApis())
+    m_ProvidedApis(component.ProvidedApis()),
+    m_ExePtr(exePtr)
 //--------------------------------------------------------------------------------------------------
 {
+    for (auto& mapEntry : m_RequiredApis)
+    {
+        mapEntry.second.ComponentInstancePtr(this);
+    }
+
+    for (auto& mapEntry : m_ProvidedApis)
+    {
+        mapEntry.second.ComponentInstancePtr(this);
+    }
 }
 
 
@@ -43,9 +54,20 @@ ComponentInstance::ComponentInstance
 //--------------------------------------------------------------------------------------------------
 :   m_Component(source.m_Component),
     m_RequiredApis(source.m_RequiredApis),
-    m_ProvidedApis(source.m_ProvidedApis)
+    m_ProvidedApis(source.m_ProvidedApis),
+    m_SubInstances(source.m_SubInstances),
+    m_ExePtr(source.m_ExePtr)
 //--------------------------------------------------------------------------------------------------
 {
+    for (auto& mapEntry : m_RequiredApis)
+    {
+        mapEntry.second.ComponentInstancePtr(this);
+    }
+
+    for (auto& mapEntry : m_ProvidedApis)
+    {
+        mapEntry.second.ComponentInstancePtr(this);
+    }
 }
 
 
@@ -62,9 +84,20 @@ ComponentInstance::ComponentInstance
 //--------------------------------------------------------------------------------------------------
 :   m_Component(rvalue.m_Component),
     m_RequiredApis(std::move(rvalue.m_RequiredApis)),
-    m_ProvidedApis(std::move(rvalue.m_ProvidedApis))
+    m_ProvidedApis(std::move(rvalue.m_ProvidedApis)),
+    m_SubInstances(std::move(rvalue.m_SubInstances)),
+    m_ExePtr(std::move(rvalue.m_ExePtr))
 //--------------------------------------------------------------------------------------------------
 {
+    for (auto& mapEntry : m_RequiredApis)
+    {
+        mapEntry.second.ComponentInstancePtr(this);
+    }
+
+    for (auto& mapEntry : m_ProvidedApis)
+    {
+        mapEntry.second.ComponentInstancePtr(this);
+    }
 }
 
 
@@ -94,8 +127,21 @@ ComponentInstance& ComponentInstance::operator =
     if (&rvalue != this)
     {
         m_Component = std::move(rvalue.m_Component);
+
         m_RequiredApis = std::move(rvalue.m_RequiredApis);
+        for (auto& mapEntry : m_RequiredApis)
+        {
+            mapEntry.second.ComponentInstancePtr(this);
+        }
+
         m_ProvidedApis = std::move(rvalue.m_ProvidedApis);
+        for (auto& mapEntry : m_ProvidedApis)
+        {
+            mapEntry.second.ComponentInstancePtr(this);
+        }
+
+        m_SubInstances = std::move(rvalue.m_SubInstances);
+        m_ExePtr = rvalue.m_ExePtr;
     }
 
     return *this;
@@ -106,12 +152,23 @@ ComponentInstance& ComponentInstance::operator =
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Get the name of the component instance.
+ * Get the application-wide unique name of the component instance ("exe.component").
  */
 //--------------------------------------------------------------------------------------------------
-const std::string& ComponentInstance::Name() const
+std::string ComponentInstance::AppUniqueName
+(
+    void
+)
+const
+//--------------------------------------------------------------------------------------------------
 {
-    return m_Component.Name();
+    if (m_ExePtr == NULL)
+    {
+        throw Exception("Executable not set for instance of component '" + m_Component.Name()
+                        + "'");
+    }
+
+    return m_ExePtr->CName() + "." + m_Component.CName();
 }
 
 
@@ -143,8 +200,8 @@ Interface& ComponentInstance::FindInterface
         return e->second;
     }
 
-    throw legato::Exception("Component '" + Name() + "' does not have an interface named '"
-                            + name + "'.");
+    throw legato::Exception("Component instance'" + AppUniqueName() + "' does not have an"
+                            " interface named '" + name + "'.");
 }
 
 
@@ -158,7 +215,7 @@ Interface& ComponentInstance::FindInterface
  * @throw legato::Exception if not found.
  **/
 //--------------------------------------------------------------------------------------------------
-ImportedInterface& ComponentInstance::FindClientInterface
+ClientInterface& ComponentInstance::FindClientInterface
 (
     const std::string& name ///< [in] Name of the interface.
 )
@@ -170,8 +227,8 @@ ImportedInterface& ComponentInstance::FindClientInterface
         return i->second;
     }
 
-    throw legato::Exception("Component '" + Name() + "' does not have a client-side interface"
-                            " named '" + name + "'.");
+    throw legato::Exception("Component instance'" + AppUniqueName() + "' does not have a "
+                            "client-side interface named '" + name + "'.");
 }
 
 
@@ -185,7 +242,7 @@ ImportedInterface& ComponentInstance::FindClientInterface
  * @throw legato::Exception if not found.
  **/
 //--------------------------------------------------------------------------------------------------
-ExportedInterface& ComponentInstance::FindServerInterface
+ServerInterface& ComponentInstance::FindServerInterface
 (
     const std::string& name ///< [in] Name of the interface.
 )
@@ -197,10 +254,27 @@ ExportedInterface& ComponentInstance::FindServerInterface
         return e->second;
     }
 
-    throw legato::Exception("Component '" + Name() + "' does not have a server-side interface"
-                            " named '" + name + "'.");
+    throw legato::Exception("Component '" + AppUniqueName() + "' does not have a server-side"
+                            " interface named '" + name + "'.");
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets the executable that this component instance belongs to.
+ *
+ * @note Some things won't work right until the executable is set.
+ **/
+//--------------------------------------------------------------------------------------------------
+void ComponentInstance::SetExe
+(
+    Executable* exePtr  ///< pointer to the executable, or NULL if component has no executable.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    m_ExePtr = exePtr;
 }
 
 
 
-}
+} // namespace legato

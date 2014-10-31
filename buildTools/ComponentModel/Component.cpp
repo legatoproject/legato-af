@@ -81,6 +81,23 @@ Component* Component::FindComponent
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Get a map containing all the components that are being used in the project.
+ *
+ * @return A const reference to the map.
+ **/
+//--------------------------------------------------------------------------------------------------
+std::map<std::string, Component>& Component::GetComponentMap
+(
+    void
+)
+//--------------------------------------------------------------------------------------------------
+{
+    return ComponentMap;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Move constructor
  **/
 //--------------------------------------------------------------------------------------------------
@@ -93,21 +110,26 @@ Component::Component
     m_CName(std::move(component.m_CName)),
     m_Path(std::move(component.m_Path)),
     m_Library(std::move(component.m_Library)),
-    m_CSourcesList(std::move(component.m_CSourcesList)),
-    m_LibraryList(std::move(component.m_LibraryList)),
+    m_CSources(std::move(component.m_CSources)),
+    m_CxxSources(std::move(component.m_CxxSources)),
+    m_ObjectFiles(std::move(component.m_ObjectFiles)),
+    m_RequiredLibs(std::move(component.m_RequiredLibs)),
+    m_BundledLibs(std::move(component.m_BundledLibs)),
     m_IncludePath(std::move(component.m_IncludePath)),
-    m_HasCSources(std::move(component.m_HasCSources)),
-    m_HasCppSources(std::move(component.m_HasCppSources)),
-    m_ImportedInterfaces(std::move(component.m_ImportedInterfaces)),
-    m_ExportedInterfaces(std::move(component.m_ExportedInterfaces)),
+    m_CFlags(std::move(component.m_CFlags)),
+    m_CxxFlags(std::move(component.m_CxxFlags)),
+    m_LdFlags(std::move(component.m_LdFlags)),
+    m_ClientInterfaces(std::move(component.m_ClientInterfaces)),
+    m_ServerInterfaces(std::move(component.m_ServerInterfaces)),
     m_BundledFiles(std::move(component.m_BundledFiles)),
     m_BundledDirs(std::move(component.m_BundledDirs)),
     m_RequiredFiles(std::move(component.m_RequiredFiles)),
     m_RequiredDirs(std::move(component.m_RequiredDirs)),
     m_SubComponents(std::move(component.m_SubComponents)),
-//    m_PoolList(std::move(component.m_PoolList)),
-//    m_ConfigItemList(std::move(component.m_ConfigItemList))
-    m_BeingProcessed(std::move(component.m_BeingProcessed))
+//    m_Pools(std::move(component.m_Pools)),
+//    m_ConfigItems(std::move(component.m_ConfigItems)),
+    m_BeingProcessed(std::move(component.m_BeingProcessed)),
+    m_IsBuilt(std::move(component.m_IsBuilt))
 //--------------------------------------------------------------------------------------------------
 {
 }
@@ -131,21 +153,26 @@ Component& Component::operator =
         m_CName = std::move(component.m_CName);
         m_Path = std::move(component.m_Path);
         m_Library = std::move(component.m_Library);
-        m_CSourcesList = std::move(component.m_CSourcesList);
-        m_LibraryList = std::move(component.m_LibraryList);
+        m_CSources = std::move(component.m_CSources);
+        m_CxxSources = std::move(component.m_CxxSources);
+        m_ObjectFiles = std::move(component.m_ObjectFiles);
+        m_RequiredLibs = std::move(component.m_RequiredLibs);
+        m_BundledLibs = std::move(component.m_BundledLibs);
         m_IncludePath = std::move(component.m_IncludePath);
-        m_HasCSources = std::move(component.m_HasCSources);
-        m_HasCppSources = std::move(component.m_HasCppSources);
-        m_ImportedInterfaces = std::move(component.m_ImportedInterfaces);
-        m_ExportedInterfaces = std::move(component.m_ExportedInterfaces);
+        m_CFlags = std::move(component.m_CFlags);
+        m_CxxFlags = std::move(component.m_CxxFlags);
+        m_LdFlags = std::move(component.m_LdFlags);
+        m_ClientInterfaces = std::move(component.m_ClientInterfaces);
+        m_ServerInterfaces = std::move(component.m_ServerInterfaces);
         m_BundledFiles = std::move(component.m_BundledFiles);
         m_BundledDirs = std::move(component.m_BundledDirs);
         m_RequiredFiles = std::move(component.m_RequiredFiles);
         m_RequiredDirs = std::move(component.m_RequiredDirs);
         m_SubComponents = std::move(component.m_SubComponents);
-    //    m_PoolList = std::move(component.m_PoolList);
-    //    m_ConfigItemList = std::move(component.m_ConfigItemList);
+    //    m_Pools = std::move(component.m_Pools);
+    //    m_ConfigItems = std::move(component.m_ConfigItems);
         m_BeingProcessed = std::move(component.m_BeingProcessed);
+        m_IsBuilt = std::move(component.m_IsBuilt);
     }
 
     return *this;
@@ -163,12 +190,9 @@ void Component::Name(const std::string& name)
 {
     m_Name = name;
 
-    if (m_CName == "")
-    {
-        CName(GetCSafeName(m_Name));
-    }
+    CName(GetCSafeName(m_Name));
 
-    m_Library.ShortName(m_Name);
+    m_Library.ShortName("Component_" + m_Name);
 }
 
 
@@ -182,12 +206,9 @@ void Component::Name(std::string&& name)
 {
     m_Name = std::move(name);
 
-    if (m_CName == "")
-    {
-        CName(GetCSafeName(m_Name));
-    }
+    CName(GetCSafeName(m_Name));
 
-    m_Library.ShortName(m_Name);
+    m_Library.ShortName("Component_" + m_Name);
 }
 
 
@@ -322,35 +343,34 @@ void Component::AddSourceFile
 {
     if (legato::IsCSource(path))
     {
-        m_CSourcesList.push_back(path);
-        m_HasCSources = true;
-
-        return;
+        m_CSources.push_back(path);
     }
-    else if (legato::IsCppSource(path))
+    else if (legato::IsCxxSource(path))
     {
-        m_CSourcesList.push_back(path);
-        m_HasCppSources = true;
-
-        return;
+        m_CxxSources.push_back(path);
     }
-
-    throw Exception("File '" + path + "' is an unknown type of source code file.");
+    else
+    {
+        throw Exception("File '" + path + "' is an unknown type of source code file.");
+    }
 }
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Add a library file to the component.
+ * Add a required library to the component.  These are libraries that are expected to be available
+ * on the target system, outside the application, and that the component is to be linked with.
+ *
+ * @note Since the library needs to be linked with, it must also be available on the build system.
  */
 //--------------------------------------------------------------------------------------------------
-void Component::AddLibrary
+void Component::AddRequiredLib
 (
-    const std::string& path ///< The library file path.
+    const std::string& path ///< The library file's short name.
 )
 //--------------------------------------------------------------------------------------------------
 {
-    m_LibraryList.push_back(path);
+    m_RequiredLibs.push_back(path);
 }
 
 
@@ -373,6 +393,54 @@ void Component::AddIncludeDir
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Add a C compiler command-line argument.
+ */
+//--------------------------------------------------------------------------------------------------
+void Component::AddCFlag
+(
+    const std::string& path ///< The command-line argument.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    m_CFlags.push_back(path);
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add a C++ compiler command-line argument.
+ */
+//--------------------------------------------------------------------------------------------------
+void Component::AddCxxFlag
+(
+    const std::string& path ///< The command-line argument.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    m_CxxFlags.push_back(path);
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add a linker command-line argument.
+ */
+//--------------------------------------------------------------------------------------------------
+void Component::AddLdFlag
+(
+    const std::string& path ///< The command-line argument.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    m_LdFlags.push_back(path);
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Adds a file from the build host's file system to an application (bundles it into the app),
  * making it appear at a specific location in the application sandbox file system.
  */
@@ -384,7 +452,7 @@ void Component::AddBundledFile
 )
 //--------------------------------------------------------------------------------------------------
 {
-    // If the imported file path is not absolute, then we need to prefix it with the
+    // If the bundled file path is not absolute, then we need to prefix it with the
     // component directory path, because it is relative to that directory.
     if (!legato::IsAbsolutePath(mapping.m_SourcePath))
     {
@@ -395,6 +463,15 @@ void Component::AddBundledFile
     if (!legato::FileExists(mapping.m_SourcePath))
     {
         throw legato::Exception("File '" + mapping.m_SourcePath + "' not found.");
+    }
+
+    // If the file is a library file (.a or .so), then it needs to be added to the list
+    // of bundled libraries so that the component and any other components that depend on
+    // this component, and any executable that includes this component all get linked with
+    // this library at build time.
+    if (legato::IsLibrary(mapping.m_SourcePath))
+    {
+        m_BundledLibs.push_back(mapping.m_SourcePath);
     }
 
     m_BundledFiles.push_back(std::move(mapping));
@@ -414,7 +491,7 @@ void Component::AddBundledDir
 )
 //--------------------------------------------------------------------------------------------------
 {
-    // If the imported file path is not absolute, then we need to prefix it with the
+    // If the bundled file path is not absolute, then we need to prefix it with the
     // component directory path, because it is relative to that directory.
     if (!legato::IsAbsolutePath(mapping.m_SourcePath))
     {
@@ -494,46 +571,46 @@ void Component::AddSubComponent
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Adds an interface to the Component's collection of imported interfaces.
+ * Adds an interface to the Component's collection of required (client-side) interfaces.
  **/
 //--------------------------------------------------------------------------------------------------
-ImportedInterface& Component::AddRequiredApi
+ClientInterface& Component::AddRequiredApi
 (
     const std::string& name,    ///< Friendly name of the interface instance.
     Api_t* apiPtr               ///< Pointer to the API object.
 )
 //--------------------------------------------------------------------------------------------------
 {
-    if (   (m_ImportedInterfaces.find(name) != m_ImportedInterfaces.end())
-        || (m_ExportedInterfaces.find(name) != m_ExportedInterfaces.end()) )
+    if (   (m_ClientInterfaces.find(name) != m_ClientInterfaces.end())
+        || (m_ServerInterfaces.find(name) != m_ServerInterfaces.end()) )
     {
         throw Exception("Interfaces must have unique names. '" + name + "' is used more than once"
                         + "for component '" + m_Name + "'.'");
     }
 
-    return m_ImportedInterfaces[name] = ImportedInterface(name, apiPtr);
+    return m_ClientInterfaces[name] = ClientInterface(name, apiPtr);
 }
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Adds an interface to the Component's collection of imported interfaces.
+ * Adds an interface to the Component's collection of provided (server-side) interfaces.
  **/
 //--------------------------------------------------------------------------------------------------
-ExportedInterface& Component::AddProvidedApi
+ServerInterface& Component::AddProvidedApi
 (
     const std::string& name,    ///< Friendly name of the interface instance.
     Api_t* apiPtr               ///< Pointer to the API object.
 )
 //--------------------------------------------------------------------------------------------------
 {
-    if (   (m_ImportedInterfaces.find(name) != m_ImportedInterfaces.end())
-        || (m_ExportedInterfaces.find(name) != m_ExportedInterfaces.end()) )
+    if (   (m_ClientInterfaces.find(name) != m_ClientInterfaces.end())
+        || (m_ServerInterfaces.find(name) != m_ServerInterfaces.end()) )
     {
         throw Exception("Interfaces must have unique names. '" + name + "' is used more than once.");
     }
 
-    return m_ExportedInterfaces[name] = ExportedInterface(name, apiPtr);
+    return m_ServerInterfaces[name] = ServerInterface(name, apiPtr);
 }
 
 

@@ -34,7 +34,7 @@ int ayy_parse(void);
 
 //--------------------------------------------------------------------------------------------------
 /**
- * End of file flag.  This is set when cyy_parse() returns due to an end of file condition.
+ * End of file flag.  This is set when ayy_parse() returns due to an end of file condition.
  */
 //--------------------------------------------------------------------------------------------------
 extern int ayy_EndOfFile;
@@ -132,30 +132,12 @@ void ayy_AddGroup
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Add a component to the list of components used by this application.
+ * Wraps-up processing of a "processes:" section.
  */
 //--------------------------------------------------------------------------------------------------
 void ayy_FinishProcessesSection
 (
     void
-);
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Add a file or directory from the build host file system to the application.
- *
- * If the sourcePath ends in a '/', then it is treated as a directory.
- * Otherwise, it is treated as a file.
- *
- * @warning This function is deprecated.
- */
-//--------------------------------------------------------------------------------------------------
-void ayy_AddFile
-(
-    const char* permissions,///< String representing the permissions.
-    const char* sourcePath, ///< The file path in the build host's file system.
-    const char* destPath    ///< The file path in the target file system, inside sandbox.
 );
 
 
@@ -179,6 +161,7 @@ void ayy_AddBundledFile
 //--------------------------------------------------------------------------------------------------
 void ayy_AddBundledDir
 (
+    const char* permissions,///< String representing permissions to be applied to files in the dir.
     const char* sourcePath, ///< The path in the build host's file system.
     const char* destPath    ///< The path in the target file system, inside sandbox.
 );
@@ -277,7 +260,6 @@ void ayy_AddEnvVar
 //--------------------------------------------------------------------------------------------------
 void ayy_AddRequiredFile
 (
-    const char* permissions,///< String representing the permissions. (e.g., "[r]")
     const char* sourcePath, ///< The path in the target file system., outside the sandbox.
     const char* destPath    ///< The path in the target file system, inside the sandbox.
 );
@@ -293,7 +275,6 @@ void ayy_AddRequiredFile
 //--------------------------------------------------------------------------------------------------
 void ayy_AddRequiredDir
 (
-    const char* permissions,///< String representing the permissions. (e.g., "[r]")
     const char* sourcePath, ///< The path in the target file system., outside the sandbox.
     const char* destPath    ///< The path in the target file system, inside the sandbox.
 );
@@ -302,11 +283,11 @@ void ayy_AddRequiredDir
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Set the maximum number of processes that this application is allowed to have running at any
+ * Set the maximum number of threads that this application is allowed to have running at any
  * given time.
  */
 //--------------------------------------------------------------------------------------------------
-void ayy_SetNumProcsLimit
+void ayy_SetMaxThreads
 (
     int limit   ///< Must be a positive integer.  May be overridden by system-wide settings.
 );
@@ -319,7 +300,7 @@ void ayy_SetNumProcsLimit
  * in this application at any given time.
  */
 //--------------------------------------------------------------------------------------------------
-void ayy_SetMqueueSizeLimit
+void ayy_SetMaxMQueueBytes
 (
     int limit   ///< Must be a positive integer.  May be overridden by system-wide settings.
 );
@@ -328,11 +309,11 @@ void ayy_SetMqueueSizeLimit
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Set the maximum number of real-time signals that are allowed to be queued-up waiting for
+ * Set the maximum number of signals that are allowed to be queued-up by sigqueue() waiting for
  * processes in this application at any given time.
  */
 //--------------------------------------------------------------------------------------------------
-void ayy_SetRTSignalQueueSizeLimit
+void ayy_SetMaxQueuedSignals
 (
     int limit   ///< Must be a positive integer.  May be overridden by system-wide settings.
 );
@@ -341,11 +322,11 @@ void ayy_SetRTSignalQueueSizeLimit
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Sets the maximum amount of memory (in kilobytes) the application is allowed to use for all of it
+ * Sets the maximum amount of memory (in bytes) the application is allowed to use for all of it
  * processes.
  */
 //--------------------------------------------------------------------------------------------------
-void ayy_SetMemoryLimit
+void ayy_SetMaxMemoryBytes
 (
     int limit   ///< Must be a positive integer.  May be overridden by system-wide settings.
 );
@@ -370,7 +351,7 @@ void ayy_SetCpuShare
  * usage of its temporary sandbox file system.
  */
 //--------------------------------------------------------------------------------------------------
-void ayy_SetFileSystemSizeLimit
+void ayy_SetMaxFileSystemBytes
 (
     int limit   ///< Must be a positive integer.  May be overridden by system-wide settings.
 );
@@ -414,7 +395,7 @@ void ayy_SetPriority
  * section can generate.
  */
 //--------------------------------------------------------------------------------------------------
-void ayy_SetCoreFileSizeLimit
+void ayy_SetMaxCoreDumpFileBytes
 (
     int limit   ///< Must be a positive integer.  May be overridden by system-wide settings.
 );
@@ -425,7 +406,7 @@ void ayy_SetCoreFileSizeLimit
  * Sets the maximum size (in bytes) that a process in the current processes section can make files.
  */
 //--------------------------------------------------------------------------------------------------
-void ayy_SetMaxFileSizeLimit
+void ayy_SetMaxFileBytes
 (
     int limit   ///< Must be a positive integer.  May be overridden by system-wide settings.
 );
@@ -437,7 +418,7 @@ void ayy_SetMaxFileSizeLimit
  * into physical memory.
  */
 //--------------------------------------------------------------------------------------------------
-void ayy_SetMemLockSizeLimit
+void ayy_SetMaxLockedMemoryBytes
 (
     int limit   ///< Must be a positive integer.  May be overridden by system-wide settings.
                 ///  Will be rounded down to the nearest system memory page size.
@@ -446,11 +427,11 @@ void ayy_SetMemLockSizeLimit
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Set the maximum number of file descriptor that each process in the processes section are
+ * Set the maximum number of file descriptors that each process in the processes section are
  * allowed to have open at one time.
  */
 //--------------------------------------------------------------------------------------------------
-void ayy_SetNumFdsLimit
+void ayy_SetMaxFileDescriptors
 (
     int limit   ///< Must be a positive integer.  May be overridden by system-wide settings.
 );
@@ -483,18 +464,27 @@ void ayy_SetFaultAction
  * Sets the action that should be taken if a process in the process group currently being parsed
  * terminates due to a watchdog time-out.
  *
- * @todo Implement watchdog actions.
+ * Accepted actions are:
+ *  "ignore"        - Leave the process dead.
+ *  "restart"       - Restart the process.
+ *  "stop"          - Terminate the process if it is still running.
+ *  "restartApp"    - Terminate and restart the whole application.
+ *  "stopApp"       - Terminate the application and leave it stopped.
+ *  "reboot"        - Reboot the device.
+ *  "pauseApp"      - Send a SIGSTOP to all processes in the application, halting them in their
+ *                    tracks, but not killing them.  This allows the processes to be inspected
+ *                    for debugging purposes.
  */
 //--------------------------------------------------------------------------------------------------
 void ayy_SetWatchdogAction
 (
-    const char* action  ///< Accepted actions are TBD.
+    const char* action
 );
+
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Sets the timeout for the watchdogs in the application.
- *
  */
 //--------------------------------------------------------------------------------------------------
 void ayy_SetWatchdogTimeout
@@ -503,17 +493,17 @@ void ayy_SetWatchdogTimeout
                        ///< kicked again before then. Only positive values are allowed.
 );
 
+
 //--------------------------------------------------------------------------------------------------
 /**
- * Disables the watchdog timeout in the application if the timeout value is "never".
- *
+ * Disables the watchdog timeout in the application.
  */
 //--------------------------------------------------------------------------------------------------
 void ayy_SetWatchdogDisabled
 (
-    const char* never  ///< The only acceptable string in "never"
-                       ///< Any other will leave the watchdog enabled with default timeout
+    const char* never  ///< The only acceptable string is "never".
 );
+
 
 //--------------------------------------------------------------------------------------------------
 /**

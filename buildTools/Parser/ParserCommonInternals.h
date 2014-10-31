@@ -4,7 +4,7 @@
  *
  * Not to be shared outside the parser.
  *
- * Copyright (C) 2013 Sierra Wireless Inc., all rights reserved.
+ * Copyright (C) 2013, 2014 Sierra Wireless Inc.  Use of this work is subject to license.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -54,48 +54,6 @@ std::string yy_StripQuotes
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Checks whether a given required file's on-target file system path (outside the app's runtime
- * environment) is valid.
- *
- * @throw legato::Exception if not.
- */
-//--------------------------------------------------------------------------------------------------
-void yy_CheckRequiredFilePathValidity
-(
-    const std::string& path
-);
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Checks whether a given required directory's on-target file system path (outside the app's runtime
- * environment) is valid.
- *
- * @throw legato::Exception if not.
- */
-//--------------------------------------------------------------------------------------------------
-void yy_CheckRequiredDirPathValidity
-(
-    const std::string& path
-);
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Checks whether a given bundled or required file or directory destination file system path
- * (inside the app's runtime environment) is valid.
- *
- * @throw legato::Exception if not.
- */
-//--------------------------------------------------------------------------------------------------
-void yy_CheckBindMountDestPathValidity
-(
-    const std::string& path
-);
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Creates a FileMapping object for a given "required" file.  This is a file that is to be
  * bind-mounted into the application sandbox from the target's unsandboxed file system.
  *
@@ -106,7 +64,6 @@ void yy_CheckBindMountDestPathValidity
 //--------------------------------------------------------------------------------------------------
 legato::FileMapping yy_CreateRequiredFileMapping
 (
-    const char* permissions,///< String representing the permissions required ("[rwx]").
     const char* sourcePath, ///< The file path in the target file system, outside sandbox.
     const char* destPath,   ///< The file path in the target file system, inside sandbox.
     const legato::BuildParams_t& buildParams ///< Build parameters in effect.
@@ -125,7 +82,6 @@ legato::FileMapping yy_CreateRequiredFileMapping
 //--------------------------------------------------------------------------------------------------
 legato::FileMapping yy_CreateRequiredDirMapping
 (
-    const char* permissions,///< String representing the permissions required ("[rwx]").
     const char* sourcePath, ///< The directory path in the target file system, outside sandbox.
     const char* destPath,   ///< The directory path in the target file system, inside sandbox.
     const legato::BuildParams_t& buildParams ///< Build parameters in effect.
@@ -163,9 +119,53 @@ legato::FileMapping yy_CreateBundledFileMapping
 //--------------------------------------------------------------------------------------------------
 legato::FileMapping yy_CreateBundledDirMapping
 (
+    const char* permissions,///< String representing permissions to be applied to files in the dir.
     const char* sourcePath, ///< The directory path in the build host file system.
     const char* destPath,   ///< The directory path in the target file system, inside sandbox.
     const legato::BuildParams_t& buildParams ///< Build parameters in effect.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Check that there's no illegal characters in an interface specification.
+ *
+ * @note This is necessary because the interface specifications are tokenized as FILE_PATH
+ * tokens, which can have some characters that are not valid as parts of an interface
+ * specification.
+ *
+ * @throw legato::Exception if there's a bad character.
+ */
+//--------------------------------------------------------------------------------------------------
+void yy_CheckForBadCharsInInterfaceSpec
+(
+    const char* interfaceSpec
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Checks whether a given interface specifier is well formed.
+ *
+ * @throw legato::Exception if not.
+ *
+ * @return The number of parts it has (2 = "app.interface", 3 = "exe.comp.interface").
+ **/
+//--------------------------------------------------------------------------------------------------
+size_t yy_CheckInterfaceSpec
+(
+    const std::string& interfaceSpec    ///< Specifier of the form "exe.component.interface"
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Prints a warning message to stderr about realtime processes and the cpuShare limit.
+ **/
+//--------------------------------------------------------------------------------------------------
+void yy_WarnAboutRealTimeAndCpuShare
+(
+    void
 );
 
 

@@ -5,7 +5,6 @@
 //--------------------------------------------------------------------------------------------------
 
 #include "LegatoObjectModel.h"
-#include "WatchdogConfig.h"
 #include "limit.h"
 
 namespace legato
@@ -20,7 +19,7 @@ namespace legato
  * @return the app name.
  */
 //--------------------------------------------------------------------------------------------------
-static std::string AppNameFromDefFilePath
+std::string App::AppNameFromDefFilePath
 (
     const std::string& path
 )
@@ -45,6 +44,11 @@ static std::string AppNameFromDefFilePath
 
     std::string appName = path.substr(startPos, endPos - startPos);
 
+    if (appName.empty())
+    {
+        throw Exception("Application name missing from file name '" + path + "'.");
+    }
+
     if (appName.length() > LIMIT_MAX_APP_NAME_LEN)
     {
         throw Exception("Application name " + appName +
@@ -68,16 +72,13 @@ App::App
 :   m_Name("untitled"),
     m_Version(""),
     m_IsSandboxed(true),
-    m_Debug(false),
     m_StartMode(AUTO),
-    m_NumProcs(SIZE_MAX),
-    m_MqueueSize(SIZE_MAX),
-    m_RtSignalQueueSize(SIZE_MAX),
-    m_MemLimit(SIZE_MAX),
-    m_CpuShare(SIZE_MAX),
-    m_FileSystemSize(SIZE_MAX),
-    m_UsesWatchdog(false),
-    m_UsesConfig(false)
+    m_MaxThreads(20),
+    m_MaxMQueueBytes(512),
+    m_MaxQueuedSignals(100),
+    m_MaxMemoryBytes(40000 * 1024), // 40 MB
+    m_CpuShare(1024),
+    m_MaxFileSystemBytes(128 * 1024)    // 128 KB
 //--------------------------------------------------------------------------------------------------
 {
 }
@@ -98,7 +99,6 @@ App::App
     m_Version(std::move(application.m_Version)),
     m_DefFilePath(std::move(application.m_DefFilePath)),
     m_IsSandboxed(std::move(application.m_IsSandboxed)),
-    m_Debug(std::move(application.m_Debug)),
     m_StartMode(std::move(application.m_StartMode)),
     m_Components(std::move(application.m_Components)),
     m_Executables(std::move(application.m_Executables)),
@@ -107,19 +107,19 @@ App::App
     m_BundledDirs(std::move(application.m_BundledDirs)),
     m_RequiredFiles(std::move(application.m_RequiredFiles)),
     m_RequiredDirs(std::move(application.m_RequiredDirs)),
+    m_RequiredInterfaces(std::move(application.m_RequiredInterfaces)),
+    m_ProvidedInterfaces(std::move(application.m_ProvidedInterfaces)),
     m_InternalApiBinds(std::move(application.m_InternalApiBinds)),
     m_ExternalApiBinds(std::move(application.m_ExternalApiBinds)),
     m_Groups(std::move(application.m_Groups)),
-    m_NumProcs(std::move(application.m_NumProcs)),
-    m_MqueueSize(std::move(application.m_MqueueSize)),
-    m_RtSignalQueueSize(std::move(application.m_RtSignalQueueSize)),
-    m_MemLimit(std::move(application.m_MemLimit)),
+    m_MaxThreads(std::move(application.m_MaxThreads)),
+    m_MaxMQueueBytes(std::move(application.m_MaxMQueueBytes)),
+    m_MaxQueuedSignals(std::move(application.m_MaxQueuedSignals)),
+    m_MaxMemoryBytes(std::move(application.m_MaxMemoryBytes)),
     m_CpuShare(std::move(application.m_CpuShare)),
-    m_FileSystemSize(std::move(application.m_FileSystemSize)),
+    m_MaxFileSystemBytes(std::move(application.m_MaxFileSystemBytes)),
     m_WatchdogTimeout(std::move(application.m_WatchdogTimeout)),
     m_WatchdogAction(std::move(application.m_WatchdogAction)),
-    m_UsesWatchdog(false),
-    m_UsesConfig(false),
     m_ConfigTrees(application.m_ConfigTrees)
 {
 }
@@ -143,7 +143,6 @@ App& App::operator =
         m_Version = std::move(application.m_Version);
         m_DefFilePath = std::move(application.m_DefFilePath);
         m_IsSandboxed = std::move(application.m_IsSandboxed);
-        m_Debug = std::move(application.m_Debug);
         m_StartMode = std::move(application.m_StartMode);
         m_Components = std::move(application.m_Components);
         m_Executables = std::move(application.m_Executables);
@@ -152,19 +151,19 @@ App& App::operator =
         m_BundledDirs = std::move(application.m_BundledDirs);
         m_RequiredFiles = std::move(application.m_RequiredFiles);
         m_RequiredDirs = std::move(application.m_RequiredDirs);
+        m_RequiredInterfaces = std::move(application.m_RequiredInterfaces);
+        m_ProvidedInterfaces = std::move(application.m_ProvidedInterfaces);
         m_InternalApiBinds = std::move(application.m_InternalApiBinds);
         m_ExternalApiBinds = std::move(application.m_ExternalApiBinds);
         m_Groups = std::move(application.m_Groups);
-        m_NumProcs = std::move(application.m_NumProcs);
-        m_MqueueSize = std::move(application.m_MqueueSize);
-        m_RtSignalQueueSize = std::move(application.m_RtSignalQueueSize);
-        m_MemLimit = std::move(application.m_MemLimit);
+        m_MaxThreads = std::move(application.m_MaxThreads);
+        m_MaxMQueueBytes = std::move(application.m_MaxMQueueBytes);
+        m_MaxQueuedSignals = std::move(application.m_MaxQueuedSignals);
+        m_MaxMemoryBytes = std::move(application.m_MaxMemoryBytes);
         m_CpuShare = std::move(application.m_CpuShare);
-        m_FileSystemSize = std::move(application.m_FileSystemSize);
+        m_MaxFileSystemBytes = std::move(application.m_MaxFileSystemBytes);
         m_WatchdogTimeout = std::move(application.m_WatchdogTimeout);
         m_WatchdogAction = std::move(application.m_WatchdogAction);
-        m_UsesWatchdog = std::move(application.m_UsesWatchdog);
-        m_UsesConfig = std::move(application.m_UsesConfig);
         m_ConfigTrees = std::move(application.m_ConfigTrees);
     }
 
@@ -343,27 +342,6 @@ void App::AddRequiredDir
 )
 //--------------------------------------------------------------------------------------------------
 {
-    if (!IsValidPath(mapping.m_DestPath))
-    {
-        throw Exception("'" + mapping.m_DestPath + "' is not a valid path.");
-    }
-    if (!IsAbsolutePath(mapping.m_DestPath))
-    {
-        throw Exception(std::string("External file system objects must be mapped to an absolute")
-                        + " path inside the application sandbox ('"
-                        + mapping.m_DestPath + "' is not).");
-    }
-    if (!IsValidPath(mapping.m_SourcePath))
-    {
-        throw Exception("'" + mapping.m_SourcePath + "' is not a valid path.");
-    }
-
-    // If there's a trailing slash, remove it.
-    if (mapping.m_SourcePath.back() == '/')
-    {
-        mapping.m_SourcePath.erase(--mapping.m_SourcePath.end());
-    }
-
     m_RequiredDirs.insert(std::move(mapping));
 }
 
@@ -376,24 +354,158 @@ void App::AddRequiredDir
  * @return Reference to the newly created binding.
  **/
 //--------------------------------------------------------------------------------------------------
-ExternalApiBind& App::AddExternalApiBind
+ExeToUserApiBind& App::AddExternalApiBind
 (
-    const std::string& clientInterface  ///< Client interface specifier (exe.comp.interface)
+    const std::string& clientInterfaceSpec  ///< Client interface specifier (exe.comp.interface)
 )
 //--------------------------------------------------------------------------------------------------
 {
-    if (   (m_InternalApiBinds.find(clientInterface) != m_InternalApiBinds.end())
-        || (m_ExternalApiBinds.find(clientInterface) != m_ExternalApiBinds.end()) )
+    if (   (m_InternalApiBinds.find(clientInterfaceSpec) != m_InternalApiBinds.end())
+        || (m_ExternalApiBinds.find(clientInterfaceSpec) != m_ExternalApiBinds.end()) )
     {
         throw Exception("Multiple bindings of the same API client interface: '"
-                        + clientInterface + "'.");
+                        + clientInterfaceSpec + "'.");
     }
 
-    ExternalApiBind& binding = m_ExternalApiBinds[clientInterface];
+    ExeToUserApiBind& binding = m_ExternalApiBinds[clientInterfaceSpec];
 
-    binding.ClientInterface(clientInterface);
+    binding.ClientInterface(clientInterfaceSpec);
 
     return binding;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Override the .adef level binding of a client-side interface with another binding.
+ **/
+//--------------------------------------------------------------------------------------------------
+void App::OverrideExternalApiBind
+(
+    ClientInterface& interface,     /// The interface to be bound.
+    const UserToUserApiBind& bind   /// The binding to be used to override whatever exists already.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // If there is already a binding of this client interface, find it and update it.
+    auto i = m_ExternalApiBinds.find(interface.AppUniqueName());
+    if (i != m_ExternalApiBinds.end())
+    {
+        ExeToUserApiBind& oldBind = i->second;
+
+        // Print informational message about the .adef binding being overridden by the .sdef.
+        // and update the app's binding.
+        std::cout << "Overriding binding of " << m_Name << "."
+                  << interface.ExternalName() << " (" << interface.AppUniqueName() << ") to ";
+
+        if (bind.IsServerAnApp())
+        {
+            std::cout << bind.ServerAppName();
+        }
+        else
+        {
+            std::cout << "<" << bind.ServerUserName() << ">";
+        }
+        std::cout << "." << bind.ServerInterfaceName() << "." << std::endl;
+
+        oldBind.ServerUserName(bind.ServerUserName());
+        oldBind.ServerAppName(bind.ServerAppName());
+        oldBind.ServerInterfaceName(bind.ServerInterfaceName());
+    }
+    // If there isn't a binding yet, create one now.
+    else
+    {
+        auto& newBind = AddExternalApiBind(interface.AppUniqueName());
+
+        newBind.ServerUserName(bind.ServerUserName());
+        newBind.ServerAppName(bind.ServerAppName());
+        newBind.ServerInterfaceName(bind.ServerInterfaceName());
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Make a client-side interface into an external interface for the application.
+ **/
+//--------------------------------------------------------------------------------------------------
+void App::MakeInterfaceExternal
+(
+    ClientInterface& interface, ///< The interface to make external.
+    const std::string& alias    ///< The name to give it outside the application.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    if (   (m_RequiredInterfaces.find(alias) != m_RequiredInterfaces.end())
+        || (m_ProvidedInterfaces.find(alias) != m_ProvidedInterfaces.end()) )
+    {
+        throw legato::Exception("Duplicate external interface name: '" + alias + "'.");
+    }
+
+    if (interface.IsExternalToApp())
+    {
+        throw legato::Exception("Interface '" + interface.AppUniqueName()
+                                + "' is already an external interface.");
+    }
+
+    interface.MakeExternalToApp(alias);
+
+    m_RequiredInterfaces[alias] = &interface;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Make a server-side interface into an external interface for the application.
+ **/
+//--------------------------------------------------------------------------------------------------
+void App::MakeInterfaceExternal
+(
+    ServerInterface& interface, ///< The interface to make external.
+    const std::string& alias    ///< The name to give it outside the application.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    if (   (m_RequiredInterfaces.find(alias) != m_RequiredInterfaces.end())
+        || (m_ProvidedInterfaces.find(alias) != m_ProvidedInterfaces.end()) )
+    {
+        throw legato::Exception("Duplicate external interface name: '" + alias + "'.");
+    }
+
+    if (interface.IsExternalToApp())
+    {
+        throw legato::Exception("Interface '" + interface.AppUniqueName()
+                                + "' is already an external interface.");
+    }
+
+    interface.MakeExternalToApp(alias);
+
+    m_ProvidedInterfaces[alias] = &interface;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Creates a binding from a client-side IPC API interface to a server offered by an app or user
+ * outside this app.
+ *
+ * @return Reference to the newly created binding.
+ **/
+//--------------------------------------------------------------------------------------------------
+ExeToUserApiBind& App::GetExternalApiBind
+(
+    const std::string& clientInterfaceSpec  ///< Client interface specifier (exe.comp.interface)
+)
+//--------------------------------------------------------------------------------------------------
+{
+    auto i = m_ExternalApiBinds.find(clientInterfaceSpec);
+
+    if (i == m_ExternalApiBinds.end())
+    {
+        throw Exception("Binding of client-side interface'" + clientInterfaceSpec + "' not found.");
+    }
+
+    return i->second;
 }
 
 
@@ -416,7 +528,7 @@ void App::AddInternalApiBind
                         + clientInterface + "'.");
     }
 
-    InternalApiBind& binding = m_InternalApiBinds[clientInterface];
+    ExeToExeApiBind& binding = m_InternalApiBinds[clientInterface];
 
     binding.ClientInterface(clientInterface);
     binding.ServerInterface(serverInterface);
@@ -432,7 +544,7 @@ void App::AddInternalApiBind
  * @throw legato::Exception if the interface name is not found anywhere in the app.
  **/
 //--------------------------------------------------------------------------------------------------
-ImportedInterface& App::FindClientInterface
+ClientInterface& App::FindClientInterface
 (
     const std::string& exeName,
     const std::string& componentName,
@@ -471,7 +583,7 @@ ImportedInterface& App::FindClientInterface
  * @throw legato::Exception if the interface name is not found anywhere in the app.
  **/
 //--------------------------------------------------------------------------------------------------
-ExportedInterface& App::FindServerInterface
+ServerInterface& App::FindServerInterface
 (
     const std::string& exeName,
     const std::string& componentName,
@@ -510,7 +622,7 @@ ExportedInterface& App::FindServerInterface
  * @throw legato::Exception if the interface name is not found anywhere in the app.
  **/
 //--------------------------------------------------------------------------------------------------
-ImportedInterface& App::FindClientInterface
+ClientInterface& App::FindClientInterface
 (
     const std::string& name ///< Interface specification of the form "exe.component.interface"
 )
@@ -543,7 +655,7 @@ ImportedInterface& App::FindClientInterface
  * @throw legato::Exception if the interface name is not found anywhere in the app.
  **/
 //--------------------------------------------------------------------------------------------------
-ExportedInterface& App::FindServerInterface
+ServerInterface& App::FindServerInterface
 (
     const std::string& name ///< Interface specification of the form "exe.component.interface"
 )
@@ -564,6 +676,60 @@ ExportedInterface& App::FindServerInterface
     }
 
     return FindServerInterface(exeName, componentName, interfaceName);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Searches for an external client-side (required) interface on the application.
+ *
+ * @return Reference to the interface.
+ *
+ * @throw legato::Exception if the interface name is not one of the app's external interface names.
+ **/
+//--------------------------------------------------------------------------------------------------
+ClientInterface& App::FindExternalClientInterface
+(
+    const std::string& interfaceName
+)
+//--------------------------------------------------------------------------------------------------
+{
+    auto i = m_RequiredInterfaces.find(interfaceName);
+
+    if (i == m_RequiredInterfaces.end())
+    {
+        throw legato::Exception ("External client-side (required) IPC API interface '"
+                                 + interfaceName + "' not found in app '" + m_Name + "'.");
+    }
+
+    return *(i->second);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Searches for an external server-side (provided) interface on the application.
+ *
+ * @return Reference to the interface.
+ *
+ * @throw legato::Exception if the interface name is not one of the app's external interface names.
+ **/
+//--------------------------------------------------------------------------------------------------
+ServerInterface& App::FindExternalServerInterface
+(
+    const std::string& interfaceName
+)
+//--------------------------------------------------------------------------------------------------
+{
+    auto i = m_ProvidedInterfaces.find(interfaceName);
+
+    if (i == m_ProvidedInterfaces.end())
+    {
+        throw legato::Exception ("External server-side (provided) IPC API interface '"
+                                 + interfaceName + "' not found in app '" + m_Name + "'.");
+    }
+
+    return *(i->second);
 }
 
 
@@ -599,6 +765,22 @@ void App::AddGroup
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Remove the app's user from all secondary groups.  (The user can't be removed from its primary
+ * group, which is the group with the same name as the user.)
+ **/
+//--------------------------------------------------------------------------------------------------
+void App::ClearGroups
+(
+    void
+)
+//--------------------------------------------------------------------------------------------------
+{
+    m_Groups.clear();
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Add permission to access a given configuration tree.
  **/
 //--------------------------------------------------------------------------------------------------
@@ -620,4 +802,31 @@ void App::AddConfigTreeAccess
 }
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * @return  true if one or more of the application's processes are permitted to run threads at
+ *          a real-time priority level.
+ **/
+//--------------------------------------------------------------------------------------------------
+bool App::AreRealTimeThreadsPermitted
+(
+    void
+)
+const
+//--------------------------------------------------------------------------------------------------
+{
+    // Loop through all the Process Environments and see if any of them is permitted to use
+    // real-time priorities.
+    for (const auto& env : m_ProcEnvironments)
+    {
+        if (env.AreRealTimeThreadsPermitted())
+        {
+            return true;
+        }
+    }
+
+    return false;
 }
+
+
+} // namespace legato
