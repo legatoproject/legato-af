@@ -1,18 +1,25 @@
 executables:
-    modemDemo ( "demoComponent" )
-    send      ( "sendComponent" )
+{
+    modemDemo = ( demoComponent )
+    send      = ( sendComponent )
+}
 
 processes:
-    run: ( modemDemo )
+{
+    run:
+    {
+        ( modemDemo )
 
-// To have the app send you an SMS upon start,
-// please uncomment this line and replace <Input number> by your cell number
-//	run: ( send "<input number>" "Welcome to modemDemo app")
+// To have the app send you an SMS upon start,
+// please uncomment this line and replace <Input number> by your cell number
+//        ( send "<input number>" "Welcome to modemDemo app")
+    }
+}
 
 start: auto
 
 bindings:
-
+{
     send.sendComponent.send -> modemDemo.demoComponent.send
 
     modemDemo.demoComponent.le_mdc -> modemService.le_mdc
@@ -20,3 +27,4 @@ bindings:
     modemDemo.demoComponent.le_sim -> modemService.le_sim
     modemDemo.demoComponent.le_sms -> modemService.le_sms
     modemDemo.demoComponent.le_data -> dataConnectionService.le_data
+}

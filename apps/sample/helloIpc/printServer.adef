@@ -1,7 +1,21 @@
 executables:
-
-    server (printServer)
+{
+    server = (printServer)
+}
 
 processes:
+{
+    run:
+    {
+        (server)
+    }
+}
 
-    run: (server)
+provides:
+{
+    api:
+    {
+        printer = server.printServer.printer
+    }
+}
+

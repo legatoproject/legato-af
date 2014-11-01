@@ -1,8 +1,17 @@
 executables:
-    helloWorld ( "helloWorld.c" )
+{
+    helloWorld = ( helloWorld.c )
+}
 
 processes:
+{
     envVars:
+    {
         LE_LOG_LEVEL = DEBUG
+    }
 
-    run: (helloWorld)
+    run:
+    {
+        ( helloWorld )
+    }
+}

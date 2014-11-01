@@ -6,7 +6,7 @@
 
 find_package(Legato REQUIRED)
 
-# Creates application from the sms.adef
+# Creates application from the sms.adef
 mkapp(sms.adef
     -i ${LEGATO_ROOT}/interfaces/modemServices
     DEPENDS
@@ -18,5 +18,5 @@ mkapp(sms.adef
         legato
 )
 
-# This is a sample application
+# This is a sample application
 add_dependencies(samples sms)

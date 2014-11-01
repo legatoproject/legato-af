@@ -29,10 +29,10 @@ static void RxMessageHandler
 )
 {
     le_result_t  res;
-    char         tel[LE_MDMDEFS_PHONE_NUM_MAX_LEN];
-    char         timestamp[LE_SMS_TIMESTAMP_MAX_LEN];
-    char         text[LE_SMS_TEXT_MAX_LEN];
-    char         text_return[LE_SMS_TEXT_MAX_LEN];
+    char         tel[LE_MDMDEFS_PHONE_NUM_MAX_BYTES];
+    char         timestamp[LE_SMS_TIMESTAMP_MAX_BYTES] = {0};
+    char         text[LE_SMS_TEXT_MAX_BYTES] = {0};
+    char         text_return[LE_SMS_TEXT_MAX_BYTES] = {0};
 
     LE_INFO("A New SMS message is received with ref.%p", msgRef);
 

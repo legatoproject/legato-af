@@ -1,5 +1,12 @@
-import:
-    ecallApp.api
+requires:
+{
+    api:
+    {
+        ecallApp.api
+    }
+}
 
 sources:
+{
     trigger.c
+}

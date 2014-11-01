@@ -7,7 +7,7 @@
 
 find_package(Legato REQUIRED)
 
-# Creates application from the .adef
+# Creates application from the .adef
 mkapp(modemDemo.adef
     -i ${LEGATO_SOURCE_DIR}/interfaces/modemServices
     -i ${LEGATO_SOURCE_DIR}/interfaces/dataConnectionService
@@ -18,5 +18,5 @@ mkapp(modemDemo.adef
         sendComponent/*
 )
 
-# This is a sample application
+# This is a sample application
 add_dependencies(samples modemDemo)

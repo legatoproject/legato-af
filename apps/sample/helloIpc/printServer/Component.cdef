@@ -1,7 +1,12 @@
 sources:
-
+{
     server.c
+}
 
-export:
-
-    printer = printer.api
+provides:
+{
+    api:
+    {
+        printer = printer.api
+    }
+}

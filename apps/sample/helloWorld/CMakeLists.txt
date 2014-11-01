@@ -5,12 +5,12 @@
 #     Sierra Wireless - initial API and implementation
 #*******************************************************************************
 
-# Creates application from helloWorld.adef
+# Creates application from helloWorld.adef
 mkapp(helloWorld.adef
     DEPENDS
         legato
         helloWorld.c
 )
 
-# This is a sample application
+# This is a sample application
 add_dependencies(samples helloWorld)

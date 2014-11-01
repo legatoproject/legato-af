@@ -5,7 +5,7 @@
 
 find_package(Legato REQUIRED)
 
-# Creates application from eCall.adef
+# Creates application from eCall.adef
 mkapp(eCall.adef
     -i ${LEGATO_ROOT}/interfaces/modemServices
     -i ${LEGATO_ROOT}/interfaces/positioning
@@ -21,5 +21,5 @@ mkapp(eCall.adef
         triggerComponent/trigger.c
 )
 
-# This is a sample application
+# This is a sample application
 add_dependencies(samples eCall)

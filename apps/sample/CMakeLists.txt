@@ -20,16 +20,19 @@ add_subdirectory(helloWorld)
 # Simple client application + server application
 add_subdirectory(helloIpc)
 
-# Application using Modem Services
+# Application using Modem Services
 add_subdirectory(modemDemo)
 
-# Application using eCall
-add_subdirectory(eCall)
+# Application using eCall
+if(INCLUDE_ECALL EQUAL 1 AND LEGATO_TARGET MATCHES "ar7")
+    add_subdirectory(eCall)
+endif()
+
 
 # Application using AirVantage services
 if(INCLUDE_AIRVANTAGE)
     add_subdirectory(airvantageDemo)
 endif()
 
-# SMS Sample application using Modem Services
+# SMS Sample application using Modem Services
 add_subdirectory(sms)

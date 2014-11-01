@@ -1,5 +1,6 @@
 executables:
-        airvantageDemo (
+{
+        airvantageDemo = (
                             "airvantageDemo.c"
                             "$LEGATO_BUILD/airvantage/runtime/lib/libreturncodes.so"
                             "$LEGATO_BUILD/airvantage/runtime/lib/libSwi_AirVantage.so"
@@ -9,19 +10,29 @@ executables:
                             "$LEGATO_BUILD/airvantage/runtime/lib/libSwi_log.so"
                             "$LEGATO_BUILD/airvantage/runtime/lib/libSwi_DSet.so"
                           )
+}
 
-
-files:
-    "$LEGATO_BUILD/airvantage/runtime/lib/libreturncodes.so"        "/lib"
-    "$LEGATO_BUILD/airvantage/runtime/lib/libSwi_AirVantage.so"     "/lib"
-    "$LEGATO_BUILD/airvantage/runtime/lib/libSwi_DeviceTree.so"     "/lib"
-    "$LEGATO_BUILD/airvantage/runtime/lib/libEmp.so"                "/lib"
-    "$LEGATO_BUILD/airvantage/runtime/lib/libyajl.so"               "/lib"
-    "$LEGATO_BUILD/airvantage/runtime/lib/libSwi_log.so"            "/lib"
-    "$LEGATO_BUILD/airvantage/runtime/lib/libSwi_DSet.so"           "/lib"
+bundles:
+{
+    file:
+    {
+        "$LEGATO_BUILD/airvantage/runtime/lib/libreturncodes.so"        "/lib"
+        "$LEGATO_BUILD/airvantage/runtime/lib/libSwi_AirVantage.so"     "/lib"
+        "$LEGATO_BUILD/airvantage/runtime/lib/libSwi_DeviceTree.so"     "/lib"
+        "$LEGATO_BUILD/airvantage/runtime/lib/libEmp.so"                "/lib"
+        "$LEGATO_BUILD/airvantage/runtime/lib/libyajl.so"               "/lib"
+        "$LEGATO_BUILD/airvantage/runtime/lib/libSwi_log.so"            "/lib"
+        "$LEGATO_BUILD/airvantage/runtime/lib/libSwi_DSet.so"           "/lib"
+    }
+}
 
 processes:
-    run: ( airvantageDemo )
+{
+    run:
+    {
+        ( airvantageDemo )
+    }
+}
 
 start:
     auto

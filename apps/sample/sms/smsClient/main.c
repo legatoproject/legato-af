@@ -14,24 +14,6 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * The thread to install the SMS message handler.
- *
- */
-//--------------------------------------------------------------------------------------------------
-static void* SMSReceiver
-(
-    void* context
-)
-{
-    smsmt_Receiver();
-
-    le_event_RunLoop();
-    return NULL;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  *  App init
  *
  */
@@ -40,5 +22,5 @@ COMPONENT_INIT
 {
     LE_INFO("Start SMS Sample!");
 
-    le_thread_Start(le_thread_Create("SMSReceiver", SMSReceiver, NULL));
+    smsmt_Receiver();
 }

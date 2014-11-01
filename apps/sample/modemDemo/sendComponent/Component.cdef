@@ -1,6 +1,12 @@
-import:
-    send = send_util.api
-    
+requires:
+{
+    api:
+    {
+        send = send_util.api
+    }
+}
+
 sources:
-    "send.c"
-    
+{
+    send.c
+}

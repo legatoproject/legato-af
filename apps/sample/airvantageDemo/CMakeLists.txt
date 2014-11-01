@@ -10,7 +10,7 @@ find_package(Legato REQUIRED)
 set(AIRVANTAGE_INCLUDE_DIR              ${LEGATO_BINARY_DIR}/airvantage/runtime/itf)
 set(AIRVANTAGE_LIBRARY_DIR              ${LEGATO_BINARY_DIR}/airvantage/runtime/lib)
 
-# Creates application from the .adef
+# Creates application from the .adef
 mkapp(airvantageDemo.adef
     -i ${AIRVANTAGE_INCLUDE_DIR}
     DEPENDS
@@ -18,5 +18,5 @@ mkapp(airvantageDemo.adef
         airvantageDemo.c
 )
 
-# This is a sample application
+# This is a sample application
 add_dependencies(samples airvantageDemo)

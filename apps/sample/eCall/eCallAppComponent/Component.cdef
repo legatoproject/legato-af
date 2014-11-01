@@ -1,10 +1,22 @@
-import:
-    le_pos.api
-    le_ecall.api
-    le_cfg.api
+requires:
+{
+    api:
+    {
+        le_pos.api
+        le_ecall.api
+        le_cfg.api
+    }
+}
 
-export:
-    ecallApp.api
+provides:
+{
+    api:
+    {
+        ecallApp.api
+    }
+}
 
 sources:
+{
     eCallApp.c
+}

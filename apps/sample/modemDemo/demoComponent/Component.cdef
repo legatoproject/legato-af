@@ -1,13 +1,24 @@
-import:
-    le_sms.api
-    le_mrc.api
-    le_mdc.api
-    le_sim.api
-    le_data.api
-    le_mdmDefs.api [types-only]
+requires:
+{
+    api:
+    {
+        le_sms.api
+        le_mrc.api
+        le_mdc.api
+        le_sim.api
+        le_data.api
+    }
+}
 
-export:
-    send = send_util.api
+provides:
+{
+    api:
+    {
+        send = send_util.api
+    }
+}
 
 sources:
+{
     demo.c
+}
