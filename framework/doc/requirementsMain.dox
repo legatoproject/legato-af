@@ -2,8 +2,6 @@
 
 <h2>System </h2>
 
-If you’re running from the bootable USB stick, a minimum of 2GB RAM is suggested.
-
 If you’re installing the development environment and application framework on a development host, 
  recommended system requirements for the Ubuntu desktop is at least 768 MB of RAM and 5 GB of disk space.
 

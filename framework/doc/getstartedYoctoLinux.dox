@@ -1,17 +1,10 @@
 /** @page getstartedYoctoLinux Yocto Linux
 
-You'll need to complete these steps if you need to set up your board for Yocto.
-
 The Yocto Project is an open source collaboration project that provides templates, 
-tools and methods to help you create custom Linux-based systems for embedded products regardless of the hardware architecture.
+tools and methods to help you create custom Linux-based systems for embedded 
+products regardless of the hardware architecture.
 
-Legato is compatible with Yocto 1.4.1.
-
-@ref yoctoDirectories <br>
-@ref prebuiltYoctoImages <br>
-@ref rebuildYoctoImages <br>
-@ref flashYoctoImages <br>
-@ref custYoctoImages <br>
+Legato is compatible with Yocto 1.6.
 
 @section yoctoDirectories Yocto Linux Directories
 
@@ -30,8 +23,9 @@ These file/directories will be extracted:
 Yocto uses a layered model for its build system. In Legato, device-specific layers are
  @c meta-swi-[target] and @c meta-swi-bin.
   
-Yocto 1.4.1 and poky environment documentation is available at:
-https://www.yoctoproject.org/documentation/archived?keys=&field_version_tid=45 
+Yocto 1.6 and poky environment documentation is available at 
+<a href ="https://www.yoctoproject.org/documentation/archived?keys=&field_version_tid=45">
+Yocto docs</a> 
 
 @section prebuiltYoctoImages Pre-built Yocto Image
 
@@ -58,22 +52,57 @@ Once the build is complete, you'll find new images in the directory:
 Links are created at the end of the build to point to the latest kernel (kernel) and root file system (rootfs)
 @warning You can’t rebuild Yocto images on Ubuntu 13.10.
 
-@section flashYoctoImages Flash Yocto Image
+@section flashYoctoImagesWin Windows Flash Yocto 
+The easiest way to flash a Yocto image is through Windows. The steps are the same as upgrading  
+to the latest firmware that includes flashing the Yocto image:</p>
 
-To flash the images, the device must be in @e fastboot mode. From the shell 
-prompt on the device run:
+- Download @c SWI9X15W_06.03.17.00-wp_yocto-cwe.exe to your host. <br> 
+ See <a href="http://developer.sierrawireless.com/Resources/Resources/Legato/Distribution.aspx">Legato Downloads</a>
+
+- Turn the board BOOT switch to 'OFF' (Recovery mode). Depending on your dev kit, 'LOW' is 
+the same as 'OFF'. 
+
+- Connect the target: displays in Device Manager list as 'Sierra DM Port' under Ports.
+
+- Run @c SWI9X15W_06.03.17.00-wp_yocto-cwe.exe by double-clicking the file.
+After the image flash process completes, it will advise it's resetting the target.
+
+- Disconnect power from your target and turn your BOOT switch to 'ON' (or 'HIGH'). 
+
+- Reconnect power to your target; it should enumerate (with other targets) under 
+Ports in Window Device Manager. 
+
+Connect to the target's AT Port (through HyperTerminal or Tera Term), and run @c ati to verify 
+the flash update was successful. Output will look like this:
+
+@verbatim
+Manufacturer: Sierra Wireless, Incorporated
+Model: WP7102
+Revision: SWI9X15W_06.03.17.00 r23799 CNSHZ-AR-BUILD 2014/08/08 13:02:24
+IMEI: (Your imei)
+IMEI SV: 0
++GCAP: +CGSM,+FCLASS,+DS
+@endverbatim
+
+@note Flashing a new image will override existing settings. To easily keep your ecm on Linux, just temporarily rename your 
+usbmode file; or you can always create a new one.  @ref yoctoCDC and @ref getstartedConfigIPusb
+
+@section flashYoctoImagesLin Linux Flash Yocto  
+
+You can flash the Yocto images on Linux;, the device must be in @e fastboot mode. 
+From the shell prompt on the device run:
 @code
 root@swi-mdm9x15:~# sys_reboot bootloader @endcode
 
 After a few seconds, the device will enumerate as an Android Bootloader Device. You can 
-test this on the development PC with :
+test this on the development PC with:
 
 @code dave@devpc$ fastboot devices
 MDM9615
 @endcode
 
-Then erase and rewrite the kernel and root filesystem partitions using the fastboot command. 
-The partitions are called kernel and rootfs.
+Then erase and rewrite the kernel and root filesystem partitions using the fastboot command 
+(the partitions are called kernel and rootfs):
 
 @code
 dave@devpc $ fastboot erase kernel
@@ -89,7 +118,7 @@ rebooting...
 finished. total time: 0.001s
 @endcode
 
-@note You'll need to use fastboot through the micro-USB connection.
+@note You have to use the micro-USB connection for fastboot
  
 @section custYoctoImages Custom Yocto Image
 

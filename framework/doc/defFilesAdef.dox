@@ -492,15 +492,14 @@ Specifies the maximum size (in bytes) of core dump files that can be generated b
 
 Default is @b 8K
 
-@note   The core dump file size will also be limited by the @ref processmaxFileBytes. If the
+@note   The core dump file size is limited by @ref processmaxFileBytes. And if the
         the core file will be generated in the sandbox's temporary runtime file system, it will
-        be limited by @ref maxFileSystemBytes and @ref maxMemoryBytes.
+        also be limited by @ref maxFileSystemBytes.
 
 @code
 maxCoreDumpFileBytes: 100K
 maxFileBytes: 100K
 maxFileSystemBytes: 200K
-maxMemoryBytes: 100K
 @endcode
 
 @subsection processmaxFileBytes Max File Bytes
