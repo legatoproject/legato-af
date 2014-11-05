@@ -81,7 +81,7 @@ void pa_ecall_RemoveEventHandler
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_ecall_SetPsapNumber
 (
-    char psap[LE_MDMDEFS_PHONE_NUM_MAX_BYTES] ///< [IN] Public Safely Answering Point number
+    char psap[LE_MDMDEFS_PHONE_NUM_MAX_LEN] ///< [IN] Public Safely Answering Point number
 )
 {
     // TODO implementation

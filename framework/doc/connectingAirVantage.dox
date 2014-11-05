@@ -10,7 +10,7 @@ API info is here: @ref swi_airvantage.h
 Complete AirVantage documentation: 
 https://doc.airvantage.net/display/USERGUIDE/Getting+Started
 
-@section overviewAVIConnect High-level Steps
+@section overviewAVIConnect Overview Info
 
 These are the high-level steps to connect a Legato device to AirVantage:
 
@@ -27,16 +27,15 @@ enter the IMEI of your device.
 - Once you got back on system creation window, click the `Application` field  select 'Legato_Beta'.
 - Select "I want to activate my system after creating it".
 - Click `Create`.
+  
 
-Force a connection using the Agent Shell, with Legato running:
+Force a connection using the Agent Shell:
 
 - Connect to the device using ssh
 - Telnet to the agent shell using "telnet localhost 2000"
-- In the agent shell, check the server URL by running: ":agent.config.server.url".
-- Verify the URL. It defaults to "tcp://na.airvantage.net:44900". If you need to change the server URL (e.g., to 'eu'), run: 
-agent.config.server.url="tcp://eu.airvantage.net:44900". Then CTRL+D (to exit agent shell).
-- Restart Legato, and access agent shell again.
-- Request a connection by running ":agent.srvcon.connect()"
+- In the agent shell, check the server URL: ":agent.config.server.url". 
+- Verify that the URL is set to "tcp://na.airvantage.net:44900"
+- then request a connection ":agent.srvcon.connect()"
 
 This manually forces a connection to the server. You can also set up automatic connections or 
 make user applications to trigger connections.

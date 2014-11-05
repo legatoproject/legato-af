@@ -1,33 +1,41 @@
 /** @page getstartedInstallNotes Yocto Install Notes
 
-Here are some helpful tips for Yocto Linux working with Sierra Wireless devices.
+Here are some helpful tips for Yocto Linux working with Sierra Wireless devices: 
+
+@ref yoctoNoPwd <br>
+@ref yoctoNFSRoot <br>
+@ref yoctoCDC <br>
+@ref yoctoPrefIP <br>
+@ref yoctoStaticIP <br>
+@ref yoctoBSPTestReport <br>
+@ref yoctoReadWrite <br>
+@ref yoctoNoDown <br>
+@ref yoctoDefUSB <br>
 
 @section yoctoNoPwd Log on Without Password
-To log onto the target through the serial interface, log on as @b root with no password. 
+To log onto the target through the serial interface, log on as root with no password. 
 This allows manual changes to other interfaces (e.g., USB if you want to run CDC-ECM). 
 
+@section yoctoNFSRoot Use nfs root 
+The file @b meta-swi/meta-swi-mdm9x15/conf/machine/qcom-mdm9615.conf
+contains examples if you need to include a lot of extra packages in your rootfs or if you build the debug version. 
+See README.bsp for details. 
+Remember to untar the generated rootfs to an exported file system. The file pointed to by the rootfs link contains the most recent root file system. 
+There’s more info available at https://www.kernel.org/doc/Documentation/filesystems/nfs/nfsroot.txt.
+
 @section yoctoCDC CDC-ECM for IP vs Ethernet
-Using CDC-ECM for IP connections will cause the MAC address to change every reboot because the 
-kernel allocates software-defined MAC addresses to interfaces. This may cause new connections to be 
-detected by your host every time you reboot the device. See @ref getstartedConfigIP and @ref toolsSetNet
+Using CDC-ECM for IP connections will cause the MAC address to change every reboot because the kernel allocates software-defined 
+MAC addresses to interfaces. This may cause new connections to be detected by your host every time you reboot the device. 
 
 @section yoctoPrefIP  Setup Preferred IP
 Either boot with an Ethernet cable plugged in and let the device obtain an IP address using 
 DHCP, or enable CDC-ECM and the micro-USB cable. You can then determine the IP address using 
 @c ifconfig on the console or provide a fixed IP from your DHCP server. Then use @c ssh and @c scp to 
-access the device and transfer files. 
-
-@section yoctoDefUSB Change Default USB Classes
-During the boot sequence, startup scripts run the file @c /etc/legato/usbsetup that 
-enumerates the USB types listed in @c /etc/legato/usbmode. 
-
-You can easily override default types by creating your own @c usbmode file in @c /mnt/flash/startup/usb. 
-The new file will take precedence over the old one. By default, the device will enumerate an ECM port, 
-an ACM port for AT commands and USB audio. 
+access the device and transfer files. Remember root has no password. 
 
 @section yoctoStaticIP Setup Target Static IP
 
-You can configure your target and development PC so it doesn't prompt for a password, run: 
+Configure your target and development PC so it doesn't prompt for a password, run: 
 @b bin/configtargetssh
 
  It'll look like this:
@@ -67,6 +75,10 @@ root@192.168.1.2's password:
 dave@devpc:~/legato$ 
 @endverbatim
 
+@section yoctoBSPTestReport Setup using BSPTestReport.xls
+This spreadsheet is used for instructions and reports to help set up different BSP features to test. Start with 
+the Contents sheet. 
+
 @section yoctoReadWrite Read/Write rootfs
 
 It's convenient right now to enable r/w to rootfs, but it will be moving to a read-only model 
@@ -81,16 +93,15 @@ Enable downloading new packages over the Internet, modify:
 @c <build-dir>/conf/local.conf value @c BB_NO_NETWORK to "0" . 
 The file is only present after a build has run once. 
 
-@section yoctoBSPTestReport Setup using BSPTestReport.xls
-The @c  BSPTestReport.xls spreadsheet is used for instructions and reports to help set up 
-different BSP features to test. Start with the Contents sheet. 
+@section yoctoDefUSB Change Default USB Classes
+During the boot sequence, startup scripts run the file @c /etc/legato/usbsetup that 
+enumerates the USB types listed in @c /etc/legato/usbmode. 
 
-@section yoctoNFSRoot Use nfs root 
-The file @b meta-swi/meta-swi-mdm9x15/conf/machine/qcom-mdm9615.conf
-contains examples if you need to include a lot of extra packages in your rootfs or if you build the debug version. 
-See README.bsp for details. 
-Remember to untar the generated rootfs to an exported file system. The file pointed to by the rootfs link contains the most recent root file system. 
-There’s more info available at <a href="https://www.kernel.org/doc/Documentation/filesystems/nfs/nfsroot.txt">kernel docs</a>.
+Override default types by creating your own @c usbmode file in @c /mnt/flash/startup/usb. The new file will take 
+precedence over the old one.
+By default, the device will enumerate an ECM port, an ACM port for AT commands and USB 
+audio. 
+
 <HR>
 
 Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.

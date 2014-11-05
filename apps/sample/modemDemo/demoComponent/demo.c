@@ -31,7 +31,7 @@ static char DestNumValid = false;
  *  The destination phone number we report to on events.
  */
 // -------------------------------------------------------------------------------------------------
-static char DestNum[LE_MDMDEFS_PHONE_NUM_MAX_BYTES] = { 0 };
+static char DestNum[LE_MDMDEFS_PHONE_NUM_MAX_LEN] = { 0 };
 
 // -------------------------------------------------------------------------------------------------
 /**
@@ -887,10 +887,10 @@ static void SmsReceivedHandler
     }
 
     // Now, extract the relavant information and record the message in the appropriate places.
-    char tel[LE_MDMDEFS_PHONE_NUM_MAX_BYTES] = { 0 };
+    char tel[LE_MDMDEFS_PHONE_NUM_MAX_LEN] = { 0 };
     char text[LE_SMS_TEXT_MAX_LEN] = { 0 };
 
-    le_sms_GetSenderTel(messagePtr, tel, LE_MDMDEFS_PHONE_NUM_MAX_BYTES);
+    le_sms_GetSenderTel(messagePtr, tel, LE_MDMDEFS_PHONE_NUM_MAX_LEN);
     le_sms_GetText(messagePtr, text, LE_SMS_TEXT_MAX_LEN);
 
     // We are now reporting to this person

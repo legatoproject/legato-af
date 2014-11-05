@@ -32,7 +32,7 @@ static le_audio_StreamRef_t FileAudioRef = NULL;
 static le_audio_ConnectorRef_t AudioInputConnectorRef = NULL;
 static le_audio_ConnectorRef_t AudioOutputConnectorRef = NULL;
 
-static char  DestinationNumber[LE_MDMDEFS_PHONE_NUM_MAX_BYTES];
+static char  DestinationNumber[LE_MDMDEFS_PHONE_NUM_MAX_LEN];
 static char  AudioTestCase[16];
 static char  MainAudioSoundPath[16];
 static char  AudioFilePath[129];
@@ -591,7 +591,7 @@ static int32_t GetTel(void)
 {
     char *strPtr;
 
-    memset(DestinationNumber, 0, LE_MDMDEFS_PHONE_NUM_MAX_BYTES);
+    memset(DestinationNumber, 0, LE_MDMDEFS_PHONE_NUM_MAX_LEN);
 
     /**
      * New commands added to manage Calling Line Identification Restriction (CLIR) status on calls.

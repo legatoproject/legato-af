@@ -886,8 +886,8 @@ static le_result_t DecodeGsmPdu
 {
     int pos = 0;
     uint8_t firstByte;
-    char address[LE_MDMDEFS_PHONE_NUM_MAX_BYTES] = {0};
-    char timestamp[LE_SMS_TIMESTAMP_MAX_BYTES] = {0};
+    char address[LE_MDMDEFS_PHONE_NUM_MAX_LEN] = {0};
+    char timestamp[LE_SMS_TIMESTAMP_MAX_LEN] = {0};
     uint8_t addressLen;
     uint8_t tp_dcs;
     uint8_t tp_udl;
@@ -933,7 +933,7 @@ static le_result_t DecodeGsmPdu
                     &dataPtr[pos],
                     (addressLen+1)>>1,
                     address,
-                    LE_MDMDEFS_PHONE_NUM_MAX_BYTES);
+                    LE_MDMDEFS_PHONE_NUM_MAX_LEN);
     }
 
     /* TP-PID: Protocol identifier (1 byte) */
@@ -949,7 +949,7 @@ static le_result_t DecodeGsmPdu
             &dataPtr[pos],
             7,
             timestamp,
-            LE_SMS_TIMESTAMP_MAX_BYTES
+            LE_SMS_TIMESTAMP_MAX_LEN
         );
     }
 
@@ -1124,9 +1124,9 @@ static le_result_t EncodeGsmPdu
 
     /* Prepare address */
     int addressLen = strlen(addressPtr);
-    if (addressLen > LE_MDMDEFS_PHONE_NUM_MAX_BYTES) {
+    if (addressLen > LE_MDMDEFS_PHONE_NUM_MAX_LEN) {
         LE_DEBUG("Address is too long %d. should be at max %d",
-                 addressLen, LE_MDMDEFS_PHONE_NUM_MAX_BYTES-1);
+                 addressLen, LE_MDMDEFS_PHONE_NUM_MAX_LEN-1);
         return LE_NOT_POSSIBLE;
     }
 

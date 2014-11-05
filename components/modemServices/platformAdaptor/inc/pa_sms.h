@@ -125,10 +125,10 @@ pa_sms_Storage_t;
 typedef struct {
     pa_sms_OptionMask_t option;                           ///< Option mask
     le_sms_Status_t     status;                           ///< mandatory, status of msg in memory
-    char                oa[LE_MDMDEFS_PHONE_NUM_MAX_BYTES]; ///< mandatory, originator address
-    char                scts[LE_SMS_TIMESTAMP_MAX_BYTES]; ///< mandatory, service center timestamp
+    char                oa[LE_MDMDEFS_PHONE_NUM_MAX_LEN]; ///< optional, originator address
+    char                scts[LE_SMS_TIMESTAMP_MAX_LEN];   ///< optional, service center timestamp
     le_sms_Format_t     format;                           ///< mandatory, SMS user data format
-    uint8_t             data[LE_SMS_TEXT_MAX_BYTES];      ///< mandatory, SMS user data
+    uint8_t             data[LE_SMS_TEXT_MAX_LEN];        ///< mandatory, SMS user data
     uint32_t            dataLen;                          ///< mandatory, SMS user data length
 }
 pa_sms_SmsDeliver_t;
@@ -142,9 +142,9 @@ pa_sms_SmsDeliver_t;
 typedef struct {
     pa_sms_OptionMask_t option;                           ///< Option mask
     le_sms_Status_t     status;                           ///< mandatory, status of msg in memory
-    char                da[LE_MDMDEFS_PHONE_NUM_MAX_BYTES]; ///< mandatory, destination address
+    char                da[LE_MDMDEFS_PHONE_NUM_MAX_LEN]; ///< optional, destination address
     le_sms_Format_t     format;                           ///< mandatory, SMS user data format
-    uint8_t             data[LE_SMS_TEXT_MAX_BYTES];      ///< mandatory, SMS user data
+    uint8_t             data[LE_SMS_TEXT_MAX_LEN];        ///< mandatory, SMS user data
     uint32_t            dataLen;                          ///< mandatory, SMS user data length
 }
 pa_sms_SmsSubmit_t;
@@ -365,7 +365,5 @@ le_result_t pa_sms_SetSmsc
 (
     const char*    smscPtr  ///< [IN] The Short message service center.
 );
-
-
 
 #endif // LEGATO_PASMS_INCLUDE_GUARD

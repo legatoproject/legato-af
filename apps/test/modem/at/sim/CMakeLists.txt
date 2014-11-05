@@ -28,7 +28,6 @@ if(${LEGATO_TARGET} STREQUAL "localhost")
                     -i ${LEGATO_ROOT}/components/atManager/devices/uart/inc
                     -i ${LEGATO_ROOT}/components/atManager/src
                     -i ${LEGATO_ROOT}/components
-                    -i ${LEGATO_ROOT}/interfaces/modemServices
                 DEPENDS
                     legato
                     Component.cdef

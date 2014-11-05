@@ -25,7 +25,7 @@ static le_audio_StreamRef_t FeOutRef = NULL;
 static le_audio_ConnectorRef_t AudioInputConnectorRef = NULL;
 static le_audio_ConnectorRef_t AudioOutputConnectorRef = NULL;
 
-static char  DestinationNumber[LE_MDMDEFS_PHONE_NUM_MAX_BYTES];
+static char  DestinationNumber[LE_MDMDEFS_PHONE_NUM_MAX_LEN];
 
 static le_audio_DtmfDetectorHandlerRef_t DtmfHandlerRef1 = NULL;
 static le_audio_DtmfDetectorHandlerRef_t DtmfHandlerRef2 = NULL;
@@ -351,7 +351,7 @@ static int32_t GetTel(void)
 {
     char *strPtr;
 
-    memset(DestinationNumber, 0, LE_MDMDEFS_PHONE_NUM_MAX_BYTES);
+    memset(DestinationNumber, 0, LE_MDMDEFS_PHONE_NUM_MAX_LEN);
 
     do
     {

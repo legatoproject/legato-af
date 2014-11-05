@@ -52,7 +52,7 @@ static le_audio_ConnectorRef_t AudioOutputConnectorRef = NULL;
  * Destination number for outgoing calls
  */
 //--------------------------------------------------------------------------------------------------
-static char  DestinationNumber[LE_MDMDEFS_PHONE_NUM_MAX_BYTES];
+static char  DestinationNumber[LE_MDMDEFS_PHONE_NUM_MAX_LEN];
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -480,7 +480,7 @@ COMPONENT_INIT
 
     if (le_arg_NumArgs() == 1)
     {
-        le_arg_GetArg(0, DestinationNumber, LE_MDMDEFS_PHONE_NUM_MAX_BYTES);
+        le_arg_GetArg(0, DestinationNumber, LE_MDMDEFS_PHONE_NUM_MAX_LEN);
     }
     else
     {

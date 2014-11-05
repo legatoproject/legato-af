@@ -273,7 +273,10 @@
  */
 //--------------------------------------------------------------------------------------------------
 
-USETYPES le_mdmDefs.api;
+// NOTE: string sizes are set to an arbitrary value.  The correct values
+//       still need to be filled in.
+
+
 USETYPES le_audio.api;
 
 //--------------------------------------------------------------------------------------------------
@@ -331,7 +334,7 @@ REFERENCE Obj;
 //--------------------------------------------------------------------------------------------------
 FUNCTION Delete
 (
-    Obj callRef IN  ///< The call object to free.
+    le_mcc_call_ObjRef_t callRef IN  ///< The call object to free.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -353,7 +356,7 @@ FUNCTION Delete
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t Start
 (
-    Obj callRef IN  ///< Reference to the call object.
+    le_mcc_call_ObjRef_t callRef IN  ///< Reference to the call object.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -368,7 +371,7 @@ FUNCTION le_result_t Start
 //--------------------------------------------------------------------------------------------------
 FUNCTION bool IsConnected
 (
-    Obj callRef IN ///< The call reference to read.
+    le_mcc_call_ObjRef_t callRef IN ///< The call reference to read.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -388,8 +391,8 @@ FUNCTION bool IsConnected
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetRemoteTel
 (
-    Obj     callRef IN,                                 ///<  The call reference to read from.
-    string  telPtr[le_mdmDefs.PHONE_NUM_MAX_LEN] OUT    ///< The telephone number string.
+    le_mcc_call_ObjRef_t callRef IN,       ///<  The call reference to read from.
+    string               telPtr[17] OUT    ///< The telephone number string.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -402,9 +405,9 @@ FUNCTION le_result_t GetRemoteTel
  *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION TerminationReason GetTerminationReason
+FUNCTION le_mcc_call_TerminationReason_t GetTerminationReason
 (
-    Obj callRef IN ///< The call reference to read from.
+    le_mcc_call_ObjRef_t callRef IN ///< The call reference to read from.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -418,9 +421,9 @@ FUNCTION TerminationReason GetTerminationReason
  *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION le_audio.Stream GetTxAudioStream
+FUNCTION le_audio_StreamRef_t GetTxAudioStream
 (
-    Obj callRef IN ///< The call reference to read from.
+    le_mcc_call_ObjRef_t callRef IN ///< The call reference to read from.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -434,9 +437,9 @@ FUNCTION le_audio.Stream GetTxAudioStream
  *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION le_audio.Stream GetRxAudioStream
+FUNCTION le_audio_StreamRef_t GetRxAudioStream
 (
-    Obj callRef IN ///< The call reference to read from.
+    le_mcc_call_ObjRef_t callRef IN ///< The call reference to read from.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -452,7 +455,7 @@ FUNCTION le_audio.Stream GetRxAudioStream
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t Answer
 (
-    Obj callRef IN ///< The call reference.
+    le_mcc_call_ObjRef_t callRef IN ///< The call reference.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -469,7 +472,7 @@ FUNCTION le_result_t Answer
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t HangUp
 (
-    Obj callRef IN ///< The call to end.
+    le_mcc_call_ObjRef_t callRef IN ///< The call to end.
 );
 
 //--------------------------------------------------------------------------------------------------

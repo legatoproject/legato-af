@@ -25,7 +25,7 @@ static le_audio_StreamRef_t usbTxAudioRef = NULL;
 static le_audio_ConnectorRef_t audioInputConnectorRef = NULL;
 static le_audio_ConnectorRef_t audioOutputConnectorRef = NULL;
 
-static char  DEST_TEST_PATTERN[LE_MDMDEFS_PHONE_NUM_MAX_BYTES];
+static char  DEST_TEST_PATTERN[LE_MDMDEFS_PHONE_NUM_MAX_LEN];
 
 static le_mcc_call_ObjRef_t testCallRef;
 

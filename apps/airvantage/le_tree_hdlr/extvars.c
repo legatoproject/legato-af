@@ -671,9 +671,9 @@ static void SimStateHandler
 )
 {
     TreeHdlVar_t*   varPtr;
-    char            iccid[LE_SIM_ICCID_BYTES] = {0};
-    char            imsi[LE_SIM_IMSI_BYTES] = {0};
-    char            phoneNumber[LE_MDMDEFS_PHONE_NUM_MAX_BYTES] = {0};
+    char            iccid[LE_SIM_ICCID_LEN];
+    char            imsi[LE_SIM_IMSI_LEN];
+    char            phoneNumber[LE_MDMDEFS_PHONE_NUM_MAX_LEN] = {0};
     bool            notify=false;
     le_sim_States_t state;
 
@@ -1196,9 +1196,9 @@ static rc_ReturnCode_t InitializeSimVariables
     rc_ReturnCode_t rc=RC_OK;
     TreeHdlVar_t*   varPtr;
     le_sim_ObjRef_t simRef;
-    char            iccid[LE_SIM_ICCID_BYTES] = {0};
-    char            imsi[LE_SIM_IMSI_BYTES] = {0};
-    char            phoneNumber[LE_MDMDEFS_PHONE_NUM_MAX_BYTES] = {0};
+    char            iccid[LE_SIM_ICCID_LEN];
+    char            imsi[LE_SIM_IMSI_LEN];
+    char            phoneNumber[LE_MDMDEFS_PHONE_NUM_MAX_LEN] = {0};
 
     le_sim_ConnectService();
 

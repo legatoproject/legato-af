@@ -2,14 +2,17 @@ requires:
 {
     api:
     {
-        le_sms.api        [types-only]
+        modemServices/le_sms.api        [types-only]
+        modemServices/le_mdmDefs.api    [types-only]
     }
 }
 
 sources:
 {
     test_at_sms.c
+
     $LEGATO_ROOT/components/atManager/devices/uart/src/le_uart.c
+
     $LEGATO_ROOT/components/atManager/src/atCmdSync.c
     $LEGATO_ROOT/components/atManager/src/atMachineCommand.c
     $LEGATO_ROOT/components/atManager/src/atMachineDevice.c

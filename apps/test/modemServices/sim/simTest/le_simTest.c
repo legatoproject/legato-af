@@ -165,8 +165,8 @@ void Testle_sim_Create()
 {
     bool            presence=false;
     le_sim_ObjRef_t simRef;
-    char            iccid[LE_SIM_ICCID_BYTES] = {0};
-    char            imsi[LE_SIM_IMSI_BYTES] = {0};
+    char            iccid[LE_SIM_ICCID_LEN];
+    char            imsi[LE_SIM_IMSI_LEN];
     uint32_t        i=1;
     le_result_t     res;
 

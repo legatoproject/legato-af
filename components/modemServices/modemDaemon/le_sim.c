@@ -22,6 +22,22 @@
 //--------------------------------------------------------------------------------------------------
 #define SIM_MAX_CARDS    2
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * ICCID maximum length.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+#define ICCID_MAX_LEN   20
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * IMSI maximum length.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+#define IMSI_MAX_LEN   16
+
 
 //--------------------------------------------------------------------------------------------------
 // Data structures.
@@ -35,11 +51,11 @@
 typedef struct le_sim_Obj
 {
     uint32_t        num;                       ///< The SIM card number.
-    char            ICCID[LE_SIM_ICCID_BYTES];   ///< The integrated circuit card identifier.
-    char            IMSI[LE_SIM_IMSI_BYTES];     ///< The international mobile subscriber identity.
+    char            ICCID[LE_SIM_ICCID_LEN];   ///< The integrated circuit card identifier.
+    char            IMSI[LE_SIM_IMSI_LEN];     ///< The international mobile subscriber identity.
     char            PIN[LE_SIM_PIN_MAX_LEN+1]; ///< The PIN code.
     char            PUK[LE_SIM_PUK_LEN+1];     ///< The PUK code.
-    char            phoneNumber[LE_MDMDEFS_PHONE_NUM_MAX_BYTES]; /// < The Phone Number.
+    char            phoneNumber[LE_MDMDEFS_PHONE_NUM_MAX_LEN]; /// < The Phone Number.
     bool            isPresent;                 ///< The 'isPresent' flag.
     le_dls_Link_t   link;                      ///< The Sim Object node link.
     void*           ref;                       ///< The safe reference for this object.
@@ -1322,7 +1338,7 @@ le_result_t le_sim_GetSubscriberPhoneNumber
 )
 {
     le_sim_States_t  state;
-    char             phoneNumber[LE_MDMDEFS_PHONE_NUM_MAX_BYTES] = {0} ;
+    char             phoneNumber[LE_MDMDEFS_PHONE_NUM_MAX_LEN] = {0} ;
     Sim_t*           simPtr = le_ref_Lookup(SimRefMap, simRef);
     le_result_t      res = LE_NOT_POSSIBLE;
 

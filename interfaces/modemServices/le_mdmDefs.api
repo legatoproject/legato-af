@@ -14,8 +14,7 @@
  * international prefix ('+' or '00'). One extra byte is added for the null character.
  */
 //--------------------------------------------------------------------------------------------------
-DEFINE  PHONE_NUM_MAX_LEN   = (15+2);
-DEFINE  PHONE_NUM_MAX_BYTES = (PHONE_NUM_MAX_LEN+1);
+DEFINE  PHONE_NUM_MAX_LEN   = (15+2+1);
 
 
 //--------------------------------------------------------------------------------------------------

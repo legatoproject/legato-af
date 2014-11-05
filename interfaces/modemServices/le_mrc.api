@@ -45,8 +45,10 @@
  * @section le_mrc_signal Signal Quality
  * @c le_mrc_GetSignalQual() retrieves the received signal strength details.
  *
- * @section le_mrc_network_information Current Network Information
- * @c le_mrc_GetCurrentNetworkName() retrieves the Current Network Name.
+ * @section le_mrc_network_information Home Network Information
+ * @c le_mrc_GetHomeNetworkName() retrieves the Home Network Name. This value can be empty even if
+ * connected to a GSM network.
+ * @note Maybe need to provide an API to get 'Mobile country code' and 'Mobile Network Code'.
  *
  * @section le_mrc_networkScan Network Scan
  *
@@ -89,6 +91,7 @@
         le_mrc_Rat rat;
         char mcc[4],mnc[4];
         char name[100];
+
 
         rat = le_mrc_GetCellularNetworkRat(cellRef);
 
@@ -393,13 +396,6 @@ DEFINE  BITMASK_TDSCDMA_BAND_E  = 0x10;
 DEFINE  BITMASK_TDSCDMA_BAND_F  = 0x20;
 
 
-//--------------------------------------------------------------------------------------------------
-/**
- * Cellular Network length.
- *
- */
-//--------------------------------------------------------------------------------------------------
-DEFINE  NETWORK_NAME_MAX_LEN = (100);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -493,7 +489,7 @@ HANDLER NetRegStateHandler
 {
     HANDLER_PARAMS
     (
-        NetRegState state ///< Parameter ready to receive the Network Registration state.
+        le_mrc_NetRegState_t state ///< Parameter ready to receive the Network Registration state.
     );
 };
 
@@ -507,7 +503,7 @@ HANDLER RatChangeHandler
 {
     HANDLER_PARAMS
     (
-        Rat rat    ///< Parameter ready to receive the Radio Access Technology.
+        le_mrc_Rat_t rat    ///< Parameter ready to receive the Radio Access Technology.
     );
 };
 
@@ -524,7 +520,7 @@ HANDLER RatChangeHandler
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetNetRegState
 (
-    NetRegState state OUT  ///< Network Registration state.
+    le_mrc_NetRegState_t state OUT  ///< Network Registration state.
 );
 
 
@@ -541,8 +537,8 @@ FUNCTION le_result_t GetNetRegState
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetSignalQual
 (
-    uint32 quality OUT      ///< Received signal strength quality (0 = no signal strength,
-                            ///< 5 = very good signal strength).
+    uint32 quality OUT      ///< [OUT] Received signal strength quality (0 = no signal strength,
+                            ///        5 = very good signal strength).
 );
 
 
@@ -590,8 +586,8 @@ FUNCTION le_result_t GetRadioPower
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t RegisterCellularNetwork
 (
-    string mcc[MCC_LEN] IN,   ///< Mobile Country Code
-    string mnc[MNC_LEN] IN    ///< Mobile Network Code
+    string mcc[3] IN,   ///< Mobile Country Code
+    string mnc[3] IN    ///< Mobile Network Code
 );
 
 
@@ -603,7 +599,7 @@ FUNCTION le_result_t RegisterCellularNetwork
  *      Reference to the List object. Null pointer if the scan failed.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION ScanInformationList PerformCellularNetworkScan
+FUNCTION le_mrc_ScanInformationListRef_t PerformCellularNetworkScan
 (
     RatBitMask ratMask ///< Radio Access Technology mask
 );
@@ -614,16 +610,16 @@ FUNCTION ScanInformationList PerformCellularNetworkScan
  * This function must be called to get the first Scan Information object reference in the list of
  * scan Information retrieved with le_mrc_PerformNetworkScan().
  *
- * @return NULL             No scan information found.
- * @return ScanInformation  The Scan Information object reference.
+ * @return NULL                         No scan information found.
+ * @return le_mrc_ScanInformationRef_t  The Scan Information object reference.
  *
  * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
  *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION ScanInformation GetFirstCellularNetworkScan
+FUNCTION le_mrc_ScanInformationRef_t GetFirstCellularNetworkScan
 (
-    ScanInformationList  scanInformationListRef ///< The list of scan information.
+    le_mrc_ScanInformationListRef_t  scanInformationListRef ///< The list of scan information.
 );
 
 
@@ -632,16 +628,16 @@ FUNCTION ScanInformation GetFirstCellularNetworkScan
  * This function must be called to get the next Scan Information object reference in the list of
  * scan Information retrieved with le_mrc_PerformNetworkScan().
  *
- * @return NULL             No scan information found.
- * @return ScanInformation  The Scan Information object reference.
+ * @return NULL                         No scan information found.
+ * @return le_mrc_ScanInformationRef_t  The Scan Information object reference.
  *
  * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
  *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION ScanInformation GetNextCellularNetworkScan
+FUNCTION le_mrc_ScanInformationRef_t GetNextCellularNetworkScan
 (
-    ScanInformationList  scanInformationListRef ///< The list of scan information.
+    le_mrc_ScanInformationListRef_t  scanInformationListRef ///< The list of scan information.
 );
 
 
@@ -657,7 +653,7 @@ FUNCTION ScanInformation GetNextCellularNetworkScan
 //--------------------------------------------------------------------------------------------------
 FUNCTION void DeleteCellularNetworkScan
 (
-    ScanInformationList  scanInformationListRef ///< The list of scan information.
+    le_mrc_ScanInformationListRef_t  scanInformationListRef ///< The list of scan information.
 );
 
 
@@ -676,9 +672,9 @@ FUNCTION void DeleteCellularNetworkScan
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetCellularNetworkMccMnc
 (
-    ScanInformation scanInformationRef,     ///< Scan information reference
-    string mccPtr[MCC_LEN] OUT,             ///< Mobile Country Code
-    string mncPtr[MNC_LEN] OUT              ///< Mobile Network Code
+    le_mrc_ScanInformationRef_t scanInformationRef,     ///< Scan information reference
+    string mccPtr[3] OUT,                               ///< Mobile Country Code
+    string mncPtr[3] OUT                                ///< Mobile Network Code
 );
 
 
@@ -698,8 +694,8 @@ FUNCTION le_result_t GetCellularNetworkMccMnc
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetCellularNetworkName
 (
-    ScanInformation scanInformationRef,                 ///< Scan information reference
-    string namePtr[NETWORK_NAME_MAX_LEN] OUT   ///< Name of operator
+    le_mrc_ScanInformationRef_t scanInformationRef,     ///< Scan information reference
+    string namePtr[100] OUT                             ///< Name of operator
 );
 
 
@@ -714,9 +710,9 @@ FUNCTION le_result_t GetCellularNetworkName
  *      On failure, the process exits.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION Rat GetCellularNetworkRat
+FUNCTION le_mrc_Rat_t GetCellularNetworkRat
 (
-    ScanInformation scanInformationRef     ///< Scan information reference
+    le_mrc_ScanInformationRef_t scanInformationRef     ///< Scan information reference
 );
 
 
@@ -734,7 +730,7 @@ FUNCTION Rat GetCellularNetworkRat
 //--------------------------------------------------------------------------------------------------
 FUNCTION bool IsCellularNetworkInUse
 (
-    ScanInformation scanInformationRef ///< Scan information reference
+    le_mrc_ScanInformationRef_t scanInformationRef ///< Scan information reference
 );
 
 
@@ -752,7 +748,7 @@ FUNCTION bool IsCellularNetworkInUse
 //--------------------------------------------------------------------------------------------------
 FUNCTION bool IsCellularNetworkAvailable
 (
-    ScanInformation scanInformationRef ///< Scan information reference
+    le_mrc_ScanInformationRef_t scanInformationRef ///< Scan information reference
 );
 
 
@@ -770,7 +766,7 @@ FUNCTION bool IsCellularNetworkAvailable
 //--------------------------------------------------------------------------------------------------
 FUNCTION bool IsCellularNetworkHome
 (
-    ScanInformation scanInformationRef ///< Scan information reference
+    le_mrc_ScanInformationRef_t scanInformationRef ///< Scan information reference
 );
 
 
@@ -788,7 +784,7 @@ FUNCTION bool IsCellularNetworkHome
 //--------------------------------------------------------------------------------------------------
 FUNCTION bool IsCellularNetworkForbidden
 (
-    ScanInformation scanInformationRef ///< Scan information reference
+    le_mrc_ScanInformationRef_t scanInformationRef ///< Scan information reference
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -806,7 +802,7 @@ FUNCTION bool IsCellularNetworkForbidden
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetCurrentNetworkName
 (
-    string nameStr[NETWORK_NAME_MAX_LEN] OUT     ///< the home network Name
+    string nameStr[100] OUT     ///< the home network Name
 );
 //--------------------------------------------------------------------------------------------------
 /**
@@ -833,7 +829,7 @@ FUNCTION le_result_t GetRadioAccessTechInUse
  * @return NULL if no Cells Information are available.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION NeighborCells GetNeighborCellsInfo
+FUNCTION le_mrc_NeighborCellsRef_t GetNeighborCellsInfo
 (
 );
 
@@ -848,7 +844,7 @@ FUNCTION NeighborCells GetNeighborCellsInfo
 //--------------------------------------------------------------------------------------------------
 FUNCTION DeleteNeighborCellsInfo
 (
-    NeighborCells ngbrCellsRef IN  ///< The Neighboring Cells reference.
+    le_mrc_NeighborCellsRef_t ngbrCellsRef IN  ///< The Neighboring Cells reference.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -856,16 +852,16 @@ FUNCTION DeleteNeighborCellsInfo
  * This function must be called to get the first Cell Information reference in the list of
  * Neighboring Cells information retrieved with le_mrc_GetNeighborCellsInfo().
  *
- * @return NULL       No Cell information object found.
- * @return CellInfo   The Cell information object reference.
+ * @return NULL                   No Cell information object found.
+ * @return le_mrc_CellInfoRef_t   The Cell information object reference.
  *
  * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
  *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION CellInfo GetFirstNeighborCellInfo
+FUNCTION le_mrc_CellInfoRef_t GetFirstNeighborCellInfo
 (
-    NeighborCells ngbrCellsRef IN  ///< The Neighboring Cells reference.
+    le_mrc_NeighborCellsRef_t ngbrCellsRef IN  ///< The Neighboring Cells reference.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -873,16 +869,16 @@ FUNCTION CellInfo GetFirstNeighborCellInfo
  * This function must be called to get the next Cell Information reference in the list of
  * Neighboring Cells information retrieved with le_mrc_GetNeighborCellsInfo().
  *
- * @return NULL       No Cell information object found.
- * @return CellInfo   The Cell information object reference.
+ * @return NULL                   No Cell information object found.
+ * @return le_mrc_CellInfoRef_t   The Cell information object reference.
  *
  * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
  *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION CellInfo GetNextNeighborCellInfo
+FUNCTION le_mrc_CellInfoRef_t GetNextNeighborCellInfo
 (
-    NeighborCells ngbrCellsRef IN  ///< The Neighboring Cells reference.
+    le_mrc_NeighborCellsRef_t ngbrCellsRef IN  ///< The Neighboring Cells reference.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -895,9 +891,9 @@ FUNCTION CellInfo GetNextNeighborCellInfo
  *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION uint32 GetNeighborCellId
+FUNCTION uint32_t GetNeighborCellId
 (
-    CellInfo     ngbrCellInfoRef IN    ///< The Cell information reference.
+    le_mrc_CellInfoRef_t     ngbrCellInfoRef IN    ///< The Cell information reference.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -910,9 +906,9 @@ FUNCTION uint32 GetNeighborCellId
  *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION uint32 GetNeighborCellLocAreaCode
+FUNCTION uint32_t GetNeighborCellLocAreaCode
 (
-    CellInfo     ngbrCellInfoRef IN    ///< The Cell information reference.
+    le_mrc_CellInfoRef_t     ngbrCellInfoRef IN    ///< The Cell information reference.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -925,7 +921,7 @@ FUNCTION uint32 GetNeighborCellLocAreaCode
  *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION int32 GetNeighborCellRxLevel
+FUNCTION int32_t GetNeighborCellRxLevel
 (
-    CellInfo     ngbrCellInfoRef IN    ///< The Cell information reference.
+    le_mrc_CellInfoRef_t     ngbrCellInfoRef IN    ///< The Cell information reference.
 );

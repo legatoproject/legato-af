@@ -87,7 +87,7 @@ pa_mcc_cug_t;
 typedef struct {
     uint8_t                         callId;                               ///< Outgoing call Id
     le_mcc_call_Event_t             event;                                ///< Event generated
-    char                            phoneNumber[LE_MDMDEFS_PHONE_NUM_MAX_BYTES];     ///< the phone number
+    char                            phoneNumber[LE_MDMDEFS_PHONE_NUM_MAX_LEN];     ///< the phone number
     le_mcc_call_TerminationReason_t TerminationEvent;                     ///< the termination reason
 }
 pa_mcc_CallEventData_t;

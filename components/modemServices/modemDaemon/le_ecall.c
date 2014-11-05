@@ -31,7 +31,7 @@
  * MSD message length in bytes.
  */
 //--------------------------------------------------------------------------------------------------
-#define MSD_MAX_LEN      LE_ECALL_MSD_MAX_LEN
+#define MSD_MAX_LEN      (282)
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -68,7 +68,7 @@
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
-    char               psapNumber[LE_MDMDEFS_PHONE_NUM_MAX_BYTES]; ///< PSAP telephone number
+    char               psapNumber[LE_MDMDEFS_PHONE_NUM_MAX_LEN]; ///< PSAP telephone number
     le_ecall_State_t   state;                           ///< eCall state
     bool               isPushed;                        ///< True if the MSD is pushed by the IVS,
                                                         ///  false if the MSD is sent when requested
@@ -362,7 +362,7 @@ static le_result_t LoadECallSettings
 )
 {
     le_result_t res = LE_OK;
-    char psapStr[LE_MDMDEFS_PHONE_NUM_MAX_BYTES] = {0};
+    char psapStr[LE_MDMDEFS_PHONE_NUM_MAX_LEN] = {0};
     char configPath[LIMIT_MAX_PATH_BYTES];
     snprintf(configPath, sizeof(configPath), "%s", CFG_MODEMSERVICE_ECALL_PATH);
 

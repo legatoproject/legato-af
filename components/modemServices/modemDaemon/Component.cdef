@@ -4,6 +4,7 @@ requires:
     {
         le_cfg.api
         le_audio.api
+        le_mdmDefs.api  [types-only]
     }
 }
 

@@ -58,14 +58,7 @@
  * Maximum 'International Mobile Equipment Identity length.
  */
 //--------------------------------------------------------------------------------------------------
-#define PA_INFO_IMEI_MAX_LEN     LE_INFO_IMEI_MAX_LEN
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Maximum 'International Mobile Equipment Identity length.
- */
-//--------------------------------------------------------------------------------------------------
-#define PA_INFO_IMEI_MAX_BYTES     PA_INFO_IMEI_MAX_LEN+1
+#define PA_INFO_IMEI_MAX_LEN     15
 
 
 //--------------------------------------------------------------------------------------------------
@@ -82,7 +75,7 @@
  * Type definition for an 'International Mobile Equipment Identity' (16 digits)
  */
 //--------------------------------------------------------------------------------------------------
-typedef char pa_info_Imei_t[PA_INFO_IMEI_MAX_BYTES];
+typedef char pa_info_Imei_t[PA_INFO_IMEI_MAX_LEN + 1];
 
 
 
@@ -92,6 +85,7 @@ typedef char pa_info_Imei_t[PA_INFO_IMEI_MAX_BYTES];
  */
 //--------------------------------------------------------------------------------------------------
 typedef char pa_info_DeviceModel_t[PA_INFO_DEVICE_MODEL_MAX_LEN + 1];
+
 
 
 
@@ -148,6 +142,8 @@ le_result_t pa_info_GetIMEI
 (
     pa_info_Imei_t imei   ///< [OUT] IMEI value
 );
+
+
 
 //--------------------------------------------------------------------------------------------------
 /**

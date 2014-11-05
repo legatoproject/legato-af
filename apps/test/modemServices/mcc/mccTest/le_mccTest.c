@@ -24,7 +24,7 @@
 
 
 #ifndef AUTOMATIC
-static char  DestinationNmbr[LE_MDMDEFS_PHONE_NUM_MAX_BYTES];
+static char  DestinationNmbr[LE_MDMDEFS_PHONE_NUM_MAX_LEN];
 #else
 #define DestinationNmbr  "XXXXXXXXXXXX"
 #endif

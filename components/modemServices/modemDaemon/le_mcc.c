@@ -35,7 +35,7 @@
  * Define the maximum size of various profile related fields.
  */
 //--------------------------------------------------------------------------------------------------
-#define MCC_PROFILE_NAME_MAX_LEN    LE_MCC_PROFILE_NAME_MAX_LEN
+#define MCC_PROFILE_NAME_MAX_LEN    100
 #define MCC_PROFILE_NAME_MAX_BYTES  (MCC_PROFILE_NAME_MAX_LEN+1)
 
 //--------------------------------------------------------------------------------------------------
@@ -82,7 +82,7 @@ le_mcc_Profile_t;
 //--------------------------------------------------------------------------------------------------
 typedef struct le_mcc_call_Obj
 {
-    char                            telNumber[LE_MDMDEFS_PHONE_NUM_MAX_BYTES]; ///< Telephone number
+    char                            telNumber[LE_MDMDEFS_PHONE_NUM_MAX_LEN]; ///< Telephone number
     le_mcc_Direction_t              direction;                      ///< Call direction
     int16_t                         callId;                         ///< Outgoing call ID
     le_mcc_Profile_t*               profile;                        ///< Profile to which the call
@@ -863,9 +863,9 @@ le_mcc_call_ObjRef_t le_mcc_profile_CreateCall
         return NULL;
     }
 
-    if(strlen(destinationPtr) > (LE_MDMDEFS_PHONE_NUM_MAX_BYTES-1))
+    if(strlen(destinationPtr) > (LE_MDMDEFS_PHONE_NUM_MAX_LEN-1))
     {
-        LE_KILL_CLIENT("strlen(destinationPtr) > %d", (LE_MDMDEFS_PHONE_NUM_MAX_BYTES-1));
+        LE_KILL_CLIENT("strlen(destinationPtr) > %d", (LE_MDMDEFS_PHONE_NUM_MAX_LEN-1));
         return NULL;
     }
 
@@ -1020,7 +1020,7 @@ bool le_mcc_call_IsConnected
  * The output parameter is updated with the Telephone number. If the Telephone number string exceed
  * the value of 'len' parameter, a LE_OVERFLOW error code is returned and 'telPtr' is filled until
  * 'len-1' characters and a null-character is implicitly appended at the end of 'telPtr'.
- * Note tht 'len' sould be at least equal to LE_MDMDEFS_PHONE_NUM_MAX_BYTES, otherwise LE_OVERFLOW error code
+ * Note tht 'len' sould be at least equal to LE_MDMDEFS_PHONE_NUM_MAX_LEN, otherwise LE_OVERFLOW error code
  * will be common.
  *
  * @return LE_OVERFLOW      The Telephone number length exceed the maximum length.

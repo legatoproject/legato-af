@@ -256,8 +256,8 @@ endif
 # Rule for invoking CMake to generate the Makefiles inside the build directory.
 # Depends on the build directory being there.
 $(foreach target,$(TARGETS),build/$(target)/Makefile): build/%/Makefile: build/%/bin/apps \
-									build/%/bin/lib \
-									build/%/airvantage
+																		 build/%/bin/lib \
+																		 build/%/airvantage
 	# Configure Legato
 	export PATH=$(COMPILER_DIR):$(PATH) && \
 		cd `dirname $@` && \

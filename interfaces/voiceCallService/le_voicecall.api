@@ -87,7 +87,6 @@
  */
 //--------------------------------------------------------------------------------------------------
 
-USETYPES le_mdmDefs.api;
 USETYPES le_audio.api;
 
 //--------------------------------------------------------------------------------------------------
@@ -145,10 +144,9 @@ HANDLER StateHandler
 {
     HANDLER_PARAMS
     (
-        Call reference IN,                                  ///< Event voice call object reference.
-        string identifier[le_mdmDefs.PHONE_NUM_MAX_LEN] IN, ///< Identifier of the remote party
-                                                            ///  associated with the call.
-        Event event IN                                      ///< Voice call event.
+        Call reference IN,             ///< Event voice call object reference.
+        string identifier[50] IN,      ///< Identifier of the remote party associated with the call.
+        Event event IN                 ///< Voice call event.
     );
 };
 
@@ -165,8 +163,7 @@ HANDLER StateHandler
 //--------------------------------------------------------------------------------------------------
 FUNCTION Call Start
 (
-    string DestinationID[le_mdmDefs.PHONE_NUM_MAX_LEN] IN ///< Destination identifier for the voice
-                                                          ///  call establishment.
+    string DestinationID[50] IN        ///< Destination identifier for the voice call establishment.
 );
 
 

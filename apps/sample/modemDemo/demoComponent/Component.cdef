@@ -7,6 +7,7 @@ requires:
         le_mdc.api
         le_sim.api
         le_data.api
+        le_mdmDefs.api [types-only]
     }
 }
 

@@ -23,7 +23,8 @@
  * finally it forwards the message to the modem for sending.
  *
  *
- * Copyright (C) Sierra Wireless, Inc. 2012-2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless, Inc. 2012. All rights reserved. Use of this work is subject to
+ *  license.
  *
  */
 #include "legato.h"
@@ -87,26 +88,30 @@ le_sms_Type_t;
 //--------------------------------------------------------------------------------------------------
 typedef struct le_sms_Msg
 {
-    bool              readonly;                            ///< Flag for Read-Only message.
-    bool              inAList;                             ///< Is the message belong to a list?
-    le_sms_Format_t   format;                              ///< SMS Message Format.
-    le_sms_Type_t     type;                                ///< SMS Message Type.
-    uint32_t          storageIdx;                          ///< SMS Message index in storage.
-    char              tel[LE_MDMDEFS_PHONE_NUM_MAX_BYTES]; ///< Telephone number of the message
-                                                           ///  (in text mode), or NULL (in PDU mode).
-    char              timestamp[LE_SMS_TIMESTAMP_MAX_BYTES]; ///< SMS time stamp (in text mode).
-    pa_sms_Pdu_t      pdu;                                 ///< SMS PDU
-    bool              pduReady;                            ///< Is the PDU value ready?
+    bool                readonly;                            ///< Flag for Read-Only message.
+    bool                inAList;                             ///< The message belongs to a list or
+                                                             ///  not
+    le_sms_Format_t     format;                              ///< SMS Message Format.
+    le_sms_Type_t       type;                                ///< SMS Message Type.
+    uint32_t            storageIdx;                          ///< SMS Message index in storage.
+    char                tel[LE_MDMDEFS_PHONE_NUM_MAX_LEN];   ///< Telephone number of the message
+                                                             ///  (in text mode), or NULL (in PDU
+                                                             ///  mode).
+    char                timestamp[LE_SMS_TIMESTAMP_MAX_LEN]; ///< SMS time stamp (in text mode).
+    pa_sms_Pdu_t        pdu;                                 ///< SMS PDU
+    bool                pduReady;                            ///< Whether the PDU value is ready or
+                                                             ///  not
     union {
-        char          text[LE_SMS_TEXT_MAX_BYTES];         ///< SMS text
-        uint8_t       binary[LE_SMS_BINARY_MAX_LEN];       ///< SMS binary
+        char            text[LE_SMS_TEXT_MAX_LEN];           ///< SMS text
+        uint8_t         binary[LE_SMS_BINARY_MAX_LEN];       ///< SMS binary
     };
-    size_t            userdataLen;                         ///< Length of data associated with SMS
-                                                           ///  formats text or binary
-    pa_sms_Protocol_t protocol;                            ///< SMS Protocol (GSM or CDMA)
-    int32_t           smsUserCount;                        ///< Current sms user counter.
-    bool              delAsked;                            ///< Whether the SMS deletion is asked.
-    pa_sms_Storage_t  storage;                             ///< SMS storage location
+    size_t              userdataLen;                         ///< Length of data associated with SMS
+                                                             ///  formats text or binary
+    pa_sms_Protocol_t   protocol;                            ///< SMS Protocol (GSM or CDMA)
+
+    int32_t             smsUserCount;                        ///< Current sms user counter.
+    bool                delAsked;                            ///< Whether the SMS deletion is asked.
+    pa_sms_Storage_t    storage;                             ///< SMS storage location
 }le_sms_Msg_t;
 
 
@@ -313,11 +318,11 @@ static le_sms_Msg_t* CreateAndPopulateMessage
         case LE_SMS_FORMAT_TEXT:
             // CreateAndPopulateMessage is called by my internal handler. I don't know how to face
             // this error, so it is a fatal error.
-            LE_ASSERT(messageConvertedPtr->smsDeliver.dataLen < LE_SMS_TEXT_MAX_BYTES);
+            LE_ASSERT(messageConvertedPtr->smsDeliver.dataLen < LE_SMS_TEXT_MAX_LEN);
             newSmsMsgObjPtr->userdataLen = messageConvertedPtr->smsDeliver.dataLen;
             memcpy(newSmsMsgObjPtr->text,
                     messageConvertedPtr->smsDeliver.data,
-                    LE_SMS_TEXT_MAX_BYTES);
+                    LE_SMS_TEXT_MAX_LEN);
             break;
         default:
             // CreateAndPopulateMessage is called by my internal handler. I don't know how to face
@@ -332,7 +337,7 @@ static le_sms_Msg_t* CreateAndPopulateMessage
         {
             memcpy(newSmsMsgObjPtr->tel,
                    messageConvertedPtr->smsDeliver.oa,
-                   LE_MDMDEFS_PHONE_NUM_MAX_BYTES);
+                   LE_MDMDEFS_PHONE_NUM_MAX_LEN);
         }
         else
         {
@@ -343,7 +348,7 @@ static le_sms_Msg_t* CreateAndPopulateMessage
         {
             memcpy(newSmsMsgObjPtr->timestamp,
                    messageConvertedPtr->smsDeliver.scts,
-                   LE_SMS_TIMESTAMP_MAX_BYTES);
+                   LE_SMS_TIMESTAMP_MAX_LEN);
         }
         else
         {
@@ -1007,9 +1012,9 @@ le_result_t le_sms_SetDestination
         return LE_FAULT;
     }
 
-    if(strlen(destPtr) > (LE_MDMDEFS_PHONE_NUM_MAX_BYTES-1))
+    if(strlen(destPtr) > (LE_MDMDEFS_PHONE_NUM_MAX_LEN-1))
     {
-        LE_KILL_CLIENT( "strlen(dest) > %d", (LE_MDMDEFS_PHONE_NUM_MAX_BYTES-1));
+        LE_KILL_CLIENT( "strlen(dest) > %d", (LE_MDMDEFS_PHONE_NUM_MAX_LEN-1));
         return LE_FAULT;
     }
 
@@ -1239,9 +1244,9 @@ le_result_t le_sms_SetText
         return LE_NOT_PERMITTED;
     }
 
-    if(strlen(textPtr) > (LE_SMS_TEXT_MAX_BYTES-1))
+    if(strlen(textPtr) > (LE_SMS_TEXT_MAX_LEN-1))
     {
-        LE_KILL_CLIENT("strlen(text) > %d", (LE_SMS_TEXT_MAX_BYTES-1));
+        LE_KILL_CLIENT("strlen(text) > %d", (LE_SMS_TEXT_MAX_LEN-1));
         return LE_FAULT;
     }
 
@@ -1250,13 +1255,13 @@ le_result_t le_sms_SetText
         return LE_BAD_PARAMETER;
     }
 
-    length = strnlen(textPtr, LE_SMS_TEXT_MAX_BYTES+1);
+    length = strnlen(textPtr, LE_SMS_TEXT_MAX_LEN+1);
     if (!length)
     {
         return LE_BAD_PARAMETER;
     }
 
-    if (length > LE_SMS_TEXT_MAX_BYTES)
+    if (length > LE_SMS_TEXT_MAX_LEN)
     {
         return LE_OUT_OF_RANGE;
     }
@@ -2065,9 +2070,9 @@ le_result_t le_sms_GetSmsCenterAddress
     size_t           len      ///< [IN] The length of SMS center address number string.
 )
 {
-    char smscMdmStr[LE_MDMDEFS_PHONE_NUM_MAX_BYTES] = {0};
+    char smscMdmStr[LE_MDMDEFS_PHONE_NUM_MAX_LEN] = {0};
 
-    if (pa_sms_GetSmsc(smscMdmStr, LE_MDMDEFS_PHONE_NUM_MAX_BYTES) == LE_OK)
+    if (pa_sms_GetSmsc(smscMdmStr, LE_MDMDEFS_PHONE_NUM_MAX_LEN) == LE_OK)
     {
         return le_utf8_Copy(telPtr, smscMdmStr, len, NULL);
     }
@@ -2099,9 +2104,9 @@ le_result_t le_sms_SetSmsCenterAddress
         return LE_FAULT;
     }
 
-    if(strlen(telPtr) > (LE_MDMDEFS_PHONE_NUM_MAX_BYTES-1))
+    if(strlen(telPtr) > (LE_MDMDEFS_PHONE_NUM_MAX_LEN-1))
     {
-        LE_KILL_CLIENT( "strlen(telPtr) > %d", (LE_MDMDEFS_PHONE_NUM_MAX_BYTES-1));
+        LE_KILL_CLIENT( "strlen(telPtr) > %d", (LE_MDMDEFS_PHONE_NUM_MAX_LEN-1));
         return LE_FAULT;
     }
 

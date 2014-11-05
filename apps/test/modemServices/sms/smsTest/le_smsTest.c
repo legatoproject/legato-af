@@ -43,7 +43,7 @@ static uint8_t PDU_TEST_PATTERN_7BITS[]={0x00,0x01,0x00,0x0A,0x81,0x00,0x00,0x00
 static uint8_t BINARY_TEST_PATTERN[]={0x05,0x01,0x00,0x0A};
 
 #ifndef AUTOMATIC
-static char DEST_TEST_PATTERN[LE_MDMDEFS_PHONE_NUM_MAX_BYTES];
+static char DEST_TEST_PATTERN[LE_MDMDEFS_PHONE_NUM_MAX_LEN];
 #else
 #define DEST_TEST_PATTERN  "XXXXXXXXXXXX"
 #endif
@@ -62,9 +62,9 @@ static void TestRxHandler(le_sms_MsgRef_t msg, void* contextPtr)
     le_sms_Format_t       myformat;
     le_sms_Status_t       mystatus;
     le_result_t           res;
-    char                  tel[LE_MDMDEFS_PHONE_NUM_MAX_BYTES];
+    char                  tel[LE_MDMDEFS_PHONE_NUM_MAX_LEN];
     char                  timestamp[LE_SMS_TIMESTAMP_MAX_LEN];
-    char                  text[LE_SMS_TEXT_MAX_BYTES] = {0};
+    char                  text[LE_SMS_TEXT_MAX_LEN];
     size_t                uintval;
 
     LE_INFO("-TEST- New SMS message received ! msg.%p", msg);
@@ -234,7 +234,7 @@ void GetTel(void)
     do
     {
         fprintf(stderr, "Please enter the device's telephone number to perform the SMS tests: \n");
-        strPtr=fgets ((char*)DEST_TEST_PATTERN, LE_MDMDEFS_PHONE_NUM_MAX_BYTES, stdin);
+        strPtr=fgets ((char*)DEST_TEST_PATTERN, LE_MDMDEFS_PHONE_NUM_MAX_LEN, stdin);
     }while (strlen(strPtr) == 0);
 
     DEST_TEST_PATTERN[strlen(DEST_TEST_PATTERN)-1]='\0';
@@ -258,8 +258,8 @@ void Testle_sms_SetGetText()
     le_sms_MsgRef_t       myMsg;
     le_sms_Format_t       myformat;
     char                  timestamp[LE_SMS_TIMESTAMP_MAX_LEN];
-    char                  tel[LE_MDMDEFS_PHONE_NUM_MAX_BYTES];
-    char                  text[LE_SMS_TEXT_MAX_BYTES] = {0};
+    char                  tel[LE_MDMDEFS_PHONE_NUM_MAX_LEN];
+    char                  text[LE_SMS_TEXT_MAX_LEN];
     size_t                uintval;
 
     myMsg = le_sms_Create();
@@ -311,7 +311,7 @@ void Testle_sms_SetGetBinary()
     le_sms_MsgRef_t       myMsg;
     le_sms_Format_t       myformat;
     char                  timestamp[LE_SMS_TIMESTAMP_MAX_LEN];
-    char                  tel[LE_MDMDEFS_PHONE_NUM_MAX_BYTES];
+    char                  tel[LE_MDMDEFS_PHONE_NUM_MAX_LEN];
     uint8_t               raw[LE_SMS_BINARY_MAX_LEN];
     size_t                uintval;
     uint32_t              i;
@@ -370,7 +370,7 @@ void Testle_sms_SetGetPDU()
     le_result_t           res;
     le_sms_MsgRef_t       myMsg;
     char                  timestamp[LE_SMS_TIMESTAMP_MAX_LEN];
-    char                  tel[LE_MDMDEFS_PHONE_NUM_MAX_BYTES];
+    char                  tel[LE_MDMDEFS_PHONE_NUM_MAX_LEN];
     uint8_t               pdu[LE_SMS_PDU_MAX_LEN];
     size_t                uintval;
     uint32_t              i;
@@ -419,17 +419,17 @@ void Testle_sms_SetGetSmsCenterAddress
 )
 {
     le_result_t           res;
-    char smscMdmRefStr[LE_MDMDEFS_PHONE_NUM_MAX_BYTES] = {0};
-    char smscMdmStr[LE_MDMDEFS_PHONE_NUM_MAX_BYTES] = {0};
-    char smscStrs[LE_MDMDEFS_PHONE_NUM_MAX_BYTES] = "+33123456789";
+    char smscMdmRefStr[LE_MDMDEFS_PHONE_NUM_MAX_LEN] = {0};
+    char smscMdmStr[LE_MDMDEFS_PHONE_NUM_MAX_LEN] = {0};
+    char smscStrs[LE_MDMDEFS_PHONE_NUM_MAX_LEN] = "+33123456789";
 
     // Get current SMS service center address.
     // Check LE_OVERFLOW error case
-    res = le_sms_GetSmsCenterAddress(smscMdmRefStr, LE_MDMDEFS_PHONE_NUM_MAX_BYTES-2);
+    res = le_sms_GetSmsCenterAddress(smscMdmRefStr, LE_MDMDEFS_PHONE_NUM_MAX_LEN-2);
     CU_ASSERT_EQUAL(res, LE_OVERFLOW);
 
     // Get current SMS service center address.
-    res = le_sms_GetSmsCenterAddress(smscMdmRefStr, LE_MDMDEFS_PHONE_NUM_MAX_BYTES);
+    res = le_sms_GetSmsCenterAddress(smscMdmRefStr, LE_MDMDEFS_PHONE_NUM_MAX_LEN);
     CU_ASSERT_EQUAL(res, LE_OK);
 
     // Set "+33123456789" SMS service center address.
@@ -437,7 +437,7 @@ void Testle_sms_SetGetSmsCenterAddress
     CU_ASSERT_EQUAL(res, LE_OK);
 
     // Get current SMS service center address.
-    res = le_sms_GetSmsCenterAddress(smscMdmStr, LE_MDMDEFS_PHONE_NUM_MAX_BYTES);
+    res = le_sms_GetSmsCenterAddress(smscMdmStr, LE_MDMDEFS_PHONE_NUM_MAX_LEN);
     CU_ASSERT_EQUAL(res, LE_OK);
 
     // Restore previous SMS service center address.
@@ -445,7 +445,7 @@ void Testle_sms_SetGetSmsCenterAddress
     CU_ASSERT_EQUAL(res, LE_OK);
 
     // check if value get match with value set.
-    CU_ASSERT_EQUAL(strncmp(smscStrs,smscMdmStr, LE_MDMDEFS_PHONE_NUM_MAX_BYTES), 0);
+    CU_ASSERT_EQUAL(strncmp(smscStrs,smscMdmStr, LE_MDMDEFS_PHONE_NUM_MAX_LEN), 0);
 }
 
 

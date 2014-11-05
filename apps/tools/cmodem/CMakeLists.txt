@@ -26,6 +26,5 @@ mkexe(  cm
             cm/Component.cdef
             ${LEGATO_ROOT}/interfaces/modemServices/le_mrc.api
             ${LEGATO_ROOT}/interfaces/modemServices/le_sim.api
-            ${LEGATO_ROOT}/interfaces/modemServices/le_mdmDefs.api
             ${LEGATO_ROOT}/interfaces/dataConnectionService/le_data.api
      )

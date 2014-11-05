@@ -33,7 +33,7 @@ le_result_t le_info_GetImei
     size_t           len       ///< [IN] The length of IMEI string.
 )
 {
-    pa_info_Imei_t imei = {0};
+    pa_info_Imei_t imei;
 
     if (imeiPtr == NULL)
     {
