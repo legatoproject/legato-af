@@ -2,7 +2,7 @@
  *
  * AT implementation of c_pa_mcc API.
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 #include "legato.h"
@@ -227,7 +227,7 @@ static void MCCInternalHandler(void* reportPtr) {
 /**
  * This function must be called to initialize the mcc module
  *
- * @return LE_NOT_POSSIBLE  The function failed to initialize the module.
+ * @return LE_FAULT         The function failed to initialize the module.
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
@@ -238,7 +238,7 @@ le_result_t pa_mcc_Init
 {
     if (atports_GetInterface(ATPORT_COMMAND)==NULL) {
         LE_WARN("Modem Call Control module is not initialize in this session");
-        return LE_NOT_POSSIBLE;
+        return LE_FAULT;
     }
 
     EventCallData = le_event_CreateId("MCCEventCallData",sizeof(pa_mcc_CallEventData_t));
@@ -253,7 +253,7 @@ le_result_t pa_mcc_Init
 /**
  * This function must be called to set CSSU unsolicited code
  *
- * @return LE_NOT_POSSIBLE  The function failed.
+ * @return LE_FAULT  The function failed.
  * @return LE_TIMEOUT       No response was received.
  * @return LE_OK            The function succeeded.
  */
@@ -279,7 +279,7 @@ static le_result_t SetCssuIndicator
 /**
  * This function must be called to set sierrawireless indication WIND (2,5,6)
  *
- * @return LE_NOT_POSSIBLE  The function failed to set WIND indicator.
+ * @return LE_FAULT         The function failed to set WIND indicator.
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
@@ -289,17 +289,17 @@ static le_result_t SetIndicator()
 
     if ( SetCssuIndicator() != LE_OK )
     {
-        return LE_NOT_POSSIBLE;
+        return LE_FAULT;
     }
 
     if ( pa_common_GetWindIndicator(&wind) != LE_OK)
     {
-        return LE_NOT_POSSIBLE;
+        return LE_FAULT;
     }
 
     if ( pa_common_SetWindIndicator(wind|2) != LE_OK)
     {
-        return LE_NOT_POSSIBLE;
+        return LE_FAULT;
     }
 
     atmgr_SubscribeUnsolReq(atports_GetInterface(ATPORT_COMMAND),
@@ -314,7 +314,8 @@ static le_result_t SetIndicator()
 /**
  * This function must be called to register a handler for Call event notifications.
  *
- * @return LE_NOT_POSSIBLE  The function failed to register the handler.
+ * @return LE_FAULT         The function failed to register the handler.
+ * @return LE_DUPLICATE     There is already a handler registered.
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
@@ -330,13 +331,13 @@ le_result_t pa_mcc_SetCallEventHandler
     if ( CallDataHandlerRef )
     {
         LE_WARN("CallEvent Already set");
-        return LE_NOT_POSSIBLE;
+        return LE_DUPLICATE;
     }
 
     if ( SetIndicator() != LE_OK )
     {
         LE_WARN("Cannot set SierraWireless indication");
-        return LE_NOT_POSSIBLE;
+        return LE_FAULT;
     }
 
     atmgr_SubscribeUnsolReq(atports_GetInterface(ATPORT_COMMAND),
@@ -379,7 +380,7 @@ void pa_mcc_ClearCallEventHandler
 /**
  * This function must be called to set a voice call.
  *
- * @return LE_NOT_POSSIBLE  The function failed.
+ * @return LE_FAULT         The function failed.
  * @return LE_BUSY          A call is already ongoing.
  * @return LE_OK            The function succeeded.
  */
@@ -444,7 +445,7 @@ le_result_t pa_mcc_VoiceDial
 /**
  * This function must be called to answer a call.
  *
- * @return LE_NOT_POSSIBLE  The function failed.
+ * @return LE_FAULT         The function failed.
  * @return LE_TIMEOUT       No response was received.
  * @return LE_OK            The function succeeded.
  */
@@ -485,7 +486,7 @@ le_result_t pa_mcc_Answer
 /**
  * This function must be called to disconnect the remote user.
  *
- * @return LE_NOT_POSSIBLE  The function failed.
+ * @return LE_FAULT         The function failed.
  * @return LE_TIMEOUT       No response was received.
  * @return LE_OK            The function succeeded.
  */
@@ -519,7 +520,7 @@ le_result_t pa_mcc_HangUp
 /**
  * This function must be called to end all the ongoing calls.
  *
- * @return LE_NOT_POSSIBLE  The function failed.
+ * @return LE_FAULT         The function failed.
  * @return LE_TIMEOUT       No response was received.
  * @return LE_OK            The function succeeded.
  */
@@ -529,5 +530,5 @@ le_result_t pa_mcc_HangUpAll
     void
 )
 {
-    return LE_NOT_POSSIBLE;
+    return LE_FAULT;
 }

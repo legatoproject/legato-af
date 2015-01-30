@@ -1,0 +1,18 @@
+provides:
+{
+    api:
+    {
+        le_antenna.api
+    }
+}
+
+sources:
+{
+    le_mon.c
+    le_antenna.c
+}
+
+requires:
+{
+    component: { $LEGATO_MON_PA }
+}

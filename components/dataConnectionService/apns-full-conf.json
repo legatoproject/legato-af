@@ -14884,7 +14884,16 @@
                 "@proxy": "10.109.4.35",
                 "@type": "default",
                 "@user": "wap"
+            },
+            {
+                "#tail": "\n\n  ",
+                "@apn": "internet",
+                "@carrier": "Dummy APN",
+                "@mcc": "424",
+                "@mnc": "24",
+                "@type": "default,supl"
             }
         ]
     }
 }
+

@@ -4,7 +4,7 @@
  *
  * This file contains the source code of the high level MCC (Modem Call Control) API.
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -35,7 +35,7 @@
  * Define the maximum size of various profile related fields.
  */
 //--------------------------------------------------------------------------------------------------
-#define MCC_PROFILE_NAME_MAX_LEN    100
+#define MCC_PROFILE_NAME_MAX_LEN    LE_MCC_PROFILE_NAME_MAX_LEN
 #define MCC_PROFILE_NAME_MAX_BYTES  (MCC_PROFILE_NAME_MAX_LEN+1)
 
 //--------------------------------------------------------------------------------------------------
@@ -82,7 +82,7 @@ le_mcc_Profile_t;
 //--------------------------------------------------------------------------------------------------
 typedef struct le_mcc_call_Obj
 {
-    char                            telNumber[LE_MDMDEFS_PHONE_NUM_MAX_LEN]; ///< Telephone number
+    char                            telNumber[LE_MDMDEFS_PHONE_NUM_MAX_BYTES]; ///< Telephone number
     le_mcc_Direction_t              direction;                      ///< Call direction
     int16_t                         callId;                         ///< Outgoing call ID
     le_mcc_Profile_t*               profile;                        ///< Profile to which the call
@@ -170,6 +170,16 @@ static le_mem_PoolRef_t   ReferencePool;
  */
 //--------------------------------------------------------------------------------------------------
 static uint32_t   CallHandlerCount;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Wakeup source to keep system awake during phone calls.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static le_pm_WakeupSourceRef_t WakeupSource = NULL;
+#define CALL_WAKEUP_SOURCE_NAME "call"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -475,6 +485,19 @@ static void NewCallEventHandler
         return;
     }
 
+    // Acquire wakeup source on first indication of call
+    if (LE_MCC_CALL_EVENT_SETUP == dataPtr->event ||
+        LE_MCC_CALL_EVENT_ORIGINATING == dataPtr->event ||
+        LE_MCC_CALL_EVENT_INCOMING == dataPtr->event)
+    {
+        // Note: 3GPP calls have both SETUP and INCOMING states, so
+        // this will warn on INCOMING state as a second "stay awake"
+        le_pm_StayAwake(WakeupSource);
+        // Return if SETUP or ORIGINATING, but process INCOMING
+        if (LE_MCC_CALL_EVENT_INCOMING != dataPtr->event)
+            return;
+    }
+
     // Update Profile State
     UpdateProfileState(currProfilePtr, dataPtr->event);
 
@@ -497,7 +520,7 @@ static void NewCallEventHandler
         }
     }
 
-    // Handle Audio interfaces
+    // Handle call state transition
     switch (dataPtr->event)
     {
         case LE_MCC_CALL_EVENT_CONNECTED:
@@ -515,6 +538,10 @@ static void NewCallEventHandler
     le_event_Report(currProfilePtr->callEventId,
                     &(currProfilePtr->callRef),
                     sizeof(currProfilePtr->callRef));
+
+    // Release wakeup source once call termination is processed
+    if (LE_MCC_CALL_EVENT_TERMINATED == dataPtr->event)
+        le_pm_Relax(WakeupSource);
 }
 
 
@@ -570,6 +597,9 @@ void le_mcc_Init
     le_utf8_Copy(eventName, profilePtr->name, sizeof(eventName), NULL);
     le_utf8_Append(eventName, "-StateChangeEvent", sizeof(eventName), NULL);
     profilePtr->stateChangeEventId = le_event_CreateId(eventName, sizeof(le_mcc_profile_State_t));
+
+    // Initialize call wakeup source - succeeds or terminates caller
+    WakeupSource = le_pm_NewWakeupSource(0, CALL_WAKEUP_SOURCE_NAME);
 
     // Init the remaining fields
     profilePtr->callRef = NULL;
@@ -863,9 +893,9 @@ le_mcc_call_ObjRef_t le_mcc_profile_CreateCall
         return NULL;
     }
 
-    if(strlen(destinationPtr) > (LE_MDMDEFS_PHONE_NUM_MAX_LEN-1))
+    if(strlen(destinationPtr) > (LE_MDMDEFS_PHONE_NUM_MAX_BYTES-1))
     {
-        LE_KILL_CLIENT("strlen(destinationPtr) > %d", (LE_MDMDEFS_PHONE_NUM_MAX_LEN-1));
+        LE_KILL_CLIENT("strlen(destinationPtr) > %d", (LE_MDMDEFS_PHONE_NUM_MAX_BYTES-1));
         return NULL;
     }
 
@@ -1020,7 +1050,7 @@ bool le_mcc_call_IsConnected
  * The output parameter is updated with the Telephone number. If the Telephone number string exceed
  * the value of 'len' parameter, a LE_OVERFLOW error code is returned and 'telPtr' is filled until
  * 'len-1' characters and a null-character is implicitly appended at the end of 'telPtr'.
- * Note tht 'len' sould be at least equal to LE_MDMDEFS_PHONE_NUM_MAX_LEN, otherwise LE_OVERFLOW error code
+ * Note tht 'len' sould be at least equal to LE_MDMDEFS_PHONE_NUM_MAX_BYTES, otherwise LE_OVERFLOW error code
  * will be common.
  *
  * @return LE_OVERFLOW      The Telephone number length exceed the maximum length.
@@ -1207,7 +1237,7 @@ le_result_t le_mcc_call_HangUp
  * be notified.
  *
  * @return LE_TIMEOUT       No response was received from the Modem.
- * @return LE_NOT_POSSIBLE  The function failed.
+ * @return LE_FAULT         The function failed.
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------

@@ -1,0 +1,9 @@
+sources:
+{
+    pa_gnss_simu.c
+}
+
+requires:
+{
+    component: { $LEGATO_MODEM_PA }
+}

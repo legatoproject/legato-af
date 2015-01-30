@@ -3,7 +3,7 @@
  *
  * localhost (x86) implementation of pa_audio API.
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 #include "legato.h"
@@ -175,7 +175,7 @@ le_result_t pa_audio_SetSlaveMode
 le_result_t pa_audio_SetI2sChannelMode
 (
     pa_audio_If_t           interface,
-    le_audio_I2SChannel_t  mode
+    le_audio_I2SChannel_t   mode
 )
 {
     return LE_OK;
@@ -183,94 +183,14 @@ le_result_t pa_audio_SetI2sChannelMode
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function must be called to ask for a playback thread starting
- *
- * @return LE_OK            The thread is started
- * @return LE_BAD_PARAMETER The playback format is not valid
- * @return LE_DUPLICATE     The thread is already started
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t pa_audio_StartPlayback
-(
-    const char* formatPtr,      ///< [IN] Playback format
-    uint32_t    channelCount    ///< [IN] Number of channel
-)
-{
-    return LE_OK;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This function must be called to stop a playback thread
- *
- */
-//--------------------------------------------------------------------------------------------------
-void pa_audio_StopPlayback
-(
-    void
-)
-{
-
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This function must be called to ask for a capture thread starting
- *
- * @return LE_OK            The thread is started
- * @return LE_BAD_PARAMETER The capture format is not valid
- * @return LE_DUPLICATE     The thread is already started
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t pa_audio_StartCapture
-(
-    const char* formatPtr,      ///< [IN] Capture format
-    uint32_t    channelCount    ///< [IN] Number of channel
-)
-{
-    return LE_OK;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This function must be called to stop a capture thread
- *
- */
-//--------------------------------------------------------------------------------------------------
-void pa_audio_StopCapture
-(
-    void
-)
-{
-
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This function returns true if the Input and the output DSP Audio paths are currently used
- *
- * @return true     Input and output DSP Audio paths are currently used.
- * @return false    Input and output DSP Audio paths are not used.
- */
-//--------------------------------------------------------------------------------------------------
-bool pa_audio_IsDspAudioPathsUsed
-(
-    void
-)
-{
-    return false;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This function must be called to start the injector thread.
+ * This function must be called to start the playback thread.
  *
  * @return LE_OK            The thread is started
  * @return LE_BAD_PARAMETER The interface is not valid
  * @return LE_DUPLICATE     The thread is already started
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_audio_StartInjector
+le_result_t pa_audio_StartPlayback
 (
     pa_audio_If_t interface,    ///< [IN] audio interface
     int32_t       fd            ///< [IN] audio file descriptor
@@ -281,11 +201,11 @@ le_result_t pa_audio_StartInjector
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function must be called to stop the injector thread.
+ * This function must be called to stop the playback thread.
  *
  */
 //--------------------------------------------------------------------------------------------------
-void pa_audio_StopInjector
+void pa_audio_StopPlayback
 (
     void
 )
@@ -301,7 +221,7 @@ void pa_audio_StopInjector
  * @return LE_DUPLICATE     The thread is already started
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_audio_StartRecorder
+le_result_t pa_audio_StartCapture
 (
     pa_audio_If_t interface,    ///< [IN] audio interface
     int32_t       fd            ///< [IN] audio file descriptor
@@ -316,7 +236,7 @@ le_result_t pa_audio_StartRecorder
  *
  */
 //--------------------------------------------------------------------------------------------------
-void pa_audio_StopRecorder
+void pa_audio_StopCapture
 (
     void
 )
@@ -329,7 +249,7 @@ void pa_audio_StopRecorder
  *
  * @return LE_OK            The decoder is started
  * @return LE_BAD_PARAMETER The interface is not valid
- * @return LE_NOT_POSSIBLE  On other errors
+ * @return LE_FAULT         On other errors
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_audio_StartDtmfDecoder
@@ -346,7 +266,7 @@ le_result_t pa_audio_StartDtmfDecoder
  *
  * @return LE_OK            The decoder is stopped
  * @return LE_BAD_PARAMETER The interface is not valid
- * @return LE_NOT_POSSIBLE  On other errors
+ * @return LE_FAULT         On other errors
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_audio_StopDtmfDecoder
@@ -361,7 +281,7 @@ le_result_t pa_audio_StopDtmfDecoder
 /**
  * This function must be called to register a handler for DTMF notifications.
  *
- * @return LE_NOT_POSSIBLE  The function failed to register the handler.
+ * @return LE_FAULT         The function failed to register the handler.
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
@@ -636,5 +556,34 @@ le_audio_Companding_t pa_audio_GetPcmCompanding
     return LE_AUDIO_COMPANDING_NONE;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to register a handler for  for audio file events notifications.
+ *
+ * @return an handler reference.
+ */
+//--------------------------------------------------------------------------------------------------
+le_audio_StreamEventHandlerRef_t pa_audio_AddFileEventHandler
+(
+    pa_audio_FileEventHandlerFunc_t handlerFuncPtr, ///< [IN] The event handler function.
+    void*                           contextPtr      ///< [IN] The handler's context.
+)
+{
+    // TODO: implement this one
+    return NULL;
+}
 
-
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to unregister the handler for audio file events.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void pa_audio_RemoveFileEventHandler
+(
+    le_audio_StreamEventHandlerRef_t addHandlerRef ///< [IN]
+)
+{
+    // TODO: implement this one
+    return;
+}

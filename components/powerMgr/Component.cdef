@@ -1,0 +1,12 @@
+provides:
+{
+    api:
+    {
+        le_pm.api
+    }
+}
+
+sources:
+{
+    le_pm.c
+}

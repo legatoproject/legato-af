@@ -3,7 +3,7 @@
  *
  * AT implementation of @ref c_pa_remoteMgmt API.
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 #include "legato.h"

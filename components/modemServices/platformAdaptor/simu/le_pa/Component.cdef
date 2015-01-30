@@ -1,0 +1,37 @@
+sources:
+{
+    pa_info_simu.c
+    pa_mcc_simu.c
+    pa_mdc_simu.c
+    pa_mrc_simu.c
+    pa_simu.c
+    pa_sim_simu.c
+    pa_sms_simu.c
+    pa_fwupdate_simu.c
+    pa_ecall_simu.c
+    pa_remoteMgmt_simu.c
+    pa_ips_simu.c
+    pa_temp_simu.c
+    ${LEGATO_ROOT}/components/modemServices/modemDaemon/smsPdu.c
+    ${LEGATO_ROOT}/components/modemServices/modemDaemon/cdmaPdu.c
+}
+
+requires:
+{
+    api:
+    {
+        le_cfg.api
+        le_sms.api      [types-only]
+        le_mrc.api      [types-only]
+        le_mdc.api      [types-only]
+        le_sim.api      [types-only]
+        le_mcc_call.api [types-only]
+        le_audio.api    [types-only]
+        le_ecall.api    [types-only]
+        le_fwupdate.api [types-only]
+        le_info.api     [types-only]
+        le_temp.api     [types-only]
+        le_remoteMgmt.api [types-only]
+        le_ips.api      [types-only]
+    }
+}

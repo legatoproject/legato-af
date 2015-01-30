@@ -2,7 +2,7 @@
  *
  * AT implementation of c_pa_sim API.
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 
@@ -27,7 +27,7 @@ static uint32_t               NumCard=1;
  * This function resets the modem. It must be called after a new SIM card selection, otherwise the
  * new SIM card selection is not taken into account.
  *
- * @return LE_NOT_POSSIBLE  The function failed.
+ * @return LE_FAULT         The function failed.
  * @return LE_TIMEOUT       No response was received.
  * @return LE_OK            The function succeeded.
  */
@@ -57,7 +57,14 @@ static le_result_t resetModem
     le_mem_Release(atReqRef);   // Release e_atmgr_Object_CreateATCommand
     le_mem_Release(resRef);  // Release le_pa_at_SendSync
 
-    return result;
+    if ( result != LE_OK )
+    {
+        return LE_FAULT;
+    }
+    else
+    {
+        return LE_OK;
+    }
 }
 
 
@@ -302,10 +309,10 @@ static void ReportStatus
 )
 {
     pa_sim_Event_t* eventPtr = le_mem_ForceAlloc(SimEventPoolRef);
-    eventPtr->num   = simCard;
+    eventPtr->simType = simCard;
     eventPtr->state = simState;
 
-    LE_DEBUG("Send Event SIM number %d, SIM state %d",eventPtr->num,eventPtr->state);
+    LE_DEBUG("Send Event SIM type %d, SIM state %d",eventPtr->simType,eventPtr->state);
     le_event_ReportWithRefCounting(EventNewSimStateId,eventPtr);
 }
 
@@ -331,7 +338,7 @@ static void SIMUnsolHandler(void* reportPtr) {
 /**
  * This function sets the SierraWireless proprietary indicator +WIND unsolicited
  *
- * @return LE_NOT_POSSIBLE  The function failed.
+ * @return LE_FAULT         The function failed.
  * @return LE_OK            The function succeeded.
  */
 
@@ -341,12 +348,12 @@ static le_result_t SetIndicator()
 
     if ( pa_common_GetWindIndicator(&wind) != LE_OK)
     {
-        return LE_NOT_POSSIBLE;
+        return LE_FAULT;
     }
 
     if ( pa_common_SetWindIndicator(wind|1|8) != LE_OK)
     {
-        return LE_NOT_POSSIBLE;
+        return LE_FAULT;
     }
 
     atmgr_SubscribeUnsolReq(atports_GetInterface(ATPORT_COMMAND),
@@ -366,7 +373,7 @@ static le_result_t SetIndicator()
 /**
  * This function must be called to initialize the sim module
  *
- * @return LE_NOT_POSSIBLE  The function failed to initialize the module.
+ * @return LE_FAULT         The function failed to initialize the module.
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
@@ -377,7 +384,7 @@ le_result_t pa_sim_Init
 {
     if (atports_GetInterface(ATPORT_COMMAND)==NULL) {
         LE_DEBUG("SIM Module is not initialize in this session");
-        return LE_NOT_POSSIBLE;
+        return LE_FAULT;
     }
 
     SimEventPoolRef = le_mem_CreatePool("SimEventPool", sizeof(pa_sim_Event_t));
@@ -397,7 +404,7 @@ le_result_t pa_sim_Init
 /**
  * This function counts number of sim card available
  *
- * @return LE_NOT_POSSIBLE  The function failed.
+ * @return LE_FAULT         The function failed.
  * @return LE_TIMEOUT       No response was received.
  * @return number           number of count slots
  */
@@ -419,7 +426,7 @@ uint32_t pa_sim_CountSlots
 
     if ( result != LE_OK ) {
         le_mem_Release(resRef); // release pa_at_SendSyncDefaultExt
-        return result;
+        return LE_FAULT;
     }
 
     // If there is more than one line then it mean that the command is OK so the first line is
@@ -449,23 +456,23 @@ uint32_t pa_sim_CountSlots
 /**
  * This function selects the Card on which all further SIM operations have to be operated.
  *
- * @return LE_NOT_POSSIBLE  The function failed.
+ * @return LE_FAULT         The function failed.
  * @return LE_TIMEOUT       No response was received.
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_sim_SelectCard
 (
-    uint32_t  cardNum     ///< [IN] The card number to be selected.
+    le_sim_Type_t  cardNum     ///< The SIM to be selected
 )
 {
     char atcommand[ATCOMMAND_SIZE] ;
 
-    if ((cardNum==1) || (cardNum==2)) {
+    if ((cardNum==LE_SIM_EXTERNAL_SLOT_1) || (cardNum==LE_SIM_EXTERNAL_SLOT_2)) {
         atcmdsync_PrepareString(atcommand,ATCOMMAND_SIZE,"at+whcnf=4,%d",cardNum);
     } else {
         LE_DEBUG("This card number (%d) is not supported",cardNum);
-        return LE_NOT_POSSIBLE;
+        return LE_FAULT;
     }
 
     le_result_t result = atcmdsync_SendStandard(atports_GetInterface(ATPORT_COMMAND),
@@ -475,31 +482,31 @@ le_result_t pa_sim_SelectCard
                                                 30000);
 
     if ( result != LE_OK ) {
-        return result;
+        return LE_FAULT;
     }
 
     if (resetModem()!=LE_OK)
         {
-        return LE_NOT_POSSIBLE;
+        return LE_FAULT;
         }
 
     NumCard = cardNum;
 
-    return result;
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
 /**
  * This function get the card on which operations are operated.
  *
- * @return LE_NOT_POSSIBLE  The function failed.
+ * @return LE_FAULT         The function failed.
  * @return LE_TIMEOUT       No response was received.
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_sim_GetSelectedCard
 (
-    uint32_t*  cardNumPtr     ///< [OUT] The card number selected.
+    le_sim_Type_t*  cardNumPtr     ///< [OUT] The card number selected.
 )
 {
     le_result_t result=LE_OK;
@@ -514,7 +521,7 @@ le_result_t pa_sim_GetSelectedCard
 
     if ( result != LE_OK ) {
         le_mem_Release(resRef); // release pa_at_SendSyncDefaultExt
-        return result;
+        return LE_FAULT;
     }
 
     // If there is more than one line then it mean that the command is OK so the first line is
@@ -533,7 +540,7 @@ le_result_t pa_sim_GetSelectedCard
         else
         {
             LE_WARN("this pattern is not expected");
-            result =  LE_NOT_POSSIBLE;
+            result =  LE_FAULT;
         }
     }
 
@@ -547,7 +554,7 @@ le_result_t pa_sim_GetSelectedCard
  * This function get the card identification (ICCID).
  *
  * @return LE_BAD_PARAMETER The parameters are invalid.
- * @return LE_NOT_POSSIBLE  The function failed.
+ * @return LE_FAULT         The function failed.
  * @return LE_TIMEOUT       No response was received.
  * @return LE_OK            The function succeeded.
  */
@@ -575,7 +582,7 @@ le_result_t pa_sim_GetCardIdentification
 
     if ( result != LE_OK ) {
         le_mem_Release(resRef);
-        return result;
+        return LE_FAULT;
     }
 
     le_sim_States_t simState=LE_SIM_STATE_UNKNOWN;
@@ -603,11 +610,11 @@ le_result_t pa_sim_GetCardIdentification
                 result = LE_OK;
             } else {
                 LE_WARN("this pattern is not expected");
-                result=LE_NOT_POSSIBLE;
+                result=LE_FAULT;
             }
         } else {
             LE_WARN("this pattern is not expected");
-            result=LE_NOT_POSSIBLE;
+            result=LE_FAULT;
         }
     }
 
@@ -620,7 +627,7 @@ le_result_t pa_sim_GetCardIdentification
  * This function get the International Mobile Subscriber Identity (IMSI).
  *
  * @return LE_BAD_PARAMETER The parameters are invalid.
- * @return LE_NOT_POSSIBLE  The function failed.
+ * @return LE_FAULT         The function failed.
  * @return LE_TIMEOUT       No response was received.
  * @return LE_OK            The function succeeded.
  */
@@ -649,7 +656,7 @@ le_result_t pa_sim_GetIMSI
 
     if ( result != LE_OK ) {
         le_mem_Release(resRef);
-        return result;
+        return LE_FAULT;
     }
 
     le_sim_States_t simState=LE_SIM_STATE_UNKNOWN;
@@ -674,7 +681,7 @@ le_result_t pa_sim_GetIMSI
     // it is not expected
     else {
         LE_WARN("this pattern is not expected");
-        result=LE_NOT_POSSIBLE;
+        result = LE_FAULT;
     }
 
     le_mem_Release(resRef);     // Release atcmdsync_SendCommandDefaultExt
@@ -687,7 +694,7 @@ le_result_t pa_sim_GetIMSI
  * This function get the SIM Status.
  *
  * @return LE_BAD_PARAMETER The parameters are invalid.
- * @return LE_NOT_POSSIBLE  The function failed.
+ * @return LE_FAULT         The function failed.
  * @return LE_TIMEOUT       No response was received.
  * @return LE_OK            The function succeeded.
  */
@@ -697,7 +704,7 @@ le_result_t pa_sim_GetState
     le_sim_States_t* statePtr    ///< [OUT] SIM state
 )
 {
-    int32_t result=LE_NOT_POSSIBLE;
+    int32_t result = LE_FAULT;
     atcmd_Ref_t atReqRef;
     atcmdsync_ResultRef_t  resRef = NULL;
 
@@ -789,7 +796,7 @@ le_result_t pa_sim_RemoveNewStateHandler
 /**
  * This function enter the PIN code.
  *
- * @return LE_NOT_POSSIBLE  The function failed to enter the value.
+ * @return LE_FAULT         The function failed to enter the value.
  * @return LE_TIMEOUT       No response was received from the SIM card.
  * @return LE_OK            The function succeeded.
  */
@@ -813,7 +820,7 @@ le_result_t pa_sim_EnterPIN
 
     if ( result != LE_OK ) {
         le_mem_Release(resRef);
-        return result;
+        return LE_FAULT;
     }
 
     le_sim_States_t simState=LE_SIM_STATE_UNKNOWN;
@@ -835,7 +842,7 @@ le_result_t pa_sim_EnterPIN
  *
  * All depends on SIM state which must be retreived by @ref pa_sim_GetState
  *
- * @return LE_NOT_POSSIBLE  The function failed to set the value.
+ * @return LE_FAULT         The function failed to set the value.
  * @return LE_TIMEOUT       No response was received from the SIM card.
  * @return LE_OK            The function succeeded.
  */
@@ -860,7 +867,7 @@ le_result_t pa_sim_EnterPUK
 
     if ( result != LE_OK ) {
         le_mem_Release(resRef);
-        return result;
+        return LE_FAULT;
     }
 
     le_sim_States_t simState=LE_SIM_STATE_UNKNOWN;
@@ -879,7 +886,7 @@ le_result_t pa_sim_EnterPUK
  * This function get the remaining attempts of a code.
  *
  * @return LE_BAD_PARAMETER The parameters are invalid.
- * @return LE_NOT_POSSIBLE  The function failed.
+ * @return LE_FAULT         The function failed.
  * @return LE_TIMEOUT       No response was received.
  * @return LE_OK            The function succeeded.
  */
@@ -890,7 +897,7 @@ static le_result_t pa_sim_GetRemainingAttempts
     uint32_t* attemptsPtr  ///< [OUT] The number of attempts still possible
 )
 {
-    le_result_t result=LE_NOT_POSSIBLE;
+    le_result_t result = LE_FAULT;
     atcmdsync_ResultRef_t  resRef = NULL;
     const char* interRespPtr[] = {"+CPINC:",NULL};
 
@@ -908,7 +915,7 @@ static le_result_t pa_sim_GetRemainingAttempts
 
     if ( result != LE_OK ) {
         le_mem_Release(resRef); // release atcmdsync_SendCommandDefaultExt
-        return result;
+        return LE_FAULT;
     }
 
     // If there is more than one line then it mean that the command is OK so the first line is
@@ -926,12 +933,12 @@ static le_result_t pa_sim_GetRemainingAttempts
             result = LE_OK;
         } else {
             LE_WARN("this pattern is not expected");
-            result=LE_NOT_POSSIBLE;
+            result = LE_FAULT;
         }
 
     } else {
         LE_WARN("this pattern is not expected");
-        result=LE_NOT_POSSIBLE;
+        result = LE_FAULT;
     }
 
     le_mem_Release(resRef);     // Release atcmdsync_SendCommandDefaultExt
@@ -944,7 +951,7 @@ static le_result_t pa_sim_GetRemainingAttempts
  * This function get the remaining attempts of a pin code.
  *
  * @return LE_BAD_PARAMETER The parameters are invalid.
- * @return LE_NOT_POSSIBLE  The function failed.
+ * @return LE_FAULT         The function failed.
  * @return LE_TIMEOUT       No response was received.
  * @return LE_OK            The function succeeded.
  */
@@ -974,7 +981,7 @@ le_result_t pa_sim_GetPINRemainingAttempts
  * This function get the remaining attempts of a puk code.
  *
  * @return LE_BAD_PARAMETER The parameters are invalid.
- * @return LE_NOT_POSSIBLE  The function failed.
+ * @return LE_FAULT         The function failed.
  * @return LE_TIMEOUT       No response was received.
  * @return LE_OK            The function succeeded.
  */
@@ -1004,7 +1011,7 @@ le_result_t pa_sim_GetPUKRemainingAttempts
  * This function change a code.
  *
  * @return LE_BAD_PARAMETER The parameters are invalid.
- * @return LE_NOT_POSSIBLE  The function failed to set the value.
+ * @return LE_FAULT         The function failed to set the value.
  * @return LE_TIMEOUT       No response was received from the SIM card.
  * @return LE_OK            The function succeeded.
  */
@@ -1058,7 +1065,7 @@ le_result_t pa_sim_ChangePIN
  * This function enables PIN locking (PIN or PIN2).
  *
  * @return LE_BAD_PARAMETER The parameters are invalid.
- * @return LE_NOT_POSSIBLE  The function failed to set the value.
+ * @return LE_FAULT         The function failed to set the value.
  * @return LE_TIMEOUT       No response was received from the SIM card.
  * @return LE_OK            The function succeeded.
  */
@@ -1090,7 +1097,7 @@ le_result_t pa_sim_EnablePIN
                                                 30000);
     if ( result != LE_OK ) {
         le_mem_Release(resRef);
-        return result;
+        return LE_FAULT;
     }
 
     le_sim_States_t simState=LE_SIM_STATE_UNKNOWN;
@@ -1110,7 +1117,7 @@ le_result_t pa_sim_EnablePIN
  * This function disables PIN locking (PIN or PIN2).
  *
  * @return LE_BAD_PARAMETER The parameters are invalid.
- * @return LE_NOT_POSSIBLE  The function failed to set the value.
+ * @return LE_FAULT         The function failed to set the value.
  * @return LE_TIMEOUT       No response was received from the SIM card.
  * @return LE_OK            The function succeeded.
  */
@@ -1143,7 +1150,7 @@ le_result_t pa_sim_DisablePIN
 
     if ( result != LE_OK ) {
         le_mem_Release(resRef);
-        return result;
+        return LE_FAULT;
     }
 
     le_sim_States_t simState=LE_SIM_STATE_UNKNOWN;
@@ -1166,7 +1173,7 @@ le_result_t pa_sim_DisablePIN
  * @return
  *      - LE_OK on success
  *      - LE_OVERFLOW if the Phone Number can't fit in phoneNumberStr
- *      - LE_NOT_POSSIBLE on any other failure
+ *      - LE_FAULT on any other failure
  * @TODO
  *      implementation
  */
@@ -1187,10 +1194,7 @@ le_result_t pa_sim_GetSubscriberPhoneNumber
  * @return
  *      - LE_OK on success
  *      - LE_OVERFLOW if the Home Network Name can't fit in nameStr
- *      - LE_NOT_POSSIBLE on any other failure
- *
- * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
- *       function will not return.
+ *      - LE_FAULT on any other failure
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_sim_GetHomeNetworkOperator
@@ -1199,7 +1203,7 @@ le_result_t pa_sim_GetHomeNetworkOperator
     size_t      nameStrSize            ///< [IN] the nameStr size
 )
 {
-    return LE_NOT_POSSIBLE;
+    return LE_FAULT;
 }
 
 //--------------------------------------------------------------------------------------------------

@@ -1,7 +1,7 @@
 /**
  * @page c_pa_audio Audio Platform Adapter API
  *
- * @ref pa_audio.h "Click here for the API reference documentation."
+ * @ref pa_audio.h "API Reference"
  *
  * <HR>
  *
@@ -26,7 +26,7 @@
  *
  * <HR>
  *
- * Copyright (C) Sierra Wireless, Inc. 2013-2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 
@@ -34,7 +34,7 @@
  *
  * Legato @ref c_pa_audio include file.
  *
- * Copyright (C) Sierra Wireless, Inc. 2013-2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 #ifndef LEGATO_PAAUDIO_INCLUDE_GUARD
@@ -58,24 +58,20 @@
 //--------------------------------------------------------------------------------------------------
 typedef enum
 {
-    PA_AUDIO_IF_CODEC_MIC                   = 0,
-    PA_AUDIO_IF_CODEC_SPEAKER               = 1,
-    PA_AUDIO_IF_DSP_FRONTEND_USB_RX         = 2,
-    PA_AUDIO_IF_DSP_FRONTEND_USB_TX         = 3,
-    PA_AUDIO_IF_DSP_BACKEND_MODEM_VOICE_RX  = 4,
-    PA_AUDIO_IF_DSP_BACKEND_MODEM_VOICE_TX  = 5,
-    PA_AUDIO_IF_DSP_FRONTEND_PCM_RX         = 6,
-    PA_AUDIO_IF_DSP_FRONTEND_PCM_TX         = 7,
-    PA_AUDIO_IF_DSP_FRONTEND_I2S_RX         = 8,
-    PA_AUDIO_IF_DSP_FRONTEND_I2S_TX         = 9,
-    PA_AUDIO_IF_DSP_FRONTEND_FILE_PLAY      = 10,
-    PA_AUDIO_IF_DSP_FRONTEND_FILE_REC       = 11,
-    PA_AUDIO_IF_DSP_FRONTEND_LOC_FILE_PLAY  = 12,
-    PA_AUDIO_IF_DSP_FRONTEND_LOC_FILE_REC   = 13,
-    PA_AUDIO_IF_DSP_FRONTEND_REM_FILE_PLAY  = 14,
-    PA_AUDIO_IF_DSP_FRONTEND_REM_FILE_REC   = 15,
-    PA_AUDIO_IF_DSP_BACKEND_DTMF_RX         = 16,
-    PA_AUDIO_NUM_INTERFACES                 = 17
+    PA_AUDIO_IF_CODEC_MIC                     = 0,
+    PA_AUDIO_IF_CODEC_SPEAKER                 = 1,
+    PA_AUDIO_IF_DSP_FRONTEND_USB_RX           = 2,
+    PA_AUDIO_IF_DSP_FRONTEND_USB_TX           = 3,
+    PA_AUDIO_IF_DSP_BACKEND_MODEM_VOICE_RX    = 4,
+    PA_AUDIO_IF_DSP_BACKEND_MODEM_VOICE_TX    = 5,
+    PA_AUDIO_IF_DSP_FRONTEND_PCM_RX           = 6,
+    PA_AUDIO_IF_DSP_FRONTEND_PCM_TX           = 7,
+    PA_AUDIO_IF_DSP_FRONTEND_I2S_RX           = 8,
+    PA_AUDIO_IF_DSP_FRONTEND_I2S_TX           = 9,
+    PA_AUDIO_IF_DSP_FRONTEND_FILE_PLAY        = 10,
+    PA_AUDIO_IF_DSP_FRONTEND_FILE_CAPTURE     = 11,
+    PA_AUDIO_IF_DSP_BACKEND_DTMF_RX           = 12,
+    PA_AUDIO_NUM_INTERFACES                   = 13
 }
 pa_audio_If_t;
 
@@ -91,6 +87,20 @@ typedef void (*pa_audio_DtmfHandlerFunc_t)
 (
     char  dtmf  ///< DTMFs received with the handler
 );
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * A handler that is called whenever a file event is notified.
+ *
+ * @param event       file's event notified with the handler.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef void (*pa_audio_FileEventHandlerFunc_t)
+(
+    le_audio_FileEvent_t  event,     ///< file's event notified with the handler
+    void*                 contextPtr ///< handler's context
+);
+
 //--------------------------------------------------------------------------------------------------
 /**
  * This function must be called to initialize the PA Audio module.
@@ -200,19 +210,6 @@ void pa_audio_ResetDspAudioPath
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function returns true if the Input and the output DSP Audio paths are currently used
- *
- * @return true     Input and output DSP Audio paths are currently used.
- * @return false    Input and output DSP Audio paths are not used.
- */
-//--------------------------------------------------------------------------------------------------
-bool pa_audio_IsDspAudioPathsUsed
-(
-    void
-);
-
-//--------------------------------------------------------------------------------------------------
-/**
  * This function must be called to set the interface gain
  *
  * @return LE_OUT_OF_RANGE  The gain parameter is not between 0 and 100
@@ -244,66 +241,14 @@ le_result_t pa_audio_GetGain
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function must be called to ask for a playback thread starting
- *
- * @return LE_OK            The thread is started
- * @return LE_BAD_PARAMETER The playback format is not valid
- * @return LE_DUPLICATE     The thread is already started
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t pa_audio_StartPlayback
-(
-    const char* formatPtr,      ///< [IN] Playback format
-    uint32_t    channelCount    ///< [IN] Number of channel
-);
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This function must be called to stop a playback thread
- *
- */
-//--------------------------------------------------------------------------------------------------
-void pa_audio_StopPlayback
-(
-    void
-);
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This function must be called to ask for a capture thread starting
- *
- * @return LE_OK            The thread is started
- * @return LE_BAD_PARAMETER The capture format is not valid
- * @return LE_DUPLICATE     The thread is already started
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t pa_audio_StartCapture
-(
-    const char* formatPtr,      ///< [IN] Capture format
-    uint32_t    channelCount    ///< [IN] Number of channel
-);
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This function must be called to stop a capture thread
- *
- */
-//--------------------------------------------------------------------------------------------------
-void pa_audio_StopCapture
-(
-    void
-);
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This function must be called to start the injector thread.
+ * This function must be called to start the playback thread.
  *
  * @return LE_OK            The thread is started
  * @return LE_BAD_PARAMETER The interface is not valid
  * @return LE_DUPLICATE     The thread is already started
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_audio_StartInjector
+le_result_t pa_audio_StartPlayback
 (
     pa_audio_If_t interface,    ///< [IN] audio interface
     int32_t       fd            ///< [IN] audio file descriptor
@@ -311,11 +256,11 @@ le_result_t pa_audio_StartInjector
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function must be called to stop the injector thread.
+ * This function must be called to stop the playback thread.
  *
  */
 //--------------------------------------------------------------------------------------------------
-void pa_audio_StopInjector
+void pa_audio_StopPlayback
 (
     void
 );
@@ -329,7 +274,7 @@ void pa_audio_StopInjector
  * @return LE_DUPLICATE     The thread is already started
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_audio_StartRecorder
+le_result_t pa_audio_StartCapture
 (
     pa_audio_If_t interface,    ///< [IN] audio interface
     int32_t       fd            ///< [IN] audio file descriptor
@@ -341,7 +286,7 @@ le_result_t pa_audio_StartRecorder
  *
  */
 //--------------------------------------------------------------------------------------------------
-void pa_audio_StopRecorder
+void pa_audio_StopCapture
 (
     void
 );
@@ -352,7 +297,7 @@ void pa_audio_StopRecorder
  *
  * @return LE_OK            The decoder is started
  * @return LE_BAD_PARAMETER The interface is not valid
- * @return LE_NOT_POSSIBLE  On other errors
+ * @return LE_FAULT         On other errors
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_audio_StartDtmfDecoder
@@ -366,7 +311,7 @@ le_result_t pa_audio_StartDtmfDecoder
  *
  * @return LE_OK            The decoder is stopped
  * @return LE_BAD_PARAMETER The interface is not valid
- * @return LE_NOT_POSSIBLE  On other errors
+ * @return LE_FAULT         On other errors
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_audio_StopDtmfDecoder
@@ -378,7 +323,7 @@ le_result_t pa_audio_StopDtmfDecoder
 /**
  * This function must be called to register a handler for DTMF notifications.
  *
- * @return LE_NOT_POSSIBLE  The function failed to register the handler.
+ * @return LE_FAULT         The function failed to register the handler.
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
@@ -602,6 +547,30 @@ uint32_t pa_audio_GetDefaultPcmTimeSlot
 le_audio_I2SChannel_t pa_audio_GetDefaultI2sMode
 (
     void
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to register a handler for  for audio file events notifications.
+ *
+ * @return an handler reference.
+ */
+//--------------------------------------------------------------------------------------------------
+le_audio_StreamEventHandlerRef_t pa_audio_AddFileEventHandler
+(
+    pa_audio_FileEventHandlerFunc_t handlerFuncPtr, ///< [IN] The event handler function.
+    void*                           contextPtr      ///< [IN] The handler's context.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to unregister the handler for audio file events.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void pa_audio_RemoveFileEventHandler
+(
+    le_audio_StreamEventHandlerRef_t addHandlerRef ///< [IN]
 );
 
 #endif // LEGATO_PAAUDIO_INCLUDE_GUARD

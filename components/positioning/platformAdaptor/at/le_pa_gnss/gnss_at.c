@@ -2,7 +2,7 @@
  *
  * Legato @ref c_gnss_at include file.
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 #include "legato.h"
@@ -57,7 +57,7 @@ static le_mem_PoolRef_t   GnssPosPoolRef;
 /**
  * This function Initialize the gnss layer.
  *
- * @return LE_NOT_POSSIBLE The function failed to Initialize the platform adapter layer.
+ * @return LE_FAULT        The function failed to Initialize the platform adapter layer.
  * @return LE_COMM_ERROR   The communication device has returned an error.
  * @return LE_TIMEOUT      No response was received from the Modem.
  * @return LE_OK           The function succeeded.
@@ -433,6 +433,9 @@ static void ParseVerticalUncertainty
 /**
  * This function parse GGA Frame into position
  *
+ * @return
+ *      LE_OK on success
+ *      LE_FAULT for any errors
  */
 //--------------------------------------------------------------------------------------------------
 static le_result_t ConvertGga
@@ -469,7 +472,7 @@ static le_result_t ConvertGga
     else
     {
         LE_DEBUG("This pattern is not expected");
-        return LE_NOT_POSSIBLE;
+        return LE_FAULT;
     }
 
     return LE_OK;
@@ -479,6 +482,9 @@ static le_result_t ConvertGga
 /**
  * This function parse RMC Frame into position
  *
+ * @return
+ *      LE_OK on success
+ *      LE_FAULT for any errors
  */
 //--------------------------------------------------------------------------------------------------
 static le_result_t ConvertRmc
@@ -508,7 +514,7 @@ static le_result_t ConvertRmc
     else
         {
         LE_DEBUG("This pattern is not expected");
-            return LE_NOT_POSSIBLE;
+            return LE_FAULT;
         }
 
     return LE_OK;
@@ -518,6 +524,9 @@ static le_result_t ConvertRmc
 /**
  * This function parse GSA Frame into position
  *
+ * @return
+ *      LE_OK on success
+ *      LE_FAULT for any errors
  */
 //--------------------------------------------------------------------------------------------------
 static le_result_t ConvertGsa
@@ -555,7 +564,7 @@ static le_result_t ConvertGsa
     else
         {
         LE_DEBUG("This pattern is not expected");
-            return LE_NOT_POSSIBLE;
+            return LE_FAULT;
         }
 }
 
@@ -563,6 +572,9 @@ static le_result_t ConvertGsa
 /**
  * This function parse VTG Frame into position
  *
+ * @return
+ *      LE_OK on success
+ *      LE_FAULT for any errors
  */
 //--------------------------------------------------------------------------------------------------
 static le_result_t ConvertVtg
@@ -596,7 +608,7 @@ static le_result_t ConvertVtg
     else
     {
         LE_DEBUG("This pattern is not expected");
-        return LE_NOT_POSSIBLE;
+        return LE_FAULT;
     }
 }
 
@@ -604,6 +616,9 @@ static le_result_t ConvertVtg
 /**
  * This function parse SWI Frame into position
  *
+ * @return
+ *      LE_OK on success
+ *      LE_FAULT for any errors
  */
 //--------------------------------------------------------------------------------------------------
 static le_result_t ConvertSwi
@@ -636,7 +651,7 @@ static le_result_t ConvertSwi
     else
     {
         LE_DEBUG("This pattern is not expected");
-        return LE_NOT_POSSIBLE;
+        return LE_FAULT;
     }
 }
 
@@ -644,6 +659,9 @@ static le_result_t ConvertSwi
 /**
  * This function convert NMEA Frame into position
  *
+ * @return
+ *      LE_OK on success
+ *      LE_FAULT for any errors
  */
 //--------------------------------------------------------------------------------------------------
 static le_result_t ConvertPosition
@@ -671,7 +689,7 @@ static le_result_t ConvertPosition
         )
     {
         LE_DEBUG("Cannot convert position");
-        return LE_NOT_POSSIBLE;
+        return LE_FAULT;
     }
 
     return LE_OK;
@@ -864,6 +882,9 @@ static le_result_t SetNmeaFrame
 /**
  * This function start the gnss module with AT command
  *
+ *  @return
+ *      LE_OK on success
+ *      LE_FAULT on failure
  */
 //--------------------------------------------------------------------------------------------------
 static le_result_t ExecGnssInit
@@ -871,7 +892,7 @@ static le_result_t ExecGnssInit
     void
 )
 {
-    le_result_t  result=LE_NOT_POSSIBLE;
+    le_result_t  result=LE_FAULT;
     atcmd_Ref_t atReqRef=NULL;
     atcmdsync_ResultRef_t  respPtr = NULL;
     const char* interRespPtr[] = { "OK" , NULL };
@@ -937,7 +958,7 @@ static le_result_t DefaultConfig
 /**
  * This function Initialize the gnss layer.
  *
- * @return LE_NOT_POSSIBLE The function failed to Initialize the platform adapter layer.
+ * @return LE_FAULT        The function failed to Initialize the platform adapter layer.
  * @return LE_COMM_ERROR   The communication device has returned an error.
  * @return LE_TIMEOUT      No response was received from the Modem.
  * @return LE_OK           The function succeeded.
@@ -950,7 +971,7 @@ static le_result_t GnssInit
 {
     if (atports_GetInterface(ATPORT_COMMAND)==NULL) {
         LE_WARN("gnss Module is not initialize in this session");
-        return LE_NOT_POSSIBLE;
+        return LE_FAULT;
     }
 
     GnssMutex = le_mutex_CreateNonRecursive("GnssMutex");
@@ -1073,7 +1094,7 @@ le_result_t pa_gnss_Start
     void
 )
 {
-    le_result_t  result=LE_NOT_POSSIBLE;
+    le_result_t  result=LE_FAULT;
     atcmd_Ref_t atReqRef=NULL;
     atcmdsync_ResultRef_t  respPtr = NULL;
     const char* interRespPtr[] = { "OK" , NULL };
@@ -1120,7 +1141,7 @@ le_result_t pa_gnss_Stop
     void
 )
 {
-    le_result_t  result=LE_NOT_POSSIBLE;
+    le_result_t  result=LE_FAULT;
     atcmd_Ref_t atReqRef=NULL;
     atcmdsync_ResultRef_t  respPtr = NULL;
     const char* interRespPtr[] = { "OK" , NULL };
@@ -1157,7 +1178,7 @@ le_result_t pa_gnss_Stop
 /**
  * This function must be called to set the rate of gps fix reception
  *
- * @return LE_NOT_POSSIBLE  The function failed.
+ * @return LE_FAULT         The function failed.
  * @return LE_TIMEOUT       No response was received.
  * @return LE_OK            The function succeeded.
  */
@@ -1231,7 +1252,8 @@ void pa_gnss_RemovePositionDataHandler
 /**
  * This function must be called to get the location's data.
  *
- * @return LE_NOT_POSSIBLE  The function cannot get internal position information
+ * @return LE_FAULT         The function cannot get internal position information
+ * @return LE_BAD_PARAMETER The positionRef is invalid
  * @return LE_OK            The function succeeded.
  *
  * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
@@ -1246,7 +1268,7 @@ le_result_t pa_gnss_GetLastPositionData
     if (positionRef==NULL)
     {
         LE_WARN("Parameter are not valid");
-        return LE_FAULT;
+        return LE_BAD_PARAMETER;
     }
 
     memcpy(positionRef,&LastPosition,sizeof(LastPosition));
@@ -1256,18 +1278,18 @@ le_result_t pa_gnss_GetLastPositionData
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function must be called to load xtra.bin file into the gnss.
+ * This function must be called to load an 'Extended Ephemeris' file into the GNSS device.
  *
- * @return LE_FAULT         The function failed to load the xtra.bin file
+ * @return LE_FAULT         The function failed to load the 'Extended Ephemeris' file.
  * @return LE_NOT_FOUND     The file path does not exist
  * @return LE_OK            The function succeeded.
  *
  * @TODO    implementation
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_gnss_LoadXtra
+le_result_t pa_gnss_LoadExtendedEphemerisFile
 (
-    const char* xtraFilePathPtr    ///< [IN] xtra.bin file path
+    int32_t       fd      ///< [IN] extended ephemeris file descriptor
 )
 {
     return LE_FAULT;
@@ -1275,7 +1297,7 @@ le_result_t pa_gnss_LoadXtra
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function must be called to get the validity of the last xtra.bin injected
+ * This function must be called to get the validity of the last injected Extended Ephemeris.
  *
  * @return LE_FAULT         The function failed to get the validity
  * @return LE_OK            The function succeeded.
@@ -1283,7 +1305,7 @@ le_result_t pa_gnss_LoadXtra
  * @TODO    implementation
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_gnss_GetXtraValidityTimes
+le_result_t pa_gnss_GetExtendedEphemerisValidityTimes
 (
     le_clk_Time_t *startTimePtr,    ///< [OUT] Start time
     le_clk_Time_t *stopTimePtr      ///< [OUT] Stop time
@@ -1294,58 +1316,19 @@ le_result_t pa_gnss_GetXtraValidityTimes
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function must be called to get the status of Xtra session
+ * This function must be called to restart the GNSS device.
  *
- * @return LE_FAULT         The function failed to get the status
+ * @return LE_FAULT         The function failed.
  * @return LE_OK            The function succeeded.
- *
- * @TODO    implementation
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_gnss_GetXtraSessionStatus
+le_result_t pa_gnss_ForceRestart
 (
-    bool *enablePtr ///< [OUT] enable/disable
+    pa_gnss_Restart_t  restartType ///< [IN] type of restart
 )
 {
     return LE_FAULT;
 }
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This function must be called to enable Xtra session.
- *
- * @return LE_FAULT         The function failed to enable.
- * @return LE_OK            The function succeeded.
- *
- * @TODO    implementation
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t pa_gnss_EnableXtraSession
-(
-    void
-)
-{
-    return LE_FAULT;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This function must be called to disable Xtra session.
- *
- * @return LE_FAULT         The function failed to disable.
- * @return LE_OK            The function succeeded.
- *
- * @TODO    implementation
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t pa_gnss_DisableXtraSession
-(
-    void
-)
-{
-    return LE_FAULT;
-}
-
 
 //--------------------------------------------------------------------------------------------------
 /**

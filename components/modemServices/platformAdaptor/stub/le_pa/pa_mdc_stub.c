@@ -3,14 +3,16 @@
  *
  * QMI implementation of @ref c_pa_mdc API.
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 
 #include "legato.h"
 #include "pa_mdc.h"
+#include "interfaces.h"
 
 bool StartProfile[PA_MDC_MAX_PROFILE]={0};
+
 
 //--------------------------------------------------------------------------------------------------
 // APIs.
@@ -33,7 +35,7 @@ COMPONENT_INIT
  * @return
  *      - LE_OK on success
  *      - LE_OVERFLOW if the IP address would not fit in gatewayAddrStr
- *      - LE_NOT_POSSIBLE for all other errors
+ *      - LE_FAULT for all other errors
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_mdc_GetGatewayAddress
@@ -53,7 +55,7 @@ le_result_t pa_mdc_GetGatewayAddress
  *
  * @return
  *      - LE_OK on success
- *      - LE_NOT_POSSIBLE for other failures
+ *      - LE_FAULT for other failures
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_mdc_GetSessionType
@@ -72,7 +74,7 @@ le_result_t pa_mdc_GetSessionType
  * @return
  *      - LE_OK on success
  *      - LE_OVERFLOW if the interface name would not fit in interfaceNameStr
- *      - LE_NOT_POSSIBLE for all other errors
+ *      - LE_FAULT for all other errors
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_mdc_GetInterfaceName
@@ -91,7 +93,7 @@ le_result_t pa_mdc_GetInterfaceName
  *
  * @return
  *      - LE_OK on success
- *      - LE_NOT_POSSIBLE on failure
+ *      - LE_FAULT on failure
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_mdc_WriteProfile
@@ -105,11 +107,41 @@ le_result_t pa_mdc_WriteProfile
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Get the index of the default profile (link to the platform)
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT on failure
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_mdc_GetDefaultProfileIndex
+(
+    uint32_t* profileIndexPtr
+)
+{
+    le_mrc_Rat_t   rat;
+
+    le_mrc_GetRadioAccessTechInUse(&rat);
+
+    if (rat==LE_MRC_RAT_GSM)
+    {
+        *profileIndexPtr = 1;
+    }
+    else
+    {
+        *profileIndexPtr = 101;
+    }
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Read the profile data for the given profile
  *
  * @return
  *      - LE_OK on success
- *      - LE_NOT_POSSIBLE on failure
+ *      - LE_FAULT on failure
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_mdc_ReadProfile
@@ -151,7 +183,7 @@ void pa_mdc_SetSessionStateHandler
  * @return
  *      - LE_OK on success
  *      - LE_OVERFLOW if the IP address would not fit in gatewayAddrStr
- *      - LE_NOT_POSSIBLE for all other errors
+ *      - LE_FAULT for all other errors
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_mdc_GetIPAddress
@@ -171,7 +203,7 @@ le_result_t pa_mdc_GetIPAddress
  *
  * @return
  *      - LE_OK on success
- *      - LE_NOT_POSSIBLE on error
+ *      - LE_FAULT on error
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_mdc_GetSessionState
@@ -190,7 +222,7 @@ le_result_t pa_mdc_GetSessionState
  *
  * @return
  *      - LE_OK on success
- *      - LE_NOT_POSSIBLE for all other errors
+ *      - LE_FAULT for all other errors
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_mdc_GetDataBearerTechnology
@@ -210,7 +242,7 @@ le_result_t pa_mdc_GetDataBearerTechnology
  * @return
  *      - LE_OK on success
  *      - LE_DUPLICATE if the data session is already connected
- *      - LE_NOT_POSSIBLE for other failures
+ *      - LE_FAULT for other failures
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_mdc_StartSessionIPV4
@@ -222,7 +254,7 @@ le_result_t pa_mdc_StartSessionIPV4
     if ( StartProfile[profileIndex] )
     {
         *callRefPtr = NULL;
-        return LE_NOT_POSSIBLE;
+        return LE_FAULT;
     }
     else
     {
@@ -239,7 +271,7 @@ le_result_t pa_mdc_StartSessionIPV4
  * @return
  *      - LE_OK on success
  *      - LE_DUPLICATE if the data session is already connected
- *      - LE_NOT_POSSIBLE for other failures
+ *      - LE_FAULT for other failures
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_mdc_StartSessionIPV6
@@ -258,7 +290,7 @@ le_result_t pa_mdc_StartSessionIPV6
  * @return
  *      - LE_OK on success
  *      - LE_DUPLICATE if the data session is already connected
- *      - LE_NOT_POSSIBLE for other failures
+ *      - LE_FAULT for other failures
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_mdc_StartSessionIPV4V6
@@ -276,7 +308,7 @@ le_result_t pa_mdc_StartSessionIPV4V6
  *
  * @return
  *      - LE_OK on success
- *      - LE_NOT_POSSIBLE for all other errors
+ *      - LE_FAULT for all other errors
  *
  */
 //--------------------------------------------------------------------------------------------------
@@ -294,7 +326,7 @@ le_result_t pa_mdc_GetDataFlowStatistics
  *
  * * @return
  *      - LE_OK on success
- *      - LE_NOT_POSSIBLE for all other errors
+ *      - LE_FAULT for all other errors
  *
  */
 //--------------------------------------------------------------------------------------------------
@@ -312,8 +344,8 @@ le_result_t pa_mdc_ResetDataFlowStatistics
  *
  * @return
  *      - LE_OK on success
- *      - LE_DUPLICATE if the data session has already been stopped (i.e. it is disconnected)
- *      - LE_NOT_POSSIBLE for other failures
+ *      - LE_BAD_PARAMETER if the input parameter is not valid
+ *      - LE_FAULT for other failures
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_mdc_StopSession
@@ -329,7 +361,7 @@ le_result_t pa_mdc_StopSession
     }
     else
     {
-        return LE_NOT_POSSIBLE;
+        return LE_FAULT;
     }
 }
 
@@ -340,7 +372,7 @@ le_result_t pa_mdc_StopSession
  * @return
  *      - LE_OK on success
  *      - LE_OVERFLOW if the IP address would not fit in buffer
- *      - LE_NOT_POSSIBLE for all other errors
+ *      - LE_FAULT for all other errors
  *
  * @note
  *      If only one DNS address is available, then it will be returned, and an empty string will
@@ -357,38 +389,5 @@ le_result_t pa_mdc_GetDNSAddresses
     size_t dns2AddrStrSize                  ///< [IN] The size in bytes of the dns2AddrStr buffer
 )
 {
-    return LE_OK;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Check the availability of the given profile index
- *
- * @return
- *      - LE_OK on success
- *      - LE_FAULT for all other errors
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t pa_mdc_IsProfileAllowed
-(
-    uint32_t  profileIndex,              ///< [IN] The profile to check
-    bool*     isAllowed                  ///< [OUT] profile using permission
-)
-{
-
-
-    if (( profileIndex == PA_MDC_MIN_INDEX_3GPP_PROFILE + 1 ) ||
-         (( profileIndex >= PA_MDC_MIN_INDEX_3GPP_PROFILE + 3 ) &&
-         ( profileIndex <= PA_MDC_MAX_INDEX_3GPP_PROFILE )) ||
-         (( profileIndex > PA_MDC_MIN_INDEX_3GPP2_PROFILE ) &&
-         ( profileIndex < PA_MDC_MAX_INDEX_3GPP2_PROFILE )))
-    {
-         *isAllowed = false;
-    }
-    else
-    {
-         *isAllowed = true;
-    }
-
     return LE_OK;
 }

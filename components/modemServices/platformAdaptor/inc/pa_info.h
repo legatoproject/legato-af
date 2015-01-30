@@ -1,7 +1,7 @@
 /**
  * @page c_pa_info Modem Information Platform Adapter API
  *
- * @ref pa_info.h "Click here for the API reference documentation."
+ * @ref pa_info.h "API Reference"
  *
  * <HR>
  *
@@ -30,7 +30,7 @@
  *
  * <HR>
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 
@@ -38,7 +38,7 @@
  *
  * Legato @ref c_pa_info include file.
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 #ifndef LEGATO_PAINFO_INCLUDE_GUARD
@@ -58,7 +58,14 @@
  * Maximum 'International Mobile Equipment Identity length.
  */
 //--------------------------------------------------------------------------------------------------
-#define PA_INFO_IMEI_MAX_LEN     15
+#define PA_INFO_IMEI_MAX_LEN     LE_INFO_IMEI_MAX_LEN
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum 'International Mobile Equipment Identity length.
+ */
+//--------------------------------------------------------------------------------------------------
+#define PA_INFO_IMEI_MAX_BYTES   LE_INFO_IMEI_MAX_BYTES
 
 
 //--------------------------------------------------------------------------------------------------
@@ -75,7 +82,7 @@
  * Type definition for an 'International Mobile Equipment Identity' (16 digits)
  */
 //--------------------------------------------------------------------------------------------------
-typedef char pa_info_Imei_t[PA_INFO_IMEI_MAX_LEN + 1];
+typedef char pa_info_Imei_t[PA_INFO_IMEI_MAX_BYTES];
 
 
 
@@ -85,7 +92,6 @@ typedef char pa_info_Imei_t[PA_INFO_IMEI_MAX_LEN + 1];
  */
 //--------------------------------------------------------------------------------------------------
 typedef char pa_info_DeviceModel_t[PA_INFO_DEVICE_MODEL_MAX_LEN + 1];
-
 
 
 
@@ -101,7 +107,8 @@ typedef char pa_info_DeviceModel_t[PA_INFO_DEVICE_MODEL_MAX_LEN + 1];
  * @return
  *      - LE_OK on success
  *      - LE_NOT_FOUND if the version string is not available
- *      - LE_NOT_POSSIBLE for any other errors
+ *      - LE_OVERFLOW if version string to big to fit in provided buffer
+ *      - LE_FAULT for any other errors
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_info_GetFirmwareVersion
@@ -118,7 +125,8 @@ le_result_t pa_info_GetFirmwareVersion
  * @return
  *      - LE_OK on success
  *      - LE_NOT_FOUND if the version string is not available
- *      - LE_NOT_POSSIBLE for any other errors
+ *      - LE_OVERFLOW if version string to big to fit in provided buffer
+ *      - LE_FAULT for any other errors
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_info_GetBootloaderVersion
@@ -133,16 +141,15 @@ le_result_t pa_info_GetBootloaderVersion
  * This function get the International Mobile Equipment Identity (IMEI).
  *
  * @return
- * - LE_NOT_POSSIBLE  The function failed to get the value.
+ * - LE_FAULT         The function failed to get the value.
  * - LE_TIMEOUT       No response was received from the Modem.
  * - LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_info_GetIMEI
+le_result_t pa_info_GetImei
 (
     pa_info_Imei_t imei   ///< [OUT] IMEI value
 );
-
 
 
 //--------------------------------------------------------------------------------------------------
@@ -150,8 +157,8 @@ le_result_t pa_info_GetIMEI
  * This function gets the device model identity.
  *
  * @return
- * - LE_NOT_POSSIBLE  The function failed to get the value.
- * - LE_TIMEOUT       No response was received from the Modem.
+ * - LE_FAULT         The function failed to get the value.
+ * - LE_OVERFLOW      The device model identity length exceed the maximum length.
  * - LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
@@ -161,5 +168,113 @@ le_result_t pa_info_GetDeviceModel
 );
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the CDMA device Mobile Equipment Identifier (MEID).
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to get the value.
+ *      - LE_OVERFLOW      The device Mobile Equipment identifier length exceed the maximum length.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_info_GetMeid
+(
+    char* meidStr,           ///< [OUT] Firmware version string
+    size_t meidStrSize       ///< [IN] Size of version buffer
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the CDMA Electronic Serial Number (ESN) of the device.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to get the value.
+ *      - LE_OVERFLOW      The Electric SerialNumbe length exceed the maximum length.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_info_GetEsn
+(
+    char* esnStr,
+        ///< [OUT]
+        ///< The Electronic Serial Number (ESN) of the device
+        ///<  string (null-terminated).
+
+    size_t esnStrNumElements
+        ///< [IN]
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the CDMA Mobile Identification Number (MIN).
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to get the value.
+ *      - LE_OVERFLOW      The CDMA Mobile Identification Number length exceed the maximum length.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_info_GetMin
+(
+    char        *minStr,    ///< [OUT] The phone Number
+    size_t       minStrSize ///< [IN]  Size of phoneNumberStr
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the version of Preferred Roaming List (PRL).
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to get the value.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_info_GetPrlVersion
+(
+    uint16_t* prlVersionPtr
+        ///< [OUT]
+        ///< The Preferred Roaming List (PRL) version.
+);
+
+
+///--------------------------------------------------------------------------------------------------
+/**
+ * Get the CDMA Preferred Roaming List (PRL) only preferences status.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_NOT_FOUND     The information is not availble.
+ *      - LE_FAULT         The function failed to get the value.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_info_GetPrlOnlyPreference
+(
+    bool* prlOnlyPreferencePtr      ///< The Cdma PRL only preferences status.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the CDMA Network Access Identifier (NAI) string in ASCII text.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to get the value.
+ *      - LE_OVERFLOW      The Mobile Station ISDN Numbe length exceed the maximum length.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_info_GetNai
+(
+    char* naiStr,
+        ///< [OUT]
+        ///< The Network Access Identifier (NAI)
+        ///<  string (null-terminated).
+
+    size_t naiStrNumElements
+        ///< [IN]
+);
 
 #endif // LEGATO_PAINFO_INCLUDE_GUARD

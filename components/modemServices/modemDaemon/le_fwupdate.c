@@ -3,7 +3,7 @@
  *
  * Implementation of FW Update API
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  *
  */
 #include "legato.h"
@@ -29,7 +29,8 @@
  *
  * @return
  *      - LE_OK on success
- *      - LE_NOT_POSSIBLE on failure
+ *      - LE_BAD_PARAMETER if an input parameter is not valid
+ *      - LE_FAULT on failure
  *
  * @note
  *      The process exits, if an invalid file descriptor (e.g. negative) is given.
@@ -46,7 +47,7 @@ le_result_t le_fwupdate_Download
     if (fd < 0)
     {
         LE_KILL_CLIENT("'fd' is negative");
-        return LE_NOT_POSSIBLE;
+        return LE_BAD_PARAMETER;
     }
 
     // Pass the fd to the PA layer, which will handle the details.

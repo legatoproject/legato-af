@@ -3,7 +3,7 @@
  *
  * AT implementation of c_pa_mdc API.
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  *
  */
 
@@ -106,7 +106,7 @@ static inline void SetCurrentDataSessionIndex(uint32_t index)
  * Attach or detach the GPRS service
  *
  * @return LE_OK            GPRS is attached
- * @return LE_NOT_POSSIBLE  modem could not attach the GPRS
+ * @return LE_FAULT         modem could not attach the GPRS
  */
 //--------------------------------------------------------------------------------------------------
 static le_result_t AttachGPRS
@@ -130,7 +130,7 @@ static le_result_t AttachGPRS
  * Activate or Desactivate the profile regarding toActivate value
  *
  * @return LE_OK            Modem succeded to activate/desactivate the profile
- * @return LE_NOT_POSSIBLE  Modem could not proceed to activate/desactivate the profile
+ * @return LE_FAULT         Modem could not proceed to activate/desactivate the profile
  */
 //--------------------------------------------------------------------------------------------------
 static le_result_t ActivateContext
@@ -155,7 +155,7 @@ static le_result_t ActivateContext
  * Enable or disable GPRS Event reporting.
  *
  * @return LE_OK            GPRS event reporting is enable/disable
- * @return LE_NOT_POSSIBLE  Modem could not enable/disable the GPRS Event reporting
+ * @return LE_FAULT         Modem could not enable/disable the GPRS Event reporting
  */
 //--------------------------------------------------------------------------------------------------
 static le_result_t SetIndicationHandler
@@ -232,7 +232,7 @@ static void CGEVUnsolHandler
  * Set PPP port for ppp connection.
  *
  * @return LE_OK            Enable/disable the PPP port
- * @return LE_NOT_POSSIBLE  Could not Enable/disable the PPP port
+ * @return LE_FAULT         Could not Enable/disable the PPP port
  */
 //--------------------------------------------------------------------------------------------------
 static le_result_t SetPPPPort
@@ -255,7 +255,7 @@ static le_result_t SetPPPPort
  * Start the PDP Modem connection.
  *
  * @return LE_OK            Activate the profile in the modem
- * @return LE_NOT_POSSIBLE  Could not activate the profile in the modem
+ * @return LE_FAULT         Could not activate the profile in the modem
  */
 //--------------------------------------------------------------------------------------------------
 static le_result_t StartPDPConnection
@@ -290,7 +290,7 @@ static le_result_t StartPDPConnection
  * Hang up the PDP Modem connection.
  *
  * @return LE_OK            Activate the profile in the modem
- * @return LE_NOT_POSSIBLE  Could not hang up the PDP connection
+ * @return LE_FAULT         Could not hang up the PDP connection
  * @return LE_TIMEOUT       Command failed with timeout
  */
 //--------------------------------------------------------------------------------------------------
@@ -310,7 +310,7 @@ static le_result_t StopPDPConnection
  * Start the ppp interface.
  *
  * @return LE_OK            Activate the ppp interface with linux
- * @return LE_NOT_POSSIBLE  Failed to activate the ppp interface with linux
+ * @return LE_FAULT         Failed to activate the ppp interface with linux
  */
 //--------------------------------------------------------------------------------------------------
 static le_result_t StartPPPInterface
@@ -321,7 +321,7 @@ static le_result_t StartPPPInterface
     pid_t pid = fork();
     if ( pid == -1)
     {
-        return LE_NOT_POSSIBLE;
+        return LE_FAULT;
     } else if ( pid == 0) // child process
     {
         char* args[] = {
@@ -352,12 +352,12 @@ static le_result_t StartPPPInterface
                 return LE_OK;
             } else
             {
-                return LE_NOT_POSSIBLE;
+                return LE_FAULT;
             }
         }
         else {
             LE_WARN("Child did not terminate with exit\n");
-            return LE_NOT_POSSIBLE;
+            return LE_FAULT;
         }
 
     }
@@ -370,7 +370,7 @@ static le_result_t StartPPPInterface
  *  - start a PPP connection to link with the Modem PPP Server
  *
  * @return LE_OK            The connection is established
- * @return LE_NOT_POSSIBLE  could not establish connection for the profile
+ * @return LE_FAULT         could not establish connection for the profile
  */
 //--------------------------------------------------------------------------------------------------
 static le_result_t EstablishConnection
@@ -380,24 +380,24 @@ static le_result_t EstablishConnection
 {
     if ( SetPPPPort(true) != LE_OK )
     {
-        return LE_NOT_POSSIBLE;
+        return LE_FAULT;
     }
 
     // Start the PDP connection on Modem side
     if ( StartPDPConnection(profileIndex) != LE_OK )
     {
-        return LE_NOT_POSSIBLE;
+        return LE_FAULT;
     }
 
     // Start the PPP connection on application side
     if ( StartPPPInterface() != LE_OK)
     {
-        return LE_NOT_POSSIBLE;
+        return LE_FAULT;
     }
 
     if ( SetPPPPort(false) != LE_OK )
     {
-        return LE_NOT_POSSIBLE;
+        return LE_FAULT;
     }
 
     return LE_OK;
@@ -431,7 +431,7 @@ static void MDCInternalHandler
  * This function must be called to initialize the mdc module
  *
  *
- * @return LE_NOT_POSSIBLE  The function failed to initialize the module.
+ * @return LE_FAULT         The function failed to initialize the module.
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
@@ -442,12 +442,12 @@ le_result_t pa_mdc_Init
 {
     if (atports_GetInterface(ATPORT_COMMAND)==NULL) {
         LE_WARN("DATA Module is not initialize in this session");
-        return LE_NOT_POSSIBLE;
+        return LE_FAULT;
     }
 
     if (atports_GetInterface(ATPORT_PPP)==false) {
         LE_WARN("PPP Module is not initialize in this session");
-        return LE_NOT_POSSIBLE;
+        return LE_FAULT;
     }
 
     NewSessionStateEvent = le_event_CreateIdWithRefCounting("NewSessionStateEvent");
@@ -467,11 +467,30 @@ le_result_t pa_mdc_Init
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Get the index of the default profile (link to the platform)
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT on failure
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_mdc_GetDefaultProfileIndex
+(
+    uint32_t* profileIndexPtr
+)
+{
+    *profileIndexPtr = 1;
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Read the profile data for the given profile
  *
  * @return
  *      - LE_OK on success
- *      - LE_NOT_POSSIBLE on failure
+ *      - LE_FAULT on failure
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_mdc_ReadProfile
@@ -480,7 +499,7 @@ le_result_t pa_mdc_ReadProfile
     pa_mdc_ProfileData_t* profileDataPtr    ///< [OUT] The profile data
 )
 {
-    le_result_t result=LE_NOT_POSSIBLE;
+    le_result_t result = LE_FAULT;
     char atintermediate[ATCOMMAND_SIZE];
 
     atcmdsync_PrepareString(atintermediate,ATCOMMAND_SIZE,"+CGDCONT: %d,",profileIndex);
@@ -523,15 +542,15 @@ le_result_t pa_mdc_ReadProfile
                 {
                     LE_WARN("This is not the good profile %d",
                             atoi(atcmd_GetLineParameter(line,2)));
-                    result = LE_NOT_POSSIBLE;
+                    result = LE_FAULT;
                 }
             } else {
                 LE_WARN("this pattern is not expected");
-                result=LE_NOT_POSSIBLE;
+                result=LE_FAULT;
             }
         } else {
             LE_WARN("this pattern is not expected");
-            result=LE_NOT_POSSIBLE;
+            result=LE_FAULT;
         }
     }
 
@@ -547,7 +566,7 @@ le_result_t pa_mdc_ReadProfile
  *
  * @return
  *      - LE_OK on success
- *      - LE_NOT_POSSIBLE on failure
+ *      - LE_FAULT on failure
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_mdc_WriteProfile
@@ -576,7 +595,7 @@ le_result_t pa_mdc_WriteProfile
  * @return
  *      - LE_OK on success
  *      - LE_DUPLICATE if the data session is already connected
- *      - LE_NOT_POSSIBLE for other failures
+ *      - LE_FAULT for other failures
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_mdc_StartSessionIPV4
@@ -585,7 +604,7 @@ le_result_t pa_mdc_StartSessionIPV4
     pa_mdc_CallRef_t* callRefPtr  ///< [OUT] Reference used for stopping the data session
 )
 {
-    le_result_t result=LE_NOT_POSSIBLE;
+    le_result_t result=LE_FAULT;
 
     if ( GetCurrentDataSessionIndex() != INVALID_PROFILE_INDEX )
     {
@@ -597,7 +616,7 @@ le_result_t pa_mdc_StartSessionIPV4
     //   - if GPRS is not attached it will attach it and then it returns OK on success
     if ( AttachGPRS(true) != LE_OK )
     {
-        return LE_NOT_POSSIBLE;
+        return LE_FAULT;
     }
 
     // Always executed because:
@@ -605,12 +624,12 @@ le_result_t pa_mdc_StartSessionIPV4
     //   - if the context is not activated it will attach it and then it returns OK on success
     if ( ActivateContext(profileIndex,true) != LE_OK )
     {
-        return LE_NOT_POSSIBLE;
+        return LE_FAULT;
     }
 
     if ( (result = EstablishConnection(profileIndex)) != LE_OK )
     {
-        return LE_NOT_POSSIBLE;
+        return LE_FAULT;
     }
 
     if (result==LE_OK) {
@@ -631,7 +650,7 @@ le_result_t pa_mdc_StartSessionIPV4
  * @return
  *      - LE_OK on success
  *      - LE_DUPLICATE if the data session is already connected
- *      - LE_NOT_POSSIBLE for other failures
+ *      - LE_FAULT for other failures
  *
  * @TODO    Implementation
  */
@@ -652,7 +671,7 @@ le_result_t pa_mdc_StartSessionIPV6
  * @return
  *      - LE_OK on success
  *      - LE_DUPLICATE if the data session is already connected
- *      - LE_NOT_POSSIBLE for other failures
+ *      - LE_FAULT for other failures
  *
  * @TODO    implementation
  */
@@ -673,7 +692,7 @@ le_result_t pa_mdc_StartSessionIPV4V6
  *
  * @return
  *      - LE_OK on success
- *      - LE_NOT_POSSIBLE for other failures
+ *      - LE_FAULT for other failures
  *
  * @TODO    implementation
  */
@@ -694,8 +713,8 @@ le_result_t pa_mdc_GetSessionType
  *
  * @return
  *      - LE_OK on success
- *      - LE_FAULT if the input parameter is not valid
- *      - LE_NOT_POSSIBLE for other failures
+ *      - LE_BAD_PARAMETER if the input parameter is not valid
+ *      - LE_FAULT for other failures
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_mdc_StopSession
@@ -705,13 +724,13 @@ le_result_t pa_mdc_StopSession
 {
     if ( GetCurrentDataSessionIndex() == INVALID_PROFILE_INDEX )
     {
-        return LE_NOT_POSSIBLE;
+        return LE_FAULT;
     }
 
     // Stop the PDP connection on modem side
     if (StopPDPConnection() != LE_OK)
     {
-        return LE_NOT_POSSIBLE;
+        return LE_FAULT;
     }
 
     SetCurrentDataSessionIndex(INVALID_PROFILE_INDEX);
@@ -726,7 +745,7 @@ le_result_t pa_mdc_StopSession
  *
  * @return
  *      - LE_OK on success
- *      - LE_NOT_POSSIBLE on error
+ *      - LE_FAULT on error
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_mdc_GetSessionState
@@ -789,7 +808,7 @@ void pa_mdc_SetSessionStateHandler
  * @return
  *      - LE_OK on success
  *      - LE_OVERFLOW if the interface name would not fit in interfaceNameStr
- *      - LE_NOT_POSSIBLE for all other errors
+ *      - LE_FAULT for all other errors
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_mdc_GetInterfaceName
@@ -809,7 +828,7 @@ le_result_t pa_mdc_GetInterfaceName
     result = pa_mdc_GetSessionState(profileIndex, &sessionState);
     if ( (result != LE_OK) || (sessionState == PA_MDC_DISCONNECTED) )
     {
-        return LE_NOT_POSSIBLE;
+        return LE_FAULT;
     }
 
     if (le_utf8_Copy(interfaceNameStr,
@@ -830,7 +849,7 @@ le_result_t pa_mdc_GetInterfaceName
  * @return
  *      - LE_OK on success
  *      - LE_OVERFLOW if the IP address would not fit in gatewayAddrStr
- *      - LE_NOT_POSSIBLE for all other errors
+ *      - LE_FAULT for all other errors
  *
  * @TODO    implementation
  */
@@ -854,7 +873,7 @@ le_result_t pa_mdc_GetIPAddress
  * @return
  *      - LE_OK on success
  *      - LE_OVERFLOW if the IP address would not fit in gatewayAddrStr
- *      - LE_NOT_POSSIBLE for all other errors
+ *      - LE_FAULT for all other errors
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_mdc_GetGatewayAddress
@@ -865,7 +884,7 @@ le_result_t pa_mdc_GetGatewayAddress
     size_t gatewayAddrStrSize               ///< [IN] The size in bytes of the address buffer
 )
 {
-    le_result_t result=LE_NOT_POSSIBLE;
+    le_result_t result = LE_FAULT;
     char atcommand[ATCOMMAND_SIZE] ;
     char atintermediate[ATCOMMAND_SIZE];
 
@@ -913,15 +932,15 @@ le_result_t pa_mdc_GetGatewayAddress
                 {
                     LE_WARN("This is not the good profile %d",
                             atoi(atcmd_GetLineParameter(line,2)));
-                    result = LE_NOT_POSSIBLE;
+                    result = LE_FAULT;
                 }
             } else {
                 LE_WARN("this pattern is not expected");
-                result=LE_NOT_POSSIBLE;
+                result = LE_FAULT;
             }
         } else {
             LE_WARN("this pattern is not expected");
-            result=LE_NOT_POSSIBLE;
+            result = LE_FAULT;
         }
     }
 
@@ -938,7 +957,7 @@ le_result_t pa_mdc_GetGatewayAddress
  * @return
  *      - LE_OK on success
  *      - LE_OVERFLOW if the IP address would not fit in buffer
- *      - LE_NOT_POSSIBLE for all other errors
+ *      - LE_FAULT for all other errors
  *
  * @note
  *      If only one DNS address is available, then it will be returned, and an empty string will
@@ -964,7 +983,7 @@ le_result_t pa_mdc_GetDNSAddresses
     result = pa_mdc_GetSessionState(profileIndex, &sessionState);
     if ( (result != LE_OK) || (sessionState == PA_MDC_DISCONNECTED) )
     {
-        return LE_NOT_POSSIBLE;
+        return LE_FAULT;
     }
 
     memset(dns1AddrStr,0,dns1AddrStrSize);
@@ -972,7 +991,7 @@ le_result_t pa_mdc_GetDNSAddresses
 
     res.options &= ~ (RES_INIT);
     if (res_ninit(&res)==-1) {
-        return LE_NOT_POSSIBLE;
+        return LE_FAULT;
     }
 
     if (res.nscount > 0) {
@@ -983,7 +1002,7 @@ le_result_t pa_mdc_GetDNSAddresses
         }
         // now get it back and save it
         if ( inet_ntop(AF_INET, &(addr.sin_addr), dns1AddrStr, INET_ADDRSTRLEN) == NULL) {
-            return LE_NOT_POSSIBLE;
+            return LE_FAULT;
         }
     }
 
@@ -995,7 +1014,7 @@ le_result_t pa_mdc_GetDNSAddresses
         }
         // now get it back and save it
         if ( inet_ntop(AF_INET, &(addr.sin_addr), dns2AddrStr, INET_ADDRSTRLEN) == NULL) {
-            return LE_NOT_POSSIBLE;
+            return LE_FAULT;
         }
     }
 
@@ -1010,7 +1029,7 @@ le_result_t pa_mdc_GetDNSAddresses
  * @return
  *      - LE_OK on success
  *      - LE_OVERFLOW if the Access Point Name would not fit in apnNameStr
- *      - LE_NOT_POSSIBLE for all other errors
+ *      - LE_FAULT for all other errors
  * @TODO
  *      implementation
  */
@@ -1032,7 +1051,7 @@ le_result_t pa_mdc_GetAccessPointName
  *
  * @return
  *      - LE_OK on success
- *      - LE_NOT_POSSIBLE for all other errors
+ *      - LE_FAULT for all other errors
  * @TODO
  *      implementation
  */
@@ -1054,7 +1073,7 @@ le_result_t pa_mdc_GetDataBearerTechnology
  *
  * @return
  *      - LE_OK on success
- *      - LE_NOT_POSSIBLE for all other errors
+ *      - LE_FAULT for all other errors
  *
  * @TODO Implementation
  */
@@ -1074,7 +1093,7 @@ le_result_t pa_mdc_GetDataFlowStatistics
  *
  * * @return
  *      - LE_OK on success
- *      - LE_NOT_POSSIBLE for all other errors
+ *      - LE_FAULT for all other errors
  *
  * @TODO Implementation
  */
@@ -1087,22 +1106,3 @@ le_result_t pa_mdc_ResetDataFlowStatistics
     return LE_OK;
 }
 
-//--------------------------------------------------------------------------------------------------
-/**
- * Check the availability of the given profile index
- *
- * @return
- *      - LE_OK on success
- *      - LE_NOT_FOUND for all other errors
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t pa_mdc_IsProfileAllowed
-(
-    uint32_t  profileIndex,              ///< [IN] The profile to check
-    bool*     isAllowed                  ///< [OUT] profile using permission
-)
-{
-    *isAllowed = false;
-
-    return LE_NOT_FOUND;
-}

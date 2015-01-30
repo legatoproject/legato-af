@@ -3,7 +3,7 @@
  *
  * AT implementation of @ref c_pa_info API.
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 
@@ -18,12 +18,12 @@
 /**
  * This function get the International Mobile Equipment Identity (IMEI).
  *
- * @return  LE_NOT_POSSIBLE  The function failed to get the value.
+ * @return  LE_FAULT         The function failed to get the value.
  * @return  LE_TIMEOUT       No response was received from the Modem.
  * @return  LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_info_GetIMEI
+le_result_t pa_info_GetImei
 (
     pa_info_Imei_t imei   ///< [OUT] IMEI value
 )
@@ -41,7 +41,7 @@ le_result_t pa_info_GetIMEI
  * @return
  *      - LE_OK on success
  *      - LE_NOT_FOUND if the version string is not available
- *      - LE_NOT_POSSIBLE for any other errors
+ *      - LE_FAULT for any other errors
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_info_GetFirmwareVersion
@@ -61,7 +61,7 @@ le_result_t pa_info_GetFirmwareVersion
  * @return
  *      - LE_OK on success
  *      - LE_NOT_FOUND if the version string is not available
- *      - LE_NOT_POSSIBLE for any other errors
+ *      - LE_FAULT for any other errors
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_info_GetBootloaderVersion
@@ -79,8 +79,8 @@ le_result_t pa_info_GetBootloaderVersion
  * This function gets the device model identity.
  *
  * @return
- * - LE_NOT_POSSIBLE  The function failed to get the value.
- * - LE_TIMEOUT       No response was received from the Modem.
+ * - LE_FAULT         The function failed to get the value.
+ * - LE_OVERFLOW      The device model identity length exceed the maximum length.
  * - LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
@@ -91,5 +91,159 @@ le_result_t pa_info_GetDeviceModel
 {
     //To do
 
-    return LE_NOT_POSSIBLE;
+    return LE_FAULT;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the CDMA device Mobile Equipment Identifier (MEID).
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to get the value.
+ *      - LE_OVERFLOW      The device Mobile Equipment identifier length exceed the maximum length.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_info_GetMeid
+(
+    char* meidStr,           ///< [OUT] Firmware version string
+    size_t meidStrSize       ///< [IN] Size of version buffer
+)
+{
+    return LE_FAULT;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the CDMA Mobile Identification Number (MIN).
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to get the value.
+ *      - LE_OVERFLOW      The CDMA Mobile Identification Number length exceed the maximum length.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_info_GetMin
+(
+    char        *minStr,    ///< [OUT] The phone Number
+    size_t       minStrSize ///< [IN]  Size of phoneNumberStr
+)
+{
+    return LE_FAULT;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the CDMA Electronic Serial Number (ESN) of the device.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to get the value.
+ *      - LE_OVERFLOW      The Electric SerialNumbe length exceed the maximum length.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_info_GetEsn
+(
+    char* esnStr,
+        ///< [OUT]
+        ///< The Electronic Serial Number (ESN) of the device
+        ///<  string (null-terminated).
+
+    size_t esnStrNumElements
+        ///< [IN]
+)
+{
+    return LE_FAULT;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the CDMA Mobile Directory Number (MDN) of the device.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to get the value.
+ *      - LE_OVERFLOW      The Mobile Directory Number length exceed the maximum length.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_info_GetMdn
+(
+    char* mdnStr,
+        ///< [OUT]
+        ///< The Mobile Directory Number (MDN)
+        ///<  string (null-terminated).
+
+    size_t mdnStrNumElements
+        ///< [IN]
+)
+{
+    return LE_FAULT;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the version of Preferred Roaming List (PRL).
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to get the value.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_info_GetPrlVersion
+(
+    uint16_t* prlVersionPtr
+        ///< [OUT]
+        ///< The Preferred Roaming List (PRL) version.
+)
+{
+    return LE_FAULT;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Cdma PRL only preferences Flag.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_NOT_FOUND     The information is not availble.
+ *      - LE_FAULT         The function failed to get the value.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_info_GetPrlOnlyPreference
+(
+    bool* prlOnlyPreferencePtr      ///< The Cdma PRL only preferences status.
+)
+{
+    return LE_FAULT;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the CDMA Network Access Identifier (NAI) string in ASCII text.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to get the value.
+ *      - LE_OVERFLOW      The Network Access Identifier (NAI) length exceed the maximum length.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_info_GetNai
+(
+    char* naiStr,
+        ///< [OUT]
+        ///< The Network Access Identifier (NAI)
+        ///<  string (null-terminated).
+
+    size_t naiStrNumElements
+        ///< [IN]
+)
+{
+    return LE_FAULT;
 }

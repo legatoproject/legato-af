@@ -23,7 +23,7 @@
  *
  * <HR>
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 
@@ -31,7 +31,7 @@
  *
  * Legato @ref c_pa_remoteMgmt include file.
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 #ifndef LEGATO_PA_REMOTE_MGMT_INCLUDE_GUARD

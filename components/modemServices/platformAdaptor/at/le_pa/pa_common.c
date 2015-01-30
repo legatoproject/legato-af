@@ -1,12 +1,12 @@
 /**
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 
 /** @file pa_common.c
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 
@@ -23,7 +23,7 @@
 /**
  * This function must be called to initialize the common module.
  *
- * @return LE_NOT_POSSIBLE  The function failed to initialize the module.
+ * @return LE_FAULT         The function failed to initialize the module.
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
@@ -34,7 +34,7 @@ le_result_t pa_common_Init
 {
     if (atports_GetInterface(ATPORT_COMMAND)==NULL) {
         LE_WARN("Common Module is not initialize in this session");
-        return LE_NOT_POSSIBLE;
+        return LE_FAULT;
     }
 
     return LE_OK;
@@ -44,7 +44,7 @@ le_result_t pa_common_Init
 /**
  * This function gets the SierraWireless proprietary indicator +WIND
  *
- * @return LE_NOT_POSSIBLE  The function failed.
+ * @return LE_FAULT         The function failed.
  * @return LE_TIMEOUT       No response was received.
  * @return LE_OK            The function succeeded.
  */
@@ -72,7 +72,7 @@ le_result_t pa_common_GetWindIndicator
         if ( sscanf(line,"+WIND: %d",windPtr) != 1)
         {
             LE_DEBUG("cannot qet wind indicator");
-            result = LE_NOT_POSSIBLE;
+            result = LE_FAULT;
         }
     }
 
@@ -84,7 +84,7 @@ le_result_t pa_common_GetWindIndicator
 /**
  * This function sets the SierraWireless proprietary indicator +WIND
  *
- * @return LE_NOT_POSSIBLE  The function failed.
+ * @return LE_FAULT         The function failed.
  * @return LE_TIMEOUT       No response was received.
  * @return LE_OK            The function succeeded.
  */

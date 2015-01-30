@@ -2,7 +2,7 @@
  *
  * Source code of functions to interact with SMS PDU data.
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 #include <time.h>
@@ -52,7 +52,7 @@ static const char *DtmfChars = "D1234567890*#ABC";
  * the letter i with a circumflex and the plain i-character) a substitution
  * is done.
  *
- * There are some character (for example the curly brace "}") that must
+ * There are some character (for example the square brace "]") that must
  * be converted into a 2 byte 7-bit sequence.  These characters are
  * marked in the table by having 128 added to its value.
  ****************************************************************************/
@@ -867,7 +867,7 @@ static smsPdu_Encoding_t DetermineEncoding
     else
     {
         LE_DEBUG("this encoding is not supported (tp_dcs %u)", tp_dcs);
-        return LE_NOT_POSSIBLE;
+        return LE_FAULT;
     }
 
     return encoding;
@@ -886,8 +886,8 @@ static le_result_t DecodeGsmPdu
 {
     int pos = 0;
     uint8_t firstByte;
-    char address[LE_MDMDEFS_PHONE_NUM_MAX_LEN] = {0};
-    char timestamp[LE_SMS_TIMESTAMP_MAX_LEN] = {0};
+    char address[LE_MDMDEFS_PHONE_NUM_MAX_BYTES] = {0};
+    char timestamp[LE_SMS_TIMESTAMP_MAX_BYTES] = {0};
     uint8_t addressLen;
     uint8_t tp_dcs;
     uint8_t tp_udl;
@@ -915,7 +915,7 @@ static le_result_t DecodeGsmPdu
             break;
         default:
             LE_ERROR("Decoding this message is not supported.");
-            return LE_NOT_POSSIBLE;
+            return LE_UNSUPPORTED;
     }
 
     if(smsPtr->type == PA_SMS_SMS_SUBMIT)
@@ -933,7 +933,7 @@ static le_result_t DecodeGsmPdu
                     &dataPtr[pos],
                     (addressLen+1)>>1,
                     address,
-                    LE_MDMDEFS_PHONE_NUM_MAX_LEN);
+                    LE_MDMDEFS_PHONE_NUM_MAX_BYTES);
     }
 
     /* TP-PID: Protocol identifier (1 byte) */
@@ -949,7 +949,7 @@ static le_result_t DecodeGsmPdu
             &dataPtr[pos],
             7,
             timestamp,
-            LE_SMS_TIMESTAMP_MAX_LEN
+            LE_SMS_TIMESTAMP_MAX_BYTES
         );
     }
 
@@ -963,7 +963,7 @@ static le_result_t DecodeGsmPdu
             break;
         default:
             LE_ERROR("Message format not supported.");
-            return LE_NOT_POSSIBLE;
+            return LE_UNSUPPORTED;
     }
 
     if(smsPtr->type == PA_SMS_SMS_SUBMIT)
@@ -982,7 +982,7 @@ static le_result_t DecodeGsmPdu
     if (tp_udhl)
     {
         LE_DEBUG("Multi part SMS are not available yet");
-        return LE_NOT_POSSIBLE;
+        return LE_UNSUPPORTED;
     }
 
     uint8_t * destDataPtr;
@@ -1015,7 +1015,7 @@ static le_result_t DecodeGsmPdu
             break;
 
         default:
-            return LE_NOT_POSSIBLE;
+            return LE_FAULT;
     }
 
     switch(encoding)
@@ -1041,7 +1041,7 @@ static le_result_t DecodeGsmPdu
             messageLen = (tp_udl*7 - tp_udhl*8) /7;
             if (messageLen <= 0) {
                 LE_ERROR("the message length %d is <0 ",messageLen);
-                return LE_NOT_POSSIBLE;
+                return LE_FAULT;
             }
             pos -= (tp_udhl*8+6)/7; // translate the pos in 7bits char unit
 
@@ -1059,7 +1059,7 @@ static le_result_t DecodeGsmPdu
 
         default:
             LE_ERROR("Decoding error");
-            return LE_NOT_POSSIBLE;
+            return LE_FAULT;
     }
 
     return LE_OK;
@@ -1090,7 +1090,7 @@ static le_result_t EncodeGsmPdu
     {
         LE_DEBUG("Message cannot be encoded, message with length > %d are not supported yet",
                  maxSmsLength);
-        return LE_NOT_POSSIBLE;
+        return LE_FAULT;
     }
 
     /* First Byte:
@@ -1119,15 +1119,15 @@ static le_result_t EncodeGsmPdu
 
         default:
             LE_WARN("Message Type not supported");
-            return LE_BAD_PARAMETER;
+            return LE_UNSUPPORTED;
     }
 
     /* Prepare address */
     int addressLen = strlen(addressPtr);
-    if (addressLen > LE_MDMDEFS_PHONE_NUM_MAX_LEN) {
+    if (addressLen > LE_MDMDEFS_PHONE_NUM_MAX_BYTES) {
         LE_DEBUG("Address is too long %d. should be at max %d",
-                 addressLen, LE_MDMDEFS_PHONE_NUM_MAX_LEN-1);
-        return LE_NOT_POSSIBLE;
+                 addressLen, LE_MDMDEFS_PHONE_NUM_MAX_BYTES-1);
+        return LE_FAULT;
     }
 
     /* Prepare type of address: EXT, TON (Type of number), NPI (Numbering plan identification) */
@@ -1154,10 +1154,10 @@ static le_result_t EncodeGsmPdu
             break;
         case SMSPDU_UCS_2:
             LE_ERROR("UCS-2 encoding is not supported.");
-            return LE_NOT_POSSIBLE;
+            return LE_UNSUPPORTED;
         default:
             LE_ERROR("Invalid encoding %d.", encoding);
-            return LE_NOT_POSSIBLE;
+            return LE_FAULT;
     }
 
     /* Prepare PDU data */
@@ -1191,7 +1191,7 @@ static le_result_t EncodeGsmPdu
             /* Number encoded */
             pos += (ConvertPhoneNumberIntoBinary(addressPtr,
                                                  &pduPtr->data[pos],
-                                                 LE_SMS_PDU_MAX_LEN-pos)
+                                                 LE_SMS_PDU_MAX_BYTES-pos)
                      +1) / 2;
         }
 
@@ -1271,7 +1271,7 @@ static le_result_t EncodeGsmPdu
                 LE_ERROR("UCS-2 encoding is not supported.");
                 /* no break */
             default:
-                return LE_NOT_POSSIBLE;
+                return LE_UNSUPPORTED;
         }
 
         pduPtr->dataLen = pos;
@@ -1805,13 +1805,13 @@ static le_result_t GetCdmaMessageData
     if ( !(cdmaMessage->message.parameterMask & CDMAPDU_PARAMETERMASK_BEARER_DATA))
     {
         LE_INFO("No Bearer data in the message");
-        return LE_NOT_POSSIBLE;
+        return LE_FAULT;
     }
 
     if ( !(cdmaMessage->message.bearerData.subParameterMask & CDMAPDU_SUBPARAMETERMASK_USER_DATA))
     {
         LE_INFO("No data in the message");
-        return LE_NOT_POSSIBLE;
+        return LE_FAULT;
     }
 
     encoding = cdmaMessage->message.bearerData.userData.messageEncoding;
@@ -2121,7 +2121,7 @@ static le_result_t DecodeMessageCdma
         default:
         {
             LE_WARN("Do not support this message type %d", messageType);
-            result = LE_FAULT;
+            result = LE_UNSUPPORTED;
         }
     }
 
@@ -2237,7 +2237,7 @@ le_result_t smsPdu_Initialize
  * Decode the content of dataPtr.
  *
  * @return LE_OK            Function succeed
- * @return LE_NOT_POSSIBLE  Protocol is not supported
+ * @return LE_UNSUPPORTED   Protocol is not supported
  * @return LE_FAULT         Function failed
  */
 //--------------------------------------------------------------------------------------------------
@@ -2267,7 +2267,7 @@ le_result_t smsPdu_Decode
     else
     {
         LE_WARN("Protocol %d not supported", protocol);
-        result = LE_NOT_POSSIBLE;
+        result = LE_UNSUPPORTED;
     }
 
     return result;
@@ -2278,7 +2278,7 @@ le_result_t smsPdu_Decode
  * Encode the content of messagePtr in PDU format.
  *
  * @return LE_OK            Function succeed
- * @return LE_NOT_POSSIBLE  Protocol is not supported
+ * @return LE_UNSUPPORTED   Protocol is not supported
  * @return LE_FAULT         Function failed
  */
 //--------------------------------------------------------------------------------------------------
@@ -2306,7 +2306,7 @@ le_result_t smsPdu_Encode
     else
     {
         LE_WARN("Protocol %d not supported", protocol);
-        result = LE_NOT_POSSIBLE;
+        result = LE_UNSUPPORTED;
     }
 
     if (IS_TRACE_ENABLED)

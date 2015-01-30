@@ -1,6 +1,6 @@
 /** @file pa_sim_local.h
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 #ifndef LEGATO_PASIMLOCAL_INCLUDE_GUARD
@@ -13,7 +13,7 @@
 /**
  * This function must be called to initialize the sim module
  *
- * @return LE_NOT_POSSIBLE  The function failed to initialize the module.
+ * @return LE_FAULT         The function failed to initialize the module.
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------

@@ -2,16 +2,17 @@ requires:
 {
     api:
     {
-        modemServices/le_mdmDefs.api    [types-only]
-        audio/le_audio.api              [types-only]
-        modemServices/le_mcc_call.api   [types-only]
-        modemServices/le_mdc.api        [types-only]
-        modemServices/le_mrc.api        [types-only]
-        modemServices/le_sim.api        [types-only]
-        modemServices/le_sms.api        [types-only]
-        modemServices/le_ecall.api      [types-only]
-        modemServices/le_fwupdate.api   [types-only]
-        modemServices/le_remoteMgmt.api [types-only]
+        le_audio.api      [types-only]
+        le_mcc_call.api   [types-only]
+        le_mdc.api        [types-only]
+        le_mrc.api        [types-only]
+        le_sim.api        [types-only]
+        le_sms.api        [types-only]
+        le_ecall.api      [types-only]
+        le_fwupdate.api   [types-only]
+        le_remoteMgmt.api [types-only]
+        le_info.api       [types-only]
+        le_temp.api         [types-only]
     }
 }
 
@@ -28,6 +29,8 @@ sources:
     pa_ecall.c
     pa_fwupdate.c
     pa_remoteMgmt.c
+    pa_ips.c
+    pa_temp.c
 }
 
 requires:

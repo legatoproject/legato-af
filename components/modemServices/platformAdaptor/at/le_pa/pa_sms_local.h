@@ -1,6 +1,6 @@
 /** @file pa_sms_local.h
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 #ifndef LEGATO_PASMSLOCAL_INCLUDE_GUARD
@@ -106,7 +106,7 @@ pa_sms_NmiBfr_t;
 /**
  * This function must be called to initialize the sms module.
  *
- * @return LE_NOT_POSSIBLE  The function failed to initialize the module.
+ * @return LE_FAULT         The function failed to initialize the module.
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
@@ -120,10 +120,7 @@ le_result_t pa_sms_Init
  * This function selects the procedure for message reception from the network (New Message
  * Indication settings).
  *
- * @return LE_NOT_POSSIBLE  The function failed to select the procedure for message reception.
- * @return LE_BAD_PARAMETER The parameters are invalid.
- * @return LE_OUT_OF_RANGE  The parameters values are not in the allowed range.
- * @return LE_COMM_ERROR    The communication device has returned an error.
+ * @return LE_FAULT         The function failed to select the procedure for message reception.
  * @return LE_TIMEOUT       No response was received from the Modem.
  * @return LE_OK            The function succeeded.
  */
@@ -142,8 +139,8 @@ le_result_t pa_sms_SetNewMsgIndic
 /**
  * This function gets the New Message Indication settings.
  *
- * @return LE_NOT_POSSIBLE  The function failed to get the New Message Indication settings.
- * @return LE_COMM_ERROR    The communication device has returned an error.
+ * @return LE_FAULT         The function failed to get the New Message Indication settings.
+ * @return LE_BAD_PARAMETER Bad parameter, one is NULL.
  * @return LE_TIMEOUT       No response was received from the Modem.
  * @return LE_OK            The function succeeded.
  */
@@ -163,10 +160,7 @@ le_result_t pa_sms_GetNewMsgIndic
 /**
  * This function sets the Preferred Message Format (PDU or Text mode).
  *
- * @return LE_NOT_POSSIBLE  The function failed to sets the Preferred Message Format.
- * @return LE_BAD_PARAMETER The parameters are invalid.
- * @return LE_OUT_OF_RANGE  The parameters values are not in the allowed range.
- * @return LE_COMM_ERROR    The communication device has returned an error.
+ * @return LE_FAULT         The function failed to sets the Preferred Message Format.
  * @return LE_TIMEOUT       No response was received from the Modem.
  * @return LE_OK            The function succeeded.
  */
@@ -180,8 +174,7 @@ le_result_t pa_sms_SetMsgFormat
 /**
  * This function saves the SMS Settings.
  *
- * @return LE_NOT_POSSIBLE The function failed to save the SMS Settings.
- * @return LE_COMM_ERROR   The communication device has returned an error.
+ * @return LE_FAULT        The function failed to save the SMS Settings.
  * @return LE_TIMEOUT      No response was received from the Modem.
  * @return LE_OK           The function succeeded.
  */

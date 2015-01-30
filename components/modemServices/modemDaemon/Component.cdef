@@ -4,7 +4,7 @@ requires:
     {
         le_cfg.api
         le_audio.api
-        le_mdmDefs.api  [types-only]
+        le_pm.api
     }
 }
 
@@ -22,6 +22,8 @@ provides:
         le_ecall.api
         le_fwupdate.api
         le_remoteMgmt.api
+        le_ips.api
+        le_temp.api
     }
 }
 
@@ -40,6 +42,8 @@ sources:
     le_remoteMgmt.c
     asn1Msd.c
     le_ecall.c
+    le_ips.c
+    le_temp.c
 }
 
 requires:

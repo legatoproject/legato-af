@@ -1,7 +1,7 @@
 /**
  * @page c_pa_mdc Modem Data Control Platform Adapter API
  *
- * @ref pa_mdc.h "Click here for the API reference documentation."
+ * @ref pa_mdc.h "API Reference"
  *
  * <HR>
  *
@@ -25,7 +25,7 @@
  *
  * <HR>
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 //--------------------------------------------------------------------------------------------------
@@ -33,7 +33,7 @@
  *
  * Legato @ref c_pa_mdc include file.
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 #ifndef LEGATO_PA_MDC_INCLUDE_GUARD
@@ -169,9 +169,9 @@ pa_mdc_SessionType_t;
  */
 //--------------------------------------------------------------------------------------------------
 typedef struct {
-    char apn[PA_MDC_APN_MAX_BYTES]; ///< Access Point Name (APN)
+    char apn[PA_MDC_APN_MAX_BYTES];         ///< Access Point Name (APN)
     pa_mdc_Authentication_t authentication; ///< Authentication
-    le_mdc_Pdp_t pdp;           ///< PDP type
+    le_mdc_Pdp_t pdp;                       ///< PDP type
 }
 pa_mdc_ProfileData_t;
 
@@ -228,11 +228,25 @@ typedef void (*pa_mdc_SessionStateHandler_t)
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Get the index of the default profile (link to the platform)
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT on failure
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_mdc_GetDefaultProfileIndex
+(
+    uint32_t* profileIndexPtr
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Read the profile data for the given profile
  *
  * @return
  *      - LE_OK on success
- *      - LE_NOT_POSSIBLE on failure
+ *      - LE_FAULT on failure
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_mdc_ReadProfile
@@ -248,7 +262,7 @@ le_result_t pa_mdc_ReadProfile
  *
  * @return
  *      - LE_OK on success
- *      - LE_NOT_POSSIBLE on failure
+ *      - LE_FAULT on failure
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_mdc_WriteProfile
@@ -265,7 +279,7 @@ le_result_t pa_mdc_WriteProfile
  * @return
  *      - LE_OK on success
  *      - LE_DUPLICATE if the data session is already connected
- *      - LE_NOT_POSSIBLE for other failures
+ *      - LE_FAULT for other failures
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_mdc_StartSessionIPV4
@@ -281,7 +295,7 @@ le_result_t pa_mdc_StartSessionIPV4
  * @return
  *      - LE_OK on success
  *      - LE_DUPLICATE if the data session is already connected
- *      - LE_NOT_POSSIBLE for other failures
+ *      - LE_FAULT for other failures
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_mdc_StartSessionIPV6
@@ -297,7 +311,7 @@ le_result_t pa_mdc_StartSessionIPV6
  * @return
  *      - LE_OK on success
  *      - LE_DUPLICATE if the data session is already connected
- *      - LE_NOT_POSSIBLE for other failures
+ *      - LE_FAULT for other failures
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_mdc_StartSessionIPV4V6
@@ -313,7 +327,7 @@ le_result_t pa_mdc_StartSessionIPV4V6
  *
  * @return
  *      - LE_OK on success
- *      - LE_NOT_POSSIBLE for other failures
+ *      - LE_FAULT for other failures
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_mdc_GetSessionType
@@ -328,8 +342,8 @@ le_result_t pa_mdc_GetSessionType
  *
  * @return
  *      - LE_OK on success
- *      - LE_FAULT if the input parameter is not valid
- *      - LE_NOT_POSSIBLE for other failures
+ *      - LE_BAD_PARAMETER if the input parameter is not valid
+ *      - LE_FAULT for other failures
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_mdc_StopSession
@@ -344,7 +358,7 @@ le_result_t pa_mdc_StopSession
  *
  * @return
  *      - LE_OK on success
- *      - LE_NOT_POSSIBLE on error
+ *      - LE_FAULT on error
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_mdc_GetSessionState
@@ -379,7 +393,7 @@ void pa_mdc_SetSessionStateHandler
  * @return
  *      - LE_OK on success
  *      - LE_OVERFLOW if the interface name would not fit in interfaceNameStr
- *      - LE_NOT_POSSIBLE for all other errors
+ *      - LE_FAULT for all other errors
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_mdc_GetInterfaceName
@@ -397,7 +411,8 @@ le_result_t pa_mdc_GetInterfaceName
  * @return
  *      - LE_OK on success
  *      - LE_OVERFLOW if the IP address would not fit in gatewayAddrStr
- *      - LE_NOT_POSSIBLE for all other errors
+ *      - LE_UNSUPPORTED if the IP version is unsupported
+ *      - LE_FAULT for all other errors
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_mdc_GetIPAddress
@@ -415,7 +430,8 @@ le_result_t pa_mdc_GetIPAddress
  * @return
  *      - LE_OK on success
  *      - LE_OVERFLOW if the IP address would not fit in gatewayAddrStr
- *      - LE_NOT_POSSIBLE for all other errors
+ *      - LE_UNSUPPORTED if the IP version is unsupported
+ *      - LE_FAULT for all other errors
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_mdc_GetGatewayAddress
@@ -433,7 +449,8 @@ le_result_t pa_mdc_GetGatewayAddress
  * @return
  *      - LE_OK on success
  *      - LE_OVERFLOW if the IP address would not fit in buffer
- *      - LE_NOT_POSSIBLE for all other errors
+ *      - LE_UNSUPPORTED if the IP version is unsupported
+ *      - LE_FAULT for all other errors
  *
  * @note
  *      If only one DNS address is available, then it will be returned, and an empty string will
@@ -457,7 +474,7 @@ le_result_t pa_mdc_GetDNSAddresses
  * @return
  *      - LE_OK on success
  *      - LE_OVERFLOW if the Access Point Name would not fit in apnNameStr
- *      - LE_NOT_POSSIBLE for all other errors
+ *      - LE_FAULT for all other errors
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_mdc_GetAccessPointName
@@ -473,7 +490,7 @@ le_result_t pa_mdc_GetAccessPointName
  *
  * @return
  *      - LE_OK on success
- *      - LE_NOT_POSSIBLE for all other errors
+ *      - LE_FAULT for all other errors
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_mdc_GetDataBearerTechnology
@@ -489,7 +506,7 @@ le_result_t pa_mdc_GetDataBearerTechnology
  *
  * @return
  *      - LE_OK on success
- *      - LE_NOT_POSSIBLE for all other errors
+ *      - LE_FAULT for all other errors
  *
  */
 //--------------------------------------------------------------------------------------------------
@@ -504,28 +521,13 @@ le_result_t pa_mdc_GetDataFlowStatistics
  *
  * * @return
  *      - LE_OK on success
- *      - LE_NOT_POSSIBLE for all other errors
+ *      - LE_FAULT for all other errors
  *
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_mdc_ResetDataFlowStatistics
 (
     void
-);
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Check if the given profile index is reserved or not
- *
- * @return
- *      - first available profile identifier
- *      - LE_NOT_FOUND if no profile is available
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t pa_mdc_IsProfileAllowed
-(
-    uint32_t  profileIndex,              ///< [IN] The profile to check
-    bool*     isAllowed                  ///< [OUT] profile using permission
 );
 
 #endif // LEGATO_PA_MDC_INCLUDE_GUARD

@@ -23,8 +23,7 @@
  * finally it forwards the message to the modem for sending.
  *
  *
- * Copyright (C) Sierra Wireless, Inc. 2012. All rights reserved. Use of this work is subject to
- *  license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  *
  */
 #include "legato.h"
@@ -74,6 +73,18 @@ typedef enum
 le_sms_Type_t;
 
 //--------------------------------------------------------------------------------------------------
+/**
+ * SMS commnd Type.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+typedef enum
+{
+    LE_SMS_CMD_TYPE_SEND    = 0 ///< Pool and send SMS message.
+}
+CmdType_t;
+
+//--------------------------------------------------------------------------------------------------
 // Data structures.
 //--------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------
@@ -88,30 +99,27 @@ le_sms_Type_t;
 //--------------------------------------------------------------------------------------------------
 typedef struct le_sms_Msg
 {
-    bool                readonly;                            ///< Flag for Read-Only message.
-    bool                inAList;                             ///< The message belongs to a list or
-                                                             ///  not
-    le_sms_Format_t     format;                              ///< SMS Message Format.
-    le_sms_Type_t       type;                                ///< SMS Message Type.
-    uint32_t            storageIdx;                          ///< SMS Message index in storage.
-    char                tel[LE_MDMDEFS_PHONE_NUM_MAX_LEN];   ///< Telephone number of the message
-                                                             ///  (in text mode), or NULL (in PDU
-                                                             ///  mode).
-    char                timestamp[LE_SMS_TIMESTAMP_MAX_LEN]; ///< SMS time stamp (in text mode).
-    pa_sms_Pdu_t        pdu;                                 ///< SMS PDU
-    bool                pduReady;                            ///< Whether the PDU value is ready or
-                                                             ///  not
+    bool              readonly;                            ///< Flag for Read-Only message.
+    bool              inAList;                             ///< Is the message belong to a list?
+    le_sms_Format_t   format;                              ///< SMS Message Format.
+    le_sms_Type_t     type;                                ///< SMS Message Type.
+    uint32_t          storageIdx;                          ///< SMS Message index in storage.
+    char              tel[LE_MDMDEFS_PHONE_NUM_MAX_BYTES]; ///< Telephone number of the message
+                                                           ///< (in text mode),
+                                                           ///< or NULL (in PDU mode).
+    char              timestamp[LE_SMS_TIMESTAMP_MAX_BYTES]; ///< SMS time stamp (in text mode).
+    pa_sms_Pdu_t      pdu;                                 ///< SMS PDU
+    bool              pduReady;                            ///< Is the PDU value ready?
     union {
-        char            text[LE_SMS_TEXT_MAX_LEN];           ///< SMS text
-        uint8_t         binary[LE_SMS_BINARY_MAX_LEN];       ///< SMS binary
+        char          text[LE_SMS_TEXT_MAX_BYTES];         ///< SMS text
+        uint8_t       binary[LE_SMS_BINARY_MAX_BYTES];     ///< SMS binary
     };
-    size_t              userdataLen;                         ///< Length of data associated with SMS
-                                                             ///  formats text or binary
-    pa_sms_Protocol_t   protocol;                            ///< SMS Protocol (GSM or CDMA)
-
-    int32_t             smsUserCount;                        ///< Current sms user counter.
-    bool                delAsked;                            ///< Whether the SMS deletion is asked.
-    pa_sms_Storage_t    storage;                             ///< SMS storage location
+    size_t            userdataLen;                         ///< Length of data associated with SMS
+                                                           ///  formats text or binary
+    pa_sms_Protocol_t protocol;                            ///< SMS Protocol (GSM or CDMA)
+    int32_t           smsUserCount;                        ///< Current sms user counter.
+    bool              delAsked;                            ///< Whether the SMS deletion is asked.
+    pa_sms_Storage_t  storage;                             ///< SMS storage location
 }le_sms_Msg_t;
 
 
@@ -139,6 +147,22 @@ typedef struct le_sms_MsgList
     le_dls_List_t   list;
     le_dls_Link_t*  currentLink;
 }le_sms_List_t;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sms message sending command structure.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+        CmdType_t           command;        ///< The command.
+        le_sms_MsgRef_t     msgRef;         ///< The message reference.
+        le_sms_Msg_t*       msgPtr;         ///< The Message object.
+        void                *callBackPtr;   ///< The Callback Response.
+        void                *Context;       ///< Context.
+} CmdRequest_t;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -193,6 +217,12 @@ static le_mem_PoolRef_t   ReferencePool;
 //--------------------------------------------------------------------------------------------------
 static le_event_Id_t NewSmsEventId;
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Event ID for message sending commands.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_event_Id_t CommandSmsEventId;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -224,7 +254,8 @@ static void ReInitializeList
                 return;
             }
 
-            LE_DEBUG("le_sms_Delete obj 0X%p, ref 0x%p, flag %c cpt = %d", msgPtr, nodePtr->msgRef,
+            LE_DEBUG("ReInitializeList node 0x%p, obj 0X%p, ref 0x%p, flag %c cpt = %d",
+                nodePtr, msgPtr, nodePtr->msgRef,
                 (msgPtr->delAsked ? 'Y' : 'N'), msgPtr->smsUserCount);
 
             if (msgPtr->delAsked)
@@ -241,6 +272,10 @@ static void ReInitializeList
 
             // Move to the next node.
             linkPtr = le_dls_Pop(msgListPtr);
+
+            // Release the node
+            le_mem_Release(nodePtr);
+
         } while (linkPtr != NULL);
     }
 }
@@ -304,25 +339,25 @@ static le_sms_Msg_t* CreateAndPopulateMessage
         case LE_SMS_FORMAT_PDU:
             // CreateAndPopulateMessage is called by my internal handler. I don't know how to face
             // this error, so it is a fatal error.
-            LE_ASSERT(messagePduPtr->dataLen <= LE_SMS_PDU_MAX_LEN);
+            LE_ASSERT(messagePduPtr->dataLen <= LE_SMS_PDU_MAX_BYTES);
             break;
         case LE_SMS_FORMAT_BINARY:
             // CreateAndPopulateMessage is called by my internal handler. I don't know how to face
             // this error, so it is a fatal error.
-            LE_ASSERT(messageConvertedPtr->smsDeliver.dataLen <= LE_SMS_BINARY_MAX_LEN);
+            LE_ASSERT(messageConvertedPtr->smsDeliver.dataLen <= LE_SMS_BINARY_MAX_BYTES);
             newSmsMsgObjPtr->userdataLen = messageConvertedPtr->smsDeliver.dataLen;
             memcpy(newSmsMsgObjPtr->binary,
                     messageConvertedPtr->smsDeliver.data,
-                    LE_SMS_BINARY_MAX_LEN);
+                    LE_SMS_BINARY_MAX_BYTES);
             break;
         case LE_SMS_FORMAT_TEXT:
             // CreateAndPopulateMessage is called by my internal handler. I don't know how to face
             // this error, so it is a fatal error.
-            LE_ASSERT(messageConvertedPtr->smsDeliver.dataLen < LE_SMS_TEXT_MAX_LEN);
+            LE_ASSERT(messageConvertedPtr->smsDeliver.dataLen < LE_SMS_TEXT_MAX_BYTES);
             newSmsMsgObjPtr->userdataLen = messageConvertedPtr->smsDeliver.dataLen;
             memcpy(newSmsMsgObjPtr->text,
                     messageConvertedPtr->smsDeliver.data,
-                    LE_SMS_TEXT_MAX_LEN);
+                    LE_SMS_TEXT_MAX_BYTES);
             break;
         default:
             // CreateAndPopulateMessage is called by my internal handler. I don't know how to face
@@ -337,7 +372,7 @@ static le_sms_Msg_t* CreateAndPopulateMessage
         {
             memcpy(newSmsMsgObjPtr->tel,
                    messageConvertedPtr->smsDeliver.oa,
-                   LE_MDMDEFS_PHONE_NUM_MAX_LEN);
+                   LE_MDMDEFS_PHONE_NUM_MAX_BYTES);
         }
         else
         {
@@ -348,7 +383,7 @@ static le_sms_Msg_t* CreateAndPopulateMessage
         {
             memcpy(newSmsMsgObjPtr->timestamp,
                    messageConvertedPtr->smsDeliver.scts,
-                   LE_SMS_TIMESTAMP_MAX_LEN);
+                   LE_SMS_TIMESTAMP_MAX_BYTES);
         }
         else
         {
@@ -400,7 +435,7 @@ static int32_t GetMessagesFromMem
             return LE_FAULT;
         }
 
-        if (messagePdu.dataLen > LE_SMS_PDU_MAX_LEN)
+        if (messagePdu.dataLen > LE_SMS_PDU_MAX_BYTES)
         {
             LE_ERROR("PDU length out of range (%u) for message %d !",
                      messagePdu.dataLen,
@@ -418,18 +453,23 @@ static int32_t GetMessagesFromMem
         {
             if (messageConverted.type != PA_SMS_SMS_SUBMIT)
             {
+                // Allocate a new node message for the List SMS Message node.
                 le_sms_MsgReference_t* newReferencePtr =
                                 (le_sms_MsgReference_t*)le_mem_ForceAlloc(ReferencePool);
 
                 le_sms_Msg_t* newSmsMsgObjPtr = CreateAndPopulateMessage(arrayPtr[i],
                                                                          &messagePdu,
                                                                          &messageConverted);
+                // Store sms area stockage information
+                newSmsMsgObjPtr->storage = storage;
+
                 newSmsMsgObjPtr->inAList = true;
                 // Create a Safe Reference for this Message object.
                 newReferencePtr->msgRef = le_ref_CreateRef(MsgRefMap, newSmsMsgObjPtr);
                 (newSmsMsgObjPtr->smsUserCount)++;
 
-                LE_DEBUG("create reference obj[%p], ref[%p], cpt %d", newSmsMsgObjPtr,
+                LE_DEBUG("create reference node[%p], obj[%p], ref[%p], cpt (%d)",
+                    newReferencePtr, newSmsMsgObjPtr,
                     newReferencePtr->msgRef, newSmsMsgObjPtr->smsUserCount );
 
                 newReferencePtr->listLink = LE_DLS_LINK_INIT;
@@ -457,7 +497,6 @@ static int32_t GetMessagesFromMem
 /**
  * This function must be called to list the Received Messages present in the message storage.
  *
- * @return LE_NOT_POSSIBLE   The current modem state does not allow to list messages.
  * @return LE_NO_MEMORY      The message storage is not available.
  * @return LE_FAULT          The function failed to list messages.
  * @return A positive value  The number of messages present in the storage area, it can be equal to
@@ -779,7 +818,7 @@ static void NewSmsHandler
     }
     else
     {
-        if (messagePdu.dataLen > LE_SMS_PDU_MAX_LEN)
+        if (messagePdu.dataLen > LE_SMS_PDU_MAX_BYTES)
         {
             LE_ERROR("PDU length out of range (%u) !", messagePdu.dataLen);
         }
@@ -797,7 +836,7 @@ static void NewSmsHandler
                                 newMessageIndicationPtr->msgIndex,
                                 &messagePdu,
                                 &messageConverted);
-
+                newSmsMsgObjPtr->storage = newMessageIndicationPtr->storage;
                 // Notify all the registered client's handlers with own reference.
                 le_event_Report(NewSmsEventId, (void*)&newSmsMsgObjPtr, sizeof(le_sms_MsgRef_t));
 
@@ -814,6 +853,270 @@ static void NewSmsHandler
             LE_DEBUG("Could not decode the message");
         }
     }
+}
+
+static le_result_t CheckAndEncodeMessage
+(
+    le_sms_Msg_t* msgPtr
+)
+{
+    le_result_t   result = LE_OK;
+    /* Validate */
+    switch (msgPtr->format)
+    {
+        case LE_SMS_FORMAT_TEXT:
+            if ( (msgPtr->userdataLen == 0) || (msgPtr->text[0] == '\0') )
+            {
+                LE_ERROR("Error.%d : Text content is invalid for Message Object %p",
+                                LE_FORMAT_ERROR, msgPtr);
+                return LE_FORMAT_ERROR;
+            }
+            break;
+
+        case LE_SMS_FORMAT_BINARY:
+            if (msgPtr->userdataLen == 0)
+            {
+                LE_ERROR("Binary content is empty for Message Object %p", msgPtr);
+                return LE_FORMAT_ERROR;
+            }
+            break;
+
+        case LE_SMS_FORMAT_PDU:
+            if (msgPtr->pdu.dataLen == 0)
+            {
+                LE_ERROR("Error.%d : No PDU content for Message Object %p",
+                                LE_FORMAT_ERROR, msgPtr);
+                return LE_FORMAT_ERROR;
+            }
+            break;
+
+        default:
+            LE_ERROR("Error.%d : Format for Message Object %p is incorrect (%d)",
+                            LE_FORMAT_ERROR, msgPtr, msgPtr->format);
+            return LE_FORMAT_ERROR;
+    }
+
+    if ( (msgPtr->format != LE_SMS_FORMAT_PDU) && (msgPtr->tel[0] == '\0') )
+    {
+        LE_ERROR("Error.%d : Telephone number is invalid for Message Object %p",
+                        LE_FORMAT_ERROR, msgPtr);
+        return LE_FORMAT_ERROR;
+    }
+
+    /* Get transport layer protocol */
+    le_mrc_Rat_t rat;
+    if ( le_mrc_GetRadioAccessTechInUse(&rat) != LE_OK)
+    {
+        LE_ERROR("Could not retreive the Radio Access Technology");
+        return LE_FAULT;
+    }
+
+    switch (rat)
+    {
+        case LE_MRC_RAT_CDMA:
+        {
+            msgPtr->protocol = PA_SMS_PROTOCOL_CDMA;
+        }
+        break;
+
+        case LE_MRC_RAT_LTE:
+        {
+            char mcc[LE_MRC_MCC_BYTES];
+            char mnc[LE_MRC_MCC_BYTES];
+
+            if ( le_sim_GetHomeNetworkMccMnc(mcc, LE_MRC_MCC_BYTES, mnc,
+                            LE_MRC_MCC_BYTES) != LE_OK)
+            {
+                LE_ERROR("Could not retreive MCC/MNC");
+            }
+
+            /* LTE Sprint Network "310 120" SMS service center doesn't support 3GPP SMS pdu
+             * format. So Home PLMN needs to be checked.
+             * TODO:
+             * It is a special workaround for LTE Sprint network, it's a temporary solution
+             * */
+            if((strncmp(mcc, "310", strlen("310")) == 0)
+                            && (strncmp(mnc, "120", strlen("120")) == 0))
+            {
+                msgPtr->protocol = PA_SMS_PROTOCOL_CDMA;
+            }
+            else
+            {
+                msgPtr->protocol = PA_SMS_PROTOCOL_GSM;
+            }
+        }
+        break;
+
+        case LE_MRC_RAT_UMTS:
+        case LE_MRC_RAT_GSM:
+        default :
+        {
+            msgPtr->protocol = PA_SMS_PROTOCOL_GSM;
+        }
+        break;
+    }
+
+    /* Encode */
+    if (!msgPtr->pduReady)
+    {
+        result = EncodeMessageToPdu(msgPtr);
+    }
+
+    return result;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function send a message in asynchrone mode
+ *
+ * It verifies first if the parameters are valid, then it checks that the modem state can support
+ * message sending.
+ *
+ * @return
+ *  - LE_NOT_POSSIBLE  The current modem state does not support message sending.
+ *  - LE_FORMAT_ERROR  The message content is invalid.
+ *  - LE_FAULT         The function failed to send the message.
+ *  - LE_OK            The function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t SendAsyncSMS
+(
+    le_sms_MsgRef_t    msgRef,         ///< [IN] The message(s) to send.
+    void * callBack,
+    void * context
+)
+{
+    le_result_t   result = LE_FAULT;
+    le_sms_Msg_t* msgPtr = le_ref_Lookup(MsgRefMap, msgRef);
+
+    if (msgPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", msgRef);
+        return LE_NOT_FOUND;
+    }
+
+    result = CheckAndEncodeMessage(msgPtr);
+
+    /* Send */
+    if (result == LE_OK)
+    {
+        CmdRequest_t msgCommand;
+
+        LE_DEBUG("Try to POOL PDU Msg %p, pdu.%p, pduLen.%u with protocol %d",
+            msgPtr, msgPtr->pdu.data, msgPtr->pdu.dataLen, msgPtr->protocol);
+
+        msgPtr->pdu.status = LE_SMS_SENDING;
+
+        // Sending Message
+        msgCommand.command = LE_SMS_CMD_TYPE_SEND;
+        msgCommand.msgRef = msgRef;
+        msgCommand.callBackPtr = callBack;
+        msgCommand.Context = context;
+        msgCommand.msgPtr = msgPtr;
+
+        LE_INFO("Send Send command for message (%p)", msgRef);
+        le_event_Report(CommandSmsEventId, &msgCommand, sizeof(msgCommand));
+    }
+
+    return result;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Send connection state event
+ */
+//--------------------------------------------------------------------------------------------------
+static void SendSmsSendingStateEvent
+(
+    le_sms_MsgRef_t messageRef,
+    le_sms_Status_t status,
+    void * callBack,
+    void * ctx
+)
+{
+    le_sms_CallbackResultFunc_t Myfunction = callBack;
+
+    // Check if a callback function is available.
+    if (Myfunction)
+    {
+        LE_DEBUG("Sending CallBack (%p) Message (%p), Status %d", callBack, messageRef, status);
+        Myfunction (messageRef, status, ctx);
+    }
+    else
+    {
+        LE_WARN("No CallBackFunction Found fot message %p, status %d!!", messageRef, status);
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler to process a command
+ */
+//--------------------------------------------------------------------------------------------------
+static void ProcessSmsSendingCommandHandler
+(
+    void* msgCommand
+)
+{
+    uint32_t command = ((CmdRequest_t*) msgCommand)->command;
+    le_sms_MsgRef_t messageRef = ((CmdRequest_t*) msgCommand)->msgRef;
+    void * cb = ((CmdRequest_t*) msgCommand)->callBackPtr;
+    void * Ctx = ((CmdRequest_t*) msgCommand)->Context;
+    le_sms_Msg_t* msgPtr = ((CmdRequest_t*) msgCommand)->msgPtr;
+
+    switch (command)
+    {
+        case LE_SMS_CMD_TYPE_SEND:
+        {
+            LE_DEBUG("LE_SMS_CMD_TYPE_SEND message (%p) ", messageRef);
+
+            le_result_t res = pa_sms_SendPduMsg(msgPtr->protocol,
+                            msgPtr->pdu.dataLen, msgPtr->pdu.data);
+
+            if ( res == LE_OK)
+            {
+                msgPtr->pdu.status = LE_SMS_SENT;
+            }
+            else
+            {
+                msgPtr->pdu.status = LE_SMS_SENDING_FAILED;
+            }
+            SendSmsSendingStateEvent(messageRef, msgPtr->pdu.status, cb, Ctx);
+
+        }
+        break;
+
+        default:
+        {
+            LE_ERROR("Command %i is not valid", command);
+        }
+        break;
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This thread does the actual work of Pool and send a SMS
+ */
+//--------------------------------------------------------------------------------------------------
+static void* SmsSenderThread
+(
+    void* contextPtr
+)
+{
+    LE_INFO("Sms command Thread started");
+
+    // Register for SMS command events
+    le_event_AddHandler("ProcessSmsSendingCommandHandler", CommandSmsEventId,
+        ProcessSmsSendingCommandHandler);
+
+    // Run the event loop
+    le_event_RunLoop();
+    return NULL;
 }
 
 
@@ -859,6 +1162,10 @@ void le_sms_Init
     // Register a handler function for new message indication
     LE_FATAL_IF((pa_sms_SetNewMsgHandler(NewSmsHandler) != LE_OK),
                 "Add pa_sms_SetNewMsgHandler failed");
+
+    // Init the SMS command Event Id
+    CommandSmsEventId = le_event_CreateId("SMS Send Command", sizeof(CmdRequest_t));
+    le_thread_Start(le_thread_Create("SmsSenderThread", SmsSenderThread, NULL));
 }
 
 
@@ -1012,9 +1319,9 @@ le_result_t le_sms_SetDestination
         return LE_FAULT;
     }
 
-    if(strlen(destPtr) > (LE_MDMDEFS_PHONE_NUM_MAX_LEN-1))
+    if(strlen(destPtr) > (LE_MDMDEFS_PHONE_NUM_MAX_BYTES-1))
     {
-        LE_KILL_CLIENT( "strlen(dest) > %d", (LE_MDMDEFS_PHONE_NUM_MAX_LEN-1));
+        LE_KILL_CLIENT( "strlen(dest) > %d", (LE_MDMDEFS_PHONE_NUM_MAX_BYTES-1));
         return LE_FAULT;
     }
 
@@ -1206,6 +1513,140 @@ size_t le_sms_GetPDULen
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Create and asynchronously send a text message.
+ *
+ * @return
+ *  - le_sms_Msg Reference to the new Message object pooled.
+ *  - NULL Not possible to pool a new message.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_sms_MsgRef_t le_sms_SendText
+(
+    const char* destStr,
+        ///< [IN]
+        ///< Telephone number string.
+
+    const char* textStr,
+        ///< [IN]
+        ///< SMS text.
+
+    le_sms_CallbackResultFunc_t handlerPtr,
+        ///< [IN]
+
+    void* contextPtr
+        ///< [IN]
+)
+{
+    le_result_t res = LE_FAULT;
+    le_sms_MsgRef_t messageRef = NULL;
+
+    if (destStr == NULL)
+    {
+        LE_KILL_CLIENT("destStr is NULL !");
+        return NULL;
+    }
+
+    if (textStr == NULL)
+    {
+        LE_KILL_CLIENT("textStr is NULL !");
+        return NULL;
+    }
+
+    messageRef = le_sms_Create();
+    LE_INFO("New message ref (%p) created",messageRef);
+
+    res = le_sms_SetDestination(messageRef, destStr);
+    if (res != LE_OK)
+    {
+        le_sms_Delete(messageRef);
+        LE_ERROR("Failed to set destination!");
+        return NULL;
+    }
+
+    res = le_sms_SetText(messageRef, textStr);
+    if (res != LE_OK)
+    {
+        le_sms_Delete(messageRef);
+        LE_ERROR("Failed to set text !");
+        return NULL;
+    }
+
+    res = SendAsyncSMS(messageRef, handlerPtr, contextPtr);
+    if (res != LE_OK)
+    {
+        le_sms_Delete(messageRef);
+        LE_ERROR("Failed to pool new sms for sending (%p)", messageRef);
+        return NULL;
+    }
+
+    LE_INFO("New message ref (%p) pooled",messageRef);
+    return messageRef;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Create and asynchronously send a PDU message.
+ *
+ * @return
+ *  - le_sms_Msg Reference to the new Message object pooled.
+ *  - NULL Not possible to pool a new message.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_sms_MsgRef_t le_sms_SendPdu
+(
+    const uint8_t* pduPtr,
+        ///< [IN]
+        ///< PDU message.
+
+    size_t pduNumElements,
+        ///< [IN]
+
+    le_sms_CallbackResultFunc_t handlerPtr,
+        ///< [IN]
+
+    void* contextPtr
+        ///< [IN]
+)
+{
+    le_result_t res = LE_FAULT;
+    le_sms_MsgRef_t messageRef = NULL;
+
+    if (pduPtr == NULL)
+    {
+        LE_KILL_CLIENT("pduPtr is NULL !");
+        return NULL;
+    }
+
+    messageRef = le_sms_Create();
+
+    res = le_sms_SetPDU(messageRef, pduPtr, pduNumElements);
+    if (res != LE_OK)
+    {
+        le_sms_Delete(messageRef);
+        LE_ERROR("Failed to set pdu !");
+        return NULL;
+    }
+
+    // TODO: To uncomment when ticket:555 will be fixed
+    res = SendAsyncSMS(messageRef, handlerPtr, contextPtr);
+    //res = SendAsyncSMS(messageRef, NULL, NULL);
+    if (res != LE_OK)
+    {
+        le_sms_Delete(messageRef);
+        LE_ERROR("Failed to pool new sms for sending");
+        return NULL;
+    }
+
+    return messageRef;
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This function must be called to set the Text Message content.
  *
  * @return LE_NOT_PERMITTED The message is Read-Only.
@@ -1244,9 +1685,9 @@ le_result_t le_sms_SetText
         return LE_NOT_PERMITTED;
     }
 
-    if(strlen(textPtr) > (LE_SMS_TEXT_MAX_LEN-1))
+    if(strlen(textPtr) > (LE_SMS_TEXT_MAX_BYTES-1))
     {
-        LE_KILL_CLIENT("strlen(text) > %d", (LE_SMS_TEXT_MAX_LEN-1));
+        LE_KILL_CLIENT("strlen(text) > %d", (LE_SMS_TEXT_MAX_BYTES-1));
         return LE_FAULT;
     }
 
@@ -1255,13 +1696,13 @@ le_result_t le_sms_SetText
         return LE_BAD_PARAMETER;
     }
 
-    length = strnlen(textPtr, LE_SMS_TEXT_MAX_LEN+1);
+    length = strnlen(textPtr, LE_SMS_TEXT_MAX_BYTES+1);
     if (!length)
     {
         return LE_BAD_PARAMETER;
     }
 
-    if (length > LE_SMS_TEXT_MAX_LEN)
+    if (length > LE_SMS_TEXT_MAX_BYTES)
     {
         return LE_OUT_OF_RANGE;
     }
@@ -1320,9 +1761,9 @@ le_result_t le_sms_SetBinary
         return LE_BAD_PARAMETER;
     }
 
-    if(len > LE_SMS_BINARY_MAX_LEN)
+    if(len > LE_SMS_BINARY_MAX_BYTES)
     {
-        LE_KILL_CLIENT("len > %d", LE_SMS_BINARY_MAX_LEN);
+        LE_KILL_CLIENT("len > %d", LE_SMS_BINARY_MAX_BYTES);
         return LE_FAULT;
     }
 
@@ -1383,9 +1824,9 @@ le_result_t le_sms_SetPDU
         return LE_BAD_PARAMETER;
     }
 
-    if(len > LE_SMS_PDU_MAX_LEN)
+    if(len > LE_SMS_PDU_MAX_BYTES)
     {
-        LE_KILL_CLIENT("len > %d", LE_SMS_PDU_MAX_LEN);
+        LE_KILL_CLIENT("len > %d", LE_SMS_PDU_MAX_BYTES);
         return LE_FAULT;
     }
 
@@ -1651,7 +2092,6 @@ void le_sms_RemoveRxMessageHandler
  * It verifies first if the parameters are valid, then it checks that the modem state can support
  * message sending.
  *
- * @return LE_NOT_POSSIBLE  The current modem state does not support message sending.
  * @return LE_FORMAT_ERROR  The message content is invalid.
  * @return LE_FAULT         The function failed to send the message.
  * @return LE_OK            The function succeeded.
@@ -1674,68 +2114,7 @@ le_result_t le_sms_Send
         return LE_NOT_FOUND;
     }
 
-    /* Validate */
-    switch (msgPtr->format)
-    {
-        case LE_SMS_FORMAT_TEXT:
-            if ( (msgPtr->userdataLen == 0) || (msgPtr->text[0] == '\0') )
-            {
-                LE_ERROR("Error.%d : Text content is invalid for Message Object %p",
-                        LE_FORMAT_ERROR, msgPtr);
-                return LE_FORMAT_ERROR;
-            }
-            break;
-
-        case LE_SMS_FORMAT_BINARY:
-            if (msgPtr->userdataLen == 0)
-            {
-                LE_ERROR("Binary content is empty for Message Object %p", msgPtr);
-                return LE_FORMAT_ERROR;
-            }
-            break;
-
-        case LE_SMS_FORMAT_PDU:
-            if (msgPtr->pdu.dataLen == 0)
-            {
-                LE_ERROR("Error.%d : No PDU content for Message Object %p",
-                                LE_FORMAT_ERROR, msgPtr);
-                return LE_FORMAT_ERROR;
-            }
-            break;
-
-        default:
-            LE_ERROR("Error.%d : Format for Message Object %p is incorrect (%d)",
-                    LE_FORMAT_ERROR, msgPtr, msgPtr->format);
-            return LE_FORMAT_ERROR;
-    }
-
-    if ( (msgPtr->format != LE_SMS_FORMAT_PDU) && (msgPtr->tel[0] == '\0') )
-    {
-        LE_ERROR("Error.%d : Telephone number is invalid for Message Object %p",
-                        LE_FORMAT_ERROR, msgPtr);
-        return LE_FORMAT_ERROR;
-    }
-
-    /* Get transport layer protocol */
-    le_mrc_Rat_t rat;
-    if ( le_mrc_GetRadioAccessTechInUse(&rat) != LE_OK)
-    {
-        LE_ERROR("Could not retreive the Radio Access Technology");
-        return LE_FAULT;
-    }
-
-    msgPtr->protocol = PA_SMS_PROTOCOL_GSM;
-
-    if (rat&LE_MRC_RAT_CDMA)
-    {
-        msgPtr->protocol = PA_SMS_PROTOCOL_CDMA;
-    }
-
-    /* Encode */
-    if (!msgPtr->pduReady)
-    {
-        result = EncodeMessageToPdu(msgPtr);
-    }
+    result = CheckAndEncodeMessage(msgPtr);
 
     /* Send */
     if (result == LE_OK)
@@ -1768,7 +2147,6 @@ le_result_t le_sms_Send
  * It verifies first if the parameter is valid, then it checks that the modem state can support
  * message deleting.
  *
- * @return LE_NOT_POSSIBLE  The current modem state does not support message deleting.
  * @return LE_FAULT         The function failed to perform the deletion.
  * @return LE_NO_MEMORY     The message storage is not available.
  * @return LE_OK            The function succeeded.
@@ -2015,7 +2393,8 @@ void le_sms_MarkRead
         LE_KILL_CLIENT("Invalid reference (%p) provided!", msgRef);
         return;
     }
-    if (pa_sms_ChangeMessageStatus(msgPtr->storageIdx, msgPtr->protocol, LE_SMS_RX_READ, msgPtr->storage) == LE_OK)
+    if (pa_sms_ChangeMessageStatus(msgPtr->storageIdx, msgPtr->protocol, LE_SMS_RX_READ,
+                    msgPtr->storage) == LE_OK)
     {
         msgPtr->pdu.status = LE_SMS_RX_READ;
     }
@@ -2042,7 +2421,8 @@ void le_sms_MarkUnread
         LE_KILL_CLIENT("Invalid reference (%p) provided!", msgRef);
         return;
     }
-    if (pa_sms_ChangeMessageStatus(msgPtr->storageIdx, msgPtr->protocol, LE_SMS_RX_UNREAD, msgPtr->storage) == LE_OK)
+    if (pa_sms_ChangeMessageStatus(msgPtr->storageIdx, msgPtr->protocol, LE_SMS_RX_UNREAD,
+                    msgPtr->storage) == LE_OK)
     {
         msgPtr->pdu.status = LE_SMS_RX_UNREAD;
     }
@@ -2053,9 +2433,9 @@ void le_sms_MarkUnread
 /**
  * Get the SMS center address.
  *
- * Output parameter is updated with the SMS Service center address. If the Telephone number string exceeds
- * the value of 'len' parameter,  LE_OVERFLOW error code is returned and 'tel' is filled until
- * 'len-1' characters and a null-character is implicitly appended at the end of 'tel'.
+ * Output parameter is updated with the SMS Service center address. If the Telephone number string
+ *  exceeds the value of 'len' parameter,  LE_OVERFLOW error code is returned and 'tel' is filled
+ *  until 'len-1' characters and a null-character is implicitly appended at the end of 'tel'.
  *
  * @return
  *  - LE_FAULT         Service is not available.
@@ -2070,9 +2450,9 @@ le_result_t le_sms_GetSmsCenterAddress
     size_t           len      ///< [IN] The length of SMS center address number string.
 )
 {
-    char smscMdmStr[LE_MDMDEFS_PHONE_NUM_MAX_LEN] = {0};
+    char smscMdmStr[LE_MDMDEFS_PHONE_NUM_MAX_BYTES] = {0};
 
-    if (pa_sms_GetSmsc(smscMdmStr, LE_MDMDEFS_PHONE_NUM_MAX_LEN) == LE_OK)
+    if (pa_sms_GetSmsc(smscMdmStr, LE_MDMDEFS_PHONE_NUM_MAX_BYTES) == LE_OK)
     {
         return le_utf8_Copy(telPtr, smscMdmStr, len, NULL);
     }
@@ -2104,9 +2484,9 @@ le_result_t le_sms_SetSmsCenterAddress
         return LE_FAULT;
     }
 
-    if(strlen(telPtr) > (LE_MDMDEFS_PHONE_NUM_MAX_LEN-1))
+    if(strlen(telPtr) > (LE_MDMDEFS_PHONE_NUM_MAX_BYTES-1))
     {
-        LE_KILL_CLIENT( "strlen(telPtr) > %d", (LE_MDMDEFS_PHONE_NUM_MAX_LEN-1));
+        LE_KILL_CLIENT( "strlen(telPtr) > %d", (LE_MDMDEFS_PHONE_NUM_MAX_BYTES-1));
         return LE_FAULT;
     }
 

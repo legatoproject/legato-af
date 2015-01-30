@@ -1,0 +1,7 @@
+bundles:
+{
+    file:
+    {
+        [r] libComponent_le_pa_audio.so /lib/
+    }
+}

@@ -2,7 +2,7 @@
  *
  * AT implementation of c_pa_mrc API.
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 #include "legato.h"
@@ -135,7 +135,7 @@ static void CREGUnsolHandler(void* reportPtr) {
 /**
  * This function must be called to initialize the mrc module
  *
- * @return LE_NOT_POSSIBLE  The function failed to initialize the module.
+ * @return LE_FAULT         The function failed to initialize the module.
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
@@ -146,7 +146,7 @@ le_result_t pa_mrc_Init
 {
     if (atports_GetInterface(ATPORT_COMMAND)==NULL) {
         LE_WARN("radio control Module is not initialize in this session");
-        return LE_NOT_POSSIBLE;
+        return LE_FAULT;
     }
 
     EventUnsolicitedId    = le_event_CreateId("RCEventIdUnsol",sizeof(atmgr_UnsolResponse_t));
@@ -168,8 +168,8 @@ le_result_t pa_mrc_Init
 /**
  * This function must be called to set the power of the Radio Module.
  *
- * @return LE_FAULT         The function failed, bad power mode.
- * @return LE_NOT_POSSIBLE  The function failed.
+ * @return LE_BAD_PARAMETER Bad power mode specified.
+ * @return LE_FAULT         The function failed.
  * @return LE_TIMEOUT       No response was received.
  * @return LE_OK            The function succeeded.
  */
@@ -191,7 +191,7 @@ le_result_t pa_mrc_SetRadioPower
     }
     else
     {
-        return LE_FAULT;
+        return LE_BAD_PARAMETER;
     }
 
     return atcmdsync_SendStandard(atports_GetInterface(ATPORT_COMMAND),
@@ -205,7 +205,7 @@ le_result_t pa_mrc_SetRadioPower
 /**
  * This function must be called to get the Radio Module power state.
  *
- * @return LE_NOT_POSSIBLE  The function failed.
+ * @return LE_FAULT         The function failed.
  * @return LE_TIMEOUT       No response was received.
  * @return LE_OK            The function succeeded.
  */
@@ -215,7 +215,7 @@ le_result_t pa_mrc_GetRadioPower
      le_onoff_t*    powerPtr   ///< [OUT] The power state.
 )
 {
-    int32_t result=LE_NOT_POSSIBLE;
+    le_result_t result = LE_FAULT;
     atcmdsync_ResultRef_t  resRef = NULL;
     const char* interRespPtr[] = {"+CFUN:",NULL};
 
@@ -254,11 +254,11 @@ le_result_t pa_mrc_GetRadioPower
                 result = LE_OK;
             } else {
                 LE_WARN("this pattern is not expected");
-                result=LE_NOT_POSSIBLE;
+                result = LE_FAULT;
             }
         } else {
             LE_WARN("this pattern is not expected");
-            result=LE_NOT_POSSIBLE;
+            result = LE_FAULT;
         }
     }
 
@@ -350,7 +350,7 @@ le_result_t pa_mrc_RemoveNetworkRegHandler
 /**
  * This function configures the Network registration setting.
  *
- * @return LE_NOT_POSSIBLE  The function failed.
+ * @return LE_FAULT         The function failed.
  * @return LE_TIMEOUT       No response was received.
  * @return LE_OK            The function succeeded.
  */
@@ -375,8 +375,8 @@ le_result_t pa_mrc_ConfigureNetworkReg
 /**
  * This function gets information of the Network registration.
  *
- * @return LE_NOT_POSSIBLE  The function failed.
- * @return LE_TIMEOUT       No response was received.
+ * @return LE_FAULT        The function failed.
+ * @return LE_TIMEOUT      No response was received.
  * @return LE_OK           The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
@@ -386,7 +386,7 @@ static le_result_t GetNetworkReg
     int32_t*    valuePtr    ///< value that will be return
 )
 {
-    int32_t result=LE_NOT_POSSIBLE;
+    le_result_t result = LE_FAULT;
     atcmdsync_ResultRef_t  resRef = NULL;
     const char* interRespPtr[] = {"+CREG:",NULL};
 
@@ -447,11 +447,11 @@ static le_result_t GetNetworkReg
                 result = LE_OK;
             } else {
                 LE_WARN("this pattern is not expected");
-                result=LE_NOT_POSSIBLE;
+                result = LE_FAULT;
             }
         } else {
             LE_WARN("this pattern is not expected");
-            result=LE_NOT_POSSIBLE;
+            result = LE_FAULT;
         }
     }
 
@@ -465,9 +465,9 @@ static le_result_t GetNetworkReg
  * This function gets the Network registration setting.
  *
  * @return LE_BAD_PARAMETER Bad parameter passed to the function
- * @return LE_NOT_POSSIBLE  The function failed.
+ * @return LE_FAULT         The function failed.
  * @return LE_TIMEOUT       No response was received.
- * @return LE_OK           The function succeeded.
+ * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_mrc_GetNetworkRegConfig
@@ -475,7 +475,7 @@ le_result_t pa_mrc_GetNetworkRegConfig
     pa_mrc_NetworkRegSetting_t*  settingPtr   ///< [OUT] The selected Network registration setting.
 )
 {
-    le_result_t result=LE_NOT_POSSIBLE;
+    le_result_t result = LE_FAULT;
     int32_t val;
 
     if (!settingPtr)
@@ -500,9 +500,9 @@ le_result_t pa_mrc_GetNetworkRegConfig
  * This function gets the Network registration state.
  *
  * @return LE_BAD_PARAMETER Bad parameter passed to the function
- * @return LE_NOT_POSSIBLE  The function failed.
+ * @return LE_FAULT         The function failed.
  * @return LE_TIMEOUT       No response was received.
- * @return LE_OK           The function succeeded.
+ * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_mrc_GetNetworkRegState
@@ -510,7 +510,7 @@ le_result_t pa_mrc_GetNetworkRegState
     le_mrc_NetRegState_t* statePtr  ///< [OUT] The network registration state.
 )
 {
-    le_result_t result=LE_NOT_POSSIBLE;
+    le_result_t result = LE_FAULT;
     int32_t val;
 
     if (!statePtr)
@@ -535,7 +535,7 @@ le_result_t pa_mrc_GetNetworkRegState
  *
  * @return LE_BAD_PARAMETER Bad parameter passed to the function
  * @return LE_OUT_OF_RANGE  The signal strength values are not known or not detectable.
- * @return LE_NOT_POSSIBLE  The function failed.
+ * @return LE_FAULT         The function failed.
  * @return LE_TIMEOUT       No response was received.
  * @return LE_OK            The function succeeded.
  */
@@ -545,7 +545,7 @@ le_result_t pa_mrc_GetSignalStrength
     int32_t*          rssiPtr    ///< [OUT] The received signal strength (in dBm).
 )
 {
-    int32_t result=LE_NOT_POSSIBLE;
+    le_result_t result = LE_FAULT;
     atcmdsync_ResultRef_t  resRef = NULL;
     const char* interRespPtr[] = {"+CSQ:",NULL};
 
@@ -591,11 +591,11 @@ le_result_t pa_mrc_GetSignalStrength
                 }
             } else {
                 LE_WARN("this pattern is not expected");
-                result=LE_NOT_POSSIBLE;
+                result = LE_FAULT;
             }
         } else {
             LE_WARN("this pattern is not expected");
-            result=LE_NOT_POSSIBLE;
+            result = LE_FAULT;
         }
     }
 
@@ -606,23 +606,27 @@ le_result_t pa_mrc_GetSignalStrength
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function must be called to get the current network name information.
+ * This function must be called to get the current network information.
  *
  * @return
  *      - LE_OK on success
  *      - LE_OVERFLOW if the current network name can't fit in nameStr
- *      - LE_NOT_POSSIBLE on any other failure
+ *      - LE_FAULT on any other failure
  * @TODO
  *      implementation
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mrc_GetCurrentNetworkName
+le_result_t pa_mrc_GetCurrentNetwork
 (
     char       *nameStr,               ///< [OUT] the home network Name
-    size_t      nameStrSize            ///< [IN] the nameStr size
+    size_t      nameStrSize,           ///< [IN]  the nameStr size
+    char       *mccStr,                ///< [OUT] the mobile country code
+    size_t      mccStrNumElements,     ///< [IN]  the mccStr size
+    char       *mncStr,                ///< [OUT] the mobile network code
+    size_t      mncStrNumElements      ///< [IN]  the mncStr size
 )
 {
-    return LE_NOT_POSSIBLE;
+    return LE_FAULT;
 }
 
 
@@ -641,6 +645,7 @@ void pa_mrc_DeleteScanInformation
 {
     return;
 }
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -661,7 +666,7 @@ le_result_t pa_mrc_PerformNetworkScan
     le_dls_List_t      *scanInformationListPtr ///< [OUT] list of pa_mrc_ScanInformation_t
 )
 {
-    return LE_NOT_POSSIBLE;
+    return LE_FAULT;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -671,7 +676,7 @@ le_result_t pa_mrc_PerformNetworkScan
  * @return
  *      - LE_OK on success
  *      - LE_OVERFLOW if the operator name would not fit in buffer
- *      - LE_NOT_POSSIBLE for all other errors
+ *      - LE_FAULT for all other errors
  *
  * @TODO     implementation
  */
@@ -683,7 +688,39 @@ le_result_t pa_mrc_GetScanInformationName
     size_t nameSize ///< [IN] The size in bytes of the namePtr buffer
 )
 {
-    return LE_NOT_POSSIBLE;
+    return LE_FAULT;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the current preferred operators list.
+ *
+ * @return Number of Preferred operator found.
+ */
+//--------------------------------------------------------------------------------------------------
+int32_t pa_mrc_GetPreferredOperatorsList
+(
+    le_dls_List_t*   preferredOperatorsListPtr,    ///< [IN/OUT] The preferred operators list.
+    bool  plmnStatic,   ///< [IN] Include Static preferred Operators.
+    bool  plmnUser      ///< [IN] Include Users preferred Operators.
+)
+{
+    return 0;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to clear the preferred list.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void pa_mrc_DeletePreferredOperatorsList
+(
+    le_dls_List_t      *preferredOperatorsListPtr ///< [IN] List of preferred network operator
+)
+{
+
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -691,22 +728,41 @@ le_result_t pa_mrc_GetScanInformationName
  * This function must be called to add a new mobile country/network code in the list
  *
  * @return
- *      - LE_OK on success
- *      - LE_NOT_POSSIBLE for all other errors
- *
- * @TODO     implementation
+ *      - LE_OK             On success
+ *      - LE_FAULT          For all other errors
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_mrc_AddPreferredOperators
 (
-    le_dls_List_t      *PreferredOperatorsListPtr,   ///< [OUT] List of preferred network operator
-    char                mcc[LE_MRC_MCC_BYTES],       ///< [IN] Mobile Country Code
-    char                mnc[LE_MRC_MNC_BYTES],       ///< [IN] Mobile Network Code
+    le_dls_List_t      *preferredOperatorsListPtr,   ///< [OUT] List of preferred network operator
+    const char*         mccPtr,                      ///< [IN] Mobile Country Code
+    const char*         mncPtr,                      ///< [IN] Mobile Network Code
     le_mrc_RatBitMask_t ratMask                      ///< [IN] Radio Access Technology mask
 )
 {
-    return LE_NOT_POSSIBLE;
+    return LE_FAULT;
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to remove a mobile country/network code in the list
+ *
+ * @return
+ *      - LE_OK             On success
+ *      - LE_NOT_FOUND      Not present in preferred PLMN list
+ *      - LE_FAULT          For all other errors
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_mrc_RemovePreferredOperators
+(
+    le_dls_List_t      *preferredOperatorsListPtr,   ///< [IN] List of preferred network operator
+    const char*         mccPtr,                      ///< [IN] Mobile Country Code
+    const char*         mncPtr                       ///< [IN] Mobile Network Code
+)
+{
+    return LE_FAULT;
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -717,7 +773,7 @@ le_result_t pa_mrc_AddPreferredOperators
 //--------------------------------------------------------------------------------------------------
 void pa_mrc_DeletePreferredOperators
 (
-    le_dls_List_t      *PreferredOperatorsListPtr ///< [IN] List of preferred network operator
+    le_dls_List_t      *preferredOperatorsListPtr ///< [IN] List of preferred network operator
 )
 {
     return;
@@ -728,25 +784,25 @@ void pa_mrc_DeletePreferredOperators
  * This function must be called to apply the preferred list into the modem
  *
  * @return
- *      - LE_OK on success
- *      - LE_NOT_POSSIBLE for all other errors
+ *      - LE_OK             on success
+ *      - LE_FAULT          for all other errors
  *
  * @TODO     implementation
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_mrc_SavePreferredOperators
 (
-    le_dls_List_t      *PreferredOperatorsListPtr ///< [IN] List of preferred network operator
+    le_dls_List_t      *preferredOperatorsListPtr ///< [IN] List of preferred network operator
 )
 {
-    return LE_NOT_POSSIBLE;
+    return LE_FAULT;
 }
 
 //--------------------------------------------------------------------------------------------------
 /**
  * This function must be called to register on a mobile network [mcc;mnc]
  *
- * @return LE_NOT_POSSIBLE  The function failed to register.
+ * @return LE_FAULT  The function failed to register.
  * @return LE_OK            The function succeeded to register,
  *
  * @TODO     implementation
@@ -758,7 +814,7 @@ le_result_t pa_mrc_RegisterNetwork
     const char *mncPtr    ///< [IN] Mobile Network Code
 )
 {
-    return LE_NOT_POSSIBLE;
+    return LE_FAULT;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -766,15 +822,31 @@ le_result_t pa_mrc_RegisterNetwork
  * This function must be called to register automatically on network
  *
  * @return
- *      - LE_OK on success
- *      - LE_NOT_POSSIBLE for all other errors
- *
- * @TODO     implementation
+ *      - LE_OK             on success
+ *      - LE_FAULT          for all other errors
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_mrc_SetAutomaticNetworkRegistration
 (
     void
+)
+{
+    return LE_FAULT;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get current registration mode
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_mrc_GetNetworkRegistrationMode
+(
+    bool*   isManualPtr,  ///< [OUT] true if the scan mode is manual, false if it is automatic.
+    char*   mccPtr,       ///< [OUT] Mobile Country Code
+    size_t  mccPtrSize,   ///< [IN] mccPtr buffer size
+    char*   mncPtr,       ///< [OUT] Mobile Network Code
+    size_t  mncPtrSize    ///< [IN] mncPtr buffer size
 )
 {
     return LE_NOT_POSSIBLE;
@@ -800,15 +872,16 @@ le_result_t pa_mrc_GetRadioAccessTechInUse
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Set the Radio Access Technology Preference
+ * Set the Radio Access Technology Preferences
  *
- * @return LE_OK on success
- * @return LE_FAULT on failure
+ * @return
+ * - LE_OK              on success
+ * - LE_FAULT           on failure
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mrc_SetRatPreference
+le_result_t pa_mrc_SetRatPreferences
 (
-    le_mrc_RatBitMask_t ratMask ///< [IN] A bit mask to set the Radio Access Technology preference.
+    le_mrc_RatBitMask_t ratMask ///< [IN] A bit mask to set the Radio Access Technology preferences.
 )
 {
     // TODO: implement this function
@@ -817,15 +890,16 @@ le_result_t pa_mrc_SetRatPreference
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Set the Band Preference
+ * Set the Rat Automatic Radio Access Technology Preference
  *
- * @return LE_OK on success
- * @return LE_FAULT on failure
+ * @return
+ * - LE_OK              on success
+ * - LE_FAULT           on failure
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mrc_SetBandPreference
+le_result_t pa_mrc_SetAutomaticRatPreference
 (
-    uint64_t bands ///< [IN] A bit mask to set the Band preference.
+    void
 )
 {
     // TODO: implement this function
@@ -834,15 +908,55 @@ le_result_t pa_mrc_SetBandPreference
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Set the LTE Band Preference
+ * Get the Radio Access Technology Preferences
  *
- * @return LE_OK on success
- * @return LE_FAULT on failure
+ * @return
+ * - LE_OK              on success
+ * - LE_FAULT           on failure
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mrc_SetLteBandPreference
+le_result_t pa_mrc_GetRatPreferences
 (
-    uint64_t bands ///< [IN] A bit mask to set the LTE Band preference.
+    le_mrc_RatBitMask_t* ratMaskPtr ///< [OUT] A bit mask to get the Radio Access Technology
+                                        ///<  preferences.
+)
+{
+    // TODO: implement this function
+    return LE_FAULT;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the Band Preferences
+ *
+ * @return
+ * - LE_OK              on success
+ * - LE_FAULT           on failure
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_mrc_SetBandPreferences
+(
+    le_mrc_BandBitMask_t bands ///< [IN] A bit mask to set the Band preferences.
+)
+{
+    // TODO: implement this function
+    return LE_FAULT;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Band Preferences
+ *
+ * @return
+ * - LE_FAULT           on success
+ * - LE_FAULT           on failure
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_mrc_GetBandPreferences
+(
+    le_mrc_BandBitMask_t* bandsPtr ///< [OUT] A bit mask to get the Band preferences.
 )
 {
     // TODO: implement this function
@@ -851,18 +965,78 @@ le_result_t pa_mrc_SetLteBandPreference
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Set the TD-SCDMA Band Preference
+ * Set the LTE Band Preferences
  *
- * @return LE_OK on success
- * @return LE_FAULT on failure
+ * @return
+ * - LE_FAULT           on success
+ * - LE_FAULT           on failure
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mrc_SetTdScdmaBandPreference
+le_result_t pa_mrc_SetLteBandPreferences
 (
-    uint8_t tdsCdmaBands ///< [IN] A bit mask to set the TD-SCDMA Band preference.
+    le_mrc_LteBandBitMask_t bands ///< [IN] A bit mask to set the LTE Band preferences.
 )
 {
     // TODO: implement this function
+
+    return LE_FAULT;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the LTE Band Preferences
+ *
+ * @return
+ * - LE_FAULT           on success
+ * - LE_FAULT           on failure
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_mrc_GetLteBandPreferences
+(
+    le_mrc_LteBandBitMask_t* bandsPtr ///< [OUT] A bit mask to get the LTE Band preferences.
+)
+{
+    // TODO: implement this function
+
+    return LE_FAULT;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the TD-SCDMA Band Preferences
+ *
+ * @return
+ * - LE_FAULT           on success
+ * - LE_FAULT           on failure
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_mrc_SetTdScdmaBandPreferences
+(
+    le_mrc_TdScdmaBandBitMask_t bands ///< [IN] A bit mask to set the TD-SCDMA Band Preferences.
+)
+{
+    // TODO: implement this function
+
+    return LE_FAULT;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the TD-SCDMA Band Preferences
+ *
+ * @return
+ * - LE_FAULT           on success
+ * - LE_FAULT           on failure
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_mrc_GetTdScdmaBandPreferences
+(
+    le_mrc_TdScdmaBandBitMask_t* bandsPtr ///< [OUT] A bit mask to set the TD-SCDMA Band
+                                          ///<  preferences.
+)
+{
+    // TODO: implement this function
+
     return LE_FAULT;
 }
 

@@ -1,11 +1,11 @@
 /**
  * @page c_pa_gnss Platform Adapter Global Navigation Satellite System API
  *
- * @ref pa_gnss.h "Click here for the API reference documentation."
+ * @ref pa_gnss.h "API Reference"
  *
  * <HR>
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 
@@ -13,7 +13,7 @@
  *
  * Legato @ref c_pa_gnss include file.
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 #ifndef LEGATO_PA_GNSS_INCLUDE_GUARD
@@ -24,6 +24,19 @@
 //--------------------------------------------------------------------------------------------------
 // Symbol and Enum definitions.
 //--------------------------------------------------------------------------------------------------
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Type of restart.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef enum {
+    PA_GNSS_UNKNOWN_RESTART = 0,    ///< Unknown case.
+    PA_GNSS_FACTORY_RESTART,        ///< Factory restart.
+    PA_GNSS_COLD_RESTART,           ///< Cold restart.
+    PA_GNSS_WARM_RESTART            ///< Warm restart.
+}pa_gnss_Restart_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -185,7 +198,7 @@ le_result_t pa_gnss_Stop
 /**
  * This function must be called to set the rate of GNSS fix reception
  *
- * @return LE_NOT_POSSIBLE  The function failed.
+ * @return LE_FAULT         The function failed.
  * @return LE_TIMEOUT       No response was received.
  * @return LE_OK            The function succeeded.
  */
@@ -234,7 +247,8 @@ void pa_gnss_RemovePositionDataHandler
 /**
  * This function must be called to get the location's data.
  *
- * @return LE_NOT_POSSIBLE  The function cannot get internal position information
+ * @return LE_FAULT         The function cannot get internal position information
+ * @return LE_BAD_PARAMETER The positionRef is invalid
  * @return LE_OK            The function succeeded.
  *
  * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
@@ -248,69 +262,44 @@ le_result_t pa_gnss_GetLastPositionData
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function must be called to load xtra.bin file into the gnss.
+ * This function must be called to load an 'Extended Ephemeris' file into the GNSS device.
  *
- * @return LE_FAULT         The function failed to load the xtra.bin file
+ * @return LE_FAULT         The function failed to load the 'Extended Ephemeris' file.
  * @return LE_NOT_FOUND     The file path does not exist
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_gnss_LoadXtra
+le_result_t pa_gnss_LoadExtendedEphemerisFile
 (
-    const char* xtraFilePathPtr    ///< [IN] xtra.bin file path
+    int32_t       fd      ///< [IN] extended ephemeris file descriptor
 );
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function must be called to get the validity of the last xtra.bin injected
+ * This function must be called to get the validity of the last injected Extended Ephemeris.
  *
  * @return LE_FAULT         The function failed to get the validity
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_gnss_GetXtraValidityTimes
+le_result_t pa_gnss_GetExtendedEphemerisValidityTimes
 (
     le_clk_Time_t *startTimePtr,    ///< [OUT] Start time
     le_clk_Time_t *stopTimePtr      ///< [OUT] Stop time
 );
 
-//--------------------------------------------------------------------------------------------------
-/**
- * This function must be called to get the status of Xtra session
- *
- * @return LE_FAULT         The function failed to get the status
- * @return LE_OK            The function succeeded.
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t pa_gnss_GetXtraSessionStatus
-(
-    bool *enablePtr ///< [OUT] enable/disable
-);
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function must be called to enable Xtra session.
+ * This function must be called to restart the GNSS device.
  *
- * @return LE_FAULT         The function failed to enable.
+ * @return LE_FAULT         The function failed.
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_gnss_EnableXtraSession
+le_result_t pa_gnss_ForceRestart
 (
-    void
-);
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This function must be called to disable Xtra session.
- *
- * @return LE_FAULT         The function failed to disable.
- * @return LE_OK            The function succeeded.
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t pa_gnss_DisableXtraSession
-(
-    void
+    pa_gnss_Restart_t  restartType ///< [IN] type of restart
 );
 
 #endif // LEGATO_PA_GNSS_INCLUDE_GUARD

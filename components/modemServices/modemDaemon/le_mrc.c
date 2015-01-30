@@ -18,8 +18,16 @@
  * This rationale is also used to implement the @c le_mrc_PerformCellularNetworkScan(),
  * @c le_mrc_GetFirstCellularNetworkScan() and @c le_mrc_GetNextCellularNetworkScan() functions.
  *
+ * This rationale is also used to implement the 'PreferredOperator' functions:
+ * - @c le_mrc_AddPreferredOperator()
+ * - @c le_mrc_RemovePreferredOperator()
+ * - @c le_mrc_GetPreferredOperatorsList()
+ * - @c le_mrc_GetFirstPreferredOperator()
+ * - @c le_mrc_GetNextPreferredOperator()
+ * - @c le_mrc_DeletePreferredOperatorsList()
+ * - @c le_mrc_GetPreferredOperatorDetails()
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 
@@ -46,6 +54,20 @@
  */
 //--------------------------------------------------------------------------------------------------
 #define MAX_NUM_NEIGHBOR_LISTS    5
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum number of preferred operator lists we expect to have at one time.
+ */
+//--------------------------------------------------------------------------------------------------
+#define MAX_NUM_PREFERRED_OPERATORS_LISTS    2
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum number of preferred operator information we expect to have at one time.
+ */
+//--------------------------------------------------------------------------------------------------
+#define MAX_NUM_PREFERRED_OPERATORS     100
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -91,6 +113,35 @@ typedef struct
     le_dls_List_t  safeRefCellInfoList; // list of CellSafeRef_t
     le_dls_Link_t *currentLinkPtr;      // link for current CellSafeRef_t reference
 } CellList_t;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Preferred Operator safe Reference list structure.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    void*         safeRef;
+    le_dls_Link_t link;
+} PreferredOperatorsSafeRef_t;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Preferred Operator list structure.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    int32_t        opsCount;            // number of Preferred operators
+    le_dls_List_t  paPrefOpList;        // list of pa_mrc_PreferredNetworkOperator_t
+    le_dls_List_t  safeRefPrefOpList;   // list of safe reference of PreferredOperatorsSafeRef_t
+    le_dls_Link_t *currentLinkPtr;      // link for current PreferredOperatorsSafeRef_t reference
+} PreferredOperatorsList_t;
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -151,6 +202,38 @@ static le_ref_MapRef_t CellListRefMap;
  */
 //--------------------------------------------------------------------------------------------------
 static le_ref_MapRef_t CellRefMap;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Pool for preferred PLMN operators list.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mem_PoolRef_t PrefOpsListPool;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Pool for preferred PLMN operators safe reference.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mem_PoolRef_t  PreferredOperatorsSafeRefPool;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Safe Reference Map for Preferred operators list.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static le_ref_MapRef_t PreferredOperatorsListRefMap;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Safe Reference Map for Preferred operators.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static le_ref_MapRef_t PreferredOperatorsRefMap;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -225,555 +308,24 @@ static void DeleteCellInfoSafeRefList
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Get the TDSCDMA Band bit mask from the config DB entry.
+ * Function to destroy all safeRef elements in the PreferredOperatorsRefMap list.
  *
- * @return The TDSCDMA Band bit mask.
  */
 //--------------------------------------------------------------------------------------------------
-static le_mrc_RatBitMask_t GetRatBitMask
+static void DeletePreferredOperatorsSafeRefList
 (
-    char* ratPtr
+    le_dls_List_t* listPtr
 )
 {
-    if (!strcmp(ratPtr, "CDMA"))
-    {
-        return LE_MRC_BITMASK_RAT_CDMA;
-    }
-    else if (!strcmp(ratPtr, "GSM"))
-    {
-        return LE_MRC_BITMASK_RAT_GSM;
-    }
-    else if (!strcmp(ratPtr, "UMTS"))
-    {
-        return LE_MRC_BITMASK_RAT_UMTS;
-    }
-    else if (!strcmp(ratPtr, "LTE"))
-    {
-        return LE_MRC_BITMASK_RAT_LTE;
-    }
-    else
-    {
-        LE_WARN("Invalid Radio Access Technology choice!");
-        return 0x00;
-    }
-}
+    PreferredOperatorsSafeRef_t* nodePtr;
+    le_dls_Link_t* linkPtr;
 
-//--------------------------------------------------------------------------------------------------
-/**
- * Get the Band bit mask from the config DB entry.
- *
- * @return The Band bit mask.
- */
-//--------------------------------------------------------------------------------------------------
-static uint64_t GetBandBitMask
-(
-    char* bandPtr
-)
-{
-    if (!strcmp(bandPtr, "Band-Class-0-A-System"))
+    while ((linkPtr = le_dls_Pop(listPtr)) != NULL)
     {
-        return LE_MRC_BITMASK_BAND_CLASS_0_A_SYSTEM;
+        nodePtr = CONTAINER_OF(linkPtr, PreferredOperatorsSafeRef_t, link);
+        le_ref_DeleteRef(PreferredOperatorsRefMap, nodePtr->safeRef);
+        le_mem_Release(nodePtr);
     }
-    else if (!strcmp(bandPtr, "Band-Class-0-B-System"))
-    {
-        return LE_MRC_BITMASK_BAND_CLASS_0_B_SYSTEM;
-    }
-    else if (!strcmp(bandPtr, "Band-Class-1-All-Blocks"))
-    {
-        return LE_MRC_BITMASK_BAND_CLASS_1_ALL_BLOCKS;
-    }
-    else if (!strcmp(bandPtr, "Band-Class-2-Placeholder"))
-    {
-        return LE_MRC_BITMASK_BAND_CLASS_2_PLACEHOLDER;
-    }
-    else if (!strcmp(bandPtr, "Band-Class-3-A-System"))
-    {
-        return LE_MRC_BITMASK_BAND_CLASS_3_A_SYSTEM;
-    }
-    else if (!strcmp(bandPtr, "Band-Class-4-All-Blocks"))
-    {
-        return LE_MRC_BITMASK_BAND_CLASS_4_ALL_BLOCKS;
-    }
-    else if (!strcmp(bandPtr, "Band-Class-5-All-Blocks"))
-    {
-        return LE_MRC_BITMASK_BAND_CLASS_5_ALL_BLOCKS;
-    }
-    else if (!strcmp(bandPtr, "Band-Class-6"))
-    {
-        return LE_MRC_BITMASK_BAND_CLASS_6;
-    }
-    else if (!strcmp(bandPtr, "Band-Class-7"))
-    {
-        return LE_MRC_BITMASK_BAND_CLASS_7;
-    }
-    else if (!strcmp(bandPtr, "Band-Class-8"))
-    {
-        return LE_MRC_BITMASK_BAND_CLASS_8;
-    }
-    else if (!strcmp(bandPtr, "Band-Class-9"))
-    {
-        return LE_MRC_BITMASK_BAND_CLASS_9;
-    }
-    else if (!strcmp(bandPtr, "Band-Class-10"))
-    {
-        return LE_MRC_BITMASK_BAND_CLASS_10;
-    }
-    else if (!strcmp(bandPtr, "Band-Class-11"))
-    {
-        return LE_MRC_BITMASK_BAND_CLASS_11;
-    }
-    else if (!strcmp(bandPtr, "Band-Class-12"))
-    {
-        return LE_MRC_BITMASK_BAND_CLASS_12;
-    }
-    else if (!strcmp(bandPtr, "Band-Class-14"))
-    {
-        return LE_MRC_BITMASK_BAND_CLASS_14;
-    }
-    else if (!strcmp(bandPtr, "Band-Class-15"))
-    {
-        return LE_MRC_BITMASK_BAND_CLASS_15;
-    }
-    else if (!strcmp(bandPtr, "Band-Class-16"))
-    {
-        return LE_MRC_BITMASK_BAND_CLASS_16;
-    }
-    else if (!strcmp(bandPtr, "Band-Class-17"))
-    {
-        return LE_MRC_BITMASK_BAND_CLASS_17;
-    }
-    else if (!strcmp(bandPtr, "Band-Class-18"))
-    {
-        return LE_MRC_BITMASK_BAND_CLASS_18;
-    }
-    else if (!strcmp(bandPtr, "Band-Class-19"))
-    {
-        return LE_MRC_BITMASK_BAND_CLASS_19;
-    }
-    else if (!strcmp(bandPtr, "GSM-DCS-1800"))
-    {
-        return LE_MRC_BITMASK_BAND_GSM_DCS_1800;
-    }
-    else if (!strcmp(bandPtr, "E-GSM-900"))
-    {
-        return LE_MRC_BITMASK_BAND_EGSM_900;
-    }
-    else if (!strcmp(bandPtr, "Primary-GSM-900"))
-    {
-        return LE_MRC_BITMASK_BAND_PRI_GSM_900;
-    }
-    else if (!strcmp(bandPtr, "GSM-450"))
-    {
-        return LE_MRC_BITMASK_BAND_GSM_450;
-    }
-    else if (!strcmp(bandPtr, "GSM-480"))
-    {
-        return LE_MRC_BITMASK_BAND_GSM_480;
-    }
-    else if (!strcmp(bandPtr, "GSM-750"))
-    {
-        return LE_MRC_BITMASK_BAND_GSM_750;
-    }
-    else if (!strcmp(bandPtr, "GSM-850"))
-    {
-        return LE_MRC_BITMASK_BAND_GSM_850;
-    }
-    else if (!strcmp(bandPtr, "GSMR-900"))
-    {
-        return LE_MRC_BITMASK_BAND_GSMR_900;
-    }
-    else if (!strcmp(bandPtr, "GSM-PCS-1900"))
-    {
-        return LE_MRC_BITMASK_BAND_GSM_PCS_1900;
-    }
-    else if (!strcmp(bandPtr, "WCDMA-EU-J-CH-IMT-2100"))
-    {
-        return LE_MRC_BITMASK_BAND_WCDMA_EU_J_CH_IMT_2100;
-    }
-    else if (!strcmp(bandPtr, "WCDMA-US-PCS-1900"))
-    {
-        return LE_MRC_BITMASK_BAND_WCDMA_US_PCS_1900;
-    }
-    else if (!strcmp(bandPtr, "WCDMA-EU-CH-DCS-1800"))
-    {
-        // return LE_MRC_BITMASK_BAND_WCDMA_EU_CH_DCS_1800;
-        return 0x0000000080000000;
-    }
-    else if (!strcmp(bandPtr, "WCDMA-US-1700"))
-    {
-        return LE_MRC_BITMASK_BAND_WCDMA_US_1700;
-    }
-    else if (!strcmp(bandPtr, "WCDMA-US-850"))
-    {
-        return LE_MRC_BITMASK_BAND_WCDMA_US_850;
-    }
-    else if (!strcmp(bandPtr, "WCDMA-J-800"))
-    {
-        return LE_MRC_BITMASK_BAND_WCDMA_J_800;
-    }
-    else if (!strcmp(bandPtr, "WCDMA-EU-2600"))
-    {
-        return LE_MRC_BITMASK_BAND_WCDMA_EU_2600;
-    }
-    else if (!strcmp(bandPtr, "WCDMA-EU-J-900"))
-    {
-        return LE_MRC_BITMASK_BAND_WCDMA_EU_J_900;
-    }
-    else if (!strcmp(bandPtr, "WCDMA-J-1700"))
-    {
-        return LE_MRC_BITMASK_BAND_WCDMA_J_1700;
-    }
-    else
-    {
-        LE_WARN("Invalid TDSCDMA Band choice!");
-        return 0ULL;
-    }
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Get the LTE Band bit mask from the config DB entry.
- *
- * @return The LTE Band bit mask.
- */
-//--------------------------------------------------------------------------------------------------
-static uint64_t GetLteBandBitMask
-(
-    char* bandPtr
-)
-{
-    if (!strcmp(bandPtr, "1"))
-    {
-        return LE_MRC_BITMASK_LTE_BAND_E_UTRA_OP_BAND_1;
-    }
-    else if (!strcmp(bandPtr, "2"))
-    {
-        return LE_MRC_BITMASK_LTE_BAND_E_UTRA_OP_BAND_2;
-    }
-    else if (!strcmp(bandPtr, "3"))
-    {
-        return LE_MRC_BITMASK_LTE_BAND_E_UTRA_OP_BAND_3;
-    }
-    else if (!strcmp(bandPtr, "4"))
-    {
-        return LE_MRC_BITMASK_LTE_BAND_E_UTRA_OP_BAND_4;
-    }
-    else if (!strcmp(bandPtr, "5"))
-    {
-        return LE_MRC_BITMASK_LTE_BAND_E_UTRA_OP_BAND_5;
-    }
-    else if (!strcmp(bandPtr, "6"))
-    {
-        return LE_MRC_BITMASK_LTE_BAND_E_UTRA_OP_BAND_6;
-    }
-    else if (!strcmp(bandPtr, "7"))
-    {
-        return LE_MRC_BITMASK_LTE_BAND_E_UTRA_OP_BAND_7;
-    }
-    else if (!strcmp(bandPtr, "8"))
-    {
-        return LE_MRC_BITMASK_LTE_BAND_E_UTRA_OP_BAND_8;
-    }
-    else if (!strcmp(bandPtr, "9"))
-    {
-        return LE_MRC_BITMASK_LTE_BAND_E_UTRA_OP_BAND_9;
-    }
-    else if (!strcmp(bandPtr, "10"))
-    {
-        return LE_MRC_BITMASK_LTE_BAND_E_UTRA_OP_BAND_10;
-    }
-    else if (!strcmp(bandPtr, "11"))
-    {
-        return LE_MRC_BITMASK_LTE_BAND_E_UTRA_OP_BAND_11;
-    }
-    else if (!strcmp(bandPtr, "12"))
-    {
-        return LE_MRC_BITMASK_LTE_BAND_E_UTRA_OP_BAND_12;
-    }
-    else if (!strcmp(bandPtr, "13"))
-    {
-        return LE_MRC_BITMASK_LTE_BAND_E_UTRA_OP_BAND_13;
-    }
-    else if (!strcmp(bandPtr, "14"))
-    {
-        return LE_MRC_BITMASK_LTE_BAND_E_UTRA_OP_BAND_14;
-    }
-    else if (!strcmp(bandPtr, "17"))
-    {
-        return LE_MRC_BITMASK_LTE_BAND_E_UTRA_OP_BAND_17;
-    }
-    else if (!strcmp(bandPtr, "18"))
-    {
-        return LE_MRC_BITMASK_LTE_BAND_E_UTRA_OP_BAND_18;
-    }
-    else if (!strcmp(bandPtr, "19"))
-    {
-        return LE_MRC_BITMASK_LTE_BAND_E_UTRA_OP_BAND_19;
-    }
-    else if (!strcmp(bandPtr, "20"))
-    {
-        return LE_MRC_BITMASK_LTE_BAND_E_UTRA_OP_BAND_20;
-    }
-    else if (!strcmp(bandPtr, "21"))
-    {
-        return LE_MRC_BITMASK_LTE_BAND_E_UTRA_OP_BAND_21;
-    }
-    else if (!strcmp(bandPtr, "24"))
-    {
-        return LE_MRC_BITMASK_LTE_BAND_E_UTRA_OP_BAND_24;
-    }
-    else if (!strcmp(bandPtr, "25"))
-    {
-        return LE_MRC_BITMASK_LTE_BAND_E_UTRA_OP_BAND_25;
-    }
-    else if (!strcmp(bandPtr, "33"))
-    {
-        return LE_MRC_BITMASK_LTE_BAND_E_UTRA_OP_BAND_33;
-    }
-    else if (!strcmp(bandPtr, "34"))
-    {
-        return LE_MRC_BITMASK_LTE_BAND_E_UTRA_OP_BAND_34;
-    }
-    else if (!strcmp(bandPtr, "35"))
-    {
-        return LE_MRC_BITMASK_LTE_BAND_E_UTRA_OP_BAND_35;
-    }
-    else if (!strcmp(bandPtr, "36"))
-    {
-        return LE_MRC_BITMASK_LTE_BAND_E_UTRA_OP_BAND_36;
-    }
-    else if (!strcmp(bandPtr, "37"))
-    {
-        return LE_MRC_BITMASK_LTE_BAND_E_UTRA_OP_BAND_37;
-    }
-    else if (!strcmp(bandPtr, "38"))
-    {
-        return LE_MRC_BITMASK_LTE_BAND_E_UTRA_OP_BAND_38;
-    }
-    else if (!strcmp(bandPtr, "39"))
-    {
-        return LE_MRC_BITMASK_LTE_BAND_E_UTRA_OP_BAND_39;
-    }
-    else if (!strcmp(bandPtr, "40"))
-    {
-        return LE_MRC_BITMASK_LTE_BAND_E_UTRA_OP_BAND_40;
-    }
-    else if (!strcmp(bandPtr, "41"))
-    {
-        return LE_MRC_BITMASK_LTE_BAND_E_UTRA_OP_BAND_41;
-    }
-    else if (!strcmp(bandPtr, "42"))
-    {
-        return LE_MRC_BITMASK_LTE_BAND_E_UTRA_OP_BAND_42;
-    }
-    else if (!strcmp(bandPtr, "43"))
-    {
-        // return LE_MRC_BITMASK_LTE_BAND_E_UTRA_OP_BAND_43;
-        return 0x0000000080000000;
-    }
-    else
-    {
-        LE_WARN("Invalid LTE Band choice!");
-        return 0ULL;
-    }
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Get the TDSCDMA Band bit mask from the config DB entry.
- *
- * @return The TDSCDMA Band bit mask.
- */
-//--------------------------------------------------------------------------------------------------
-static uint8_t GetTdScdmaBandBitMask
-(
-    char* tdScdmaBandPtr
-)
-{
-    if (!strcmp(tdScdmaBandPtr, "A"))
-    {
-        return LE_MRC_BITMASK_TDSCDMA_BAND_A;
-    }
-    else if (!strcmp(tdScdmaBandPtr, "B"))
-    {
-        return LE_MRC_BITMASK_TDSCDMA_BAND_B;
-    }
-    else if (!strcmp(tdScdmaBandPtr, "C"))
-    {
-        return LE_MRC_BITMASK_TDSCDMA_BAND_C;
-    }
-    else if (!strcmp(tdScdmaBandPtr, "D"))
-    {
-        return LE_MRC_BITMASK_TDSCDMA_BAND_D;
-    }
-    else if (!strcmp(tdScdmaBandPtr, "E"))
-    {
-        return LE_MRC_BITMASK_TDSCDMA_BAND_E;
-    }
-    else if (!strcmp(tdScdmaBandPtr, "F"))
-    {
-        return LE_MRC_BITMASK_TDSCDMA_BAND_F;
-    }
-    else
-    {
-        LE_WARN("Invalid TDSCDMA Band choice!");
-        return 0x00;
-    }
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Load the preferences from the configuration tree
- */
-//--------------------------------------------------------------------------------------------------
-static void LoadPreferencesFromConfigDb
-(
-    void
-)
-{
-    le_cfg_IteratorRef_t mrcCfg = NULL;
-    char cfgNodeLoc[8] = {0};
-    char preference[64] = {0};
-    uint8_t i = 0;
-
-    // Set the preferred Radio Access Technology
-    mrcCfg = le_cfg_CreateReadTxn(CFG_MODEMSERVICE_MRC_RAT_PATH);
-    le_mrc_RatBitMask_t ratMask = 0x00;
-    i = 0;
-    sprintf (cfgNodeLoc, "%d", i);
-    while (!le_cfg_IsEmpty(mrcCfg, cfgNodeLoc))
-    {
-        if ( le_cfg_GetString(mrcCfg, cfgNodeLoc, preference, sizeof(preference), "") != LE_OK )
-        {
-            LE_WARN("Node value string for '%s' too large.", preference);
-            break;
-        }
-        if ( strncmp(preference, "", sizeof(preference)) == 0 )
-        {
-            LE_WARN("No node value set for '%s'", preference);
-            break;
-        }
-
-        ratMask |= GetRatBitMask(preference);
-
-        LE_DEBUG("New RAT <%s> set", preference);
-        i++;
-        sprintf (cfgNodeLoc, "%d", i);
-    }
-    LE_DEBUG("Set RAT bit mask: 0x%01X", ratMask);
-    if (ratMask)
-    {
-        if ( pa_mrc_SetRatPreference(ratMask) != LE_OK )
-        {
-            LE_WARN("Unable to set the Radio Access Technology preference in the configDb.");
-        }
-    }
-    le_cfg_CancelTxn(mrcCfg);
-    memset(preference, '\0', sizeof(preference));
-
-    // Set the preferred Bands
-    mrcCfg = le_cfg_CreateReadTxn(CFG_MODEMSERVICE_MRC_BAND_PATH);
-    uint64_t bandMask = 0ULL;
-    i=0;
-    sprintf (cfgNodeLoc, "%d", i);
-    while (!le_cfg_IsEmpty(mrcCfg, cfgNodeLoc))
-    {
-        if ( le_cfg_GetString(mrcCfg, cfgNodeLoc, preference, sizeof(preference), "") != LE_OK )
-        {
-            LE_WARN("Node value string for '%s' too large.", preference);
-            break;
-        }
-        if ( strncmp(preference, "", sizeof(preference)) == 0 )
-        {
-            LE_WARN("No node value set for '%s'", preference);
-            break;
-        }
-
-        bandMask |= GetBandBitMask(preference);
-
-        LE_DEBUG("New Band <%s> set", preference);
-        i++;
-        sprintf (cfgNodeLoc, "%d", i);
-    }
-    LE_DEBUG("Set Band Preference bit mask: 0x%016"PRIX64, bandMask);
-    if (bandMask)
-    {
-        if ( pa_mrc_SetBandPreference(bandMask) != LE_OK )
-        {
-            LE_WARN("Unable to set the Band preference in the configDb.");
-        }
-    }
-    le_cfg_CancelTxn(mrcCfg);
-    memset(preference, '\0', sizeof(preference));
-
-    // Set the preferred LTE Bands
-    mrcCfg = le_cfg_CreateReadTxn(CFG_MODEMSERVICE_MRC_LTE_BAND_PATH);
-    uint64_t lteBandMask = 0ULL;
-    i=0;
-    sprintf (cfgNodeLoc, "%d", i);
-    while (!le_cfg_IsEmpty(mrcCfg, cfgNodeLoc))
-    {
-        if ( le_cfg_GetString(mrcCfg, cfgNodeLoc, preference, sizeof(preference), "") != LE_OK )
-        {
-            LE_WARN("Node value string for '%s' too large.", preference);
-            break;
-        }
-        if ( strncmp(preference, "", sizeof(preference)) == 0 )
-        {
-            LE_WARN("No node value set for '%s'", preference);
-            break;
-        }
-
-        lteBandMask |= GetLteBandBitMask(preference);
-
-        LE_DEBUG("New LTE Band <%s> set", preference);
-        i++;
-        sprintf (cfgNodeLoc, "%d", i);
-    }
-    LE_DEBUG("Set LTE Band Preference bit mask: 0x%016"PRIX64, lteBandMask);
-    if (lteBandMask)
-    {
-        if ( pa_mrc_SetLteBandPreference(lteBandMask) != LE_OK )
-        {
-            LE_WARN("Unable to set the LTE Band preference in the configDb.");
-        }
-    }
-    le_cfg_CancelTxn(mrcCfg);
-    memset(preference, '\0', sizeof(preference));
-
-    // Set the preferred TDS-CDMA Bands
-    mrcCfg = le_cfg_CreateReadTxn(CFG_MODEMSERVICE_MRC_TDSCDMA_BAND_PATH);
-    uint8_t tdScdmaBandMask = 0x00;
-    i=0;
-    sprintf (cfgNodeLoc, "%d", i);
-    while (!le_cfg_IsEmpty(mrcCfg, cfgNodeLoc))
-    {
-        if ( le_cfg_GetString(mrcCfg, cfgNodeLoc, preference, sizeof(preference), "") != LE_OK )
-        {
-            LE_WARN("Node value string for '%s' too large.", preference);
-            break;
-        }
-        if ( strncmp(preference, "", sizeof(preference)) == 0 )
-        {
-            LE_WARN("No node value set for '%s'", preference);
-            break;
-        }
-
-        tdScdmaBandMask |= GetTdScdmaBandBitMask(preference);
-
-        LE_DEBUG("New TD-SCDMA <%s> set", preference);
-        i++;
-        sprintf (cfgNodeLoc, "%d", i);
-    }
-    LE_DEBUG("Set TD-SCDMA Band Preference bit mask: 0x%01X", tdScdmaBandMask);
-    if (tdScdmaBandMask)
-    {
-        if ( pa_mrc_SetTdScdmaBandPreference(tdScdmaBandMask) != LE_OK )
-        {
-            LE_WARN("Unable to set the TD-SCDMA Band preference in the configDb.");
-        }
-    }
-    le_cfg_CancelTxn(mrcCfg);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -836,280 +388,6 @@ static void DeleteSafeRefList
     }
 }
 
-//--------------------------------------------------------------------------------------------------
-/**
- * Function to convert configDB string into bitMask value for rat
- *
- */
-//--------------------------------------------------------------------------------------------------
-static le_mrc_RatBitMask_t ConvertRatValue
-(
-    const char* ratValue
-)
-{
-    if      ( strcmp(ratValue, "GSM") == 0 )
-    {
-        return LE_MRC_BITMASK_RAT_GSM;
-    }
-    else if ( strcmp(ratValue, "UMTS") == 0 )
-    {
-        return LE_MRC_BITMASK_RAT_UMTS;
-    }
-    else if ( strcmp(ratValue, "LTE") == 0 )
-    {
-        return LE_MRC_BITMASK_RAT_LTE;
-    }
-    else if ( strcmp(ratValue, "CDMA") == 0 )
-    {
-        return LE_MRC_BITMASK_RAT_CDMA;
-    }
-
-    LE_WARN("This rat value '%s' is not supported",ratValue);
-    return 0;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Function to load all rat preference for a given ratPath
- *
- */
-//--------------------------------------------------------------------------------------------------
-static le_result_t LoadRatList
-(
-    const char          *ratPath,
-    le_mrc_RatBitMask_t *ratMaskPtr
-)
-{
-    uint32_t idx=0;
-    LE_DEBUG("Load Rat Preference <%s>",ratPath);
-
-    le_cfg_IteratorRef_t ratCfg = le_cfg_CreateReadTxn(ratPath);
-
-    *ratMaskPtr = 0;
-    do {
-        // Get the node name.
-        char ratNodeName[LIMIT_MAX_PATH_BYTES] = {0};
-        char ratNodeValue[LIMIT_MAX_PATH_BYTES] = {0};
-
-        sprintf(ratNodeName,"%d",idx);
-
-        // This is the exist state for the loop
-        if (le_cfg_IsEmpty(ratCfg, ratNodeName))
-        {
-            LE_DEBUG("'%s' does not exist. stop reading configuration", ratNodeName);
-            break;
-        }
-
-        if ( le_cfg_GetString(ratCfg,ratNodeName,ratNodeValue,sizeof(ratNodeValue), "") != LE_OK )
-        {
-            LE_WARN("Node value string for '%s' too large.",ratNodeName);
-            le_cfg_CancelTxn(ratCfg);
-            return LE_NOT_POSSIBLE;
-        }
-
-        if ( strncmp(ratNodeName,"",sizeof(ratNodeName)) == 0 )
-        {
-            LE_WARN("No node value set for '%s'",ratNodeName);
-            le_cfg_CancelTxn(ratCfg);
-            return LE_NOT_POSSIBLE;
-        }
-
-        *ratMaskPtr |= ConvertRatValue(ratNodeValue);
-
-        ++idx;
-    } while (true);
-
-    le_cfg_CancelTxn(ratCfg);
-
-    return LE_OK;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Load the preferred operators configuration
- *
- */
-//--------------------------------------------------------------------------------------------------
-static void LoadPreferredOperators
-(
-)
-{
-    uint32_t idx = 0;
-    le_dls_List_t preferredOperatorsList = LE_DLS_LIST_INIT;
-
-    // Check that the modemRadioControl has a configuration value for preferred list.
-    le_cfg_IteratorRef_t mrcCfg = le_cfg_CreateReadTxn(CFG_MODEMSERVICE_MRC_PATH"/"CFG_NODE_PREF_OPERATORS);
-
-    if (le_cfg_NodeExists(mrcCfg,"") == false)
-    {
-        LE_DEBUG("'%s' does not exist. Stop reading configuration",
-                    CFG_MODEMSERVICE_MRC_PATH"/"CFG_NODE_PREF_OPERATORS);
-        le_cfg_CancelTxn(mrcCfg);
-        return;
-    }
-
-    // Read all network from configDB
-    do
-    {
-        le_mrc_RatBitMask_t ratMask;
-        char mccNodePath[LIMIT_MAX_PATH_BYTES] = {0};
-        char mncNodePath[LIMIT_MAX_PATH_BYTES] = {0};
-        char ratNodePath[LIMIT_MAX_PATH_BYTES] = {0};
-        char mccStr[LIMIT_MAX_PATH_BYTES] = {0};
-        char mncStr[LIMIT_MAX_PATH_BYTES] = {0};
-
-        // Get the node name.
-        char nodeName[LIMIT_MAX_PATH_BYTES] = {0};
-
-        sprintf(nodeName,"%d",idx);
-
-        if (le_cfg_IsEmpty(mrcCfg, nodeName))
-        {
-            LE_DEBUG("'%s' does not exist. stop reading configuration", nodeName);
-            break;
-        }
-
-        snprintf(mccNodePath, sizeof(mccNodePath), "%s/%s",nodeName,CFG_NODE_MCC);
-        snprintf(mncNodePath, sizeof(mncNodePath), "%s/%s",nodeName,CFG_NODE_MNC);
-        snprintf(ratNodePath, sizeof(ratNodePath),
-                 CFG_MODEMSERVICE_MRC_PATH"/"CFG_NODE_PREF_OPERATORS"/%s/%s",nodeName,CFG_NODE_RAT);
-
-        if ( le_cfg_GetString(mrcCfg,mccNodePath,mccStr,sizeof(mccStr),"") != LE_OK )
-        {
-            LE_WARN("String value for '%s' too large.",mccNodePath);
-            break;
-        }
-
-        if ( strcmp(mccStr,"") == 0 )
-        {
-            LE_WARN("No node value set for '%s'",mccNodePath);
-            break;
-        }
-
-        if ( le_cfg_GetString(mrcCfg,mncNodePath,mncStr,sizeof(mncStr),"") != LE_OK )
-        {
-            LE_WARN("String value for '%s' too large.",mncNodePath);
-            break;
-        }
-
-        if ( strcmp(mncStr,"") == 0 )
-        {
-            LE_WARN("No node value set for '%s'",mncNodePath);
-            break;
-        }
-
-        if ( LoadRatList(ratNodePath,&ratMask) != LE_OK )
-        {
-            LE_WARN("Could not read rat information in '%s'",ratNodePath);
-            break;
-        }
-
-        if ( pa_mrc_AddPreferredOperators(&preferredOperatorsList,mccStr,mncStr,ratMask) != LE_OK )
-        {
-            LE_WARN("Could not add [%s,%s] into the preferred list",mccStr,mncStr);
-        }
-
-        ++idx;
-    }
-    while (true);
-
-    le_cfg_CancelTxn(mrcCfg);
-
-    if ( pa_mrc_SavePreferredOperators(&preferredOperatorsList) != LE_OK )
-    {
-        LE_WARN("Could not save the preferred list");
-    }
-    pa_mrc_DeletePreferredOperators(&preferredOperatorsList);
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Load the scanMode configuration
- *
- */
-//--------------------------------------------------------------------------------------------------
-static void LoadScanMode
-(
-)
-{
-    char configPath[LIMIT_MAX_PATH_BYTES];
-    snprintf(configPath, sizeof(configPath), "%s/%s",CFG_MODEMSERVICE_MRC_PATH,CFG_NODE_SCANMODE);
-
-    LE_DEBUG("Start reading MRC scanMode information in ConfigDB");
-
-    le_cfg_IteratorRef_t mrcCfg = le_cfg_CreateReadTxn(configPath);
-
-    do
-    {
-        if ( le_cfg_GetBool(mrcCfg,CFG_NODE_MANUAL,false) )
-        {
-
-            char mccStr[LIMIT_MAX_PATH_BYTES] = {0};
-            char mncStr[LIMIT_MAX_PATH_BYTES] = {0};
-
-            if ( le_cfg_GetString(mrcCfg,CFG_NODE_MCC,mccStr,sizeof(mccStr),"") != LE_OK )
-            {
-                LE_WARN("String value for '%s' too large.",CFG_NODE_MCC);
-                break;
-            }
-
-            if ( strcmp(mccStr,"") == 0 )
-            {
-                LE_WARN("No node value set for '%s'",CFG_NODE_MCC);
-                break;
-            }
-
-            if ( le_cfg_GetString(mrcCfg,CFG_NODE_MNC,mncStr,sizeof(mncStr),"") != LE_OK )
-            {
-                LE_WARN("String value for '%s' too large.",CFG_NODE_MNC);
-                break;
-            }
-
-            if ( strcmp(mncStr,"") == 0 )
-            {
-                LE_WARN("No node value set for '%s'",CFG_NODE_MNC);
-                break;
-            }
-
-            if ( le_mrc_RegisterCellularNetwork(mccStr,mncStr) != LE_OK )
-            {
-                LE_WARN("Could not Register to Network [%s,%s]",mccStr ,mncStr);
-                break;
-            }
-        }
-        else
-        {
-            if ( pa_mrc_SetAutomaticNetworkRegistration() != LE_OK )
-            {
-                LE_WARN("Could not set the Automatic Network Registration");
-                break;
-            }
-        }
-
-    } while (false);
-
-    le_cfg_CancelTxn(mrcCfg);
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Load the configuration tree
- *
- */
-//--------------------------------------------------------------------------------------------------
-static void LoadMrcConfigurationFromConfigDB
-(
-    void
-)
-{
-    LE_DEBUG("Start reading MRC information in ConfigDB");
-
-    LoadPreferencesFromConfigDb();
-
-    LoadPreferredOperators();
-
-    LoadScanMode();
-}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1179,8 +457,10 @@ void le_mrc_Init
     ScanInformationRefMap = le_ref_CreateMap("ScanInformationMap", MRC_MAX_SCAN);
 
     // Create the pool for cells information list.
-    CellListPool = le_mem_CreatePool("CellListPool",
-                                              sizeof(CellList_t));
+    CellListPool = le_mem_CreatePool("CellListPool", sizeof(CellList_t));
+
+    // Create the pool for Preferred cells information list.
+    PrefOpsListPool = le_mem_CreatePool("PrefOpListPool", sizeof(PreferredOperatorsList_t));
 
     // Create the Safe Reference Map to use for neighboring cells information object Safe References.
     CellRefMap = le_ref_CreateMap("CellInfoCellMap", MAX_NUM_NEIGHBORS);
@@ -1188,16 +468,29 @@ void le_mrc_Init
     // Create the pool for cells information safe ref list.
     CellInfoSafeRefPool = le_mem_CreatePool("CellInfoSafeRefPool", sizeof(CellSafeRef_t));
 
-    // Create the Safe Reference Map to use for neighboring cells information list object Safe References.
+    // Create the Safe Reference Map to use for neighboring cells information list object Safe
+    //  References.
     CellListRefMap = le_ref_CreateMap("CellListRefMap", MAX_NUM_NEIGHBOR_LISTS);
+
+    // Create the Safe Reference Map to use for preferred Operators information object Safe
+    //  References.
+    PreferredOperatorsRefMap = le_ref_CreateMap("PreferredOperatorsMap",
+                    MAX_NUM_PREFERRED_OPERATORS);
+
+    // Create the pool for preferred Operators safe ref list.
+    PreferredOperatorsSafeRefPool = le_mem_CreatePool("PreferredOperatorsSafeRefPool",
+                    sizeof(CellSafeRef_t));
+
+    // Create the Safe Reference Map to use for preferred Operators information list object Safe
+    //  References.
+    PreferredOperatorsListRefMap = le_ref_CreateMap("PreferredOperatorsListRefMap",
+                    MAX_NUM_PREFERRED_OPERATORS_LISTS);
 
     // Create an event Id for new Network Registration State notification
     NewNetRegStateId = le_event_CreateIdWithRefCounting("NewNetRegState");
 
     // Create an event Id for RAT change notification
     RatChangeId = le_event_CreateIdWithRefCounting("RatChange");
-
-    LoadMrcConfigurationFromConfigDB();
 
     // Register a handler function for new Registration State indication
     pa_mrc_AddNetworkRegHandler(NewRegStateHandler);
@@ -1218,6 +511,794 @@ void le_mrc_Init
     }
 }
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Enable the automatic Selection Register mode.
+ *
+ * @return
+ *  - LE_FAULT  Function failed.
+ *  - LE_OK     Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mrc_SetAutomaticRegisterMode
+(
+    void
+)
+{
+    if ( pa_mrc_SetAutomaticNetworkRegistration() != LE_OK )
+    {
+        LE_ERROR("Cannot set the Automatic Network Registration");
+        return LE_FAULT;
+    }
+    else
+    {
+        return LE_OK;
+    }
+}
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the manual Selection Register mode with the MCC/MNC parameters.
+ *
+ * @return
+ *  - LE_FAULT  Function failed.
+ *  - LE_OK     Function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mrc_SetManualRegisterMode
+(
+    const char*      mccPtr,   ///< [IN] Mobile Country Code
+    const char*      mncPtr    ///< [IN] Mobile Network Code
+)
+{
+    if (mccPtr == NULL)
+    {
+        LE_KILL_CLIENT("mccPtr is NULL !");
+        return LE_FAULT;
+    }
+    if (mncPtr == NULL)
+    {
+        LE_KILL_CLIENT("mncPtr is NULL !");
+        return LE_FAULT;
+    }
+
+    if(strlen(mccPtr) > LE_MRC_MCC_LEN)
+    {
+        LE_KILL_CLIENT("strlen(mcc) > %d", LE_MRC_MCC_LEN);
+        return LE_FAULT;
+    }
+
+    if(strlen(mncPtr) > LE_MRC_MNC_LEN)
+    {
+        LE_KILL_CLIENT("strlen(mnc) > %d", LE_MRC_MNC_LEN);
+        return LE_FAULT;
+    }
+
+    if ( pa_mrc_RegisterNetwork(mccPtr, mncPtr) != LE_OK )
+    {
+        LE_ERROR("Cannot Register to Network [%s,%s]", mccPtr, mncPtr);
+        return LE_FAULT;
+    }
+    else
+    {
+        return LE_OK;
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the selected Registration mode.
+ *
+ * @return
+ *  - LE_FAULT  Function failed.
+ *  - LE_OK     Function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mrc_GetRegisterMode
+(
+    bool*   isManualPtr,  ///< [OUT] true if the scan mode is manual, false if it is automatic.
+    char*   mccPtr,       ///< [OUT] Mobile Country Code
+    size_t  mccPtrSize,   ///< [IN] mccPtr buffer size
+    char*   mncPtr,       ///< [OUT] Mobile Network Code
+    size_t  mncPtrSize    ///< [IN] mncPtr buffer size
+)
+{
+    char mcc[LE_MRC_MCC_BYTES] = {0};
+    char mnc[LE_MRC_MNC_BYTES] = {0};
+
+    le_result_t res = pa_mrc_GetNetworkRegistrationMode(isManualPtr,
+                    mcc, LE_MRC_MCC_BYTES, mnc,  LE_MRC_MNC_BYTES);
+
+    if ( res != LE_OK )
+    {
+        LE_ERROR("Cannot not get RegisterMode");
+        return LE_FAULT;
+    }
+    else
+    {
+        if (mccPtr == NULL)
+        {
+            LE_KILL_CLIENT("mccPtr is NULL !");
+            return LE_FAULT;
+        }
+
+        if (mncPtr == NULL)
+        {
+            LE_KILL_CLIENT("mncPtr is NULL !");
+            return LE_FAULT;
+        }
+
+        if(mccPtrSize < LE_MRC_MCC_BYTES)
+        {
+            LE_KILL_CLIENT("mccPtrSize < %d", LE_MRC_MCC_BYTES);
+            return LE_FAULT;
+        }
+
+        if(mncPtrSize < LE_MRC_MNC_BYTES)
+        {
+            LE_KILL_CLIENT("mccPtrSize < %d", LE_MRC_MNC_BYTES);
+            return LE_FAULT;
+        }
+        le_utf8_Copy(mccPtr, mcc, LE_MRC_MCC_BYTES, NULL);
+        le_utf8_Copy(mncPtr, mnc, LE_MRC_MCC_BYTES, NULL);
+
+        return LE_OK;
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the Radio Access Technology preferences by using a bit mask.
+ *
+ * @return
+ *  - LE_FAULT  Function failed.
+ *  - LE_OK     Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mrc_SetRatPreferences
+(
+    le_mrc_RatBitMask_t ratMask ///< [IN] Bit mask for the Radio Access Technology preferences.
+)
+{
+    if (ratMask == 0)
+    {
+        LE_ERROR("Rat preference not selected !");
+        return LE_FAULT;
+    }
+    else if (ratMask == LE_MRC_BITMASK_RAT_ALL)
+    {
+        if ( pa_mrc_SetAutomaticRatPreference() != LE_OK )
+        {
+            LE_ERROR("Unable to set the Automatic Radio Access Technology preferences.");
+            return LE_FAULT;
+        }
+    }
+    else
+    {
+        if ( pa_mrc_SetRatPreferences(ratMask) != LE_OK )
+        {
+            LE_ERROR("Unable to set the Radio Access Technology preferences.");
+            return LE_FAULT;
+        }
+    }
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Radio Access Technology preferences
+ *
+ * @return
+ * - LE_FAULT  Function failed.
+ * - LE_OK     Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mrc_GetRatPreferences
+(
+    le_mrc_RatBitMask_t* ratMaskPtr ///< [OUT] Bit mask for the Radio Access Technology preferences.
+)
+{
+    if (ratMaskPtr == NULL)
+    {
+        LE_KILL_CLIENT("ratMaskPtr is NULL !");
+        return LE_FAULT;
+    }
+
+    if ( pa_mrc_GetRatPreferences(ratMaskPtr) != LE_OK )
+    {
+        LE_ERROR("Unable to get the Radio Access Technology preferences.");
+        return LE_FAULT;
+    }
+    else
+    {
+        return LE_OK;
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the 2G/3G Band preferences by using a bit mask.
+ *
+ * @return
+ *  - LE_FAULT  Function failed.
+ *  - LE_OK     Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mrc_SetBandPreferences
+(
+    le_mrc_BandBitMask_t bandMask ///< [IN] Bit mask for 2G/3G Band preferences.
+)
+{
+    if (bandMask == 0)
+    {
+        LE_ERROR("No Band Selected");
+        return LE_FAULT;
+    }
+
+    if ( pa_mrc_SetBandPreferences(bandMask) != LE_OK )
+    {
+        LE_ERROR("Unable to set the 2G/3G Band preferences.");
+        return LE_FAULT;
+    }
+    else
+    {
+        return LE_OK;
+    }
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Bit mask for 2G/3G Band preferences.
+ *
+ * @return
+ *  - LE_FAULT  Function failed.
+ *  - LE_OK     Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mrc_GetBandPreferences
+(
+    le_mrc_BandBitMask_t* bandMaskPtr ///< [OUT] Bit mask for 2G/3G Band preferences.
+)
+{
+    if (bandMaskPtr == NULL)
+    {
+        LE_KILL_CLIENT("bandMaskPtr is NULL !");
+        return LE_FAULT;
+    }
+
+    if ( pa_mrc_GetBandPreferences(bandMaskPtr) != LE_OK )
+    {
+        LE_ERROR("Unable to get band Preferences.");
+        return LE_FAULT;
+    }
+    else
+    {
+        return LE_OK;
+    }
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the LTE Band preferences by using a bit mask.
+ *
+ * @return
+ *  - LE_FAULT  Function failed.
+ *  - LE_OK     Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mrc_SetLteBandPreferences
+(
+    le_mrc_LteBandBitMask_t bandMask  ///< [IN] Bit mask for LTE Band preferences.
+)
+{
+    if (bandMask == 0)
+    {
+        LE_ERROR("No Band Selected");
+        return LE_FAULT;
+    }
+
+    if ( pa_mrc_SetLteBandPreferences(bandMask) != LE_OK )
+    {
+        LE_ERROR("Unable to set the LTE Band preferences.");
+        return LE_FAULT;
+    }
+    else
+    {
+        return LE_OK;
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Bit mask for LTE Band preferences.
+ *
+ * @return
+ *  - LE_FAULT  Function failed.
+ *  - LE_OK     Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mrc_GetLteBandPreferences
+(
+    le_mrc_LteBandBitMask_t* bandMaskPtr  ///< [OUT] Bit mask for LTE Band preferences.
+)
+{
+    if (bandMaskPtr == NULL)
+    {
+        LE_KILL_CLIENT("bandMaskPtr is NULL !");
+        return LE_FAULT;
+    }
+
+    if ( pa_mrc_GetLteBandPreferences(bandMaskPtr) != LE_OK )
+    {
+        LE_ERROR("Unable to get LTE band Preferences.");
+        return LE_FAULT;
+    }
+    else
+    {
+        return LE_OK;
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the TD-SCDMA Band preferences by using a bit mask.
+ *
+ * @return
+ *  - LE_FAULT  Function failed.
+ *  - LE_OK     Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mrc_SetTdScdmaBandPreferences
+(
+    le_mrc_TdScdmaBandBitMask_t bandMask ///< [IN] Bit mask for TD-SCDMA Band preferences.
+)
+{
+    if (bandMask == 0)
+    {
+        LE_ERROR("No Band Selected");
+        return LE_FAULT;
+    }
+
+    if ( pa_mrc_SetTdScdmaBandPreferences(bandMask) != LE_OK )
+    {
+        LE_ERROR("Unable to set the TD-SCDMA Band preferences.");
+        return LE_FAULT;
+    }
+    else
+    {
+        return LE_OK;
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Bit mask for TD-SCDMA Band preferences.
+ *
+ * @return
+ *  - LE_FAULT  Function failed.
+ *  - LE_OK     Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mrc_GetTdScdmaBandPreferences
+(
+    le_mrc_TdScdmaBandBitMask_t* bandMaskPtr ///< [OUT] Bit mask for TD-SCDMA Band preferences.
+)
+{
+    if (bandMaskPtr == NULL)
+    {
+        LE_KILL_CLIENT("bandMaskPtr is NULL !");
+        return LE_FAULT;
+    }
+
+    if ( pa_mrc_GetTdScdmaBandPreferences(bandMaskPtr) != LE_OK )
+    {
+        LE_ERROR("Unable to get TD-SCDMA Band preferences.");
+        return LE_FAULT;
+    }
+
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add a preferred operator by specifying the MCC/MNC and the Radio Access Technology.
+ *
+ * @return
+ *  - LE_FAULT  Function failed.
+ *  - LE_OK     Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mrc_AddPreferredOperator
+(
+    const char* mcc,
+        ///< [IN]
+        ///< Mobile Country Code
+
+    const char* mnc,
+        ///< [IN]
+        ///< Mobile Network Code
+
+    le_mrc_RatBitMask_t ratMask
+        ///< [IN]
+        ///< Bit mask for the Radio Access Technology preferences.
+)
+{
+    le_dls_List_t preferredOperatorsList = LE_DLS_LIST_INIT;
+
+    if (mcc == NULL)
+    {
+        LE_KILL_CLIENT("mccPtr is NULL !");
+        return LE_FAULT;
+    }
+
+    if (mnc == NULL)
+    {
+        LE_KILL_CLIENT("mncPtr is NULL !");
+        return LE_FAULT;
+    }
+
+    if(strlen(mcc) > LE_MRC_MCC_LEN)
+    {
+        LE_KILL_CLIENT("strlen(mcc) > %d", LE_MRC_MCC_LEN);
+        return LE_FAULT;
+    }
+
+    if(strlen(mnc) > LE_MRC_MNC_LEN)
+    {
+        LE_KILL_CLIENT("strlen(mnc) > %d", LE_MRC_MNC_LEN);
+        return LE_FAULT;
+    }
+
+    if (pa_mrc_GetPreferredOperatorsList(&preferredOperatorsList, false, true) <= 0)
+    {
+        LE_WARN("No preferred Operator present in modem!");
+    }
+
+    if ( pa_mrc_AddPreferredOperators(&preferredOperatorsList, mcc, mnc, ratMask) != LE_OK )
+    {
+        LE_ERROR("Could not add [%s,%s] into the preferred operator list", mcc, mnc);
+        pa_mrc_DeletePreferredOperatorsList(&preferredOperatorsList);
+        return LE_FAULT;
+    }
+
+    if ( pa_mrc_SavePreferredOperators(&preferredOperatorsList) != LE_OK )
+    {
+        LE_ERROR("Could not save the preferred operator list");
+        pa_mrc_DeletePreferredOperatorsList(&preferredOperatorsList);
+        return LE_FAULT;
+    }
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Remove a preferred operator by specifying the MCC/MNC.
+ *
+ * @return
+ *  - LE_FAULT  Function failed.
+ *  - LE_OK     Function succeeded.
+ *
+ * @note If one code is too long (max 3 digits), it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mrc_RemovePreferredOperator
+(
+    const char* mcc,
+        ///< [IN]
+        ///< Mobile Country Code
+
+    const char* mnc
+        ///< [IN]
+        ///< Mobile Network Code
+)
+{
+    le_dls_List_t preferredOperatorsList = LE_DLS_LIST_INIT;
+
+    if (mcc == NULL)
+    {
+        LE_KILL_CLIENT("mccPtr is NULL !");
+        return LE_FAULT;
+    }
+
+    if (mnc == NULL)
+    {
+        LE_KILL_CLIENT("mncPtr is NULL !");
+        return LE_FAULT;
+    }
+
+    if(strlen(mcc) > LE_MRC_MCC_LEN)
+    {
+        LE_KILL_CLIENT("strlen(mcc) > %d", LE_MRC_MCC_LEN);
+        return LE_FAULT;
+    }
+
+    if(strlen(mnc) > LE_MRC_MNC_LEN)
+    {
+        LE_KILL_CLIENT("strlen(mnc) > %d", LE_MRC_MNC_LEN);
+        return LE_FAULT;
+    }
+
+    if (pa_mrc_GetPreferredOperatorsList(&preferredOperatorsList, false, true) <= 0)
+    {
+        LE_ERROR("No preferred Operator present in modem!");
+        return LE_FAULT;
+    }
+
+    if ( pa_mrc_RemovePreferredOperators(&preferredOperatorsList, mcc, mnc) != LE_OK )
+    {
+        LE_ERROR("Could not remove [%s,%s] into the preferred operator list", mcc, mnc);
+        return LE_FAULT;
+    }
+
+    if ( pa_mrc_SavePreferredOperators(&preferredOperatorsList) != LE_OK )
+    {
+        LE_ERROR("Could not save the preferred operator list");
+        return LE_FAULT;
+    }
+
+    pa_mrc_DeletePreferredOperatorsList(&preferredOperatorsList);
+
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to retrieve a list of the preferred operators.
+ *
+ * @return
+ * - Reference    to the List object.
+ * - Null pointer if there is no preferences.
+ */
+//--------------------------------------------------------------------------------------------------
+le_mrc_PreferredOperatorListRef_t le_mrc_GetPreferredOperatorsList
+(
+    void
+)
+{
+    PreferredOperatorsList_t * OperatorListPtr =
+                    (PreferredOperatorsList_t *) le_mem_ForceAlloc(PrefOpsListPool);
+
+    if (OperatorListPtr != NULL)
+    {
+        OperatorListPtr->paPrefOpList = LE_DLS_LIST_INIT;
+        OperatorListPtr->safeRefPrefOpList = LE_DLS_LIST_INIT;
+        OperatorListPtr->currentLinkPtr = NULL;
+        OperatorListPtr->opsCount = pa_mrc_GetPreferredOperatorsList(
+                        &(OperatorListPtr->paPrefOpList), false, true);
+        if (OperatorListPtr->opsCount > 0)
+        {
+            // Create and return a Safe Reference for this List object.
+            return le_ref_CreateRef(PreferredOperatorsListRefMap, OperatorListPtr);
+        }
+        else
+        {
+            le_mem_Release(OperatorListPtr);
+            LE_WARN("Unable to retrieve the list of the preferred operators!");
+            return NULL;
+        }
+    }
+
+    LE_ERROR("Unable allocated memory for the list of the preferred operators!");
+    return NULL;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the first Operator object reference in the list of the
+ * preferred operators retrieved with le_mrc_GetPreferredOperators().
+ *
+ * @return
+ * - NULL                          No operator information found.
+ * - le_mrc_PreferredOperatorRef   The Operator object reference.
+ *
+ * @note If the caller is passing a bad reference into this function, it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+le_mrc_PreferredOperatorRef_t le_mrc_GetFirstPreferredOperator
+(
+    le_mrc_PreferredOperatorListRef_t  preferredOperatorListRef ///< [IN] The list of the preferred
+                                                                ///  operators.
+)
+{
+    pa_mrc_PreferredNetworkOperator_t* nodePtr;
+    le_dls_Link_t*             linkPtr;
+    PreferredOperatorsList_t * prefOperatorListPtr =
+                    le_ref_Lookup(PreferredOperatorsListRefMap, preferredOperatorListRef);
+
+    if (prefOperatorListPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", preferredOperatorListRef);
+        return NULL;
+    }
+
+    linkPtr = le_dls_Peek(&(prefOperatorListPtr->paPrefOpList));
+    if (linkPtr != NULL)
+    {
+        nodePtr = CONTAINER_OF(linkPtr, pa_mrc_PreferredNetworkOperator_t , link);
+        prefOperatorListPtr->currentLinkPtr = linkPtr;
+
+        PreferredOperatorsSafeRef_t * newPrefOpsInfoPtr =
+                        le_mem_ForceAlloc(PreferredOperatorsSafeRefPool);
+        newPrefOpsInfoPtr->safeRef = le_ref_CreateRef(PreferredOperatorsRefMap, nodePtr);
+        newPrefOpsInfoPtr->link = LE_DLS_LINK_INIT;
+        le_dls_Queue(&(prefOperatorListPtr->safeRefPrefOpList), &(newPrefOpsInfoPtr->link));
+
+        return ((le_mrc_PreferredOperatorRef_t)newPrefOpsInfoPtr->safeRef);
+    }
+
+    return NULL;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the next Operator object reference in the list of the
+ * preferred operators retrieved with le_mrc_GetPreferredOperators().
+ *
+ * @return
+ * - NULL                          No operator information found.
+ * - le_mrc_PreferredOperatorRef   The Operator object reference.
+ *
+ * @note If the caller is passing a bad reference into this function, it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+le_mrc_PreferredOperatorRef_t le_mrc_GetNextPreferredOperator
+(
+    le_mrc_PreferredOperatorListRef_t  preferredOperatorListRef ///< [IN] The list of the preferred
+                                                                ///<  operators.
+)
+{
+    pa_mrc_PreferredNetworkOperator_t* nodePtr;
+    le_dls_Link_t*             linkPtr;
+    PreferredOperatorsList_t * prefOperatorsListPtr =
+                    le_ref_Lookup(PreferredOperatorsListRefMap, preferredOperatorListRef);
+
+    if (prefOperatorsListPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", preferredOperatorListRef);
+        return NULL;
+    }
+
+    linkPtr = le_dls_PeekNext(&(prefOperatorsListPtr->paPrefOpList),
+                    prefOperatorsListPtr->currentLinkPtr);
+    if (linkPtr != NULL)
+    {
+        nodePtr = CONTAINER_OF(linkPtr, pa_mrc_PreferredNetworkOperator_t, link);
+        prefOperatorsListPtr->currentLinkPtr = linkPtr;
+
+        PreferredOperatorsSafeRef_t * newPrefOpsInfoPtr =
+                        le_mem_ForceAlloc(PreferredOperatorsSafeRefPool);
+        newPrefOpsInfoPtr->safeRef = le_ref_CreateRef(PreferredOperatorsRefMap, nodePtr);
+        newPrefOpsInfoPtr->link = LE_DLS_LINK_INIT;
+        le_dls_Queue(&(prefOperatorsListPtr->safeRefPrefOpList) ,&(newPrefOpsInfoPtr->link));
+
+        return ((le_mrc_PreferredOperatorRef_t)newPrefOpsInfoPtr->safeRef);
+    }
+
+    return NULL;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to delete the list of the preferred operators retrieved with
+ * le_mrc_GetPreferredOperators().
+ *
+ * @note On failure, the process exits, so you don't have to worry about checking the returned
+ *       reference for validity.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_mrc_DeletePreferredOperatorsList
+(
+    le_mrc_PreferredOperatorListRef_t  preferredOperatorListRef ///< The [IN] list of the preferred
+                                                                ///<  operators.
+)
+{
+    PreferredOperatorsList_t * prefOperatorsListPtr =
+                    le_ref_Lookup(PreferredOperatorsListRefMap, preferredOperatorListRef);
+
+    if (prefOperatorsListPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", preferredOperatorListRef);
+        return;
+    }
+
+    prefOperatorsListPtr->currentLinkPtr = NULL;
+
+    pa_mrc_DeletePreferredOperatorsList(&prefOperatorsListPtr->paPrefOpList);
+
+    // Delete the safe Reference list.
+    DeletePreferredOperatorsSafeRefList(&(prefOperatorsListPtr->safeRefPrefOpList));
+
+    // Invalidate the Safe Reference.
+    le_ref_DeleteRef(PreferredOperatorsListRefMap, preferredOperatorListRef);
+
+    le_mem_Release(prefOperatorsListPtr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the Operator information details.
+ *
+ * @return
+ *  - LE_FAULT  Function failed.
+ *  - LE_OK     Function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mrc_GetPreferredOperatorDetails
+(
+    le_mrc_PreferredOperatorRef_t preferredOperatorRef,
+        ///< [IN]
+        ///< Operator object reference.
+
+    char* mccPtr,
+        ///< [OUT]
+        ///< Mobile Country Code.
+
+    size_t mccPtrNumElements,
+        ///< [IN]
+
+    char* mncPtr,
+        ///< [OUT]
+        ///< Mobile Network Code.
+
+    size_t mncPtrNumElements,
+        ///< [IN]
+
+    le_mrc_RatBitMask_t* ratMaskPtr
+        ///< [OUT]
+        ///< Bit mask for the RAT preferences.
+)
+{
+    pa_mrc_PreferredNetworkOperator_t* prefOperatorInfoPtr =
+                    le_ref_Lookup(PreferredOperatorsRefMap, preferredOperatorRef);
+
+    if (mccPtr == NULL)
+    {
+        LE_KILL_CLIENT("mccPtr mccPtris NULL !");
+        return LE_FAULT;
+    }
+
+    if (mncPtr == NULL)
+    {
+        LE_KILL_CLIENT("mncPtr is NULL !");
+        return LE_FAULT;
+    }
+
+    if (ratMaskPtr == NULL)
+    {
+        LE_KILL_CLIENT("ratMaskPtr is NULL !");
+        return LE_FAULT;
+    }
+
+    if (prefOperatorInfoPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", preferredOperatorRef);
+        return LE_FAULT;
+    }
+
+    le_utf8_Copy(mccPtr, prefOperatorInfoPtr->mobileCode.mcc, mccPtrNumElements, NULL);
+    le_utf8_Copy(mncPtr, prefOperatorInfoPtr->mobileCode.mnc, mncPtrNumElements, NULL);
+    *ratMaskPtr = prefOperatorInfoPtr->ratMask;
+
+    return LE_OK;
+}
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * This function must be called to register an handler for Network registration state change.
@@ -1227,7 +1308,7 @@ void le_mrc_Init
  * @note Doesn't return on failure, so there's no need to check the return value for errors.
  */
 //--------------------------------------------------------------------------------------------------
-le_mrc_NetRegStateHandlerRef_t le_mrc_AddNetRegStateHandler
+le_mrc_NetRegStateEventHandlerRef_t le_mrc_AddNetRegStateEventHandler
 (
     le_mrc_NetRegStateHandlerFunc_t handlerFuncPtr, ///< [IN] The handler function.
     void*                           contextPtr      ///< [IN] The handler's context.
@@ -1248,7 +1329,7 @@ le_mrc_NetRegStateHandlerRef_t le_mrc_AddNetRegStateHandler
 
     le_event_SetContextPtr(handlerRef, contextPtr);
 
-    return (le_mrc_NetRegStateHandlerRef_t)(handlerRef);
+    return (le_mrc_NetRegStateEventHandlerRef_t)(handlerRef);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1256,9 +1337,9 @@ le_mrc_NetRegStateHandlerRef_t le_mrc_AddNetRegStateHandler
  * This function must be called to remove an handler for Network registration state changes.
  */
 //--------------------------------------------------------------------------------------------------
-void le_mrc_RemoveNetRegStateHandler
+void le_mrc_RemoveNetRegStateEventHandler
 (
-    le_mrc_NetRegStateHandlerRef_t    handlerRef ///< [IN] The handler reference.
+    le_mrc_NetRegStateEventHandlerRef_t    handlerRef ///< [IN] The handler reference.
 )
 {
     le_event_RemoveHandler((le_event_HandlerRef_t)handlerRef);
@@ -1340,7 +1421,8 @@ le_result_t le_mrc_SetRadioPower
 /**
  * This function must be called to get the Radio Module power state.
  *
- * @return LE_NOT_POSSIBLE  The function failed to get the Radio Module power state.
+ * @return LE_FAULT         The function failed to get the Radio Module power state.
+ * @return LE_BAD_PARAMETER if powerPtr is NULL.
  * @return LE_OK            The function succeed.
  *
  * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
@@ -1356,14 +1438,14 @@ le_result_t le_mrc_GetRadioPower
     if (powerPtr == NULL)
     {
         LE_KILL_CLIENT("powerPtr is NULL !");
-        return LE_FAULT;
+        return LE_BAD_PARAMETER;
     }
 
     res=pa_mrc_GetRadioPower(powerPtr);
 
     if (res != LE_OK)
     {
-        return LE_NOT_POSSIBLE;
+        return LE_FAULT;
     }
     else
     {
@@ -1375,7 +1457,8 @@ le_result_t le_mrc_GetRadioPower
 /**
  * This function must be called to get the current Radio Access Technology in use.
  *
- * @return LE_NOT_POSSIBLE  Function failed to get the Radio Access Technology.
+ * @return LE_FAULT         Function failed to get the Radio Access Technology.
+ * @return LE_BAD_PARAMETER A bad parameter was passed.
  * @return LE_OK            Function succeeded.
  *
  * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
@@ -1390,7 +1473,7 @@ le_result_t le_mrc_GetRadioAccessTechInUse
     if (ratPtr == NULL)
     {
         LE_KILL_CLIENT("ratPtr is NULL !");
-        return LE_FAULT;
+        return LE_BAD_PARAMETER;
     }
 
     if (pa_mrc_GetRadioAccessTechInUse(ratPtr) == LE_OK)
@@ -1399,7 +1482,7 @@ le_result_t le_mrc_GetRadioAccessTechInUse
     }
     else
     {
-        return LE_NOT_POSSIBLE;
+        return LE_FAULT;
     }
 }
 
@@ -1407,7 +1490,8 @@ le_result_t le_mrc_GetRadioAccessTechInUse
 /**
  * This function must be called to get the Network registration state.
  *
- * @return LE_NOT_POSSIBLE  The function failed to get the Network registration state.
+ * @return LE_FAULT         The function failed to get the Network registration state.
+ * @return LE_BAD_PARAMETER A bad parameter was passed.
  * @return LE_OK            The function succeeded.
  *
  * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
@@ -1422,7 +1506,7 @@ le_result_t le_mrc_GetNetRegState
     if (statePtr == NULL)
     {
         LE_KILL_CLIENT("statePtr is NULL !");
-        return LE_FAULT;
+        return LE_BAD_PARAMETER;
     }
 
     if (pa_mrc_GetNetworkRegState(statePtr) == LE_OK)
@@ -1431,7 +1515,7 @@ le_result_t le_mrc_GetNetRegState
     }
     else
     {
-        return LE_NOT_POSSIBLE;
+        return LE_FAULT;
     }
 }
 
@@ -1439,7 +1523,8 @@ le_result_t le_mrc_GetNetRegState
 /**
  * This function must be called to get the Signal Quality information.
  *
- * @return LE_NOT_POSSIBLE  The function failed to get the Signal Quality information.
+ * @return LE_FAULT         The function failed to get the Signal Quality information.
+ * @return LE_BAD_PARAMETER A bad parameter was passed.
  * @return LE_OK            The function succeeded.
  *
  * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
@@ -1461,7 +1546,7 @@ le_result_t le_mrc_GetSignalQual
     if (qualityPtr == NULL)
     {
         LE_KILL_CLIENT("qualityPtr is NULL !");
-        return LE_FAULT;
+        return LE_BAD_PARAMETER;
     }
 
     if ((res=pa_mrc_GetSignalStrength(&rssi)) == LE_OK)
@@ -1492,7 +1577,7 @@ le_result_t le_mrc_GetSignalQual
     {
         LE_ERROR("pa_mrc_GetSignalStrength has returned %d", res);
         *qualityPtr = 0;
-        return LE_NOT_POSSIBLE;
+        return LE_FAULT;
     }
 }
 
@@ -1501,10 +1586,10 @@ le_result_t le_mrc_GetSignalQual
  * This function must be called to get the Current Network Name information.
  *
  * @return
- *      - LE_OK on success
- *      - LE_FAULT if nameStr is NULL
- *      - LE_OVERFLOW if the Home Network Name can't fit in nameStr
- *      - LE_NOT_POSSIBLE on any other failure
+ *      - LE_OK             on success
+ *      - LE_BAD_PARAMETER  if nameStr is NULL
+ *      - LE_OVERFLOW       if the Home Network Name can't fit in nameStr
+ *      - LE_FAULT          on any other failure
  *
  * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
  *       function will not return.
@@ -1519,19 +1604,74 @@ le_result_t le_mrc_GetCurrentNetworkName
     if (nameStr == NULL)
     {
         LE_KILL_CLIENT("nameStr is NULL !");
+        return LE_BAD_PARAMETER;
+    }
+
+    return pa_mrc_GetCurrentNetwork(nameStr, nameStrSize, NULL, 0, NULL, 0);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the current network PLMN information in numeric format.
+ *
+ * @return
+ *      - LE_OK       on success
+ *      - LE_FAULT    on any other failure
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mrc_GetCurrentNetworkMccMnc
+(
+    char* mccStr,               ///< [OUT] the mobile country code
+    size_t mccStrNumElements,   ///< [IN] the mccStr size
+    char* mncStr,               ///< [OUT] the mobile network code
+    size_t mncStrNumElements    ///< [IN] the mncStr size
+)
+{
+    if (mccStr == NULL)
+    {
+        LE_KILL_CLIENT("mccStr is NULL !");
         return LE_FAULT;
     }
 
-    return pa_mrc_GetCurrentNetworkName(nameStr,nameStrSize);
-}
+    if (mncStr == NULL)
+    {
+        LE_KILL_CLIENT("mncStr is NULL !");
+        return LE_FAULT;
+    }
 
+    if(mccStrNumElements < LE_MRC_MCC_BYTES)
+    {
+        LE_ERROR("mccStrNumElements is < %d",LE_MRC_MCC_BYTES);
+        return LE_FAULT;
+    }
+
+    if(mncStrNumElements < LE_MRC_MNC_BYTES)
+    {
+        LE_ERROR("mncStrNumElements is < %d",LE_MRC_MNC_BYTES);
+        return LE_FAULT;
+    }
+
+    if ( pa_mrc_GetCurrentNetwork(NULL, 0, mccStr, mccStrNumElements, mncStr, mncStrNumElements)
+                    == LE_OK)
+    {
+        return LE_OK;
+    }
+    else
+    {
+        return LE_FAULT;
+
+    }
+}
 
 
 //--------------------------------------------------------------------------------------------------
 /**
  * This function must be called to register on a cellular network [mcc;mnc]
  *
- * @return LE_NOT_POSSIBLE  The function failed to register on the network.
+ * @return LE_FAULT         The function failed to register on the network.
+ * @return LE_BAD_PARAMETER A bad parameter was passed.
  * @return LE_OK            The function succeeded.
  *
  * @note If one code is too long (max 3 digits), it is a fatal error, the
@@ -1549,13 +1689,13 @@ le_result_t le_mrc_RegisterCellularNetwork
     if(strlen(mccPtr) > LE_MRC_MCC_LEN)
     {
         LE_KILL_CLIENT("strlen(mcc) > %d", LE_MRC_MCC_LEN);
-        return LE_FAULT;
+        return LE_BAD_PARAMETER;
     }
 
     if(strlen(mncPtr) > LE_MRC_MNC_LEN)
     {
         LE_KILL_CLIENT("strlen(mnc) > %d", LE_MRC_MNC_LEN);
-        return LE_FAULT;
+        return LE_BAD_PARAMETER;
     }
 
     return pa_mrc_RegisterNetwork(mccPtr,mncPtr);
@@ -1583,7 +1723,8 @@ le_mrc_ScanInformationListRef_t le_mrc_PerformCellularNetworkScan
     newScanInformationListPtr->safeRefScanInfoList = LE_DLS_LIST_INIT;
     newScanInformationListPtr->currentLink = NULL;
 
-    result = pa_mrc_PerformNetworkScan(ratMask,PA_MRC_SCAN_PLMN,
+    result = pa_mrc_PerformNetworkScan(ratMask,
+                                       PA_MRC_SCAN_PLMN,
                                        &(newScanInformationListPtr->paScanInfoList));
 
     if (result != LE_OK)
@@ -1738,7 +1879,7 @@ void le_mrc_DeleteCellularNetworkScan
  * @return
  *      - LE_OK on success
  *      - LE_OVERFLOW if the mcc or mnc would not fit in buffer
- *      - LE_NOT_POSSIBLE for all other errors
+ *      - LE_FAULT for all other errors
  *
  * @note
  *      On failure, the process exits, so you don't have to worry about checking the returned
@@ -1798,7 +1939,7 @@ le_result_t le_mrc_GetCellularNetworkMccMnc
  * @return
  *      - LE_OK on success
  *      - LE_OVERFLOW if the operator name would not fit in buffer
- *      - LE_NOT_POSSIBLE for all other errors
+ *      - LE_FAULT for all other errors
  *
  * @note
  *      On failure, the process exits, so you don't have to worry about checking the returned

@@ -1,7 +1,7 @@
 /**
  * @page c_pa_sms Modem SMS Platform Adapter API
  *
- * @ref pa_sms.h "Click here for the API reference documentation."
+ * @ref pa_sms.h "API Reference"
  *
  * <HR>
  *
@@ -30,7 +30,7 @@
  *
  * <HR>
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 
@@ -38,7 +38,7 @@
  *
  * Legato @ref c_pa_sms include file.
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 #ifndef LEGATO_PASMS_INCLUDE_GUARD
@@ -125,10 +125,10 @@ pa_sms_Storage_t;
 typedef struct {
     pa_sms_OptionMask_t option;                           ///< Option mask
     le_sms_Status_t     status;                           ///< mandatory, status of msg in memory
-    char                oa[LE_MDMDEFS_PHONE_NUM_MAX_LEN]; ///< optional, originator address
-    char                scts[LE_SMS_TIMESTAMP_MAX_LEN];   ///< optional, service center timestamp
+    char                oa[LE_MDMDEFS_PHONE_NUM_MAX_BYTES]; ///< mandatory, originator address
+    char                scts[LE_SMS_TIMESTAMP_MAX_BYTES]; ///< mandatory, service center timestamp
     le_sms_Format_t     format;                           ///< mandatory, SMS user data format
-    uint8_t             data[LE_SMS_TEXT_MAX_LEN];        ///< mandatory, SMS user data
+    uint8_t             data[LE_SMS_TEXT_MAX_BYTES];      ///< mandatory, SMS user data
     uint32_t            dataLen;                          ///< mandatory, SMS user data length
 }
 pa_sms_SmsDeliver_t;
@@ -142,9 +142,9 @@ pa_sms_SmsDeliver_t;
 typedef struct {
     pa_sms_OptionMask_t option;                           ///< Option mask
     le_sms_Status_t     status;                           ///< mandatory, status of msg in memory
-    char                da[LE_MDMDEFS_PHONE_NUM_MAX_LEN]; ///< optional, destination address
+    char                da[LE_MDMDEFS_PHONE_NUM_MAX_BYTES]; ///< mandatory, destination address
     le_sms_Format_t     format;                           ///< mandatory, SMS user data format
-    uint8_t             data[LE_SMS_TEXT_MAX_LEN];        ///< mandatory, SMS user data
+    uint8_t             data[LE_SMS_TEXT_MAX_BYTES];      ///< mandatory, SMS user data
     uint32_t            dataLen;                          ///< mandatory, SMS user data length
 }
 pa_sms_SmsSubmit_t;
@@ -158,7 +158,7 @@ pa_sms_SmsSubmit_t;
 typedef struct {
     le_sms_Status_t     status;                           ///< mandatory, status of msg in memory
     pa_sms_Protocol_t   protocol;                         ///< mandatory, protocol used for encoding
-    uint8_t             data[LE_SMS_PDU_MAX_LEN];         ///< mandatory, SMS user data (in HEX)
+    uint8_t             data[LE_SMS_PDU_MAX_BYTES];         ///< mandatory, SMS user data (in HEX)
     uint32_t            dataLen;                          ///< mandatory, number of characters
 }
 pa_sms_Pdu_t;
@@ -209,7 +209,7 @@ typedef void (*pa_sms_NewMsgHdlrFunc_t)
 /**
  * This function must be called to register a handler for a new message reception handling.
  *
- * @return LE_NOT_POSSIBLE  The function failed to register a new handler.
+ * @return LE_FAULT         The function failed to register a new handler.
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
@@ -223,7 +223,7 @@ le_result_t pa_sms_SetNewMsgHandler
 /**
  * This function must be called to unregister the handler for a new message reception handling.
  *
- * @return LE_NOT_POSSIBLE  The function failed to unregister the handler.
+ * @return LE_FAULT         The function failed to unregister the handler.
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
@@ -235,8 +235,8 @@ le_result_t pa_sms_ClearNewMsgHandler
 //--------------------------------------------------------------------------------------------------
 /**
  * This function sends a message in PDU mode.
- *
- * @return LE_NOT_POSSIBLE    The function failed to send a message in PDU mode.
+ * @return LE_FAULT           The function failed to send a message in PDU mode.
+ * @return LE_BAD_PARAMETER   The parameters are invalid.
  * @return LE_TIMEOUT         No response was received from the Modem.
  * @return a positive value   The function succeeded. The value represents the message reference.
  */
@@ -252,7 +252,7 @@ int32_t pa_sms_SendPduMsg
 /**
  * This function gets the message from the preferred message storage.
  *
- * @return LE_NOT_POSSIBLE The function failed to get the message from the preferred message
+ * @return LE_FAULT        The function failed to get the message from the preferred message
  *                         storage.
  * @return LE_TIMEOUT      No response was received from the Modem.
  * @return LE_OK           The function succeeded.
@@ -271,8 +271,9 @@ le_result_t pa_sms_RdPDUMsgFromMem
  * This function gets the indexes of messages stored in the preferred memory for a specific
  * status.
  *
- * @return LE_NOT_POSSIBLE   The function failed to get the indexes of messages stored in the
+ * @return LE_FAULT          The function failed to get the indexes of messages stored in the
  *                           preferred memory.
+ * @return LE_BAD_PARAMETER  The parameters are invalid.
  * @return LE_TIMEOUT        No response was received from the Modem.
  * @return LE_OK             The function succeeded.
  */
@@ -291,7 +292,7 @@ le_result_t pa_sms_ListMsgFromMem
 /**
  * This function deletes one specific Message from preferred message storage.
  *
- * @return LE_NOT_POSSIBLE   The function failed to delete one specific Message from preferred
+ * @return LE_FAULT          The function failed to delete one specific Message from preferred
  *                           message storage.
  * @return LE_TIMEOUT        No response was received from the Modem.
  * @return LE_OK             The function succeeded.
@@ -308,7 +309,7 @@ le_result_t pa_sms_DelMsgFromMem
 /**
  * This function deletes all Messages from preferred message storage.
  *
- * @return LE_NOT_POSSIBLE The function failed to delete all Messages from preferred message storage.
+ * @return LE_FAULT        The function failed to delete all Messages from preferred message storage.
  * @return LE_TIMEOUT      No response was received from the Modem.
  * @return LE_OK           The function succeeded.
  */
@@ -322,7 +323,7 @@ le_result_t pa_sms_DelAllMsg
 /**
  * This function changes the message status.
  *
- * @return LE_NOT_POSSIBLE The function failed.
+ * @return LE_FAULT        The function failed to change the message status.
  * @return LE_TIMEOUT      No response was received from the Modem.
  * @return LE_OK           The function succeeded.
  */
@@ -365,5 +366,7 @@ le_result_t pa_sms_SetSmsc
 (
     const char*    smscPtr  ///< [IN] The Short message service center.
 );
+
+
 
 #endif // LEGATO_PASMS_INCLUDE_GUARD

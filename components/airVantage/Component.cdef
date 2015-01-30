@@ -1,0 +1,12 @@
+sources:
+{
+    avcServer.c
+}
+
+provides:
+{
+    api:
+    {
+        le_avc.api
+    }
+}

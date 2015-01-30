@@ -3,7 +3,7 @@
  * This file contains the data structures and the source code of the high level
  * Modem Remote Management APIs.
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 #include "legato.h"

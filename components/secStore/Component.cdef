@@ -1,0 +1,12 @@
+sources:
+{
+    secStoreServer.c
+}
+
+provides:
+{
+    api:
+    {
+        le_secStore.api
+    }
+}

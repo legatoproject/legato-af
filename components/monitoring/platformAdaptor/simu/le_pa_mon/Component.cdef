@@ -1,0 +1,13 @@
+requires:
+{
+    api:
+    {
+        le_antenna.api    [types-only]
+    }
+}
+
+sources:
+{
+    pa_mon_simu.c
+    pa_antenna_simu.c
+}

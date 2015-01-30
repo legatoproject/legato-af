@@ -1,7 +1,7 @@
 /**
  * @page c_pa_fwupdate Firmware Update Platform Adapter API
  *
- * @ref pa_fwupdate.h "Click here for the API reference documentation."
+ * @ref pa_fwupdate.h "API Reference"
  *
  * <HR>
  *
@@ -25,7 +25,7 @@
  *
  * <HR>
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 //--------------------------------------------------------------------------------------------------
@@ -33,7 +33,7 @@
  *
  * Legato @ref c_pa_mdc include file.
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 #ifndef LEGATO_PA_FWUPDATE_INCLUDE_GUARD
@@ -48,7 +48,7 @@
  *
  * @return
  *      - LE_OK on success
- *      - LE_NOT_POSSIBLE on failure
+ *      - LE_FAULT on failure
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_fwupdate_Download

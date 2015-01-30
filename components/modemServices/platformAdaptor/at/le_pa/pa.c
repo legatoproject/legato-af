@@ -2,7 +2,7 @@
  *
  * AT implementation of c_pa API.
  *
- * Copyright (C) Sierra Wireless, Inc. 2012. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 #include <pthread.h>
@@ -22,9 +22,11 @@
 #include "pa_mdc.h"
 #include "pa_mdc_local.h"
 #include "pa_mcc_local.h"
-#include "pa_ecall_local.h"
+#include "pa_ecall.h"
 #include "pa_fwupdate_local.h"
 #include "pa_common_local.h"
+#include "pa_ips.h"
+#include "pa_temp.h"
 
 static le_thread_Ref_t  PaThreadRef = NULL;
 
@@ -32,7 +34,7 @@ static le_thread_Ref_t  PaThreadRef = NULL;
 /**
  * Enable CMEE
  *
- * @return LE_NOT_POSSIBLE  The function failed.
+ * @return LE_FAULT         The function failed.
  * @return LE_TIMEOUT       No response was received.
  * @return LE_OK            The function succeeded.
  */
@@ -51,7 +53,7 @@ static le_result_t  EnableCMEE()
 /**
  * Disable echo
  *
- * @return LE_NOT_POSSIBLE  The function failed.
+ * @return LE_FAULT         The function failed.
  * @return LE_TIMEOUT       No response was received.
  * @return LE_OK            The function succeeded.
  */
@@ -69,7 +71,7 @@ static le_result_t  DisableEcho()
 /**
  * Save settings
  *
- * @return LE_NOT_POSSIBLE  The function failed.
+ * @return LE_FAULT        The function failed.
  * @return LE_TIMEOUT       No response was received.
  * @return LE_OK            The function succeeded.
  */
@@ -87,7 +89,7 @@ static le_result_t  SaveSettings()
 /**
  * Set new message indication
  *
- * @return LE_NOT_POSSIBLE  The function failed.
+ * @return LE_FAULT         The function failed.
  * @return LE_TIMEOUT       No response was received.
  * @return LE_OK            The function succeeded.
  */
@@ -113,7 +115,7 @@ static le_result_t  SetNewSmsIndication()
         {
             //              LE_FATAL("Set New SMS message indication failed");
             LE_ERROR("Set New SMS message indication failed");
-            return LE_NOT_POSSIBLE;
+            return LE_FAULT;
         }
     }
 
@@ -126,7 +128,7 @@ static le_result_t  SetNewSmsIndication()
     {
         //          LE_FATAL("Set New SMS message indication failed");
         LE_ERROR("Set New SMS message indication failed");
-        return LE_NOT_POSSIBLE;
+        return LE_FAULT;
     }
 
     return LE_OK;
@@ -136,7 +138,7 @@ static le_result_t  SetNewSmsIndication()
 /**
  * Set Default configuration
  *
- * @return LE_NOT_POSSIBLE  The function failed.
+ * @return LE_FAULT         The function failed.
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
@@ -145,31 +147,31 @@ static le_result_t DefaultConfig()
     if (DisableEcho()!=LE_OK)
     {
         LE_WARN("modem is not well configured");
-        return LE_NOT_POSSIBLE;
+        return LE_FAULT;
     }
 
     if (pa_sms_SetMsgFormat(LE_SMS_FORMAT_PDU) != LE_OK)
     {
         LE_WARN("modem failed to switch to PDU format");
-        return LE_NOT_POSSIBLE;
+        return LE_FAULT;
     }
 
     if (SetNewSmsIndication() != LE_OK)
     {
         LE_WARN("modem failed to set New SMS indication");
-        return LE_NOT_POSSIBLE;
+        return LE_FAULT;
     }
 
     if (EnableCMEE()!=LE_OK)
     {
         LE_WARN("Failed to enable CMEE error");
-        return LE_NOT_POSSIBLE;
+        return LE_FAULT;
     }
 
     if (SaveSettings()!=LE_OK)
     {
         LE_WARN("Failed to Save Modem Settings");
-        return LE_NOT_POSSIBLE;
+        return LE_FAULT;
     }
 
     return LE_OK;
@@ -191,8 +193,10 @@ static void* PAThreadInit(void* context)
     pa_sim_Init();
     pa_mdc_Init();
     pa_mcc_Init();
-    pa_ecall_Init();
+    pa_ecall_Init(PA_ECALL_PAN_EUROPEAN);
     pa_fwupdate_Init();
+    pa_ips_Init();
+    pa_temp_Init();
 
     le_sem_Post(semPtr);
     le_event_RunLoop();

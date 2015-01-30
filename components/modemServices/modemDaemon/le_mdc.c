@@ -3,7 +3,7 @@
  *
  * Implementation of Modem Data Control API
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  *
  */
 
@@ -14,22 +14,6 @@
 
 // Include macros for printing out values
 #include "le_print.h"
-
-//--------------------------------------------------------------------------------------------------
-/**
- * If specified to another value than 0, these variables provide ways to override values
- * considered as default profile.
- */
-//--------------------------------------------------------------------------------------------------
-
-/* Global index: profile index returned in any case */
-const uint32_t DefaultGlobalProfileIndex = 0;
-
-/* 3GPP index: profile index returned on a 3GPP network */
-const uint32_t Default3gppProfileIndex = 0;
-
-/* 3GPP2 index: profile index returned on a 3GPP2 network */
-const uint32_t Default3gpp2ProfileIndex = 0;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -85,6 +69,13 @@ static le_mem_PoolRef_t HandlersPool;
  */
 //--------------------------------------------------------------------------------------------------
 static le_ref_MapRef_t DataProfileRefMap;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Safe Reference Map for session state handler objects.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_ref_MapRef_t StateHandlerRefMap;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -197,6 +188,25 @@ static void NewSessionStateHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Destructor function that runs when a profile is deallocated
+ */
+//--------------------------------------------------------------------------------------------------
+static void DataProfileDestructor (void *objPtr)
+{
+    le_mdc_Profile_t* profilePtr = (le_mdc_Profile_t*) objPtr;
+
+    if ( le_dls_IsInList(&ProfileList, &profilePtr->link) )
+    {
+        /* Remove the profile from the dls list */
+        le_dls_Remove(&ProfileList, &profilePtr->link);
+
+        /* Release the reference */
+        le_ref_DeleteRef(DataProfileRefMap, profilePtr->profileRef);
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Create a modem data profile
  *
  * @note
@@ -211,6 +221,7 @@ static le_mdc_ProfileRef_t CreateModemProfile
 {
     le_mdc_Profile_t* profilePtr;
 
+    // Search the profile
     profilePtr = SearchProfileInList(index);
 
     // Profile doesn't exist
@@ -226,15 +237,18 @@ static le_mdc_ProfileRef_t CreateModemProfile
 
         memset(profilePtr, 0, sizeof(le_mdc_Profile_t));
 
-        if ( pa_mdc_ReadProfile(index,&profilePtr->modemData) != LE_OK )
+        // Read the requested profile
+        if ( pa_mdc_ReadProfile(index, &profilePtr->modemData) != LE_OK )
         {
             le_mem_Release(profilePtr);
+
             return NULL;
         }
+
         profilePtr->profileIndex = index;
 
         // Each profile has its own event for reporting session state changes
-        snprintf(eventName,sizeof(eventName)-1, "profile-%d",profilePtr->profileIndex);
+        snprintf(eventName,sizeof(eventName)-1, "profile-%d",index);
         profilePtr->sessionStateEvent = le_event_CreateId(eventName, sizeof(bool));
 
         // Init the remaining fields
@@ -248,13 +262,17 @@ static le_mdc_ProfileRef_t CreateModemProfile
 
         if ( IS_TRACE_ENABLED )
         {
-            LE_PRINT_VALUE("%u", profilePtr->profileIndex);
+            LE_PRINT_VALUE("%u", index);
         }
 
         pa_mdc_SetSessionStateHandler(NewSessionStateHandler, profilePtr);
 
         // Create a Safe Reference for this data profile object.
         profilePtr->profileRef = le_ref_CreateRef(DataProfileRefMap, profilePtr);
+    }
+    else
+    {
+         le_mem_AddRef(profilePtr);
     }
 
     return profilePtr->profileRef;
@@ -284,14 +302,17 @@ void le_mdc_Init
     // Allocate the profile pool, and set the max number of objects, since it is already known.
     DataProfilePool = le_mem_CreatePool("DataProfilePool", sizeof(le_mdc_Profile_t));
     le_mem_ExpandPool(DataProfilePool, PA_MDC_MAX_PROFILE);
+    le_mem_SetDestructor(DataProfilePool, DataProfileDestructor);
 
     // Allocate the handlers pool, and set the max number of objects, since it is already known.
-    HandlersPool = le_mem_CreatePool("HandlersPool", sizeof(le_mdc_Profile_t));
+    HandlersPool = le_mem_CreatePool("HandlersPool", sizeof(le_mdc_SessionStateHandler_t));
     le_mem_ExpandPool(HandlersPool, PA_MDC_MAX_PROFILE);
-
 
     // Create the Safe Reference Map to use for data profile object Safe References.
     DataProfileRefMap = le_ref_CreateMap("DataProfileMap", PA_MDC_MAX_PROFILE);
+
+    // Create the Safe Reference Map to use for the session state handler object Safe References.
+    StateHandlerRefMap = le_ref_CreateMap("StateHandlerRefMap", PA_MDC_MAX_PROFILE);
 
     // Initialize the profile list
     ProfileList = LE_DLS_LIST_INIT;
@@ -315,8 +336,16 @@ le_mdc_ProfileRef_t le_mdc_GetProfile
     uint32_t index ///< index of the profile.
 )
 {
+    if ( index == LE_MDC_DEFAULT_PROFILE )
+    {
+        if (pa_mdc_GetDefaultProfileIndex(&index) != LE_OK)
+        {
+            return NULL;
+        }
+    }
+
     if ( ( ( index >= PA_MDC_MIN_INDEX_3GPP_PROFILE ) &&
-           ( index <= PA_MDC_MAX_INDEX_3GPP_PROFILE ) ) ||
+         ( index <= PA_MDC_MAX_INDEX_3GPP_PROFILE ) ) ||
          ( ( index >= PA_MDC_MIN_INDEX_3GPP2_PROFILE ) &&
            ( index <= PA_MDC_MAX_INDEX_3GPP2_PROFILE ) ) )
     {
@@ -326,6 +355,82 @@ le_mdc_ProfileRef_t le_mdc_GetProfile
     {
         return NULL;
     }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get a profile selected by its APN
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_BAD_PARAMETER if an input parameter is not valid
+ *      - LE_NOT_FOUND if the requested APN is not found
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mdc_GetProfileFromApn
+(
+    const char* apnPtr,                 ///< [IN] The Access Point Name
+    le_mdc_ProfileRef_t* profileRefPtr  ///< [OUT] profile reference
+)
+{
+    if (apnPtr == NULL)
+    {
+        LE_CRIT("apnPtr is NULL !");
+        return LE_BAD_PARAMETER;
+    }
+
+    size_t apnLen = strlen(apnPtr);
+    if ( apnLen > LE_MDC_APN_NAME_MAX_LEN )
+    {
+        LE_CRIT("apnStr is too long (%zd) > LE_MDC_APN_NAME_MAX_LEN (%d)!",
+            apnLen,LE_MDC_APN_NAME_MAX_LEN);
+        return LE_BAD_PARAMETER;
+    }
+
+    /* Look for current radio technology */
+    le_mrc_Rat_t rat;
+    uint32_t profileIndexMax;
+    uint32_t profileIndex;
+
+    if (le_mrc_GetRadioAccessTechInUse(&rat) != LE_OK)
+    {
+        rat = LE_MRC_RAT_GSM;
+    }
+
+    switch (rat)
+    {
+        /* 3GPP2 */
+        case LE_MRC_RAT_CDMA:
+            profileIndex = PA_MDC_MIN_INDEX_3GPP2_PROFILE;
+            profileIndexMax = PA_MDC_MAX_INDEX_3GPP2_PROFILE;
+        break;
+
+        /* 3GPP */
+        default:
+            profileIndex = PA_MDC_MIN_INDEX_3GPP_PROFILE;
+            profileIndexMax = PA_MDC_MAX_INDEX_3GPP_PROFILE;
+        break;
+    }
+
+    for (; profileIndex <= profileIndexMax; profileIndex++)
+    {
+        char tmpApn[LE_MDC_APN_NAME_MAX_LEN];
+
+        memset(tmpApn, 0, LE_MDC_APN_NAME_MAX_LEN);
+
+        *profileRefPtr = le_mdc_GetProfile(profileIndex);
+
+        le_mdc_GetAPN(*profileRefPtr, tmpApn, LE_MDC_APN_NAME_MAX_LEN);
+
+        if ( strncmp(apnPtr, tmpApn, apnLen ) == 0 )
+        {
+            return LE_OK;
+        }
+
+        le_mdc_RemoveProfile(*profileRefPtr);
+    }
+
+    return LE_NOT_FOUND;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -360,8 +465,8 @@ uint32_t le_mdc_GetProfileIndex
  *
  * @return
  *      - LE_OK on success
- *      - LE_FAULT if input parameter is incorrect
- *      - LE_NOT_POSSIBLE for errors
+ *      - LE_BAD_PARAMETER if input parameter is incorrect
+ *      - LE_FAULT for errors
  *
  * @note
  * A profile can't be removed until a handler is subscribed on this profile, or a session
@@ -374,18 +479,19 @@ le_result_t le_mdc_RemoveProfile
 )
 {
     le_mdc_Profile_t* profilePtr = le_ref_Lookup(DataProfileRefMap, profileRef);
+
     bool isConnected = false;
 
     if ( profilePtr == NULL )
     {
         LE_ERROR("Invalid reference (%p) found!", profileRef);
-        return LE_FAULT;
+        return LE_BAD_PARAMETER;
     }
 
     // If handlers are not removed, do not release the profile
     if ( profilePtr->handlerCount )
     {
-        return LE_NOT_POSSIBLE;
+        return LE_FAULT;
     }
 
     // check if a session has been started
@@ -393,17 +499,11 @@ le_result_t le_mdc_RemoveProfile
 
     if ( isConnected )
     {
-        return LE_NOT_POSSIBLE;
+        return LE_FAULT;
     }
-
-    /* Remove the profile from the dls list */
-    le_dls_Remove(&ProfileList, &profilePtr->link);
 
     /* Delete the memory */
     le_mem_Release(profilePtr);
-
-    /* Release the reference */
-    le_ref_DeleteRef(DataProfileRefMap, profileRef);
 
     return LE_OK;
 }
@@ -414,8 +514,9 @@ le_result_t le_mdc_RemoveProfile
  *
  * @return
  *      - LE_OK on success
+ *      - LE_BAD_PARAMETER if input parameter is incorrect
  *      - LE_DUPLICATE if the data session is already connected for the given profile
- *      - LE_NOT_POSSIBLE for other failures
+ *      - LE_FAULT for other failures
  *
  * @note
  *      The process exits, if an invalid profile object is given
@@ -433,7 +534,7 @@ le_result_t le_mdc_StartSession
     if (profilePtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) found!", profileRef);
-        return LE_FAULT;
+        return LE_BAD_PARAMETER;
     }
 
     switch (profilePtr->modemData.pdp)
@@ -454,7 +555,7 @@ le_result_t le_mdc_StartSession
         }
         break;
         default:
-            return LE_NOT_POSSIBLE;
+            return LE_FAULT;
     }
 
     if ( ( result == LE_OK ) && callRef )
@@ -472,8 +573,8 @@ le_result_t le_mdc_StartSession
  *
  * @return
  *      - LE_OK on success
- *      - LE_FAULT if the input parameter is not valid
- *      - LE_NOT_POSSIBLE for other failures
+ *      - LE_BAD_PARAMETER if the input parameter is not valid
+ *      - LE_FAULT for other failures
  *
  * @note
  *      The process exits, if an invalid profile object is given
@@ -488,7 +589,7 @@ le_result_t le_mdc_StopSession
     if (profilePtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) found!", profileRef);
-        return LE_FAULT;
+        return LE_BAD_PARAMETER;
     }
 
     return pa_mdc_StopSession(profilePtr->callRef);
@@ -500,10 +601,8 @@ le_result_t le_mdc_StopSession
  *
  * @return
  *      - LE_OK on success
- *      - LE_NOT_POSSIBLE on failure
- *
- * @note
- *      The process exits, if an invalid profile object is given
+ *      - LE_BAD_PARAMETER if an input parameter is not valid
+ *      - LE_FAULT on failure
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_mdc_GetSessionState
@@ -516,12 +615,12 @@ le_result_t le_mdc_GetSessionState
     if (profilePtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) found!", profileRef);
-        return LE_FAULT;
+        return LE_BAD_PARAMETER;
     }
     if (isConnectedPtr == NULL)
     {
         LE_KILL_CLIENT("isConnectedPtr is NULL !");
-        return LE_FAULT;
+        return LE_BAD_PARAMETER;
     }
 
     le_result_t result;
@@ -578,8 +677,12 @@ le_mdc_SessionStateHandlerRef_t le_mdc_AddSessionStateHandler
     /* Update the handler counter */
     profilePtr->handlerCount++;
 
+    le_mdc_SessionStateHandlerRef_t HandlerRef = le_ref_CreateRef( StateHandlerRefMap,
+                                                                sessionStateHandlerPtr );
 
-    return (le_mdc_SessionStateHandlerRef_t)(sessionStateHandlerPtr);
+    LE_DEBUG("%p %p", sessionStateHandlerPtr, HandlerRef);
+
+     return HandlerRef;
 }
 
 
@@ -593,20 +696,22 @@ le_mdc_SessionStateHandlerRef_t le_mdc_AddSessionStateHandler
 //--------------------------------------------------------------------------------------------------
 void le_mdc_RemoveSessionStateHandler
 (
-    le_mdc_SessionStateHandlerRef_t    sessionStateHandler ///< [IN] The handler reference.
+    le_mdc_SessionStateHandlerRef_t    sessionStateHandlerRef ///< [IN] The handler reference.
 )
 {
-    if (!sessionStateHandler)
+    le_mdc_SessionStateHandler_t* sessionStateHandlerPtr = le_ref_Lookup(StateHandlerRefMap,
+                                                                         sessionStateHandlerRef);
+
+    if (!sessionStateHandlerPtr)
     {
-        LE_KILL_CLIENT("Invalid parameter (%p) found!", sessionStateHandler);
+        LE_KILL_CLIENT("Invalid parameter (%p) found!", sessionStateHandlerRef);
         return;
     }
 
-
-    le_event_RemoveHandler(sessionStateHandler->handlerRef);
+    le_event_RemoveHandler(sessionStateHandlerPtr->handlerRef);
 
     /* update the handler counter */
-    le_mdc_Profile_t* profilePtr = le_ref_Lookup(DataProfileRefMap, sessionStateHandler->profileRef);
+    le_mdc_Profile_t* profilePtr = le_ref_Lookup(DataProfileRefMap, sessionStateHandlerPtr->profileRef);
 
     if ( profilePtr )
     {
@@ -614,12 +719,15 @@ void le_mdc_RemoveSessionStateHandler
     }
     else
     {
-        LE_KILL_CLIENT("Invalid reference (%p) found!", sessionStateHandler->profileRef);
+        LE_KILL_CLIENT("Invalid reference (%p) found!", sessionStateHandlerPtr->profileRef);
         return;
     }
 
+    /* Release the reference */
+    le_ref_DeleteRef(StateHandlerRefMap, sessionStateHandlerRef);
+
     /* Release the handlerRef */
-    le_mem_Release(sessionStateHandler);
+    le_mem_Release(sessionStateHandlerPtr);
 }
 
 
@@ -630,7 +738,7 @@ void le_mdc_RemoveSessionStateHandler
  * @return
  *      - LE_OK on success
  *      - LE_OVERFLOW if the interface name can't fit in interfaceNameStr
- *      - LE_NOT_POSSIBLE on any other failure
+ *      - LE_FAULT on any other failure
  *
  * @note
  *      The process exits, if an invalid profile object is given
@@ -667,7 +775,7 @@ le_result_t le_mdc_GetInterfaceName
  * @return
  *      - LE_OK on success
  *      - LE_OVERFLOW if the IP address would not fit in ipAddrStr
- *      - LE_NOT_POSSIBLE for all other errors
+ *      - LE_FAULT for all other errors
  *
  * @note
  *      The process exits, if an invalid profile object is given
@@ -704,7 +812,7 @@ le_result_t le_mdc_GetIPv4Address
  * @return
  *      - LE_OK on success
  *      - LE_OVERFLOW if the IP address would not fit in gatewayAddrStr
- *      - LE_NOT_POSSIBLE for all other errors
+ *      - LE_FAULT for all other errors
  *
  * @note
  *      The process exits, if an invalid profile object is given
@@ -742,7 +850,7 @@ le_result_t le_mdc_GetIPv4GatewayAddress
  * @return
  *      - LE_OK on success
  *      - LE_OVERFLOW if the IP address would not fit in buffer
- *      - LE_NOT_POSSIBLE for all other errors
+ *      - LE_FAULT for all other errors
  *
  * @note
  *      - If only one DNS address is available, then it will be returned, and an empty string will
@@ -790,7 +898,7 @@ le_result_t le_mdc_GetIPv4DNSAddresses
  * @return
  *      - LE_OK on success
  *      - LE_OVERFLOW if the IP address would not fit in ipAddrStr
- *      - LE_NOT_POSSIBLE for all other errors
+ *      - LE_FAULT for all other errors
  *
  * @note
  *      The process exits, if an invalid profile object is given
@@ -828,7 +936,7 @@ le_result_t le_mdc_GetIPv6Address
  * @return
  *      - LE_OK on success
  *      - LE_OVERFLOW if the IP address would not fit in gatewayAddrStr
- *      - LE_NOT_POSSIBLE for all other errors
+ *      - LE_FAULT for all other errors
  *
  * @note
  *      The process exits, if an invalid profile object is given
@@ -866,7 +974,7 @@ le_result_t le_mdc_GetIPv6GatewayAddress
  * @return
  *      - LE_OK on success
  *      - LE_OVERFLOW if the IP address can't fit in buffer
- *      - LE_NOT_POSSIBLE for all other errors
+ *      - LE_FAULT for all other errors
  *
  * @note
  *      - If only one DNS address is available, it will be returned, and an empty string will
@@ -912,7 +1020,7 @@ le_result_t le_mdc_GetIPv6DNSAddresses
  *
  * @return
  *      - LE_OK on success
- *      - LE_NOT_POSSIBLE for all other errors
+ *      - LE_FAULT for all other errors
  *
  * @note
  *      The process exits, if an invalid profile object is given
@@ -1022,7 +1130,7 @@ bool le_mdc_IsIPv6
  *
  * @return
  *      - LE_OK on success
- *      - LE_NOT_POSSIBLE for all other errors
+ *      - LE_FAULT for all other errors
  *
  * @note
  *      - The process exits, if an invalid pointer is given
@@ -1063,7 +1171,7 @@ le_result_t le_mdc_GetBytesCounters
  *
  * @return
  *      - LE_OK on success
- *      - LE_NOT_POSSIBLE for all other errors
+ *      - LE_FAULT for all other errors
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_mdc_ResetBytesCounter
@@ -1082,7 +1190,7 @@ le_result_t le_mdc_ResetBytesCounter
  * @return
  *      - LE_OK on success
  *      - LE_BAD_PARAMETER if the PDP is not supported
- *      - LE_NOT_POSSIBLE if the data session is currently connected for the given profile
+ *      - LE_FAULT if the data session is currently connected for the given profile
  *
  * @note
  *      The process exits, if an invalid profile object is given
@@ -1098,7 +1206,7 @@ le_result_t le_mdc_SetPDP
     if (profilePtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) found!", profileRef);
-        return LE_FAULT;
+        return LE_BAD_PARAMETER;
     }
 
     le_result_t result;
@@ -1107,7 +1215,7 @@ le_result_t le_mdc_SetPDP
     result = le_mdc_GetSessionState(profileRef, &isConnected);
     if ( (result != LE_OK) || isConnected )
     {
-        return LE_NOT_POSSIBLE;
+        return LE_FAULT;
     }
 
     profilePtr->modemData.pdp = pdp;
@@ -1156,10 +1264,9 @@ le_mdc_Pdp_t le_mdc_GetPDP
  *
  * @return
  *      - LE_OK on success
- *      - LE_NOT_POSSIBLE if the data session is currently connected for the given profile
+ *      - LE_BAD_PARAMETER if an input parameter is not valid
+ *      - LE_FAULT if the data session is currently connected for the given profile
  *
- * @note If APN is too long (max APN_NAME_MAX_LEN digits), it is a fatal error, the
- *       function will not return.
  * @note
  *      The process exits, if an invalid profile object is given
  */
@@ -1174,12 +1281,12 @@ le_result_t le_mdc_SetAPN
     if (profilePtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) found!", profileRef);
-        return LE_FAULT;
+        return LE_BAD_PARAMETER;
     }
     if (apnPtr == NULL)
     {
         LE_CRIT("apnStr is NULL !");
-        return LE_FAULT;
+        return LE_BAD_PARAMETER;
     }
 
     size_t apnLen = strlen(apnPtr);
@@ -1187,7 +1294,7 @@ le_result_t le_mdc_SetAPN
     {
         LE_CRIT("apnStr is too long (%zd) > LE_MDC_APN_NAME_MAX_LEN (%d)!",
             apnLen,LE_MDC_APN_NAME_MAX_LEN);
-        return LE_FAULT;
+        return LE_BAD_PARAMETER;
     }
 
     le_result_t result;
@@ -1196,7 +1303,7 @@ le_result_t le_mdc_SetAPN
     result = le_mdc_GetSessionState(profileRef, &isConnected);
     if ( (result != LE_OK) || isConnected )
     {
-        return LE_NOT_POSSIBLE;
+        return LE_FAULT;
     }
 
     // We already know that the APN will fit, so strcpy() is okay here
@@ -1211,8 +1318,9 @@ le_result_t le_mdc_SetAPN
  *
  * @return
  *      - LE_OK on success
+ *      - LE_BAD_PARAMETER if an input parameter is not valid
  *      - LE_OVERFLOW if the APN is is too long
- *      - LE_NOT_POSSIBLE on failed
+ *      - LE_FAULT on failed
  *
  * @note
  *      The process exits, if an invalid profile object is given
@@ -1229,18 +1337,18 @@ le_result_t le_mdc_GetAPN
     if (profilePtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) found!", profileRef);
-        return LE_FAULT;
+        return LE_BAD_PARAMETER;
     }
     if (apnPtr == NULL)
     {
         LE_CRIT("apnStr is NULL !");
-        return LE_FAULT;
+        return LE_BAD_PARAMETER;
     }
 
     if ( pa_mdc_ReadProfile(profilePtr->profileIndex,&profilePtr->modemData) != LE_OK )
     {
         LE_ERROR("Could not read profile at index %d", profilePtr->profileIndex);
-        return LE_NOT_POSSIBLE;
+        return LE_FAULT;
     }
 
     return le_utf8_Copy(apnPtr,profilePtr->modemData.apn,apnSize,NULL);
@@ -1326,8 +1434,9 @@ le_result_t le_mdc_SetAuthentication
  *
  * @return
  *      - LE_OK on success
+ *      - LE_BAD_PARAMETER if an input parameter is not valid
  *      - LE_OVERFLOW userName or password are too small
- *      - LE_NOT_POSSIBLE on failed
+ *      - LE_FAULT on failed
  *
  * @note
  *      The process exits, if an invalid profile object is given
@@ -1348,28 +1457,28 @@ le_result_t le_mdc_GetAuthentication
     if (profilePtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) found!", profileRef);
-        return LE_FAULT;
+        return LE_BAD_PARAMETER;
     }
     if (typePtr == NULL)
     {
         LE_CRIT("typePtr is NULL !");
-        return LE_FAULT;
+        return LE_BAD_PARAMETER;
     }
     if (userNamePtr == NULL)
     {
         LE_CRIT("userNamePtr is NULL !");
-        return LE_FAULT;
+        return LE_BAD_PARAMETER;
     }
     if (passwordPtr == NULL)
     {
         LE_CRIT("passwordPtr is NULL !");
-        return LE_FAULT;
+        return LE_BAD_PARAMETER;
     }
 
     if ( pa_mdc_ReadProfile(profilePtr->profileIndex,&profilePtr->modemData) != LE_OK )
     {
         LE_ERROR("Could not read profile at index %d", profilePtr->profileIndex);
-        return LE_NOT_POSSIBLE;
+        return LE_FAULT;
     }
 
     *typePtr = profilePtr->modemData.authentication.type ;
@@ -1406,84 +1515,4 @@ uint32_t le_mdc_NumProfiles
 )
 {
     return PA_MDC_MAX_PROFILE;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Get an available profile.
- *
- * @return
- *      - LE_OK if a profileRef has been found
- *      - LE_FAULT otherwise
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t le_mdc_GetAvailableProfile
-(
-    le_mdc_ProfileRef_t* profileRefPtr ///< [OUT] Profile reference
-)
-{
-    uint32_t profileIndex;
-    le_result_t result;
-    bool isAllowed;
-
-    /* Global index explicitely specified */
-    if (DefaultGlobalProfileIndex != 0)
-    {
-        *profileRefPtr = le_mdc_GetProfile(DefaultGlobalProfileIndex);
-        return LE_OK;
-    }
-
-    /* Look for current radio technology */
-    le_mrc_Rat_t rat;
-    const uint32_t * defaultProfileIndexPtr;
-    uint32_t profileIndexMax;
-
-    result = le_mrc_GetRadioAccessTechInUse(&rat);
-    if (result != LE_OK)
-    {
-        rat = LE_MRC_RAT_GSM;
-    }
-
-    switch (rat)
-    {
-        /* 3GPP2 */
-        case LE_MRC_RAT_CDMA:
-            profileIndex = PA_MDC_MIN_INDEX_3GPP2_PROFILE;
-            profileIndexMax = PA_MDC_MAX_INDEX_3GPP2_PROFILE;
-            defaultProfileIndexPtr = &Default3gpp2ProfileIndex;
-            break;
-
-        /* 3GPP */
-        default:
-            profileIndex = PA_MDC_MIN_INDEX_3GPP_PROFILE;
-            profileIndexMax = PA_MDC_MAX_INDEX_3GPP_PROFILE;
-            defaultProfileIndexPtr = &Default3gppProfileIndex;
-            break;
-    }
-
-    /* Index explicitely specified for that technology */
-    if (*defaultProfileIndexPtr != 0)
-    {
-        *profileRefPtr = le_mdc_GetProfile(*defaultProfileIndexPtr);
-        return LE_OK;
-    }
-
-    /* Search the first allowed profile for that technology */
-    for (; profileIndex <= profileIndexMax; profileIndex++)
-    {
-        result = pa_mdc_IsProfileAllowed(profileIndex, &isAllowed);
-
-        /* Only consider that index if allowed */
-        if (isAllowed)
-        {
-            *profileRefPtr = le_mdc_GetProfile(profileIndex);
-            return LE_OK;
-        }
-    }
-
-    LE_ERROR("No profile available");
-
-    *profileRefPtr = NULL;
-
-    return LE_FAULT;
 }

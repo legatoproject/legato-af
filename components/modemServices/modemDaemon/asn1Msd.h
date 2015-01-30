@@ -2,7 +2,7 @@
  *
  * This file contains the declarations of the ASN1 MSD builder.
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 #ifndef LEGATO_ASN1_MSD_INCLUDE_GUARD
@@ -83,6 +83,7 @@ typedef struct {
    bool liquidPropaneGas;
    bool electricEnergyStorage;
    bool hydrogenStorage;
+   bool otherStorage;
 } msd_VehiclePropulsionStorageType_t;
 
 //--------------------------------------------------------------------------------------------------
@@ -170,60 +171,122 @@ typedef struct {
     msd_Message_t msdMsg;
 } msd_t;
 
-/* ERA Glonass specific types for the msd_optionalData_t parts */
+
+/* ERA GLONASS specific types for the OptionalData_t parts */
 //--------------------------------------------------------------------------------------------------
 /**
- * Data structure to gather the ERA Glonass specific data.
+ * Data structure to gather the ERA GLONASS specific data.
  *
  */
 //--------------------------------------------------------------------------------------------------
+
 typedef struct {
-   /*12-A1 ID  integer 1 Version of format of additional data of MSD is set to "1".*/
-   uint8_t ID;
+   /*
+    * ERAAdditionalData ::= SEQUENCE {
+    * crashSeverity INTEGER(0..2047) OPTIONAL,
+    * diagnosticResult DiagnosticResult OPTIONAL,
+    * crashInfo CrashInfo OPTIONAL,
+    * ...
+    * }
+    */
+   bool presentCrashSeverity;
+   uint32_t crashSeverity; /* INTEGER(0..2047) OPTIONAL */
 
-   /** 12-A2 -BOOLEAN
-    * TRUE – significant probability of danger to life and health of people in the vehicle cab;
-    * FALSE – no significant probability of danger to life and health of people in the vehicle cab.*/
-   bool SevereCrashEstimation;
-
-   bool testResultsDefPres;
+   bool presentDiagnosticResult;
    struct
    {
+      bool presentMicConnectionFailure;
       bool micConnectionFailure;
-      bool micFailure;
-      bool rightSpeakerFailure;
-      bool leftSpeakerFailure;
-      bool speakersFailure;
-      bool ignitionLineFailure;
-      bool uimFailure;
-      bool statusIndicatorFailure;
-      bool batteryFailure;
-      bool batteryVoltageLow;
-      bool crashSensorFailure;
-      bool swImageCorruption;
-      bool commModuleInterfaceFailure;
-      bool gnssReceiverFailure;
-      bool raimProblem;
-      bool gnssAntennaFailure;
-      bool commModuleFailure;
-      bool eventsMemoryOverflow;
-      bool crashProfileMemoryOverflow;
-      bool otherCriticalFailires;
-      bool otherNotCriticalFailures;
-   }testResultsDef;
 
-   bool crashTypePres;
+      bool presentMicFailure;
+      bool micFailure;
+
+      bool presentRightSpeakerFailure;
+      bool rightSpeakerFailure;
+
+      bool presentLeftSpeakerFailure;
+      bool leftSpeakerFailure;
+
+      bool presentSpeakersFailure;
+      bool speakersFailure;
+
+      bool presentIgnitionLineFailure;
+      bool ignitionLineFailure;
+
+      bool presentUimFailure;
+      bool uimFailure;
+
+      bool presentStatusIndicatorFailure;
+      bool statusIndicatorFailure;
+
+      bool presentBatteryFailure;
+      bool batteryFailure;
+
+      bool presentBatteryVoltageLow;
+      bool batteryVoltageLow;
+
+      bool presentCrashSensorFailure;
+      bool crashSensorFailure;
+
+      bool presentFirmwareImageCorruption;
+      bool firmwareImageCorruption;
+
+      bool presentCommModuleInterfaceFailure;
+      bool commModuleInterfaceFailure;
+
+      bool presentGnssReceiverFailure;
+      bool gnssReceiverFailure;
+
+      bool presentRaimProblem;
+      bool raimProblem;
+
+      bool presentGnssAntennaFailure;
+      bool gnssAntennaFailure;
+
+      bool presentCommModuleFailure;
+      bool commModuleFailure;
+
+      bool presentEventsMemoryOverflow;
+      bool eventsMemoryOverflow;
+
+      bool presentCrashProfileMemoryOverflow;
+      bool crashProfileMemoryOverflow;
+
+      bool presentOtherCriticalFailures;
+      bool otherCriticalFailures;
+
+      bool presentOtherNotCriticalFailures;
+      bool otherNotCriticalFailures;
+   }diagnosticResult;
+
+   bool presentCrashInfo;
    struct
    {
+      bool presentCrashFront;
       bool crashFront;
-      bool crashSide;
-      bool crashFrontOrSide;
+
+      bool presentCrashLeft;
+      bool crashLeft;
+
+      bool presentCrashRight;
+      bool crashRight;
+
+      bool presentCrashRear;
       bool crashRear;
+
+      bool presentCrashRollover;
       bool crashRollover;
+
+      bool presentCrashSide;
+      bool crashSide;
+
+      bool presentCrashFrontOrSide;
+      bool crashFrontOrSide;
+
+      bool presentCrashAnotherType;
       bool crashAnotherType;
    }crashType;
 }msd_EraGlonassData_t;
-
 
 //--------------------------------------------------------------------------------------------------
 /**

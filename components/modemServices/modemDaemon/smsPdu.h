@@ -2,7 +2,7 @@
  *
  * Functions to interact with SMS PDU data.
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 #include "legato.h"
@@ -52,7 +52,7 @@ le_result_t smsPdu_Initialize
  * Decode the content of dataPtr.
  *
  * @return LE_OK            Function succeed
- * @return LE_NOT_POSSIBLE  Protocol is not supported
+ * @return LE_UNSUPPORTED   Protocol is not supported
  * @return LE_FAULT         Function failed
  */
 //--------------------------------------------------------------------------------------------------
@@ -70,7 +70,7 @@ le_result_t smsPdu_Decode
  * Encode the content of messagePtr in PDU format.
  *
  * @return LE_OK            Function succeed
- * @return LE_NOT_POSSIBLE  Protocol is not supported
+ * @return LE_UNSUPPORTED   Protocol is not supported
  * @return LE_FAULT         Function failed
  */
 //--------------------------------------------------------------------------------------------------

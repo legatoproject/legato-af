@@ -9,5 +9,6 @@ requires:
     {
         le_mdmDefs.api  [types-only]
         le_mdc.api      [types-only]
+        le_mrc.api      [types-only]
     }
 }

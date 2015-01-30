@@ -1,12 +1,12 @@
 /**
  *
- * Copyright (C) Sierra Wireless, Inc. 2012. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 
 /** @file atcmdsync.c
  *
- * Copyright (C) Sierra Wireless, Inc. 2012. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 #include "legato.h"
 
@@ -562,7 +562,7 @@ le_result_t atcmdsync_Init
  * This function must be called to send a standard command
  * This is the default sending with intermediate pattern
  *
- * @return LE_NOT_POSSIBLE when pattern match : ERROR, +CME ERROR, +CMS ERROR
+ * @return LE_FAULT when pattern match : ERROR, +CME ERROR, +CMS ERROR
  * @return LE_TIMEOUT when pattern match : TIMEOUT
  * @return LE_OK when pattern match : OK
  */
@@ -632,7 +632,7 @@ atcmd_Ref_t atcmdsync_PrepareStandardCommand
 /**
  * This function must be called to check the result structure
  *
- * @return LE_NOT_POSSIBLE when finalFailedPatternPtr match
+ * @return LE_FAULT when finalFailedPatternPtr match
  * @return LE_TIMEOUT when a timeout occur
  * @return LE_OK when finalSuccessPattern match
  */
@@ -654,7 +654,7 @@ le_result_t atcmdsync_CheckCommandResult
     for(i=0,tmp=finalFailedPatternPtr[0];tmp!=NULL;tmp=finalFailedPatternPtr[++i]) {
         if ( (strncmp(tmp, finalLinePtr,strlen(tmp)))==0)  {
             LE_WARN("Modem failed with '%s'",finalLinePtr);
-            return LE_NOT_POSSIBLE;
+            return LE_FAULT;
         }
     }
     for(i=0,tmp=finalSuccessPatternPtr[0];tmp!=NULL;tmp=finalSuccessPatternPtr[++i]) {
@@ -664,7 +664,7 @@ le_result_t atcmdsync_CheckCommandResult
     }
 
     LE_WARN("Modem failed with unspecified error '%s'",finalLinePtr);
-    return LE_NOT_POSSIBLE;
+    return LE_FAULT;
 }
 
 //--------------------------------------------------------------------------------------------------

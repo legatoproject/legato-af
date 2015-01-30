@@ -1,7 +1,7 @@
 /**
  * @page c_pa_mcc Modem Call Control Platform Adapter API
  *
- * @ref pa_mcc.h "Click here for the API reference documentation."
+ * @ref pa_mcc.h "API Reference"
  *
  * <HR>
  *
@@ -26,7 +26,7 @@
  *
  * <HR>
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 
@@ -34,7 +34,7 @@
  *
  * Legato @ref c_pa_mcc include file.
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 #ifndef LEGATO_PAMCC_INCLUDE_GUARD
@@ -87,7 +87,7 @@ pa_mcc_cug_t;
 typedef struct {
     uint8_t                         callId;                               ///< Outgoing call Id
     le_mcc_call_Event_t             event;                                ///< Event generated
-    char                            phoneNumber[LE_MDMDEFS_PHONE_NUM_MAX_LEN];     ///< the phone number
+    char                            phoneNumber[LE_MDMDEFS_PHONE_NUM_MAX_BYTES];     ///< the phone number
     le_mcc_call_TerminationReason_t TerminationEvent;                     ///< the termination reason
 }
 pa_mcc_CallEventData_t;
@@ -112,7 +112,8 @@ typedef void (*pa_mcc_CallEventHandlerFunc_t)
 /**
  * This function must be called to register a handler for Call event notifications.
  *
- * @return LE_NOT_POSSIBLE  The function failed to register the handler.
+ * @return LE_FAULT         The function failed to register the handler.
+ * @return LE_DUPLICATE     There is already a handler registered.
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
@@ -137,7 +138,7 @@ void pa_mcc_ClearCallEventHandler
 /**
  * This function must be called to set a voice call.
  *
- * @return LE_NOT_POSSIBLE  The function failed.
+ * @return LE_FAULT         The function failed.
  * @return LE_BUSY          A call is already ongoing.
  * @return LE_OK            The function succeeded.
  */
@@ -154,7 +155,7 @@ le_result_t pa_mcc_VoiceDial
 /**
  * This function must be called to answer a call.
  *
- * @return LE_NOT_POSSIBLE  The function failed.
+ * @return LE_FAULT         The function failed.
  * @return LE_TIMEOUT       No response was received.
  * @return LE_OK            The function succeeded.
  */
@@ -168,7 +169,7 @@ le_result_t pa_mcc_Answer
 /**
  * This function must be called to disconnect the remote user.
  *
- * @return LE_NOT_POSSIBLE  The function failed.
+ * @return LE_FAULT         The function failed.
  * @return LE_TIMEOUT       No response was received.
  * @return LE_OK            The function succeeded.
  */
@@ -182,7 +183,7 @@ le_result_t pa_mcc_HangUp
 /**
  * This function must be called to end all the ongoing calls.
  *
- * @return LE_NOT_POSSIBLE  The function failed.
+ * @return LE_FAULT         The function failed.
  * @return LE_TIMEOUT       No response was received.
  * @return LE_OK            The function succeeded.
  */

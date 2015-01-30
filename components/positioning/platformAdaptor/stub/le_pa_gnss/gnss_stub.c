@@ -2,35 +2,12 @@
  *
  * Stub implementation for component @ref c_pa_gnss.
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 #include <pa_gnss.h>
 
 static le_event_Id_t        GnssEventId;
-
-#ifdef GNSS_STUB_FAKE_POSITION
-
-const pa_Gnss_Position_t StubPosition = {
-        .latitude = +48858300,
-        .longitude = +2294400,
-        .altitude = 0,
-        .hSpeed = 0,
-        .track = 0,
-        .hdop = 0,
-        .vdop = 0,
-        .timeInfo = {
-                .hours = 0,
-                .minutes = 0,
-                .seconds = 0,
-                .milliseconds = 0,
-                .year = 2013,
-                .month = 1,
-                .day = 1,
-        },
-};
-
-#endif /* GNSS_STUB_FAKE_POSITION */
 
 /**
  * This function must be called to initialize the PA gnss Module.
@@ -110,8 +87,6 @@ le_result_t pa_gnss_SetAcquisitionRate
     uint32_t rate     ///< [IN] rate in seconds
 )
 {
-
-
     return LE_OK;
 }
 
@@ -159,7 +134,7 @@ void pa_gnss_RemovePositionDataHandler
  * This function must be called to get the location's data.
  *
  * @return LE_FAULT         The function cannot get internal position information
- * @return LE_NOT_POSSIBLE  The function cannot convert internal position information
+ * @return LE_BAD_PARAMETER The given positionRef is invalid
  * @return LE_OK            The function succeeded.
  *
  * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
@@ -171,21 +146,22 @@ le_result_t pa_gnss_GetLastPositionData
     pa_Gnss_Position_Ref_t  positionRef   ///< [OUT] Reference to a position struct
 )
 {
-
-#ifdef GNSS_STUB_FAKE_POSITION
-
-    if (positionRef == NULL)
-    {
-        LE_WARN("Parameter are not valid");
-        return LE_FAULT;
-    }
-
-    memcpy(positionRef, &StubPosition, sizeof(pa_Gnss_Position_t));
-    return LE_OK;
-
-#else /* GNSS_STUB_FAKE_POSITION */
-
     return LE_FAULT;
-
-#endif /* GNSS_STUB_FAKE_POSITION */
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to restart the GNSS device.
+ *
+ * @return LE_FAULT         The function failed.
+ * @return LE_OK            The function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_gnss_ForceRestart
+(
+    pa_gnss_Restart_t  restartType ///< [IN] type of restart
+)
+{
+    return LE_FAULT;
+}
+

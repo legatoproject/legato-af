@@ -223,7 +223,7 @@ le_mem_Release(newATCmdRef);
  *
  * <HR>
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 
@@ -231,7 +231,7 @@ le_mem_Release(newATCmdRef);
  *
  * Legato @ref c_atmgr include file.
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 #ifndef LEGATO_ATMGR_INCLUDE_GUARD

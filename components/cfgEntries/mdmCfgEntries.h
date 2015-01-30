@@ -3,7 +3,7 @@
  *
  * Configuration Tree for ModemServices
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 #ifndef LEGATO_MDMCFGENTRIES_INCLUDE_GUARD
@@ -50,13 +50,12 @@
 #define CFG_MODEMSERVICE_MRC_TDSCDMA_BAND_PATH  CFG_MODEMSERVICE_MRC_PREFS_PATH"/"CFG_NODE_TDSCDMA_BAND
 
 #define CFG_NODE_ECALL                "eCall"
-#define CFG_NODE_PSAP                 "psap"
-#define CFG_NODE_PUSHPULL             "pushPull"
-#define CFG_NODE_MAX_REDIAL_ATTEMPTS  "maxRedialAttempts"
+#define CFG_NODE_SYSTEM_STD           "systemStandard"
 #define CFG_NODE_MSDVERSION           "msdVersion"
 #define CFG_NODE_VEH                  "vehicleType"
 #define CFG_NODE_VIN                  "vin"
 #define CFG_NODE_PROP                 "propulsionType"
 
 #define CFG_MODEMSERVICE_ECALL_PATH CFG_MODEMSERVICE_PATH"/"CFG_NODE_ECALL
+
 #endif // LEGATO_MDMCFGENTRIES_INCLUDE_GUARD

@@ -4,13 +4,14 @@
  *
  * This file contains the source code of the high level Positioning API.
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 //--------------------------------------------------------------------------------------------------
 
 
 #include "legato.h"
 #include "interfaces.h"
+#include "le_gnss_local.h"
 #include "pa_gnss.h"
 #include "posCfgEntries.h"
 
@@ -45,7 +46,7 @@
  * See le_posCtrl_Request().
  */
 //--------------------------------------------------------------------------------------------------
-static int NumCurrentActivations = 0;
+static int CurrentActivationsCount = 0;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -113,6 +114,21 @@ le_pos_SampleHandler_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Position control Client request objet structure.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    le_posCtrl_ActivationRef_t      posCtrlActivationRef;   ///< Potistioning control reference.
+    le_msg_SessionRef_t             sessionRef;             ///< Client session identifier.
+    le_dls_Link_t                   link;                   ///< Object node link.
+}
+ClientRequest_t;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Safe Reference Map for service activation requests.
  */
 //--------------------------------------------------------------------------------------------------
@@ -162,6 +178,15 @@ static le_mem_PoolRef_t   PosSampleHandlerPoolRef;
  */
 //--------------------------------------------------------------------------------------------------
 static le_ref_MapRef_t PosSampleMap;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Memory Pool for Positioning Client Handler.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mem_PoolRef_t PosCtrlHandlerPoolRef;
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -269,6 +294,7 @@ static void PosSampleHandlerDestructor
         } while (linkPtr != NULL);
     }
 }
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -607,6 +633,50 @@ static void LoadPositioningFromConfigDb
 }
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+* handler function to release Positioning service
+*
+*/
+//--------------------------------------------------------------------------------------------------
+static void CloseSessionEventHandler
+(
+    le_msg_SessionRef_t sessionRef,
+    void* contextPtr
+)
+{
+    LE_ERROR("SessionRef (%p) has been closed", sessionRef);
+
+    if(!sessionRef)
+    {
+        LE_ERROR("ERROR sessionRef is NULL");
+    }
+
+    // Shearch for all positioning control request references used by the current client session
+    //  that has been closed.
+    le_ref_IterRef_t iterRef = le_ref_GetIterator(ActivationRequestRefMap);
+    le_result_t result = le_ref_NextNode(iterRef);
+    while ( result == LE_OK )
+    {
+        ClientRequest_t * posCtrlHandlerPtr =
+                        (ClientRequest_t *) le_ref_GetValue(iterRef);
+
+        // Check if the session reference saved matchs with the current session reference.
+        if (posCtrlHandlerPtr->sessionRef == sessionRef)
+        {
+            le_posCtrl_ActivationRef_t saferef =
+                            (le_posCtrl_ActivationRef_t) le_ref_GetSafeRef(iterRef);
+            LE_DEBUG("Release le_posCtrl_Release 0x%p, Session 0x%p",
+                saferef, sessionRef);
+
+            // Release positioning clent control request reference found.
+            le_posCtrl_Release(saferef);
+        }
+
+        // Get the next value in the reference mpa
+        result = le_ref_NextNode(iterRef);
+    }
+}
 
 //--------------------------------------------------------------------------------------------------
 // APIs.
@@ -626,9 +696,14 @@ COMPONENT_INIT
     le_mem_ExpandPool(PosSamplePoolRef,POSITIONING_SAMPLE_MAX);
     le_mem_SetDestructor(PosSamplePoolRef, PosSampleDestructor);
 
+    // Initialize the event client close function handler.
+    le_msg_ServiceRef_t msgService = le_posCtrl_GetServiceRef();
+    le_msg_AddServiceCloseHandler( msgService, CloseSessionEventHandler, NULL);
+
     // Create a pool for Position Sample Handler objects
     PosSampleHandlerPoolRef = le_mem_CreatePool("PosSampleHandlerPoolRef", sizeof(le_pos_SampleHandler_t));
     le_mem_SetDestructor(PosSampleHandlerPoolRef, PosSampleHandlerDestructor);
+
 
     // Create the reference HashMap for positioning sample
     PosSampleMap = le_ref_CreateMap("PosSampleMap", POSITIONING_SAMPLE_MAX);
@@ -640,10 +715,14 @@ COMPONENT_INIT
     // the expected number of simultaneous data requests, so take a reasonable guess.
     ActivationRequestRefMap = le_ref_CreateMap("Positioning Client", POSITIONING_ACTIVATION_MAX);
 
+    // Create a pool for Position control client objects.
+    PosCtrlHandlerPoolRef = le_mem_CreatePool("PosCtrlHandlerPoolRef", sizeof(ClientRequest_t));
+    le_mem_ExpandPool(PosCtrlHandlerPoolRef,POSITIONING_ACTIVATION_MAX);
+
     // TODO define a policy for positioning device selection
     if (IsGNSSAvailable() == true)
     {
-        LE_FATAL_IF((pa_gnss_Init() != LE_OK),"Failed to initialize the PA GNSS module");
+        gnss_Init();
         LoadPositioningFromConfigDb();
     }
     else
@@ -669,26 +748,36 @@ le_posCtrl_ActivationRef_t le_posCtrl_Request
     void
 )
 {
-    // Need to return a unique reference that will be used by Release.  Don't actually have
-    // any data for now, but have to use some value other than NULL for the data pointer.
-    le_posCtrl_ActivationRef_t reqRef = le_ref_CreateRef(ActivationRequestRefMap, (void*)1);
+    ClientRequest_t * clientRequestPtr = le_mem_ForceAlloc(PosCtrlHandlerPoolRef);
 
-    if (reqRef)
+    // On le_mem_ForceAlloc failure, the process exits, so function doesn't need to checking the
+    // returned pointer for validity.
+
+    // Need to return a unique reference that will be used by Release.
+    le_posCtrl_ActivationRef_t reqRef =
+                    le_ref_CreateRef(ActivationRequestRefMap, clientRequestPtr);
+
+    if (CurrentActivationsCount == 0)
     {
-        if (NumCurrentActivations == 0)
+        // Start the GNSS acquisition.
+        if (pa_gnss_Start() != LE_OK)
         {
-            // Write in configuration tree => ON (true)
-            if (pa_gnss_Start() != LE_OK)
-            {
-                le_ref_DeleteRef(ActivationRequestRefMap, reqRef);
-                return NULL;
-            }
+            le_ref_DeleteRef(ActivationRequestRefMap, reqRef);
+            le_mem_Release(clientRequestPtr);
+            return NULL;
         }
-        NumCurrentActivations++;
     }
+    CurrentActivationsCount++;
+
+    // Save the client session "msgSession" associated with the request reference "reqRef"
+    le_msg_SessionRef_t msgSession = le_posCtrl_GetClientSessionRef();
+    clientRequestPtr->sessionRef = msgSession;
+    clientRequestPtr->posCtrlActivationRef = reqRef;
+
+    LE_DEBUG("le_posCtrl_Request ref (%p), SessionRef (%p)" ,reqRef, msgSession);
+
     return reqRef;
 }
-
 
 
 //--------------------------------------------------------------------------------------------------
@@ -711,15 +800,17 @@ void le_posCtrl_Release
     }
     else
     {
-        if (NumCurrentActivations > 0)
+        if (CurrentActivationsCount > 0)
         {
-            NumCurrentActivations--;
-            if(NumCurrentActivations == 0)
+            CurrentActivationsCount--;
+            if(CurrentActivationsCount == 0)
             {
                 pa_gnss_Stop();
             }
         }
         le_ref_DeleteRef(ActivationRequestRefMap, ref);
+        LE_DEBUG("Remove Position Ctrl (%p)",ref);
+        le_mem_Release(posPtr);
     }
 }
 
@@ -1465,81 +1556,4 @@ le_result_t le_pos_GetDirection
     }
 }
 
-//--------------------------------------------------------------------------------------------------
-/**
- * This function must be called to load xtra.bin file into the gnss.
- *
- * @return LE_FAULT         The function failed to inject the xtra.bin file
- * @return LE_OK            The function succeeded.
- *
- * @note If the caller is passing an invalid Position reference into this function,
- *       it is a fatal error, the function will not return.
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t le_pos_LoadXtra
-(
-    const char* xtraFilePathPtr    ///< [IN] xtra.bin file path
-)
-{
-    le_result_t result;
-    if (!xtraFilePathPtr)
-    {
-        LE_KILL_CLIENT("xtraFilePathPtr is NULL !");
-        return LE_FAULT;
-    }
-
-    if ( pa_gnss_EnableXtraSession() != LE_OK )
-    {
-        LE_DEBUG("Cound not enable xtra session ");
-        return LE_FAULT;
-    }
-
-    result = pa_gnss_LoadXtra(xtraFilePathPtr);
-
-    if ( result != LE_OK)
-    {
-        LE_DEBUG("Could not inject '%s' files", xtraFilePathPtr);
-    }
-
-    if ( pa_gnss_DisableXtraSession() != LE_OK )
-    {
-        LE_DEBUG("Cound not disable xtra session ");
-        return LE_FAULT;
-    }
-
-    return result;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This function must be called to get the validity of the last xtra.bin injected
- *
- * @return LE_FAULT         The function failed to get the validity
- * @return LE_OK            The function succeeded.
- *
- * @note If the caller is passing an invalid Position reference into this function,
- *       it is a fatal error, the function will not return.
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t le_pos_GetXtraValidity
-(
-    le_clk_Time_t *startTimePtr,    ///< [OUT] Start time
-    le_clk_Time_t *stopTimePtr      ///< [OUT] Stop time
-)
-{
-    if (!startTimePtr)
-    {
-        LE_KILL_CLIENT("startTimePtr is NULL !");
-        return LE_FAULT;
-    }
-
-    if (!stopTimePtr)
-    {
-        LE_KILL_CLIENT("stopTimePtr is NULL !");
-        return LE_FAULT;
-    }
-
-    return pa_gnss_GetXtraValidityTimes(startTimePtr,stopTimePtr);
-}
 

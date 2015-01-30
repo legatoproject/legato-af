@@ -2,7 +2,7 @@
 /**
  *  Cellular Network Services Server
  *
- *  Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ *  Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 // -------------------------------------------------------------------------------------------------
 
@@ -233,7 +233,7 @@ static void StartCellNetTimerHandler
             le_timer_Delete(timerRef);
 
             // Load SIM configuration from Config DB into the first SIM card found
-            for (i=1 ; i<=le_sim_CountSlots() ; i++)
+            for (i=1 ; i<=LE_SIM_TYPE_MAX ; i++)
             {
 
                 le_sim_ObjRef_t simRef = le_sim_Create(i);
@@ -274,7 +274,7 @@ static void StartCellularNetwork
     {
         IsOn = true;
         // Load SIM configuration from ConfigDB into the first SIM card found
-        for (i=1 ; i<=le_sim_CountSlots() ; i++)
+        for (i=1 ; i<=LE_SIM_TYPE_MAX ; i++)
         {
             le_sim_ObjRef_t simRef = le_sim_Create(i);
             if (le_sim_IsPresent(simRef))
@@ -492,7 +492,7 @@ static void* CellNetThread
     le_sim_AddNewStateHandler(SimStateHandler, NULL);
 
     // Register for MRC Network Registration state changes
-    le_mrc_AddNetRegStateHandler(MrcNetRegHandler, NULL);
+    le_mrc_AddNetRegStateEventHandler(MrcNetRegHandler, NULL);
 
 
     // Run the event loop
@@ -526,7 +526,7 @@ static void FirstLayerCellNetStateHandler
  * This function adds a handler ...
  */
 //--------------------------------------------------------------------------------------------------
-le_cellnet_StateHandlerRef_t le_cellnet_AddStateHandler
+le_cellnet_StateEventHandlerRef_t le_cellnet_AddStateEventHandler
 (
     le_cellnet_StateHandlerFunc_t handlerPtr,
     void* contextPtr
@@ -543,7 +543,7 @@ le_cellnet_StateHandlerRef_t le_cellnet_AddStateHandler
 
     le_event_SetContextPtr(handlerRef, contextPtr);
 
-    return (le_cellnet_StateHandlerRef_t)(handlerRef);
+    return (le_cellnet_StateEventHandlerRef_t)(handlerRef);
 }
 
 
@@ -552,9 +552,9 @@ le_cellnet_StateHandlerRef_t le_cellnet_AddStateHandler
  * This function removes a handler ...
  */
 //--------------------------------------------------------------------------------------------------
-void le_cellnet_RemoveStateHandler
+void le_cellnet_RemoveStateEventHandler
 (
-    le_cellnet_StateHandlerRef_t addHandlerRef
+    le_cellnet_StateEventHandlerRef_t addHandlerRef
 )
 {
     LE_PRINT_VALUE("%p", addHandlerRef);

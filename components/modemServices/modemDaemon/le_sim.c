@@ -2,41 +2,13 @@
  *
  * This file contains the data structures and the source code of the high level SIM APIs.
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 
 #include "legato.h"
 #include "interfaces.h"
 #include "pa_sim.h"
-
-
-//--------------------------------------------------------------------------------------------------
-// Symbols and enums.
-//--------------------------------------------------------------------------------------------------
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Maximum number of SIM objects we expect to have at one time.
- */
-//--------------------------------------------------------------------------------------------------
-#define SIM_MAX_CARDS    2
-
-//--------------------------------------------------------------------------------------------------
-/**
- * ICCID maximum length.
- *
- */
-//--------------------------------------------------------------------------------------------------
-#define ICCID_MAX_LEN   20
-
-//--------------------------------------------------------------------------------------------------
-/**
- * IMSI maximum length.
- *
- */
-//--------------------------------------------------------------------------------------------------
-#define IMSI_MAX_LEN   16
 
 
 //--------------------------------------------------------------------------------------------------
@@ -50,16 +22,17 @@
 //--------------------------------------------------------------------------------------------------
 typedef struct le_sim_Obj
 {
-    uint32_t        num;                       ///< The SIM card number.
-    char            ICCID[LE_SIM_ICCID_LEN];   ///< The integrated circuit card identifier.
-    char            IMSI[LE_SIM_IMSI_LEN];     ///< The international mobile subscriber identity.
-    char            PIN[LE_SIM_PIN_MAX_LEN+1]; ///< The PIN code.
-    char            PUK[LE_SIM_PUK_LEN+1];     ///< The PUK code.
-    char            phoneNumber[LE_MDMDEFS_PHONE_NUM_MAX_LEN]; /// < The Phone Number.
-    bool            isPresent;                 ///< The 'isPresent' flag.
-    le_dls_Link_t   link;                      ///< The Sim Object node link.
-    void*           ref;                       ///< The safe reference for this object.
-}Sim_t;
+    le_sim_Type_t       type;                       ///< The SIM type.
+    char                ICCID[LE_SIM_ICCID_BYTES];  ///< The integrated circuit card identifier.
+    char                IMSI[LE_SIM_IMSI_BYTES];    ///< The international mobile subscriber identity.
+    char                PIN[LE_SIM_PIN_MAX_BYTES];  ///< The PIN code.
+    char                PUK[LE_SIM_PUK_MAX_BYTES];  ///< The PUK code.
+    char                phoneNumber[LE_MDMDEFS_PHONE_NUM_MAX_BYTES]; /// < The Phone Number.
+    bool                isPresent;                  ///< The 'isPresent' flag.
+    void*               ref;                        ///< The safe reference for this object.
+    le_dls_Link_t       link;                       ///< The Sim Object node link.
+}
+Sim_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -67,7 +40,29 @@ typedef struct le_sim_Obj
  *
  */
 //--------------------------------------------------------------------------------------------------
-le_dls_List_t SimList;
+le_dls_List_t SimList = LE_DLS_LIST_INIT;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * session structure.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    le_msg_SessionRef_t sessionRef;                 ///< Session reference
+    le_sim_ObjRef_t     simRef;                     ///< SIM reference associate to the session
+    le_dls_Link_t       link;                       ///< The Sim session node link.
+}
+SimSession_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * SIM session list.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_dls_List_t SimSessionList = LE_DLS_LIST_INIT;
 
 //--------------------------------------------------------------------------------------------------
 //                                       Static declarations
@@ -83,6 +78,14 @@ static le_mem_PoolRef_t   SimPool;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Memory Pool for SIM session objects.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mem_PoolRef_t   SimSessionPool;
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Safe Reference Map for SIM objects.
  *
  */
@@ -95,7 +98,7 @@ static le_ref_MapRef_t SimRefMap;
  *
  */
 //--------------------------------------------------------------------------------------------------
-static uint32_t  SelectedCard;
+static le_sim_Type_t  SelectedCard;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -105,14 +108,66 @@ static uint32_t  SelectedCard;
 //--------------------------------------------------------------------------------------------------
 static le_event_Id_t NewSimStateEventId;
 
-
 //--------------------------------------------------------------------------------------------------
 /**
- * Number of card slots.
+ * Remove a SIM from the SIM session list
  *
  */
 //--------------------------------------------------------------------------------------------------
-static uint32_t NumOfSlots;
+static void RemoveSimFromSimSessionList
+(
+    le_sim_ObjRef_t simRef
+)
+{
+    SimSession_t*   simSessionPtr;
+    le_dls_Link_t*  linkPtr;
+
+    linkPtr = le_dls_Peek(&SimSessionList);
+
+    while (linkPtr != NULL)
+    {
+        // Get the node from SimList
+        simSessionPtr = CONTAINER_OF(linkPtr, SimSession_t, link);
+        // Check the node.
+        if (simSessionPtr->simRef == simRef)
+        {
+            // Move to the next node.
+            linkPtr = le_dls_PeekNext(&SimSessionList, linkPtr);
+
+            // Remove the link from the list.
+            le_dls_Remove(&SimSessionList, &simSessionPtr->link);
+        }
+        else
+        {
+            // Move to the next node.
+            linkPtr = le_dls_PeekNext(&SimSessionList, linkPtr);
+        }
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add a client to the SIM session list
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void AddClientInSimSessionList
+(
+    le_sim_ObjRef_t simRef
+)
+{
+    SimSession_t* simSessionPtr=NULL;
+
+    // Create the message node.
+    simSessionPtr = (SimSession_t*)le_mem_ForceAlloc(SimSessionPool);
+
+    simSessionPtr->sessionRef = le_sim_GetClientSessionRef();
+    simSessionPtr->simRef = simRef;
+    simSessionPtr->link = LE_DLS_LINK_INIT;
+
+    // Insert the message in the Sim Session List.
+    le_dls_Queue(&SimSessionList, &(simSessionPtr->link));
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -143,7 +198,7 @@ static void GetSimCardInformation
             simPtr->IMSI[0] = '\0';
             if(pa_sim_GetCardIdentification(iccid) != LE_OK)
             {
-                LE_ERROR("Failed to get the ICCID of card number %d.", simPtr->num);
+                LE_ERROR("Failed to get the ICCID of SIM type %d.", simPtr->type);
                 simPtr->ICCID[0] = '\0';
             }
             else
@@ -157,7 +212,7 @@ static void GetSimCardInformation
             // Get identification information
             if(pa_sim_GetCardIdentification(iccid) != LE_OK)
             {
-                LE_ERROR("Failed to get the ICCID of card number %d.", simPtr->num);
+                LE_ERROR("Failed to get the ICCID of SIM type %d.", simPtr->type);
                 simPtr->ICCID[0] = '\0';
             }
             else
@@ -167,7 +222,7 @@ static void GetSimCardInformation
 
             if(pa_sim_GetIMSI(imsi) != LE_OK)
             {
-                LE_ERROR("Failed to get the IMSI of card number %d.", simPtr->num);
+                LE_ERROR("Failed to get the IMSI of SIM type %d.", simPtr->type);
                 simPtr->IMSI[0] = '\0';
             }
             else
@@ -185,14 +240,14 @@ static void GetSimCardInformation
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Creates a new SIM object for a given card slot number.
+ * Creates a new SIM object for a given SIM type.
  *
  * @return A pointer to the SIM object.
  */
 //--------------------------------------------------------------------------------------------------
 static Sim_t* CreateSim
 (
-    uint32_t        cardNum,    ///< [in] The SIM card index (0 = first card in the device).
+    le_sim_Type_t simType,    ///< [in] The SIM type
     le_sim_States_t state       ///< [in] The current state of the SIM.
 )
 {
@@ -201,7 +256,7 @@ static Sim_t* CreateSim
     // Create the message node.
     simPtr = (Sim_t*)le_mem_ForceAlloc(SimPool);
 
-    simPtr->num= cardNum;
+    simPtr->type= simType;
     simPtr->ICCID[0] = '\0';
     simPtr->IMSI[0] = '\0';
     simPtr->isPresent = false;
@@ -239,14 +294,14 @@ static void SimDestructor
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Searches the SIM List for a SIM matching a given card number.
+ * Searches the SIM List for a SIM matching a given SIM type.
  *
  * @return A pointer to the SIM object, or NULL if not found.
  */
 //--------------------------------------------------------------------------------------------------
 static Sim_t* FindSim
 (
-    uint32_t cardNum    ///< [in] The card slot number (0 = first slot on the device).
+    le_sim_Type_t simType    ///< [in] The SIM type
 )
 {
     Sim_t*          simPtr;
@@ -258,7 +313,7 @@ static Sim_t* FindSim
         // Get the node from SimList
         simPtr = CONTAINER_OF(linkPtr, Sim_t, link);
         // Check the node.
-        if (simPtr->num == cardNum)
+        if (simPtr->type == simType)
         {
             return simPtr;
         }
@@ -278,19 +333,19 @@ static Sim_t* FindSim
 //--------------------------------------------------------------------------------------------------
 static le_result_t SelectSIMCard
 (
-    uint32_t simNum
+    le_sim_Type_t simType
 )
 {
-    if((simNum != SelectedCard) && (NumOfSlots > 1))
+    if(simType != SelectedCard)
     {
         // Select the SIM card
-        LE_DEBUG("Try to select card number.%d", simNum);
-        if(pa_sim_SelectCard(simNum) != LE_OK)
+        LE_DEBUG("Try to select SIM type.%d", simType);
+        if(pa_sim_SelectCard(simType) != LE_OK)
         {
-            LE_ERROR("Failed to select card number.%d", simNum);
+            LE_ERROR("Failed to select SIM type.%d", simType);
             return LE_NOT_FOUND;
         }
-        SelectedCard = simNum;
+        SelectedCard = simType;
     }
     return LE_OK;
 }
@@ -324,20 +379,20 @@ static void NewSimStateHandler
     pa_sim_Event_t* eventPtr
 )
 {
-    LE_DEBUG("New SIM state.%d for card.%d (eventPtr %p)", eventPtr->state, eventPtr->num, eventPtr);
+    LE_DEBUG("New SIM state.%d for type.%d (eventPtr %p)", eventPtr->state, eventPtr->simType, eventPtr);
 
-    Sim_t* simPtr = FindSim(eventPtr->num);
+    Sim_t* simPtr = FindSim(eventPtr->simType);
 
     // Create the SIM object if it does not exist yet
     if (simPtr == NULL)
     {
         LE_INFO("NO SIM object found, create a new one");
-        simPtr = CreateSim(eventPtr->num, eventPtr->state);
+        simPtr = CreateSim(eventPtr->simType, eventPtr->state);
     }
     // Otherwise, just update the one we found.
     else
     {
-        LE_DEBUG("Found SIM object for card number %d.", eventPtr->num);
+        LE_DEBUG("Found SIM object for SIM type %d.", eventPtr->simType);
         GetSimCardInformation(simPtr, eventPtr->state);
     }
 
@@ -346,7 +401,7 @@ static void NewSimStateHandler
     {
         case LE_SIM_BUSY:
         case LE_SIM_STATE_UNKNOWN:
-            LE_DEBUG("Discarding report for card.%d, state.%d", eventPtr->num, eventPtr->state);
+            LE_DEBUG("Discarding report for type.%d, state.%d", eventPtr->simType, eventPtr->state);
             return;
 
         default:
@@ -358,6 +413,65 @@ static void NewSimStateHandler
     LE_DEBUG("Report on SIM reference %p", simPtr->ref);
 
     le_mem_Release(eventPtr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * handler function to the close session service
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void CloseSessionEventHandler
+(
+    le_msg_SessionRef_t sessionRef,
+    void*               contextPtr
+)
+{
+    LE_INFO("Client killed");
+
+   if(!sessionRef)
+    {
+        LE_ERROR("ERROR sessionRef is NULL");
+        return;
+    }
+
+    SimSession_t*   simSessionPtr;
+    le_dls_Link_t*  linkPtr;
+
+    linkPtr = le_dls_Peek(&SimSessionList);
+    while (linkPtr != NULL)
+    {
+        // Get the node from SimList
+        simSessionPtr = CONTAINER_OF(linkPtr, SimSession_t, link);
+        // Check the node.
+        if (simSessionPtr->sessionRef == sessionRef)
+        {
+            // Move to the next node.
+            linkPtr = le_dls_PeekNext(&SimSessionList, linkPtr);
+
+            Sim_t* simPtr = le_ref_Lookup(SimRefMap, simSessionPtr->simRef);
+
+            if (simPtr == NULL)
+            {
+                LE_ERROR("Invalid reference (%p) ", simSessionPtr->simRef);
+                return;
+            }
+
+            LE_DEBUG( "Release simRef %p", simSessionPtr->simRef );
+
+            // release the SIM object
+            le_mem_Release(simPtr);
+
+            // Remove the link from the list.
+            le_dls_Remove(&SimSessionList, &simSessionPtr->link);
+        }
+        else
+        {
+            // Move to the next node.
+            linkPtr = le_dls_PeekNext(&SimSessionList, linkPtr);
+        }
+
+    }
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -379,15 +493,18 @@ void le_sim_Init
     // Create a pool for SIM objects
     SimPool = le_mem_CreatePool("SimPool", sizeof(Sim_t));
     le_mem_SetDestructor(SimPool, SimDestructor);
-    le_mem_ExpandPool(SimPool, SIM_MAX_CARDS);
+    le_mem_ExpandPool(SimPool, LE_SIM_TYPE_MAX);
+
+    // Create a pool for SIM Session objects
+    SimSessionPool = le_mem_CreatePool("SimSessionPool", sizeof(SimSession_t));
+    le_mem_ExpandPool(SimSessionPool, 10);
 
     // Create the Safe Reference Map to use for SIM object Safe References.
-    SimRefMap = le_ref_CreateMap("SimMap", SIM_MAX_CARDS);
+    SimRefMap = le_ref_CreateMap("SimMap", LE_SIM_TYPE_MAX);
 
-    NumOfSlots = pa_sim_CountSlots();
     LE_FATAL_IF((pa_sim_GetSelectedCard(&SelectedCard) != LE_OK), "Unable to get selected card.");
 
-    LE_DEBUG("Modem has %u SIM slots and SIM %u is selected.", NumOfSlots, SelectedCard);
+    LE_DEBUG("SIM %u is selected.", SelectedCard);
 
     // Create an event Id for new SIM state notifications
     NewSimStateEventId = le_event_CreateId("NewSimState", sizeof(le_sim_ObjRef_t));
@@ -395,6 +512,11 @@ void le_sim_Init
     // Register a handler function for new SIM state notification
     LE_FATAL_IF((pa_sim_AddNewStateHandler(NewSimStateHandler) == NULL),
                 "Add new SIM state handler failed");
+
+    // Add a handler to the close session service
+    le_msg_AddServiceCloseHandler( le_sim_GetServiceRef(),
+                                   CloseSessionEventHandler,
+                                   NULL );
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -404,7 +526,7 @@ void le_sim_Init
  * @return The number of the current selected SIM card.
  */
 //--------------------------------------------------------------------------------------------------
-uint32_t le_sim_GetSelectedCard
+le_sim_Type_t le_sim_GetSelectedCard
 (
     void
 )
@@ -414,17 +536,36 @@ uint32_t le_sim_GetSelectedCard
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function must be called to count the number of SIM card slots.
+ * Select a SIM.
  *
- * @return The number of the SIM card slots mounted on the device.
+ * @return LE_FAULT         Function failed to select the requested SIM
+ * @return LE_OK            Function succeeded.
+ *
  */
 //--------------------------------------------------------------------------------------------------
-uint32_t le_sim_CountSlots
+le_result_t le_sim_SelectCard
 (
-    void
+    le_sim_ObjRef_t  simRef    ///< [IN] The SIM object.
 )
 {
-    return NumOfSlots;
+    Sim_t*                  simPtr;
+
+    simPtr = le_ref_Lookup(SimRefMap, simRef);
+
+    if (simPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", simRef);
+        return LE_FAULT;
+    }
+
+    // Select the SIM card
+    if (SelectSIMCard(simPtr->type) != LE_OK)
+    {
+        LE_ERROR("Unable to select Sim Card slot %d !", simPtr->type);
+        return LE_FAULT;
+    }
+
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -440,47 +581,25 @@ uint32_t le_sim_CountSlots
 //--------------------------------------------------------------------------------------------------
 le_sim_ObjRef_t le_sim_Create
 (
-    uint32_t cardNum  ///< [IN] The SIM card number (1 or 2, it depends on the platform).
+    le_sim_Type_t simType
 )
 {
-    // TODO: manage several slots
-    if ((cardNum > 1) && (NumOfSlots == 1))
-    {
-        LE_KILL_CLIENT("Only 1 slot is available !");
-        return NULL;
-    }
-    if (cardNum == 0)
-    {
-        LE_KILL_CLIENT("Invalid card number (%d) !", cardNum);
-        return NULL;
-    }
-
-    // Select the SIM card
-    if (SelectSIMCard(cardNum) != LE_OK)
-    {
-        LE_ERROR("Unable to select Sim Card slot %d !", cardNum);
-        return NULL;
-    }
-
-    Sim_t* simPtr = FindSim(cardNum);
+    Sim_t* simPtr = FindSim(simType);
     // Create the SIM object if it does not exist yet
     if (simPtr == NULL)
     {
-        le_sim_States_t   state;
-
-        if (pa_sim_GetState(&state) != LE_OK)
-        {
-            state = LE_SIM_STATE_UNKNOWN;
-        }
         LE_INFO("NO SIM object found, create a new one");
 
-        simPtr = CreateSim(cardNum, state);
+        simPtr = CreateSim(simType, LE_SIM_STATE_UNKNOWN);
     }
     // If the SIM already exists, then just increment the reference count on it.
     else
     {
         le_mem_AddRef(simPtr);
     }
+
+    // Add the client into the session list
+    AddClientInSimSessionList(simPtr->ref);
 
     // Return a Safe Reference for this Sim object.
     return (simPtr->ref);
@@ -513,6 +632,9 @@ void le_sim_Delete
         return;
     }
 
+    // Remove the link from the list.
+    RemoveSimFromSimSessionList(simRef);
+
     // release the SIM object
     le_mem_Release(simPtr);
 }
@@ -540,7 +662,7 @@ uint32_t le_sim_GetSlotNumber
         return 0;
     }
 
-    return simPtr->num;
+    return simPtr->type;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -549,7 +671,8 @@ uint32_t le_sim_GetSlotNumber
  *
  * @return LE_OK            The ICCID was successfully retrieved.
  * @return LE_OVERFLOW      The iccidPtr buffer was too small for the ICCID.
- * @return LE_NOT_POSSIBLE  The ICCID could not be retrieved.
+ * @return LE_BAD_PARAMETER if a parameter is invalid
+ * @return LE_FAULT         The ICCID could not be retrieved.
  *
  * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
  *       function will not return.
@@ -565,22 +688,22 @@ le_result_t le_sim_GetICCID
     le_sim_States_t  state;
     pa_sim_CardId_t  iccid;
     Sim_t*           simPtr = le_ref_Lookup(SimRefMap, simRef);
-    le_result_t      res = LE_NOT_POSSIBLE;
+    le_result_t      res = LE_FAULT;
 
     if (simPtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", simRef);
-        return LE_FAULT;
+        return LE_BAD_PARAMETER;
     }
     if (iccidPtr == NULL)
     {
         LE_KILL_CLIENT("iccidPtr is NULL !");
-        return LE_FAULT;
+        return LE_BAD_PARAMETER;
     }
 
     if (strlen(simPtr->ICCID) == 0)
     {
-        if (SelectSIMCard(simPtr->num) == LE_OK)
+        if (SelectSIMCard(simPtr->type) == LE_OK)
         {
             if (pa_sim_GetState(&state) == LE_OK)
             {
@@ -591,7 +714,7 @@ le_result_t le_sim_GetICCID
                     // Get identification information
                     if(pa_sim_GetCardIdentification(iccid) != LE_OK)
                     {
-                        LE_ERROR("Failed to get the ICCID of card number.%d", simPtr->num);
+                        LE_ERROR("Failed to get the ICCID of SIM type.%d", simPtr->type);
                         simPtr->ICCID[0] = '\0';
                     }
                     else
@@ -604,7 +727,7 @@ le_result_t le_sim_GetICCID
         }
         else
         {
-            LE_ERROR("Failed to get the ICCID of card number.%d", simPtr->num);
+            LE_ERROR("Failed to get the ICCID of SIM type.%d", simPtr->type);
             simPtr->ICCID[0] = '\0';
         }
     }
@@ -635,7 +758,8 @@ le_result_t le_sim_GetICCID
  *
  * @return LE_OK            The IMSI was successfully retrieved.
  * @return LE_OVERFLOW      The imsiPtr buffer was too small for the IMSI.
- * @return LE_NOT_POSSIBLE  The IMSI could not be retrieved.
+ * @return LE_BAD_PARAMETER if a parameter is invalid
+ * @return LE_FAULT         The IMSI could not be retrieved.
  *
  * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
  *       function will not return.
@@ -651,22 +775,22 @@ le_result_t le_sim_GetIMSI
     le_sim_States_t  state;
     pa_sim_Imsi_t    imsi;
     Sim_t*           simPtr = le_ref_Lookup(SimRefMap, simRef);
-    le_result_t      res = LE_NOT_POSSIBLE;
+    le_result_t      res = LE_FAULT;
 
     if (simPtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", simRef);
-        return LE_FAULT;
+        return LE_BAD_PARAMETER;
     }
     if (imsiPtr == NULL)
     {
         LE_KILL_CLIENT("imsiPtr is NULL !");
-        return LE_FAULT;
+        return LE_BAD_PARAMETER;
     }
 
     if (strlen(simPtr->IMSI) == 0)
     {
-        if (SelectSIMCard(simPtr->num) == LE_OK)
+        if (SelectSIMCard(simPtr->type) == LE_OK)
         {
             if (pa_sim_GetState(&state) == LE_OK)
             {
@@ -675,7 +799,7 @@ le_result_t le_sim_GetIMSI
                     // Get identification information
                     if(pa_sim_GetIMSI(imsi) != LE_OK)
                     {
-                        LE_ERROR("Failed to get the IMSI of card number.%d", simPtr->num);
+                        LE_ERROR("Failed to get the IMSI of SIM type.%d", simPtr->type);
                     }
                     else
                     {
@@ -687,7 +811,7 @@ le_result_t le_sim_GetIMSI
         }
         else
         {
-            LE_ERROR("Failed to get the IMSI of card number.%d", simPtr->num);
+            LE_ERROR("Failed to get the IMSI of SIM type.%d", simPtr->type);
         }
     }
     else
@@ -736,7 +860,7 @@ bool le_sim_IsPresent
         return false;
     }
 
-    if (SelectSIMCard(simPtr->num) != LE_OK)
+    if (SelectSIMCard(simPtr->type) != LE_OK)
     {
         return false;
     }
@@ -787,7 +911,7 @@ bool le_sim_IsReady
         return false;
     }
 
-    if (SelectSIMCard(simPtr->num) != LE_OK)
+    if (SelectSIMCard(simPtr->type) != LE_OK)
     {
         return false;
     }
@@ -813,9 +937,10 @@ bool le_sim_IsReady
 /**
  * This function must be called to enter the PIN code.
  *
+ * @return LE_BAD_PARAMETER The parameters are invalid.
  * @return LE_NOT_FOUND     The function failed to select the SIM card for this operation.
  * @return LE_UNDERFLOW     The PIN code is not long enough (min 4 digits).
- * @return LE_NOT_POSSIBLE  The function failed to enter the PIN code.
+ * @return LE_FAULT         The function failed to enter the PIN code.
  * @return LE_OK            The function succeeded.
  *
  * @note If PIN code is too long (max 8 digits), it is a fatal error, the
@@ -837,19 +962,19 @@ le_result_t le_sim_EnterPIN
     if (simPtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", simRef);
-        return LE_FAULT;
+        return LE_BAD_PARAMETER;
     }
 
     if (pinPtr == NULL)
     {
         LE_KILL_CLIENT("pinPtr is NULL !");
-        return LE_FAULT;
+        return LE_BAD_PARAMETER;
     }
 
     if (strlen(pinPtr) > LE_SIM_PIN_MAX_LEN )
     {
         LE_KILL_CLIENT("strlen(pin) > %d", LE_SIM_PIN_MAX_LEN);
-        return LE_FAULT;
+        return LE_BAD_PARAMETER;
     }
 
     if(strlen(pinPtr) < LE_SIM_PIN_MIN_LEN)
@@ -857,7 +982,7 @@ le_result_t le_sim_EnterPIN
         return LE_UNDERFLOW;
     }
 
-    if (SelectSIMCard(simPtr->num) != LE_OK)
+    if (SelectSIMCard(simPtr->type) != LE_OK)
     {
         return LE_NOT_FOUND;
     }
@@ -871,8 +996,8 @@ le_result_t le_sim_EnterPIN
     le_utf8_Copy(pinloc, pinPtr, sizeof(pinloc), NULL);
     if(pa_sim_EnterPIN(PA_SIM_PIN,pinloc) != LE_OK)
     {
-        LE_ERROR("Failed to enter PIN.%s card number.%d", pinPtr, simPtr->num);
-        return LE_NOT_POSSIBLE;
+        LE_ERROR("Failed to enter PIN.%s SIM type.%d", pinPtr, simPtr->type);
+        return LE_FAULT;
     }
 
     return LE_OK;
@@ -883,8 +1008,9 @@ le_result_t le_sim_EnterPIN
  * This function must be called to change the PIN code.
  *
  * @return LE_NOT_FOUND     The function failed to select the SIM card for this operation.
+ * @return LE_BAD_PARAMETER The parameters are invalid.
  * @return LE_UNDERFLOW     The PIN code is/are not long enough (min 4 digits).
- * @return LE_NOT_POSSIBLE  The function failed to change the PIN code.
+ * @return LE_FAULT  The function failed to change the PIN code.
  * @return LE_OK            The function succeeded.
  *
  * @note If PIN code is/are too long (max 8 digits), it is a fatal error, the
@@ -907,29 +1033,29 @@ le_result_t le_sim_ChangePIN
     if (simPtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", simRef);
-        return LE_FAULT;
+        return LE_BAD_PARAMETER;
     }
     if (oldpinPtr == NULL)
     {
         LE_KILL_CLIENT("oldpinPtr is NULL !");
-        return LE_FAULT;
+        return LE_BAD_PARAMETER;
     }
     if (newpinPtr == NULL)
     {
         LE_KILL_CLIENT("newpinPtr is NULL !");
-        return LE_FAULT;
+        return LE_BAD_PARAMETER;
     }
 
     if(strlen(oldpinPtr) > LE_SIM_PIN_MAX_LEN)
     {
         LE_KILL_CLIENT("strlen(oldpin) > %d", LE_SIM_PIN_MAX_LEN);
-        return LE_FAULT;
+        return LE_BAD_PARAMETER;
     }
 
     if(strlen(newpinPtr) > LE_SIM_PIN_MAX_LEN)
     {
         LE_KILL_CLIENT("strlen(newpin) > %d", LE_SIM_PIN_MAX_LEN);
-        return LE_FAULT;
+        return LE_BAD_PARAMETER;
     }
 
     if((strlen(oldpinPtr) < LE_SIM_PIN_MIN_LEN) || (strlen(newpinPtr) < LE_SIM_PIN_MIN_LEN))
@@ -937,7 +1063,7 @@ le_result_t le_sim_ChangePIN
         return LE_UNDERFLOW;
     }
 
-    if (SelectSIMCard(simPtr->num) != LE_OK)
+    if (SelectSIMCard(simPtr->type) != LE_OK)
     {
         return LE_NOT_FOUND;
     }
@@ -952,8 +1078,8 @@ le_result_t le_sim_ChangePIN
     le_utf8_Copy(newpinloc, newpinPtr, sizeof(newpinloc), NULL);
     if(pa_sim_ChangePIN(PA_SIM_PIN, oldpinloc, newpinloc) != LE_OK)
     {
-        LE_ERROR("Failed to set new PIN.%s of card number.%d", newpinPtr, simPtr->num);
-        return LE_NOT_POSSIBLE;
+        LE_ERROR("Failed to set new PIN.%s of SIM type.%d", newpinPtr, simPtr->type);
+        return LE_FAULT;
     }
 
     return LE_OK;
@@ -964,7 +1090,7 @@ le_result_t le_sim_ChangePIN
  * This function must be called to get the number of remaining PIN insertion tries.
  *
  * @return LE_NOT_FOUND     The function failed to select the SIM card for this operation.
- * @return LE_NOT_POSSIBLE  The function failed to get the number of remaining PIN insertion tries.
+ * @return LE_FAULT         The function failed to get the number of remaining PIN insertion tries.
  * @return A positive value The function succeeded. The number of remaining PIN insertion tries.
  *
  * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
@@ -985,7 +1111,7 @@ int32_t le_sim_GetRemainingPINTries
         return LE_FAULT;
     }
 
-    if (SelectSIMCard(simPtr->num) != LE_OK)
+    if (SelectSIMCard(simPtr->type) != LE_OK)
     {
         return LE_NOT_FOUND;
     }
@@ -997,8 +1123,8 @@ int32_t le_sim_GetRemainingPINTries
 
     if(pa_sim_GetPINRemainingAttempts(PA_SIM_PIN, &attempts) != LE_OK)
     {
-        LE_ERROR("Failed to get reamining attempts for card number.%d", simPtr->num);
-        return LE_NOT_POSSIBLE;
+        LE_ERROR("Failed to get reamining attempts for SIM type.%d", simPtr->type);
+        return LE_FAULT;
     }
 
     return attempts;
@@ -1010,7 +1136,7 @@ int32_t le_sim_GetRemainingPINTries
  *
  * @return LE_NOT_FOUND     The function failed to select the SIM card for this operation.
  * @return LE_UNDERFLOW     The PIN code is not long enough (min 4 digits).
- * @return LE_NOT_POSSIBLE  The function failed to unlock the SIM card.
+ * @return LE_FAULT         The function failed to unlock the SIM card.
  * @return LE_OK            The function succeeded.
  *
  * @note If PIN code is too long (max 8 digits), it is a fatal error, the
@@ -1032,19 +1158,19 @@ le_result_t le_sim_Unlock
     if (simPtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", simRef);
-        return LE_FAULT;
+        return LE_BAD_PARAMETER;
     }
 
     if (pinPtr == NULL)
     {
         LE_KILL_CLIENT("pinPtr is NULL !");
-        return LE_FAULT;
+        return LE_BAD_PARAMETER;
     }
 
     if(strlen(pinPtr) > LE_SIM_PIN_MAX_LEN)
     {
         LE_KILL_CLIENT("strlen(pinPtr) > %d", LE_SIM_PIN_MAX_LEN);
-        return LE_FAULT;
+        return LE_BAD_PARAMETER;
     }
 
     if(strlen(pinPtr) < LE_SIM_PIN_MIN_LEN)
@@ -1052,7 +1178,7 @@ le_result_t le_sim_Unlock
         return LE_UNDERFLOW;
     }
 
-    if (SelectSIMCard(simPtr->num) != LE_OK)
+    if (SelectSIMCard(simPtr->type) != LE_OK)
     {
         return LE_NOT_FOUND;
     }
@@ -1062,12 +1188,12 @@ le_result_t le_sim_Unlock
         return LE_NOT_FOUND;
     }
 
-    // Unlock card
+    // Unlock SIM
     le_utf8_Copy(pinloc, pinPtr, sizeof(pinloc), NULL);
     if(pa_sim_DisablePIN(PA_SIM_PIN, pinloc) != LE_OK)
     {
-        LE_ERROR("Failed to unlock card number.%d", simPtr->num);
-        return LE_NOT_POSSIBLE;
+        LE_ERROR("Failed to unlock SIM type.%d", simPtr->type);
+        return LE_FAULT;
     }
 
     return LE_OK;
@@ -1079,7 +1205,7 @@ le_result_t le_sim_Unlock
  *
  * @return LE_NOT_FOUND     The function failed to select the SIM card for this operation.
  * @return LE_UNDERFLOW     The PIN code is not long enough (min 4 digits).
- * @return LE_NOT_POSSIBLE  The function failed to unlock the SIM card.
+ * @return LE_FAULT         The function failed to unlock the SIM card.
  * @return LE_OK            The function succeeded.
  *
  * @note If PIN code is too long (max 8 digits), it is a fatal error, the
@@ -1101,18 +1227,18 @@ le_result_t le_sim_Lock
     if (simPtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", simRef);
-        return LE_FAULT;
+        return LE_BAD_PARAMETER;
     }
     if (pinPtr == NULL)
     {
         LE_KILL_CLIENT("pinPtr is NULL !");
-        return LE_FAULT;
+        return LE_BAD_PARAMETER;
     }
 
     if(strlen(pinPtr) > LE_SIM_PIN_MAX_LEN)
     {
         LE_KILL_CLIENT("strlen(pinPtr) > %d", LE_SIM_PIN_MAX_LEN);
-        return LE_FAULT;
+        return LE_BAD_PARAMETER;
     }
 
     if(strlen(pinPtr) < LE_SIM_PIN_MIN_LEN)
@@ -1120,7 +1246,7 @@ le_result_t le_sim_Lock
         return LE_UNDERFLOW;
     }
 
-    if (SelectSIMCard(simPtr->num) != LE_OK)
+    if (SelectSIMCard(simPtr->type) != LE_OK)
     {
         return LE_NOT_FOUND;
     }
@@ -1134,8 +1260,8 @@ le_result_t le_sim_Lock
     le_utf8_Copy(pinloc, pinPtr, sizeof(pinloc), NULL);
     if(pa_sim_EnablePIN(PA_SIM_PIN, pinloc) != LE_OK)
     {
-        LE_ERROR("Failed to Lock card number.%d", simPtr->num);
-        return LE_NOT_POSSIBLE;
+        LE_ERROR("Failed to Lock SIM type.%d", simPtr->type);
+        return LE_FAULT;
     }
 
     return LE_OK;
@@ -1148,7 +1274,7 @@ le_result_t le_sim_Lock
  * @return LE_NOT_FOUND     The function failed to select the SIM card for this operation.
  * @return LE_UNDERFLOW     The PIN code is not long enough (min 4 digits).
  * @return LE_OUT_OF_RANGE  The PUK code length is not correct (8 digits).
- * @return LE_NOT_POSSIBLE  The function failed to unlock the SIM card.
+ * @return LE_FAULT         The function failed to unlock the SIM card.
  * @return LE_OK            The function succeeded.
  *
  * @note If new PIN or puk code are too long (max 8 digits), it is a fatal error, the
@@ -1172,35 +1298,34 @@ le_result_t le_sim_Unblock
     if (simPtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", simRef);
-        return LE_FAULT;
+        return LE_BAD_PARAMETER;
     }
     if (pukPtr == NULL)
     {
         LE_KILL_CLIENT("pukPtr is NULL !");
-        return LE_FAULT;
+        return LE_BAD_PARAMETER;
     }
     if (newpinPtr == NULL)
     {
         LE_KILL_CLIENT("newpinPtr is NULL !");
-        return LE_FAULT;
+        return LE_BAD_PARAMETER;
     }
 
-    if(strlen(pukPtr) != LE_SIM_PUK_LEN)
+    if(strlen(pukPtr) != LE_SIM_PUK_MAX_LEN)
     {
         return LE_OUT_OF_RANGE;
     }
 
-
     if(strlen(newpinPtr) > LE_SIM_PIN_MAX_LEN)
     {
         LE_KILL_CLIENT("strlen(newpinPtr) > %d", LE_SIM_PIN_MAX_LEN);
-        return LE_FAULT;
+        return LE_BAD_PARAMETER;
     }
 
     if(strlen(pukPtr) > LE_SIM_PIN_MAX_LEN)
     {
         LE_KILL_CLIENT("strlen(pukPtr) > %d", LE_SIM_PIN_MAX_LEN);
-        return LE_FAULT;
+        return LE_BAD_PARAMETER;
     }
 
     if(strlen(newpinPtr) < LE_SIM_PIN_MIN_LEN)
@@ -1208,7 +1333,7 @@ le_result_t le_sim_Unblock
         return LE_UNDERFLOW;
     }
 
-    if (SelectSIMCard(simPtr->num) != LE_OK)
+    if (SelectSIMCard(simPtr->type) != LE_OK)
     {
         return LE_NOT_FOUND;
     }
@@ -1223,8 +1348,8 @@ le_result_t le_sim_Unblock
     le_utf8_Copy(newpinloc, newpinPtr, sizeof(newpinloc), NULL);
     if(pa_sim_EnterPUK(PA_SIM_PUK,pukloc, newpinloc) != LE_OK)
     {
-        LE_ERROR("Failed to unblock card number.%d", simPtr->num);
-        return LE_NOT_POSSIBLE;
+        LE_ERROR("Failed to unblock SIM type.%d", simPtr->type);
+        return LE_FAULT;
     }
 
     return LE_OK;
@@ -1254,7 +1379,7 @@ le_sim_States_t le_sim_GetState
         return LE_SIM_STATE_UNKNOWN;
     }
 
-    if (SelectSIMCard(simPtr->num) != LE_OK)
+    if (SelectSIMCard(simPtr->type) != LE_OK)
     {
         return LE_SIM_STATE_UNKNOWN;
     }
@@ -1324,7 +1449,8 @@ void le_sim_RemoveNewStateHandler
  * @return
  *      - LE_OK on success
  *      - LE_OVERFLOW if the Phone Number can't fit in phoneNumberStr
- *      - LE_NOT_POSSIBLE on any other failure
+ *      - LE_BAD_PARAMETER if a parameter is invalid
+ *      - LE_FAULT on any other failure
  *
  * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
  *       function will not return.
@@ -1338,28 +1464,28 @@ le_result_t le_sim_GetSubscriberPhoneNumber
 )
 {
     le_sim_States_t  state;
-    char             phoneNumber[LE_MDMDEFS_PHONE_NUM_MAX_LEN] = {0} ;
+    char             phoneNumber[LE_MDMDEFS_PHONE_NUM_MAX_BYTES] = {0} ;
     Sim_t*           simPtr = le_ref_Lookup(SimRefMap, simRef);
-    le_result_t      res = LE_NOT_POSSIBLE;
+    le_result_t      res = LE_FAULT;
 
     if (simPtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", simRef);
-        return LE_FAULT;
+        return LE_BAD_PARAMETER;
     }
     if (phoneNumberStr == NULL)
     {
         LE_KILL_CLIENT("phoneNumberStr is NULL !");
-        return LE_FAULT;
+        return LE_BAD_PARAMETER;
     }
 
     if (strlen(simPtr->phoneNumber) == 0)
     {
-        if (SelectSIMCard(simPtr->num) == LE_OK)
+        if (SelectSIMCard(simPtr->type) == LE_OK)
         {
             if (pa_sim_GetState(&state) == LE_OK)
             {
-                LE_DEBUG("Try get the Phone Number of card number.%d in state %d", simPtr->num, state);
+                LE_DEBUG("Try get the Phone Number of SIM type.%d in state %d", simPtr->type, state);
                 if ((state == LE_SIM_INSERTED) ||
                     (state == LE_SIM_READY)    ||
                     (state == LE_SIM_BLOCKED))
@@ -1367,7 +1493,7 @@ le_result_t le_sim_GetSubscriberPhoneNumber
                     // Get identification information
                     if(pa_sim_GetSubscriberPhoneNumber(phoneNumber, sizeof(phoneNumber)) != LE_OK)
                     {
-                        LE_ERROR("Failed to get the Phone Number of card number.%d", simPtr->num);
+                        LE_ERROR("Failed to get the Phone Number of SIM type.%d", simPtr->type);
                         simPtr->phoneNumber[0] = '\0';
                     }
                     else
@@ -1381,7 +1507,7 @@ le_result_t le_sim_GetSubscriberPhoneNumber
         }
         else
         {
-            LE_ERROR("Failed to get the Phone Number of card number.%d", simPtr->num);
+            LE_ERROR("Failed to get the Phone Number of SIM type.%d", simPtr->type);
             simPtr->phoneNumber[0] = '\0';
         }
     }
@@ -1413,7 +1539,9 @@ le_result_t le_sim_GetSubscriberPhoneNumber
  * @return
  *      - LE_OK on success
  *      - LE_OVERFLOW if the Home Network Name can't fit in nameStr
- *      - LE_NOT_POSSIBLE on any other failure
+ *      - LE_NOT_FOUND if the network is not found
+ *      - LE_BAD_PARAMETER if a parameter is invalid
+ *      - LE_FAULT on any other failure
  *
  * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
  *       function will not return.
@@ -1428,7 +1556,7 @@ le_result_t le_sim_GetHomeNetworkOperator
     if (nameStr == NULL)
     {
         LE_KILL_CLIENT("nameStr is NULL !");
-        return LE_FAULT;
+        return LE_BAD_PARAMETER;
     }
 
     return pa_sim_GetHomeNetworkOperator(nameStr,nameStrSize);
@@ -1470,3 +1598,49 @@ le_result_t le_sim_GetHomeNetworkOperator
 
     return pa_sim_GetHomeNetworkMccMnc(mccPtr, mccPtrSize, mncPtr, mncPtrSize);
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to request the multi-profile eUICC to swap to ECS and to refresh.
+ * The User's application must wait for eUICC reboot to be finished and network connection
+ * available.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_BUSY when a profile swap is already in progress
+ *      - LE_FAULT for unexpected error
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_sim_LocalSwapToEmergencyCallSubscription
+(
+    le_sim_ObjRef_t       simRef,         ///< [IN]  SIM object.
+    le_sim_Manufacturer_t manufacturer    ///< [IN]  The card manufacturer.
+)
+{
+    // TODO: implement this function
+    return LE_FAULT;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to request the multi-profile eUICC to swap back to commercial
+ * subscription and to refresh.
+ * The User's application must wait for eUICC reboot to be finished and network connection
+ * available.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_BUSY when a profile swap is already in progress
+ *      - LE_FAULT for unexpected error
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_sim_LocalSwapToCommercialSubscription
+(
+    le_sim_ObjRef_t       simRef,         ///< [IN]  SIM object.
+    le_sim_Manufacturer_t manufacturer    ///< [IN]  The card manufacturer.
+)
+{
+    // TODO: implement this function
+    return LE_FAULT;
+}
+

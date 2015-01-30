@@ -1,6 +1,6 @@
 /** @file atMachineManager.h
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 #ifndef LEGATO_ATMACHINEMANAGER_INCLUDE_GUARD

@@ -2,7 +2,7 @@
  *
  * Source code of functions to interact with CDMA PDU data.
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 #include "legato.h"
@@ -171,7 +171,7 @@ static void WriteBits
         return;
     }
 
-    if (bufferPtr->index>bufferPtr->bufferSize)
+    if ((bufferPtr->index + (length>>3)) > bufferPtr->bufferSize)
     {
         LE_ERROR("Internal buffer overflow [%d]",bufferPtr->bufferSize);
         return;
@@ -2223,7 +2223,7 @@ static void WriteSubParameterTPFailureCause
 static void WriteParameterBearerData
 (
     const cdmaPdu_t     *cdmaSmsPtr,    ///< [IN] Buffer to store decoded data
-    writeBitsBuffer_t  *encoderPtr     ///< [IN/OUT] encoderPtr
+    writeBitsBuffer_t   *encoderPtr     ///< [IN/OUT] encoderPtr
 )
 {
     // Write the TVL Id value
@@ -2440,7 +2440,7 @@ le_result_t cdmaPdu_Encode
     memset(dataPtr,0,dataPtrSize);
 
     // Initialize the encoder
-    InitializeWriteBuffer(&pduBuffer, dataPtr,dataPtrSize);
+    InitializeWriteBuffer(&pduBuffer, dataPtr, dataPtrSize);
 
     // Write message format
     WriteBits(&pduBuffer,cdmaSmsPtr->messageFormat,8);

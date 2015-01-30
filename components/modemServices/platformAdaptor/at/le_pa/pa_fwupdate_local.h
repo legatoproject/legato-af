@@ -1,7 +1,7 @@
 /**
  * @file pa_fwupdate_local.h
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 #ifndef LEGATO_PA_FWUPDATE_LOCAL_INCLUDE_GUARD

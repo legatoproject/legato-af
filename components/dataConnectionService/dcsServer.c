@@ -2,7 +2,7 @@
 /**
  *  Data Connection Server
  *
- *  Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ *  Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  *
  * The Data Connection Service (DCS) only supports in this version the 'Mobile' technology, so the
  * data connection is based on the Modem Data Control service (MDC).
@@ -369,15 +369,14 @@ static void LoadSelectedTechProfile
     // database
     if (!strncmp(techPtr, "cellular", DCS_TECH_BYTES))
     {
-        le_result_t res;
         le_mdc_ProfileRef_t profileRef;
 
-        LE_DEBUG("Try to use the first profile available in the modem");
-        res = le_mdc_GetAvailableProfile(&profileRef);
+        LE_DEBUG("Use the default profile");
+        profileRef = le_mdc_GetProfile(LE_MDC_DEFAULT_PROFILE);
 
-        if ( (res != LE_OK) || (profileRef == NULL) )
+        if (profileRef == NULL)
         {
-            LE_FATAL("No profile available");
+            LE_FATAL("Default profile not available");
         }
 
         // Updating profileRef
@@ -435,7 +434,7 @@ static void LoadPreferencesFromConfigDb
     {
         LE_WARN("String value for '%s' too large.", CFG_NODE_PREF_TECH);
     }
-    
+
     le_cfg_CancelTxn(cfg);
 
     if (techStr[0] == '\0')
@@ -581,7 +580,7 @@ static le_result_t SaveDefaultGateway
  *
  * return
  *      LE_OK           Function succeed
- *      LE_NOT_POSSIBLE Function failed
+ *      LE_FAULT        Function failed
  */
 //--------------------------------------------------------------------------------------------------
 static le_result_t SetDefaultGateway
@@ -599,7 +598,7 @@ static le_result_t SetDefaultGateway
     if ( (strcmp(gatewayPtr,"")==0) || (strcmp(interfacePtr,"")==0) )
     {
         LE_WARN("Gateway or Interface are empty");
-        return LE_NOT_POSSIBLE;
+        return LE_FAULT;
     }
 
     if (IsDefaultGatewayPresent())
@@ -609,7 +608,7 @@ static le_result_t SetDefaultGateway
         if ( system("/sbin/route del default") == -1 )
         {
             LE_WARN("system '%s' failed", systemCmd);
-            return LE_NOT_POSSIBLE;
+            return LE_FAULT;
         }
     }
 
@@ -626,7 +625,7 @@ static le_result_t SetDefaultGateway
     if ( system(systemCmd) == -1 )
     {
         LE_WARN("system '%s' failed", systemCmd);
-        return LE_NOT_POSSIBLE;
+        return LE_FAULT;
     }
 
     return LE_OK;
@@ -638,7 +637,7 @@ static le_result_t SetDefaultGateway
  * Set the default route for a profile
  *
  * return
- *      LE_NOT_POSSIBLE Function failed
+ *      LE_FAULT        Function failed
  *      LE_OK           Function succeed
  */
 //--------------------------------------------------------------------------------------------------
@@ -664,20 +663,20 @@ static le_result_t SetRouteConfiguration
     else
     {
         LE_WARN("Profile is not using IPv4 nor IPv6");
-        return LE_NOT_POSSIBLE;
+        return LE_FAULT;
     }
 
     if ( getGatewayFunction &&
          (*getGatewayFunction)(profileRef, gatewayAddr, sizeof(gatewayAddr)) != LE_OK )
     {
         LE_INFO("le_mdc_GetGatewayAddress failed");
-        return LE_NOT_POSSIBLE;
+        return LE_FAULT;
     }
 
     if ( le_mdc_GetInterfaceName(profileRef, interface, sizeof(interface)) != LE_OK )
     {
         LE_WARN("le_mdc_GetInterfaceName failed");
-        return LE_NOT_POSSIBLE;
+        return LE_FAULT;
     }
 
     // Set the default gateway retrieved from modem.
@@ -756,7 +755,7 @@ static char * ReadResolvConf
  * Write the DNS configuration into /etc/resolv.conf
  *
  * @return
- *      LE_NOT_POSSIBLE Function failed
+ *      LE_FAULT        Function failed
  *      LE_OK           Function succeed
  */
 //--------------------------------------------------------------------------------------------------
@@ -832,7 +831,7 @@ static le_result_t AddNameserversToResolvConf
     if (resolvConfPtr == NULL)
     {
         LE_WARN("fopen on /etc/resolv.conf failed");
-        return LE_NOT_POSSIBLE;
+        return LE_FAULT;
     }
 
     // Set DNS 1 if needed
@@ -843,7 +842,7 @@ static le_result_t AddNameserversToResolvConf
         {
             LE_WARN("fclose failed");
         }
-        return LE_NOT_POSSIBLE;
+        return LE_FAULT;
     }
 
     // Set DNS 2 if needed
@@ -854,7 +853,7 @@ static le_result_t AddNameserversToResolvConf
         {
             LE_WARN("fclose failed");
         }
-        return LE_NOT_POSSIBLE;
+        return LE_FAULT;
     }
 
     // Append rest of the file
@@ -869,7 +868,7 @@ static le_result_t AddNameserversToResolvConf
     if ( fclose(resolvConfPtr) != 0 )
     {
         LE_WARN("fclose failed");
-        return LE_NOT_POSSIBLE;
+        return LE_FAULT;
     }
 
     return LE_OK;
@@ -880,7 +879,7 @@ static le_result_t AddNameserversToResolvConf
  * Write the DNS configuration into /etc/resolv.conf
  *
  * @return
- *      LE_NOT_POSSIBLE Function failed
+ *      LE_FAULT        Function failed
  *      LE_OK           Function succeed
  */
 //--------------------------------------------------------------------------------------------------
@@ -906,7 +905,7 @@ static le_result_t RemoveNameserversFromResolvConf
     if (resolvConfPtr == NULL)
     {
         LE_WARN("fopen on /etc/resolv.conf failed");
-        return LE_NOT_POSSIBLE;
+        return LE_FAULT;
     }
 
     // For each line in source file
@@ -956,7 +955,7 @@ static le_result_t RemoveNameserversFromResolvConf
     if ( fclose(resolvConfPtr) != 0 )
     {
         LE_WARN("fclose failed");
-        return LE_NOT_POSSIBLE;
+        return LE_FAULT;
     }
 
     return LE_OK;
@@ -967,7 +966,7 @@ static le_result_t RemoveNameserversFromResolvConf
  * Set the DNS configuration for a profile
  *
  * return
- *      LE_NOT_POSSIBLE Function failed
+ *      LE_FAULT        Function failed
  *      LE_OK           Function succeed
  */
 //--------------------------------------------------------------------------------------------------
@@ -986,13 +985,13 @@ static le_result_t SetDnsConfiguration
                                         dns2Addr, sizeof(dns2Addr)) != LE_OK )
         {
             LE_INFO("IPv4: le_mdc_GetDNSAddresses failed");
-            return LE_NOT_POSSIBLE;
+            return LE_FAULT;
         }
 
         if ( AddNameserversToResolvConf(dns1Addr, dns2Addr) != LE_OK )
         {
             LE_INFO("IPv4: Could not write in resolv file");
-            return LE_NOT_POSSIBLE;
+            return LE_FAULT;
         }
 
         strcpy(InterfaceDataBackup.newDnsIPv4[0], dns1Addr);
@@ -1011,13 +1010,13 @@ static le_result_t SetDnsConfiguration
                                         dns2Addr, sizeof(dns2Addr)) != LE_OK )
         {
             LE_INFO("IPv6: le_mdc_GetDNSAddresses failed");
-            return LE_NOT_POSSIBLE;
+            return LE_FAULT;
         }
 
         if ( AddNameserversToResolvConf(dns1Addr, dns2Addr) != LE_OK )
         {
             LE_INFO("IPv6: Could not write in resolv file");
-            return LE_NOT_POSSIBLE;
+            return LE_FAULT;
         }
 
         strcpy(InterfaceDataBackup.newDnsIPv6[0], dns1Addr);
@@ -1453,7 +1452,7 @@ static void* DataThread
                         ProcessCommand);
 
     // Register for Cellular Network Service state changes
-    le_cellnet_AddStateHandler(CellNetStateHandler, NULL);
+    le_cellnet_AddStateEventHandler(CellNetStateHandler, NULL);
 
     // Register for data session state changes
     MobileSessionStateHandlerRef = le_mdc_AddSessionStateHandler(MobileProfileRef, DataSessionStateHandler, &MobileProfileRef);
@@ -1484,6 +1483,45 @@ static void FirstLayerConnectionStateHandler
                       le_event_GetContextPtr());
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * handler function to the close session service
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void CloseSessionEventHandler
+(
+    le_msg_SessionRef_t sessionRef,
+    void*               contextPtr
+)
+{
+    LE_INFO("Client %p killed, remove allocated ressources", sessionRef);
+
+    if ( !sessionRef )
+    {
+        LE_ERROR("ERROR sessionRef is NULL");
+        return;
+    }
+
+    // Search the data reference used by the killed client.
+    le_ref_IterRef_t iterRef = le_ref_GetIterator(RequestRefMap);
+    le_result_t result = le_ref_NextNode(iterRef);
+
+    while ( result == LE_OK )
+    {
+        le_msg_SessionRef_t session = (le_msg_SessionRef_t) le_ref_GetValue(iterRef);
+
+        // Check if the session reference saved matchs with the current session reference.
+        if (session == sessionRef)
+        {
+            // Release the data connexion
+            le_data_Release( (le_data_RequestObjRef_t) le_ref_GetSafeRef(iterRef) );
+        }
+
+        // Get the next value in the reference mpa
+        result = le_ref_NextNode(iterRef);
+    }
+}
 
 //--------------------------------------------------------------------------------------------------
 // APIs.
@@ -1550,7 +1588,9 @@ le_data_RequestObjRef_t le_data_Request
 
     // Need to return a unique reference that will be used by Release.  Don't actually have
     // any data for now, but have to use some value other than NULL for the data pointer.
-    le_data_RequestObjRef_t reqRef = le_ref_CreateRef(RequestRefMap, (void*)1);
+    le_data_RequestObjRef_t reqRef = le_ref_CreateRef(RequestRefMap,
+                                                     (void*)le_data_GetClientSessionRef());
+
     return reqRef;
 }
 
@@ -1623,6 +1663,11 @@ COMPONENT_INIT
     {
         LE_ERROR("Could not start the StopDcs timer!");
     }
+
+    // Add a handler to the close session service
+    le_msg_AddServiceCloseHandler( le_data_GetServiceRef(),
+                                   CloseSessionEventHandler,
+                                   NULL );
 
     // Start the data thread
     le_thread_Start( le_thread_Create("Data Thread", DataThread, NULL) );

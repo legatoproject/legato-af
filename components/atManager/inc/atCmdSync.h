@@ -101,7 +101,7 @@
  *
  * Legato @ref c_atcmdsync include file.
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 #ifndef LEGATO_ATCMDSYNC_INCLUDE_GUARD
@@ -236,7 +236,7 @@ le_timer_ExpiryHandler_t  atcmdsync_GetTimerExpiryHandler
  * This function must be called to send a standard command
  * This is the default sending with intermediate pattern
  *
- * @return LE_NOT_POSSIBLE when pattern match : ERROR, +CME ERROR, +CMS ERROR
+ * @return LE_FAULT when pattern match : ERROR, +CME ERROR, +CMS ERROR
  * @return LE_TIMEOUT when pattern match : TIMEOUT
  * @return LE_OK when pattern match : OK
  */
@@ -270,7 +270,7 @@ atcmd_Ref_t atcmdsync_PrepareStandardCommand
 /**
  * This function must be called to check the result structure
  *
- * @return LE_NOT_POSSIBLE when finalFailedPatternPtr match
+ * @return LE_FAULT when finalFailedPatternPtr match
  * @return LE_TIMEOUT when a timeout occur
  * @return LE_OK when finalSuccessPattern match
  */
@@ -286,7 +286,7 @@ le_result_t atcmdsync_CheckCommandResult
 /**
  * This function must be called to fille the buffer commandPtr with the command string
  *
- * @return LE_NOT_POSSIBLE when the string is not filled
+ * @return LE_FAULT when the string is not filled
  * @return LE_OK the string is filled
  */
 //--------------------------------------------------------------------------------------------------

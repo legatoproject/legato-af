@@ -10,6 +10,7 @@ provides:
 {
     api:
     {
+        le_gnss.api
         le_pos.api
         le_posCtrl.api
     }
@@ -17,6 +18,7 @@ provides:
 
 sources:
 {
+    le_gnss.c
     le_pos.c
 }
 

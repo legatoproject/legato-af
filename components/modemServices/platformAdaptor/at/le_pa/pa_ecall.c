@@ -3,7 +3,7 @@
  *
  * AT implementation of @ref c_pa_ecall API.
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 
@@ -24,17 +24,52 @@
 /**
  * This function must be called to initialize the ecall module
  *
- * @return LE_NOT_POSSIBLE  The function failed to initialize the module.
+ * @return LE_FAULT         The function failed to initialize the module.
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_ecall_Init
 (
-    void
+    pa_ecall_SysStd_t sysStd ///< [IN] Choosen system (PA_ECALL_PAN_EUROPEAN or PA_ECALL_ERA_GLONASS)
 )
 {
     // TODO implementation
     return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to set the eCall operation mode.
+ *
+ * @return LE_FAULT  The function failed.
+ * @return LE_OK     The function succeed.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_ecall_SetOperationMode
+(
+    le_ecall_OpMode_t mode ///< [IN] Operation mode
+)
+{
+    // TODO implementation
+    return LE_FAULT;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to retrieve the configured eCall operation mode.
+ *
+ * @return LE_FAULT  The function failed.
+ * @return LE_OK     The function succeed.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_ecall_GetOperationMode
+(
+    le_ecall_OpMode_t* mode ///< [OUT] Operation mode
+)
+{
+     // TODO implementation
+   return LE_FAULT;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -81,7 +116,7 @@ void pa_ecall_RemoveEventHandler
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_ecall_SetPsapNumber
 (
-    char psap[LE_MDMDEFS_PHONE_NUM_MAX_LEN] ///< [IN] Public Safely Answering Point number
+    char psap[LE_MDMDEFS_PHONE_NUM_MAX_BYTES] ///< [IN] Public Safely Answering Point number
 )
 {
     // TODO implementation
@@ -90,15 +125,17 @@ le_result_t pa_ecall_SetPsapNumber
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function must be called to set the maximum redial attempt when an ecall failed.
+ * This function must be called to get the Public Safely Answering Point number.
  *
- * @return LE_FAULT  The function failed.
- * @return LE_OK     The function succeed.
+ * @return LE_FAULT     The function failed.
+ * @return LE_OVERFLOW  Retrieved PSAP number is too long for the out parameter.
+ * @return LE_OK        The function succeed.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_ecall_SetMaxRedialAttempts
+le_result_t pa_ecall_GetPsapNumber
 (
-    uint32_t redialAttemptsCount ///< [IN] Number of redial attempt
+    char*    psapPtr, ///< [OUT] Public Safely Answering Point number
+    size_t   len      ///< [IN] The length of SMSC string.
 )
 {
     // TODO implementation
@@ -115,7 +152,24 @@ le_result_t pa_ecall_SetMaxRedialAttempts
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_ecall_SetMsdTxMode
 (
-    pa_ecall_MsdTxMode_t mode
+    le_ecall_MsdTxMode_t mode
+)
+{
+    // TODO implementation
+    return LE_FAULT;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get push/pull transmission mode.
+ *
+ * @return LE_FAULT  The function failed.
+ * @return LE_OK     The function succeed.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_ecall_GetMsdTxMode
+(
+    le_ecall_MsdTxMode_t* modePtr
 )
 {
     // TODO implementation

@@ -3,7 +3,7 @@
  *
  * AT implementation of @ref c_pa_fwupdate API.
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  *
  */
 
@@ -37,7 +37,7 @@ le_result_t pa_fwupdate_Init
  *
  * @return
  *      - LE_OK on success
- *      - LE_NOT_POSSIBLE on failure
+ *      - LE_FAULT on failure
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_fwupdate_Download
@@ -47,5 +47,5 @@ le_result_t pa_fwupdate_Download
 {
     LE_INFO("Called ...");
 
-    return LE_NOT_POSSIBLE;
+    return LE_FAULT;
 }

@@ -3,7 +3,7 @@
  *
  * This file contains the source code of Modem Services Initialization.
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 
@@ -19,6 +19,7 @@
 #include "le_ecall_local.h"
 #endif
 #include "le_remoteMgmt_local.h"
+#include "le_temp_local.h"
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -37,6 +38,8 @@ COMPONENT_INIT
     le_mdc_Init();
     le_mcc_Init();
     le_remoteMgmt_Init();
+    le_temp_Init();
+
 #ifdef INCLUDE_ECALL
     le_ecall_Init();
 #endif

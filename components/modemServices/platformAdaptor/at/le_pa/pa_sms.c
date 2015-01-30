@@ -2,7 +2,7 @@
  *
  * AT implementation of c_pa_sms API.
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 #include <stdlib.h>
@@ -146,7 +146,7 @@ static void SMSUnsolHandler
 /**
  * This function must be called to initialize the sms module.
  *
- * @return LE_NOT_POSSIBLE  The function failed to initialize the module.
+ * @return LE_FAULT         The function failed to initialize the module.
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
@@ -157,7 +157,7 @@ le_result_t pa_sms_Init
 {
     if (atports_GetInterface(ATPORT_COMMAND)==NULL) {
         LE_WARN("SMS Module is not initialize in this session");
-        return LE_NOT_POSSIBLE;
+        return LE_FAULT;
     }
 
     EventUnsolicitedId = le_event_CreateId("SMSEventIdUnsol",sizeof(atmgr_UnsolResponse_t));
@@ -178,7 +178,7 @@ le_result_t pa_sms_Init
  * This function must be called to register a handler for a new message reception handling.
  *
  * @return LE_BAD_PARAMETER The parameter is invalid.
- * @return LE_NOT_POSSIBLE  The function failed to register a new handler.
+ * @return LE_FAULT         The function failed to register a new handler.
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
@@ -198,7 +198,7 @@ le_result_t pa_sms_SetNewMsgHandler
     if (NewSMSHandlerRef!=NULL)
     {
         LE_WARN("new SMS message handler has already been set");
-        return LE_NOT_POSSIBLE;
+        return LE_FAULT;
     }
 
     NewSMSHandlerRef = le_event_AddHandler("NewSMSHandler",
@@ -212,7 +212,7 @@ le_result_t pa_sms_SetNewMsgHandler
 /**
  * This function must be called to unregister the handler for a new message reception handling.
  *
- * @return LE_NOT_POSSIBLE  The function failed to unregister the handler.
+ * @return LE_FAULT         The function failed to unregister the handler.
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
@@ -337,7 +337,7 @@ static void SetNewMsgIndicLocal
  * This function selects the procedure for message reception from the network (New Message
  * Indication settings).
  *
- * @return LE_NOT_POSSIBLE  The function failed to select the procedure for message reception.
+ * @return LE_FAULT         The function failed to select the procedure for message reception.
  * @return LE_TIMEOUT       No response was received from the Modem.
  * @return LE_OK            The function succeeded.
  */
@@ -369,7 +369,7 @@ le_result_t pa_sms_SetNewMsgIndic
 /**
  * This function gets the New Message Indication settings.
  *
- * @return LE_NOT_POSSIBLE  The function failed to get the New Message Indication settings.
+ * @return LE_FAULT         The function failed to get the New Message Indication settings.
  * @return LE_BAD_PARAMETER Bad parameter, one is NULL.
  * @return LE_TIMEOUT       No response was received from the Modem.
  * @return LE_OK            The function succeeded.
@@ -386,7 +386,7 @@ le_result_t pa_sms_GetNewMsgIndic
     pa_sms_NmiBfr_t*  bfrPtr     ///< [OUT] Terminal Adaptor buffer of unsolicited result codes mode.
 )
 {
-    le_result_t result=LE_NOT_POSSIBLE;
+    le_result_t result = LE_FAULT;
 
     if (!modePtr && !mtPtr && !bmPtr && !dsPtr && !bfrPtr)
     {
@@ -428,11 +428,11 @@ le_result_t pa_sms_GetNewMsgIndic
             result = LE_OK;
         } else {
             LE_WARN("this pattern is not expected");
-            result=LE_NOT_POSSIBLE;
+            result = LE_FAULT;
         }
     } else {
         LE_WARN("this pattern is not expected");
-        result=LE_NOT_POSSIBLE;
+        result = LE_FAULT;
     }
 
     le_mem_Release(resRef);     // Release atcmdsync_SendCommand
@@ -444,7 +444,7 @@ le_result_t pa_sms_GetNewMsgIndic
 /**
  * This function sets the Preferred Message Format (PDU or Text mode).
  *
- * @return LE_NOT_POSSIBLE  The function failed to sets the Preferred Message Format.
+ * @return LE_FAULT         The function failed to sets the Preferred Message Format.
  * @return LE_TIMEOUT       No response was received from the Modem.
  * @return LE_OK            The function succeeded.
  */
@@ -469,7 +469,7 @@ le_result_t pa_sms_SetMsgFormat
 /**
  * This function sends a message in PDU mode.
  *
- * @return LE_NOT_POSSIBLE    The function failed to send a message in PDU mode.
+ * @return LE_FAULT           The function failed to send a message in PDU mode.
  * @return LE_BAD_PARAMETER   The parameters are invalid.
  * @return LE_TIMEOUT         No response was received from the Modem.
  * @return a positive value   The function succeeded. The value represents the message reference.
@@ -482,7 +482,7 @@ int32_t pa_sms_SendPduMsg
     const uint8_t      *dataPtr     ///< [IN] The message.
 )
 {
-    int32_t result=LE_NOT_POSSIBLE;
+    int32_t result = LE_FAULT;
     atcmd_Ref_t atReqRef;
     atcmdsync_ResultRef_t  resRef = NULL;
     char atcommand[ATCOMMAND_SIZE] ;
@@ -491,7 +491,7 @@ int32_t pa_sms_SendPduMsg
     const char* finalRespOkPtr[] = {"OK",NULL};
     const char* finalRespKoPtr[] = {"ERROR","+CME ERROR:","+CMS ERROR:","TIMEOUT",NULL};
 
-    char hexString[LE_SMS_PDU_MAX_LEN*2+1]={0};
+    char hexString[LE_SMS_PDU_MAX_BYTES*2+1]={0};
     uint32_t hexStringSize;
 
     if (!dataPtr)
@@ -541,11 +541,11 @@ int32_t pa_sms_SendPduMsg
             } else
             {
                 LE_WARN("this pattern is not expected");
-                result=LE_NOT_POSSIBLE;
+                result = LE_FAULT;
             }
         } else {
             LE_WARN("this pattern is not expected");
-            result=LE_NOT_POSSIBLE;
+            result = LE_FAULT;
         }
     }
 
@@ -559,7 +559,7 @@ int32_t pa_sms_SendPduMsg
 /**
  * This function gets the message from the preferred message storage.
  *
- * @return LE_NOT_POSSIBLE The function failed to get the message from the preferred message
+ * @return LE_FAULT        The function failed to get the message from the preferred message
  *                         storage.
  * @return LE_TIMEOUT      No response was received from the Modem.
  * @return LE_OK           The function succeeded.
@@ -573,7 +573,7 @@ le_result_t pa_sms_RdPDUMsgFromMem
     pa_sms_Pdu_t*       msgPtr      ///< [OUT] The message.
 )
 {
-    int32_t result=LE_NOT_POSSIBLE;
+    int32_t result = LE_FAULT;
     atcmdsync_ResultRef_t  resRef = NULL;
     char atcommand[ATCOMMAND_SIZE];
     const char* interRespPtr[] = {"+CMGR:",NULL};
@@ -622,11 +622,11 @@ le_result_t pa_sms_RdPDUMsgFromMem
 
             msgPtr->status=(le_sms_Status_t)atoi(atcmd_GetLineParameter(line,2));
 
-            int32_t dataSize = le_hex_StringToBinary(pduPtr,strlen(pduPtr),msgPtr->data,LE_SMS_PDU_MAX_LEN);
+            int32_t dataSize = le_hex_StringToBinary(pduPtr,strlen(pduPtr),msgPtr->data,LE_SMS_PDU_MAX_BYTES);
             if ( dataSize < 0)
             {
                 LE_ERROR("Message cannot be converted");
-                result = LE_NOT_POSSIBLE;
+                result = LE_FAULT;
             }
             else
             {
@@ -636,11 +636,11 @@ le_result_t pa_sms_RdPDUMsgFromMem
             }
         } else {
             LE_WARN("this pattern is not expected");
-            result=LE_NOT_POSSIBLE;
+            result = LE_FAULT;
         }
     } else {
         LE_WARN("this pattern is not expected");
-        result=LE_NOT_POSSIBLE;
+        result = LE_FAULT;
     }
 
     le_mem_Release(resRef);     // Release atcmdsync_SendCommand
@@ -654,7 +654,7 @@ le_result_t pa_sms_RdPDUMsgFromMem
  * This function gets the indexes of messages stored in the preferred memory for a specific
  * status.
  *
- * @return LE_NOT_POSSIBLE   The function failed to get the indexes of messages stored in the
+ * @return LE_FAULT          The function failed to get the indexes of messages stored in the
  *                           preferred memory.
  * @return LE_BAD_PARAMETER  The parameters are invalid.
  * @return LE_TIMEOUT        No response was received from the Modem.
@@ -671,7 +671,7 @@ le_result_t pa_sms_ListMsgFromMem
     pa_sms_Storage_t    storage     ///< [IN] SMS Storage used.
 )
 {
-    le_result_t result=LE_NOT_POSSIBLE;
+    le_result_t result = LE_FAULT;
     uint32_t  cpt;
     atcmdsync_ResultRef_t  resRef = NULL;
     char atcommand[ATCOMMAND_SIZE] ;
@@ -721,7 +721,7 @@ le_result_t pa_sms_ListMsgFromMem
         else
         {
                 LE_WARN("this pattern is not expected");
-                result=LE_NOT_POSSIBLE;
+                result = LE_FAULT;
                 break;
             }
         }
@@ -736,7 +736,7 @@ le_result_t pa_sms_ListMsgFromMem
 /**
  * This function deletes one specific Message from preferred message storage.
  *
- * @return LE_NOT_POSSIBLE   The function failed to delete one specific Message from preferred
+ * @return LE_FAULT          The function failed to delete one specific Message from preferred
  *                           message storage.
  * @return LE_TIMEOUT        No response was received from the Modem.
  * @return LE_OK             The function succeeded.
@@ -766,7 +766,7 @@ le_result_t pa_sms_DelMsgFromMem
 /**
  * This function deletes all Messages from preferred message storage.
  *
- * @return LE_NOT_POSSIBLE The function failed to delete all Messages from preferred message storage.
+ * @return LE_FAULT        The function failed to delete all Messages from preferred message storage.
  * @return LE_TIMEOUT      No response was received from the Modem.
  * @return LE_OK           The function succeeded.
  */
@@ -789,7 +789,7 @@ le_result_t pa_sms_DelAllMsg
 /**
  * This function saves the SMS Settings.
  *
- * @return LE_NOT_POSSIBLE The function failed to save the SMS Settings.
+ * @return LE_FAULT        The function failed to save the SMS Settings.
  * @return LE_TIMEOUT      No response was received from the Modem.
  * @return LE_OK           The function succeeded.
  */
@@ -810,7 +810,7 @@ le_result_t pa_sms_SaveSettings
 /**
  * This function restores the SMS Settings.
  *
- * @return LE_NOT_POSSIBLE The function failed to restore the SMS Settings.
+ * @return LE_FAULT        The function failed to restore the SMS Settings.
  * @return LE_TIMEOUT      No response was received from the Modem.
  * @return LE_OK           The function succeeded.
  */
@@ -831,7 +831,7 @@ le_result_t pa_sms_RestoreSettings
 /**
  * This function changes the message status.
  *
- * @return LE_NOT_POSSIBLE The function failed to change the message status.
+ * @return LE_FAULT        The function failed to change the message status.
  * @return LE_TIMEOUT      No response was received from the Modem.
  * @return LE_OK           The function succeeded.
  */
@@ -862,7 +862,7 @@ le_result_t pa_sms_ChangeMessageStatus
             status = 2;
             break;
         default:
-            return LE_NOT_POSSIBLE;
+            return LE_FAULT;
     }
     atcmdsync_PrepareString(atcommand,ATCOMMAND_SIZE,"at+wmsc=%d,%d", index, status);
 

@@ -3,7 +3,7 @@
  *
  * Configuration Tree for Positioning
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 #ifndef LEGATO_POSCFGENTRIES_INCLUDE_GUARD
