@@ -1,0 +1,25 @@
+sandboxed: false
+
+executables:
+{
+    monDaemon = ( $LEGATO_ROOT/components/monitoring/monDaemon
+                    $LEGATO_MON_PA
+                  )
+}
+
+processes:
+{
+    run:
+    {
+        (monDaemon)
+    }
+    faultAction: restart
+}
+
+provides:
+{
+    api:
+    {
+        monDaemon.monDaemon.le_antenna
+    }
+}

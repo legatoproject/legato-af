@@ -1,5 +1,5 @@
 #*******************************************************************************
-# Copyright (C) 2013, Sierra Wireless Inc., all rights reserved.
+# Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 #
 # Contributors:
 #     Sierra Wireless - initial API and implementation
@@ -28,13 +28,16 @@ set(LEGATO_MODEM_DAEMON_FILES
         ${MODEM_COMPONENTS_DIR}/modemDaemon/le_sim_local.h
         ${MODEM_COMPONENTS_DIR}/modemDaemon/le_sms.c
         ${MODEM_COMPONENTS_DIR}/modemDaemon/le_sms_local.h
+        ${MODEM_COMPONENTS_DIR}/modemDaemon/le_ips.c
+        ${MODEM_COMPONENTS_DIR}/modemDaemon/le_temp_local.h
+        ${MODEM_COMPONENTS_DIR}/modemDaemon/le_temp.c
         ${MODEM_COMPONENTS_DIR}/modemDaemon/smsPdu.c
         ${MODEM_COMPONENTS_DIR}/modemDaemon/smsPdu.h
         ${MODEM_COMPONENTS_DIR}/modemDaemon/cdmaPdu.c
         ${MODEM_COMPONENTS_DIR}/modemDaemon/cdmaPdu.h
     )
 
-if(INCLUDE_ECALL EQUAL 1 AND LEGATO_TARGET MATCHES "ar7")
+if(INCLUDE_ECALL EQUAL 1)
     # TODO: Remove this when mk tools are doing dependency checking.
     set(LEGATO_MODEM_DAEMON_FILES
             ${MODEM_COMPONENTS_DIR}/modemDaemon/asn1Msd.h
@@ -44,7 +47,6 @@ if(INCLUDE_ECALL EQUAL 1 AND LEGATO_TARGET MATCHES "ar7")
         )
     set(C_FLAGS   --cflags=-DINCLUDE_ECALL)
 endif()
-
 
 
 if (LEGATO_MODEM_PA MATCHES ".*/pre-built/.*")
@@ -63,30 +65,29 @@ elseif(NOT DEFINED LEGATO_COMPONENTS_MODEM)
 
     message(FATAL_ERROR "Legato Modem Platform Adaptor (LEGATO_COMPONENTS_MODEM) not selected.")
 
+# AT Implementation
 elseif (LEGATO_COMPONENTS_MODEM MATCHES "AT")
 
     message(STATUS "Building AT modem PA from sources.")
 
     # TODO: Remove this when mk tools are doing dependency checking.
     set(LEGATO_MODEM_PA_FILES
-            ${LEGATO_MODEM_PA}/Component.cdef
-            ${LEGATO_MODEM_PA}/pa.c
-            ${LEGATO_MODEM_PA}/pa_common.c
-            ${LEGATO_MODEM_PA}/pa_common_local.h
-            ${LEGATO_MODEM_PA}/pa_info.c
-            ${LEGATO_MODEM_PA}/pa_mcc.c
-            ${LEGATO_MODEM_PA}/pa_mcc_local.h
-            ${LEGATO_MODEM_PA}/pa_mdc.c
-            ${LEGATO_MODEM_PA}/pa_mdc_local.h
-            ${LEGATO_MODEM_PA}/pa_mrc.c
-            ${LEGATO_MODEM_PA}/pa_mrc_local.h
-            ${LEGATO_MODEM_PA}/pa_sim.c
-            ${LEGATO_MODEM_PA}/pa_sim_local.h
-            ${LEGATO_MODEM_PA}/pa_sms.c
-            ${LEGATO_MODEM_PA}/pa_sms_local.h
+            ${LEGATO_MODEM_PA}/*
         )
 
     set(PA_FLAGS    -i ${LEGATO_ROOT}/components/
+                    )
+
+# Simulation Implementation
+elseif (LEGATO_COMPONENTS_MODEM MATCHES "simu")
+
+    # TODO: Remove this when mk tools are doing dependency checking.
+    set(LEGATO_MODEM_PA_FILES
+            ${LEGATO_MODEM_PA}/*
+        )
+
+    set(PA_FLAGS    -i ${LEGATO_ROOT}/components/
+                    -i ${LEGATO_ROOT}/components/modemServices/modemDaemon/
                     )
 
 # QMI Implementation
@@ -108,13 +109,15 @@ elseif(LEGATO_COMPONENTS_MODEM MATCHES "QMI")
             ${LEGATO_MODEM_PA}/pa_qmi_local.h
             ${LEGATO_MODEM_PA}/pa_sim_qmi.c
             ${LEGATO_MODEM_PA}/pa_sms_qmi.c
+            ${LEGATO_MODEM_PA}/pa_temp_qmi.c
             ${LEGATO_MODEM_PA}/sim_qmi.h
             ${LEGATO_MODEM_PA}/sms_qmi.h
+            ${LEGATO_MODEM_PA}/pa_ips_qmi.c
             ${LEGATO_MODEM_PA}/swiQmi.c
             ${LEGATO_MODEM_PA}/swiQmi.h
         )
 
-    if(INCLUDE_ECALL EQUAL 1 AND LEGATO_TARGET MATCHES "ar7")
+    if(LEGATO_MODEM_PA_ECALL MATCHES ".*/qmi/.*")
             # TODO: Remove this when mk tools are doing dependency checking.
             set(LEGATO_MODEM_PA_FILES
                     ${LEGATO_MODEM_PA_ECALL}/componentInit.c
@@ -130,6 +133,7 @@ elseif(LEGATO_COMPONENTS_MODEM MATCHES "QMI")
                     --ldflags=-lqmiservices
                     --ldflags=-lloc_api
                     --ldflags=${TARGET_SYSROOT}/usr/lib/libsierra_qapi.a
+                    --cflags="-DSIERRA"
                     )
 
 else()
@@ -146,6 +150,7 @@ mkapp(  modemService.adef
             -i ${CMAKE_CURRENT_BINARY_DIR}
             -i ${LEGATO_ROOT}/interfaces/modemServices
             -i ${LEGATO_ROOT}/interfaces/audio
+            -i ${LEGATO_ROOT}/interfaces/powerMgr
             -i ${MODEM_COMPONENTS_DIR}/platformAdaptor/inc
             -i ${LEGATO_MODEM_PA}
             -i ${LEGATO_ROOT}/components/cfgEntries

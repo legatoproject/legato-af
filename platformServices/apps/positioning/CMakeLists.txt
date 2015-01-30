@@ -1,5 +1,5 @@
 #*******************************************************************************
-# Copyright (C) 2013, Sierra Wireless Inc., all rights reserved.
+# Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 #
 # Contributors:
 #     Sierra Wireless - initial API and implementation
@@ -14,11 +14,13 @@ set(POS_INTERFACE_DIR   ${LEGATO_ROOT}/interfaces/positioning)
 
 ## TODO: Remove this when the mk tools do dependency checking.
 set(POS_DAEMON_FILES    ${LEGATO_ROOT}/components/positioning/posDaemon/Component.cdef
+                        ${LEGATO_ROOT}/components/positioning/posDaemon/le_gnss.c
                         ${LEGATO_ROOT}/components/positioning/posDaemon/le_pos.c
                         )
 
 ## TODO: Remove this when the mk tools do dependency checking.
-set(APIS        ${POS_INTERFACE_DIR}/le_pos.api
+set(APIS        ${POS_INTERFACE_DIR}/le_gnss.api
+                ${POS_INTERFACE_DIR}/le_pos.api
                 ${POS_INTERFACE_DIR}/le_posCtrl.api
                 )
 
@@ -32,7 +34,7 @@ if (LEGATO_GNSS_PA MATCHES ".*/pre-built/.*")
                             --ldflags=-lloc_api
                             --ldflags=${TARGET_SYSROOT}/usr/lib/libsierra_qapi.a
                             )
-                    
+
     file(COPY ${LEGATO_GNSS_PA}/libComponent_le_pa_gnss.so DESTINATION ${LIBRARY_OUTPUT_PATH})
 
 elseif(NOT DEFINED LEGATO_COMPONENTS_GNSS)
@@ -48,6 +50,17 @@ elseif(LEGATO_COMPONENTS_GNSS MATCHES "AT")
                     ${LEGATO_GNSS_PA}/Component.cdef
                     )
 
+# Simulation Implementation
+elseif(LEGATO_COMPONENTS_GNSS MATCHES "simu")
+
+    ## TODO: Remove this when the mk tools do dependency checking.
+    set(PA_FILES    ${LEGATO_GNSS_PA}/*
+                    )
+
+    set(ADDITIONAL_INTERFACE_SEARCH_DIRECTIVES
+        -i  ${LEGATO_ROOT}/components/modemServices/modemDaemon
+        )
+
 # QMI Implementation
 elseif(LEGATO_COMPONENTS_GNSS MATCHES "QMI")
 
@@ -57,6 +70,7 @@ elseif(LEGATO_COMPONENTS_GNSS MATCHES "QMI")
                             --ldflags=-lqmiservices
                             --ldflags=-lloc_api
                             --ldflags=${TARGET_SYSROOT}/usr/lib/libsierra_qapi.a
+                            --cflags="-DSIERRA"
                             )
 
     set(PA_SOURCE_DIR ${LEGATO_GNSS_PA})
@@ -96,6 +110,6 @@ mkapp(  positioningService.adef
             ${LINK_DIRECTIVES}
         DEPENDS
             ${APIS}
-            ${POS_DAEMON_FILES}
+            ${GNSS_DAEMON_FILES}
             ${PA_FILES}
         )

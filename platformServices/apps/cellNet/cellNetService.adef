@@ -1,3 +1,5 @@
+sandboxed: false
+
 executables:
 {
     cellNetService = ( $LEGATO_ROOT/components/cellNetService )

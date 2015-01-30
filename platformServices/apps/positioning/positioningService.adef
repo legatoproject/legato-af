@@ -24,6 +24,7 @@ provides:
 {
     api:
     {
+        posDaemon.posDaemon.le_gnss
         posDaemon.posDaemon.le_pos
         posDaemon.posDaemon.le_posCtrl
     }

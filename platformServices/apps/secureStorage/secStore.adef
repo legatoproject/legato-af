@@ -1,0 +1,24 @@
+sandboxed: false
+
+executables:
+{
+    secStore = ( $LEGATO_ROOT/components/secStore )
+}
+
+processes:
+{
+    run:
+    {
+        (secStore)
+    }
+
+    faultAction: restart
+}
+
+provides:
+{
+    api:
+    {
+        secStore.secStore.le_secStore
+    }
+}

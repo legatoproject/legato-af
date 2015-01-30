@@ -18,6 +18,7 @@ processes:
 bindings:
 {
     modemDaemon.modemDaemon.le_audio -> audioService.le_audio
+    modemDaemon.modemDaemon.le_pm -> powerMgr.le_pm
 }
 
 requires:
@@ -40,5 +41,7 @@ provides:
         modemDaemon.modemDaemon.le_remoteMgmt
         modemDaemon.modemDaemon.le_sim
         modemDaemon.modemDaemon.le_sms
+        modemDaemon.modemDaemon.le_ips
+        modemDaemon.modemDaemon.le_temp
     }
 }

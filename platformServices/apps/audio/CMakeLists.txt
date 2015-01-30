@@ -1,5 +1,5 @@
 #*******************************************************************************
-# Copyright (C) 2013-2014, Sierra Wireless Inc.
+# Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 # Use of this work is subject to license.
 #*******************************************************************************
 
@@ -11,7 +11,7 @@ set (AUDIO_COMPONENT_DIR    ${LEGATO_ROOT}/components/audio)
 if (LEGATO_AUDIO_PA MATCHES ".*/pre-built/.*")
 
     message(STATUS "Using pre-built audio PA.")
-                    
+
     file(COPY ${LEGATO_AUDIO_PA}/libComponent_le_pa_audio.so DESTINATION ${LIBRARY_OUTPUT_PATH})
 
     set(LINK_DIRECTIVES     --ldflags=-lqmi_cci
@@ -68,6 +68,38 @@ elseif (LEGATO_COMPONENTS_AUDIO MATCHES "wp7")
                             --ldflags=-lqmiservices
                             --ldflags=${TARGET_SYSROOT}/usr/lib/libsierra_qcsi.a
                             )
+
+elseif (LEGATO_COMPONENTS_AUDIO MATCHES "ar86")
+
+    message(STATUS "Building AR86 audio PA from sources.")
+
+    ## TODO: Remove this when the mk tools do dependency checking.
+    set (AUDIO_PA_SOURCES
+            ${LEGATO_AUDIO_PA}/pa_audio_ar86.c
+            ${LEGATO_AUDIO_PA}/pa_audio.c
+            ${LEGATO_AUDIO_PA}/pa_audio_local.h
+            ${LEGATO_AUDIO_PA}/swiQmi.c
+            ${LEGATO_AUDIO_PA}/swiQmi.h
+        )
+
+    set (AUDIO_PA_PROPRIETARY_INCLUDES
+            -i ${LEGATO_ROOT}/proprietary/qct/inc/framework
+            -i ${LEGATO_ROOT}/proprietary/qct/inc/services
+        )
+
+    set(LINK_DIRECTIVES     --ldflags=-lqmi_cci
+                            --ldflags=-lqmiservices
+                            --ldflags=${TARGET_SYSROOT}/usr/lib/libsierra_qcsi.a
+                            )
+
+elseif (LEGATO_COMPONENTS_AUDIO MATCHES "simu")
+
+    message(STATUS "Building simulation audio PA from sources.")
+
+    ## TODO: Remove this when the mk tools do dependency checking.
+    set (AUDIO_PA_SOURCES
+            ${LEGATO_AUDIO_PA}/pa_audio_simu.c
+        )
 
 elseif (LEGATO_COMPONENTS_AUDIO MATCHES "STUB")
 

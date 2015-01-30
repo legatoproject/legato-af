@@ -1,0 +1,25 @@
+sandboxed: false
+
+executables:
+{
+    avcDaemon = ( $LEGATO_ROOT/components/airVantage )
+}
+
+processes:
+{
+    run:
+    {
+        (avcDaemon)
+    }
+
+    faultAction: restart
+}
+
+provides:
+{
+    api:
+    {
+        avcDaemon.airVantage.le_avc
+    }
+}
+
