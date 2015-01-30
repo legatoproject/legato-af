@@ -177,6 +177,9 @@ InstallApp()
         # Create a user account for the app.
         ( appUserAdd "$1" ) &&
 
+        # Set the permissions for the app.
+        ( appSetFilePermissions "$1" ) &&
+
         # Load the latest IPC binding configuration into the Service Directory.
         ( sdir load )
     )

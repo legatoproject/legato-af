@@ -1,5 +1,5 @@
 #*******************************************************************************
-# Copyright (C) 2013, Sierra Wireless Inc., all rights reserved.
+# Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 #
 # Contributors:
 #     Sierra Wireless - initial API and implementation
@@ -30,28 +30,24 @@ message("Building Legato for target ${LEGATO_TARGET}")
 set(LEGATO_AUDIO_PA $ENV{LEGATO_AUDIO_PA})
 set(LEGATO_MODEM_PA $ENV{LEGATO_MODEM_PA})
 set(LEGATO_GNSS_PA $ENV{LEGATO_GNSS_PA})
+set(LEGATO_MON_PA $ENV{LEGATO_MON_PA})
 
 # Default Target configuration
+set(LEGATO_EMBEDDED CACHE BOOL TRUE "Target is an embedded device")
 set(LEGATO_COMPONENTS_MODEM "AT" CACHE STRING "Legato Modem Platform-Adapter to build")
 set(LEGATO_COMPONENTS_GNSS "AT" CACHE STRING "Legato Gnss Platform-Adapter to build")
 set(LEGATO_COMPONENTS_AUDIO "STUB" CACHE STRING "Legato Audio Platform-Adapter to build")
+set(LEGATO_COMPONENTS_MONITORING "AT" CACHE STRING "Legato Monitoring Platform-Adapter to build")
 
 # Target: ar6
 if(LEGATO_TARGET MATCHES "ar6")
-    set(LEGATO_EMBEDDED "true")
-    set(CMAKE_TOOLCHAIN_FILE "${CMAKE_CURRENT_SOURCE_DIR}/cmake/toolchain.yocto.cmake")
-    add_definitions(-DLEGATO_EMBEDDED)
-    add_definitions(-DLEGATO_DEBUG)
 
 # Target: ar7
 elseif(LEGATO_TARGET MATCHES "ar7")
-    set(LEGATO_EMBEDDED "true")
-    set(CMAKE_TOOLCHAIN_FILE "${CMAKE_CURRENT_SOURCE_DIR}/cmake/toolchain.yocto.cmake")
     set(LEGATO_COMPONENTS_MODEM "QMI")
     set(LEGATO_COMPONENTS_GNSS "QMI")
     set(LEGATO_COMPONENTS_AUDIO "ar7")
-    add_definitions(-DLEGATO_EMBEDDED)
-    add_definitions(-DLEGATO_DEBUG)
+    set(LEGATO_COMPONENTS_MONITORING "QMI")
 
     if(INCLUDE_ECALL EQUAL 1)
         add_definitions(-DINCLUDE_ECALL)
@@ -63,21 +59,39 @@ elseif(LEGATO_TARGET MATCHES "ar7")
 
 # Target: wp7
 elseif(LEGATO_TARGET MATCHES "wp7")
-    set(LEGATO_EMBEDDED "true")
-    set(CMAKE_TOOLCHAIN_FILE "${CMAKE_CURRENT_SOURCE_DIR}/cmake/toolchain.yocto.cmake")
     set(LEGATO_COMPONENTS_MODEM "QMI")
     set(LEGATO_COMPONENTS_GNSS "QMI")
     set(LEGATO_COMPONENTS_AUDIO "wp7")
-    add_definitions(-DLEGATO_EMBEDDED)
-    add_definitions(-DLEGATO_DEBUG)
+    set(LEGATO_COMPONENTS_MONITORING "QMI")
+
+# Target: ar86
+elseif(LEGATO_TARGET MATCHES "ar86")
+    set(LEGATO_COMPONENTS_MODEM "QMI")
+    set(LEGATO_COMPONENTS_GNSS "QMI")
+    set(LEGATO_COMPONENTS_AUDIO "ar86")
+    set(LEGATO_COMPONENTS_MONITORING "QMI")
+
+    if(INCLUDE_ECALL EQUAL 1)
+        add_definitions(-DINCLUDE_ECALL)
+        set(LEGATO_MODEM_PA_ECALL $ENV{LEGATO_MODEM_PA_ECALL})
+        message("Including eCall to target ${LEGATO_TARGET}")
+    else()
+        message("Excluding eCall from target ${LEGATO_TARGET}")
+    endif()
 
 # Target: raspi
 elseif(LEGATO_TARGET MATCHES "raspi")
-    set(LEGATO_EMBEDDED "true")
-    set(CMAKE_TOOLCHAIN_FILE "${CMAKE_CURRENT_SOURCE_DIR}/cmake/toolchain.yocto.cmake")
+
+# Target: virt
+elseif(LEGATO_TARGET MATCHES "virt")
+    set(LEGATO_COMPONENTS_MODEM "simu")
+    set(LEGATO_COMPONENTS_GNSS "simu")
+    set(LEGATO_COMPONENTS_AUDIO "simu")
+    set(LEGATO_COMPONENTS_MONITORING "simu")
 
 # Target: localhost
 elseif(LEGATO_TARGET MATCHES "localhost")
+    set(LEGATO_EMBEDDED FALSE)
     add_definitions(-DLEGATO_DEBUG)
 
     if(USE_CLANG EQUAL 1)
@@ -88,6 +102,17 @@ elseif(LEGATO_TARGET MATCHES "localhost")
 # Target: Unknown
 else()
     message(FATAL_ERROR "Invalid Target")
+endif()
+
+# Target is embedded device
+if(LEGATO_EMBEDDED)
+    add_definitions(-DLEGATO_EMBEDDED)
+    add_definitions(-DLEGATO_DEBUG)
+endif()
+
+# Target is an automotive platform
+if(AUTOMOTIVE_TARGET)
+    add_definitions(-DAUTOMOTIVE_TARGET)
 endif()
 
 project(LEGATO C CXX)
@@ -133,6 +158,15 @@ else()
     add_definitions(-Wall -Werror)
 endif()
 
+# Target is x86_64 or x86 ?
+get_filename_component(COMPILER_NAME ${CMAKE_C_COMPILER} NAME_WE)
+if(COMPILER_NAME STREQUAL "x86_64-poky-linux-gcc")
+    set(CFLAGS_TARGET_IMPORTS "--cflags=-DTARGET_IMPORTS_X86_64")
+elseif(COMPILER_NAME STREQUAL "i586-poky-linux-gcc")
+    set(CFLAGS_TARGET_IMPORTS "--cflags=-DTARGET_IMPORTS_X86")
+endif()
+message(STATUS "Compiler Name: ${COMPILER_NAME} ${CFLAGS_TARGET_IMPORTS}")
+
 # Target sysroot
 get_compiler_target_sysroot(${CMAKE_C_COMPILER} TARGET_SYSROOT)
 
@@ -145,7 +179,7 @@ if(TEST_COVERAGE)
     add_definitions(--coverage)
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} --coverage")
     set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} --coverage")
-    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} --coverage")
+    set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} --coverage")
 
     # Generation part
     add_custom_target(

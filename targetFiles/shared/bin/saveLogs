@@ -1,0 +1,102 @@
+#!/bin/sh
+
+# --------------------------------------------------------------------------------------------------
+# Script to handle the backing up of device logs and core dumps due to application faults.
+#
+# Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+# --------------------------------------------------------------------------------------------------
+
+IS_SANDBOXED=$1  # Is the application sandboxed?
+APP_NAME=$2      # The name of the app that we're running for.
+PROC_NAME=$3     # The name of the process we're backing up logs for.
+
+# Location of the application's home directory.  Either sandboxed or not.
+if [ "$IS_SANDBOXED" = "SANDBOXED" ]
+then
+    APP_HOME="/tmp/legato/sandboxes/$APP_NAME/home/app$APP_NAME"
+elif [ "$IS_SANDBOXED" = "NOTSANDBOXED" ]
+then
+    APP_HOME="/home/app$APP_NAME"
+else
+    echo "Bad sandbox flag." 1>&2
+    exit 1
+fi
+
+# For sandboxed apps, we save the logs in the tmp file-system, (normally a RAM disk.)  However, if
+# the system is about to be rebooted, then we backup any previously stored RAM based logs to flash.
+# The new logs will also be stored into flash.  For consistency, unsandboxed apps have their logs
+# symlinked into these locations.
+FLASH_LOC="/mnt/flash/legato_logs"
+RAM_LOC="/tmp/legato_logs"
+
+if [ "$4" = "REBOOT" ]
+then
+    LOG_HOME=$FLASH_LOC
+    mkdir -p "$LOG_HOME"
+
+    rm -rf "$LOG_HOME"
+    cp -r "$RAM_LOC" "$LOG_HOME"
+else
+    LOG_HOME=$RAM_LOC
+    mkdir -p "$LOG_HOME"
+fi
+
+# Remove all but the 3 most recent of the core and syslog files.
+rm `ls -t "$LOG_HOME"/core-* 2> /dev/null | tail -n +4` 2> /dev/null
+rm `ls -t "$LOG_HOME"/syslog-* 2> /dev/null | tail -n +4` 2> /dev/null
+
+# Get the current time stamp.
+UNIX_TIME=`date +%s`
+
+# Dump the current syslog directly into our output directory.
+/sbin/logread > "$LOG_HOME/syslog-$APP_NAME-$PROC_NAME-$UNIX_TIME"
+
+# Given a list of core files, delete all of them but the first one.
+DeleteAllButFirst()
+{
+    # Drop the first core file from our parameter list.
+    shift 1
+
+    # Now, go through and delete the rest.
+    for FILE in $*
+    do
+        rm "$FILE"
+    done
+}
+
+# Given a list of core files, move or symlink the first one into the given target directory.
+MoveOrLinkFirstCore()
+{
+    CORE_FILE=$1
+    DEST_PATH=$LOG_HOME/core-$APP_NAME-$PROC_NAME-$UNIX_TIME
+
+    # If there weren't any core files found, then there's not much to do here.
+    if [ -z "$CORE_FILE" ]
+    then
+        return 0
+    fi
+
+    if [ "$IS_SANDBOXED" = "SANDBOXED" ]
+    then
+        mv "$CORE_FILE" "$DEST_PATH"
+    else
+        ln -s "$CORE_FILE" "$DEST_PATH"
+    fi
+}
+
+# Build a list of core files and drop the redundant ones, while moving/linking the latest one to the
+# target directory.
+CORE_LIST=`ls -t "$APP_HOME/core-$PROC_NAME"-* 2> /dev/null`
+
+DeleteAllButFirst $CORE_LIST
+MoveOrLinkFirstCore $CORE_LIST
+
+# Now, check for broken log symlinks, and then delete any found.
+SYM_LINKS=`find "$LOG_HOME" -type l`
+for LINK in $SYM_LINKS
+do
+    if [ ! -e "$LINK" ]
+    then
+        rm "$LINK"
+    fi
+done

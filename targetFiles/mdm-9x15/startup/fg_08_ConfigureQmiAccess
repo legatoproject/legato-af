@@ -4,11 +4,18 @@
 # TODO: Change to use group-based permissions and/or mandatory access control.
 
 # This is the main QMI access mechanism.
+# TODO: Setting the SMACK label to "*" is just a temporary measure until we have a way to specifiy
+#       access to a file for a certain app.
 chmod o+rw /var/qmux_connect_socket
+/usr/local/bin/xattr set security.SMACK64 "*" /var/qmux_connect_socket
 
 # We know for sure that the QMI clients try to use these from time-to-time:
+# TODO: Setting the SMACK label to "*" is just a temporary measure until we have a way to specifiy
+#       access to a file for a certain app.
 chmod o+rw /dev/diag
+/usr/local/bin/xattr set security.SMACK64 "*" /dev/diag
 chmod o+rw /dev/smem_log
+/usr/local/bin/xattr set security.SMACK64 "*" /dev/smem_log
 
 # These may or may not be used, but appear modem related.  TODO: Confirm.
 chmod o+rw /dev/apr_apps2

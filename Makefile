@@ -17,11 +17,11 @@
 #
 # To enable coverage testing, run make with "TEST_COVERAGE=1" on the command-line.
 #
-# Copyright (C) 2013-2014, Sierra Wireless, Inc.  Use of this work is subject to license.
+# Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 # --------------------------------------------------------------------------------------------------
 
 # List of target devices supported:
-TARGETS := localhost ar6 ar7 wp7 raspi
+TARGETS := localhost ar6 ar7 wp7 ar86 raspi virt
 
 # By default, build for the localhost and build the documentation.
 .PHONY: default
@@ -43,6 +43,7 @@ export LE_SVCDIR_CLIENT_SOCKET_NAME := $(LE_RUNTIME_DIR)serviceDirectoryClient
 AUDIO_PA_DIR := $(LEGATO_ROOT)/components/audio/platformAdaptor
 MODEM_PA_DIR := $(LEGATO_ROOT)/components/modemServices/platformAdaptor
 GNSS_PA_DIR := $(LEGATO_ROOT)/components/positioning/platformAdaptor
+MON_PA_DIR := $(LEGATO_ROOT)/components/monitoring/platformAdaptor
 
 # Configure appropriate QMI platform adaptor build variables.
 #   Sources:
@@ -50,11 +51,15 @@ export LEGATO_QMI_AUDIO_PA_SRC := $(AUDIO_PA_DIR)/mdm9x15/le_pa_audio
 export LEGATO_QMI_MODEM_PA_SRC := $(MODEM_PA_DIR)/qmi/le_pa
 export LEGATO_QMI_MODEM_PA_ECALL_SRC := $(MODEM_PA_DIR)/qmi/le_pa_ecall
 export LEGATO_QMI_GNSS_PA_SRC := $(GNSS_PA_DIR)/qmi/le_pa_gnss
+export LEGATO_QMI_MON_PA_SRC := $(MON_PA_DIR)/qmi/le_pa_mon
+
 #   Pre-built binaries:
 export LEGATO_QMI_AUDIO_PA_BIN = $(AUDIO_PA_DIR)/pre-built/$(TARGET)/le_pa_audio
 export LEGATO_QMI_MODEM_PA_BIN = $(MODEM_PA_DIR)/pre-built/$(TARGET)/le_pa
 export LEGATO_QMI_MODEM_PA_ECALL_BIN = $(MODEM_PA_DIR)/pre-built/$(TARGET)/le_pa_ecall
 export LEGATO_QMI_GNSS_PA_BIN = $(GNSS_PA_DIR)/pre-built/$(TARGET)/le_pa_gnss
+export LEGATO_QMI_MON_PA_BIN = $(MON_PA_DIR)/pre-built/$(TARGET)/le_pa_mon
+
 #   If the QMI PA sources are not available, use the pre-built binaries.
 ifneq (,$(wildcard $(LEGATO_QMI_AUDIO_PA_SRC)/*))
   export LEGATO_QMI_AUDIO_PA = $(LEGATO_QMI_AUDIO_PA_SRC)
@@ -76,6 +81,11 @@ ifneq (,$(wildcard $(LEGATO_QMI_GNSS_PA_SRC)/*))
 else
   export LEGATO_QMI_GNSS_PA = $(LEGATO_QMI_GNSS_PA_BIN)
 endif
+ifneq (,$(wildcard $(LEGATO_QMI_MON_PA_SRC)/*))
+  export LEGATO_QMI_MON_PA = $(LEGATO_QMI_MON_PA_SRC)
+else
+  export LEGATO_QMI_MON_PA = $(LEGATO_QMI_MON_PA_BIN)
+endif
 
 # Define the default platform adaptors to use if not otherwise specified for a given target.
 export LEGATO_AUDIO_PA = $(AUDIO_PA_DIR)/stub/le_pa_audio
@@ -83,6 +93,7 @@ export LEGATO_MODEM_PA = $(MODEM_PA_DIR)/at/le_pa
 export LEGATO_MODEM_PA_ECALL = $(MODEM_PA_DIR)/stub/le_pa_ecall
 export LEGATO_STUB_MODEM_PA_ECALL = $(MODEM_PA_DIR)/stub/le_pa_ecall
 export LEGATO_GNSS_PA = $(GNSS_PA_DIR)/at/le_pa_gnss
+export LEGATO_MON_PA = $(MON_PA_DIR)/at/le_pa_mon
 
 # Default AirVantage build to be ON
 INCLUDE_AIRVANTAGE ?= 1
@@ -90,8 +101,14 @@ INCLUDE_AIRVANTAGE ?= 1
 # Do not use clang by default.
 USE_CLANG ?= 0
 
-# Do not use European eCall by default.
-INCLUDE_ECALL ?= 0
+# Default eCall build  to be ON
+INCLUDE_ECALL ?= 1
+
+# In case of release, override parameters
+ifeq ($(MAKECMDGOALS),release)
+  # We never build for coverage testing when building a release.
+  override TEST_COVERAGE := 0
+endif
 
 # ========== TARGET-SPECIFIC VARIABLES ============
 
@@ -116,15 +133,16 @@ ifneq ($(MAKECMDGOALS),clean)
   endif
   ar6: export COMPILER_DIR = $(AR6_TOOLCHAIN_DIR)
   ar6: export TARGET := ar6
-  ar6: export AV_CONFIG := -DCMAKE_TOOLCHAIN_FILE=../../../cmake/toolchain.yocto.cmake
+  ar6: export CMAKE_CONFIG := -DCMAKE_TOOLCHAIN_FILE=$(LEGATO_ROOT)/cmake/toolchain.yocto.cmake
 
   # AR7
   ifndef AR7_TOOLCHAIN_DIR
     ifeq ($(MAKECMDGOALS),ar7)
       ar7: $(warning AR7_TOOLCHAIN_DIR not defined.  Using default.)
     endif
-    ar7: export AR7_TOOLCHAIN_DIR := $(shell $(FINDTOOLCHAIN) ar7)
+    export AR7_TOOLCHAIN_DIR := $(shell $(FINDTOOLCHAIN) ar7)
   endif
+  export AR7_TOOLCHAIN_PREFIX = arm-poky-linux-gnueabi-
   ar7: export COMPILER_DIR = $(AR7_TOOLCHAIN_DIR)
   ar7: export TARGET := ar7
   ar7: export LEGATO_AUDIO_PA = $(LEGATO_QMI_AUDIO_PA)
@@ -135,22 +153,43 @@ ifneq ($(MAKECMDGOALS),clean)
     ar7: export LEGATO_MODEM_PA_ECALL = $(LEGATO_STUB_MODEM_PA_ECALL)
   endif
   ar7: export LEGATO_GNSS_PA = $(LEGATO_QMI_GNSS_PA)
-  ar7: export AV_CONFIG := -DCMAKE_TOOLCHAIN_FILE=../../../cmake/toolchain.yocto.cmake
+  ar7: export LEGATO_MON_PA = $(LEGATO_QMI_MON_PA)
+  ar7: export CMAKE_CONFIG := -DCMAKE_TOOLCHAIN_FILE=$(LEGATO_ROOT)/cmake/toolchain.yocto.cmake
 
   # WP7
   ifndef WP7_TOOLCHAIN_DIR
     ifeq ($(MAKECMDGOALS),wp7)
-      wp7: $(warning WP7_TOOLCHAIN_DIR not defined.  Using default. )
+      wp7: $(warning WP7_TOOLCHAIN_DIR not defined.  Using default.)
     endif
-    wp7: export WP7_TOOLCHAIN_DIR := $(shell $(FINDTOOLCHAIN) wp7)
+    export WP7_TOOLCHAIN_DIR := $(shell $(FINDTOOLCHAIN) wp7)
   endif
+  export WP7_TOOLCHAIN_PREFIX = arm-poky-linux-gnueabi-
   wp7: export COMPILER_DIR = $(WP7_TOOLCHAIN_DIR)
   wp7: export TARGET := wp7
   wp7: export LEGATO_AUDIO_PA = $(LEGATO_QMI_AUDIO_PA)
   wp7: export LEGATO_MODEM_PA = $(LEGATO_QMI_MODEM_PA)
   wp7: export LEGATO_MODEM_PA_ECALL = $(LEGATO_STUB_MODEM_PA_ECALL)
   wp7: export LEGATO_GNSS_PA = $(LEGATO_QMI_GNSS_PA)
-  wp7: export AV_CONFIG := -DCMAKE_TOOLCHAIN_FILE=../../../cmake/toolchain.yocto.cmake
+  wp7: export LEGATO_MON_PA = $(LEGATO_QMI_MON_PA)
+  wp7: export CMAKE_CONFIG := -DCMAKE_TOOLCHAIN_FILE=$(LEGATO_ROOT)/cmake/toolchain.yocto.cmake
+
+  # AR86
+  ifndef AR86_TOOLCHAIN_DIR
+    ifeq ($(MAKECMDGOALS),ar86)
+      ar86: $(warning AR86_TOOLCHAIN_DIR not defined.  Using default.)
+    endif
+    export AR86_TOOLCHAIN_DIR := $(shell $(FINDTOOLCHAIN) ar86)
+  endif
+  export AR86_TOOLCHAIN_PREFIX = arm-poky-linux-gnueabi-
+  ar86: export COMPILER_DIR = $(AR86_TOOLCHAIN_DIR)
+  ar86: export TARGET := ar86
+  ar86: export LEGATO_AUDIO_PA = $(LEGATO_QMI_AUDIO_PA)
+  ar86: export LEGATO_MODEM_PA = $(LEGATO_QMI_MODEM_PA)
+  # Force ECALL to be disabled until audio will be available on AR8652
+  ar86: export LEGATO_MODEM_PA_ECALL = $(LEGATO_STUB_MODEM_PA_ECALL)
+  ar86: export LEGATO_GNSS_PA = $(LEGATO_QMI_GNSS_PA)
+  ar86: export LEGATO_MON_PA = $(LEGATO_QMI_MON_PA)
+  ar86: export CMAKE_CONFIG := -DCMAKE_TOOLCHAIN_FILE=$(LEGATO_ROOT)/cmake/toolchain.yocto.cmake
 
   # Raspberry Pi
   ifndef RASPI_TOOLCHAIN_DIR
@@ -160,7 +199,39 @@ ifneq ($(MAKECMDGOALS),clean)
   endif
   raspi: export COMPILER_DIR := $(RASPI_TOOLCHAIN_DIR)
   raspi: export TARGET := raspi
-  raspi: export AV_CONFIG := -DCMAKE_TOOLCHAIN_FILE=../../../cmake/toolchain.yocto.cmake
+  raspi: export CMAKE_CONFIG := -DCMAKE_TOOLCHAIN_FILE=$(LEGATO_ROOT)/cmake/toolchain.yocto.cmake
+
+  # Virtual platform
+  ifeq ($(MAKECMDGOALS),virt)
+    ifndef VIRT_TARGET_ARCH
+      export VIRT_TARGET_ARCH := arm
+    endif
+
+    ifndef VIRT_TOOLCHAIN_DIR
+      virt: $(warning VIRT_TOOLCHAIN_DIR not defined.  Using default.)
+      export VIRT_TOOLCHAIN_DIR := $(shell $(FINDTOOLCHAIN) virt_${VIRT_TARGET_ARCH})
+    endif
+
+    ifndef TOOLCHAIN_PREFIX
+      ifeq ($(VIRT_TARGET_ARCH),x86)
+        export TOOLCHAIN_PREFIX := i586-poky-linux-
+      else
+        export TOOLCHAIN_PREFIX := arm-poky-linux-gnueabi-
+      endif
+    endif
+
+    ifndef VIRT_TOOLCHAIN_PREFIX
+      export VIRT_TOOLCHAIN_PREFIX := ${TOOLCHAIN_PREFIX}
+    endif
+  endif
+  virt: export CMAKE_CONFIG := -DCMAKE_TOOLCHAIN_FILE=$(LEGATO_ROOT)/cmake/toolchain.yocto.cmake -DTOOLCHAIN_PREFIX=$(TOOLCHAIN_PREFIX)
+  virt: export COMPILER_DIR := $(VIRT_TOOLCHAIN_DIR)
+  virt: export TARGET := virt
+  virt: export LEGATO_AUDIO_PA := $(AUDIO_PA_DIR)/simu/le_pa_audio
+  virt: export LEGATO_MODEM_PA := $(MODEM_PA_DIR)/simu/le_pa
+  virt: export LEGATO_GNSS_PA := $(GNSS_PA_DIR)/simu/le_pa_gnss
+  virt: export LEGATO_MON_PA = $(MON_PA_DIR)/simu/le_pa_mon
+  virt: export PLATFORM_SIMULATION := 1
 endif
 
 
@@ -178,6 +249,7 @@ $(TARGETS): %: build_% stage_% package_%
 .PHONY: clean
 clean:
 	rm -rf build Documentation* bin doxygen.*.log doxygen.*.err
+	rm -f framework/doc/toolsHost.dox framework/doc/toolsHost_*.dox
 	rm -rf interfaces/config/c/configTypes.h \
 		   interfaces/configAdmin/c/configAdminTypes.h
 
@@ -209,19 +281,22 @@ user_docs: TARGET := localhost
 implementation_docs: TARGET := localhost
 
 # Docs for people who don't want to be distracted by the internal implementation details.
-user_docs: localhost
+toolsHost.dox: $(find framework/tools/scripts -f)
+	framework/tools/scripts/mkdoc
+
+user_docs: localhost toolsHost.dox
 	$(MAKE) -C build/localhost user_docs
 	ln -sf build/localhost/bin/doc/user/html Documentation
 
-user_pdf: localhost
+user_pdf: localhost toolsHost.dox
 	$(MAKE) -C build/localhost user_pdf
 	ln -sf build/localhost/bin/doc/user/legato-user.pdf Documentation.pdf
 
 # Docs for people who want or need to know the internal implementation details.
-implementation_docs: localhost
+implementation_docs: localhost toolsHost.dox
 	$(MAKE) -C build/localhost implementation_docs
 
-implementation_pdf: localhost
+implementation_pdf: localhost toolsHost.dox
 	$(MAKE) -C build/localhost implementation_pdf
 
 # Rule for how to build the build tools.
@@ -256,8 +331,8 @@ endif
 # Rule for invoking CMake to generate the Makefiles inside the build directory.
 # Depends on the build directory being there.
 $(foreach target,$(TARGETS),build/$(target)/Makefile): build/%/Makefile: build/%/bin/apps \
-																		 build/%/bin/lib \
-																		 build/%/airvantage
+									build/%/bin/lib \
+									build/%/airvantage
 	# Configure Legato
 	export PATH=$(COMPILER_DIR):$(PATH) && \
 		cd `dirname $@` && \
@@ -266,7 +341,9 @@ $(foreach target,$(TARGETS),build/$(target)/Makefile): build/%/Makefile: build/%
 			-DTEST_COVERAGE=$(TEST_COVERAGE) \
 			-DINCLUDE_AIRVANTAGE=$(INCLUDE_AIRVANTAGE) \
 			-DINCLUDE_ECALL=$(INCLUDE_ECALL) \
-			-DUSE_CLANG=$(USE_CLANG)
+			-DUSE_CLANG=$(USE_CLANG) \
+			-DPLATFORM_SIMULATION=$(PLATFORM_SIMULATION) \
+			$(CMAKE_CONFIG)
 
 ifeq ($(INCLUDE_AIRVANTAGE), 1)
 	# Configure AirVantage
@@ -275,7 +352,7 @@ ifeq ($(INCLUDE_AIRVANTAGE), 1)
 		cd `dirname $@`/airvantage && \
 		cmake ../../../airvantage \
 			-DPLATFORM=legato-wp7 \
-			$(AV_CONFIG)
+			$(CMAKE_CONFIG)
 endif
 
 # ========== STAGING AND PACKAGING RULES ============
@@ -333,7 +410,7 @@ stage_embedded:
 	mkdir -p build/$(TARGET)/staging/usr/local/lib
 	for library in $(LIB_INSTALL_LIST) ; \
 	do \
-	    install build/$(TARGET)/bin/lib/$$library -D build/$(TARGET)/staging/usr/local/lib ; \
+	    cp -P build/$(TARGET)/bin/lib/$$library build/$(TARGET)/staging/usr/local/lib ; \
 	done
 	# Install bundled framework apps in /usr/local/bin/apps.
 	mkdir -p build/$(TARGET)/staging/usr/local/bin/apps
@@ -348,10 +425,10 @@ package_embedded:
 	# Create a tarball containing everything in the staging area.
 	tar -C build/$(TARGET)/staging -cf build/$(TARGET)/legato-runtime.tar .
 
-# ==== AR7 and WP7 (9x15-based Sierra Wireless modules) ====
+# ==== AR7, AR86 and WP7 (9x15-based Sierra Wireless modules) ====
 
-.PHONY: stage_ar7 stage_wp7
-stage_ar7 stage_wp7: stage_embedded stage_9x15
+.PHONY: stage_ar7 stage_wp7 stage_ar86
+stage_ar7 stage_wp7 stage_ar86: stage_embedded stage_9x15
 
 .PHONY: stage_9x15
 stage_9x15:
@@ -359,8 +436,8 @@ stage_9x15:
 	install -d build/$(TARGET)/staging/mnt/flash/startupDefaults
 	install targetFiles/mdm-9x15/startup/* -t build/$(TARGET)/staging/mnt/flash/startupDefaults
 
-.PHONY: package_ar7 package_wp7
-package_ar7 package_wp7: package_embedded
+.PHONY: package_ar7 package_wp7 package_ar86
+package_ar7 package_wp7 package_ar86: package_embedded
 
 # ==== AR6 (Ykem-based Sierra Wireless modules) ====
 
@@ -378,6 +455,17 @@ stage_raspi: stage_embedded package_embedded
 .PHONY: package_raspi
 package_raspi: package_embedded
 
+# ==== Virtual ====
+
+.PHONY: stage_virt
+stage_virt: stage_embedded
+	# Install default startup scripts.
+	install -d build/$(TARGET)/staging/mnt/flash/startupDefaults
+	install targetFiles/virt/startup/* -t build/$(TARGET)/staging/mnt/flash/startupDefaults
+
+.PHONY: stage_virt
+package_virt: package_embedded
+
 # ========== RELEASE ============
 
 # Following are the rules for building and packaging a release.
@@ -385,17 +473,14 @@ package_raspi: package_embedded
 .PHONY: release
 
 # Define a regex specifying a set of directories that must be excluded from releases.
-release: EXCLUDE_PATTERN := 'proprietary|qmi/le_pa|mdm9x15/le_pa|test/.*/qmi|jenkins-build|^airvantage$$'
+release: EXCLUDE_PATTERN := 'proprietary|qmi/le_pa|mdm9x15/le_pa|test/.*/qmi|jenkins-build|.gitreview|^airvantage$$'
 
 # Define output directory
 release: RELEASE_DIR := releases
 
-# We never build for coverage testing when building a release.
-release: override TEST_COVERAGE=0
-
 # Clean first, then build for localhost and selected embedded targets and generate the documentation
 # before packaging it all up into a compressed tarball.
-release: version package.properties clean localhost ar7 wp7 docs
+release: version package.properties clean localhost ar7 wp7 ar86 docs
 	$(eval VERSION := $(shell cat version))
 	$(eval STAGE_NAME := legato-$(VERSION))
 	$(eval STAGE_DIR := $(RELEASE_DIR)/$(STAGE_NAME))
@@ -408,13 +493,35 @@ release: version package.properties clean localhost ar7 wp7 docs
 	do \
 		install -D "$$LINE" "$(STAGE_DIR)/$$LINE" ; \
 	done
-	install -D build/ar7/platformServices/apps/audio/audioService.ar7/staging/lib/libComponent_le_pa_audio.so $(STAGE_DIR)/components/audio/platformAdaptor/pre-built/ar7/le_pa_audio/
-	install -D build/wp7/platformServices/apps/audio/audioService.wp7/staging/lib/libComponent_le_pa_audio.so $(STAGE_DIR)/components/audio/platformAdaptor/pre-built/wp7/le_pa_audio/
-	install -D build/ar7/platformServices/apps/modem/modemService.ar7/staging/lib/libComponent_le_pa.so $(STAGE_DIR)/components/modemServices/platformAdaptor/pre-built/ar7/le_pa/
-	install -D build/wp7/platformServices/apps/modem/modemService.wp7/staging/lib/libComponent_le_pa.so $(STAGE_DIR)/components/modemServices/platformAdaptor/pre-built/wp7/le_pa/
-	install -D build/ar7/platformServices/apps/modem/modemService.ar7/staging/lib/libComponent_le_pa_ecall.so $(STAGE_DIR)/components/modemServices/platformAdaptor/pre-built/ar7/le_pa_ecall/
-	install -D build/ar7/platformServices/apps/positioning/positioningService.ar7/staging/lib/libComponent_le_pa_gnss.so $(STAGE_DIR)/components/positioning/platformAdaptor/pre-built/ar7/le_pa_gnss/
-	install -D build/wp7/platformServices/apps/positioning/positioningService.wp7/staging/lib/libComponent_le_pa_gnss.so $(STAGE_DIR)/components/positioning/platformAdaptor/pre-built/wp7/le_pa_gnss/
+	install -D build/ar7/platformServices/apps/audio/_build_audioService.ar7/staging/lib/libComponent_le_pa_audio.so $(STAGE_DIR)/components/audio/platformAdaptor/pre-built/ar7/le_pa_audio/
+	$$AR7_TOOLCHAIN_DIR/$${AR7_TOOLCHAIN_PREFIX}strip -s $(STAGE_DIR)/components/audio/platformAdaptor/pre-built/ar7/le_pa_audio/libComponent_le_pa_audio.so
+	install -D build/wp7/platformServices/apps/audio/_build_audioService.wp7/staging/lib/libComponent_le_pa_audio.so $(STAGE_DIR)/components/audio/platformAdaptor/pre-built/wp7/le_pa_audio/
+	$$WP7_TOOLCHAIN_DIR/$${WP7_TOOLCHAIN_PREFIX}strip -s $(STAGE_DIR)/components/audio/platformAdaptor/pre-built/wp7/le_pa_audio/libComponent_le_pa_audio.so
+	install -D build/ar86/platformServices/apps/audio/_build_audioService.ar86/staging/lib/libComponent_le_pa_audio.so $(STAGE_DIR)/components/audio/platformAdaptor/pre-built/ar86/le_pa_audio/
+	$$AR86_TOOLCHAIN_DIR/$${AR86_TOOLCHAIN_PREFIX}strip -s $(STAGE_DIR)/components/audio/platformAdaptor/pre-built/ar86/le_pa_audio/libComponent_le_pa_audio.so
+	install -D build/ar7/platformServices/apps/modem/_build_modemService.ar7/staging/lib/libComponent_le_pa.so $(STAGE_DIR)/components/modemServices/platformAdaptor/pre-built/ar7/le_pa/
+	$$AR7_TOOLCHAIN_DIR/$${AR7_TOOLCHAIN_PREFIX}strip -s $(STAGE_DIR)/components/modemServices/platformAdaptor/pre-built/ar7/le_pa/libComponent_le_pa.so
+	install -D build/wp7/platformServices/apps/modem/_build_modemService.wp7/staging/lib/libComponent_le_pa.so $(STAGE_DIR)/components/modemServices/platformAdaptor/pre-built/wp7/le_pa/
+	$$WP7_TOOLCHAIN_DIR/$${WP7_TOOLCHAIN_PREFIX}strip -s $(STAGE_DIR)/components/modemServices/platformAdaptor/pre-built/wp7/le_pa/libComponent_le_pa.so
+	install -D build/ar86/platformServices/apps/modem/_build_modemService.ar86/staging/lib/libComponent_le_pa.so $(STAGE_DIR)/components/modemServices/platformAdaptor/pre-built/ar86/le_pa/
+	$$AR86_TOOLCHAIN_DIR/$${AR86_TOOLCHAIN_PREFIX}strip -s $(STAGE_DIR)/components/modemServices/platformAdaptor/pre-built/ar86/le_pa/libComponent_le_pa.so
+	install -D build/ar7/platformServices/apps/modem/_build_modemService.ar7/staging/lib/libComponent_le_pa_ecall.so $(STAGE_DIR)/components/modemServices/platformAdaptor/pre-built/ar7/le_pa_ecall/
+	$$AR7_TOOLCHAIN_DIR/$${AR7_TOOLCHAIN_PREFIX}strip -s $(STAGE_DIR)/components/modemServices/platformAdaptor/pre-built/ar7/le_pa_ecall/libComponent_le_pa_ecall.so
+	# Disabled ECALL on AR8652 until audio service will be available
+	#install -D build/ar86/platformServices/apps/modem/_build_modemService.ar86/staging/lib/libComponent_le_pa_ecall.so $(STAGE_DIR)/components/modemServices/platformAdaptor/pre-built/ar86/le_pa_ecall/
+	#$$AR86_TOOLCHAIN_DIR/$${AR86_TOOLCHAIN_PREFIX}strip -s $(STAGE_DIR)/components/modemServices/platformAdaptor/pre-built/ar86/le_pa_ecall/libComponent_le_pa_ecall.so
+	install -D build/ar7/platformServices/apps/positioning/_build_positioningService.ar7/staging/lib/libComponent_le_pa_gnss.so $(STAGE_DIR)/components/positioning/platformAdaptor/pre-built/ar7/le_pa_gnss/
+	$$AR7_TOOLCHAIN_DIR/$${AR7_TOOLCHAIN_PREFIX}strip -s $(STAGE_DIR)/components/positioning/platformAdaptor/pre-built/ar7/le_pa_gnss/libComponent_le_pa_gnss.so
+	install -D build/wp7/platformServices/apps/positioning/_build_positioningService.wp7/staging/lib/libComponent_le_pa_gnss.so $(STAGE_DIR)/components/positioning/platformAdaptor/pre-built/wp7/le_pa_gnss/
+	$$WP7_TOOLCHAIN_DIR/$${WP7_TOOLCHAIN_PREFIX}strip -s $(STAGE_DIR)/components/positioning/platformAdaptor/pre-built/wp7/le_pa_gnss/libComponent_le_pa_gnss.so
+	install -D build/ar86/platformServices/apps/positioning/_build_positioningService.ar86/staging/lib/libComponent_le_pa_gnss.so $(STAGE_DIR)/components/positioning/platformAdaptor/pre-built/ar86/le_pa_gnss/
+	$$AR86_TOOLCHAIN_DIR/$${AR86_TOOLCHAIN_PREFIX}strip -s $(STAGE_DIR)/components/positioning/platformAdaptor/pre-built/ar86/le_pa_gnss/libComponent_le_pa_gnss.so
+	install -D build/ar7/platformServices/apps/monitoring/_build_monService.ar7/staging/lib/libComponent_le_pa_mon.so $(STAGE_DIR)/components/monitoring/platformAdaptor/pre-built/ar7/le_pa_mon/
+	$$AR7_TOOLCHAIN_DIR/$${AR7_TOOLCHAIN_PREFIX}strip -s $(STAGE_DIR)/components/monitoring/platformAdaptor/pre-built/ar7/le_pa_mon/libComponent_le_pa_mon.so
+	install -D build/wp7/platformServices/apps/monitoring/_build_monService.wp7/staging/lib/libComponent_le_pa_mon.so $(STAGE_DIR)/components/monitoring/platformAdaptor/pre-built/wp7/le_pa_mon/
+	$$WP7_TOOLCHAIN_DIR/$${WP7_TOOLCHAIN_PREFIX}strip -s $(STAGE_DIR)/components/monitoring/platformAdaptor/pre-built/wp7/le_pa_mon/libComponent_le_pa_mon.so
+	install -D build/ar86/platformServices/apps/monitoring/_build_monService.ar86/staging/lib/libComponent_le_pa_mon.so $(STAGE_DIR)/components/monitoring/platformAdaptor/pre-built/ar86/le_pa_mon/
+	$$AR86_TOOLCHAIN_DIR/$${AR86_TOOLCHAIN_PREFIX}strip -s $(STAGE_DIR)/components/monitoring/platformAdaptor/pre-built/ar86/le_pa_mon/libComponent_le_pa_mon.so
 	cp -R airvantage $(STAGE_DIR)
 	cp version $(STAGE_DIR)
 	cp package.properties $(STAGE_DIR)

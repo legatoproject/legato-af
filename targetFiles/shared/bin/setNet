@@ -4,7 +4,7 @@
 # static forces macfixed
 # static needs more params - how to handle in a script?
 
-function usage () {
+usage () {
     echo ""
     echo "Purpose:"
     echo "$0 allows the user to set up eth0 to re-use the same MAC hardware address"
@@ -14,11 +14,16 @@ function usage () {
     echo ""
     echo "Usage:"
     echo "$0 [macrandom|macfixed] [dhcp|static] [address <address>] [netmask <netmask>] [gateway <gateway>]"
-    echo "default behaviour is to set 'macfixed dhcp' if called without arguments"
+    echo "if called without arguments or with -h or --help this message will be printed"
     echo "'static' overrides 'macrandom' to 'macfixed'"
     echo "'address', 'netmask' and 'gateway', if given, are only used with 'static'"
     echo "$0 'macrandom' restores the factory default where a different MAC address will be used on each reboot"
+    exit 1
 }
+
+if [ $# -eq 0 ];then
+    usage;
+fi
 
 # defaults to fixed mac w/ dhcp
 mactype="fixed"
@@ -27,7 +32,8 @@ netassign="dhcp"
 # get current values for mac, addr, mask, gway
 r=$(route | awk '/eth0/{if  (/UG/){print "gway="$2; quit} }')
 r="$r $(ifconfig eth0 | awk '/HWaddr/{print "mac="$5}/inet\W/{sub(/addr:/,"addr=",$2);sub(/Mask:/,"mask=",$4);print $2,$4}')"
-if [ "$1" == "show" ]
+
+if [ "$1" = "show" ]
 then
     for b in $r
     do
@@ -37,14 +43,15 @@ then
 else
     for b in $r
     do
-        declare $b
+        eval $b
     done
 fi
 
 # override with options
-while (( $# ))
+while [ $# -gt 0 ]
 do
     case $1 in
+    -h|--help) usage ;;
     macrandom) mactype="random"; netassign="dhcp";;
     macfixed) mactype="fixed";;
     static) netassign="static";;
@@ -52,22 +59,23 @@ do
     address) shift; addr=$1;;
     netmask) shift; mask=$1;;
     gateway) shift; gway=$1;;
-    *) echo "unknown option $1"; usage; exit 1;;
+    *) echo "unknown option $1"; usage;;
     esac
     shift
 done
-if [ "$netassign" == "static" ]
+
+if [ "$netassign" = "static" ]
 then
     mactype="fixed"
 fi
 
 # if static, ask mask, gway, addr
-if [ "$netassign" == "dhcp" ]
+if [ "$netassign" = "dhcp" ]
 then
     addr=''
 fi
 
-if [ "$mactype" == "random" ]
+if [ "$mactype" = "random" ]
 then
     mac=''
 fi
@@ -94,7 +102,7 @@ awk 'function writeStatic (mac, addr, mask, gway) {
         if (mac) {print "\thwaddress ether " mac}
     }
     BEGIN {skip=0}
-    {if (!match($0, "^\t")) {skip=0}
+    {if ($0 !~ /^[\t ]/) {skip=0}
      if ($1 == "iface") {
         if ($2 == "eth0") {
             skip=1;
@@ -113,5 +121,5 @@ awk 'function writeStatic (mac, addr, mask, gway) {
 echo "${ifile} has been updated. Original has been renamed ${ifile}_${dstamp}"
 # if this is being run from an ssh connection ssh would hang if we didn't 
 # disconnect before the network went down
-nohup sh -c "sleep 1; ifdown eth0; ifup eth0" &
+nohup sh -c "sleep 1; ifdown eth0; ifup eth0" 2>/dev/null &
 

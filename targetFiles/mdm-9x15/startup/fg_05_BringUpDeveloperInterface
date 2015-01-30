@@ -1,6 +1,28 @@
 #!/bin/sh
 
-# This brings up a fixed ip on the usb ecm interface.
-# You can modify this if you wish to do something different
+ecm_conf=/etc/legato/ecm.conf
+usbmode=/etc/legato/usbmode
 
-ifconfig usb0 192.168.1.2 up
+get_param()
+{
+    local line=$( grep "$1" $ecm_conf 2>/dev/null )
+    echo ${line#*:}
+}
+
+# only do this if usbmode exists and ecm is part of usb composition
+if [ -f $usbmode ]; then
+    if grep ecm $usbmode; then
+        # If the configuration file exists, get settings from there.
+        if [ -f $ecm_conf ]; then
+            ecm_netmask=$( get_param netmask.ipV4 )
+            ecm_target_ip4=$( get_param target.ipV4 )
+        else
+            # Config file doesn't exist.  Use defaults.
+            ecm_netmask=255.255.255.0
+            ecm_target_ip4=192.168.1.2
+        fi
+
+        ifconfig usb0 $ecm_target_ip4 netmask $ecm_netmask up
+
+    fi
+fi

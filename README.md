@@ -95,4 +95,4 @@ Target |  Description                    | Environment variable
    ```./targetFiles``` - contains files that are for installation on target devices.
 
 * * *
-_Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license._
+_Copyright (C) Sierra Wireless Inc. Use of this work is subject to license._

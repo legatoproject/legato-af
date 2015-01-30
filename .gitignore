@@ -13,8 +13,10 @@ _build_*
 *.localhost
 *.ar7
 *.wp7
+*.ar86
 *.ar6
 *.raspi
+*.virt
 *.update
 *.uinst
 
