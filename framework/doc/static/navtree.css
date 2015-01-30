@@ -1,11 +1,12 @@
 #nav-tree .children_ul {
-  margin:0;
-  padding:4px;
+  margin:0px;
+  padding:0px;
+  text-transform: uppercase;
 }
 
 #nav-tree ul {
   list-style:none outside none;
-  margin:0px;
+  margin:4px;
   padding:0px;
 }
 
@@ -41,10 +42,11 @@
 
 #nav-tree .label a {
   padding:2px;
+  font-size: 0.95em;
 }
 
 #nav-tree .item {
-  margin:0px;
+  margin:5px;
   padding:0px;
   border-left: 3px solid #fafafa;
   height: 18px;
@@ -55,7 +57,7 @@
 }
 
 #nav-tree .item:hover a {
-  color: #666;
+  color: #E53B30;
 }
 
 #nav-tree .selected,

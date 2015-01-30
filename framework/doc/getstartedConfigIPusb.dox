@@ -21,7 +21,7 @@ cd to @c /etc/legato.
 Run @c ls to list the files in the directory. 
 
 If an @c usbmode file doesn't exist, create one; or edit the existing one.
-Use VI text editor  (already available on the target) to create or edit the usbmode file: 
+Use vi text editor  (already available on the target) to create or edit the usbmode file: 
 add 'ecm' to the usbmode file. 
 
 In vi, it should look like something like this:
@@ -38,7 +38,7 @@ ecm
 
 Save @c usbmode to the /etc/legato location. 
 
-In VI, use commands @c ESC, then @c :x to save the @c usbmode file on the target.
+In vi, use commands @c ESC, then @c :x to save the @c usbmode file on the target.
 
 Reboot your target.
 
@@ -132,6 +132,6 @@ Ping target to host and vice versa to check everything is working.
 
 <HR>
 
-Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+Copyright (C) 2014 Sierra Wireless, Inc. Use of this work is subject to license.
 
 **/

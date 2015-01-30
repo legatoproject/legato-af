@@ -1,17 +1,20 @@
 /** @page getstartedMain Get Started
 
-First, you need to @subpage getstartedPrepTarget.
+@subpage legatoRelNotesBeta <br>
+@subpage legatoUpgradeBeta <br>
+
+<HR>
+
+First, you need to @subpage getstartedTargetMain.
 
 Then, you can @subpage getstartedInstallLegato.
+<br>
+<br>
+Get Started info is also available in 
+<a href= "http://developer.sierrawireless.com/Resources/Resources/Legato/GettingStarted.aspx">PDF</a>.
 
 <HR>
 
-These notes apply to both install versions: <br>
-@subpage legatoRelNotesBeta <br>
-@subpage legatoUpgradeBeta
-
-<HR>
-
-Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+Copyright (C) 2015 Sierra Wireless, Inc. Use of this work is subject to license.
 
 **/

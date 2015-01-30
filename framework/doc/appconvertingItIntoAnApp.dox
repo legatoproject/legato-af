@@ -67,7 +67,7 @@ This will connect to the target, upload the application, and start it.
 Your installed application's @c LE_INFO log message will appear in the system log ("syslog") on
 the target device.
 
-Run @a logread (on the target) to view the system log.
+Run @c logread (on the target) to view the system log.
 
 @verbatim
 # logread
@@ -81,7 +81,7 @@ Use logread's @a -f option to start monitoring the logs and display messages as 
 
 @section rmApp Remove App
 
-Use "rmapp" to uninstall your application.
+Use @c rmapp to uninstall your application.
 
 @verbatim
 $ rmapp helloWorld.wp7 <ip addr>
@@ -97,6 +97,6 @@ $ lsapp <ip addr>
 
 <HR>
 
-Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+Copyright (C) 2014 Sierra Wireless, Inc. Use of this work is subject to license.
 
 **/

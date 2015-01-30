@@ -9,7 +9,7 @@ faultAction: restart
 maxFileSystemBytes: 200K
 @endcode
 
-Sections that can have lists of content items always have curly braces around the content item list.
+Sections with content item lists always have curly braces around them.
 
 @code
 sources:
@@ -19,7 +19,7 @@ sources:
 }
 @endcode
 
-All sections are optional (they can be empty or omitted).
+All sections are optional; they can be empty or omitted.
 
 Sections can be in any order, multiple occurrences are permitted, and some sections have
 sub-sections.
@@ -44,7 +44,7 @@ requires:
 @endcode
 
 Tabs, spaces, new-lines, carriage-returns and comments act as token separators only, and are
-otherwise all ignored, so the author's choice of indentation and spacing style is relatively
+otherwise all ignored. Choice of indentation and spacing style is relatively
 unrestricted.
 
 @section defFileFormatComments Comments
@@ -85,6 +85,6 @@ sources:{httpd.c}
 
 <HR>
 
-Copyright (C) Sierra Wireless, Inc. 2014.  Use of this work is subject to license.
+Copyright (C) 2015 Sierra Wireless, Inc. Use of this work is subject to license.
 
 **/

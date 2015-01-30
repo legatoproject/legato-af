@@ -1,60 +1,66 @@
 /** @page basicRuntimeArch Runtime Architecture
 
-Legato's runtime architecture manages each application in its own sandbox. 
+Legato's runtime architecture manages each app in its own sandbox. 
 
 @image html LayeredArchitecture.png
 
-Applications communicate with each other using access-controlled message-passing 
-services.  The Supervisor automatically creates sandboxes.
+Apps communicate with each other using access-controlled message-passing 
+services. The Supervisor automatically creates sandboxes.
 
-@section supervisor Supervisor
+@section basicRuntimeArch_apps Applications
+
+An application (we call them 'apps') is a collection of executable files, libraries, and/or other resource files 
+(e.g., audio files, web pages) that can be deployed to a target device. Once installed
+on a device, an app can be started and stopped.
+ 
+By default, each app runs in its own sandbox. When an app is constructed, all
+the files and IPC services it needs to access are declared (these should be examined and approved
+before installed on the target). At runtime, the Supervisor and the Service Directory enforce
+that only approved files and IPC services are accessed by that app.
+
+@ref appCreating
+
+@section basicRuntimeArch_supervisor Supervisor
 
 The Supervisor is a privileged process running on the target device that:
- - creates and destroys sandboxes for applications
- - starts and stops applications
- - acts as an application watchdog
- - performs fault recovery actions when applications fail (such as restarting the app).
+ - creates and destroys @ref basicSecuritySandbox for apps
+ - starts and stops apps
+ - performs fault recovery when apps fail (e.g., restarting the app).
 
-@section configTree Configuration Tree
+@section basicRuntimeArch_serviceDirectory Service Directory
 
-The Configuration Tree provides persistent configuration data
-storage organized in a tree structure.
+Legato's Service Directory provides a secure way for client processes to find servers offering services they need,
+which ensures only authorized connections are established.
 
-See @ref basicConfig and @ref api_config 
+@ref legatoServices <br>
+@ref basicInterfaces
 
-@section logControlDaemon Log Control Daemon
+@section basicRuntimeArch_configTree Config Tree
 
-The Log Control Daemon provides a user-friendly way to control log message filtering for running Legato application processes.
+The Config Tree provides persistent @ref basicConfig data
+storage organized in a tree structure.  
 
-See @ref c_logging
+Command line @ref toolsTarget_config tool <br>
+@ref api_config 
 
-@section serviceDirectory Service Directory
+@section basicRuntimeArch_watchDog Watchdog
 
-The Service Directory provides a secure way for client processes to find servers that offer the services they need.
-The Service Directory ensures that only authorized connections are established.
+Legato kickable watchdog service provides a timeout that can be 
+configured in @c defFilesAdef or specified at run time.  If a kick is not received in the 
+specified time, the supervisor signals to perform the action specified in @ref defFilesAdef_processWatchdogAction.
 
-See @ref legatoServices and @ref basicInterfaces
+@ref c_wdog <br>
+@ref defFilesAdef
 
-@section watchDog Watchdog
+@section basicRuntimeArch_logs Logs
 
-Legato has a service that provides a kickable watchdog with a timeout that can be 
-configured in @ref defFilesAdef or specified at run time.  If a kick is not received in the 
-specified time out, the supervisor signals to perform the action given in WatchdogAction.
-Applications are assembled from components.
+Legato provides a user-friendly way to control log message filtering for running app processes.
 
-@section applications Applications
-
-An application is a collection of executable files, libraries, and/or other resource files 
- (e.g., audio files, web pages) that can be deployed to a target device. Once installed
- on a device, an application can be started and stopped.
- 
-By default, each application runs in its own @b sandbox.  When an application is constructed, all
- the files and IPC services it needs to access are declared (these should be examined and approved
- before installed on the target).  At runtime, the Supervisor and the Service Directory enforce
- that only those approved files and IPC services are accessed by that application.
+Command line @ref toolsTarget_log tool <br>
+@ref c_logging.
 
 <HR>
 
-Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 
 **/

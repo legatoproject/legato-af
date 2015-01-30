@@ -63,10 +63,10 @@ void example_DisconnectService
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Reference type for example_TestA handler ADD/REMOVE functions
+ * Reference type used by Add/Remove functions for EVENT 'example_TestA'
  */
 //--------------------------------------------------------------------------------------------------
-typedef struct example_TestA* example_TestARef_t;
+typedef struct example_TestAHandler* example_TestAHandlerRef_t;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -79,7 +79,7 @@ typedef struct example_TestA* example_TestARef_t;
  * @param contextPtr
  */
 //--------------------------------------------------------------------------------------------------
-typedef void (*example_TestAFunc_t)
+typedef void (*example_TestAHandlerFunc_t)
 (
     int32_t x,
     void* contextPtr
@@ -87,12 +87,19 @@ typedef void (*example_TestAFunc_t)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * example_TestA handler ADD function
+ * Add handler function for EVENT 'example_TestA'
+ *
+ * This event provides an example of an EVENT definition
  */
 //--------------------------------------------------------------------------------------------------
-example_TestARef_t example_AddTestA
+example_TestAHandlerRef_t example_AddTestAHandler
 (
-    example_TestAFunc_t handlerPtr,
+    uint32_t data,
+        ///< [IN]
+        ///< Used when registering the handler i.e. it is
+        ///< passed into the generated ADD_HANDLER function.
+
+    example_TestAHandlerFunc_t handlerPtr,
         ///< [IN]
 
     void* contextPtr
@@ -101,12 +108,12 @@ example_TestARef_t example_AddTestA
 
 //--------------------------------------------------------------------------------------------------
 /**
- * example_TestA handler REMOVE function
+ * Remove handler function for EVENT 'example_TestA'
  */
 //--------------------------------------------------------------------------------------------------
-void example_RemoveTestA
+void example_RemoveTestAHandler
 (
-    example_TestARef_t addHandlerRef
+    example_TestAHandlerRef_t addHandlerRef
         ///< [IN]
 );
 
@@ -115,7 +122,7 @@ void example_RemoveTestA
  * Function takes all the possible kinds of parameters, but returns nothing
  */
 //--------------------------------------------------------------------------------------------------
-void example_allParameters
+void example_AllParameters
 (
     common_EnumExample_t a,
         ///< [IN]
@@ -165,6 +172,23 @@ void example_FileTest
     int* dataOutPtr
         ///< [OUT]
         ///< file descriptor as OUT parameter
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function that takes a handler parameter
+ */
+//--------------------------------------------------------------------------------------------------
+int32_t example_UseCallback
+(
+    uint32_t someParm,
+        ///< [IN]
+
+    example_TestAHandlerFunc_t handlerPtr,
+        ///< [IN]
+
+    void* contextPtr
+        ///< [IN]
 );
 
 

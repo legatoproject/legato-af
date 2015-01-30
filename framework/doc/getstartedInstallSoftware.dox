@@ -3,13 +3,13 @@
 Here's info needed to install Legato on a Linux dev host and a dev kit target:
 
 @subpage getstartedLegatoPkgs  <br>
-@subpage getstartedMachinePrep  <br>
+@subpage getstartedPrepDevHost  <br>
 @subpage getstartedInstallandBuild  <br>
-@ref getstartedSetupTarget  <br>
+@ref getstartedTargetSetup  <br>
 @ref getstartedLegatoApps
 
 <HR>
 
-Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 
 **/

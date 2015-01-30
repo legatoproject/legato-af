@@ -1,25 +1,26 @@
 /** @page basicConcepts Basic Concepts
 
 @subpage basicRuntimeArch <br>
+@subpage basicSecurity <br>
 @subpage basicComponents <br>
 @subpage basicInterfaces <br>
-@subpage eventBasics <br>
-@subpage sandboxGen <br>
 @subpage basicConfig <br>
-@subpage basicOther <br>
+@subpage eventBasics <br>
+@subpage basicPwrMgmt <br>
+@subpage basicIPC <br>
+@subpage basicInternationalization <br>
+@subpage basicLog <br>
 
 <h2>Overview</h2>
 
 Legato is designed to make developing component-based software for embedded devices in the
-Internet-of-things easier, faster, and less expensive.
-
-The Legato platform integrates everything needed for M2M connectivity:
+Internet-of-things (IoT) easier, faster, and less expensive.
 
 @image html LegatoPlatform.png
 
 <HR>
 
-Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+Copyright (C) 2014 Sierra Wireless, Inc. Use of this work is subject to license.
 
 **/
 

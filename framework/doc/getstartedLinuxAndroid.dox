@@ -7,7 +7,7 @@ If you intend to rebuild the Yocto images, don't use Ubuntu 13.10: it does not w
 
 Android tools use fastboot to replace the kernel and root filesystem on devices.  
 
-Download Android SDK tools from http://developer.android.com/sdk/index.html. 
+Download Android SDK tools from <a href="http://developer.android.com/sdk/index.html">here</a>. 
 
 Extract the file and add the directory containing the fastboot command to your path. 
 
@@ -21,6 +21,6 @@ Then reboot your PC.
 
 <HR>
 
-Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved.
+Copyright (C)  Sierra Wireless Inc. Use of this work is subject to license.
 
 **/

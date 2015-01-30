@@ -1,59 +1,59 @@
-/** @page languageIndependentAPIs Language-Independent APIs
+/** @page languageIndependentAPIs Language-independent APIs
 
-Legato components can provide APIs for other components to use.  This can be done the conventional
-way, by writing a C header file to define the interface, for example.  But, a C header file can
-only be used by components that are written in C, and functions defined in a C header file can
-only be implemented by C code.  Furthermore, C compilers won't generate IPC code for you, so
+@subpage languageIndependentSyntax <br>
+@subpage languageIndependentC <br>
+
+Related info
+
+@ref buildToolsifgen <br>
+@ref defFiles <br>
+@ref componenthelloIPC
+
+@section languageIndependentAPIs_overview Overview
+
+Legato components can provide APIs for other components to use. It can be done conventionally
+by writing a C header file to define the interface.  But a C header file can
+only be used by components also written in C, and functions defined in a C header file can
+only be implemented by C code. C compilers won't generate IPC code, so
 unless you write your own, your API implementation and its user are forced to run inside the
-same process.  This can severely limit the reusability of components and can force the use of a
-programming language that is not ideally suited to a particular problem domain or developer
-skill set.  It also leaves inter-process communication (IPC) to be implemented manually, which
+same process. This can severely limit the reusability of components and can force using a
+programming language not ideally suited to a particular problem domain or developer
+skillset. It also leaves inter-process communication (IPC) to be implemented manually, which
 can be time-consuming and fraught with bugs and security issues.
 
-To alleviate these problems, Legato provides a very simple form of interface definition language
-(IDL) that is similar to C but that helps the programmer define their API such that it can
-be used in multiple different programming languages.
+To simplify things, Legato provides an interface definition language
+(IDL) similar to C that helps the programmer define their API so it can
+be used in multiple, different programming languages.
 
 These IDL files are called <b> API definition </b> (<c>.api</c>) files.
 
-These <c>.api</c> files are processed by the <b><c>ifgen</c></b> build tool, which generates
+They're processed by the @ref buildToolsifgen tool that generates
 function definitions and IPC code in an implementation language chosen by the component writer.
-Most of the time, developers don't need to know anything about <c>ifgen</c>, though, because it
-is automatically run by other build tools, as needed.
+Most of the time, developers don't need to know much about @c ifgen, because it's
+automatically run by other build tools, as needed.
 
-@note Although the only language supported today is C, the plan is that the
-client and server can be written in different languages, multiple clients can be written in
-different languages, and multiple server implementations can be written in different languages;
-and none of them would have to include any IPC code or language translation layer.
-
-When writing a client of an API, the programmer
- - imports the API into their component (add the <c>.api</c> file to the <c>api:</c> subsection
+An API client:
+ - import the API into their component (add the <c>.api</c> file to the <c>api:</c> subsection
    of the @c requires: section of the component's <c>Component.cdef</c> file)
  - include/import the generated code into their program (e.g., in C: <c>\#include "interfaces.h"</c>)
  - call the functions in the API
 
-This will automatically take care of IPC connection opening/closing, message buffer
+This automatically will do IPC connection opening/closing, message buffer
 allocation/release, message passing, synchronization between client and server threads/processes,
 and sandbox security access control.
 
-When writing a server of an API, the programmer
- - exports the API from their component (add the <c>.api</c> file to the <c>api:</c> subsection of
+An API server:
+ - export the API from their component (add the <c>.api</c> file to the <c>api:</c> subsection of
    the @c provides: section of the component's <c>Component.cdef</c> file)
  - include/import the generated code into their program (e.g., in C: <c>\#include "interfaces.h"</c>)
  - implement the functions in the API
 
-The server's functions will be called automatically when the client calls the
+The server's functions are called automatically when the client calls the
 auto-generated client-side versions of those functions.
-
-For more information:
-
-@subpage languageIndependentSyntax <br>
-@subpage languageIndependentC <br>
-@ref defFiles
 
 <HR>
 
-Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+Copyright (C) 2015 Sierra Wireless, Inc. Use of this work is subject to license.
 
 **/
 

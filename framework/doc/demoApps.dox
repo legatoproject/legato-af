@@ -51,7 +51,10 @@ The @b modemDemo app accepts several commands (through sending the target a SMS 
 - <b>Online</b> - turns on data connection
 - <b>Netinfo</b> - network information like gateway address
 - <b>Offline</b> - turns off data connection
-- <b>TestDataConnection</b> - test data connection
+- <b>TestDataConnectionV4</b> - Test IPv4 data connection
+- <b>TestDataConnectionV6</b> - Test IPv6 data connection
+- <b>DataInfo</b> - Show data flow statistics
+- <b>DataReset</b> - Reset data flow statistics
 
 @subsubsection modemDemoCustom Customization
 
@@ -80,6 +83,6 @@ In @c modemDemo/demo.c, it is also possible to extend the list of processed comm
 
 <HR>
 
-Copyright (C) Sierra Wireless, Inc. 2014.  Use of this work is subject to license.
+Copyright (C) 2014 Sierra Wireless, Inc. Use of this work is subject to license.
 
 **/

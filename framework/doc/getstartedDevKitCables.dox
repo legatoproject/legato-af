@@ -19,7 +19,7 @@ If you’re running Minicom, set these config options through the CTRL+A O (conf
 
 @b Ethernet
 
-The Ethernet cable lets you plug into a locat network for a direct connection. 
+The Ethernet cable lets you plug into a local network for a direct connection. 
 It obtains a dynamic IP address for the target using DHCP. This matches subnet values between the 
 target and the host so ssh commands will be available.  
 
@@ -33,6 +33,6 @@ commands), USB Audio, and Ethernet over USB (through an adapter).
 
 <HR>
 
-Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+Copyright (C) 2014 Sierra Wireless, Inc. Use of this work is subject to license.
 
 **/

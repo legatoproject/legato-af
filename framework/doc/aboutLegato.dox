@@ -1,32 +1,31 @@
 /** @page aboutLegato About
 
+@subpage aboutLegatoDocsInfo
+<br>
+<br>
+<br>
 <center>@image html legatoLogo.png
 
-Version 14.10
+15.01 Beta
+<br>
+<br>
 
 Get help or report an issue: 
 
 http://developer.sierrawireless.com/landing/legato.aspx
 
-
-@verbatim
-
-
-@endverbatim
-
 <br>
-
+<br>
 
 Open Sans typeface Apache License, version 2.0
 
 http://www.apache.org/licenses/LICENSE-2.0.html
 
-
-
-
-<HR>
-
-Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.</center>
+<br>
+<br>
+<br>
+<br>
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.</center>
 
 **/
 

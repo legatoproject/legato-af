@@ -1,13 +1,12 @@
 /** @page getstartedWindowsHost Windows Dev Host
 
-@ref instAndroidtools <br>
-@ref instSWdrivers <br>
+You can set up a Windows host to upgrade or recover a device. 
 
-@section instAndroidtools Windows Android Tools
+You need to setup @ref getstartedWindowsHost_instAndroidtools and @ref getstartedWindowsHost_instSWdrivers. <br>
 
-You only need to set up a Windows host to recover a device. 
+@section getstartedWindowsHost_instAndroidtools Windows Android Tools
 
-The Android SDK tools can be downloaded from http://developer.android.com/sdk/index.html. 
+The Android SDK tools can be downloaded <a href="http://developer.android.com/sdk/index.html">here</a>. 
 
 To use the Android tools, first download the bundle, run the SDK Manager, 
 then install a single Android platform and the Google USB driver. 
@@ -89,9 +88,10 @@ After editing, the adb_usb.ini file should look like this:
 0x1199 
 @endverbatim
 
-@section instSWdrivers Install Sierra Wireless Drivers
+@section getstartedWindowsHost_instSWdrivers Install Sierra Wireless Drivers
 
-Legato Beta drivers are available from the Dev Zone at http://developer.sierrawireless.com/Resources/Resources/Legato/Distribution.aspx.
+Legato Beta drivers are available from the Source
+<a href="http://source.sierrawireless.com/resources/legato/distribution/"> Legato Downloads</a>.
 
 Click on the link "Windows drivers needed to upgrade WP7 Series firmware" to download the Drivers_Package.zip file (under Sierra Wireless WP7 modules upgrade).
 
@@ -116,7 +116,6 @@ For convenience, add this directory to the windows path to allow adb and fastboo
 
 <HR>
 
-Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
-
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 
 **/

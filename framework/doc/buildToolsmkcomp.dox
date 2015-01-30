@@ -1,22 +1,22 @@
-/** @page buildToolsmkcomp mkcomp (Make Component)
+/** @page buildToolsmkcomp mkcomp 
 
-Run <b> @c mkcomp </b> to pre-build a component library (<c>.so</c>) file.
+Make Component: run @c mkcomp to pre-build a component library (<c>.so</c>) file.
 
-This is normally not needed when building using the command line.  It is only needed for more
-complex, integrated build systems, such as the one built into Eclipse.  When using the command line,
-an entire application or system of interacting applications can be built using @ref buildToolsmkapp
-or @ref buildToolsmksys, respectively.  Those tools will also build the component libraries they
-need, when they need them.
+@c mkcomp is normally not needed when building through the command line.  It's only needed for more
+complex, integrated build systems (e.g., the one built into Eclipse).  
 
-If you are putting together your own, sophisticated build system, and you want to manage dependency
-tracking yourself and do intermediate build steps to build component libraries only when their
-inputs have changed, then you can use @c mkcomp to build the component libraries, if you want.
+When using the command line, an entire app or system of interacting apps can be 
+built using @ref buildToolsmkapp or @ref buildToolsmksys.  Those tools also build the component 
+libraries as needed.
 
-Run @c mkcomp with the --help or -h option for a description of the command-line arguments it
-accepts.
+@c mkcomp is primarily a workaround to support integration with some legacy programs. It's used to 
+build the component libraries for custom build systems.
+
+To display usage, run 
+@verbatim mksys --help@endverbatim 
 
 <HR>
 
-Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+Copyright (C) 2015 Sierra Wireless, Inc. Use of this work is subject to license.
 
 **/

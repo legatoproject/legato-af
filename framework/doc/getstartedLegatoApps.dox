@@ -4,7 +4,7 @@ There are a few easy ways to started developing Legato apps:
 
 @ref demoApps ready to go located in the app/sample/ directories: airvantageDemo, helloWorld, modemDemo. 
 
-https://github.com/legatoproject to clone the apps from GitHub.
+Go to <a href ="https://github.com/legatoproject"> GitHub</a> to clone the sample apps.
 
 @ref apphelloWorld and @ref appconvertingItIntoAnApp to start developing your own apps. 
 
@@ -12,6 +12,6 @@ https://github.com/legatoproject to clone the apps from GitHub.
 
 <HR>
 
-Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 
 **/

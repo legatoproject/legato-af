@@ -1,15 +1,14 @@
 /** @page defFiles Definition Files
 
-@subpage defOverview
+@subpage defFilesOverview
 
-@subpage defFilesSdef  <br>
-@subpage defFilesCdef  <br>
 @subpage defFilesAdef  <br>
-
+@subpage defFilesCdef  <br>
+@subpage defFilesSdef  <br>
 
 <HR>
 
-Copyright (C) Sierra Wireless, Inc. 2014.  Use of this work is subject to license.
+Copyright (C) 2015 Sierra Wireless, Inc. Use of this work is subject to license.
 
 **/
 

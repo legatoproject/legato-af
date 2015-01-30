@@ -1,39 +1,37 @@
 /** @page buildTools Build Tools
 
-Legato build tools are used to:
+@section buildTools_mktoolsOverview Overview
+
+Legato has tools to build components, executables, apps and app systems.
+They all that start with @c mk (we call them @c mktools): <br>
+
+@subpage buildToolsmkapp - generate an app bundle to install and run on a target. <br>
+@subpage buildToolsmksys - generate a system bundle to install and run on a target. <br>
+@subpage buildToolsmkexe - create an executable program. <br>
+@subpage buildToolsmkcomp - pre-build a component library (<c>.so</c>) file. <br>
+
+These build tools are used to:
  - generate boiler-plate code
  - simplify component-based software development
- - package applications and config settings to deploy to targets.
-
-The tools are used to build components, executables, apps and app systems, and all start with @c mk: <br>
-
-@subpage buildToolsmksys  <br>
-@subpage buildToolsmkapp  <br>
-@subpage buildToolsmkexe  <br>
-@subpage buildToolsmkcomp
-@section buildToolsMkTools mk tools
-
+ - package apps and config settings to deploy to targets.
+ 
 Most developers will usually only need @ref buildToolsmkapp and @ref buildToolsmksys.
 
 @ref buildToolsmkexe is only needed to build an executable for a target without packaging it
-as an application.  This can be useful for building command-line tools you want to copy onto
+as an app.  This can be useful to build command-line tools to copy to
 a target or bundle in a root file system image.
 
-@ref buildToolsmkcomp can be used to build libraries from component sources, if you need to do 
-that as a separate step as a part of a complex, custom, staged build system 
+@ref buildToolsmkcomp can be used to build libraries from component sources, if 
+a separate step is needed as a part of a complex, custom, staged build system 
 (instead of letting mksys, mkapp, or mkexe handle it).
 
-@section buildToolsIfgen ifgen
+<h2>Interface Generation Tool</h2>
 
-The @c ifgen tool generates code that parses interface definition (<c>.api</c>) files,
-and generates include files and IPC code (as needed) in various programming languages.
+The @subpage buildToolsifgen tool is used to parse interface def .api files and generate include files and
+IPC code. The @c ifgen tool is usually run automatically by the @c mktools. 
 
-@c ifgen can be used manually to generate code, but usually it is invoked automatically by
-the @ref buildToolsMkTools.
-
-More info about ifgen: @ref languageIndependentAPIs.
 
 <HR>
-Copyright (C) Sierra Wireless, Inc. 2014.  Use of this work is subject to license.
+Copyright (C) 2015 Sierra Wireless, Inc. Use of this work is subject to license.
 
 **/

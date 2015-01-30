@@ -2,11 +2,11 @@
 
 Legato has tools for:
 
- @subpage toolsTarget "Targets" <br>
- @subpage toolsHost "Hosts" <br>
+ @subpage toolsTarget "Target" <br>
+ @subpage toolsHost "Host" <br>
 
 <HR>
 
-Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+Copyright (C) 2014 Sierra Wireless, Inc. Use of this work is subject to license.
 
 **/

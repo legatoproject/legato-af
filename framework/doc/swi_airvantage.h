@@ -1,19 +1,9 @@
 /*******************************************************************************
- * Copyright (c) 2014 Sierra Wireless and others.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
- *
- * Contributors:
- *     Laurent Barthelemy for Sierra Wireless - initial API and implementation
- *     Romain Perier      for Sierra Wireless - initial API and implementation
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  *******************************************************************************/
 
-
 /**
- * @file
- * 
+ * @file swi_airvantage.h
  *
  * Using this API, an application can work with Sierra Wireless AirVantage Services Platform to:
  *  - request connection to AirVantage server

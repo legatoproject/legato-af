@@ -55,7 +55,7 @@ processes:
 To build the app, run:
 @code mkapp foo.adef @endcode
 
-Other app settings (e.g., @c faultAction) can also be set in the .adef files. See @ref faultAction.
+Other app settings (e.g., @c faultAction) can also be set in the .adef files. See @ref defFilesAdef_processFaultAction.
 
 @section portRootAccess Porting Apps with Root Access
 
@@ -138,7 +138,6 @@ and still take advantage of the Legato APIs.
 
 To use the Legato APIs, you'll need to link the @c liblegato.so library
 and include @c legato.h in any source files that call Legato APIs.
-The @c _legato_InitFramework() function should be called before any Legato API functions are called.
 
 Related info:
 
@@ -148,6 +147,6 @@ Related info:
 
 <HR>
 
-Copyright (C) Sierra Wireless, Inc. 2014.  Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 
 **/

@@ -2,15 +2,102 @@
 
 <c>Component.cdef</c> files can contain these sections:
 
-@section defFilesCdefBundles Bundles
+@section defFilesCdef_bundles Bundles
 
-Lists additional files or directories to be copied from the build host into the application
+Lists additional files or directories to be copied from the build host into the app
 so they’re available to the app at runtime (e.g., audio files, web pages, executable scripts
 or programs built using some external build system).
 
-This section is identical to @ref bundlesAdef "the section with the same name in the .adef file".
+@verbatim
+bundles:
+{
+    file:
+    {
+        // Include the web server executable (built using some other build tool) in the app's /bin.
+        [x] 3rdParty/webServer/bin/wwwServ  /bin/
 
-@section defFilesCdefCFlags C Flags
+        // Put the company logo into the app's /var/www/ for read-only access by the web server.
+        images/abcCorpLogo.jpg  /var/www/
+
+        // Make the appropriate welcome page for the product appear at /var/www/index.html.
+        webContent/$PRODUCT_ID/welcome.html  /var/www/index.html
+
+        // Create a file to record persistent custom audio messages into.
+        [w] audio/defaultMessage.wav  /usr/share/sounds/customMessage.wav
+    }
+
+    dir:
+    {
+        // Recursively bundle the directory containing all the audio files into the app.
+        // It will appear to the app read-only under /usr/share/sounds/.
+        audio   /usr/share/sounds
+    }
+}
+@endverbatim
+
+Three things need to be specified for each file or directory:
+- access permissions
+- build system path
+- target path
+
+<b>Access permissions</b> - any combination of one or more of the following letters, enclosed in
+square brackets:
+- r = readable
+- w = writeable
+- x = executable
+
+If permissions values are not specified, then read-only ([r]) is the default.
+
+Directories always have executable permission set so they can be traversed. Setting the
+<c>[x]</c> permission in the @c dir: subsection causes the files under the directory to be made
+executable.
+
+Setting <c>[w]</c> in the @c dir: subsection causes all files under that directory to be writeable,
+but the directory itself will not be writeable.
+
+@warning    Access permissions aren't implemented yet.  For now, everything that gets installed in
+            the app's @c bin directory on the target gets @c rx permission, all other files
+            get @c r, and directories get @c rx.
+
+@note   Directories in the persistent (flash) file system are never made writeable because the
+        on-target flash file system does not support usage quotas (yet).
+
+<b>Build system path</b> - file system path on the build PC where the file is located at build time.
+
+The path can be relative to the directory where the @c .adef file is located.
+
+@note   Environment variables can be used inside these paths.
+
+<b>Target path</b> - file system path on the target where the file will appear at runtime.
+
+It's an absolute path inside the app's sandbox file system.
+
+If the path ends with '/', it means the directory path where the source object (file or directory)
+will be copied. The destination object will have the same name as the source object.
+
+If the path doesn't end in a '/', it's a full destination object path. The destination object
+could have a different name than the source object.
+
+@note  If the app is running unsandboxed, the bundled files and directories can be found
+        in their installation location under @c /opt/legato/apps/xxxx, where xxxx is replaced by
+        the app name.
+
+<b>Quoting Paths</b>
+
+File paths can be enclosed in quotation marks (either single ' or double ").
+This is required when the file path contains spaces or comment start sequences
+@verbatim
+"//" or  "/*"
+@endverbatim
+
+<b>File Ownership and Set-UID Bits</b>
+
+When the app is installed on a target: <br>
+- the owner and group are set to @c root on all files in the app.
+- the @c setuid bit is cleared on everything in the app.
+
+
+@section defFilesCdef_cFlags C Flags
 
 Provides a way to specify command-line arguments to pass to the compiler when compiling C source
 code files.
@@ -25,7 +112,7 @@ cflags:
 }
 @endcode
 
-@section defFilesCdefCxxFlags C++ Flags
+@section defFilesCdef_cxxFlags C++ Flags
 
 Provides a way to specify command-line arguments to pass to the compiler when compiling C++ source
 code files.
@@ -41,7 +128,7 @@ cxxflags:
 @endcode
 
 
-@section defFilesCdefLdFlags Linker Flags
+@section defFilesCdef_ldFlags Linker Flags
 
 Provides a way to specify command-line arguments to pass to the compiler when linking C/C++ object
 (.o) files together into a component shared library (.so) file.
@@ -55,20 +142,23 @@ ldflags:
 }
 @endcode
 
-@section defFilesCdefProvides Provides
+@section defFilesCdef_provides Provides
 
-Lists things that this component provides (exports) to other software either inside or outside of
-the application.
+Lists things this component provides (exports) to other software either inside or outside of
+the app.
 
 The only subsection supported today is the @c api subsection.
 
 
-@subsection defFilesCdefProvidesApi API
+@subsection defFilesCdef_providesApi API
 
 Lists IPC services provided by this component to other components.
 
-Contents use the same syntax as the the
-@ref defFilesCdefRequiresApi "requires: api: section", except the options are different.
+Contents use the same syntax as the @c requires: @ref defFilesCdef_requiresApi section, except
+the options are different.
+
+Here's a code sample where <c> greet.api </c> defines a function called @c Send() where the C source
+code for the component (in @c greetServer.c) is implement a function called @c greet_Send().
 
 @code
 provides:
@@ -88,26 +178,22 @@ sources:
 }
 @endcode
 
-The component must implement the API functions being "provided".
+The component must implement the API functions being provided.
 
-In C, the source code must \#include “interfaces.h” to get the auto-generated function prototype
-definitions and type definitions.  The function and type names defined in the @c .api files will
-be prefixed with the interface name and an underscore (much as they are for "required" APIs).
+In C, the source code must <c>\#include “interfaces.h”</c> to get the auto-generated function prototype
+definitions and type definitions. The function and type names defined in the @c .api files are
+prefixed with the interface name and an underscore (similar to required APIs).
 
-In the above example, if <c> greet.api </c> defines a function called @c Send(), the C source
-code for the component (in @c greetServer.c) must implement a function called @c greet_Send().
+@subsubsection defFilesCdef_providesApiManualStart [manual-start] Option
 
-
-@subsubsection defFilesCdefProvidesApiManualStart [manual-start] Option
-
-Normally, to reduce the amount of initialization code a component writer needs to write,
-the build tools will automatically try to advertise the service when the executable is run.
-However, sometimes this is not the preferred behaviour.
+To reduce the initialization code a component writer needs to write,
+the build tools automatically try to advertise the service when the executable is run.
+Sometimes this is not the preferred behaviour.
 
 The @b @c [manual-start] option tells the build tools @b not to automatically advertise this API
-with the Service Directory when the process starts.  If this option is used, the component can
-control exactly when it wants to start offering the service to others by calling the
-@c xxxx_AdvertiseService() function explicitly in the component source code when it is ready.
+with the Service Directory when the process starts. If @c [manual-start] option is used, the
+component can control when it wants to start offering the service to others by calling the
+@c xxxx_AdvertiseService() function explicitly in the component source code when it's ready.
 
 @code
 provides:
@@ -120,17 +206,17 @@ provides:
 @endcode
 
 
-@subsubsection defFilesCdefProvidesApiAsync [async] Option
+@subsubsection defFilesCdef_providesApiAsync [async] Option
 
-Often, the server of a service can simply implement the functions as if they were called
+The server of a service can also implement the functions as if they were called
 directly by the client (even though the client may be running inside another process).
-So, when the client calls an API function, the server's API function gets called, and when
+When the client calls an API function, the server's API function gets called, and when
 the server returns from the function, the function returns in the client process.
 
-However, sometimes the server needs to hold onto the client request and do other things
-(perhaps handing requests from other clients in the meantime) before sending a response back to
-the client and allowing the client to continue.  This is called "asynchronous" mode, and it
-is enabled using the <c> [async] </c> keyword on the end of the @c api section entry.
+Sometimes the server needs to hold onto the client request and do other things
+(like handing requests from other clients in the meantime) before sending a response back.
+This is called asynchronous mode, and is enabled using the <c> [async] </c> keyword on the
+end of the @c api section entry:
 
 @code
 provides:
@@ -144,33 +230,33 @@ provides:
 
 When asynchronous mode is enabled for a server-side interface, the generated code changes as
 follows:
-- A @c commandRef parameter is added to the beginning of all the API functions' parameter lists.
-- The return value is removed from every API function.
-- A @c Respond() function is generated for every API function.
+- @c commandRef parameter is added to the beginning of all the API functions' parameter lists.
+- return value is removed from every API function.
+- @c Respond() function is generated for every API function.
 
 In async mode, the server responds to the client's call to API function @c F() by calling the
 associated @c FRespond() function.
 
 The @c Respond functions all take the @c commandRef as their first parameter.  If an
-API function has a return value, that return value is sent to the client via the second parameter
+API function has a return value, that return value is sent to the client through the second parameter
 of the @c Respond function.  Any output parameters defined in the API function are also passed
 as parameters to the @c Respond function.
 
 See @ref languageIndependentAPIs for more information, or try it and have a look at the generated
 header files.
 
-@section defFilesCdefRequires Requires
+@section defFilesCdef_requires Requires
 
-The "requires:" section is used to specify things that the component needs from its runtime
+The @c requires: section specifies things the component needs from its runtime
 environment.
 
-It can contain various subsections:
+It can contain various subsections.
 
-@subsection defFilesCdefRequiresApi API
+@subsection defFilesCdef_requiresApi API
 
 Lists IPC APIs used by this component.
 
-For example, if my component needs to use the Configuration Data API (defined in le_cfg.api) to
+Here's a code sample of a component using the Configuration Data API (defined in le_cfg.api) to
 read its configuration data:
 
 @code
@@ -183,13 +269,13 @@ requires:
 }
 @endcode
 
-This creates a client-side IPC interface called "le_cfg" on this component, and it makes the
+This creates a client-side IPC interface called @c le_cfg on this component, and it makes the
 functions and data types defined inside <c>le_cfg.api</c> available for use in the component's
 program code.
 
-The name of the @c .api file (minus the ".api" extension) will be used as the name of the interface,
-and in C code, the names of functions and data types defined in the @c .api file will be prefixed
-with the name of the interface (plus an underscore separator).
+The name of the @c .api file (minus the @c .api extension) is the name of the interface,
+and in C code, the names of functions and data types defined in the @c .api file are prefixed
+with the name of the interface with an underscore separator.
 
 @code
 requires:
@@ -215,7 +301,7 @@ requires:
 @endcode
 
 Multiple instances of the same API listed in the @c api: section must have unique instance names,
-and will appear as separate functions with different prefixes.
+and appear as separate functions with different prefixes.
 
 @code
 requires:
@@ -229,30 +315,29 @@ requires:
 @endcode
 
 If <c> digitalOutput.api </c> defines two functions @c On() @c and Off(),
-then the component’s source code would have four functions available to it:
+ the component’s source code would have four functions available to it:
 @c heat_On(), @c heat_Off(), @c cool_On(), and @c cool_Off().
 
-C/C++ source code must \#include “interfaces.h” to use the auto-generated function definitions.
+C/C++ source code must <c> \#include “interfaces.h”</c> to use the auto-generated function definitions.
 The build tools will automatically generate a version of <c>interfaces.h</c> customized for
-your component that includes all the declarations for all the interfaces that your component uses.
+your component that includes all declarations for all the interfaces the component uses.
 
 The build tools search for the interface definition (.api) file based on the interface search path.
 
+@subsection defFilesCdef_requiresApiOptions Options
 
-@subsection defFilesCdefRequiresApiOptions Options
-
-Normally, to reduce the amount of initialization code a component writer needs to write,
-the build tools will automatically generate the client-side IPC
-code for that API and automatically try to connect to the server when the executable is run.
+To reduce the amount of initialization code a component needs to write,
+the build tools automatically generate the client-side IPC
+code for that API, and automatically try to connect to the server when the executable is run.
 There are a couple of options that can be used to suppress this behaviour.
 
 The @b @c [types-only] option tells the build tools the client only wants to use type definitions
-from the API.  When this option is present, the client-side IPC code will not be generated for
-this API, but the types defined in the API will still be made available to the component (through
-<c>interfaces.h</c> in C/C++.)
+from the API.  This means the client-side IPC code will not be generated for
+this API, but the types defined in the API will still be available to the component (through
+<c>interfaces.h</c> in C/C++).
 
 The @b @c [manual-start] option tells the build tools not to automatically connect to this API's
-server when the process starts.  If this option is used, the component can control exactly when
+server when the process starts. This means the component can control when
 it wants to connect to the server by calling the @c xxxx_ConnectService() function explicitly
 in the component source code.
 
@@ -267,31 +352,144 @@ requires:
 }
 @endcode
 
+@subsection defFilesCdef_requiresFile File
 
-@subsection defFilesCdefRequiresFile File
+Specifies:
+- files residing on target, outside of app, but made accessible to app.
+- locations inside app's sandbox where files will appear.
 
-Used to declare that certain files that reside on the target device outside of the application
-are to be made accessible to the application.
+Things listed in @c requires are expected to be found on the target at runtime.
+They're not copied into the app at build time; they are made accessible to the app inside of
+its sandbox at runtime.
 
-This section is the same as the @ref requiresFile "section with the same name in the .adef file".
+Each entry consists of two file system paths:
+
+ - path to the object in the file system outside of the app, which
+    must be an absolute path (beginning with ‘/’).
+
+ - absolute file system path inside the app’s sandbox where the object will
+   appear at runtime.
+
+A file path can be enclosed in quotation marks (either single ' or double "). This is required when
+it contains spaces or character sequences that would start comments.
+
+The first path can't end in a '/'.
+
+If the second path ends in a '/', then it's specifying the directory where the object
+appears, and the object has the same name inside the sandbox as it has outside the sandbox.
+
+@verbatim
+requires:
+{
+    file:
+    {
+        // I get character stream input from outside via a named pipe (read-only)
+        /var/run/someNamedPipe  /var/run/
+
+        // I need read and write access to UART2.
+        /dev/ttyS1  /dev/
+
+        // I need to be able to play back audio files installed in /usr/local/share/audio.
+        "/usr/local/share/audio/error message.wav" /usr/share/audio/
+        '/usr/local/share/audio/success message.wav' /usr/share/audio/
+    }
+}
+@endverbatim
+
+@note   Even though the file system object appears in the app's sandbox it still needs
+         permissions settings on the file.  File permissions (both DAC and MAC) and ownership
+        (group and user) on the original file in the target system remain in effect inside
+        the sandbox.
+
+It's also possible to give the object a different names inside and outside of the sandbox by
+ adding a name to the end of the second path.
+
+@verbatim
+requires:
+{
+    file:
+    {
+        /dev/ttyS0  /dev/port1     // Program uses /dev/port1, but UART0 is called /dev/ttyS0.
+    }
+}
+@endverbatim
+
+@warning  When something is accessible from inside an app sandbox, there are potential security
+            risks  (e.g., access to the object could be exploited by the app, or hacker, to access sensitive
+            information or launch a denial-of-service attack on other apps within the target
+            device or other devices connected to the target device).
 
 
-@subsection defFilesCdefRequiresDir Dir
+@subsection defFilesCdef_requiresDir Dir
 
-Used to declare that certain directories that reside on the target device outside of the
-application are to be made accessible to the application.
+Specifies directories on target device to make accessible to the app.
 
-This section is the same as the @ref requiresDir "section with the same name in the .adef file".
+The location inside the app's sandbox at which the directory will appear is also specified.
+
+Things listed here are expected to be found on the target at runtime.
+They are not copied into the app at build time; they are made accessible to the app inside of
+its sandbox at runtime.
+
+Each entry consists of two file system paths:
+
+ - The @b first path is the path to the directory @b outside of the app.
+   This must be an absolute path (beginning with ‘/’) and can never end in a '/'.
+
+ - The @b second path is the absolute path @b inside the app’s sandbox where the directory
+   will appear at runtime.
+
+Paths can be enclosed in quotation marks (either single ' or double "). This is required when
+it contains spaces or character sequences that would start comments.
+
+If the second path ends in a '/', then it's specifying the directory into which the object will
+appear, and the object will have the same name inside the sandbox as it has outside the sandbox.
+
+@verbatim
+requires:
+{
+    dir:
+    {
+        // I need access to /proc for debugging.
+        /proc   /
+
+        // For now, I want access to all executables and libraries in /bin and /lib.
+        // Later I'll remove this and replace with just the files I really need in the field.
+        // Also, I don't want to hide the stuff that the tools automatically bundle into my app's
+        // /bin and /lib for me, so I'll make the root file system's /bin and /lib accessible as
+        // my app's /usr/bin and /usr/lib.
+        /bin    /usr/bin
+        /lib    /usr/lib
+    }
+}
+@endverbatim
+
+@note   Even though the directory appears in the app's sandbox
+        doesn't mean the app can access it. The directory permissions settings
+        must also allow it.  File permissions (both DAC and MAC) and ownership
+        (group and user) on the original files in the target system remain in effect inside
+        the sandbox.
+
+@warning    Any time anything is made accessible from inside an app sandbox, the security
+            risks must be considered carefully.  Ask yourself if access to the object can be
+            exploited by the app (or a hacker who has broken into the app) to access sensitive
+            information or launch a denial-of-service attack on other apps within the target
+            device or other devices connected to the target device?
+
+@note   It's not possible to put anything inside of a directory that was mapped into the
+        app from outside of the sandbox.  If you @a require @c /bin to appear at
+        @c /usr/bin, you can't then @a bundle a file into @c /usr/bin or @a require something to appear
+        in @c /usr/bin; that would have an effect on the contents of the /bin directory outside
+        of the app.
 
 
-@subsection defFilesCdefRequiresLib Lib
+@subsection defFilesCdef_requiresLib Lib
 
 The @c lib: subsection of the @c requires: section is used to add a required library to a Component.
 
-A required library is a library file that is expected to exist in the target file system (outside
-the application's sandbox) that the component needs access to at runtime.
+A required library is a library file that must exist in the target file system (outside
+the app's sandbox), and is needed by a component at runtime.
 
-Furthermore, this library will be linked with any executable that this component is a part of.
+The required library must be linked with the component that's part of the the executable.
 The library name is specified without the leading "lib" or the trailing ".so".
 
 @code
@@ -304,10 +502,31 @@ requires:
 }
 @endcode
 
+This will result in `-lfoo` being passed to the linker when linking any executables that include
+this component.   You will therefore need to have a copy of this library where the linker can find
+it on the build host.
 
-@subsection defFilesCdefRequiresComponent Component
+Furthermore, on the target device at runtime the dynamic linker will look for this library, so
+the library must be made available inside the application sandbox somewhere in the dynamic linker's
+library search path.  This can be done using the <c>files:</c> or <c>dirs:</c> subsection of the
+<c>requires:</c> section of either the <c>.cdef</c> or <c>.adef</c> file.
 
-Declares that this component depends on another component.
+@code
+requires:
+{
+    file:
+    {
+        // Make the "foo" library available inside the app sandbox (in the app's /lib directory).
+        /usr/lib/libfoo.so.3     /lib/
+        /usr/lib/libfoo.so.3.1.1 /lib/
+    }
+}
+@endcode
+
+
+@subsection defFilesCdef_requiresComponent Component
+
+Declares this component depends on another component.
 
 @code
 requires:
@@ -320,22 +539,22 @@ requires:
 }
 @endcode
 
-Any application that uses a component will also use any other components that component requires,
+Any app that uses a component will also use any other components that component requires,
 and any components they require, etc.
 
-Furthermore, specifying a dependency on another component ensures that calls to component
-initialization functions ( @c COMPONENT_INIT in C/C++ components ) will be sorted in the correct
-order.  If component A depends on component B, then component B will be initialized first.
+Specifying a dependency on another component ensures that calls to component
+initialization functions ( @c COMPONENT_INIT in C/C++ components ) are sorted in the correct
+order. If component A depends on component B, then component B will be initialized first.
 
-Dependency loops are not allowed.  That is, a component C cannot depend on another component that
-(either directly or indirectly) depends on component C.  The build tools will detect dependency
-loops and report an error.
+Dependency loops are not allowed: component C can't depend on another component that
+(either directly or indirectly) depends on component C. The build tools detect dependency
+loops and report any error.
 
-@section defFilesCdefSources Sources
+@section defFilesCdef_sources Sources
 
 Contains a list of source code files.
 
-If C or C++ code, one source file must implement a @c COMPONENT_INIT function.  The framework will
+If C or C++ code, one source file must implement a @c COMPONENT_INIT function. The framework will
 automatically call that function at start-up.
 
 @code
@@ -349,6 +568,6 @@ sources:
 
 <HR>
 
-Copyright (C) Sierra Wireless, Inc. 2014.  Use of this work is subject to license.
+Copyright (C) 2015 Sierra Wireless, Inc. Use of this work is subject to license.
 
 **/
