@@ -1,11 +1,10 @@
-
 // -------------------------------------------------------------------------------------------------
 /**
  *  @file cm_radio.h
  *
  *  Handle radio control related functionality
  *
- *  Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+ *  Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 // -------------------------------------------------------------------------------------------------
 
@@ -23,6 +22,16 @@ void cm_mrc_PrintRadioHelp
     void
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+* Process commands for radio service.
+*/
+//--------------------------------------------------------------------------------------------------
+void cm_mrc_ProcessRadioCommand
+(
+    const char * command,   ///< [IN] Radio command
+    size_t numArgs          ///< [IN] Number of arguments
+);
 
 // -------------------------------------------------------------------------------------------------
 /**
@@ -50,18 +59,19 @@ int cm_mrc_GetModemStatus
 );
 
 
+
 // -------------------------------------------------------------------------------------------------
 /**
-*  This function sets the radio access technology to use.
-*  An index of (-1) remove all preferences.
-*
-*  @return EXIT_SUCCESS if the call was successful, EXIT_FAILURE otherwise.
-*/
+ *   This function sets the radio access technology to use.
+ *
+ *   @return
+ *   - LE_OK    If the call was successful
+ *   - LE_FAULT Otherwise.
+ */
 // -------------------------------------------------------------------------------------------------
 int cm_mrc_SetRat
 (
-    int8_t      index,      ///< [IN] RAT Index in config tree
-    const char *ratPtr      ///< [IN] Radio access technology
+    le_mrc_RatBitMask_t rat ///< [IN] Radio access technology
 );
 
 #endif

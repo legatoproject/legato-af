@@ -1,11 +1,10 @@
-
 // -------------------------------------------------------------------------------------------------
 /**
  *  @file cm_radio.c
  *
  *  Handle radio control related functionality
  *
- *  Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+ *  Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 // -------------------------------------------------------------------------------------------------
 
@@ -14,8 +13,29 @@
 #include "cm_mrc.h"
 #include "cm_common.h"
 
-#define CFG_MODEMSERVICE_MRC_PATH "/modemServices/radio"
-#define CFG_NODE_PREF_RAT "preferences/rat"
+// -------------------------------------------------------------------------------------------------
+/**
+*  Print the radio help text to stdout.
+*/
+// -------------------------------------------------------------------------------------------------
+void cm_mrc_PrintRadioHelp
+(
+    void
+)
+{
+    printf("Radio usage\n"
+            "===========\n\n"
+            "To get modem status:\n"
+            "\tcm radio\n"
+            "\tcm radio status\n\n"
+            "To enable/disable radio:\n"
+            "\tcm radio <on/off>\n\n"
+            "To set radio access technology prefererences\n"
+            "\tcm radio rat <[CDMA] [GSM] [UMTS] [LTE]>\n\n"
+            "To resume automatic RAT selection.\n"
+            "\tcm radio rat AUTO\n\n"
+            );
+}
 
 // -------------------------------------------------------------------------------------------------
 /**
@@ -44,31 +64,6 @@ static le_result_t GetCurrentNetworkName
 
     return res;
 }
-
-// -------------------------------------------------------------------------------------------------
-/**
-*  Print the radio help text to stdout.
-*/
-// -------------------------------------------------------------------------------------------------
-void cm_mrc_PrintRadioHelp
-(
-    void
-)
-{
-    printf("Radio usage\n"
-            "===========\n\n"
-            "To get modem status:\n"
-            "\tcm radio\n\n"
-            "To enable/disable radio:\n"
-            "\tcm radio <on/off>\n\n"
-            "To set radio access technology:\n"
-            "\tcm radio rat <CDMA/GSM/UMTS/LTE> ...\n\n"
-            "After setting the radio access technology, you will need to do a 'legato restart' for it take into effect.\n\n"
-            "\tcm radio rat MANUAL\n\n"
-            "To resume auto RAT selection.\n\n"
-            );
-}
-
 
 // -------------------------------------------------------------------------------------------------
 /**
@@ -319,38 +314,113 @@ int cm_mrc_GetModemStatus
 
 // -------------------------------------------------------------------------------------------------
 /**
-*   This function sets the radio access technology to use.
-*
-*   @todo Current tool will only support adding one RAT (0) to simplify scope.
-*
-*   @return EXIT_SUCCESS if the call was successful, EXIT_FAILURE otherwise.
-*/
+ *   This function sets the radio access technology preferences.
+ *
+ *   @return
+ *   - LE_OK    If the call was successful
+ *   - LE_FAULT Otherwise.
+ */
 // -------------------------------------------------------------------------------------------------
 int cm_mrc_SetRat
 (
-    int8_t     index,      ///< [IN] RAT Index in config tree
-    const char *ratPtr     ///< [IN] Radio access technology
+    le_mrc_RatBitMask_t rat ///< [IN] Radio access technology
 )
 {
-    char ratToUpper[CMODEM_COMMON_RAT_STR_LEN];
-    cm_cmn_toUpper(ratPtr, ratToUpper, sizeof(ratToUpper));
+    return le_mrc_SetRatPreferences(rat);
+}
 
-    char configPath[512];
-    int pos = 0;
 
-    pos = snprintf(configPath, sizeof(configPath), "%s/%s", CFG_MODEMSERVICE_MRC_PATH, CFG_NODE_PREF_RAT);
-
-    if(index == -1)
+//--------------------------------------------------------------------------------------------------
+/**
+* Process commands for radio service.
+*/
+//--------------------------------------------------------------------------------------------------
+void cm_mrc_ProcessRadioCommand
+(
+    const char * command,   ///< [IN] Radio command
+    size_t numArgs          ///< [IN] Number of arguments
+)
+{
+    if (strcmp(command, "help") == 0)
     {
-        le_cfg_QuickDeleteNode(configPath);
+        cm_mrc_PrintRadioHelp();
+        exit(EXIT_SUCCESS);
+    }
+    else if (strcmp(command, "status") == 0)
+    {
+        exit(cm_mrc_GetModemStatus());
+    }
+    else if (strcmp(command, "on") == 0)
+    {
+        exit(cm_mrc_SetRadioPower(LE_ON));
+    }
+    else if (strcmp(command, "off") == 0)
+    {
+        exit(cm_mrc_SetRadioPower(LE_OFF));
+    }
+    else if (strcmp(command, "rat") == 0)
+    {
+        if (cm_cmn_CheckEnoughParams(1, numArgs, "RAT value missing. e.g. cm radio"
+                        " rat <[CDMA] [GSM] [UMTS] [LTE]> or <AUTO>"))
+        {
+            le_mrc_RatBitMask_t rat = 0;
+            const char* ratStrPtr;
+            int index;
+
+            for (index = 2 ; index < numArgs ; index++)
+            {
+                ratStrPtr = le_arg_GetArg(index);
+                LE_DEBUG("Args (%d) => '%s'",index, ratStrPtr);
+
+                if (strcmp(ratStrPtr, "AUTO") == 0)
+                {
+                    if(cm_mrc_SetRat(LE_MRC_BITMASK_RAT_ALL) == LE_OK)
+                    {
+                        exit(EXIT_SUCCESS);
+                    }
+                    else
+                    {
+                        LE_ERROR("Failed to set LE_MRC_BITMASK_RAT_ALL rat value");
+                        printf("Failed to set LE_MRC_BITMASK_RAT_ALL rat value\n");
+                        exit(EXIT_FAILURE);
+                    }
+                }
+                else if (strcmp(ratStrPtr, "CDMA") == 0)
+                {
+                    rat |= LE_MRC_BITMASK_RAT_CDMA;
+                }
+                else if (strcmp(ratStrPtr, "GSM") == 0)
+                {
+                    rat |= LE_MRC_BITMASK_RAT_GSM;
+                }
+                else if (strcmp(ratStrPtr, "LTE") == 0)
+                {
+                    rat |= LE_MRC_BITMASK_RAT_LTE;
+                }
+                else if (strcmp(ratStrPtr, "UMTS") == 0)
+                {
+                    rat |= LE_MRC_BITMASK_RAT_UMTS;
+                }
+                else
+                {
+                    LE_ERROR("INVALID RAT option!!");
+                    printf("INVALID RAT option!!\n");
+                    exit(EXIT_FAILURE);
+                }
+            }
+
+            if(cm_mrc_SetRat(rat) == LE_OK)
+            {
+                exit(EXIT_SUCCESS);
+            }
+            LE_ERROR("Failed to set rat value");
+            printf("Failed to set rat value\n");
+        }
+        exit(EXIT_FAILURE);
     }
     else
     {
-        snprintf(configPath + pos, sizeof(configPath) - pos, "/%u", index);
-        le_cfg_QuickSetString(configPath, ratToUpper);
+        printf("Invalid command for radio service.\n");
+        exit(EXIT_FAILURE);
     }
-
-
-    return EXIT_SUCCESS;
 }
-

@@ -6,7 +6,9 @@ requires:
         le_mrc.api
         le_mdc.api
         le_sim.api
-        le_data.api
+        le_sms.api
+        le_info.api
+        le_data.api [manual-start]
     }
 }
 
@@ -16,5 +18,7 @@ sources:
     cm_mrc.c
     cm_sim.c
     cm_data.c
+    cm_sms.c
+    cm_info.c
     cm_common.c
 }

@@ -3,7 +3,7 @@ SERVER_DEPENDS := printServer.adef printServer/server.c printServer/Component.cd
 
 CLIENT_DEPENDS := printClient.adef printClient/client.c printClient/Component.cdef
 
-TARGETS := localhost ar7 wp7
+TARGETS := localhost ar7 wp7 ar86
 
 .PHONY: all $(TARGETS)
 
@@ -19,5 +19,5 @@ $(foreach target,$(TARGETS),printClient.$(target)): $(CLIENT_DEPENDS)
 
 .PHONY: clean
 clean:
-	rm -rf _build* *.localhost *.ar7 *.wp7
+	rm -rf _build* *.localhost *.ar7 *.wp7 *.ar86
 

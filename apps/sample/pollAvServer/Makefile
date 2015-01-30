@@ -12,7 +12,7 @@ localhost: export TARGET = localhost
 localhost: app.localhost
 
 app.%:
-	mkapp -v -t $(TARGET) -i $(LEGATO_ROOT)/build/$(TARGET)/airvantage/runtime/itf airvantageDemo.adef
+	mkapp -v -t $(TARGET) -i $(LEGATO_ROOT)/build/$(TARGET)/airvantage/runtime/itf pollAvServer.adef
 
 clean:
 	rm -rf _build_* *.ar7 *.wp7 *.ar86 *.localhost

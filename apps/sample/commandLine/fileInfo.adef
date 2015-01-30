@@ -1,0 +1,4 @@
+executables:
+{
+    fileInfo = ( fileInfo.c )
+}

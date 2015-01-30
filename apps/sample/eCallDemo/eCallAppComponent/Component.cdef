@@ -3,6 +3,7 @@ requires:
     api:
     {
         le_pos.api
+        le_posCtrl.api
         le_ecall.api
         le_cfg.api
     }

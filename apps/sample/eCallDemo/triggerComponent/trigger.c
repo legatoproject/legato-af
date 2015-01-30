@@ -1,16 +1,16 @@
 /**
  * @file trigger.c
  *
- * This module implements an utility to trig the eCall application. It is given as an example, it
- * shows how the eCall app must be trigged.
+ * This module implements an utility to trig the eCallDemo application. It is given as an example,
+ * it shows how the eCallDemo app must be trigged.
  *
  * You can call the utility by issuing the command:
  * @verbatim
-   /opt/legato/apps/eCall/bin/trig <number of passengers>
+   $ execInApp eCallDemo trig <number of passengers>
    @endverbatim
  *
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  *
  */
 
@@ -24,7 +24,7 @@
  *
  */
 //--------------------------------------------------------------------------------------------------
-#define PAX_COUNT_MAX_LEN (3+1)
+#define PAX_COUNT_MAX_BYTES (3+1)
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -62,15 +62,15 @@ static void PrintUsage()
 //--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
-    char        paxCountString[PAX_COUNT_MAX_LEN] = { 0 };
-    uint32_t    paxCount;
+    const char * paxCountStringPtr = NULL;
+    uint32_t     paxCount;
 
     if (le_arg_NumArgs() == 1)
     {
-        le_arg_GetArg(0, paxCountString, PAX_COUNT_MAX_LEN);
-        paxCount = atoi(paxCountString);
+        paxCountStringPtr = le_arg_GetArg(0);
+        paxCount = atoi(paxCountStringPtr);
 
-        LE_INFO("trig with.%d", paxCount);
+        LE_INFO("trig eCallDemo with.%d passengers", paxCount);
         ecallApp_StartSession(paxCount);
     }
     else

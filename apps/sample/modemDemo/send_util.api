@@ -1,5 +1,8 @@
+USETYPES le_mdmDefs.api;
+USETYPES le_sms.api;
+
 FUNCTION le_result_t SendMessage
 (
-    string telPtr[15] IN,
-    string messagePtr[160] IN
+    string telPtr[le_mdmDefs.PHONE_NUM_MAX_LEN] IN,
+    string messagePtr[le_sms.TEXT_MAX_LEN] IN
 );

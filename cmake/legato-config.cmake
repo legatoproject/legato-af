@@ -1,5 +1,5 @@
 #*******************************************************************************
-# Copyright (C) 2013, Sierra Wireless Inc., all rights reserved.
+# Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 #
 # Contributors:
 #     Sierra Wireless - initial API and implementation
@@ -134,7 +134,7 @@ function(mkapp ADEF)
                 ${LEGATO_TOOL_MKAPP}
                         ${ADEF}
                         -t ${LEGATO_TARGET}
-                        -w ${CMAKE_CURRENT_BINARY_DIR}/${APP_NAME}.${LEGATO_TARGET}
+                        -w ${CMAKE_CURRENT_BINARY_DIR}/_build_${APP_NAME}.${LEGATO_TARGET}
                         -i ${CMAKE_CURRENT_SOURCE_DIR}
                         -c ${CMAKE_CURRENT_SOURCE_DIR}
                         -o ${APP_OUTPUT_PATH}

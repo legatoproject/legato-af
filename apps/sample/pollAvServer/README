@@ -1,0 +1,29 @@
+>> Before proceeding in remotely installing a Legato application through AirVantage. 
+Please ensure the following:
+1. Data connection profile has been configured correctly and you can start a data connection.
+2. pollAvServer is installed and running on device.
+3. Device has been registered/deployed on AirVantage. If you haven't done so, if you add your device to AirVantage, pollAvServer app will automatically DEPLOY it for you.
+
+>> How to package a Legato application that will be installed from AirVantage 
+1. Build a legato application
+
+2. Put your app (.ar7 or .wp7) inside a tar archive (This is required by the AirVantage platform)
+    e.g.
+    $ tar cvpf helloWorld.ar7.tar helloWorld.ar7
+    
+3. Create an appmodel.file as such (modify appropriately to suit your app):
+
+    <?xml version="1.0" encoding="ASCII"?>
+    <app:application xmlns:app="http://www.sierrawireless.com/airvantage/application/1.0" name="HelloWorldTest" revision="1.0" type="HelloWorldTest">
+      <application-manager use="MIHINI_APPCON"/>
+      <binaries>
+        <binary file="HelloWorldTest.wp7.tar"/>
+      </binaries>
+    </app:application>
+    
+4. Create a zip archive containing appmodel.app and your app (e.g. helloWorld.ar7.tar)
+    e.g.
+    $ zip myapp.zip appmodel.app helloWorld.ar7.tar
+
+5. Upload this to AirVantage and assuming you have already registered your device. You can install it.
+    

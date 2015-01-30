@@ -20,7 +20,7 @@
  * This thread will generate a notification to ExtVarsThread (using VarValueChangeId event) when
  * a registered variable's value changes.
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 
@@ -540,22 +540,14 @@ static void ConnectionStateHandler
 
     LE_DEBUG("New Session State notified (%s)", (isConnected)?"Connected":"Disconnected");
 
-    le_mdc_ProfileRef_t profileRef;
     bool isProfileConnected;
-    uint32_t profileIndex;
+    le_mdc_ProfileRef_t profileRef = le_mdc_GetProfile(LE_MDC_DEFAULT_PROFILE);
 
-    if ( le_mdc_GetAvailableProfile(&profileRef) != LE_OK )
-    {
-        LE_ERROR("Unable to get profile for MDC variable init.");
-        return;
-    }
-
-    profileIndex = le_mdc_GetProfileIndex(profileRef);
 
     if ( le_mdc_GetSessionState(profileRef, &isProfileConnected) != LE_OK )
     {
         LE_ERROR("Unable to find profile %p (index %u) state",
-            profileRef, profileIndex);
+            profileRef, LE_MDC_DEFAULT_PROFILE);
         return;
     }
 
@@ -563,7 +555,7 @@ static void ConnectionStateHandler
     {
         /* Either it's not the right profile or DCS & MDC are not in sync */
         LE_WARN("Session state from DCS and MDC differ: index[%u] dcs:isConnected[%u] mdc:isConnected[%u]",
-            profileIndex, isConnected, isProfileConnected);
+            LE_MDC_DEFAULT_PROFILE, isConnected, isProfileConnected);
         return;
     }
 
@@ -671,9 +663,9 @@ static void SimStateHandler
 )
 {
     TreeHdlVar_t*   varPtr;
-    char            iccid[LE_SIM_ICCID_LEN];
-    char            imsi[LE_SIM_IMSI_LEN];
-    char            phoneNumber[LE_MDMDEFS_PHONE_NUM_MAX_LEN] = {0};
+    char            iccid[LE_SIM_ICCID_BYTES] = {0};
+    char            imsi[LE_SIM_IMSI_BYTES] = {0};
+    char            phoneNumber[LE_MDMDEFS_PHONE_NUM_MAX_BYTES] = {0};
     bool            notify=false;
     le_sim_States_t state;
 
@@ -856,7 +848,11 @@ static void NetRegHandler
         char homeNetworkName[64] = {0};
 
         le_result_t result = le_mrc_GetCurrentNetworkName(homeNetworkName,sizeof(homeNetworkName));
-        if (result == LE_NOT_POSSIBLE)
+        if (result == LE_NOT_POSSIBLE ) // LE_NOT_POSSIBLE is deprecated - no-one should return this
+        {
+            LE_ERROR("le_mrc_GetCurrentNetworkName returned deprecated LE_NOT_POSSIBLE");
+        }
+        else if (result == LE_FAULT)
         {
             le_utf8_Copy(homeNetworkName,"",sizeof(homeNetworkName),NULL);
         }
@@ -902,7 +898,7 @@ static rc_ReturnCode_t InitializeInfoVariables
 {
     rc_ReturnCode_t rc=RC_OK;
     TreeHdlVar_t*   varPtr;
-    char            imei[LE_INFO_IMEI_MAX_LEN];
+    char            imei[LE_INFO_IMEI_MAX_BYTES];
 
     le_info_ConnectService();
 
@@ -944,7 +940,7 @@ static rc_ReturnCode_t InitializeMrcVariables
 
     le_mrc_ConnectService();
 
-    if (le_mrc_AddNetRegStateHandler(NetRegHandler, NULL) == NULL)
+    if (le_mrc_AddNetRegStateEventHandler(NetRegHandler, NULL) == NULL)
     {
         LE_ERROR("Failed to install the Roaming State handler function!");
         rc = RC_UNSPECIFIED_ERROR;
@@ -1000,7 +996,11 @@ static rc_ReturnCode_t InitializeMrcVariables
     {
         varPtr = GetTreeVariable(EXTVARS_VAR_ID_GSM_OPERATOR);
         le_result_t result = le_mrc_GetCurrentNetworkName(varPtr->value.s,sizeof(varPtr->value.s));
-        if (result == LE_NOT_POSSIBLE)
+        if (result == LE_NOT_POSSIBLE ) // LE_NOT_POSSIBLE is deprecated - no-one should return this
+        {
+            LE_ERROR("le_mrc_GetCurrentNetworkName returned deprecated LE_NOT_POSSIBLE");
+        }
+        else if (result == LE_FAULT)
         {
             le_utf8_Copy(varPtr->value.s,"",sizeof(varPtr->value.s),NULL);
         }
@@ -1043,13 +1043,7 @@ static rc_ReturnCode_t InitializeMdcVariables
         rc = RC_UNSPECIFIED_ERROR;
     }
 
-    le_mdc_ProfileRef_t profileRef;
-
-    if ( le_mdc_GetAvailableProfile(&profileRef) != LE_OK )
-    {
-        LE_ERROR("Unable to get profile for MDC variable init.");
-        return RC_OUT_OF_RANGE;
-    }
+    le_mdc_ProfileRef_t profileRef = le_mdc_GetProfile(LE_MDC_DEFAULT_PROFILE);
 
     // Access Point Name
     {
@@ -1060,7 +1054,11 @@ static rc_ReturnCode_t InitializeMdcVariables
             LE_ERROR("Failed to get Access Point Name!");
             return RC_OUT_OF_RANGE;
         }
-        else if ( result == LE_NOT_POSSIBLE )
+        else if (result == LE_NOT_POSSIBLE ) // LE_NOT_POSSIBLE is deprecated - no-one should return this
+        {
+            LE_ERROR("le_mdc_GetAPN returned deprecated LE_NOT_POSSIBLE");
+        }
+        else if ( result == LE_FAULT )
         {
             le_utf8_Copy(apnNameStr,"",sizeof(apnNameStr),NULL);
         }
@@ -1090,7 +1088,11 @@ static rc_ReturnCode_t InitializeMdcVariables
                 LE_ERROR("Failed to get IP Address!");
                 return RC_OUT_OF_RANGE;
             }
-            else if ( result == LE_NOT_POSSIBLE )
+            else if (result == LE_NOT_POSSIBLE ) // LE_NOT_POSSIBLE is deprecated - no-one should return this
+            {
+                LE_ERROR("le_mdc_GetIPv4Address returned deprecated LE_NOT_POSSIBLE");
+            }
+            else if ( result == LE_FAULT )
             {
                 le_utf8_Copy(ipAddrStr,"",sizeof(ipAddrStr),NULL);
             }
@@ -1123,7 +1125,11 @@ static rc_ReturnCode_t InitializeMdcVariables
             LE_ERROR("Failed to get Data Bearer Technology!");
             return RC_OUT_OF_RANGE;
         }
-        else if (result == LE_NOT_POSSIBLE )
+        else if (result == LE_NOT_POSSIBLE ) // LE_NOT_POSSIBLE is deprecated - no-one should return this
+        {
+            LE_ERROR("le_mdc_GetDataBearerTechnology returned deprecated LE_NOT_POSSIBLE");
+        }
+        else if (result == LE_FAULT )
         {
             le_utf8_Copy(serviceStr,"None",sizeof(serviceStr),NULL);
         }
@@ -1196,9 +1202,9 @@ static rc_ReturnCode_t InitializeSimVariables
     rc_ReturnCode_t rc=RC_OK;
     TreeHdlVar_t*   varPtr;
     le_sim_ObjRef_t simRef;
-    char            iccid[LE_SIM_ICCID_LEN];
-    char            imsi[LE_SIM_IMSI_LEN];
-    char            phoneNumber[LE_MDMDEFS_PHONE_NUM_MAX_LEN] = {0};
+    char            iccid[LE_SIM_ICCID_BYTES] = {0};
+    char            imsi[LE_SIM_IMSI_BYTES] = {0};
+    char            phoneNumber[LE_MDMDEFS_PHONE_NUM_MAX_BYTES] = {0};
 
     le_sim_ConnectService();
 

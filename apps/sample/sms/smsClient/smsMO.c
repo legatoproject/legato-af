@@ -1,7 +1,7 @@
  /**
   * Sample code for Mobile Originated SMS messages.
   *
-  * Copyright (C) Sierra Wireless, Inc. 2014.  All rights reserved.
+  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
   *
   * Use of this work is subject to license.
   *

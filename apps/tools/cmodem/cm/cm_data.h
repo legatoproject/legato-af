@@ -1,11 +1,10 @@
-
 // -------------------------------------------------------------------------------------------------
 /**
  *  @file cm_data.h
  *
  *  Handle data connection control related functionality
  *
- *  Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+ *  Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 // -------------------------------------------------------------------------------------------------
 
@@ -23,6 +22,16 @@ void cm_data_PrintDataHelp
     void
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Process commands for data service.
+ */
+//--------------------------------------------------------------------------------------------------
+void cm_data_ProcessDataCommand
+(
+    const char * command,   ///< [IN] Data commands
+    size_t numArgs          ///< [IN] Number of arguments
+);
 
 // -------------------------------------------------------------------------------------------------
 /**
@@ -37,12 +46,13 @@ int cm_data_SetProfileInUse
 
 //--------------------------------------------------------------------------------------------------
 /**
-* Start a data connection.
-*/
+ * Start a data connection.
+ */
 //--------------------------------------------------------------------------------------------------
 void cm_data_StartDataConnection
 (
-    const char * timeout        ///< [IN] Data connection timeout timer
+    const char * timeout,           ///< [IN] Data connection timeout timer
+    bool withDataBearerMonitoring   ///< [IN] Monitor data bearer technology 
 );
 
 
@@ -106,19 +116,6 @@ int cm_data_SetAuthentication
 */
 // -------------------------------------------------------------------------------------------------
 int cm_data_GetProfileInfo
-(
-    void
-);
-
-
-// -------------------------------------------------------------------------------------------------
-/**
- *  This function will list all profiles with their pdp and apn information.
- *
- *  @return EXIT_SUCCESS if the call was successful, EXIT_FAILURE otherwise.
- */
-// -------------------------------------------------------------------------------------------------
-int cm_data_ListProfileName
 (
     void
 );

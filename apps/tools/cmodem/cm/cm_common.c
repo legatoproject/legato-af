@@ -1,11 +1,10 @@
-
 // -------------------------------------------------------------------------------------------------
 /**
  *  @file cm_common.c
  *
  *  Common functions between components.
  *
- *  Copyright (C) Sierra Wireless, Inc. 2013, 2014. All rights reserved. Use of this work is subject
+ *  Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  *  to license.
  */
 // -------------------------------------------------------------------------------------------------
@@ -27,7 +26,7 @@ void cm_cmn_FormatPrint
 {
     char sysInfoColon[30];
     snprintf(sysInfoColon, sizeof(sysInfoColon), "%s:", data);
-    printf("%-10s %s\n", sysInfoColon, desc);
+    printf("%-11s %s\n", sysInfoColon, desc);
 }
 
 
@@ -36,7 +35,7 @@ void cm_cmn_FormatPrint
 *  Convert characters to all lower cases.
 */
 // -------------------------------------------------------------------------------------------------
-void cm_cmn_toLower
+void cm_cmn_ToLower
 (
     const char * data, ///< [IN] Pointer to the data string that we want converted to lower case
     char * dataToLower, ///< [OUT] Data string converted to lower case
@@ -66,7 +65,7 @@ void cm_cmn_toLower
 *  Convert characters to all upper cases.
 */
 // -------------------------------------------------------------------------------------------------
-void cm_cmn_toUpper
+void cm_cmn_ToUpper
 (
     const char * data, ///< [IN] Pointer to the data string that we want converted to upper case
     char * dataToUpper, ///< [OUT] Data string converted to upper case
@@ -89,3 +88,30 @@ void cm_cmn_toUpper
         i++;
     }
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Verify if enough parameter passed into command.
+ * If not, output error message to stdout and terminate the program.
+ */
+//--------------------------------------------------------------------------------------------------
+bool cm_cmn_CheckEnoughParams
+(
+    size_t requiredParam,   ///< [IN] Required parameters for the command
+    size_t numArgs,         ///< [IN] Number of arguments passed into the command line
+    const char * errorMsg   ///< [IN] Error message to output if not enough parameters
+)
+{
+    if ( (requiredParam + 1) < numArgs)
+    {
+        return true;
+    }
+    else
+    {
+        printf("%s\n\n", errorMsg);
+        exit(EXIT_FAILURE);
+    }
+
+    return false;
+}
+

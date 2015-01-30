@@ -1,5 +1,5 @@
 #*******************************************************************************
-# Copyright (C) 2014, Sierra Wireless Inc.
+# Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 #
 # Contributors:
 #     Sierra Wireless - initial API and implementation
@@ -12,7 +12,7 @@ macro(get_compiler_target GCC_COMPILER TARGET_HOST)
         COMMAND ${GCC_COMPILER} --verbose
         ERROR_VARIABLE GCC_VERSION
         )
-        
+
     # Select target part
     string(REGEX MATCH "Target: ([^\n]+)" TARGET_LINE ${GCC_VERSION})
     string(REGEX REPLACE "Target: (.+)" "\\1" TARGET_HOST ${TARGET_LINE})
@@ -32,7 +32,7 @@ macro(get_compiler_target_sysroot GCC_COMPILER TARGET_SYSROOT)
     else()
         set(TARGET_SYSROOT "${SYSROOT}")
     endif()
-    
-    message("Sysroot: ${SYSROOT}")
+
+    message(STATUS "Sysroot: ${SYSROOT}")
 
 endmacro()

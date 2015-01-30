@@ -1,5 +1,5 @@
 #*******************************************************************************
-# Copyright (C) 2013, Sierra Wireless Inc., all rights reserved.
+# Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 #
 # Contributors:
 #     Sierra Wireless - initial API and implementation
@@ -23,11 +23,13 @@ add_subdirectory(helloIpc)
 # Application using Modem Services
 add_subdirectory(modemDemo)
 
-# Application using eCall
-if(INCLUDE_ECALL EQUAL 1 AND LEGATO_TARGET MATCHES "ar7")
-    add_subdirectory(eCall)
-endif()
+# Command-line application
+add_subdirectory(commandLine)
 
+# Application using eCall
+if((INCLUDE_ECALL EQUAL 1) AND ((LEGATO_TARGET MATCHES "ar7") OR (LEGATO_TARGET MATCHES "ar86")))
+    add_subdirectory(eCallDemo)
+endif()
 
 # Application using AirVantage services
 if(INCLUDE_AIRVANTAGE)
@@ -36,3 +38,4 @@ endif()
 
 # SMS Sample application using Modem Services
 add_subdirectory(sms)
+

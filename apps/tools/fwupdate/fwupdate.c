@@ -2,7 +2,7 @@
 /**
  * FW Update command line tool
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -63,7 +63,7 @@ static void PrintHelp
 //--------------------------------------------------------------------------------------------------
 static void DownloadFirmware
 (
-    char* fileName    ///< Name of file containing firmware image
+    const char* fileName    ///< Name of file containing firmware image
 )
 {
     int fd;
@@ -105,7 +105,7 @@ static void QueryVersion
 )
 {
     le_result_t result;
-    char version[LE_INFO_MAX_VERS_LEN];
+    char version[LE_INFO_MAX_VERS_BYTES];
     struct utsname linuxInfo;
 
     result = le_info_GetFirmwareVersion(version, sizeof(version));
@@ -134,27 +134,23 @@ static void QueryVersion
 //--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
-    char buffer[100] = "";
-
     // Process the command
     if (le_arg_NumArgs() >= 1)
     {
-        le_arg_GetArg(0, buffer, sizeof(buffer));
+        const char* command = le_arg_GetArg(0);
 
-        if ( strcmp(buffer, "help") == 0 )
+        if ( strcmp(command, "help") == 0 )
         {
             PrintHelp();
             exit(EXIT_SUCCESS);
         }
 
-        else if ( strcmp(buffer, "download") == 0 )
+        else if ( strcmp(command, "download") == 0 )
         {
             // Get the filename of the firmware image; could be '-' if stdin
             if (le_arg_NumArgs() > 1)
             {
-                le_arg_GetArg(1, buffer, sizeof(buffer));
-
-                DownloadFirmware(buffer);
+                DownloadFirmware(le_arg_GetArg(1));
                 exit(EXIT_SUCCESS);
             }
             else
@@ -163,7 +159,7 @@ COMPONENT_INIT
             }
         }
 
-        else if ( strcmp(buffer, "query") == 0 )
+        else if ( strcmp(command, "query") == 0 )
         {
             QueryVersion();
             exit(EXIT_SUCCESS);
@@ -171,7 +167,7 @@ COMPONENT_INIT
 
         else
         {
-            printf("Invalid command '%s'\n\n", buffer);
+            printf("Invalid command '%s'\n\n", command);
         }
     }
 

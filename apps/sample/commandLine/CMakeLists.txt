@@ -1,0 +1,9 @@
+#--------------------------------------------------------------------------------------------------
+# Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+#--------------------------------------------------------------------------------------------------
+
+# Creates application from helloWorld.adef
+mkapp(fileInfo.adef)
+
+# This is a sample application
+add_dependencies(samples fileInfo)

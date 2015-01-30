@@ -1,11 +1,10 @@
-
 // -------------------------------------------------------------------------------------------------
 /**
  *  @file cm_sim.h
  *
  *  Handle sim related functionality
  *
- *  Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+ *  Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 // -------------------------------------------------------------------------------------------------
 
@@ -23,6 +22,16 @@ void cm_sim_PrintSimHelp
     void
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+* Process commands for sim service.
+*/
+//--------------------------------------------------------------------------------------------------
+void cm_sim_ProcessSimCommand
+(
+    const char * command,   ///< [IN] Sim commands
+    size_t numArgs          ///< [IN] Number of arguments
+);
 
 // -------------------------------------------------------------------------------------------------
 /**
@@ -123,7 +132,10 @@ int cm_sim_StorePin
  *  @return EXIT_SUCCESS if the call was successful, EXIT_FAILURE otherwise.
  */
 // -------------------------------------------------------------------------------------------------
-int cm_sim_GetSimInfo( void );
+int cm_sim_GetSimInfo
+(
+    void
+);
 
 #endif
 

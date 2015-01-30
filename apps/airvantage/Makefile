@@ -1,12 +1,11 @@
 #
 # Makefile for the AirVantage Agent application.
 #
-# Copyright 2014, Sierra Wireless Inc., Use of this work is subject to license.
+# Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 
 .PHONY: no_goal
 no_goal:
 	$(error "NO MAKE GOAL SPECIFIED.  Expect either 'pre_build' or 'package'.")
-
 ifeq ($(LEGATO_ROOT),)
     $(error LEGATO_ROOT not defined)
 endif
@@ -62,6 +61,7 @@ $(LE_DATA_CLIENT):	le_data_client/clientMain.c \
 # TODO: Remove dependency list when mkcomp does dependency checking.
 $(LE_TREE_HDLR): le_tree_hdlr/Component.cdef \
 				le_tree_hdlr/extvars.c \
+				$(LEGATO_ROOT)/interfaces/modemServices/le_mdmDefs.api \
 				$(LEGATO_ROOT)/interfaces/modemServices/le_info.api \
 				$(LEGATO_ROOT)/interfaces/modemServices/le_mdc.api \
 				$(LEGATO_ROOT)/interfaces/modemServices/le_mrc.api \

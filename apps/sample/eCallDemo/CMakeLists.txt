@@ -1,12 +1,12 @@
 #*******************************************************************************
-# Copyright (C) 2014, Sierra Wireless Inc., all rights reserved.
+# Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 #
 #*******************************************************************************
 
 find_package(Legato REQUIRED)
 
-# Creates application from eCall.adef
-mkapp(eCall.adef
+# Creates application from eCallDemo.adef
+mkapp(eCallDemo.adef
     -i ${LEGATO_ROOT}/interfaces/modemServices
     -i ${LEGATO_ROOT}/interfaces/positioning
     -i ${LEGATO_ROOT}/interfaces/
@@ -22,4 +22,4 @@ mkapp(eCall.adef
 )
 
 # This is a sample application
-add_dependencies(samples eCall)
+add_dependencies(samples eCallDemo)

@@ -1,0 +1,43 @@
+sandboxed: true
+
+executables:
+{
+    eCallDemo = ( eCallAppComponent )
+    trig  = ( triggerComponent )
+}
+
+processes:
+{
+    envVars:
+    {
+        LE_LOG_LEVEL = DEBUG
+    }
+
+    run:
+    {
+        (eCallDemo)
+    }
+
+    priority: rt32  // The maximum priority is given to the eCallDemo app.
+}
+
+start:
+    manual
+
+bindings:
+{
+    eCallDemo.eCallAppComponent.le_ecall -> modemService.le_ecall
+    eCallDemo.eCallAppComponent.le_pos -> positioningService.le_pos
+    eCallDemo.eCallAppComponent.le_posCtrl -> positioningService.le_posCtrl
+
+    trig.triggerComponent.ecallApp -> eCallDemo.eCallAppComponent.ecallApp
+}
+
+requires:
+{
+    configTree:
+    {
+        [w] system
+        [w] eCallDemo
+    }
+}

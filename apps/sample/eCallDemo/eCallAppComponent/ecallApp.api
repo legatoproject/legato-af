@@ -1,7 +1,8 @@
 /**
- * @page c_ecallApp eCall Application
+ * @page c_ecallApp eCallDemo Application
  *
- * @ref ecallApp_interface.h "Click here for the API Reference documentation."
+ * @ref ecallApp_interface.h "API Reference"
+ *
  *
  * This app provides an @c ecallApp_StartSession() API to start a test eCall session.
  * You can call @c ecallApp_StartSession() with the number of passengers as a parameter to start the
@@ -15,27 +16,29 @@
  * This App uses the configuration tree to retrieve the following data:
  *
  * @verbatim
-  config get eCall:/
+  config get eCallDemo:/
 
   /
       settings/
-           hMinAccuracy<int> == <minimum horizontal accuracy value>
-           dirMinAccuracy<int> == <minimum direction accuracy value>
+           psap<string> = <PSAP number>
+           hMinAccuracy<int> = <minimum horizontal accuracy value>
+           dirMinAccuracy<int> = <minimum direction accuracy value>
    @endverbatim
  *
+ * - 'psap' is the PSAP telephone number.
  * - 'hAccuracy' is the minimum expected horizontal accuracy to trust the position (in meters).
  * - 'dirAccuracy' is the minimum expected direction accuracy to trust the position (in degrees).
  *
  * You can set them by issuing the commands:
  * @verbatim
-   config set eCall:/settings/hMinAccuracy <minimum horizontal accuracy value> int
-   config set eCall:/settings/dirMinAccuracy <minimum direction accuracy value> int
+   config set eCallDemo:/settings/hMinAccuracy <minimum horizontal accuracy value> int
+   config set eCallDemo:/settings/dirMinAccuracy <minimum direction accuracy value> int
    @endverbatim
  *
  * Moreover, this app use two context variables:
  *
  * @verbatim
-  config get eCall:/
+  config get eCallDemo:/
 
   /
       context/
@@ -49,7 +52,7 @@
  *
  * <HR>
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 //--------------------------------------------------------------------------------------------------
@@ -58,7 +61,7 @@
  *
  * Legato @ref c_ecallApp include file.
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  *
  */
 //--------------------------------------------------------------------------------------------------

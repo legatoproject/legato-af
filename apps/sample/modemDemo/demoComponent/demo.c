@@ -7,9 +7,6 @@
 /* IPC APIs */
 #include "interfaces.h"
 
-#define SMS_TEXT_MAX_LEN    160
-#define SMS_TEXT_MAX_BYTES  (SMS_TEXT_MAX_LEN+1)
-
 // -------------------------------------------------------------------------------------------------
 /**
  *  Sierra Wireless server IP address used for data connection testing.
@@ -31,7 +28,7 @@ static char DestNumValid = false;
  *  The destination phone number we report to on events.
  */
 // -------------------------------------------------------------------------------------------------
-static char DestNum[LE_MDMDEFS_PHONE_NUM_MAX_LEN] = { 0 };
+static char DestNum[LE_MDMDEFS_PHONE_NUM_MAX_BYTES] = { 0 };
 
 // -------------------------------------------------------------------------------------------------
 /**
@@ -234,33 +231,33 @@ static le_result_t SendMessage
     le_result_t result;
 
     uint32_t messageSize = strlen(message);
-    uint32_t messagePart,i;
+    uint32_t messagePart;
+    uint32_t i;
 
-
-    if (messageSize % SMS_TEXT_MAX_LEN)
+    if (messageSize % LE_SMS_TEXT_MAX_LEN)
     {
-        messagePart = (messageSize/SMS_TEXT_MAX_LEN)+1;
+        messagePart = (messageSize/LE_SMS_TEXT_MAX_LEN)+1;
     }
     else
     {
-        messagePart = messageSize/SMS_TEXT_MAX_LEN;
+        messagePart = messageSize/LE_SMS_TEXT_MAX_LEN;
     }
 
-    for (i=0;i<messagePart;i++)
+    for (i=0; i < messagePart; i++)
     {
         uint32_t messageCopySize;
-        char messageToSend[SMS_TEXT_MAX_BYTES] = {0};
+        char messageToSend[LE_SMS_TEXT_MAX_BYTES] = {0};
 
-        if (i==messagePart-1)
+        if (i == (messagePart-1) )
         {
-            messageCopySize = messageSize % SMS_TEXT_MAX_LEN;
+            messageCopySize = messageSize % LE_SMS_TEXT_MAX_LEN;
         }
         else
         {
-            messageCopySize = SMS_TEXT_MAX_LEN;
+            messageCopySize = LE_SMS_TEXT_MAX_LEN;
         }
 
-        memcpy(messageToSend,&message[i*SMS_TEXT_MAX_LEN],messageCopySize);
+        memcpy(messageToSend, &message[i*LE_SMS_TEXT_MAX_LEN], messageCopySize);
         messageToSend[messageCopySize] = '\0';
 
         // Allocate a message object from the SMS pool.  If this fails, the application will halt, so
@@ -772,7 +769,7 @@ static bool ProcessCommand
     {
         // Like the status command, this command queries the underling hardware for information.
         // This information is turned into a string that can then be returned to the caller.
-        const uint32_t simSlot = 1;
+        const uint32_t simSlot = LE_SIM_EXTERNAL_SLOT_1;
         le_sim_ObjRef_t simRef = le_sim_Create(simSlot);
 
         char iccid[100];
@@ -782,9 +779,8 @@ static bool ProcessCommand
         le_sim_States_t simState = le_sim_GetState(simRef);
 
         pos += snprintf(buffer + pos, sizeof(buffer) - pos,
-                "SIM %u of %u is %s.",
-                (simSlot+1),
-                le_sim_CountSlots(),
+                "SIM %u is %s.",
+                simSlot,
                 GetSimStateString(simState));
 
         if(le_sim_GetICCID(simRef, iccid, sizeof(iccid)) == LE_OK)
@@ -887,11 +883,11 @@ static void SmsReceivedHandler
     }
 
     // Now, extract the relavant information and record the message in the appropriate places.
-    char tel[LE_MDMDEFS_PHONE_NUM_MAX_LEN] = { 0 };
-    char text[LE_SMS_TEXT_MAX_LEN] = { 0 };
+    char tel[LE_MDMDEFS_PHONE_NUM_MAX_BYTES] = { 0 };
+    char text[LE_SMS_TEXT_MAX_BYTES] = { 0 };
 
-    le_sms_GetSenderTel(messagePtr, tel, LE_MDMDEFS_PHONE_NUM_MAX_LEN);
-    le_sms_GetText(messagePtr, text, LE_SMS_TEXT_MAX_LEN);
+    le_sms_GetSenderTel(messagePtr, tel, LE_MDMDEFS_PHONE_NUM_MAX_BYTES);
+    le_sms_GetText(messagePtr, text, LE_SMS_TEXT_MAX_BYTES);
 
     // We are now reporting to this person
     DestNumValid = true;
@@ -1020,7 +1016,7 @@ COMPONENT_INIT
     LE_INFO("Running modemDemo\n");
 
     // register network state handler
-    le_mrc_AddNetRegStateHandler(NetRegStateHandler, NULL);
+    le_mrc_AddNetRegStateEventHandler(NetRegStateHandler, NULL);
 
     // register sms handler
     le_sms_AddRxMessageHandler(SmsReceivedHandler, NULL);

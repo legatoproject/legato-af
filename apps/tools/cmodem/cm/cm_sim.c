@@ -1,11 +1,10 @@
-
 // -------------------------------------------------------------------------------------------------
 /**
  *  @file cm_sim.c
  *
  *  Handle sim related functionality
  *
- *  Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+ *  Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 // -------------------------------------------------------------------------------------------------
 
@@ -19,7 +18,6 @@
 
 static uint32_t SimSlot = 1;
 
-
 // -------------------------------------------------------------------------------------------------
 /**
  *  Print the help text to stdout.
@@ -30,12 +28,19 @@ void cm_sim_PrintSimHelp
     void
 )
 {
-    printf("Sim usage\n"
+    printf("SIM usage\n"
             "=========\n\n"
             "To get sim status:\n"
-            "\tcm sim\n\n"
+            "\tcm sim\n"
+            "\tcm sim status\n\n"
             "To get sim information:\n"
             "\tcm sim info\n\n"
+            "To get the sim imsi:\n"
+            "\tcm sim imsi\n\n"
+            "To get the sim iccid:\n"
+            "\tcm sim iccid\n\n"
+            "To get the sim phone number:\n"
+            "\tcm sim number\n\n"
             "To enter pin code:\n"
             "\tcm sim enterpin <pin>\n\n"
             "To change pin code:\n"
@@ -57,7 +62,6 @@ void cm_sim_PrintSimHelp
             "Only ways to change this PIN code are through 'changepin' and 'unblock' operations.\n\n"
             );
 }
-
 
 // -------------------------------------------------------------------------------------------------
 /**
@@ -136,28 +140,125 @@ int cm_sim_GetSimStatus()
 /**
 *  This function will attempt to get the home network name.
 *
-*  @return LE_OK if the call was successful.
+*  @return EXIT_SUCCESS if the call was successful, EXIT_FAILURE otherwise.
 */
 // -------------------------------------------------------------------------------------------------
-static le_result_t GetNetworkOperator
+int cm_sim_GetNetworkOperator
 (
     void
 )
 {
     char homeNetwork[100];
     le_result_t res;
+    int ret = EXIT_SUCCESS;
 
     res = le_sim_GetHomeNetworkOperator(homeNetwork, sizeof(homeNetwork));
 
     if (res != LE_OK)
     {
-        cm_cmn_FormatPrint("Home Network Operator", "");
-        return res;
+        homeNetwork[0] = '\0';
+        ret = EXIT_FAILURE;
     }
 
     cm_cmn_FormatPrint("Home Network Operator", homeNetwork);
 
-    return res;
+    return ret;
+}
+
+// -------------------------------------------------------------------------------------------------
+/**
+*  This function will attempt to get the SIM IMSI.
+*
+*  @return EXIT_SUCCESS if the call was successful, EXIT_FAILURE otherwise.
+*/
+// -------------------------------------------------------------------------------------------------
+int cm_sim_GetSimImsi
+(
+    void
+)
+{
+    char imsi[LE_SIM_IMSI_BYTES];
+    le_result_t res;
+    le_sim_ObjRef_t simRef = NULL;
+    int ret = EXIT_SUCCESS;
+
+    simRef = GetSimRef(SimSlot);
+
+    res = le_sim_GetIMSI(simRef, imsi, sizeof(imsi));
+
+    if (res != LE_OK)
+    {
+        imsi[0] = '\0';
+        ret = EXIT_FAILURE;
+    }
+
+    cm_cmn_FormatPrint("IMSI", imsi);
+
+    return ret;
+}
+
+// -------------------------------------------------------------------------------------------------
+/**
+*  This function will attempt to get the SIM ICCID.
+*
+*  @return EXIT_SUCCESS if the call was successful, EXIT_FAILURE otherwise.
+*/
+// -------------------------------------------------------------------------------------------------
+int cm_sim_GetSimIccid
+(
+    void
+)
+{
+    char iccid[LE_SIM_ICCID_BYTES];
+    le_result_t res;
+    le_sim_ObjRef_t simRef = NULL;
+    int ret = EXIT_SUCCESS;
+
+    simRef = GetSimRef(SimSlot);
+
+    res = le_sim_GetICCID(simRef, iccid, sizeof(iccid));
+
+    if (res != LE_OK)
+    {
+        iccid[0] = '\0';
+        ret = EXIT_FAILURE;
+    }
+
+    cm_cmn_FormatPrint("ICCID", iccid);
+
+    return ret;
+}
+
+// -------------------------------------------------------------------------------------------------
+/**
+*  This function will attempt to get the SIM phone number.
+*
+*  @return EXIT_SUCCESS if the call was successful, EXIT_FAILURE otherwise.
+*/
+// -------------------------------------------------------------------------------------------------
+int cm_sim_GetSimPhoneNumber
+(
+    void
+)
+{
+    char number[LE_MDMDEFS_PHONE_NUM_MAX_BYTES];
+    le_result_t res;
+    le_sim_ObjRef_t simRef = NULL;
+    int ret = EXIT_SUCCESS;
+
+    simRef = GetSimRef(SimSlot);
+
+    res = le_sim_GetSubscriberPhoneNumber(simRef, number, sizeof(number));
+
+    if (res != LE_OK)
+    {
+        number[0] = '\0';
+        ret = EXIT_FAILURE;
+    }
+
+    cm_cmn_FormatPrint("Phone Number", number);
+
+    return ret;
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -167,15 +268,24 @@ static le_result_t GetNetworkOperator
  *  @return EXIT_SUCCESS if the call was successful, EXIT_FAILURE otherwise.
  */
 // -------------------------------------------------------------------------------------------------
-int cm_sim_GetSimInfo( void )
+int cm_sim_GetSimInfo
+(
+    void
+)
 {
-    le_result_t res = LE_OK;
+    int ret;
 
-    res = GetNetworkOperator();
+    ret = cm_sim_GetNetworkOperator();
+    LE_ASSERT(ret == EXIT_SUCCESS);
 
-    // to be completed with IMSI, phone number, etc...
+    ret = cm_sim_GetSimIccid();
+    LE_ASSERT(ret == EXIT_SUCCESS);
 
-    return res;
+    cm_sim_GetSimImsi();
+
+    cm_sim_GetSimPhoneNumber();
+
+    return ret;
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -426,3 +536,90 @@ int cm_sim_StorePin
     return EXIT_SUCCESS;
 }
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+* Process commands for sim service.
+*/
+//--------------------------------------------------------------------------------------------------
+void cm_sim_ProcessSimCommand
+(
+    const char * command,   ///< [IN] Sim commands
+    size_t numArgs          ///< [IN] Number of arguments
+)
+{
+    if (strcmp(command, "help") == 0)
+    {
+        cm_sim_PrintSimHelp();
+        exit(EXIT_SUCCESS);
+    }
+    else if (strcmp(command, "status") == 0)
+    {
+        exit(cm_sim_GetSimStatus());
+    }
+    else if (strcmp(command, "enterpin") == 0)
+    {
+        if (cm_cmn_CheckEnoughParams(1, numArgs, "PIN code missing. e.g. cm sim enterpin <pin>"))
+        {
+            exit(cm_sim_EnterPin(le_arg_GetArg(2)));
+        }
+    }
+    else if (strcmp(command, "changepin") == 0)
+    {
+        if (cm_cmn_CheckEnoughParams(2, numArgs, "PIN code missing. e.g. cm sim changepin <pin>"))
+        {
+            exit(cm_sim_ChangePin(le_arg_GetArg(2), le_arg_GetArg(3)));
+        }
+    }
+    else if (strcmp(command, "lock") == 0)
+    {
+        if (cm_cmn_CheckEnoughParams(1, numArgs, "PIN code missing. e.g. cm sim lock <pin>"))
+        {
+            exit(cm_sim_LockSim(le_arg_GetArg(2)));
+        }
+    }
+    else if (strcmp(command, "unlock") == 0)
+    {
+        if (cm_cmn_CheckEnoughParams(1, numArgs, "PIN code missing. e.g. cm sim unlock <pin>"))
+        {
+            exit(cm_sim_UnlockSim(le_arg_GetArg(2)));
+        }
+    }
+    else if (strcmp(command, "unblock") == 0)
+    {
+        if (cm_cmn_CheckEnoughParams(2, numArgs, "PUK/PIN code missing. e.g. cm sim unblock <puk> <newpin>"))
+        {
+            exit(cm_sim_UnblockSim(le_arg_GetArg(2), le_arg_GetArg(3)));
+        }
+    }
+    else if (strcmp(command, "storepin") == 0)
+    {
+        if (cm_cmn_CheckEnoughParams(1, numArgs, "PIN code missing. e.g. cm sim storepin <pin>"))
+        {
+            exit(cm_sim_StorePin(le_arg_GetArg(2)));
+        }
+    }
+    else if (strcmp(command, "info") == 0)
+    {
+        exit(cm_sim_GetSimInfo());
+    }
+    else if (strcmp(command, "iccid") == 0)
+    {
+        exit(cm_sim_GetSimIccid());
+    }
+    else if (strcmp(command, "imsi") == 0)
+    {
+        exit(cm_sim_GetSimImsi());
+    }
+    else if (strcmp(command, "number") == 0)
+    {
+        exit(cm_sim_GetSimPhoneNumber());
+    }
+    else
+    {
+        printf("Invalid command for SIM service.\n");
+        exit(EXIT_FAILURE);
+    }
+
+    exit(EXIT_SUCCESS);
+}
