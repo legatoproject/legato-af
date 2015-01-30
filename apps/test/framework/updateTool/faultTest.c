@@ -8,7 +8,7 @@
  * Multiple instances of this program can be called with different arguments to exercise the
  * different recovery actions of the Supervisor.
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 #include "legato.h"
 
@@ -21,18 +21,18 @@
 COMPONENT_INIT
 {
     // Get the app name.
-    char appName[100];
-    LE_ASSERT(le_arg_GetArg(0, appName, sizeof(appName)) == LE_OK);
+    const char* appName = le_arg_GetArg(0);
+    LE_ASSERT(appName != NULL);
 
     // Get the process name.
-    char procName[100];
-    LE_ASSERT(le_arg_GetProgramName(procName, sizeof(procName), NULL) == LE_OK);
+    const char* procName = le_arg_GetProgramName();
+    LE_ASSERT(procName != NULL);
 
     LE_INFO("======== Start '%s/%s' Test ========", appName, procName);
 
     // Get the type of fault to perform.
-    char faultTypeStr[100];
-    LE_ASSERT(le_arg_GetArg(1, faultTypeStr, sizeof(faultTypeStr)) == LE_OK);
+    const char* faultTypeStr = le_arg_GetArg(1);
+    LE_ASSERT(faultTypeStr != NULL);
 
     // sleep for 2 seconds so that we do not hit the fault limit.
     sleep(2);

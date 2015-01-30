@@ -3,7 +3,7 @@
  *
  * TODO: This module only tests DTMF decoding. DTMF encoding tests will come in a future release.
  *
- * Copyright (C) Sierra Wireless, Inc. 2014.  Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  *
  */
 
@@ -25,7 +25,7 @@ static le_audio_StreamRef_t FeOutRef = NULL;
 static le_audio_ConnectorRef_t AudioInputConnectorRef = NULL;
 static le_audio_ConnectorRef_t AudioOutputConnectorRef = NULL;
 
-static char  DestinationNumber[LE_MDMDEFS_PHONE_NUM_MAX_LEN];
+static char  DestinationNumber[LE_MDMDEFS_PHONE_NUM_MAX_BYTES];
 
 static le_audio_DtmfDetectorHandlerRef_t DtmfHandlerRef1 = NULL;
 static le_audio_DtmfDetectorHandlerRef_t DtmfHandlerRef2 = NULL;
@@ -351,7 +351,7 @@ static int32_t GetTel(void)
 {
     char *strPtr;
 
-    memset(DestinationNumber, 0, LE_MDMDEFS_PHONE_NUM_MAX_LEN);
+    memset(DestinationNumber, 0, LE_MDMDEFS_PHONE_NUM_MAX_BYTES);
 
     do
     {

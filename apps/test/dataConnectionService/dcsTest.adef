@@ -1,0 +1,14 @@
+sandboxed: false
+
+executables:
+{
+    dcsTest = ( dcsTestComp )
+}
+
+start: manual
+
+bindings:
+{
+    dcsTest.dcsTestComp.le_data -> dataConnectionService.le_data
+
+}

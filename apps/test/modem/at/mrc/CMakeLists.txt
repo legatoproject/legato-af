@@ -1,5 +1,5 @@
 #*******************************************************************************
-# Copyright (C) 2014, Sierra Wireless Inc., all rights reserved.
+# Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 #
 # Contributors:
 #     Sierra Wireless - initial API and implementation
@@ -27,6 +27,7 @@ if(${LEGATO_TARGET} STREQUAL "localhost")
                     -i ${LEGATO_ROOT}/components/atManager/devices/adapter_layer/inc
                     -i ${LEGATO_ROOT}/components/atManager/devices/uart/inc
                     -i ${LEGATO_ROOT}/components/atManager/src
+                    -i ${LEGATO_ROOT}/interfaces/modemServices
                     -i ${LEGATO_ROOT}/components
                 DEPENDS
                     legato

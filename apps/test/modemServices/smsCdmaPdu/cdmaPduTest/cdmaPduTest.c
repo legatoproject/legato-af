@@ -1,6 +1,6 @@
 /**
  *
- * Copyright (C) Sierra Wireless, Inc. 2013-2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  *
  */
 
@@ -24,12 +24,12 @@ typedef struct {
     struct {
         const size_t    length;
         const uint8_t   data[256];
-    } pdu_encoded;
+    } pduEncoded;
 } PDUAssoc_t;
 
 const PDUAssoc_t PDUAssocDb[] = {
         /* 0 */ {
-                .pdu_encoded = {
+                .pduEncoded = {
                         .length = 40,
                         .data = {
                             0x00, 0x00, 0x02, 0x10, 0x02, 0x02, 0x07, 0x02, 0x8C, 0xE9,
@@ -89,7 +89,7 @@ const PDUAssoc_t PDUAssocDb[] = {
                 },
         },
         /* 1 */ {
-                .pdu_encoded = {
+                .pduEncoded = {
                         .length = 54,
                         .data = {
                             0x00, 0x00, 0x02, 0x10, 0x02, 0x02, 0x07, 0x02, 0x8C, 0xD9,
@@ -204,9 +204,9 @@ void testEncodePdu()
         CU_ASSERT_EQUAL( res, LE_OK );
 
         DumpPDU(pduResult,pduSize);
-        DumpPDU(assoc->pdu_encoded.data,assoc->pdu_encoded.length);
+        DumpPDU(assoc->pduEncoded.data,assoc->pduEncoded.length);
 
-        CU_ASSERT_EQUAL( memcmp(pduResult,assoc->pdu_encoded.data, pduSize) , 0);
+        CU_ASSERT_EQUAL( memcmp(pduResult,assoc->pduEncoded.data, pduSize) , 0);
 
         fprintf(stderr, "------------------\n");
         fprintf(stderr, "\n");
@@ -224,11 +224,11 @@ void testDecodePdu()
         const PDUAssoc_t * assoc = &PDUAssocDb[i];
 
         fprintf(stderr, "------------------\n");
-        DumpPDU(assoc->pdu_encoded.data,assoc->pdu_encoded.length);
+        DumpPDU(assoc->pduEncoded.data,assoc->pduEncoded.length);
         fprintf(stderr, "---------\n");
 
         /* Decode */
-        res = cdmaPdu_Decode(assoc->pdu_encoded.data ,assoc->pdu_encoded.length , &message);
+        res = cdmaPdu_Decode(assoc->pduEncoded.data ,assoc->pduEncoded.length , &message);
         CU_ASSERT_EQUAL( res, LE_OK );
 
         cdmaPdu_Dump(&message);

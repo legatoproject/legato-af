@@ -1,7 +1,9 @@
 #!/bin/bash
 
 targetAddr=$1
+targetType=${2:-ar7}
 
+scriptDir=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 
 # Checks if the logStr is in the logs.  If not then exit with an error code.
 #
@@ -18,18 +20,32 @@ checkLogStr () {
     fi
 }
 
+function CheckRet
+{
+    RETVAL=$?
+    if [ $RETVAL -ne 0 ]; then
+        echo -e $COLOR_ERROR "Exit Code $RETVAL" $COLOR_RESET
+        exit $RETVAL
+    fi
+}
+
+cd $scriptDir
 
 # Build all the apps first.
-mkapp defaultLimitsTest.adef -t ar7
-mkapp largeValuesTest.adef -t ar7
-mkapp limitsTest.adef -t ar7
-mkapp zeroFileSysSize.adef -t ar7
+mkapp largeValuesTest.adef -t $targetType
+CheckRet
+mkapp limitsTest.adef -t $targetType
+CheckRet
+mkapp zeroFileSysSize.adef -t $targetType
+CheckRet
 
 # Install all the apps.
-instapp defaultLimitsTest.ar7 $targetAddr
-instapp limitsTest.ar7 $targetAddr
-instapp largeValuesTest.ar7 $targetAddr
-instapp zeroFileSysSize.ar7 $targetAddr
+instapp limitsTest.$targetType $targetAddr
+CheckRet
+instapp largeValuesTest.$targetType $targetAddr
+CheckRet
+instapp zeroFileSysSize.$targetType $targetAddr
+CheckRet
 
 # Stop all other apps.
 ssh root@$targetAddr "/usr/local/bin/app stop \"*\""
@@ -37,10 +53,10 @@ sleep 1
 
 # Clear the logs.
 ssh root@$targetAddr "killall syslogd"
-ssh root@$targetAddr "/sbin/syslogd -C1000"
+# Must restart syslog this way so that it gets the proper SMACK label.
+ssh root@$targetAddr "/mnt/flash/startup/fg_02_RestartSyslogd"
 
 # Run the apps.
-ssh root@$targetAddr  "/usr/local/bin/app start defaultLimitsTest"
 ssh root@$targetAddr  "/usr/local/bin/app start limitsTest"
 ssh root@$targetAddr  "/usr/local/bin/app start largeValuesTest"
 ssh root@$targetAddr  "/usr/local/bin/app start zeroFileSysSize"
@@ -49,7 +65,6 @@ ssh root@$targetAddr  "/usr/local/bin/app start zeroFileSysSize"
 sleep 2
 
 # Grep the logs to check the results.
-checkLogStr ".* defaultLimitsTest.* | ======== Passed ========"
 checkLogStr ".* limitsTest.* | ======== Passed ========"
 checkLogStr ".* largeValuesTest.* | ======== Passed ========"
 checkLogStr ".* zeroFileSysSizeTest.* | ======== Passed ========"

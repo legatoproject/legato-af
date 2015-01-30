@@ -14,7 +14,7 @@
 
 #include "legato.h"
 
-#define PROTOCOL_ID_STR "c9337ed4525894becbab4dd2c594a184a1016b4a356c0a4940880820f91d5897"
+#define PROTOCOL_ID_STR "708d81329473bc9d872cfb98f9f3d3bcff72e3ed784f383199ad14fa401a77ef"
 
 #define SERVICE_INSTANCE_NAME "example"
 
@@ -32,13 +32,15 @@ typedef struct
 }
 _Message_t;
 
-#define _MSGID_AddTestA 0
-#define _MSGID_RemoveTestA 1
+#define _MSGID_AddTestAHandler 0
+#define _MSGID_RemoveTestAHandler 1
 #define _MSGID_allParameters 2
 #define _MSGID_FileTest 3
 #define _MSGID_TriggerTestA 4
-#define _MSGID_AddBugTest 5
-#define _MSGID_RemoveBugTest 6
+#define _MSGID_AddBugTestHandler 5
+#define _MSGID_RemoveBugTestHandler 6
+#define _MSGID_TestCallback 7
+#define _MSGID_TriggerCallbackTest 8
 
 
 #endif // LOCAL_H_INCLUDE_GUARD

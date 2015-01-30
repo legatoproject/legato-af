@@ -10,7 +10,8 @@
  * the profile allocated into 1.1
  * 1.3: allocate 3gpp2 profiles until the PA_MDC_MAX_PROFILE are allocated
  * 1.4: allocate a new profile: le_mdc_GetProfile returns null as no profile left
- * 1.5: remove the first profile. Test that the profile is really deleted, and other are available
+ * 1.5: remove the first profile (call le_mdc_RemoveProfile PA_MDC_MAX_PROFILE+1 times.
+ * Test that the profile is really deleted, and other are available
  * 1.6: allocate a new profile, a second new one is failed (PA_MDC_MAX_PROFILE is reached)
  * 1.7: remove all handlers (returned to initiale state)
  *
@@ -20,19 +21,11 @@
  * the handler is allocated: profile can be deallocated after removing the handler
  * 2.2: same as 2.1, with 2 handlers allocated
  *
- * TEST3: test le_mdc_GetAvailableProfile() API. Profiles PA_MDC_MIN_INDEX_3GPP_PROFILE+1,
- * PA_MDC_MIN_INDEX_3GPP_PROFILE + 3 to PA_MDC_MAX_INDEX_3GPP_PROFILE,
- * PA_MDC_MIN_INDEX_3GPP2_PROFILE+1 to PA_MDC_MAX_INDEX_3GPP2_PROFILE-1 are not available
- * 3.1: No profile is allocated. Try to get a profile using le_mdc_GetAvailableProfile(). Check
- * That the profile index is equal to PA_MDC_MIN_INDEX_3GPP_PROFILE
- * 3.2: Try to get a new profile using le_mdc_GetAvailableProfile().
- * Check that the profile index is equal to PA_MDC_MIN_INDEX_3GPP_PROFILE+2
- * 3.3: Try to get a new profile using le_mdc_GetAvailableProfile().
- * Check that the profile index is equal to PA_MDC_MIN_INDEX_3GPP2_PROFILE
- * 3.4: Try to get a new profile using le_mdc_GetAvailableProfile().
- * Check that the profile index is equal to PA_MDC_MAX_INDEX_3GPP2_PROFILE
- * 3.5: Try to get a new profile using le_mdc_GetAvailableProfile(). No more profile is available,
- * the function returns LE_FAULT
+ * TEST3: test le_mdc_GetProfile with default profile
+ * 3.1: No profile is allocated. Try to get the default profile. Check that the cid used is 1.
+ * 3.2: Get the profile using the cid 1. Check that the profile reference is the same as in the previous
+ * test.
+ * 3.3: Get a default progile when the selected RAT is CDMA: the cid used is 101.
  *
  * TEST4: test le_mdc_StartSession/le_mdc_StopSession API
  * 4.1: Get a profile using le_mdc_GetProfile, then try to open a session using le_mdc_StartSession
@@ -42,15 +35,56 @@
  * 4.3: stop the session using le_mdc_StopSession: return code is LE_OK
  * Remove the profile
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 
+
 #include "le_mdc_interface.h"
+#include "le_mrc_interface.h"
 #include "pa_mdc.h"
 #include "le_mdc_local.h"
-#include "le_mdc.c"
 
+
+le_msg_ServiceRef_t le_mdc_GetServiceRef
+(
+    void
+)
+{
+    return (le_msg_ServiceRef_t) 0x10000001;
+}
+
+le_msg_SessionRef_t le_mdc_GetClientSessionRef
+(
+    void
+)
+{
+    return (le_msg_SessionRef_t) 0x10000001;
+}
+
+le_msg_SessionEventHandlerRef_t stub_le_msg_AddServiceCloseHandler
+(
+    le_msg_ServiceRef_t             serviceRef, ///< [in] Reference to the service.
+    le_msg_SessionEventHandler_t    handlerFunc,///< [in] Handler function.
+    void*                           contextPtr  ///< [in] Opaque pointer value to pass to handler.
+)
+{
+    return (le_msg_SessionEventHandlerRef_t) 0x10000002;
+}
+
+le_mrc_Rat_t CurrentRat = LE_MRC_RAT_GSM;
+
+/* Stub GetRAT to return an internal RAT */
+le_result_t le_mrc_GetRadioAccessTechInUse
+(
+    le_mrc_Rat_t*   ratPtr  ///< [OUT] The Radio Access Technology.
+)
+{
+    *ratPtr = CurrentRat;
+    return LE_OK;
+}
+
+#include "le_mdc.c"
 
 /* TEST 1 */
 void test1( void )
@@ -92,8 +126,11 @@ void test1( void )
 
     /* TEST 1.5 */
     /* Remove the first profile */
-    result = le_mdc_RemoveProfile(profileRef[0]);
-    LE_ASSERT(result == LE_OK);
+    for (i = 0; i < PA_MDC_MAX_PROFILE+1; i++)
+    {
+        result = le_mdc_RemoveProfile(profileRef[0]);
+        LE_ASSERT(result == LE_OK);
+    }
 
     for (i = 1; i < PA_MDC_MAX_PROFILE; i++)
     {
@@ -148,7 +185,7 @@ void test2( void )
 
     /* Remove the profile must be failed (handler is allocated) */
     result = le_mdc_RemoveProfile(profile);
-    LE_ASSERT(result == LE_NOT_POSSIBLE);
+    LE_ASSERT(result == LE_FAULT);
 
     /* Remove the handler */
     le_mdc_RemoveSessionStateHandler(sessionStateHandler1);
@@ -169,14 +206,14 @@ void test2( void )
 
     /* Remove the profile must be failed (handlers are allocated) */
     result = le_mdc_RemoveProfile(profile);
-    LE_ASSERT(result == LE_NOT_POSSIBLE);
+    LE_ASSERT(result == LE_FAULT);
 
     /* Remove the handler */
     le_mdc_RemoveSessionStateHandler(sessionStateHandler1);
 
     /* Remove the profile must be failed (handler is allocated) */
     result = le_mdc_RemoveProfile(profile);
-    LE_ASSERT(result == LE_NOT_POSSIBLE);
+    LE_ASSERT(result == LE_FAULT);
 
     /* Remove the handler */
     le_mdc_RemoveSessionStateHandler(sessionStateHandler2);
@@ -193,23 +230,40 @@ void test3( void )
 {
     /* TEST 3.1 */
     /* allocate a profile */
-    le_mdc_ProfileRef_t profileRef;
+    le_mdc_ProfileRef_t profileRef1, profileRef2;
 
     le_result_t result;
+    le_mdc_Profile_t* profilePtr;
 
-    result = le_mdc_GetAvailableProfile(&profileRef);
-    LE_ASSERT(profileRef != NULL);
-    LE_ASSERT(result == LE_OK);
-    LE_ASSERT(le_mdc_GetProfileIndex(profileRef) == PA_MDC_MIN_INDEX_3GPP_PROFILE);
+    profileRef1 = le_mdc_GetProfile(LE_MDC_DEFAULT_PROFILE);
+    LE_ASSERT(profileRef1 != NULL);
+    LE_ASSERT(le_mdc_GetProfileIndex(profileRef1) == PA_MDC_MIN_INDEX_3GPP_PROFILE);
+
+    /* check internal handler */
+    profilePtr = le_ref_Lookup(DataProfileRefMap, profileRef1);
+    LE_ASSERT(profilePtr->profileIndex == 1);
 
     /* TEST 3.2 */
-    result = le_mdc_GetAvailableProfile(&profileRef);
-    LE_ASSERT(profileRef != NULL);
-    LE_ASSERT(result == LE_OK);
-    LE_ASSERT(le_mdc_GetProfileIndex(profileRef) == PA_MDC_MIN_INDEX_3GPP_PROFILE);
+    profileRef2 = le_mdc_GetProfile(1);
+    LE_ASSERT(profileRef1 == profileRef1);
+    LE_ASSERT(le_mdc_GetProfileIndex(profileRef2) == PA_MDC_MIN_INDEX_3GPP_PROFILE);
 
     /* release the profile */
-    result = le_mdc_RemoveProfile(profileRef);
+    result = le_mdc_RemoveProfile(profileRef1);
+    result = le_mdc_RemoveProfile(profileRef2);
+    LE_ASSERT(result == LE_OK);
+
+    /* TEST 3.3 */
+    /* allocate a profile on 3GPP2 */
+    CurrentRat = LE_MRC_RAT_CDMA;
+    profileRef1 = le_mdc_GetProfile(LE_MDC_DEFAULT_PROFILE);
+
+    /* check internal handler */
+    profilePtr = le_ref_Lookup(DataProfileRefMap, profileRef1);
+    LE_ASSERT(profilePtr->profileIndex==101);
+
+
+    result = le_mdc_RemoveProfile(profileRef1);
     LE_ASSERT(result == LE_OK);
 
     LE_INFO("Test 3 passed");
@@ -223,9 +277,11 @@ void test4( void )
     void* callRefPtr;
     le_result_t result;
 
+    CurrentRat = LE_MRC_RAT_GSM;
+
     /* TEST 4.1 */
     /* Allocate profile */
-    profile = le_mdc_GetProfile(1);
+    profile = le_mdc_GetProfile(LE_MDC_DEFAULT_PROFILE);
 
     /* start the session associated to the profile */
     result = le_mdc_StartSession(profile);
@@ -239,7 +295,7 @@ void test4( void )
     /* TEST 4.2 */
     /* start again the profile */
     result = le_mdc_StartSession(profile);
-    LE_ASSERT(result == LE_NOT_POSSIBLE);
+    LE_ASSERT(result == LE_FAULT);
     profilePtr = le_ref_Lookup(DataProfileRefMap, profile);
 
     /* check that the callRef is not modified */
@@ -257,43 +313,9 @@ void test4( void )
     LE_INFO("Test 4 passed");
 }
 
-le_mrc_Rat_t CurrentRat = LE_MRC_RAT_GSM;
 
-/* Stub GetRAT to return an internal RAT */
-le_result_t le_mrc_GetRadioAccessTechInUse
-(
-    le_mrc_Rat_t*   ratPtr  ///< [OUT] The Radio Access Technology.
-)
-{
-    *ratPtr = CurrentRat;
-    return LE_OK;
-}
 
-/* TEST 5 */
-void test5( void )
-{
-    /* TEST 5.1 */
-    /* allocate a profile on 3GPP */
-    le_mdc_ProfileRef_t profileRef;
 
-    le_result_t result;
-
-    CurrentRat = LE_MRC_RAT_GSM;
-    result = le_mdc_GetAvailableProfile(&profileRef);
-    LE_ASSERT(profileRef != NULL);
-    LE_ASSERT(result == LE_OK);
-    LE_ASSERT(le_mdc_GetProfileIndex(profileRef) == PA_MDC_MIN_INDEX_3GPP_PROFILE);
-
-    /* TEST 5.2 */
-    /* allocate a profile on 3GPP2 */
-    CurrentRat = LE_MRC_RAT_CDMA;
-    result = le_mdc_GetAvailableProfile(&profileRef);
-    LE_ASSERT(profileRef != NULL);
-    LE_ASSERT(result == LE_OK);
-    LE_ASSERT(le_mdc_GetProfileIndex(profileRef) == PA_MDC_MIN_INDEX_3GPP2_PROFILE);
-
-    LE_INFO("Test 5 passed");
-}
 
 /* main() of the tests */
 COMPONENT_INIT
@@ -314,9 +336,6 @@ COMPONENT_INIT
 
     /* TEST 4 */
     test4();
-
-    /* TEST 5 */
-    test5();
 
     exit(EXIT_SUCCESS);
 }

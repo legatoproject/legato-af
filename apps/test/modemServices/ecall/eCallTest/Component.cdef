@@ -1,0 +1,12 @@
+sources:
+{
+    le_ecallTest.c
+}
+
+requires:
+{
+    api:
+    {
+        le_ecall.api
+    }
+}

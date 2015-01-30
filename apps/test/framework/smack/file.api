@@ -1,0 +1,5 @@
+FUNCTION PassFd
+(
+    file fileDescriptor IN ///< Open file descriptor to be read by the server.
+);
+

@@ -2,7 +2,7 @@
 * This module implements the pa_audio's unit tests.
 *
 *
-* Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+* Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 *
 */
 
@@ -301,73 +301,6 @@ void Test_pa_audio_GetGain()
     CU_ASSERT_EQUAL(pa_audio_GetGain(PA_AUDIO_NUM_INTERFACES,&gain),LE_FAULT);
 }
 
-//--------------------------------------------------------------------------------------------------
-/**
- * Test:
- *
- * le_result_t pa_audio_StartPlayback(const char* formatPtr,uint32_t channelCount);
- *
- */
-//--------------------------------------------------------------------------------------------------
-void Test_pa_audio_StartPlayback()
-{
-    CU_ASSERT_EQUAL(pa_audio_StartPlayback("",0),LE_BAD_PARAMETER);
-    CU_ASSERT_EQUAL(pa_audio_StartPlayback("",1),LE_BAD_PARAMETER);
-    CU_ASSERT_EQUAL(pa_audio_StartPlayback("",2),LE_BAD_PARAMETER);
-    CU_ASSERT_EQUAL(pa_audio_StartPlayback("L16-16K",1),LE_BAD_PARAMETER);
-    CU_ASSERT_EQUAL(pa_audio_StartPlayback("L16-8K",1),LE_OK);
-    CU_ASSERT_EQUAL(pa_audio_StartPlayback("L16-8K",1),LE_DUPLICATE);
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Test:
- *
- * void pa_audio_StopPlayback(void);
- *
- */
-//--------------------------------------------------------------------------------------------------
-void Test_pa_audio_StopPlayback()
-{
-    pa_audio_StopPlayback();
-    pa_audio_StopPlayback();
-    CU_PASS("Test_pa_audio_StopPlayback");
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Test:
- *
- * le_result_t pa_audio_StartCapture(const char* formatPtr,uint32_t channelCount);
- *
- */
-//--------------------------------------------------------------------------------------------------
-void Test_pa_audio_StartCapture()
-{
-    CU_ASSERT_EQUAL(pa_audio_StartCapture("",0),LE_BAD_PARAMETER);
-    CU_ASSERT_EQUAL(pa_audio_StartCapture("",1),LE_BAD_PARAMETER);
-    CU_ASSERT_EQUAL(pa_audio_StartCapture("",2),LE_BAD_PARAMETER);
-    CU_ASSERT_EQUAL(pa_audio_StartCapture("L16-16K",1),LE_BAD_PARAMETER);
-    CU_ASSERT_EQUAL(pa_audio_StartCapture("L16-8K",1),LE_OK);
-    CU_ASSERT_EQUAL(pa_audio_StartCapture("L16-8K",1),LE_DUPLICATE);
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Test:
- *
- * void pa_audio_StopCapture(void);
- *
- */
-//--------------------------------------------------------------------------------------------------
-void Test_pa_audio_StopCapture()
-{
-    pa_audio_StopCapture();
-    pa_audio_StopCapture();
-    CU_PASS("Test_pa_audio_StopCapture");
-}
-
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -384,10 +317,6 @@ static void* test(void* context)
         { "Test pa_audio_ResetDspAudioPath()"   , Test_pa_audio_ResetDspAudioPath },
         { "Test pa_audio_SetGain()"             , Test_pa_audio_SetGain },
         { "Test pa_audio_GetGain()"             , Test_pa_audio_GetGain },
-        { "Test pa_audio_StartPlayback()"       , Test_pa_audio_StartPlayback },
-        { "Test pa_audio_StopPlayback()"        , Test_pa_audio_StopPlayback },
-        { "Test pa_audio_StartCapture()"        , Test_pa_audio_StartCapture },
-        { "Test pa_audio_StopCapture()"         , Test_pa_audio_StopCapture },
         CU_TEST_INFO_NULL,
     };
 

@@ -1,6 +1,6 @@
 /**
  *
- * Copyright (C) Sierra Wireless, Inc. 2013.  All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  *
  */
 
@@ -386,7 +386,7 @@ void test_pa_sim_GetState()
     le_sim_States_t state;
 
     result = pa_sim_GetState(&state);
-    CU_ASSERT_EQUAL(result, LE_NOT_POSSIBLE);
+    CU_ASSERT_EQUAL(result, LE_FAULT);
 
     result = pa_sim_GetState(&state);
     CU_ASSERT_EQUAL(result, LE_OK);
@@ -473,7 +473,7 @@ void test_pa_sim_EnterPIN()
 {
     le_result_t result;
     result = pa_sim_EnterPIN(PA_SIM_PIN,"0000");
-    CU_ASSERT_EQUAL(result,LE_NOT_POSSIBLE);
+    CU_ASSERT_EQUAL(result,LE_FAULT);
 
     result = pa_sim_EnterPIN(PA_SIM_PIN,"1234");
     CU_ASSERT_EQUAL(result,LE_OK);
@@ -483,10 +483,10 @@ void test_pa_sim_EnterPUK()
 {
     le_result_t result;
     result = pa_sim_EnterPUK(PA_SIM_PUK,"00000000","0000");
-    CU_ASSERT_EQUAL(result,LE_NOT_POSSIBLE);
+    CU_ASSERT_EQUAL(result,LE_FAULT);
 
     result = pa_sim_EnterPUK(PA_SIM_PUK,"00000000","1234");
-    CU_ASSERT_EQUAL(result,LE_NOT_POSSIBLE);
+    CU_ASSERT_EQUAL(result,LE_FAULT);
 
     result = pa_sim_EnterPUK(PA_SIM_PUK,"12345678","1234");
     CU_ASSERT_EQUAL(result,LE_OK);
@@ -500,7 +500,7 @@ void test_pa_sim_GetPINRemainingAttempts()
     le_result_t result;
     uint32_t attemps;
     result = pa_sim_GetPINRemainingAttempts(PA_SIM_PIN,&attemps);
-    CU_ASSERT_EQUAL(result,LE_NOT_POSSIBLE);
+    CU_ASSERT_EQUAL(result,LE_FAULT);
 
     result = pa_sim_GetPINRemainingAttempts(PA_SIM_PIN,&attemps);
     CU_ASSERT_EQUAL(result,LE_OK);
@@ -516,7 +516,7 @@ void test_pa_sim_GetPUKRemainingAttempts()
     le_result_t result;
     uint32_t attemps;
     result = pa_sim_GetPUKRemainingAttempts(PA_SIM_PUK,&attemps);
-    CU_ASSERT_EQUAL(result,LE_NOT_POSSIBLE);
+    CU_ASSERT_EQUAL(result,LE_FAULT);
 
     result = pa_sim_GetPUKRemainingAttempts(PA_SIM_PUK,&attemps);
     CU_ASSERT_EQUAL(result,LE_OK);

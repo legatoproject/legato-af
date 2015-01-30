@@ -18,13 +18,10 @@ COMPONENT_INIT
     LE_INFO("Watchdog test starting");
 
     // Get the process name.
-    char procName[100];
-    LE_ASSERT(le_arg_GetProgramName(procName, sizeof(procName), NULL) == LE_OK);
+    const char* procName = le_arg_GetProgramName();
+    LE_ASSERT(procName != NULL);
 
     LE_INFO("======== Start '%s' Test ========", procName);
-
-    // Buffer for the arguments in milliseconds
-    char millisecondsStr[100] = {'\0'};
 
     int numArgs = le_arg_NumArgs();
     if (numArgs < 2)
@@ -32,11 +29,26 @@ COMPONENT_INIT
         LE_CRIT("Expected 2 arguments, got %d", numArgs);
     }
 
-    LE_ASSERT(le_arg_GetArg(0, millisecondsStr, sizeof(millisecondsStr)) == LE_OK);
-    int millisecondLongTimeout = atoi(millisecondsStr);
+    const char* millisecondsStr;
+    le_result_t result;
+    int millisecondLongTimeout;
+    int millisecondLongSleep;
 
-    LE_ASSERT(le_arg_GetArg(1, millisecondsStr, sizeof(millisecondsStr)) == LE_OK);
-    int millisecondLongSleep = atoi(millisecondsStr);
+    millisecondsStr = le_arg_GetArg(0);
+    LE_ASSERT(millisecondsStr != NULL);
+    result = le_utf8_ParseInt(&millisecondLongTimeout, millisecondsStr);
+    LE_FATAL_IF(result != LE_OK,
+                "Invalid number of milliseconds in timeout (%s). le_utf8_ParseInt() returned %s.",
+                millisecondsStr,
+                LE_RESULT_TXT(result));
+
+    millisecondsStr = le_arg_GetArg(1);
+    LE_ASSERT(millisecondsStr != NULL);
+    result = le_utf8_ParseInt(&millisecondLongSleep, millisecondsStr);
+    LE_FATAL_IF(result != LE_OK,
+                "Invalid number of milliseconds to sleep (%s). le_utf8_ParseInt() returned %s.",
+                millisecondsStr,
+                LE_RESULT_TXT(result));
 
     LE_INFO("Starting timeout %d milliseconds then sleep for %d", millisecondLongTimeout, millisecondLongSleep);
     le_wdog_Timeout(millisecondLongTimeout);
@@ -46,5 +58,5 @@ COMPONENT_INIT
     le_wdog_Kick();
     usleep(millisecondLongSleep * 1000);
     // We should never get here
-    LE_INFO("FAIL");
+    LE_FATAL("FAIL");
 }

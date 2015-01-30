@@ -20,7 +20,7 @@
  *
  * Note that this app uses the I2S interface.
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -52,7 +52,7 @@ static le_audio_ConnectorRef_t AudioOutputConnectorRef = NULL;
  * Destination number for outgoing calls
  */
 //--------------------------------------------------------------------------------------------------
-static char  DestinationNumber[LE_MDMDEFS_PHONE_NUM_MAX_LEN];
+static const char* DestinationNumber;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -480,7 +480,7 @@ COMPONENT_INIT
 
     if (le_arg_NumArgs() == 1)
     {
-        le_arg_GetArg(0, DestinationNumber, LE_MDMDEFS_PHONE_NUM_MAX_LEN);
+        DestinationNumber = le_arg_GetArg(0);
     }
     else
     {

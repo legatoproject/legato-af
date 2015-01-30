@@ -118,84 +118,6 @@ static void ClearTree()
 
 
 
-static void SetNameTest()
-{
-    LE_INFO("---- Set Name Tests ----------------------------------------------------------------");
-
-    char pathBuffer[LE_CFG_STR_LEN_BYTES] = "";
-    char nameBuffer[LE_CFG_STR_LEN_BYTES] = "";
-
-    snprintf(pathBuffer, LE_CFG_STR_LEN_BYTES, "%s/setNameTest/", TestRootDir);
-    le_cfg_IteratorRef_t iterRef = le_cfg_CreateWriteTxn(pathBuffer);
-
-    le_cfg_GoToNode(iterRef, "./testNode");
-    LE_TEST(le_cfg_SetNodeName(iterRef, "", "test:Node") == LE_FORMAT_ERROR);
-    LE_TEST(le_cfg_SetNodeName(iterRef, "", "test/Node") == LE_FORMAT_ERROR);
-    LE_TEST(le_cfg_NodeExists(iterRef, "") == false);
-    LE_TEST(le_cfg_SetNodeName(iterRef, "", "funkNode5") == LE_OK);
-    LE_TEST(le_cfg_NodeExists(iterRef, "") == true);
-    le_cfg_CommitTxn(iterRef);
-
-    iterRef = le_cfg_CreateReadTxn(pathBuffer);
-    LE_TEST(le_cfg_NodeExists(iterRef, "./funkNode5") == true);
-    LE_TEST(le_cfg_IsEmpty(iterRef, "./funkNode5") == true);
-    le_cfg_CommitTxn(iterRef);
-
-    iterRef = le_cfg_CreateWriteTxn(pathBuffer);
-    le_cfg_SetNodeName(iterRef, "./path1/a/b/c", "foo");
-
-    LE_TEST(le_cfg_GetNodeName(iterRef, "./path1/a/b/baz", nameBuffer, sizeof(nameBuffer)) == LE_OK);
-    LE_TEST(strcmp(nameBuffer, "baz") == 0);
-
-    LE_TEST(le_cfg_GetNodeName(iterRef, "./path1/a/b/foo", nameBuffer, sizeof(nameBuffer)) == LE_OK);
-    LE_TEST(strcmp(nameBuffer, "foo") == 0);
-
-    LE_TEST(le_cfg_NodeExists(iterRef, "./path1/a/b/foo") == true);
-    LE_TEST(le_cfg_NodeExists(iterRef, "./path1/a/b/c") == false);
-    LE_TEST(le_cfg_NodeExists(iterRef, "./path1/a/b/baz") == false);
-    DumpTree(iterRef, 0);
-    le_cfg_CommitTxn(iterRef);
-
-    iterRef = le_cfg_CreateReadTxn("");
-    DumpTree(iterRef, 0);
-    le_cfg_GoToNode(iterRef, pathBuffer);
-    LE_TEST(le_cfg_NodeExists(iterRef, "./path1") == true);
-    LE_TEST(le_cfg_NodeExists(iterRef, "./path1/a") == true);
-    LE_TEST(le_cfg_NodeExists(iterRef, "./path1/a/b") == true);
-    LE_TEST(le_cfg_NodeExists(iterRef, "./path1/a/b/foo") == true);
-    le_cfg_CommitTxn(iterRef);
-
-    char valueBuffer[LE_CFG_STR_LEN_BYTES] = "";
-
-    // Create a node with a value.
-    iterRef = le_cfg_CreateWriteTxn(pathBuffer);
-    le_cfg_SetString(iterRef, "./path2/a/b/c/d/e", "fhqwhgads");
-    LE_TEST(le_cfg_NodeExists(iterRef, "./path2/a/b/c/d/e") == true);
-    LE_TEST(le_cfg_GetString(iterRef, "./path2/a/b/c/d/e", valueBuffer, sizeof(valueBuffer), "") == LE_OK);
-    LE_TEST(strcmp(valueBuffer, "fhqwhgads") == 0);
-    DumpTree(iterRef, 0);
-    le_cfg_CommitTxn(iterRef);
-
-    iterRef = le_cfg_CreateWriteTxn(pathBuffer);
-    DumpTree(iterRef, 0);
-    LE_TEST(le_cfg_SetNodeName(iterRef, "./path2/a/b", "baz") == LE_OK);
-    LE_TEST(le_cfg_NodeExists(iterRef, "./path2/a/b/c/d/e") == false);
-    LE_TEST(le_cfg_NodeExists(iterRef, "./path2/a/baz/c/d/e") == true);
-    LE_TEST(le_cfg_GetString(iterRef, "./path2/a/baz/c/d/e", valueBuffer, sizeof(valueBuffer), "") == LE_OK);
-    LE_TEST(strcmp(valueBuffer, "fhqwhgads") == 0);
-    le_cfg_CommitTxn(iterRef);
-
-    iterRef = le_cfg_CreateReadTxn(pathBuffer);
-    DumpTree(iterRef, 0);
-    LE_TEST(le_cfg_NodeExists(iterRef, "./path2/a/baz/c/d/e") == true);
-    LE_TEST(le_cfg_GetString(iterRef, "./path2/a/baz/c/d/e", valueBuffer, sizeof(valueBuffer), "") == LE_OK);
-    LE_TEST(strcmp(valueBuffer, "fhqwhgads") == 0);
-    le_cfg_CommitTxn(iterRef);
-}
-
-
-
-
 static void QuickFunctionTest()
 {
     le_result_t result;
@@ -834,11 +756,11 @@ COMPONENT_INIT
 
     if (le_arg_NumArgs() == 1)
     {
-        char nameBuffer[TEST_NAME_SIZE] = "";
+        const char* name = le_arg_GetArg(0);
 
-        if (le_arg_GetArg(0, nameBuffer, TEST_NAME_SIZE) == LE_OK)
+        if (name != NULL)
         {
-            snprintf(TestRootDir, LE_CFG_STR_LEN_BYTES, "/configTest_%s", nameBuffer);
+            snprintf(TestRootDir, LE_CFG_STR_LEN_BYTES, "/configTest_%s", name);
         }
     }
 
@@ -846,7 +768,6 @@ COMPONENT_INIT
 
     ClearTree();
 
-    SetNameTest();
     QuickFunctionTest();
     DeleteTest();
     StringSizeTest();

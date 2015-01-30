@@ -3,11 +3,12 @@
 #---------------------------------------------------------------------------------------------------
 #  Bash script for running the configTree ACL tests on target.
 #
-#  Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved.
+#  Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 #  Use of this work is subject to license.
 #---------------------------------------------------------------------------------------------------
 
 targetAddr=$1
+targetType=${2:-ar7}
 appList="cfgSelfRead cfgSelfWrite cfgSystemRead cfgSystemWrite"
 
 
@@ -67,7 +68,8 @@ function runApps
     echo "##########  Clear the logs."
     ssh root@$targetAddr "killall syslogd"
     CheckRet
-    ssh root@$targetAddr "/sbin/syslogd -C1000"
+    # Must restart syslog this way so that it gets the proper SMACK label.
+    ssh root@$targetAddr "/mnt/flash/startup/fg_02_RestartSyslogd"
     CheckRet
 
     echo "##########  Run all the apps."
@@ -99,23 +101,19 @@ function rconfigset
 
 echo "*****************  configTree ACL Tests started.  *****************"
 
-echo "##########  Building test apps:" $appList
-for app in $appList
-do
-    mkapp $app.adef -t ar7 -C " -I $LEGATO_ROOT/interfaces/config/c/"
-    CheckRet
-done
-
-
 echo "##########  Make sure Legato is running on device '$targetAddr'."
 ssh root@$targetAddr "/usr/local/bin/legato start"
 CheckRet
 
 
 echo "##########  Install all the apps to device '$targetAddr'."
+appDir="$LEGATO_ROOT/build/$targetType/bin/tests"
+cd "$appDir"
+CheckRet
 for app in $appList
 do
-    instapp $app.ar7 $targetAddr
+    echo "  Installing '$appDir/$app.$targetType'"
+    instapp $app.$targetType $targetAddr
     CheckRet
 done
 

@@ -1,0 +1,22 @@
+executables:
+{
+    simTest = ( simTestComp )
+}
+
+
+processes:
+{
+    envVars:
+    {
+        LE_LOG_LEVEL = DEBUG
+    }
+}
+
+start: manual
+
+bindings:
+{
+    simTest.simTestComp.le_sim -> modemService.le_sim
+    simTest.simTestComp.le_mrc -> modemService.le_mrc
+}
+

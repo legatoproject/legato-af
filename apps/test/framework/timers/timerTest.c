@@ -2,7 +2,7 @@
  * This module is for unit testing the le_timer module in the legato
  * runtime library.
  *
- * Copyright (C) Sierra Wireless, Inc. 2013.  All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  *
  */
 
@@ -126,7 +126,7 @@ void AdditionalTests
     LE_INFO("\n ======================================");
     // The old timer is not running, so stop should return an error
     result = le_timer_Stop(oldTimer);
-    if ( result == LE_NOT_POSSIBLE )
+    if ( result == LE_FAULT )
     {
         LE_INFO("Stopping non-active timer TEST PASSED");
     }

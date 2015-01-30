@@ -1,0 +1,12 @@
+sources:
+{
+    tempTest.c
+}
+
+requires:
+{
+    api:
+    {
+        le_temp.api
+    }
+}

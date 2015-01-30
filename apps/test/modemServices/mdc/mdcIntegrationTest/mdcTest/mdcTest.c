@@ -2,7 +2,7 @@
  * This module is for unit testing of the modemServices MDC component.
  *
  *
- * Copyright (C) Sierra Wireless, Inc. 2013-2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  *
  */
 
@@ -24,10 +24,9 @@ static void StateChangeHandler
 )
 {
     le_mdc_ProfileRef_t ProfileRef = contextPtr;
-    char name[LE_MDC_INTERFACE_NAME_MAX_LEN + 1];
+    char name[LE_MDC_INTERFACE_NAME_MAX_BYTES];
 
     le_mdc_GetInterfaceName(ProfileRef, name, sizeof(name));
-
 
     LE_DEBUG("\n================================================");
     LE_PRINT_VALUE("%s", name);
@@ -230,7 +229,7 @@ static bool TestIpv6Connectivity
 COMPONENT_INIT
 {
     // Hard coded, second profile.
-    ProfileRef = le_mdc_GetProfile(2);
+    ProfileRef = le_mdc_GetProfile(LE_MDC_DEFAULT_PROFILE);
     if ( ProfileRef == NULL )
     {
         LE_INFO("load failed");

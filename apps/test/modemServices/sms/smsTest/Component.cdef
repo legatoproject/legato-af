@@ -8,7 +8,8 @@ requires:
 {
     api:
     {
-        le_sms.api
+        le_cfg.api
+        le_sms.api [manual-start]
         le_mdmDefs.api [types-only]
     }
 }

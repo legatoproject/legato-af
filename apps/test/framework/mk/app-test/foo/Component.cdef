@@ -7,3 +7,11 @@ bundles:
         [r] foo.c  /usr/src/
     }
 }
+
+requires:
+{
+    lib:
+    {
+        m
+    }
+}

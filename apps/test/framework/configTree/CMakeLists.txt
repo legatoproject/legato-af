@@ -1,3 +1,8 @@
+#--------------------------------------------------------------------------------------------------
+# Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+#--------------------------------------------------------------------------------------------------
+
+# Build host unit tests.
 
 set(LEGATO_BIN_DIR          ${LEGATO_ROOT}/build/${LEGATO_TARGET}/bin)
 
@@ -7,13 +12,11 @@ set(CONFIG_TREE_BIN         ${LEGATO_BIN_DIR}/configTree)
 set(CONFIG_TOOL_BIN         ${LEGATO_BIN_DIR}/config)
 
 
-
 configure_file(
     ${CMAKE_CURRENT_SOURCE_DIR}/configTest.sh.in
     ${EXECUTABLE_OUTPUT_PATH}/configTest.sh
     @ONLY
 )
-
 
 
 mkexe(configDropReadExe
@@ -49,3 +52,11 @@ mkexe(configDelete
 
 
 add_test(configTest ${EXECUTABLE_OUTPUT_PATH}/configTest.sh)
+
+
+# On-target test apps.
+
+mkapp(cfgSelfRead.adef)
+mkapp(cfgSelfWrite.adef)
+mkapp(cfgSystemRead.adef)
+mkapp(cfgSystemWrite.adef)

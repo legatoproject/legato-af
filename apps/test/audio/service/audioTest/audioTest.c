@@ -4,7 +4,7 @@
  * This test opens the Audio on USB for outgoing calls, it opens the Audio on Microphone and Speaker
  * for incoming calls.
  *
- * Copyright (C) Sierra Wireless, Inc. 2013-2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  *
  */
 
@@ -25,7 +25,7 @@ static le_audio_StreamRef_t usbTxAudioRef = NULL;
 static le_audio_ConnectorRef_t audioInputConnectorRef = NULL;
 static le_audio_ConnectorRef_t audioOutputConnectorRef = NULL;
 
-static char  DEST_TEST_PATTERN[LE_MDMDEFS_PHONE_NUM_MAX_LEN];
+static char  DEST_TEST_PATTERN[LE_MDMDEFS_PHONE_NUM_MAX_BYTES];
 
 static le_mcc_call_ObjRef_t testCallRef;
 

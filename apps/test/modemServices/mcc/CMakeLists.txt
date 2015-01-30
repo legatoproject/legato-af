@@ -1,5 +1,5 @@
 #*******************************************************************************
-# Copyright (C) 2013-2014, Sierra Wireless Inc.
+# Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 #
 # Use of this work is subject to license.
 #*******************************************************************************
@@ -25,6 +25,7 @@ mkexe(${APP_TARGET}
             mccTest/main.c
             mccTest/main.h
             mccTest/le_mccTest.c
+            ${LEGATO_ROOT}/interfaces/modemServices/le_mdmDefs.api
             )
 
 if(NOT ${LEGATO_TARGET} STREQUAL "localhost")

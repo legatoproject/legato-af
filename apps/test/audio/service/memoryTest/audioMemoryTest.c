@@ -2,7 +2,7 @@
  * This module is for memory unit testing of the Audio service component.
  *
  *
- * Copyright (C) Sierra Wireless, Inc. 2013-2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  *
  */
 
@@ -246,13 +246,9 @@ COMPONENT_INIT
 {
     if (le_arg_NumArgs() == 1) {
 
-        char valuePtr[10];
-
-        le_arg_GetArg(0,valuePtr,10);
-
         int counter,i;
 
-        counter = atoi(valuePtr);
+        counter = atoi(le_arg_GetArg(0));
 
         if ( counter < 0)
         {
@@ -266,11 +262,10 @@ COMPONENT_INIT
         }
 
         exit(EXIT_SUCCESS);
+
     } else {
 
-        char progName[64];
-
-        le_arg_GetProgramName(progName,64,NULL);
+        const char* progName = le_arg_GetProgramName();
 
         fprintf(stderr,"%s Usage:\n",progName);
         fprintf(stderr,"\t %s NUMBER\n\n",progName);

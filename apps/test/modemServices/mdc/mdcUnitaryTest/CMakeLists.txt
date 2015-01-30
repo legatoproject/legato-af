@@ -1,5 +1,5 @@
 #*******************************************************************************
-# Copyright (C) 2014, Sierra Wireless Inc.
+# Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 #
 # Contributors:
 #     Sierra Wireless - initial API and implementation
@@ -13,12 +13,12 @@ if(${LEGATO_TARGET} STREQUAL "localhost")
 
     mkexe(${APP_TARGET}
             mdcUnitaryTest
-            -C "-g"
+            -C "-g -Dle_msg_AddServiceCloseHandler=stub_le_msg_AddServiceCloseHandler"
             -i ${LEGATO_ROOT}/interfaces/modemServices
             -i ${LEGATO_ROOT}/components/modemServices/platformAdaptor/inc
             -i ${LEGATO_ROOT}/components/modemServices/modemDaemon
+            -i ${LEGATO_ROOT}/components/modemServices/modemDaemon
             -i ${LEGATO_ROOT}/proprietary/qct/inc/framework
-            -i ${LEGATO_ROOT}/proprietary/qct/inc/services
 
         DEPENDS
             legato

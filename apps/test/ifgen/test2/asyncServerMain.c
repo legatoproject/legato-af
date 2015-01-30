@@ -79,12 +79,12 @@ void FileTest
 
 
 // Storage for the handler ref
-static TestAFunc_t HandlerRef = NULL;
+static TestAHandlerFunc_t HandlerRef = NULL;
 static void* ContextPtr = NULL;
 
-TestARef_t AddTestA
+TestAHandlerRef_t AddTestAHandler
 (
-    TestAFunc_t handlerRef,
+    TestAHandlerFunc_t handlerRef,
     void* contextPtr
 )
 {
@@ -93,17 +93,17 @@ TestARef_t AddTestA
 
     // Note: this is just for testing, and is easier than actually creating an event and using
     //       the event loop to call the handler.
-    return (TestARef_t)10;
+    return (TestAHandlerRef_t)10;
 }
 
-void RemoveTestA
+void RemoveTestAHandler
 (
-    TestARef_t addHandlerRef
+    TestAHandlerRef_t addHandlerRef
 )
 {
     LE_PRINT_VALUE("%p", addHandlerRef);
 
-    if ( addHandlerRef == (TestARef_t)10 )
+    if ( addHandlerRef == (TestAHandlerRef_t)10 )
     {
         HandlerRef = NULL;
         ContextPtr = NULL;
@@ -139,22 +139,48 @@ void TriggerTestA
 // Add these two functions to satisfy the compiler, but don't need to do
 // anything with them, since they are just used to verify bug fixes in
 // the handler specification.
-BugTestRef_t AddBugTest
+BugTestHandlerRef_t AddBugTestHandler
 (
     const char* newPathPtr,
-    BugTestFunc_t handlerPtr,
+    BugTestHandlerFunc_t handlerPtr,
     void* contextPtr
 )
 {
     return NULL;
 }
 
-void RemoveBugTest
+void RemoveBugTestHandler
 (
-    BugTestRef_t addHandlerRef
+    BugTestHandlerRef_t addHandlerRef
 )
 {
 }
+
+
+/*
+ * Add these two functions to satisfy the compiler, but leave empty for now.  The callback
+ * parameters tests are done elsewhere.
+ */
+int32_t TestCallback
+(
+    uint32_t someParm,
+    const uint8_t* dataArrayPtr,
+    size_t dataArrayNumElements,
+    CallbackTestHandlerFunc_t handlerPtr,
+    void* contextPtr
+)
+{
+    return 0;
+}
+
+void TriggerCallbackTest
+(
+    ServerCmdRef_t _cmdRef,
+    uint32_t data
+)
+{
+}
+
 
 
 COMPONENT_INIT

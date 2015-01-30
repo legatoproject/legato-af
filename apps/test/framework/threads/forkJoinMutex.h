@@ -2,7 +2,7 @@
 // Header file for thread creating and joining plus mutex tests.  These functions are called by the
 // main module (main.c).
 //
-// Copyright (C) 2013, Sierra Wireless Inc.
+// Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 // -------------------------------------------------------------------------------------------------
 
 #ifndef LE_FORK_JOIN_MUTEX_TEST_H_INCLUSION_GUARD

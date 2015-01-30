@@ -1,0 +1,21 @@
+
+start: manual
+
+executables:
+{
+    badExe  = ( bad.c )
+}
+
+
+processes:
+{
+    maxCoreDumpFileBytes: 2048K
+    maxFileBytes: 4096K
+
+    faultAction: ignore
+
+    run:
+    {
+        ( badExe )
+    }
+}

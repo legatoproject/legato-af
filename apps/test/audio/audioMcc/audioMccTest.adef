@@ -1,0 +1,36 @@
+executables:    
+{   
+    audioMccTest = ( audioMccComp )
+}   
+
+maxFileSystemBytes: 256K
+
+bundles:
+{
+    file:
+    {
+        [r]     audio/0-to-9.wav   /
+        [r]     audio/male.wav     /
+        [w]     record/remote.wav  /
+    }
+}
+
+processes:
+{
+    envVars:
+    {
+        LE_LOG_LEVEL = DEBUG
+    }
+
+    maxFileBytes: 5000K
+}
+
+start: manual   
+
+bindings:   
+{   
+    audioMccTest.audioMccComp.le_mcc_call -> modemService.le_mcc_call
+    audioMccTest.audioMccComp.le_mcc_profile -> modemService.le_mcc_profile
+    audioMccTest.audioMccComp.le_audio -> audioService.le_audio
+}
+

@@ -1,7 +1,7 @@
 /**
  * @page ifgentest Testing IfGen Doxygen Support
  *
- * @ref interface.h "Click here for the API Reference documentation."
+ * @ref interface.h "API Reference"
  *
  * Example interface file
  */
@@ -11,7 +11,7 @@
  *
  * Legato @ref ifgentest include file.
  *
- * Copyright (C) Sierra Wireless, Inc. 2013.  All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 
@@ -36,18 +36,21 @@ BITMASK BitMaskExample
 /**
  * Handler definition
  */
-HANDLER TestA
-{
-    ADD_HANDLER_PARAMS ();
+HANDLER TestAHandler
+(
+    int32 x   ///< First parameter for the handler
+              ///< Second comment line
+);
+    
 
-    HANDLER_PARAMS
-    (
-        int32 x   ///< First parameter for the handler
-                  ///< Second comment line
-    );
-        
-    //ADD_HANDLER_PARAMS ();
-};
+/**
+ * This event is used for testing EVENTS and Add/Remove handler functions
+ */
+EVENT TestA
+(
+    handler TestAHandler
+);
+
 
 /**
  * Function takes all the possible kinds of parameters, but returns nothing
@@ -92,15 +95,48 @@ FUNCTION TriggerTestA
 /**
  * Handler definition for testing bugs
  */
-HANDLER BugTest
-{
-    HANDLER_PARAMS
-    (
-    );
-        
-    ADD_HANDLER_PARAMS 
-    (
-        string newPathPtr[512] IN
-    );
-};
+HANDLER BugTestHandler
+(
+);
+
+
+/**
+ * This event 
+ *is used for 
+ *     testing 
+ * a specific bug, as well as event comment strings.
+ */
+EVENT BugTest
+(
+    string newPathPtr[512] IN,
+    handler BugTestHandler
+);
+
+
+/**
+ * Define handler for callback testing
+ */
+HANDLER CallbackTestHandler
+(
+    uint32 data IN
+);
+
+/**
+ * Test function callback parameters
+ */
+FUNCTION int32 TestCallback
+(
+    uint32 someParm IN,
+    uint8  dataArray[5] IN,
+    handler CallbackTestHandler
+);
+
+/**
+ * Function to fake an event for the callback function testing
+ */
+FUNCTION TriggerCallbackTest
+(
+    uint32 data IN
+);
+
 

@@ -10,7 +10,7 @@
 /**
  * @page ifgentest Testing IfGen Doxygen Support
  *
- * @ref interface.h "Click here for the API Reference documentation."
+ * @ref interface.h "API Reference"
  *
  * Example interface file
  */
@@ -19,7 +19,7 @@
  *
  * Legato @ref ifgentest include file.
  *
- * Copyright (C) Sierra Wireless, Inc. 2013.  All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 #ifndef EXAMPLE_H_INCLUDE_GUARD
@@ -92,18 +92,18 @@ BitMaskExample_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Reference type for TestA handler ADD/REMOVE functions
+ * Reference type used by Add/Remove functions for EVENT 'TestA'
  */
 //--------------------------------------------------------------------------------------------------
-typedef struct TestA* TestARef_t;
+typedef struct TestAHandler* TestAHandlerRef_t;
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Reference type for BugTest handler ADD/REMOVE functions
+ * Reference type used by Add/Remove functions for EVENT 'BugTest'
  */
 //--------------------------------------------------------------------------------------------------
-typedef struct BugTest* BugTestRef_t;
+typedef struct BugTestHandler* BugTestHandlerRef_t;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -116,7 +116,7 @@ typedef struct BugTest* BugTestRef_t;
  * @param contextPtr
  */
 //--------------------------------------------------------------------------------------------------
-typedef void (*TestAFunc_t)
+typedef void (*TestAHandlerFunc_t)
 (
     int32_t x,
     void* contextPtr
@@ -130,19 +130,36 @@ typedef void (*TestAFunc_t)
  * @param contextPtr
  */
 //--------------------------------------------------------------------------------------------------
-typedef void (*BugTestFunc_t)
+typedef void (*BugTestHandlerFunc_t)
 (
+    void* contextPtr
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Define handler for callback testing
+ *
+ * @param data
+ * @param contextPtr
+ */
+//--------------------------------------------------------------------------------------------------
+typedef void (*CallbackTestHandlerFunc_t)
+(
+    uint32_t data,
     void* contextPtr
 );
 
 //--------------------------------------------------------------------------------------------------
 /**
- * TestA handler ADD function
+ * Add handler function for EVENT 'TestA'
+ *
+ * This event is used for testing EVENTS and Add/Remove handler functions
  */
 //--------------------------------------------------------------------------------------------------
-TestARef_t AddTestA
+TestAHandlerRef_t AddTestAHandler
 (
-    TestAFunc_t handlerPtr,
+    TestAHandlerFunc_t handlerPtr,
         ///< [IN]
 
     void* contextPtr
@@ -151,12 +168,12 @@ TestARef_t AddTestA
 
 //--------------------------------------------------------------------------------------------------
 /**
- * TestA handler REMOVE function
+ * Remove handler function for EVENT 'TestA'
  */
 //--------------------------------------------------------------------------------------------------
-void RemoveTestA
+void RemoveTestAHandler
 (
-    TestARef_t addHandlerRef
+    TestAHandlerRef_t addHandlerRef
         ///< [IN]
 );
 
@@ -237,15 +254,20 @@ void TriggerTestA
 
 //--------------------------------------------------------------------------------------------------
 /**
- * BugTest handler ADD function
+ * Add handler function for EVENT 'BugTest'
+ *
+ * This event
+ * is used for
+ *     testing
+ * a specific bug, as well as event comment strings.
  */
 //--------------------------------------------------------------------------------------------------
-BugTestRef_t AddBugTest
+BugTestHandlerRef_t AddBugTestHandler
 (
     const char* newPathPtr,
         ///< [IN]
 
-    BugTestFunc_t handlerPtr,
+    BugTestHandlerFunc_t handlerPtr,
         ///< [IN]
 
     void* contextPtr
@@ -254,12 +276,46 @@ BugTestRef_t AddBugTest
 
 //--------------------------------------------------------------------------------------------------
 /**
- * BugTest handler REMOVE function
+ * Remove handler function for EVENT 'BugTest'
  */
 //--------------------------------------------------------------------------------------------------
-void RemoveBugTest
+void RemoveBugTestHandler
 (
-    BugTestRef_t addHandlerRef
+    BugTestHandlerRef_t addHandlerRef
+        ///< [IN]
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test function callback parameters
+ */
+//--------------------------------------------------------------------------------------------------
+int32_t TestCallback
+(
+    uint32_t someParm,
+        ///< [IN]
+
+    const uint8_t* dataArrayPtr,
+        ///< [IN]
+
+    size_t dataArrayNumElements,
+        ///< [IN]
+
+    CallbackTestHandlerFunc_t handlerPtr,
+        ///< [IN]
+
+    void* contextPtr
+        ///< [IN]
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function to fake an event for the callback function testing
+ */
+//--------------------------------------------------------------------------------------------------
+void TriggerCallbackTest
+(
+    uint32_t data
         ///< [IN]
 );
 

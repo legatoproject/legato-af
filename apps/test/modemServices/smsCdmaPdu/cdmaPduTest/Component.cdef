@@ -9,6 +9,5 @@ requires:
     api:
     {
         le_sms.api     [types-only]
-        le_mdmDefs.api [types-only]
     }
 }

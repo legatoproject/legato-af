@@ -8,6 +8,11 @@
 #include "le_print.h"
 
 
+// Need this so we can queue functions to the new thread.
+// This will only be used from the main thread.
+static le_thread_Ref_t NewThreadRef;
+
+
 void allParameters
 (
     common_EnumExample_t a,
@@ -71,12 +76,12 @@ void FileTest
 
 
 // Storage for the handler ref
-static TestAFunc_t HandlerRef = NULL;
+static TestAHandlerFunc_t HandlerRef = NULL;
 static void* ContextPtr = NULL;
 
-TestARef_t AddTestA
+TestAHandlerRef_t AddTestAHandler
 (
-    TestAFunc_t handlerRef,
+    TestAHandlerFunc_t handlerRef,
     void* contextPtr
 )
 {
@@ -85,17 +90,17 @@ TestARef_t AddTestA
 
     // Note: this is just for testing, and is easier than actually creating an event and using
     //       the event loop to call the handler.
-    return (TestARef_t)10;
+    return (TestAHandlerRef_t)10;
 }
 
-void RemoveTestA
+void RemoveTestAHandler
 (
-    TestARef_t addHandlerRef
+    TestAHandlerRef_t addHandlerRef
 )
 {
     LE_PRINT_VALUE("%p", addHandlerRef);
 
-    if ( addHandlerRef == (TestARef_t)10 )
+    if ( addHandlerRef == (TestAHandlerRef_t)10 )
     {
         HandlerRef = NULL;
         ContextPtr = NULL;
@@ -125,25 +130,109 @@ void TriggerTestA
 // Add these two functions to satisfy the compiler, but don't need to do
 // anything with them, since they are just used to verify bug fixes in
 // the handler specification.
-BugTestRef_t AddBugTest
+BugTestHandlerRef_t AddBugTestHandler
 (
     const char* newPathPtr,
-    BugTestFunc_t handlerPtr,
+    BugTestHandlerFunc_t handlerPtr,
     void* contextPtr
 )
 {
     return NULL;
 }
 
-void RemoveBugTest
+void RemoveBugTestHandler
 (
-    BugTestRef_t addHandlerRef
+    BugTestHandlerRef_t addHandlerRef
 )
 {
 }
 
 
+/*
+ * Callback function testing
+ */
+
+// Storage for the handler ref
+static CallbackTestHandlerFunc_t CallbackTestHandlerRef = NULL;
+static void* CallbackTestContextPtr = NULL;
+
+int32_t TestCallback
+(
+    uint32_t someParm,
+    const uint8_t* dataArrayPtr,
+    size_t dataArrayNumElements,
+    CallbackTestHandlerFunc_t handlerPtr,
+    void* contextPtr
+)
+{
+    LE_PRINT_VALUE("%d", someParm);
+
+    CallbackTestHandlerRef = handlerPtr;
+    CallbackTestContextPtr = contextPtr;
+
+    return someParm+53;
+}
+
+
+static void CallbackTestHandlerQueued
+(
+    void* dataPtr,
+    void* contextPtr
+)
+{
+    // Note that data, which is uint32_t, is just cast to void*, so cast it back.
+    CallbackTestHandlerRef( *((uint32_t*)dataPtr), contextPtr );
+}
+
+
+void TriggerCallbackTest
+(
+    uint32_t data
+)
+{
+    /* Static storage for data, so that it can be passed into le_event_QueueFunctionToThread().
+     * This will get overwritten on a new call to this function, but given how the this test
+     * works, that is not a problem.
+     */
+    static uint32_t dataStorage;
+    dataStorage = data;
+
+    if ( CallbackTestHandlerRef != NULL )
+    {
+        LE_PRINT_VALUE("%d", data);
+        //CallbackTestHandlerRef(data, CallbackTestContextPtr);
+
+        // Trigger the callback from the new thread.
+        le_event_QueueFunctionToThread(NewThreadRef,
+                                       CallbackTestHandlerQueued,
+                                       &dataStorage,
+                                       CallbackTestContextPtr);
+
+    }
+    else
+    {
+        LE_ERROR("Handler not registered\n");
+    }
+}
+
+
+
+void* NewThread
+(
+    void* contextPtr
+)
+{
+    le_event_RunLoop();
+    return NULL;
+}
+
+
+
 COMPONENT_INIT
 {
     AdvertiseService();
+
+    // Start the second thread
+    NewThreadRef = le_thread_Create("New thread", NewThread, NULL);
+    le_thread_Start(NewThreadRef);
 }

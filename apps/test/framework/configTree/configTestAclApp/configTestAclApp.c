@@ -1,8 +1,13 @@
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test application for configuration tree access control lists.
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ **/
+//--------------------------------------------------------------------------------------------------
 
 #include "legato.h"
 #include "interfaces.h"
-
-
 
 
 COMPONENT_INIT
@@ -11,13 +16,9 @@ COMPONENT_INIT
     // the command line from the first parameter.
     LE_INFO("===== Config ACL test started.");
 
-    char treeName[50];
-    le_result_t result = le_arg_GetArg(0, treeName, sizeof(treeName));
+    const char* treeName = le_arg_GetArg(0);
 
-    LE_FATAL_IF(result != LE_OK,
-                "Problem with required parameter.  %d: %s",
-                result,
-                LE_RESULT_TXT(result));
+    LE_FATAL_IF(treeName == NULL, "Required parameter (tree name) missing.");
 
     // Now, attempt to create an iterator on that tree.
     char nodePath[512] = "";

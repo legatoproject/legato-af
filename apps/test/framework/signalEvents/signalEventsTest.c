@@ -69,6 +69,10 @@ static void DeleteSigs(void* reportPtr)
 
 static void* Thread1(void* context)
 {
+    // Block unused signal in separate thread.  This should generate a warning.
+    le_sig_Block(SIGCHLD);
+
+    // Create delete signal event.
     delEvent = le_event_CreateId("DeleteSigs", 0);
     le_event_AddHandler("DelSigHandler", delEvent, DeleteSigs);
 
@@ -98,13 +102,8 @@ COMPONENT_INIT
     LE_INFO("======== Begin Signal Events Test ========");
 
     // Block signals.  All signals that are to be used in signal events must be blocked here.
-    // The signals should probably be specified in a configuration file and blocked in the generated
-    // main.
-    sigset_t sigSet;
-    LE_ASSERT(sigemptyset(&sigSet) == 0);
-    LE_ASSERT(sigaddset(&sigSet, SIGUSR1) == 0);
-    LE_ASSERT(sigaddset(&sigSet, SIGUSR2) == 0);
-    LE_ASSERT(pthread_sigmask(SIG_BLOCK, &sigSet, NULL) == 0);
+    le_sig_Block(SIGUSR1);
+    le_sig_Block(SIGUSR2);
 
     le_thread_Ref_t thread1 = le_thread_Create("Thread1", Thread1, NULL);
     le_thread_Ref_t thread2 = le_thread_Create("Thread2", Thread2, NULL);

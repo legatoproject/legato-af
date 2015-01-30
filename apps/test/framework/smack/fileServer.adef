@@ -1,0 +1,23 @@
+start: manual
+
+executables:
+{
+    server = (fileServer)
+}
+
+processes:
+{
+    run:
+    {
+        (server)
+    }
+}
+
+provides:
+{
+    api:
+    {
+        filePasser = server.fileServer.filePasser
+    }
+}
+

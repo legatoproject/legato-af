@@ -1,0 +1,20 @@
+executables:
+{
+    mrcTest = ( mrcTest)
+}
+
+processes:
+{
+    run:
+    {
+        ( mrcTest )
+    }
+}
+
+start: manual
+
+bindings:
+{
+    mrcTest.mrcTest.le_mrc -> modemService.le_mrc
+    mrcTest.mrcTest.le_sim -> modemService.le_sim
+}

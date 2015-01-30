@@ -72,20 +72,18 @@ static void TestFileSystemSize(void)
 // Gets the expected limits from the command line arguments.
 static void GetExpectedLimits(void)
 {
-    // Get the expected limits from the command line arguments.
-    char arg[100];
-
     int i;
     for (i = 0; i < LIM_MAX_NUM_LIMITS; i++)
     {
-        LE_ASSERT(le_arg_GetArg(i, arg, sizeof(arg)) == LE_OK);
+        const char* argPtr = le_arg_GetArg(i);
+        LE_ASSERT(argPtr != NULL);
 
         // Get the value.
         char* endPtr;
         errno = 0;
-        int value = strtol(arg, &endPtr, 10);
+        int value = strtol(argPtr, &endPtr, 10);
 
-        if ( (errno == 0) && (endPtr != arg) )
+        if ( (errno == 0) && (endPtr != argPtr) )
         {
             // This is a valid number.
             ExpectedLimits[i] = (rlim_t)value;

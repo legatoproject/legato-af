@@ -17,8 +17,8 @@ COMPONENT_INIT
     LE_INFO("Watchdog test starting");
 
     // Get the process name.
-    char procName[100];
-    LE_ASSERT(le_arg_GetProgramName(procName, sizeof(procName), NULL) == LE_OK);
+    const char* procName = le_arg_GetProgramName();
+    LE_ASSERT(procName != NULL);
 
     LE_INFO("======== Start '%s' Test ========", procName);
 

@@ -1,0 +1,16 @@
+sources:
+{
+    audioPlaybackRecExe.c
+}
+
+requires:
+{
+    api:
+    {
+        le_cfg.api
+        le_mdmDefs.api [types-only]
+        le_audio.api [manual-start]
+        le_mcc_call.api [manual-start]
+        le_mcc_profile.api [manual-start]
+    }
+}

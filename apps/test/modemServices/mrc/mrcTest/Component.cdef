@@ -1,7 +1,6 @@
 sources:
 {
     le_mrcTest.c
-    main.c
 }
 
 requires:
@@ -9,5 +8,6 @@ requires:
     api:
     {
         le_mrc.api
+        le_sim.api
     }
 }

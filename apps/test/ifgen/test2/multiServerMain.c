@@ -77,15 +77,15 @@ static void FirstLayerTestAHandler
 )
 {
     int32_t*                  dataPtr = reportPtr;
-    TestAFunc_t clientHandlerFunc = secondLayerHandlerFunc;
+    TestAHandlerFunc_t clientHandlerFunc = secondLayerHandlerFunc;
 
     clientHandlerFunc(*dataPtr, le_event_GetContextPtr());
 }
 
 
-TestARef_t AddTestA
+TestAHandlerRef_t AddTestAHandler
 (
-    TestAFunc_t handler,
+    TestAHandlerFunc_t handler,
     void* contextPtr
 )
 {
@@ -97,13 +97,13 @@ TestARef_t AddTestA
 
     le_event_SetContextPtr(handlerRef, contextPtr);
 
-    return (TestARef_t)(handlerRef);
+    return (TestAHandlerRef_t)(handlerRef);
 }
 
 
-void RemoveTestA
+void RemoveTestAHandler
 (
-    TestARef_t addHandlerRef
+    TestAHandlerRef_t addHandlerRef
 )
 {
     le_event_RemoveHandler((le_event_HandlerRef_t)addHandlerRef);
@@ -133,19 +133,43 @@ void TriggerTestA
  */
 //--------------------------------------------------------------------------------------------------
 
-BugTestRef_t AddBugTest
+BugTestHandlerRef_t AddBugTestHandler
 (
     const char* newPathPtr,
-    BugTestFunc_t handlerPtr,
+    BugTestHandlerFunc_t handlerPtr,
     void* contextPtr
 )
 {
     return NULL;
 }
 
-void RemoveBugTest
+void RemoveBugTestHandler
 (
-    BugTestRef_t addHandlerRef
+    BugTestHandlerRef_t addHandlerRef
+)
+{
+}
+
+
+/*
+ * Add these two functions to satisfy the compiler, but leave empty for now.  The callback
+ * parameters tests are done elsewhere.
+ */
+int32_t TestCallback
+(
+    uint32_t someParm,
+    const uint8_t* dataArrayPtr,
+    size_t dataArrayNumElements,
+    CallbackTestHandlerFunc_t handlerPtr,
+    void* contextPtr
+)
+{
+    return 0;
+}
+
+void TriggerCallbackTest
+(
+    uint32_t data
 )
 {
 }

@@ -1,6 +1,6 @@
 
 #*******************************************************************************
-# Copyright (C) 2013, Sierra Wireless Inc., all rights reserved.
+# Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 #
 # Contributors:
 #     Sierra Wireless - initial API and implementation
@@ -16,20 +16,7 @@ file(MAKE_DIRECTORY ${EXECUTABLE_OUTPUT_PATH})
 
 
 # Framework
-add_subdirectory(framework/args)
-add_subdirectory(framework/eventLoop)
-add_subdirectory(framework/path)
-add_subdirectory(framework/hashmap)
-add_subdirectory(framework/safeRef)
-add_subdirectory(framework/semaphore)
-add_subdirectory(framework/signalEvents)
-add_subdirectory(framework/threads)
-add_subdirectory(framework/timers)
-add_subdirectory(framework/hex)
-add_subdirectory(framework/messaging)
-add_subdirectory(framework/user)
-add_subdirectory(framework/configTree)
-add_subdirectory(framework/c++)
+add_subdirectory(framework)
 
 # Components
 
@@ -44,9 +31,12 @@ add_subdirectory(modemServices/mrc)
 add_subdirectory(modemServices/sim)
 add_subdirectory(modemServices/info)
 add_subdirectory(modemServices/remoteMgmt)
+add_subdirectory(modemServices/ipsTest)
+add_subdirectory(modemServices/tempTest)
 
-if(INCLUDE_ECALL EQUAL 1 AND LEGATO_TARGET MATCHES "ar7")
+if((INCLUDE_ECALL EQUAL 1) AND ((LEGATO_TARGET MATCHES "ar7") OR (LEGATO_TARGET MATCHES "ar86")))
     add_subdirectory(modemServices/ecall)
+    add_subdirectory(modemServices/ecallWPrompt)
 endif()
 
 if(LEGATO_COMPONENTS_MODEM MATCHES "QMI")
@@ -56,7 +46,7 @@ if(LEGATO_COMPONENTS_MODEM MATCHES "QMI")
         add_subdirectory(modem/qmi/sms)
         add_subdirectory(modem/qmi/mdc)
         add_subdirectory(modem/qmi/mrc)
-        if(INCLUDE_ECALL EQUAL 1 AND LEGATO_TARGET MATCHES "ar7")
+        if((INCLUDE_ECALL EQUAL 1) AND ((LEGATO_TARGET MATCHES "ar7") OR (LEGATO_TARGET MATCHES "ar86")))
            add_subdirectory(modem/qmi/ecall)
         endif()
     endif()
@@ -68,6 +58,7 @@ elseif(LEGATO_COMPONENTS_MODEM MATCHES "AT")
 endif()
 
 ## Positioning Services
+add_subdirectory(positioning/gnssTest)
 add_subdirectory(positioning/posDaemonTest)
 add_subdirectory(positioning/posCtrlTest)
 
@@ -82,19 +73,23 @@ endif()
 add_subdirectory(audio/pa)
 add_subdirectory(audio/service/audioTest)
 add_subdirectory(audio/service/memoryTest)
-add_subdirectory(audio/mccClient)
+add_subdirectory(audio/audioMcc)
+add_subdirectory(audio/audioMccExe)
 add_subdirectory(audio/audioCallPbRec)
 add_subdirectory(audio/dtmf)
 add_subdirectory(audio/configuration)
+add_subdirectory(audio/audioPlaybackRec)
+add_subdirectory(audio/audioPlaybackRecExe)
 
 ## Data Connection Service
 add_subdirectory(dataConnectionService)
+
+## Monitoring Service
+add_subdirectory(monitoring/antennaTest)
 
 ## Other Services ...
 add_subdirectory(cellNetService)
 add_subdirectory(voiceCallService)
 
-
 # IfGen Tool
 add_subdirectory(ifgen/test2)
-

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 targetAddr=$1
-
+targetType=${2:-ar7}
 
 # Checks if the logStr is in the logs.
 #
@@ -35,23 +35,31 @@ function CheckRet
 # List of apps
 appsList="FaultApp RestartApp StopApp NonSandboxedFaultApp NonSandboxedRestartApp NonSandboxedStopApp"
 
-echo "******** Supervisor Test Starting ***********"
+if [ "$LEGATO_ROOT" == "" ]
+then
+    if [ "$WORKSPACE" == "" ]
+    then
+        echo "Neither LEGATO_ROOT nor WORKSPACE are defined." >&2
+        exit 1
+    else
+        LEGATO_ROOT="$WORKSPACE"
+    fi
+fi
 
-echo "Build all the apps."
-for app in $appsList
-do
-    mkapp $app.adef -t ar7
-    CheckRet
-done
+echo "******** Supervisor Test Starting ***********"
 
 echo "Make sure Legato is running."
 ssh root@$targetAddr "/usr/local/bin/legato start"
 CheckRet
 
 echo "Install all the apps."
+appDir="$LEGATO_ROOT/build/$targetType/bin/tests"
+cd "$appDir"
+CheckRet
 for app in $appsList
 do
-    instapp $app.ar7 $targetAddr
+    echo "  Installing '$appDir/$app.$targetType' (instapp $app.$targetType $targetAddr)"
+    instapp $app.$targetType $targetAddr
     CheckRet
 done
 
@@ -62,7 +70,9 @@ sleep 1
 echo "Clear the logs."
 ssh root@$targetAddr "killall syslogd"
 CheckRet
-ssh root@$targetAddr "/sbin/syslogd -C1000"
+
+# Must restart syslog this way so that it gets the proper SMACK label.
+ssh root@$targetAddr "/mnt/flash/startup/fg_02_RestartSyslogd"
 CheckRet
 
 echo "Run the apps."

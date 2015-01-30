@@ -163,6 +163,16 @@ static le_msg_ServiceRef_t _ServerServiceRef;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Server Thread Reference
+ *
+ * Reference to the thread that is registered to provide this service.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_thread_Ref_t _ServerThreadRef;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Client Session Reference for the current message received from a client
  */
 //--------------------------------------------------------------------------------------------------
@@ -204,8 +214,11 @@ static void CleanupClientData
             LE_DEBUG("Found session ref %p; match found, so needs cleanup",
                      serverDataPtr->clientSessionRef);
 
-            // Remove the handler
-            serverDataPtr->removeHandlerFunc( serverDataPtr->handlerRef );
+            // Remove the handler, if the Remove handler functions exists.
+            if ( serverDataPtr->removeHandlerFunc != NULL )
+            {
+                serverDataPtr->removeHandlerFunc( serverDataPtr->handlerRef );
+            }
 
             // Release the server data block
             le_mem_Release((void*)serverDataPtr);
@@ -225,6 +238,53 @@ static void CleanupClientData
     }
 
     _UNLOCK
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Send the message to the client (queued version)
+ *
+ * This is a wrapper around le_msg_Send() with an extra parameter so that it can be used
+ * with le_event_QueueFunctionToThread().
+ */
+//--------------------------------------------------------------------------------------------------
+__attribute__((unused)) static void SendMsgToClientQueued
+(
+    void*  msgRef,  ///< [in] Reference to the message.
+    void*  unused   ///< [in] Not used
+)
+{
+    le_msg_Send(msgRef);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Send the message to the client.
+ */
+//--------------------------------------------------------------------------------------------------
+__attribute__((unused)) static void SendMsgToClient
+(
+    le_msg_MessageRef_t msgRef      ///< [in] Reference to the message.
+)
+{
+    /*
+     * If called from a thread other than the server thread, queue the message onto the server
+     * thread.  This is necessary to allow async response/handler functions to be called from any
+     * thread, whereas messages to the client can only be sent from the server thread.
+     */
+    if ( le_thread_GetCurrent() != _ServerThreadRef )
+    {
+        le_event_QueueFunctionToThread(_ServerThreadRef,
+                                       SendMsgToClientQueued,
+                                       msgRef,
+                                       NULL);
+    }
+    else
+    {
+        le_msg_Send(msgRef);
+    }
 }
 
 
@@ -285,7 +345,10 @@ void AdvertiseService
     le_msg_AdvertiseService(_ServerServiceRef);
 
     // Register for client sessions being closed
-    le_msg_SetServiceCloseHandler(_ServerServiceRef, CleanupClientData, NULL);
+    le_msg_AddServiceCloseHandler(_ServerServiceRef, CleanupClientData, NULL);
+
+    // Need to keep track of the thread that is registered to provide this service.
+    _ServerThreadRef = le_thread_GetCurrent();
 }
 
 
@@ -294,7 +357,7 @@ void AdvertiseService
 //--------------------------------------------------------------------------------------------------
 
 
-static void AsyncResponse_AddTestA
+static void AsyncResponse_AddTestAHandler
 (
     int32_t x,
     void* contextPtr
@@ -304,13 +367,14 @@ static void AsyncResponse_AddTestA
     _Message_t* _msgPtr;
     _ServerData_t* serverDataPtr = (_ServerData_t*)contextPtr;
 
+
     // Will not be used if no data is sent back to client
     __attribute__((unused)) uint8_t* _msgBufPtr;
 
     // Create a new message object and get the message buffer
     _msgRef = le_msg_CreateMsg(serverDataPtr->clientSessionRef);
     _msgPtr = le_msg_GetPayloadPtr(_msgRef);
-    _msgPtr->id = _MSGID_AddTestA;
+    _msgPtr->id = _MSGID_AddTestAHandler;
     _msgBufPtr = _msgPtr->buffer;
 
     // Always pack the client context pointer first
@@ -321,11 +385,11 @@ static void AsyncResponse_AddTestA
 
     // Send the async response to the client
     LE_DEBUG("Sending message to client session %p", serverDataPtr->clientSessionRef);
-    le_msg_Send(_msgRef);
+    SendMsgToClient(_msgRef);
 }
 
 
-static void Handle_AddTestA
+static void Handle_AddTestAHandler
 (
     le_msg_MessageRef_t _msgRef
 
@@ -347,20 +411,22 @@ static void Handle_AddTestA
     _ServerData_t* serverDataPtr = le_mem_ForceAlloc(_ServerDataPool);
     serverDataPtr->clientSessionRef = le_msg_GetSession(_msgRef);
     serverDataPtr->contextPtr = contextPtr;
+    serverDataPtr->handlerRef = NULL;
+    serverDataPtr->removeHandlerFunc = NULL;
     contextPtr = serverDataPtr;
 
     // Define storage for output parameters
 
 
     // Call the function
-    TestARef_t _result;
-    _result = AddTestA ( AsyncResponse_AddTestA, contextPtr );
+    TestAHandlerRef_t _result;
+    _result = AddTestAHandler ( AsyncResponse_AddTestAHandler, contextPtr );
 
     // Put the handler reference result and a pointer to the associated remove function
     // into the server data object.  This function pointer is needed in case the client
     // is closed and the handlers need to be removed.
     serverDataPtr->handlerRef = (le_event_HandlerRef_t)_result;
-    serverDataPtr->removeHandlerFunc = (RemoveHandlerFunc_t)RemoveTestA;
+    serverDataPtr->removeHandlerFunc = (RemoveHandlerFunc_t)RemoveTestAHandler;
 
     // Return a safe reference to the server data object as the reference.
     _LOCK
@@ -383,7 +449,7 @@ static void Handle_AddTestA
 }
 
 
-static void Handle_RemoveTestA
+static void Handle_RemoveTestAHandler
 (
     le_msg_MessageRef_t _msgRef
 
@@ -396,8 +462,8 @@ static void Handle_RemoveTestA
     uint8_t* _msgBufStartPtr = _msgBufPtr;
 
     // Unpack the input parameters from the message
-    TestARef_t addHandlerRef;
-    _msgBufPtr = UnpackData( _msgBufPtr, &addHandlerRef, sizeof(TestARef_t) );
+    TestAHandlerRef_t addHandlerRef;
+    _msgBufPtr = UnpackData( _msgBufPtr, &addHandlerRef, sizeof(TestAHandlerRef_t) );
     // The passed in handlerRef is a safe reference for the server data object.  Need to get the
     // real handlerRef from the server data object and then delete both the safe reference and
     // the object since they are no longer needed.
@@ -405,7 +471,7 @@ static void Handle_RemoveTestA
     _ServerData_t* serverDataPtr = le_ref_Lookup(_HandlerRefMap, addHandlerRef);
     le_ref_DeleteRef(_HandlerRefMap, addHandlerRef);
     _UNLOCK
-    addHandlerRef = (TestARef_t)serverDataPtr->handlerRef;
+    addHandlerRef = (TestAHandlerRef_t)serverDataPtr->handlerRef;
     le_mem_Release(serverDataPtr);
 
 
@@ -413,7 +479,7 @@ static void Handle_RemoveTestA
 
 
     // Call the function
-    RemoveTestA ( addHandlerRef );
+    RemoveTestAHandler ( addHandlerRef );
 
 
     // Re-use the message buffer for the response
@@ -603,7 +669,7 @@ static void Handle_TriggerTestA
 }
 
 
-static void AsyncResponse_AddBugTest
+static void AsyncResponse_AddBugTestHandler
 (
     void* contextPtr
 )
@@ -612,13 +678,14 @@ static void AsyncResponse_AddBugTest
     _Message_t* _msgPtr;
     _ServerData_t* serverDataPtr = (_ServerData_t*)contextPtr;
 
+
     // Will not be used if no data is sent back to client
     __attribute__((unused)) uint8_t* _msgBufPtr;
 
     // Create a new message object and get the message buffer
     _msgRef = le_msg_CreateMsg(serverDataPtr->clientSessionRef);
     _msgPtr = le_msg_GetPayloadPtr(_msgRef);
-    _msgPtr->id = _MSGID_AddBugTest;
+    _msgPtr->id = _MSGID_AddBugTestHandler;
     _msgBufPtr = _msgPtr->buffer;
 
     // Always pack the client context pointer first
@@ -629,11 +696,11 @@ static void AsyncResponse_AddBugTest
 
     // Send the async response to the client
     LE_DEBUG("Sending message to client session %p", serverDataPtr->clientSessionRef);
-    le_msg_Send(_msgRef);
+    SendMsgToClient(_msgRef);
 }
 
 
-static void Handle_AddBugTest
+static void Handle_AddBugTestHandler
 (
     le_msg_MessageRef_t _msgRef
 
@@ -658,20 +725,22 @@ static void Handle_AddBugTest
     _ServerData_t* serverDataPtr = le_mem_ForceAlloc(_ServerDataPool);
     serverDataPtr->clientSessionRef = le_msg_GetSession(_msgRef);
     serverDataPtr->contextPtr = contextPtr;
+    serverDataPtr->handlerRef = NULL;
+    serverDataPtr->removeHandlerFunc = NULL;
     contextPtr = serverDataPtr;
 
     // Define storage for output parameters
 
 
     // Call the function
-    BugTestRef_t _result;
-    _result = AddBugTest ( newPathPtr, AsyncResponse_AddBugTest, contextPtr );
+    BugTestHandlerRef_t _result;
+    _result = AddBugTestHandler ( newPathPtr, AsyncResponse_AddBugTestHandler, contextPtr );
 
     // Put the handler reference result and a pointer to the associated remove function
     // into the server data object.  This function pointer is needed in case the client
     // is closed and the handlers need to be removed.
     serverDataPtr->handlerRef = (le_event_HandlerRef_t)_result;
-    serverDataPtr->removeHandlerFunc = (RemoveHandlerFunc_t)RemoveBugTest;
+    serverDataPtr->removeHandlerFunc = (RemoveHandlerFunc_t)RemoveBugTestHandler;
 
     // Return a safe reference to the server data object as the reference.
     _LOCK
@@ -694,7 +763,7 @@ static void Handle_AddBugTest
 }
 
 
-static void Handle_RemoveBugTest
+static void Handle_RemoveBugTestHandler
 (
     le_msg_MessageRef_t _msgRef
 
@@ -707,8 +776,8 @@ static void Handle_RemoveBugTest
     uint8_t* _msgBufStartPtr = _msgBufPtr;
 
     // Unpack the input parameters from the message
-    BugTestRef_t addHandlerRef;
-    _msgBufPtr = UnpackData( _msgBufPtr, &addHandlerRef, sizeof(BugTestRef_t) );
+    BugTestHandlerRef_t addHandlerRef;
+    _msgBufPtr = UnpackData( _msgBufPtr, &addHandlerRef, sizeof(BugTestHandlerRef_t) );
     // The passed in handlerRef is a safe reference for the server data object.  Need to get the
     // real handlerRef from the server data object and then delete both the safe reference and
     // the object since they are no longer needed.
@@ -716,7 +785,7 @@ static void Handle_RemoveBugTest
     _ServerData_t* serverDataPtr = le_ref_Lookup(_HandlerRefMap, addHandlerRef);
     le_ref_DeleteRef(_HandlerRefMap, addHandlerRef);
     _UNLOCK
-    addHandlerRef = (BugTestRef_t)serverDataPtr->handlerRef;
+    addHandlerRef = (BugTestHandlerRef_t)serverDataPtr->handlerRef;
     le_mem_Release(serverDataPtr);
 
 
@@ -724,7 +793,7 @@ static void Handle_RemoveBugTest
 
 
     // Call the function
-    RemoveBugTest ( addHandlerRef );
+    RemoveBugTestHandler ( addHandlerRef );
 
 
     // Re-use the message buffer for the response
@@ -737,6 +806,158 @@ static void Handle_RemoveBugTest
     // Return the response
     LE_DEBUG("Sending response to client session %p", le_msg_GetSession(_msgRef));
     le_msg_Respond(_msgRef);
+}
+
+
+static void AsyncResponse_TestCallback
+(
+    uint32_t data,
+    void* contextPtr
+)
+{
+    le_msg_MessageRef_t _msgRef;
+    _Message_t* _msgPtr;
+    _ServerData_t* serverDataPtr = (_ServerData_t*)contextPtr;
+
+    // This is a one-time handler; if the server accidently calls it a second time, then
+    // the client sesssion ref would be NULL.
+    if ( serverDataPtr->clientSessionRef == NULL )
+    {
+        LE_FATAL("Error in server data: no client session ref");
+    }
+
+    // Will not be used if no data is sent back to client
+    __attribute__((unused)) uint8_t* _msgBufPtr;
+
+    // Create a new message object and get the message buffer
+    _msgRef = le_msg_CreateMsg(serverDataPtr->clientSessionRef);
+    _msgPtr = le_msg_GetPayloadPtr(_msgRef);
+    _msgPtr->id = _MSGID_TestCallback;
+    _msgBufPtr = _msgPtr->buffer;
+
+    // Always pack the client context pointer first
+    _msgBufPtr = PackData( _msgBufPtr, &(serverDataPtr->contextPtr), sizeof(void*) );
+
+    // Pack the input parameters
+    _msgBufPtr = PackData( _msgBufPtr, &data, sizeof(uint32_t) );
+
+    // Send the async response to the client
+    LE_DEBUG("Sending message to client session %p", serverDataPtr->clientSessionRef);
+    SendMsgToClient(_msgRef);
+
+    // The registered handler has been called, so no longer need the server data.
+    // Explicitly set clientSessionRef to NULL, so that we can catch if this function gets
+    // accidently called again.
+    serverDataPtr->clientSessionRef = NULL;
+    le_mem_Release(serverDataPtr);
+}
+
+
+static void Handle_TestCallback
+(
+    le_msg_MessageRef_t _msgRef
+
+)
+{
+    // Get the message buffer pointer
+    uint8_t* _msgBufPtr = ((_Message_t*)le_msg_GetPayloadPtr(_msgRef))->buffer;
+
+    // Needed if we are returning a result or output values
+    uint8_t* _msgBufStartPtr = _msgBufPtr;
+
+    // Unpack the input parameters from the message
+    uint32_t someParm;
+    _msgBufPtr = UnpackData( _msgBufPtr, &someParm, sizeof(uint32_t) );
+
+    size_t dataArrayNumElements;
+    _msgBufPtr = UnpackData( _msgBufPtr, &dataArrayNumElements, sizeof(size_t) );
+
+    uint8_t dataArray[dataArrayNumElements];
+    _msgBufPtr = UnpackData( _msgBufPtr, dataArray, dataArrayNumElements*sizeof(uint8_t) );
+
+
+
+    void* contextPtr;
+    _msgBufPtr = UnpackData( _msgBufPtr, &contextPtr, sizeof(void*) );
+
+    // Create a new server data object and fill it in
+    _ServerData_t* serverDataPtr = le_mem_ForceAlloc(_ServerDataPool);
+    serverDataPtr->clientSessionRef = le_msg_GetSession(_msgRef);
+    serverDataPtr->contextPtr = contextPtr;
+    serverDataPtr->handlerRef = NULL;
+    serverDataPtr->removeHandlerFunc = NULL;
+    contextPtr = serverDataPtr;
+
+    // Define storage for output parameters
+
+
+    // Call the function
+    int32_t _result;
+    _result = TestCallback ( someParm, dataArray, dataArrayNumElements, AsyncResponse_TestCallback, contextPtr );
+
+
+
+    // Re-use the message buffer for the response
+    _msgBufPtr = _msgBufStartPtr;
+
+    // Pack the result first
+    _msgBufPtr = PackData( _msgBufPtr, &_result, sizeof(_result) );
+
+    // Pack any "out" parameters
+
+
+    // Return the response
+    LE_DEBUG("Sending response to client session %p", le_msg_GetSession(_msgRef));
+    le_msg_Respond(_msgRef);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Server-side respond function for TriggerCallbackTest
+ */
+//--------------------------------------------------------------------------------------------------
+void TriggerCallbackTestRespond
+(
+    ServerCmdRef_t _cmdRef
+)
+{
+    LE_ASSERT(_cmdRef != NULL);
+
+    // Get the message related data
+    le_msg_MessageRef_t _msgRef = (le_msg_MessageRef_t)_cmdRef;
+    _Message_t* _msgPtr = le_msg_GetPayloadPtr(_msgRef);
+    __attribute__((unused)) uint8_t* _msgBufPtr = _msgPtr->buffer;
+
+    // Ensure the passed in msgRef is for the correct message
+    LE_ASSERT(_msgPtr->id == _MSGID_TriggerCallbackTest);
+
+    // Ensure that this Respond function has not already been called
+    LE_FATAL_IF( !le_msg_NeedsResponse(_msgRef), "Response has already been sent");
+
+
+    // Pack any "out" parameters
+
+
+    // Return the response
+    LE_DEBUG("Sending response to client session %p", le_msg_GetSession(_msgRef));
+    le_msg_Respond(_msgRef);
+}
+
+static void Handle_TriggerCallbackTest
+(
+    le_msg_MessageRef_t _msgRef
+)
+{
+    // Get the message buffer pointer
+    __attribute__((unused)) uint8_t* _msgBufPtr = ((_Message_t*)le_msg_GetPayloadPtr(_msgRef))->buffer;
+
+    // Unpack the input parameters from the message
+    uint32_t data;
+    _msgBufPtr = UnpackData( _msgBufPtr, &data, sizeof(uint32_t) );
+
+    // Call the function
+    TriggerCallbackTest ( (ServerCmdRef_t)_msgRef, data );
 }
 
 
@@ -757,13 +978,15 @@ static void ServerMsgRecvHandler
     // Dispatch to appropriate message handler and get response
     switch (msgPtr->id)
     {
-        case _MSGID_AddTestA : Handle_AddTestA(msgRef); break;
-        case _MSGID_RemoveTestA : Handle_RemoveTestA(msgRef); break;
+        case _MSGID_AddTestAHandler : Handle_AddTestAHandler(msgRef); break;
+        case _MSGID_RemoveTestAHandler : Handle_RemoveTestAHandler(msgRef); break;
         case _MSGID_allParameters : Handle_allParameters(msgRef); break;
         case _MSGID_FileTest : Handle_FileTest(msgRef); break;
         case _MSGID_TriggerTestA : Handle_TriggerTestA(msgRef); break;
-        case _MSGID_AddBugTest : Handle_AddBugTest(msgRef); break;
-        case _MSGID_RemoveBugTest : Handle_RemoveBugTest(msgRef); break;
+        case _MSGID_AddBugTestHandler : Handle_AddBugTestHandler(msgRef); break;
+        case _MSGID_RemoveBugTestHandler : Handle_RemoveBugTestHandler(msgRef); break;
+        case _MSGID_TestCallback : Handle_TestCallback(msgRef); break;
+        case _MSGID_TriggerCallbackTest : Handle_TriggerCallbackTest(msgRef); break;
 
         default: LE_ERROR("Unknowm msg id = %i", msgPtr->id);
     }

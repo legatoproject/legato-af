@@ -1,0 +1,20 @@
+
+start: manual
+
+sandboxed: false
+
+executables:
+{
+    badExe  = ( bad.c )
+}
+
+
+processes:
+{
+    faultAction: ignore
+
+    run:
+    {
+        ( badExe )
+    }
+}

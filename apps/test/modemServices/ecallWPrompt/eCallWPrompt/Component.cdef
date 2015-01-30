@@ -1,0 +1,13 @@
+sources:
+{
+    eCallWPrompt.c
+}
+
+requires:
+{
+    api:
+    {
+        le_ecall.api
+        le_audio.api
+    }
+}

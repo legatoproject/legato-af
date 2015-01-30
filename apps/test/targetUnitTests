@@ -28,5 +28,12 @@ RunTest framework/supervisor/supervisorTest.sh
 RunTest framework/watchdog/watchdogTest.sh
 RunTest framework/configTree/configTargetTests.sh
 RunTest framework/updateTool/updateToolTest.sh
+RunTest framework/smackAPI/smackApiTest.sh
+RunTest framework/smack/smackTest.sh
+RunTest framework/sandboxLimits/limitsTest.sh
+
+# Clear out the any test apps, and clean up after any non-sandboxed ones.
+rmapp \* "$TARGET_ADDR"
+ssh root@$AR7_IP_ADDR "rm -rf \`find /mnt/flash/home/* -type d | grep app\`"
 
 cd $ORIG_DIR

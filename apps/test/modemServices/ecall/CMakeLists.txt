@@ -1,33 +1,16 @@
 #*******************************************************************************
-# Copyright (C) 2014, Sierra Wireless Inc., all rights reserved.
+# Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 #
-# Contributors:
-#     Sierra Wireless - initial API and implementation
+# Use of this work is subject to license.
 #*******************************************************************************
 
 find_package(Legato REQUIRED)
-find_package(CUnit REQUIRED)
 
-set(APP_TARGET testModemECall)
-
-message("CUNIT_INCLUDE_DIRS: ${CUNIT_INCLUDE_DIRS}")
-
-mkexe(${APP_TARGET}
-            ecallTest
-            ${CUNIT_LIBRARIES}
-            -i ${CUNIT_INSTALL}/include
-            -i ${CUNIT_INSTALL}/include/CUnit
-            -i ${LEGATO_ROOT}/interfaces/modemServices
-        DEPENDS
-            legato
-            ## TODO: Remove this when the mk tools do dependency checking.
-            ecallTest/Component.cdef
-            ecallTest/main.c
-            ecallTest/main.h
-            ecallTest/le_ecallTest.c
-            )
-
-if(NOT ${LEGATO_TARGET} STREQUAL "localhost")
-    add_test(${APP_TARGET} ${EXECUTABLE_OUTPUT_PATH}/${APP_TARGET})
-    set_tests_properties(${APP_TARGET} PROPERTIES TIMEOUT 0)
-endif()
+# Creates application from the eCallTest.adef
+mkapp(eCallTest.adef
+    -i ${LEGATO_ROOT}/interfaces/modemServices
+    DEPENDS
+        eCallTest/Component.cdef
+        eCallTest/le_ecallTest.c
+        legato
+)

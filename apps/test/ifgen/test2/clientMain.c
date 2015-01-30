@@ -19,6 +19,125 @@ void banner(char *testName)
 }
 
 
+void testFinal
+(
+    void* unusedOnePtr,
+    void* unusedTwoPtr
+)
+{
+    // Test starting/stopping service connections.
+    // This has to be last test, because it will cause a fatal error.
+    banner("Test Final");
+
+    // Start a second connection
+    ConnectService();
+
+    // Disconnect the second connection, and try calling an API function. This should succeed.
+    LE_DEBUG("Disconnect test; success expected");
+    DisconnectService();
+    TriggerTestA();
+
+    // Disconnect the first connection, and try calling an API function.  This should fail.
+    LE_DEBUG("Disconnect test; fatal error expected");
+    DisconnectService();
+    TriggerTestA();
+}
+
+
+
+void CallbackTestHandler
+(
+    uint32_t data,
+    void* contextPtr
+)
+{
+    LE_PRINT_VALUE("%d", data);
+    LE_PRINT_VALUE("%p", contextPtr);
+
+    // This should fail, because the callback can only be called once.
+    LE_DEBUG("Triggering CallbackTest second time -- should FATAL");
+    TriggerCallbackTest(257);
+
+    // Continue with the next test
+    // todo: can't continue because the previous test fails -- maybe need to separate tests
+    //le_event_QueueFunction(testFinal, NULL, NULL);
+}
+
+
+void test3(void)
+{
+    banner("Test 3");
+
+    int result;
+
+    // This is not used in the test; this parameter was added to test a code generation bug fix.
+    uint8_t dataArray[] = { 1, 2 };
+
+    result = TestCallback(10, dataArray, 2, CallbackTestHandler, NULL);
+    LE_PRINT_VALUE("%d", result);
+
+    LE_DEBUG("Triggering CallbackTest");
+    TriggerCallbackTest(100);
+
+    // Need to allow the event loop to process the trigger.
+    // The rest of the test will be continued in the handler.
+}
+
+
+static TestAHandlerRef_t HandlerRef;
+static uint32_t SomeData = 100;
+
+
+static void HandleTestA
+(
+    int32_t x,
+    void* contextPtr
+)
+{
+    LE_PRINT_VALUE("%i", x);
+
+    if ( contextPtr == &SomeData )
+    {
+        LE_DEBUG("HandleTestA: context pointer works");
+        LE_PRINT_VALUE( "%u", *((uint32_t*)contextPtr) );
+    }
+    else
+    {
+        LE_DEBUG("HandleTestA: context pointer fails");
+    }
+
+    // continue the rest of the test
+    LE_DEBUG("Removing TestA");
+    RemoveTestAHandler(HandlerRef);
+
+    LE_DEBUG("Triggering TestA again");
+    TriggerTestA();
+
+    // Continue with next test
+    test3();
+}
+
+
+void test2(void)
+{
+
+    HandlerRef = AddTestAHandler(HandleTestA, &SomeData);
+    LE_PRINT_VALUE("%p", HandlerRef);
+
+    // Try removing the handler and registering again, to ensure that allocated data objects
+    // have been released, i.e. the associated client and server pools should not increase.
+    RemoveTestAHandler(HandlerRef);
+    HandlerRef = AddTestAHandler(HandleTestA, &SomeData);
+    LE_PRINT_VALUE("%p", HandlerRef);
+
+    LE_DEBUG("Triggering TestA\n");
+    TriggerTestA();
+
+    // Need to allow the event loop to process the trigger.
+    // The rest of the test will be continued in the handler.
+}
+
+
 void test1(void)
 {
     uint32_t value=10;
@@ -73,78 +192,8 @@ void test1(void)
     }
 }
 
-static TestARef_t HandlerRef;
-static uint32_t SomeData = 100;
 
-
-static void HandleTestA
-(
-    int32_t x,
-    void* contextPtr
-)
-{
-    LE_PRINT_VALUE("%i", x);
-
-    if ( contextPtr == &SomeData )
-    {
-        LE_DEBUG("HandleTestA: context pointer works");
-        LE_PRINT_VALUE( "%u", *((uint32_t*)contextPtr) );
-    }
-    else
-    {
-        LE_DEBUG("HandleTestA: context pointer fails");
-    }
-
-    // continue the rest of the test
-    LE_DEBUG("Removing TestA");
-    RemoveTestA(HandlerRef);
-
-    LE_DEBUG("Triggering TestA again");
-    TriggerTestA();
-
-
-    // Test starting/stopping service connections
-
-    // Start a second connection
-    ConnectService();
-
-    // Disconnect the second connection, and try calling an API function. This should succeed.
-    LE_DEBUG("Disconnect test; success expected");
-    DisconnectService();
-    TriggerTestA();
-
-    // Disconnect the first connection, and try calling an API function.  This should fail.
-    LE_DEBUG("Disconnect test; fatal error expected");
-    DisconnectService();
-    TriggerTestA();
-
-}
-
-void test2(void)
-{
-
-    HandlerRef = AddTestA(HandleTestA, &SomeData);
-    LE_PRINT_VALUE("%p", HandlerRef);
-
-    // Try removing the handler and registering again, to ensure that allocated data objects
-    // have been released, i.e. the associated client and server pools should not increase.
-    RemoveTestA(HandlerRef);
-    HandlerRef = AddTestA(HandleTestA, &SomeData);
-    LE_PRINT_VALUE("%p", HandlerRef);
-
-    LE_DEBUG("Triggering TestA\n");
-    TriggerTestA();
-
-    // Need to allow the event loop to process the trigger.
-    // The rest of the test will be continued in the handler.
-}
-
-
-void StartTest
-(
-    void* param1Ptr,
-    void* param2Ptr
-)
+void StartTest(void)
 {
     banner("Test 1");
     test1();
@@ -163,12 +212,11 @@ void StartTest
     test2();
 }
 
+
 COMPONENT_INIT
 {
     ConnectService();
-
-    // Start the test once the Event Loop is running.
-    le_event_QueueFunction(StartTest, NULL, NULL);
+    StartTest();
 }
 
 

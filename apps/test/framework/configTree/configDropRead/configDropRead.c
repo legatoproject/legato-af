@@ -12,9 +12,9 @@ COMPONENT_INIT
 
     // Check to see if we were instructed to stay running or not.  If we were, just wait until the
     // timeout expires.
-    char argName[40] = "";
+    const char* argName = le_arg_GetArg(0);
 
-    if (   (le_arg_GetArg(0, argName, sizeof(argName)) != LE_OK)
+    if (   (argName == NULL)
         || (strcmp(argName, "hangAround") != 0))
     {
         exit(EXIT_SUCCESS);

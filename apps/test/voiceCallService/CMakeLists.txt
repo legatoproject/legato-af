@@ -1,5 +1,5 @@
 #*******************************************************************************
-# Copyright (C) 2014, Sierra Wireless Inc., all rights reserved.
+# Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 #
 # Contributors:
 #     Sierra Wireless - initial API and implementation
@@ -12,12 +12,14 @@ set(APP_TARGET testVoiceCallService)
 
 mkexe(  ${APP_TARGET}
             voiceCallTest
+            -i ${LEGATO_ROOT}/interfaces/modemServices
             -i ${LEGATO_ROOT}/interfaces/voiceCallService
             -i ${LEGATO_ROOT}/interfaces/audio
          DEPENDS
             legato
             voiceCallTest/Component.cdef
             voiceCallTest/voiceCallTest.c
+            ${LEGATO_ROOT}/interfaces/modemServices/le_mdmDefs.api
     )
 
 if(NOT ${LEGATO_TARGET} STREQUAL "localhost")

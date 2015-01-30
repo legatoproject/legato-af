@@ -47,8 +47,8 @@ void test1(void)
     LE_PRINT_VALUE("%s", more);
 }
 
-static TestARef_t HandlerRef;
-static char ClientMessage[100] = "initial value";
+static TestAHandlerRef_t HandlerRef;
+static const char* ClientMessage = "initial value";
 
 
 static void HandleTestA
@@ -78,7 +78,7 @@ static void HandleTestA
         banner("Test 2 again");
         LE_PRINT_VALUE("%i", count);
 
-        HandlerRef = AddTestA(HandleTestA, ClientMessage);
+        HandlerRef = AddTestAHandler(HandleTestA, (void*)ClientMessage);
         LE_PRINT_VALUE("%p", HandlerRef);
 
         LE_DEBUG("Triggering TestA yet again for count=%i\n", count);
@@ -89,7 +89,7 @@ static void HandleTestA
 void test2(void)
 {
 
-    HandlerRef = AddTestA(HandleTestA, ClientMessage);
+    HandlerRef = AddTestAHandler(HandleTestA, (void*)ClientMessage);
     LE_PRINT_VALUE("%p", HandlerRef);
 
     LE_DEBUG("Triggering TestA\n");
@@ -181,7 +181,10 @@ COMPONENT_INIT
     ConnectService();
 
     // Get the client message from the first parameter on the command line
-    le_arg_GetArg(0, ClientMessage, sizeof(ClientMessage));
+    if (le_arg_NumArgs() > 0)
+    {
+        ClientMessage = le_arg_GetArg(0);
+    }
 
     // Start the test once the Event Loop is running.
     le_event_QueueFunction(StartTest, NULL, NULL);

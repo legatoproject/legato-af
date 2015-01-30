@@ -3,6 +3,7 @@ version: 2
 executables:
 {
     exe = (server)
+    exe2 = (exe2.c stuff.c)
 }
 
 provides:

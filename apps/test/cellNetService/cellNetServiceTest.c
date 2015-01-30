@@ -1,7 +1,7 @@
 /**
  * This module implements the Cellular Network Application Service tests.
  *
- * Copyright (C) Sierra Wireless, Inc. 2014.  All rights reserved. Use of this work is subject to
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  * license.
  *
  */
@@ -117,7 +117,7 @@ COMPONENT_INIT
     LE_INFO("Running cellular network service test");
 
     // register handler for cellular network state change
-    le_cellnet_AddStateHandler(CellNetStateHandler, NULL);
+    le_cellnet_AddStateEventHandler(CellNetStateHandler, NULL);
 
     le_thread_Start(le_thread_Create("TestCellNetService", TestCellNetService, NULL));
 }

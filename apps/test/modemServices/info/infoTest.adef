@@ -1,0 +1,19 @@
+executables:
+{
+    infoTest = ( infoTest)
+}
+
+processes:
+{
+    run:
+    {
+        ( infoTest )
+    }
+}
+
+start: manual
+
+bindings:
+{
+    infoTest.infoTest.le_info -> modemService.le_info
+}

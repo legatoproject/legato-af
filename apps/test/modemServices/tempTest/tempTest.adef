@@ -1,0 +1,19 @@
+executables:
+{
+    tempTest = ( tempTest )
+}
+
+processes:
+{
+    envVars:
+    {
+        LE_LOG_LEVEL = DEBUG
+    }
+}
+
+start: manual
+
+bindings:
+{
+    tempTest.tempTest.le_temp -> modemService.le_temp
+}

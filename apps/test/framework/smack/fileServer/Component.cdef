@@ -1,0 +1,12 @@
+sources:
+{
+    server.c
+}
+
+provides:
+{
+    api:
+    {
+        filePasser = file.api
+    }
+}

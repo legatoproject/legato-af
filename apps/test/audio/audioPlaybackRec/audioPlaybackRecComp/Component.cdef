@@ -1,0 +1,14 @@
+sources:
+{
+    audioPlaybackRec.c
+}
+
+requires:
+{
+    api:
+    {
+        le_cfg.api
+        le_mdmDefs.api [types-only]
+        le_audio.api
+    }
+}

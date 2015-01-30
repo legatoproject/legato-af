@@ -1,0 +1,14 @@
+sources:
+{
+    simTest.c
+    main.c
+}
+
+requires:
+{
+    api:
+    {
+        le_sim.api
+        le_mrc.api
+    }
+}

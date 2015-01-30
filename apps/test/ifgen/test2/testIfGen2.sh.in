@@ -1,17 +1,15 @@
 # This test script should be executed from the localhost/bin directory
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:lib
 
 # Enable debug messages
 export LE_LOG_LEVEL=DEBUG
 
-mkdir -p sockets
-sleep 0.5
+# Start legato system processes; returns warning if the processes are already running.
+startlegato
 
-./serviceDirectory &
-sleep 0.5
-
-./logCtrlDaemon &
-sleep 0.5
+# Add bindings for 'example' service
+config set users/$USER/bindings/example/user $USER
+config set users/$USER/bindings/example/interface example
+sdir load
 
 tests/${TEST_SERVER} &
 sleep 0.5

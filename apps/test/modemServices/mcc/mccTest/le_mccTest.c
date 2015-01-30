@@ -2,7 +2,7 @@
   * This module implements the le_mcc's unit tests.
   *
   *
-  * Copyright (C) Sierra Wireless, Inc. 2013-2014.  Use of this work is subject to license.
+  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
   *
   */
 
@@ -24,7 +24,7 @@
 
 
 #ifndef AUTOMATIC
-static char  DestinationNmbr[LE_MDMDEFS_PHONE_NUM_MAX_LEN];
+static char  DestinationNmbr[LE_MDMDEFS_PHONE_NUM_MAX_BYTES];
 #else
 #define DestinationNmbr  "XXXXXXXXXXXX"
 #endif

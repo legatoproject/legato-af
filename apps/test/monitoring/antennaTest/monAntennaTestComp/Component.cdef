@@ -1,0 +1,12 @@
+sources:
+{
+    monAntennaTest.c
+}
+
+requires:
+{
+    api:
+    {
+        le_antenna.api
+    }
+}

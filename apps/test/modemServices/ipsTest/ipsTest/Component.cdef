@@ -1,0 +1,12 @@
+sources:
+{
+    ipsTest.c
+}
+
+requires:
+{
+    api:
+    {
+        le_ips.api
+    }
+}

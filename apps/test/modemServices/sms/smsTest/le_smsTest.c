@@ -1,21 +1,10 @@
  /**
   * This module implements the le_sms's unit tests.
   *
-  * Copyright (C) Sierra Wireless, Inc. 2013-2014. Use of this work is subject to license.
+  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
   *
   */
 
-#include "legato.h"
-#include <stdio.h>
-#include <unistd.h>
-#include <ctype.h>
-#include <semaphore.h>
-
-// Header files for CUnit
-#include "Console.h"
-#include <Basic.h>
-
-#include "interfaces.h"
 #include "main.h"
 
 // TODO: How to automatically retrieve the target's telephone number ?
@@ -42,8 +31,13 @@ static uint8_t PDU_TEST_PATTERN_7BITS[]={0x00,0x01,0x00,0x0A,0x81,0x00,0x00,0x00
 
 static uint8_t BINARY_TEST_PATTERN[]={0x05,0x01,0x00,0x0A};
 
+// Pdu message can be created with this link http://www.smartposition.nl/resources/sms_pdu.html
+static uint8_t ASYNC_PDU_TEST_PATTERN_7BITS[] =
+ { 0x00 };
+
+
 #ifndef AUTOMATIC
-static char DEST_TEST_PATTERN[LE_MDMDEFS_PHONE_NUM_MAX_LEN];
+static char DEST_TEST_PATTERN[LE_MDMDEFS_PHONE_NUM_MAX_BYTES];
 #else
 #define DEST_TEST_PATTERN  "XXXXXXXXXXXX"
 #endif
@@ -62,9 +56,9 @@ static void TestRxHandler(le_sms_MsgRef_t msg, void* contextPtr)
     le_sms_Format_t       myformat;
     le_sms_Status_t       mystatus;
     le_result_t           res;
-    char                  tel[LE_MDMDEFS_PHONE_NUM_MAX_LEN];
-    char                  timestamp[LE_SMS_TIMESTAMP_MAX_LEN];
-    char                  text[LE_SMS_TEXT_MAX_LEN];
+    char                  tel[LE_MDMDEFS_PHONE_NUM_MAX_BYTES];
+    char                  timestamp[LE_SMS_TIMESTAMP_MAX_BYTES];
+    char                  text[LE_SMS_TEXT_MAX_BYTES] = {0};
     size_t                uintval;
 
     LE_INFO("-TEST- New SMS message received ! msg.%p", msg);
@@ -77,6 +71,7 @@ static void TestRxHandler(le_sms_MsgRef_t msg, void* contextPtr)
         if(res != LE_OVERFLOW)
         {
             LE_ERROR("-TEST 1/13- Check le_sms_GetSenderTel failure (LE_OVERFLOW expected) !");
+            CU_ASSERT_TRUE(res != LE_OVERFLOW);
         }
         else
         {
@@ -87,6 +82,7 @@ static void TestRxHandler(le_sms_MsgRef_t msg, void* contextPtr)
         if(res != LE_OK)
         {
             LE_ERROR("-TEST 2/13- Check le_sms_GetSenderTel failure (LE_OK expected) !");
+            CU_ASSERT_TRUE(res != LE_OK);
         }
         else
         {
@@ -95,7 +91,9 @@ static void TestRxHandler(le_sms_MsgRef_t msg, void* contextPtr)
 
         if(strncmp(&tel[strlen(tel)-4], &DEST_TEST_PATTERN[strlen(DEST_TEST_PATTERN)-4], 4))
         {
-            LE_ERROR("-TEST  3/13- Check le_sms_GetSenderTel, bad Sender Telephone number! (%s)", tel);
+            LE_ERROR("-TEST  3/13- Check le_sms_GetSenderTel, bad Sender Telephone number! (%s)",
+                            tel);
+            CU_ASSERT_TRUE(true);
         }
         else
         {
@@ -108,17 +106,18 @@ static void TestRxHandler(le_sms_MsgRef_t msg, void* contextPtr)
            (uintval != strlen(LARGE_TEXT_TEST_PATTERN)))
         {
             LE_ERROR("-TEST  4/13- Check le_sms_GetLen, bad expected text length! (%zd)", uintval);
+            CU_ASSERT_TRUE(true);
         }
         else
         {
             LE_INFO("-TEST  4/13- Check le_sms_GetLen OK.");
         }
 
-
         res=le_sms_GetTimeStamp(msg, timestamp, 1);
         if(res != LE_OVERFLOW)
         {
             LE_ERROR("-TEST  5/13- Check le_sms_GetTimeStamp -LE_OVERFLOW error- failure!");
+            CU_ASSERT_TRUE(res != LE_OVERFLOW);
         }
         else
         {
@@ -128,6 +127,7 @@ static void TestRxHandler(le_sms_MsgRef_t msg, void* contextPtr)
         if(res != LE_OK)
         {
             LE_ERROR("-TEST  6/13- Check le_sms_GetTimeStamp failure!");
+            CU_ASSERT_TRUE(res != LE_OK);
         }
         else
         {
@@ -138,6 +138,7 @@ static void TestRxHandler(le_sms_MsgRef_t msg, void* contextPtr)
         if(res != LE_OK)
         {
             LE_ERROR("-TEST  7/13- Check le_sms_GetText failure!");
+            CU_ASSERT_TRUE(res != LE_OK);
         }
         else
         {
@@ -150,6 +151,7 @@ static void TestRxHandler(le_sms_MsgRef_t msg, void* contextPtr)
         )
         {
             LE_ERROR("-TEST  8/13- Check le_sms_GetText, bad expected received text! (%s)", text);
+            CU_ASSERT_TRUE(true);
         }
         else
         {
@@ -161,6 +163,7 @@ static void TestRxHandler(le_sms_MsgRef_t msg, void* contextPtr)
         if(res != LE_NOT_PERMITTED)
         {
             LE_ERROR("-TEST  9/13- Check le_sms_SetDestination, parameter check failure!");
+            CU_ASSERT_TRUE(res != LE_NOT_PERMITTED);
         }
         else
         {
@@ -171,6 +174,7 @@ static void TestRxHandler(le_sms_MsgRef_t msg, void* contextPtr)
         if(res != LE_NOT_PERMITTED)
         {
             LE_ERROR("-TEST  10/13- Check le_sms_SetText, parameter check failure!");
+            CU_ASSERT_TRUE(res != LE_NOT_PERMITTED);
         }
         else
         {
@@ -184,6 +188,7 @@ static void TestRxHandler(le_sms_MsgRef_t msg, void* contextPtr)
         if(mystatus != LE_SMS_RX_READ)
         {
             LE_ERROR("-TEST  11/13- Check le_sms_GetStatus, bad status (%d)!", mystatus);
+            CU_ASSERT_TRUE(mystatus != LE_SMS_RX_READ);
         }
         else
         {
@@ -196,6 +201,7 @@ static void TestRxHandler(le_sms_MsgRef_t msg, void* contextPtr)
         if(mystatus != LE_SMS_RX_UNREAD)
         {
             LE_ERROR("-TEST  12/13- Check le_sms_GetStatus, bad status (%d)!", mystatus);
+            CU_ASSERT_TRUE(mystatus != LE_SMS_RX_UNREAD);
         }
         else
         {
@@ -206,6 +212,7 @@ static void TestRxHandler(le_sms_MsgRef_t msg, void* contextPtr)
         if(res != LE_OK)
         {
             LE_ERROR("-TEST  13/13- Check le_sms_DeleteFromStorage failure!");
+            CU_ASSERT_TRUE(res != LE_OK);
         }
         else
         {
@@ -234,7 +241,7 @@ void GetTel(void)
     do
     {
         fprintf(stderr, "Please enter the device's telephone number to perform the SMS tests: \n");
-        strPtr=fgets ((char*)DEST_TEST_PATTERN, LE_MDMDEFS_PHONE_NUM_MAX_LEN, stdin);
+        strPtr=fgets ((char*)DEST_TEST_PATTERN, LE_MDMDEFS_PHONE_NUM_MAX_BYTES, stdin);
     }while (strlen(strPtr) == 0);
 
     DEST_TEST_PATTERN[strlen(DEST_TEST_PATTERN)-1]='\0';
@@ -257,9 +264,9 @@ void Testle_sms_SetGetText()
     le_result_t           res;
     le_sms_MsgRef_t       myMsg;
     le_sms_Format_t       myformat;
-    char                  timestamp[LE_SMS_TIMESTAMP_MAX_LEN];
-    char                  tel[LE_MDMDEFS_PHONE_NUM_MAX_LEN];
-    char                  text[LE_SMS_TEXT_MAX_LEN];
+    char                  timestamp[LE_SMS_TIMESTAMP_MAX_BYTES];
+    char                  tel[LE_MDMDEFS_PHONE_NUM_MAX_BYTES];
+    char                  text[LE_SMS_TEXT_MAX_BYTES] = {0};
     size_t                uintval;
 
     myMsg = le_sms_Create();
@@ -310,9 +317,9 @@ void Testle_sms_SetGetBinary()
     le_result_t           res;
     le_sms_MsgRef_t       myMsg;
     le_sms_Format_t       myformat;
-    char                  timestamp[LE_SMS_TIMESTAMP_MAX_LEN];
-    char                  tel[LE_MDMDEFS_PHONE_NUM_MAX_LEN];
-    uint8_t               raw[LE_SMS_BINARY_MAX_LEN];
+    char                  timestamp[LE_SMS_TIMESTAMP_MAX_BYTES];
+    char                  tel[LE_MDMDEFS_PHONE_NUM_MAX_BYTES];
+    uint8_t               raw[LE_SMS_BINARY_MAX_BYTES];
     size_t                uintval;
     uint32_t              i;
 
@@ -369,16 +376,17 @@ void Testle_sms_SetGetPDU()
 {
     le_result_t           res;
     le_sms_MsgRef_t       myMsg;
-    char                  timestamp[LE_SMS_TIMESTAMP_MAX_LEN];
-    char                  tel[LE_MDMDEFS_PHONE_NUM_MAX_LEN];
-    uint8_t               pdu[LE_SMS_PDU_MAX_LEN];
+    char                  timestamp[LE_SMS_TIMESTAMP_MAX_BYTES];
+    char                  tel[LE_MDMDEFS_PHONE_NUM_MAX_BYTES];
+    uint8_t               pdu[LE_SMS_PDU_MAX_BYTES];
     size_t                uintval;
     uint32_t              i;
 
     myMsg = le_sms_Create();
     CU_ASSERT_PTR_NOT_NULL(myMsg);
 
-    res=le_sms_SetPDU(myMsg, PDU_TEST_PATTERN_7BITS, sizeof(PDU_TEST_PATTERN_7BITS)/sizeof(PDU_TEST_PATTERN_7BITS[0]));
+    res=le_sms_SetPDU(myMsg, PDU_TEST_PATTERN_7BITS, sizeof(PDU_TEST_PATTERN_7BITS)/
+                    sizeof(PDU_TEST_PATTERN_7BITS[0]));
     LE_INFO("le_sms_SetPDU return %d",res);
 
     CU_ASSERT_EQUAL(res, LE_OK);
@@ -419,17 +427,17 @@ void Testle_sms_SetGetSmsCenterAddress
 )
 {
     le_result_t           res;
-    char smscMdmRefStr[LE_MDMDEFS_PHONE_NUM_MAX_LEN] = {0};
-    char smscMdmStr[LE_MDMDEFS_PHONE_NUM_MAX_LEN] = {0};
-    char smscStrs[LE_MDMDEFS_PHONE_NUM_MAX_LEN] = "+33123456789";
+    char smscMdmRefStr[LE_MDMDEFS_PHONE_NUM_MAX_BYTES] = {0};
+    char smscMdmStr[LE_MDMDEFS_PHONE_NUM_MAX_BYTES] = {0};
+    char smscStrs[LE_MDMDEFS_PHONE_NUM_MAX_BYTES] = "+33123456789";
 
     // Get current SMS service center address.
     // Check LE_OVERFLOW error case
-    res = le_sms_GetSmsCenterAddress(smscMdmRefStr, LE_MDMDEFS_PHONE_NUM_MAX_LEN-2);
+    res = le_sms_GetSmsCenterAddress(smscMdmRefStr, 5);
     CU_ASSERT_EQUAL(res, LE_OVERFLOW);
 
     // Get current SMS service center address.
-    res = le_sms_GetSmsCenterAddress(smscMdmRefStr, LE_MDMDEFS_PHONE_NUM_MAX_LEN);
+    res = le_sms_GetSmsCenterAddress(smscMdmRefStr, LE_MDMDEFS_PHONE_NUM_MAX_BYTES);
     CU_ASSERT_EQUAL(res, LE_OK);
 
     // Set "+33123456789" SMS service center address.
@@ -437,7 +445,7 @@ void Testle_sms_SetGetSmsCenterAddress
     CU_ASSERT_EQUAL(res, LE_OK);
 
     // Get current SMS service center address.
-    res = le_sms_GetSmsCenterAddress(smscMdmStr, LE_MDMDEFS_PHONE_NUM_MAX_LEN);
+    res = le_sms_GetSmsCenterAddress(smscMdmStr, LE_MDMDEFS_PHONE_NUM_MAX_BYTES);
     CU_ASSERT_EQUAL(res, LE_OK);
 
     // Restore previous SMS service center address.
@@ -445,7 +453,7 @@ void Testle_sms_SetGetSmsCenterAddress
     CU_ASSERT_EQUAL(res, LE_OK);
 
     // check if value get match with value set.
-    CU_ASSERT_EQUAL(strncmp(smscStrs,smscMdmStr, LE_MDMDEFS_PHONE_NUM_MAX_LEN), 0);
+    CU_ASSERT_EQUAL(strncmp(smscStrs,smscMdmStr, LE_MDMDEFS_PHONE_NUM_MAX_BYTES), 0);
 }
 
 
@@ -455,7 +463,7 @@ void Testle_sms_SetGetSmsCenterAddress
  *
  */
 //--------------------------------------------------------------------------------------------------
-void Testle_sms_SendText()
+void Testle_sms_Send_Text()
 {
     le_result_t           res;
     le_sms_MsgRef_t       myMsg;
@@ -488,13 +496,66 @@ void Testle_sms_SendText()
     le_sms_Delete(myMsg);
 }
 
+
+
+static void CallbackTestHandler
+(
+    le_sms_MsgRef_t msgRef,
+    le_sms_Status_t status,
+    void* contextPtr
+)
+{
+    LE_INFO("Message %p, status %d, ctx %p", msgRef, status, contextPtr);
+    le_sms_Delete(msgRef);
+    CU_ASSERT_NOT_EQUAL(status, LE_SMS_SENT);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test: Send a simple Text message with le_sms_SendText API().
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void Testle_sms_AsyncSendText()
+{
+    int i = 0;
+    le_sms_MsgRef_t  myMsg;
+    for (i=0; i<1; i++)
+    {
+        myMsg = le_sms_SendText(DEST_TEST_PATTERN, TEXT_TEST_PATTERN,
+                        CallbackTestHandler, NULL );
+        LE_INFO("-TEST- Create Async text Msg %p", myMsg);
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test: Send a simple Text message with le_sms_SendPdu API().
+ * ASYNC_PDU_TEST_PATTERN_7BITS PDU to encode.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void Testle_sms_AsyncSendPdu()
+{
+    int i = 0;
+    for (i=0; i<1; i++)
+    {
+        le_sms_MsgRef_t  myMsg = le_sms_SendPdu( ASYNC_PDU_TEST_PATTERN_7BITS,
+                    sizeof(ASYNC_PDU_TEST_PATTERN_7BITS),
+                    CallbackTestHandler, (void*) 2);
+
+        LE_INFO("-TEST- Create Async PDU Msg %p", myMsg);
+    }
+}
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Test: Send a raw binary message.
  *
  */
 //--------------------------------------------------------------------------------------------------
-void Testle_sms_SendBinary()
+void Testle_sms_Send_Binary()
 {
     le_result_t           res;
     le_sms_MsgRef_t       myMsg;
@@ -507,7 +568,8 @@ void Testle_sms_SendBinary()
     res=le_sms_SetDestination(myMsg, DEST_TEST_PATTERN);
     CU_ASSERT_EQUAL(res, LE_OK);
 
-    res=le_sms_SetBinary(myMsg, BINARY_TEST_PATTERN, sizeof(BINARY_TEST_PATTERN)/sizeof(BINARY_TEST_PATTERN[0]));
+    res=le_sms_SetBinary(myMsg, BINARY_TEST_PATTERN, sizeof(BINARY_TEST_PATTERN)/
+                    sizeof(BINARY_TEST_PATTERN[0]));
     CU_ASSERT_EQUAL(res, LE_OK);
 
     res=le_sms_Send(myMsg);
@@ -524,7 +586,7 @@ void Testle_sms_SendBinary()
  *
  */
 //--------------------------------------------------------------------------------------------------
-void Testle_sms_SendPdu()
+void Testle_sms_Send_Pdu()
 {
     le_result_t           res;
     le_sms_MsgRef_t      myMsg;
@@ -534,14 +596,16 @@ void Testle_sms_SendPdu()
 
     LE_DEBUG("Create Msg %p", myMsg);
 
-    res=le_sms_SetPDU(myMsg, PDU_TEST_PATTERN_7BITS, sizeof(PDU_TEST_PATTERN_7BITS)/sizeof(PDU_TEST_PATTERN_7BITS[0]));
+    res=le_sms_SetPDU(myMsg, PDU_TEST_PATTERN_7BITS, sizeof(PDU_TEST_PATTERN_7BITS)/
+                    sizeof(PDU_TEST_PATTERN_7BITS[0]));
     CU_ASSERT_EQUAL(res, LE_OK);
 
     res=le_sms_Send(myMsg);
     CU_ASSERT_NOT_EQUAL(res, LE_FAULT);
     CU_ASSERT_NOT_EQUAL(res, LE_FORMAT_ERROR);
 
-    res=le_sms_SetPDU(myMsg, PDU_TEST_PATTERN_8BITS, sizeof(PDU_TEST_PATTERN_8BITS)/sizeof(PDU_TEST_PATTERN_8BITS[0]));
+    res=le_sms_SetPDU(myMsg, PDU_TEST_PATTERN_8BITS, sizeof(PDU_TEST_PATTERN_8BITS)/
+                    sizeof(PDU_TEST_PATTERN_8BITS[0]));
     CU_ASSERT_EQUAL(res, LE_OK);
 
     res=le_sms_Send(myMsg);
@@ -601,8 +665,37 @@ void Testle_sms_ReceivedList()
             {
                 mystatus=le_sms_GetStatus(lMsg1);
                 CU_ASSERT_TRUE((mystatus==LE_SMS_RX_READ)||(mystatus==LE_SMS_RX_UNREAD));
-                LE_INFO("-TEST- Delete Rx message 1.%p", lMsg1);
-                le_sms_Delete(lMsg1);
+                // le_sms_Delete() API kills client if message belongs in a Rx list.
+                LE_INFO("-TEST- Delete Rx message 1 from storage.%p", lMsg1);
+
+                // Verify Mark Read functions on Rx message list
+                le_sms_MarkRead(lMsg1);
+                mystatus = le_sms_GetStatus(lMsg1);
+                if(mystatus != LE_SMS_RX_READ)
+                {
+                    LE_ERROR("- Check le_sms_GetStatus, bad status (%d)!", mystatus);
+                    CU_ASSERT_TRUE(mystatus != LE_SMS_RX_READ);
+                }
+
+                // Verify Mark Unread functions on Rx message list
+                le_sms_MarkUnread(lMsg1);
+                mystatus = le_sms_GetStatus(lMsg1);
+                if(mystatus != LE_SMS_RX_UNREAD)
+                {
+                    LE_ERROR("- Check le_sms_GetStatus, bad status (%d)!", mystatus);
+                    CU_ASSERT_TRUE(mystatus != LE_SMS_RX_UNREAD);
+                }
+
+                // Verify Mark Read functions on Rx message list
+                le_sms_MarkRead(lMsg1);
+                mystatus = le_sms_GetStatus(lMsg1);
+                if(mystatus != LE_SMS_RX_READ)
+                {
+                    LE_ERROR("- Check le_sms_GetStatus, bad status (%d)!", mystatus);
+                    CU_ASSERT_TRUE(mystatus != LE_SMS_RX_READ);
+                }
+                LE_INFO("-TEST- Delete Rx message 1 from storage.%p", lMsg1);
+                le_sms_DeleteFromStorage(lMsg1);
             }
 
             lMsg2=le_sms_GetNext(receivedList);
@@ -611,8 +704,9 @@ void Testle_sms_ReceivedList()
             {
                 mystatus=le_sms_GetStatus(lMsg2);
                 CU_ASSERT_TRUE((mystatus==LE_SMS_RX_READ)||(mystatus==LE_SMS_RX_UNREAD));
-                LE_INFO("-TEST- Delete Rx message 2.%p", lMsg2);
-                le_sms_Delete(lMsg2);
+                // le_sms_Delete() API kills client if message belongs in a Rx list.
+                LE_INFO("-TEST- Delete Rx message 2 from storage.%p", lMsg2);
+                le_sms_DeleteFromStorage(lMsg2);
             }
 
             LE_INFO("-TEST- Delete the ReceivedList");

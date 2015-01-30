@@ -1,7 +1,7 @@
  /**
   * This module implements the le_posCtrl's tests.
   *
-  * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
   *
   */
 
@@ -10,22 +10,35 @@
 
 #include "interfaces.h"
 
-// max length of command line
+// Max length of command line
 #define CMD_LEN_MAX 50
 
-
+/*
+ * All theses commands can be used to test the positioning service behavior by using different
+ *  sequences : Start, stop and kill events.
+ * Multi instance of this application can be started in the shell to create different
+ *  positioning client.
+ * Commands:
+ * - start     : Requests a positioning client and returns/displays the <ID>.
+ * - stop <ID> : Releases a positioning client request with the specific <ID> (without 0x).
+ * - stop 0    : LE_KILL_CLIENT() occurs in the positioning control service side.
+ * - kill_null   : same behavior than stop 0.
+ * - kill_assert : LE_ASSERT() API is called on the application test positioning client side.
+ */
 static bool GetCmd
 (
     void
 )
 {
-    char *strPtr;
-    char cmd_string[CMD_LEN_MAX];
-    char cmd1[CMD_LEN_MAX];
+    char *strPtr = NULL;
+    char cmd_string[CMD_LEN_MAX] = {0};
+    char cmd1[CMD_LEN_MAX] = {0};
     bool res = true;
     le_posCtrl_ActivationRef_t actRef = NULL;
-    fprintf(stderr, "Command are: 'start' to start a new client, returns an id.\n");
-    fprintf(stderr, "             'stop id'to release an id.\n");
+    fprintf(stderr, "Command are: 'start' to start a new client, returns an ID.\n");
+    fprintf(stderr, "             'stop <ID>'to release the <ID> specified (without 0x).\n");
+    fprintf(stderr, "             'kill_null' to kill application from service with LE_KILL_CLIENT().\n");
+    fprintf(stderr, "             'kill_assert' to kill application from itself with LE_ASSERT().\n");
     fprintf(stderr, "              other command to exit of application\n");
 
     do
@@ -56,10 +69,27 @@ static bool GetCmd
         fprintf(stderr, "le_posCtrl_Request id %p\n", actRef);
         res = false;
     }
+    else if (!strcmp(cmd1, "kill_null"))
+    {
+        LE_INFO("kill_null application");
+        fprintf(stderr, "kill_null applciation\n");
+        le_posCtrl_Release(NULL);
+        LE_ASSERT(false);
+    }
+    else if (!strcmp(cmd1, "kill_assert"))
+    {
+        LE_INFO("kill_assert application");
+        fprintf(stderr, "kill_assert applciation\n");
+        LE_ASSERT(false);
+    }
     return res;
 }
 
-
+/*
+ * Multi instance of this application can be started in the shell to create different
+ * positioning client.
+ *
+ **/
 COMPONENT_INIT
 {
     bool stopTest = false;
@@ -72,5 +102,5 @@ COMPONENT_INIT
     }
 
     LE_INFO("Exit le_posCtrl Test!");
-    exit(0);
+    exit(EXIT_SUCCESS);
 }

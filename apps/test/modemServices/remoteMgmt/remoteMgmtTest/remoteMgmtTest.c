@@ -5,7 +5,7 @@
   * warned that the client is died and it removes the DoNotDisturb flag itself. This can be checked
   * by watching the logs (nothing automatic).
   *
-  * Copyright (C) Sierra Wireless, Inc. 2014.  Use of this work is subject to license.
+  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
   *
   */
 

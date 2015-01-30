@@ -1,0 +1,26 @@
+executables:
+{
+    gnssTest = ( gnssTest )
+}
+
+processes:
+{
+    envVars:
+    {
+        LE_LOG_LEVEL = DEBUG
+    }
+
+    run:
+    {
+        (gnssTest)
+    }
+}
+
+start: manual
+
+bindings:
+{
+    gnssTest.gnssTest.le_pos -> positioningService.le_pos
+    gnssTest.gnssTest.le_posCtrl -> positioningService.le_posCtrl
+    gnssTest.gnssTest.le_gnss -> positioningService.le_gnss
+}

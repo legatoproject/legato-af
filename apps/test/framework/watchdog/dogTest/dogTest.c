@@ -46,13 +46,14 @@ COMPONENT_INIT
     LE_INFO("Watchdog test starting");
 
     // Get the process name.
-    char procName[100];
-    LE_ASSERT(le_arg_GetProgramName(procName, sizeof(procName), NULL) == LE_OK);
+    const char* procName = le_arg_GetProgramName();
+    LE_ASSERT(procName != NULL);
 
     LE_INFO("======== Start '%s' Test ========", procName);
 
     // Get the sleep increment in milliseconds.
-    char millisecondsStr[100] = {'\0'};
+    const char* millisecondsStr;
+    le_result_t result;
     int millisecondIncrement;
     int millisecondSleep;
 
@@ -60,18 +61,24 @@ COMPONENT_INIT
     LE_INFO("numArgs = %d", numArgs);
     if (numArgs < 1)
     {
-        LE_INFO("Expected 2 arguments, got %d", numArgs);
+        LE_FATAL("Expected 2 arguments, got %d", numArgs);
     }
 
-    if (le_arg_GetArg(0, millisecondsStr, sizeof(millisecondsStr)) == LE_OK)
-    {
-        millisecondSleep = atoi(millisecondsStr);
-    }
-    if (le_arg_GetArg(1, millisecondsStr, sizeof(millisecondsStr)) == LE_OK)
-    {
-        millisecondIncrement = atoi(millisecondsStr);
-    }
+    millisecondsStr = le_arg_GetArg(0);
+    LE_ASSERT(millisecondsStr != NULL);
+    result = le_utf8_ParseInt(&millisecondSleep, millisecondsStr);
+    LE_FATAL_IF(result != LE_OK,
+                "Invalid number of milliseconds to sleep (%s). le_utf8_ParseInt() returned %s.",
+                millisecondsStr,
+                LE_RESULT_TXT(result));
 
+    millisecondsStr = le_arg_GetArg(1);
+    LE_ASSERT(millisecondsStr != NULL);
+    result = le_utf8_ParseInt(&millisecondIncrement, millisecondsStr);
+    LE_FATAL_IF(result != LE_OK,
+                "Invalid number of milliseconds to increment (%s). le_utf8_ParseInt() returned %s.",
+                millisecondsStr,
+                LE_RESULT_TXT(result));
 
     for ( ;
           millisecondSleep < millisecondLimit;
@@ -88,5 +95,5 @@ COMPONENT_INIT
     }
 
     // We should never get here
-    LE_INFO("FAIL");
+    LE_FATAL("FAIL");
 }

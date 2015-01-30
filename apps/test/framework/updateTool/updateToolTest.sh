@@ -1,6 +1,7 @@
 #!/bin/bash
 
 targetAddr=$1
+targetType=${2:-ar7}
 
 
 # Checks if the logStr is in the logs.
@@ -33,15 +34,18 @@ function CheckRet
 }
 
 # List of apps
-appsList="FaultApp RestartApp StopApp NonSandboxedFaultApp NonSandboxedRestartApp NonSandboxedStopApp"
+appsList="updateFaultApp updateRestartApp updateStopApp updateNonSandboxedFaultApp updateNonSandboxedRestartApp updateNonSandboxedStopApp"
 
 echo "******** UpdateTool Test Starting ***********"
 
-echo "Build all the apps."
+echo "Pack all the apps."
+appDir="$LEGATO_ROOT/build/$targetType/bin/tests"
+cd "$appDir"
+CheckRet
 for app in $appsList
 do
-    mkapp $app.adef -t ar7
-    update-pack update app ar7 $app.ar7
+    echo "  Packing '$appDir/$app.$targetType'"
+    update-pack update app $targetType $app.$targetType
     CheckRet
 done
 
@@ -52,6 +56,7 @@ CheckRet
 echo "Install all the apps."
 for app in $appsList
 do
+    echo "  Installing '$appDir/$app.update'"
     cat $app.update| ssh root@$targetAddr "/usr/local/bin/update"
     CheckRet
 done
@@ -63,8 +68,9 @@ sleep 1
 echo "Clear the logs."
 ssh root@$targetAddr "killall syslogd"
 CheckRet
-ssh root@$targetAddr "/sbin/syslogd -C1000"
-CheckRet
+
+# Must restart syslog this way so that it gets the proper SMACK label.
+ssh root@$targetAddr "/mnt/flash/startup/fg_02_RestartSyslogd"
 
 echo "Run the apps."
 for app in $appsList
@@ -77,7 +83,7 @@ done
 sleep 3
 
 echo "Uninstall all apps."
-update-pack remove app ar7 '*'
+update-pack remove app $targetType '*'
 cat removeAllapp.uinst | ssh root@$targetAddr  "/usr/local/bin/update"
 
 echo "Grepping the logs to check the results."
@@ -99,3 +105,4 @@ checkLogStr "==" 1 "======== Start 'NonSandboxedStopApp/noExit' Test ========"
 
 echo "UpdateTool Test Passed!"
 exit 0
+

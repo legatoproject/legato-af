@@ -1,0 +1,31 @@
+executables:
+{
+    eCallWPrompt = ( eCallWPrompt )
+}
+
+bundles:
+{
+    file:
+    {
+        [r]     audio/0-to-9.wav     /
+        [r]     audio/male.wav     /
+    }
+}
+
+processes:
+{
+    envVars:
+    {
+        LE_LOG_LEVEL = DEBUG
+    }
+
+    maxFileBytes: 5000K
+}
+
+start: manual
+
+bindings:
+{
+    eCallWPrompt.eCallWPrompt.le_ecall -> modemService.le_ecall
+    eCallWPrompt.eCallWPrompt.le_audio -> audioService.le_audio
+}

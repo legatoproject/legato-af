@@ -13,7 +13,7 @@
   *    Automatically from storage (see traces, pa_sms_DelMsgFromMem()). All handlers are removed and
   *    application exits.
   *
-  * Copyright (C) Sierra Wireless, Inc. 2014.
+  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
   *
   * Use of this work is subject to license.
   *
@@ -22,6 +22,70 @@
 #include "legato.h"
 #include "interfaces.h"
 
+
+#define SERVICE_BASE_BINDINGS_CFG  "/users/root/bindings"
+
+typedef void (*LegatoServiceInit_t)(void);
+
+typedef struct {
+    const char * appNamePtr;
+    const char * serviceNamePtr;
+    LegatoServiceInit_t serviceInitPtr;
+} ServiceInitEntry_t;
+
+#define SERVICE_ENTRY(aPP, sVC) { aPP, #sVC, sVC##_ConnectService },
+
+typedef void (*LegatoServiceInit_t)(void);
+
+
+const ServiceInitEntry_t ServiceInitEntries[] = {
+    SERVICE_ENTRY("modemService", le_sms)
+};
+
+
+static void SetupBindings(void)
+{
+    int serviceIndex;
+    char cfgPath[512];
+    le_cfg_IteratorRef_t iteratorRef;
+
+    /* Setup bindings */
+    for(serviceIndex = 0; serviceIndex < NUM_ARRAY_MEMBERS(ServiceInitEntries); serviceIndex++ )
+    {
+        const ServiceInitEntry_t * entryPtr = &ServiceInitEntries[serviceIndex];
+
+        /* Update binding in config tree */
+        LE_INFO("-> Bind %s", entryPtr->serviceNamePtr);
+
+        snprintf(cfgPath, sizeof(cfgPath), SERVICE_BASE_BINDINGS_CFG "/%s", entryPtr->serviceNamePtr);
+
+        iteratorRef = le_cfg_CreateWriteTxn(cfgPath);
+
+        le_cfg_SetString(iteratorRef, "app", entryPtr->appNamePtr);
+        le_cfg_SetString(iteratorRef, "interface", entryPtr->serviceNamePtr);
+
+        le_cfg_CommitTxn(iteratorRef);
+    }
+
+    /* Tel legato to reload its bindings */
+    system("sdir load");
+}
+
+static void ConnectServices(void)
+{
+    int serviceIndex;
+
+    /* Init services */
+    for(serviceIndex = 0; serviceIndex < NUM_ARRAY_MEMBERS(ServiceInitEntries); serviceIndex++ )
+    {
+        const ServiceInitEntry_t * entryPtr = &ServiceInitEntries[serviceIndex];
+
+        LE_INFO("-> Init %s", entryPtr->serviceNamePtr);
+        entryPtr->serviceInitPtr();
+    }
+
+    LE_INFO("All services bound!");
+}
 
 
 static le_sms_RxMessageHandlerRef_t HandlerRef1, HandlerRef2, HandlerRef3, HandlerRef4;
@@ -68,6 +132,7 @@ static void RxMessageHandler1
         if(res != LE_OK)
         {
             LE_ERROR("le_sms_DeleteFromStorage has failed (res.%d)!", res);
+            LE_ASSERT(res != LE_OK);
         }
         else
         {
@@ -121,7 +186,9 @@ static void RxMessageHandler3
     if (listRef == NULL)
     {
         LE_ERROR("Can't create SMS list.");
+        LE_ASSERT(listRef == NULL);
     }
+
     sleep(1);
     if (listRef)
     {
@@ -165,6 +232,9 @@ static void RxMessageHandler4
 COMPONENT_INIT
 {
     LE_INFO("Start Multiple SMS deletion race test!");
+
+    SetupBindings();
+    ConnectServices();
 
     // First handler receives sms reference and try to delete it from storage.
     // Sms Deletion will be delayed until no more object references exist.

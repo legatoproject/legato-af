@@ -1,0 +1,32 @@
+start: manual
+
+executables:
+{
+    client = (fileClient)
+}
+
+processes:
+{
+    run:
+    {
+        (client)
+    }
+}
+
+bundles:
+{
+    file:
+    {
+        [r] testFile    /bin/
+    }
+
+    dir:
+    {
+        [rx] testDir    /testDir
+    }
+}
+
+bindings:
+{
+    client.fileClient.filePasser -> fileServer.filePasser
+}
