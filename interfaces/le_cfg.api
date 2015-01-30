@@ -1,9 +1,9 @@
 
 // -------------------------------------------------------------------------------------------------
 /**
- *  @page api_config Config Tree API
+ * @page api_config Config Tree API
  *
- *  @ref le_cfg_interface.h "API reference"
+ * @ref le_cfg_interface.h "API Reference"
  *
  * <HR>
  *
@@ -239,14 +239,14 @@
 
  * <HR>
  *
- *  Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ *  Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 /** @file le_cfg_interface.h
 
 @ref api_config
 
-*  Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+*  Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 // -------------------------------------------------------------------------------------------------
 
@@ -532,29 +532,6 @@ FUNCTION le_result_t GetNodeName
 );
 
 
-// -------------------------------------------------------------------------------------------------
-/**
- *  Change the name of the node that the iterator is currently pointing at.
- *
- *  @warn This function has been deprecated and will be removed in the next release.
- *
- *  @return
- *      - LE_OK           Write was completed successfully.
- *      - LE_FORMAT_ERROR The new name included illegal characters, '/', or ':'.   Or used one of
- *                        the reserved names: '.', or '..'.  Format error is also returned if the
- *                        new name is empty.
- *      - LE_DUPLICATE    If there is another node with the new name in the same collection.
- */
-// -------------------------------------------------------------------------------------------------
-FUNCTION le_result_t SetNodeName
-(
-    le_cfg_IteratorRef_t iteratorRef IN,  ///< Iterator object to use to read from the tree.
-    string path[STR_LEN]             IN,  ///< Path to the target node.  Can be an absolute path, or
-                                          ///< a path relative from the iterator's current position.
-    string name[NAME_LEN]            IN   ///< New name for the node object.
-);
-
-
 
 
 // -------------------------------------------------------------------------------------------------
@@ -566,23 +543,26 @@ FUNCTION le_result_t SetNodeName
 
 // -------------------------------------------------------------------------------------------------
 /**
- *  Register a call back on a given node object.  Once registered, if that node or if any of its
- *  children are read from, written to, created or deleted, then this function will be called.
- *
- *  @return Handle to the event registration.
+ * Handler for node change notifications.
  */
 // -------------------------------------------------------------------------------------------------
 HANDLER ChangeHandler
-{
-    HANDLER_PARAMS
-    (
-    );
+(
+);
 
-    ADD_HANDLER_PARAMS
-    (
-        string newPath[STR_LEN] IN  ///< Path to the object to watch.
-    );
-};
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ * This event provides information on changes to the given node object, or any of it's children,
+ * where a change could be either a read, write, create or delete operation.
+ */
+// -------------------------------------------------------------------------------------------------
+EVENT Change
+(
+    string newPath[STR_LEN] IN, ///< Path to the object to watch.
+    handler ChangeHandler       ///< Handler to receive change notification
+);
 
 
 

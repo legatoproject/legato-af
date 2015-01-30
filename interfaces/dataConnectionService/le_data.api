@@ -90,7 +90,7 @@
  *
  * <HR>
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 
@@ -100,7 +100,7 @@
  *
  * Legato @ref c_le_data include file.
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  *
  */
 
@@ -119,13 +119,20 @@ REFERENCE RequestObj;
  */
 //--------------------------------------------------------------------------------------------------
 HANDLER ConnectionStateHandler
-{
-    HANDLER_PARAMS
-    (
-        string intfName[100] IN,  ///< Interface name for the data connection
-        bool isConnected IN       ///< State: connected or disconnected
-    );
-};
+(
+    string intfName[100] IN,  ///< Interface name for the data connection
+    bool isConnected IN       ///< State: connected or disconnected
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This event provides information on connection state changes
+ */
+//--------------------------------------------------------------------------------------------------
+EVENT ConnectionState
+(
+    handler ConnectionStateHandler
+);
 
 
 //--------------------------------------------------------------------------------------------------

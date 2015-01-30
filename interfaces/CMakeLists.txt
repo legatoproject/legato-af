@@ -1,7 +1,7 @@
 #
 # Rules to generate C header files containing Doxygen markup for documentation purposes only.
 #
-# Copyright 2014, Sierra Wireless Inc.  Use of this work is subject to license.
+# Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 #
 
 
@@ -15,6 +15,7 @@ function(generate_header API_FILE)
     add_custom_command( OUTPUT ${HEADER_PATH}
                         COMMAND ${LEGATO_TOOL_IFGEN} --gen-interface ${API_PATH}
                         --import-dir ${CMAKE_CURRENT_SOURCE_DIR}/audio
+                        --import-dir ${CMAKE_CURRENT_SOURCE_DIR}/modemServices
                         ${ARGN}
                         COMMENT "ifgen '${API_FILE}': ${HEADER_PATH}"
                         DEPENDS ${API_FILE} legato
@@ -46,9 +47,16 @@ generate_header(modemServices/le_fwupdate.api)
 generate_header(modemServices/le_sim.api)
 generate_header(modemServices/le_info.api)
 generate_header(modemServices/le_mcc_call.api)
+generate_header(modemServices/le_ips.api)
+generate_header(modemServices/le_temp.api)
 generate_header(audio/le_audio.api)
 generate_header(le_cfgAdmin.api)
+generate_header(positioning/le_gnss.api)
 generate_header(positioning/le_pos.api)
 generate_header(positioning/le_posCtrl.api)
 generate_header(dataConnectionService/le_data.api)
 generate_header(voiceCallService/le_voicecall.api)
+generate_header(monitoring/le_antenna.api)
+generate_header(powerMgr/le_pm.api)
+generate_header(secureStorage/le_secStore.api)
+generate_header(airVantage/le_avc.api)

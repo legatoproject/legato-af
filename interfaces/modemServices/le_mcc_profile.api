@@ -6,7 +6,7 @@
  *
  * <HR>
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 /**
@@ -76,7 +76,7 @@
  *
  * <HR>
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 //--------------------------------------------------------------------------------------------------
 /**
@@ -84,13 +84,11 @@
  *
  * Legato @ref c_mcc_profile include file.
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 //--------------------------------------------------------------------------------------------------
 
-// NOTE: string sizes are set to an arbitrary value.  The correct values
-//       still need to be filled in.
-
+USETYPES le_mdmDefs.api;
 USETYPES le_audio.api;
 USETYPES le_mcc_call.api;
 
@@ -116,6 +114,12 @@ ENUM State
 //--------------------------------------------------------------------------------------------------
 REFERENCE Obj;
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Define the maximum profile name.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE  NAME_MAX_LEN = (100);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -124,17 +128,21 @@ REFERENCE Obj;
  */
 //--------------------------------------------------------------------------------------------------
 HANDLER StateChangeHandler
-{
-    ADD_HANDLER_PARAMS
-    (
-        le_mcc_profile_ObjRef_t profileRef IN  ///< The profile reference.
-    );
+(
+    State  newState    ///< New state profile.
+);
 
-    HANDLER_PARAMS
-    (
-        le_mcc_profile_State_t  newState    ///< New state profile.
-    );
-};
+//--------------------------------------------------------------------------------------------------
+/**
+ * This event provides information on profile state changes for the given profileRef.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+EVENT StateChange
+(
+    Obj profileRef IN, ///< The profile reference.
+    handler StateChangeHandler
+);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -143,18 +151,22 @@ HANDLER StateChangeHandler
  */
 //--------------------------------------------------------------------------------------------------
 HANDLER CallEventHandler
-{
-    ADD_HANDLER_PARAMS
-    (
-        le_mcc_profile_ObjRef_t profileRef IN ///< The profile to update.
-    );
+(
+    le_mcc_call.Obj callRef,   ///< Call associated with the event.
+    le_mcc_call.Event  event   ///< Call event.
+);
 
-    HANDLER_PARAMS
-    (
-        le_mcc_call_ObjRef_t callRef,   ///< Call associated with the event.
-        le_mcc_call_Event_t  event      ///< Call event.
-    );
-};
+//--------------------------------------------------------------------------------------------------
+/**
+ * This event provides information on call state changes for the given profileRef.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+EVENT CallEvent
+(
+    Obj profileRef IN,  ///< The profile to update.
+    handler CallEventHandler
+);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -166,9 +178,9 @@ HANDLER CallEventHandler
  *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION le_mcc_profile_ObjRef_t GetByName
+FUNCTION Obj GetByName
 (
-    string profileNamePtr[100] IN ///< The name of the profile to search for.
+    string profileNamePtr[NAME_MAX_LEN] IN ///< The name of the profile to search for.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -181,7 +193,7 @@ FUNCTION le_mcc_profile_ObjRef_t GetByName
 //--------------------------------------------------------------------------------------------------
 FUNCTION Release
 (
-    le_mcc_profile_ObjRef_t profileRef IN ///< The Call profile reference.
+    Obj profileRef IN ///< The Call profile reference.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -194,9 +206,9 @@ FUNCTION Release
  *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION le_mcc_profile_State_t GetState
+FUNCTION State GetState
 (
-    le_mcc_profile_ObjRef_t profileRef IN  ///< The profile reference to read.
+    Obj profileRef IN  ///< The profile reference to read.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -210,12 +222,12 @@ FUNCTION le_mcc_profile_State_t GetState
  * @note On failure, the process exits, so you don't have to worry about checking the returned
  *       reference for validity.
  *
- * @note If destination number is too long (max 17 digits), it is a fatal error, the
- *       function will not return.
+ * @note If destination number is too long (max LE_MDMDEFS_PHONE_NUM_MAX_LEN digits),
+ * it is a fatal error, the function will not return.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION le_mcc_call_ObjRef_t CreateCall
+FUNCTION le_mcc_call.Obj CreateCall
 (
-    le_mcc_profile_ObjRef_t profileRef IN, ///< The profile to create a new call on.
-    string destinationPtr[17] IN           ///< The target number we are going to call.
+    Obj     profileRef IN,                                  ///< The profile to create a new call on.
+    string  destinationPtr[le_mdmDefs.PHONE_NUM_MAX_LEN] IN ///< The target number we are going to call.
 );

@@ -1,11 +1,11 @@
 /**
  * @page c_sim SIM
  *
- * @ref le_sim_interface.h "API reference"
+ * @ref le_sim_interface.h "API Reference"
  *
  * <HR>
  *
- * This file contains prototype definitions for high level SIM APIs.
+ * This file contains prototype definitions for SIM API.
  *
  * A subscriber identity module or subscriber identification module (SIM) is an integrated circuit
  * that securely stores the international mobile subscriber identity (IMSI) and related key used
@@ -13,22 +13,24 @@
  *
  * Most SIM cards can store a number of SMS messages and phone book contacts.
  *
- * @section le_sim_count Counting the SIM card slots
- * @c le_sim_CountSlots() returns the number of SIM card sockets mounted on the device.
- *
- * @c le_sim_GetSelectedCard() returns the selected SIM card number.
+ * le_sim_GetSelectedCard() returns the selected SIM card number.
  *
  * @section le_sim_create Creating a SIM object
- * You must create a SIM object by calling le_sim_Create() first; the card socket number must be specified with a parameter.
- * This passes the card socket number to create the required corresponding object
- * to the selected SIM card. Resources are automatically allocated for the SIM
- * object, which is referenced by @c le_sim_ObjRef_t type.
+ * You must create a SIM object by calling le_sim_Create() first; the requested SIM type must be
+ * specified with a parameter. Please refer to the target documentation for the supported SIM type
+ * list.
+ * This function passes the SIM type to create the required corresponding object. Resources are
+ * automatically allocated for the SIM object, which is referenced by le_sim_ObjRef_t type.
  *
- * When the SIM object is no longer needed, you must call @c le_sim_Delete() to free all
+ * When the SIM object is no longer needed, you must call le_sim_Delete() to free all
  * allocated ressources associated with the object.
  *
- * @section le_sim_delete Deleting a SIM object
- * To delete a SIM object, call @c le_sim_Delete(). This frees all the resources allocated for
+ * @section le_sim_SelectCard Select a card to use
+ * le_sim_SelectCard() function is used to select the SIM. By default, the SIM in slot 1 is used.
+ * @note The SIM selection is not reset persistent; this function has to be called at each start-up.
+ *
+ * @section le_sim_delete Delete a SIM object
+ * To delete a SIM object, call le_sim_Delete(). This frees all the resources allocated for
  * the SIM object. If several users own the SIM object (e.g., several
  * handler functions registered for new state notifications), the SIM object will only
  * be actually deleted after the last user deletes the SIM object.
@@ -43,7 +45,9 @@
  * Recommendation GSM 11.11) defined the ICCID length as 10 octets (20 digits) with
  * operator-specific structure.
  *
- * @c le_sim_GetICCID() API reads the identification number (ICCID).
+ * le_sim_GetICCID() API reads the identification number (ICCID).
+ *
+ * Using this API selects the requested SIM.
  *
  * \b IMSI:
  * The International Mobile Subscriber Identity or IMSI is a unique identification associated with
@@ -56,39 +60,62 @@
  * on the value of the MCC. The remaining digits are the mobile subscription identification number
  * (MSIN) within the network's customer base.
  *
- * @c le_sim_GetIMSI() API reads the international mobile subscriber identity (IMSI).
+ * \b Home \b Network \b Name:
+ * le_sim_GetHomeNetworkOperator() retrieves the Home Network Name.
+ *
+ * le_sim_GetIMSI() API reads the international mobile subscriber identity (IMSI).
+ *
+ * Using this API selects the requested SIM.
  *
  * \b Phone \b Number:
- * @c le_sim_GetSubscriberPhoneNumber() API reads the Phone Number associated to the SIM.
+ * le_sim_GetSubscriberPhoneNumber() API reads the Phone Number associated to the SIM.
  * If the phone number has not been provisioned, it will return the empty string.
  *
+ * Using this API selects the requested SIM.
+ *
  * \b Home \b Network \b Information:
- * - @c le_sim_GetHomeNetworkOperator()function retrieves the Home Network Name.
- * - @c le_sim_GetHomeNetworkMccMnc()function retrieves the Home Network MCC (Mobile Country Code)
+ * - le_sim_GetHomeNetworkOperator()function retrieves the Home Network Name.
+ * - le_sim_GetHomeNetworkMccMnc()function retrieves the Home Network MCC (Mobile Country Code)
  *      and MNC (Mobile Network Code).
  *
  * @section le_sim_auth SIM Authentication
- * @c le_sim_EnterPIN() enters the PIN (Personal Identification Number) code that's
+ * le_sim_EnterPIN() enters the PIN (Personal Identification Number) code that's
  * required before any Mobile equipment functionality can be used.
  *
- * @c le_sim_GetRemainingPINTries() returns the number of remaining PIN entry attempts
+ * Using this API selects the requested SIM.
+ *
+ * le_sim_GetRemainingPINTries() returns the number of remaining PIN entry attempts
  * before the SIM will become blocked.
  *
- * @c le_sim_ChangePIN() must be called to change the PIN code.
+ * Using this API selects the requested SIM.
  *
- * @c  le_sim_Lock() locks the SIM card: it enables requests for the PIN code.
+ * le_sim_ChangePIN() must be called to change the PIN code.
  *
- * @c  le_sim_Unlock() unlocks the SIM card: it disables requests for the PIN code.
+ * Using this API selects the requested SIM.
  *
- * @c le_sim_Unblock() unblocks the SIM card. The SIM card is blocked after X unsuccessful
- * attempts to enter the PIN. @c le_sim_Unblock() requires the PUK (Personal Unblocking) code
+ *  le_sim_Lock() locks the SIM card: it enables requests for the PIN code.
+ *
+ * Using this API selects the requested SIM.
+ *
+ *  le_sim_Unlock() unlocks the SIM card: it disables requests for the PIN code.
+ *
+ * Using this API selects the requested SIM.
+ *
+ * le_sim_Unblock() unblocks the SIM card. The SIM card is blocked after X unsuccessful
+ * attempts to enter the PIN. le_sim_Unblock() requires the PUK (Personal Unblocking) code
  * to set a new PIN code.
  *
- * @section le_sim_state SIM states
- * @c le_sim_IsPresent() API advises the SIM is inserted (and locked) or removed.
+ * Using this API selects the requested SIM.
  *
- * @c le_sim_IsReady() API advises the SIM is ready (PIN code correctly entered
+ * @section le_sim_state SIM states
+ * le_sim_IsPresent() API advises the SIM is inserted (and locked) or removed.
+ *
+ * Using this API selects the requested SIM.
+ *
+ * le_sim_IsReady() API advises the SIM is ready (PIN code correctly entered
  * or not required).
+ *
+ * Using this API selects the requested SIM.
  *
  * The le_sim_GetState() API retrieves the SIM state:
  * - LE_SIM_INSERTED      : SIM card is inserted and locked.
@@ -98,8 +125,10 @@
  * - LE_SIM_BUSY          : SIM card is busy.
  * - LE_SIM_STATE_UNKNOWN : Unknown SIM state.
  *
+ * Using this API selects the requested SIM.
+ *
  * A handler function must be registered to receive SIM's state notifications.
- * @c le_sim_AddNewStateHandler() API allows the User to register that handler.
+ * le_sim_AddNewStateHandler() API allows the User to register that handler.
  *
  * The handler must satisfy the following prototype:
  * typedef void(*le_sim_NewStateHandlerFunc_t)(le_sim_ObjRef_t sim);
@@ -107,19 +136,43 @@
  * When a new SIM's state is notified, a SIM object is automatically created and the handler is
  * called.
  *
- * Call @c le_sim_GetState() to retrieve the new state of the SIM.
+ * Call le_sim_GetState() to retrieve the new state of the SIM.
  *
  * @note If two (or more) applications have registered a handler function for notifications, they
  * will all receive it and will be passed the same SIM object reference.
  *
- * The application can uninstall the handler function by calling @c le_sim_RemoveNewStateHandler() API.
- * @note @c le_sim_RemoveNewStateHandler() API does not delete the SIM Object. The caller has to
+ * The application can uninstall the handler function by calling le_sim_RemoveNewStateHandler() API.
+ * @note le_sim_RemoveNewStateHandler() API does not delete the SIM Object. The caller has to
  *       delete it.
+ *
+ * @section le_sim_profile_switch Local SIM profile switch
+ *
+ * As soon as there are several subscriptions/profiles in the eUICC (multi-profile), and one of
+ * them is dedicated to emergency calls (ex: eCall, ERA-Glonass), local swap is needed to swap as
+ * quickly as possible to the emergency profile in case of need.
+ *
+ * “Local swap” means that the User's application must be able to directly request the eUICC to
+ * swap to Emergency Call Subscription (ECS).
+ *
+ * Local swap puts the eUICC in a temporary state, meaning the commercial subscription is replaced
+ * by emergency subscription for a limited time, event triggering the swap back to commercial
+ * subscription being controlled by the User's application.
+ *
+ * The le_sim_LocalSwapToEmergencyCallSubscription() function requests the multi-profile eUICC to
+ * swap to ECS and to refresh. The User's application must wait for eUICC reboot to be finished and
+ * network connection available.
+ *
+ * The le_sim_LocalSwapToCommercialSubscription() function requests the multi-profile eUICC to swap
+ * back to commercial subscription and to refresh. The User's application must wait for eUICC reboot
+ * to be finished and network connection available.
+ *
+ * The User's application can install an handler with le_sim_AddNewStateHandler() to receive eUICC's
+ * state notifications.
  *
  *
  * <HR>
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  * to license.
  */
 
@@ -127,12 +180,10 @@
  *
  * Legato @ref c_sim include file.
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
-// NOTE: string sizes are set to an arbitrary value.  The correct values
-//       still need to be filled in.
-
+USETYPES le_mdmDefs.api;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -140,7 +191,7 @@
  *
  */
 //--------------------------------------------------------------------------------------------------
-DEFINE  PIN_MIN_LEN     = 4;
+DEFINE  PIN_MIN_LEN     = (4);
 
 
 //--------------------------------------------------------------------------------------------------
@@ -149,7 +200,8 @@ DEFINE  PIN_MIN_LEN     = 4;
  *
  */
 //--------------------------------------------------------------------------------------------------
-DEFINE  PIN_MAX_LEN     = 8;
+DEFINE  PIN_MAX_LEN     = (8);
+DEFINE  PIN_MAX_BYTES   = (PIN_MAX_LEN+1);
 
 
 //--------------------------------------------------------------------------------------------------
@@ -158,7 +210,8 @@ DEFINE  PIN_MAX_LEN     = 8;
  *
  */
 //--------------------------------------------------------------------------------------------------
-DEFINE  PUK_LEN     = 8;
+DEFINE  PUK_MAX_LEN     = (8);
+DEFINE  PUK_MAX_BYTES   = (PUK_MAX_LEN+1);
 
 
 //--------------------------------------------------------------------------------------------------
@@ -167,7 +220,8 @@ DEFINE  PUK_LEN     = 8;
  * According to GSM Phase 1
  */
 //--------------------------------------------------------------------------------------------------
-DEFINE  ICCID_LEN  = (20+1);
+DEFINE  ICCID_LEN    = (20);
+DEFINE  ICCID_BYTES  = (ICCID_LEN+1);
 
 
 //--------------------------------------------------------------------------------------------------
@@ -176,7 +230,8 @@ DEFINE  ICCID_LEN  = (20+1);
  *
  */
 //--------------------------------------------------------------------------------------------------
-DEFINE  IMSI_LEN    = (15+1);
+DEFINE  IMSI_LEN    = (15);
+DEFINE  IMSI_BYTES  = (IMSI_LEN+1);
 
 
 //--------------------------------------------------------------------------------------------------
@@ -195,6 +250,35 @@ ENUM States
     STATE_UNKNOWN    ///< Unknown SIM state.
 };
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * SIM type.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM Type
+{
+    EMBEDDED,           ///< Embedded SIM
+    EXTERNAL_SLOT_1,    ///< SIM inserted in external slot 1
+    EXTERNAL_SLOT_2,    ///< SIM inserted in external slot 2
+    REMOTE,             ///< Remote SIM
+    TYPE_MAX
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Card Manufacturer.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM Manufacturer
+{
+    OBERTHUR,               ///< Oberthur.
+    GEMALTO,                ///< Gemalto.
+    G_AND_D,                ///< G&D.
+    MORPHO,                 ///< Morpho.
+    MANUFACTURER_UNKNOWN    ///< Unknown Manufacturer.
+};
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -212,22 +296,19 @@ REFERENCE Obj;
  */
 //--------------------------------------------------------------------------------------------------
 HANDLER NewStateHandler
-{
-    HANDLER_PARAMS
-    (
-        le_sim_ObjRef_t simRef ///< SIM reference.
-    );
-};
+(
+    Obj simRef ///< SIM reference.
+);
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Count the number of SIM card slots.
+ * This event provides information on sim state changes.
  *
- * @return Number of the SIM card slots mounted on the device.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION uint32 CountSlots
+EVENT NewState
 (
+    handler NewStateHandler
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -237,7 +318,7 @@ FUNCTION uint32 CountSlots
  * @return Number of the current selected SIM card.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION uint32 GetSelectedCard
+FUNCTION Type GetSelectedCard
 (
 );
 
@@ -251,9 +332,23 @@ FUNCTION uint32 GetSelectedCard
  *      On failure, the process exits, so no need to check the return value for validity
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION le_sim_ObjRef_t Create
+FUNCTION Obj Create
 (
-    uint32 cardNum IN           ///< The SIM card number. (1 or 2, it depends on the platform).
+    Type simType IN           ///< The SIM type.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Select a SIM.
+ *
+ * @return LE_FAULT         Function failed to select the requested SIM
+ * @return LE_OK            Function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SelectCard
+(
+    Obj simRef IN      ///< The SIM object.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -271,7 +366,7 @@ FUNCTION le_sim_ObjRef_t Create
 //--------------------------------------------------------------------------------------------------
 FUNCTION Delete
 (
-    le_sim_ObjRef_t simRef IN      ///< The SIM object.
+    Obj simRef IN      ///< The SIM object.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -286,7 +381,7 @@ FUNCTION Delete
 //--------------------------------------------------------------------------------------------------
 FUNCTION uint32 GetSlotNumber
 (
-    le_sim_ObjRef_t simRef IN      ///< The SIM object.
+    Obj simRef IN      ///< The SIM object.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -295,7 +390,8 @@ FUNCTION uint32 GetSlotNumber
  *
  * @return LE_OK             ICCID was successfully retrieved.
  * @return LE_OVERFLOW       iccidPtr buffer was too small for the ICCID.
- * @return LE_NOT_POSSIBLE   ICCID could not be retrieved.
+ * @return LE_BAD_PARAMETER if a parameter is invalid
+ * @return LE_FAULT         The ICCID could not be retrieved.
  *
  * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
  *       function will not return.
@@ -303,17 +399,19 @@ FUNCTION uint32 GetSlotNumber
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetICCID
 (
-    le_sim_ObjRef_t simRef IN,           ///< The SIM object.
-    string          iccid[20] OUT        ///< ICCID
+    Obj     simRef IN,              ///< The SIM object.
+    string  iccid[ICCID_LEN] OUT    ///< ICCID
 );
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Retrieves the identification number (IMSI) of the SIM card. (max 15 digits)
  *
- * @return LE_OK            IMSI was successfully retrieved.
- * @return LE_OVERFLOW       imsiPtr buffer was too small for the IMSI.
- * @return LE_NOT_POSSIBLE  IMSI could not be retrieved.
+ * @return LE_OVERFLOW      The imsiPtr buffer was too small for the IMSI.
+ * @return LE_BAD_PARAMETER The parameters are invalid.
+ * @return LE_FAULT         The function failed.
+ * @return LE_TIMEOUT       No response was received.
+ * @return LE_OK            The function succeeded.
  *
  * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
  *       function will not return.
@@ -321,8 +419,8 @@ FUNCTION le_result_t GetICCID
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetIMSI
 (
-    le_sim_ObjRef_t simRef IN,           ///< The SIM object.
-    string          imsi[15] OUT         ///< IMSI
+    Obj     simRef IN,           ///< The SIM object.
+    string  imsi[IMSI_LEN] OUT   ///< IMSI
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -338,7 +436,7 @@ FUNCTION le_result_t GetIMSI
 //--------------------------------------------------------------------------------------------------
 FUNCTION bool IsPresent
 (
-    le_sim_ObjRef_t simRef IN      ///< The SIM object.
+    Obj simRef IN      ///< The SIM object.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -355,17 +453,18 @@ FUNCTION bool IsPresent
 //--------------------------------------------------------------------------------------------------
 FUNCTION bool IsReady
 (
-    le_sim_ObjRef_t simRef IN      ///< The SIM object.
+    Obj simRef IN      ///< The SIM object.
 );
 
 //--------------------------------------------------------------------------------------------------
 /**
  * This function must be called to enter the PIN code.
  *
- * @return LE_NOT_FOUND     Function failed to select the SIM card for this operation.
- * @return LE_UNDERFLOW     PIN code is not long enough (min 4 digits).
- * @return LE_NOT_POSSIBLE  Function failed to enter the PIN code.
- * @return LE_OK            Function succeeded.
+ * @return LE_BAD_PARAMETER The parameters are invalid.
+ * @return LE_NOT_FOUND     The function failed to select the SIM card for this operation.
+ * @return LE_UNDERFLOW     The PIN code is not long enough (min 4 digits).
+ * @return LE_FAULT         The function failed to enter the PIN code.
+ * @return LE_OK            The function succeeded.
  *
  * @note If PIN code is too long (max 8 digits), it is a fatal error, the
  *       function will not return.
@@ -376,8 +475,8 @@ FUNCTION bool IsReady
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t EnterPIN
 (
-    le_sim_ObjRef_t simRef IN,       ///< The SIM object.
-    string          pin[8] IN        ///< The PIN code.
+    Obj     simRef IN,          ///< The SIM object.
+    string  pin[PIN_MAX_LEN] IN ///< The PIN code.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -386,7 +485,7 @@ FUNCTION le_result_t EnterPIN
  *
  * @return LE_NOT_FOUND     Function failed to select the SIM card for this operation.
  * @return LE_UNDERFLOW     PIN code is/are not long enough (min 4 digits).
- * @return LE_NOT_POSSIBLE  Function failed to change the PIN code.
+ * @return LE_FAULT         Function failed to change the PIN code.
  * @return LE_OK            Function succeeded.
  *
  * @note If PIN code is too long (max 8 digits), it is a fatal error, the
@@ -398,18 +497,18 @@ FUNCTION le_result_t EnterPIN
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t ChangePIN
 (
-    le_sim_ObjRef_t simRef IN,       ///< The SIM object.
-    string          oldpin[8] IN,    ///< The old PIN code.
-    string          newpin[8] IN     ///< The new PIN code.
+    Obj     simRef IN,              ///< The SIM object.
+    string  oldpin[PIN_MAX_LEN] IN, ///< The old PIN code.
+    string  newpin[PIN_MAX_LEN] IN  ///< The new PIN code.
 );
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Get the number of remaining PIN insertion tries.
  *
- * @return LE_NOT_FOUND     Function failed to select the SIM card for this operation.
- * @return LE_NOT_POSSIBLE  Function failed to get the number of remaining PIN insertion tries.
- * @return A positive value Function succeeded. The number of remaining PIN insertion tries.
+ * @return LE_NOT_FOUND     The function failed to select the SIM card for this operation.
+ * @return LE_FAULT         The function failed to get the number of remaining PIN insertion tries.
+ * @return A positive value The function succeeded. The number of remaining PIN insertion tries.
  *
  * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
  *       function will not return.
@@ -417,7 +516,7 @@ FUNCTION le_result_t ChangePIN
 //--------------------------------------------------------------------------------------------------
 FUNCTION int32 GetRemainingPINTries
 (
-    le_sim_ObjRef_t simRef IN   ///< The SIM object.
+    Obj simRef IN   ///< The SIM object.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -426,7 +525,7 @@ FUNCTION int32 GetRemainingPINTries
  *
  * @return LE_NOT_FOUND     Function failed to select the SIM card for this operation.
  * @return LE_UNDERFLOW     PIN code is not long enough (min 4 digits).
- * @return LE_NOT_POSSIBLE  Function failed to unlock the SIM card.
+ * @return LE_FAULT         The function failed to unlock the SIM card.
  * @return LE_OK            Function succeeded.
  *
  * @note If PIN code is too long (max 8 digits), it is a fatal error, the
@@ -438,8 +537,8 @@ FUNCTION int32 GetRemainingPINTries
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t Unlock
 (
-    le_sim_ObjRef_t simRef,        ///< The SIM object.
-    string          pin[8] IN      ///< The PIN code.
+    Obj     simRef,             ///< The SIM object.
+    string  pin[PIN_MAX_LEN] IN ///< The PIN code.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -448,7 +547,7 @@ FUNCTION le_result_t Unlock
  *
  * @return LE_NOT_FOUND     Function failed to select the SIM card for this operation.
  * @return LE_UNDERFLOW     PIN code is not long enough (min 4 digits).
- * @return LE_NOT_POSSIBLE  Function failed to unlock the SIM card.
+ * @return LE_FAULT         The function failed to unlock the SIM card.
  * @return LE_OK            Function succeeded.
  *
  * @note If PIN code is too long (max 8 digits), it is a fatal error, the
@@ -460,8 +559,8 @@ FUNCTION le_result_t Unlock
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t Lock
 (
-    le_sim_ObjRef_t simRef,        ///< The SIM object.
-    string          pin[8] IN      ///< The PIN code.
+    Obj     simRef,             ///< The SIM object.
+    string  pin[PIN_MAX_LEN] IN ///< The PIN code.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -471,7 +570,7 @@ FUNCTION le_result_t Lock
  * @return LE_NOT_FOUND     Function failed to select the SIM card for this operation.
  * @return LE_UNDERFLOW     PIN code is not long enough (min 4 digits).
  * @return LE_OUT_OF_RANGE  PUK code length is not correct (8 digits).
- * @return LE_NOT_POSSIBLE  Function failed to unblock the SIM card.
+ * @return LE_FAULT         The function failed to unlock the SIM card.
  * @return LE_OK            Function succeeded.
  *
  * @note If new PIN or puk code are too long (max 8 digits), it is a fatal error, the
@@ -483,9 +582,9 @@ FUNCTION le_result_t Lock
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t Unblock
 (
-    le_sim_ObjRef_t simRef,           ///< The SIM object.
-    string          puk[8] IN,        ///< The PUK code.
-    string          newpin[8] IN      ///< The PIN code.
+    Obj     simRef,                 ///< The SIM object.
+    string  puk[PUK_MAX_LEN] IN,        ///< The PUK code.
+    string  newpin[PIN_MAX_LEN] IN  ///< The PIN code.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -500,7 +599,7 @@ FUNCTION le_result_t Unblock
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_sim_States_t GetState
 (
-    le_sim_ObjRef_t simRef IN      ///< The SIM object.
+    Obj simRef IN      ///< The SIM object.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -510,7 +609,8 @@ FUNCTION le_sim_States_t GetState
  * @return
  *      - LE_OK on success
  *      - LE_OVERFLOW if the Phone Number can't fit in phoneNumberStr
- *      - LE_NOT_POSSIBLE on any other failure
+ *      - LE_BAD_PARAMETER if a parameter is invalid
+ *      - LE_FAULT on any other failure
  *
  * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
  *       function will not return.
@@ -518,8 +618,8 @@ FUNCTION le_sim_States_t GetState
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetSubscriberPhoneNumber
 (
-    le_sim_ObjRef_t simRef IN,             ///< The SIM object.
-    string          phoneNumberStr[17] OUT ///< The phone Number.
+    Obj     simRef IN,                                       ///< The SIM object.
+    string  phoneNumberStr[le_mdmDefs.PHONE_NUM_MAX_LEN] OUT ///< The phone Number.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -529,7 +629,9 @@ FUNCTION le_result_t GetSubscriberPhoneNumber
  * @return
  *      - LE_OK on success
  *      - LE_OVERFLOW if the Home Network Name can't fit in nameStr
- *      - LE_NOT_POSSIBLE on any other failure
+ *      - LE_NOT_FOUND if the network is not found
+ *      - LE_BAD_PARAMETER if a parameter is invalid
+ *      - LE_FAULT on any other failure
  *
  * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
  *       function will not return.
@@ -559,3 +661,42 @@ FUNCTION le_result_t GetHomeNetworkMccMnc
     string mccPtr[3] OUT,       ///< Mobile Country Code
     string mncPtr[3] OUT        ///< Mobile Network Code
 );
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to request the multi-profile eUICC to swap to ECS and to refresh.
+ * The User's application must wait for eUICC reboot to be finished and network connection
+ * available.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_BUSY when a profile swap is already in progress
+ *      - LE_FAULT for unexpected error
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t LocalSwapToEmergencyCallSubscription
+(
+    Obj          simRef       IN,         ///< The SIM object.
+    Manufacturer manufacturer IN          ///< The card manufacturer.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to request the multi-profile eUICC to swap back to commercial
+ * subscription and to refresh.
+ * The User's application must wait for eUICC reboot to be finished and network connection
+ * available.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_BUSY when a profile swap is already in progress
+ *      - LE_FAULT for unexpected error
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t LocalSwapToCommercialSubscription
+(
+    Obj          simRef       IN,         ///< The SIM object.
+    Manufacturer manufacturer IN          ///< The card manufacturer.
+);
+
+

@@ -167,7 +167,7 @@
  *     void*                contextPtr
  * )
  * {
- *     char                tel[TEL_NMBR_MAX_LEN];
+ *     char                tel[TEL_NMBR_MAX_BYTES];
  *     VoiceContext_t*     myContextPtr = (VoiceContext_t*)contextPtr;
  *
  *     switch (event)
@@ -259,7 +259,7 @@
  *
  * <HR>
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 
@@ -269,14 +269,11 @@
  *
  * Legato @ref c_mcc_call include file.
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 //--------------------------------------------------------------------------------------------------
 
-// NOTE: string sizes are set to an arbitrary value.  The correct values
-//       still need to be filled in.
-
-
+USETYPES le_mdmDefs.api;
 USETYPES le_audio.api;
 
 //--------------------------------------------------------------------------------------------------
@@ -286,7 +283,9 @@ USETYPES le_audio.api;
 //--------------------------------------------------------------------------------------------------
 ENUM Event
 {
+    EVENT_SETUP,       ///< Call is being set up.
     EVENT_INCOMING,    ///< Incoming call attempt (new call).
+    EVENT_ORIGINATING, ///< Outgoing call attempt.
     EVENT_ALERTING,    ///< Far end is now alerting its user (outgoing call).
     EVENT_EARLY_MEDIA, ///< Callee has not accepted the call, but a media stream
                        ///< is available.
@@ -334,7 +333,7 @@ REFERENCE Obj;
 //--------------------------------------------------------------------------------------------------
 FUNCTION Delete
 (
-    le_mcc_call_ObjRef_t callRef IN  ///< The call object to free.
+    Obj callRef IN  ///< The call object to free.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -356,7 +355,7 @@ FUNCTION Delete
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t Start
 (
-    le_mcc_call_ObjRef_t callRef IN  ///< Reference to the call object.
+    Obj callRef IN  ///< Reference to the call object.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -371,7 +370,7 @@ FUNCTION le_result_t Start
 //--------------------------------------------------------------------------------------------------
 FUNCTION bool IsConnected
 (
-    le_mcc_call_ObjRef_t callRef IN ///< The call reference to read.
+    Obj callRef IN ///< The call reference to read.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -391,8 +390,8 @@ FUNCTION bool IsConnected
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetRemoteTel
 (
-    le_mcc_call_ObjRef_t callRef IN,       ///<  The call reference to read from.
-    string               telPtr[17] OUT    ///< The telephone number string.
+    Obj     callRef IN,                                 ///<  The call reference to read from.
+    string  telPtr[le_mdmDefs.PHONE_NUM_MAX_LEN] OUT    ///< The telephone number string.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -405,9 +404,9 @@ FUNCTION le_result_t GetRemoteTel
  *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION le_mcc_call_TerminationReason_t GetTerminationReason
+FUNCTION TerminationReason GetTerminationReason
 (
-    le_mcc_call_ObjRef_t callRef IN ///< The call reference to read from.
+    Obj callRef IN ///< The call reference to read from.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -421,9 +420,9 @@ FUNCTION le_mcc_call_TerminationReason_t GetTerminationReason
  *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION le_audio_StreamRef_t GetTxAudioStream
+FUNCTION le_audio.Stream GetTxAudioStream
 (
-    le_mcc_call_ObjRef_t callRef IN ///< The call reference to read from.
+    Obj callRef IN ///< The call reference to read from.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -437,9 +436,9 @@ FUNCTION le_audio_StreamRef_t GetTxAudioStream
  *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION le_audio_StreamRef_t GetRxAudioStream
+FUNCTION le_audio.Stream GetRxAudioStream
 (
-    le_mcc_call_ObjRef_t callRef IN ///< The call reference to read from.
+    Obj callRef IN ///< The call reference to read from.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -455,7 +454,7 @@ FUNCTION le_audio_StreamRef_t GetRxAudioStream
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t Answer
 (
-    le_mcc_call_ObjRef_t callRef IN ///< The call reference.
+    Obj callRef IN ///< The call reference.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -472,7 +471,7 @@ FUNCTION le_result_t Answer
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t HangUp
 (
-    le_mcc_call_ObjRef_t callRef IN ///< The call to end.
+    Obj callRef IN ///< The call to end.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -480,8 +479,8 @@ FUNCTION le_result_t HangUp
  * This function will disconnect, or hang up all the ongoing calls. Any active call handlers will
  * be notified.
  *
+ * @return LE_FAULT         The function failed.
  * @return LE_TIMEOUT       No response was received from the Modem.
- * @return LE_NOT_POSSIBLE  The function failed.
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------

@@ -1,0 +1,310 @@
+/**
+ * @page c_mon Platform Monitoring
+ *
+ * @subpage c_antenna <br>
+ * @subpage c_ips <br>
+ *
+ * <HR>
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ */
+
+/**
+ * @page c_antenna Antenna Monitoring
+ *
+ *
+ * @ref le_antenna_interface.h "API Reference"
+ *
+ * <HR>
+ *
+ * This file contains prototype definitions for the antenna diagnosis APIs.
+ *
+ * @section le_antenna_cell_section Cellular or Diversity antenna
+ *
+ * @subsection le_antenna_cell_diag_subsection Diagnostics principle
+ *
+ * This functionality allows to detect or not the presence of an antenna or to detect a defective
+ * antenna.
+ *
+ * Antenna diagnosis is based on the following principle :
+ *
+ * A very small D.C. current goes through the coaxial cable to the antenna. A resistive bridge is
+ * realized to provide different voltages depending on the antenna state.
+ *
+ * It is mandatory to use a specific antenna. The antenna used have to be built with a resistor
+ * between radiating element and ground.
+ *
+ * The states to diagnose are listed here:
+ * - Antenna in open circuit: there is no antenna but RF open circuit
+ * - Antenna in close circuit: presence of antenna
+ * - Antenna in short circuit: with or without antenna, short circuit for RF path.
+ *
+ * @subsection le_antenna_cell_thres_subsection Thresholds
+ *
+ * Configurable thresholds are compared to the ADC (Analog to Digital Converter) reading from the
+ * antenna diagnostic voltage to determine in which state the RF (Radio Frequency) is.
+ *
+ * Two thresholds are set to decide the state:
+ *@verbatim
+                           short limit                   open limit
+   ---- short circuit ----|---- close circuit ----|---- open circuit ----
+          unknown state      |   presence of antenna  |        no antenna
+ @endverbatim
+ *
+ * A short event is reported for the Cellular or Diversity antenna if the ADC value is lower than
+ * the corresponding short limit. An open event is reported for the Cellular or Diversity antenna
+ * if the ADC value is higher than the corresponding open limit.
+ *
+ * @note The open threshold is always HIGHER than the short threshold.
+ *
+ * @section le_antenna_gnss_section GNSS antenna
+ *
+ * @subsection le_antenna_gnss_diag_subsection Diagnostics principle
+ *
+ * This functionality allows to detect or not the presence of an antenna or to detect a defective
+ * antenna.
+ *
+ * The antenna diagnosis is based on the measurement of the current consumption  for a GNSS active
+ * antenna.
+ * Moreover a current hardware protection circuitry is able to protect the power supply of that active antenna.
+ *
+ * The states to diagnose are listed here:
+ * - Antenna in short circuit: with or without antenna, short circuit for RF path.
+ * - Antenna in open circuit: there is no antenna but RF open circuit.
+ * - Antenna in close circuit: presence of antenna.
+ * - Antenna in over current : with or without antenna, short circuit for RF path and current
+ * hardware protection circuitry has tripped.
+ *
+ * @subsection le_antenna_gnss_thre_subsection Thresholds
+ *
+ * Configurable thresholds are compared to the ADC (Analog to Digital Converter) reading from the
+ * antenna diagnostic hardware design measuring the current to determine in which state the antenna is.
+ *
+ * The following status are reported for the GNSS antenna if the ADC value is:
+ * - SHORT_CIRCUIT: ADC value > short limit, but over current HW not tripped.
+ * - CLOSE_CIRCUIT: short limit >= ADC value >= open limit.
+ * - OPEN_CIRCUIT: ADC value < open limit.
+ * - OVER_CURRENT: antenna is shorted and current HW protection circuitry has tripped.
+ * 
+ * @note The open threshold is always LOWER than the short threshold.
+ *
+ * @section API_desc API description
+ *
+ * le_antenna_Request() API allows the application to monitor the requested antenna.
+ *
+ * le_antenna_Release() API releases the associated antenna diagnostics.
+ *
+ * le_antenna_GetType() API retrieves the antenna type from an antenna reference.
+ *
+ * le_antenna_SetShortLimit() API sets the ADC value used to detect a short circuit.
+ *
+ * le_antenna_GetShortLimit() API gets the ADC value used to detect a short circuit.
+ *
+ * le_antenna_SetOpenLimit() API sets the ADC value used to detect an open circuit.
+ *
+ * le_antenna_GetOpenLimit() API gets the ADC value used to detect an open circuit.
+ *
+ * le_antenna_AddStatusHandler() API adds a handler to be notified when the requested antenna
+ * status changed.
+ *
+ * le_antenna_RemoveStatusHandler() removes the antenna status handler.
+ *
+ * le_antenna_GetStatus() API gets the current antenna status.
+ *
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ */
+
+
+/** @file le_antenna_interface.h
+ *
+ * Legato @ref c_antenna include file.
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ */
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Reference type for an antenna diagnostic.
+ */
+//--------------------------------------------------------------------------------------------------
+REFERENCE Obj;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Antenna type.
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM Type
+{
+    PRIMARY_CELLULAR,     ///< Cellular antenna type
+    DIVERSITY_CELLULAR,   ///< Diversity antenna type
+    GNSS,                 ///< GNSS positioning antenna type
+    MAX
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Antenna status
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM Status
+{
+    SHORT_CIRCUIT,     ///< antenna in short circuit: unknown state.
+    CLOSE_CIRCUIT,     ///< antenna in close circuit: presence of antenna.
+    OPEN_CIRCUIT,      ///< antenna in open circuit: there is no antenna.
+    OVER_CURRENT,      ///< antenna in short circuit and current HW protection circuitry has
+                       ///< tripped. Only applicable for GNSS antenna.
+    LAST_STATUS        ///< last status value.
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Requested the antenna monitoring.
+ *
+ * @return
+ *      - Reference to the antenna object.
+ *      - NULL on failure.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION Obj Request
+(
+    Type antennaType  IN  ///< antenna to be monitored
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Release an antenna monitoring.
+ *
+ * @note The release is possible only if no status handler is currently set on this specific antenna
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_NOT_FOUND if the antenna reference is unknown
+ *      - LE_BUSY if a status handler is set
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Release
+(
+    Obj     antennaRef  IN  ///< antenna reference
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the antenna type.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_NOT_FOUND if the antenna reference is unknown
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetType
+(
+    Obj     antennaRef   IN,        ///< antenna reference
+    Type    antennaType  OUT        ///< allocated antenna type
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the ADC value used to detect a short circuit.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_NOT_FOUND if the antenna reference is unknown
+ *      - LE_FAULT on other failure
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetShortLimit
+(
+    Obj         antennaRef  IN,     ///< antenna reference
+    uint32      shortLimit  IN      ///< The ADC value used to detect a short circuit
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the ADC value used to detect a short circuit.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_NOT_FOUND if the antenna reference is unknown
+ *      - LE_FAULT on other failure
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetShortLimit
+(
+    Obj         antennaRef  IN,    ///< antenna reference
+    uint32      shortLimit  OUT    ///< The ADC value used to detect a short circuit
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the ADC value used to detect an open circuit.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_NOT_FOUND if the antenna reference is unknown
+ *      - LE_FAULT on other failure
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetOpenLimit
+(
+    Obj         antennaRef  IN,      ///< antenna reference
+    uint32      openLimit   IN       ///< The ADC value used to detect an open circuit
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the ADC value used to detect an open circuit.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_NOT_FOUND if the antenna reference is unknown
+ *      - LE_FAULT on other failure
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetOpenLimit
+(
+    Obj         antennaRef  IN,      ///< antenna reference
+    uint32      openLimit   OUT    ///< The ADC value used to detect an open circuit
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler for antenna status.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+HANDLER StatusHandler
+(
+    Obj                 antennaRef  IN,      ///< antenna reference
+    Status              status  IN       ///< antenna status
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This event provides information on antenna status for the given antennaRef.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+EVENT StatusEvent
+(
+    Obj     antennaRef     IN,              ///< antenna reference
+    handler StatusHandler
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the antenna status.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_NOT_FOUND if the antenna reference is unknown
+ *      - LE_FAULT on other failure
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetStatus
+(
+    Obj           antennaRef  IN,        ///< antenna reference
+    Status        status      OUT        ///< antenna status
+);

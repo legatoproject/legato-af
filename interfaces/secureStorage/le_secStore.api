@@ -1,0 +1,90 @@
+// -------------------------------------------------------------------------------------------------
+/**
+ * API for accessing secure storage.
+ *
+ * Secure storage can be used to store sensitive information such as passwords, keys, certificates,
+ * etc.  All data in the secure storage will be stored in an encrypted format.  Each application
+ * that uses this API will only have access to its own secure data.
+ *
+ * An application's items in secure storage have a name and a value.  The name of the item is used
+ * to access the item's value.  For example to create or update an item use the le_secStore_Write()
+ * function, specifying the item's name and value.  If the item does not exist the item will be
+ * created.  To read an item use the le_secStore_Read() function, specifying the item's name.  An
+ * item can be deleted using the le_secStore_Delete() function.
+ *
+ * <HR>
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ */
+// -------------------------------------------------------------------------------------------------
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ * Maximum number of characters that a secure storage item name can be.
+ */
+// -------------------------------------------------------------------------------------------------
+DEFINE MAX_NAME_SIZE = 255;
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ * Maximum number of bytes for each item in secure storage.
+ */
+// -------------------------------------------------------------------------------------------------
+DEFINE MAX_ITEM_SIZE = 8192;
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ * Writes an item to secure storage.  If the item already exists then it will be overwritten with
+ * the new value.  If the item does not already exist then it will be created.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_NO_MEMORY if there is not enough memory to store the item.
+ *      LE_UNAVAILABLE if the secure storage is currently unavailable.
+ */
+// -------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Write
+(
+    string name[MAX_NAME_SIZE] IN,      ///< Name of the secure storage item.
+    uint8 buf[MAX_ITEM_SIZE] IN         ///< Buffer contain the data to store.
+);
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ * Reads an item from secure storage.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_OVERFLOW if the buffer is too small to hold the entire item.  No data will be written to
+ *                  the buffer in this case.
+ *      LE_NOT_FOUND if the item does not exist.
+ *      LE_UNAVAILABLE if the secure storage is currently unavailable.
+ */
+// -------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Read
+(
+    string name[MAX_NAME_SIZE] IN,      ///< Name of the secure storage item.
+    uint8 buf[MAX_ITEM_SIZE] OUT        ///< Buffer to store the data in.
+);
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ * Deletes an item from secure storage.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_NOT_FOUND if the item does not exist.
+ *      LE_UNAVAILABLE if the secure storage is currently unavailable.
+ */
+// -------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Delete
+(
+    string name[MAX_NAME_SIZE] IN       ///< Name of the secure storage item.
+);
+
+

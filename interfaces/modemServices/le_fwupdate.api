@@ -31,7 +31,7 @@
  *
  * <HR>
  *
- * Copyright (C) Sierra Wireless, Inc 2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 
@@ -41,7 +41,7 @@
  *
  * Legato @ref c_fwupdate include file.
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -52,7 +52,8 @@
  *
  * @return
  *      - LE_OK on success
- *      - LE_NOT_POSSIBLE on failure
+ *      - LE_BAD_PARAMETER if an input parameter is not valid
+ *      - LE_FAULT on failure
  *
  * @note
  *      The process exits, if an invalid file descriptor (e.g. negative) is given.

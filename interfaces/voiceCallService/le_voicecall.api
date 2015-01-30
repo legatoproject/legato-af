@@ -71,7 +71,7 @@
  *
  * <HR>
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 
@@ -82,11 +82,12 @@
  *
  * Legato @ref c_le_voicecall include file.
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  *
  */
 //--------------------------------------------------------------------------------------------------
 
+USETYPES le_mdmDefs.api;
 USETYPES le_audio.api;
 
 //--------------------------------------------------------------------------------------------------
@@ -133,7 +134,6 @@ ENUM TerminationReason
 };
 
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Handler for voice call state changes
@@ -141,15 +141,24 @@ ENUM TerminationReason
  */
 //--------------------------------------------------------------------------------------------------
 HANDLER StateHandler
-{
-    HANDLER_PARAMS
-    (
-        Call reference IN,             ///< Event voice call object reference.
-        string identifier[50] IN,      ///< Identifier of the remote party associated with the call.
-        Event event IN                 ///< Voice call event.
-    );
-};
+(
+    Call reference IN,                                  ///< Event voice call object reference.
+    string identifier[le_mdmDefs.PHONE_NUM_MAX_LEN] IN, ///< Identifier of the remote party
+                                                        ///  associated with the call.
+    Event event IN                                      ///< Voice call event.
+);
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This event provides information on voice call state changes
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+EVENT State
+(
+    handler StateHandler
+);
 
 
 //--------------------------------------------------------------------------------------------------
@@ -163,7 +172,8 @@ HANDLER StateHandler
 //--------------------------------------------------------------------------------------------------
 FUNCTION Call Start
 (
-    string DestinationID[50] IN        ///< Destination identifier for the voice call establishment.
+    string DestinationID[le_mdmDefs.PHONE_NUM_MAX_LEN] IN ///< Destination identifier for the voice
+                                                          ///  call establishment.
 );
 
 

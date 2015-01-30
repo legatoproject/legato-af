@@ -3,14 +3,14 @@
  * A Supervisor API used by the Watchdog daemon to let the Supervisor know that a watched
  * process has timed out
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
  
    /** @file le_sup_wdog_interface.h
  *
  * Legato @ref c_sup_wdog include file.
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 // -------------------------------------------------------------------------------------------------
 

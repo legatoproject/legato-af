@@ -1,8 +1,8 @@
 /**
  * @page c_pos Positioning
  *
- * @ref le_pos_interface.h "Positioning API reference" <br>
- * @subpage c_posCtrl "Positioning Control reference" 
+ * @ref le_pos_interface.h "API Reference" <br>
+ * @subpage c_posCtrl "Positioning Control Reference"
  *
  * <HR>
  *
@@ -127,65 +127,13 @@
  *
  * @endcode
  *
- * @section le_pos_xtra Positioning Xtra injection
- *
- * With @ref le_pos_LoadXtra() , you can load a xtra.bin file from the filesystem. You have
- * to download the file before loading it.
- *
- * with @ref le_pos_GetXtraValidity(), you will retrieve the date between the xtra is still
- * validate.
- *
- * Example:
- *
- * @code
- *
- *   #define XTRA_PATH     "/tmp/xtra.bin"
- *
- *   le_clk_Time_t start,stop;
- *   char startTime[100] = {0};
- *   char StopTime[100] = {0};
- *
- *   // download file into XTRA_PATH
- *   DownloadXtraFile(XTRA_PATH);
- *
- *   if ( le_pos_LoadXtra(XTRA_PATH) != LE_OK )
- *   {
- *      LE_WARN("Could not load '%s'",XTRA_PATH);
- *   }
- *
- *   if ( le_pos_GetXtraValidity(&start,&stop) != LE_OK )
- *   {
- *      LE_WARN("Could get the validity");
- *   }
- *
- *   if ( le_clk_ConvertToUTCString(start,
- *                                  LE_CLK_STRING_FORMAT_DATE_TIME,
- *                                  startTime,
- *                                  sizeof(startTime),
- *                                  NULL) != LE_OK )
- *   {
- *       LE_INFO("Could not convert start time");
- *   }
- *   if ( le_clk_ConvertToUTCString(stop,
- *                                  LE_CLK_STRING_FORMAT_DATE_TIME,
- *                                  StopTime,
- *                                  sizeof(StopTime),
- *                                  NULL) != LE_OK )
- *   {
- *       LE_INFO("Could not convert stop time");
- *   }
- *
- *   LE_INFO("Validity Start time  %s",startTime);
- *   LE_INFO("Validity Stop time %s",StopTime);
- *
- * @endcode
  *
  * @section le_pos_configdb Positioning configuration tree
  * @copydoc le_pos_configdbPage_Hide
  *
  * <HR>
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 /**
@@ -208,7 +156,7 @@
  *
  * Legato @ref c_pos include file.
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 //--------------------------------------------------------------------------------------------------
@@ -225,22 +173,26 @@ REFERENCE Sample;
  */
 //--------------------------------------------------------------------------------------------------
 HANDLER MovementHandler
-{
-    ADD_HANDLER_PARAMS
-    (
-        uint32 horizontalMagnitude IN, ///< Horizontal magnitude in metres.
-                                       ///<       0 means that I don't care about
-                                       ///<      changes in the latitude and longitude.
-        uint32 verticalMagnitude IN ///< Vertical magnitude in metres.
-                                    ///<       0 means that I don't care about
-                                    ///<       changes in the altitude.
-    );
+(
+    Sample positionSampleRef ///< Position's sample reference
+);
 
-    HANDLER_PARAMS
-    (
-        Sample positionSampleRef ///< Position's sample reference
-    );
-};
+//--------------------------------------------------------------------------------------------------
+/**
+ * This event provides information on movement changes.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+EVENT Movement
+(
+    uint32 horizontalMagnitude IN, ///< Horizontal magnitude in metres.
+                                   ///<       0 means that I don't care about
+                                   ///<      changes in the latitude and longitude.
+    uint32 verticalMagnitude IN,   ///< Vertical magnitude in metres.
+                                   ///<       0 means that I don't care about
+                                   ///<       changes in the altitude.
+    handler MovementHandler
+);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -485,36 +437,3 @@ FUNCTION sample_Release
     Sample positionSampleRef            ///< Position sample's reference.
 );
 
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This function must be called to load xtra.bin file into the gnss.
- *
- * @return LE_FAULT         The function failed to inject the xtra.bin file
- * @return LE_OK            The function succeeded.
- *
- * @note If the caller is passing an invalid Position reference into this function,
- *       it is a fatal error, the function will not return.
- */
-//--------------------------------------------------------------------------------------------------
-FUNCTION le_result_t LoadXtra
-(
-    string xtraFilePathPtr[100] IN ///< xtra.bin file path
-);
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This function must be called to get the validity of the last xtra.bin injected
- *
- * @return LE_FAULT         The function failed to get the validity
- * @return LE_OK            The function succeeded.
- *
- * @note If the caller is passing an invalid Position reference into this function,
- *       it is a fatal error, the function will not return.
- */
-//--------------------------------------------------------------------------------------------------
-FUNCTION le_result_t GetXtraValidity
-(
-    le_clk_Time_t startTimePtr OUT,     ///< Start time
-    le_clk_Time_t stopTimePtr OUT       ///< Stop time
-);

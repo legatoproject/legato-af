@@ -10,7 +10,7 @@
 /**
  * @page c_le_data Data Connection Service
  *
- * @ref le_data_interface.h "Click here for the API Reference documentation."
+ * @ref le_data_interface.h "API Reference"
  *
  * <HR>
  *
@@ -101,14 +101,14 @@
  *
  * <HR>
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 /**
  * @file le_data_interface.h
  *
  * Legato @ref c_le_data include file.
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  *
  */
 

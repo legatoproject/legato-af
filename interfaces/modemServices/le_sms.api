@@ -1,7 +1,7 @@
 /**
  * @page c_sms SMS
  *
- * @ref le_sms_interface.h "API reference"
+ * @ref le_sms_interface.h "API Reference"
  *
  * <HR>
  *
@@ -19,7 +19,7 @@
  *
  * You must create a Message object by calling @c le_sms_Create() before using the message
  * APIs. It automatically allocates needed resources for the Message object, which is referenced by
- *  @c le_sms_MsgRef_t type.
+ * @c le_sms_MsgRef_t type.
  *
  * When the Message object is no longer needed, call @c le_sms_Delete() to free all
  *  allocated resources associated with the object.
@@ -37,10 +37,28 @@
  * -  Text content with le_sms_SetText(), the total length are set as well with this API, maximum
  * 160 characters as only the 7-bit alphabet is supported.
  * - Binary content with le_sms_SetBinary(), total length is set with this API, maximum 140 bytes.
- * - PDU content with le_sms_SetPDU(), total length is set with this API, max 36 (header) +
- *  140 (payload) bytes long.
+ * - PDU content with le_sms_SetPDU(), total length is set with this API, max 36 (header) + 140
+ *  (payload) bytes long.
  *
- * After the le_sms_MsgRef_t object is ready, call @c le_sms_Send().
+ * After the Msg object is ready, call @c le_sms_Send().
+ *
+ * @section le_sms_ops_async_sending Sending asynchronously a message.
+ *
+ * A text message can be sent with one simple function: le_sms_SendText(). You only have to pass
+ *  the three following parameters:
+ *
+ * - the destination telephone number.
+ * - the text message, the total length are set as well with this function, maximum 160
+ * characters as only the 7-bit alphabet is supported.
+ * - the callback function to get a notification indicating the sending result: LE_SMS_SENT or
+ *  LE_SMS_SENDING_FAILED..
+ *
+ * A PDU message can be sent using the le_sms_SendPdu() functions. The parameters to give are:
+ * - the PDU content, total length is set with this API, maximum 176 bytes long = 36 (header) +
+ *  140 (payload).
+ * - the callback function to get a notification indicating the sending result: LE_SMS_SENT or
+ *  LE_SMS_SENDING_FAILED.
+ *
  *
  * @c le_sms_Send() is a blocking function, it will return once the Modem has given back a
  * positive or negative answer to the sending operation. The return of @c le_sms_Send() API
@@ -113,11 +131,11 @@
  * static void myMsgHandler
  * (
  *      le_sms_MsgRef_t msgRef,
- *      void*            contextPtr*
+ *      void*           contextPtr*
  * )
  * {
- *     char   tel[LE_SMS_TEL_NMBR_MAX_LEN];
- *     char   text[LE_SMS_TEXT_MAX_LEN];
+ *     char   tel[LE_SMS_TEL_NMBR_MAX_BYTES];
+ *     char   text[LE_SMS_TEXT_MAX_BYTES];
  *
  *     if (le_sms_GetFormat(msgRef) == LE_SMS_FORMAT_TEXT)
  *     {
@@ -154,7 +172,7 @@
  * @section le_sms_ops_listing Listing  messages recorded in storage area
  *
  * Call @c le_sms_CreateRxMsgList() to create a List object that lists the received
- * messages present in the storage area, which is referenced by le_sms_MsgListRef_t
+ * messages present in the storage area, which is referenced by @c le_sms_MsgListRef_t
  * type.
  *
  * If messages are not present, the le_sms_CreateRxMsgList() returns NULL.
@@ -218,38 +236,17 @@
  *
  * <HR>
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved.
- */
-
-/** @page c_sampleCodes_modem_sms Sample codes for SMS API
- *bin
- * @subpage c_smsSampleMO
- *
- * @subpage c_smsSampleMT
- *
- */
-
-/** @page c_smsSampleMO Sample code for Mobile Originated SMS message
- *
- * @include "apps/sample/sms/smsClient/smsMO.c"
- *
- */
-
-/** @page c_smsSampleMT Sample code for Mobile Terminated SMS message
- *
- * @include "apps/sample/sms/smsClient/smsMT.c"
- *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 /** @file le_sms_interface.h
  *
  * Legato @ref c_sms include file.
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
-// NOTE: string sizes are set to an arbitrary value.  The correct values
-//       still need to be filled in.
+USETYPES le_mdmDefs.api;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -258,7 +255,8 @@
  * One extra byte is added for the null character.
  */
 //--------------------------------------------------------------------------------------------------
-DEFINE  TIMESTAMP_MAX_LEN   = (20+1);
+DEFINE  TIMESTAMP_MAX_LEN   = (20);
+DEFINE  TIMESTAMP_MAX_BYTES = (TIMESTAMP_MAX_LEN+1);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -266,7 +264,8 @@ DEFINE  TIMESTAMP_MAX_LEN   = (20+1);
  * One extra byte is added for the null character.
  */
 //--------------------------------------------------------------------------------------------------
-DEFINE  TEXT_MAX_LEN    = (160+1);
+DEFINE  TEXT_MAX_LEN    = (160);
+DEFINE  TEXT_MAX_BYTES  = (TEXT_MAX_LEN+1);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -274,8 +273,7 @@ DEFINE  TEXT_MAX_LEN    = (160+1);
  *
  */
 //--------------------------------------------------------------------------------------------------
-DEFINE  BINARY_MAX_LEN  = (140);
-
+DEFINE  BINARY_MAX_BYTES  = (140);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -291,7 +289,7 @@ DEFINE  PDU_MAX_PAYLOAD = (140);
  *
  */
 //--------------------------------------------------------------------------------------------------
-DEFINE  PDU_MAX_LEN     = (36+PDU_MAX_PAYLOAD);
+DEFINE  PDU_MAX_BYTES     = (36+PDU_MAX_PAYLOAD);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -320,7 +318,9 @@ ENUM Status
     STORED_SENT,    ///< Message saved in the message storage has been sent.
     STORED_UNSENT,  ///< Message saved in the message storage has not been sent.
     SENT,           ///< Message has been sent.
+    SENDING,        ///< Message has been in the sending pool.
     UNSENT,         ///< Message has not been sent.
+    SENDING_FAILED, ///< Message sending has Failed.
     STATUS_UNKNOWN  ///< Unknown message status.
 };
 
@@ -347,17 +347,38 @@ REFERENCE MsgList;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Handler for Sending result.
+ */
+//--------------------------------------------------------------------------------------------------
+HANDLER CallbackResult
+(
+    Msg msgRef,     ///< Reference to the message object.
+    Status status IN      ///< Status result.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Handler for New Message.
  *
  */
 //--------------------------------------------------------------------------------------------------
 HANDLER RxMessageHandler
-{
-    HANDLER_PARAMS
-    (
-        le_sms_MsgRef_t  msgRef ///< Message reference.
-    );
-};
+(
+    Msg  msgRef ///< Message reference.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This event provides information on new received messages.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+EVENT RxMessage
+(
+    handler RxMessageHandler
+);
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -370,7 +391,7 @@ HANDLER RxMessageHandler
  *      reference for validity.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION le_sms_MsgRef_t Create
+FUNCTION Msg Create
 (
 );
 
@@ -394,8 +415,8 @@ FUNCTION le_sms_MsgRef_t Create
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetDestination
 (
-    le_sms_MsgRef_t msgRef ,       ///< Reference to the message object.
-    string          dest[17] IN    ///< Telephone number string.
+    Msg     msgRef ,                              ///< Reference to the message object.
+    string  dest[le_mdmDefs.PHONE_NUM_MAX_LEN] IN ///< Telephone number string.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -415,8 +436,8 @@ FUNCTION le_result_t SetDestination
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetText
 (
-    le_sms_MsgRef_t msgRef,        ///< Reference to the message object.
-    string          text[160] IN   ///< SMS text.
+    Msg     msgRef,                 ///< Reference to the message object.
+    string  text[TEXT_MAX_LEN] IN   ///< SMS text.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -436,8 +457,8 @@ FUNCTION le_result_t SetText
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetBinary
 (
-    le_sms_MsgRef_t msgRef,        ///< Reference to the message object.
-    uint8           bin[140] IN    ///< Binary data.
+    Msg     msgRef,                 ///< Reference to the message object.
+    uint8   bin[BINARY_MAX_BYTES] IN  ///< Binary data.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -457,8 +478,8 @@ FUNCTION le_result_t SetBinary
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetPDU
 (
-    le_sms_MsgRef_t msgRef,        ///< Reference to the message object.
-    uint8           pdu[176] IN    ///< PDU message.
+    Msg     msgRef,               ///< Reference to the message object.
+    uint8   pdu[PDU_MAX_BYTES] IN ///< PDU message.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -468,7 +489,6 @@ FUNCTION le_result_t SetPDU
  * Verifies first if the parameters are valid, then it checks the modem state can support
  * message sending.
  *
- * @return LE_NOT_POSSIBLE  Current modem state does not support message sending.
  * @return LE_FORMAT_ERROR  Message content is invalid.
  * @return LE_FAULT         Function failed to send the message.
  * @return LE_OK            Function succeeded.
@@ -479,7 +499,42 @@ FUNCTION le_result_t SetPDU
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t Send
 (
-    le_sms_MsgRef_t msgRef ///< Reference to the message object.
+    Msg msgRef ///< Reference to the message object.
+);
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Create and asynchronously send a text message.
+ *
+ * @return
+ *  - le_sms_Msg Reference to the new Message object pooled.
+ *  - NULL Not possible to pool a new message.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION Msg SendText
+(
+    string   destStr[le_mdmDefs.PHONE_NUM_MAX_LEN] IN, ///< Telephone number string.
+    string   textStr[TEXT_MAX_LEN] IN,                 ///< SMS text.
+    handler  CallbackResult                            ///< CallBack for sending result.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Create and asynchronously send a PDU message.
+ *
+ * @return
+ *  - le_sms_Msg Reference to the new Message object pooled.
+ *  - NULL Not possible to pool a new message.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION Msg SendPdu
+(
+    uint8   pdu[PDU_MAX_BYTES] IN,                     ///< PDU message.
+    handler  CallbackResult                            ///< CallBack for sending result.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -497,7 +552,7 @@ FUNCTION le_result_t Send
 //--------------------------------------------------------------------------------------------------
 FUNCTION Delete
 (
-    le_sms_MsgRef_t msgRef ///< Reference to the message object.
+    Msg msgRef ///< Reference to the message object.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -512,7 +567,7 @@ FUNCTION Delete
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_sms_Format_t GetFormat
 (
-    le_sms_MsgRef_t msgRef ///< Reference to the message object.
+    Msg msgRef ///< Reference to the message object.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -533,8 +588,8 @@ FUNCTION le_sms_Format_t GetFormat
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetSenderTel
 (
-    le_sms_MsgRef_t msgRef ,       ///< Reference to the message object.
-    string          tel[17] OUT    ///< Telephone number string.
+    Msg     msgRef,                               ///< Reference to the message object.
+    string  tel[le_mdmDefs.PHONE_NUM_MAX_LEN] OUT ///< Telephone number string.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -555,10 +610,10 @@ FUNCTION le_result_t GetSenderTel
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetTimeStamp
 (
-    le_sms_MsgRef_t msgRef,            ///< Reference to the message object.
-    string          timestamp[20] OUT  ///< Message time stamp (in text mode).
-                                       ///<        string format: "yy/MM/dd,hh:mm:ss+/-zz"
-                                       ///<        (Year/Month/Day,Hour:Min:Seconds+/-TimeZone)
+    Msg     msgRef,                          ///< Reference to the message object.
+    string  timestamp[TIMESTAMP_MAX_LEN] OUT ///< Message time stamp (in text mode).
+                                             ///<      string format: "yy/MM/dd,hh:mm:ss+/-zz"
+                                             ///<      (Year/Month/Day,Hour:Min:Seconds+/-TimeZone)
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -574,7 +629,7 @@ FUNCTION le_result_t GetTimeStamp
 //--------------------------------------------------------------------------------------------------
 FUNCTION size_t GetUserdataLen
 (
-    le_sms_MsgRef_t msgRef ///< Reference to the message object.
+    Msg msgRef ///< Reference to the message object.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -594,8 +649,8 @@ FUNCTION size_t GetUserdataLen
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetText
 (
-    le_sms_MsgRef_t msgRef,        ///< Reference to the message object.
-    string          text[160] OUT  ///< SMS text.
+    Msg     msgRef,                 ///< Reference to the message object.
+    string  text[TEXT_MAX_LEN] OUT  ///< SMS text.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -616,8 +671,8 @@ FUNCTION le_result_t GetText
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetBinary
 (
-    le_sms_MsgRef_t msgRef,        ///< Reference to the message object.
-    uint8           bin[140] OUT   ///< Binary message.
+    Msg     msgRef,                 ///< Reference to the message object.
+    uint8   bin[BINARY_MAX_BYTES] OUT ///< Binary message.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -638,8 +693,8 @@ FUNCTION le_result_t GetBinary
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetPDU
 (
-    le_sms_MsgRef_t msgRef,        ///< Reference to the message object.
-    uint8           pdu[176] OUT   ///< PDU message.
+    Msg   msgRef,               ///< Reference to the message object.
+    uint8 pdu[PDU_MAX_BYTES] OUT  ///< PDU message.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -654,7 +709,7 @@ FUNCTION le_result_t GetPDU
 //--------------------------------------------------------------------------------------------------
 FUNCTION size_t GetPDULen
 (
-    le_sms_MsgRef_t msgRef ///< Reference to the message object.
+    Msg msgRef ///< Reference to the message object.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -664,7 +719,6 @@ FUNCTION size_t GetPDULen
  * Verifies first if the parameter is valid, then it checks the modem state can support
  * message deleting.
  *
- * @return LE_NOT_POSSIBLE  Current modem state does not support message deleting.
  * @return LE_FAULT         Function failed to perform the deletion.
  * @return LE_NO_MEMORY     Message storage is not available.
  * @return LE_OK            Function succeeded.
@@ -675,7 +729,7 @@ FUNCTION size_t GetPDULen
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t DeleteFromStorage
 (
-    le_sms_MsgRef_t msgRef ///< Reference to the message object.
+    Msg msgRef ///< Reference to the message object.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -687,7 +741,7 @@ FUNCTION le_result_t DeleteFromStorage
  *      Reference to the List object. Null pointer if no messages have been retrieved.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION le_sms_MsgListRef_t CreateRxMsgList
+FUNCTION MsgList CreateRxMsgList
 (
 );
 
@@ -703,7 +757,7 @@ FUNCTION le_sms_MsgListRef_t CreateRxMsgList
 //--------------------------------------------------------------------------------------------------
 FUNCTION void DeleteList
 (
-    le_sms_MsgListRef_t msgListRef ///< Messages list.
+    MsgList msgListRef ///< Messages list.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -712,15 +766,15 @@ FUNCTION void DeleteList
  * retrieved with le_sms_CreateRxMsgList().
  *
  * @return NULL              No message found.
- * @return le_sms_MsgRef_t  Message object reference.
+ * @return Msg  Message object reference.
  *
  * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
  *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION le_sms_MsgRef_t GetFirst
+FUNCTION Msg GetFirst
 (
-    le_sms_MsgListRef_t msgListRef ///< Messages list.
+    MsgList msgListRef ///< Messages list.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -729,15 +783,15 @@ FUNCTION le_sms_MsgRef_t GetFirst
  * retrieved with le_sms_CreateRxMsgList().
  *
  * @return NULL              No message found.
- * @return le_sms_MsgRef_t  Message object reference.
+ * @return Msg  Message object reference.
  *
  * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
  *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION le_sms_MsgRef_t GetNext
+FUNCTION Msg GetNext
 (
-    le_sms_MsgListRef_t msgListRef ///< Messages list.
+    MsgList msgListRef ///< Messages list.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -753,7 +807,7 @@ FUNCTION le_sms_MsgRef_t GetNext
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_sms_Status_t GetStatus
 (
-    le_sms_MsgRef_t msgRef ///< Messages list.
+    Msg msgRef ///< Messages list.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -766,7 +820,7 @@ FUNCTION le_sms_Status_t GetStatus
 //--------------------------------------------------------------------------------------------------
 FUNCTION void MarkRead
 (
-    le_sms_MsgRef_t msgRef ///< Messages list.
+    Msg msgRef ///< Messages list.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -779,7 +833,7 @@ FUNCTION void MarkRead
 //--------------------------------------------------------------------------------------------------
 FUNCTION void MarkUnread
 (
-    le_sms_MsgRef_t msgRef ///< Messages list.
+    Msg msgRef ///< Messages list.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -799,7 +853,7 @@ FUNCTION void MarkUnread
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetSmsCenterAddress
 (
-    string          tel[17] OUT    ///< SMS center address number string.
+    string          tel[le_mdmDefs.PHONE_NUM_MAX_LEN] OUT    ///< SMS center address number string.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -817,5 +871,5 @@ FUNCTION le_result_t GetSmsCenterAddress
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetSmsCenterAddress
 (
-    string          tel[17] IN    ///< SMS center address number string.
+    string          tel[le_mdmDefs.PHONE_NUM_MAX_LEN] IN    ///< SMS center address number string.
 );

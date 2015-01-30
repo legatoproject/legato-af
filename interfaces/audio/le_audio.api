@@ -1,14 +1,14 @@
 /**
- * @page c_audio Audio 
+ * @page c_audio Audio
  *
- * @ref le_audio_interface.h "API reference"
+ * @ref le_audio_interface.h "API Reference"
  *
  * <HR>
  *
  * The Audio API handles audio interfaces including play or listen supported formats.
  *
  * A Legato device can use several audio interfaces. You choose the input and output
- * interfaces to tie together. The Audio stream related to a particular interface is
+ * interfaces to tie together. The Audio stream-related to a particular interface is
  * represented with an 'Audio Stream Reference'.
  *
  * You can create your own audio path by connecting several audio streams together using
@@ -100,6 +100,81 @@
  *
  * @note The hardware may or may not support the full 0-100 resolution, and if you want to see what
  * was actually set call le_audio_GetGain() after le_audio_SetGain() to get the real value.
+ *
+ * The users have also the possibility to register a handler function to catch some stream-related
+ * notifications such as errors or audio file's events:
+ *
+ * le_audio_AddStreamEventHandler() function installs a handler for stream notifications.
+ * You can specify the types of events to notify by passing a bit mask as a parameter (cf.
+ * @c le_audio_StreamEventBitMask_t).
+ *
+ * le_audio_RemoveStreamEventHandler() function removes the stream handler function.
+ *
+ * @warning Only audio file-related events are managed in the current Legato's version.
+ *
+ * Once the stream event handler is called, the user can call the different functions to retrieve
+ * the event's value:
+ * - le_audio_GetFileEvent() gets the event's value related to audio file's events.
+ *
+ * @warning Only audio file-related functions are available in the current Legato's version.
+ *
+ * The code sample below shows how the User can install a file's event handler.
+ * @code
+ *
+ * // Handler function for Stream Event Notifications.
+ * static void MyStreamEventHandler
+ * (
+ *     le_audio_StreamRef_t          streamRef,
+ *     le_audio_StreamEventBitMask_t streamEventMask,
+ *     void*                         contextPtr
+ * )
+ * {
+ *     le_audio_FileEvent_t event;
+ *
+ *     if (streamEventMask & LE_AUDIO_BITMASK_FILE_EVENT)
+ *     {
+ *         if(le_audio_GetFileEvent(streamRef, &event) == LE_OK)
+ *         {
+ *             switch(event)
+ *             {
+ *                 case LE_AUDIO_FILE_ENDED:
+ *                     LE_INFO("File event is LE_AUDIO_FILE_ENDED.");
+ *                     break;
+ *
+ *                 case LE_AUDIO_FILE_ERROR:
+ *                     LE_INFO("File event is LE_AUDIO_FILE_ERROR.");
+ *                     break;
+ *             }
+ *         }
+ *     }
+ * }
+ *
+ *
+ * // I must install my audio file event handler as follows:
+ * [...]
+ *
+ * int myAudioFileFd = -1;
+ * le_audio_StreamRef_t fileAudioRef = NULL;
+ * le_audio_StreamEventHandlerRef_t streamHandlerRef = NULL;
+ *
+ * myAudioFileFd=open("/myAudioFile.wav", O_RDONLY);
+ *
+ * fileAudioRef = le_audio_OpenFilePlayback(myAudioFileFd);
+ * LE_ERROR_IF((fileAudioRef==NULL), "OpenFilePlayback returns NULL!");
+ *
+ * streamHandlerRef = le_audio_AddStreamEventHandler(fileAudioRef,
+ *                                                   LE_AUDIO_BITMASK_FILE_EVENT,
+ *                                                   MyStreamEventHandler,
+ *                                                   NULL);
+ * LE_ERROR_IF((streamHandlerRef==NULL), "AddFileEventHandler returns NULL!");
+ *
+ * // Audio playback automatically starts when I connect the fileAudioRef to the connector
+ * le_audio_Connect(audioInputConnectorRef, fileAudioRef);
+ *
+ * [...]
+ *
+ * @endcode
+ *
  *
  * @section le_audio_connectors Create Audio connectors
  *
@@ -224,7 +299,7 @@
  * @todo DTMF encoding will be available in a future release.
  *
  * The application must register a handler function to detect incoming DTMF characters on a specific
- * input audio stream. The le_audio_AddDtmfDetectorHandler() function installs an handler for DTMF
+ * input audio stream. The le_audio_AddDtmfDetectorHandler() function installs a handler for DTMF
  * detection.
  *
  * The le_audio_RemoveDtmfDetectorHandler() function uninstalls the handler function.
@@ -267,7 +342,7 @@
  *             // I close the audio interfaces that have failed to open.
  *             le_audio_Close(*mdmRxAudioRefPtr);
  *             le_audio_Close(*mdmTxAudioRefPtr);
- *             return LE_NOT_POSSIBLE;
+ *             return LE_FAULT;
  *     }
  *
  *     // I create the audio connectors.
@@ -361,7 +436,7 @@
  *             // I close the audio interfaces that  have failed to open.
  *             le_audio_Close(*mdmRxAudioRefPtr);
  *             le_audio_Close(*mdmTxAudioRefPtr);
- *             return LE_NOT_POSSIBLE;
+ *             return LE_FAULT;
  *     }
  *
  *     *audioInputConnectorRefPtr = le_audio_CreateConnector();
@@ -405,7 +480,7 @@
  *         // I close the audio interfaces that have failed to open.
  *         le_audio_Close(*newMdmRxAudioRefPtr);
  *         le_audio_Close(*newMdmTxAudioRefPtr);
- *         return LE_NOT_POSSIBLE;
+ *         return LE_FAULT;
  *     }
  *
  *     // I mute the previous call.
@@ -449,7 +524,7 @@
  *
  * <HR>
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 
@@ -457,8 +532,29 @@
  *
  * Legato @ref c_audio include file.
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stream Events Bit Mask
+ */
+//--------------------------------------------------------------------------------------------------
+BITMASK StreamEventBitMask
+{
+    BITMASK_FILE_EVENT,    ///< event related to audio file's event
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Audio file recording/playback events.
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM FileEvent
+{
+    FILE_ENDED,         ///< File playback has reached the end of file.
+    FILE_ERROR          ///< File recording/playback has encountered an error.
+};
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -505,8 +601,8 @@ ENUM I2SChannel
  * Maximum DTMF string length.
  */
 //--------------------------------------------------------------------------------------------------
-DEFINE DTMF_MAX_LEN=100;
-DEFINE DTMF_MAX_BYTES=DTMF_MAX_LEN+1;
+DEFINE DTMF_MAX_LEN   = (100);
+DEFINE DTMF_MAX_BYTES = (DTMF_MAX_LEN+1);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -664,9 +760,51 @@ FUNCTION Stream OpenModemVoiceTx
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Handler for audio stream event.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+HANDLER StreamEventHandler
+(
+    Stream               streamRef  IN,       ///< The audio stream reference.
+    StreamEventBitMask   streamEventMask IN   ///< The type of stream events.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This event provides information on audio stream events for the specified streamRef
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+EVENT StreamEvent
+(
+    Stream               streamRef IN,        ///< The audio stream reference.
+    StreamEventBitMask   streamEventMask IN,  ///< The type of stream events to be notified.
+    handler StreamEventHandler
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Retrieve the file-related event value.
+ *
+ * @return
+ *      - LE_OK The function succeeded.
+ *      - LE_NOT_FOUND The event is not related to a file event
+ *      - LE_FAULT The function failed
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetFileEvent
+(
+    Stream    streamRef IN,  ///< The audio stream reference.
+    FileEvent event     OUT  ///< The Audio file recording/playback events.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Get the audio format of an input or output stream.
  *
  * @return LE_FAULT         Function failed.
+ * @return LE_OVERFLOW      The format buffer wasn't big enough to accept the audio format string
  * @return LE_OK            The function succeeded.
  *
  * @note The process exits, if an invalid audio stream reference is given or if the formatPtr
@@ -838,18 +976,23 @@ FUNCTION Disconnect
  */
 //--------------------------------------------------------------------------------------------------
 HANDLER DtmfDetectorHandler
-{
-    ADD_HANDLER_PARAMS
-    (
-        Stream      streamRef IN      ///< The audio stream reference.
-    );
+(
+    Stream      streamRef  IN,    ///< The audio stream reference.
+    char        dtmf       IN     ///< Detected DTMF.
+);
 
-    HANDLER_PARAMS
-    (
-        Stream      streamRef  IN,    ///< The audio stream reference.
-        char        dtmf       IN     ///< Detected DTMF.
-    );
-};
+//--------------------------------------------------------------------------------------------------
+/**
+ * This event provides information on DTMF decoding for the specified streamRef
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+EVENT DtmfDetector
+(
+    Stream      streamRef IN,     ///< The audio stream reference.
+    handler DtmfDetectorHandler
+);
+
 //--------------------------------------------------------------------------------------------------
 /**
  * This function must be called to enable the Noise Suppressor.

@@ -48,7 +48,7 @@
  *
  * <HR>
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 /**
@@ -81,7 +81,7 @@
  *
  * Legato @ref c_le_cellnet include file.
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -115,12 +115,19 @@ ENUM State
  */
 //--------------------------------------------------------------------------------------------------
 HANDLER StateHandler
-{
-    HANDLER_PARAMS
-    (
-        State  state  IN            ///< The cellular network state
-    );
-};
+(
+    State  state  IN            ///< The cellular network state
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This event provides information on network state changes
+ */
+//--------------------------------------------------------------------------------------------------
+EVENT StateEvent
+(
+    handler StateHandler
+);
 
 //--------------------------------------------------------------------------------------------------
 /**

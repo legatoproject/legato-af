@@ -31,14 +31,14 @@
  *  le_cfgAdmin_ReleaseTreeIterator(iteratorRef);
  *  @endcode
  *
- *  Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to
+ *  Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  *  license.
  */
  /** @file le_cfgAdmin_interface.h
  *
  * Legato @ref c_cfgAdmin include file.
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 // -------------------------------------------------------------------------------------------------
 
@@ -69,8 +69,6 @@ REFERENCE Iterator;
  *  @return This function will return one of the following values:
  *
  *          - LE_OK            - The commit was completed successfuly.
- *          - LE_NOT_PERMITTED - Attempted to import to a section of the tree the connection doesn't
- *                               have access to.
  *          - LE_FAULT         - An I/O error occured while reading the data.
  *          - LE_FORMAT_ERROR  - The configuration data being imported appears corrupted.
  */
@@ -94,11 +92,8 @@ FUNCTION le_result_t ImportTree
  *
  *  @return This function will return one of the following values:
  *
- *          - LE_OK            - The commit was completed successfuly.
- *          - LE_BAD_PARAMETER - The specified path does not exist in the config tree.
- *          - LE_NOT_PERMITTED - Attempted to export from a section of the tree the connection
- *                               doesn't have access to.
- *          - LE_FAULT         - An I/O error occured while writing the data.
+ *          - LE_OK     - The commit was completed successfuly.
+ *          - LE_FAULT  - An I/O error occured while writing the data.
  */
 // -------------------------------------------------------------------------------------------------
 FUNCTION le_result_t ExportTree

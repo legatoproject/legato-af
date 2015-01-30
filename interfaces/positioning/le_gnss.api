@@ -1,0 +1,148 @@
+/**
+ * @page c_gnss GNSS
+ *
+ * @ref le_gnss_interface.h "API Reference" <br>
+ *
+ * <HR>
+ *
+ * This API provides access to the GNSS device.
+ *
+ * GNSS or Global Navigation Satellite System is a satellite navigation system with global coverage.
+ *
+ * This API provides function to configure the GNSS device and retrieve position information.
+ *
+ * @section le_gnss_ForceColdRestart Force cold restart
+ *
+ * The le_gnss_ForceColdRestart() function performs a "cold" restart of the GNSS device. The current
+ * GNSS session is stopped, the specified assistance data are cleared then the GNSS session is
+ * restarted.
+ *
+ * For the cold start condition, the following assistance data are cleared:
+ *   - Ephemerises
+ *   - Time
+ *   - Position
+ *
+ * @section le_gnss_ext_eph Extended Ephemeris
+ *
+ * @todo Add detailed documentation.
+ *
+ * With le_gnss_LoadExtendedEphemerisFile() , you can load an 'Extended Ephemeris' file into
+ * the GNSS device from the filesystem.
+ * You have to download the file before loading it.
+ *
+ * With le_gnss_GetExtendedEphemerisValidity(), you will to get the validity of the last injected
+ * Extended Ephemeris.
+ *
+ * Example:
+ *
+ * @code
+ *
+ *   #define EXT_EPH_PATH     "/tmp/ext_eph.bin"
+ *
+ *   le_clk_Time_t start,stop;
+ *   char startTime[100] = {0};
+ *   char StopTime[100] = {0};
+ *   int32_t fd;
+ *
+ *   // download file into EXT_EPH_PATH
+ *   DownloadExtendedEphemerisFile(EXT_EPH_PATH);
+ *
+ *   if ((fd=open(EXT_EPH_PATH, O_RDONLY)) == -1)
+ *   {
+ *       LE_ERROR("Open file %s failure: errno.%d (%s)",  EXT_EPH_PATH, errno, strerror(errno));
+ *   }
+ *   else
+ *   {
+ *       LE_INFO("Open file %s with fd.%d",  EXT_EPH_PATH, fd);
+ *   }
+ *
+ *   if ( le_gnss_LoadExtendedEphemerisFile(EXT_EPH_PATH) != LE_OK )
+ *   {
+ *      LE_WARN("Could not load '%s'",EXT_EPH_PATH);
+ *   }
+ *
+ *   if ( le_gnss_GetExtendedEphemerisValidity(&start,&stop) != LE_OK )
+ *   {
+ *      LE_WARN("Could get the validity");
+ *   }
+ *
+ *   if ( le_clk_ConvertToUTCString(start,
+ *                                  LE_CLK_STRING_FORMAT_DATE_TIME,
+ *                                  startTime,
+ *                                  sizeof(startTime),
+ *                                  NULL) != LE_OK )
+ *   {
+ *       LE_INFO("Could not convert start time");
+ *   }
+ *   if ( le_clk_ConvertToUTCString(stop,
+ *                                  LE_CLK_STRING_FORMAT_DATE_TIME,
+ *                                  StopTime,
+ *                                  sizeof(StopTime),
+ *                                  NULL) != LE_OK )
+ *   {
+ *       LE_INFO("Could not convert stop time");
+ *   }
+ *
+ *   LE_INFO("Validity Start time  %s",startTime);
+ *   LE_INFO("Validity Stop time %s",StopTime);
+ *
+ *   close (fd);
+ *
+ * @endcode
+ *
+ * <HR>
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ */
+
+
+
+/** @file le_gnss_interface.h
+ *
+ * Legato @ref c_gnss include file.
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ */
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to load an 'Extended Ephemeris' file into the GNSS device.
+ *
+ * @return LE_FAULT         The function failed to inject the 'Extended Ephemeris' file.
+ * @return LE_OK            The function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t LoadExtendedEphemerisFile
+(
+    file       fd    IN  ///< Extended ephemeris file descriptor
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the validity of the last injected Extended Ephemeris.
+ *
+ * @return LE_FAULT         The function failed to get the validity
+ * @return LE_OK            The function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetExtendedEphemerisValidity
+(
+    le_clk_Time_t startTimePtr OUT,     ///< Start time
+    le_clk_Time_t stopTimePtr OUT       ///< Stop time
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function clears ephemeris, position and time data before performing a restart.
+ *
+ * @return LE_FAULT         The function failed.
+ * @return LE_OK            The function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t ForceColdRestart
+(
+);

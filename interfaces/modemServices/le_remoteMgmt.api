@@ -34,7 +34,7 @@
  *
  * <HR>
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 /**
@@ -42,7 +42,7 @@
  *
  * Legato @ref c_remoteMgmt include file.
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 
@@ -67,9 +67,20 @@ REFERENCE Dnd;
  *
  */
 //--------------------------------------------------------------------------------------------------
-HANDLER WakeUpIndicHandler
-{
-};
+HANDLER WakeUpIndicHandler 
+(
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This event provides information on Wake-up indications.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+EVENT WakeUpIndic
+(
+    handler WakeUpIndicHandler
+);
 
 //--------------------------------------------------------------------------------------------------
 /**

@@ -1,0 +1,40 @@
+/**
+ * @page c_ips Input Power Supply Monitoring
+ *
+ * @ref le_ips_interface.h "API Reference"
+ *
+ * <HR>
+ *
+ * The IPS API is used to get monitoring information related to the platform voltage input.
+ *
+ * @section Input Power Supply Monitoring
+ *
+ * This functionality allows to retrieve the Platform voltage input in [mV], so that the
+ *  application can use the information to diagnose should the modem isn't fully functioning.
+ *
+ * le_ips_GetInputVoltage() API allows the application to retrieve the Platform voltage input.
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ */
+
+/** @file le_ips_interface.h
+ *
+ * Legato @ref c_ips include file.
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ */
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Platform voltage input in [mV].
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to get the value.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetInputVoltage
+(
+    uint32   inputVoltage    OUT ///< [OUT] The input voltage in [mV]
+);

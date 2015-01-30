@@ -1,0 +1,240 @@
+/**
+ * @page c_temp Temperature Monitoring
+ *
+ * @ref le_temp_interface.h "API Reference"
+ *
+ * <HR>
+ *
+ * The Temperature API is used to retrieve Platform and Radio 's temperature values and set
+ * warning and critical thresholds.
+ *
+ * @warning When a Critical event occurs, some platform can automatically switch off.
+ *
+ * @section c_temp_radio Radio Temperature Thresholds
+ *
+ * Two Thresholds are set to notify the Radio temperature state:
+ *  the warning and the critical radio temperature thresholds.
+ *
+ * if the Radio temperature reachs the:
+ *  - "Critical Threshold", a LE_TEMP_RADIO_HI_CRITICAL event occurs.
+ *  - "Warning Threshold" but still lower than "Critical Threshold", LE_TEMP_RADIO_HI_WARNING
+ *  event occurs.
+ *
+ * if the Radio temperature decreases below the:
+ * - "Critical Threshold", a LE_TEMP_RADIO_HI_WARNING event occurs.
+ * - "Warning Threshold", a LE_TEMP_RADIO_NORMAL event occurs.
+ *
+ * @warning An hysteresis can be dependent of the platform. Be sure to verify your platform's
+ * specifications.
+ *
+ * @section c_temp_platform Platform Temperature Thresholds
+ *
+ * Fours Thresholds are set to decide the state:
+ *  the low critical, low warning, high warning and the high critical Platform temperatures
+ *  thresholds
+ *
+ * if the Platform temperature reachs the:
+ *  - "high Critical Threshold", a LE_TEMP_PLATFORM_HI_CRITICALL event occurs.
+ *  - "high Warning Threshold" but still lower than "high Critical Threshold",
+ *  LE_TEMP_PLATFORM_HI_WARNING event occurs
+ *
+ * if the Platform temperature decreases below the:
+ *  - "low Warning Threshold" but still higher than "low Critical Threshold",
+ * LE_TEMP_PLATFORM_LO_WARNING event occurs.
+ *  - "low Critical Threshold", a LE_TEMP_PLATFORM_LO_CRITICALL event occurs.
+ *
+ * if the Platform temperature decreases below the:
+ *  - "hi Critical Threshold", a LE_TEMP_PLATFORM_HI_WARNING event occurs.
+ *  - "hi Warning Threshold", a LE_TEMP_PLATFORM_NORMAL event occurs.
+ *
+ * if the Platform temperature reachs the:
+ *  - "low Warning Threshold", a LE_TEMP_PLATFORM_NORMAL event occurs..
+ *  - "low Critical Threshold" but still lower than "high Warning Threshold", a
+ *  LE_TEMP_PLATFORM_LO_WARNING event occurs..
+ *
+ * @warning An hysteresis can be dependent of the platform. Be sure to verify your platform's
+ * specifications.
+ *
+ * @section Temperature Monitoring
+ *
+ * This functionality allows to monitoring the platform temperature by getting the current
+ *  Platform or Radio temperature and by setting warning and critical thresholds temperature.
+ *
+ * @warning On some platforms, the thresholds parameters are persistent and a Platform reboot is
+ *  required for thresholds change takes effect.
+ *
+ * When the warning or the critical temperature thresholds are reached an event is sent with
+ *  the @c le_temp_ThresholdEvent_t event type .
+ *
+ * - le_temp_GetRadioTemperature() API allows the application to retrieve the Radio temperature.
+ * - le_temp_SetRadioThresholds() API allows the application to set the warning and the critical
+ *  Radio temperature thresholds.
+ * - le_temp_GetRadioThresholds() API allows the application to get the warning and the critical
+ *  Radio temperature threshold.
+ *
+ * - le_temp_GetPlatformTemperature() API allows the application to retrieve the Platform
+ *  temperature.
+ * - le_temp_SetPlatformThresholds() API allows the application to set the warning and the
+ *  critical Platform
+ *  temperature thresholds.
+ * - le_temp_GetPlatformThresholds() API allows the application to get the warning and the
+ *  critical Platform temperature threshold.
+ *
+ * - le_temp_AddThresholdEventHandler() API adds a handler to notify when the temperature
+ *  threshold is reached.
+ * - le_temp_RemoveThresholdEventHandler() API removes the temperature handler.
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ */
+
+
+/** @file le_temp_interface.h
+ *
+ * Legato @ref le_temp include file.
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ */
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Temperature event type.
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM ThresholdStatus
+{
+    PLATFORM_HI_CRITICAL,  ///< High Platform Critical temperature threshold is reached.
+    RADIO_HI_CRITICAL,     ///< High Radio Critical temperature threshold is reached.
+    PLATFORM_HI_WARNING,   ///< High Platform Warning temperature threshold is reached.
+    RADIO_HI_WARNING,      ///< High Radio Warning temperature threshold is reached.
+    PLATFORM_NORMAL,       ///< Normal Platform temperature threshold is reached.
+    RADIO_NORMAL,          ///< Normal Radio temperature threshold is reached.
+    PLATFORM_LOW_WARNING,  ///< Low Platform Warning temperature threshold is reached.
+    PLATFORM_LOW_CRITICAL  ///< Low Platform Critical temperature threshold is reached.
+};
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler for Temperature event.
+ */
+//--------------------------------------------------------------------------------------------------
+HANDLER ThresholdEventHandler
+(
+   ThresholdStatus event IN        ///< Temperature threshold event reached.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This event provides information on Threshold reached.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+EVENT ThresholdEvent
+(
+    handler ThresholdEventHandler
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Platform temperature level in degree celsius.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to get the temperature.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetPlatformTemperature
+(
+    int32   platformTemp    OUT ///< [OUT] The Platform temperature level in degree celsius.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Radio temperature level in degree celsius.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to get the temperature.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetRadioTemperature
+(
+    int32   radioTemp    OUT ///< [OUT] The Radio temperature level in degree celsius.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the Platform warning and critical temperature thresholds in degree celsius.
+ *  When thresholds temperature are reached, a temperature event is triggered.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_BAD_PARAMETER The hiWarning threshold + 1 is equal to or higher than
+ *                           the hiCritical threshold.
+ *                         The loWwarning threshold is equal to or higher than
+ *                           the hiWarning threshold.
+ *                         The loWwarning threshold is equal to or lower than 
+ *                           the loCritical threshold.
+ *      - LE_FAULT         The function failed to set the thresholds.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetPlatformThresholds
+(
+   int32   lowCriticalTemp IN, ///< [IN] The low critical temperature threshold in degree celsius.
+   int32   lowWarningTemp  IN, ///< [IN] The low warning temperature threshold in degree celsius.
+   int32   hiWarningTemp   IN, ///< [IN] The high warning temperature threshold in degree celsius.
+   int32   hiCriticalTemp  IN  ///< [IN] The high critical temperature threshold in degree celsius.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Platform warning and critical temperature thresholds in degree celsius.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to get the thresholds.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetPlatformThresholds
+(
+   int32   lowCriticalTemp OUT, ///< [OUT] The low critical temperature threshold in degree celsius.
+   int32   lowWarningTemp  OUT, ///< [OUT] The low warning temperature threshold in degree celsius.
+   int32   hiWarningTemp   OUT, ///< [OUT] The high warning temperature threshold in degree celsius.
+   int32   hiCriticalTemp  OUT  ///< [OUT] The high critical temperature threshold
+                                ///<  in degree celsius.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the Radio warning and critical temperature thresholds in degree celsius.
+ *  When thresholds temperature are reached, a temperature event is triggered.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_BAD_PARAMETER The hiWarning threshold + 1 is equal to or higher than
+ *                           the hiCritical threshold.
+ *      - LE_FAULT         The function failed to set the thresholds.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetRadioThresholds
+(
+   int32   hiWarningTemp   IN, ///< [IN] The high warning temperature threshold in degree celsius.
+   int32   hiCriticalTemp  IN  ///< [IN] The high critical temperature threshold in degree celsius.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Radio warning and critical temperature thresholds in degree celsius.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to get the thresholds.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetRadioThresholds
+(
+   int32   hiWarningTemp   OUT, ///< [OUT] The high warning temperature threshold in degree celsius.
+   int32   hiCriticalTemp  OUT  ///< [OUT] The high critical temperature threshold
+                                ///<  in degree celsius.
+);

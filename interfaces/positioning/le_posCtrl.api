@@ -1,7 +1,7 @@
 /**
  * @page c_posCtrl Positioning Control API
  *
- * @ref le_posCtrl_interface.h "Click here for the reference documentation."
+ * @ref le_posCtrl_interface.h "API Reference"
  *
  * <HR>
  *
@@ -28,7 +28,7 @@
  *          applications.
  * <HR>
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 
@@ -36,7 +36,7 @@
  *
  * Legato @ref c_posCtrl include file.
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 //--------------------------------------------------------------------------------------------------

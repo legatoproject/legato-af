@@ -1,7 +1,7 @@
 /**
  * @page c_info Modem Information
  *
- * @ref le_info_interface.h "API reference"
+ * @ref le_info_interface.h "API Reference"
  *
  * <HR>
  *
@@ -16,17 +16,30 @@
  * The linux kernel version can be queried using standard linux methods, such as the uname
  * command, or the uname() API.
  *
- * @section le_info_model Query Mobile Device Identity
+ * @section le_info_model Query Device information
  *
  * le_info_GetDeviceModel() is used to retrieve the target hardware platform identity.
  *
- * @section le_info_imei Query International Mobile Equipment Identity
- *
  * le_info_GetImei() is used to retrieve the International Mobile Equipment Identity (IMEI).
+ *
+ * le_info_GetMeid() is used to retrieve the CDMA device Mobile Equipment Identifier (MEID).
+ *
+ * le_info_GetEsn() is used to retrieve Electronic Serial Number (ESN) of the device.
+ *
+ * le_info_GetMdn() is used to retrieve the Mobile Directory Number (MDN) of the device.
+ *
+ * le_info_GetMin() is used to retrieve the CDMA Mobile Identification Number (MIN).
+ *
+ * le_info_GetPrlVersion() is used to retrieve the CDMA version of Preferred Roaming List (PRL).
+ *
+ * le_info_GetPrlOnlyPreference() is used to retrieve the CDMA Preferred Roaming List (PRL)
+ *  only preferences status.
+ *
+ * le_info_GetNai() is used to retrieve the CDMA Network Access Identifier (NAI) string.
  *
  * <HR>
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 
@@ -34,7 +47,7 @@
  *
  * Legato @ref c_info include file.
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 // NOTE: string sizes are set to an arbitrary value.  The correct values
@@ -43,24 +56,67 @@
 //--------------------------------------------------------------------------------------------------
 /**
  * Maximum IMEI length (15 digits)
- *
+ * One extra byte is added for the null character.
  */
 //--------------------------------------------------------------------------------------------------
-DEFINE  IMEI_MAX_LEN    = (15+1);
+DEFINE IMEI_MAX_LEN    = (15);
+DEFINE IMEI_MAX_BYTES  = (IMEI_MAX_LEN+1);
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Maximum length of a version string
  */
 //--------------------------------------------------------------------------------------------------
-DEFINE MAX_VERS_LEN = 256;
+DEFINE MAX_VERS_LEN   = 256;
+DEFINE MAX_VERS_BYTES = (MAX_VERS_LEN+1);
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Maximum length of a model string
  */
 //--------------------------------------------------------------------------------------------------
-DEFINE MAX_MODEL_LEN = 256;
+DEFINE MAX_MODEL_LEN   = 256;
+DEFINE MAX_MODEL_BYTES = (MAX_MODEL_LEN+1);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum length of an Electronic Serial Number (ESN) string.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_ESN_LEN   = 32;
+DEFINE MAX_ESN_BYTES = (MAX_ESN_LEN+1);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum length of an Mobile Equipment Identifier (MEID) string.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_MEID_LEN   = 32;
+DEFINE MAX_MEID_BYTES = (MAX_MEID_LEN+1);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum length of an Mobile Directory Number (MDN) string.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_MDN_LEN   = 32;
+DEFINE MAX_MDN_BYTES = (MAX_MDN_LEN+1);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum length of an Mobile Station ISDN Number (MSISDN) string.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_MIN_LEN   = 32;
+DEFINE MAX_MIN_BYTES = (MAX_MIN_LEN+1);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum length of an Mobile Station ISDN Number (NAI) string.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_NAI_LEN   = 72;
+DEFINE MAX_NAI_BYTES = (MAX_NAI_LEN+1);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -76,7 +132,7 @@ DEFINE MAX_MODEL_LEN = 256;
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetImei
 (
-    string   imei[15] OUT   ///< IMEI string.
+    string   imei[IMEI_MAX_LEN] OUT   ///< IMEI string.
 );
 
 
@@ -87,7 +143,8 @@ FUNCTION le_result_t GetImei
  * @return
  *      - LE_OK on success
  *      - LE_NOT_FOUND if the version string is not available
- *      - LE_NOT_POSSIBLE for any other errors
+ *      - LE_OVERFLOW if version string to big to fit in provided buffer
+ *      - LE_FAULT for any other errors
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetFirmwareVersion
@@ -103,7 +160,8 @@ FUNCTION le_result_t GetFirmwareVersion
  * @return
  *      - LE_OK on success
  *      - LE_NOT_FOUND if the version string is not available
- *      - LE_NOT_POSSIBLE for any other errors
+ *      - LE_OVERFLOW if version string to big to fit in provided buffer
+ *      - LE_FAULT for any other errors
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetBootloaderVersion
@@ -125,4 +183,120 @@ FUNCTION le_result_t GetBootloaderVersion
 FUNCTION le_result_t GetDeviceModel
 (
     string modelPtr[MAX_MODEL_LEN] OUT     ///< The model identity string (null-terminated).
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the CDMA device Mobile Equipment Identifier (MEID).
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to get the value.
+ *      - LE_OVERFLOW      The device Mobile Equipment identifier length exceed the maximum length.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetMeid
+(
+    string meidStr[MAX_MEID_LEN] OUT   ///< The Mobile Equipment identifier (MEID)
+                                       ///<  string (null-terminated).
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the CDMA Electronic Serial Number (ESN) of the device.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to get the value.
+ *      - LE_OVERFLOW      The Electronic Serial Number length exceed the maximum length.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetEsn
+(
+    string esnStr[MAX_ESN_LEN] OUT     ///< The Electronic Serial Number (ESN) of the device.
+                                       ///<  string (null-terminated).
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the CDMA Mobile Directory Number (MDN) of the device.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to get the value.
+ *      - LE_OVERFLOW      The Mobile Directory Number length exceed the maximum length.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetMdn
+(
+    string mdnStr[MAX_MDN_LEN] OUT     ///< The Mobile Directory Number (MDN)
+                                       ///<  string (null-terminated).
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the CDMA version of Preferred Roaming List (PRL).
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_NOT_FOUND     The information is not availble.
+ *      - LE_FAULT         The function failed to get the value.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetPrlVersion
+(
+    uint16 prlVersion OUT    ///< The Preferred Roaming List (PRL) version.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the CDMA Preferred Roaming List (PRL) only preferences status.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_NOT_FOUND	   The information is not availble.
+ *      - LE_FAULT         The function failed to get the value.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetPrlOnlyPreference
+(
+    bool prlOnlyPreference OUT      ///< The CDMA Preferred Roaming List only preferences status.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the CDMA Mobile Identification Number (MIN).
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to get the value.
+ *      - LE_OVERFLOW      The CDMA Mobile Identification Number length exceed the maximum length.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetMin
+(
+    string msisdnStr[MAX_MIN_LEN] OUT  ///< The Mobile Identification Number (MIN)
+                                       ///<  string (null-terminated).
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the CDMA Network Access Identifier (NAI) string in ASCII text.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to get the value.
+ *      - LE_OVERFLOW      The Network Access Identifier (NAI) length exceed the maximum length.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetNai
+(
+    string naiStr[MAX_NAI_LEN] OUT      ///< The Network Access Identifier (NAI)
+                                        ///<  string (null-terminated).
 );

@@ -17,6 +17,7 @@
  * be loaded using @ref le_mdc_GetProfile.
  * The maximum number of data profiles supported is modem dependent and can be retrieved with
  * @ref le_mdc_NumProfiles.
+ * A pre-defined data profile can also be retrieved using @ref GetProfileFromApn thanks to its APN.
  *
  * @warning Ensure to check the list of supported data profiles for your specific platform.
  *
@@ -64,7 +65,7 @@
  *
  * <HR>
  *
- * Copyright (C) Sierra Wireless, Inc 2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 //--------------------------------------------------------------------------------------------------
@@ -73,7 +74,7 @@
  *
  * Legato @ref c_mdc include file.
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -84,25 +85,25 @@
 DEFINE  INTERFACE_NAME_MAX_LEN = 10;
 
 /// Maximum number of bytes in a profile name (including the null-terminator).
-DEFINE  INTERFACE_NAME_MAX_BYTES  = (INTERFACE_NAME_MAX_LEN + 1);
+DEFINE  INTERFACE_NAME_MAX_BYTES = (INTERFACE_NAME_MAX_LEN + 1);
 
 /// Maximum number of bytes in an IPv4 address (not including the null-terminator).
 DEFINE  IPV4_ADDR_MAX_LEN = 15;
 
 /// Maximum number of bytes in an IPv4 address (including the null-terminator).
-DEFINE  IPV4_ADDR_MAX_BYTES  = (IPV4_ADDR_MAX_LEN + 1);
+DEFINE  IPV4_ADDR_MAX_BYTES = (IPV4_ADDR_MAX_LEN + 1);
 
 /// Maximum number of bytes in an IPv6 address (not including the null-terminator).
 DEFINE  IPV6_ADDR_MAX_LEN = 39;
 
 /// Maximum number of bytes in an IPv6 address (including the null-terminator).
-DEFINE  IPV6_ADDR_MAX_BYTES  = (IPV6_ADDR_MAX_LEN + 1);
+DEFINE  IPV6_ADDR_MAX_BYTES = (IPV6_ADDR_MAX_LEN + 1);
 
 /// Maximum number of bytes in a apn name (not including the null-terminator).
 DEFINE  APN_NAME_MAX_LEN = 100;
 
 /// Maximum number of bytes in a apn name (including the null-terminator).
-DEFINE  APN_NAME_MAX_BYTES  = (APN_NAME_MAX_LEN + 1);
+DEFINE  APN_NAME_MAX_BYTES = (APN_NAME_MAX_LEN + 1);
 
 /// Maximum number of bytes in a user name (not including the null-terminator).
 DEFINE  USER_NAME_MAX_LEN = 64;
@@ -115,6 +116,10 @@ DEFINE  PASSWORD_NAME_MAX_LEN = 100;
 
 /// Maximum number of bytes in a password name (including the null-terminator).
 DEFINE  PASSWORD_NAME_MAX_BYTES  = (PASSWORD_NAME_MAX_LEN + 1);
+
+/// Default profile definition
+DEFINE DEFAULT_PROFILE = 0;
+
 
 /// Reference to a modem data connection profile.
 REFERENCE Profile;
@@ -166,17 +171,21 @@ ENUM Auth
  */
 //--------------------------------------------------------------------------------------------------
 HANDLER SessionStateHandler
-{
-    ADD_HANDLER_PARAMS
-    (
-        Profile profileRef  ///< The profile object of interest
-    );
+(
+    bool   isConnected      ///< Data session connection status.
+);
 
-    HANDLER_PARAMS
-    (
-        bool   isConnected      ///< Data session connection status.
-    );
-};
+//--------------------------------------------------------------------------------------------------
+/**
+ * This event provides information on data session connection state changes for the given profileRef.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+EVENT SessionState
+(
+    Profile profileRef, ///< The profile object of interest
+    handler SessionStateHandler
+);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -200,8 +209,8 @@ FUNCTION Profile GetProfile
  *
  * @return
  *      - LE_OK on success
- *      - LE_FAULT if input parameter is incorrect
- *      - LE_NOT_POSSIBLE for errors
+ *      - LE_BAD_PARAMETER if input parameter is incorrect
+ *      - LE_FAULT for errors
  *
  * @note
  * A profile can't be removed until a handler is subscribed on this profile, or a session
@@ -235,8 +244,9 @@ FUNCTION uint32 GetProfileIndex
  *
  * @return
  *      - LE_OK on success
+ *      - LE_BAD_PARAMETER if input parameter is incorrect
  *      - LE_DUPLICATE if the data session is already connected for the given profile
- *      - LE_NOT_POSSIBLE for other failures
+ *      - LE_FAULT for other failures
  *
  * @note
  *      The process exits, if an invalid profile object is given
@@ -253,8 +263,8 @@ FUNCTION le_result_t StartSession
  *
  * @return
  *      - LE_OK on success
- *      - LE_FAULT if the input parameter is not valid
- *      - LE_NOT_POSSIBLE for other failures
+ *      - LE_BAD_PARAMETER if the input parameter is not valid
+ *      - LE_FAULT for other failures
  *
  * @note
  *      The process exits, if an invalid profile object is given
@@ -271,7 +281,8 @@ FUNCTION le_result_t StopSession
  *
  * @return
  *      - LE_OK on success
- *      - LE_NOT_POSSIBLE on failure
+ *      - LE_BAD_PARAMETER if an input parameter is not valid
+ *      - LE_FAULT on failure
  *
  * @note
  *      The process exits, if an invalid profile object is given
@@ -289,8 +300,8 @@ FUNCTION le_result_t GetSessionState
  *
  * @return
  *      - LE_OK on success
- *      - LE_OVERFLOW if the interface name can't fit in interfaceNameStr
- *      - LE_NOT_POSSIBLE on any other failure
+ *      - LE_OVERFLOW if the interface name would not fit in interfaceNameStr
+ *      - LE_FAULT for all other errors
  *
  * @note
  *      The process exits, if an invalid profile object is given
@@ -310,7 +321,7 @@ FUNCTION le_result_t GetInterfaceName
  * @return
  *      - LE_OK on success
  *      - LE_OVERFLOW if the IP address would not fit in ipAddrStr
- *      - LE_NOT_POSSIBLE for all other errors
+ *      - LE_FAULT for all other errors
  *
  * @note
  *      The process exits, if an invalid profile object is given
@@ -330,7 +341,7 @@ FUNCTION le_result_t GetIPv4Address
  * @return
  *      - LE_OK on success
  *      - LE_OVERFLOW if the IP address would not fit in gatewayAddrStr
- *      - LE_NOT_POSSIBLE for all other errors
+ *      - LE_FAULT for all other errors
  *
  * @note
  *      The process exits, if an invalid profile object is given
@@ -350,7 +361,7 @@ FUNCTION le_result_t GetIPv4GatewayAddress
  * @return
  *      - LE_OK on success
  *      - LE_OVERFLOW if the IP address would not fit in buffer
- *      - LE_NOT_POSSIBLE for all other errors
+ *      - LE_FAULT for all other errors
  *
  * @note
  *      - If only one DNS address is available, then it will be returned, and an empty string will
@@ -373,7 +384,7 @@ FUNCTION le_result_t GetIPv4DNSAddresses
  * @return
  *      - LE_OK on success
  *      - LE_OVERFLOW if the IP address would not fit in ipAddrStr
- *      - LE_NOT_POSSIBLE for all other errors
+ *      - LE_FAULT for all other errors
  *
  * @note
  *      The process exits, if an invalid profile object is given
@@ -393,7 +404,7 @@ FUNCTION le_result_t GetIPv6Address
  * @return
  *      - LE_OK on success
  *      - LE_OVERFLOW if the IP address would not fit in gatewayAddrStr
- *      - LE_NOT_POSSIBLE for all other errors
+ *      - LE_FAULT for all other errors
  *
  * @note
  *      The process exits, if an invalid profile object is given
@@ -413,7 +424,7 @@ FUNCTION le_result_t GetIPv6GatewayAddress
  * @return
  *      - LE_OK on success
  *      - LE_OVERFLOW if the IP address can't fit in buffer
- *      - LE_NOT_POSSIBLE for all other errors
+ *      - LE_FAULT for all other errors
  *
  * @note
  *      - If only one DNS address is available, it will be returned, and an empty string will
@@ -466,7 +477,7 @@ FUNCTION bool IsIPv6
  *
  * @return
  *      - LE_OK on success
- *      - LE_NOT_POSSIBLE for all other errors
+ *      - LE_FAULT for all other errors
  *
  * @note
  *      The process exits, if an invalid profile object is given
@@ -485,7 +496,7 @@ FUNCTION le_result_t GetDataBearerTechnology
  *
  * @return
  *      - LE_OK on success
- *      - LE_NOT_POSSIBLE for all other errors
+ *      - LE_FAULT for all other errors
  *
  * @note
  *      - The process exits, if an invalid pointer is given
@@ -503,7 +514,7 @@ FUNCTION le_result_t GetBytesCounters
  *
  * @return
  *      - LE_OK on success
- *      - LE_NOT_POSSIBLE for all other errors
+ *      - LE_FAULT for all other errors
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t ResetBytesCounter
@@ -517,7 +528,7 @@ FUNCTION le_result_t ResetBytesCounter
  * @return
  *      - LE_OK on success
  *      - LE_BAD_PARAMETER if the PDP is not supported
- *      - LE_NOT_POSSIBLE if the data session is currently connected for the given profile
+ *      - LE_FAULT if the data session is currently connected for the given profile
  *
  * @note
  *      The process exits, if an invalid profile object is given
@@ -553,7 +564,8 @@ FUNCTION le_mdc_Pdp_t GetPDP
  *
  * @return
  *      - LE_OK on success
- *      - LE_NOT_POSSIBLE if the data session is currently connected for the given profile
+ *      - LE_BAD_PARAMETER if an input parameter is not valid
+ *      - LE_FAULT if the data session is currently connected for the given profile
  *
  * @note If APN is too long (max APN_NAME_MAX_LEN digits), it is a fatal error, the
  *       function will not return.
@@ -573,8 +585,9 @@ FUNCTION le_result_t SetAPN
  *
  * @return
  *      - LE_OK on success
+ *      - LE_BAD_PARAMETER if an input parameter is not valid
  *      - LE_OVERFLOW if the APN is is too long
- *      - LE_NOT_POSSIBLE on failed
+ *      - LE_FAULT on failed
  *
  * @note
  *      The process exits, if an invalid profile object is given
@@ -616,8 +629,9 @@ FUNCTION le_result_t SetAuthentication
  *
  * @return
  *      - LE_OK on success
+ *      - LE_BAD_PARAMETER if an input parameter is not valid
  *      - LE_OVERFLOW userName or password are too small
- *      - LE_NOT_POSSIBLE on failed
+ *      - LE_FAULT on failed
  *
  * @note
  *      The process exits, if an invalid profile object is given
@@ -645,14 +659,16 @@ FUNCTION uint32 NumProfiles
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Get an available profile.
+ * Get a profile selected by its APN
  *
  * @return
- *      - LE_OK if a profileRef has been found
- *      - LE_FAULT otherwise
+ *      - LE_OK on success
+ *      - LE_BAD_PARAMETER if an input parameter is not valid
+ *      - LE_NOT_FOUND if the requested APN is not found
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION le_result_t GetAvailableProfile
+FUNCTION le_result_t GetProfileFromApn
 (
-    Profile profileRef OUT ///< Profile reference
+    string  apnStr[APN_NAME_MAX_LEN] IN,    ///< The Access Point Name
+    Profile profileRef  OUT                 ///< profile reference
 );

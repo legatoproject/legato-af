@@ -1,0 +1,339 @@
+/**
+ * @page c_le_avc AirVantage Connector
+ *
+ * @ref le_avc_interface.h "API Reference"
+ *
+ * <HR>
+ *
+ * The AirVantage connector service provides an API to communicate with the AirVantage server.
+ *
+ * @section c_le_avc_update Firmware/Application Update
+ *
+ * The API for firmware/application update is divided into two parts:
+ *  - Allow a control app to contact the server for pending updates. If available,
+ *    can select to download or install the update.
+ *    <br>
+ *  - Allow an app to block an update from being installed. An app may need this
+ *    if it's performing a critical operation that can't be interrupted (e.g., eCall). This is necessary
+ *    as installing an update will cause the app to restart (either the app itself needs to restart 
+ *   or a firmware change causes the modem to reset). 
+ *
+ * @subsection c_le_avc_update_control Update Control
+ *
+ * A control app can start a session with an AirVantage server to determine if there 
+ * is a pending update. This is done with le_avc_StartSession(). The current session can be 
+ * stopped using le_avc_StopSession().  This cancels any query for pending update, or a
+ * download in progress; however, it <b>won't stop</b> an install in progress.
+ *
+ * The status of a pending update is sent to the control app using a notification.
+ * The control app can use le_avc_AddStatusHandler() to register a handler function to
+ * receive this notification. The notification will be received after a session is started using
+ * le_avc_StartSession(). Sometimes, the modem firmware may decide to start a session with
+ * the AirVantage server. In this case, the notification could also be received, even if the
+ * control app has not explicitly called le_avc_StartSession().
+ *
+ * There can only be one pending update.  To query the type of update, use le_avc_GetUpdateType().
+ * If it's an app update, then le_avc_GetAppUpdateName() can be used to get the name of
+ * the app.
+ *
+ * If a download is pending, then le_avc_AcceptDownload() can be used to allow the update to be 
+ * downloaded, or le_avc_RejectDownload() can be used to reject the download. To defer the
+ * decision, le_avc_DeferDownload() can be used to defer the download for the specified number
+ * of minutes.  After the defer time has elapsed, the pending download notification will be 
+ * re-sent, to allow the control app to make a new decision, or again defer. 
+ * 
+ * Once an update has been downloaded, a new notification will be received to indicate that an
+ * install is pending. The control app can then use le_avc_AcceptInstall() to allow the
+ * install to proceed. Note that even if the control app calls le_avc_AcceptInstall(), 
+ * the install may still be blocked by an app using the @ref c_le_avc_update_app
+ * functions. To defer the decision, the control app can use le_avc_DeferDownload() to
+ * defer the install for the specified number of minutes. After the defer time has elapsed, the
+ * pending install notification will be re-sent to allow the control app to make a new
+ * decision, or again defer. There's no way to reject an install of a downloaded update; either
+ * the download should be rejected, or the install decision can be continuously deferred.
+ *
+ * If a control app does not register for notifications using le_avc_AddStatusHandler(),
+ * then any pending downloads and installs will happen automatically, subject to any restrictions
+ * imposed by app using the @ref c_le_avc_update_app functions.  Only one control
+ * app will be allowed to register for notifications.  Any subsequent attempts will be 
+ * rejected. In addition, only the control application registered for notifications will be 
+ * allowed to use the other update control API functions.
+ *
+ *
+ * @subsection c_le_avc_update_app Application Blocking
+ *
+ * When an app is about to perform a critical operation, it can block the installation of
+ * an update with le_avc_BlockInstall(), and after it's finished with the critical operation, it 
+ * can unblock the install with le_avc_UnblockInstall().
+ *
+ * What constitutes a critical operation depends on the app.  An eCall app might
+ * block installs for the duration that it runs.  A data collection app that wakes up
+ * once an hour might block installs while it collects and stores and/or transmits a new data
+ * sample, and then unblock installs just before it goes to sleep again.
+ *
+ * If an install can't be applied because it's blocked, another attempt to apply the install
+ * will be made at a later time.
+ *
+ *
+ * @subsection c_le_avc_partial_download Partial Downloads
+ *
+ * Support for resuming a partial download is not currently available, but will be made 
+ * available in a future version of this service.
+ *
+ * <HR>
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ */
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * @file le_avc_interface.h
+ *
+ * Legato @ref c_le_avc include file.
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ *
+ */
+
+
+//--------------------------------------------------------------------------------------------------
+/*
+ * Update Control API
+ */
+//--------------------------------------------------------------------------------------------------
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Status of pending update
+ * 
+ * If an update is pending, it must first be downloaded and then installed.
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM Status
+{
+    NO_UPDATE,            ///< There are no pending updates
+    DOWNLOAD_PENDING,     ///< There is a pending download
+    DOWNLOAD_FAILED,      ///< There was an error in downloading the update
+    INSTALL_PENDING,      ///< There is a pending install (implies download complete)
+    INSTALL_COMPLETE,     ///< The update has been successfully installed
+    INSTALL_FAILED        ///< The was an error in installing the update
+};
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The type of pending update
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM UpdateType
+{
+    FIRMWARE_UPDATE,
+    FRAMEWORK_UPDATE,
+    APPLICATION_UPDATE
+};
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Define the maximum length of the name for an app update
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE APP_NAME_LEN = 47;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler for update availability status
+ */
+//--------------------------------------------------------------------------------------------------
+HANDLER StatusHandler
+(
+    Status updateStatus IN     ///< status of pending update, if available
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This event provides information on update availability status
+ */
+//--------------------------------------------------------------------------------------------------
+EVENT StatusEvent
+(
+    handler StatusHandler
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Start a session with the AirVantage server
+ *
+ * This will also cause a query to be sent to the server, for pending updates.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT on failure
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t StartSession
+(
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stop a session with the AirVantage server
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT on failure
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t StopSession
+(
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Accept the currently pending download
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT on failure
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t AcceptDownload
+(
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Defer the currently pending download, for the given number of minutes
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT on failure
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t DeferDownload
+(
+    uint32 deferMinutes IN
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Reject the currently pending download
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT on failure
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t RejectDownload
+
+(
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Accept the currently pending install
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT on failure
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t AcceptInstall
+(
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Defer the currently pending install
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT on failure
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t DeferInstall
+(
+    uint32 deferMinutes IN
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the update type of the currently pending update
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT if not available
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetUpdateType
+(
+    UpdateType   updateType OUT
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the name for the currently pending app update
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT if not available, or is not APPL_UPDATE type
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetAppUpdateName
+(
+    string updateName[APP_NAME_LEN] OUT
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/*
+ * Application Blocking API
+ */
+//--------------------------------------------------------------------------------------------------
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Reference returned by BlockInstall function and used by UnblockInstall function
+ */
+//--------------------------------------------------------------------------------------------------
+REFERENCE BlockRequest;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Prevent any pending updates from being installed.
+ *
+ * @return
+ *      - Reference for block update request (to be used later for unblocking updates)
+ *      - NULL if the operation was not successful
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION BlockRequest BlockInstall
+(
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Allow any pending updates to be installed
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION UnblockInstall
+(
+    BlockRequest blockRef IN   ///< block request ref returned by le_avc_BlockInstall
+);
+
+
