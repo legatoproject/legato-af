@@ -3,7 +3,7 @@
  *
  * Implements the Legato Test Framework.
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 #include "legato.h"
@@ -166,10 +166,11 @@ void _le_test_Init
     int i = le_arg_NumArgs() - 1;
     for (; i >= 0; i--)
     {
-        char buf[sizeof(PassThroughArgLongForm)];
+        const char* argPtr = le_arg_GetArg(i);
 
-        if ( (le_arg_GetArg(i, buf, sizeof(PassThroughArgLongForm)) == LE_OK) &&
-             ((strcmp(buf, PassThroughArg) == 0) || (strcmp(buf, PassThroughArgLongForm) == 0)) )
+        if (   (argPtr != NULL)
+            && (   (strcmp(argPtr, PassThroughArg) == 0)
+                || (strcmp(argPtr, PassThroughArgLongForm) == 0) ) )
         {
             PassThrough = true;
         }

@@ -3,7 +3,7 @@
  *
  * API for setting resource limits.
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 #ifndef LEGATO_SRC_RESOURCE_LIMITS_INCLUDE_GUARD

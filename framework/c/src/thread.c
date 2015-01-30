@@ -28,7 +28,7 @@
  * thread-specific data, so le_thread_CleanupLegatoThreadData() doesn't need to be called in that
  * case.
  *
- * Copyright (C) Sierra Wireless, Inc. 2012 - 2014.  Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 #include "legato.h"
@@ -760,6 +760,7 @@ void le_thread_Start
  *      - LE_DEADLOCK if a thread tries to join with itself or two threads try to join each other.
  *      - LE_NOT_FOUND if the other thread doesn't exist.
  *      - LE_NOT_POSSIBLE if the other thread can't be joined with.
+ * @deprecated the result code LE_NOT_POSSIBLE is scheduled to be removed before 15.04
  *
  * @warning The other thread must be "joinable".  See le_thread_SetJoinable();
  *

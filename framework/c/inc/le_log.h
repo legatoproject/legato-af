@@ -2,22 +2,15 @@
  * @page c_logging Logging API
  *
  *
- * @ref le_log.h "Click here for the API Reference documentation."
+ * @ref le_log.h "API Reference"
  *
  * <HR>
  *
  * @ref c_log_logging <br>
  * @ref c_log_controlling <br>
- * @ref c_log_format <br>
+  * @ref c_log_format <br>
+  * @ref c_log_debugFiles <br>
  *
- *
- * Logging is a critical part of any embedded development framework. Most devices can't
- * display error or warning messages and don't have a human user monitoring them.
- * Even when a device does have a display and a user watching it, the log
- * messages often don't help the device's primary user.
- * And displaying messages on a screen doesn't support
- * remote troubleshooting; especially when the device is hidden from view inside
- * a piece of equipment or located in remote geographic regions.
  *
  * The Legato Logging API provides a toolkit allowing code to be instrumented with error, warning,
  * informational, and debugging messages. These messages can be turned on or off remotely and pushed or pulled
@@ -41,7 +34,7 @@
  * differentiate these, each log entry is associated with one of the following log levels:
  *
  *  - @ref LE_LOG_DEBUG "DEBUG":
- *    Handy during troubleshooting, but is normally just log clutter.
+ *    Handy for troubleshooting.
  *  - @ref LE_LOG_INFO "INFORMATION":
  *    Expected to happen; can be interesting even when not troubleshooting.
  *  - @ref LE_LOG_WARN "WARNING":
@@ -171,8 +164,8 @@
  * Applications can use @ref LE_IS_TRACE_ENABLED(NewShapeTraceRef) to query whether
  * a trace keyword is enabled.
  *
- * These allow applications to hook into the trace management system to use it to implement
- * sophisticated, application-specific tracing or profiling features.
+ * These allow apps to hook into the trace management system to use it to implement
+ * sophisticated, app-specific tracing or profiling features.
  *
  * @subsection c_log_resultTxt Result Code Text
  *
@@ -293,6 +286,7 @@ $ export LE_LOG_TRACE=framework/fdMonitor:framework/logControl
  * Trace keywords can be enabled and disabled programmatically by calling
  * @ref le_log_EnableTrace() and @ref le_log_DisableTrace().
  *
+ * 
  * @section c_log_format Log Formats
  *
  * Log entries can also contain any of these:
@@ -311,6 +305,44 @@ $ export LE_LOG_TRACE=framework/fdMonitor:framework/logControl
 Jan  3 02:37:56  INFO  | processName[pid]/componentName T=threadName | fileName.c funcName() lineNum | Message
 @endverbatim
  *
+ * @section c_log_debugFiles App Crash Logs
+
+* When a process within an app faults or exits in error, a copy of the current syslog buffer
+* is captured along with a core file of the process crash (if generated).
+
+* The core file maximum size is determined by the process settings @c maxCoreDumpFileBytes and
+* @c maxFileBytes found in the processes section of your app's @c .adef file.  By default, the
+* @c maxCoreDumpFileBytes is set to 0, do not create a core file.
+
+* To help save the target from flash burnout, the syslog and core files are stored in the RAM
+* FS under /tmp.  When a crash occurs, this directory is created:
+
+ @verbatim
+ /tmp/legato_logs/<app-name>/<exe-name>/
+ @endverbatim
+
+* The path for myApp and myExe would be:
+
+ @verbatim
+ /tmp/legato_logs/myApp/myExe/
+ @endverbatim
+
+* The files in that directory look like this:
+
+ @verbatim
+ core-myExe-1418694851
+ syslog-1418694851
+ @endverbatim
+
+* If the fault action for that app's process is to reboot the target, the output location is changed to 
+* this (and is preserved across reboots): 
+
+ @verbatim
+ /mnt/flash/legato_logs/<app-name>/<exe-name>/
+ @endverbatim
+
+* To save on RAM and flash space, only the most recent 4 copies of each file are preserved.
+* 
  * @todo May need to support log format configuration through command-line arguments or a
  *       configuration file.
  *
@@ -318,7 +350,7 @@ Jan  3 02:37:56  INFO  | processName[pid]/componentName T=threadName | fileName.
  *
  * <HR>
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 
@@ -326,7 +358,7 @@ Jan  3 02:37:56  INFO  | processName[pid]/componentName T=threadName | fileName.
  *
  * Legato @ref c_logging include file.
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 #ifndef LEGATO_LOG_INCLUDE_GUARD

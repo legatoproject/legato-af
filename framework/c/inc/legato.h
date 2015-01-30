@@ -1,7 +1,7 @@
 /** @page c_APIs C Runtime Library
  *
  * @ref cApiOverview
- * 
+ *
  * Legato has these C language runtime APIs:
  *
  * @subpage c_basics  <br>
@@ -30,7 +30,7 @@
  * @subpage c_utf8  <br>
  *
  @section cApiOverview Overview
- * 
+ *
  * <b>Object-Oriented Design</b>
  *
  * The Legato framework is constructed in an object-oriented manner.
@@ -79,7 +79,7 @@
  *
  * <HR>
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 
@@ -89,7 +89,7 @@
  * It's provided as a convenience to avoid including
  * dozens of header files in every source file.
  *
- * Copyright (C) Sierra Wireless, Inc. 2012 - 2014. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 #ifndef LEGATO_H_INCLUDE_GUARD
@@ -133,6 +133,8 @@
 #include <sys/resource.h>
 #include <mntent.h>
 #include <grp.h>
+#include <sys/xattr.h>
+#include <fts.h>
 
 #ifdef __cplusplus
 extern "C" {

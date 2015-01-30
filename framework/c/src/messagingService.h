@@ -4,7 +4,7 @@
  *
  * See @ref messaging.c for an overview of the @ref c_messaging implementation.
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 #ifndef LE_MESSAGING_SERVICE_H_INCLUDE_GUARD

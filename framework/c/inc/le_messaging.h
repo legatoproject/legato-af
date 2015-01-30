@@ -1,7 +1,7 @@
 /**
  * @page c_messaging Low-Level Messaging API
  *
- * @ref le_messaging.h "Click here for the API reference documentation."
+ * @ref le_messaging.h "API Reference"
  *
  * <HR>
  *
@@ -274,12 +274,9 @@
  *
  * The Low-Level Messaging API is thread safe, but not async safe.
  *
- * It is acceptable for multiple client threads to send messages using a single, shared session.
- *
  * When a client creates a session, that session gets "attached" to the thread that created it
  * (i.e., the thread that called le_msg_CreateSession()).  That thread will then call any callbacks
- * registered for that session.  This includes any asynchronous response callbacks, even if some
- * other thread calls le_msg_RequestResponse() to start the request-response transaction.
+ * registered for that session.
  *
  * Note that this implies that if the client thread that creates the session does not
  * run the Legato event loop then no callbacks will ever be called for that session.
@@ -600,11 +597,6 @@
  * To work around this, you could move the service to another thread that that runs the Legato event
  * loop.
  *
- * It is acceptable for multiple server threads to send messages using a single, shared session.
- *
- * It is also acceptable if a server thread receives a request and passes it off to another
- * thread to send the response.
- *
  * @subsection c_messagingServerExample Sample Code
  *
  * @code
@@ -794,7 +786,7 @@
  *
  * <HR>
  *
- * Copyright (C) Sierra Wireless, Inc. 2013-2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 
@@ -802,7 +794,7 @@
  *
  * Legato @ref c_messaging include file.
  *
- * Copyright (C) Sierra Wireless, Inc. 2013-2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 #ifndef LE_MESSAGING_H_INCLUDE_GUARD

@@ -2,7 +2,7 @@
  * @page c_hex Hex string API
  *
  *
- * @ref le_hex.h "Click here for the API Reference documentation."
+ * @ref le_hex.h "API Reference"
  *
  * <HR>
  *
@@ -29,7 +29,7 @@
  *
  * <HR>
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 
@@ -37,7 +37,7 @@
  *
  * Legato @ref c_hex include file.
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 #ifndef LEGATO_HEX_INCLUDE_GUARD

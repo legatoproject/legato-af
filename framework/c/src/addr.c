@@ -3,11 +3,10 @@
  *
  * Utility functions for examining a process's virtual memory address space.
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 #include "legato.h"
-#include "files.h"
 #include "limit.h"
 #include "fileDescriptor.h"
 
@@ -64,7 +63,7 @@ le_result_t addr_GetLibDataSection
 
     while (1)
     {
-        le_result_t result = files_ReadLine(fd, line, sizeof(line));
+        le_result_t result = fd_ReadLine(fd, line, sizeof(line));
 
         if (result == LE_OK)
         {

@@ -19,7 +19,7 @@
  * The reason it was decided not to use Publish-Subscribe Events for this feature is that Event IDs
  * can't be deleted, and yet FD Monitors can.
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -29,7 +29,6 @@
 #include "fdMonitor.h"
 
 #include <pthread.h>
-#include <sys/epoll.h>
 
 
 /// Maximum number of bytes in a File Descriptor Monitor's name, including the null terminator.
@@ -82,6 +81,7 @@ typedef struct FdMonitor
     le_dls_Link_t           link;               ///< Used to link onto a thread's FD Monitor List.
     int                     fd;                 ///< File descriptor being monitored.
     uint32_t                epollEvents;        ///< epoll(7) flags for events being monitored.
+    bool                    wakeUp;             ///< optional EPOLLWAEKUP flag on FD
     le_event_FdMonitorRef_t safeRef;            ///< Safe Reference for this object.
     event_PerThreadRec_t*   threadRecPtr;       ///< Ptr to per-thread data for monitoring thread.
 
@@ -163,35 +163,40 @@ static le_log_TraceRef_t TraceRef;
 //--------------------------------------------------------------------------------------------------
 static uint32_t ConvertToEPollFlag
 (
-    le_event_FdEventType_t  fdEventType ///< [in] The Event Loop API's fd event type identifier.
+    le_event_FdEventType_t  fdEventType, ///< [in] The Event Loop API's fd event type identifier.
+    bool                    wakeUp       ///< [in] Optional EPOLLWAKEUP flag for epoll_wait()
 )
 //--------------------------------------------------------------------------------------------------
 {
+    uint32_t flag;
+
+    flag = (wakeUp ? EPOLLWAKEUP : 0);
+
     switch (fdEventType)
     {
         case LE_EVENT_FD_READABLE:
 
-            return EPOLLIN;
+            return flag | EPOLLIN;
 
         case LE_EVENT_FD_READABLE_URGENT:
 
-            return EPOLLPRI;
+            return flag | EPOLLPRI;
 
         case LE_EVENT_FD_WRITEABLE:
 
-            return EPOLLOUT;
+            return flag | EPOLLOUT;
 
         case LE_EVENT_FD_WRITE_HANG_UP:
 
-            return EPOLLHUP;
+            return flag | EPOLLHUP;
 
         case LE_EVENT_FD_READ_HANG_UP:
 
-            return EPOLLRDHUP;
+            return flag | EPOLLRDHUP;
 
         case LE_EVENT_FD_ERROR:
 
-            return EPOLLERR;
+            return flag | EPOLLERR;
     }
 
     LE_FATAL("Invalid fd event type %d.", fdEventType);
@@ -440,7 +445,7 @@ static void EnableFdMonitoring
 {
     // Add the epoll event flag to the flag set being monitored for this fd.
     // (Not necessary for EPOLLERR or EPOLLHUP.  They are always monitored, no matter what.)
-    uint32_t epollEventFlag = ConvertToEPollFlag(eventType); // Note: this range checks eventType.
+    uint32_t epollEventFlag = ConvertToEPollFlag(eventType, monitorPtr->wakeUp); // Note: checks eventType.
     if ((epollEventFlag != EPOLLERR) && (epollEventFlag != EPOLLHUP))
     {
         monitorPtr->epollEvents |= epollEventFlag;
@@ -464,7 +469,7 @@ static void DisableFdMonitoring
 {
     // Remove the epoll event flag from the flag set being monitored for this fd.
     // (Not possible for EPOLLERR or EPOLLHUP.  They are always monitored, no matter what.)
-    uint32_t epollEventFlag = ConvertToEPollFlag(eventType); // Note: this range checks eventType.
+    uint32_t epollEventFlag = ConvertToEPollFlag(eventType, monitorPtr->wakeUp); // Note: checks eventType.
     if ((epollEventFlag != EPOLLERR) && (epollEventFlag != EPOLLHUP))
     {
         monitorPtr->epollEvents &= (~epollEventFlag);
@@ -590,8 +595,9 @@ void fdMon_DestructThread
 )
 //--------------------------------------------------------------------------------------------------
 {
-    le_dls_Link_t* linkPtr = le_dls_Peek(&perThreadRecPtr->fdMonitorList);
-    while (linkPtr != NULL)
+    le_dls_Link_t* linkPtr;
+
+    while ((linkPtr = le_dls_Peek(&perThreadRecPtr->fdMonitorList)) != NULL)
     {
         FdMonitor_t* fdMonitorPtr = CONTAINER_OF(linkPtr, FdMonitor_t, link);
         DeleteFdMonitor(fdMonitorPtr);
@@ -643,6 +649,9 @@ le_event_FdMonitorRef_t le_event_CreateFdMonitor
     // regardless of what flags we specify).  We use epoll in "level-triggered mode".
     fdMonitorPtr->epollEvents = 0;
 
+    // Assume that the event should wake up the system; can be changed later.
+    fdMonitorPtr->wakeUp = true;
+
     // Copy the name into it.
     if (le_utf8_Copy(fdMonitorPtr->name, name, sizeof(fdMonitorPtr->name), NULL) == LE_OVERFLOW)
     {
@@ -669,6 +678,38 @@ le_event_FdMonitorRef_t le_event_CreateFdMonitor
     UNLOCK
 
     return fdMonitorPtr->safeRef;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Indicate if the system should be woken up from suspend state when an event happens for a
+ * File Descriptor Monitor object.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_event_WakeUp
+(
+    le_event_FdMonitorRef_t  monitorRef, ///< [in] Reference to the File Descriptor Monitor object.
+    bool                     wakeUp      ///< [in] Optional EPOLLWAKEUP flag for epoll_wait().
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // Look up the File Descriptor Monitor object using the safe reference provided.
+    // Note that the safe reference map is shared by all threads in the process, so it
+    // must be protected using the mutex.  The File Descriptor Monitor objects, on the other
+    // hand, are only allowed to be accessed by the one thread that created them, so it is
+    // safe to unlock the mutex after doing the safe reference lookup.
+    LOCK
+    FdMonitor_t* monitorPtr = le_ref_Lookup(FdMonitorRefMap, monitorRef);
+    UNLOCK
+
+    LE_FATAL_IF(monitorPtr == NULL, "File Descriptor Monitor %p doesn't exist!", monitorRef);
+    LE_FATAL_IF(thread_GetEventRecPtr() != monitorPtr->threadRecPtr,
+                "FD Monitor '%s' (fd %d) is owned by another thread.",
+                monitorPtr->name,
+                monitorPtr->fd);
+
+    monitorPtr->wakeUp = wakeUp;
 }
 
 

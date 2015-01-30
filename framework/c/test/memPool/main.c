@@ -2,7 +2,7 @@
   * This module is for unit testing the le_mem module in the legato
   * runtime library (liblegato.so).
   * 
-  * Copyright (C) Sierra Wireless, Inc. 2012.  All rights reserved. Use of this work is subject to license.
+  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
   */
 
 #include "legato.h"

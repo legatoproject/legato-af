@@ -4,7 +4,7 @@
  * a function to convert from the action string to the enumerated value for that action
  * (or to an error value).
  *
- * Copyright (C) Sierra Wireless, Inc. 2014.  Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 #include "watchdogAction.h"

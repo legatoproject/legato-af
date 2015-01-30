@@ -4,7 +4,7 @@
  * @ref le_doublyLinkedList.h "Click here for the API Reference documentation."
  *
  * <HR>
- * 
+ *
  * @ref dls_createList <br>
  * @ref dls_createNode <br>
  * @ref dls_add <br>
@@ -84,8 +84,8 @@
  * }
  * @endcode
  *
- *The links in the nodes are actually added to the list and not the nodes themselves. This
- * allows a node to be included on multiple lists through links 
+ * The links in the nodes are actually added to the list and not the nodes themselves. This
+ * allows a node to be included on multiple lists through links
  * added to different lists. It also allows linking different type nodes in a list.
  *
  * To obtain the node itself, use the @c CONTAINER_OF macro defined in
@@ -177,7 +177,7 @@
  *
  * <HR>
  *
- * Copyright (C) Sierra Wireless, Inc. 2012.  All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 
@@ -185,7 +185,7 @@
   *
   * Legato @ref c_doublyLinkedList include file.
   *
-  * Copyright (C) Sierra Wireless, Inc. 2014.  All rights reserved. Use of this work is subject to license.
+  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
   */
 
 #ifndef LEGATO_DOUBLY_LINKED_LIST_INCLUDE_GUARD

@@ -3,7 +3,7 @@
 /**
  *  @file configTreeAdminApi.c
  *
- *  Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved.
+ *  Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  *  Use of this work is subject to license.
  */
 // -------------------------------------------------------------------------------------------------
@@ -65,10 +65,8 @@ static ni_IteratorRef_t GetIteratorFromRef
  *
  *  Responds with one of the following values:
  *
- *          - LE_OK            - Commit was completed successfuly.
- *          - LE_NOT_PERMITTED - Attempted to import to a section of the tree the connection doesn't
- *                               have access to.
- *          - LE_FAULT         - An I/O error occured while reading the data.
+ *          - LE_OK            - Commit was completed successfully.
+ *          - LE_FAULT         - An I/O error occurred while reading the data.
  *          - LE_FORMAT_ERROR  - Configuration data being imported appears corrupted.
  */
 // -------------------------------------------------------------------------------------------------
@@ -158,18 +156,15 @@ void le_cfgAdmin_ImportTree
 /**
  *  Take a node given from nodePath and stream it and it's children to the file given by filePath.
  *
- *  This funciton uses the iterator's read transaction, and takes a snapshot of the current state of
+ *  This function uses the iterator's read transaction, and takes a snapshot of the current state of
  *  the tree.  The data write happens immediately.
  *
  *  \b Responds \b With:
  *
  *  Responds with one of the following values:
  *
- *          - LE_OK            - Commit was completed successfuly.
- *          - LE_BAD_PARAMETER - Sspecified path does not exist in the config tree.
- *          - LE_NOT_PERMITTED - Attempted to export from a section of the tree the connection
- *                               doesn't have access to.
- *          - LE_FAULT         - An I/O error occured while writing the data.
+ *          - LE_OK            - Commit was completed successfully.
+ *          - LE_FAULT         - An I/O error occurred while writing the data.
  */
 // -------------------------------------------------------------------------------------------------
 void le_cfgAdmin_ExportTree
@@ -178,7 +173,7 @@ void le_cfgAdmin_ExportTree
                                             ///<      request.
     le_cfg_IteratorRef_t externalRef,       ///< [IN] Write iterator that is being used for the
                                             ///<      export.
-    const char* filePathPtr,                ///< [IN] Import the tree data from the this file.
+    const char* filePathPtr,                ///< [IN] Export the tree data to the this file.
     const char* nodePathPtr                 ///< [IN] Where in the tree should this export happen?
                                             ///<      Leave as an empty string to use the iterator's
                                             ///<      current node.
@@ -251,7 +246,7 @@ void le_cfgAdmin_ExportTree
 
 // -------------------------------------------------------------------------------------------------
 /**
- *  Delete a tree from the system, both from the filesystem and from memory.
+ *  Delete a tree from the system, both from the file system and from memory.
  */
 // -------------------------------------------------------------------------------------------------
 void le_cfgAdmin_DeleteTree

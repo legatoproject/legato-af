@@ -1,7 +1,7 @@
 /**
  * @file timer.c
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  *
  */
 
@@ -216,7 +216,7 @@ static Timer_t* PopFromTimerList
  *
  * @return
  *      - LE_OK on success
- *      - LE_NOT_POSSIBLE if the timer was not in the list
+ *      - LE_FAULT if the timer was not in the list
  */
 //--------------------------------------------------------------------------------------------------
 static le_result_t RemoveFromTimerList
@@ -227,7 +227,7 @@ static le_result_t RemoveFromTimerList
 {
     if ( ! timerPtr->isActive )
     {
-        return LE_NOT_POSSIBLE;
+        return LE_FAULT;
     }
 
     // Remove the timer from the active list
@@ -525,7 +525,7 @@ void le_timer_Delete
  *
  * @return
  *      - LE_OK on success
- *      - LE_NOT_POSSIBLE if the timer is currently running
+ *      - LE_BUSY if the timer is currently running
  *
  * @note
  *      If an invalid timer object is given, the process exits
@@ -541,7 +541,7 @@ le_result_t le_timer_SetHandler
 
     if ( timerRef->isActive )
     {
-        return LE_NOT_POSSIBLE;
+        return LE_BUSY;
     }
 
     timerRef->handlerRef = handlerRef;
@@ -558,7 +558,7 @@ le_result_t le_timer_SetHandler
  *
  * @return
  *      - LE_OK on success
- *      - LE_NOT_POSSIBLE if the timer is currently running
+ *      - LE_BUSY if the timer is currently running
  *
  * @note
  *      If an invalid timer object is given, the process exits
@@ -574,7 +574,7 @@ le_result_t le_timer_SetInterval
 
     if ( timerRef->isActive )
     {
-        return LE_NOT_POSSIBLE;
+        return LE_BUSY;
     }
 
     timerRef->interval = interval;
@@ -592,7 +592,7 @@ le_result_t le_timer_SetInterval
  *
  * @return
  *      - LE_OK on success
- *      - LE_NOT_POSSIBLE if the timer is currently running
+ *      - LE_BUSY if the timer is currently running
  *
  * @note
  *      If an invalid timer object is given, the process exits
@@ -608,7 +608,7 @@ le_result_t le_timer_SetRepeat
 
     if ( timerRef->isActive )
     {
-        return LE_NOT_POSSIBLE;
+        return LE_BUSY;
     }
 
     timerRef->repeatCount = repeatCount;
@@ -625,8 +625,8 @@ le_result_t le_timer_SetRepeat
  *
  * @return
  *      - LE_OK on success
- *      - LE_NOT_POSSIBLE if the timer is currently running
- *
+ *      - LE_BUSY if the timer is currently running
+ 
  * @note
  *      If an invalid timer object is given, the process exits
  */
@@ -641,7 +641,7 @@ le_result_t le_timer_SetContextPtr
 
     if ( timerRef->isActive )
     {
-        return LE_NOT_POSSIBLE;
+        return LE_BUSY;
     }
 
     timerRef->contextPtr = contextPtr;
@@ -707,7 +707,7 @@ uint32_t le_timer_GetExpiryCount
  *
  * @return
  *      - LE_OK on success
- *      - LE_NOT_POSSIBLE if the timer is already running
+ *      - LE_BUSY if the timer is already running
  *
  * @note
  *      If an invalid timer object is given, the process exits
@@ -722,7 +722,7 @@ le_result_t le_timer_Start
 
     if ( timerRef->isActive )
     {
-        return LE_NOT_POSSIBLE;
+        return LE_BUSY;
     }
 
     // Timer is valid and not active; proceed with starting it.
@@ -787,7 +787,7 @@ le_result_t le_timer_Start
  *
  * @return
  *      - LE_OK on success
- *      - LE_NOT_POSSIBLE if the timer is not currently running
+ *      - LE_FAULT if the timer is not currently running
  *
  * @note
  *      If an invalid timer object is given, the process exits
@@ -802,7 +802,7 @@ le_result_t le_timer_Stop
 
     if ( ! timerRef->isActive )
     {
-        return LE_NOT_POSSIBLE;
+        return LE_FAULT;
     }
 
     // Timer is valid and active; proceed with stopping it.

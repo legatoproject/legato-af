@@ -1,7 +1,7 @@
 /**
  * @page c_dir Directory API
  *
- * @ref le_dir.h "Click here for the API reference documentation."
+ * @ref le_dir.h "API Reference"
  *
  * <HR>
  *
@@ -31,7 +31,7 @@
  *
  * <HR>
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 //--------------------------------------------------------------------------------------------------
@@ -39,7 +39,7 @@
  *
  * Legato @ref c_dir include file.
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 #ifndef LEGATO_DIR_INCLUDE_GUARD

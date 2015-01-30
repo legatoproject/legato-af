@@ -9,7 +9,7 @@
  *
  * <HR>
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 
@@ -17,7 +17,7 @@
  *
  * Legato @ref c_basics include file.
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 #ifndef LEGATO_BASICS_INCLUDE_GUARD
@@ -29,28 +29,33 @@
  *
  * @note All error codes are negative integers. They allow functions with signed
  *       integers to return non-negative values when successful or standard error codes on failure.
+ * @deprecated the result code LE_NOT_POSSIBLE is scheduled to be removed before 15.04
  */
 //--------------------------------------------------------------------------------------------------
 typedef enum
 {
-    LE_OK = 0,              ///< Successful.
-    LE_NOT_FOUND = -1,      ///< Referenced item does not exist or could not be found.
-    LE_NOT_POSSIBLE = -2,   ///< It is not possible to perform the requested action.
-    LE_OUT_OF_RANGE = -3,   ///< An index or other value is out of range.
-    LE_NO_MEMORY = -4,      ///< Insufficient memory is available.
-    LE_NOT_PERMITTED = -5,  ///< Current user does not have permission to perform requested action.
-    LE_FAULT = -6,          ///< Unspecified internal error.
-    LE_COMM_ERROR = -7,     ///< Communications error.
-    LE_TIMEOUT = -8,        ///< A time-out occurred.
-    LE_OVERFLOW = -9,       ///< An overflow occurred or would have occurred.
-    LE_UNDERFLOW = -10,     ///< An underflow occurred or would have occurred.
-    LE_WOULD_BLOCK = -11,   ///< Would have blocked if non-blocking behaviour was not requested.
-    LE_DEADLOCK = -12,      ///< Would have caused a deadlock.
-    LE_FORMAT_ERROR = -13,  ///< Format error.
-    LE_DUPLICATE = -14,     ///< Duplicate entry found or operation already performed.
-    LE_BAD_PARAMETER = -15, ///< Parameter is invalid.
-    LE_CLOSED = -16,        ///< The resource is closed.
-    LE_BUSY = -17,          ///< The resource is busy or unavailable.
+    LE_OK = 0,                  ///< Successful.
+    LE_NOT_FOUND = -1,          ///< Referenced item does not exist or could not be found.
+    LE_NOT_POSSIBLE = -2,       ///< @deprecated It is not possible to perform the requested action.
+    LE_OUT_OF_RANGE = -3,       ///< An index or other value is out of range.
+    LE_NO_MEMORY = -4,          ///< Insufficient memory is available.
+    LE_NOT_PERMITTED = -5,      ///< Current user does not have permission to perform requested action.
+    LE_FAULT = -6,              ///< Unspecified internal error.
+    LE_COMM_ERROR = -7,         ///< Communications error.
+    LE_TIMEOUT = -8,            ///< A time-out occurred.
+    LE_OVERFLOW = -9,           ///< An overflow occurred or would have occurred.
+    LE_UNDERFLOW = -10,         ///< An underflow occurred or would have occurred.
+    LE_WOULD_BLOCK = -11,       ///< Would have blocked if non-blocking behaviour was not requested.
+    LE_DEADLOCK = -12,          ///< Would have caused a deadlock.
+    LE_FORMAT_ERROR = -13,      ///< Format error.
+    LE_DUPLICATE = -14,         ///< Duplicate entry found or operation already performed.
+    LE_BAD_PARAMETER = -15,     ///< Parameter is invalid.
+    LE_CLOSED = -16,            ///< The resource is closed.
+    LE_BUSY = -17,              ///< The resource is busy.
+    LE_UNSUPPORTED = -18,       ///< The underlying resource does not support this operation.
+    LE_IO_ERROR = -19,          ///< An IO operation failed.
+    LE_NOT_IMPLEMENTED = -20,   ///< Unimplemented functionality.
+    LE_UNAVAILABLE = -21        ///< A transient or temporary loss of a service or resource.
 }
 le_result_t;
 

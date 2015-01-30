@@ -5,10 +5,11 @@
  * state information.  However, a processes state must be updated by calling the
  * proc_SigChildHandler() from within a SIGCHILD handler.
  *
- * Copyright (C) Sierra Wireless, Inc. 2013-2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 #include "legato.h"
 #include "watchdogAction.h"
+#include "app.h"
 #include "proc.h"
 #include "limit.h"
 #include "le_cfg_interface.h"
@@ -16,9 +17,8 @@
 #include "resourceLimits.h"
 #include "fileDescriptor.h"
 #include "user.h"
-#include <sys/resource.h>
-#include <grp.h>
-
+#include "log.h"
+#include "smack.h"
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -127,14 +127,14 @@
 //--------------------------------------------------------------------------------------------------
 typedef struct proc_Ref
 {
-    char*           name;                                   // Name of the process.
-    char            cfgPathRoot[LIMIT_MAX_PATH_BYTES];      // Our path in the config tree.
-    char            appName[LIMIT_MAX_APP_NAME_BYTES];      // Name of the app that we are a part of.
-    bool            paused;         // true if the process is paused.
-    pid_t           pid;            // The pid of the process.
-    time_t          faultTime;      // The time of the last fault.
-    bool            cmdKill;        // true if the process was killed by proc_Stop().
-    le_timer_Ref_t  timerRef;       // Timer used to allow the application to shutdown.
+    char*           name;                                   ///< Name of the process.
+    char            cfgPathRoot[LIMIT_MAX_PATH_BYTES];      ///< Our path in the config tree.
+    app_Ref_t       appRef;         ///< Reference to the app that we are part of.
+    bool            paused;         ///< true if the process is paused.
+    pid_t           pid;            ///< The pid of the process.
+    time_t          faultTime;      ///< The time of the last fault.
+    bool            cmdKill;        ///< true if the process was killed by proc_Stop().
+    le_timer_Ref_t  timerRef;       ///< Timer used to allow the application to shutdown.
 }
 Process_t;
 
@@ -209,7 +209,7 @@ void proc_Init
 proc_Ref_t proc_Create
 (
     const char* cfgPathRootPtr,     ///< [IN] The path in the config tree for this process.
-    const char* appNamePtr          ///< [IN] The name of the app that this process is a part of.
+    app_Ref_t appRef                ///< [IN] Reference to the app that we are part of.
 )
 {
     Process_t* procPtr = le_mem_ForceAlloc(ProcessPool);
@@ -227,20 +227,10 @@ proc_Ref_t proc_Create
     }
 
 
-    // Copy the app name.
-    if (le_utf8_Copy(procPtr->appName,
-                     appNamePtr,
-                     sizeof(procPtr->appName),
-                     NULL) == LE_OVERFLOW)
-    {
-        LE_ERROR("App name '%s' is too long.", appNamePtr);
-
-        le_mem_Release(procPtr);
-        return NULL;
-    }
 
     procPtr->name = le_path_GetBasenamePtr(procPtr->cfgPathRoot, "/");
 
+    procPtr->appRef = appRef;
     procPtr->faultTime = 0;
     procPtr->paused = false;
     procPtr->pid = -1;  // Processes that are not running are assigned -1 as its pid.
@@ -687,6 +677,12 @@ static inline le_result_t StartProc
         return LE_FAULT;
     }
 
+    // Get the smack label for the process.
+    // Must get the label here because smack_GetAppLabel uses the config and we can not
+    // use any IPC after a fork.
+    char smackLabel[LIMIT_MAX_SMACK_LABEL_BYTES];
+    smack_GetAppLabel(app_GetName(procRef->appRef), smackLabel, sizeof(smackLabel));
+
     // Create the child process
     pid_t pID = fork();
 
@@ -727,9 +723,10 @@ static inline le_result_t StartProc
 
         // The parent has allowed us to continue.
 
-        // Close all non-standard file descriptors.
-        fd_CloseAllNonStd();
+        // Set the process's SMACK label.
+        smack_SetMyLabel(smackLabel);
 
+        // Setup the process environment.
         if (sandboxDirPtr != NULL)
         {
             // Sandbox the process.
@@ -742,9 +739,14 @@ static inline le_result_t StartProc
 
         // Launch the child program.  This should not return unless there was an error.
         LE_INFO("Execing '%s'", argsPtr[0]);
+
+        // Close all non-standard file descriptors.
+        fd_CloseAllNonStd();
+
         execvp(argsPtr[0], &(argsPtr[1]));
 
         // The program could not be started.  Log an error message.
+        log_ReInit();
         LE_FATAL("Could not exec '%s'.  %m.", argsPtr[0]);
     }
 
@@ -997,7 +999,7 @@ const char* proc_GetAppName
     proc_Ref_t procRef             ///< [IN] The process reference.
 )
 {
-    return (const char*)procRef->appName;
+    return app_GetName(procRef->appRef);
 }
 
 
@@ -1145,6 +1147,46 @@ static proc_FaultAction_t GetFaultAction
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Called to capture any extra data that may help indicate what contributed to the fault that caused
+ * the given process to fail.
+ *
+ * This function calls a shell script that will save a dump of the system log and any core files
+ * that have been generated into a known location.
+ */
+//--------------------------------------------------------------------------------------------------
+static void CaptureDebugData
+(
+    proc_Ref_t procRef,             ///< [IN] The process reference.
+    bool isRebooting                ///< [IN] Is the supervisor going to reboot the system?
+)
+{
+    char command[LIMIT_MAX_PATH_BYTES];
+    int s = snprintf(command,
+                     sizeof(command),
+                     "saveLogs %s %s %s %s",
+                     app_GetIsSandboxed(procRef->appRef) ? "SANDBOXED" : "NOTSANDBOXED",
+                     app_GetName(procRef->appRef),
+                     procRef->name,
+                     isRebooting ? "REBOOT" : "");
+
+    if (s >= sizeof(command))
+    {
+        LE_FATAL("Could not create command, buffer is too small.  "
+                 "Buffer is %zd bytes but needs to be %d bytes.",
+                 sizeof(command),
+                 s);
+    }
+
+    int r = system(command);
+
+    if (!WIFEXITED(r))
+    {
+        LE_ERROR("Could not backup core files.");
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Get the watchdog action for this process.
  *
  * @return
@@ -1253,6 +1295,16 @@ proc_FaultAction_t proc_SigChildHandler
                     procRef->name, procRef->pid, WTERMSIG(procExitStatus));
 
             faultAction = GetFaultAction(procRef);
+        }
+
+        // Check the fault action.  If it indicates that the process stopped due to an error, save
+        // all relevant data for future diagnosis.
+        if (faultAction != PROC_FAULT_ACTION_NO_FAULT)
+        {
+            // Check if we're rebooting.  If we are, this data needs to be saved in a more permanent
+            // location.
+            bool isRebooting = faultAction == PROC_FAULT_ACTION_REBOOT;
+            CaptureDebugData(procRef, isRebooting);
         }
 
         procRef->pid = -1;

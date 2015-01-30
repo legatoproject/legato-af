@@ -1,7 +1,7 @@
 /**
  * @page c_threading Thread Control API
  *
- * @ref le_thread.h "API reference documentation"
+ * @ref le_thread.h "API Reference"
  *
  * <HR>
  *
@@ -152,7 +152,7 @@
  *
  * <HR>
  *
- * Copyright (C) Sierra Wireless, Inc. 2014.  Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 
@@ -160,7 +160,7 @@
  *
  * Legato @ref c_threading include file.
  *
- * Copyright (C) Sierra Wireless, Inc. 2014.  Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 #ifndef LEGATO_THREAD_INCLUDE_GUARD
@@ -350,6 +350,7 @@ void le_thread_Start
  *      - LE_DEADLOCK if a thread tries to join with itself or two threads try to join each other.
  *      - LE_NOT_FOUND if the other thread doesn't exist.
  *      - LE_NOT_POSSIBLE if the other thread can't be joined with.
+ * @deprecated the result code LE_NOT_POSSIBLE is scheduled to be removed before 15.04
  *
  * @warning The other thread must be "joinable".  See le_thread_SetJoinable();
  *
@@ -390,7 +391,7 @@ void le_thread_Exit
 //--------------------------------------------------------------------------------------------------
 le_result_t le_thread_Cancel
 (
-    le_thread_Ref_t     threadToCancel
+    le_thread_Ref_t threadToCancel  ///< [IN] Thread to cancel.
 );
 
 
@@ -414,7 +415,7 @@ le_thread_Ref_t le_thread_GetCurrent
 //--------------------------------------------------------------------------------------------------
 void le_thread_GetName
 (
-    le_thread_Ref_t threadRef,  ///< [IN]
+    le_thread_Ref_t threadRef,  ///< [IN] Thread to get the name for.
     char* buffPtr,              ///< [OUT] Buffer to store the name of the thread.
     size_t buffSize             ///< [IN] Size of the buffer.
 );

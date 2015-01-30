@@ -4,7 +4,7 @@
  * Configuration of log messages is also handled by this module.  Writing traces to the log and
  * enabling traces by keyword is also handled here.
  *
- * Copyright (C) Sierra Wireless, Inc. 2012. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 #include "legato.h"
@@ -701,9 +701,10 @@ static void RegisterWithLogControlDaemon
 
         // Copy in the process name.
         size_t n;
-        LE_ASSERT(LE_OK == le_arg_GetProgramName(packetPtr + packetLength,
-                                                 LOG_MAX_CMD_PACKET_BYTES - packetLength,
-                                                 &n));
+        LE_ASSERT(LE_OK == le_utf8_Copy(packetPtr + packetLength,
+                                        le_arg_GetProgramName(),
+                                        LOG_MAX_CMD_PACKET_BYTES - packetLength,
+                                        &n));
         packetLength = packetLength + n;
 
         // Copy in the component name.
@@ -772,6 +773,19 @@ void log_Init
     openlog("Legato", 0, LOG_USER);
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Re-Initialize the logging system.
+ */
+//--------------------------------------------------------------------------------------------------
+void log_ReInit
+(
+    void
+)
+{
+    closelog();
+    openlog("Legato", 0, LOG_USER);
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1038,11 +1052,11 @@ void _le_log_Send
     const char* threadNamePtr = le_thread_GetMyName();
 
     // Get the process name.
-    char procName[LIMIT_MAX_PROCESS_NAME_BYTES] = "";
-
-    // Don't need to check the return value because if there is an error we can't do anything about
-    // it.  This function will likely change anyways.
-    le_arg_GetProgramName(procName, sizeof(procName), NULL);
+    const char* procNamePtr = le_arg_GetProgramName();
+    if (procNamePtr == NULL)
+    {
+        procNamePtr = "n/a";
+    }
 
     // Get the user message.
     char msg[MAX_MSG_SIZE] = "";
@@ -1063,7 +1077,7 @@ void _le_log_Send
 #ifdef LEGATO_EMBEDDED
 
     syslog(ConvertToSyslogLevel(level), "%s | %s[%d]/%s T=%s | %s %s() %d | %s\n",
-           levelPtr, procName, getpid(), compNamePtr, threadNamePtr, baseFileNamePtr,
+           levelPtr, procNamePtr, getpid(), compNamePtr, threadNamePtr, baseFileNamePtr,
            functionNamePtr, lineNumber, msg);
 
 #else
@@ -1081,7 +1095,7 @@ void _le_log_Send
     }
 
     fprintf(stderr, "%s : %s | %s[%d]/%s T=%s | %s %s() %d | %s\n",
-            timeStampPtr, levelPtr, procName, getpid(), compNamePtr, threadNamePtr, baseFileNamePtr,
+            timeStampPtr, levelPtr, procNamePtr, getpid(), compNamePtr, threadNamePtr, baseFileNamePtr,
             functionNamePtr, lineNumber, msg);
 
 #endif
@@ -1141,10 +1155,19 @@ const char* _le_log_GetResultCodeString
             return "LE_BAD_PARAMETER";
         case LE_CLOSED:
             return "LE_CLOSED";
-        default:
-            LE_ERROR("Result code %d out of range.", resultCode);
-            return "(unknown)";
+        case LE_BUSY:
+            return "LE_BUSY";
+        case LE_UNSUPPORTED:
+            return "LE_UNSUPPORTED";
+        case LE_IO_ERROR:
+            return "LE_IO_ERROR";
+        case LE_NOT_IMPLEMENTED:
+            return "LE_NOT_IMPLEMENTED";
+        case LE_UNAVAILABLE:
+            return "LE_UNAVAILABLE";
     }
+    LE_ERROR("Result code %d out of range.", resultCode);
+    return "(unknown)";
 }
 
 

@@ -2,11 +2,22 @@
  *
  * This module contains limit definitions used internally by the Legato framework.
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 #ifndef LE_SRC_LIMITS_INCLUDE_GUARD
 #define LE_SRC_LIMITS_INCLUDE_GUARD
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum string length and byte storage size of SMACK labels.
+ *
+ * @note This limit must match the SMACK limit.  It must not be changed arbitrarily.
+ */
+//--------------------------------------------------------------------------------------------------
+#define LIMIT_MAX_SMACK_LABEL_LEN               23
+#define LIMIT_MAX_SMACK_LABEL_BYTES             (LIMIT_MAX_SMACK_LABEL_LEN + 1)
 
 
 //--------------------------------------------------------------------------------------------------

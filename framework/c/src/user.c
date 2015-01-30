@@ -25,7 +25,7 @@
  * Groups are created and deleted by modifying the /etc/group file.  File backup and recover and
  * file locking is handled in the same way as the passwd file.
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 #include "legato.h"
@@ -1711,4 +1711,32 @@ le_result_t user_AppNameToUserName
     }
 
     return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get's an application's user ID.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_NOT_FOUND if the application does not exist.
+ *      LE_OVERFLOW if the application name is too long.
+ *      LE_FAULT if there was some other error.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t user_GetAppUid
+(
+    const char* appName,        ///< [IN] Name of the application to get the uid for.
+    uid_t* uidPtr               ///< [OUT] UID of the application.
+)
+{
+    char userName[LIMIT_MAX_APP_NAME_BYTES];
+    
+    if (user_AppNameToUserName(appName, userName, sizeof(userName)) == LE_OVERFLOW)
+    {
+        return LE_OVERFLOW;
+    }
+    
+    return user_GetUid(userName, uidPtr);
 }

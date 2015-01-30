@@ -3,7 +3,7 @@
 /**
  * @page c_path Path API
  *
- * @ref le_path.h "Click here for the API reference documentation."
+ * @ref le_path.h "API Reference"
  *
  * <HR>
  *
@@ -39,7 +39,7 @@
  *
  * <HR>
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  * license.
  */
 
@@ -48,7 +48,7 @@
  *
  * Legato @ref c_path include file.
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  * license.
  */
 

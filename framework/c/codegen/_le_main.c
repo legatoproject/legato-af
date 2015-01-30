@@ -3,7 +3,7 @@
 //
 // TODO: Auto-generate this thing.
 //
-// Copyright (C) 2013, Sierra Wireless Inc., All rights reserved. Use of this work is subject to license.
+// Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 //--------------------------------------------------------------------------------------------------
 
 #include "legato.h"

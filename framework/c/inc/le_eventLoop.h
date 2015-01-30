@@ -277,6 +277,8 @@
  * -# a <b> File Descriptor Monitor </b> object is created for that file descriptor (by calling
  *    le_event_CreateFdMonitor() ) and
  * -# event handler functions are registered with it (by calling le_event_SetFdHandler()).
+ * -# optionally, make the event deferrable until next system resume (by calling le_event_WakeUp()
+ *    with wakeUp flag set to 'false').
  *
  * File descriptor event handler functions receive a file descriptor as their only parameter,
  * instead of receiving a report pointer.  See @ref le_event_FdEventType_t for a list of events
@@ -602,7 +604,7 @@ static void ContinueWriting(int fd)
  *
  * <HR>
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 //--------------------------------------------------------------------------------------------------
@@ -610,7 +612,7 @@ static void ContinueWriting(int fd)
  *
  * Legato @ref c_eventLoop include file.
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 #ifndef LEGATO_EVENTLOOP_INCLUDE_GUARD
@@ -985,6 +987,20 @@ le_event_FdHandlerRef_t le_event_SetFdHandler
     le_event_FdMonitorRef_t  monitorRef, ///< [in] Reference to the File Descriptor Monitor object.
     le_event_FdEventType_t   eventType,  ///< [in] Type of event to be reported to this handler.
     le_event_FdHandlerFunc_t handlerFunc ///< [in] Handler function.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Indicate if the event is deferrable or system should stay awake while processing the event from
+ * File Descriptor Monitor object. Components wanting to take advantage of this feature have to be
+ * assigned CAP_EPOLLWAKEUP (or CAP_BLOCK_SUSPEND) capability.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_event_WakeUp
+(
+    le_event_FdMonitorRef_t monitorRef, ///< [in] Reference to the File Descriptor Monitor object.
+    bool                    wakeUp      ///< [in] true (wake up) or false (deferred, no wake up).
 );
 
 

@@ -1,7 +1,7 @@
 //--------------------------------------------------------------------------------------------------
 /** @file utf8.c
  *
- * Copyright (C) Sierra Wireless, Inc. 2012. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 #include "legato.h"
@@ -439,3 +439,52 @@ bool le_utf8_IsFormatCorrect
     return true;
 }
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Parse an integer value from a string.
+ *
+ * @return
+ *  - LE_OK = Success.
+ *  - LE_FORMAT_ERROR = The argument string was not an integer value.
+ *  - LE_OUT_OF_RANGE = Value is too large to be stored in an int variable.
+ **/
+//--------------------------------------------------------------------------------------------------
+le_result_t le_utf8_ParseInt
+(
+    int* valuePtr,  ///< [OUT] Ptr to where the value will be stored if successful.
+    const char* arg ///< [IN] The string to parse.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    char* endPtr;
+    long int value;
+
+    errno = 0;
+    value = strtol(arg, &endPtr, 0);
+
+    // strtol() sets errno to ERANGE if the magnitude is greater than a long int can hold.
+    if (errno == ERANGE)
+    {
+        return LE_OUT_OF_RANGE;
+    }
+
+    // strtol() sets the endPtr to the same as its first argument if no characters were valid.
+    // Otherwise, it sets endPtr to point to the first character than is invalid, which should
+    // be the null terminator if the whole string contained valid characters.
+    if ((endPtr == arg) || (*endPtr != '\0'))
+    {
+        return LE_FORMAT_ERROR;
+    }
+
+    // Copy the long int value into the int result variable.
+    *valuePtr = (int)value;
+
+    // Check for overflow/underflow.
+    if (((long int)(*valuePtr)) != value)
+    {
+        return LE_OUT_OF_RANGE;
+    }
+
+    return LE_OK;
+}

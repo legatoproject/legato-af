@@ -6,7 +6,7 @@
  * This file exposes interfaces that are for use by other modules inside the framework
  * implementation, but must not be used outside of the framework implementation.
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  *
  */
 #ifndef MEM_INCLUDE_GUARD
@@ -51,6 +51,7 @@ typedef struct mem_iter_t* mem_Iter_Ref_t;
  *      If NULL is returned the errorPtr will be set appropriately.  Possible values are:
  *      LE_NOT_POSSIBLE if the specified process is not a Legato process.
  *      LE_FAULT if there was some other error.
+ * @deprecated the result code LE_NOT_POSSIBLE is scheduled to be removed before 15.04
  *
  *      errorPtr can be NULL if the error code is not needed.
  *

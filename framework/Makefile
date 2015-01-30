@@ -4,7 +4,7 @@
 #
 # TODO: Change to a non-recursive Makefile structure or switch to CMake.
 #
-# Copyright (C) 2012 - 2013, Sierra Wireless, Inc., all rights reserved.
+# Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 
 # Make sure that a target device is specified.
 target ?= localhost

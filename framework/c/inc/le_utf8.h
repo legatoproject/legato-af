@@ -5,13 +5,6 @@
  *
  * <HR>
  *
- * @ref utf8_encoding <br>
- * @ref utf8_copy <br>
- * @ref utf8_trunc <br>
- * @ref utf8_length <br>
- * @ref utf8_format <br>
- *
- *
  * This module implements safe and easy to use string handling functions for null-terminated strings
  * with UTF-8 encoding.
  *
@@ -65,14 +58,14 @@
  * Because UTF-8 is a variable length encoding, the number of characters in a string is
  * not necessarily the same as the number bytes in the string.  When using functions like
  * le_utf8_Copy() and le_utf8_Append(), the size of the destination buffer, in bytes, must be
- * provided to avoid buffer overruns.  
- * 
+ * provided to avoid buffer overruns.
+ *
  * The copied string is truncated because of limited space in the
  * destination buffer, and the destination buffer may not be
- * completely filled.  This can occur during the copy processf the last character to copy is more 
- * than one byte long and will not fit within the buffer.  
- * 
- * The character is not copied and a null-terminator is added.  
+ * completely filled.  This can occur during the copy processf the last character to copy is more
+ * than one byte long and will not fit within the buffer.
+ *
+ * The character is not copied and a null-terminator is added.
  * Even though we have not filled the destination buffer,we have truncated the copied string. Essentially,  functions like
  * le_utf8_Copy() and le_utf8_Append() only copy complete characters, not partial characters.
  *
@@ -109,10 +102,19 @@
  *
  * As can be seen in the @ref utf8_encoding section, UTF-8 strings have a specific
  * byte sequence. The @c le_utf8_IsFormatCorrect() function can be used to check if a string conforms
- * to UTF-8 encoding. Not all valid UTF-8 characters are valid for a given character set; 
+ * to UTF-8 encoding. Not all valid UTF-8 characters are valid for a given character set;
  *  le_utf8_IsFormatCorrect() does not check for this.
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+ * @section utf8_parsing String Parsing
+ *
+ * To assist with converting integer values from UTF-8 strings to binary numerical values,
+ * le_utf8_ParseInt() is provided.
+ *
+ * More parsing functions may be added as required in the future.
+ *
+ * <hr>
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 */
 
 //--------------------------------------------------------------------------------------------------
@@ -120,7 +122,7 @@
  *
  * Legato @ref c_utf8 include file.
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  *
  */
 
@@ -273,6 +275,23 @@ le_result_t le_utf8_CopyUpToSubStr
 bool le_utf8_IsFormatCorrect
 (
     const char* string      ///< [IN] The string.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Parse an integer value from a string.
+ *
+ * @return
+ *  - LE_OK = Success.
+ *  - LE_FORMAT_ERROR = The argument string was not an integer value.
+ *  - LE_OUT_OF_RANGE = Value is too large to be stored in an int variable.
+ **/
+//--------------------------------------------------------------------------------------------------
+le_result_t le_utf8_ParseInt
+(
+    int* valuePtr,  ///< [OUT] Ptr to where the value will be stored if successful.
+    const char* arg ///< [IN] The string to parse.
 );
 
 

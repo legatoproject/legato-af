@@ -10,7 +10,7 @@
   * - Accessing nodes.
   * - Checking list consistencies.
   *
-  * Copyright (C) Sierra Wireless, Inc. 2012.  All rights reserved. Use of this work is subject to license.
+  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
   */
 
 #include <time.h>
@@ -652,10 +652,13 @@ static le_result_t TestDoublyLinkLists(size_t maxListSize)
             printf("List1 is corrupt but shouldn't be: %d", __LINE__);
             return LE_FAULT;
         }
+        printf("Checked that List1 is not corrupt.\n");
 
         // Access one of the links directly.  This should corrupt the list.
         linkPtr = le_dls_PeekTail(&list1);
+        LE_ASSERT(linkPtr != NULL);
         linkPtr = le_dls_PeekPrev(&list1, linkPtr);
+        LE_ASSERT(linkPtr != NULL);
         linkPtr->prevPtr = linkPtr;
 
         if (!le_dls_IsListCorrupted(&list1))
@@ -868,6 +871,7 @@ static le_result_t TestSinglyLinkLists(size_t maxListSize)
             printf("List0 is corrupt but shouldn't be: %d", __LINE__);
             return LE_FAULT;
         }
+        printf("Checked that List0 is not corrupt.\n");
 
         // Access one of the links directly.  This should corrupt the list.
         linkPtr = le_sls_Peek(&list0);

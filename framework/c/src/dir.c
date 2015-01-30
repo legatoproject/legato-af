@@ -1,12 +1,11 @@
 //--------------------------------------------------------------------------------------------------
 /** @file dir.c
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 #include "legato.h"
 #include "limit.h"
-#include <fts.h>
 
 
 //--------------------------------------------------------------------------------------------------

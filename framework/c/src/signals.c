@@ -11,7 +11,7 @@
  * single fd handler, OurSigHandler().  When OurSigHandler() is invoked it grabs the list of
  * handlers for the current thread and routes the signal to the proper user handler.
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 #include "legato.h"
@@ -174,6 +174,38 @@ void sig_Init
 
     // Create the pthread local data key.
     LE_ASSERT(pthread_key_create(&SigMonKey, NULL) == 0);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Blocks a signal in the calling thread.
+ *
+ * Signals that an event handler will be set for must be blocked for all threads in the process.  To
+ * ensure that the signals are blocked in all threads call this function in the process' first
+ * thread, all subsequent threads will inherit the signal mask.
+ *
+ * @note Does not return on failure.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_sig_Block
+(
+    int sigNum              ///< [IN] Signal to block.
+)
+{
+    // Check if the calling thread is the main thread.
+    pid_t tid = syscall(SYS_gettid);
+
+    LE_FATAL_IF(tid == -1, "Could not get tid of calling thread.  %m.");
+
+    LE_WARN_IF(tid != getpid(), "Blocking signal %d (%s).  Blocking signals not in the main thread \
+may result in unexpected behaviour.", sigNum, strsignal(sigNum));
+
+    // Block the signal
+    sigset_t sigSet;
+    LE_ASSERT(sigemptyset(&sigSet) == 0);
+    LE_ASSERT(sigaddset(&sigSet, sigNum) == 0);
+    LE_ASSERT(pthread_sigmask(SIG_BLOCK, &sigSet, NULL) == 0);
 }
 
 

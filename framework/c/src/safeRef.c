@@ -9,7 +9,7 @@
  *       processor architectures.  Also, if they try to use a memory address as a Safe Ref,
  *       the memory address is guaranteed to be detected as an invalid Safe Reference.
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 #include "legato.h"

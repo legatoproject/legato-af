@@ -4,10 +4,10 @@
  *  @file treePath.c
  *
  *  Simple path helper functions.  To support users specifying tree names as part of a path, these
- *  functions allow detecting tree names wihtin a path, as well as the seperation of the path from
+ *  functions allow detecting tree names within a path, as well as the separation of the path from
  *  the tree name.
  *
- *  Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved.
+ *  Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  *  Use of this work is subject to license.
  */
 // -------------------------------------------------------------------------------------------------
@@ -38,7 +38,7 @@ bool tp_PathHasTreeSpecifier
 
 //--------------------------------------------------------------------------------------------------
 /**
- *  Copies the tree name from the given path poitner.  Only if there actually is a tree name in that
+ *  Copies the tree name from the given path pointer.  Only if there actually is a tree name in that
  *  path.
  *
  *  @note It is assumed that the buffer treeNamePtr is at least MAX_TREE_NAME_BYTES bytes in size.

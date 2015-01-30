@@ -4,7 +4,7 @@
  * This is the application class that references applications the Supervisor creates/starts/etc.
  * This application class contains all the processes that belong to this application.
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 #include "legato.h"
@@ -16,6 +16,7 @@
 #include "le_cfg_interface.h"
 #include "sandbox.h"
 #include "resourceLimits.h"
+#include "smack.h"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -23,7 +24,7 @@
  * The location where all applications are installed.
  */
 //--------------------------------------------------------------------------------------------------
-#define APPS_INSTALL_DIR                "/opt/legato/apps"
+#define APPS_INSTALL_DIR                                "/opt/legato/apps"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -54,6 +55,22 @@
  */
 //--------------------------------------------------------------------------------------------------
 #define CFG_NODE_PROC_LIST                              "procs"
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The name of the node in the config tree that contains the list of bindings for the application.
+ */
+//--------------------------------------------------------------------------------------------------
+#define CFG_NODE_BINDINGS                               "bindings"
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Temporary: The name of the airvantage application.
+ */
+//--------------------------------------------------------------------------------------------------
+#define APP_AIRVANTAGE                                  "airvantage"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -497,7 +514,7 @@ app_Ref_t app_Create
 
             // Create the process.
             proc_Ref_t procPtr;
-            if ((procPtr = proc_Create(procCfgPath, appPtr->name)) == NULL)
+            if ((procPtr = proc_Create(procCfgPath, appPtr)) == NULL)
             {
                 app_Delete(appPtr);
                 le_cfg_CancelTxn(cfgIterator);
@@ -553,6 +570,147 @@ void app_Delete
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Sets SMACK rules for an application based on its bindings.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_FAULT if there was an error.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t SetSmackRulesForBindings
+(
+    app_Ref_t appRef,                   ///< [IN] Reference to the application.
+    const char* appLabelPtr             ///< [IN] Smack label for the app.
+)
+{
+    // Create a config read transaction to the bindings section for the application.
+    le_cfg_IteratorRef_t bindCfg = le_cfg_CreateReadTxn(appRef->cfgPathRoot);
+    le_cfg_GoToNode(bindCfg, CFG_NODE_BINDINGS);
+
+    // Search the binding sections for server applications we need to set rules for.
+    if (le_cfg_GoToFirstChild(bindCfg) != LE_OK)
+    {
+        // No bindings.
+        le_cfg_CancelTxn(bindCfg);
+        return LE_OK;
+    }
+
+    do
+    {
+        char serverName[LIMIT_MAX_APP_NAME_BYTES];
+
+        if ( (le_cfg_GetString(bindCfg, "app", serverName, sizeof(serverName), "") == LE_OK) &&
+             (strcmp(serverName, "") != 0) )
+        {
+            // Get the server's SMACK label.
+            char serverLabel[LIMIT_MAX_SMACK_LABEL_BYTES];
+            smack_GetAppLabel(serverName, serverLabel, sizeof(serverLabel));
+
+            // Set the SMACK label to/from the server.
+            smack_SetRule(appLabelPtr, "rw", serverLabel);
+            smack_SetRule(serverLabel, "rw", appLabelPtr);
+        }
+    } while (le_cfg_GoToNextSibling(bindCfg) == LE_OK);
+
+    le_cfg_CancelTxn(bindCfg);
+
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets SMACK rules for an application and its folders.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_FAULT if there was an error.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t SetDefaultSmackRules
+(
+    const char* appNamePtr,             ///< [IN] App name.
+    const char* appLabelPtr             ///< [IN] Smack label for the app.
+)
+{
+#define NUM_PERMISSONS      7
+
+    const char* permissionStr[NUM_PERMISSONS] = {"x", "w", "wx", "r", "rx", "rw", "rwx"};
+
+    // Set the rules for the app to access its own folders.
+    int i;
+
+    for (i = 0; i < NUM_PERMISSONS; i++)
+    {
+        // Create the mode from the permissions.
+        mode_t mode = 0;
+
+        if (strstr(permissionStr[i], "r") != NULL)
+        {
+            mode |= S_IROTH;
+        }
+        if (strstr(permissionStr[i], "w") != NULL)
+        {
+            mode |= S_IWOTH;
+        }
+        if (strstr(permissionStr[i], "x") != NULL)
+        {
+            mode |= S_IXOTH;
+        }
+
+
+        char dirLabel[LIMIT_MAX_SMACK_LABEL_BYTES];
+        smack_GetAppAccessLabel(appNamePtr, mode, dirLabel, sizeof(dirLabel));
+
+        smack_SetRule(appLabelPtr, permissionStr[i], dirLabel);
+    }
+
+    // Set default permissions between the app and the framework.
+    smack_SetRule("framework", "w", appLabelPtr);
+    smack_SetRule(appLabelPtr, "rw", "framework");
+
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets SMACK rules for an application.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_FAULT if there was an error.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t SetSmackRules
+(
+    app_Ref_t appRef                    ///< [IN] Reference to the application.
+)
+{
+    // Get the app label.
+    char appLabel[LIMIT_MAX_SMACK_LABEL_BYTES];
+    smack_GetAppLabel(appRef->name, appLabel, sizeof(appLabel));
+
+    if (SetDefaultSmackRules(appRef->name, appLabel) != LE_OK)
+    {
+        return LE_FAULT;
+    }
+
+    // Temporary: Setting rules for every app to have access to the airvantage app
+    if (strcmp(appRef->name, APP_AIRVANTAGE) != 0)
+    {
+        char airvantageLabel[LIMIT_MAX_SMACK_LABEL_BYTES];
+        smack_GetAppLabel(APP_AIRVANTAGE, airvantageLabel, sizeof(airvantageLabel));
+        smack_SetRule(airvantageLabel, "rw", appLabel);
+        smack_SetRule(appLabel, "rw", airvantageLabel);
+    }
+
+    return SetSmackRulesForBindings(appRef, appLabel);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Starts an application.
  *
  * @return
@@ -598,6 +756,12 @@ le_result_t app_Start
     {
         LE_ERROR("Could not set application resource limits.  Application %s cannot be started.",
                  appRef->name);
+        return LE_FAULT;
+    }
+
+    // Set default SMACK rules for this app.
+    if (SetSmackRules(appRef) != LE_OK)
+    {
         return LE_FAULT;
     }
 
@@ -670,6 +834,12 @@ static le_result_t KillAppProcs
         return LE_OK;
     }
 
+    // Get the smack label for the app.
+    // Must get the label here because smack_GetAppLabel uses the config and we can not
+    // use any IPC after a fork.
+    char appLabel[LIMIT_MAX_SMACK_LABEL_BYTES];
+    smack_GetAppLabel(appRef->name, appLabel, sizeof(appLabel));
+
     pid_t pid = fork();
 
     if (pid < 0)
@@ -681,6 +851,9 @@ static le_result_t KillAppProcs
     // The child will kill all the processes.
     if (pid == 0)
     {
+        // Set our smack label to match the application's smack label.
+        smack_SetMyLabel(appLabel);
+
         // Set our uid to match the uid of the user that we want to kill all processes for.
         LE_FATAL_IF(setuid(appRef->uid) == -1, "Failed to set the uid.  %m.");
 
@@ -736,6 +909,12 @@ static void CleanupApp
     app_Ref_t appRef                    ///< [IN] The application reference.
 )
 {
+    // Clean up SMACK rules.
+    char appLabel[LIMIT_MAX_SMACK_LABEL_BYTES];
+    smack_GetAppLabel(appRef->name, appLabel, sizeof(appLabel));
+
+    smack_RevokeSubject(appLabel);
+
     // Remove the sanbox.
     if (appRef->sandboxed)
     {
@@ -878,6 +1057,23 @@ gid_t app_GetGid
 )
 {
     return appRef->gid;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Check to see if the application is sandboxed or not.
+ *
+ * @return
+ *      True if the app is sandboxed, false if not.
+ */
+//--------------------------------------------------------------------------------------------------
+bool app_GetIsSandboxed
+(
+    app_Ref_t appRef                    ///< [IN] The application reference.
+)
+{
+    return appRef->sandboxed;
 }
 
 

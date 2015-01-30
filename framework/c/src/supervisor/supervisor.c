@@ -10,6 +10,7 @@
  *  - @ref c_sup_faultLimits
  *  - @ref c_sup_singleInstance
  *  - @ref c_sup_configLayout
+ *  - @ref c_sup_smack
  *
  * @section c_sup_intro Supervisor
  *
@@ -161,9 +162,91 @@
  * All application configuration settings are stored in the Legato Configuration Database.
  * See @ref frameworkDB.
  *
+ *
+ * @section c_sup_smack SMACK
+ *
+ * SMACK policies are set by the Legato startup scripts, the Legato Installer and the Legato
+ * Supervisor.
+ *
+ * By default system files have the "_" SMACK label which means that everyone has read and execute
+ * access to them.  The Legato startup scripts are responsible for setting SMACK labels for system
+ * files that require special permission handling.  For example, the /dev/null file is given the
+ * label "*" by the start up scripts so that it is fully accessible by everyone.  Additionally, the
+ * Legato startup scripts makes sure that the Legato Supervisor and Installer have the 'admin' SMACK
+ * label.
+ *
+ * The Legato Installer sets SMACK labels for all application bundled files.  The SMACK label for
+ * each app is unique to the app.
+ *
+ * The Supervisor sets SMACK labels for framework daemons, processes for applications, sandbox
+ * directories and it also sets SMACK rules for IPC bindings.
+ *
+ * Framework daemons are given the SMACK label "framework".
+ *
+ * All processes are given the same SMACK label as the application they belong to.  All app labels
+ * are unique.
+ *
+ * SMACK rules are set so that IPC bindings between applications will work.  For example if we have
+ * a client app that needs to talk to the server app, the following rules will be set:
+ *
+ * @code
+ * 'clientAppLabel' rw 'serverAppLabel'     // client has read-write access to server.
+ * 'serverAppLabel' rw 'clientAppLabel'     // server has read-write access to client.
+ * @endcode
+ *
+ * Sandboxed directories are given labels that correspond to the application's access rights to the
+ * directory.  For example, generally an application only has read and execute permission to its
+ * sandboxes /bin directory.  So the /bin will have the following properties:
+ *
+ * owner = root
+ * group = root
+ * DAC permissions = ------r-x
+ * SMACK label = 'AppLabelrx'
+ *
+ * The Supervisor also sets up the SMACK rule:
+ *
+ * 'AppLabel' rx 'AppLabelrx'
+ *
+ * so that the application has the proper access to the directory.  The reason that an application's
+ * directories are given different labels than the application itself is so that if an IPC binding
+ * is present the remote application has access to talk to the local app but does not have direct
+ * access to the local app's files.
+ *
+ * All bundled files within an application's sandbox is given the SMACK label of the app.  This is
+ * to support passing of file descriptors from one application to another.  Note however, that the
+ * file descriptor cannot be passed on to a third application.
+ *
+ *
+ * @section c_sup_smack_limitations SMACK Limitations
+ *
+ * Extended attributes are used to store the SMACK label and although this feature is available on
+ * all file systems we currently use, one key feature is missing.  When a new file is created the
+ * file should inherit the SMACK label of the creator but because this feature is missing our
+ * current implementation of SMACK has the following limitations.
+ *
+ * 1) Mqueue file system will always set new files to "_" label.  Which means we can't control
+ *    access between apps that use MQueues.
+ *
+ * 2) Tmpfs always sets new files to "*" label which means we can't totally control access to files
+ *    created in sandboxes because sandboxes use tmpfs.  This is only an issue when file descriptors
+ *    for the created files are passed over IPC to another app.  The other app can then pass that
+ *    fd onto a third app and so on.
+ *
+ * 4) Yaffs2/UBIFS do not set any label for newly created files.  This causes an issue with the
+ *    config daemon that has the label "framework" but its created files do not have any labels.  To
+ *    work around this the config daemon must run as root and the 'onlycap' SMACK file must
+ *    not be set.  This means that there is limited protection because all root processes have the
+ *    ability to change SMACK labels on files.
+ *
+ * 5) QMI sockets are currently set to "*" because some applications need to write to them.
+ *    Ideally, the QMI socket file would be given a label such as "qmi" and a rule would be created
+ *    to only allow access to the application that requires it.  However, there currently isn't a
+ *    way to specify this in the xdef file.
+ *
+ *
  * <hr>
  *
- * Copyright (C) Sierra Wireless, Inc. 2013 - 2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 #include "legato.h"
 #include "interfaces.h"
@@ -174,6 +257,7 @@
 #include "fileDescriptor.h"
 #include "config.h"
 #include "cgroups.h"
+#include "smack.h"
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -939,6 +1023,8 @@ needs to be %d bytes.", sizeof(killCmd), s);
             //         cleaned up later.
             SetEnvironmentVariables(processNamePtr, processNamePtr);
 
+            smack_SetMyLabel("framework");
+
             // Launch the child program.  This should not return unless there was an error.
             execl(programPath, programPath, (char*)NULL);
 
@@ -1615,13 +1701,8 @@ le_sup_state_State_t le_sup_state_GetAppState
 COMPONENT_INIT
 {
     // Block Signals that we are going to use.
-    // @todo: This can be done in main by the code generator later.  This could also be a function
-    //        in the signals API.
-    sigset_t sigSet;
-    LE_ASSERT(sigemptyset(&sigSet) == 0);
-    LE_ASSERT(sigaddset(&sigSet, SIGCHLD) == 0);
-    LE_ASSERT(sigaddset(&sigSet, SIGPIPE) == 0);
-    LE_ASSERT(pthread_sigmask(SIG_BLOCK, &sigSet, NULL) == 0);
+    le_sig_Block(SIGCHLD);
+    le_sig_Block(SIGPIPE);
 
     // Set our nice level.
     errno = 0;
@@ -1653,6 +1734,7 @@ COMPONENT_INIT
     user_Init();
     user_RestoreBackup();
     app_Init();
+    smack_Init();
     cgrp_Init();
 
     // Create memory pools.

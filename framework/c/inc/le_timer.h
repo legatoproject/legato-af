@@ -81,7 +81,7 @@ See @ref c_log_controlling for more information.
 
 <HR>
 
-Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 
 */
 
@@ -91,7 +91,7 @@ Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work 
  *
  * Legato @ref c_timer include file.
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  *
  */
 
@@ -157,7 +157,7 @@ void le_timer_Delete
  *
  * @return
  *      - LE_OK on success
- *      - LE_NOT_POSSIBLE if the timer is currently running
+ *      - LE_BUSY if the timer is currently running
  *
  * @note
  *      If an invalid timer object is given, the process exits.
@@ -178,7 +178,7 @@ le_result_t le_timer_SetHandler
  *
  * @return
  *      - LE_OK on success
- *      - LE_NOT_POSSIBLE if the timer is currently running
+ *      - LE_BUSY if the timer is currently running
  *
  * @note
  *      If an invalid timer object is given, the process exits.
@@ -200,7 +200,7 @@ le_result_t le_timer_SetInterval
  *
  * @return
  *      - LE_OK on success
- *      - LE_NOT_POSSIBLE if the timer is currently running
+ *      - LE_BUSY if the timer is currently running
  *
  * @note
  *      If an invalid timer object is given, the process exits.
@@ -221,7 +221,7 @@ le_result_t le_timer_SetRepeat
  *
  * @return
  *      - LE_OK on success
- *      - LE_NOT_POSSIBLE if the timer is currently running
+ *      - LE_BUSY if the timer is currently running
  *
  * @note
  *      If an invalid timer object is given, the process exits.
@@ -281,7 +281,7 @@ uint32_t le_timer_GetExpiryCount
  *
  * @return
  *      - LE_OK on success
- *      - LE_NOT_POSSIBLE if the timer is already running
+ *      - LE_BUSY if the timer is already running
  *
  * @note
  *      If an invalid timer object is given, the process exits.
@@ -301,7 +301,7 @@ le_result_t le_timer_Start
  *
  * @return
  *      - LE_OK on success
- *      - LE_NOT_POSSIBLE if the timer is not currently running
+ *      - LE_FAULT if the timer is not currently running
  *
  * @note
  *      If an invalid timer object is given, the process exits.

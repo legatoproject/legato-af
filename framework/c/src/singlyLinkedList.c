@@ -1,6 +1,6 @@
  /** @file singlyLinkedList.c
   *
-  * Copyright (C) Sierra Wireless, Inc. 2012.  All rights reserved. Use of this work is subject to license.
+  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
   */
 
 #include "legato.h"
@@ -293,6 +293,11 @@ bool le_sls_IsListCorrupted
     const le_sls_List_t* listPtr    ///< [IN] The list to check.
 )
 {
+    if (listPtr == NULL)
+    {
+        return true;
+    }
+
     if (listPtr->tailLinkPtr == NULL)
     {
         return false;

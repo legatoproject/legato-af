@@ -5,7 +5,7 @@
  *
  *  Module that handles the configuration tree iterator functionality.
  *
- *  Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved.
+ *  Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  *  Use of this work is subject to license.
  */
 // -------------------------------------------------------------------------------------------------
@@ -472,26 +472,6 @@ le_result_t ni_GetNodeName
     const char* pathPtr,           ///< [IN]  Optional path to another node in the tree.
     char* destBufferPtr,           ///< [OUT] The buffer to copy string data into.
     size_t bufferMax               ///< [IN]  The maximum size of the string buffer.
-);
-
-
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- *  Set the name of a given node in the tree, or if a path is not specified the iterator's current
- *  node is used.
- *
- *  @return LE_OK if the set is successful.  LE_FORMAT_ERROR if the name contains illegal
- *          characters, or otherwise would not work as a node name.  LE_OVERFLOW if the name is too
- *          long.  LE_DUPLICATE, if there is another node with the new name in the same collection.
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t ni_SetNodeName
-(
-    ni_IteratorRef_t iteratorRef,  ///< [IN] The iterator object to access.
-    const char* pathPtr,           ///< [IN] Optional path to another node in the tree.
-    const char* namePtr            ///< [IN] The new name to use.
 );
 
 

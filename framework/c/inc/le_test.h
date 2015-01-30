@@ -1,7 +1,7 @@
 /**
  * @page c_test Unit Testing API
  *
- * @ref le_test.h "Click here for the API reference documentation."
+ * @ref le_test.h "API Reference"
  *
  * <HR>
  *
@@ -170,7 +170,7 @@
  *
  * <HR>
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 //--------------------------------------------------------------------------------------------------
@@ -178,7 +178,7 @@
  *
  * Legato @ref c_test include file.
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 #ifndef LEGATO_TEST_INCLUDE_GUARD

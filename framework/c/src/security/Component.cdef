@@ -15,6 +15,7 @@ sources:
     proc.c
     watchdogAction.c
     init.c
+	smack.c
 }
 
 requires:

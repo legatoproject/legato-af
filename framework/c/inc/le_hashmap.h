@@ -1,7 +1,7 @@
 /** @page c_hashmap HashMap API
  *
  *
- * @ref le_hashmap.h "Click here for the API Reference documentation."
+ * @ref le_hashmap.h "API Reference"
  *
  * <HR>
  *
@@ -162,14 +162,14 @@
  *
  * <HR>
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 /** @file le_hashmap.h
  *
  * Legato @ref c_hashmap include file.
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 #ifndef LEGATO_HASHMAP_INCLUDE_GUARD

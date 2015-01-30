@@ -1,6 +1,6 @@
 /** @page c_semaphore Semaphore API
  *
- * @ref le_semaphore.h "API Reference documentation"
+ * @ref le_semaphore.h "API Reference"
  *
  * <HR>
  *
@@ -82,7 +82,7 @@
  *
  * <HR>
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  *
  */
 
@@ -91,7 +91,7 @@
  *
  * Legato @ref c_semaphore include file.
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 #ifndef LEGATO_SEMAPHORE_INCLUDE_GUARD

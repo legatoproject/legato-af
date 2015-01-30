@@ -59,7 +59,7 @@
  * running process that belongs to an IPC session reference when the IPC system reports that
  * a session closed.  This is how the Log Control Daemon finds out that a client process died.
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 #include "legato.h"

@@ -2,7 +2,7 @@
  *
  * API for working with child processes.
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 #include "legato.h"
 #include "watchdogAction.h"
@@ -77,7 +77,7 @@ void proc_Init
 proc_Ref_t proc_Create
 (
     const char* cfgPathRootPtr,     ///< [IN] The path in the config tree for this process.
-    const char* appNamePtr          ///< [IN] The name of the app that this process is a part of.
+    app_Ref_t appRef                ///< [IN] Reference to the app that we are part of.
 );
 
 

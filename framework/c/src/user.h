@@ -5,7 +5,7 @@
  *
  * This API is thread-safe.
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 
@@ -239,6 +239,24 @@ le_result_t user_AppNameToUserName
     const char* appName,        ///< [IN] The application's name.
     char* nameBufPtr,           ///< [OUT] The buffer to store the user name in.
     size_t nameBufSize          ///< [IN] The size of the buffer that the user name will be stored in.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get's an application's user ID.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_NOT_FOUND if the application does not exist.
+ *      LE_OVERFLOW if the application name is too long.
+ *      LE_FAULT if there was some other error.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t user_GetAppUid
+(
+    const char* appName,        ///< [IN] Name of the application to get the uid for.
+    uid_t* uidPtr               ///< [OUT] UID of the application.
 );
 
 

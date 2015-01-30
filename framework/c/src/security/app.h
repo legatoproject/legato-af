@@ -3,7 +3,7 @@
  *
  * API for working with Legato user applications.
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 #ifndef LEGATO_SRC_APP_INCLUDE_GUARD
 #define LEGATO_SRC_APP_INCLUDE_GUARD
@@ -169,6 +169,20 @@ uid_t app_GetUid
  */
 //--------------------------------------------------------------------------------------------------
 gid_t app_GetGid
+(
+    app_Ref_t appRef                    ///< [IN] The application reference.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Check to see if the application is sandboxed or not.
+ *
+ * @return
+ *      True if the app is sandboxed, false if not.
+ */
+//--------------------------------------------------------------------------------------------------
+bool app_GetIsSandboxed
 (
     app_Ref_t appRef                    ///< [IN] The application reference.
 );

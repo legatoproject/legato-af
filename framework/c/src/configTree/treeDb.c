@@ -120,7 +120,7 @@
  *  in order to have a handler registed for it.  In fact, a handler will be called when a node is
  *  deleted and when it is recreated.
  *
- *  Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved.
+ *  Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  *  Use of this work is subject to license.
  */
 // -------------------------------------------------------------------------------------------------
@@ -2063,7 +2063,8 @@ static le_result_t ReadToken
 static le_result_t InternalReadNode
 (
     tdb_NodeRef_t nodeRef,  ///< [IN] The node we're reading a value for.
-    FILE* filePtr           ///< [IN] The file we're reading the value from.
+    FILE* filePtr,          ///< [IN] The file we're reading the value from.
+    size_t pathLen          ///< [IN] The length of the path including nodeRef.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -2118,6 +2119,19 @@ static le_result_t InternalReadNode
 
                 if (tokenType == TT_STRING_VALUE)
                 {
+                    size_t strLen = le_utf8_NumBytes(stringBuffer);
+                    size_t newPathLen = pathLen + 1 + strLen;
+
+                    if (newPathLen > LE_CFG_STR_LEN)
+                    {
+                        LE_ERROR("New path length for node '%s' is too long.  %zu of %zu bytes.",
+                                 stringBuffer,
+                                 strLen,
+                                 (size_t)LE_CFG_STR_LEN);
+
+                        return LE_FORMAT_ERROR;
+                    }
+
                     tdb_NodeRef_t childRef = GetNamedChild(nodeRef, stringBuffer);
 
                     if (childRef == NULL)
@@ -2134,7 +2148,7 @@ static le_result_t InternalReadNode
 
                     tdb_EnsureExists(childRef);
 
-                    le_result_t result = InternalReadNode(childRef, filePtr);
+                    le_result_t result = InternalReadNode(childRef, filePtr, newPathLen);
 
                     if (result != LE_OK)
                     {
@@ -2173,6 +2187,39 @@ static le_result_t InternalReadNode
     return LE_OK;
 }
 
+
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Calculate the number of bytes required to store a node path, including seperators and a trailing
+ *  NULL.
+ *
+ *  @return The amount of bytes required to store the whole path string.
+ */
+// -------------------------------------------------------------------------------------------------
+static size_t ComputePathLength
+(
+    tdb_NodeRef_t nodeRef  ///< [IN] Compute a path for this node.
+)
+// -------------------------------------------------------------------------------------------------
+{
+    size_t pathLen = 0;
+    char nodeName[LE_CFG_NAME_LEN_BYTES] = "";
+
+    while (nodeRef != NULL)
+    {
+        LE_ASSERT(tdb_GetNodeName(nodeRef, nodeName, sizeof(nodeName)) == LE_OK);
+
+        // Add this path segment's length to our running total, along with the required path
+        // seperator.
+        pathLen += 1 + le_utf8_NumBytes(nodeName);
+        nodeRef = tdb_GetNodeParent(nodeRef);
+    }
+
+    // Don't forget to include a spot for the trailing NULL.
+    return pathLen + 1;
+}
 
 
 
@@ -2993,17 +3040,28 @@ bool tdb_ReadTreeNode
     // the node.  We shouldn't be leaving the node in a half initialized state.
     bool result = true;
 
-    if (InternalReadNode(nodeRef, filePtr) != LE_OK)
+    // Compute starting point, how big is the path so far??
+    // Must already be less than, LE_CFG_STR_LEN.
+    size_t pathLen = ComputePathLength(nodeRef);
+
+    if (pathLen >= LE_CFG_STR_LEN)
     {
-        tdb_SetEmpty(nodeRef);
         result = false;
     }
-
-    // Make sure that there aren't any unexpected tokens left in the file.
-    if (SkipWhiteSpace(filePtr) != LE_OUT_OF_RANGE)
+    else
     {
-        LE_ERROR("Unexpected token in file.");
-        return false;
+        if (InternalReadNode(nodeRef, filePtr, pathLen) != LE_OK)
+        {
+            tdb_SetEmpty(nodeRef);
+            result = false;
+        }
+
+        // Make sure that there aren't any unexpected tokens left in the file.
+        if (SkipWhiteSpace(filePtr) != LE_OUT_OF_RANGE)
+        {
+            LE_ERROR("Unexpected token in file.");
+            result = false;
+        }
     }
 
     // Finally close our file object and return the result.

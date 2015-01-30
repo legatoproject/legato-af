@@ -1,6 +1,6 @@
 /** @page c_mutex Mutex API
  * 
- * @ref le_mutex.h "API Reference documentation"
+ * @ref le_mutex.h "API Reference"
  * 
  * <HR>
  * 
@@ -143,14 +143,14 @@
  * 
  * <HR>
  * 
- * Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 /** @file le_mutex.h
  * 
  * Legato @ref c_mutex include file.
  * 
- * Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 #ifndef LEGATO_MUTEX_INCLUDE_GUARD

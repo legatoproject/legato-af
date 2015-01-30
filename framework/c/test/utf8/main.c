@@ -29,8 +29,9 @@
   *         - an improper string with a missing continuation byte,
   *         - an improper string with an invalid byte.
   *
+  *  - Parsing of integers from strings.
   *
-  * Copyright (C) Sierra Wireless, Inc. 2012.  All rights reserved. Use of this work is subject to license.
+  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
   */
 
 #include "legato.h"
@@ -44,6 +45,76 @@
 
 
 static bool compareConCat(char* finalStr, char* firstStr, char* secondStr, size_t numBytesToCheck);
+
+
+static void TestIntParsing(void)
+{
+    char s[100];
+    int value = 12; // arbitrary non-zero value.
+
+    LE_ASSERT(LE_FORMAT_ERROR == le_utf8_ParseInt(&value, "foo"));
+    LE_ASSERT(LE_FORMAT_ERROR == le_utf8_ParseInt(&value, "4foo"));
+    LE_ASSERT(LE_FORMAT_ERROR == le_utf8_ParseInt(&value, "1237^78"));
+
+    LE_ASSERT(LE_OK == le_utf8_ParseInt(&value, "0"));
+    LE_ASSERT(value == 0);
+
+    LE_ASSERT(LE_OK == le_utf8_ParseInt(&value, "00"));
+    LE_ASSERT(value == 0);
+
+    LE_ASSERT(LE_OK == le_utf8_ParseInt(&value, "0x0"));
+    LE_ASSERT(value == 0);
+
+    LE_ASSERT(LE_OK == le_utf8_ParseInt(&value, "0x0000"));
+    LE_ASSERT(value == 0);
+
+    LE_ASSERT(LE_OK == le_utf8_ParseInt(&value, "-0x0000"));
+    LE_ASSERT(value == 0);
+
+    LE_ASSERT(LE_OK == le_utf8_ParseInt(&value, " 0"));
+    LE_ASSERT(value == 0);
+
+    LE_ASSERT(LE_OK == le_utf8_ParseInt(&value, "                 0"));
+    LE_ASSERT(value == 0);
+
+    LE_ASSERT(LE_OK == le_utf8_ParseInt(&value, "1"));
+    LE_ASSERT(value == 1);
+
+    LE_ASSERT(LE_OK == le_utf8_ParseInt(&value, "-1"));
+    LE_ASSERT(value == -1);
+
+    LE_ASSERT(LE_OK == le_utf8_ParseInt(&value, "0x1"));
+    LE_ASSERT(value == 1);
+
+    LE_ASSERT(LE_OK == le_utf8_ParseInt(&value, "-0x1"));
+    LE_ASSERT(value == -1);
+
+    LE_ASSERT(LE_OK == le_utf8_ParseInt(&value, "01"));
+    LE_ASSERT(value == 1);
+
+    LE_ASSERT(LE_OK == le_utf8_ParseInt(&value, "-01"));
+    LE_ASSERT(value == -1);
+
+    LE_ASSERT(LE_OK == le_utf8_ParseInt(&value, "0x7FFFFFFF"));
+    LE_ASSERT(value == 0x7FFFFFFF);
+
+    LE_ASSERT(LE_OK == le_utf8_ParseInt(&value, "-0x80000000"));
+    LE_ASSERT(value == -0x80000000);
+
+    sprintf(s, "%d", INT_MAX);
+    LE_ASSERT(LE_OK == le_utf8_ParseInt(&value, s));
+    LE_ASSERT(value == INT_MAX);
+
+    sprintf(s, "%d", INT_MIN);
+    LE_ASSERT(LE_OK == le_utf8_ParseInt(&value, s));
+    LE_ASSERT(value == INT_MIN);
+
+    sprintf(s, "%lld", ((long long int)(INT_MAX)) + 1);
+    LE_ASSERT(LE_OUT_OF_RANGE == le_utf8_ParseInt(&value, s));
+
+    sprintf(s, "%lld", ((long long int)(INT_MIN)) - 1);
+    LE_ASSERT(LE_OUT_OF_RANGE == le_utf8_ParseInt(&value, s));
+}
 
 
 int main(int argc, char *argv[])
@@ -366,6 +437,10 @@ int main(int argc, char *argv[])
     }
 
     printf("Copy Up To Substring correct.\n");
+
+    TestIntParsing();
+
+    printf("Int parsing correct.\n");
 
     printf("*** Unit Test for le_utf8 module passed. ***\n");
     printf("\n");

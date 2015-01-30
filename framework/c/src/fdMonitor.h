@@ -6,12 +6,26 @@
  *
  * The File Descriptor Monitor module is part of the @ref c_eventLoop implementation.
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 //--------------------------------------------------------------------------------------------------
 
 #ifndef LEGATO_FD_MONITOR_H_INCLUDE_GUARD
 #define LEGATO_FD_MONITOR_H_INCLUDE_GUARD
+
+#include <sys/epoll.h>
+
+//--------------------------------------------------------------------------------------------------
+/** Fallback definition of EPOLLWAKEUP
+ *
+ * Definition of EPOLLWAKEUP for kernel versions that do not support it.
+ */
+//--------------------------------------------------------------------------------------------------
+#ifndef EPOLLWAKEUP
+#pragma message "EPOLLWAKEUP unsupported. Power management features may fail."
+#define EPOLLWAKEUP 0x0
+#endif
+
 
 //--------------------------------------------------------------------------------------------------
 /**

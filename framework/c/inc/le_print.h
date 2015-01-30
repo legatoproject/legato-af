@@ -1,12 +1,12 @@
 /**
  * @page c_print Print APIs
  *
- * @ref le_print.h "Click here for the API Reference documentation."
+ * @ref le_print.h "API Reference"
  *
  * <HR>
  *
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  *
  */
 
@@ -15,7 +15,7 @@
  * *
  * Legato @ref c_print include file.
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  *
  */
 

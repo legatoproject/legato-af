@@ -7,7 +7,7 @@
  * Separators can be one or more characters.  Path objects treat consecutive separators in a path as
  * a single separator.  Paths that begin with one or more separators are considered absolute paths.
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  * license.
  */
 //--------------------------------------------------------------------------------------------------

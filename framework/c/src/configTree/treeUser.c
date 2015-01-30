@@ -6,7 +6,7 @@
  *  Implementation of the tree user module.  The tree user object's keep track of the user default
  *  trees.  In the future, tree accessibility permissions will also be add to these objects.
  *
- *  Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved.
+ *  Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  *  Use of this work is subject to license.
  */
 // -------------------------------------------------------------------------------------------------
@@ -64,7 +64,7 @@ le_mem_PoolRef_t UserPoolRef = NULL;
 // -------------------------------------------------------------------------------------------------
 static tu_UserRef_t CreateUserInfo
 (
-    uid_t userId,          ///< [IN] The linux Id of the user in question.
+    uid_t userId,          ///< [IN] The Linux Id of the user in question.
     const char* userName,  ///< [IN] The name of the user.
     const char* treeName   ///< [IN] The name of the default tree for this user.
 )
@@ -449,8 +449,8 @@ tdb_TreeRef_t tu_GetRequestedTree
 
     // If the path has the tree name embedded, extract it now.  Otherwise, check to see if the user
     // is trying to write to the default tree.  If it is we extract the tree name for checking
-    // permission just like if they explicitly specifed the tree name.  If the user is simply trying
-    // to read from their default tree, then we grant it without resorting to an ACL lookup.
+    // permission just like if they explicitly specified the tree name.  If the user is simply
+    // trying to read from their default tree, then we grant it without resorting to an ACL lookup.
     if (tp_PathHasTreeSpecifier(pathPtr) == true)
     {
         tp_GetTreeName(treeName, pathPtr);
@@ -510,7 +510,7 @@ void tu_TerminateConfigClient
 {
     tu_UserRef_t userRef = GetUserInfo(sessionRef, NULL);
 
-    LE_EMERG("A fatal error occured.  Killing config sesssion <%p> for user %s, <%u>.  Reason: %s",
+    LE_EMERG("A fatal error occurred.  Killing config session <%p> for user %s, <%u>.  Reason: %s",
              sessionRef,
              tu_GetUserName(userRef),
              tu_GetUserId(userRef),
@@ -536,7 +536,7 @@ void tu_TerminateConfigAdminClient
 {
     tu_UserRef_t userRef = GetUserInfo(sessionRef, NULL);
 
-    LE_EMERG("A fatal error occured.  Killing admin sesssion <%p> for user %s, <%u>.  Reason: %s",
+    LE_EMERG("A fatal error occurred.  Killing admin session <%p> for user %s, <%u>.  Reason: %s",
              sessionRef,
              tu_GetUserName(userRef),
              tu_GetUserId(userRef),

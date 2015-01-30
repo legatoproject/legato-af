@@ -29,7 +29,7 @@
  * For each session, there exists a level, a set of output location flags, and a list of
  * trace keywords, each of which has an "is enabled" flag.
  *
- * Copyright (C) Sierra Wireless, Inc. 2012. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 #ifndef LOG_INCLUDE_GUARD
@@ -51,6 +51,17 @@
  */
 //--------------------------------------------------------------------------------------------------
 void log_Init
+(
+    void
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Re-Initialize the logging system.
+ * This must be called in case the underlying log fd has been closed.
+ */
+//--------------------------------------------------------------------------------------------------
+void log_ReInit
 (
     void
 );

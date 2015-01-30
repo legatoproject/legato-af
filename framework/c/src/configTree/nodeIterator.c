@@ -5,7 +5,7 @@
  *
  *  Module that handles the configuration tree iterator functionality.
  *
- *  Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved.
+ *  Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  *  Use of this work is subject to license.
  */
 // -------------------------------------------------------------------------------------------------
@@ -1093,96 +1093,6 @@ le_result_t ni_GetNodeName
 
     LE_ASSERT(le_pathIter_GoToEnd(iteratorRef->pathIterRef) == LE_OK);
     return le_pathIter_GetCurrentNode(iteratorRef->pathIterRef, destBufferPtr, bufferMax);
-}
-
-
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- *  Set the name of a given node in the tree, or if a path is not specified the iterator's current
- *  node is used.
- *
- *  @return LE_OK if the set is successful.  LE_FORMAT_ERROR if the name contains illegal
- *          characters, or otherwise would not work as a node name.  LE_OVERFLOW if the name is too
- *          long.  LE_DUPLICATE, if there is another node with the new name in the same collection.
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t ni_SetNodeName
-(
-    ni_IteratorRef_t iteratorRef,  ///< [IN] The iterator object to access.
-    const char* pathPtr,           ///< [IN] Optional path to another node in the tree.
-    const char* namePtr            ///< [IN] The new name to use.
-)
-//--------------------------------------------------------------------------------------------------
-{
-    // Try to get or create the requested node.  If the optional sub-path results in a new path that
-    // overflows, then the node get will fail.
-    tdb_NodeRef_t nodeRef = ni_TryCreateNode(iteratorRef, pathPtr);
-    le_result_t result = LE_OK;
-
-    if (nodeRef)
-    {
-        // Ok, the existing path is ok.  Cache the existing node name, in case we have to revert it
-        // later, then set the new name.  We may have to revert the name later, because, while the
-        // new name itself may be ok.  The name may actually be too long for the path limit.
-        char oldName[LE_CFG_NAME_LEN_BYTES] = "";
-        LE_ASSERT(tdb_GetNodeName(nodeRef, oldName, sizeof(oldName)) == LE_OK);
-
-        result = tdb_SetNodeName(nodeRef, namePtr);
-
-        if (result == LE_OK)
-        {
-            // The new name passed validation, now we have to make sure that the full path to the
-            // node is still ok.  So, first we have to check, was a relative path used.
-            if (strcmp(pathPtr, "") == 0)
-            {
-                // Looks like the caller was using the iterator's current node.  So, remove the old
-                // name from the end of the iterator's current path, and append the new name.  If
-                // this fails, it's because the new absolute path is too long, so name change fails,
-                // and we have to revert the changes.
-                LE_ASSERT(le_pathIter_Append(iteratorRef->pathIterRef, "..") == LE_OK);
-                result = le_pathIter_Append(iteratorRef->pathIterRef, namePtr);
-
-                if (result != LE_OK)
-                {
-                    LE_ASSERT(le_pathIter_Append(iteratorRef->pathIterRef, oldName) == LE_OK);
-                }
-            }
-            else
-            {
-                // The user is accessing a node relative to the iterator's current node.  So, we
-                // need too build up a new path and validate that the new name still fits within our
-                // limits.  The new path ref is for validation only and can be safely discarded once
-                // the check is complete.
-                le_pathIter_Ref_t newPathRef = le_pathIter_Clone(iteratorRef->pathIterRef);
-                result = le_pathIter_Append(newPathRef, pathPtr);
-
-                if (result == LE_OK)
-                {
-                    LE_ASSERT(le_pathIter_Append(newPathRef, "..") == LE_OK);
-                    result = le_pathIter_Append(newPathRef, namePtr);
-                }
-
-                le_pathIter_Delete(newPathRef);
-            }
-
-            // If we got to this point and everything is ok, then we know that the name set was ok,
-            // and that the resultant path with the new name is also ok.  So, make sure that this
-            // node exists in the next commit.  Otherwise, revert the node to it's old name and
-            // report the error to the caller.
-            if (result == LE_OK)
-            {
-                tdb_EnsureExists(nodeRef);
-            }
-            else
-            {
-                LE_ASSERT(tdb_SetNodeName(nodeRef, oldName) == LE_OK);
-            }
-        }
-    }
-
-    return result;
 }
 
 

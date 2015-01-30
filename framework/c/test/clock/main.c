@@ -2,7 +2,7 @@
   * This module is for unit testing the le_clock module in the legato
   * runtime library.
   * 
-  * Copyright (C) Sierra Wireless, Inc. 2013.  All rights reserved. Use of this work is subject to license.
+  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
   *
   * TODO:
   *  - modify to fit into the new "app" structure

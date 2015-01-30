@@ -135,7 +135,7 @@
  * @todo Use lazy unmount so unmounts will always succeed.
  *
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 #include "legato.h"
@@ -145,6 +145,7 @@
 #include "serviceDirectoryProtocol.h"
 #include "resourceLimits.h"
 #include "fileDescriptor.h"
+#include "smack.h"
 
 
 #if ! defined LE_RUNTIME_DIR
@@ -179,15 +180,36 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * The name of the node in the config tree that contains the list of import directives for all files
- * that an application needs.
- *
- * An import directive consists of a source file and the destination path.
- *
- * If this entry in the config tree is missing or empty the application will not be launched.
+ * The name of the node in the config tree that contains the list of bundled files and directories.
  */
 //--------------------------------------------------------------------------------------------------
-#define CFG_NODE_IMPORT_FILES                           "files"
+#define CFG_NODE_BUNDLES                                "bundles"
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The name of the node in the config tree that contains the list of required files and directories.
+ */
+//--------------------------------------------------------------------------------------------------
+#define CFG_NODE_REQUIRES                               "requires"
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The name of the node in the config tree that contains the list of import directives for files
+ * that an application needs.
+ */
+//--------------------------------------------------------------------------------------------------
+#define CFG_NODE_FILES                                  "files"
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The name of the node in the config tree that contains the list of import directives for
+ * directories that an application needs.
+ */
+//--------------------------------------------------------------------------------------------------
+#define CFG_NODE_DIRS                                   "dirs"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -237,15 +259,57 @@ const ImportObj_t DefaultImportObjs[] = { {.src = STRINGIZE(LE_SVCDIR_SERVER_SOC
                                           {.src = "/dev/log", .dest = "/dev/"},
                                           {.src = "/dev/null", .dest = "/dev/"},
                                           {.src = "/dev/zero", .dest = "/dev/"},
+                                          {.src = "/usr/local/lib/liblegato.so", .dest = "/lib/"} };
+
+#if defined(TARGET_IMPORTS_X86_64)
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Files and directories to import into all sandboxes by default for the default system.
+ */
+//--------------------------------------------------------------------------------------------------
+const ImportObj_t DefaultSystemImportObjs[] = {
+                                          {.src = "/lib/ld-linux-x86-64.so.2", .dest = "/lib/"},
+                                          {.src = "/lib/libc.so.6", .dest = "/lib/"},
+                                          {.src = "/lib/libpthread.so.0", .dest = "/lib/"},
+                                          {.src = "/lib/librt.so.1", .dest = "/lib/"},
+                                          {.src = "/lib/libgcc_s.so.1", .dest = "/lib/"},
+                                          {.src = "/lib/libm.so.6", .dest = "/lib/"},
+                                          {.src = "/usr/lib/libstdc++.so.6", .dest = "/lib/"} };
+
+#elif defined(TARGET_IMPORTS_X86)
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Files and directories to import into all sandboxes by default for the default system.
+ */
+//--------------------------------------------------------------------------------------------------
+const ImportObj_t DefaultSystemImportObjs[] = {
+                                          {.src = "/lib/ld-linux.so.2", .dest = "/lib/"},
+                                          {.src = "/lib/libc.so.6", .dest = "/lib/"},
+                                          {.src = "/lib/libpthread.so.0", .dest = "/lib/"},
+                                          {.src = "/lib/librt.so.1", .dest = "/lib/"},
+                                          {.src = "/lib/libgcc_s.so.1", .dest = "/lib/"},
+                                          {.src = "/lib/libm.so.6", .dest = "/lib/"},
+                                          {.src = "/usr/lib/libstdc++.so.6", .dest = "/lib/"} };
+
+#else
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Files and directories to import into all sandboxes by default for the default system.
+ */
+//--------------------------------------------------------------------------------------------------
+const ImportObj_t DefaultSystemImportObjs[] = {
                                           {.src = "/lib/ld-linux.so.3", .dest = "/lib/"},
                                           {.src = "/lib/libc.so.6", .dest = "/lib/"},
                                           {.src = "/lib/libpthread.so.0", .dest = "/lib/"},
                                           {.src = "/lib/librt.so.1", .dest = "/lib/"},
                                           {.src = "/lib/libgcc_s.so.1", .dest = "/lib/"},
-                                          {.src = "/usr/lib/libstdc++.so.6", .dest = "/lib/"},
                                           {.src = "/lib/libm.so.6", .dest = "/lib/"},
-                                          {.src = "/usr/local/lib/liblegato.so", .dest = "/lib/"} };
+                                          {.src = "/usr/lib/libstdc++.so.6", .dest = "/lib/"} };
 
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -836,6 +900,86 @@ static le_result_t GetImportDestPath
     return LE_OK;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get a list of default import objects
+ *
+ * @return
+ *      Array of default import objects
+ */
+//--------------------------------------------------------------------------------------------------
+static void GetDefaultImportObjs
+(
+    app_Ref_t appRef,                   ///< [IN] App ref
+    le_dls_List_t * importListPtr,      ///< [IN/OUT] Import list to populate
+    const ImportObj_t * importObjsPtr,  ///< [IN] Array of imports to add
+    size_t importObjsLen                ///< [IN] Number of elements in array
+)
+{
+    int i;
+    for (i = 0; i < importObjsLen; i++)
+    {
+        if (AddToImportList(importListPtr,
+                            appRef,
+                            importObjsPtr[i].src,
+                            importObjsPtr[i].dest)
+            != LE_OK)
+        {
+            LE_FATAL("Invalid basic import list !");
+        }
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add to the import list from files/dirs from the config.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_FAULT if there was an error.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t AddCfgToImportList
+(
+    app_Ref_t appRef,                   ///< [IN] Application reference.
+    le_cfg_IteratorRef_t appCfg,        ///< [IN] Iterator that points to the list of files/dirs to
+                                        ///       import.  The iterator will be returned to its
+                                        ///       original position when the function returns.
+    le_dls_List_t* importListPtr        ///< [IN] List of imports to add to.
+)
+{
+    if (le_cfg_GoToFirstChild(appCfg) == LE_OK)
+    {
+        do
+        {
+            // Get source path.
+            char srcPath[LIMIT_MAX_PATH_BYTES];
+            if (GetImportSrcPath(appRef, appCfg, srcPath, sizeof(srcPath)) != LE_OK)
+            {
+                return LE_FAULT;
+            }
+
+            // Get destination path.
+            char destPath[LIMIT_MAX_PATH_BYTES];
+            if (GetImportDestPath(app_GetName(appRef), appCfg, destPath, sizeof(destPath)) != LE_OK)
+            {
+                return LE_FAULT;
+            }
+
+            // Add to the list of things to import into the sandbox.
+            if (AddToImportList(importListPtr, appRef, srcPath, destPath) != LE_OK)
+            {
+                return LE_FAULT;
+            }
+        }
+        while (le_cfg_GoToNextSibling(appCfg) == LE_OK);
+
+        le_cfg_GoToParent(appCfg);
+    }
+
+    return LE_OK;
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -852,24 +996,15 @@ static le_result_t ImportAllFiles
 )
 {
     le_result_t result = LE_FAULT;
-    const char* appName = app_GetName(appRef);
     const char* sandboxPath = app_GetSandboxPath(appRef);
     le_dls_List_t importList = LE_DLS_LIST_INIT;    // List of things to be imported to the sandbox.
 
     // First, add the default files to the list of things to import.
     // If we add these first, then they can be overridden by the application.
-    int i;
-    for (i = 0; i < NUM_ARRAY_MEMBERS(DefaultImportObjs); i++)
-    {
-        if (AddToImportList(&importList,
-                            appRef,
-                            DefaultImportObjs[i].src,
-                            DefaultImportObjs[i].dest)
-            != LE_OK)
-        {
-            LE_FATAL("Invalid basic import list (DefaultImportObjs)!");
-        }
-    }
+    GetDefaultImportObjs(appRef, &importList, DefaultImportObjs, NUM_ARRAY_MEMBERS(DefaultImportObjs));
+
+    // Also import system specfic common imports.
+    GetDefaultImportObjs(appRef, &importList, DefaultSystemImportObjs, NUM_ARRAY_MEMBERS(DefaultSystemImportObjs));
 
     // Add the app's bin directory.
     char pathBuff[LIMIT_MAX_PATH_BYTES] = "";
@@ -906,38 +1041,42 @@ static le_result_t ImportAllFiles
     // Create an iterator for our app.
     le_cfg_IteratorRef_t appCfg = le_cfg_CreateReadTxn(app_GetConfigPath(appRef));
 
-    // Read the files to import from the config tree.
-    le_cfg_GoToNode(appCfg, CFG_NODE_IMPORT_FILES);
+    // Add the bundled dirs.
+    le_cfg_GoToNode(appCfg, CFG_NODE_BUNDLES);
+    le_cfg_GoToNode(appCfg, CFG_NODE_DIRS);
 
-    if (le_cfg_GoToFirstChild(appCfg) != LE_OK)
+    if (AddCfgToImportList(appRef, appCfg, &importList) != LE_OK)
     {
-        LE_DEBUG("No files to import in config settings for application '%s'.", appName);
+        goto done;
     }
-    else
+
+    // Add the bundled files.
+    le_cfg_GoToParent(appCfg);
+    le_cfg_GoToNode(appCfg, CFG_NODE_FILES);
+
+    if (AddCfgToImportList(appRef, appCfg, &importList) != LE_OK)
     {
-        do
-        {
-            // Get source path.
-            char srcPath[LIMIT_MAX_PATH_BYTES];
-            if (GetImportSrcPath(appRef, appCfg, srcPath, sizeof(srcPath)) != LE_OK)
-            {
-                goto done;
-            }
+        goto done;
+    }
 
-            // Get destination path.
-            char destPath[LIMIT_MAX_PATH_BYTES];
-            if (GetImportDestPath(appName, appCfg, destPath, sizeof(destPath)) != LE_OK)
-            {
-                goto done;
-            }
+    // Add the required dirs.
+    le_cfg_GoToParent(appCfg);
+    le_cfg_GoToParent(appCfg);
+    le_cfg_GoToNode(appCfg, CFG_NODE_REQUIRES);
+    le_cfg_GoToNode(appCfg, CFG_NODE_DIRS);
 
-            // Add to the list of things to import into the sandbox.
-            if (AddToImportList(&importList, appRef, srcPath, destPath) != LE_OK)
-            {
-                goto done;
-            }
-        }
-        while (le_cfg_GoToNextSibling(appCfg) == LE_OK);
+    if (AddCfgToImportList(appRef, appCfg, &importList) != LE_OK)
+    {
+        goto done;
+    }
+
+    // Add the required files.
+    le_cfg_GoToParent(appCfg);
+    le_cfg_GoToNode(appCfg, CFG_NODE_FILES);
+
+    if (AddCfgToImportList(appRef, appCfg, &importList) != LE_OK)
+    {
+        goto done;
     }
 
     result = Import(&importList, sandboxPath);
@@ -961,15 +1100,19 @@ done:
 //--------------------------------------------------------------------------------------------------
 static le_result_t SetupFileSystem
 (
-    app_Ref_t appRef                ///< [IN] The application to setup the sandbox for.
+    app_Ref_t appRef,               ///< [IN] The application to setup the sandbox for.
+    const char* smackLabelPtr       ///< [IN] SMACK label to use for the created file system.
 )
 {
+    const char* sandboxPath = app_GetSandboxPath(appRef);
+
     int fileSysLimit = (int)resLim_GetSandboxedAppTmpfsLimit(appRef);
 
     // Make the mount options.
     char opt[100];
-    if (snprintf(opt, sizeof(opt), "size=%d,mode=%.4o,uid=0",
-                 (int)fileSysLimit, S_IRWXU | S_IROTH | S_IXOTH) >= sizeof(opt))
+    if (snprintf(opt, sizeof(opt), "size=%d,mode=%.4o,uid=%d,gid=%d,smackfsdef=%s,smackfsroot=%s",
+                 (int)fileSysLimit, S_IRWXO, 0, 0,
+                 smackLabelPtr, smackLabelPtr) >= sizeof(opt))
     {
         LE_ERROR("Mount options string is too long. '%s'", opt);
 
@@ -977,14 +1120,148 @@ static le_result_t SetupFileSystem
     }
 
     // Mount the tmpfs for the sandbox.
-    if (mount("none", app_GetSandboxPath(appRef), "tmpfs", MS_NOSUID, opt) == -1)
+    if (mount("none", sandboxPath, "tmpfs", MS_NOSUID, opt) == -1)
     {
         LE_ERROR("Could not create mount for sandbox '%s'.  %m.", app_GetName(appRef));
 
         return LE_FAULT;
     }
 
+    return smack_SetLabel(sandboxPath, smackLabelPtr);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Makes the application's sandbox root directory.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_FAULT if there was an error.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t MakeAppSandboxDir
+(
+    app_Ref_t appRef                ///< [IN] The application.
+)
+{
+    const char* appName = app_GetName(appRef);
+    const char* sandboxPath = app_GetSandboxPath(appRef);
+
+    // Make the directory
+    le_result_t r = le_dir_Make(sandboxPath, S_IRWXO);
+
+    if (r == LE_FAULT)
+    {
+        return LE_FAULT;
+    }
+
+    if (r == LE_DUPLICATE)
+    {
+        // If the sandbox already exists then this was probably some garbage left over from a
+        // previous creation of this sandbox.  Attempt to delete the sandbox first and then recreate
+        // it.
+        LE_WARN("Sandbox for application '%s' already exists.  Attempting to delete it and recreate it.",
+                appName);
+        sandbox_Remove(appRef);
+
+        if (le_dir_Make(sandboxPath, S_IRWXU) != LE_OK)
+        {
+            return LE_FAULT;
+        }
+    }
+
     return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Makes the application's sandbox root directory.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_FAULT if there was an error.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t MakeAppTmpDir
+(
+    app_Ref_t appRef,               ///< [IN] The application.
+    const char* smackLabelPtr       ///< [IN] SMACK label to use for the created directory.
+)
+{
+    const char* sandboxPath = app_GetSandboxPath(appRef);
+
+    // Create /tmp folder in the sandbox.
+    char tmpPath[LIMIT_MAX_PATH_BYTES];
+
+    if (snprintf(tmpPath, sizeof(tmpPath), "%s/tmp", sandboxPath) >= sizeof(tmpPath))
+    {
+        LE_ERROR("Path '%s' is too long.", tmpPath);
+        return LE_FAULT;
+    }
+
+    if (le_dir_Make(tmpPath, S_IRWXO) != LE_OK)
+    {
+        return LE_FAULT;
+    }
+
+    // Set the directory's SMACK label.
+    return smack_SetLabel(tmpPath, smackLabelPtr);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Make the app's home directory.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_FAULT if there was an error.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t MakeAppHomeDir
+(
+    app_Ref_t appRef,               ///< [IN] The application.
+    const char* smackLabelPtr       ///< [IN] SMACK label to use for the created directory.
+)
+{
+    const char* sandboxPath = app_GetSandboxPath(appRef);
+
+    // Create /home folder in the sandbox.
+    char homeDir[LIMIT_MAX_PATH_BYTES];
+
+    if (snprintf(homeDir, sizeof(homeDir), "%s/home", sandboxPath) >= sizeof(homeDir))
+    {
+        LE_ERROR("Path '%s' is too long.", homeDir);
+        return LE_FAULT;
+    }
+
+    if (le_dir_Make(homeDir, S_IRWXO) != LE_OK)
+    {
+        return LE_FAULT;
+    }
+
+    // Set the directory's SMACK label.
+    if (smack_SetLabel(homeDir, smackLabelPtr) != LE_OK)
+    {
+        return LE_FAULT;
+    }
+
+    // Create the user's home folder.
+    if (   snprintf(homeDir, sizeof(homeDir), "%s%s", sandboxPath, app_GetHomeDirPath(appRef))
+        >= sizeof(homeDir) )
+    {
+        LE_ERROR("Path '%s' is too long.", homeDir);
+        return LE_FAULT;
+    }
+
+    if (le_dir_Make(homeDir, S_IRWXO) != LE_OK)
+    {
+        return LE_FAULT;
+    }
+
+    return smack_SetLabel(homeDir, smackLabelPtr);
 }
 
 
@@ -1013,93 +1290,23 @@ le_result_t sandbox_Setup
         return LE_FAULT;
     }
 
-    const char* appName = app_GetName(appRef);
-    const char* sandboxPath = app_GetSandboxPath(appRef);
+    // Get the SMACK label for the folders we create.
+    char appDirLabel[LIMIT_MAX_SMACK_LABEL_BYTES];
+    smack_GetAppAccessLabel(app_GetName(appRef), S_IRWXO, appDirLabel, sizeof(appDirLabel));
 
-    // Make the app's sandbox directory.
-    le_result_t r = le_dir_Make(sandboxPath, S_IRWXU | S_IROTH | S_IXOTH);
-
-    if (r == LE_FAULT)
+    // Make the app's sandbox directories and file system.
+    if ( (MakeAppSandboxDir(appRef) != LE_OK) ||
+         (SetupFileSystem(appRef, appDirLabel) != LE_OK)  ||
+         (MakeAppTmpDir(appRef, appDirLabel) != LE_OK) ||
+         (MakeAppHomeDir(appRef, appDirLabel) != LE_OK) ||
+         (ImportAllFiles(appRef) != LE_OK) )
     {
-        goto cleanup;
-    }
-    else if (r == LE_DUPLICATE)
-    {
-        // If the sandbox already exists then this was probably some garbage left over from a
-        // previous creation of this sandbox.  Attempt to delete the sandbox first and then recreate
-        // it.
-        LE_WARN("Sandbox for application '%s' already exists.  Attempting to delete it and recreate it.",
-                appName);
+        // Clean up the sandbox if there was an error creating it.
         sandbox_Remove(appRef);
-
-        if (le_dir_Make(sandboxPath, S_IRWXU | S_IROTH | S_IXOTH) != LE_OK)
-        {
-            goto cleanup;
-        }
-    }
-
-    // Setup the sandboxed apps local file system.
-    if (SetupFileSystem(appRef) != LE_OK)
-    {
-        goto cleanup;
-    }
-
-    // Create /tmp folder in the sandbox.  This where we put Legato sockets.
-    char folderPath[LIMIT_MAX_PATH_BYTES];
-    if (snprintf(folderPath, sizeof(folderPath), "%s/tmp", sandboxPath) >= sizeof(folderPath))
-    {
-        LE_ERROR("Path '%s' is too long.", folderPath);
-        goto cleanup;
-    }
-
-    if (le_dir_Make(folderPath, S_IRWXU | S_IRWXO | S_ISVTX) != LE_OK)
-    {
-        goto cleanup;
-    }
-
-    // Create /home folder in the sandbox.
-    if (snprintf(folderPath, sizeof(folderPath), "%s/home", sandboxPath) >= sizeof(folderPath))
-    {
-        LE_ERROR("Path '%s' is too long.", folderPath);
-        goto cleanup;
-    }
-
-    if (le_dir_Make(folderPath, S_IRWXU | S_IROTH | S_IXOTH) != LE_OK)
-    {
-        goto cleanup;
-    }
-
-    // Create the user's home folder.
-    if (   snprintf(folderPath, sizeof(folderPath), "%s%s", sandboxPath, app_GetHomeDirPath(appRef))
-        >= sizeof(folderPath) )
-    {
-        LE_ERROR("Path '%s' is too long.", folderPath);
-        goto cleanup;
-    }
-
-    if (le_dir_Make(folderPath, S_IRWXU) != LE_OK)
-    {
-        goto cleanup;
-    }
-
-    // Set the owner of this folder to the application's user.
-    if (chown(folderPath, app_GetUid(appRef), app_GetGid(appRef)) != 0)
-    {
-        LE_ERROR("Could not set ownership of folder '%s' to uid %d.", folderPath, app_GetUid(appRef));
-        goto cleanup;
-    }
-
-    if (ImportAllFiles(appRef) != LE_OK)
-    {
-        goto cleanup;
+        return LE_FAULT;
     }
 
     return LE_OK;
-
-cleanup:
-    // Clean up the sandbox if there was an error creating it.
-    sandbox_Remove(appRef);
-    return LE_FAULT;
 }
 
 
@@ -1143,7 +1350,6 @@ static void TruncateToPath
         }
     }
 }
-
 
 
 //--------------------------------------------------------------------------------------------------

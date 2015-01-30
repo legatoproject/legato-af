@@ -6,7 +6,7 @@
  *  Implementation of the tree user module.  The tree user objects keep track of the user default
  *  trees.  In the future, tree accessibility permissions will also be add to these objects.
  *
- *  Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved.
+ *  Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  *  Use of this work is subject to license.
  */
 // -------------------------------------------------------------------------------------------------

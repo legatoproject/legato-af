@@ -3,13 +3,14 @@
  *
  * API for creating and managing cgroups.
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 #include "legato.h"
 #include "cgroups.h"
 #include "limit.h"
 #include "fileDescriptor.h"
+#include "fileSystem.h"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -39,43 +40,6 @@ static const char* SubSysName[CGRP_NUM_SUBSYSTEMS] = {"cpu", "memory"};
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Checks if a file system is mounted at the specified location.
- */
-//--------------------------------------------------------------------------------------------------
-static bool IsMounted
-(
-    const char* fileSysName,        ///< [IN] Name of the mounted filesystem.
-    const char* path                ///< [IN] Path of the mounted filesystem.
-)
-{
-    // Open /proc/mounts file to check where all the mounts are.  This sets the entry to the top
-    // of the file.
-    FILE* mntFilePtr = setmntent("/proc/mounts", "r");
-    LE_FATAL_IF(mntFilePtr == NULL, "Could not read '/proc/mounts'.");
-
-    char buf[LIMIT_MAX_MNT_ENTRY_BYTES];
-    struct mntent mntEntry;
-    bool result = false;
-
-    while (getmntent_r(mntFilePtr, &mntEntry, buf, LIMIT_MAX_MNT_ENTRY_BYTES) != NULL)
-    {
-        if ( (strcmp(fileSysName, mntEntry.mnt_fsname) == 0) &&
-             (strcmp(path, mntEntry.mnt_dir) == 0) )
-        {
-            result = true;
-            break;
-        }
-    }
-
-    // Close the file descriptor.
-    endmntent(mntFilePtr);
-
-    return result;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Initializes cgroups for the system.  Sets up a hierarchy for each supported subsystem.
  *
  * @note Should be called once for the entire system, subsequent calls to this function will have no
@@ -90,7 +54,7 @@ void cgrp_Init
 )
 {
     // Setup the cgroup root directory if it does not already exist.
-    if (!IsMounted(ROOT_NAME, ROOT_PATH))
+    if (!fs_IsMounted(ROOT_NAME, ROOT_PATH))
     {
         LE_FATAL_IF(mount(ROOT_NAME, ROOT_PATH, "tmpfs", 0, NULL) != 0,
                     "Could not mount cgroup root file system.  %m.");
@@ -106,7 +70,7 @@ void cgrp_Init
 
         LE_ASSERT(le_dir_Make(dir, S_IRWXU) != LE_FAULT);
 
-        if (!IsMounted(SubSysName[subSys], dir))
+        if (!fs_IsMounted(SubSysName[subSys], dir))
         {
             LE_FATAL_IF(mount(SubSysName[subSys], dir, "cgroup", 0, SubSysName[subSys]) != 0,
                         "Could not mount cgroup subsystem '%s'.  %m.", SubSysName[subSys]);

@@ -31,7 +31,7 @@
  * session with the log control tool when it finishes processing the command.
  * Response strings that contain error messages always start with a "*".
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 #ifndef LOG_DAEMON_INCLUDE_GUARD

@@ -5,24 +5,20 @@
 #     Sierra Wireless - initial API and implementation
 #**********************************************************************************
 
-project(SUPERVISOR C)
-
-find_package(Legato REQUIRED)
-
-mkexe(  supervisor
-            ../supervisor
-            -i ${LEGATO_ROOT}/interfaces/supervisor
+mkcomp( ../security
             -i ..
-            -i ../security
             -i ../serviceDirectory
-            --cflags=-DNO_LOG_CONTROL
             --cflags=-DLEGATO_FRAMEWORK_NICE_LEVEL=${LEGATO_FRAMEWORK_NICE_LEVEL}
             --cflags=-DLE_RUNTIME_DIR='"${LE_RUNTIME_DIR}"'
-            ${CFLAGS_TARGET_IMPORTS}
+            --cflags=-DLE_SVCDIR_SERVER_SOCKET_NAME="${LE_SVCDIR_SERVER_SOCKET_NAME}"
+            --cflags=-DLE_SVCDIR_CLIENT_SOCKET_NAME="${LE_SVCDIR_CLIENT_SOCKET_NAME}"
         DEPENDS
-            ../security/*
-            ./*
-            ${LEGATO_ROOT}/interfaces/supervisor/le_sup_ctrl.api
-            ${LEGATO_ROOT}/interfaces/supervisor/le_sup_state.api
-            ${LEGATO_ROOT}/interfaces/supervisor/le_sup_wdog.api
+            resourceLimits.c
+            sandbox.c
+            cgroups.c
+            app.c
+            proc.c
+            watchdogAction.c
+            smack.c
+            ${LEGATO_ROOT}/interfaces/le_cfg.api
         )

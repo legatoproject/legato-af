@@ -5,7 +5,7 @@
  *
  *  Highlevel impoementation of the configuration Tree API.
  *
- *  Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved.
+ *  Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  *  Use of this work is subject to license.
  */
 // -------------------------------------------------------------------------------------------------
@@ -646,49 +646,6 @@ void le_cfg_GetNodeName
     }
 
     le_cfg_GetNodeNameRespond(commandRef, result, strBuffer);
-}
-
-
-
-
-// -------------------------------------------------------------------------------------------------
-/**
- *  Change the name of the node that the iterator is currently pointing at.
- *
- *  \b Responds \b With:
- *
- *  This function will respond with one of the following values:
- *
- *      - LE_OK           Write was completed successfully.
- *      - LE_FORMAT_ERROR The new name included illegal characters, '/', or ':'.   Or used one of
- *                        the reserved names: '.', or '..'.  Format error is also returned if the
- *                        new name is empty.
- *      - LE_DUPLICATE    If there is another node with the new name in the same collection.
- */
-// -------------------------------------------------------------------------------------------------
-void le_cfg_SetNodeName
-(
-    le_cfg_ServerCmdRef_t commandRef,  ///< [IN] Reference used to generate a reply for this
-                                       ///<      request.
-    le_cfg_IteratorRef_t externalRef,  ///< [IN] Iterator object to use to read from the tree.
-    const char* pathPtr,               ///< [IN] Absolute or relative path to read from.
-    const char* namePtr                ///< [IN] New name for the node object.
-)
-// -------------------------------------------------------------------------------------------------
-{
-    LE_DEBUG("** Setting the iterator's <%p> current node's name to \"%s\".", externalRef, namePtr);
-    LE_DEBUG_IF(pathPtr != NULL, "** Offset by \"%s\"", pathPtr);
-
-    ni_IteratorRef_t iteratorRef = GetWriteIteratorFromRef(externalRef);
-    le_result_t result = LE_OK;
-
-    if (   (iteratorRef != NULL)
-        && (CheckPathForSpecifier(pathPtr) == false))
-    {
-         result = ni_SetNodeName(iteratorRef, pathPtr, namePtr);
-    }
-
-    le_cfg_SetNodeNameRespond(commandRef, result);
 }
 
 
