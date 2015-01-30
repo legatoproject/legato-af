@@ -2,7 +2,7 @@
 /**
  *  Implementation of the System class.
  *
- *  Copyright (C) Sierra Wireless, Inc. 2014.  Use of this work is subject to license.
+ *  Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 //--------------------------------------------------------------------------------------------------
 

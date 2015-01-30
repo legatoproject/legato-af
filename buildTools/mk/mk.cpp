@@ -2,7 +2,7 @@
 /**
  * Implementation of the "mk" tool, which actually implements both 'mkexe' and 'mkapp'.
  *
- * Copyright (C) 2013-2014 Sierra Wireless Inc.  Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 //--------------------------------------------------------------------------------------------------
 

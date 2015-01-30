@@ -2,7 +2,7 @@
 /**
  *  Class whose objects can be used to store faultAction settings.
  *
- *  Copyright (C) Sierra Wireless, Inc. 2014.  Use of this work is subject to license.
+ *  Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 //--------------------------------------------------------------------------------------------------
 

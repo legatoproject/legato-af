@@ -2,7 +2,7 @@
 /**
  * Implementation of the routines for building Executables.
  *
- * Copyright (C) 2013-2014, Sierra Wireless Inc.  Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -125,7 +125,7 @@ void ExecutableBuilder_t::GenerateMain
     legato::MakeDir(objOutputDir);
 
     // Add "/_main.c" to get the path of the file to generate code into.
-    std::string path = legato::CombinePath(objOutputDir, "_main.c");
+    std::string path = legato::AbsolutePath(legato::CombinePath(objOutputDir, "_main.c"));
 
     if (m_Params.IsVerbose())
     {
@@ -287,12 +287,13 @@ void ExecutableBuilder_t::GenerateMain
                 << "    // The NO_LOG_CONTROL macro can be used to control that." << std::endl
                 << "    #ifndef NO_LOG_CONTROL" << std::endl
                 << "        log_ConnectToControlDaemon();" << std::endl
-                << "    #else" << std::endl
-                << "        LE_DEBUG(\"Not connecting to the Log Control Daemon.\");" << std::endl
                 << "    #endif" << std::endl
                 << std::endl
-                << "    LE_DEBUG(\"== Log sessions registered. ==\");" << std::endl
-                << std::endl
+
+                // NOTE: The Log Control Daemon can't apply log level settings to the process until
+                //       the process enters the event loop and starts processing IPC messages.
+                //       So, don't add log messages to this function until the log control system
+                //       is converted to use shared memory.
 
                 << "    // TODO: Load configuration." << std::endl
                 << "    // TODO: Create configured memory pools." << std::endl
@@ -316,7 +317,6 @@ void ExecutableBuilder_t::GenerateMain
                 // if bound-together clients and servers are running in the same thread.
                 << clientInitBuffer.str() << std::endl
 
-                << "    LE_DEBUG(\"== Starting Event Processing Loop ==\");" << std::endl
                 << "    le_event_RunLoop();" << std::endl
                 << "    LE_FATAL(\"== SHOULDN'T GET HERE! ==\");" << std::endl
                 << "}" << std::endl;

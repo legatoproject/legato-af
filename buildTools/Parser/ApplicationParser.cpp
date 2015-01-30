@@ -2,7 +2,7 @@
 /**
  * Main file for the Application Parser.
  *
- * Copyright (C) 2013-2014 Sierra Wireless Inc.  Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  **/
 //--------------------------------------------------------------------------------------------------
 
@@ -745,6 +745,12 @@ void ayy_AddExeContent
             contentType = "C source code";
 
             // Add the source code file to the default component.
+            std::string filePath = legato::FindFile(contentSpec, BuildParamsPtr->SourceDirs());
+            if (filePath == "")
+            {
+                throw legato::Exception("Can't find file '" + contentSpec + "'.");
+            }
+            contentSpec = std::move(filePath);
             ExePtr->AddSourceFile(contentSpec);
         }
         else if (legato::IsCxxSource(contentSpec))
@@ -752,6 +758,12 @@ void ayy_AddExeContent
             contentType = "C++ source code";
 
             // Add the source code file to the default component.
+            std::string filePath = legato::FindFile(contentSpec, BuildParamsPtr->SourceDirs());
+            if (filePath == "")
+            {
+                throw legato::Exception("Can't find file '" + contentSpec + "'.");
+            }
+            contentSpec = std::move(filePath);
             ExePtr->AddSourceFile(contentSpec);
         }
         else if (legato::IsLibrary(contentSpec))

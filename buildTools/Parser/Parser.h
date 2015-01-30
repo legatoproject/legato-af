@@ -2,7 +2,7 @@
 /**
  * Definition of parsing routines exported to other parts of the build tools.
  *
- * Copyright (C) 2013 Sierra Wireless Inc., all rights reserved.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 //--------------------------------------------------------------------------------------------------
 

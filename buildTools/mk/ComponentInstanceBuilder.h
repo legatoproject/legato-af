@@ -5,7 +5,7 @@
  * When a Component Instance is built, the component library, all of the interface libraries, and
  * all sub-component instances will be built before the component instance library itself is built.
  *
- * Copyright (C) 2013-2014 Sierra Wireless Inc.  Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 //--------------------------------------------------------------------------------------------------
 

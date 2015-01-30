@@ -3,7 +3,7 @@
  * Implementation of functions that are common to both the Component Parser and the
  * Application Parser.
  *
- * Copyright (C) 2013-2014 Sierra Wireless Inc.  Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -69,8 +69,6 @@ int yy_GetPermissionFlags
                 exit(EXIT_FAILURE);
         }
     }
-
-    std::cerr << "** WARNING: File permissions not fully supported yet." << std::endl;
 
     return permissions;
 }

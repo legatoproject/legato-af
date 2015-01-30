@@ -2,7 +2,7 @@
 /**
  * Implementation of the routines for building Applications.
  *
- * Copyright (C) 2013-2014, Sierra Wireless Inc.  Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -144,29 +144,26 @@ static void GenerateSingleFileMappingConfig
 )
 //--------------------------------------------------------------------------------------------------
 {
-    cfgStream << "    \"" << index++ << "\"" << std::endl;
-    cfgStream << "    {" << std::endl;
-    cfgStream << "      \"src\" \"" << mapping.m_SourcePath << "\"" << std::endl;
-    cfgStream << "      \"dest\" \"" << mapping.m_DestPath << "\"" << std::endl;
+    cfgStream << "      \"" << index++ << "\"" << std::endl;
+    cfgStream << "      {" << std::endl;
+    cfgStream << "        \"src\" \"" << mapping.m_SourcePath << "\"" << std::endl;
+    cfgStream << "        \"dest\" \"" << mapping.m_DestPath << "\"" << std::endl;
     if (mapping.m_PermissionFlags)
     {
-        cfgStream << "      \"permissions\"" << std::endl;
-        cfgStream << "      {" << std::endl;
         if (mapping.m_PermissionFlags & legato::PERMISSION_READABLE)
         {
-            cfgStream << "        \"read\" !t" << std::endl;
+            cfgStream << "        \"isReadable\" !t" << std::endl;
         }
         if (mapping.m_PermissionFlags & legato::PERMISSION_WRITEABLE)
         {
-            cfgStream << "        \"write\" !t" << std::endl;
+            cfgStream << "        \"isWritable\" !t" << std::endl;
         }
         if (mapping.m_PermissionFlags & legato::PERMISSION_EXECUTABLE)
         {
-            cfgStream << "        \"execute\" !t" << std::endl;
+            cfgStream << "        \"isExecutable\" !t" << std::endl;
         }
-        cfgStream << "      }" << std::endl;
     }
-    cfgStream << "    }" << std::endl;
+    cfgStream << "      }" << std::endl;
 }
 
 
@@ -224,40 +221,32 @@ static void GenerateBundledObjectMappingConfig
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Generate the configuration for all file mappings from outside the application sandbox to inside
- * the sandbox.
+ * Generate the configuration for mappings from outside the application sandbox to inside the
+ * sandbox for files/directories in the 'requires' section.
  **/
 //--------------------------------------------------------------------------------------------------
-static void GenerateFileMappingConfig
+static void GenerateRequiresFileMappingConfig
 (
     std::ofstream& cfgStream,
     const legato::App& app
 )
 //--------------------------------------------------------------------------------------------------
 {
-    size_t index = 0;
+    // Create the "requires" section.
+    cfgStream << "  \"requires\"" << std::endl;
+    cfgStream << "  {" << std::endl;
 
     // Create nodes under "files", where each node is named with an index, starting a 0,
     // and contains a "src" node and a "dest" node.
-    cfgStream << "  \"files\"" << std::endl;
-    cfgStream << "  {" << std::endl;
+    cfgStream << "    \"files\"" << std::endl;
+    cfgStream << "    {" << std::endl;
+
+    size_t index = 0;
 
     // Import the files specified in the .adef file.
     for (const auto& mapping : app.RequiredFiles())
     {
         GenerateSingleFileMappingConfig(cfgStream, index++, mapping);
-    }
-
-    // Bundled files also need to be imported into the application sandbox.
-    for (const auto& mapping : app.BundledFiles())
-    {
-        GenerateBundledObjectMappingConfig(cfgStream, index++, mapping);
-    }
-
-    // Bundled directories also need to be imported into the application sandbox.
-    for (const auto& mapping : app.BundledDirs())
-    {
-        GenerateBundledObjectMappingConfig(cfgStream, index++, mapping);
     }
 
     // Map into the sandbox all the files for all the components.
@@ -270,21 +259,102 @@ static void GenerateFileMappingConfig
         {
             GenerateSingleFileMappingConfig(cfgStream, index++, mapping);
         }
+    }
+
+    cfgStream << "    }" << std::endl << std::endl;
+
+    // Create nodes under "dirs", where each node is named with an index, starting a 0,
+    // and contains a "src" node and a "dest" node.
+    cfgStream << "    \"dirs\"" << std::endl;
+    cfgStream << "    {" << std::endl;
+
+    index = 0;
+
+    // Import the directories specified in the .adef file.
+    for (const auto& mapping : app.RequiredDirs())
+    {
+        GenerateSingleFileMappingConfig(cfgStream, index++, mapping);
+    }
+
+    // Map into the sandbox all the directories for all the components.
+    for (const auto& pair : app.ComponentMap())
+    {
+        const auto& componentPtr = pair.second;
 
         // External directories...
         for (const auto& mapping : componentPtr->RequiredDirs())
         {
             GenerateSingleFileMappingConfig(cfgStream, index++, mapping);
         }
+    }
 
-        // NOTE: Bundled files and directories also need to be mapped into the application sandbox
-        // because the application's on-target install directory is outside its runtime sandbox.
+    cfgStream << "    }" << std::endl;
+
+    cfgStream << "  }" << std::endl << std::endl;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Generate the configuration for mappings from outside the application sandbox to inside the
+ * sandbox for files/directories in the 'bundles' section.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void GenerateBundledFileMappingConfig
+(
+    std::ofstream& cfgStream,
+    const legato::App& app
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // Create the "bundles" section.
+    cfgStream << "  \"bundles\"" << std::endl;
+    cfgStream << "  {" << std::endl;
+
+    // Create nodes under "files", where each node is named with an index, starting a 0,
+    // and contains a "src" node and a "dest" node.
+    cfgStream << "    \"files\"" << std::endl;
+    cfgStream << "    {" << std::endl;
+
+    size_t index = 0;
+
+    // Bundled files also need to be imported into the application sandbox.
+    for (const auto& mapping : app.BundledFiles())
+    {
+        GenerateBundledObjectMappingConfig(cfgStream, index++, mapping);
+    }
+
+    // Map into the sandbox all the files for all the components.
+    for (const auto& pair : app.ComponentMap())
+    {
+        const auto& componentPtr = pair.second;
 
         // Bundled files...
         for (const auto& mapping : componentPtr->BundledFiles())
         {
             GenerateBundledObjectMappingConfig(cfgStream, index++, mapping);
         }
+    }
+
+    cfgStream << "    }" << std::endl << std::endl;
+
+    // Create nodes under "dirs", where each node is named with an index, starting a 0,
+    // and contains a "src" node and a "dest" node.
+    cfgStream << "    \"dirs\"" << std::endl;
+    cfgStream << "    {" << std::endl;
+
+    index = 0;
+
+    // Bundled directories also need to be imported into the application sandbox.
+    for (const auto& mapping : app.BundledDirs())
+    {
+        GenerateBundledObjectMappingConfig(cfgStream, index++, mapping);
+    }
+
+    // Map into the sandbox all the directories for all the components.
+    for (const auto& pair : app.ComponentMap())
+    {
+        const auto& componentPtr = pair.second;
 
         // Bundled directories...
         for (const auto& mapping : componentPtr->BundledDirs())
@@ -293,9 +363,10 @@ static void GenerateFileMappingConfig
         }
     }
 
+    cfgStream << "    }" << std::endl;
+
     cfgStream << "  }" << std::endl << std::endl;
 }
-
 
 
 //--------------------------------------------------------------------------------------------------
@@ -698,7 +769,9 @@ static void GenerateSystemConfig
 
     GenerateGroupsConfig(cfgStream, app);
 
-    GenerateFileMappingConfig(cfgStream, app);
+    GenerateRequiresFileMappingConfig(cfgStream, app);
+
+    GenerateBundledFileMappingConfig(cfgStream, app);
 
     GenerateProcessConfig(cfgStream, app);
 

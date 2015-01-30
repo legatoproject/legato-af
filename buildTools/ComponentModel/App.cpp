@@ -1,6 +1,6 @@
 //--------------------------------------------------------------------------------------------------
 /**
- *  Copyright (C) Sierra Wireless, Inc. 2013-2014.  Use of this work is subject to license.
+ *  Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -308,6 +308,12 @@ void App::AddBundledDir
         }
 
         throw legato::Exception("Directory '" + mapping.m_SourcePath + "' not found.");
+    }
+
+    // Currently bundled directories cannot be written to because we do not support disk quotas yet.
+    if (mapping.m_PermissionFlags & legato::PERMISSION_WRITEABLE)
+    {
+        throw legato::Exception("Bundled directories cannot have write permission.");
     }
 
     m_BundledDirs.insert(std::move(mapping));

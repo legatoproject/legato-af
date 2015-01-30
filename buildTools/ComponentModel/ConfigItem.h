@@ -3,7 +3,7 @@
  * Definition of the Config Item class, which is used to hold configuration data items specified
  * in a "config:" section in either a Component.cdef or a .adef file.
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  **/
 //--------------------------------------------------------------------------------------------------
 

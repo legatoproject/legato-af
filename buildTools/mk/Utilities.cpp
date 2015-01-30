@@ -2,7 +2,7 @@
 /**
  * Utility functions used by the mk tools.
  *
- * Copyright (C) 2013-2014, Sierra Wireless Inc.  Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -157,6 +157,54 @@ static std::string GetCrossBuildToolChainDir
     return envValue;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the prefix of the cross-build tool chain.
+ *
+ * @return The tool chain prefix.
+ **/
+//--------------------------------------------------------------------------------------------------
+static std::string GetCrossBuildToolChainPrefix
+(
+    const std::string& target  ///< Name of the target platform (e.g., "localhost" or "ar7").
+)
+//--------------------------------------------------------------------------------------------------
+{
+    std::string varName;
+    std::string envValue;
+
+    varName = target;
+    std::transform(varName.begin(), varName.end(), varName.begin(), ::toupper);
+
+    varName += "_TOOLCHAIN_PREFIX";
+    envValue = GetEnvValue(varName);
+
+    if(envValue.empty())
+    {
+        return "arm-poky-linux-gnueabi-";
+    }
+
+    return envValue;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the path for a tool from the cross-build tool chain.
+ *
+ * @return The tool chain prefix.
+ **/
+//--------------------------------------------------------------------------------------------------
+static std::string GetCrossBuildToolPath
+(
+    const std::string& target,  ///< Name of the target platform (e.g., "localhost" or "ar7").
+    const std::string& toolName
+)
+//--------------------------------------------------------------------------------------------------
+{
+    return legato::CombinePath(GetCrossBuildToolChainDir(target),
+                               GetCrossBuildToolChainPrefix(target) + toolName);
+}
+
 
 //----------------------------------------------------------------------------------------------
 /**
@@ -191,7 +239,7 @@ std::string GetCompilerPath
 
     if (target == "localhost")
     {
-        if(ShouldUseClang())
+        if (ShouldUseClang())
         {
             switch (language)
             {
@@ -208,8 +256,7 @@ std::string GetCompilerPath
         return gnuCompiler;
     }
 
-    return legato::CombinePath(GetCrossBuildToolChainDir(target), "arm-poky-linux-gnueabi-")
-           + gnuCompiler;
+    return GetCrossBuildToolPath(target, gnuCompiler);
 }
 
 
@@ -239,7 +286,7 @@ std::string GetLinkerPath
         return "ld";
     }
 
-    return legato::CombinePath(GetCrossBuildToolChainDir(target), "arm-poky-linux-gnueabi-ld");
+    return GetCrossBuildToolPath(target, "ld");
 }
 
 
@@ -263,7 +310,7 @@ std::string GetArchiverPath
         return "ar";
     }
 
-    return legato::CombinePath(GetCrossBuildToolChainDir(target), "arm-poky-linux-gnueabi-ar");
+    return GetCrossBuildToolPath(target, "ar");
 }
 
 

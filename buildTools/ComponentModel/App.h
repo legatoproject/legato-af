@@ -3,7 +3,7 @@
  *  Implementation of the App class.  This class holds all the information specific to an
  *  application.
  *
- *  Copyright (C) Sierra Wireless, Inc. 2013-2014.  Use of this work is subject to license.
+ *  Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -87,7 +87,7 @@ class App
         // Per-user limits:
         PositiveIntLimit_t      m_MaxThreads;        ///< Number of threads.
         NonNegativeIntLimit_t   m_MaxMQueueBytes;    ///< Total bytes in all POSIX MQueues.
-        PositiveIntLimit_t      m_MaxQueuedSignals;  ///< Total number of queued signals.
+        NonNegativeIntLimit_t   m_MaxQueuedSignals;  ///< Total number of queued signals.
         PositiveIntLimit_t      m_MaxMemoryBytes;    ///< Total bytes of RAM.
         PositiveIntLimit_t      m_CpuShare;          ///< Relative share value
         NonNegativeIntLimit_t   m_MaxFileSystemBytes;///< Total bytes in sandbox tmpfs file system.
@@ -200,7 +200,7 @@ class App
         const NonNegativeIntLimit_t& MaxMQueueBytes() const { return m_MaxMQueueBytes; }
 
         void MaxQueuedSignals(int limit)   { m_MaxQueuedSignals = limit; }
-        const PositiveIntLimit_t& MaxQueuedSignals() const { return m_MaxQueuedSignals; }
+        const NonNegativeIntLimit_t& MaxQueuedSignals() const { return m_MaxQueuedSignals; }
 
         void MaxMemoryBytes(int limit)   { m_MaxMemoryBytes = limit; }
         const PositiveIntLimit_t& MaxMemoryBytes() const { return m_MaxMemoryBytes; }

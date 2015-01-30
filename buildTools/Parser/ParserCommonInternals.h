@@ -4,7 +4,7 @@
  *
  * Not to be shared outside the parser.
  *
- * Copyright (C) 2013, 2014 Sierra Wireless Inc.  Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 //--------------------------------------------------------------------------------------------------
 

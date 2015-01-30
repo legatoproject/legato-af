@@ -2,7 +2,7 @@
 /**
  * Definition of the Executable Builder class, which knows how to build Executable objects.
  *
- * Copyright (C) 2013-2014, Sierra Wireless Inc.  Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 //--------------------------------------------------------------------------------------------------
 

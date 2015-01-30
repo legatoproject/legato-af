@@ -3,7 +3,7 @@
  * Definition of the File Mapping class, which is used to hold the information regarding a mapping
  * of a file system object from one place to another, either in the same or another file system.
  *
- * Copyright (C) Sierra Wireless, Inc. 2013-2014.  Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  **/
 //--------------------------------------------------------------------------------------------------
 

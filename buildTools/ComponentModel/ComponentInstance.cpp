@@ -2,7 +2,7 @@
 /**
  * Implementation of the Component Instance class.
  *
- * Copyright (C) 2013-2014, Sierra Wireless Inc.  Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 //--------------------------------------------------------------------------------------------------
 

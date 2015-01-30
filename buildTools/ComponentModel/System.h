@@ -3,7 +3,7 @@
  *  Definition of the System class.  This class holds all the information specific to a
  *  system of interacting applications.
  *
- *  Copyright (C) Sierra Wireless, Inc. 2014.  Use of this work is subject to license.
+ *  Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 //--------------------------------------------------------------------------------------------------
 
