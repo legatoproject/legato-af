@@ -2,13 +2,20 @@
  *
  * Control Legato applications.
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 #include "legato.h"
 #include "interfaces.h"
 #include "limit.h"
 
+
+/// Pointer to application name argument from command line.
+static const char* AppNamePtr = NULL;
+
+
+/// Address of the command function to be executed.
+static void (*CommandFunc)(void);
 
 
 //--------------------------------------------------------------------------------------------------
@@ -34,7 +41,7 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Prints help to stdout.
+ * Prints help to stdout and exits.
  */
 //--------------------------------------------------------------------------------------------------
 static void PrintHelp
@@ -79,46 +86,8 @@ static void PrintHelp
         "    appCtrl version APP_NAME\n"
         "       Prints the version of the specified application.\n"
         );
-}
 
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Checks the command line arguments to see if the specified option was selected.
- *
- * @return
- *      true if the option was selected on the command-line.
- *      false if the option was not selected.
- *
- * @todo
- *      This function should be replaced by a general command-line options utility.
- */
-//--------------------------------------------------------------------------------------------------
-static bool IsOptionSelected
-(
-    const char* optionPtr
-)
-{
-    size_t numArgs = le_arg_NumArgs();
-    size_t i;
-
-    char argBuf[LIMIT_MAX_ARGS_STR_BYTES];
-
-    // Search the list of command line arguments for the specified option.
-    for (i = 0; i < numArgs; i++)
-    {
-        INTERNAL_ERR_IF(le_arg_GetArg(i, argBuf, sizeof(argBuf)) != LE_OK,
-                        "Not able to read argument at index %zd.", i);
-
-        char* subStr = strstr(argBuf, optionPtr);
-
-        if ( (subStr != NULL) && (subStr == argBuf) )
-        {
-            return true;
-        }
-    }
-
-    return false;
+    exit(EXIT_SUCCESS);
 }
 
 
@@ -131,27 +100,27 @@ static bool IsOptionSelected
 //--------------------------------------------------------------------------------------------------
 static void StartApp
 (
-    const char* appNamePtr
+    void
 )
 {
     le_sup_ctrl_ConnectService();
 
     // Start the application.
-    switch (le_sup_ctrl_StartApp(appNamePtr))
+    switch (le_sup_ctrl_StartApp(AppNamePtr))
     {
         case LE_OK:
             exit(EXIT_SUCCESS);
 
         case LE_DUPLICATE:
-            fprintf(stderr, "Application '%s' is already running.\n", appNamePtr);
+            fprintf(stderr, "Application '%s' is already running.\n", AppNamePtr);
             exit(EXIT_FAILURE);
 
         case LE_NOT_FOUND:
-            fprintf(stderr, "Application '%s' is not installed.\n", appNamePtr);
+            fprintf(stderr, "Application '%s' is not installed.\n", AppNamePtr);
             exit(EXIT_FAILURE);
 
         default:
-            fprintf(stderr, "There was an error.  Application '%s' could not be started.\n", appNamePtr);
+            fprintf(stderr, "There was an error.  Application '%s' could not be started.\n", AppNamePtr);
             exit(EXIT_FAILURE);
     }
 }
@@ -166,19 +135,19 @@ static void StartApp
 //--------------------------------------------------------------------------------------------------
 static void StopApp
 (
-    const char* appNamePtr
+    void
 )
 {
     le_sup_ctrl_ConnectService();
 
     // Stop the application.
-    switch (le_sup_ctrl_StopApp(appNamePtr))
+    switch (le_sup_ctrl_StopApp(AppNamePtr))
     {
         case LE_OK:
             exit(EXIT_SUCCESS);
 
         case LE_NOT_FOUND:
-            printf("Application '%s' was not running.\n", appNamePtr);
+            printf("Application '%s' was not running.\n", AppNamePtr);
             exit(EXIT_FAILURE);
 
         default:
@@ -335,6 +304,41 @@ static void PrintAppState
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Implements the "status" command.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void PrintStatus
+(
+    void
+)
+{
+    if (AppNamePtr == NULL)
+    {
+        ListInstalledApps(true);
+    }
+    else
+    {
+        PrintAppState(AppNamePtr);
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Implements the "list" command.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void ListApps
+(
+    void
+)
+{
+    ListInstalledApps(false);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Prints the application version.
  *
  * @note This function does not return.
@@ -342,17 +346,17 @@ static void PrintAppState
 //--------------------------------------------------------------------------------------------------
 static void PrintAppVersion
 (
-    const char* appNamePtr      ///< [IN] Application name to get the version for.
+    void
 )
 {
     le_cfg_ConnectService();
 
     le_cfg_IteratorRef_t cfgIter = le_cfg_CreateReadTxn("/apps");
-    le_cfg_GoToNode(cfgIter, appNamePtr);
+    le_cfg_GoToNode(cfgIter, AppNamePtr);
 
     if (!le_cfg_NodeExists(cfgIter, ""))
     {
-        printf("%s is not installed.\n", appNamePtr);
+        printf("%s is not installed.\n", AppNamePtr);
     }
     else
     {
@@ -362,16 +366,16 @@ static void PrintAppVersion
 
         if (strcmp(version, "") == 0)
         {
-            printf("%s has no version\n", appNamePtr);
+            printf("%s has no version\n", AppNamePtr);
         }
         else if (result == LE_OK)
         {
-            printf("%s %s\n", appNamePtr, version);
+            printf("%s %s\n", AppNamePtr, version);
         }
         else
         {
-            LE_WARN("Version string for app %s is too long.", appNamePtr);
-            printf("%s %s...\n", appNamePtr, version);
+            LE_WARN("Version string for app %s is too long.", AppNamePtr);
+            printf("%s %s...\n", AppNamePtr, version);
         }
     }
 
@@ -381,106 +385,85 @@ static void PrintAppVersion
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Gets the application name from the command-line.
- *
- * @note
- *      On failure this function exits.
- *
- * @note
- *      The application name is assumed to be the second argument on the command-line.
- *
- * @return
- *      true if the app name is available.
- *      false if the app name is not available.
- */
+ * Function that gets called by le_arg_Scan() when it encounters an application name argument on the
+ * command line.
+ **/
 //--------------------------------------------------------------------------------------------------
-static bool GetAppName
+static void AppNameArgHandler
 (
-    char* bufPtr,           ///< [OUT] Buffer to store the app name.
-    size_t bufSize,         ///< [IN] Buffer size.
-    bool isOptional         ///< [IN] Is the app name optional ?
+    const char* appNamePtr
 )
 {
-    le_result_t res;
-    bool isAvailable = false;
-
-    res = le_arg_GetArg(1, bufPtr, bufSize);
-
-    if (res == LE_OK)
-    {
-        isAvailable = (bufPtr[0] != '\0');
-    }
-
-    if(!isAvailable)
-    {
-        if(!isOptional)
-        {
-            fprintf(stderr, "Please specify an application name.\n");
-            exit(EXIT_FAILURE);
-        }
-        else
-        {
-            bufPtr[0] = '\0';
-        }
-    }
-
-    return isAvailable;
+    AppNamePtr = appNamePtr;
 }
 
 
-COMPONENT_INIT
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function that gets called by le_arg_Scan() when it encounters the command argument on the
+ * command line.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void CommandArgHandler
+(
+    const char* command
+)
 {
-    if (IsOptionSelected("--help"))
+    if (strcmp(command, "help") == 0)
     {
-        PrintHelp();
-        exit(EXIT_SUCCESS);
+        PrintHelp();    // Doesn't return;
     }
 
-    char argBuf[LIMIT_MAX_APP_NAME_BYTES];
-
-    // Get the first argument which is the command.
-    if (le_arg_GetArg(0, argBuf, sizeof(argBuf)) != LE_OK)
+    if (strcmp(command, "start") == 0)
     {
-        fprintf(stderr, "Please enter a command.  Try --help.\n");
+        CommandFunc = StartApp;
+
+        le_arg_AddPositionalCallback(AppNameArgHandler);
+    }
+    else if (strcmp(command, "stop") == 0)
+    {
+        CommandFunc = StopApp;
+
+        le_arg_AddPositionalCallback(AppNameArgHandler);
+    }
+    else if (strcmp(command, "stopLegato") == 0)
+    {
+        CommandFunc = StopLegato;
+    }
+    else if (strcmp(command, "list") == 0)
+    {
+        CommandFunc = ListApps;
+    }
+    else if (strcmp(command, "status") == 0)
+    {
+        CommandFunc = PrintStatus;
+
+        // Accept an optional app name argument.
+        le_arg_AddPositionalCallback(AppNameArgHandler);
+        le_arg_AllowLessPositionalArgsThanCallbacks();
+    }
+    else if (strcmp(command, "version") == 0)
+    {
+        CommandFunc = PrintAppVersion;
+
+        le_arg_AddPositionalCallback(AppNameArgHandler);
+    }
+    else
+    {
+        fprintf(stderr, "Unknown command '%s'.  Try --help.\n", command);
         exit(EXIT_FAILURE);
     }
+}
 
-    // Process the command.
-    if (strcmp(argBuf, "start") == 0)
-    {
-        GetAppName(argBuf, sizeof(argBuf), false);
-        StartApp(argBuf);
-    }
-    else if (strcmp(argBuf, "stop") == 0)
-    {
-        GetAppName(argBuf, sizeof(argBuf), false);
-        StopApp(argBuf);
-    }
-    else if (strcmp(argBuf, "stopLegato") == 0)
-    {
-        StopLegato();
-    }
-    else if (strcmp(argBuf, "list") == 0)
-    {
-        ListInstalledApps(false);
-    }
-    else if (strcmp(argBuf, "status") == 0)
-    {
-        if(GetAppName(argBuf, sizeof(argBuf), true))
-        {
-            PrintAppState(argBuf);
-        }
-        else
-        {
-            ListInstalledApps(true);
-        }
-    }
-    else if (strcmp(argBuf, "version") == 0)
-    {
-        GetAppName(argBuf, sizeof(argBuf), false);
-        PrintAppVersion(argBuf);
-    }
 
-    fprintf(stderr, "Unknown command '%s'.  Try --help.\n", argBuf);
-    exit(EXIT_FAILURE);
+//--------------------------------------------------------------------------------------------------
+COMPONENT_INIT
+{
+    le_arg_SetFlagCallback(PrintHelp, "h", "help");
+
+    le_arg_AddPositionalCallback(CommandArgHandler);
+
+    le_arg_Scan();
+
+    CommandFunc();
 }

@@ -1,54 +1,35 @@
 #!/bin/bash
+copyright="
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+"
 
-function PrintUsage()
-{
-    echo "USAGE: $(basename $0) APP_NAME DEST_IP"
-    echo
-    echo "  where, APP_NAME = the application to be removed.  E.g., 'myApp'."
-    echo "  If APP_NAME = \"*\" that means all apps."
-    echo
-    echo "  DEST_IP = the IP address of the target device.  If DEST_IP is an available"
-    echo "  environment variable it does not need to be passed in the command-line."
-    echo
-}
+if ! [ $LEGATO_ROOT ]; then echo "Run bin/legs first" >&2; exit 1; fi
+. "${LEGATO_ROOT}/framework/tools/scripts/shlib"
+
+help_short_desc="stop an app that is currently running on target"
+
+help_usage=(
+"APP_NAME [TARGET_IP]"
+)
+
+help_long_description=(
+"If APP_NAME is currently running on the target at TARGET_IP, $commandName"
+"will cause the app to cease execution. If APP_NAME is not currently running"
+"or is not installed, a message to that effect will be printed."
+"If the APP_NAME is given as \"*\" (including the quotes) then all"
+"apps on the target will be stopped."
+)
+
+CheckForHelp $@
 
 APP_NAME=$1
-TARGET_IP=$2
-
-# Check if they are asking for help.
-if [ "$1" = "-h" -o "$1" = "help" -o "$1" = "--help" ]
-then
-    PrintUsage
-    exit 0
-fi
-
-# Check that the app name argument was provided.
 if ! [ "$APP_NAME" ]
 then
-    echo "***ERROR: First argument should be an application name."
-    PrintUsage
-    exit 1
+    ExitWithError "First argument should be an application name."
 fi
 
-# Check that the second argument is provided and can be pinged.
-if ! [ $TARGET_IP ]
-then
-    if ! [ $DEST_IP ]
-    then
-        echo "***ERROR: Destination IP address not available."
-        PrintUsage
-        exit 1
-    fi
-
-    TARGET_IP=$DEST_IP
-fi
-
-if ! ping -c 1 -w 1 $TARGET_IP > /dev/null
-then
-    echo "***ERROR: Device address $TARGET_IP seems to be unreachable."
-    exit 1
-fi
+SetTargetIP $2
 
 # Tell the device to stop the application.
 APP_NAME=$(basename "$APP_NAME" | sed 's/\.[^.]*$//')
-ssh root@$TARGET_IP "/usr/local/bin/app stop '$APP_NAME'"
+SshToTarget "/usr/local/bin/app stop '$APP_NAME'"

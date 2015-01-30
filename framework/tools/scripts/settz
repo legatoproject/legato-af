@@ -1,59 +1,53 @@
 #! /bin/sh
-if ! [ $LEGATO_ROOT ]; then echo "Run bin/legs first"; exit 1; fi
-#instead of sourcing this could be exported by bin/legs
+copyright="
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+"
+
+if ! [ $LEGATO_ROOT ]; then echo "Run bin/legs first" >&2; exit 1; fi
 . "${LEGATO_ROOT}/framework/tools/scripts/shlib"
 
 # Specify default values for environment variables if they are unset.
 : ${TZDIR=/usr/share/zoneinfo}
-command=$(basename $0)
 
-# Might need to investigate a bog standard 12.04 to make sure this works. I may have fiddled
-# with my machine and not remember
+help_short_desc="set the timezone on target"
 
-PrintUsage()
-{
-cat << ENDHELP
+help_usage=(
+"[TARGET_IP]"
+"-u|utc [TARGET_IP]"
+"-s|select [TARGET_IP]"
+)
 
-USAGE: $command [DEST_IP]
-            Set target to the same timezone as the host machine
+help_long_description=(
+"$commandName [TARGET_IP]"
+"  - Set target to the same timezone as the host machine"
+""
+"$commandName -u|utc [TARGET_IP]"
+"  - Set target to UTC timezone"
+""
+"$commandName -s|select [TARGET_IP]"
+"  - Use tzselect to pick a timezone from the known timezones"
+)
 
-       $command -u|utc [DEST_IP]
-            Set target to UTC time
-
-       $command -s|select [DEST_IP]
-            Use tzselect to pick a timezone from the known timezones
-
-       $command -h|help
-            Display this help message
-
-       DEST_IP = the IP address of the target device.  If DEST_IP is an available
-       environment variable it does not need to be passed in the command-line.
-
-ENDHELP
-}
+CheckForHelp $@
 
 #default timezone file
 timezone_file="no_timezone_file"
 dest_file="/etc/localtime"
+
 
 # Parse the args
 if [ $1 ]; then
     case $1 in
     -s|select)
         IpAddr=$2
+        # extra check here - make sure good IP addr before user spends time
+        # selecting a time zone
+        SetTargetIP $IpAddr
         Tz=$(tzselect)
-        ;;
-    -h|help)
-        PrintUsage
-        exit
         ;;
     -u|utc|none)
         IpAddr=$2
         Tz="UTC"
-        ;;
-    -*)
-        PrintUsage
-        exit
         ;;
     *)
         IpAddr=$1
@@ -64,30 +58,26 @@ else
     Tz="mine"
 fi
 
-if SetTargetIP $IpAddr; then
-    # now we know which file to write.
-    case $Tz in
-    UTC*)
-        echo "Setting target timezone to UTC" 
-        ssh root@$DEST_IP rm -f ${dest_file} 2>/dev/null
-        exit 0
-        ;;
-    mine)
-        echo "Setting target timezone same as host"
-        timezone_file="/etc/localtime"
-        ;;
-    *)
-        echo "Setting target timezone to ${Tz}"
-        timezone_file="/usr/share/zoneinfo/${Tz}"
-        ;;
-    esac
+SetTargetIP $IpAddr
 
-    if [ -f $timezone_file ]; then
-        scp $timezone_file root@$DEST_IP:${dest_file} >/dev/null
-    else
-        echo "Unknown timezone ${Tz}"
-        echo "Try $command -h for help"
-    fi
+case $Tz in
+UTC*)
+    echo "Setting target timezone to UTC" 
+    SshToTarget rm -f ${dest_file} 2>/dev/null
+    exit 0
+    ;;
+mine)
+    echo "Setting target timezone same as host"
+    timezone_file="/etc/localtime"
+    ;;
+*)
+    echo "Setting target timezone to ${Tz}"
+    timezone_file="/usr/share/zoneinfo/${Tz}"
+    ;;
+esac
+
+if [ -f $timezone_file ]; then
+    ScpToTarget $timezone_file ${dest_file}
 else
-    PrintUsage
+    ExitWithError "Unknown timezone ${Tz}"
 fi

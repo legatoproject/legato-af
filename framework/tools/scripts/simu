@@ -1,0 +1,153 @@
+#!/bin/bash
+copyright="
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+"
+
+if ! [ $LEGATO_ROOT ]; then echo "Run bin/legs first" >&2; exit 1; fi
+. "${LEGATO_ROOT}/framework/tools/scripts/shlib"
+
+help_short_desc="helper script to use the simulation environement"
+
+help_usage=(
+"start"
+"stop"
+"shell | ssh | sh"
+"push [LOCAL] [REMOTE]"
+"pull [LOCAL] [REMOTE]"
+"instlegato"
+"instapp [APP_PATH]"
+)
+
+help_long_description=(
+"$commandName start"
+"  - Start QEmu."
+""
+"$commandName stop"
+"  - Stop QEmu."
+""
+"$commandName shell"
+"$commandName sh"
+"$commandName ssh"
+"  - Get into a shell on the target."
+""
+"$commandName push [LOCAL] [REMOTE]"
+"$commandName pull [LOCAL] [REMOTE]"
+"  - Transmit a file or directory to/from the target."
+""
+"$commandName instlegato"
+"  - Install Legato on the virtual target."
+""
+"$commandName instapp [APP_PATH]"
+"  - Install application from APP_PATH on the virtual target."
+""
+)
+
+function show_help {
+    echo "Format: simu <command> <options ...>"
+    echo
+    echo "Commands:"
+    echo " - start: Start QEmu"
+    echo " - stop: Stop QEmu"
+    echo " - shell | ssh | sh: Get into a shell"
+    echo " - push <local> <remote>: Copy a file/directory to target"
+    echo " - pull <local> <remote>: Copy a file/directory from target"
+    echo " - instlegato"
+    echo " - setup ssh"
+    echo
+
+    exit 0
+}
+COMMAND=$1
+
+COLOR_TITLE="\033[1;94m"
+COLOR_MSG="\033[2;37m"
+COLOR_INFO="\033[1;36m"
+COLOR_ERROR="\033[1;31m"
+COLOR_WARN="\033[1;93m"
+COLOR_OK="\033[1;32m"
+COLOR_RESET="\033[0m"
+
+SIMU_IP=${SIMU_IP-localhost}
+SIMU_PORT=${SIMU_PORT-10022}
+
+SCRIPT_DIR=$( cd `dirname "$0"` && pwd )
+
+function message {
+    COLOR=$1
+    MESSAGE=$2
+    echo -e $COLOR $MESSAGE $COLOR_RESET
+}
+
+function check_ret {
+    RETVAL=$?
+    if [ $RETVAL -ne 0 ]; then
+        message $COLOR_ERROR "Exit Code $RETVAL"
+        exit $RETVAL
+    fi
+}
+
+function do_ssh {
+    ssh -p $SIMU_PORT root@$SIMU_IP $@
+}
+
+function do_start {
+    if [ -z "$VIRT_TARGET_ARCH" ] && [ -n "$LEGATO_ROOT" ]; then
+        # Try to find out arch legato was built with, if available
+        CMAKE_LOG="$LEGATO_ROOT/build/virt/CMakeFiles/CMakeOutput.log"
+        if [ -e "$CMAKE_LOG" ]; then
+            if grep "i586-poky-linux-gcc" $CMAKE_LOG > /dev/null; then
+               export VIRT_TARGET_ARCH="x86"
+           elif grep "x86_64-poky-linux-gcc" $CMAKE_LOG > /dev/null; then
+               export VIRT_TARGET_ARCH="x86_64"
+           elif grep "arm-poky-linux-gnueabi-gcc" $CMAKE_LOG > /dev/null; then
+               export VIRT_TARGET_ARCH="arm"
+           fi
+       fi
+    fi
+
+    $SCRIPT_DIR/legato-qemu
+}
+
+function do_stop {
+    QEMU_PID_FILE="$SCRIPT_DIR/qemu.pid"
+
+    if [ -e "$QEMU_PID_FILE" ]; then
+        QEMU_PID=$(cat $QEMU_PID_FILE)
+    fi
+
+    if [ -z "$QEMU_PID" ]; then
+        message $COLOR_WARN "Error getting QEmu PID"
+        exit 1
+    fi
+
+    if ! kill -0 $QEMU_PID 2> /dev/null; then
+        message $COLOR_WARN "QEmu is already stopped"
+        rm $QEMU_PID_FILE
+        exit 0
+    fi
+
+    message $COLOR_WARN "Killing QEmu ($QEMU_PID)"
+    kill $QEMU_PID
+}
+
+CheckForHelp $@
+
+if [[ "$COMMAND" == "start" ]]; then
+    do_start
+elif [[ "$COMMAND" == "stop" ]]; then
+    do_stop
+elif [[ "$COMMAND" == "shell" ]] || [[ "$COMMAND" == "ssh" ]] || [[ "$COMMAND" == "sh" ]]; then
+    do_ssh ${*:2}
+elif [[ "$COMMAND" == "push" ]]; then
+    scp -P $SIMU_PORT -r $2 root@$SIMU_IP:$3
+elif [[ "$COMMAND" == "pull" ]]; then
+    scp -P $SIMU_PORT -r root@$SIMU_IP:$2 $3
+elif [[ "$COMMAND" == "instlegato" ]]; then
+    export SSH_PORT=$SIMU_PORT
+    $LEGATO_ROOT/bin/instlegato $LEGATO_ROOT/build/virt $SIMU_IP
+elif [[ "$COMMAND" == "instapp" ]]; then
+    export SSH_PORT=$SIMU_PORT
+    $LEGATO_ROOT/bin/instapp $2 $SIMU_IP
+else
+	message $COLOR_ERROR "Unknown command '$COMMAND'"
+fi

@@ -1,0 +1,491 @@
+#!/bin/bash
+copyright="
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+"
+
+## Default
+OFFSET_PORT=${OFFSET_PORT:=10000}
+TELNET_PORT=${TELNET_PORT:=$(($OFFSET_PORT + 21))}
+SSH_PORT=${SSH_PORT:=$(($OFFSET_PORT + 22))}
+SIMU_PORT=${SIMU_PORT:=$(($OFFSET_PORT + 5000))}
+
+ROOTFS_METHOD=-sd
+
+HOST_ARCH=$(uname -m)
+
+if [ -z "$VIRT_TARGET_ARCH" ]; then
+    VIRT_TARGET_ARCH=arm
+fi
+
+## Help
+
+if [[ "$1" == "--help" ]]; then
+    echo -e ""
+    echo -e "NAME"
+    echo -e "\tlegato-qemu - launch qemu"
+    echo -e ""
+    echo -e "DESCRIPTION"
+    echo -e "\tPrepare an launch qemu to host an instance of Legato."
+    echo -e "\tAlso fetch qemu images and check for updates."
+    echo -e ""
+    echo -e "ENVIRONMENT"
+    echo -e "\tThis script is parametrized through environment variables."
+    echo -e "\t\tOPT_TARGET: Platform to emulate"
+    echo -e "\t\tOPT_PERSIST: Make changes to the image persistant or not"
+    echo -e "\t\tOPT_KMESG: Kernel messages to console"
+    echo -e "\t\tOPT_GDB: Launch GDB server to qemu"
+    echo -e "\t\tOPT_SERIAL: Bearer for serial port" 
+    echo -e "\t\t            - (blank, default) = Serial to console"
+    echo -e "\t\t            - telnet = Serial to telnet"
+    echo -e "\t\tOPT_NET: Networking interface"
+    echo -e "\t\t         - user (default) = simulated internal qemu networking"
+    echo -e "\t\t         - tap = Uses a tap interface (requires priviledges)"
+    echo -e ""
+    exit 0
+fi
+
+## Options
+
+# Default values are provided here
+# You can change them, but they will be overriden upon update of this script.
+# Persistent changes can be added to an 'options' script that is sourced.
+
+# Target
+if [ -z "$OPT_TARGET" ]; then
+    OPT_TARGET=virt
+fi
+
+# Persistent
+if [ -z "$OPT_PERSIST" ]; then
+    OPT_PERSIST=1
+fi
+
+# Kernel Messages to console
+if [ -z "$OPT_KMESG" ]; then
+    OPT_KMESG=1
+fi
+
+# GDB Server
+if [ -z "$OPT_GDB" ]; then
+    OPT_GDB=0
+fi
+
+# Serial
+if [ -z "$OPT_SERIAL" ]; then
+    OPT_SERIAL=""
+    #OPT_SERIAL="telnet" # Provide serial interface through telnet
+fi
+
+# Net
+if [ -z "$OPT_NET" ]; then
+    OPT_NET=""
+    OPT_NET="user" # User mode networking, no need to be root
+    #OPT_NET="tap"  # Uses existing tap interface
+fi
+
+# Net 2
+if [ -z "$OPT_NET2" ]; then
+    OPT_NET2=""
+    #OPT_NET2="simu"
+fi
+
+COLOR_TITLE="\033[1;94m"
+COLOR_MSG="\033[2;37m"
+COLOR_INFO="\033[1;36m"
+COLOR_ERROR="\033[1;31m"
+COLOR_WARN="\033[1;93m"
+COLOR_OK="\033[1;32m"
+COLOR_RESET="\033[0m"
+
+function message {
+    COLOR=$1
+    MESSAGE=$2
+    echo -e $COLOR $MESSAGE $COLOR_RESET
+}
+
+function check_ret {
+    RETVAL=$?
+    if [ $RETVAL -ne 0 ]; then
+        echo -e $COLOR_ERROR "Exit Code $RETVAL" $COLOR_RESET
+        exit $RETVAL
+    fi
+}
+
+function img_url_for_target {
+    TARGET=$1
+
+    # Determine QEmu Image source
+    if [ -z "$IMG_MIRROR" ]; then
+        if cat /etc/resolv.conf | grep "sierrawireless.local" > /dev/null; then
+            IMG_MIRROR="http://qa-legato.sierrawireless.local/deliveries/$TARGET/get"
+        else
+            IMG_MIRROR="http://downloads.sierrawireless.com/legato/virt"
+        fi
+    fi
+
+    export IMG_SRC=$IMG_MIRROR/img-$TARGET.tar.bz2
+    echo $IMG_SRC
+}
+
+function img_get_timestamp {
+    TARGET=$1
+
+    img_url_for_target $TARGET
+
+    # Get image timestamp from server
+    export IMAGE_TS=$(curl -I $IMG_SRC 2> /dev/null |grep "Last-Modified" |sed -e 's/Last-Modified: //g' |xargs -i date -d "{}" +"%s")
+}
+
+function img_set_timestamp {
+    TARGET=$1
+    IMAGE_TS=$2
+
+    if [ -z "$IMAGE_TS" ]; then
+        message $COLOR_ERROR "Invalid timestamp"
+        return
+    fi
+
+    message $COLOR_INFO "Saving image timestamp ($IMAGE_TS)"
+    echo $IMAGE_TS > $USER_DIR/img-$TARGET/.img-timestamp
+}
+
+function check_new_image {
+    TARGET=$1
+    IMG_DEST=$USER_DIR/img-$TARGET
+
+    img_get_timestamp $TARGET
+
+    if [ -e "$IMG_DEST/.img-timestamp" ]; then
+        CURRENT_IMAGE_TS=$(cat "$IMG_DEST/.img-timestamp")
+
+        if [ -z "$CURRENT_IMAGE_TS" ]; then
+            message $COLOR_WARN "Invalid timestamp"
+            m $IMG_DEST/.img-timestamp
+            CURRENT_IMAGE_TS=0
+        fi
+    else
+        CURRENT_IMAGE_TS=0
+    fi
+
+    if [ $(($IMAGE_TS - $CURRENT_IMAGE_TS)) -ne 0 ]; then
+        message $COLOR_WARN "New image available, delete $IMG_DEST to upgrade"
+    fi
+}
+
+# Fetch image from server
+function fetch_image {
+    TARGET=$1
+    IMG_DEST=$USER_DIR/img-$TARGET
+    img_url_for_target $TARGET
+
+    if [ -e "$IMG_DEST/rootfs.qcow2" ]; then
+        check_new_image $TARGET
+
+        return 0
+    fi
+
+    message $COLOR_INFO "Fetching image from server"
+
+    if ! [ -e "$IMG_DEST" ]; then
+        message $COLOR_INFO "Create $IMG_DEST to hold images ..."
+        mkdir -p $IMG_DEST
+    fi
+
+    message $COLOR_INFO "Fetching images from $IMG_SRC ..."
+    (cd $IMG_DEST && curl -L $IMG_SRC | tar jx)
+    if [ $? -ne 0 ]; then
+        message $COLOR_ERROR "Failed to retrieve image"
+        exit 1
+    fi
+
+    img_get_timestamp $TARGET
+    img_set_timestamp $TARGET $IMAGE_TS
+}
+
+# Create snapshot from image
+function create_snapshot {
+    IMG_SRC=$1
+    IMG_DEST=$2
+
+    message $COLOR_INFO "Create snapshot from rootfs ..."
+    qemu-img create -f qcow2 -b $IMG_SRC $IMG_DEST
+    check_ret
+}
+
+verlte() {
+    [  "$1" = "$(echo -e "$1\n$2" | sort -V | head -n1)" ]
+}
+
+verlt() {
+    [ "$1" = "$2" ] && return 1 || verlte $1 $2
+}
+
+function get_qemu_version {
+    qemu_bin_path=$1
+
+    qemu_version=$($qemu_bin_path --version |sed 's/.*version \([\.0-9]*\).*/\1/g')
+
+    message $COLOR_INFO "Testing QEmu candidate '$qemu_bin_path': version $qemu_version"
+}
+
+# Find qemu
+function find_qemu_bin {
+    QEMU_BIN=qemu-system-$QEMU_ARCH
+    message $COLOR_MSG "Looking for $QEMU_BIN ..."
+
+    unset best_bin
+    best_version="0"
+
+    # In path
+    if which $QEMU_BIN > /dev/null; then
+        qemu_bin=$(which $QEMU_BIN)
+        get_qemu_version $qemu_bin
+        best_version=$qemu_version
+        best_bin=$qemu_bin
+    fi
+
+    # In toolchains dir
+    for toolchain_dir in $(env |grep '_TOOLCHAIN_DIR' | sed 's/[A-Z0-9]*_TOOLCHAIN_DIR=//g'); do
+        qemu_bin="$toolchain_dir/../$QEMU_BIN"
+        if [ -e "$qemu_bin" ]; then
+            get_qemu_version $qemu_bin
+            verlt $best_version $qemu_version
+            if [ $? -eq 0 ]; then
+                best_version=$qemu_version
+                best_bin=$qemu_bin
+            fi
+        fi
+    done
+
+    if [ -z "$best_bin" ]; then
+        message $COLOR_ERROR "Unable to find qemu candidate for $QEMU_BIN, please install qemu"
+        exit 1
+    fi
+
+    QEMU_BIN=$best_bin
+    QEMU_VERSION=$best_version
+
+    return 0
+}
+
+## Arguments associated with options
+
+SCRIPT_DIR=$( cd `dirname "$0"` && pwd )
+
+# By default, store images & configuration in script directory
+if [ -z "$USER_DIR" ]; then
+    USER_DIR=$SCRIPT_DIR
+fi
+
+ARG_COMMON=""
+ARG_COMMON="$ARG_COMMON -nographic -echr 20"
+#ARG_COMMON="$ARG_COMMON -no-reboot"
+
+# Global options
+if [ -e "$USER_DIR/options" ]; then
+    message $COLOR_MSG "Loading options ..."
+    source $USER_DIR/options
+fi
+
+# Per-host options
+if [ -e "$USER_DIR/options.$HOSTNAME" ]; then
+    message $COLOR_MSG "Loading options for $HOSTNAME ..."
+    source $USER_DIR/options.$HOSTNAME
+fi
+
+# Target
+if [[ "$OPT_TARGET" == "virt" ]]; then
+    OPT_TARGET="virt-$VIRT_TARGET_ARCH"
+fi
+
+function configure_virt_common {
+    message $COLOR_TITLE "Virtual target ($VIRT_TARGET_ARCH)"
+
+    fetch_image $OPT_TARGET
+
+    # Let the image define it's own default arguments for QEmu
+    # it is still possible to override them after that
+    if [ -e $USER_DIR/img-$OPT_TARGET/qemu-config ]; then
+        source $USER_DIR/img-$OPT_TARGET/qemu-config
+    fi
+
+    KERNEL_IMG=$USER_DIR/img-$OPT_TARGET/kernel
+    ROOTFS_IMG=$USER_DIR/img-$OPT_TARGET/rootfs.qcow2
+}
+
+if [[ "$OPT_TARGET" == "virt-x86" ]]; then
+
+    CMDLINE="root=/dev/hda1 console=ttyS0 rw mem=128M"
+    ARG_TARGET=''
+    ROOTFS_METHOD=-hda
+
+    configure_virt_common
+
+elif [[ "$OPT_TARGET" == "virt-arm" ]]; then
+
+    CMDLINE="root=/dev/sda1 console=ttyS0 rootwait mem=128M"
+    ARG_TARGET='-M versatilepb -m 128'
+    ROOTFS_METHOD=-hda
+
+    configure_virt_common
+
+else
+    echo "This target is not supported"
+    exit -1
+fi
+
+if [ "$OPT_PERSIST" -eq 1 ]; then
+    message $COLOR_MSG "Persistent mode"
+else
+    message $COLOR_MSG "Volatile mode (changes won't be committed to the rootfs)"
+    ARG_PERSIST="-snapshot"
+
+    mkdir -p $USER_DIR/img-$TARGET
+    ROOTFS_IMG_VOLATILE=$USER_DIR/img-$TARGET/rootfs.snapshot
+
+    # Create snapshot from real rootfs if it doesn't exist
+    if ! [ -e "$ROOTFS_IMG_VOLATILE" ]; then
+        create_snapshot $ROOTFS_IMG $ROOTFS_IMG_VOLATILE
+        ROOTFS_IMG=$ROOTFS_IMG_VOLATILE
+    fi
+fi
+
+# Kernel Messages
+if [ "$OPT_KMESG" -eq 1 ]; then
+    message $COLOR_MSG "Kernel messages to console"
+    CMDLINE="$CMDLINE console=ttyAMA0,115200"
+else
+    message $COLOR_MSG "Kernel messages discarded"
+fi
+
+# GDB Server
+if [ "$OPT_GDB" -eq 1 ]; then
+    message $COLOR_MSG "GDB Server"
+    ARG_GDB="-s"
+fi
+
+# Serial
+if [ "$OPT_SERIAL" == "telnet" ]; then
+    message $COLOR_MSG "Console to telnet"
+    message $COLOR_INFO " => Access console through 'telnet localhost $TELNET_PORT'"
+    #ARG_SERIAL="-serial mon:telnet::$TELNET_PORT,server,nowait"
+    ARG_SERIAL="-serial telnet::$TELNET_PORT,server,nowait -monitor stdio"
+else
+    ARG_SERIAL=
+fi
+
+# Net: vlan 0
+if [ "$OPT_NET" == "user" ]; then
+    message $COLOR_MSG "Network in user mode"
+
+    NET_ADDR=",net=192.168.76.0/24"
+
+    # Ports forwarded from guest to host
+    NET_HOSTFWD=",hostfwd=tcp::$SSH_PORT-:22,hostfwd=tcp::$SIMU_PORT-:5000"
+
+    # Restrict = when yes, isolate guest from host network
+    #NET_RESTRICT=",restrict=yes"
+    NET_RESTRICT=",restrict=off"
+
+    message $COLOR_INFO " => Access SSH through 'ssh -p $SSH_PORT root@localhost'"
+    ARG_NET="-net nic,vlan=0 -net user,vlan=0$NET_ADDR$NET_RESTRICT$NET_HOSTFWD"
+elif [ "$OPT_NET" == "tap" ]; then
+    message $COLOR_MSG "Network through tap interface"
+
+    # Default interface
+    if [ -z "$TAP_IF" ]; then
+        TAP_IF=tap0
+    fi
+
+    message $COLOR_INFO " => Using interface $TAP_IF"
+    ARG_NET="-net nic,macaddr=b2:5b:96:c8:51:34 -net tap,ifname=$TAP_IF,script=no,downscript=no"
+else
+    ARG_NET=
+fi
+
+# Net: vlan 1
+if [ "$OPT_NET2" == "simu" ]; then
+    message $COLOR_MSG "Network interface for simulation"
+    ARG_NET2="-net nic,vlan=1,macaddr=b2:5b:96:c8:51:35 -net user,vlan=1,restrict=off"
+else
+    ARG_NET2=
+fi
+
+# Sound
+if pulseaudio --check; then
+    message $COLOR_INFO " => Sound through PulseAudio"
+    export QEMU_AUDIO_DRV=pa
+else
+    message $COLOR_INFO " => No sound emulation"
+    export QEMU_AUDIO_DRV=none
+fi
+
+# QEmu Pid file
+if true; then
+    PID_FILE=$USER_DIR/qemu.pid
+
+    if [ -e "$PID_FILE" ]; then
+        PID=$(cat $PID_FILE)
+
+        if kill -0 $PID 2> /dev/null; then
+            message $COLOR_ERROR "QEmu is already running"
+            exit 1
+        fi
+
+        rm $PID_FILE
+    fi
+
+    ARG_PID="-pidfile $PID_FILE"
+fi
+
+ROOTFS="$ROOTFS_METHOD $ROOTFS_IMG"
+
+if [ -z "$QEMU_BIN" ]; then
+    if [ -z "$QEMU_ARCH" ]; then
+        if [[ "$VIRT_TARGET_ARCH" == "x86" ]]; then
+            if [[ "$HOST_ARCH" != "x86_64" ]]; then
+                QEMU_ARCH=i386
+            else
+                QEMU_ARCH=x86_64
+            fi
+        else
+            QEMU_ARCH=arm
+        fi
+    fi
+
+    find_qemu_bin
+else
+    get_qemu_version $QEMU_BIN
+    if [ -z "$qemu_version" ]; then
+        message $COLOR_ERROR "Unable to qemu version"
+        exit 1
+    fi
+
+    QEMU_VERSION=$qemu_version
+fi
+
+message $COLOR_MSG "Kernel command line:"
+message $COLOR_MSG " => $CMDLINE"
+
+message $COLOR_MSG "QEmu binary ($QEMU_ARCH):"
+message $COLOR_MSG " => $QEMU_BIN ($QEMU_VERSION)"
+
+ARGS="-kernel $KERNEL_IMG $ROOTFS $ARG_COMMON $ARG_TARGET $ARG_PERSIST $ARG_NET $ARG_NET2 $ARG_SERIAL $ARG_SOUND $ARG_PID $ARG_GDB"
+message $COLOR_MSG "QEmu arguments:"
+message $COLOR_MSG " => $ARGS"
+
+message $COLOR_OK "Starting ..."
+
+if [ "$OPT_KMESG" -ne 1 ]; then
+   message $COLOR_WARN " Kernel logs disabled, it should take few seconds to boot"
+fi
+
+$QEMU_BIN $ARGS -append "$CMDLINE"
+EXIT_CODE=$?
+
+if [ -e "$PID_FILE" ]; then
+    rm $PID_FILE
+fi
+
+exit $EXIT_CODE
+

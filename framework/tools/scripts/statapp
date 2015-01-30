@@ -1,42 +1,27 @@
 #!/bin/bash
+copyright="
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+"
 
-function PrintUsage()
-{
-    echo "USAGE: $(basename $0) [DEST_IP]"
-    echo
-    echo "  where, DEST_IP = the IP address of the target device.  If DEST_IP is an available"
-    echo "  environment variable it does not need to be passed in the command-line."
-    echo
-}
+if ! [ $LEGATO_ROOT ]; then echo "Run bin/legs first" >&2; exit 1; fi
+. "${LEGATO_ROOT}/framework/tools/scripts/shlib"
 
-TARGET_IP=$1
+help_short_desc="show status of apps on target"
 
-# Check if they are asking for help.
-if [ "$1" = "-h" -o "$1" = "help" -o "$1" = "--help" ]
-then
-    PrintUsage
-    exit 0
-fi
+help_usage=(
+"[TARGET_IP]"
+)
 
-# Check that the first argument is provided and can be pinged.
-if ! [ $TARGET_IP ]
-then
-    if ! [ $DEST_IP ]
-    then
-        echo "***ERROR: Destination IP address not available."
-        PrintUsage
-        exit 1
-    fi
+help_long_description=(
+"The target at TARGET_IP will be queried to find out the status of all"
+"installed applications and a list of all running and stopped apps"
+"will be returned"
+)
 
-    TARGET_IP=$DEST_IP
-fi
+CheckForHelp $@
 
-if ! ping -c 1 -w 1 $TARGET_IP > /dev/null
-then
-    echo "***ERROR: Device address $TARGET_IP seems to be unreachable."
-    exit 1
-fi
+SetTargetIP $1
 
 # List the contents of the application install directory.
-ssh root@$TARGET_IP "/usr/local/bin/app status \"*\""
+SshToTarget "/usr/local/bin/app status \"*\""
 

@@ -1,6 +1,146 @@
 # source this for functions only
+# Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+# if SSH_PORT is defined add the port option to ssh
+SSH_PORT=${SSH_PORT:=22}
+SSH_OPTS="-p $SSH_PORT"
+#because scp uses upper case 'p' for port option!
+SCP_OPTS="-P $SSH_PORT"
 
 commandName=$(basename $0)
+
+SetMarkup() {
+    markedup="<!--${MARKUP_HELP_DOX}-->"
+    bh="<h1>"
+    eh="</h1>"
+    br="<br>"
+    bc="<code>"
+    ec="</code>"
+    verbatim="@verbatim"
+    endverbatim="@endverbatim"
+    bold_next_word="@b "
+    copyright_footer="<hr>$copyright"
+}
+
+UsageHasOptionalTargetIp() {
+for name in ${help_usage[@]}; do
+    if [[ $name = "[TARGET_IP]" ]];then
+        return 0
+    fi
+done
+return 1
+}
+
+# We don't use options ergo don't implement options section yet
+# help_options
+
+PrintMan() {
+echo "$markedup"
+PrintNameSection
+PrintSynopsisSection
+PrintDescriptionSection
+PrintEnvironmentSection
+PrintNotesSection
+echo "$copyright_footer"
+}
+
+PrintNameSection() {
+cat << NAME_SECTION
+
+${bh}NAME${eh}
+    ${bold_next_word}$commandName - $help_short_desc
+
+NAME_SECTION
+}
+
+PrintSynopsisSection() {
+    if [[ $help_usage ]]; then
+    echo "${bh}SYNOPSIS${eh}"
+        for usage_line in "${help_usage[@]}"; do
+            printf "    ${bc}$commandName %s${ec}${br}\\n" "$usage_line"
+        done
+    echo ""
+    fi
+}
+
+PrintDescriptionSection() {
+    if [[ $help_long_description ]]; then
+        echo "${bh}DESCRIPTION${eh}"
+        for desc_line in "${help_long_description[@]}"; do
+            printf "    %s\\n" "$desc_line"
+        done
+        echo ""
+    fi
+}
+
+PrintNotesSection() {
+    if [[ $help_notes ]]; then
+        echo "${bh}NOTES${eh}"
+        for desc_line in "${help_notes[@]}"; do
+            printf "    %s\\n" "$desc_line"
+        done
+        echo ""
+    fi
+}
+
+PrintEnvironmentSection() {
+#   currently we only use DEST_IP and we only care to tell the user
+#    about it if TARGET_IP is optional 
+    if UsageHasOptionalTargetIp; then
+        cat << ENVIRONMENT_SECTION
+${bh}ENVIRONMENT${eh}
+
+    If the TARGET_IP value is not given and the environment variable DEST_IP
+    is set then DEST_IP will be used as TARGET_IP
+
+ENVIRONMENT_SECTION
+    fi
+}
+
+PrintAvailableUsage()
+{
+    if [ "$(type -t PrintUsage)" == "function" ];then
+        PrintUsage
+    else
+        PrintMan
+    fi
+}
+
+CheckForHelp()
+{
+    if [ "$1" = "-h" -o "$1" = "--help" -o "$1" = "help" ]
+    then
+        if [ -n "$MARKUP_HELP_DOX" ]
+        then
+            SetMarkup
+        fi
+        PrintAvailableUsage
+        exit 0
+    fi
+    if [ "$1" = "--version" ]
+    then
+        cat "$LEGATO_ROOT/version"
+        exit 0
+    fi
+}
+
+ExitWithError()
+{
+    echo "***ERROR: $1" >&2
+    shift
+    while [ "$1" ]; do
+        echo "$1" >&2
+        shift
+    done
+    echo "Try '$commandName --help' for usage instructions." >&2
+    exit 1
+}
+
+AddSshOpts()
+{
+    SSH_OPTS+=" $@"
+    SCP_OPTS+=" $@"
+}
 
 # Set TARGET_IP based on either argument $1 or environment variable $DEST_IP
 SetTargetIP()
@@ -12,22 +152,93 @@ SetTargetIP()
     then
         if ! [ $DEST_IP ]
         then
-            echo "***ERROR: Destination IP address not available."
-            return 1
+            ExitWithError "Destination IP address not available."
         fi
 
         TARGET_IP=$DEST_IP
     fi
 
-    if ! ping -c 1 -w 1 $TARGET_IP > /dev/null
+    # Need to check for ipv6 - if this fails:
+    #    check for link local address fe80:*
+    #        if link local add interface (almost certainly %eth0 but check for interfaces)
+    #        if ping6 works
+    #            add -6 to SSH_OPTS
+    if ! ping -c 1 -w 1 $TARGET_IP >/dev/null 2>&1
     then
-        echo "***ERROR: Device address $TARGET_IP seems to be unreachable."
-        if [ "$(type -t PrintUsage)" == "function" ];then
-            PrintUsage
+        # if it is a link local address it needs to specify an interface
+        if [[ ${TARGET_IP,,} =~ ^fe80: ]]; then
+            index=0
+            # check for "%interface" part
+            if [[ "$TARGET_IP" =~ "%" ]]; then
+            # it has an inteface part so just try it out
+                TEST_IPS[0]=$TARGET_IP
+            else # enumerate our interfaces and create an array of candidates
+                for INTERFACE in $(ip link| awk '{print $2}' | grep eth); do
+                    INTERFACE=${INTERFACE%":"}
+                    TEST_IPS[$index]="$TARGET_IP%$INTERFACE"
+                    index=$(($index + 1))
+                done
+            fi
+        else # it's not link local. Try it as is.
+            TEST_IPS[0]=$TARGET_IP
         fi
+
+        for IP in ${TEST_IPS[@]}; do
+            if ping6 -c 1 -w 1 $IP >/dev/null 2>&1; then
+                TARGET_IP=$IP
+                AddSshOpts -6
+                return
+            fi
+        done
+
+        ExitWithError "Device address $TARGET_IP seems to be unreachable."
+    fi
+}
+
+# scp command needs help with ipv6 else it gets confused by ':' so add '[' and ']'
+# Assume last two items are the source and target files, everything before is options
+# Hopefully there won't be any names with spaces in them
+ParseScpArgs()
+{
+    if [[ $# -lt 2 ]]; then
+        ExitWithError "In script, too few arguments to scp"
+    fi
+    length=$(($#-2))
+    #echo "last two ${@:(-2)}"
+    #echo "first few ${@:1:$length}"
+    SCP_SOURCE_FILE="${@:(-2):1}"
+    SCP_DEST_FILE="${@:(-1):1}"
+    SCP_PASSED_ARGS="${@:1:$length}"
+}
+
+ScpFromTarget()
+{
+    if [ x"$TARGET_IP" = "x" ]; then
+        echo "Scp called before SetTargetIP"
         exit 1
     fi
-    return 0
+    ParseScpArgs $@
+    scp $SCP_OPTS $SCP_PASSED_ARGS "root@[$TARGET_IP]:$SCP_SOURCE_FILE" "$SCP_DEST_FILE" >/dev/null
+}
+
+ScpToTarget()
+{
+    if [ x"$TARGET_IP" = "x" ]; then
+        echo "Scp called before SetTargetIP"
+        exit 1
+    fi
+    ParseScpArgs $@
+    scp $SCP_OPTS $SCP_PASSED_ARGS "$SCP_SOURCE_FILE" "root@[$TARGET_IP]:$SCP_DEST_FILE" >/dev/null
+}
+
+SshToTarget ()
+{
+    if [ x"$TARGET_IP" = "x" ]; then
+        echo "SshToTarget called before SetTargetIP"
+        exit 1
+    fi
+
+    ssh $SSH_OPTS root@$TARGET_IP $@
 }
 
 # Shared (Master) ssh
@@ -35,14 +246,14 @@ SetTargetIP()
 SSHSOCKET=""
 StartFastSsh()
 {
-    if [ x"$DEST_IP" = "x" ]; then
+    if [ x"$TARGET_IP" = "x" ]; then
         echo "StartFastSsh called before SetTargetIP"
         exit 1
     fi
 # more checking should be done for fail of this call and see if there is a stale ControlPath
 # from a bad close, e.g.
-    SSHSOCKET=~/.ssh/root@$DEST_IP
-    ssh -M -f -N -o ControlPath=$SSHSOCKET root@$TARGET_IP
+    SSHSOCKET=~/.ssh/root@${TARGET_IP}_legato_tools
+    ssh $SSH_OPTS -M -f -N -o ControlPath=$SSHSOCKET root@$TARGET_IP
 }
 
 FastSsh()
@@ -58,5 +269,6 @@ FastScp()
 # Close the master connection
 EndFastSsh()
 {
-    ssh -S $SSHSOCKET -O exit root@$TARGET_IP
+#   redirect stderr to /dev/null as -q doesn't seem to work
+    ssh -S $SSHSOCKET -q -O exit root@${TARGET_IP}_legato_tools 2>/dev/null
 }

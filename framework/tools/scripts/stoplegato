@@ -1,9 +1,29 @@
 #!/bin/bash
+copyright="
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+"
 
-# This script stops the Legato Service Directory, Log Control Daemon, and Config Tree if they are
-# running.
+if ! [ $LEGATO_ROOT ]; then echo "Run bin/legs first" >&2; exit 1; fi
+. "${LEGATO_ROOT}/framework/tools/scripts/shlib"
+
 # It outputs "Wasn't running." if they were not running.  It outputs "Stopped." if they were
 # stopped.  It outputs "***ERROR: ", followed by an error message (to standard error) if it fails.
+
+help_short_desc="stop legato on the localhost"
+
+help_usage=(" ")
+
+help_long_description=(
+"$commandName stops the Legato Service Directory, Log Control Daemon"
+"and Config Tree on the localhost machine (started by startlegato)."
+""
+"The exit code will be 1 if the script failed to stop any of the"
+"components. An exit code of 0 indicates that legato is now not"
+"running either because it was successfully stopped or it was not"
+"running in the first place."
+)
+
+CheckForHelp $@
 
 CONFIG_TREE_PID=$(pgrep configTree)
 if [ "$CONFIG_TREE_PID" ]

@@ -18,19 +18,25 @@ DESCRIPTION
 ENDHELP
 }
 
+HOST_ARCH=$(uname -m)
 
 # Select the appropriate list of toolchain directories to search, in order of preference
 # (most preferred first) based on the target name given.
 case "$1" in
-ar7 | wp7)
+ar7 | wp7 | ar86 | virt_arm)
     TOOLCHAIN_DIRS=(
-        /opt/swi/y16-ext/sysroots/$(uname -m)-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi
-        /opt/swi/y14-ext/tmp/sysroots/$(uname -m)-linux/usr/bin/armv7a-vfp-neon-poky-linux-gnueabi
+        /opt/swi/y16-ext/sysroots/$HOST_ARCH-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi
+        /opt/swi/y14-ext/tmp/sysroots/$HOST_ARCH-linux/usr/bin/armv7a-vfp-neon-poky-linux-gnueabi
         )
     ;;
 ar6)
     TOOLCHAIN_DIRS=(
-        /opt/poky/1.4.1/sdk/sysroots/$(uname -m)-pokysdk-linux/usr/bin/armv5te-poky-linux-gnueabi/
+        /opt/poky/1.4.1/sdk/sysroots/$HOST_ARCH-pokysdk-linux/usr/bin/armv5te-poky-linux-gnueabi
+        )
+    ;;
+virt_x86)
+    TOOLCHAIN_DIRS=(
+        /opt/poky/1.6.1/sysroots/$HOST_ARCH-pokysdk-linux/usr/bin/i586-poky-linux
         )
     ;;
 help | --help | -h)
@@ -47,7 +53,7 @@ esac
 # Go down the list until we find one that exists.
 for dir in ${TOOLCHAIN_DIRS[*]}
 do
-    if [ -f "$dir/arm-poky-linux-gnueabi-gcc" ]
+    if find $dir -name "*-linux*-gcc" > /dev/null 2>&1
     then
         echo "$dir"
         exit 0

@@ -1,6 +1,10 @@
 #!/bin/bash
+copyright="
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+"
 
-commandName=$(basename $0)
+if ! [ $LEGATO_ROOT ]; then echo "Run bin/legs first" >&2 ; exit 1; fi
+. "${LEGATO_ROOT}/framework/tools/scripts/shlib"
 
 # Generates a key pair, configures the local user's account to use that key to talk to the
 # specified IP address, and installs the public key in that target device's root account's
@@ -8,40 +12,21 @@ commandName=$(basename $0)
 
 PRIVATE_KEY_FILE=~/.ssh/id_rsa.legatoTarget
 PUBLIC_KEY_FILE=$PRIVATE_KEY_FILE.pub
+help_short_desc="Configure secure shell access to target device."
 
-TARGET_IP=$1
+help_usage=(
+"[TARGET_IP]"
+)
 
-# Check command-line args.
+help_long_description=(
+"$commandName generates a key pair, configures the local user's account"
+"to use that key to talk to the specified IP address, and installs the"
+"public key in that target device's root account's list of authorized keys."
+""
+"Follow the interactive instructions provided by the tool."
+)
 
-function PrintUsage()
-{
-    echo "NAME"
-    echo "        $commandName - Configure secure shell access to target device."
-    echo
-    echo "SYNOPSYS"
-    echo "        $commandName [TARGET_IP_ADDR]"
-    echo
-    echo "DESCRIPTION"
-    echo "        If the TARGET_IP_ADDR is not provided as an argument, then $commandName"
-    echo "        will try to use the contents of the DEST_IP environment variable."
-    echo
-    echo "        Follow the interactive instructions provided by the tool."
-}
-
-function ExitWithError()
-{
-    echo "***ERROR: $1"
-    echo "Try '$commandName --help' for usage instructions."
-    exit 1
-}
-
-
-# Did they ask for help?
-if [ "$1" = "-h" -o "$1" = "--help" -o "$1" = "help" ]
-then
-    PrintUsage
-    exit 0
-fi
+CheckForHelp $@
 
 # Did they specify too many arguments?
 if [ $# -gt 1 ]
@@ -50,15 +35,7 @@ then
 fi
 
 # Make sure they gave us a target IP address.
-if ! [ "$TARGET_IP" ]
-then
-    if ! [ "DEST_IP" ]
-    then
-        ExitWithError "Target IP address not provided."
-    fi
-
-    TARGET_IP=$DEST_IP
-fi
+SetTargetIP $1
 
 # If there isn't already a key file for Legato targets, create one.
 if ! [ -e  $PRIVATE_KEY_FILE ]
@@ -91,7 +68,7 @@ ssh-keygen -f "/home/$USER/.ssh/known_hosts" -R $TARGET_IP
 ON_TARGET_KEY_FILE=$(basename $PUBLIC_KEY_FILE).$USER
 echo "Connecting to the target...  (ENTER TARGET'S ROOT PASSWORD WHENEVER PROMPTED FOR A PASSWORD)"
 echo "(Just hit ENTER if your target doesn't have a root password.)"
-cat $PUBLIC_KEY_FILE | ssh root@$TARGET_IP "
+cat $PUBLIC_KEY_FILE | SshToTarget "
     if grep $USER .ssh/authorized_keys > /dev/null 2>&1
     then
         echo \"Key already installed in .ssh/authorized_keys on target for user $USER.\"

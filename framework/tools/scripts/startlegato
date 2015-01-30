@@ -1,36 +1,53 @@
 #!/bin/bash
+copyright="
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+"
+
+if ! [ $LEGATO_ROOT ]; then echo "Run bin/legs first" >&2; exit 1; fi
+. "${LEGATO_ROOT}/framework/tools/scripts/shlib"
 
 # This script starts the Legato Service Directory and Log Control Daemon, if they aren't
 # already running.  It outputs "Already running." and exits with code 1 if they were already
 # running.  It outputs "Started." and exits with code 0 if they were started.  It outputs
 # "***ERROR: ", followed by an error message (to standard error) and exits with code 2 if it fails.
 
+help_short_desc="start legato on the localhost"
+
+help_usage=(
+"[LOG_FILE]"
+)
+
+help_long_description=(
+"$commandName launches the Legato Service Directory, Log Control Daemon"
+"and Config Tree on the localhost machine. This provides a legato environmnet"
+"in which you can run and test apps on the localhost that have been built for the"
+"localhost target."
+""
+"If given, LOG_FILE specifies the name of a file to output the legato"
+"log messages to."
+""
+"Exit code:"
+" - 0 if the services started successfully"
+" - 1 if the services were already running"
+" - 2 if an error occurred"
+""
+"Currently running supervisor on localhost is not supported so apps"
+"requiring the services of the supervisor or the associated watchdog"
+"service cannot be run on localhost at this time."
+""
+"To stop legato see stoplegato"
+)
+
+
+CheckForHelp $@
 
 LOG_FILE="$1"
-
-
-function PrintUsage()
-{
-    echo
-    echo "USAGE: $(basename $0) [ LOGFILE ]"
-    echo
-    echo " where LOGFILE can be used to specify the name of a file to output the legato"
-    echo "       log messages to."
-    echo
-}
 
 
 if [ $# -gt 1 ]
 then
     echo "***ERROR: Too many parameters." 1>&2
     exit 2
-fi
-
-
-if [ "$1" = "-h" -o "$1" = "--help" -o "$1" = "help" ]
-then
-    PrintUsage
-    exit 0
 fi
 
 

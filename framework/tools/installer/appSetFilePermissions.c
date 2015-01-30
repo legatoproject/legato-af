@@ -1,14 +1,15 @@
 //--------------------------------------------------------------------------------------------------
 /**
- * Implementation of the appUserAdd program, which installs a user account to the target system
- * according to an application's configuration settings in the Configuration Tree.
+ * Implementation of the appSetFilePermissions program, which sets the permissions and SMACK labels
+ * for an app's installed files according to an application's configuration settings in the
+ * Configuration Tree.
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  **/
 //--------------------------------------------------------------------------------------------------
 
 #include "legato.h"
-#include "components/userAdderRemover/userAdderRemover.h"
+#include "components/filePermissions/filePermissions.h"
 
 COMPONENT_INIT
 {
@@ -17,24 +18,17 @@ COMPONENT_INIT
     {
         LE_FATAL("Too many arguments.\n");
     }
-    const char* appName = le_arg_GetArg(0);
 
-    if (appName == NULL)
+    const char* appNamePtr = le_arg_GetArg(0);
+
+    if (appNamePtr == NULL)
     {
         fprintf(stderr, "App name required.\n");
         LE_FATAL("App name required.");
     }
 
     // Do the work.
-#ifdef ADD_USER
-    userAddRemove_Add(appName);
-#else
-    #ifdef REMOVE_USER
-        userAddRemove_Remove(appName);
-    #else
-        #error MUST define either ADD_USER or REMOVE_USER.
-    #endif
-#endif
+    filePermissions_Set(appNamePtr);
 
     exit(EXIT_SUCCESS);
 }

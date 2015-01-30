@@ -4,7 +4,7 @@
  *
  * <hr>
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 #include "legato.h"
@@ -27,11 +27,17 @@ static bool ErrorOccurred = false;
 
 
 //--------------------------------------------------------------------------------------------------
+/// Command string.
+//--------------------------------------------------------------------------------------------------
+static const char* CommandPtr = NULL;
+
+
+//--------------------------------------------------------------------------------------------------
 /**
- * Prints help to stdout.
+ * Prints help to stdout and exits with EXIT_SUCCESS.
  */
 //--------------------------------------------------------------------------------------------------
-static void PrintHelp
+static void PrintHelpAndExit
 (
     void
 )
@@ -58,6 +64,8 @@ static void PrintHelp
         "    All output is always sent to stdout and error messages to stderr.\n"
         "\n"
         );
+
+    exit(EXIT_SUCCESS);
 }
 
 
@@ -124,12 +132,10 @@ static void ExitWithErrorMsg
 )
 //--------------------------------------------------------------------------------------------------
 {
-    char programName[LIMIT_MAX_PATH_LEN] = "sdir";
+    const char* programNamePtr = le_arg_GetProgramName();
 
-    le_arg_GetProgramName(programName, sizeof(programName), NULL);
-
-    fprintf(stderr, "* %s: %s\n", programName, errorMsg);
-    fprintf(stderr, "Try '%s --help'.\n", programName);
+    fprintf(stderr, "* %s: %s\n", programNamePtr, errorMsg);
+    fprintf(stderr, "Try '%s --help'.\n", programNamePtr);
 
     exit(EXIT_FAILURE);
 }
@@ -146,11 +152,6 @@ static void List
 )
 //--------------------------------------------------------------------------------------------------
 {
-    if (le_arg_NumArgs() != 1)
-    {
-        ExitWithErrorMsg("Too many arguments to 'list' command.\n");
-    }
-
     le_msg_MessageRef_t msgRef = le_msg_CreateMsg(SessionRef);
 
     le_msg_SetFd(msgRef, 1);
@@ -505,11 +506,6 @@ static void Load
 {
     le_result_t result;
 
-    if (le_arg_NumArgs() != 1)
-    {
-        ExitWithErrorMsg("Too many arguments to 'load' command.\n");
-    }
-
     // Connect to the Configuration API server.
     le_cfg_ConnectService();
 
@@ -584,41 +580,47 @@ static void Load
 
 //--------------------------------------------------------------------------------------------------
 /**
- * The main function for the log tool.
- */
+ * Positional argument callback function that gets called with the command argument from the
+ * command line.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void CommandArgHandler
+(
+    const char* commandPtr  ///< Pointer to the command string.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    CommandPtr = commandPtr;
+}
+
+
 //--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
-    char arg[LIMIT_MAX_PATH_LEN];
+    // The first (and only) positional argument is the command.
+    // CommandArgHandler() will set the CommandPtr to point to the command argument string.
+    le_arg_AddPositionalCallback(CommandArgHandler);
 
-    // Get the command.
-    if (le_arg_NumArgs() == 0)
-    {
-        ExitWithErrorMsg("Command missing.");
-    }
-    if (le_arg_GetArg(0, arg, sizeof(arg)) != LE_OK)
-    {
-        ExitWithErrorMsg("Invalid command.");
-    }
+    // Print help and exit if the "-h" or "--help" options are given.
+    le_arg_SetFlagCallback(PrintHelpAndExit, "h", "help");
+
+    // Scan the command-line argument list.
+    le_arg_Scan();
 
     // Check if the user is asking for help.
-    if (   (strcmp(arg, "--help") == 0)
-        || (strcmp(arg, "help") == 0)
-        || (strcmp(arg, "-h") == 0) )
+    if (strcmp(CommandPtr, "help") == 0)
     {
-        PrintHelp();
-
-        exit(EXIT_SUCCESS);
+        PrintHelpAndExit();
     }
 
     ConnectToServiceDirectory();
 
     // Act on the command.
-    if (strcmp(arg, "list") == 0)
+    if (strcmp(CommandPtr, "list") == 0)
     {
         List();
     }
-    else if (strcmp(arg, "load") == 0)
+    else if (strcmp(CommandPtr, "load") == 0)
     {
         Load();
     }
@@ -626,7 +628,7 @@ COMPONENT_INIT
     {
         char errorMessage[255];
 
-        snprintf(errorMessage, sizeof(errorMessage), "Unrecognized command '%s'.", arg);
+        snprintf(errorMessage, sizeof(errorMessage), "Unrecognized command '%s'.", CommandPtr);
 
         ExitWithErrorMsg(errorMessage);
     }

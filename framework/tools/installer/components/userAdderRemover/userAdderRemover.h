@@ -2,7 +2,7 @@
 /**
  * User Add/Remove API provided by the appConfig component.
  *
- * Copyright 2014, Sierra Wireless Inc.  Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  **/
 //--------------------------------------------------------------------------------------------------
 

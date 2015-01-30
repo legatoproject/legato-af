@@ -1,7 +1,7 @@
 #
 # Parse interface files
 #
-# Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+# Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 #
 
 import sys
@@ -42,12 +42,14 @@ Direction = KeywordDirIn | KeywordDirOut
 # Define keywords for built-in types
 KeywordString = pyparsing.Keyword('string')
 KeywordFile = pyparsing.Keyword('file')
+KeywordHandlerParm = pyparsing.Keyword('handler')
 
 # Define these string literals as variables, since they are used in several places
 StringFunction = 'FUNCTION'
 StringHandler = 'HANDLER'
-StringHandlerParams = 'HANDLER_PARAMS'
-StringAddHandlerParams = 'ADD_HANDLER_PARAMS'
+StringEvent = 'EVENT'
+StringHandlerParams = 'HANDLER'
+StringAddHandlerParams = 'ADD_HANDLER'
 StringReference = 'REFERENCE'
 StringDefine = 'DEFINE'
 StringEnum = 'ENUM'
@@ -61,6 +63,7 @@ StringImport = 'USETYPES'
 # Convert the string literals to pyparsing keywords
 KeywordFunction = pyparsing.Keyword(StringFunction)
 KeywordHandler = pyparsing.Keyword(StringHandler)
+KeywordEvent = pyparsing.Keyword(StringEvent)
 KeywordHandlerParams = pyparsing.Keyword(StringHandlerParams)
 KeywordAddHandlerParams = pyparsing.Keyword(StringAddHandlerParams)
 KeywordReference = pyparsing.Keyword(StringReference)
@@ -72,6 +75,7 @@ KeywordImport = pyparsing.Keyword(StringImport)
 # List of valid keywords, used when handling parser errors in FailFunc()
 KeywordList = [ StringFunction,
                 StringHandler,
+                StringEvent,
                 StringHandlerParams,
                 StringAddHandlerParams,
                 StringReference,
@@ -424,6 +428,16 @@ FileParm = ( KeywordFile
 FileParm.setParseAction(ProcessFileParm)
 
 
+def ProcessHandlerParm(tokens):
+    #print tokens
+
+    return codeTypes.HandlerTypeParmData( tokens.name )
+
+HandlerParm = ( KeywordHandlerParm
+                + Identifier('name') )
+HandlerParm.setParseAction(ProcessHandlerParm)
+
+
 def ProcessFunc(tokens):
     #print tokens
 
@@ -441,7 +455,7 @@ def ProcessFunc(tokens):
 def MakeFuncExpr():
 
     # The expressions are checked in the given order, so the order must not be changed.
-    all_parameters = StringParm | ArrayParm | FileParm | SimpleParm
+    all_parameters = HandlerParm | StringParm | ArrayParm | FileParm | SimpleParm
 
     # The function type is optional but it doesn't seem work with Optional(), so need to
     # specify two separate expressions.
@@ -461,63 +475,65 @@ def MakeFuncExpr():
     return all
 
 
-def ProcessHandlerClassFunc(tokens):
+
+def ProcessHandlerFunc(tokens):
     #print tokens
 
-    # todo: It may be better to define a new class and return an instance of that, rather than
-    #       returning the two classes here.  Something to consider when the code is cleaned up.
-    #
     h = codeTypes.HandlerFunctionData(
-        tokens.handlerType + "Func_t",
-        "",
+        tokens.type,
 
         # Handle the case where there are no parameters
-        tokens.handlerBody if tokens.handlerBody else [codeTypes.VoidData()],
-
-        # Handler Class comment will be used for the handler function definition
+        tokens.body if tokens.body else [codeTypes.VoidData()],
         tokens.comment
     )
 
-    f = codeTypes.AddHandlerFunctionData(
-        tokens.handlerType,
-        tokens.handlerType + "Func_t",
+    return h
 
-        # Handle the case where there are no parameters
-        tokens.addBody if tokens.addBody else [codeTypes.VoidData()]
-    )
-
-    #print h
-    #print f
-
-    return [h, f]
-
-def MakeHandlerClassExpr():
+def MakeHandlerExpr():
 
     # The expressions are checked in the given order, so the order must not be changed.
     allParameters = StringParm | ArrayParm | SimpleParm
 
     body = MakeListExpr(allParameters)
-    handlerParam = KeywordHandlerParams + body("handlerBody") + Semicolon
-    handlerParam.setFailAction(functools.partial(FailFunc, expected=StringHandlerParams))
-
-    body = MakeListExpr(allParameters)
-    addParam = KeywordAddHandlerParams + body("addBody") + Semicolon
-    addParam.setFailAction(functools.partial(FailFunc, expected=StringAddHandlerParams))
-
-    # The expressions can be given in any order; in addition, addParam is optional, if there are
-    # no parameters to this function.
-    allBody =  pyparsing.Optional(handlerParam) & pyparsing.Optional(addParam)
-
     all = ( pyparsing.Optional(pyparsing.cStyleComment)("comment")
             + KeywordHandler
-            + Identifier("handlerType")
-            + "{"
-            + allBody
-            + "}"
+            + Identifier("type")
+            + body("body")
             + Semicolon )
-    all.setParseAction(ProcessHandlerClassFunc)
-
+    all.setParseAction(ProcessHandlerFunc)
     all.setFailAction(functools.partial(FailFunc, expected=StringHandler))
+
+    return all
+
+
+
+def ProcessEventFunc(tokens):
+    #print tokens
+
+    f = codeTypes.AddHandlerFunctionData(
+        tokens.eventName,
+
+        # Handle the case where there are no parameters (todo: is this still necessary?)
+        tokens.body if tokens.body else [codeTypes.VoidData()],
+        tokens.comment
+    )
+
+    return f
+
+def MakeEventExpr():
+
+    # The expressions are checked in the given order, so the order must not be changed.
+    allParameters = HandlerParm | StringParm | ArrayParm | SimpleParm
+
+    body = MakeListExpr(allParameters)
+    all = ( pyparsing.Optional(pyparsing.cStyleComment)("comment")
+            + KeywordEvent
+            + Identifier("eventName")
+            + body("body")
+            + Semicolon )
+    all.setParseAction(ProcessEventFunc)
+
+    all.setFailAction(functools.partial(FailFunc, expected=StringEvent))
     return all
 
 
@@ -699,7 +715,8 @@ def ParseCode(codeDefn, filename):
     CurrentFileName = filename
 
     funcExpr = MakeFuncExpr()
-    handlerClassExpr = MakeHandlerClassExpr()
+    handlerExpr = MakeHandlerExpr()
+    eventExpr = MakeEventExpr()
     refExpr = MakeRefExpr()
     defineExpr = MakeDefineExpr()
     enumExpr = MakeEnumExpr()
@@ -712,6 +729,7 @@ def ParseCode(codeDefn, filename):
     #       definitions, so this is good enough for now.
     keywords = ( KeywordFunction
                  | KeywordHandler
+                 | KeywordEvent
                  | KeywordReference
                  | KeywordDefine
                  | KeywordEnum
@@ -720,7 +738,8 @@ def ParseCode(codeDefn, filename):
     # The expressions are applied in the order listed, so give the more common expressions first.
     allcode = ( pyparsing.ZeroOrMore(pyparsing.cStyleComment + pyparsing.NotAny(keywords))
                 + pyparsing.ZeroOrMore( funcExpr
-                                        | handlerClassExpr
+                                        | handlerExpr
+                                        | eventExpr
                                         | refExpr
                                         | defineExpr
                                         | enumExpr

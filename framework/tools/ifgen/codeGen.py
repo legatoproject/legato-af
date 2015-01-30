@@ -1,12 +1,10 @@
 #
 # C code generator functions
 #
-# Copyright (C) Sierra Wireless, Inc. 2013-2014. Use of this work is subject to license.
+# Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 #
 
 import os
-import sys
-import time
 import cStringIO
 import collections
 import re
@@ -439,9 +437,7 @@ def WriteEnumDefinition(fp, enumDef):
 # Client templates/code
 #---------------------------------------------------------------------------------------------------
 
-FuncImplTemplate = dict(
-
-    function = """
+FuncImplTemplate = """
 {{prototype}}
 {
     le_msg_MessageRef_t _msgRef;
@@ -484,7 +480,7 @@ FuncImplTemplate = dict(
     // Unpack the result first
     _msgBufPtr = UnpackData( _msgBufPtr, &_result, sizeof(_result) );
 
-    $ if func.addHandlerName:
+    $ if func.isAddHandler:
     // Put the handler reference result into the client data object, and
     // then return a safe reference to the client data object as the reference.
     _clientDataPtr->handlerRef = (le_event_HandlerRef_t)_result;
@@ -506,19 +502,16 @@ FuncImplTemplate = dict(
     $ endif
 }
 """
-)
 
 
 def WriteFuncCode(func, template):
-    funcStr = FormatCode(template['function'], func=func, prototype=GetFuncPrototypeStr(func))
+    funcStr = FormatCode(template, func=func, prototype=GetFuncPrototypeStr(func))
     print >>ClientFileText, funcStr
 
 
 #---------------------------------------------------------------------------------------------------
 
-ClientHandlerTemplate = dict(
-
-    handler = """
+ClientHandlerTemplate = """
 // This function parses the message buffer received from the server, and then calls the user
 // registered handler, which is stored in a client data object.
 static void _Handle_{{func.name}}
@@ -550,26 +543,31 @@ static void _Handle_{{func.name}}
     }
     else
     {
-        LE_ERROR("ERROR in client _Handle_{{func.name}}: no registered handler");
+        LE_FATAL("Error in client data: no registered handler");
     }
+
+    {% if func.handlerName and not func.isAddHandler -%}
+    // The registered handler has been called, so no longer need the client data.
+    // Explicitly set handlerPtr to NULL, so that we can catch if this function gets
+    // accidently called again.
+    _clientDataPtr->handlerPtr = NULL;
+    le_mem_Release(_clientDataPtr);
+    {% endif %}
 
     // Release the message, now that we are finished with it.
     le_msg_ReleaseMsg(_msgRef);
 }
 """
 
-)
 
 def WriteClientHandler(func, handler, template):
-    funcStr = FormatCode(template["handler"], func=func, handler=handler)
+    funcStr = FormatCode(template, func=func, handler=handler)
     print >>ClientFileText, funcStr
 
 
 #---------------------------------------------------------------------------------------------------
 
-AsyncHandlerTemplate = dict(
-
-    msgHandler = """
+AsyncHandlerTemplate = """
 static void ClientIndicationRecvHandler
 (
     le_msg_MessageRef_t  msgRef,
@@ -602,13 +600,11 @@ static void ClientIndicationRecvHandler
         default: LE_ERROR("Unknowm msg id = %i for client thread = %p", msgPtr->id, callersThreadRef);
     }
 }
-""",
-
-)
+"""
 
 
 def WriteAsyncHandler(flist, template):
-    print >>ClientFileText, FormatCode(template["msgHandler"], funcList=flist)
+    print >>ClientFileText, FormatCode(template, funcList=flist)
 
 
 #---------------------------------------------------------------------------------------------------
@@ -620,9 +616,7 @@ def WriteAsyncHandler(flist, template):
 # It will take the parameters and package them up for sending back to the client.
 #---------------------------------------------------------------------------------------------------
 
-FuncAsyncTemplate = dict(
-
-    function = """
+FuncAsyncTemplate = """
 static void AsyncResponse_{{func.name}}
 (
     {{ handler.parmList | printParmList("clientParmList") | indent }}
@@ -631,6 +625,15 @@ static void AsyncResponse_{{func.name}}
     le_msg_MessageRef_t _msgRef;
     _Message_t* _msgPtr;
     _ServerData_t* serverDataPtr = (_ServerData_t*)contextPtr;
+
+    {% if func.handlerName and not func.isAddHandler -%}
+    // This is a one-time handler; if the server accidently calls it a second time, then
+    // the client sesssion ref would be NULL.
+    if ( serverDataPtr->clientSessionRef == NULL )
+    {
+        LE_FATAL("Error in server data: no client session ref");
+    }
+    {% endif %}
 
     // Will not be used if no data is sent back to client
     __attribute__((unused)) uint8_t* _msgBufPtr;
@@ -649,14 +652,22 @@ static void AsyncResponse_{{func.name}}
 
     // Send the async response to the client
     LE_DEBUG("Sending message to client session %p", serverDataPtr->clientSessionRef);
-    le_msg_Send(_msgRef);
+    SendMsgToClient(_msgRef);
+
+    $ if func.handlerName and not func.isAddHandler :
+    {{""}}
+    // The registered handler has been called, so no longer need the server data.
+    // Explicitly set clientSessionRef to NULL, so that we can catch if this function gets
+    // accidently called again.
+    serverDataPtr->clientSessionRef = NULL;
+    le_mem_Release(serverDataPtr);
+    $ endif
 }
 """
 
-)
 
 def WriteAsyncFuncCode(func, handler, template):
-    handlerStr = FormatCode(template['function'], func=func, handler=handler)
+    handlerStr = FormatCode(template, func=func, handler=handler)
     print >>ServerFileText, handlerStr
 
 
@@ -666,9 +677,7 @@ def WriteAsyncFuncCode(func, handler, template):
 # function, and then packs any return value or out parameters.
 #---------------------------------------------------------------------------------------------------
 
-FuncHandlerTemplate = dict(
-
-    handler = """
+FuncHandlerTemplate = """
 static void Handle_{{func.name}}
 (
     le_msg_MessageRef_t _msgRef
@@ -684,11 +693,13 @@ static void Handle_{{func.name}}
     // Unpack the input parameters from the message
     {{ func.parmListIn | printParmList("handlerUnpack", sep="\n\n") | indent }}
 
-    {% if func.addHandlerName -%}
+    {% if func.handlerName -%}
     // Create a new server data object and fill it in
     _ServerData_t* serverDataPtr = le_mem_ForceAlloc(_ServerDataPool);
     serverDataPtr->clientSessionRef = le_msg_GetSession(_msgRef);
     serverDataPtr->contextPtr = contextPtr;
+    serverDataPtr->handlerRef = NULL;
+    serverDataPtr->removeHandlerFunc = NULL;
     contextPtr = serverDataPtr;
     {% endif %}
 
@@ -705,7 +716,7 @@ static void Handle_{{func.name}}
     {{func.type}} _result;
     _result = {{func.name}} ( {{ func.parmList | printParmList("unpackCallName", sep=", ") }} );
 
-    {% if func.addHandlerName -%}
+    {% if func.isAddHandler -%}
     // Put the handler reference result and a pointer to the associated remove function
     // into the server data object.  This function pointer is needed in case the client
     // is closed and the handlers need to be removed.
@@ -737,11 +748,8 @@ static void Handle_{{func.name}}
 }
 """
 
-)
 
-AsyncFuncHandlerTemplate = dict(
-
-    handler = """
+AsyncFuncHandlerTemplate = """
 {{respondProto}}
 {
     LE_ASSERT(_cmdRef != NULL);
@@ -786,14 +794,13 @@ static void Handle_{{func.name}}
                     {{- func.parmListInCall | printParmList("asyncServerCallName", sep=", ", leadSep=True) }} );
 }
 """
-)
 
 
 
 def WriteHandlerCode(func, template):
     # The prototype parameter is only needed for the AsyncFuncHandlerTemplate, but it does no
     # harm to always include it.  It will be ignored for the other template(s).
-    funcStr = FormatCode(template["handler"],
+    funcStr = FormatCode(template,
                          func=func,
                          respondProto=GetRespondFuncPrototypeStr(func))
     print >>ServerFileText, funcStr
@@ -804,9 +811,7 @@ def WriteHandlerCode(func, template):
 # the appropriate handler.
 #---------------------------------------------------------------------------------------------------
 
-MsgHandlerTemplate = dict(
-
-    msgHandler = """
+MsgHandlerTemplate = """
 static void ServerMsgRecvHandler
 (
     le_msg_MessageRef_t msgRef,
@@ -836,11 +841,10 @@ static void ServerMsgRecvHandler
     _ClientSessionRef = 0;
 }
 """
-)
 
 
 def WriteMsgHandler(flist, template):
-    print >>ServerFileText, FormatCode(template["msgHandler"], funcList=flist)
+    print >>ServerFileText, FormatCode(template, funcList=flist)
 
 
 #---------------------------------------------------------------------------------------------------
@@ -939,8 +943,9 @@ def WriteCommonInterface(fp,
     for f in pf.values():
         #print f
 
-        # The Add and Remove handler functions are never asynchronous.
-        if genAsync and not f.addHandlerName and not f.isRemoveHandler :
+        # Functions that have handler parameters, or are Add and Remove handler functions are
+        # never asynchronous.
+        if genAsync and not f.handlerName and not f.isRemoveHandler :
             print >>fp, "%s;\n" % GetRespondFuncPrototypeStr(f)
             print >>fp, "%s;\n" % GetServerAsyncFuncPrototypeStr(f)
         else:
@@ -1311,19 +1316,19 @@ def WriteClientFile(headerFiles, pf, ph, genericFunctions):
 
     for f in pf.values():
         #print f
-        if f.addHandlerName:
+        if f.handlerName:
             # Write out the handler first; there should only be one
             # todo: How can this be enforced
             for h in ph.values():
-                if h.name == f.addHandlerName:
+                if h.name == f.handlerName:
                     WriteClientHandler(f, h, ClientHandlerTemplate)
                     break
 
         # Write out the functions next
         WriteFuncCode(f, FuncImplTemplate)
 
-    addHandlerFuncs = [ f for f in pf.values() if f.addHandlerName ]
-    WriteAsyncHandler(addHandlerFuncs, AsyncHandlerTemplate)
+    funcsWithHandlers = [ f for f in pf.values() if f.handlerName ]
+    WriteAsyncHandler(funcsWithHandlers, AsyncHandlerTemplate)
 
 
 
@@ -1415,6 +1420,16 @@ static le_msg_ServiceRef_t _ServerServiceRef;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Server Thread Reference
+ *
+ * Reference to the thread that is registered to provide this service.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_thread_Ref_t _ServerThreadRef;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Client Session Reference for the current message received from a client
  */
 //--------------------------------------------------------------------------------------------------
@@ -1456,8 +1471,11 @@ static void CleanupClientData
             LE_DEBUG("Found session ref %p; match found, so needs cleanup",
                      serverDataPtr->clientSessionRef);
 
-            // Remove the handler
-            serverDataPtr->removeHandlerFunc( serverDataPtr->handlerRef );
+            // Remove the handler, if the Remove handler functions exists.
+            if ( serverDataPtr->removeHandlerFunc != NULL )
+            {
+                serverDataPtr->removeHandlerFunc( serverDataPtr->handlerRef );
+            }
 
             // Release the server data block
             le_mem_Release((void*)serverDataPtr);
@@ -1477,6 +1495,53 @@ static void CleanupClientData
     }
 
     _UNLOCK
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Send the message to the client (queued version)
+ *
+ * This is a wrapper around le_msg_Send() with an extra parameter so that it can be used
+ * with le_event_QueueFunctionToThread().
+ */
+//--------------------------------------------------------------------------------------------------
+__attribute__((unused)) static void SendMsgToClientQueued
+(
+    void*  msgRef,  ///< [in] Reference to the message.
+    void*  unused   ///< [in] Not used
+)
+{
+    le_msg_Send(msgRef);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Send the message to the client.
+ */
+//--------------------------------------------------------------------------------------------------
+__attribute__((unused)) static void SendMsgToClient
+(
+    le_msg_MessageRef_t msgRef      ///< [in] Reference to the message.
+)
+{
+    /*
+     * If called from a thread other than the server thread, queue the message onto the server
+     * thread.  This is necessary to allow async response/handler functions to be called from any
+     * thread, whereas messages to the client can only be sent from the server thread.
+     */
+    if ( le_thread_GetCurrent() != _ServerThreadRef )
+    {
+        le_event_QueueFunctionToThread(_ServerThreadRef,
+                                       SendMsgToClientQueued,
+                                       msgRef,
+                                       NULL);
+    }
+    else
+    {
+        le_msg_Send(msgRef);
+    }
 }
 """
 
@@ -1515,6 +1580,9 @@ ServerStartFuncCode = """
 
     // Register for client sessions being closed
     le_msg_AddServiceCloseHandler(_ServerServiceRef, CleanupClientData, NULL);
+
+    // Need to keep track of the thread that is registered to provide this service.
+    _ServerThreadRef = le_thread_GetCurrent();
 }
 """
 
@@ -1539,16 +1607,17 @@ def WriteServerFile(headerFiles, pf, ph, genericFunctions, genAsync):
 
     for f in pf.values():
         #print f
-        if f.addHandlerName:
+        if f.handlerName:
             # Write out the handler first; there should only be one per function
             for h in ph.values():
-                if h.name == f.addHandlerName:
+                if h.name == f.handlerName:
                     WriteAsyncFuncCode(f, h, FuncAsyncTemplate)
                     break
 
         # Write out the functions next.
-        # The Add and Remove handler functions are never asynchronous.
-        if genAsync and not f.addHandlerName and not f.isRemoveHandler :
+        # Functions that have handler parameters, or are Add and Remove handler functions are
+        # never asynchronous.
+        if genAsync and not f.handlerName and not f.isRemoveHandler :
             WriteHandlerCode(f, AsyncFuncHandlerTemplate)
         else:
             WriteHandlerCode(f, FuncHandlerTemplate)
@@ -1628,36 +1697,97 @@ def GetOutputFileNames(prefix):
     return fileNames
 
 
+def ExtractCommentString(header):
+    """Extract the comment string from a doxgen-style function header
+    """
+
+    # Split into lines, stripping away any leading or trailing white space.
+    lines = [ l.strip() for l in header.strip().splitlines() ]
+    if not lines:
+        return ''
+
+    # The first line should be the comment opener, the last line should be the comment closer,
+    # and everything in between should be the comment lines.  Do some basic sanity checks, and
+    # return empty string if they don't pass.
+    if not lines[0].startswith('/*') or not lines[-1].endswith('*/'):
+        return ''
+
+    newLines = []
+    for l in lines[1:-1]:
+        # Check for leading '* ' or '*', in that order, and strip them off to get the actual text.
+        # If neither is found, then just use the whole line, as is.  Checking for '*' without the
+        # trailing ' ' is done in case somebody has a typo and forgot to add the ' '.
+        if l[0:2] == '* ':
+            newL = l[2:]
+        elif l[0:1] == '*':
+            newL = l[1:]
+        else:
+            newL = l
+        newLines.append(newL)
+
+    commentString = '\n'.join( newLines )
+    return commentString
+
+
+
+def PostProcessParmListWithHandler(parmList):
+    """
+    Convert a HandlerTypeParmData parameter to appropriate handlerPtr and contextPtr parameters.
+    """
+
+    newParmList = []
+
+    for p in parmList:
+        if not isinstance( p, codeTypes.HandlerTypeParmData ):
+            # If the previous parameter was an array, then the current parameter will be the
+            # length of the array, so skip it.  This is because the length parameter will get
+            # generated again when we create a new FunctionData object below.
+            if newParmList and isinstance( newParmList[-1], codeTypes.ArrayData ):
+                continue
+
+            newParmList.append(p)
+
+        else:
+            # Create new callback pointer and context pointer parameters.
+            #
+            # Note that we expect to always get here at least once, because otherwise this function
+            # would not have been called.  Also, we should really only get here once, but that is
+            # not explicitly handled yet.
+
+            # todo: handlerName should be extracted from passed in parameters, or some other
+            #       method, rather than explicitly constructing it here.  Perhaps if we pass
+            #       in the parsed handler dictionary.  This needs to be cleaned up.
+            handlerName = codeTypes.AddNamePrefix(p.name)+'Func_t'
+
+            funcParm = codeTypes.HandlerParmData( "handlerPtr", handlerName )
+            contextParm = codeTypes.SimpleData( "contextPtr", "void*" )
+            newParmList += [ funcParm, contextParm ]
+
+    return newParmList, funcParm, handlerName
+
+
 
 def PostProcessAddHandler(f, flist, tlist):
     """
     Define the AddHandler and RemoveHandler functions and add them to the function list.
 
-    todo:
-     - Can the RemoveHandler function take additional parameters? If so, this could get complicated
-       or maybe not so complicated.  There would have to be a REMOVE_HANDLER keyword, similar to
-       how there is an ADD_HANDLER keyword.
-       UPDATE: no, the RemoveHandler should not need additional parameters
-     - Does it make any sense for the AddHandler to support more than one additional parameter. Based
-       on current usage, the only time one extra parameter is used is for the MDC, where the user
-       can select which profile they are registering against for state changes.  In all other cases,
-       the AddHandler does not take any additional parameters, beyond the function pointer and in
-       some cases the context pointer.  Reviewed the MCC and Positioning APIs.  MCC is same as MDC
-       and uses a profile ref.  Positioning uses two additional parameters horizontal and vertical
-       magnitude.  This could make things complicated.
     """
 
     #print f
     #print f.parmList
 
+    # The baseName for the type and functions defined here is the EVENT name + 'Handler'.
+    newBaseName = f.baseName
+    if not newBaseName.endswith('Handler'):
+        newBaseName += 'Handler'
 
     #
     # Create the AddHandler/RemoveHandler ref type, which is returned by the AddHandler and used
     # by the RemoveHandler.
     #
     handlerRefType = codeTypes.ReferenceData(
-                        f.baseName,
-                        FormatHeaderComment("Reference type for %s handler ADD/REMOVE functions" % f.name))
+        newBaseName,
+        FormatHeaderComment("Reference type used by Add/Remove functions for EVENT '%s'" % f.name))
     tlist[f.name] = handlerRefType
     #print handlerRefType
     #print handlerRefDefn
@@ -1666,56 +1796,29 @@ def PostProcessAddHandler(f, flist, tlist):
     # Create the AddHandler and add it to the function list
     #
 
-    # todo: update codeTypes.HandlerParmData and use it here
-    addParm = codeTypes.SimpleData( "handlerPtr", f.type )
-    #print addParm
+    addParmList, addParm, handlerName = PostProcessParmListWithHandler(f.parmList)
 
-    # always add a contextPtr parameter
-    # todo: There might be a better way to handle this rather than using SimpleData(), but in this
-    #       case, we actually want to pass the pointer value, rather than dereferencing it.
-    contextParm = codeTypes.SimpleData( "contextPtr", "void*" )
+    # Construct a comment string that combines the EVENT comment, with the canned comment for
+    # the AddHandler function.  Hopefully the EVENT comment will be worded in such a way that
+    # it is readable when combined.
+    newComment = "Add handler function for EVENT '%s'" % f.name
+    commentString = ExtractCommentString( f.comment )
+    if commentString:
+        newComment += ( "\n\n" + commentString )
 
-    # Create the parameter list for the new AddHandler function.  If the current function does
-    # not have any parameters, the parameter list will only contain VoidData.
-    #print f.name, f.parmList, len(f.parmList)
-    if (len(f.parmList) == 1) and isinstance(f.parmList[0], codeTypes.VoidData):
-        addParmList = [ addParm, contextParm ]
-    else:
-        addParmList = list(f.parmList) + [ addParm, contextParm ]
     addHandler = codeTypes.FunctionData(
-        "Add" + f.baseName,
+        "Add" + newBaseName,
         handlerRefType.refName,
         addParmList,
-        FormatHeaderComment("%s handler ADD function" % f.name)
+        FormatHeaderComment(newComment)
     )
-    addHandler.addHandlerName = f.type
 
     # The parameter needs to know the name of the enclosing function.  Also, the function itself
     # needs to know that it is an AddHandler function, and the name/type of the handler that it
     # is adding.
-
-    # todo: update codeTypes.HandlerParmData and use addParm.setFuncName here.
-    # As a temporary solution, directly modify the templates for the parameter
-
-    # These two definitions could be directly substituted into the templates below,
-    # but for now, define them explicitly.
-    addParm.funcName = addHandler.name
-    addParm.funcType = addHandler.type
-
-    addParm.clientPack = """\
-// The input parameters are stored in the client data object, and it is
-// a pointer to this object that is passed down.
-// Create a new client data object and fill it in
-_ClientData_t* _clientDataPtr = le_mem_ForceAlloc(_ClientDataPool);
-_clientDataPtr->handlerPtr = (le_event_HandlerFunc_t)handlerPtr;
-_clientDataPtr->contextPtr = contextPtr;
-_clientDataPtr->callersThreadRef = le_thread_GetCurrent();
-contextPtr = _clientDataPtr;\
-"""
-
-    addParm.handlerUnpack = ""
-    addParm.unpackCallName = "AsyncResponse_%s" % addParm.funcName
-    # end of todo from above
+    addParm.setFuncName(addHandler.name, addHandler.type)
+    addHandler.handlerName = handlerName
+    addHandler.isAddHandler = True
 
     # Add the function to the function list
     #print addHandler
@@ -1757,16 +1860,44 @@ le_mem_Release(serverDataPtr);
 """.format(func=addHandler)
 
     removeHandler = codeTypes.FunctionData(
-        "Remove" + f.baseName,
+        "Remove" + newBaseName,
         "void",
         [ removeParm ],
-        FormatHeaderComment("%s handler REMOVE function" % f.name)
+        FormatHeaderComment("Remove handler function for EVENT '%s'" % f.name)
     )
     removeHandler.isRemoveHandler = True
 
     # Add the function to the function list
     flist[removeHandler.name] = removeHandler
 
+
+
+def PostProcessFuncWithHandler(f):
+    """
+    Process a function containing a the handler parameter
+    """
+
+    #print f
+    #print f.parmList
+
+    # Convert the handler parameter
+    newParmList, funcParm, handlerName = PostProcessParmListWithHandler(f.parmList)
+
+    # Create the new function with newParmList, rather than just over-riding parmList on the old
+    # function, to ensure everything gets inited correctly.
+    newFunc = codeTypes.FunctionData(
+        f.baseName,
+        f.baseType,
+        newParmList,
+        f.comment
+    )
+
+    # The parameter needs to know the name of the enclosing function.  Also, the function itself
+    # needs to know that it has a handler parameter, as well has the handler name.
+    funcParm.setFuncName(newFunc.name, newFunc.type)
+    newFunc.handlerName = handlerName
+
+    return newFunc
 
 
 
@@ -1793,6 +1924,13 @@ def WriteAllCode(commandArgs, parsedData, hashValue):
         elif isinstance( f, codeTypes.BaseTypeData ):
             parsedTypes[f.name] = f
         else:
+            # If the function has a handler type parameter, then post-process. It is expected that
+            # there is only one such parameter.
+            # todo: this may need to be revisited later.
+            for p in f.parmList:
+                if isinstance( p, codeTypes.HandlerTypeParmData ):
+                    f = PostProcessFuncWithHandler( f )
+                    break
             parsedFunctions[f.name] = f
 
     # Create the generic client functions

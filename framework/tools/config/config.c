@@ -5,7 +5,7 @@
  *
  *  Utility to work with a config tree from the command line.
  *
- *  Copyright (C) Sierra Wireless, Inc. 2013, 2014. All rights reserved. Use of this work is subject
+ *  Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  *  to license.
  */
 // -------------------------------------------------------------------------------------------------
@@ -36,12 +36,6 @@
 
 
 
-/// Json format string.
-#define JSON_FORMAT "--format=json"
-
-
-
-
 /// Json field names.
 #define JSON_FIELD_TYPE "type"
 #define JSON_FIELD_NAME "name"
@@ -50,51 +44,61 @@
 
 
 
-
 /// Name used to launch this program.
-static char ProgramName[LE_CFG_STR_LEN_BYTES] = "";
+static const char* ProgramName;
 
+
+
+/// Configuration tree node path.
+static const char* NodePath;
+
+
+/// Destination path for copy and move operations.
+static const char* NodeDestPath;
+
+
+
+/// Configuration tree node value.
+static const char* NodeValue;
+
+
+
+/// Node's data type (default = string).
+static le_cfg_nodeType_t DataType = LE_CFG_TYPE_STRING;
+
+
+
+/// File system path (absolute).
+static char FilePath[PATH_MAX];
+
+
+
+/// Name of a configuration tree.
+static const char* TreeName;
+
+
+
+/// true = do import or export using JSON format.
+static bool UseJson = false;
+
+
+
+/// If true, delete the original node after a copy, false leave the original alone.
+static bool DeleteAfterCopy = false;
+
+
+
+/// Function to be used to handle the command.
+static int (*CommandHandler)(void);
 
 
 
 // -------------------------------------------------------------------------------------------------
 /**
- *  Indicies of the various command line parameters expected by the various sub-commands.
+ *  Simply write the usage text to the console.
  */
 // -------------------------------------------------------------------------------------------------
-typedef enum ParamIndices
-{
-    PARAM_COMMAND_ID        = 0,  ///< Main command index.
-
-    PARAM_GET_NODE_PATH     = 1,  ///< The path the read is occuring on.
-    PARAM_GET_FORMAT        = 2,  ///< Expected format option.
-
-    PARAM_SET_NODE_PATH     = 1,  ///< Path the write is occuring on.
-    PARAM_SET_VALUE         = 2,  ///< Value being written to the node in question.
-    PARAM_SET_TYPE          = 3,  ///< If specified, the type of value being written.
-
-    PARAM_RN_NODE_PATH      = 1,  ///< Path to the node to rename.
-    PARAM_RN_NEW_NAME       = 2,  ///< The new name for the node in question.
-
-    PARAM_IMP_EXP_NODE_PATH = 1,  ///< Path to the node being imported or exported.
-    PARAM_IMP_EXP_FILE_PATH = 2,  ///< The path in the filesystem the import/export is from/to.
-    PARAM_IMP_EXP_FORMAT    = 3,  ///< Expected format option.
-
-    PARAM_DEL_NODE_PATH     = 1,  ///< Path to the node being deleted.
-
-    PARAM_RMTREE_NAME       = 1   ///< The name of the tree to delete.
-}
-ParamIndices_t;
-
-
-
-
-// -------------------------------------------------------------------------------------------------
-/**
- *  Simply write the useage text to the console.
- */
-// -------------------------------------------------------------------------------------------------
-static void DumpHelpText
+static void PrintHelpAndExit
 (
     void
 )
@@ -105,8 +109,10 @@ static void DumpHelpText
            "\t%s get <tree path> [--format=json]\n\n"
            "To write a value:\n"
            "\t%s set <tree path> <new value> [<type>]\n\n"
-           "To rename a node:\n"
-           "\t%s rename <node path> <new name>\n\n"
+           "To move a node:\n"
+           "\t%s move <node path> <new name>\n\n"
+           "To copy a node:\n"
+           "\t%s copy <node path> <new name>\n\n"
            "To delete a node:\n"
            "\t%s delete <tree path>\n\n"
            "To clear or create a new, empty node:\n"
@@ -124,7 +130,7 @@ static void DumpHelpText
            "\t<tree name>: Is the name of a tree in the system, but without a path.\n"
            "\t<file path>: Path to the file to import from or export to.\n"
            "\t<new value>: Is a string value to write to the config tree.\n"
-           "\t<type>:      Is optional and mmust be one of bool, int, float, or string.\n"
+           "\t<type>:      Is optional and must be one of bool, int, float, or string.\n"
            "\t             If type is bool, then value must be either true or false.\n"
            "\t             If unspecified, the default type will be string.\n"
            "\n"
@@ -159,56 +165,10 @@ static void DumpHelpText
            ProgramName,
            ProgramName,
            ProgramName,
+           ProgramName,
            ProgramName);
-}
 
-
-
-
-// -------------------------------------------------------------------------------------------------
-/**
- *  Called to ensuere that one of the program's requried parameters has been set.  If it isn't then
- *  a message is printed to STDERR.
- *
- *  @return LE_OK if the parameter is found and was copied ok.  LE_FAULT if the param was not
- *          supplied, or if the internal buffer was too small for the param string.
- */
-// -------------------------------------------------------------------------------------------------
-static le_result_t GetRequiredParameter
-(
-    size_t argIndex,        ///< Index of the arg in question.
-    char* argBufferPtr,     ///< The buffer to write the string to.
-    size_t argBufferSize,   ///< The size of the buffer in question.
-    const char* argNamePtr  ///< The name of the param we're looking for.
-)
-// -------------------------------------------------------------------------------------------------
-{
-    le_result_t result = le_arg_GetArg(argIndex, argBufferPtr, argBufferSize);
-
-    if (result == LE_OVERFLOW)
-    {
-        fprintf(stderr,
-                "Required parameter, %s, is too large for internal buffers.\n"
-                "For more details please run:\n"
-                "\t%s help\n\n",
-                argNamePtr,
-                ProgramName);
-
-        return LE_FAULT;
-    }
-    else if (result == LE_NOT_FOUND)
-    {
-        fprintf(stderr,
-                "Required parameter, %s, is missing.\n"
-                "For more details please run:\n"
-                "\t%s help\n\n",
-                argNamePtr,
-                ProgramName);
-
-        return LE_FAULT;
-    }
-
-    return result;
+    exit(EXIT_SUCCESS);
 }
 
 
@@ -363,7 +323,7 @@ static void DumpTreeJSON
 )
 // -------------------------------------------------------------------------------------------------
 {
-    // Note that becuse this is a recursive function, the buffer here is static in order to save on
+    // Note that because this is a recursive function, the buffer here is static in order to save on
     // stack space.  The implication here is that we then have to be careful how it is later
     // accessed.  Also, this makes the function not thread safe.  But this trade off was made as
     // this was not intended to be a multi-threaded program.
@@ -426,7 +386,7 @@ static void DumpTree
 )
 // -------------------------------------------------------------------------------------------------
 {
-    // Note that becuse this is a recursive function, the buffer here is static in order to save on
+    // Note that because this is a recursive function, the buffer here is static in order to save on
     // stack space.  The implication here is that we then have to be careful how it is later
     // accessed.  Also, this makes the function not thread safe.  But this trade off was made as
     // this was not intended to be a multi-threaded program.
@@ -506,8 +466,7 @@ static void DumpTree
 /**
  *  Given a type name string, convert it to a proper config type enumeration value.
  *
- *  @return The specified type ID if successful, LE_CFG_TYPE_DOESNT_EXIST is returned if this
- *          function fails.
+ *  @return The specified type ID if successful.  Prints an error message and exits on error.
  */
 // -------------------------------------------------------------------------------------------------
 static le_cfg_nodeType_t GetNodeTypeFromString
@@ -539,117 +498,8 @@ static le_cfg_nodeType_t GetNodeTypeFromString
     }
 
     // Looks like we didn't get something useful, so return in error.
-    fprintf(stderr, "Unexpected node type specified, '%s'\n", typeNamePtr);
-    return LE_CFG_TYPE_DOESNT_EXIST;
-}
-
-
-
-
-// -------------------------------------------------------------------------------------------------
-/**
- *  Get the specified command line argument and get a type Id from it.
- *
- *  @return The specified type ID if successful, LE_CFG_TYPE_DOESNT_EXIST is returned if this
- *          function fails.
- */
-// -------------------------------------------------------------------------------------------------
-static le_cfg_nodeType_t GetNewNodeTypeFromParam
-(
-    size_t paramIndex  ///< Read the type name string from this command line parameter.
-)
-// -------------------------------------------------------------------------------------------------
-{
-    char typeName[COMMAND_MAX] = "";
-
-    // Let's see if a type was given.
-    le_result_t result = le_arg_GetArg(paramIndex, typeName, sizeof(typeName));
-
-    if (result == LE_OVERFLOW)
-    {
-        // I don't know what was specified, but it was way too big.
-        fprintf(stderr,
-                "Parameter node type, '%s' is too large for internal buffers.\n"
-                "For more details please run:\n"
-                "\t%s help\n\n",
-                typeName,
-                ProgramName);
-
-        return LE_CFG_TYPE_DOESNT_EXIST;
-    }
-    else if (result == LE_NOT_FOUND)
-    {
-        // Nothing was supplied, so go with our default.
-        return LE_CFG_TYPE_STRING;
-    }
-
-    // Ok, convert the string into a proper type enum.
-    return GetNodeTypeFromString(typeName);
-}
-
-
-
-
-// -------------------------------------------------------------------------------------------------
-/**
- *  Function to process the import and export parameters.  File path is also translated into an
- *  absolute path.
- *
- *  @return If either of the parameters is missing or too large this function will return LE_FAULT.
- *          LE_FAULT is also returned if an extra parameter for JSON format is given, but it's
- *          malformed.  LE_OK is returned otherwise.
- */
-// -------------------------------------------------------------------------------------------------
-static le_result_t GetImpExpParams
-(
-    char* nodePathPtr,  ///< Buffer to hold the node path, must be at least LE_CFG_STR_LEN_BYTES bytes in
-                        ///<   size.
-    char* filePathPtr,  ///< Bufer to hold the file path, must be at least PATH_MAX bytes in size.
-    bool* isJSONPtr     ///< JSON format flag
-)
-// -------------------------------------------------------------------------------------------------
-{
-    char relativePath[LE_CFG_STR_LEN_BYTES] = "";
-    char format[LE_CFG_STR_LEN_BYTES] = "";
-
-    // Get the node path from our command line arguments.
-    if (GetRequiredParameter(PARAM_IMP_EXP_NODE_PATH,
-                             nodePathPtr,
-                             LE_CFG_STR_LEN_BYTES,
-                             "node path") != LE_OK)
-    {
-        return LE_FAULT;
-    }
-
-    // Get the new value from the command line arguments.
-    if (GetRequiredParameter(PARAM_IMP_EXP_FILE_PATH,
-                             relativePath,
-                             LE_CFG_STR_LEN_BYTES,
-                             "file path") != LE_OK)
-    {
-        return LE_FAULT;
-    }
-
-    // Convert the given path from a potentially relative path, to an absolute one.
-    realpath(relativePath, filePathPtr);
-
-    // Check to see if the supplied an extra parameter for the format.
-    if (le_arg_GetArg(PARAM_IMP_EXP_FORMAT, format, sizeof(format)) == LE_OK)
-    {
-        // Looks like they did.  Make sure that the param is the JSON format specifier.  (That's
-        // the only alternative output format supported.)
-        if (strncmp(format, JSON_FORMAT, sizeof(JSON_FORMAT)) != 0)
-        {
-            fprintf(stderr, "Bad format specifier, '%s'.", format);
-            return LE_FAULT;
-        }
-
-        *isJSONPtr = true;
-        return LE_OK;
-    }
-
-    *isJSONPtr = false;
-    return LE_OK;
+    fprintf(stderr, "Unrecognized node type specified, '%s'\n", typeNamePtr);
+    exit(EXIT_FAILURE);
 }
 
 
@@ -684,7 +534,8 @@ static void ReportImportExportFail
 // -------------------------------------------------------------------------------------------------
 /**
  *  This function will attempt read a value from the tree, and write it to standard out.  If the
- *  specifed node is a stem, then the tree structure will be printed, starting at the specifed node.
+ *  specified node is a stem, then the tree structure will be printed, starting at the specified
+ *  node.
  *
  *  @return EXIT_SUCCESS if the command completes properly.  EXIT_FAILURE otherwise.
  */
@@ -742,8 +593,8 @@ static int HandleGetUserFriendly
  *  This function will attempt read a value from the tree, and write it to standard out, or to a
  *  file.  The tree data will be written in JSON format.
  *
- *  If the specifed node is a stem, then the tree structure will be dumped, starting at the
- *  specifed node.  If a '*' is given for a node path then all trees in the system will be dumped
+ *  If the specified node is a stem, then the tree structure will be dumped, starting at the
+ *  specified node.  If a '*' is given for a node path then all trees in the system will be dumped
  *  into a JSON document.
  *
  *  @return EXIT_SUCCESS if the command completes properly.  EXIT_FAILURE otherwise.
@@ -752,7 +603,7 @@ static int HandleGetUserFriendly
 static int HandleGetJSON
 (
     const char* nodePathPtr,  ///< Path to the node in the configTree.
-    const char* filePathPtr   ///< Path to the file in the filesystem.  If NULL STDOUT is used
+    const char* filePathPtr   ///< Path to the file in the file system.  If NULL STDOUT is used
                               ///< instead of a file.
 )
 // -------------------------------------------------------------------------------------------------
@@ -994,7 +845,7 @@ static le_result_t HandleImportJSON
         return LE_FAULT;
     }
 
-    // Ok, looks like the JSON loaded, so iterate through it and dump it's contents into the
+    // OK, looks like the JSON loaded, so iterate through it and dump it's contents into the
     // configTree.
     le_result_t result = HandleImportJSONIteration(iterRef, decodedRootPtr);
     json_decref(decodedRootPtr);
@@ -1008,7 +859,8 @@ static le_result_t HandleImportJSON
 // -------------------------------------------------------------------------------------------------
 /**
  *  This function will attempt read a value from the tree, and write it to standard out.  If the
- *  specifed node is a stem, then the tree structure will be printed, starting at the specifed node.
+ *  specified node is a stem, then the tree structure will be printed, starting at the specified
+ *  node.
  *
  *  @return EXIT_SUCCESS if the command completes properly.  EXIT_FAILURE otherwise.
  */
@@ -1019,31 +871,13 @@ static int HandleGet
 )
 // -------------------------------------------------------------------------------------------------
 {
-    char nodePath[LE_CFG_STR_LEN_BYTES] = "";
-    char format[LE_CFG_STR_LEN_BYTES] = "";
-
-    // Get the node path from our command line arguments.
-    if (GetRequiredParameter(PARAM_GET_NODE_PATH, nodePath, sizeof(nodePath), "node path") != LE_OK)
+    if (UseJson)
     {
-        return EXIT_FAILURE;
-    }
-
-    // Check to see if the supplied an extra parameter.
-    if (le_arg_GetArg(PARAM_GET_FORMAT, format, sizeof(format)) == LE_OK)
-    {
-        // Looks like they did.  Make sure that the param is the JSON format specifier.  (That's
-        // the only alternative output format supported.)
-        if (strncmp(format, JSON_FORMAT, sizeof(JSON_FORMAT)) != 0)
-        {
-            fprintf(stderr, "Bad format specifier, '%s'.", format);
-            return EXIT_FAILURE;
-        }
-
-        return HandleGetJSON(nodePath, NULL);
+        return HandleGetJSON(NodePath, NULL);
     }
 
     // Looks like we're just outputing the human readable format.
-    return HandleGetUserFriendly(nodePath);
+    return HandleGetUserFriendly(NodePath);
 }
 
 
@@ -1051,7 +885,7 @@ static int HandleGet
 
 // -------------------------------------------------------------------------------------------------
 /**
- *  Set a value in the configTree to sa new value as specified by the caller.
+ *  Set a value in the configTree to a new value as specified by the caller.
  *
  *  @return EXIT_SUCCESS if the command completes properly.  EXIT_FAILURE otherwise.
  */
@@ -1062,33 +896,18 @@ static int HandleSet
 )
 // -------------------------------------------------------------------------------------------------
 {
-    char nodePath[LE_CFG_STR_LEN_BYTES] = "";
-    char nodeValue[LE_CFG_STR_LEN_BYTES] = "";
-
-    // Get the node path from our command line arguments.
-    if (GetRequiredParameter(PARAM_SET_NODE_PATH, nodePath, sizeof(nodePath), "node path") != LE_OK)
-    {
-        return EXIT_FAILURE;
-    }
-
-    // Get the new value from the command line arguments.
-    if (GetRequiredParameter(PARAM_SET_VALUE, nodeValue, sizeof(nodeValue), "new value") != LE_OK)
-    {
-        return EXIT_FAILURE;
-    }
-
     // Looks like we're trying to write a value to a node.  Get the node's current type and then
     // write the requested value to that node.
-    le_cfg_IteratorRef_t iterRef = le_cfg_CreateWriteTxn(nodePath);
+    le_cfg_IteratorRef_t iterRef = le_cfg_CreateWriteTxn(NodePath);
 
     le_cfg_nodeType_t originalType = le_cfg_GetNodeType(iterRef, "");
-    le_cfg_nodeType_t newType = GetNewNodeTypeFromParam(PARAM_SET_TYPE);
+    le_cfg_nodeType_t newType = DataType;
 
     if (   (newType != originalType)
         && (originalType != LE_CFG_TYPE_DOESNT_EXIST))
     {
         printf("Converting node '%s' type from %s to %s.\n",
-               nodePath,
+               NodePath,
                NodeTypeStr(originalType),
                NodeTypeStr(newType));
     }
@@ -1098,30 +917,30 @@ static int HandleSet
     switch (newType)
     {
         case LE_CFG_TYPE_STRING:
-            le_cfg_SetString(iterRef, "", nodeValue);
+            le_cfg_SetString(iterRef, "", NodeValue);
             break;
 
         case LE_CFG_TYPE_BOOL:
-            if (strncmp(nodeValue, "false", sizeof(nodeValue)) == 0)
+            if (strcmp(NodeValue, "false") == 0)
             {
                 le_cfg_SetBool(iterRef, "", false);
             }
-            else if (strncmp(nodeValue, "true", sizeof(nodeValue)) == 0)
+            else if (strcmp(NodeValue, "true") == 0)
             {
                 le_cfg_SetBool(iterRef, "", true);
             }
             else
             {
-                fprintf(stderr, "Bad boolean value '%s'.\n", nodeValue);
+                fprintf(stderr, "Bad boolean value '%s'.\n", NodeValue);
             }
             break;
 
         case LE_CFG_TYPE_INT:
-            le_cfg_SetInt(iterRef, "", atoi(nodeValue));
+            le_cfg_SetInt(iterRef, "", atoi(NodeValue));
             break;
 
         case LE_CFG_TYPE_FLOAT:
-            le_cfg_SetFloat(iterRef, "", atof(nodeValue));
+            le_cfg_SetFloat(iterRef, "", atof(NodeValue));
             break;
 
         case LE_CFG_TYPE_DOESNT_EXIST:
@@ -1149,6 +968,24 @@ static int HandleSet
 
 
 
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Command-line argument handler called when a node name is found on the command-line.
+ *
+ *  Stores a pointer to the node path in the NodeDestPath variable.
+ */
+// -------------------------------------------------------------------------------------------------
+static void NodeDestPathArgHandler
+(
+    const char* nodeDestPath
+)
+// -------------------------------------------------------------------------------------------------
+{
+    NodeDestPath = nodeDestPath;
+}
+
+
+
 
 // -------------------------------------------------------------------------------------------------
 /**
@@ -1157,58 +994,84 @@ static int HandleSet
  *  @return EXIT_SUCCESS if the command completes properly.  EXIT_FAILURE otherwise.
  */
 // -------------------------------------------------------------------------------------------------
-static int HandleRename
+static int HandleCopy
 (
     void
 )
 // -------------------------------------------------------------------------------------------------
 {
-    char nodePath[LE_CFG_STR_LEN_BYTES] = "";
-    char newName[LE_CFG_NAME_LEN_BYTES] = "";
+    // Create a temp file to export the tree to.
+    char tempFilePath[] = "/tmp/configExport-XXXXXX";
+    int tempFd;
 
-    // Get the node path, and the new name for the node from the command line arguments.
-    if (GetRequiredParameter(PARAM_RN_NODE_PATH, nodePath, sizeof(nodePath), "node path") != LE_OK)
+    do
     {
-        return EXIT_FAILURE;
+        tempFd = mkstemp(tempFilePath);
+    }
+    while ((tempFd == -1) && (errno == EINTR));
+
+    if (tempFd == -1)
+    {
+        fprintf(stderr, "Could not create temp file. Reason, %s (%d).", strerror(errno), errno);
+        return 1;
     }
 
-    if (GetRequiredParameter(PARAM_RN_NEW_NAME, newName, sizeof(newName), "new name") != LE_OK)
+    // Unlink the file now so that we can make sure that it will end up being deleted, no matter how
+    // we exit.
+    if (unlink(tempFilePath) == -1)
     {
-        return EXIT_FAILURE;
+        printf("Could not unlink temporary file. Reason, %s (%d).", strerror(errno), errno);
     }
 
-    // Attempt the rename, then report success or failure.
-    le_cfg_IteratorRef_t iterRef = le_cfg_CreateWriteTxn(nodePath);
+    // Create a transaction and export the data from the config tree.
+    le_cfg_IteratorRef_t iterRef = le_cfg_CreateWriteTxn(NodePath);
+    le_result_t result = le_cfgAdmin_ExportTree(iterRef, tempFilePath, "");
 
-    le_result_t result = le_cfg_SetNodeName(iterRef, "", newName);
-    int exitResult = EXIT_SUCCESS;
-
-    switch (result)
+    if (result != LE_OK)
     {
-        case LE_OK:
-            break;
-
-        case LE_FORMAT_ERROR:
-            fprintf(stderr, "Invalid node name specified, '%s'.\n", newName);
-            exitResult = EXIT_FAILURE;
-            break;
-
-        case LE_DUPLICATE:
-            fprintf(stderr, "Duplicate node name specified, '%s'.\n", newName);
-            exitResult = EXIT_FAILURE;
-            break;
-
-        default:
-            fprintf(stderr,
-                    "An unexpected error occured, %d: %s.\n",
-                    result,
-                    LE_RESULT_TXT(result));
-
-            exitResult = EXIT_FAILURE;
-            break;
+        fprintf(stderr,
+                "An I/O error occurred while updating the config tree.  "
+                "Tree has been left untouched.\n");
+        goto txnDone;
     }
 
-    // Make sure that the change was successful, before we try to commit.
+    if (DeleteAfterCopy != false)
+    {
+        // Since this is a rename, then delete the node at the original location.
+        le_cfg_DeleteNode(iterRef, "");
+    }
+
+    // Now, move the iterator to the node's new name, then attempt to reload the data.
+    le_cfg_GoToNode(iterRef, "..");
+    result = le_cfgAdmin_ImportTree(iterRef, tempFilePath, NodeDestPath);
+
+    if (result != LE_OK)
+    {
+        switch (result)
+        {
+            case LE_FAULT:
+                fprintf(stderr,
+                        "An I/O error occurred while updating the config tree.  "
+                        "Tree has been left untouched.\n");
+                break;
+
+            case LE_FORMAT_ERROR:
+                fprintf(stderr,
+                        "Import/export corruption detected.  Tree has been left untouched.\n");
+                break;
+
+            default:
+                fprintf(stderr,
+                        "An unexpected error has occurred: %s, (%d).\n",
+                        LE_RESULT_TXT(result),
+                        result);
+                break;
+        }
+    }
+
+ txnDone:
+    // Make sure that the change was successful, and either commit or discard any changes that were
+    // made.
     if (result == LE_OK)
     {
         le_cfg_CommitTxn(iterRef);
@@ -1216,6 +1079,24 @@ static int HandleRename
     else
     {
         le_cfg_CancelTxn(iterRef);
+    }
+
+    // Was the operation successful?
+    int exitResult = (result == LE_OK) ? EXIT_SUCCESS : EXIT_FAILURE;
+
+    // Finally, clean up our temp file and report our results.
+    int closeRetVal;
+
+    do
+    {
+        closeRetVal = close(tempFd);
+    }
+    while ((closeRetVal == -1) && (errno == EINTR));
+
+    if (closeRetVal == -1)
+    {
+        fprintf(stderr, "Could not close temp file. Reason, %s (%d).", strerror(errno), errno);
+        exitResult = EXIT_FAILURE;
     }
 
     return exitResult;
@@ -1236,31 +1117,22 @@ static int HandleImport
 )
 // -------------------------------------------------------------------------------------------------
 {
-    char nodePath[LE_CFG_STR_LEN_BYTES] = "";
-    char filePath[PATH_MAX] = "";
-    bool isJSON;
-
-    if (GetImpExpParams(nodePath, filePath, &isJSON) != LE_OK)
-    {
-        return EXIT_FAILURE;
-    }
-
-    le_cfg_IteratorRef_t iterRef = le_cfg_CreateWriteTxn(nodePath);
+    le_cfg_IteratorRef_t iterRef = le_cfg_CreateWriteTxn(NodePath);
     le_result_t result;
 
     // Check requested format format.
-    if (isJSON)
+    if (UseJson)
     {
-        result = HandleImportJSON(iterRef, filePath);
+        result = HandleImportJSON(iterRef, FilePath);
     }
     else
     {
-        result = le_cfgAdmin_ImportTree(iterRef, filePath, "");
+        result = le_cfgAdmin_ImportTree(iterRef, FilePath, "");
     }
 
     if (result != LE_OK)
     {
-        ReportImportExportFail(result, "Import", nodePath, filePath);
+        ReportImportExportFail(result, "Import", NodePath, FilePath);
         le_cfg_CancelTxn(iterRef);
 
         return EXIT_FAILURE;
@@ -1286,32 +1158,23 @@ static int HandleExport
 )
 // -------------------------------------------------------------------------------------------------
 {
-    char nodePath[LE_CFG_STR_LEN_BYTES] = "";
-    char filePath[PATH_MAX] = "";
-    bool isJSON;
-
-    if (GetImpExpParams(nodePath, filePath, &isJSON) != LE_OK)
-    {
-        return EXIT_FAILURE;
-    }
-
     le_result_t result;
 
     // Check required format.
-    if (isJSON)
+    if (UseJson)
     {
-        result = HandleGetJSON(nodePath, filePath);
+        result = HandleGetJSON(NodePath, FilePath);
     }
     else
     {
-        le_cfg_IteratorRef_t iterRef = le_cfg_CreateReadTxn(nodePath);
-        result = le_cfgAdmin_ExportTree(iterRef, filePath, "");
+        le_cfg_IteratorRef_t iterRef = le_cfg_CreateReadTxn(NodePath);
+        result = le_cfgAdmin_ExportTree(iterRef, FilePath, "");
         le_cfg_CancelTxn(iterRef);
     }
 
     if (result != LE_OK)
     {
-        ReportImportExportFail(result, "Export", nodePath, filePath);
+        ReportImportExportFail(result, "Export", NodePath, FilePath);
         return EXIT_FAILURE;
     }
 
@@ -1334,16 +1197,8 @@ static int HandleDelete
 )
 // -------------------------------------------------------------------------------------------------
 {
-    char nodePath[LE_CFG_STR_LEN_BYTES] = "";
+    le_cfg_QuickDeleteNode(NodePath);
 
-    // Get the node path from our command line arguments.
-    if (GetRequiredParameter(PARAM_DEL_NODE_PATH, nodePath, sizeof(nodePath), "node path") != LE_OK)
-    {
-        return EXIT_FAILURE;
-    }
-
-    // Ok, delete the node.
-    le_cfg_QuickDeleteNode(nodePath);
     return EXIT_SUCCESS;
 }
 
@@ -1363,16 +1218,9 @@ static int HandleClear
 )
 // -------------------------------------------------------------------------------------------------
 {
-    char nodePath[LE_CFG_STR_LEN_BYTES] = "";
+    // Clear the node by setting it empty.
+    le_cfg_QuickSetEmpty(NodePath);
 
-    // Get the node path from our command line arguments.
-    if (GetRequiredParameter(PARAM_DEL_NODE_PATH, nodePath, sizeof(nodePath), "node path") != LE_OK)
-    {
-        return EXIT_FAILURE;
-    }
-
-    // Ok, clear the node.
-    le_cfg_QuickSetEmpty(nodePath);
     return EXIT_SUCCESS;
 }
 
@@ -1412,11 +1260,10 @@ static int HandleList
 
 
 
-
 // -------------------------------------------------------------------------------------------------
 /**
  *  This function will delete the named tree.  Both from the configTree's memory and from the
- *  filesystem.
+ *  file system.
  *
  *  @return EXIT_SUCCESS if the command completes properly.  EXIT_FAILURE otherwise.
  */
@@ -1427,17 +1274,26 @@ static int HandleDeleteTree
 )
 // -------------------------------------------------------------------------------------------------
 {
-    // Simply get the tree name from the command line parameters and let the configTree do the rest.
-    char treeName[MAX_TREE_NAME_BYTES] = "";
-
-    if (GetRequiredParameter(PARAM_RMTREE_NAME, treeName, sizeof(treeName), "tree name") != LE_OK)
-    {
-        return EXIT_FAILURE;
-    }
-
-    le_cfgAdmin_DeleteTree(treeName);
+    le_cfgAdmin_DeleteTree(TreeName);
 
     return EXIT_SUCCESS;
+}
+
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Function called when a data type is found on the command line.
+ */
+// -------------------------------------------------------------------------------------------------
+static void DataTypeArgHandler
+(
+    const char* dataType
+)
+// -------------------------------------------------------------------------------------------------
+{
+    // Convert the string into a proper type enum.
+    DataType = GetNodeTypeFromString(dataType);
 }
 
 
@@ -1445,69 +1301,190 @@ static int HandleDeleteTree
 
 // -------------------------------------------------------------------------------------------------
 /**
- *  Initialize the component.  This initializer will extract the number of commandline arguments
- *  given to the executable and determine what operation to perform.  Once that is done, we exit
- *  and report success or failure to the process that started the executable.
+ *  Command-line argument handler called when a --format=X option appears on the command-line.
  */
 // -------------------------------------------------------------------------------------------------
-COMPONENT_INIT
+static void FormatArgHandler
+(
+    const char* format
+)
+// -------------------------------------------------------------------------------------------------
 {
-    // Read out the program name so that we can better format our error and help messages.
-    if (le_arg_GetProgramName(ProgramName, LE_CFG_STR_LEN_BYTES, NULL) != LE_OK)
+    if (strcmp(format, "json") == 0)
     {
-        strncpy(ProgramName, "config", LE_CFG_STR_LEN_BYTES);
+        UseJson = true;
     }
-
-    // Get the name of the sub-command that the caller wants us to execute.
-    char commandBuffer[COMMAND_MAX] = "";
-    const size_t bufferSize = sizeof(commandBuffer);
-
-    if (GetRequiredParameter(PARAM_COMMAND_ID, commandBuffer, bufferSize, "command") != LE_OK)
+    else
     {
+        fprintf(stderr, "Bad format specifier, '%s'.\n", format);
         exit(EXIT_FAILURE);
     }
+}
 
-    // Now dispatch to the appropriate sub-command.
-    if (strncmp(commandBuffer, "help", bufferSize) == 0)
+
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Command-line argument handler called when a file path is found on the command-line.
+ *
+ *  Converts the path to an absolute path and stores it in FilePath.
+ */
+// -------------------------------------------------------------------------------------------------
+static void FilePathArgHandler
+(
+    const char* filePath
+)
+// -------------------------------------------------------------------------------------------------
+{
+    // Convert the given path from a potentially relative path, to an absolute, canonical one
+    // and store it in the FilePath static variable.
+    realpath(filePath, FilePath);
+}
+
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Command-line argument handler for configuration tree node path argument.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void NodePathArgHandler
+(
+    const char* nodePath
+)
+//--------------------------------------------------------------------------------------------------
+{
+    NodePath = nodePath;
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Command-line argument handler for configuration tree node value argument.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void NodeValueArgHandler
+(
+    const char* nodeValue
+)
+//--------------------------------------------------------------------------------------------------
+{
+    NodeValue = nodeValue;
+
+    // Could optionally have a node type argument after the node value.
+    le_arg_AddPositionalCallback(DataTypeArgHandler);
+    le_arg_AllowLessPositionalArgsThanCallbacks();
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Command-line argument handler for configuration tree name argument.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void TreeNameArgHandler
+(
+    const char* treeName
+)
+//--------------------------------------------------------------------------------------------------
+{
+    TreeName = treeName;
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function that gets called by the command-line argument scanner when it sees the command
+ * on the command line.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void CommandArgHandler
+(
+    const char* command
+)
+//--------------------------------------------------------------------------------------------------
+{
+    if (strcmp(command, "get") == 0)
     {
-        DumpHelpText();
-        exit(EXIT_SUCCESS);
+        CommandHandler = HandleGet;
+
+        // Get the node path from our command line arguments and accept an optional --format=X arg.
+        le_arg_AddPositionalCallback(NodePathArgHandler);
+        le_arg_SetStringCallback(FormatArgHandler, NULL, "format");
     }
-    else if (strncmp(commandBuffer, "get", bufferSize) == 0)
+    else if (strcmp(command, "set") == 0)
     {
-        exit(HandleGet());
+        CommandHandler = HandleSet;
+
+        // Get the node path and value from our command line arguments.
+        le_arg_AddPositionalCallback(NodePathArgHandler);
+        le_arg_AddPositionalCallback(NodeValueArgHandler);
     }
-    else if (strncmp(commandBuffer, "set", bufferSize) == 0)
+    else if (strcmp(command, "move") == 0)
     {
-        exit(HandleSet());
+        CommandHandler = HandleCopy;
+
+        DeleteAfterCopy = true;
+
+        le_arg_AddPositionalCallback(NodePathArgHandler);
+        le_arg_AddPositionalCallback(NodeDestPathArgHandler);
     }
-    else if (strncmp(commandBuffer, "rename", bufferSize) == 0)
+    else if (strcmp(command, "copy") == 0)
     {
-        exit(HandleRename());
+        CommandHandler = HandleCopy;
+
+        DeleteAfterCopy = false;
+
+        le_arg_AddPositionalCallback(NodePathArgHandler);
+        le_arg_AddPositionalCallback(NodeDestPathArgHandler);
     }
-    else if (strncmp(commandBuffer, "import", bufferSize) == 0)
+    else if (strcmp(command, "import") == 0)
     {
-        exit(HandleImport());
+        CommandHandler = HandleImport;
+
+        // Expect a node path and a file path, with an optional --format= argument.
+        le_arg_AddPositionalCallback(NodePathArgHandler);
+        le_arg_AddPositionalCallback(FilePathArgHandler);
+        le_arg_SetStringCallback(FormatArgHandler, NULL, "format");
     }
-    else if (strncmp(commandBuffer, "export", bufferSize) == 0)
+    else if (strcmp(command, "export") == 0)
     {
-        exit(HandleExport());
+        CommandHandler = HandleExport;
+
+        // Expect a node path and a file path, with an optional --format= argument.
+        le_arg_AddPositionalCallback(NodePathArgHandler);
+        le_arg_AddPositionalCallback(FilePathArgHandler);
+        le_arg_SetStringCallback(FormatArgHandler, NULL, "format");
     }
-    else if (strncmp(commandBuffer, "delete", bufferSize) == 0)
+    else if (strcmp(command, "delete") == 0)
     {
-        exit(HandleDelete());
+        CommandHandler = HandleDelete;
+
+        // Need a node path from our command line arguments.
+        le_arg_AddPositionalCallback(NodePathArgHandler);
     }
-    else if (strncmp(commandBuffer, "clear", bufferSize) == 0)
+    else if (strcmp(command, "clear") == 0)
     {
-        exit(HandleClear());
+        CommandHandler = HandleClear;
+
+        // Need a node path from our command line arguments.
+        le_arg_AddPositionalCallback(NodePathArgHandler);
     }
-    else if (strncmp(commandBuffer, "list", bufferSize) == 0)
+    else if (strcmp(command, "list") == 0)
     {
-        exit(HandleList());
+        CommandHandler = HandleList;
+
+        // No additional command-line parameters for this command.
     }
-    else if (strncmp(commandBuffer, "rmtree", bufferSize) == 0)
+    else if (strcmp(command, "rmtree") == 0)
     {
-        exit(HandleDeleteTree());
+        CommandHandler = HandleDeleteTree;
+
+        // The only parameter is the tree name.
+        le_arg_AddPositionalCallback(TreeNameArgHandler);
     }
     else
     {
@@ -1515,9 +1492,40 @@ COMPONENT_INIT
                 "Error, unrecognized command, '%s'.\n"
                 "For more details please run:\n"
                 "\t%s help\n\n",
-                commandBuffer,
+                command,
                 ProgramName);
 
         exit(EXIT_FAILURE);
     }
+}
+
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Initialize the component.  This initializer will extract the number of command line arguments
+ *  given to the executable and determine what operation to perform.  Once that is done, we exit
+ *  and report success or failure to the process that started the executable.
+ */
+// -------------------------------------------------------------------------------------------------
+COMPONENT_INIT
+{
+    // Read out the program name so that we can better format our error and help messages.
+    ProgramName = le_arg_GetProgramName();
+    if (ProgramName == NULL)
+    {
+        ProgramName = "config";
+    }
+
+    // The first positional argument is the command that the caller wants us to execute.
+    le_arg_AddPositionalCallback(CommandArgHandler);
+
+    // Print help and exit if the "-h" or "--help" options are given.
+    le_arg_SetFlagCallback(PrintHelpAndExit, "h", "help");
+
+    // Scan the argument list.  This will set the CommandHandler and its parameters.
+    le_arg_Scan();
+
+    // Run the command handler.
+    exit(CommandHandler());
 }

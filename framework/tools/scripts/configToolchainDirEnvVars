@@ -39,3 +39,24 @@ else
         echo "*** WARNING: WP7 toolchain directory not found in '$WP7_TOOLCHAIN_DIR'"
     fi
 fi
+
+# If the AR86 toolchain dir is not set to anything,
+if [ "$AR86_TOOLCHAIN_DIR" = "" ]
+then
+    # Search for an installed toolchain.
+    export AR86_TOOLCHAIN_DIR=$(findtoolchain ar86)
+
+    if [ "$AR86_TOOLCHAIN_DIR" = "" ]
+    then
+        echo "Unable to find compatible cross-build toolchain."
+    else
+        echo "AR86_TOOLCHAIN_DIR set to default ($AR86_TOOLCHAIN_DIR)."
+    fi
+else
+    # Double check that the toolchain is actually installed.
+    if ! [ -f "$AR86_TOOLCHAIN_DIR/arm-poky-linux-gnueabi-gcc" ]
+    then
+        echo "*** WARNING: AR86 toolchain directory not found in '$AR86_TOOLCHAIN_DIR'"
+    fi
+fi
+

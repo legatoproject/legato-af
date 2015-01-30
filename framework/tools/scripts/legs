@@ -1,4 +1,5 @@
 #!/bin/bash
+# Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 
 export LEGATO_ROOT="$1"
 

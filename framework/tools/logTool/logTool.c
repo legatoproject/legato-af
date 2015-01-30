@@ -8,44 +8,45 @@
  * The general format of log commands is:
  *
  * @verbatim
-$ log command commandParameter in destination
+$ log command commandParameter destination
 @endverbatim
  *
  * The following are examples of supported commands:
  *
  * To set the log level to INFO for a component in a process:
  * @verbatim
-$ log level INFO in "processName/componentName"
+$ log level INFO processName/componentName
 @endverbatim
  *
  * To enable a trace:
  * @verbatim
-$ log trace "keyword" in "processName/componentName"
+$ log trace keyword processName/componentName
 @endverbatim
  *
  * To disable a trace:
  * @verbatim
-$ log stoptrace "keyword" in "processName/componentName"
+$ log stoptrace keyword processName/componentName
 @endverbatim
  *
  *
  * With all of the above examples "*" can be used in place of processName and componentName to mean
  * all processes and/or all components.  In fact if the "processName/componentName" is omitted the
- * default destination is set to all processes and all components.  Also in the examples above the
- * 'in' is optional.
+ * default destination is set to all processes and all components.
  *
  * The translated command to send to the log daemon has this format:
  *
+ * @verbatim
  *    ----------------------------------------
  *    | cmd | destination | commandParameter |
  *    ----------------------------------------
+ * @endverbatim
  *
  * where,
  *    cmd is a command code that is one byte in length.
  *    destination is the "processName/componentName" followed by a '/' character.
  *    commandParameter is the string specific to the command.
  *
- * Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 #include "legato.h"
@@ -58,40 +59,37 @@ $ log stoptrace "keyword" in "processName/componentName"
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Log command strings.
+ * The default log session for commands, if not specified.
+ *
+ * The default is to address the command to all processes and components.
  */
 //--------------------------------------------------------------------------------------------------
-#define CMD_SET_LEVEL_STR               "level"
-#define CMD_ENABLE_TRACE_STR            "trace"
-#define CMD_DISABLE_TRACE_STR           "stoptrace"
-#define CMD_LIST_COMPONENTS_STR         "list"
-#define CMD_FORGET_PROCESS_STR          "forget"
-#define CMD_HELP_STR                    "help"
+#define DEFAULT_SESSION_ID    "*/*"
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Information string that is printed when there is an error.
- */
+ * Command character byte.
+ **/
 //--------------------------------------------------------------------------------------------------
-#define ERROR_INFO_STR      "Try 'log help' for more information.\n"
+static char Command;
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * The default destination for commands.  The default is to address the command to all processes and
- * components.
- */
+ * Pointer to the "command parameter" string.  If used, this is a log level, trace keyword,
+ * or process identifier.
+ **/
 //--------------------------------------------------------------------------------------------------
-#define DEFAULT_DEST_STR    "*/*"
+static const char* CommandParamPtr = NULL;
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Maximum parameter length.
- */
+ * Pointer to the log session identifier.
+ **/
 //--------------------------------------------------------------------------------------------------
-#define MAX_CMD_PARAM_BYTES 512
+static const char* SessionIdPtr = DEFAULT_SESSION_ID;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -104,59 +102,10 @@ static bool ErrorOccurred = false;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * The command being executed.
- **/
-//--------------------------------------------------------------------------------------------------
-static char Command;
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Translates a log command string to the log command character.
- *
- * @return
- *      The log command if successful.
- *      NULL character if unsuccessful.
- */
-//--------------------------------------------------------------------------------------------------
-static char GetCmdChar
-(
-    char* cmdStringPtr          // The command string.
-)
-{
-    if (strcmp(cmdStringPtr, CMD_SET_LEVEL_STR) == 0)
-    {
-        return LOG_CMD_SET_LEVEL;
-    }
-    else if (strcmp(cmdStringPtr, CMD_ENABLE_TRACE_STR) == 0)
-    {
-        return LOG_CMD_ENABLE_TRACE;
-    }
-    else if (strcmp(cmdStringPtr, CMD_DISABLE_TRACE_STR) == 0)
-    {
-        return LOG_CMD_DISABLE_TRACE;
-    }
-    else if (strcmp(cmdStringPtr, CMD_LIST_COMPONENTS_STR) == 0)
-    {
-        return LOG_CMD_LIST_COMPONENTS;
-    }
-    else if (strcmp(cmdStringPtr, CMD_FORGET_PROCESS_STR) == 0)
-    {
-        return LOG_CMD_FORGET_PROCESS;
-    }
-    else
-    {
-        return '\0';
-    }
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Prints help to stdout.
  */
 //--------------------------------------------------------------------------------------------------
-static void PrintHelp
+static void PrintHelpAndExit
 (
     void
 )
@@ -167,9 +116,9 @@ static void PrintHelp
         "\n"
         "SYNOPSIS:\n"
         "    log list\n"
-        "    log level FILTER_STR [in] [DESTINATION]\n"
-        "    log trace KEYWORD_STR [in] [DESTINATION]\n"
-        "    log stoptrace KEYWORD_STR [in] [DESTINATION]\n"
+        "    log level FILTER_STR [DESTINATION]\n"
+        "    log trace KEYWORD_STR [DESTINATION]\n"
+        "    log stoptrace KEYWORD_STR [DESTINATION]\n"
         "    log forget PROCESS_NAME\n"
         "\n"
         "DESCRIPTION:\n"
@@ -212,8 +161,6 @@ static void PrintHelp
         "all processes and/or all components.  If the [DESTINATION] is omitted the\n"
         "default destination \"*/*\" is used meaning all processes and all components.\n"
         "\n"
-        "The [in] preceding the [DESTINATION] is optional and may be omitted.\n"
-        "\n"
         "A command may be sent to a process/component that may not exist yet.  The\n"
         "command will be saved and applied to the process/component when the process\n"
         "and component are available.  This makes it possible to pre-configure\n"
@@ -222,6 +169,7 @@ static void PrintHelp
         "in the [DESTINATION] is a PID but the PID does not exist yet the command\n"
         "will be dropped."
         );
+        exit(EXIT_SUCCESS);
 }
 
 
@@ -273,9 +221,11 @@ static void SessionCloseHandler
 //--------------------------------------------------------------------------------------------------
 /**
  * Opens an IPC session with the Log Control Daemon.
+ *
+ * @return  A reference to the IPC message session.
  */
 //--------------------------------------------------------------------------------------------------
-static le_msg_MessageRef_t ConnectToLogControlDaemon
+static le_msg_SessionRef_t ConnectToLogControlDaemon
 (
     void
 )
@@ -288,11 +238,7 @@ static le_msg_MessageRef_t ConnectToLogControlDaemon
     le_msg_SetSessionCloseHandler(sessionRef, SessionCloseHandler, NULL);
 
     le_result_t result = msgSession_TryOpenSessionSync(sessionRef);
-    if (result == LE_OK)
-    {
-        return le_msg_CreateMsg(sessionRef);
-    }
-    else
+    if (result != LE_OK)
     {
         printf("***ERROR: Can't communicate with the Log Control Daemon.\n");
         printf("Service Directory is unreachable.\n"
@@ -300,30 +246,24 @@ static le_msg_MessageRef_t ConnectToLogControlDaemon
 
         exit(EXIT_FAILURE);
     }
+
+    return sessionRef;
 }
 
-//--------------------------------------------------------------------------------------------------
-/**
- * Declaration for compiler to know that the function never return.
- */
-//--------------------------------------------------------------------------------------------------
-static void ExitWithErrorMsg
-(
-    const char* errorMsg
-) __attribute__ ((__noreturn__));
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Print error messages and exits.
  */
 //--------------------------------------------------------------------------------------------------
+__attribute__ ((__noreturn__))
 static void ExitWithErrorMsg
 (
     const char* errorMsg
 )
 {
-    printf("%s\n", errorMsg);
-    printf(ERROR_INFO_STR);
+    printf("log: %s\n", errorMsg);
+    printf("Try 'log --help' for more information.\n");
     exit(EXIT_FAILURE);
 }
 
@@ -408,184 +348,228 @@ le_log_Level_t ParseSeverityLevel
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Verifies that the number of arguments is in a given range.
- *
- * Logs a message and exits if not.
+ * Appends some text to the command message.
  **/
 //--------------------------------------------------------------------------------------------------
-static void VerifyArgCount
+static void AppendToCommand
 (
-    uint min,   ///< [IN] Minimum number of arguments (not including the command name)
-    uint max    ///< [IN] Maximum number of arguments (not including the command name)
+    le_msg_MessageRef_t msgRef, ///< Command message to which the text should be appended.
+    const char* textPtr         ///< Text to append to the message.
 )
 {
-    if (le_arg_NumArgs() < (min + 1))
+    if (LE_OVERFLOW == le_utf8_Append(le_msg_GetPayloadPtr(msgRef),
+                                      textPtr,
+                                      le_msg_GetMaxPayloadSize(msgRef),
+                                      NULL) )
     {
-        ExitWithErrorMsg("log: Too few arguments for command.");
-    }
-    else if (le_arg_NumArgs() > (max + 1))
-    {
-        ExitWithErrorMsg("log: Too many arguments for command.");
+        ExitWithErrorMsg("Command string is too long.");
     }
 }
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * The main function for the log tool.
- */
+ * Function that gets called by le_arg_Scan() when a log session identifier is seen on the
+ * command line.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void SessionIdArgHandler
+(
+    const char* sessionId
+)
+{
+    // Check that the session identifier is formatted correctly.
+    if (strchr(sessionId, '/') == NULL)
+    {
+        // Permit an optional "in" here, once.
+        if (strcmp(sessionId, "in") == 0)
+        {
+            static bool optionalInSeen = false;
+            if (!optionalInSeen)
+            {
+                optionalInSeen = true;
+                le_arg_AddPositionalCallback(SessionIdArgHandler);
+            }
+        }
+
+        ExitWithErrorMsg("Invalid destination.");
+    }
+
+    SessionIdPtr = sessionId;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function that gets called by le_arg_Scan() when a log level argument is seen on the command
+ * line.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void LogLevelArgHandler
+(
+    const char* logLevel
+)
+{
+    // Check that string is one of the level strings.
+    le_log_Level_t level = ParseSeverityLevel(logLevel);
+    if (level == (le_log_Level_t)(-1))
+    {
+        ExitWithErrorMsg("Invalid log level.");
+    }
+
+    const char* levelStr = log_SeverityLevelToStr(level);
+    LE_ASSERT(levelStr != NULL);
+    CommandParamPtr = levelStr;
+
+    // Wait for an optional log session identifier next.
+    le_arg_AddPositionalCallback(SessionIdArgHandler);
+    le_arg_AllowLessPositionalArgsThanCallbacks();
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function the gets called by le_arg_Scan() when a trace keyword argument is seen on the command
+ * line.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void TraceKeywordArgHandler
+(
+    const char* keyword
+)
+{
+    CommandParamPtr = keyword;
+
+    // Wait for an optional log session identifier next.
+    le_arg_AddPositionalCallback(SessionIdArgHandler);
+    le_arg_AllowLessPositionalArgsThanCallbacks();
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function that gets called by le_arg_Scan() when the process identifier argument (either a process
+ * name or a PID) for a "forget" command is found on the command line.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void ProcessIdArgHandler
+(
+    const char* processId
+)
+{
+    CommandParamPtr = processId;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function that gets called by le_arg_Scan() when it sees the first positional argument while
+ * scanning the command line.  This should be the command name.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void CommandArgHandler
+(
+    const char* command
+)
+{
+    if (strcmp(command, "help") == 0)
+    {
+        PrintHelpAndExit();
+    }
+
+    else if (strcmp(command, "level") == 0)
+    {
+        Command = LOG_CMD_SET_LEVEL;
+
+        // Expect a log level next.
+        le_arg_AddPositionalCallback(LogLevelArgHandler);
+    }
+    else if (strcmp(command, "trace") == 0)
+    {
+        Command = LOG_CMD_ENABLE_TRACE;
+
+        // Expect a trace keyword next.
+        le_arg_AddPositionalCallback(TraceKeywordArgHandler);
+    }
+    else if (strcmp(command, "stoptrace") == 0)
+    {
+        Command = LOG_CMD_DISABLE_TRACE;
+
+        // Expect a trace keyword next.
+        le_arg_AddPositionalCallback(TraceKeywordArgHandler);
+    }
+    else if (strcmp(command, "list") == 0)
+    {
+        Command = LOG_CMD_LIST_COMPONENTS;
+
+        // This command has no parameters and no destination.
+    }
+    else if (strcmp(command, "forget") == 0)
+    {
+        Command = LOG_CMD_FORGET_PROCESS;
+
+        // This command has only a process name (or pid) as a parameter.
+        le_arg_AddPositionalCallback(ProcessIdArgHandler);
+    }
+    else
+    {
+        char errorMsg[100];
+        snprintf(errorMsg, sizeof(errorMsg), "Invalid log command (%s)", command);
+        ExitWithErrorMsg(errorMsg);
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
-    char arg[LIMIT_MAX_PATH_LEN];
-    size_t n = 0;
+    // The first positional argument must always be a command.
+    le_arg_AddPositionalCallback(CommandArgHandler);
 
-    // Check if the user is asking for help.
-    if (le_arg_GetArg(0, arg, LIMIT_MAX_PATH_LEN) != LE_OK)
-    {
-        ExitWithErrorMsg("log: Invalid log command.");
-    }
+    // Remaining arguments will depend on the command.  CommandArgHandler() will add more
+    // positional callbacks if necessary.
 
-    if (strcmp(arg, CMD_HELP_STR) == 0)
-    {
-        // print the help file to the screen.
-        PrintHelp();
+    // Print help and exit if the "-h" or "--help" options are given.
+    le_arg_SetFlagCallback(PrintHelpAndExit, "h", "help");
 
-        exit(EXIT_SUCCESS);
-    }
+    le_arg_Scan();
 
-    le_msg_MessageRef_t msgRef = ConnectToLogControlDaemon();
+    // Connect to the Log Control Daemon and allocate a message buffer to hold the command.
+    le_msg_SessionRef_t sessionRef = ConnectToLogControlDaemon();
+    le_msg_MessageRef_t msgRef = le_msg_CreateMsg(sessionRef);
+    char* payloadPtr = le_msg_GetPayloadPtr(msgRef);
 
-    char* cmdBuffPtr = le_msg_GetPayloadPtr(msgRef);
-    unsigned int buffLength = 0;
-
-    // Get the command.
-    Command = GetCmdChar(arg);
-    cmdBuffPtr[buffLength++] = Command;
-
+    // Construct the message.
+    payloadPtr[0] = Command;
+    payloadPtr[1] = '\0';
     switch (Command)
     {
-        case LOG_CMD_LIST_COMPONENTS:
-            // This command has no parameters and no destination.
-            break;
-
-        case LOG_CMD_FORGET_PROCESS:
-        {
-            // This command has only a process name (or pid) as a parameter.
-
-            VerifyArgCount(1, 1);
-
-            char cmdParam[MAX_CMD_PARAM_BYTES];
-            if (le_arg_GetArg(1, cmdParam, MAX_CMD_PARAM_BYTES) != LE_OK)
-            {
-                ExitWithErrorMsg("log: Invalid command parameter.");
-            }
-            else if (LE_OVERFLOW == le_utf8_Copy(cmdBuffPtr + buffLength,
-                                                 cmdParam,
-                                                 LOG_MAX_CMD_PACKET_BYTES - buffLength - 1,
-                                                 &n) )
-            {
-                ExitWithErrorMsg("log: Command string is too long.");
-            }
-            buffLength += n;
-
-            break;
-        }
-
         case LOG_CMD_SET_LEVEL:
         case LOG_CMD_ENABLE_TRACE:
         case LOG_CMD_DISABLE_TRACE:
-        {
-            // These commands must have a parameter.
-            char cmdParam[MAX_CMD_PARAM_BYTES];
-            if (le_arg_GetArg(1, cmdParam, MAX_CMD_PARAM_BYTES) != LE_OK)
-            {
-                ExitWithErrorMsg("log: Invalid command parameter.");
-            }
 
-            // Get the destination.
-            char* destPtr;
-            if (le_arg_GetArg(2, arg, LIMIT_MAX_PATH_LEN) == LE_NOT_FOUND)
-            {
-                // If there are no other parameters then use the default destination.
-                destPtr = DEFAULT_DEST_STR;
-            }
-            else if (le_arg_NumArgs() == 3)
-            {
-                // The "in" before the destination is optional and so the next argument is the
-                // destination.
-                destPtr = arg;
-            }
-            else if ( (strcmp(arg, "in") == 0) &&
-                      (le_arg_GetArg(3, arg, LIMIT_MAX_PATH_LEN) == LE_OK) )
-            {
-                // The parameter after the "in" is the destination.  Ignore all remaining parameters.
-                destPtr = arg;
-            }
-            else
-            {
-                // The destination is incorrect.
-                ExitWithErrorMsg("log: Invalid destination.");
-            }
-
-            // Check that the destination is formatted correctly.
-            if (strchr(destPtr, '/') == NULL)
-            {
-                ExitWithErrorMsg("log: Invalid destination.");
-            }
-
-            // Copy the destination to the command buffer.
-            if (le_utf8_Copy(&(cmdBuffPtr[buffLength]), destPtr,
-                             LOG_MAX_CMD_PACKET_BYTES - buffLength - 2, &n) == LE_OVERFLOW)
-            {
-                ExitWithErrorMsg("log: Command string is too long.");
-            }
-            buffLength += n;
-
-            // Add a slash after the destination.
-            cmdBuffPtr[buffLength++] = '/';
-            cmdBuffPtr[buffLength] = '\0';
-
-            // Verify the command parameter string.
-            if (Command == LOG_CMD_SET_LEVEL)
-            {
-                // Check that string is one of the level strings.
-                le_log_Level_t level = ParseSeverityLevel(cmdParam);
-                if (level == (le_log_Level_t)-1)
-                {
-                    ExitWithErrorMsg("log: Invalid log level.");
-                }
-                else
-                {
-                    const char* levelStr = log_SeverityLevelToStr(level);
-                    LE_ASSERT(levelStr != NULL);
-                    LE_ASSERT(LE_OK == le_utf8_Copy(&(cmdBuffPtr[buffLength]),
-                                                    levelStr,
-                                                    LOG_MAX_CMD_PACKET_BYTES - buffLength - 2,
-                                                    &n) );
-                }
-            }
-            else
-            {
-                // Copy the command parameter string to the command buffer.
-                if (LE_OVERFLOW == le_utf8_Copy(cmdBuffPtr + buffLength,
-                                                cmdParam,
-                                                LOG_MAX_CMD_PACKET_BYTES - buffLength - 1,
-                                                &n) )
-                {
-                    ExitWithErrorMsg("log: Command string is too long.");
-                }
-            }
-            buffLength += n;
+            AppendToCommand(msgRef, SessionIdPtr);
+            AppendToCommand(msgRef, "/");
+            AppendToCommand(msgRef, CommandParamPtr);
 
             break;
-        }
 
-        default:
-            ExitWithErrorMsg("log: Invalid log command.");
+        case LOG_CMD_LIST_COMPONENTS:
+
+            // This one has no arguments.
+
+            break;
+
+        case LOG_CMD_FORGET_PROCESS:
+
+            AppendToCommand(msgRef, CommandParamPtr);
+
+            break;
     }
 
     // Send the command and wait for messages from the Log Control Daemon.  When the Log Control
-    // Daemon has finished executing the command, it will close the IPC session.
+    // Daemon has finished executing the command, it will close the IPC session, resulting in a
+    // call to SessionCloseHandler().
     le_msg_Send(msgRef);
 }

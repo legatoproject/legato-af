@@ -1,4 +1,10 @@
 #!/bin/bash
+copyright="
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+"
+
+if ! [ $LEGATO_ROOT ]; then echo "Run bin/legs first" >&2; exit 1; fi
+. "${LEGATO_ROOT}/framework/tools/scripts/shlib"
 
 # This script installs the Legato framework in /usr/local on a target device using SSH.
 # It will also install the startup scripts if they are not present or they are different
@@ -9,30 +15,24 @@
 # 1 - General error
 # 42 - Startup files were updated and the target must be rebooted before trying to run this script again.
 
+help_short_desc="install legato on target"
 
-function PrintUsage()
-{
-    echo "USAGE: $(basename $0) BUILD_DIR [DEST_IP]"
-    echo
-    echo "  where, BUILD_DIR = the directory in which the target's built Legato files can be found."
-    echo "                     E.g., 'build/ar7'."
-    echo
-    echo "         DEST_IP = the IP address of the target device."
-    echo
-    echo "If DEST_IP is not provided on the command-line, $(basename 0) will try to use the"
-    echo "contents of the DEST_IP environment variable."
-    echo
-}
+help_usage=(
+"BUILD_DIR [TARGET_IP]"
+)
+
+help_long_description=(
+"Once Legato has been built, $commandName can be used to install it on"
+"the target at the IP address specified by TARGET_IP."
+"BUILD_DIR is the path to the directory to which Legato was built."
+"If the target Legato directory is in the normal build location, i.e."
+"Inside \$LEGATO_ROOT/build, then you only need to specify the"
+"target platform, e.g. ar7, otherwise a full path is required."
+)
 
 BUILD_DIR=$1
-TARGET_IP=$2
 
-# Check if they are asking for help.
-if [ "$1" = "-h" -o "$1" = "help" -o "$1" = "--help" ]
-then
-    PrintUsage
-    exit 0
-fi
+CheckForHelp $@
 
 # Check that the first argument exists and is a directory.
 # If not, try sticking "build/" on the front and see if that's a directory.
@@ -41,12 +41,9 @@ then
     BUILD_DIR_TRY2="build/$BUILD_DIR"
     if ! [ -d "$BUILD_DIR_TRY2" ]
     then
-        echo "***ERROR: First argument should be a directory."
-        echo "Directory '$BUILD_DIR' not found."
-        echo "Perhaps it needs to be built?"
-        echo
-        PrintUsage
-        exit 1
+        ExitWithError "First argument should be a directory." \
+            "Directory '$BUILD_DIR' not found." \
+            "Perhaps it needs to be built?"
     else
         BUILD_DIR="$BUILD_DIR_TRY2"
     fi
@@ -57,46 +54,29 @@ fi
 LEGATO_ROOT="$BUILD_DIR/../.."
 if ! [ -f "$LEGATO_ROOT/version" ] || ! [ -f "$LEGATO_ROOT/README.md" ]
 then
-    echo "***ERROR: '$LEGATO_ROOT' does not appear to be a Legato framework directory."
-    echo
-    PrintUsage
-    exit 1
+    ExitWithError "'$LEGATO_ROOT' does not appear to be a Legato framework directory."
 fi
 
 # If the second argument is provided, use that as the target device IP address.
-# Otherwise, look for a DEST_IP environment variable.
-if ! [ $TARGET_IP ]
-then
-    if ! [ $DEST_IP ]
-    then
-        echo "***ERROR: Destination IP address not available."
-        PrintUsage
-        exit 1
-    fi
-
-    TARGET_IP=$DEST_IP
-fi
+SetTargetIP $2
 
 TAR_FILE="$BUILD_DIR/legato-runtime.tar"
 
 if ! [ -f "$TAR_FILE" ]
 then
-    echo "***ERROR: Runtime tarball '$TAR_FILE' not found."
-    echo "Are you sure '$BUILD_DIR' is a target-specific Legato build directory and"
-    echo "the build has completed successfully?"
-    echo
-    PrintUsage
-    exit 1
+    ExitWithError "Runtime tarball '$TAR_FILE' not found." \
+        "Are you sure '$BUILD_DIR' is a target-specific Legato build directory and" \
+        "the build has completed successfully?"
 fi
 
 echo "Installing Legato framework from: $BUILD_DIR"
 
 # Copy the legato script onto the target.
-scp -o ConnectTimeout=1 $LEGATO_ROOT/targetFiles/shared/bin/legato root@$TARGET_IP:/tmp/legatoInstaller &&
+ScpToTarget -o ConnectTimeout=1 $LEGATO_ROOT/targetFiles/shared/bin/legato /tmp/legatoInstaller &&
 
 # Start the legato script on target and stream the tarball of the target device's staging to it.
 cat "$TAR_FILE" |
-ssh -o ConnectTimeout=1 root@$TARGET_IP '
+ssh $SSH_OPTS -o ConnectTimeout=1 root@$TARGET_IP '
     chmod u+x /tmp/legatoInstaller
     /tmp/legatoInstaller install
     '

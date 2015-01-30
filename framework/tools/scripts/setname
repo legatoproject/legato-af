@@ -1,0 +1,42 @@
+#!/bin/bash
+copyright="
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+"
+
+if ! [ $LEGATO_ROOT ]; then echo "Run bin/legs first" >&2; exit 1; fi
+. "${LEGATO_ROOT}/framework/tools/scripts/shlib"
+
+help_short_desc="change the hostname of the target"
+
+help_usage=(
+"NAME [TARGET_IP]"
+)
+
+help_long_description=(
+"With a default prompt set, when you log into the target by UART or ssh,"
+"the commandline prompt will be root@swi-mdm9x15. If you are logged into"
+"multiple targets or you have multiple targets on your network, it can"
+"be helpful to give each its own hostname so its easy to tell which device"
+"you have connected to." 
+"After running this command, the hostname of the target will be changed to"
+"the name given in NAME."
+)
+
+help_notes=(
+"Unfortunately, due to the way shells set up their internal variables only"
+"the prompt of new shells will manifest the new hostname. Currently open"
+"shells will continue to show the previous hostname."
+)
+
+CheckForHelp $@
+
+NAME=$1
+if ! [ "NAME" ]
+then
+    ExitWithError "First argument should be a name."
+fi
+
+SetTargetIP $2
+
+# Tell the device to stop the application.
+SshToTarget "/bin/hostname $NAME; /bin/hostname >/etc/hostname"

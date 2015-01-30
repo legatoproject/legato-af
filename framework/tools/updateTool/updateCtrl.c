@@ -11,7 +11,7 @@
  *    Should be extended for framework & system.
  * @TODO: Replace update tool with update daemon.
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 #include "legato.h"
@@ -47,6 +47,11 @@
 /// Minimum chunk size for file/stream read & write
 // TODO: Tune this if needed. It might be specified in .config file.
 #define CHUNK_SIZE                   4096
+
+
+/// File system path of the input file, or "-" for stdin.
+static const char* FilePath = "-";
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -150,64 +155,27 @@ static void PrintHelp
         "\n"
         "SYNOPSIS:\n"
         "    update --help\n"
-        "    update FILE_NAME\n"
+        "    update [FILE_NAME]\n"
         "\n"
         "DESCRIPTION:\n"
         "   update --help\n"
         "       Display this help and exit.\n"
         "\n"
-        "   update FILE_NAME\n"
-        "       Command takes file with manifest header.\n"
-        "       Decode the manifest and take appropriate action specified in manifest.\n"
+        "   update [FILE_NAME]\n"
+        "       Command takes an update file, decodes the manifest, and takes appropriate action.\n"
+        "       If no file name or the file name '-' is given, input is taken from the standard\n"
+        "       input stream (stdin).\n"
     );
+
+    exit(EXIT_SUCCESS);
 }
 
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Checks the command line arguments to see if the specified option was selected.
- *
- * @return
- *      true if the option was selected on the command-line.
- *      false if the option was not selected.
- *
- * @todo
- *      This function should be replaced by a general command-line options utility.
- */
-//--------------------------------------------------------------------------------------------------
-static bool IsOptionSelected
-(
-    const char* optionPtr
-)
-{
-    size_t numArgs = le_arg_NumArgs();
-    size_t i;
-
-    char argBuf[LIMIT_MAX_ARGS_STR_BYTES];
-
-    // Search the list of command line arguments for the specified option.
-    for (i = 0; i < numArgs; i++)
-    {
-        INTERNAL_ERR_IF(le_arg_GetArg(i, argBuf, sizeof(argBuf)) != LE_OK,
-                        "Not able to read argument at index %zd.", i);
-
-        char* subStr = strstr(argBuf, optionPtr);
-
-        if ((subStr != NULL) && (subStr == argBuf))
-        {
-            return true;
-        }
-    }
-
-    return false;
-}
 
 //--------------------------------------------------------------------------------------------------
 /**
  * This function tries to figure out the input file to update tool.  Input file either might be
- * given via STDIN or parameter.  If no parameter is given, this function wait for data through
- * STDIN with a timeout value. If no data available within timeout limit, update tool exit with
- * failure flag.
+ * given via STDIN or parameter.  If no parameter is given, this function waits for data through
+ * STDIN.
  *
  * @return
  *      File descriptor pointing to update file.
@@ -219,37 +187,23 @@ static int GetUpdateFile
 )
 {
     int fileDescriptor;
-    char argBuf[LIMIT_MAX_PATH_BYTES];
 
-    if (le_arg_NumArgs() == 0)
+    if (strcmp(FilePath, "-") == 0)
     {
-        fd_set readFileDescSet;
-        struct timeval timeOut;
-
-        // Watch stdin (fd 0) to see when it has input
-        FD_ZERO(&readFileDescSet);
-        FD_SET(STDIN_FILENO, &readFileDescSet);
-        timeOut.tv_sec = SELECT_TIMEOUT_SEC;
-        timeOut.tv_usec = SELECT_TIMEOUT_uSEC;
-
-        // TODO: Here select timeout value = 1s. Is this right approach??
-        if (select(1, &readFileDescSet, NULL, NULL, &timeOut) <= 0)
-        {
-            fprintf(stderr, "Please enter update file.  Try --help.\n");
-            exit(EXIT_FAILURE);
-        }
-
-        return STDIN_FILENO;
+        fileDescriptor = 0;
     }
     else
     {
-        if (le_arg_GetArg(0, argBuf, sizeof(argBuf)) != LE_OK)
+        fileDescriptor = open(FilePath, O_RDONLY);
+
+        if (fileDescriptor == -1)
         {
-            fprintf(stderr, "Please enter a command.  Try --help.\n");
+            fprintf(stderr,
+                    "Can't open file '%s': errno %d (%m)\n",
+                    FilePath,
+                    errno);
             exit(EXIT_FAILURE);
         }
-        INTERNAL_ERR_IF(((fileDescriptor = open(argBuf, O_RDONLY)) == -1),
-                         "Can't open file: %s errno: %d (%m)", argBuf, errno);
     }
 
     return fileDescriptor;
@@ -473,35 +427,55 @@ static void HandleRemoveCmd
     exit(EXIT_FAILURE);
 }
 
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Processes a file path argument from the command line.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void HandleFilePath
+(
+    const char* filePath
+)
+{
+    FilePath = filePath;
+}
+
+
+//--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
-    if (IsOptionSelected("--help"))
-    {
-        PrintHelp();
-        exit(EXIT_SUCCESS);
-    }
+    // update --help
+    le_arg_SetFlagCallback(PrintHelp, NULL, "help");
 
-    int fileDescrptr = GetUpdateFile();
+    // update [FILE_NAME]
+    le_arg_AddPositionalCallback(HandleFilePath);
+    le_arg_AllowLessPositionalArgsThanCallbacks();
+
+    le_arg_Scan();
+
+    int fd = GetUpdateFile();
 
     char cmdList[MAN_MAX_TOKENS_IN_CMD_STR][MAN_MAX_CMD_TOKEN_BYTES];
     int cmdParamsNum = 0;
     size_t payLoadSize = 0;
     man_Ref_t manifestRef;
 
-    CLEANUP_ON_ERR_IF(((manifestRef = man_Create(fileDescrptr))== NULL),
-                      CloseFiles(1, fileDescrptr), "Error in getting manifest");
+    CLEANUP_ON_ERR_IF(((manifestRef = man_Create(fd))== NULL),
+                      CloseFiles(1, fd), "Error in getting manifest");
 
     payLoadSize = man_GetPayLoadSize(manifestRef);
 
     CLEANUP_ON_ERR_IF((man_GetCmd(manifestRef, cmdList, &cmdParamsNum) == LE_FAULT),
-                      CloseFiles(1, fileDescrptr), "Error in extracting command from manifest");
+                      CloseFiles(1, fd), "Error in extracting command from manifest");
 
-    //Command params should be minimum 2, otherwise exit.
+    // Command params should be minimum 2, otherwise exit.
     if (cmdParamsNum < 2)
     {
         fprintf(stderr, "Too few params for command: %s. Please look at update-pack documentation\n",
                 cmdList[0]);
-        CloseFiles(1, fileDescrptr);
+        CloseFiles(1, fd);
         exit(EXIT_FAILURE);
     }
 
@@ -515,7 +489,7 @@ COMPONENT_INIT
         //update framework
         //update system <systemName>
 
-        HandleUpdateCmd(fileDescrptr, cmdList, cmdParamsNum, payLoadSize);
+        HandleUpdateCmd(fd, cmdList, cmdParamsNum, payLoadSize);
     }
     else if (strcmp(cmdList[0], CMD_REMOVE) == 0)
     {
@@ -525,10 +499,10 @@ COMPONENT_INIT
         //remove framework
         //remove system <systemName>
 
-        HandleRemoveCmd(fileDescrptr, cmdList, cmdParamsNum);
+        HandleRemoveCmd(fd, cmdList, cmdParamsNum);
     }
 
     fprintf(stderr, "Unknown command: %s. Please look at update-pack documentation\n", cmdList[0]);
-    CloseFiles(1, fileDescrptr);
+    CloseFiles(1, fd);
     exit(EXIT_FAILURE);
 }

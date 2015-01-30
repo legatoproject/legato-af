@@ -1,5 +1,5 @@
 #*******************************************************************************
-# Copyright (C) 2013, Sierra Wireless Inc., all rights reserved.
+# Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 #
 # Contributors:
 #     Sierra Wireless - initial API and implementation
@@ -56,4 +56,22 @@ mkexe(  appUserRemove
             components/userAdderRemover/Component.cdef
             components/userAdderRemover/userAdderRemover.h
             components/userAdderRemover/userAdderRemover.c
+            )
+
+
+mkexe(  appSetFilePermissions
+            appSetFilePermissions.c
+            -c ${CMAKE_CURRENT_SOURCE_DIR}/components
+            -i ${PROJECT_SOURCE_DIR}/framework/c/src
+            -i ${PROJECT_SOURCE_DIR}/framework/c/src/security
+            -i ${PROJECT_SOURCE_DIR}/framework/c/src/serviceDirectory
+            ${CFLAGS_TARGET_IMPORTS}
+            filePermissions
+        DEPENDS
+            ## TODO: Remove all this when the mk tools do dependency checking.
+            appSetFilePermissions.c
+            components/filePermissions/Component.cdef
+            components/filePermissions/filePermissions.h
+            components/filePermissions/filePermissions.c
+            ${PROJECT_SOURCE_DIR}/framework/c/src/security/*
             )

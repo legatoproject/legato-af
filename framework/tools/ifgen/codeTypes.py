@@ -1,7 +1,7 @@
 #
 # Define types/classes for different code/message objects
 #
-# Copyright (C) Sierra Wireless, Inc. 2013. All rights reserved. Use of this work is subject to license.
+# Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 #
 
 import hashlib
@@ -115,7 +115,7 @@ def AddDefinitionValue(name, value):
     if ImportName:
         if ImportName not in DefinedValues:
             importedValues = Empty()
-            
+
             # First, add any previously imported value objects into this newly created object
             for k,v in DefinedValues.items():
                 if isinstance(v, Empty):
@@ -542,14 +542,17 @@ class HandlerParmData(SimpleData):
         self.direction = DIR_IN
 
         self.clientPack = """\
-        // This parameter is stored locally, rather than passed down.  Eventually
-        // the handler will be registered with the event loop, rather than being
-        // stored locally.  This registration will return a result, but until then
-        // just hard-code a fake result.
-        HandlerRef_{parm.funcName} = {parm.name};
-        _result=({parm.funcType})1;\
-        """
+// The input parameters are stored in the client data object, and it is
+// a pointer to this object that is passed down.
+// Create a new client data object and fill it in
+_ClientData_t* _clientDataPtr = le_mem_ForceAlloc(_ClientDataPool);
+_clientDataPtr->handlerPtr = (le_event_HandlerFunc_t)handlerPtr;
+_clientDataPtr->contextPtr = contextPtr;
+_clientDataPtr->callersThreadRef = le_thread_GetCurrent();
+contextPtr = _clientDataPtr;\
+"""
 
+        # Nothing to do in this case
         self.handlerUnpack = ""
 
 
@@ -557,6 +560,16 @@ class HandlerParmData(SimpleData):
         self.funcName = funcName
         self.funcType = funcType
         self.unpackCallName = "AsyncResponse_%s" % self.funcName
+
+
+
+# This is a 'holder' class for 'handler' variables.  It will get converted to the real class
+# above (HandlerParmData) in post processing ...
+# todo: This may need to be revisited.
+class HandlerTypeParmData(SimpleData):
+
+    def __init__(self, name):
+        super(HandlerTypeParmData, self).__init__(name, '')
 
 
 
@@ -643,9 +656,14 @@ class FunctionData(BaseFunctionData):
         self.parmListInCall = inCallList
         self.parmListOut = outList
 
-        # Extra info is needed if this function is an Add or Remove handler function.
+        # Extra info is needed if this function is an Add or Remove handler function, or if it
+        # has a handler as a parameter (which includes Add handler functions).  If the function
+        # has a handler parameter, also need to know the handler name.  If the name is None, then
+        # the function does not have a handler parameter.
+        #
         # todo: maybe this would be better done through separate classes and isinstance()
-        self.addHandlerName = None
+        self.handlerName = None
+        self.isAddHandler = False
         self.isRemoveHandler = False
 
         if self.type != 'void':
@@ -792,7 +810,7 @@ class HandlerFunctionData(BaseFunctionData):
 
     ClassName = "HANDLER"
 
-    def __init__(self, funcName, funcType, parmList, comment=""):
+    def __init__(self, funcName, parmList, comment=""):
 
         # Add the contextPtr variable to the parameter list before using it to init the instance.
         # If the handler does not have any parameters, the parameter list will only contain VoidData.
@@ -811,16 +829,21 @@ class HandlerFunctionData(BaseFunctionData):
         contextParm.handlerUnpack = ""
         contextParm.clientPack = ""
 
+        # The handler name is actually used as its type (todo: maybe change this), and the
+        # convention for the type is to add the 'Func_t' suffix.
+        funcName += 'Func_t'
+
         # Init the instance
-        super(HandlerFunctionData, self).__init__(funcName, funcType, parmList, comment)
+        super(HandlerFunctionData, self).__init__(funcName, '', parmList, comment)
 
 
+# todo: This should probably be renamed as 'EventFunctionData'
 class AddHandlerFunctionData(BaseFunctionData):
 
     ClassName = "ADD_HANDLER"
 
-    def __init__(self, funcName, funcType, parmList, comment=""):
-        super(AddHandlerFunctionData, self).__init__(funcName, funcType, parmList, comment)
+    def __init__(self, funcName, parmList, comment=""):
+        super(AddHandlerFunctionData, self).__init__(funcName, '', parmList, comment)
 
         # Add the prefix to the type.
         self.type = AddNamePrefix(self.type)

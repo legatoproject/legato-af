@@ -26,7 +26,7 @@
  * A sample manifest string with size header
  * 00000085{"versionID":"legato 1.2.3","deviceID":"ar7","command":"remove app *","payloadSize":0}
  *
- * Copyright (C) Sierra Wireless, Inc. 2014.  Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 #include "legato.h"

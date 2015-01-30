@@ -3,7 +3,7 @@
  * Tool used to configure an application so that gdb can be used to start the application's
  * processes individually.
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 #include "legato.h"
@@ -14,11 +14,51 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Maximum number of processes that can be disabled.
+ **/
+//--------------------------------------------------------------------------------------------------
+#define MAX_NUM_PROCS 256
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Debug tool node in the config.  Used to indicate the debug tool that has modified an
  * application's configuration.
  */
 //--------------------------------------------------------------------------------------------------
 #define CFG_DEBUG_TOOL                  "debugTool"
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Application name provided on the command line.
+ **/
+//--------------------------------------------------------------------------------------------------
+static const char* AppName;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * List of process names that have been provided on the command line.
+ **/
+//--------------------------------------------------------------------------------------------------
+static const char* ProcNames[MAX_NUM_PROCS];
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Number of process names that have been provided on the command line.
+ **/
+//--------------------------------------------------------------------------------------------------
+static size_t NumProcs = 0;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * true if the --reset option was specified on the command line.
+ **/
+//--------------------------------------------------------------------------------------------------
+static bool DoReset = false;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -36,13 +76,20 @@ ImportObj_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Files and directories to import for gdb.
+ * Files to import for gdb.
  */
 //--------------------------------------------------------------------------------------------------
-const ImportObj_t GdbImports[] = { {.src = "/usr/bin/gdbserver",    .dest = "/bin/"},
-                                   {.src = "/lib/libdl.so.2",       .dest = "/lib/"},
-                                   {.src = "/lib/libgcc_s.so.1",    .dest = "/lib/"},
-                                   {.src = "/proc",                 .dest = "/"} };
+const ImportObj_t GdbFilesImports[] = { {.src = "/usr/bin/gdbserver",    .dest = "/bin/"},
+                                        {.src = "/lib/libdl.so.2",       .dest = "/lib/"},
+                                        {.src = "/lib/libgcc_s.so.1",    .dest = "/lib/"} };
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Directories to import for gdb.
+ */
+//--------------------------------------------------------------------------------------------------
+const ImportObj_t GdbDirsImports[] = { {.src = "/proc", .dest = "/"} };
 
 
 //--------------------------------------------------------------------------------------------------
@@ -96,102 +143,30 @@ static void PrintHelp
         "    gdbCfg --help\n"
         "        Display this help and exit.\n"
         );
+
+    exit(EXIT_SUCCESS);
 }
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Checks the command line arguments to see if the specified option was selected.
- *
- * @return
- *      true if the option was selected on the command-line.
- *      false if the option was not selected.
- *
- * @todo
- *      This function should be replaced by a general command-line options utility.
+ * Adds files or directories to be imported to the application sandbox.
  */
 //--------------------------------------------------------------------------------------------------
-static bool IsOptionSelected
+static void AddImportFiles
 (
-    const char* option
+    le_cfg_IteratorRef_t cfgIter,           ///< [IN] Iterator to the application config.
+    const ImportObj_t (*importsPtr)[],      ///< [IN] Imports to include in the application.
+    size_t numImports                       ///< [IN] Number of import elements.
 )
 {
-    size_t numArgs = le_arg_NumArgs();
-    size_t i = 0;
-
-    char argBuf[LIMIT_MAX_ARGS_STR_BYTES];
-
-    // Search the list of command line arguments for the specified option.
-    for (; i < numArgs; i++)
-    {
-        INTERNAL_ERR_IF(le_arg_GetArg(i, argBuf, sizeof(argBuf)) != LE_OK,
-                        "Wrong number of arguments.");
-
-        char* subStr = strstr(argBuf, option);
-
-        if ( (subStr != NULL) && (subStr == argBuf) )
-        {
-            return true;
-        }
-    }
-
-    return false;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Gets the application name to start the process in from the command-line.
- *
- * @note This function kills the calling process if there is an error.
- */
-//--------------------------------------------------------------------------------------------------
-static void GetAppName
-(
-    char* bufPtr,           ///< [OUT] Buffer to store the application name in.
-    size_t bufSize          ///< [IN] Buffer size.
-)
-{
-    // The app name should be the first argument on the command-line.
-    le_result_t result = le_arg_GetArg(0, bufPtr, bufSize);
-
-    if (result == LE_NOT_FOUND)
-    {
-        fprintf(stderr, "Please specify an application.\n");
-        exit(EXIT_FAILURE);
-    }
-
-    if (result == LE_OVERFLOW)
-    {
-        fprintf(stderr, "The application name is too long.\n");
-        exit(EXIT_FAILURE);
-    }
-
-    if (bufPtr[0] == '-')
-    {
-        fprintf(stderr, "Please specify an application.  Application name cannot start with '-'.\n");
-        exit(EXIT_FAILURE);
-    }
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Adds the files neede by gdb.
- */
-//--------------------------------------------------------------------------------------------------
-static void AddGdbFiles
-(
-    le_cfg_IteratorRef_t cfgIter            ///< Iterator to the application config.
-)
-{
-    // Find the last node under the 'files' section.
+    // Find the last node under the 'files' or 'dirs' section.
     size_t nodeNum = 0;
     char nodePath[LIMIT_MAX_PATH_BYTES];
 
     while (1)
     {
-        int n = snprintf(nodePath, sizeof(nodePath), "files/%zd", nodeNum);
+        int n = snprintf(nodePath, sizeof(nodePath), "%zd", nodeNum);
 
         INTERNAL_ERR_IF(n >= sizeof(nodePath), "Node name is too long.");
         INTERNAL_ERR_IF(n < 0, "Format error.  %m");
@@ -204,25 +179,25 @@ static void AddGdbFiles
         nodeNum++;
     }
 
-    // Start adding files at the end of the current list.
+    // Start adding files/directories at the end of the current list.
     int i;
-    for (i = 0; i < NUM_ARRAY_MEMBERS(GdbImports); i++)
+    for (i = 0; i < numImports; i++)
     {
         // Add the source.
-        int n = snprintf(nodePath, sizeof(nodePath), "files/%zd/src", nodeNum + i);
+        int n = snprintf(nodePath, sizeof(nodePath), "%zd/src", nodeNum + i);
 
         INTERNAL_ERR_IF(n >= sizeof(nodePath), "Node name is too long.");
         INTERNAL_ERR_IF(n < 0, "Format error.  %m");
 
-        le_cfg_SetString(cfgIter, nodePath, GdbImports[i].src);
+        le_cfg_SetString(cfgIter, nodePath, (*importsPtr)[i].src);
 
         // Add the destination.
-        n = snprintf(nodePath, sizeof(nodePath), "files/%zd/dest", nodeNum + i);
+        n = snprintf(nodePath, sizeof(nodePath), "%zd/dest", nodeNum + i);
 
         INTERNAL_ERR_IF(n >= sizeof(nodePath), "Node name is too long.");
         INTERNAL_ERR_IF(n < 0, "Format error.  %m");
 
-        le_cfg_SetString(cfgIter, nodePath, GdbImports[i].dest);
+        le_cfg_SetString(cfgIter, nodePath, (*importsPtr)[i].dest);
     }
 }
 
@@ -235,10 +210,7 @@ static void AddGdbFiles
 //--------------------------------------------------------------------------------------------------
 static void ConfigureGdb
 (
-    const char* appNamePtr,         ///< [IN] Application to configure.
-    char procNames[][LIMIT_MAX_PROCESS_NAME_BYTES], ///< [IN] List of processes to remove from
-                                                    ///       the app.
-    size_t numProcs                 ///< [IN] Number of processes to remove from the app.
+    void
 )
 {
     le_cfg_ConnectService();
@@ -246,7 +218,7 @@ static void ConfigureGdb
 
     // Get a write iterator to the application node.
     le_cfg_IteratorRef_t cfgIter = le_cfg_CreateWriteTxn("/apps");
-    le_cfg_GoToNode(cfgIter, appNamePtr);
+    le_cfg_GoToNode(cfgIter, AppName);
 
     // Check if this is a temporary configuration that was previously created by this or a similar
     // tool.
@@ -265,16 +237,24 @@ static void ConfigureGdb
     // Write into the config's debug tool node to indicate that this configuration has been modified.
     le_cfg_SetString(cfgIter, CFG_DEBUG_TOOL, "gdb");
 
-    // Add gdbserver, libs and /proc to the app's files section.
-    AddGdbFiles(cfgIter);
+    // Add gdbserver and libs to the app's 'requires/files' section.
+    le_cfg_GoToNode(cfgIter, "requires/files");
+    AddImportFiles(cfgIter, &GdbFilesImports, NUM_ARRAY_MEMBERS(GdbFilesImports));
+
+    // Add /proc to the app's dirs section.
+    le_cfg_GoToParent(cfgIter);
+    le_cfg_GoToNode(cfgIter, "dirs");
+    AddImportFiles(cfgIter, &GdbDirsImports, NUM_ARRAY_MEMBERS(GdbDirsImports));
 
     // Delete the list of processes.
+    le_cfg_GoToParent(cfgIter);
+    le_cfg_GoToParent(cfgIter);
     int i;
-    for (i = 0; i < numProcs; i++)
+    for (i = 0; i < NumProcs; i++)
     {
         char nodePath[LIMIT_MAX_PATH_BYTES];
 
-        int n = snprintf(nodePath, sizeof(nodePath), "procs/%s", procNames[i]);
+        int n = snprintf(nodePath, sizeof(nodePath), "procs/%s", ProcNames[i]);
 
         INTERNAL_ERR_IF(n >= sizeof(nodePath), "Node name is too long.");
         INTERNAL_ERR_IF(n < 0, "Format error.  %m");
@@ -293,7 +273,7 @@ static void ConfigureGdb
 //--------------------------------------------------------------------------------------------------
 static void ResetApp
 (
-    const char* appNamePtr
+    void
 )
 {
     le_cfg_ConnectService();
@@ -301,7 +281,7 @@ static void ResetApp
 
     // Get a write iterator to the application node.
     le_cfg_IteratorRef_t cfgIter = le_cfg_CreateWriteTxn("/apps");
-    le_cfg_GoToNode(cfgIter, appNamePtr);
+    le_cfg_GoToNode(cfgIter, AppName);
 
     // Check if this is a temporary configuration that was previously created by this or a similar
     // tool.
@@ -313,45 +293,85 @@ static void ResetApp
 
     // Blow away what's in there now.
     le_cfg_GoToNode(cfgIter, "/apps");
-    le_cfg_DeleteNode(cfgIter, appNamePtr);
+    le_cfg_DeleteNode(cfgIter, AppName);
 
     le_cfg_CommitTxn(cfgIter);
 
     // NOTE: Currently there is a bug in the config DB where deletions and imports cannot be done in
     //       the same transaction so we must do it in two transactions.
-    cfgInstall_Add(appNamePtr);
+    cfgInstall_Add(AppName);
 }
 
 
-COMPONENT_INIT
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function called with the app name from the command line.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void HandleAppName
+(
+    const char* appName
+)
 {
-    if (IsOptionSelected("--help"))
+    AppName = appName;
+
+    // Now that we have received the only mandatory argument, we can allow less positional
+    // arguments than callbacks.
+    le_arg_AllowLessPositionalArgsThanCallbacks();
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function called with each process name from the command line.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void HandleProcessName
+(
+    const char* procName
+)
+{
+    if (NumProcs >= MAX_NUM_PROCS)
     {
-        PrintHelp();
-        exit(EXIT_SUCCESS);
+        fprintf(stderr, "Too many process names provided.\n");
+        exit(EXIT_FAILURE);
     }
 
-    char appName[LIMIT_MAX_APP_NAME_BYTES];
-    GetAppName(appName, sizeof(appName));
+    ProcNames[NumProcs++] = procName;
+}
 
-    if (IsOptionSelected("--reset"))
+
+//--------------------------------------------------------------------------------------------------
+COMPONENT_INIT
+{
+    // SYNOPSIS:
+    //     gdbCfg appName [processName ...]
+    le_arg_AddPositionalCallback(HandleAppName);
+    le_arg_AddPositionalCallback(HandleProcessName);
+    le_arg_AllowMorePositionalArgsThanCallbacks();
+
+    //     gdbCfg appName --reset
+    //     Resets the application to its original configuration.
+    le_arg_SetFlagVar(&DoReset, NULL, "reset");
+
+    //     gdbCfg --help
+    //         Display help and exit.
+    le_arg_SetFlagCallback(PrintHelp, NULL, "help");
+
+    le_arg_Scan();
+
+    if (DoReset)
     {
-        ResetApp(appName);
+        if (NumProcs != 0)
+        {
+            fprintf(stderr, "List of processes not valid with --reset option.\n");
+            exit(EXIT_FAILURE);
+        }
+        ResetApp();
     }
     else
     {
-        // Get the list of processes.
-        size_t numProcs = le_arg_NumArgs() - 1;
-        char processes[numProcs][LIMIT_MAX_PROCESS_NAME_BYTES];
-
-        int i;
-        for (i = 0; i < numProcs; i++)
-        {
-            INTERNAL_ERR_IF(le_arg_GetArg(i+1, processes[i], LIMIT_MAX_PROCESS_NAME_BYTES) != LE_OK,
-                            "Could not access argument at index %d.", i+1);
-        }
-
-        ConfigureGdb(appName, processes, numProcs);
+        ConfigureGdb();
     }
 
     exit(EXIT_SUCCESS);

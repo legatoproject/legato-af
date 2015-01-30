@@ -9,7 +9,7 @@
  *
  * @todo Add inspect by process name.
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 #include "legato.h"
@@ -46,6 +46,31 @@ typedef void (*InspectFunc_t)
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Inspection function to use.
+ **/
+//--------------------------------------------------------------------------------------------------
+static InspectFunc_t InspectFunc;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * true = follow (periodically update the output until the program is killed with SIGINT or
+ *        something).
+ **/
+//--------------------------------------------------------------------------------------------------
+static bool IsFollowing = false;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Time between periodic updates when in "following" mode.
+ **/
+//--------------------------------------------------------------------------------------------------
+static le_clk_Time_t RefreshInterval = {.sec = DEFAULT_REFRESH_INTERVAL, .usec = 0};
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Prints help to stdout.
  */
 //--------------------------------------------------------------------------------------------------
@@ -75,6 +100,8 @@ static void PrintHelp
         "    --help\n"
         "        Display this help and exit.\n"
         );
+
+    exit(EXIT_SUCCESS);
 }
 
 
@@ -101,164 +128,6 @@ static void PrintHelp
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Gets the PID of the process to inspect from the command line.  The PID is assumed to be the last
- * argument on the command line.
- *
- * @note On failure an error message will be printed and the calling process will exit.
- *
- * @return
- *      The pid of the process to inspect.
- */
-//--------------------------------------------------------------------------------------------------
-static pid_t GetPidToInspect
-(
-    void
-)
-{
-    char argBuf[LIMIT_MAX_ARGS_STR_BYTES];
-
-    // Get the last argument from the command line.
-    INTERNAL_ERR_IF(le_arg_GetArg(le_arg_NumArgs() - 1, argBuf, sizeof(argBuf)) != LE_OK,
-                    "Wrong number of parameters.");
-
-    // Attempt to convert it to a PID.
-    char* endPtr;
-    errno = 0;
-
-    pid_t pid = strtol(argBuf, &endPtr, 10);
-
-    if ( (errno == 0) && (argBuf[0] != '\0') && (*endPtr == '\0') && (pid > 0) )
-    {
-        return pid;
-    }
-
-    fprintf(stderr, "Invalid PID.\n");
-    exit(EXIT_FAILURE);
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Checks the command line arguments to see if the specified option was selected.
- *
- * @return
- *      true if the option was selected on the command-line.
- *      false if the option was not selected.
- *
- * @todo
- *      This function should be replaced by a general command-line options utility.
- */
-//--------------------------------------------------------------------------------------------------
-static bool IsOptionSelected
-(
-    const char* option
-)
-{
-    size_t numArgs = le_arg_NumArgs();
-    size_t i = 0;
-
-    char argBuf[LIMIT_MAX_ARGS_STR_BYTES];
-
-    // Search the list of command line arguments for the specified option.
-    for (; i < numArgs; i++)
-    {
-        INTERNAL_ERR_IF(le_arg_GetArg(i, argBuf, sizeof(argBuf)) != LE_OK,
-                        "Wrong number of arguments.");
-
-        char* subStr = strstr(argBuf, option);
-
-        if ( (subStr != NULL) && (subStr == argBuf) )
-        {
-            return true;
-        }
-    }
-
-    return false;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Returns the integer value of a command-line option.  The command-line option must take the form:
- *
- * option=value
- *
- * The portion before the '=' is considered the option.  The portion after the '=' is considered the
- * value.
- *
- * For example with,
- *
- * --interval=200
- *
- * the option would be the string "--interval" and the value would be the integer 200.
- *
- * @note
- *      This function only supports values that are integers.
- *
- * @return
- *      LE_OK if successful.
- *      LE_NOT_FOUND if the option is not available on the command-line.
- *      LE_FORMAT_ERROR if the option was found but the value was not an integer.
- *
- * @todo
- *      This function should be replaced by a general command-line options utility.
- */
-//--------------------------------------------------------------------------------------------------
-static le_result_t GetOptionIntValue
-(
-    const char* option,     ///< [IN] The option.
-    int* valuePtr           ///< [OUT] The storage location for the value.
-)
-{
-    // Make the string to search for.
-    char searchStr[LIMIT_MAX_ARGS_STR_BYTES + 1];
-
-    int n = snprintf(searchStr, sizeof(searchStr), "%s=", option);
-
-    INTERNAL_ERR_IF( (n < 0) || (n >= sizeof(searchStr)), "Option string is too long.");
-
-    // Search the list of command line arguments for the specified option.
-    size_t numArgs = le_arg_NumArgs();
-    size_t i = 0;
-
-    char argBuf[LIMIT_MAX_ARGS_STR_BYTES];
-
-    for (; i < numArgs; i++)
-    {
-        INTERNAL_ERR_IF(le_arg_GetArg(i, argBuf, sizeof(argBuf)) != LE_OK,
-                 "Wrong number of arguments.");
-
-        char* subStr = strstr(argBuf, option);
-
-        if ( (subStr != NULL) && (subStr == argBuf) )
-        {
-            // The argBuf begins with the searchStr.  The remainder of the argBuf is the value string.
-            char* valueStr = argBuf + strlen(searchStr);
-
-            // Attempt to convert the value string to an integer value.
-            char* endPtr;
-            errno = 0;
-
-            int value = strtol(valueStr, &endPtr, 10);
-
-            if ( (errno == 0) && (valueStr[0] != '\0') && (*endPtr == '\0') )
-            {
-                *valuePtr = value;
-                return LE_OK;
-            }
-            else
-            {
-                return LE_FORMAT_ERROR;
-            }
-        }
-    }
-
-    return LE_NOT_FOUND;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Refresh timer handler.
  */
 //--------------------------------------------------------------------------------------------------
@@ -267,59 +136,8 @@ static void RefreshTimerHandler
     le_timer_Ref_t timerRef
 )
 {
-    // Get the inspection function to use.
-    InspectFunc_t inspectFunc = le_timer_GetContextPtr(timerRef);
-
-    INTERNAL_ERR_IF(inspectFunc == NULL,
-                    "Inspection function not set.");
-
     // Perform the inspection.
-    inspectFunc(PidToInspect);
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Gets the refresh timer interval.
- */
-//--------------------------------------------------------------------------------------------------
-static le_clk_Time_t GetRefreshInterval
-(
-    void
-)
-{
-    int seconds = DEFAULT_REFRESH_INTERVAL;
-
-    le_result_t result = GetOptionIntValue("--interval", &seconds);
-
-    switch (result)
-    {
-        case LE_OK:
-            if (seconds <= 0)
-            {
-                fprintf(stderr, "Interval value must be a positive integer.  Using the default interval %d \
-seconds.\n", DEFAULT_REFRESH_INTERVAL);
-
-                seconds = DEFAULT_REFRESH_INTERVAL;
-            }
-            break;
-
-        case LE_NOT_FOUND:
-            LE_DEBUG("No interval specified on the command line.  Using the default interval \
-%d seconds.", DEFAULT_REFRESH_INTERVAL);
-            break;
-
-        case LE_FORMAT_ERROR:
-            fprintf(stderr, "Interval value must be an integer.  Using the default interval %d \
-seconds.\n", DEFAULT_REFRESH_INTERVAL);
-            break;
-
-        default:
-            INTERNAL_ERR("Unexpected return code '%d'.", result);
-    }
-
-    le_clk_Time_t intervalTime = {.sec = seconds, .usec = 0};
-    return intervalTime;
+    InspectFunc(PidToInspect);
 }
 
 
@@ -448,34 +266,101 @@ static void InspectMemoryPools
 }
 
 
-COMPONENT_INIT
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function called by command line argument scanner when the command argument is found.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void CommandArgHandler
+(
+    const char* command
+)
 {
-    if (IsOptionSelected("--help"))
+    if (strcmp(command, "pools") == 0)
     {
-        // User is asking for help.
-        PrintHelp();
-        exit(EXIT_SUCCESS);
-    }
-
-    // See what to inspect.
-    InspectFunc_t inspectFunc;
-
-    if (IsOptionSelected("pools"))
-    {
-        inspectFunc = InspectMemoryPools;
+        InspectFunc = InspectMemoryPools;
     }
     else
     {
-        fprintf(stderr, "Missing required command parameter.\n");
+        fprintf(stderr, "Invalid command '%s'.\n", command);
         exit(EXIT_FAILURE);
     }
+}
 
-    PidToInspect = GetPidToInspect();
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function called by command line argument scanner when the pid argument is found.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void PidArgHandler
+(
+    const char* pidStr
+)
+{
+    int pid;
+    le_result_t result = le_utf8_ParseInt(&pid, pidStr);
+
+    if ((result == LE_OK) && (pid > 0))
+    {
+        PidToInspect = pid;
+    }
+    else
+    {
+        fprintf(stderr, "Invalid PID (%s).\n", pidStr);
+        exit(EXIT_FAILURE);
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function called by command line argument scanner when the -f or --interval= option is given.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void FollowOptionCallback
+(
+    int value
+)
+{
+    if (value <= 0)
+    {
+        fprintf(stderr,
+                "Interval value must be a positive integer. "
+                    " Using the default interval %d seconds.\n",
+                DEFAULT_REFRESH_INTERVAL);
+
+        value = DEFAULT_REFRESH_INTERVAL;
+    }
+
+    RefreshInterval.sec = value;
+
+    IsFollowing = true;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+COMPONENT_INIT
+{
+    // The command-line has a command string followed by a PID.
+    le_arg_AddPositionalCallback(CommandArgHandler);
+    le_arg_AddPositionalCallback(PidArgHandler);
+
+    // --help option causes everything else to be ignored, prints help, and exits.
+    le_arg_SetFlagCallback(PrintHelp, NULL, "help");
+
+    // -f option starts "following" (periodic updates until the program is terminated).
+    le_arg_SetFlagVar(&IsFollowing, "f", NULL);
+
+    // --interval=N option specifies the update period (implies -f).
+    le_arg_SetIntCallback(FollowOptionCallback, NULL, "interval");
+
+    le_arg_Scan();
 
     // Perform the inspection at least once.
-    inspectFunc(PidToInspect);
+    InspectFunc(PidToInspect);
 
-    if ( IsOptionSelected("-f") || IsOptionSelected("--interval") )
+    if ( IsFollowing )
     {
         // The "follow" option was selected.
 
@@ -488,12 +373,8 @@ COMPONENT_INIT
         INTERNAL_ERR_IF(le_timer_SetRepeat(refreshTimer, 0) != LE_OK,
                         "Could not set repeating timer.\n");
 
-        INTERNAL_ERR_IF(le_timer_SetInterval(refreshTimer, GetRefreshInterval()) != LE_OK,
+        INTERNAL_ERR_IF(le_timer_SetInterval(refreshTimer, RefreshInterval) != LE_OK,
                         "Could not set refresh time.\n");
-
-        // Set the inspection function in the context pointer for the timer.
-        INTERNAL_ERR_IF(le_timer_SetContextPtr(refreshTimer, inspectFunc) != LE_OK,
-                        "Could not set timer context pointer.\n");
 
         // Start the refresh timer.
         INTERNAL_ERR_IF(le_timer_Start(refreshTimer) != LE_OK,

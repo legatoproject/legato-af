@@ -2,7 +2,7 @@
 /**
  * Implementation of the User Adder/Remover component.
  *
- * Copyright 2014, Sierra Wireless Inc.  Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  **/
 //--------------------------------------------------------------------------------------------------
 

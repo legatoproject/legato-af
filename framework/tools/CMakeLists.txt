@@ -1,5 +1,5 @@
 #*******************************************************************************
-# Copyright (C) 2013, Sierra Wireless Inc., all rights reserved.
+# Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 #
 # Contributors:
 #     Sierra Wireless - initial API and implementation
@@ -14,3 +14,4 @@ add_subdirectory(inspect)
 add_subdirectory(execInApp)
 add_subdirectory(gdbCfg)
 add_subdirectory(updateTool)
+add_subdirectory(xattr)

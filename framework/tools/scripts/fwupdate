@@ -1,80 +1,43 @@
 #!/bin/bash
+copyright="
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+"
 #
 # Host-based wrapper around target-based fwupdate tool
 #
+if ! [ $LEGATO_ROOT ]; then echo "Run bin/legs first" >&2; exit 1; fi
+. "${LEGATO_ROOT}/framework/tools/scripts/shlib"
 
+help_short_desc="download or query modem firmware"
 
-function PrintUsage()
-{
-cat << ENDHELP
+help_usage=(
+"help"
+"download FILE [TARGET_IP]"
+"query [TARGET_IP]"
+)
 
-NAME:
-    fwupdate - Download or Query modem firmware
+help_long_description=(
+"$commandName help"
+"  - Print this help message and exit"
+""
+"$commandName download FILE [TARGET_IP]"
+"  - Download the given CWE file."
+"    After a successful download, the modem will reset."
+""
+"$commandName query [TARGET_IP]"
+"  - Query the current firmware version. This includes the modem firmware version, the"
+"    bootloader version, and the linux kernel version."
+"    This can be used after a download and modem reset, to confirm the firmware version."
+)
 
-SYNOPSIS:
-    fwupdate help
-    fwupdate download FILE DEST_IP
-    fwupdate query DEST_IP
-
-DESCRIPTION:
-    fwupdate help
-      - Print this help message and exit
-
-    fwupdate download FILE DEST_IP
-      - Download the given CWE file. 
-        After a successful download, the modem will reset.
-
-    fwupdate query DEST_IP
-      - Query the current firmware version. This includes the modem firmware version, the
-        bootloader version, and the linux kernel version.
-        This can be used after a download and modem reset, to confirm the firmware version.
-
-    DEST_IP = the IP address of the target device.  If DEST_IP is an available environment
-    variable it does not need to be passed in the command-line.
-
-ENDHELP
-}
-
-
-# Set TARGET_IP based on either argument $1 or environment variable $DEST_IP
-function SetTargetIP()
-{
-    TARGET_IP=$1
-    
-    # Check if the argument is provided and can be pinged.
-    if ! [ $TARGET_IP ]
-    then
-        if ! [ $DEST_IP ]
-        then
-            echo "***ERROR: Destination IP address not available."
-            PrintUsage
-            exit 1
-        fi
-
-        TARGET_IP=$DEST_IP
-    fi
-
-    if ! ping -c 1 -w 1 $TARGET_IP > /dev/null
-    then
-        echo "***ERROR: Device address $TARGET_IP seems to be unreachable."
-        exit 1
-    fi
-}
-
-
-# Check if they are asking for help.
-if [ "$1" = "-h" -o "$1" = "help" -o "$1" = "--help" -o "$1" = "" ]
-then
-    PrintUsage
-    exit 0
-fi
+CheckForHelp $@
 
 COMMAND=$1
 
 if [ "$COMMAND" = "query" ]
 then
     SetTargetIP $2
-    ssh root@$TARGET_IP "/usr/local/bin/fwupdate query"
+    SshToTarget "/usr/local/bin/fwupdate query"
     exit 0
 fi
 
@@ -83,16 +46,14 @@ then
     FILE=$2
     if ! [ -f "$FILE" ]
     then
-        echo "***ERROR: File '$FILE' does not exist or is not specified"
-        exit 1
+        ExitWithError "File '$FILE' does not exist or is not specified"
     fi
 
     SetTargetIP $3
 
-    cat "$FILE" | ssh root@$TARGET_IP "/usr/local/bin/fwupdate download -"
+    cat "$FILE" | SshToTarget "/usr/local/bin/fwupdate download -"
     exit 0
 fi
 
 
-echo "***ERROR: Command '$COMMAND' unknown."
-exit 1
+ExitWithError "Command '$COMMAND' unknown."

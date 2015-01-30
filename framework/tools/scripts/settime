@@ -1,29 +1,33 @@
 #! /bin/sh
-if ! [ $LEGATO_ROOT ]; then echo "Run bin/legs first"; exit 1; fi
-#instead of sourcing this could be exported by bin/legs
+copyright="
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+"
+
+if ! [ $LEGATO_ROOT ]; then echo "Run bin/legs first" >&2; exit 1; fi
 . "${LEGATO_ROOT}/framework/tools/scripts/shlib"
 
-PrintUsage()
-{
-cat << ENDHELP
+help_short_desc="set the time on target"
 
-USAGE:
-    $commandName [DEST_IP]
+help_usage=(
+"[TARGET_IP]"
+)
 
-    Sets the target time to be the same as the host time. The time is syncronized on the basis of
-    UTC time but the time displayed by date or the time stamps in syslog will use timezone
-    information if set by settz.
+help_long_description=(
+"Sets the target time to be the same as the host time."
+"The time is synchronized on the basis of UTC time but the time displayed"
+"by date or the time stamps in syslog will use timezone information"
+"if set by settz."
+)
 
-    DEST_IP = the IP address of the target device.  If DEST_IP is an available environment
-    variable it does not need to be passed in the command-line.
+help_notes=(
+"This tool creates a master ssh socket named root@<TARGET_IP>_legato_tools"
+"in .ssh/ so that it can open subsequent connections quickly."
+"The socket is deleted if the script ends normally."
+)
 
-ENDHELP
-}
+CheckForHelp $@
 
-if SetTargetIP $1; then
-    StartFastSsh
-    FastSsh root@$TARGET_IP "date -u $(date -u +\"%m%d%H%M%Y.%S\")"
-    EndFastSsh
-else
-    PrintUsage
-fi
+SetTargetIP $1
+StartFastSsh
+FastSsh root@$TARGET_IP "date -u $(date -u +\"%m%d%H%M%Y.%S\")"
+EndFastSsh

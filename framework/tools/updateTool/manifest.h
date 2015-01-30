@@ -5,7 +5,7 @@
  * Provides APIs for parsing manifest of install/uninstall file. Detailed description provided in
  * manifest.c
  *
- * Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 // -------------------------------------------------------------------------------------------------
 

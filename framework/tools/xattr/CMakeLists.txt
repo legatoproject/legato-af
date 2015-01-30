@@ -5,14 +5,10 @@
 #     Sierra Wireless - initial API and implementation
 #*******************************************************************************
 
-find_package(Legato REQUIRED)
 
-mkexe(  appCtrl
-            ../appCtrl
-            -i "${PROJECT_SOURCE_DIR}/interfaces/supervisor"
-            -i ../../c/src
-            -v
+mkexe(  xattr
+            xattr.c
+            -i ${PROJECT_SOURCE_DIR}/framework/c/src
         DEPENDS
-            appCtrl.c
-            Component.cdef
-        )
+            xattr.c
+            )
