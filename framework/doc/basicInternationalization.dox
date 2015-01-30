@@ -1,0 +1,16 @@
+/** @page basicInternationalization lnternationalization
+
+Legato provides string manipulation functions that support UTF-8 encoding.
+
+Other Internationalization and localization features are left up to app
+developers.
+
+@todo Do we need to provide locale-specific formatting tools (e.g., comma vs. period for decimals,
+date format specification, etc.), or can we just leave that up to developers to sort out themselves?
+
+<HR>
+
+Copyright (C)  Sierra Wireless Inc. Use of this work is subject to license.
+
+**/
+

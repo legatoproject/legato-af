@@ -1,0 +1,13 @@
+/** @page getstartedTargetAdvanced Advanced Target Topics
+
+Advanced topics provide info like customizing, flashing or upgrading target devices.
+ 
+@subpage getstartedYoctoLinux  <br>
+@subpage getstartedInstallNotes  <br>
+@ref getstartedRestoreUpgrade <br>
+
+<HR>
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/

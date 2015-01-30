@@ -1,0 +1,41 @@
+/** @page toolsTarget_setNet setNet
+
+Use the Set MAC Address tool to set your MAC address and optionally a static IP address.
+
+The dev kit board Ethernet port doesn't have a permanent MAC address.
+Each time the target starts, a locally administered MAC address 
+is generated. With DHCP, this will likely also cause your IP address to change. 
+With a static IP address,  the IP address won't change, but switching equipment 
+may result in errors because the IP address is being used by a new target.
+
+If you're confident editing the @c /etc/network/interfaces file (e.g., created
+some up/down rules for @c eth0), then you probably don't want to use @c setNet (it
+won't merge well). You can restore your @c /etc/network/interfaces 
+file after running @c setNet: @c /etc/network/interfaces is renamed with a date and time suffix.
+
+<h1>Usage</h1>
+<b><c> setNet [macrandom|macfixed] [dhcp|static] [address <address>] [netmask <netmask>] [gateway <gateway>]@endverbatim </c></b>
+
+Use @c macfixed to set the dev board to use
+the MAC provided at boot time, and continue to use DHCP for the IP address.
+
+Use @c static to set a fixed MAC regardless of whether @c macrandom is provided 
+(@c setNet @c static is equivalent to @c setNet @c macfixed @c static).
+
+If logged in over @c ssh, close the session quickly as ssh tends to hang. 
+Then run ssh like this:
+@verbatim
+ssh root@<ip address> 'setNet <commands>'
+@endverbatim
+
+@note @c setNet only supports IPv4 addresses at the moment. No address,
+gateway or netmask values validation is done.
+
+To display usage, run 
+@verbatim setNet --help @endverbatim 
+ 
+<HR>
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/

@@ -1,0 +1,16 @@
+/** @page getstartedTargetMain Setup Target
+
+@subpage getstartedTargetPrep to setup the target device hardware.
+
+Then @ref getstartedInstallLegato.
+
+If you're not installing Legato in an IDE, you need to @subpage getstartedTargetSetup 
+from a Linux command-line.
+
+@subpage getstartedRestoreUpgrade Upgrade your target.
+
+<HR>
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/

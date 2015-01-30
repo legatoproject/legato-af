@@ -1,33 +1,19 @@
-/** @page defOverview Overview
+/** @page defFilesOverview Overview
 
-Definition files are used as input to the @ref buildTools @c mksys, @c mkapp, 
-@c mkexe, and @c mkcomp (known collectively as the mk tools).
+Legato definition files are used as input to the @ref buildTools @c mksys, @c mkapp, 
+@c mkexe, and @c mkcomp (known collectively as the mk tools). The definition files, together 
+with @ref languageIndependentAPIs, make it easier to develop 
+component-based software allowing significant boiler-plate code to be automatically generated.
+
+Interfaces are defined using @c .api</c> files. Implementations of those interfaces are constructed
+as reusable components. Components can be combined into apps. Apps can
+be installed and run on target devices and integrated into
+systems of inter-communicating applications deployed together to
+target devices in a single step. 
 
 All def files use a @subpage defFilesFormat.
 
-@section defFilesOverviewAdef .adef Files
-These definition files, together with @ref languageIndependentAPIs, make it easier to develop
-component-based software and allows a great deal of boiler-plate code to be automatically generated.
-
-Interfaces are defined using <c>.api</c> files. Implementations of those interfaces are constructed
-as reusable components. Components can be combined into applications.  Apps can
-be installed and run on target devices.  Apps can also be integrated into
-systems of inter-communicating applications deployed together to
-target devices in a single step.
-
-@section defFilesOverviewCdef .cdef Files
-
-Component definition @c .cdef files are used to define the external interfaces and internal
-content of reusable software components.
-
-Each component has a single <c>Component.cdef</c> file, which defines:
- - source code files are used to build the component
- - files from the build system are to be included in any app that includes the component
- - files on the target are to be made accessible to any app that includes the component
- - IPC interfaces the component implements
- - other components are needed by this component
- - memory pool sizes (future)
- - configuration settings for the component (future)
+@section defFilesOverview_adef .adef Files
 
 Application definition @c .adef files are used to define the external interfaces and internal
 content of applications that can be built, installed, and run on target devices.
@@ -35,20 +21,34 @@ content of applications that can be built, installed, and run on target devices.
 <c>.adef</c> files can also be used to override some settings of components without having to change
 those components themselves, thereby making the components more reusable.
 
-Each application has a <c>.adef</c> file, which defines:
- - executables should be built from what components
- - additional files from the build system are to be included in the app
- - processes should be started (by running what executables with what command-line arguments
+Each application has a <c>.adef</c> file that defines:
+ - which executables should be built from which components
+ - additional files from the build system to be included in the app
+ - processes to be started (by running what executables with what command-line arguments
    and environment variables) when the app starts
  - if the app should automatically start when the target device boots
- - files (or other file system objects) from the target root file system are to be made
+ - files (or other file system objects) from the target root file system to be 
    available to the app at runtime
- - limits should be placed on the app at runtime (such as cpu limits, memory limits, etc.)
+ - limits on the app at runtime (e.g., cpu limits, memory limits, etc.)
  - overrides for memory pool sizes and configuration settings for components in the app (future)
  - IPC bindings between components within the app
  - IPC interfaces will be made visible to other apps
 
-@section defFilesOverviewSdef .sdef Files
+@section defFilesOverview_cdef .cdef Files
+
+Component definition @c .cdef files are used to define the external interfaces and internal
+content of reusable software components.
+
+Each component has a single <c>Component.cdef</c> file that defines:
+ - source code files used to build the component
+ - files from the build system to be included in any app  that includes the component
+ - files on the target to be accessible to any app that includes the component
+ - IPC interfaces the component implements
+ - other components needed by this component
+ - memory pool sizes (future)
+ - configuration settings for the component (future)
+
+@section defFilesOverview_sdef .sdef Files
 
 System definition @c .sdef files are used to interconnect applications with each other and
 with the target's runtime environment (e.g., hardware devices).
@@ -56,13 +56,13 @@ with the target's runtime environment (e.g., hardware devices).
 .sdef files can also override some app settings eliminating actually changing
 the apps.
 
-A <c>.sdef</c> file defines a system of one or more applications that can be deployed to
+An <c>.sdef</c> file defines a system of one or more applications that can be deployed to
 target devices in the field.  Each <c>.sdef</c> file lists:
  - apps are to be installed on the device
- - IPC connections are permitted between apps
+ - IPC connections permitted between apps
  - overrides for limits, configuration settings, and IPC bindings within apps
 
-@section defFilesNumbers Numbers
+@section defFilesOverview_numbers Numbers
 
 Integers are required in some sections.
 
@@ -76,8 +76,7 @@ Numbers can be expressed in Kilobytes (bytes x 1024) by adding the 'K' suffix.
 maxFileSystemBytes: 120K
 @endcode
 
-
-@section defFilesSearchPaths Build Tool Search Paths
+@section defFilesOverview_searchPaths Build Tool Search Paths
 
 Two are used:
  - @b source search path - lists file system directories where the build tools look for source code files and components.
@@ -93,24 +92,23 @@ Search paths can be changed through mk tools command-line options:
 $ mksys packageTracker.sdef -i ~/work/interfaces -s ~/work/components
 @endcode
 
-@section defFilesOverriding Precedence and Overriding
+@section defFilesOverview_overriding Precedence and Overriding
 
 Settings in a <c>.sdef</c> file override settings from @e both the <c>.adef</c> and <c>Component.cdef</c>,
 while the <c>.adef</c> overrides settings in the <c>Component.cdef</c>.
 This increases reusability by allowing an integrator to override a component's or app's settings
 without having to change that component or app.
 
-Also, most configuration settings can be overridden on the target device at runtime (although, some
-will not take effect until the application is restarted).
+Most configuration settings can be overridden on the target device at runtime (although, some
+won't take effect until the app is restarted).
 
+@section defFilesOverview_usingEnvVarsIn Environment Variables
 
-@section defFilesUsingEnvVarsIn Environment Variables
-
-It is possible to use environment variables inside of <c>.sdef</c>, <c>.adef</c>, and
+It's possible to use environment variables inside of <c>.sdef</c>, <c>.adef</c>, and
 <c>Component.cdef</c> files.
 
-This is done in the same way as in shell scripts, by prefixing the environment variable name with
-a dollar sign ($).
+This works the same way as in shell scripts, by prefixing the environment variable name with
+a dollar sign ($):
 
 @code
 requires:
@@ -143,6 +141,6 @@ Some useful environment variables:
 
 <HR>
 
-Copyright (C) Sierra Wireless, Inc. 2014.  Use of this work is subject to license.
+Copyright (C) 2015 Sierra Wireless, Inc. Use of this work is subject to license.
 
 **/

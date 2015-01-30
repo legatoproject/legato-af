@@ -1,12 +1,12 @@
-/** @page getstartedMachinePrep Prep Dev Host
+/** @page getstartedPrepDevHost Prep Dev Host
 
 The Linux development host needs a few things to be set up.
 
-@section instLinuxPackages Install Linux Packages
+@section instLinuxPackages Install Linux Host Packages
 
 Run the following to install necessary packages:
 
-@verbatim $ sudo apt-get install bison build-essential chrpath cifs-utils cmake coreutils curl desktop-file-utils diffstat docbook-utils doxygen fakeroot flex g++ gawk gcc git-core gitk graphviz help2man libgmp3-dev libmpfr-dev libreadline6-dev libtool libxml2-dev libxml-libxml-perl make m4 python-pip python-jinja2 python-pysqlite2 quilt samba scons sed subversion texi2html texinfo unzip wget 
+@verbatim $ sudo apt-get install bison build-essential chrpath cifs-utils cmake coreutils curl desktop-file-utils diffstat docbook-utils doxygen fakeroot flex g++ gawk gcc git-core gitk graphviz help2man libgmp3-dev libmpfr-dev libreadline6-dev libsdl-dev libtool libxml2-dev libxml-libxml-perl make m4 python-pip python-jinja2 python-pysqlite2 quilt samba scons sed subversion texi2html texinfo unzip wget 
 @endverbatim
 
 @section uninstCache Uninstall ccache
@@ -28,7 +28,7 @@ Answer "No" to the question.
 
 <HR>
 
-Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+Copyright (C) 2014 Sierra Wireless, Inc. Use of this work is subject to license.
 
 **/
 

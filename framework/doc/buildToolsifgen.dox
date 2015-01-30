@@ -1,0 +1,17 @@
+/** @page buildToolsifgen ifgen
+
+The @c ifgen Interface Generation tool parses interface definition (<c>.api</c>) files,
+and generates include files and IPC code (as needed).
+
+@c ifgen can be run manually, but it's usually run automatically by
+the @c mktools.
+
+@c ifgen usage details are displayed using the @c -h or @c --help options:
+
+Related info about ifgen: @ref languageIndependentAPIs.
+
+<HR>
+
+Copyright (C)  Sierra Wireless Inc. Use of this work is subject to license.
+
+**/ 

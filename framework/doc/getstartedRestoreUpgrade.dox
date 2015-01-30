@@ -1,0 +1,14 @@
+/** @page getstartedRestoreUpgrade Upgrade or Restore
+
+Restore or update target:
+
+@subpage getstartedWindowsHost <br>
+@subpage getstartedLinuxAndroid <br>
+
+If you really must @subpage getstartedUninstall
+
+<HR>
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/

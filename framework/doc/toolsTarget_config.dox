@@ -1,13 +1,11 @@
-/** @page toolsConfigTree Config Tree  
+/** @page toolsTarget_config config 
 
-Use the @c config command line tool to change a target's configuration database.
-
-@section configDBcmds Config Commands
+Use the Config tool to change a target's configuration database.
 
 Functions supported include: inspect a tree, read/write values, and import/export
 enitre tree sections.
 
-<h2>Usage</h2>
+<h1>Usage</h1>
 
 <b><c> config [OPTIONS] </c></b>
 
@@ -64,7 +62,7 @@ enitre tree sections.
 > For exports, then the data will be generated as well.
 > It is also possible to specify JSON for the get sub-command.
 
-@section treePaths Tree Paths
+@section toolsTarget_config_treePaths Tree Paths
 
 A tree path is specified similar to a @c *nix path. With the beginning slash being optional.
 
@@ -83,7 +81,7 @@ Here's an example using the tree named 'foo' instead of the default tree:
       foo:/a/path/to/somewhere
 
 
-@subsection configTreeLocation Tree location
+@subsection configtoolsTarget_config_TreeLocation Tree location
 
 The trees themselves are stored in the file system at:
 @verbatim /opt/legato/configTree @endverbatim
@@ -104,7 +102,7 @@ total 32
 
 The system, or root user, has its own tree; each application has a separate tree.
 
-@section configSamples Config Code Samples
+@section toolsTarget_config_Samples Config Code Samples
 
 To dump a tree, run this to get the default tree for the current user:
 
@@ -164,6 +162,6 @@ name and actual value:
 
 <HR>
 
-Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 
 **/

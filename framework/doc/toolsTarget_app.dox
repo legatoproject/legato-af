@@ -1,6 +1,6 @@
-/** @page toolsApp App
+/** @page toolsTarget_app app
 
-The @c app tool provides an easy method to run commonly-needed functions. 
+Use the Application tool for an easy method to run the most commonly needed target functions. 
 
 <h1>Usage</h1>
 
@@ -8,10 +8,10 @@ The @c app tool provides an easy method to run commonly-needed functions.
 
 @verbatim app [start|stop|restart|remove|status|version] APP_NAME [ APP_NAME ... ] @endverbatim
 > For these actions, multiple application names can be specified.
-> A wildcard '*' can be used instead of a list of apps to designate that the action should be applied to all apps.
+> A wildcard '*' can be used to apply action to all apps.
 
 @warning
-Be careful not to accidentally remove system services apps that you might need (such as the "modemService" app).
+Be careful not to accidentally remove system services apps that you might need (e.g., modemService app).
 
 @verbatim app install APP_NAME @endverbatim
 > Install app.
@@ -24,6 +24,6 @@ Be careful not to accidentally remove system services apps that you might need (
 
 <HR>
 
-Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+Copyright (C) 2015 Sierra Wireless, Inc. Use of this work is subject to license.
 
 **/

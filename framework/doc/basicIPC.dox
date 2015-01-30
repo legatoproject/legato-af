@@ -1,0 +1,46 @@
+/** @page basicIPC Inter-process Communication
+
+Inter-process communication (IPC) allows communication between different processes. 
+A process is one or more threads running inside its own, isolated address space.  
+
+Threads running inside the same process communicate easily with each other;
+they read and write the same data inside their shared address space.  
+
+Threads running inside two different processes can't access each 
+other's data; they need IPC to communicate.
+
+Legato's @ref c_messaging and @ref languageIndependentAPIs provide IPC services without
+all the coding, packing/unpacking, and security headaches that come
+with using other methods directly (e.g., network sockets or named pipes).
+
+Legato has built-in IPC features. The language-independent, function-call-oriented IPC approach 
+is automatically handled with the @ref buildToolsifgen and the mktools @ref buildTools_mktoolsOverview  
+
+By default, each app runs in its own sandbox. When an app is constructed,
+all the IPC services it needs are declared. At runtime, the Supervisor
+and the Service Directory enforce that only those approved IPC services are
+accessed by the app.
+
+Using language-independent IPC makes components inherently more reusable, 
+creates opportunities for function isolation in different processes or different app 
+sandboxes, and automatically creates debugging trace points.
+
+Another approach Legato uses for IPC is through low-level messaging APIs:  @ref c_APIs.
+This let's you custom build IPC to suit your needs.
+
+Related info 
+
+@ref languageIndependentAPIs <br>
+@ref componenthelloIPC <br>
+@ref defFiles <br>
+@ref legatoServices
+
+<HR>
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/
+ 
+
+
+

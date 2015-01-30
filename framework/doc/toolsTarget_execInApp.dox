@@ -1,6 +1,6 @@
-/** @page toolsExecInApp  Execute in App Sandbox
+/** @page toolsTarget_execInApp  execInApp
 
-Use the @c execInApp tool to execute a process in a running app's sandbox.
+Use the Execute In App tool to execute a process in a running app's sandbox.
 
 The executed process will inherit the terminal's environment variables and file descriptors. The 
 excutable and all required libraries, resources, etc. must already be in the app's sandbox 
@@ -11,7 +11,7 @@ before the executed process can be started.
 <b><c> execInApp [OPTIONS] execPath [ARGS] </c></b>
 
 @verbatim appName @endverbatim
-> Name of the running application where the process should start (can't start with dash - ).
+> Name of the running app where the process should start (can't start with dash - ).
 
 @verbatim execPath @endverbatim
 > Path in the sandbox to the file that will be executed (can't start with dash - ).
@@ -32,6 +32,6 @@ before the executed process can be started.
 
 <HR>
 
-Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+Copyright (C) 2015 Sierra Wireless, Inc. Use of this work is subject to license.
 
 **/

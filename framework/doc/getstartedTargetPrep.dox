@@ -1,0 +1,17 @@
+/** @page getstartedTargetPrep Prep Target Hardware
+
+These are the high-level steps to setup a Legato development kit target device:
+
+@subpage getstartedConnectDevKit to setup the hardware.
+
+@subpage getstartedConfigIP to setup target and host communications.
+
+The target should then be ready to @ref getstartedInstallLegato.
+
+Information is also available to <a href = "Legato_USB.pdf">Customize Legato USB</a>.
+
+<HR>
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/

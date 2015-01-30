@@ -1,8 +1,8 @@
-/** @page getstartedSetupTarget Setup Target
+/** @page getstartedTargetSetup Setup Target Software
 
-Here's how to set up and run your target.
+Here's how to set up and run your target from a Linux command-line. There are also @ref getstartedTargetAdvanced.
 
-@section serialCmn Host/Target Communications 
+@section getstartedTargetSetup_serialCmn Host/Target Communications 
 
 You need to install a serial communication program (e.g., Minicom) to access the target and obtain an IP address. 
 
@@ -15,15 +15,14 @@ You'll need to @ref getstartedConfigIP.
 
 Once the host and target are communicating, you can complete the target setup.
 
-@note Use the @ref toolsSetNet tool to set your MAC address so you don't have to go through @c ifconfig every time 
+@note Use the @ref toolsTarget_setNet tool to set your MAC address so you don't have to go through @c ifconfig every time 
 you reboot the target.
  
-@section copyStartScripts Copy Startup Scripts to Target 
+@section getstartedTargetSetup_copyStartScripts Copy Startup Scripts 
 
-Startup scripts are copied automatically when @c instlegato is run the first time, or you can copy
-them manually.
+Startup scripts are copied automatically to the target when @c instlegato is run the first time (see @ref getstartedTargetSetup_copyLibExe) .
 
-Using ssh, access the target:
+You can also copy the scripts manually. Using ssh, access the target:
 
 @code ssh root@<target ip address> @endcode
 When prompted for a password, press enter.
@@ -42,12 +41,12 @@ You can add more scripts to customize your target. @c fg_ scripts must have exec
 @note In the rare case you need to prevent legato starting automatically, run
 @code touch /mnt/flash/startup/STOPLEGATO @endcode 
 
-@section rebootTarget Reboot Target
+@section getstartedTargetSetup_rebootTarget Reboot Target
 
 Wait for the target to fully reboot. The target IP address may have changed. Check it using 
 @c ifconfig through the serial console before proceeding.
 
-@section copyLibExe Copy Libraries and Executables
+@section getstartedTargetSetup_copyLibExe Copy Libraries and Executables
 
 To copy libraries and executables to the target, run:
 
@@ -72,10 +71,13 @@ Then you can build and run apps.
 
 <HR>
 
+Here's @subpage getstartedTargetIPv6 info.
+
 These are @subpage getstartedTargetDirs installed.
+
 
 <HR>
 
-Copyright (C) Sierra Wireless, Inc. 2014. Use of this work is subject to license.
+Copyright (C) 2015 Sierra Wireless, Inc. Use of this work is subject to license.
 
 **/
