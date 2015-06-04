@@ -25,6 +25,8 @@ ADD_DEPENDENCIES(agent_platform agent_platform_event agent_platform_log agent_pl
 ENDIF()
 
 SET(LEGATO_SOURCE_DIR ../../..)
+SET(LEGATO_BINARY_DIR ${LEGATO_SOURCE_DIR}/build/${LEGATO_TARGET})
+
 INCLUDE(${LEGATO_SOURCE_DIR}/cmake/legato-config.cmake)
 SET_LEGATO_COMPONENT(AirVantage)
 
@@ -36,8 +38,7 @@ INCLUDE_DIRECTORIES(
 INCLUDE_DIRECTORIES(
     ${LEGATO_SOURCE_DIR}/framework/c/inc
     ${LEGATO_SOURCE_DIR}/framework/c/src
-    ${LEGATO_SOURCE_DIR}/interfaces/dataConnectionService/c
-    ${LEGATO_SOURCE_DIR}/interfaces/modemServices/c
+    ${LEGATO_BINARY_DIR}/apps/airvantage/le_data_client
 )
 
 LINK_DIRECTORIES(${CMAKE_BINARY_DIR}/../bin/lib/)
