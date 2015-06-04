@@ -1,0 +1,22 @@
+// Disable the sandbox security to make things a little easier.
+sandboxed: false
+
+// Put the cross-compiled legacy program in the app's bin directory.
+// [x] = make it executable.
+bundles:
+{
+    file:
+    {
+        [x] legacy /bin/
+    }
+}
+
+// Tell the Supervisor to start this program when the application is started.
+processes:
+{
+    run:
+    {
+        ( legacy )
+    }
+}
+

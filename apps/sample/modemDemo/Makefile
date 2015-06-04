@@ -1,4 +1,4 @@
-TARGETS := ar7 wp7 ar86 localhost
+TARGETS := ar7 wp7 ar86 wp85 localhost
 
 .PHONY: all $(TARGETS)
 all: $(TARGETS)
@@ -11,4 +11,4 @@ $(TARGETS):
 		  modemDemo.adef
 
 clean:
-	rm -rf _build_* *.ar7 *.wp7 *.ar86 *.localhost
+	rm -rf _build_* *.ar7 *.wp7 *.ar86 *.wp85 *.localhost

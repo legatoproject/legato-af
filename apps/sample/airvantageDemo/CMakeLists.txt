@@ -15,7 +15,8 @@ mkapp(airvantageDemo.adef
     -i ${AIRVANTAGE_INCLUDE_DIR}
     DEPENDS
         legato
-        airvantageDemo.c
+        *
+        avDemoComponent/*
 )
 
 # This is a sample application

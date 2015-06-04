@@ -1,6 +1,6 @@
 executables:
 {
-    helloWorld = ( helloWorld.c )
+    helloWorld = ( helloComponent )
 }
 
 processes:

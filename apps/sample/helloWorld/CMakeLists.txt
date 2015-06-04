@@ -9,7 +9,8 @@
 mkapp(helloWorld.adef
     DEPENDS
         legato
-        helloWorld.c
+        helloComponent/*
+        *
 )
 
 # This is a sample application

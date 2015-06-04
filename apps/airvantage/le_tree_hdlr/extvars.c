@@ -658,7 +658,8 @@ static void ConnectionStateHandler
 //--------------------------------------------------------------------------------------------------
 static void SimStateHandler
 (
-    le_sim_ObjRef_t simRef,
+    le_sim_Id_t     simId,
+    le_sim_States_t simState,
     void*           contextPtr
 )
 {
@@ -667,13 +668,10 @@ static void SimStateHandler
     char            imsi[LE_SIM_IMSI_BYTES] = {0};
     char            phoneNumber[LE_MDMDEFS_PHONE_NUM_MAX_BYTES] = {0};
     bool            notify=false;
-    le_sim_States_t state;
 
-    state = le_sim_GetState(simRef);
+    LE_DEBUG("New SIM state notified (%d)", simState);
 
-    LE_DEBUG("New SIM state notified (%d)", state);
-
-    switch(state)
+    switch(simState)
     {
         case LE_SIM_ABSENT:
             varPtr = GetTreeVariable(EXTVARS_VAR_ID_ICCID);
@@ -701,7 +699,7 @@ static void SimStateHandler
             break;
 
         case LE_SIM_INSERTED:
-            if((le_sim_GetICCID(simRef, iccid, sizeof(iccid))) != LE_OK)
+            if((le_sim_GetICCID(simId, iccid, sizeof(iccid))) != LE_OK)
             {
                 LE_ERROR("Failed to get the ICCID!");
             }
@@ -723,7 +721,7 @@ static void SimStateHandler
             break;
 
         case LE_SIM_READY:
-            if((le_sim_GetICCID(simRef, iccid, sizeof(iccid))) != LE_OK)
+            if((le_sim_GetICCID(simId, iccid, sizeof(iccid))) != LE_OK)
             {
                 LE_ERROR("Failed to get the ICCID!");
             }
@@ -742,7 +740,7 @@ static void SimStateHandler
                 }
             }
 
-            if((le_sim_GetIMSI(simRef, imsi, sizeof(imsi))) != LE_OK)
+            if((le_sim_GetIMSI(simId, imsi, sizeof(imsi))) != LE_OK)
             {
                 LE_ERROR("Failed to get the IMSI!");
             }
@@ -761,7 +759,8 @@ static void SimStateHandler
                 }
             }
 
-            if ( le_sim_GetSubscriberPhoneNumber(simRef,phoneNumber, sizeof(phoneNumber)) != LE_OK)
+            if ( le_sim_GetSubscriberPhoneNumber(simId, phoneNumber,
+                            sizeof(phoneNumber)) != LE_OK)
             {
                 LE_ERROR("Failed to get the Phone Number!");
             }
@@ -777,7 +776,8 @@ static void SimStateHandler
                     varPtr->isReadOnly = true;
                     le_utf8_Copy((char*)varPtr->value.s,phoneNumber,sizeof(varPtr->value.s),NULL);
                     notify=true;
-                    LE_DEBUG("Phone Number is updated with %s (get.%s)",(char*) varPtr->value.s, phoneNumber);
+                    LE_DEBUG("Phone Number is updated with %s (get.%s)",
+                        (char*) varPtr->value.s, phoneNumber);
                 }
             }
             break;
@@ -854,7 +854,7 @@ static void NetRegHandler
         }
         else if (result == LE_FAULT)
         {
-            le_utf8_Copy(homeNetworkName,"",sizeof(homeNetworkName),NULL);
+            le_utf8_Copy(homeNetworkName, "", sizeof(homeNetworkName), NULL);
         }
         else if ( result == LE_OVERFLOW )
         {
@@ -896,7 +896,7 @@ static rc_ReturnCode_t InitializeInfoVariables
     void
 )
 {
-    rc_ReturnCode_t rc=RC_OK;
+    rc_ReturnCode_t rc = RC_OK;
     TreeHdlVar_t*   varPtr;
     char            imei[LE_INFO_IMEI_MAX_BYTES];
 
@@ -934,7 +934,7 @@ static rc_ReturnCode_t InitializeMrcVariables
     void
 )
 {
-    rc_ReturnCode_t         rc=RC_OK;
+    rc_ReturnCode_t         rc = RC_OK;
     TreeHdlVar_t*           varPtr;
     le_mrc_NetRegState_t    netState;
 
@@ -1199,9 +1199,8 @@ static rc_ReturnCode_t InitializeSimVariables
     void
 )
 {
-    rc_ReturnCode_t rc=RC_OK;
+    rc_ReturnCode_t rc = RC_OK;
     TreeHdlVar_t*   varPtr;
-    le_sim_ObjRef_t simRef;
     char            iccid[LE_SIM_ICCID_BYTES] = {0};
     char            imsi[LE_SIM_IMSI_BYTES] = {0};
     char            phoneNumber[LE_MDMDEFS_PHONE_NUM_MAX_BYTES] = {0};
@@ -1214,64 +1213,58 @@ static rc_ReturnCode_t InitializeSimVariables
         rc = RC_UNSPECIFIED_ERROR;
     }
 
-    if((simRef = le_sim_Create(1)) == NULL)
+    le_sim_Id_t simSelected = le_sim_GetSelectedCard();
+
+    if((le_sim_GetICCID(simSelected, iccid, sizeof(iccid))) != LE_OK)
     {
-        LE_ERROR("Failed to get the SIM reference!");
+        LE_ERROR("Failed to get the ICCID!");
         rc = RC_UNSPECIFIED_ERROR;
     }
     else
     {
-        if((le_sim_GetICCID(simRef, iccid, sizeof(iccid))) != LE_OK)
-        {
-            LE_ERROR("Failed to get the ICCID!");
-            rc = RC_UNSPECIFIED_ERROR;
-        }
-        else
-        {
-            varPtr = GetTreeVariable(EXTVARS_VAR_ID_ICCID);
+        varPtr = GetTreeVariable(EXTVARS_VAR_ID_ICCID);
 
-            varPtr->id = EXTVARS_VAR_ID_ICCID;
-            varPtr->type = EXTVARS_TYPE_STR;
-            varPtr->notified = true;
-            varPtr->registered = false;
-            varPtr->isReadOnly = true;
-            le_utf8_Copy((char*) varPtr->value.s, iccid, sizeof(varPtr->value.s), NULL);
-        }
+        varPtr->id = EXTVARS_VAR_ID_ICCID;
+        varPtr->type = EXTVARS_TYPE_STR;
+        varPtr->notified = true;
+        varPtr->registered = false;
+        varPtr->isReadOnly = true;
+        le_utf8_Copy((char*) varPtr->value.s, iccid, sizeof(varPtr->value.s), NULL);
+    }
 
-        if((le_sim_GetIMSI(simRef, imsi, sizeof(imsi))) != LE_OK)
-        {
-            LE_ERROR("Failed to get the IMSI!");
-            rc = RC_UNSPECIFIED_ERROR;
-        }
-        else
-        {
-            varPtr = GetTreeVariable(EXTVARS_VAR_ID_IMSI);
+    if((le_sim_GetIMSI(simSelected, imsi, sizeof(imsi))) != LE_OK)
+    {
+        LE_ERROR("Failed to get the IMSI!");
+        rc = RC_UNSPECIFIED_ERROR;
+    }
+    else
+    {
+        varPtr = GetTreeVariable(EXTVARS_VAR_ID_IMSI);
 
-            varPtr->id = EXTVARS_VAR_ID_IMSI;
-            varPtr->type = EXTVARS_TYPE_STR;
-            varPtr->notified = true;
-            varPtr->registered = false;
-            varPtr->isReadOnly = true;
-            le_utf8_Copy((char*) varPtr->value.s, imsi, sizeof(varPtr->value.s), NULL);
-        }
+        varPtr->id = EXTVARS_VAR_ID_IMSI;
+        varPtr->type = EXTVARS_TYPE_STR;
+        varPtr->notified = true;
+        varPtr->registered = false;
+        varPtr->isReadOnly = true;
+        le_utf8_Copy((char*) varPtr->value.s, imsi, sizeof(varPtr->value.s), NULL);
+    }
 
-        if ( le_sim_GetSubscriberPhoneNumber(simRef,phoneNumber, sizeof(phoneNumber)) != LE_OK)
-        {
-            LE_ERROR("Failed to get the Phone Number!");
-            rc = RC_UNSPECIFIED_ERROR;
-        }
-        else
-        {
-            varPtr = GetTreeVariable(EXTVARS_VAR_ID_SUBSCRIBER_PHONE_NUM);
+    if ( le_sim_GetSubscriberPhoneNumber(simSelected,phoneNumber, sizeof(phoneNumber)) != LE_OK)
+    {
+        LE_ERROR("Failed to get the Phone Number!");
+        rc = RC_UNSPECIFIED_ERROR;
+    }
+    else
+    {
+        varPtr = GetTreeVariable(EXTVARS_VAR_ID_SUBSCRIBER_PHONE_NUM);
 
-            varPtr->id = EXTVARS_VAR_ID_SUBSCRIBER_PHONE_NUM;
-            varPtr->type = EXTVARS_TYPE_STR;
-            varPtr->notified = true;
-            varPtr->registered = false;
-            varPtr->isReadOnly = true;
-            LE_DEBUG("phoneNumber %s",phoneNumber);
-            le_utf8_Copy((char*) varPtr->value.s, phoneNumber, sizeof(varPtr->value.s), NULL);
-        }
+        varPtr->id = EXTVARS_VAR_ID_SUBSCRIBER_PHONE_NUM;
+        varPtr->type = EXTVARS_TYPE_STR;
+        varPtr->notified = true;
+        varPtr->registered = false;
+        varPtr->isReadOnly = true;
+        LE_DEBUG("phoneNumber %s",phoneNumber);
+        le_utf8_Copy((char*) varPtr->value.s, phoneNumber, sizeof(varPtr->value.s), NULL);
     }
 
     return rc;
@@ -1288,7 +1281,7 @@ static rc_ReturnCode_t InitializePosVariables
     void
 )
 {
-    rc_ReturnCode_t rc=RC_OK;
+    rc_ReturnCode_t rc = RC_OK;
     TreeHdlVar_t*   varPtr;
     int32_t         latitude;
     int32_t         longitude;

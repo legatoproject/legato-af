@@ -23,3 +23,5 @@ mkapp(eCallDemo.adef
 
 # This is a sample application
 add_dependencies(samples eCallDemo)
+
+generate_header(eCallAppComponent/ecallApp.api)

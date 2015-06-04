@@ -769,34 +769,33 @@ static bool ProcessCommand
     {
         // Like the status command, this command queries the underling hardware for information.
         // This information is turned into a string that can then be returned to the caller.
-        const uint32_t simSlot = LE_SIM_EXTERNAL_SLOT_1;
-        le_sim_ObjRef_t simRef = le_sim_Create(simSlot);
+        le_sim_Id_t simId;
+        le_sim_States_t simState;
 
         char iccid[100];
         char imsi[100];
         int pos = 0;
 
-        le_sim_States_t simState = le_sim_GetState(simRef);
+        simId = le_sim_GetSelectedCard();
+        simState = le_sim_GetState(simId);
 
         pos += snprintf(buffer + pos, sizeof(buffer) - pos,
                 "SIM %u is %s.",
-                simSlot,
+                simId,
                 GetSimStateString(simState));
 
-        if(le_sim_GetICCID(simRef, iccid, sizeof(iccid)) == LE_OK)
+        if(le_sim_GetICCID(simId, iccid, sizeof(iccid)) == LE_OK)
         {
             pos += snprintf(buffer + pos, sizeof(buffer) - pos,
                     " ICCID=%s", iccid);
         }
 
-        if(le_sim_GetIMSI(simRef, imsi, sizeof(imsi)) == LE_OK)
+        if(le_sim_GetIMSI(simId, imsi, sizeof(imsi)) == LE_OK)
         {
             pos += snprintf(buffer + pos, sizeof(buffer) - pos,
                     " IMSI=%s", imsi);
         }
 
-        // Release my SIM object reference.
-        le_sim_Delete(simRef);
     }
     else if (strcmp(textPtr, "Online") == 0)
     {

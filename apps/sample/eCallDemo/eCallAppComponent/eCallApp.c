@@ -178,6 +178,11 @@ static void ECallStateHandler
             LE_INFO("New eCall state is LE_ECALL_STATE_WAITING_PSAP_START_IND.");
             break;
         }
+        case LE_ECALL_STATE_PSAP_START_IND_RECEIVED:
+        {
+            LE_INFO("New eCall state is LE_ECALL_STATE_PSAP_START_IND_RECEIVED.");
+            break;
+        }
         case LE_ECALL_STATE_MSD_TX_STARTED:
         {
             LE_INFO("New eCall state is LE_ECALL_STATE_MSD_TX_STARTED.");

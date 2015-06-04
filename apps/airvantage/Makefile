@@ -19,16 +19,9 @@ LIB_OUTPUT_DIR := $(LEGATO_ROOT)/build/$(TARGET)/bin/lib
 APP_WORKING_DIR := $(LEGATO_ROOT)/build/$(TARGET)/apps/airvantage
 APP := $(APP_OUTPUT_DIR)/airvantage.$(TARGET)
 
-LE_DATA_CLIENT := $(LIB_OUTPUT_DIR)/lible_data_client.so \
-				  $(LIB_OUTPUT_DIR)/libIF_le_data_client.so
+LE_DATA_CLIENT := $(LIB_OUTPUT_DIR)/lible_data_client.so
 
-LE_TREE_HDLR := $(LIB_OUTPUT_DIR)/lible_tree_hdlr.so \
-				$(LIB_OUTPUT_DIR)/libIF_le_info_client.so \
-				$(LIB_OUTPUT_DIR)/libIF_le_mdc_client.so \
-				$(LIB_OUTPUT_DIR)/libIF_le_mrc_client.so \
-				$(LIB_OUTPUT_DIR)/libIF_le_pos_client.so \
-				$(LIB_OUTPUT_DIR)/libIF_le_posCtrl_client.so \
-				$(LIB_OUTPUT_DIR)/libIF_le_sim_client.so
+LE_TREE_HDLR := $(LIB_OUTPUT_DIR)/lible_tree_hdlr.so
 
 
 .PHONY: pre_build
