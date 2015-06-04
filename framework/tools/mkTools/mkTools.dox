@@ -1,0 +1,358 @@
+/**
+
+@page mkToolsDesign Design of the mk tools (mksys, mkapp, mkcomp, and mkexe)
+
+@section mkToolsDesign_Decomposition Design Decomposition
+
+The mk tools are broken into the following main parts:
+
+ - @ref mkToolsDesign_parser
+ - @ref mkToolsDesign_parseTrees
+ - @ref mkToolsDesign_modellers
+ - @ref mkToolsDesign_conceptualModel
+ - @ref mkToolsDesign_buildScriptGenerator
+ - @ref mkToolsDesign_appConfigGenerator
+ - @ref mkToolsDesign_codeGenerator
+ - @ref mkToolsDesign_commandLineInterpreter
+ - @ref mkToolsDesign_ninjaBuildTool
+
+@subsection mkToolsDesign_parser Parser
+
+    Parse .cdef, .adef, and .sdef files and builds in-memory Parse Trees.  Different parsing
+    algorithms parse different types and versions of .Xdef files and generate the
+    associated Parse Trees.
+
+@subsection mkToolsDesign_parseTrees Parse Trees
+
+    A model of a parsed .Xdef file.  Keeps track of the structure of the definition file
+    and exactly what file and line number a given part of the definition comes from.
+    Parse trees are versioned according to the .Xdef file format version.
+
+@subsection mkToolsDesign_modellers Modellers
+
+    Converts a Parse Tree into a Conceptual Model.
+    Different versions of modellers know how to generate the Conceptual Model from different
+    versions of the Parse Tree.
+
+@subsection mkToolsDesign_conceptualModel Conceptual Model
+
+    Conceptual model of component/app/system/executable being built.
+    There is only one version of the Conceptual Model in any given release of the mk tools.
+
+@subsection mkToolsDesign_buildScriptGenerator Build Script Generator
+
+    Generates a build script for the "project" being built, based on the Conceptual Model.
+
+@subsection mkToolsDesign_appConfigGenerator App Configuration Generator
+
+    Generates the configuration data files needed by the installer on-target.
+
+@subsection mkToolsDesign_codeGenerator Code Generator
+
+    Generates C code files, such _main.c for executables and interfaces.h for components.
+
+@subsection mkToolsDesign_commandLineInterpreter Command-Line Interpreter
+
+    Interprets the command-line to determine what to build.
+    Drives the Parsers, Modellers, App Configuration Generator, Build Script Generator and
+    the ninja build tool.
+
+    The Command Line Interpreter will look for the @ref build.ninja file for the project.
+    If it exists, the Command Line Interpreter will just exec() ninja.  A rule in the
+    build.ninja file tells ninja how to detect whether the build.ninja file needs to be
+    regenerated, and if so, how to run the mk tools again to regenerate the build.ninja file.
+
+    Steps executed by the mk tools when build.ninja doesn't exist are:
+
+     - construct the staging directory structure
+     - generate _main.c files for executables declared in .adef files
+     - generate configuration files
+     - generate build.ninja
+
+@subsection mkToolsDesign_ninjaBuildTool Ninja Build Tool
+
+    The Ninja build tool is documented at http://martine.github.io/ninja/.
+
+    The build.ninja script will drive
+     - generating IPC API code
+     - compiling
+     - linking
+     - copying bundled files into the staging area
+     - generating application hash
+     - update-packing
+
+
+@section mkToolsDesign_workingDirs Working Directory Structures
+
+The mk tools are designed to put any intermediate build artifacts in a "working" directory,
+separate from the source directory.
+
+The location of the working directory can be specified on the command-line using the '-w' option.
+If not specified, a default directory path, beginning with "./_build" will be generated.
+
+
+@subsection mkToolsDesign_workingDirs_components Components' Working Directories
+
+Components' working directories contain these subdirectories:
+
+ - api - IPC API related files that could be shared with other components
+ - src - generated source code files specific to this component
+ - obj - generated object files specific to this component
+
+@subsubsection mkToolsDesign_workingDirs_components_api api Directory
+
+For each .api file referenced by a "requires" or "provides" section, a directory will be created
+under the "api" directory.  In that directory will be generated any source code files that could
+be shared between different components and interface instances.
+
+To support the case where there are multiple .api files that share the same file name (but are
+kept in different directories), the generated api files are kept at a path formed by concatenating
+the path to the "api" working directory with the MD5 hash of the canonical path to the .api file.
+
+For example, if the file foo.api is required and/or provided with the local instance name "prefix"
+(i.e., if "prefix = foo.api" appears in the Component.cdef), and the MD5 hash of the canonical
+path of the foo.api file is b426b059840d56bd3ca8691607ce8c8c, then the following files will be
+created under the working directory, as needed:
+
+ - api/b426b059840d56bd3ca8691607ce8c8c/client/prefix_interface.h
+ - api/b426b059840d56bd3ca8691607ce8c8c/client/prefix_local.h
+ - api/b426b059840d56bd3ca8691607ce8c8c/client/prefix_client.c
+ - api/b426b059840d56bd3ca8691607ce8c8c/client/prefix_client.c.o
+ - api/b426b059840d56bd3ca8691607ce8c8c/client/prefix_client.c.o.d
+ - api/b426b059840d56bd3ca8691607ce8c8c/server/prefix_server.h
+ - api/b426b059840d56bd3ca8691607ce8c8c/server/prefix_local.h
+ - api/b426b059840d56bd3ca8691607ce8c8c/server/prefix_server.c
+ - api/b426b059840d56bd3ca8691607ce8c8c/server/prefix_server.c.o
+ - api/b426b059840d56bd3ca8691607ce8c8c/server/prefix_server.c.o.d
+ - api/b426b059840d56bd3ca8691607ce8c8c/async_server/prefix_server.h
+ - api/b426b059840d56bd3ca8691607ce8c8c/async_server/prefix_local.h
+ - api/b426b059840d56bd3ca8691607ce8c8c/async_server/prefix_server.c
+ - api/b426b059840d56bd3ca8691607ce8c8c/async_server/prefix_server.c.o
+ - api/b426b059840d56bd3ca8691607ce8c8c/async_server/prefix_server.c.o.d
+
+@subsubsection mkToolsDesign_workingDirs_components_src src Directory
+
+For every component, a custom "interfaces.h" file is generated.  This file can be found in
+the component's "src" directory.
+
+ - src/interfaces.h
+
+@subsubsection mkToolsDesign_workingDirs_components_obj obj Directory
+
+For any C or C++ source file listed in the "sources" section of the Component.cdef, a .o file
+will be created under the "obj" directory.  To prevent conflicts when there are multiple .c files
+with the same name, the .o file is placed in a directory named with the MD5 sum of the path
+to the source code file.  For example:
+
+ - obj/b426b059840d56bd3ca8691607ce8c8c/file.c.o
+
+
+@subsection mkToolsDesign_workingDirs_apps Applications' Working Directories
+
+Applications' working directories contain these subdirectories:
+
+ - src/ - generated source code specific to this application
+ - obj/ - generated object files specific to this application
+ - component/<comp-name> - working directories for components, each named with the component name.
+ - api/ - IPC API related files that could be shared with other applications
+ - staging/ - directories and files to be installed on target
+
+Although, if the application is being built by mksys, both the "component" and "api" directories
+will be replaced with symbolic links to the system's top-level "component" and "api" directories,
+respectively.
+
+@subsubsection mkToolsDesign_workingDirs_apps_src src Directory
+
+The application's "src" directory contains generated .c files for executables' main()
+functions and component instance libraries.  These are kept in a subdirectory named after
+the executable.
+
+ - src/exeName/_main.c
+
+Also, the interface instance files are kept under a deeper subdirectory named after the component.
+This prevents file naming conflicts between IPC API files generated for different interface
+instances using the same .api file.
+
+ - src/exeName/componentName/prefix_local.h
+
+@subsubsection mkToolsDesign_workingDirs_apps_obj obj Directory
+
+The application's "obj" directory contains .o files for each generated .c file in the "src"
+directory.  The directory structure under the "obj" directory mirrors that of the "src" directory.
+
+ - obj/exeName/_main.c.o
+ - obj/exeName/componentName/prefix_client.c.o
+ - obj/exeName/componentName/prefix_server.c.o
+
+Note that these IPC interface instance files can't be in the "api" directory because they
+contain the interface instance name, which is unique to this instance of the component inside
+this executable.  These will be compiled into libIF_exeName.componentName.interfaceName.so
+libraries, which will be linked dynamically with the executable, so that they will be dynamically
+loaded before the component library that needs their symbols is loaded.
+
+ - obj/libIF_exeName.componentName.interfaceName.so
+
+For each executable that is compiled from sources, the "obj" directory will also contain the
+compiled executable file.
+
+ - obj/exeName
+
+This is because the staging directory gets deleted and recreated in every build, so this saves
+having to re-link executables when their ingredients haven't changed.
+
+@subsubsection mkToolsDesign_workingDirs_apps_component component Directory
+
+The "component" directory contains the working directories for building components that are
+included in this application.  Their content is described above in the section
+"Components' Working Directories".  However, if the application is being built my mksys,
+this directory will be replaced with a symbolic link to the "components" directory at the top
+level of the system's working directory (see "Systems' Working Directories" below).  This prevents
+duplicate builds of the same component shared between applications.  Also, both mksys and mkapp
+will build the component library files in the component directory and then copy them into the
+staging directory as a last step.  This is because the staging directory gets deleted and recreated
+in every build, so this saves having to recompile/link component libraries when their ingredients
+haven't changed.
+
+ - component (symlink to ../../component if using mksys)
+ - component/componentName/libComponent_compName.so
+ - component/componentName/obj
+ - component/componentName/api (symlink to ../../api/)
+
+@subsubsection mkToolsDesign_workingDirs_apps_api api Directory
+
+The "api" directory contains files generated for APIs that are shared between components
+(as described in "Components' Working Directories" above).  But, if the application
+is being built by mksys, this will instead be a symlink to the system's "api" directory so that
+these files can be shared by all the applications in the system.
+
+ - api (symlink to ../../api if using mksys)
+
+@subsubsection mkToolsDesign_workingDirs_apps_staging staging Directory
+
+The final application bundle is simply an archive file containing the contents of the
+application's staging directory.  This can be directly installed on a target using the
+developer tools.  Or, the "update-pack" tool can be used to prepare this for delivery to
+a target device operating in the field.
+
+The application's "staging" directory will contain the following files and directories:
+
+ - staging/bin/ - executable files specified in "executables" section or "bundles" section.
+ - staging/lib/ - library files built for components and interface instances, and listed in
+                    "bundles" section.
+ - staging/root.cfg - Configuration settings for the "system" configuration tree.
+ - staging/app.cfg - Configuration settings for the application's own configuration tree.
+
+The staging directory may also contain any other directories and files specified in the .adef
+"bundles" section.  If a bundled file is to appear at /usr/bin/foo in the application's runtime
+sandbox, then it will appear at usr/bin/foo inside the staging directory.
+
+ - staging/usr/bin/foo
+
+Finally, a file called "info.properties" is placed in the root of the staging directory.
+This file contains information about the application, such as the version of the Legato application
+framework that used to build the app and the application's MD5 checksum.  The file conforms to
+a strict subset of the standard Java .properties file format.  The name and value on each line
+is always separated using an equals sign (=).
+
+ - staging/info.properties
+
+Note that the info.properties file is not included in the md5 checksum calculation (it can't
+because it contains the md5 checksum).  This file is for use by development and deployment tools
+to display information to humans and to check whether an app file contains the same app that
+is installed on a device.
+
+
+@subsection mkToolsDesign_workingDirs_systems Systems' Working Directories
+
+The working directory structure for mksys contains these directories:
+
+ - app/ - working directories for the apps, one per app, named with the app name.
+ - component/ - working directories for the components, each named with the component name.
+ - api/ - working directories for generated api .h and .c files.
+ - staging/ - see below.
+
+The system's staging directory contains:
+
+ - userBindings.cfg - Configuration settings for user-to-user and user-to-app IPC bindings.
+ - application bundles (e.g., .wp7 files) for the applications
+
+Note that if the .sdef contains any overrides to application configuration settings, those
+are applied directly to the application's root.cfg and app.cfg files in the applications'
+staging directories.  Bindings from apps-to-apps or apps-to-users are also applied directly
+to the apps' root.cfg files.
+
+The final system bundle is an archive file containing the contents of the system's staging
+directory.  This can be directly installed on a target using the developer tools.  Or, the
+"update-pack" tool can be used to prepare this for delivery to a target device operating
+in the field.
+
+See "Applications' Working Directories" above for more information on the structure of the
+app, component, and api directories.
+
+
+@subsection mkToolsDesign_workingDirs_mkexe_and_mkcomp Working Directories for mkexe and mkcomp
+
+The mkexe and mkcomp tools have similar working directory structures to the application's working
+directory structure, but without the "staging" directory.  The "staging" directory isn't needed
+because these tools don't bundle all their output together into a single file like mkapp and
+mksys do.  Instead, the command line is used to provide file paths for the locations where
+generated library files and/or executables should be put.
+
+@note In the future, the component's "staging" directory may be used by mkcomp when building
+distributable component bundles.
+
+See "Applications' Working Directories" above for more information.
+
+
+@subsection mkToolsDesign_workingDirs_future Proposed Future Enhancements
+
+@subsubsection mkToolsDesign_workingDirs_appFileSharing Manual Sharing of Files Between Apps
+
+We could allow the "bundles" section to be used in the .sdef.
+
+This would put the bundled files under a "bundled" directory in the system's staging directory, and
+the installer would then make those files available on-target under /legato/system/.
+
+This would allow applications to share files by using their "requires" section to bind-mount those
+files into their sandboxes.
+
+@subsubsection mkToolsDesign_workingDirs_optimization Memory Usage Reduction Through Automatic Sharing of Files Between Apps
+
+The mksys tool could analyze all the apps and identify any identical files that appear in more
+than one app with read-only permissions.  These files could be moved to a "staging/share" directory
+under the system's working directory and a "requires" bind-mount could be added to the
+applications' root.cfg files to make them available to the applications.
+
+
+@subsection mkToolsDesign_workingDirs_knownBugs Known Bugs
+
+ - mksys doesn't work yet.
+
+@section mkToolsDesign_MemoryManagement Memory Management
+
+Objects in the parse tree and the conceptual model are created using 'new' and plain pointers
+are used to refer to them.
+
+Essentially, nothing in the parse tree or the conceptual model is deleted, so destructors and
+smart pointers are unnecessary in most cases.
+
+Because pointers are used as references and everything of significance is allocated from the heap,
+there's no need for copy or move constructors or operators.
+
+Also, the program is short-lived, so memory leaks are not a concern.
+
+
+@section mkToolsDesign_FutureEnhancements Future Enhancements
+
+    In the future, to offer an automatic definition file upgrade feature, Translators can be
+    created to generate the latest version of definition files from the various versions of
+    Parse Trees that are supported.
+
+    Also, digital signing of system and application update files will be added to the update-pack
+    stage of the build.
+
+<hr>
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/

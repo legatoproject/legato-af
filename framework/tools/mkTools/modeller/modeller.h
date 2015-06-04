@@ -1,0 +1,84 @@
+//--------------------------------------------------------------------------------------------------
+/**
+ * @file modeller.h
+ *
+ * Copyright (C) Sierra Wireless Inc.  Use of this work is subject to license.
+ */
+//--------------------------------------------------------------------------------------------------
+
+#ifndef LEGATO_MKTOOLS_MODELLER_H_INCLUDE_GUARD
+#define LEGATO_MKTOOLS_MODELLER_H_INCLUDE_GUARD
+
+namespace modeller
+{
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get a conceptual model for a single application whose .adef file can be found at a given path.
+ *
+ * @return Pointer to the application object.
+ */
+//--------------------------------------------------------------------------------------------------
+model::App_t* GetApp
+(
+    const std::string& adefPath,    ///< Path to the application's .adef file.
+    const mk::BuildParams_t& buildParams
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get a conceptual model for a single component residing in a given directory.
+ *
+ * @return Pointer to the component object.
+ */
+//--------------------------------------------------------------------------------------------------
+model::Component_t* GetComponent
+(
+    const std::string& componentDir,    ///< Directory the component is found in.
+    const mk::BuildParams_t& buildParams
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Adds an instance of a given component to a given executable.
+ **/
+//--------------------------------------------------------------------------------------------------
+void AddComponentInstance
+(
+    model::Exe_t* exePtr,
+    model::Component_t* componentPtr
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Verifies that all client-side interfaces of an application have either been bound to something
+ * or marked as an external interface to be bound at the system level.  Will auto-bind any unbound
+ * le_cfg or le_wdog interfaces it finds.
+ *
+ * @throw mk::Exception_t if any client-side interface is found to be unsatisfied.
+ */
+//--------------------------------------------------------------------------------------------------
+void EnsureClientInterfacesSatisfied
+(
+    model::App_t* appPtr
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Print a summary of an application object.
+ **/
+//--------------------------------------------------------------------------------------------------
+void PrintSummary
+(
+    model::App_t* appPtr
+);
+
+
+} // namespace modeller
+
+#endif // LEGATO_MKTOOLS_MODELLER_H_INCLUDE_GUARD

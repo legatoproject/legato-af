@@ -1,0 +1,32 @@
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Class whose objects can be used to store watchdogAction settings.
+ *
+ *  Copyright (C) Sierra Wireless, Inc. Use of this work is subject to license.
+ */
+//--------------------------------------------------------------------------------------------------
+
+#ifndef WATCHDOG_ACTION_H_INCLUDE_GUARD
+#define WATCHDOG_ACTION_H_INCLUDE_GUARD
+
+
+
+class WatchdogAction_t: public Limit_t
+{
+    public:
+
+        virtual ~WatchdogAction_t() {}
+
+    private:
+
+        std::string value;
+
+    public:
+
+        void operator =(const std::string &action);
+
+        const std::string& Get() const;
+};
+
+
+#endif  // WATCHDOG_ACTION_H_INCLUDE_GUARD
