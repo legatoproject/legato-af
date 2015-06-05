@@ -12,6 +12,7 @@ if (LEGATO_SECSTORE_PA MATCHES ".*/pre-built/.*")
                             --ldflags=-lqmiservices
                             --ldflags=-lloc_api
                             --ldflags=${TARGET_SYSROOT}/usr/lib/libsierra_qapi.a
+                            --cflags=-DPRE_BUILT_PA
                             )
 
     file(COPY ${LEGATO_SECSTORE_PA}/libComponent_le_pa_secStore.so DESTINATION ${LIBRARY_OUTPUT_PATH})

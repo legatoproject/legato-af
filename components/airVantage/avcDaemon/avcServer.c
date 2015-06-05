@@ -928,6 +928,9 @@ void le_avc_UnblockInstall
     }
 }
 
+#ifdef PRE_BUILT_PA
+void _le_pa_avc_COMPONENT_INIT(void);
+#endif /* PRE_BUILT_PA */
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -936,6 +939,10 @@ void le_avc_UnblockInstall
 //--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
+    #ifdef PRE_BUILT_PA
+    _le_pa_avc_COMPONENT_INIT();
+    #endif /* PRE_BUILT_PA */
+
     // Register for status updates even if no user function is registered.  This is necessary
     // to ensure that automatic actions are performed, and the state is properly tracked.
     pa_avc_SetAVMSMessageHandler(UpdateHandler);

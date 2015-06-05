@@ -1074,6 +1074,10 @@ static void CloseSessionEventHandler
 //                                       Public declarations
 //--------------------------------------------------------------------------------------------------
 
+#ifdef PRE_BUILT_PA
+void _le_pa_audio_COMPONENT_INIT(void);
+#endif /* PRE_BUILT_PA */
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Initialize the audio component.
@@ -1083,6 +1087,10 @@ static void CloseSessionEventHandler
 //--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
+    #ifdef PRE_BUILT_PA
+    _le_pa_audio_COMPONENT_INIT();
+    #endif /* PRE_BUILT_PA */
+
     // Allocate the audio stream pool.
     AudioStreamPool = le_mem_CreatePool("AudioStreamPool", sizeof(le_audio_Stream_t));
     le_mem_ExpandPool(AudioStreamPool, STREAM_DEFAULT_POOL_SIZE);

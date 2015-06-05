@@ -17,6 +17,7 @@ if (LEGATO_AUDIO_PA MATCHES ".*/pre-built/.*")
     set(LINK_DIRECTIVES     --ldflags=-lqmi_cci
                             --ldflags=-lqmiservices
                             --ldflags=${TARGET_SYSROOT}/usr/lib/libsierra_qcsi.a
+                            --cflags=-DPRE_BUILT_PA
                             )
 
 elseif (NOT DEFINED LEGATO_COMPONENTS_AUDIO)
