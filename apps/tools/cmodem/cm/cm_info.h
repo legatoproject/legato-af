@@ -1,19 +1,19 @@
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 /**
- *  @file cm_info.h
+ * @file cm_info.h
  *
- *  Handle info related functionality
+ * Handle info related functionality
  *
- *  Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 
 #ifndef CMODEM_INFO_INCLUDE_GUARD
 #define CMODEM_INFO_INCLUDE_GUARD
 
 //-------------------------------------------------------------------------------------------------
 /**
- *  Print the info help text to stdout.
+ * Print the info help text to stdout.
  */
 //-------------------------------------------------------------------------------------------------
 void cm_info_PrintInfoHelp
@@ -23,7 +23,7 @@ void cm_info_PrintInfoHelp
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Process commands for SMS service.
+ * Process commands for info service.
  */
 //--------------------------------------------------------------------------------------------------
 void cm_info_ProcessInfoCommand

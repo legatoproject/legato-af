@@ -1,34 +1,32 @@
 //-------------------------------------------------------------------------------------------------
 /**
- * @file cm_sms.h
+ * @file cm_adc.h
  *
- * Handle SMS related functionality
+ * Handle Analog to Digital Conversion related functionality
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 //-------------------------------------------------------------------------------------------------
 
-#ifndef CMODEM_SMS_INCLUDE_GUARD
-#define CMODEM_SMS_INCLUDE_GUARD
-
-#define CMODEM_SMS_DEFAULT_MAX_BIN_SMS  5
+#ifndef CMODEM_ADC_INCLUDE_GUARD
+#define CMODEM_ADC_INCLUDE_GUARD
 
 //-------------------------------------------------------------------------------------------------
 /**
- * Print the SMS help text to stdout.
+ * Print the adc help text to stdout.
  */
 //-------------------------------------------------------------------------------------------------
-void cm_sms_PrintSmsHelp
+void cm_adc_PrintAdcHelp
 (
     void
 );
 
-//--------------------------------------------------------------------------------------------------
+///--------------------------------------------------------------------------------------------------
 /**
- * Process commands for SMS service.
+ * Process commands for ADC service.
  */
 //--------------------------------------------------------------------------------------------------
-void cm_sms_ProcessSmsCommand
+void cm_adc_ProcessAdcCommand
 (
     const char * command,   ///< [IN] Command
     size_t numArgs          ///< [IN] Number of arguments

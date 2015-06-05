@@ -1,11 +1,11 @@
 //-------------------------------------------------------------------------------------------------
 /**
- *  @file cm_common.c
+ * @file cm_common.c
  *
- *  Common functions between components.
+ * Common functions between components.
  *
- *  Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
- *  to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * to license.
  */
 //-------------------------------------------------------------------------------------------------
 
@@ -26,7 +26,7 @@
 
 //-------------------------------------------------------------------------------------------------
 /**
- *  Prints a data item and its description to stdout according to the tool's standard output format.
+ * Prints a data item and its description to stdout according to the tool's standard output format.
  */
 //-------------------------------------------------------------------------------------------------
 void cm_cmn_FormatPrint
@@ -38,7 +38,7 @@ void cm_cmn_FormatPrint
 
 //-------------------------------------------------------------------------------------------------
 /**
- *  Convert characters to all lower cases.
+ * Convert characters to all lower cases.
  */
 //-------------------------------------------------------------------------------------------------
 void cm_cmn_ToLower
@@ -51,7 +51,7 @@ void cm_cmn_ToLower
 
 //-------------------------------------------------------------------------------------------------
 /**
- *  Convert characters to all upper cases.
+ * Convert characters to all upper cases.
  */
 //-------------------------------------------------------------------------------------------------
 void cm_cmn_ToUpper
@@ -75,14 +75,14 @@ bool cm_cmn_CheckEnoughParams
 
 //-------------------------------------------------------------------------------------------------
 /**
- *  Function prototype to provide help usage about a service.
+ * Function prototype to provide help usage about a service.
  */
 //-------------------------------------------------------------------------------------------------
 typedef void (*cm_ServiceHelpHandler_t)();
 
 //-------------------------------------------------------------------------------------------------
 /**
- *  Function prototype to execute a command for a specific service.
+ * Function prototype to execute a command for a specific service.
  */
 //-------------------------------------------------------------------------------------------------
 typedef void (*cm_ServiceCommandHandler_t)
@@ -93,7 +93,7 @@ typedef void (*cm_ServiceCommandHandler_t)
 
 //-------------------------------------------------------------------------------------------------
 /**
- *  Structure that contains information about a service instance.
+ * Structure that contains information about a service instance.
  */
 //-------------------------------------------------------------------------------------------------
 typedef struct {

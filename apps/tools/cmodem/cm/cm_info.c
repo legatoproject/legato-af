@@ -1,12 +1,12 @@
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 /**
- *  @file cm_info.h
+ * @file cm_info.h
  *
- *  Handle info related functionality
+ * Handle info related functionality
  *
- *  Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 
 #include "legato.h"
 #include "interfaces.h"
@@ -15,7 +15,7 @@
 
 //-------------------------------------------------------------------------------------------------
 /**
- *  Print the data help text to stdout.
+ * Print the data help text to stdout.
  */
 //-------------------------------------------------------------------------------------------------
 void cm_info_PrintInfoHelp
@@ -30,18 +30,18 @@ void cm_info_PrintInfoHelp
             "\tcm info all\n\n"
             "To print the device model:\n"
             "\tcm info device\n\n"
-            "To print IMEI:\n"
+            "To print the IMEI:\n"
             "\tcm info imei\n\n"
-            "To print firmware version:\n"
+            "To print the firmware version:\n"
             "\tcm info firmware\n\n"
-            "To print bootloader version:\n"
+            "To print the bootloader version:\n"
             "\tcm info bootloader\n\n"
             );
 }
 
 //-------------------------------------------------------------------------------------------------
 /**
- *  Print the IMEI
+ * Print the IMEI
  */
 //-------------------------------------------------------------------------------------------------
 void cm_info_PrintImei
@@ -67,7 +67,7 @@ void cm_info_PrintImei
 
 //-------------------------------------------------------------------------------------------------
 /**
- *  Print the firmware version
+ * Print the firmware version
  */
 //-------------------------------------------------------------------------------------------------
 void cm_info_PrintFirmwareVersion
@@ -93,7 +93,7 @@ void cm_info_PrintFirmwareVersion
 
 //-------------------------------------------------------------------------------------------------
 /**
- *  Print the bootloader version
+ * Print the bootloader version
  */
 //-------------------------------------------------------------------------------------------------
 void cm_info_PrintBootloaderVersion
@@ -145,7 +145,7 @@ void cm_info_PrintDeviceModel
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Process commands for SMS service.
+ * Process commands for info service.
  */
 //--------------------------------------------------------------------------------------------------
 void cm_info_ProcessInfoCommand

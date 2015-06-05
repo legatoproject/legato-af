@@ -8,7 +8,9 @@ requires:
         le_sim.api
         le_sms.api
         le_info.api
+        le_adc.api
         le_data.api [manual-start]
+        le_temp.api
     }
 }
 
@@ -20,5 +22,7 @@ sources:
     cm_data.c
     cm_sms.c
     cm_info.c
+    cm_temp.c
+    cm_adc.c
     cm_common.c
 }

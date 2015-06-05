@@ -1,22 +1,22 @@
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 /**
- *  @file cm_data.h
+ * @file cm_data.h
  *
- *  Handle data connection control related functionality
+ * Handle data connection control related functionality
  *
- *  Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 
 #ifndef CMODEM_DATA_INCLUDE_GUARD
 #define CMODEM_DATA_INCLUDE_GUARD
 
 
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 /**
-*  Print the data help text to stdout.
-*/
-// -------------------------------------------------------------------------------------------------
+ * Print the data help text to stdout.
+ */
+//-------------------------------------------------------------------------------------------------
 void cm_data_PrintDataHelp
 (
     void
@@ -33,11 +33,11 @@ void cm_data_ProcessDataCommand
     size_t numArgs          ///< [IN] Number of arguments
 );
 
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 /**
-*  Set the profile in use in configDB
-*/
-// -------------------------------------------------------------------------------------------------
+ * Set the profile in use in configDB
+ */
+//-------------------------------------------------------------------------------------------------
 int cm_data_SetProfileInUse
 (
     int profileInUse
@@ -52,14 +52,14 @@ int cm_data_SetProfileInUse
 void cm_data_StartDataConnection
 (
     const char * timeout,           ///< [IN] Data connection timeout timer
-    bool withDataBearerMonitoring   ///< [IN] Monitor data bearer technology 
+    bool withDataBearerMonitoring   ///< [IN] Monitor data bearer technology
 );
 
 
 //--------------------------------------------------------------------------------------------------
 /**
-* Monitor a data connection.
-*/
+ * Monitor a data connection.
+ */
 //--------------------------------------------------------------------------------------------------
 void cm_data_MonitorDataConnection
 (
@@ -67,39 +67,39 @@ void cm_data_MonitorDataConnection
 );
 
 
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 /**
-*  This function will attempt to set the APN name.
-*
-*  @return EXIT_SUCCESS if the call was successful, EXIT_FAILURE otherwise.
-*/
-// -------------------------------------------------------------------------------------------------
+ * This function will attempt to set the APN name.
+ *
+ * @return EXIT_SUCCESS if the call was successful, EXIT_FAILURE otherwise.
+ */
+//-------------------------------------------------------------------------------------------------
 int cm_data_SetApnName
 (
     const char * apn    ///< [IN] Access point name
 );
 
 
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 /**
-*  This function will attempt to set the PDP type.
-*
-*  @return EXIT_SUCCESS if the call was successful, EXIT_FAILURE otherwise.
-*/
-// -------------------------------------------------------------------------------------------------
+ * This function will attempt to set the PDP type.
+ *
+ * @return EXIT_SUCCESS if the call was successful, EXIT_FAILURE otherwise.
+ */
+//-------------------------------------------------------------------------------------------------
 int cm_data_SetPdpType
 (
     const char * pdpType    ///< [IN] Packet data protocol
 );
 
 
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 /**
-*  This function will attempt to set the authentication information.
-*
-*  @return EXIT_SUCCESS if the call was successful, EXIT_FAILURE otherwise.
-*/
-// -------------------------------------------------------------------------------------------------
+ * This function will attempt to set the authentication information.
+ *
+ * @return EXIT_SUCCESS if the call was successful, EXIT_FAILURE otherwise.
+ */
+//-------------------------------------------------------------------------------------------------
 int cm_data_SetAuthentication
 (
     const char * type,      ///< [IN] Authentication type
@@ -108,13 +108,13 @@ int cm_data_SetAuthentication
 );
 
 
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 /**
-*  This function will return profile information for profile that it will be using.
-*
-*  @return EXIT_SUCCESS if the call was successful, EXIT_FAILURE otherwise.
-*/
-// -------------------------------------------------------------------------------------------------
+ * This function will return profile information for profile that it will be using.
+ *
+ * @return EXIT_SUCCESS if the call was successful, EXIT_FAILURE otherwise.
+ */
+//-------------------------------------------------------------------------------------------------
 int cm_data_GetProfileInfo
 (
     void

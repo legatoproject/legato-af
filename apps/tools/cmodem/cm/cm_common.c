@@ -1,23 +1,23 @@
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 /**
- *  @file cm_common.c
+ * @file cm_common.c
  *
- *  Common functions between components.
+ * Common functions between components.
  *
- *  Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
- *  to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * to license.
  */
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 
 #include "legato.h"
 #include "cm_common.h"
 
 
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 /**
-*  Prints a data item and its description to stdout according to the tool's standard output format.
-*/
-// -------------------------------------------------------------------------------------------------
+ * Prints a data item and its description to stdout according to the tool's standard output format.
+ */
+//-------------------------------------------------------------------------------------------------
 void cm_cmn_FormatPrint
 (
     const char * data,    ///< [IN] Pointer to the data string to be printed
@@ -30,11 +30,11 @@ void cm_cmn_FormatPrint
 }
 
 
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 /**
-*  Convert characters to all lower cases.
-*/
-// -------------------------------------------------------------------------------------------------
+ * Convert characters to all lower cases.
+ */
+//-------------------------------------------------------------------------------------------------
 void cm_cmn_ToLower
 (
     const char * data, ///< [IN] Pointer to the data string that we want converted to lower case
@@ -60,11 +60,11 @@ void cm_cmn_ToLower
 }
 
 
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 /**
-*  Convert characters to all upper cases.
-*/
-// -------------------------------------------------------------------------------------------------
+ * Convert characters to all upper cases.
+ */
+//-------------------------------------------------------------------------------------------------
 void cm_cmn_ToUpper
 (
     const char * data, ///< [IN] Pointer to the data string that we want converted to upper case

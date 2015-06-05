@@ -1,0 +1,11 @@
+requires:
+{
+    api:
+    {
+        le_update.api [manual-start]
+    }
+}
+sources:
+{
+    update.c
+}

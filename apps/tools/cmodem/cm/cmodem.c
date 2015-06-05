@@ -1,12 +1,12 @@
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 /**
- *  @file cmodem.c
+ * @file cmodem.c
  *
- *  Cellular Modem Utility for command line control of the modem
+ * Cellular Modem Utility for command line control of the modem
  *
- *  Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 
 #include "legato.h"
 #include "interfaces.h"
@@ -15,12 +15,9 @@
 #include "cm_data.h"
 #include "cm_sms.h"
 #include "cm_info.h"
+#include "cm_temp.h"
 #include "cm_common.h"
-
-#define MRC_SERVICE                 "radio"
-#define SIM_SERVICE                 "sim"
-#define DATA_CONNECTION_SERVICE     "data"
-#define SMS_SERVICE                 "sms"
+#include "cm_adc.h"
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -67,6 +64,21 @@ const cm_Service_t Services[] = {
         .defaultCommandPtr = "all",
         .helpHandler = cm_info_PrintInfoHelp,
         .commandHandler = cm_info_ProcessInfoCommand,
+    },
+
+    /* Temperature */
+    {
+        .serviceNamePtr = "temp",
+        .defaultCommandPtr = "all",
+        .helpHandler = cm_temp_PrintTempHelp,
+        .commandHandler = cm_temp_ProcessTempCommand,
+    },
+    /* adc */
+    {
+        .serviceNamePtr = "adc",
+        .defaultCommandPtr = "help",
+        .helpHandler = cm_adc_PrintAdcHelp,
+        .commandHandler = cm_adc_ProcessAdcCommand
     }
 };
 

@@ -1,22 +1,22 @@
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 /**
- *  @file cm_radio.h
+ * @file cm_radio.h
  *
- *  Handle radio control related functionality
+ * Handle radio control related functionality
  *
- *  Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 
 #ifndef CMODEM_RADIO_INCLUDE_GUARD
 #define CMODEM_RADIO_INCLUDE_GUARD
 
 
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 /**
-*  Print the radio help text to stdout.
-*/
-// -------------------------------------------------------------------------------------------------
+ * Print the radio help text to stdout.
+ */
+//-------------------------------------------------------------------------------------------------
 void cm_mrc_PrintRadioHelp
 (
     void
@@ -24,8 +24,8 @@ void cm_mrc_PrintRadioHelp
 
 //--------------------------------------------------------------------------------------------------
 /**
-* Process commands for radio service.
-*/
+ * Process commands for radio service.
+ */
 //--------------------------------------------------------------------------------------------------
 void cm_mrc_ProcessRadioCommand
 (
@@ -33,26 +33,26 @@ void cm_mrc_ProcessRadioCommand
     size_t numArgs          ///< [IN] Number of arguments
 );
 
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 /**
-*  This function sets the radio power.
-*
-*  @return EXIT_SUCCESS if the call was successful, EXIT_FAILURE otherwise.
-*/
-// -------------------------------------------------------------------------------------------------
+ * This function sets the radio power.
+ *
+ * @return EXIT_SUCCESS if the call was successful, EXIT_FAILURE otherwise.
+ */
+//-------------------------------------------------------------------------------------------------
 int cm_mrc_SetRadioPower
 (
     le_onoff_t power    ///< [IN] Radio power switch
 );
 
 
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 /**
-*  This function returns modem status information to the user.
-*
-*  @return EXIT_SUCCESS if the call was successful, EXIT_FAILURE otherwise.
-*/
-// -------------------------------------------------------------------------------------------------
+ * This function returns modem status information to the user.
+ *
+ * @return EXIT_SUCCESS if the call was successful, EXIT_FAILURE otherwise.
+ */
+//-------------------------------------------------------------------------------------------------
 int cm_mrc_GetModemStatus
 (
     void
@@ -60,15 +60,15 @@ int cm_mrc_GetModemStatus
 
 
 
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 /**
- *   This function sets the radio access technology to use.
+ * This function sets the radio access technology to use.
  *
- *   @return
- *   - LE_OK    If the call was successful
- *   - LE_FAULT Otherwise.
+ * @return
+ * - LE_OK    If the call was successful
+ * - LE_FAULT Otherwise.
  */
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 int cm_mrc_SetRat
 (
     le_mrc_RatBitMask_t rat ///< [IN] Radio access technology

@@ -1,12 +1,12 @@
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 /**
- *  @file cm_sim.c
+ * @file cm_sim.c
  *
- *  Handle sim related functionality
+ * Handle sim related functionality
  *
- *  Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 
 #include "legato.h"
 #include "interfaces.h"
@@ -16,13 +16,13 @@
 #define CFG_MODEMSERVICE_SIM_PATH "/modemServices/sim"
 #define CFG_NODE_PIN              "pin"
 
-static uint32_t SimSlot = 1;
+static le_sim_Id_t SimId;
 
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 /**
- *  Print the help text to stdout.
+ * Print the help text to stdout.
  */
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 void cm_sim_PrintSimHelp
 (
     void
@@ -53,6 +53,8 @@ void cm_sim_PrintSimHelp
             "\tcm sim unblock <puk> <newpin>\n\n"
             "To store pin:\n"
             "\tcm sim storepin <pin>\n\n"
+            "To select SIM:\n"
+            "\tcm sim select <EMBEDDED | EXTERNAL_SLOT_1 | EXTERNAL_SLOT_2 | REMOTE>\n\n"
             "Enter PIN: Enters the PIN code that is required before any Mobile equipment functionality can be used.\n"
             "Change PIN: Change the PIN code of the SIM card.\n"
             "Lock: Enable security of the SIM card, it will request for a PIN code upon insertion.\n"
@@ -63,50 +65,96 @@ void cm_sim_PrintSimHelp
             );
 }
 
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 /**
- *  This function returns a SIM reference, and exit application on failure.
+ * Structure to hold an enum <=> string relation for @ref le_sim_Id_t.
  */
-// -------------------------------------------------------------------------------------------------
-static le_sim_ObjRef_t GetSimRef
+//-------------------------------------------------------------------------------------------------
+typedef struct {
+    le_sim_Id_t simId;
+    const char * strPtr;
+}
+SimIdStringAssoc_t;
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * Array containing all enum <=> string relations for @ref le_sim_Id_t.
+ */
+//-------------------------------------------------------------------------------------------------
+static const SimIdStringAssoc_t SimIdStringAssocs[] = {
+    { LE_SIM_EMBEDDED,          "EMBEDDED" },
+    { LE_SIM_EXTERNAL_SLOT_1,   "EXTERNAL_SLOT_1" },
+    { LE_SIM_EXTERNAL_SLOT_2,   "EXTERNAL_SLOT_2" },
+    { LE_SIM_REMOTE,            "REMOTE" },
+};
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * This function converts a le_sim_Id_t to a string.
+ *
+ * @return Type as a string
+ */
+//-------------------------------------------------------------------------------------------------
+static const char * SimIdToString
 (
-    uint32_t simSlot
+    le_sim_Id_t x
 )
 {
-    le_sim_ObjRef_t simRef = NULL;
+    int i;
 
-    if (SimSlot != 1)
+    for(i = 0; i < NUM_ARRAY_MEMBERS(SimIdStringAssocs); i++)
     {
-        printf("SIM slot: %d\n", SimSlot);
+        if (x == SimIdStringAssocs[i].simId)
+        {
+            return SimIdStringAssocs[i].strPtr;
+        }
     }
 
-    simRef = le_sim_Create(SimSlot);
+    LE_FATAL("Unknown value for enum le_sim_Id_t: %d", (int)x);
 
-    if (!simRef)
+    return NULL;
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * This function converts a string to a le_sim_Id_t.
+ *
+ * @return Type as an enum
+ */
+//-------------------------------------------------------------------------------------------------
+static le_sim_Id_t SimIdFromString
+(
+    const char * strPtr
+)
+{
+    int i;
+
+    for(i = 0; i < NUM_ARRAY_MEMBERS(SimIdStringAssocs); i++)
     {
-        fprintf(stderr, "Invalid Slot (%u)\n", simSlot);
-        exit(EXIT_FAILURE);
+        if (0 == strcmp(SimIdStringAssocs[i].strPtr, strPtr))
+        {
+            return SimIdStringAssocs[i].simId;
+        }
     }
 
-    return simRef;
+    LE_WARN("Unable to convert '%s' to a le_sim_Id_t", strPtr);
+
+    return LE_SIM_ID_MAX;
 }
 
 
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 /**
- *  This function will attempt to get the SIM state.
+ * This function will attempt to get the SIM state.
  *
- *  @return EXIT_SUCCESS if the call was successful, EXIT_FAILURE otherwise.
+ * @return EXIT_SUCCESS if the call was successful, EXIT_FAILURE otherwise.
  */
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 int cm_sim_GetSimStatus()
 {
-    le_sim_ObjRef_t simRef = NULL;
     le_sim_States_t state = LE_SIM_STATE_UNKNOWN;
 
-    simRef = GetSimRef(SimSlot);
-
-    state = le_sim_GetState(simRef);
+    state = le_sim_GetState(SimId);
 
     switch (state)
     {
@@ -130,19 +178,18 @@ int cm_sim_GetSimStatus()
             break;
     }
 
-    le_sim_Delete(simRef);
     printf("\n");
 
     return EXIT_SUCCESS;
 }
 
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 /**
-*  This function will attempt to get the home network name.
-*
-*  @return EXIT_SUCCESS if the call was successful, EXIT_FAILURE otherwise.
-*/
-// -------------------------------------------------------------------------------------------------
+ * This function will attempt to get the home network name.
+ *
+ * @return EXIT_SUCCESS if the call was successful, EXIT_FAILURE otherwise.
+ */
+//-------------------------------------------------------------------------------------------------
 int cm_sim_GetNetworkOperator
 (
     void
@@ -152,7 +199,7 @@ int cm_sim_GetNetworkOperator
     le_result_t res;
     int ret = EXIT_SUCCESS;
 
-    res = le_sim_GetHomeNetworkOperator(homeNetwork, sizeof(homeNetwork));
+    res = le_sim_GetHomeNetworkOperator(SimId, homeNetwork, sizeof(homeNetwork));
 
     if (res != LE_OK)
     {
@@ -165,13 +212,13 @@ int cm_sim_GetNetworkOperator
     return ret;
 }
 
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 /**
-*  This function will attempt to get the SIM IMSI.
-*
-*  @return EXIT_SUCCESS if the call was successful, EXIT_FAILURE otherwise.
-*/
-// -------------------------------------------------------------------------------------------------
+ * This function will attempt to get the SIM IMSI.
+ *
+ * @return EXIT_SUCCESS if the call was successful, EXIT_FAILURE otherwise.
+ */
+//-------------------------------------------------------------------------------------------------
 int cm_sim_GetSimImsi
 (
     void
@@ -179,12 +226,9 @@ int cm_sim_GetSimImsi
 {
     char imsi[LE_SIM_IMSI_BYTES];
     le_result_t res;
-    le_sim_ObjRef_t simRef = NULL;
     int ret = EXIT_SUCCESS;
 
-    simRef = GetSimRef(SimSlot);
-
-    res = le_sim_GetIMSI(simRef, imsi, sizeof(imsi));
+    res = le_sim_GetIMSI(SimId, imsi, sizeof(imsi));
 
     if (res != LE_OK)
     {
@@ -197,13 +241,13 @@ int cm_sim_GetSimImsi
     return ret;
 }
 
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 /**
-*  This function will attempt to get the SIM ICCID.
-*
-*  @return EXIT_SUCCESS if the call was successful, EXIT_FAILURE otherwise.
-*/
-// -------------------------------------------------------------------------------------------------
+ * This function will attempt to get the SIM ICCID.
+ *
+ * @return EXIT_SUCCESS if the call was successful, EXIT_FAILURE otherwise.
+ */
+//-------------------------------------------------------------------------------------------------
 int cm_sim_GetSimIccid
 (
     void
@@ -211,12 +255,9 @@ int cm_sim_GetSimIccid
 {
     char iccid[LE_SIM_ICCID_BYTES];
     le_result_t res;
-    le_sim_ObjRef_t simRef = NULL;
     int ret = EXIT_SUCCESS;
 
-    simRef = GetSimRef(SimSlot);
-
-    res = le_sim_GetICCID(simRef, iccid, sizeof(iccid));
+    res = le_sim_GetICCID(SimId, iccid, sizeof(iccid));
 
     if (res != LE_OK)
     {
@@ -229,13 +270,13 @@ int cm_sim_GetSimIccid
     return ret;
 }
 
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 /**
-*  This function will attempt to get the SIM phone number.
-*
-*  @return EXIT_SUCCESS if the call was successful, EXIT_FAILURE otherwise.
-*/
-// -------------------------------------------------------------------------------------------------
+ * This function will attempt to get the SIM phone number.
+ *
+ * @return EXIT_SUCCESS if the call was successful, EXIT_FAILURE otherwise.
+ */
+//-------------------------------------------------------------------------------------------------
 int cm_sim_GetSimPhoneNumber
 (
     void
@@ -243,12 +284,9 @@ int cm_sim_GetSimPhoneNumber
 {
     char number[LE_MDMDEFS_PHONE_NUM_MAX_BYTES];
     le_result_t res;
-    le_sim_ObjRef_t simRef = NULL;
     int ret = EXIT_SUCCESS;
 
-    simRef = GetSimRef(SimSlot);
-
-    res = le_sim_GetSubscriberPhoneNumber(simRef, number, sizeof(number));
+    res = le_sim_GetSubscriberPhoneNumber(SimId, number, sizeof(number));
 
     if (res != LE_OK)
     {
@@ -261,13 +299,29 @@ int cm_sim_GetSimPhoneNumber
     return ret;
 }
 
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 /**
- *  This function will attempt to get the SIM info (Home PLMN,...).
+ * This function will attempt to get the SIM card type.
  *
- *  @return EXIT_SUCCESS if the call was successful, EXIT_FAILURE otherwise.
+ * @return EXIT_SUCCESS if the call was successful, EXIT_FAILURE otherwise.
  */
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
+int cm_sim_GetCardType
+(
+    void
+)
+{
+    cm_cmn_FormatPrint("Type", SimIdToString(SimId));
+    return EXIT_SUCCESS;
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * This function will attempt to get the SIM info (Home PLMN,...).
+ *
+ * @return EXIT_SUCCESS if the call was successful, EXIT_FAILURE otherwise.
+ */
+//-------------------------------------------------------------------------------------------------
 int cm_sim_GetSimInfo
 (
     void
@@ -275,10 +329,12 @@ int cm_sim_GetSimInfo
 {
     int ret;
 
-    ret = cm_sim_GetNetworkOperator();
-    LE_ASSERT(ret == EXIT_SUCCESS);
+    cm_sim_GetCardType();
 
     ret = cm_sim_GetSimIccid();
+    LE_ASSERT(ret == EXIT_SUCCESS);
+
+    ret = cm_sim_GetNetworkOperator();
     LE_ASSERT(ret == EXIT_SUCCESS);
 
     cm_sim_GetSimImsi();
@@ -288,24 +344,21 @@ int cm_sim_GetSimInfo
     return ret;
 }
 
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 /**
- *  This function will enter the pin code for the sim.
+ * This function will enter the pin code for the sim.
  *
- *  @return EXIT_SUCCESS if the call was successful, EXIT_FAILURE otherwise.
+ * @return EXIT_SUCCESS if the call was successful, EXIT_FAILURE otherwise.
  */
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 int cm_sim_EnterPin
 (
     const char * pin    ///< [IN] PIN code
 )
 {
-    le_sim_ObjRef_t simRef = NULL;
     le_result_t     res = LE_OK;
 
-    simRef = GetSimRef(SimSlot);
-
-    res = le_sim_EnterPIN(simRef, pin);
+    res = le_sim_EnterPIN(SimId, pin);
 
     switch (res)
     {
@@ -323,35 +376,30 @@ int cm_sim_EnterPin
             break;
         default:
             printf("Error: %s\n", LE_RESULT_TXT(res));
-            printf("Remaining PIN tries: %d\n", le_sim_GetRemainingPINTries(simRef));
+            printf("Remaining PIN tries: %d\n", le_sim_GetRemainingPINTries(SimId));
             break;
     }
-
-    le_sim_Delete(simRef);
 
     return EXIT_FAILURE;
 }
 
 
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 /**
- *  This function will change the pin code for the sim.
+ * This function will change the pin code for the sim.
  *
- *  @return EXIT_SUCCESS if the call was successful, EXIT_FAILURE otherwise.
+ * @return EXIT_SUCCESS if the call was successful, EXIT_FAILURE otherwise.
  */
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 int cm_sim_ChangePin
 (
     const char * oldPinPtr,     ///< [IN] Old PIN code
     const char * newPinPtr      ///< [IN] New PIN code
 )
 {
-    le_sim_ObjRef_t simRef = NULL;
     le_result_t     res = LE_OK;
 
-    simRef = GetSimRef(SimSlot);
-
-    res = le_sim_ChangePIN(simRef, oldPinPtr, newPinPtr);
+    res = le_sim_ChangePIN(SimId, oldPinPtr, newPinPtr);
 
     switch(res)
     {
@@ -376,24 +424,21 @@ int cm_sim_ChangePin
 }
 
 
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 /**
- *  This function will lock the sim.
+ * This function will lock the sim.
  *
- *  @return EXIT_SUCCESS if the call was successful, EXIT_FAILURE otherwise.
+ * @return EXIT_SUCCESS if the call was successful, EXIT_FAILURE otherwise.
  */
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 int cm_sim_LockSim
 (
     const char * pin    ///< [IN] PIN code
 )
 {
-    le_sim_ObjRef_t simRef = NULL;
     le_result_t     res = LE_OK;
 
-    simRef = GetSimRef(SimSlot);
-
-    res = le_sim_Lock(simRef, pin);
+    res = le_sim_Lock(SimId, pin);
 
     switch (res)
     {
@@ -414,30 +459,25 @@ int cm_sim_LockSim
             break;
     }
 
-    le_sim_Delete(simRef);
-
     return EXIT_FAILURE;
 }
 
 
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 /**
- *  This function will unlock the sim.
+ * This function will unlock the sim.
  *
- *  @return EXIT_SUCCESS if the call was successful, EXIT_FAILURE otherwise.
+ * @return EXIT_SUCCESS if the call was successful, EXIT_FAILURE otherwise.
  */
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 int cm_sim_UnlockSim
 (
     const char * pin    ///< [IN] PIN code
 )
 {
-    le_sim_ObjRef_t simRef = NULL;
     le_result_t     res = LE_OK;
 
-    simRef = GetSimRef(SimSlot);
-
-    res = le_sim_Unlock(simRef, pin);
+    res = le_sim_Unlock(SimId, pin);
 
     switch (res)
     {
@@ -455,35 +495,30 @@ int cm_sim_UnlockSim
             break;
         default:
             printf("Error: %s\n", LE_RESULT_TXT(res));
-            printf("Remaining PIN tries: %d\n", le_sim_GetRemainingPINTries(simRef));
+            printf("Remaining PIN tries: %d\n", le_sim_GetRemainingPINTries(SimId));
             break;
     }
-
-    le_sim_Delete(simRef);
 
     return EXIT_FAILURE;
 }
 
 
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 /**
- *  This function will unblock the sim.
+ * This function will unblock the sim.
  *
- *  @return EXIT_SUCCESS if the call was successful, EXIT_FAILURE otherwise.
+ * @return EXIT_SUCCESS if the call was successful, EXIT_FAILURE otherwise.
  */
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 int cm_sim_UnblockSim
 (
     const char * puk,       ///< [IN] PUK code
     const char * newpin     ///< [IN] New PIN code
 )
 {
-    le_sim_ObjRef_t simRef = NULL;
     le_result_t     res = LE_OK;
 
-    simRef = GetSimRef(SimSlot);
-
-    res = le_sim_Unblock(simRef, puk, newpin);
+    res = le_sim_Unblock(SimId, puk, newpin);
 
     switch (res)
     {
@@ -507,19 +542,17 @@ int cm_sim_UnblockSim
             break;
     }
 
-    le_sim_Delete(simRef);
-
     return EXIT_FAILURE;
 }
 
 
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 /**
- *  This function will store the pin in the configdb.
+ * This function will store the pin in the configdb.
  *
- *  @return EXIT_SUCCESS if the call was successful, EXIT_FAILURE otherwise.
+ * @return EXIT_SUCCESS if the call was successful, EXIT_FAILURE otherwise.
  */
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 int cm_sim_StorePin
 (
     const char * pin    ///< [IN] PIN code
@@ -527,7 +560,8 @@ int cm_sim_StorePin
 {
     char configPath[512];
 
-    snprintf(configPath, sizeof(configPath), "%s/%d", CFG_MODEMSERVICE_SIM_PATH, SimSlot);
+    // @todo Update SIM storage path once cellnet service switches to SIM type
+    snprintf(configPath, sizeof(configPath), "%s/%d", CFG_MODEMSERVICE_SIM_PATH, SimId);
 
     le_cfg_IteratorRef_t iteratorRef = le_cfg_CreateWriteTxn(configPath);
     le_cfg_SetString(iteratorRef, CFG_NODE_PIN, pin);
@@ -536,11 +570,44 @@ int cm_sim_StorePin
     return EXIT_SUCCESS;
 }
 
+//-------------------------------------------------------------------------------------------------
+/**
+ * This function will select the SIM.
+ *
+ * @return EXIT_SUCCESS if the call was successful, EXIT_FAILURE otherwise.
+ */
+//-------------------------------------------------------------------------------------------------
+int cm_sim_Select
+(
+    const char * typeStr  ///< [IN] SIM type as a string
+)
+{
+    le_sim_Id_t simId;
+    le_result_t res;
+
+    simId = SimIdFromString(typeStr);
+
+    if (simId >= LE_SIM_ID_MAX)
+    {
+        printf("'%s' is not a valid SIM type.\n", typeStr);
+        return EXIT_FAILURE;
+    }
+
+    res = le_sim_SelectCard(simId);
+    if (res != LE_OK)
+    {
+        printf("Unable to select '%s'.\n", typeStr);
+        return EXIT_FAILURE;
+    }
+    SimId = simId;
+
+    return EXIT_SUCCESS;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
-* Process commands for sim service.
-*/
+ * Process commands for sim service.
+ */
 //--------------------------------------------------------------------------------------------------
 void cm_sim_ProcessSimCommand
 (
@@ -548,6 +615,8 @@ void cm_sim_ProcessSimCommand
     size_t numArgs          ///< [IN] Number of arguments
 )
 {
+    SimId = le_sim_GetSelectedCard();
+
     if (strcmp(command, "help") == 0)
     {
         cm_sim_PrintSimHelp();
@@ -615,6 +684,13 @@ void cm_sim_ProcessSimCommand
     {
         exit(cm_sim_GetSimPhoneNumber());
     }
+    else if (strcmp(command, "select") == 0)
+    {
+        if (cm_cmn_CheckEnoughParams(1, numArgs, "SIM type missing. e.g. cm sim select <type>"))
+        {
+            exit(cm_sim_Select(le_arg_GetArg(2)));
+        }
+    }
     else
     {
         printf("Invalid command for SIM service.\n");
@@ -623,3 +699,4 @@ void cm_sim_ProcessSimCommand
 
     exit(EXIT_SUCCESS);
 }
+

@@ -1,23 +1,23 @@
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 /**
- *  @file cm_radio.c
+ * @file cm_radio.c
  *
- *  Handle radio control related functionality
+ * Handle radio control related functionality
  *
- *  Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 
 #include "legato.h"
 #include "interfaces.h"
 #include "cm_mrc.h"
 #include "cm_common.h"
 
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 /**
-*  Print the radio help text to stdout.
-*/
-// -------------------------------------------------------------------------------------------------
+ * Print the radio help text to stdout.
+ */
+//-------------------------------------------------------------------------------------------------
 void cm_mrc_PrintRadioHelp
 (
     void
@@ -37,13 +37,13 @@ void cm_mrc_PrintRadioHelp
             );
 }
 
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 /**
-*  This function will attempt to get the current network name.
-*
-*  @return LE_OK if the call was successful.
-*/
-// -------------------------------------------------------------------------------------------------
+ * This function will attempt to get the current network name.
+ *
+ * @return LE_OK if the call was successful.
+ */
+//-------------------------------------------------------------------------------------------------
 static le_result_t GetCurrentNetworkName
 (
     void
@@ -65,13 +65,13 @@ static le_result_t GetCurrentNetworkName
     return res;
 }
 
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 /**
-*  This function will attempt to get the network registration state.
-*
-*  @return LE_OK if the call was successful.
-*/
-// -------------------------------------------------------------------------------------------------
+ * This function will attempt to get the network registration state.
+ *
+ * @return LE_OK if the call was successful.
+ */
+//-------------------------------------------------------------------------------------------------
 static le_result_t GetRegState
 (
     void
@@ -113,13 +113,13 @@ static le_result_t GetRegState
 }
 
 
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 /**
-*  This function will attempt to get the signal quality.
-*
-*  @return LE_OK if the call was successful.
-*/
-// -------------------------------------------------------------------------------------------------
+ * This function will attempt to get the signal quality.
+ *
+ * @return LE_OK if the call was successful.
+ */
+//-------------------------------------------------------------------------------------------------
 static le_result_t GetSignalQuality
 (
     void
@@ -164,13 +164,13 @@ static le_result_t GetSignalQuality
 }
 
 
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 /**
-*  This function will attempt to get the radio access technology.
-*
-*  @return LE_OK if the call was successful.
-*/
-// -------------------------------------------------------------------------------------------------
+ * This function will attempt to get the radio access technology.
+ *
+ * @return LE_OK if the call was successful.
+ */
+//-------------------------------------------------------------------------------------------------
 static le_result_t GetRAT
 (
     void
@@ -212,13 +212,13 @@ static le_result_t GetRAT
 
 
 
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 /**
-*  This function sets the radio power.
-*
-*  @return EXIT_SUCCESS if the call was successful, EXIT_FAILURE otherwise.
-*/
-// -------------------------------------------------------------------------------------------------
+ * This function sets the radio power.
+ *
+ * @return EXIT_SUCCESS if the call was successful, EXIT_FAILURE otherwise.
+ */
+//-------------------------------------------------------------------------------------------------
 int cm_mrc_SetRadioPower
 (
     le_onoff_t power    ///< [IN] Radio power switch
@@ -263,13 +263,13 @@ int cm_mrc_SetRadioPower
 }
 
 
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 /**
-*  This function returns modem status information to the user.
-*
-*  @return EXIT_SUCCESS if the call was successful, EXIT_FAILURE otherwise.
-*/
-// -------------------------------------------------------------------------------------------------
+ * This function returns modem status information to the user.
+ *
+ * @return EXIT_SUCCESS if the call was successful, EXIT_FAILURE otherwise.
+ */
+//-------------------------------------------------------------------------------------------------
 int cm_mrc_GetModemStatus
 (
     void
@@ -312,15 +312,15 @@ int cm_mrc_GetModemStatus
 }
 
 
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 /**
- *   This function sets the radio access technology preferences.
+ * This function sets the radio access technology preferences.
  *
- *   @return
- *   - LE_OK    If the call was successful
- *   - LE_FAULT Otherwise.
+ * @return
+ * - LE_OK    If the call was successful
+ * - LE_FAULT Otherwise.
  */
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 int cm_mrc_SetRat
 (
     le_mrc_RatBitMask_t rat ///< [IN] Radio access technology
@@ -332,8 +332,8 @@ int cm_mrc_SetRat
 
 //--------------------------------------------------------------------------------------------------
 /**
-* Process commands for radio service.
-*/
+ * Process commands for radio service.
+ */
 //--------------------------------------------------------------------------------------------------
 void cm_mrc_ProcessRadioCommand
 (

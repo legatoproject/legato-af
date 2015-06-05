@@ -13,6 +13,18 @@
 #include <sys/utsname.h>
 
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Definition for connect service function pointer
+ */
+//--------------------------------------------------------------------------------------------------
+typedef void (*ConnectServiceFunc_t)
+(
+    void
+);
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Help Message
@@ -58,6 +70,62 @@ static void PrintHelp
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Thread used to recover from problems connecting to a service, probably because the service is
+ * down.  It will timeout after 20 seconds, print an error message, and then exit.
+ *
+ * Once successfully connected to the service, this thread should be stopped.
+ */
+//--------------------------------------------------------------------------------------------------
+static void* TimeoutThread
+(
+    void* contextPtr        ///< This should be string containing name of service
+)
+{
+    char* serviceNamePtr = contextPtr;
+
+    // This thread doesn't have to do anything else, at least for now, so just sleep.
+    sleep(20);
+
+    printf("Error: can't connect to service; is %s running?\n", serviceNamePtr);
+    exit(EXIT_FAILURE);
+
+    return NULL;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Try calling the given function to connect to a service.  If can't connect to the service within
+ * 20 seconds, then the program will exit.
+ */
+//--------------------------------------------------------------------------------------------------
+static void TryConnect
+(
+    ConnectServiceFunc_t connectFuncPtr,    ///< Function to call to connect to service
+    char* serviceNamePtr                    ///< String containing name of the service
+)
+{
+    // Print out message before trying to connect to service to give user some kind of feedback
+    printf("Connecting to service ...\n");
+    fflush(stdout);
+
+    // Use a separate thread for recovery.  It will be stopped once connected to the service.
+    // Make the thread joinable, so we can be sure the thread is stopped before continuing.
+    le_thread_Ref_t threadRef = le_thread_Create("timout thread", TimeoutThread, serviceNamePtr);
+    le_thread_SetJoinable(threadRef);
+    le_thread_Start(threadRef);
+
+    // Try connecting to the service
+    connectFuncPtr();
+
+    // Connected to the service, so stop the timeout thread
+    le_thread_Cancel(threadRef);
+    le_thread_Join(threadRef, NULL);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Process the download firmware command
  */
 //--------------------------------------------------------------------------------------------------
@@ -79,8 +147,19 @@ static void DownloadFirmware
         fd = open( fileName, O_RDONLY);
         LE_PRINT_VALUE("%d", fd);
 
-        LE_FATAL_IF(fd == -1, "Can't open file %s : %m", fileName);
+        if ( fd == -1 )
+        {
+            // Inform the user of the error; it's also useful to log this info
+            printf("Can't open file '%s' : %m\n", fileName);
+            LE_FATAL("Can't open file '%s' : %m", fileName);
+        }
     }
+
+    TryConnect(le_fwupdate_ConnectService, "fwupdateService");
+
+    // Connected to service so continue
+    printf("Download started ...\n");
+    fflush(stdout);
 
     LE_PRINT_VALUE("%d", fd);
     if ( le_fwupdate_Download(fd) == LE_OK )
@@ -104,6 +183,9 @@ static void QueryVersion
     void
 )
 {
+    TryConnect(le_info_ConnectService, "modemService");
+
+    // Connected to service so continue
     le_result_t result;
     char version[LE_INFO_MAX_VERS_BYTES];
     struct utsname linuxInfo;

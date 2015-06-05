@@ -1,12 +1,12 @@
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 /**
- *  @file cm_data.c
+ * @file cm_data.c
  *
- *  Handle data connection control related functionality
+ * Handle data connection control related functionality
  *
- *  Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 
 #include "legato.h"
 #include "interfaces.h"
@@ -15,7 +15,7 @@
 
 //-------------------------------------------------------------------------------------------------
 /**
- *  Print the data help text to stdout.
+ * Print the data help text to stdout.
  */
 //-------------------------------------------------------------------------------------------------
 void cm_data_PrintDataHelp
@@ -57,21 +57,21 @@ typedef struct {
 
 //-------------------------------------------------------------------------------------------------
 /**
- *  The data connection reference.
+ * The data connection reference.
  */
 //-------------------------------------------------------------------------------------------------
 static le_data_RequestObjRef_t RequestRef = NULL;
 
 //-------------------------------------------------------------------------------------------------
 /**
- *  Boolean to check whether if the data connection is connected or not.
+ * Boolean to check whether if the data connection is connected or not.
  */
 //-------------------------------------------------------------------------------------------------
 static bool DataConnected = false;
 
 //-------------------------------------------------------------------------------------------------
 /**
- *  Timer used for data bearer monitoring.
+ * Timer used for data bearer monitoring.
  */
 //-------------------------------------------------------------------------------------------------
 static le_timer_Ref_t DataBearerTimerRef = NULL;
@@ -88,15 +88,15 @@ static DataBearerTechnologies_t DataBearerTechnologies = {
 
 //-------------------------------------------------------------------------------------------------
 /**
- *  Identifies which profile index we are configuring with the data tool
- *  Note: When starting a data connection, it will only utilize the default profile index 1
+ * Identifies which profile index we are configuring with the data tool
+ * Note: When starting a data connection, it will only utilize the default profile index 1
  */
 //-------------------------------------------------------------------------------------------------
 #define PROFILE_IN_USE  "tools/cmodem/profileInUse"
 
 //-------------------------------------------------------------------------------------------------
 /**
- *  Gets the profile in use from configDB
+ * Gets the profile in use from configDB
  */
 //-------------------------------------------------------------------------------------------------
 static uint32_t GetProfileInUse
@@ -124,7 +124,7 @@ static uint32_t GetProfileInUse
 
 //-------------------------------------------------------------------------------------------------
 /**
- *  Get the profile used by the data connection service
+ * Get the profile used by the data connection service
  *
  * @todo Rework that part upon change of MDC / Data interface
  */
@@ -365,11 +365,11 @@ static le_result_t StartTimer
 
 
 
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 /**
-*  Set the profile in use in configDB
-*/
-// -------------------------------------------------------------------------------------------------
+ * Set the profile in use in configDB
+ */
+//-------------------------------------------------------------------------------------------------
 int cm_data_SetProfileInUse
 (
     int profileInUse
@@ -383,11 +383,11 @@ int cm_data_SetProfileInUse
 }
 
 
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 /**
-*  This function return the string associated
-*/
-// -------------------------------------------------------------------------------------------------
+ * This function return the string associated
+ */
+//-------------------------------------------------------------------------------------------------
 static const char* ConvertPdp
 (
     le_mdc_Pdp_t pdp    ///< [IN] Packet data protocol
@@ -404,11 +404,11 @@ static const char* ConvertPdp
     return "ERROR"; // Should not happen
 }
 
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 /**
-*  This function return the string associated
-*/
-// -------------------------------------------------------------------------------------------------
+ * This function return the string associated
+ */
+//-------------------------------------------------------------------------------------------------
 static const char* ConvertAuthentication
 (
     le_mdc_Auth_t type    ///< [IN] Authentication type
@@ -471,12 +471,12 @@ void cm_data_MonitorDataConnection
 
 //-------------------------------------------------------------------------------------------------
 /**
- *  This function will attempt to set the APN name.
+ * This function will attempt to set the APN name.
  *
- *  @todo Hardcoded to set the apn for first profile. Will revisit when dcsDaemon allows us to start
- *  a data connection on another profile.
+ * @todo Hardcoded to set the apn for first profile. Will revisit when dcsDaemon allows us to start
+ * a data connection on another profile.
  *
- *  @return EXIT_SUCCESS if the call was successful, EXIT_FAILURE otherwise.
+ * @return EXIT_SUCCESS if the call was successful, EXIT_FAILURE otherwise.
  */
 //-------------------------------------------------------------------------------------------------
 int cm_data_SetApnName
@@ -502,16 +502,16 @@ int cm_data_SetApnName
 }
 
 
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 /**
-*  This function will attempt to set the PDP type.
-*
-*  @todo Hardcoded to set the pdp for first profile. Will revisit when dcsDaemon allows us to start
-*  a data connection on another profile.
-*
-*  @return EXIT_SUCCESS if the call was successful, EXIT_FAILURE otherwise.
-*/
-// -------------------------------------------------------------------------------------------------
+ * This function will attempt to set the PDP type.
+ *
+ * @todo Hardcoded to set the pdp for first profile. Will revisit when dcsDaemon allows us to start
+ * a data connection on another profile.
+ *
+ * @return EXIT_SUCCESS if the call was successful, EXIT_FAILURE otherwise.
+ */
+//-------------------------------------------------------------------------------------------------
 int cm_data_SetPdpType
 (
     const char * pdpType    ///< [IN] Packet data protocol
@@ -559,16 +559,16 @@ int cm_data_SetPdpType
 }
 
 
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 /**
-*  This function will attempt to set the authentication information.
-*
-*  @todo Hardcoded to set the authentication for "internet" profile. Will revisit when dcsDaemon allows us to start
-*  a data connection on another profile.
-*
-*  @return EXIT_SUCCESS if the call was successful, EXIT_FAILURE otherwise.
-*/
-// -------------------------------------------------------------------------------------------------
+ * This function will attempt to set the authentication information.
+ *
+ * @todo Hardcoded to set the authentication for "internet" profile. Will revisit when dcsDaemon allows us to start
+ * a data connection on another profile.
+ *
+ * @return EXIT_SUCCESS if the call was successful, EXIT_FAILURE otherwise.
+ */
+//-------------------------------------------------------------------------------------------------
 int cm_data_SetAuthentication
 (
     const char * type,      ///< [IN] Authentication type
@@ -617,11 +617,11 @@ int cm_data_SetAuthentication
 }
 
 
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 /**
-*  This function prints a profile index.
-*/
-// -------------------------------------------------------------------------------------------------
+ * This function prints a profile index.
+ */
+//-------------------------------------------------------------------------------------------------
 static void PrintProfileIndex
 (
     uint32_t profileIndex
@@ -634,13 +634,13 @@ static void PrintProfileIndex
 }
 
 
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 /**
-*  This function will attempt to get the apn name from a specified index.
-*
-*  @return LE_OK if the call was successful
-*/
-// -------------------------------------------------------------------------------------------------
+ * This function will attempt to get the apn name from a specified index.
+ *
+ * @return LE_OK if the call was successful
+ */
+//-------------------------------------------------------------------------------------------------
 static le_result_t PrintApnName
 (
     le_mdc_ProfileRef_t profileRef   ///< [IN] profile reference
@@ -662,13 +662,13 @@ static le_result_t PrintApnName
 }
 
 
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 /**
-*  This function will attempt to get the pdp type from a specified iterator.
-*
-*  @return LE_OK if the call was successful
-*/
-// -------------------------------------------------------------------------------------------------
+ * This function will attempt to get the pdp type from a specified iterator.
+ *
+ * @return LE_OK if the call was successful
+ */
+//-------------------------------------------------------------------------------------------------
 static le_result_t PrintPdpType
 (
     le_mdc_ProfileRef_t profileRef    ///< [IN] profile reference
@@ -685,14 +685,14 @@ static le_result_t PrintPdpType
 }
 
 
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 /**
-*  This function will attempt to get the authentication data from a specified iterator. Since only
-*  one authentication is supported, if both authentication are enable, only the first auth is taken.
-*
-*  @return LE_OK if the call was successful
-*/
-// -------------------------------------------------------------------------------------------------
+ * This function will attempt to get the authentication data from a specified iterator. Since only
+ * one authentication is supported, if both authentication are enable, only the first auth is taken.
+ *
+ * @return LE_OK if the call was successful
+ */
+//-------------------------------------------------------------------------------------------------
 static le_result_t PrintAuthentication
 (
     le_mdc_ProfileRef_t profileRef    ///< [IN] profile reference
@@ -725,13 +725,13 @@ static le_result_t PrintAuthentication
 }
 
 
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 /**
-*  This function will attempt to print the state of the profile.
-*
-*  @return LE_OK if the call was successful
-*/
-// -------------------------------------------------------------------------------------------------
+ * This function will attempt to print the state of the profile.
+ *
+ * @return LE_OK if the call was successful
+ */
+//-------------------------------------------------------------------------------------------------
 static le_result_t PrintIsConnected
 (
     le_mdc_ProfileRef_t profileRef    ///< [IN] profile reference
@@ -753,16 +753,16 @@ static le_result_t PrintIsConnected
 }
 
 
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 /**
-*  This function will return profile information for profile that it will be using.
-*
-*  @todo Hardcoded to return the first profile at the moment, will revisit when dcsDaemon allows
-*  us to start a data connection on another profile.
-*
-*  @return EXIT_SUCCESS if the call was successful, EXIT_FAILURE otherwise.
-*/
-// -------------------------------------------------------------------------------------------------
+ * This function will return profile information for profile that it will be using.
+ *
+ * @todo Hardcoded to return the first profile at the moment, will revisit when dcsDaemon allows
+ * us to start a data connection on another profile.
+ *
+ * @return EXIT_SUCCESS if the call was successful, EXIT_FAILURE otherwise.
+ */
+//-------------------------------------------------------------------------------------------------
 int cm_data_GetProfileInfo
 (
     void

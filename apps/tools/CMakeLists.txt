@@ -7,3 +7,4 @@
 
 add_subdirectory(cmodem)
 add_subdirectory(fwupdate)
+add_subdirectory(update)
