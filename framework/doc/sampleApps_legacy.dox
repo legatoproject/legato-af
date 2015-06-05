@@ -1,0 +1,19 @@
+/** @page sampleApps_legacy Legacy C
+
+This sample app demonstrates the steps to port a legacy C language app to Legato.
+
+The @c apps/sample/legacy folder contains:
+- sample legacy C Language app.
+- sample app using @c .adef file with bundles and processes sections. 
+- sample apps using @c .adef bundles, processes and provides sections and @c .cdef requires sections. 
+- sample apps with Legato handlers.
+
+See <br>
+@ref howToPortLegacyC <br>
+@ref defFiles
+
+<HR>
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/

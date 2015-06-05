@@ -1,0 +1,20 @@
+/** @page legatoServicesSupervisor Supervisor
+
+@subpage c_sup_ctrl <br>
+
+@section legatoServicesSupervisor_overview Overview
+
+If you have multiple apps, you can use Supervisor services to monitor the status of other apps.
+Legato automatically creates bindings for Supervisor and Config Tree services (@c .cdef
+binding requires entry isn't needed). Use the Supervisor's user account name @c \<root>:
+
+@code
+    appAplication.appComponent.le_sup_ctrl -> <root>.le_sup_ctrl
+    appAplication.appComponent.le_sup_state -> <root>.le_sup_state
+@endcode
+
+<HR>
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/

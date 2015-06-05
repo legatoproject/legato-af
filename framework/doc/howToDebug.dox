@@ -1,0 +1,48 @@
+/** @page howToDebug Debug Apps
+
+This topic summarizes different ways to debug apps running on Legato. 
+
+There are various tools available to determine why your app is failing or blocking:
+
+- @ref howToLogs to set filters, tracing, etc.
+- @ref howToDebug_appStatus for current app info.
+- @ref howToDebug_sdir to check if your is app connected.
+- @ref howToDebug_execInApp to rerun the app.
+- @ref howToDebug_inspect to review memory pool details.
+- @ref howToDebug_openTools can help, too.
+
+@section howToDebug_appStatus Check App Status
+Run <code>app status</code> on the target to list all apps and their current
+status. See @ref toolsTarget_app
+
+@section howToDebug_sdir Run sdir
+Run <code>sdir list</code> on the target to determine if the app is failing
+because it's unbound (IPC failing) or the server isn't running (not
+connecting). This helps if your client is waiting for a service to appear or
+a binding to be created. @c sdir can also list apps or users offering
+services.  See @ref toolsTarget_sdir
+
+@section howToDebug_execInApp Run exeInApp
+Run <code> execInApp [procName=NAME] execPath [ARGS]</code> to execute a
+specific process in a running app's sandbox. @c execInApp can also set
+process priority. See @ref toolsTarget_execInApp
+
+@section howToDebug_inspect Inspect App
+
+Run <code>inspect [interval=SECONDS]</code> to set memory usage
+updates to help narrow any memory leaks causing failure.
+See @ref toolsTarget_inspect
+
+@section howToDebug_openTools Use Open Source Tools
+
+You can also try some standard, open source debugging tools like:
+- @c strace - a system call tracer good for low level code examination. 
+- @c GDB - the GNU project debugger good for setting breakpoints.
+
+Run the -help option for documentation. 
+
+<HR>
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+ **/

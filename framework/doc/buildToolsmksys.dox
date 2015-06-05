@@ -1,7 +1,7 @@
-/** @page buildToolsmksys mksys 
+/** @page buildToolsmksys mksys
 
 <i>Support for @c mksys is incomplete.</i> <br>
- 
+
 Make System: run @c mksys  to generate a system bundle to install and run on a target.
 
 System bundles are compressed archives containing a collection of apps and access control
@@ -18,16 +18,16 @@ The main input for @c mksys is an @ref defFilesSdef file that contains these def
 apps, generate on-target access control configuration settings, and bundle everything
 into a system bundle for installation on the target device.
 
-@note @c mksys can also help to validate target bindings.  @c mkapp only knows about the app it's 
-building. Things like typos in binding values won't be detected, but will show up with your app 
-hanging. After running mksys, if your app hangs, run <c>sdir list</c> (@ref toolsTarget_sdirTool) to 
-determine if it's failing because it's unbound, or the server isn't running: @c sdir list shows 
+@note @c mksys can also help to validate target bindings.  @c mkapp only knows about the app it's
+building. Things like typos in binding values won't be detected, but will show up with your app
+hanging. After running mksys, if your app hangs, run <c>sdir list</c> (@ref toolsTarget_sdir) to
+determine if it's failing because it's unbound, or the server isn't running: @c sdir list shows
 services that are running.
 
-To display usage, run 
-@verbatim mksys --help@endverbatim 
-  
-@ref defFilesSdef or @ref defFilesSdef files for more info.
+To display usage, run
+@verbatim mksys --help@endverbatim
+
+@ref defFilesSdef files for more info.
 
 <HR>
 

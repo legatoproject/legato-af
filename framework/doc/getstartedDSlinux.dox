@@ -1,22 +1,9 @@
-/** @page getstartedDSlinux Linux 
+/** @page getstartedDSlinux Linux Host
 
-On Ubuntu or other Debian based distro, setup your @c apt sources. See Developer Studio
-<a href ="http://source.sierrawireless.com/developerstudio"> Sierra Wireless Source</a> for details.
+There are two ways to install Legato with Developer Studio on Linux host:
 
-Install Developer Studio for Legato by running:
-@verbatim
-sudo apt-get install devstudio-legato
-@endverbatim
- 
-To get the latest Legato version, go to the Package Manager perspective, 
-and install it from the official Sierra Wireless repository.
-
-You have the choice between two Legato versions:
-
-- @b Native:  the native GCC cross compiler Toolchain will be installed to build Legato applications.
-- @b Docker:  build will be addressed through Docker (as it is done on Windows).
-
-Follow the provided interactive cheat sheet to run your first Legato Hello World application on your device.
+@subpage getstartedDSlinuxIDE <br>
+@subpage getstartedDSspm
 
 <HR>
 

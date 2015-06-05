@@ -5,7 +5,7 @@ operating system. If a device isn't in use, the driver automatically keeps
 that device in its lowest power state.
 
 App behaviour drives power consumption. If app code is uses a peripheral device
-when it doesn't need to, power will be wasted. Power is also wasted if app code 
+when it doesn't need to, power will be wasted. Power is also wasted if app code
 runs busy-wait loops or periodically polls for events.
 
 To conserve power, apps should register call-back functions only triggered when events occur.
@@ -16,24 +16,26 @@ to sleep.
 
 When all threads are sleeping, the O/S will reduce the CPU power state
 automatically. When an event handler function returns back to the Legato event loop,
-it puts the thread to sleep (unless there's another event waiting). If your thread isn't running 
-the Legato event loop, block your thread to put it to sleep when it's not working through 
+it puts the thread to sleep (unless there's another event waiting). If your thread isn't running
+the Legato event loop, block your thread to put it to sleep when it's not working through
 @c poll(),  @c select(),  @c read(),  @c write(),  @c recv(), etc.
 
-If you use a periodic timer (like @ref c_timer) to wake up your app, it will consume power. 
-Set the timer period as long possible to conserve power, and let the O/S go into deeper sleep 
+If you use a periodic timer (like @ref c_timer) to wake up your app, it will consume power.
+Set the timer period as long possible to conserve power, and let the O/S go into deeper sleep
 states.
 
-To maximize power savings, the system can use the Linux auto-sleep feature. 
-Unless the system is busy processing a non-deferrable event, this feature  
-puts the hardware into a @c SUSPEND state where all peripherals and the CPU are 
-placed into low-power mode. Apps with the appropriate credentials have 
+To maximize power savings, the system can use the Linux auto-sleep feature.
+Unless the system is busy processing a non-deferrable event, this feature
+puts the hardware into a @c SUSPEND state where all peripherals and the CPU are
+placed into low-power mode. Apps with the appropriate credentials have
 the option to control the system power state while performing critical operations.
 
 Use Legato's @ref c_pm to control the system's wake-up (powered) state.
-Operations needing fast response times or those resulting in high interrupt rates may benefit 
+Operations needing fast response times or those resulting in high interrupt rates may benefit
 from keeping the system awake. This provides better performance, but worse power efficiency.
- 
+
+See @ref howToPowerMgmt for info on how to write power-efficient apps.
+
 <HR>
 
 Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.

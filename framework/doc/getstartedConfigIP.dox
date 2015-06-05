@@ -1,6 +1,6 @@
 /** @page getstartedConfigIP Configure IP Address
 
-Before you can start working with your target, you need to setup host-target communications 
+Before you can start working with your target, you need to setup host-target communications
 to use an IP address.
 
 There are a few ways to configure a target IP address:
@@ -10,6 +10,6 @@ There are a few ways to configure a target IP address:
 
 <HR>
 
-Copyright (C) 2014 Sierra Wireless, Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 
 **/

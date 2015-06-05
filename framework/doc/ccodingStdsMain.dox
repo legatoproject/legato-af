@@ -1,14 +1,11 @@
-/** @page ccodingStdsMain C Language Coding Standards
+/** @page ccodingStdsMain C Language Standards
 
-Legato follows these C language standards to aid in simplifying coding and help in code reuse.
+Legato follows the C Language standards outlined in this topic to help simplify coding and help in
+code reuse.
 
-General standards (in alpha order):
+<HR> 
 
-Detailed info:
-
-@subpage ccodingStdsNaming  <br>
-@subpage ccodingStdsAbbr  <br>
-
+There's also detailed info on @subpage ccodingStdsNaming and @subpage ccodingStdsAbbr
 
 @section cstdsparamCommenting Commenting
 
@@ -45,7 +42,7 @@ Each module should contain a comment block at the top of the file that describes
  *
  * <HR>
  *
- * Copyright (C) Sierra Wireless, Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 @endverbatim
 
@@ -376,6 +373,6 @@ Configure  your editor(s) now!  (...and, while you're at it, tell your editor no
 
 <HR>
 
-Copyright (C) 2014 Sierra Wireless, Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 
 **/

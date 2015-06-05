@@ -1,7 +1,7 @@
 /** @page getstartedConfigIPeth Ethernet
 
-Using an Ethernet connection to a local area network is the easiest way to configure 
-IP addresses. Connect the serial, Ethernet, and power cables to the dev kit. 
+Using an Ethernet connection to a local area network is the easiest way to configure
+IP addresses. Connect the serial, Ethernet, and power cables to the dev kit.
 
 In a terminal, run:
 
@@ -14,8 +14,8 @@ Sign on as @b root @b user (no password required).
 Press enter when prompted for a password.
 
 Run @c ifconfig (or ip addr). It should display something like this:
- 
-@verbatim 
+
+@verbatim
 root@swi-mdm9x15:~# ifconfig
 eth0      Link encap:Ethernet  HWaddr 9E:90:7C:6D:BE:9B
           inet addr:10.1.28.211  Bcast:10.1.28.255  Mask:255.255.255.0
@@ -25,7 +25,7 @@ eth0      Link encap:Ethernet  HWaddr 9E:90:7C:6D:BE:9B
           TX packets:3975 errors:0 dropped:0 overruns:0 carrier:0
           collisions:0 txqueuelen:1000
           RX bytes:14481736 (13.8 MiB)  TX bytes:718334 (701.4 KiB)
- 
+
 lo        Link encap:Local Loopback
           inet addr:127.0.0.1  Mask:255.0.0.0
           inet6 addr: ::1/128 Scope:Host
@@ -34,18 +34,18 @@ lo        Link encap:Local Loopback
           TX packets:65 errors:0 dropped:0 overruns:0 carrier:0
           collisions:0 txqueuelen:0
           RX bytes:3608 (3.5 KiB)  TX bytes:3608 (3.5 KiB)
- @endverbatim 
- 
- If it doesn't display an eth0 inet address, try rebooting the target (easiest is to disconnect and 
+ @endverbatim
+
+ If it doesn't display an eth0 inet address, try rebooting the target (easiest is to disconnect and
  reconnect power cable), and run @c ifconfig again.
- 
- Or you can run @c ifdown @c eth0 and then @c if up @c eth0, to stop and restart the Ethernet 
+
+ Or you can run @c ifdown @c eth0 and then @c if up @c eth0, to stop and restart the Ethernet
  connection.
- 
+
  You should be ready to ssh to your target IP - the subnets should match.
- 
+
  <HR>
- 
- Copyright (C) 2014 Sierra Wireless, Inc. Use of this work is subject to license.
+
+ Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 
 **/

@@ -32,7 +32,7 @@ apps:
 }
 @endcode
 
-Any of the following subsections can be used in an  @c .sdef @c apps: section, and will override 
+Any of the following subsections can be used in an  @c .sdef @c apps: section, and will override
 the .adef setting for all processes in that app:
 
 @ref defFilesAdef_cpuShare <br>
@@ -45,10 +45,11 @@ the .adef setting for all processes in that app:
 @ref defFilesAdef_processMaxLockedMemoryBytes  <br>
 @ref defFilesAdef_maxMemoryBytes  <br>
 @ref defFilesAdef_maxMQueueBytes  <br>
-@ref defFilesAdef_maxQueuedSignals  <br>
 @ref defFilesSdef_maxPriority  <br>
+@ref defFilesAdef_maxQueuedSignals  <br>
 @ref defFilesAdef_maxThreads  <br>
-@ref defFilesAdef_sandbox  <br>
+@ref defFilesAdef_pools  <br>
+@ref defFilesAdef_sandboxed <br>
 @ref defFilesAdef_start  <br>
 @ref defFilesAdef_watchdogAction <br>
 @ref defFilesAdef_watchdogTimeout <br>
@@ -59,11 +60,11 @@ Sets the maximum priority level for running the app.
 
 Acts as a ceiling only. Lowers the priority level if an app would otherwise
 be allowed to use a higher priority. It won't raise the priority level for any processes
-in the app.  
+in the app.
 
 Here's a code sample where a process in the app's .adef is configured to start at high priority,
-and the .sdef section for that app has maxPriority set to @c medium so the process 
-will start at medium priority. 
+and the .sdef section for that app has maxPriority set to @c medium so the process
+will start at medium priority.
 
 @code
 apps:
@@ -75,7 +76,7 @@ apps:
 }
 @endcode
 
-Another process in the same .adef configured to start at low priority 
+Another process in the same .adef configured to start at low priority
 will still start at low priority.
 
 @section defFilesSdef_Bindings Bindings
@@ -123,6 +124,6 @@ that require that interface may not be able to run.
 
 <HR>
 
-Copyright (C) 2015 Sierra Wireless, Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 
 **/

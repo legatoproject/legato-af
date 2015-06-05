@@ -3,11 +3,13 @@
 @subpage languageIndependentSyntax <br>
 @subpage languageIndependentC <br>
 
+<HR>
+
 Related info
 
 @ref buildToolsifgen <br>
 @ref defFiles <br>
-@ref componenthelloIPC
+@ref basicAppsIPC
 
 @section languageIndependentAPIs_overview Overview
 
@@ -53,7 +55,7 @@ auto-generated client-side versions of those functions.
 
 <HR>
 
-Copyright (C) 2015 Sierra Wireless, Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 
 **/
 

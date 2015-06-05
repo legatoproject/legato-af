@@ -572,8 +572,6 @@ typedef rc_ReturnCode_t (*swi_av_updateNotificationCB)
 * This feature targets applications that want to process their own update or applications that are responsible for updating another pieces of software,
 * taking advantage of the integrated solution provided by AirVantage services.
 *
-* If the application wants to have a deeper control of the whole update process, it needs to use the functionalities provided by @ref swi_update.h.
-*
 * - There can be only one pending software update request at a time.
 * - Only one hook can be registered for the whole asset
 * - If no user update hook is set, the error code 472 (meaning "not supported /

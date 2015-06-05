@@ -1,0 +1,12 @@
+/** @page yoctoMain Yocto Info
+
+This is advanced-level info about Legato and Yocto: 
+
+@subpage yoctoLegato  <br>
+@subpage yoctoInstallNotes  <br>
+
+<HR>
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/

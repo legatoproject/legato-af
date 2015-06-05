@@ -1,7 +1,7 @@
 /** @page getstartedTargetIPv6 Config ECM IPv6
 
 Setting up target networking for IPv6 on ECM can be done through the host
-or directly on the target. 
+or directly on the target.
 
 This host code sample uses a /127 prefix (only 2 addresses, 0 & 1):
 
@@ -15,15 +15,15 @@ To test the connection from the host to the target, run:
 @verbatim
  # ping6 fd42::0
  @endverbatim
- 
-Here's the same code sample that you run on the target: 
+
+Here's the same code sample that you run on the target:
 
 @verbatim
 # ip -6 addr add fd42::1 dev usb0
 # ip -6 route add fd42::/127 dev usb0
 @endverbatim
 
-To test the connection from the target to the host, run 
+To test the connection from the target to the host, run
 
 @verbatim
 $ ping6 fd42::1
@@ -40,6 +40,6 @@ iface usb0 inet6 static
 
 <HR>
 
-Copyright (C) 2015 Sierra Wireless, Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 
 **/

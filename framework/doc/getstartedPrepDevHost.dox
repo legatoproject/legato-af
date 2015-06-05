@@ -6,29 +6,32 @@ The Linux development host needs a few things to be set up.
 
 Run the following to install necessary packages:
 
-@verbatim $ sudo apt-get install bison build-essential chrpath cifs-utils cmake coreutils curl desktop-file-utils diffstat docbook-utils doxygen fakeroot flex g++ gawk gcc git-core gitk graphviz help2man libgmp3-dev libmpfr-dev libreadline6-dev libsdl-dev libtool libxml2-dev libxml-libxml-perl make m4 python-pip python-jinja2 python-pysqlite2 quilt samba scons sed subversion texi2html texinfo unzip wget 
+@verbatim
+$ sudo apt-get install bison build-essential chrpath cifs-utils cmake coreutils curl desktop-file-utils diffstat docbook-utils doxygen fakeroot flex g++ gawk gcc git-core gitk graphviz help2man libgmp3-dev libmpfr-dev libreadline6-dev libsdl-dev libtool libxml2-dev libxml-libxml-perl make m4 ninja-build python-pip python-jinja2 python-pysqlite2 quilt samba scons sed subversion texi2html texinfo unzip wget
 @endverbatim
 
 @section uninstCache Uninstall ccache
 
-If @c ccache is installed, you must uninstall it so you can build some target images: 
+If @c ccache is installed, you must uninstall it so you can build some target images:
 @verbatim
-$ sudo apt-get remove ccache @endverbatim
+$ sudo apt-get remove ccache
+@endverbatim
 
-@section defSysShell Set Default System Shell 
+@section defSysShell Set Default System Shell
 
-Some versions of Ubuntu default to dash system shell instead of bash, which will cause 
+Some versions of Ubuntu default to dash system shell instead of bash, which will cause
 builds to fail. Run @c echo @c $0 to check your shell.
 
-If you need to change it to use bash, run: 
+If you need to change it to use bash, run:
 @verbatim
-$ sudo dpkg-reconfigure dash @endverbatim
+$ sudo dpkg-reconfigure dash
+@endverbatim
 
 Answer "No" to the question.
 
 <HR>
 
-Copyright (C) 2014 Sierra Wireless, Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 
 **/
 

@@ -1,0 +1,36 @@
+/** @page toolsTarget_configEcm configEcm
+
+Use the @c configEcm tool to setup an ECM interface.
+
+<h1>Usage</h1>
+
+<b><c> configEcm [show | off | on [target \<ipV4_addr>] host \<ipV4_addr> netmask \<ipV4_netmansk>] </c></b>
+
+@verbatim configEcm show @endverbatim
+
+> Displays current configuration.
+
+@verbatim configEcm off @endverbatim
+
+> Deconfigures and turns off ECM.
+
+@verbatim configEcm on [target <ipV4_addr>] host <ipV4_addr> netmask <ipV4_netmansk>] @endverbatim
+
+> Configures ECM: <br>
+> enter target ipV4 address <br>
+>  enter host ipV4 address <br>
+>  enter connection ipV4 netmask <br>
+
+> If no values are provided, defaults to: <br>
+> target: 192.168.1.2 <br>
+> host: 192.168.1.3 <br>
+> netmask: 255.255.255.0 <br>
+
+> If the provided address and netmask (or the defaults) conflicts <br>
+> with an existing network connection, no change will be made.
+
+<HR>
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/

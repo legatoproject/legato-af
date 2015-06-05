@@ -1,13 +1,13 @@
-/** @page getstartedTargetDirs Target Directories 
+/** @page getstartedTargetDirs Target Directories
 
-These are the top level Legato Dev Target directories installed: 
+These are the top level Legato Dev Target directories installed:
 
 <b>logs</b> -
 logs for all target sessions.
 
 <b>[app directories] </b>-
  any installed applications.
- 
+
 <b>root </b> has these directories - <br>
 bin <br>
 boot <br>
@@ -34,6 +34,6 @@ var <br>
 
 <HR>
 
-Copyright (C) 2014 Sierra Wireless, Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 
 **/

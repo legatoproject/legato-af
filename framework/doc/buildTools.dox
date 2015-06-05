@@ -1,4 +1,4 @@
-/** @page buildTools Build Tools
+/** @page buildTools Build 
 
 @section buildTools_mktoolsOverview Overview
 
@@ -14,24 +14,24 @@ These build tools are used to:
  - generate boiler-plate code
  - simplify component-based software development
  - package apps and config settings to deploy to targets.
- 
+
 Most developers will usually only need @ref buildToolsmkapp and @ref buildToolsmksys.
 
 @ref buildToolsmkexe is only needed to build an executable for a target without packaging it
 as an app.  This can be useful to build command-line tools to copy to
 a target or bundle in a root file system image.
 
-@ref buildToolsmkcomp can be used to build libraries from component sources, if 
-a separate step is needed as a part of a complex, custom, staged build system 
+@ref buildToolsmkcomp can be used to build libraries from component sources, if
+a separate step is needed as a part of a complex, custom, staged build system
 (instead of letting mksys, mkapp, or mkexe handle it).
 
 <h2>Interface Generation Tool</h2>
 
 The @subpage buildToolsifgen tool is used to parse interface def .api files and generate include files and
-IPC code. The @c ifgen tool is usually run automatically by the @c mktools. 
+IPC code. The @c ifgen tool is usually run automatically by the @c mktools.
 
 
 <HR>
-Copyright (C) 2015 Sierra Wireless, Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 
 **/

@@ -1,0 +1,25 @@
+/** @page getstartedDevKitPrep Prep Dev Kit Board
+
+These are the high-level steps to prepare the dev kit board for Legato:
+
+- @subpage getstartedAssyDevKit with Legato-ready module.
+- configure @subpage getstartedBoardSwitches to default settings.
+- attach @subpage getstartedDevKitCables to board:
+	- UART2 
+	- Ethernet or micro-USB 
+	- power supply.
+- attach cables to dev host.
+- power up board.
+
+<HR>
+
+Photo of a Legato dev kit board:
+
+@image html devkit_board_pic.jpg
+
+<HR>
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/
+

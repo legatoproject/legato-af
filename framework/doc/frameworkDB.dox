@@ -34,25 +34,26 @@ system:
                       maxFileBytes (integer)
                       maxLockedMemoryBytes (integer)
                       maxFileDescriptors (integer)
-                  priority (string)
-                  faultAction (string)
-                  args
-                      0 (string) -> must contain the executable path relative to the sandbox root.
-                      1 (string)
-                      ...
-                      N (string)
-                  envVars
-                      varName0
-                          varValue0 (string)
-                      varName1
-                          varValue1 (string)
-                      ...
-                      varNameN
-                          varValueN (string)
+                      priority (string)
+                      faultAction (string)
+                      args
+                          0 (string) -> must contain the executable path relative to the sandbox root.
+                          1 (string)
+                          ...
+                          N (string)
+                      envVars
+                          varName0
+                              varValue0 (string)
+                          varName1
+                              varValue1 (string)
+                          ...
+                          varNameN
+                              varValueN (string)
 @endverbatim
+ <br>
 
 <HR>
 
-Copyright (C) 2014 Sierra Wireless, Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 
 **/

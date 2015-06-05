@@ -1,0 +1,64 @@
+/** @page howToConfigTreeImportExport Import/Export Config Trees
+
+This topic summarizes how to create a script to automate importing and exporting config tree settings.
+Import/export functions are useful to create a copy you can use to reinstate your config trees after installing a new
+Legato version (which currently overwrites private config trees).
+ 
+This code sample shows how you can wrap @c instapp in a shell script that will automate the
+import/export functions:
+
+@code
+
+#!/bin/bash
+
+APP_NAME=$1
+
+if [ -z "$APP_NAME" ]
+then
+    >&2 echo "Application name not specified."
+    exit 1
+fi
+
+
+if [ -z "$2" ]
+then
+    if [ -z "$DEST_IP" ]
+    then
+        >&2 echo "Device IP address not specified."
+         exit 1
+    fi
+    DEVICE_IP=$DEST_IP
+else
+    DEVICE_IP=$2
+fi
+
+
+function cfg
+{
+    CMD=$1
+    #echo "Test: "
+    ssh root@$DEVICE_IP "/usr/local/bin/config $CMD $APP_NAME:/ ~/$APP_NAME.cfg"
+}
+
+
+cfg export
+instapp $APP_NAME.ar7 $DEVICE_IP
+cfg import
+
+@endcode
+If you save this script as @c inst.sh, you can run like this:
+@code $ inst.sh <myApp> <myDeviceIP> @endcode
+
+or
+
+@code 
+$ export DEST_IP=<myDeviceIP>
+$ inst.sh myApp
+
+@endcode
+
+ <HR>
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/

@@ -55,10 +55,6 @@ executable.
 Setting <c>[w]</c> in the @c dir: subsection causes all files under that directory to be writeable,
 but the directory itself will not be writeable.
 
-@warning    Access permissions aren't implemented yet.  For now, everything that gets installed in
-            the app's @c bin directory on the target gets @c rx permission, all other files
-            get @c r, and directories get @c rx.
-
 @note   Directories in the persistent (flash) file system are never made writeable because the
         on-target flash file system does not support usage quotas (yet).
 
@@ -141,6 +137,21 @@ ldflags:
     -Lfoo/bar
 }
 @endcode
+
+
+@section defFilesCdef_pools Pools
+
+@warning This feature not yet implemented.
+
+Specifies the number of memory pool blocks that each @ref c_memory "memory pool" should contain.
+
+@code
+pools:
+{
+    myPool = 45
+}
+@endcode
+
 
 @section defFilesCdef_provides Provides
 
@@ -324,7 +335,7 @@ your component that includes all declarations for all the interfaces the compone
 
 The build tools search for the interface definition (.api) file based on the interface search path.
 
-@subsection defFilesCdef_requiresApiOptions Options
+@subsubsection defFilesCdef_requiresApiOptions Options
 
 To reduce the amount of initialization code a component needs to write,
 the build tools automatically generate the client-side IPC
@@ -568,6 +579,6 @@ sources:
 
 <HR>
 
-Copyright (C) 2015 Sierra Wireless, Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 
 **/

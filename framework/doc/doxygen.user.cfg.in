@@ -576,7 +576,7 @@ FILE_VERSION_FILTER    =
 # You can optionally specify a file name after the option, if omitted
 # DoxygenLayout.xml will be used as the name of the layout file.
 
-LAYOUT_FILE            =
+LAYOUT_FILE            = @LEGATO_SOURCE_DIR@/framework/doc/DoxygenLayout.xml
 
 # The CITE_BIB_FILES tag can be used to specify one or more bib files
 # containing the references data. This must be a list of .bib files. The
@@ -650,9 +650,9 @@ WARN_LOGFILE           =
 
 INPUT                  = "@LEGATO_SOURCE_DIR@/framework/doc" \
                          "@LEGATO_SOURCE_DIR@/framework/c/inc" \
-                         "@LEGATO_SOURCE_DIR@/build/localhost/interfaces" \
-                         "@LEGATO_SOURCE_DIR@/apps/sample/eCall/doc" \
-                         "@LEGATO_BINARY_DIR@/apps/sample/eCall/work/components/triggerComponent"
+                         "@LEGATO_SOURCE_DIR@/apps/sample/eCallDemo/doc" \
+                         "@LEGATO_BINARY_DIR@/interfaces" \
+                         "@LEGATO_BINARY_DIR@/framework/doc/generated"
 
 
 # This tag can be used to specify the character encoding of the source files
@@ -906,7 +906,7 @@ HTML_STYLESHEET        = "@CMAKE_CURRENT_SOURCE_DIR@/static/legato.css"
 # files. In the HTML_STYLESHEET file, use the file name only. Also note that
 # the files will be copied as-is; there are no commands or markers available.
 
-HTML_EXTRA_FILES       =  "@LEGATO_SOURCE_DIR@/framework/doc/Legato_USB.pdf"
+HTML_EXTRA_FILES       = ""
 
 # The HTML_COLORSTYLE_HUE tag controls the color of the HTML output.
 # Doxygen will adjust the colors in the style sheet and background images

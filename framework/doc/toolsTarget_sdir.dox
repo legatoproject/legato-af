@@ -10,7 +10,7 @@ Use the Service Directory tool to interact with the Service Directory to
 @verbatim sdir list @endverbatim
 
 > The @c list command generates a list of all the IPC services known by
-> the Service Directory including servers advertising, users waiting for 
+> the Service Directory including servers advertising, users waiting for
 > servers to advertise, and IPC bindings in effect.
 
 @verbatim sdir load @endverbatim
@@ -20,6 +20,6 @@ Use the Service Directory tool to interact with the Service Directory to
 
 <HR>
 
-Copyright (C) 2015 Sierra Wireless, Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 
 **/

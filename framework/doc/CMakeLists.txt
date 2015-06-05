@@ -21,6 +21,26 @@ if(DOXYGEN_FOUND)
                    @ONLY
     )
 
+    # About Legato to include the current version
+    if(LEGATO_VERSION MATCHES "(.*)-([0-9]+)-g([a-z0-9]+)")
+        string(REGEX REPLACE "(.*)-([0-9]+)-g([a-z0-9]+)" "\\1" LEGATO_TAG "${LEGATO_VERSION}")
+        string(REGEX REPLACE "(.*)-([0-9]+)-g([a-z0-9]+)" "\\3" LEGATO_REV "${LEGATO_VERSION}")
+
+        set(LEGATO_VERSION_DOC "${LEGATO_TAG} <em>(${LEGATO_REV})</em>")
+    else()
+        set(LEGATO_VERSION_DOC "${LEGATO_VERSION}")
+    endif()
+
+    message(STATUS "Doc Version: ${LEGATO_VERSION_DOC}")
+
+    configure_file(${CMAKE_CURRENT_SOURCE_DIR}/aboutLegato.dox.in
+                   ${CMAKE_CURRENT_BINARY_DIR}/generated/aboutLegato.dox
+                   @ONLY
+    )
+
+    add_custom_target(mkdoc_gen
+        COMMAND ${LEGATO_TOOL_MKDOC} ${CMAKE_CURRENT_BINARY_DIR}/generated)
+
     function(generate_doc DOC_TARGET DOC_TITLE DOXYGEN_OUTPUT DOXYGEN_CFG)
 
         # HTML
@@ -45,7 +65,7 @@ if(DOXYGEN_FOUND)
             COMMAND cp ${CMAKE_CURRENT_SOURCE_DIR}/static/search.css                             ${DOXYGEN_OUTPUT}/html/search
             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
             COMMENT "Generating HTML for ${DOC_TITLE}" VERBATIM
-            DEPENDS api_headers
+            DEPENDS api_headers mkdoc_gen
         )
         
         # PDF

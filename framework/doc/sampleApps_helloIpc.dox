@@ -1,0 +1,26 @@
+/** @page sampleApps_helloIpc hello IPC 
+
+This sample app demonstrates target and host are communicating with a helloWorld app that uses IPC.
+It has @c .adef bindings and related @ .cdef requires and provides sections.
+
+Run this to install the sample app:
+@verbatim
+$ cd apps/sample/helloIpc
+$ make wp7
+$ instapp helloIpc <ip address>
+@endverbatim
+
+If you're using an AR7 module in your device, substitute @c ar7 for @c wp7.
+
+@ref sampleApps_startApp
+
+<HR>
+
+See <br>
+@ref basicAppsIPC 
+
+<HR>
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/

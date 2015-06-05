@@ -1,0 +1,31 @@
+/** @page basicApps Build Apps
+
+@subpage basicAppsCreate <br>
+@subpage basicAppsIPC <br>
+@subpage basicAppsClientServer <br>
+@subpage basicAppsAddThings <br>
+@subpage basicAppsCompMulti
+
+@section basicAppsCreate_overview Overview
+
+An application (app) is a collection of one or more processes running one or more executables.
+Each executable can make use of libraries and other resource files bundled into the app.
+
+Legato apps automatically run inside a secure sandbox, and don't require any
+configuration. You just build an app, install it, and it automatically runs in a sandbox.
+
+Legato apps can automatically start at boot, and are monitored by the Supervisor daemon.
+If an app fails in the field, the Supervisor can perform
+autonomous fault-recovery actions like restarting a process or rebooting.
+
+Just like any embedded Linux platform, you can install individual executables,
+libraries, resource files, etc., you can write init scripts,
+and you can implement security sandboxes, fault monitoring, and fault recovery.
+But Legato provides the platform to do all that so you
+can focus on your business' unique value-add instead.
+
+<HR>
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/

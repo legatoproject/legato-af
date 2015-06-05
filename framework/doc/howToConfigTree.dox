@@ -1,0 +1,12 @@
+/** @page howToConfigTree Manage Config Tree
+
+These topics provide some how to information for managing the target config tree:
+
+@subpage howToConfigTreeImportExport <br>
+@subpage howToConfigTreeTransactions
+
+ <HR>
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/

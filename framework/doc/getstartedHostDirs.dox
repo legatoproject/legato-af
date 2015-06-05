@@ -1,36 +1,36 @@
 /** @page getstartedHostDirs Host Directories
 
-These are the top level Legato Dev Host directories installed: 
+These are the top level Legato Dev Host directories installed:
 
-<b>3rdParty </b> - 
-CUnit system used for automated unit testing. 
+<b>3rdParty </b> -
+CUnit system used for automated unit testing.
 
 <b>airvantage </b> -
-code and executables to run AirVantage. 
+code and executables to run AirVantage.
 
 <b>apps </b> -
 sample applications: airvantageDemo, helloWorld, modemDemo.
 
-<b>bin </b> - 
-created by build system and populated with executable files run on the 
-development host that ran the build. Contains files like @c mkapp 
-and @c mkexe. 
+<b>bin </b> -
+created by build system and populated with executable files run on the
+development host that ran the build. Contains files like @c mkapp
+and @c mkexe.
 
-<b>build</b> - 
-results of a framework build. Includes @c build/tools (tools used by the build system) 
-and @c build/target (output of a build for a specific target e.g., /build/wp7). 
+<b>build</b> -
+results of a framework build. Includes @c build/tools (tools used by the build system)
+and @c build/target (output of a build for a specific target e.g., /build/wp7).
 
-<b>buildTools</b> - 
-source code for build tools (when built, in ./build/tools). 
+<b>buildTools</b> -
+source code for build tools (when built, in ./build/tools).
 
-<b>cmake </b> - 
-CMake scripts used by the build system. 
+<b>cmake </b> -
+CMake scripts used by the build system.
 
 <b>components </b> -
 pre-built audio, data, modem and positioning components.
 
-<b>framework</b> - 
-source code for the Legato framework. 
+<b>framework</b> -
+source code for the Legato framework.
 
 <b>interfaces </b> -
 pre-built audio, data, modem and positioning interfaces.
@@ -38,12 +38,12 @@ pre-built audio, data, modem and positioning interfaces.
 <b>platformServices </b>
 pre-built app definition files for audio, data, modem and positioning services.
 
-<b>targetFiles </b> - 
-files for installation on target devices. 
+<b>targetFiles </b> -
+files for installation on target devices.
 
- 
+
 <HR>
 
-Copyright (C) 2014 Sierra Wireless, Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 
 **/

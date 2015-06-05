@@ -1,118 +1,118 @@
 /** @page getstartedWindowsHost Windows Dev Host
 
-You can set up a Windows host to upgrade or recover a device. 
+You can set up a Windows host to upgrade or recover a device.
 
 You need to setup @ref getstartedWindowsHost_instAndroidtools and @ref getstartedWindowsHost_instSWdrivers. <br>
 
 @section getstartedWindowsHost_instAndroidtools Windows Android Tools
 
-The Android SDK tools can be downloaded <a href="http://developer.android.com/sdk/index.html">here</a>. 
+The Android SDK tools can be downloaded <a href="http://developer.android.com/sdk/index.html">here</a>.
 
-To use the Android tools, first download the bundle, run the SDK Manager, 
-then install a single Android platform and the Google USB driver. 
- 
-The following additions are needed in the android_winusb.inf file, which is located at:  
+To use the Android tools, first download the bundle, run the SDK Manager,
+then install a single Android platform and the Google USB driver.
+
+The following additions are needed in the android_winusb.inf file, which is located at:
 @code
-%install_dir% sdk\extras\google\usb_driver\android_winusb.inf. 
+%install_dir% sdk\extras\google\usb_driver\android_winusb.inf.
 @endcode
 
-The additions are in two sections that already contain entries for Nexus devices 
+The additions are in two sections that already contain entries for Nexus devices
 (%install_dir% refers to the location where you unzipped the Android SDK bundle).
 
 @verbatim
-In section [Google.NTx86] 
- 
-;Qualcomm SURF/FFA 
-%SingleAdbInterface%        = USB_Install, USB\VID_05C6&PID_9025 
-%CompositeAdbInterface%     = USB_Install, USB\VID_05C6&PID_9025&MI_01 
-%SingleBootLoaderInterface% = USB_Install, USB\VID_18D1&PID_D00D 
- 
-%SingleAdbInterface%        = USB_Install, USB\VID_05C6&PID_901C 
-%CompositeAdbInterface%     = USB_Install, USB\VID_05C6&PID_901C&MI_01 
-%SingleBootLoaderInterface% = USB_Install, USB\VID_18D1&PID_D00D 
- 
-;Sierra 
-%SingleAdbInterface%        = USB_Install, USB\VID_1199&PID_68A2 
-%CompositeAdbInterface%     = USB_Install, USB\VID_1199&PID_68A2&MI_01 
-%SingleAdbInterface%        = USB_Install, USB\VID_1199&PID_68C0 
-%CompositeAdbInterface%     = USB_Install, USB\VID_1199&PID_68C0&MI_01 
-%CompositeAdbInterface%     = USB_Install, USB\VID_1199&PID_9041&MI_01 
-%CompositeAdbInterface%     = USB_Install, USB\VID_1199&PID_9051&MI_01 
-%CompositeAdbInterface%     = USB_Install, USB\VID_1199&PID_9053&MI_01 
-%CompositeAdbInterface%     = USB_Install, USB\VID_1199&PID_9054&MI_01 
-%CompositeAdbInterface%     = USB_Install, USB\VID_1199&PID_9056&MI_01 
-%CompositeAdbInterface%     = USB_Install, USB\VID_1199&PID_9061&MI_01      
+In section [Google.NTx86]
 
-In section [Google.NTamd64] 
- 
-;Qualcomm SURF/FFA 
-%SingleAdbInterface%        = USB_Install, USB\VID_05C6&PID_9025 
-%CompositeAdbInterface%     = USB_Install, USB\VID_05C6&PID_9025&MI_01 
-%SingleBootLoaderInterface% = USB_Install, USB\VID_18D1&PID_D00D 
- 
-%SingleAdbInterface%        = USB_Install, USB\VID_05C6&PID_901C 
-%CompositeAdbInterface%     = USB_Install, USB\VID_05C6&PID_901C&MI_01 
-%SingleBootLoaderInterface% = USB_Install, USB\VID_18D1&PID_D00D 
- 
-;Sierra 
-%SingleAdbInterface%        = USB_Install, USB\VID_1199&PID_68A2 
-%CompositeAdbInterface%     = USB_Install, USB\VID_1199&PID_68A2&MI_01 
-%SingleAdbInterface%        = USB_Install, USB\VID_1199&PID_68C0 
-%CompositeAdbInterface%     = USB_Install, USB\VID_1199&PID_68C0&MI_01 
-%CompositeAdbInterface%     = USB_Install, USB\VID_1199&PID_68C0&REV_0006&MI_01 
-%CompositeAdbInterface%     = USB_Install, USB\VID_1199&PID_9041&MI_01 
-%CompositeAdbInterface%     = USB_Install, USB\VID_1199&PID_9051&MI_01  
-%CompositeAdbInterface%     = USB_Install, USB\VID_1199&PID_9053&MI_01 
-%CompositeAdbInterface%     = USB_Install, USB\VID_1199&PID_9054&MI_01 
-%CompositeAdbInterface%     = USB_Install, USB\VID_1199&PID_9056&MI_01 
-%CompositeAdbInterface%     = USB_Install, USB\VID_1199&PID_9061&MI_01      
- 
-In addition, ensure there are matching entries under the [Strings] section: 
-[Strings] 
-SingleAdbInterface          = "Android ADB Interface" 
-CompositeAdbInterface       = "Android Composite ADB Interface" 
-SingleBootLoaderInterface   = "Android Bootloader Interface" 
- 
-Edit the ini file from android: 
-•	A device VID must be added to be recognized by ADB.  
-•	Create a %USERPROFILE%\.android directory, if it does not exist. 
-•	Navigate to the %USERPROFILE%\.android directory. 
-In the %USERPROFILE%\.android directory, create or edit the file adb_usb.ini. If the file already exists, it will contain a DO NOT EDIT message. 
-Disregard this message and edit the file anyway. To edit, add a line containing 0x05C6 and a line containing 0x1199 to the end of the file. 
-Note: Don’t run android update adb or it will reset the contents of this file and overwrite the line just added.  
-After editing, the adb_usb.ini file should look like this: 
-# ANDROID 3RD PARTY VENDOR ID LIST -- DO NOT EDIT. 
-# USE 'android update adb' TO GENERATE. 
-# 1 USB VENDOR ID PER LINE 
-0x05C6 
-0x1199 
+;Qualcomm SURF/FFA
+%SingleAdbInterface%        = USB_Install, USB\VID_05C6&PID_9025
+%CompositeAdbInterface%     = USB_Install, USB\VID_05C6&PID_9025&MI_01
+%SingleBootLoaderInterface% = USB_Install, USB\VID_18D1&PID_D00D
+
+%SingleAdbInterface%        = USB_Install, USB\VID_05C6&PID_901C
+%CompositeAdbInterface%     = USB_Install, USB\VID_05C6&PID_901C&MI_01
+%SingleBootLoaderInterface% = USB_Install, USB\VID_18D1&PID_D00D
+
+;Sierra
+%SingleAdbInterface%        = USB_Install, USB\VID_1199&PID_68A2
+%CompositeAdbInterface%     = USB_Install, USB\VID_1199&PID_68A2&MI_01
+%SingleAdbInterface%        = USB_Install, USB\VID_1199&PID_68C0
+%CompositeAdbInterface%     = USB_Install, USB\VID_1199&PID_68C0&MI_01
+%CompositeAdbInterface%     = USB_Install, USB\VID_1199&PID_9041&MI_01
+%CompositeAdbInterface%     = USB_Install, USB\VID_1199&PID_9051&MI_01
+%CompositeAdbInterface%     = USB_Install, USB\VID_1199&PID_9053&MI_01
+%CompositeAdbInterface%     = USB_Install, USB\VID_1199&PID_9054&MI_01
+%CompositeAdbInterface%     = USB_Install, USB\VID_1199&PID_9056&MI_01
+%CompositeAdbInterface%     = USB_Install, USB\VID_1199&PID_9061&MI_01
+
+In section [Google.NTamd64]
+
+;Qualcomm SURF/FFA
+%SingleAdbInterface%        = USB_Install, USB\VID_05C6&PID_9025
+%CompositeAdbInterface%     = USB_Install, USB\VID_05C6&PID_9025&MI_01
+%SingleBootLoaderInterface% = USB_Install, USB\VID_18D1&PID_D00D
+
+%SingleAdbInterface%        = USB_Install, USB\VID_05C6&PID_901C
+%CompositeAdbInterface%     = USB_Install, USB\VID_05C6&PID_901C&MI_01
+%SingleBootLoaderInterface% = USB_Install, USB\VID_18D1&PID_D00D
+
+;Sierra
+%SingleAdbInterface%        = USB_Install, USB\VID_1199&PID_68A2
+%CompositeAdbInterface%     = USB_Install, USB\VID_1199&PID_68A2&MI_01
+%SingleAdbInterface%        = USB_Install, USB\VID_1199&PID_68C0
+%CompositeAdbInterface%     = USB_Install, USB\VID_1199&PID_68C0&MI_01
+%CompositeAdbInterface%     = USB_Install, USB\VID_1199&PID_68C0&REV_0006&MI_01
+%CompositeAdbInterface%     = USB_Install, USB\VID_1199&PID_9041&MI_01
+%CompositeAdbInterface%     = USB_Install, USB\VID_1199&PID_9051&MI_01
+%CompositeAdbInterface%     = USB_Install, USB\VID_1199&PID_9053&MI_01
+%CompositeAdbInterface%     = USB_Install, USB\VID_1199&PID_9054&MI_01
+%CompositeAdbInterface%     = USB_Install, USB\VID_1199&PID_9056&MI_01
+%CompositeAdbInterface%     = USB_Install, USB\VID_1199&PID_9061&MI_01
+
+In addition, ensure there are matching entries under the [Strings] section:
+[Strings]
+SingleAdbInterface          = "Android ADB Interface"
+CompositeAdbInterface       = "Android Composite ADB Interface"
+SingleBootLoaderInterface   = "Android Bootloader Interface"
+
+Edit the ini file from android:
+•	A device VID must be added to be recognized by ADB.
+•	Create a %USERPROFILE%\.android directory, if it does not exist.
+•	Navigate to the %USERPROFILE%\.android directory.
+In the %USERPROFILE%\.android directory, create or edit the file adb_usb.ini. If the file already exists, it will contain a DO NOT EDIT message.
+Disregard this message and edit the file anyway. To edit, add a line containing 0x05C6 and a line containing 0x1199 to the end of the file.
+Note: Don’t run android update adb or it will reset the contents of this file and overwrite the line just added.
+After editing, the adb_usb.ini file should look like this:
+# ANDROID 3RD PARTY VENDOR ID LIST -- DO NOT EDIT.
+# USE 'android update adb' TO GENERATE.
+# 1 USB VENDOR ID PER LINE
+0x05C6
+0x1199
 @endverbatim
 
 @section getstartedWindowsHost_instSWdrivers Install Sierra Wireless Drivers
 
 Legato Beta drivers are available from the Source
-<a href="http://source.sierrawireless.com/resources/legato/distribution/"> Legato Downloads</a>.
+<a href="http://source.sierrawireless.com/resources/legato/downloads/"> Legato Downloads</a>.
 
 Click on the link "Windows drivers needed to upgrade WP7 Series firmware" to download the Drivers_Package.zip file (under Sierra Wireless WP7 modules upgrade).
 
-Unzip it to a temporary location and run the SwiDriverSetup.exe program. 
+Unzip it to a temporary location and run the SwiDriverSetup.exe program.
 
-Connect the target device (with WP7 or AR7 module) to your PC. 
+Connect the target device (with WP7 or AR7 module) to your PC.
 
-The module will attempt to enumerate as an ADB device. This may not work if Windows fails to recognize the correct driver, 
-but can be resolved through the Windows Device Manager. You should see an entry for your device with an '!' against 
-it showing that no driver is installed. 
+The module will attempt to enumerate as an ADB device. This may not work if Windows fails to recognize the correct driver,
+but can be resolved through the Windows Device Manager. You should see an entry for your device with an '!' against
+it showing that no driver is installed.
 
-Right-click the device and select 'Update Driver Software…'  
-Select the option to install the driver locally and browse the Android SDK tools location. 
+Right-click the device and select 'Update Driver Software…'
+Select the option to install the driver locally and browse the Android SDK tools location.
 
 Go to @verbatim %install_dir%\sdk\extras\google\usb_driver @endverbatim
 
-The 'Android Composite ADB Interface' should be in the device list. 
+The 'Android Composite ADB Interface' should be in the device list.
 
-Check that you can start a command shell by cd to @verbatim %install_dir%\sdk\platform-tools @endverbatim. 
-From this directory you can run “adb devices” that should show a connected device. 
-For convenience, add this directory to the windows path to allow adb and fastboot to be run from any directory.  
+Check that you can start a command shell by cd to @verbatim %install_dir%\sdk\platform-tools @endverbatim.
+From this directory you can run “adb devices” that should show a connected device.
+For convenience, add this directory to the windows path to allow adb and fastboot to be run from any directory.
 
 <HR>
 

@@ -1,0 +1,46 @@
+/** @page howToLogs Use Logs
+
+This topic summarizes how to use Legato logging. Legato creates log messages
+in LE_INFO() by default, but only minimal information is reported, and only
+for the current app: essentially logs if the app is communicating. You need
+to modify default settings to enable monitoring for other services, etc.
+
+There are two built-in features to control logging using the @ref
+howToLogs_tool or @ref howToLogs_api. There are also @ref c_log_debugFiles.
+
+@section howToLogs_run Access Logs
+Run @c logread on the target to view the system log.
+
+Run <code>logread -f </code> to start monitoring the logs and display
+messages as they are logged.
+
+The installed app's output LE_INFO() log message will appear in the target's
+system log (syslog).
+
+@section howToLogs_tool Logging Tool
+
+The target @c log tool is the easiest way to set logging controls. You can
+control what's being logged, filter levels, trace keywords, and processes
+all through the command-line in a running system.
+
+Run <code>log level INFO "processName/componentName"</code> to set the log
+level to INFO for the specified component in a process.
+
+Run <code>log trace "keyword" "processName/componentName"</code> to use a
+keyword trace.
+
+See @ref toolsTarget_log for details.
+
+@section howToLogs_api Logging API
+
+The Logging API provides a toolkit to set error, warning, info, and
+debugging messages with macros and condition support including default environment variable
+controls that can be output to different devices and formats. 
+
+See @ref c_logging for details.
+
+<HR>
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+ **/

@@ -1,6 +1,6 @@
 /** @page toolsTarget_log log
 
-Use the Log tool tool to set logging variables for components. 
+Use the Log tool tool to set logging variables for components.
 
 Here's more detailed info on the @ref c_logging.
 
@@ -14,7 +14,7 @@ Here's more detailed info on the @ref c_logging.
  log forget PROCESS_NAME <br>
  log help
  </c></b>
- 
+
 @verbatim log list @endverbatim
 > Lists all processes/components registered with the log daemon.
 
@@ -23,11 +23,11 @@ Here's more detailed info on the @ref c_logging.
 > Must be one of EMERGENCY  |  CRITICAL  | ERROR  |  WARNING  |  DEBUG.
 
 @verbatim log trace KEYWORD_STR [DESTINATION] @endverbatim
-> Enables a trace by keyword.  Any traces with a matching keyword are logged. 
+> Enables a trace by keyword.  Any traces with a matching keyword are logged.
 > The KEYWORD_STR is a trace keyword.
 
 @verbatim log stoptrace KEYWORD_STR [DESTINATION] @endverbatim
-> Disables a trace keyword.  Any traces with this keyword are not logged. 
+> Disables a trace keyword.  Any traces with this keyword are not logged.
 > The KEYWORD_STR is a trace keyword.
 
 @verbatim log forget PROCESS_NAME@endverbatim
@@ -39,32 +39,32 @@ Here's more detailed info on the @ref c_logging.
 @verbatim [DESTINATION] @endverbatim
 
 <div class="tool-option">
-Optional, specifies the process and component where to send the command.  
+Optional, specifies the process and component where to send the command.
 
-The optional @c [DESTINATION] must be in this format: 
+The optional @c [DESTINATION] must be in this format:
 
 @verbatim process/componentName @endverbatim
 
-'process' can be a processName or a PID. If it's a processName, 
+'process' can be a processName or a PID. If it's a processName,
 the command will apply to all processes with the same name.
 If it's a PID, it only apply to the process with the matching PID. <br>
 
 Both the 'process' and the 'componentName' can be replaced with an asterix ("*)" to mean
-all processes and/or all components.  
+all processes and/or all components.
 
-If the @c [DESTINATION] is omitted, a default destination 
+If the @c [DESTINATION] is omitted, a default destination
 is used and applies to all processes and all components:
 @verbatim "*/*" @endverbatim
 
-A command can be sent to a process/component that doesn't exist yet. 
-It'll be saved and applied to the process/component when available.  
+A command can be sent to a process/component that doesn't exist yet.
+It'll be saved and applied to the process/component when available.
 This way, you can pre-configure processes/components before they are spawned, but it's only valid
 if the [DESTINATION] is a process name. Otherwise, the 'process' will be dropped."
 
 </div>
 
 Here are some command samples:
- 
+
 @verbatim
 $ log level INFO "processName/componentName"
 @endverbatim
@@ -81,9 +81,9 @@ $ log stoptrace "keyword" "processName/componentName"
 >  Disable a trace.
 
 All can use "*" in place of processName and componentName for
- all processes and/or all components.  If the "processName/componentName" is omitted, 
+ all processes and/or all components.  If the "processName/componentName" is omitted,
  the default destination is set for all processes and all components.
- 
+
 Translated command to send to the log daemon:
 
 @verbatim
@@ -96,6 +96,6 @@ Translated command to send to the log daemon:
 
 <HR>
 
-Copyright (C) 2015 Sierra Wireless, Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 
 **/

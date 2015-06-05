@@ -1,24 +1,24 @@
 /** @page basicRuntimeArch Runtime Architecture
 
-Legato's runtime architecture manages each app in its own sandbox. 
+Legato's runtime architecture manages each app in its own sandbox.
 
 @image html LayeredArchitecture.png
 
-Apps communicate with each other using access-controlled message-passing 
+Apps communicate with each other using access-controlled message-passing
 services. The Supervisor automatically creates sandboxes.
 
 @section basicRuntimeArch_apps Applications
 
-An application (we call them 'apps') is a collection of executable files, libraries, and/or other resource files 
+An application (we call them 'apps') is a collection of executable files, libraries, and/or other resource files
 (e.g., audio files, web pages) that can be deployed to a target device. Once installed
 on a device, an app can be started and stopped.
- 
+
 By default, each app runs in its own sandbox. When an app is constructed, all
 the files and IPC services it needs to access are declared (these should be examined and approved
 before installed on the target). At runtime, the Supervisor and the Service Directory enforce
 that only approved files and IPC services are accessed by that app.
 
-@ref appCreating
+@ref basicAppsCreate
 
 @section basicRuntimeArch_supervisor Supervisor
 
@@ -38,15 +38,15 @@ which ensures only authorized connections are established.
 @section basicRuntimeArch_configTree Config Tree
 
 The Config Tree provides persistent @ref basicConfig data
-storage organized in a tree structure.  
+storage organized in a tree structure.
 
 Command line @ref toolsTarget_config tool <br>
-@ref api_config 
+@ref c_config
 
 @section basicRuntimeArch_watchDog Watchdog
 
-Legato kickable watchdog service provides a timeout that can be 
-configured in @c defFilesAdef or specified at run time.  If a kick is not received in the 
+Legato kickable watchdog service provides a timeout that can be
+configured in @c defFilesAdef or specified at run time.  If a kick is not received in the
 specified time, the supervisor signals to perform the action specified in @ref defFilesAdef_processWatchdogAction.
 
 @ref c_wdog <br>

@@ -1,0 +1,195 @@
+/** @page howToPowerMgmt Manage Device Power
+
+This topic summarizes how to manage device power. Information is provided on the Legato power
+management framework implementation with guidelines how to write power-efficient Legato apps.
+
+See @ref basicPwrMgmt for general info on managing device power.
+
+Legato uses Linux power management techniques to minimize device power consumption:
+
+- SUSPEND: system saves its state in memory, places all peripherals in low power mode, and
+puts the app processor into its deepest idle state.
+
+- CPUIDLE:  system estimates how long the app processor would be idle and
+puts it into appropriate low power state.
+
+- CPUFREQ: system estimates how much the app processor is loaded and tunes
+the CPU frequency and voltage as necessary.
+
+While CPUIDLE and CPUFREQ seamlessly run in the O/S background, Legato apps
+have significant impact on the efficiency of system SUSPEND functionality.
+
+@section howToPowerMgmt_wakeupSources Wakeup Sources
+
+Legato uses Linux wakeup sources (called wake locks in Android) to control the system
+power state. If a component with appropriate privileges wants to prevent the system from entering
+SUSPEND state, it acquires a wakeup source.
+
+If a component with appropriate privileges has no interest in keeping the system powered,
+it releases a wakeup source. Linux auto-sleep component monitors the use of all system-wide
+wakeup sources and triggers entry into SUSPEND state when none of the wakeup sources are held.
+
+Wakeup sources can roughly be classified as:
+
+- <b>Kernel wakeup sources</b> are hard-coded in kernel components and can only be acquired
+and released by kernel, module and driver code.
+
+- <b>User-space wakeup sources</b> are created on-demand, acquired and
+released by privileged app components. User apps write the wakeup source name to file
+@c /sys/power/wake_lock to create and acquire wakeup source, and write the same name
+to file @c /sys/power/wake_unlock to release the wakeup source.
+
+The Legato Power Manager is the only Legato component with the privilege to write to
+@c /sys/power/wake_lock and @c /sys/power/wake_unlock files. Other components that
+need control over system power state must have the Linux CAP_BLOCK_SUSPEND
+capability assigned, and perform the following Legato calls to request service from the Power Manager:
+
+le_pm_NewWakeupSource() create a wakeup source with a particular tag,
+
+le_pm_StayAwake() acquire a wakeup source, and
+
+le_pm_Relax() release a wakeup source.
+
+When the Power Manager receives a request from another component via
+le_pm_NewWakeupSource(), it'll prefix the requested tag with string @c legato_ and
+post-fix it with the requestor’s process ID resulting in the wakeup source name format
+@verbatim  legato_<tag>_<process-id> @endverbatim
+
+This name format allows for easy traceability of wakeup sources. The process ID refers
+to a particular Legato app and the tag refers to a particular wakeup source within that app.
+
+A wakeup source using this name is then created on behalf of the requesting component and
+a reference to the wakeup source is passed back to the requestor to use it in le_pm_StayAwake()
+and le_pm_Relax() calls.
+
+Stale wakeup sources are automatically released by the Power Manager when their
+requestor exits and/or disconnects from the Power Manager.
+
+@section howToPowerMgmt_wakeupAndDeferrable Wakeup & Deferrable Events
+
+Legato apps run in an event-driven model so the app remains idle until there's an event to be
+processed. Once an event occurs, Legato detects it and dispatches it to one of its threads for
+processing.
+
+From a power management aspect, there's no reason for the system to stay powered while it's idle.
+Also, events may not have the same processing importance, so Legato classifies them like this:
+
+- <b>Wakeup events</b>: require immediate attention so the system to must be powered.
+
+- <b>Deferrable events</b>: can wait to be processed until the system is powered for another reason.
+
+These event types are defined in the @c fdMonitor object. To classify the fdMonitor event as wakeup or
+deferrable, the app should call le_fdMonitor_SetDeferrable() with the appropriate ‘isDeferrable’ flag.
+By default, if le_fdMonitor_SetDeferrable() is not called; all events on that object will be assumed
+to be wakeup events.
+
+The underlying Linux mechanism of waiting for wakeup events from @c fdMonitor’s file descriptor
+uses epoll_wait() in conjunction with @c EPOLLWAKEUP flag. When an epoll_wait() event occurs
+on a file descriptor that has this flag is set, epoll_wait() will unblock the caller and an @b eventpoll
+kernel wakeup source will be signaled. This causes the system to stay awake until one of these
+conditions are met:
+
+- another epoll_wait() call is made with the same file descriptor in the event list.
+
+or
+
+- the file descriptor is closed.
+
+This way, callbacks for this @c fdMonitor event will be executed while @b eventpoll wakeup
+source is held. This guarantees the system stays awake until all callbacks are executed.
+If a Legato component needs to keep the system powered beyond the scope of a Legato callback,
+it should acquire its own wakeup source.
+
+This diagram shows a simple Legato app with process ID 25 that needs
+to keep the system powered between two Legato events using wakeup source tagged
+@b lock. Wakeup sources are handed off to achieve this functionality. The system remains powered
+from the moment the first event occurs until the second event is fully processed.
+
+@image html wakeup_sources.png
+
+App components that subscribe to wakeup events must have CAP_BLOCK_SUSPEND Linux
+capability assigned. If not, all events will be assumed deferrable and calling
+le_fdMonitor_SetDeferrable() will have no effect.
+
+@section howToPowerMgmt_clients Power Manager Clients
+
+Using wakeup sources and EPOLLWAKEUP provides a simple programming model to write Power Manager
+clients. Here are some guidelines:
+
+- Make sure that CAP_BLOCK_SUSPEND capability is assigned to the client. Client components usually
+run sandboxed and unless this capability is not explicitly assigned, they will not be able to
+control system power state.
+
+- Don't acquire wakeup sources if you just need to process an event callback. In this callback,
+the system will stay powered due to the @b eventpoll wakeup source.
+
+-  Acquire a wakeup source if system processing occurs outside a Legato callback.
+A typical use case is e.g. composing and sending a text message: a Legato callback won't be invoked
+ until the message is submitted and hence the message composition operation may be interrupted by
+ system sleep if unprotected by a wakeup source.
+
+- Acquire a wakeup source if the system needs to stay awake monitoring a state transition. State transition
+events may typically be handled in a callback, but if the system needs to stay powered across multiple
+states, a wakeup source is required.
+
+@section howToPowerMgmt_troubleshooting Troubleshooting
+
+<h4>Problem </h4>
+
+<b>System doesn't suspend. </b>
+
+@a Probable @a cause
+
+A wakeup source is being held <br>
+
+@a Test
+
+Dump contents of /sys/kernel/debug/wakeup_sources to find the fields that
+have a non-zero active_since field. Also dump contents of
+@c /sys/power/wake_lock to find active user-space wakeup sources. <br>
+
+@a Command
+
+@verbatim
+ cat /sys/kernel/debug/wakeup_sources |sed -e s/"^       "/"unnamed"/ | awk '{print $6 "\t" $1}' | grep -v "^0" |sort –n
+ cat /sys/power/wake_lock
+@endverbatim
+
+<h4>Problem </h4>
+
+<b>System perpetually suspends and resumes. </b>
+
+@a Probable @a cause
+
+Interrupt is constantly triggered.
+
+@a Test
+
+Dump contents of @c /proc/interrupts to find the IRQ that's constantly incrementing.
+
+@a Command
+
+@c cat /proc/interrupts
+
+<h4>Problem </h4>
+
+<b>System doesn't resume. </b>
+
+@a Probable @a cause
+
+Wakeup interrupts aren't configured.
+
+@a Test
+
+Dump contents of all @verbatim /sys/devices/*/power/wakeup @endverbatim
+files and check which devices have wakeup interrupts enabled.
+
+@a Command
+
+@verbatim find /sys/devices –name wakeup –exec cat “{}” “;” -print @endverbatim
+
+<HR>
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+ **/

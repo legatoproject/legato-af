@@ -3,19 +3,23 @@
 Here are some parameters for modem services config trees:
 
 @section cellnetConfigTree Cellular Network Service
+Configuration for the @ref c_le_cellnet Service.
 @copydoc c_le_cellnet_configdbPage_Hide <br>
 
-@section mrcConfigTree Modem Radio Control
-@copydoc le_mrc_configdbPage_Hide <br>
+@section mbxConfigTree SMS Inbox Service
+Configuration for the @ref c_smsInbox Service.
+@copydoc le_smsInbox_configdbPage_Hide <br>
 
 @section ecallConfigTree eCall
+Configuration for the @ref c_ecall Service.
 @copydoc le_ecall_configdbPage_Hide <br>
 
 @section posConfigTree Positioning
+Configuration for the @ref c_pos Service.
 @copydoc le_pos_configdbPage_Hide <br>
 
 <HR>
 
-Copyright (C) 2014 Sierra Wireless, Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 
 **/

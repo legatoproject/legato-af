@@ -1,0 +1,26 @@
+/** @page sampleApps_sms SMS 
+
+This sample app demonstrates SMS messaging. It uses @c .adef bindings and related
+@ .cdef requires and sources sections.
+
+Before you install this sample app, register your SIM network. See @ref toolsTarget_cm_sim.
+
+Run this to install the sample app:
+@verbatim
+$ cd apps/sample/sms
+$ make wp7
+$ instapp sms <ip address>
+@endverbatim
+
+If you're using an AR7 module in your device, substitute @c ar7 for @c wp7.
+
+@ref sampleApps_startApp
+
+See <br>
+@ref c_sms
+
+<HR>
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/

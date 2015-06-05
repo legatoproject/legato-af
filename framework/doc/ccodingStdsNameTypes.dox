@@ -1,29 +1,29 @@
 /** @page ccodingStdsNameTypes Types
 
-Other C language standards' pages: 
+Other C language standards' pages:
 
 @ref ccodingStdsNaming  <br>
 @ref ccodingStdsAbbr  <br>
-@ref ccodingStdsMain 
+@ref ccodingStdsMain
 
-@section cstdsNameSuffix Suffix 
+@section cstdsNameSuffix Suffix
 
-Types are distinctly different from instances, but it's possible to choose name so it's hard to know whether something is a type or a variable.  
-Naming conflicts can occur between types and variables and even between types and functions. 
+Types are distinctly different from instances, but it's possible to choose name so it's hard to know whether something is a type or a variable.
+Naming conflicts can occur between types and variables and even between types and functions.
 
 Type names are always given @c _t suffix.
 
 @section cstdsNameTypesPrefix Prefix
 
-If a type is defined in a header file, there's a possibility its name will conflict with the name of another type defined elsewhere.  
+If a type is defined in a header file, there's a possibility its name will conflict with the name of another type defined elsewhere.
 
-All types defined inside header files must have a prefix. 
+All types defined inside header files must have a prefix.
 
 Types defined inside implementation (.c) files don't need a prefix.  They have file scope, and imported types will have prefixes, so naming conflicts are highly unlikely.
 
 The prefix (if any) must be all lower-case.
 
-@section cstdsNameType Name 
+@section cstdsNameType Name
 
 After the prefix (if any), the rest of the type name must be in CamelCase, beginning with an uppercase character.
 @verbatim
@@ -42,21 +42,21 @@ typedef size_t swi_foo_ObjectCount_t;
 Cardinal types (e.g., int, uint, int32, bool) are exempt from having a prefix or suffix because:
 
 - naming a variable "bool" or "int" won't be very descriptive, so there's little point to include those.
-- most cardinal types are built into the language and we're not allowed to change their names (and we wouldn't want to-imagine 
+- most cardinal types are built into the language and we're not allowed to change their names (and we wouldn't want to-imagine
 the confusion and the 3rd-party integration problems!).
 
 @section cstdsEnumerationMembers Enumeration Members
 
-Enumeration members are constants used in a  similar way to macro constants. To clearly identify them as literal constants, they must be named 
+Enumeration members are constants used in a  similar way to macro constants. To clearly identify them as literal constants, they must be named
 using all upper-case with underscores separating words.
 
-Also like macros, names of enumeration members can also conflict with the names of macros and enumeration members defined in include files from other modules.  
-Any members of enumerations exported to other modules must have a prefix. Even members of enumerations only 
-used within a single file should have a prefix if the names are likely to conflict with names defined in standard C libraries or other included code that doesn't use prefixes. 
+Also like macros, names of enumeration members can also conflict with the names of macros and enumeration members defined in include files from other modules.
+Any members of enumerations exported to other modules must have a prefix. Even members of enumerations only
+used within a single file should have a prefix if the names are likely to conflict with names defined in standard C libraries or other included code that doesn't use prefixes.
 
 @section cstdsStructandUnionNamespaces Struct and Union Namespaces
 
-When a structure or union is defined, it's possible to give a name to that structure or union within a separate namespace. 
+When a structure or union is defined, it's possible to give a name to that structure or union within a separate namespace.
 This example uses "MessageBody" and "Message" in the union and struct namespaces, but "MessageBody_t" and "Message_t" are not:
 
 @code
@@ -77,16 +77,16 @@ Message_t;
 
 @endcode
 
-All names in the struct namespace must be preceded by the keyword "struct".  All names in the union namespace must be preceded by the keyword "union". 
-This way, there's no confusion, and they're in a separate namespace so there's no possibility of naming conflicts with identifiers outside the namespaces.  
-That's why these names are exempt from having an "_t" suffix. Athough if these are defined in a header file, they still need a prefix to prevent naming 
+All names in the struct namespace must be preceded by the keyword "struct".  All names in the union namespace must be preceded by the keyword "union".
+This way, there's no confusion, and they're in a separate namespace so there's no possibility of naming conflicts with identifiers outside the namespaces.
+That's why these names are exempt from having an "_t" suffix. Athough if these are defined in a header file, they still need a prefix to prevent naming
 conflicts with other identifiers defined by other components in the same namespace.
 
 @section cstdsStructandUnionMembers Struct and Union Members
 
 The names of members of structures and unions must start with a lower-case letter and use CamelCase to separate words.
 
-Because structure and union member names are always used in context (in a dereference expression), there's no confusing them with other 
+Because structure and union member names are always used in context (in a dereference expression), there's no confusing them with other
 types' members (assuming the structure or union reference identifier is well named). No prefix is needed on structure or union member names:
 
 @code
@@ -115,6 +115,6 @@ static void PrintTextBuffer(MyStructure_t* objectPtr)
 
 <HR>
 
-Copyright (C) 2014 Sierra Wireless, Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 
 **/

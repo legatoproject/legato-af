@@ -1,0 +1,36 @@
+/** @page getstartedCLrequirements Requirements
+
+The following are the recommended system requirements for a Linux host PC running from the
+command-line:
+
+@section getstartedCLrequirements_system System
+
+If you’re installing the development environment and application framework on a development host,
+ recommended system requirements for the Ubuntu desktop is at least 768 MB of RAM and 5 GB of disk space.
+
+Ubuntu version 12.04 is officially supported, although you can try others (e.g., 14.04).
+
+If you’re downloading Legato source and toolchain files, you’ll need a minimum Internet connection speed of 4 Mpbs.
+
+@section getstartedCLrequirements_Host Dev Host PC
+
+Different options are available for development host PCs depending on needs.
+You can build, install, and work with Legato entirely from a Linux dev host, but target device recovery is
+only possible from Windows at this time. See @ref getstartedWindowsHost.
+
+@section getstartedCLrequirements_tasks Linux vs Windows tasks
+
+Linux dev host is used to compile system software, flash Linux images, develop and debug applications.
+
+Windows Host is used to flash Linux images, flash new modem firmware, recover device.
+
+@section getstartedCLrequirements_target Target Device
+
+Legato uses the AirPrime – AR and WP Series-Development Kit.
+<br>
+
+<HR>
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/

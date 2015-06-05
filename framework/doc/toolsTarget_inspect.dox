@@ -1,7 +1,7 @@
-/** @page toolsTarget_inspect inspect 
+/** @page toolsTarget_inspect inspect
 
 Use the Inspect tool to examine running Legato processes.
-Currently, only memory pools are supported; later versions will add more capabilities. 
+Currently, only memory pools are supported; later versions will add more capabilities.
 
 Prints memory pools' usage to stdout for the specified process.
 
@@ -60,6 +60,6 @@ TOTAL BLKS  USED BLKS   MAX USED  OVERFLOWS     ALLOCS  MEMORY POOL
 
 <HR>
 
-Copyright (C) 2015 Sierra Wireless, Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 
 **/

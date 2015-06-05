@@ -1,160 +1,147 @@
-/** @page basicSecuritySmackAdvanced Advanced Smack
+/** @page basicSecuritySmackAdvanced Advanced SMACK
 
+@section basicSecuritySmackAdvanced_implementation Implementation
 
-@section basicSecuritySmackAdvanced_smack Smack Implementation
+Simplified Mandatory Access Control Kernel (SMACK) provides a simple solution
+ for mandatory access control (MAC). MAC provides the ability for a centralized entity to
+ set access policy for system resources.
 
+ Linux's default access control policy is governed by permission bits on system resources
+ (files, directories, devices, etc.). Permission bits can be modified by the resource owner
+ (process with the same user ID as the resource). The access control policy is at
+ the discretion of the resource owner; this system is classified as DAC (discretionary
+ access control).  With DAC, policies are set in a distributed manner as there
+ are often many system users, each setting the access policy for its own resources.
 
-SMACK (Simplified Mandatory Access Control Kernel) is a kernel feature that provides mandatory
-access control.
+In contrast, MAC policies are set for all system resources by a centralized entity.
 
-The key feature of MAC (mandatory access control) is the ability of a centralized entity to set
-access policy to system resources.  The easiest way to understand MAC is to compare it to Linux's
-default access control system.
+Linux's DAC has known weaknesses that can lead to security leaks. MAC is often used to
+overcome some of the short comings of DAC for systems that require a higher level of security.
 
-Linux's default access control policy is governed by the permission bits on system resources (ie.
-files, directories, devices, etc.).  The permission bits on files may be modified by the owner of
-the resource, a process with the same user ID as the resource.  The access control policy is at
-the discretion of the resource owner, hence this system is classified as DAC (discretionary
-access control).  Note also that with DAC, policies are set in a distributed manner because there
-are often many users in a system each setting the access policy for its own resources.
+SMACK isn't the only MAC solution available. Because it's a simple solution, it's not flexible enough
+to handle all use cases. For the majority of use cases, it will be easier to setup and maintain.
 
-In contrast MAC policies are set for all resources on the system by a centralized entity.
-
-Linux's DAC has many known weaknesses that can lead to security leaks.  So MAC is often used to
- overcome some of the short comings of DAC for systems that require a higher level of security.
-
-SMACK is not the only MAC solution available.  It is, however, a solution that was built with
-simplicity as one of its main objectives.  Its simplicity means that it is not flexible enough to
-handle all use cases but it also means that for the majority of use cases it will be easier to
-setup and maintain.
-
-SMACK supplements Linux's DAC system, that is to say, DAC permissions are checked first and only
-if access is granted SMACK permissions are then checked.  As a result SMACK can only limit access
-it cannot grant access beyond DAC permissions.
+SMACK supplements Linux's DAC system. DAC permissions are checked first; if access is granted,
+SMACK permissions are then checked. Consequently, SMACK can only limit access,
+it can't grant access beyond DAC permissions.
 
 SMACK uses 'labels' on resources (objects in SMACK terminology) and processes (subjects) to
-determine access. Labels on resources can only be set by a privileged process 
-(see @ref basicSecuritySmackAdvanced_privProcess). 
+determine access.  Labels on resources can only be set by a privileged process.  A privileged
+process can only set it's own label but not labels of other processes.
 
 There are a number of single character labels ("_", "^", "*", "?", "@") that have special
-meanings.
+meanings. SMACK restricts read/write/execute access based on the subject label and the object
+label according to the following rules:
 
-SMACK restricts read/write/execute access based on the label of the subject and the label of the
-object according to the following rules.
+1. Any access requested by a task labelled "*" is denied.
+2. A read or execute access requested by a task labelled "^" is permitted.
+3. A read or execute access requested on an object labelled "_" is permitted.
+4. Any access requested on an object labelled "*" is permitted.
+5. Any access requested by a task on an object with the same label is permitted.
+6. Any access requested that is explicitly defined in the loaded rule set is permitted.
+7. Any other access is denied.
 
-     1. Any access requested by a task labelled "*" is denied.
-     2. A read or execute access requested by a task labelled "^" is permitted.
-     3. A read or execute access requested on an object labelled "_" is permitted.
-     4. Any access requested on an object labelled "*" is permitted.
-     5. Any access requested by a task on an object with the same label is permitted.
-     6. Any access requested that is explicitly defined in the loaded rule set is permitted.
-     7. Any other access is denied.
+Rule 6 lets us use explicit rules through adding specific labels. Explicit rules
+define the access rights a subject label can have on an object label. Only privileged processes
+can set rules.
 
-As alluded to in rule 6 above explicit rules can be added for specific labels.  Explicit rules
-define the access rights that a subject label can have on an object label.  See the
-c_smack_setRules section for details.  Only privileged processes can set rules.
+@section c_smack_privProcess Privileged Processess
 
-@section basicSecuritySmackAdvanced_privProcess Privileged Processes
+Privileged processes use the CAP_MAC_OVERRIDE capability. It's also possible to configure
+the system so the CAP_MAC_OVERRIDE is honoured only for processes with a specific label. This
+configuration allows the system to restrict root processes (have CAP_MAC_OVERRIDE) that don't
+have the proper SMACK label.
 
-Privileged processes are processes with the CAP_MAC_OVERRIDE capability.  However,
-it is also possible to configure the system such that the CAP_MAC_OVERRIDE is honoured only for
-processes with a certain label.  This configuration allows the system to restrict processes which
-are root (have CAP_MAC_OVERRIDE) but do not have the proper SMACK label.
+@section c_smack_assignLabels Assigning Labels
 
-@section basicSecuritySmackAdvanced_smack_c_smack_assignLabels Assigning SMACK Labels
-
-Use smack_SetMyLabel() to set the SMACK label for the calling process.  The calling process must
-be a privileged process.  Setting SMACK labels for other processes is not possible.
-
+Use smack_SetMyLabel() to set the SMACK label for the calling process. The calling process must
+be a privileged process. Setting SMACK labels for other processes isn't possible.
+ 
 To set the SMACK label for file system objects use smack_SetLabel(), again the calling process
 must be privileged.
 
-@section basicSecuritySmackAdvanced_smack_c_smack_setRules Setting SMACK Rules
+@section basicSecuritySmackAdvanced_setRules Set Rules
 
 Use smack_SetRule() to set an explicit SMACK rule that gives a specified subject access to a
 specified object.
 
+@section basicSecuritySmackAdvanced_supervisor Supervisor
 
-@section basicSecuritySmackAdvanced_supervisor Smack Supervisor
-
-SMACK policies are set by the Legato startup scripts, the Legato Installer and the Legato
+SMACK policies are set by the Legato startup scripts, the Legato Installer, and the Legato
 Supervisor.
 
-By default system files have the "_" SMACK label which means that everyone has read and execute
+By default system files have the "_" SMACK label meaning everyone has read and execute
 access to them.  The Legato startup scripts are responsible for setting SMACK labels for system
-files that require special permission handling.  For example, the /dev/null file is given the
-label "*" by the start up scripts so that it is fully accessible by everyone.  Additionally, the
-Legato startup scripts makes sure that the Legato Supervisor and Installer have the 'admin' SMACK
+files that require special permission handling (e.g., @c /dev/null file is given the
+label "*" by the start up scripts so the file is fully accessible to everyone. The Legato startup
+scripts also ensure the Legato Supervisor and Installer have the 'admin' SMACK
 label.
 
-The Legato Installer sets SMACK labels for all application bundled files.  The SMACK label for
+The Legato Installer sets SMACK labels for all app bundled files.  The SMACK label for
 each app is unique to the app.
 
-The Supervisor sets SMACK labels for "framework" daemons, processes for applications, sandbox
-directories and it also sets SMACK rules for IPC bindings.
+The Supervisor sets SMACK labels for framework daemons, processes for apps, sandbox
+directories and SMACK rules for IPC bindings.
 
 Framework daemons are given the SMACK label "framework".
 
-All processes are given the same SMACK label as the application they belong to.  All app labels
-are unique.
+All processes are given the same SMACK label as their app. All app labels are unique.
 
-SMACK rules are set so that IPC bindings between applications will work.  For example if we have
- a client app that needs to talk to the server app, the following rules will be set:
+SMACK rules are set so IPC bindings between apps work. Here's a code sample of rules to set if a
+client app needs to access a server app:
 
 @code
 'clientAppLabel' rw 'serverAppLabel'     // client has read-write access to server.
 'serverAppLabel' rw 'clientAppLabel'     // server has read-write access to client.
 @endcode
 
-Sandboxed directories are given labels that correspond to the application's access rights to the
-directory.  For example, generally an application only has read and execute permission to its
-sandbox /bin directory.  So the /bin will have the following properties:
+Sandboxed directories are given labels corresponding to the app's access rights to those
+directory. Generally, an app only has read and execute permission to its
+sandboxes /bin directory. Its properties look like this:
 
- @verbatim
- owner = root
- group = root
- DAC permissions = ------r-x
- SMACK label = 'AppLabelrx'
-@endverbatim
+owner = root
+group = root
+DAC permissions = ------r-x
+SMACK label = 'AppLabelrx'
 
-The Supervisor also sets up the SMACK rule:
+The Supervisor also sets up the SMACK rule so the app has the proper access to the directory:
 
 'AppLabel' rx 'AppLabelrx'
 
-so that the application has the proper access to the directory.  The reason that an application's
-directories are given different labels than the application itself is so that if an IPC binding
-is present the remote application has access to talk to the local app but does not have direct
+App's directories are given different labels than the app itself so that if an IPC binding
+is present, the remote app has access to the local app but doesn't have direct
 access to the local app's files.
 
-All bundled files within an application's sandbox is given the SMACK label of the app.  This is
-to support passing of file descriptors from one application to another.  Note however, that the
-file descriptor cannot be passed on to a third application.
+All bundled files within an app's sandbox are given the app's SMACK label. This
+supports passing file descriptors from one app to another. However, the
+file descriptor can't be passed onto a third app.
 
-@section c_sup_smack_limitations SMACK Limitations
 
-Extended attributes are used to store the SMACK label and although this feature is available on
-all file systems we currently use, one key feature is missing.  When a new file is created the
-file should inherit the SMACK label of the creator but because this feature is missing our
-current implementation of SMACK has the following limitations.
+@section basicSecuritySmackAdvanced_limitations Limitations
 
-- Mqueue file system will always set new files to "_" label.  Which means we can't control
+Extended attributes used to store the SMACK label are available on
+all file systems we currently use with one key feature is missing: when a new file is created, the
+file should inherit the SMACK label of the creator. Because this feature is missing, our
+current implementation of SMACK has the following limitations:
+
+- Mqueue file system will always set new files to "_" label.  This means we can't control
    access between apps that use MQueues.
-   
-- Tmpfs always sets new files to "*" label which means we can't totally control access to files
-  created in sandboxes because sandboxes use tmpfs.  This is only an issue when file descriptors
-   for the created files are passed over IPC to another app.  The other app can then pass that
-    fd onto a third app and so on.
-    
-- Yaffs2/UBIFS do not set any label for newly created files.  This causes an issue with the
-    config daemon that has the label "framework" but its created files do not have any labels.  To
-    work around this the config daemon must run as root and the 'onlycap' SMACK file must
-    not be set.  This means that there is limited protection because all root processes have the
-    ability to change SMACK labels on files.
 
-- QMI sockets are currently set to "*" because some applications need to write to them.
-    Ideally, the QMI socket file would be given a label such as "qmi" and a rule would be created
-    to only allow access to the application that requires it.  However, there currently isn't a
-    way to specify this in the xdef file.
+- Tmpfs always sets new files to "*" label. This means we can't totally control access to files
+   created in sandboxes because sandboxes use tmpfs. It's only an issue when file descriptors
+   for the created files are passed over IPC to another app. The other app can then pass that
+   fd onto a third app and so on.
+
+- Yaffs2/UBIFS do not set any label for newly created files. This causes an issue with the
+   config daemon that has the label "framework", but its created files don't have any labels. To
+   work around this, the config daemon must run as root and the 'onlycap' SMACK file must
+   not be set. This means there is limited protection because all root processes have the
+   ability to change SMACK labels on files.
+
+- QMI sockets are currently set to "*" because some apps need to write to them.
+   Ideally, the QMI socket file would be given a label such as "qmi" and a rule would be created
+   to only allow access to the app that requires it.  However, there currently isn't a
+   way to specify this in the xdef file.
 
 <HR>
 

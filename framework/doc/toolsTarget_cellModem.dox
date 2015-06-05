@@ -6,25 +6,29 @@ Use the Cellular Modem tool to control modem functions.
 
 <b><c> cm [SERVICES] [COMMANDS] </c></b>
 
-Available services are @ref cmRadioUsage "radio", @ref cmSimUsage "sim" and @ref cmDataUsage "data".
+Available services are @ref toolsTarget_cm_radio "radio", @ref toolsTarget_cm_sim "sim" and
+@ref toolsTarget_cm_data "data".
 
-@section toolsTarget_cm_radio CM Radio 
+@section toolsTarget_cm_radio CM Radio
 
 @verbatim cm radio @endverbatim
-> Get modem status
+> Get modem status.
 
 @verbatim cm radio <on/off> @endverbatim
-> Enable/disable radio
+> Enable/disable radio.
 
-@verbatim cm radio rat <CDMA/GSM/UMTS/LTE> @endverbatim
-> Set radio access technology
+@verbatim cm radio rat <CDMA | GSM/UMTS | LTE> @endverbatim
+> Set radio access technology.
 
 After setting the radio access technology, you'll need to do a <c>legato restart</c> before it's effective.
 
-@section toolsTarget_cm_sim CM SIM 
+@section toolsTarget_cm_sim CM SIM
 
 @verbatim cm sim @endverbatim
 > Get sim status
+
+@verbatim cm sim select <EMBEDDED | EXTERNAL_SLOT_1 | EXTERNAL_SLOT_2 | REMOTE> @endverbatim
+> Select the SIM type.
 
 @verbatim cm sim enterpin <pin> @endverbatim
 > Enter pin code that's required before any mobile equipment functionality can be used.
@@ -42,48 +46,48 @@ After setting the radio access technology, you'll need to do a <c>legato restart
 > Unblocks the SIM card. The SIM card is blocked after X unsuccessful attempts to enter the PIN.
 
 @verbatim cm sim storepin <pin> @endverbatim
-> Stores PIN. Whether security is enabled or not, the SIM card has a PIN code that must be 
+> Stores PIN. Whether security is enabled or not, the SIM card has a PIN code that must be
 > entered for every operation. You can change the PIN code through @c changepin and @c unblock.
 
 @section toolsTarget_cm_data CM Data
 
 @verbatim cm data @endverbatim
-> Get info on profile in use
+> Get info on profile in use.
 
 @verbatim cm data profile <index> @endverbatim
-> Set profile in use
+> Set profile in use.
 
 @verbatim cm data apn <apn> @endverbatim
-> Set apn for profile in use
+> Set apn for profile in use.
 
 @verbatim cm data pdp <pdp> @endverbatim
-> Set pdp type for profile in use
+> Set pdp type for profile in use.
 
 @verbatim cm data auth <none/pap/chap> <username> <password> @endverbatim
-> Set authentication for profile in use
+> Set authentication for profile in use.
 
 @verbatim cm data connect <optional timeout (secs)> @endverbatim
-> Start a data connection
+> Start a data connection.
 
 @verbatim cm data list @endverbatim
-> List all the profiles
+> List all the profiles.
 
 @verbatim cm data watch @endverbatim
-> Monitor the data connection
+> Monitor the data connection.
 
 To start a data connection, ensure that your profile is configured correctly.
 Also ensure your modem is registered to the network. To verify, use <c>cm radio</c> and check @c Status.
 
-If you specify a time-out timer when starting a data connection, it will try to start a data 
+If you specify a time-out timer when starting a data connection, it will try to start a data
 connection until the timer expires.
 
-When starting a data connection, currently it only uses profile 1. Any configuration set for other 
+When starting a data connection, currently it only uses profile 1. Any configuration set for other
 profiles can't be used to start a data connection through the cm tool.
 
 @subsection toolsTarget_cmDataUsage_14_04 14.04 Users
 
-If you're upgrading from Legato Beta 14.04, data connection operation will be slightly different. 
-Once you have a data connection started successfully, the process will continue running. 
+If you're upgrading from Legato Beta 14.04, data connection operation will be slightly different.
+Once you have a data connection started successfully, the process will continue running.
 
 To stop the session, do one of these:
 - Run <c>cm data connect</c> as usual and if you want to release the data connection, simply press CTRL+C.
@@ -92,6 +96,6 @@ To stop the session, do one of these:
 
 <HR>
 
-Copyright (C) 2015 Sierra Wireless, Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 
 **/

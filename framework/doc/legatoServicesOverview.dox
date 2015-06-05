@@ -1,0 +1,34 @@
+/** @page legatoServicesOverview Overview
+
+Legato's Services APIs are pre-built IPC interfaces designed to create and run multiple
+apps in different ways:
+- OEM's can create Legato apps to run on their specific hardware.
+- 3rd party software providers can create apps for different hardware.
+
+Many Services APIs provided are @a multi-app @a safe:
+
+- APIs can be used by several apps.
+- arbitration fully managed among apps so multiple
+apps can share the same resources.
+
+Other Services provide full-featured interface access to system and modem resources:
+
+- thread safe functions like @c get()can be called from any app.
+- command and response functions like @c startaction() or @c set()are thread safe; a
+single app can call them, or they can manage their own resource arbitration between selected apps.
+
+Legato also provides a simple interface definition language (IDL)
+similar to C. It helps define APIs so they can be used in multiple, different programming languages.
+See @ref languageIndependentAPIs.
+
+@warning Some Services shouldn't be used together in the same app (e.g., if you use a muli-app safe service like
+Data Connection, you can't also use the Modem Data Control service).
+
+
+<HR>
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/
+
+

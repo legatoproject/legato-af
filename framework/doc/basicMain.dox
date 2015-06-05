@@ -1,17 +1,15 @@
 /** @page basicMain Basics
 
-@subpage basicConcepts <br>
-@subpage appCreating <br>
-@subpage componentWriting <br>
-@subpage ccodingStdsMain <br>
+These topics will help you get acquainted with Legato and ready to develop apps:
 
-<br>
-@subpage demoApps <br>
-@subpage buildTools <br>
-@subpage tools <br>
+@subpage basicConcepts <br>
+@subpage basicApps <br>
+@subpage ccodingStdsMain <br>
+@subpage sampleApps
 
 <HR>
-Copyright (C) 2015 Sierra Wireless, Inc. Use of this work is subject to license.
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 
 **/
 

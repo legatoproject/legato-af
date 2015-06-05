@@ -21,9 +21,6 @@ and the service instance name separated by a period (‘.’).
 The client interface always appears first with an arrow (<c> -> </c>) to separate
 the client interface from the server interface.
 
-@warning The @c bindings: section must be listed in the @c .adef file after the
-@ref  defFilesAdef_executables section.
-
 Here's a code sample binding @c clientExe.clientComponent.clientInterface to
 @c serverExe.serverComponent.serverInterface:
 
@@ -122,10 +119,6 @@ executable.
 Setting <c>[w]</c> in the @c dir: subsection causes all files under that directory to be writeable,
 but the directory itself will not be writeable.
 
-@warning    Access permissions aren't implemented yet.  For now, everything that gets installed in
-            the app's @c bin directory on the target gets @c rx permission, all other files
-            get @c r, and directories get @c rx.
-
 @note   Directories in the persistent (flash) file system are never made writeable because the
         on-target flash file system does not support usage quotas (yet).
 
@@ -157,12 +150,21 @@ This is required when the file path contains spaces or comment start sequences
 "//" or  "/*"
 @endverbatim
 
-
 <b>File Ownership and Set-UID Bits</b>
 
 When the app is installed on a target: <br>
 - the owner and group are set to @c root on all files in the app.
 - the @c setuid bit is cleared on everything in the app.
+
+<b>Overriding .cdef</b>
+
+If a file is bundled by a component's .cdef file and another file is bundled to the same target
+path by the .adef, then the file specified by the .adef will be bundled into the app.
+
+If a directory is bundled by a component's .cdef file and another directory is bundled to the
+same target path by the .adef, then the two directories will be merged into the bundle, where
+conflicts are resolved by omitting the file from the directory specified by the .cdef.
+
 
 @section defFilesAdef_cpuShare CPU Share
 
@@ -202,52 +204,32 @@ cpuShare: 512
 
 Lists executables to be constructed and moved to the @c bin directory inside the app.
 
-An executable’s content is specified inside parentheses after the name, and can be one of these:
-- relative file system path to source code file
-- component
-- relative file system path to library file (e.g., .a or .so file).
-
-@note    Only C/C++ source files, components, and libraries are currently supported. The
-@c excutable: section must be listed in the @c .adef file before the @c bindings: section.
+An executable’s content is specified as a list of components.
 
 @verbatim
 executables:
 {
-    myexe1 = ( file1.c libgoodstuff.so )
-    myexe2 = ( foobar toto )
+    myExe = ( myComponent otherComponent )
 }
 @endverbatim
 
-Components included in an executable will be built and linked into
-the executable, and its COMPONENT_INIT function will be run at process start-up.
+Each component included in an executable will be built and linked into
+the executable and its @c COMPONENT_INIT function will be run at process start-up.
 The component’s runtime files (shared libraries, source code, etc.) will be
 packaged inside the app to be installed on the target.
 
-Source files included in an executable will be searched for by the build tools in the file system
-based on the source search path. If found, it'll be compiled (if written in a compiled
-language) and linked into the executable. All source files specified for an executable
-together are considered a component, which will have the same name as the executable. One
-of the source files will be expected to implement a COMPONENT_INIT function,
-called at start-up.
-
-If a library is included in an executable, it's expected to be found in the @c requires or
-@c bundles section of the app’s .adef file or the Component.cdef file included in the app.
-When the executable is linked, it'll be linked with these libraries in the order listed.
-You can list the same library more than once; sometimes it's necessary
-in order to satisfy all unresolved symbols, due to the single-pass nature of the linker.
-
-The mechanism use to construct both executables and components depend on the type of content and the
+The mechanisms used to construct executables and components depend on the type of content and the
 target device.
 
 C and C++ files will be compiled and linked using the appropriate
 compiler tool chain based on the target.
 
-Java code will be compiled to Java bytecode.
-Interpreted code, such as Python code will be simply copied into the app.
+(In the future) Java code will be compiled to Java bytecode, and interpreted code, such as Python
+code will be simply copied into the app.
 
-@note There may be incompatibilities between components or source code files that
-prevent them from being included in the same executable (e.g., Java sources and C sources
-into the same executable together). The build tools will advise if there's a problem.
+@note There may be incompatibilities between components that
+prevent them from being included in the same executable (e.g., Java component and C components
+in the same executable together). The build tools will advise if there's a problem.
 
 @section defFilesAdef_groups Groups
 
@@ -260,6 +242,7 @@ groups:
     modem
 }
 @endverbatim
+
 
 @section defFilesAdef_maxFileSystemBytes Max File System Bytes
 
@@ -322,13 +305,31 @@ Default is @b 20.
 maxThreads: 4
 @endverbatim
 
+
+@section defFilesAdef_pools Pools
+
+@warning This feature not yet implemented.
+
+Sets the number of memory pool blocks in a @ref c_memory "memory pool" in a given component
+in a given process.
+
+This overrides any setting for the same pool in the
+@ref defFilesCdef_pools "pools: section of the Component.cdef file".
+
+@code
+pools:
+{
+    myProc.myComponent.myPool = 100
+}
+@endcode
+
+
 @section defFilesAdef_process Processes
 
 A @c processes section specifies processes to run when the app is started including
 environment variables, command-line arguments, limits, and fault handling actions.
 
 The @c processes section is divided into subsections.
-@ref
 
 If different processes have different variables, they must be in separate @c processes: sections.
 
@@ -538,7 +539,7 @@ maxFileDescriptors: 100
 Specifies the maximum bytes of memory the process can lock into physical RAM
 (e.g., using @c mlock() ).
 
-Can't be higher than @ref maxMemoryBytes.
+Can't be higher than @ref defFilesAdef_maxMemoryBytes.
 
 Default is @b 8K
 
@@ -564,8 +565,18 @@ Specifies the timeout length (in milliseconds) for watchdogs called by processes
 in the enclosing processes section.
 
 Once a process has called @c le_wdog_Kick(),  it's registered with
-the software watchdog service. If it then fails to call @c le_wdog_Kick() within the given timeoutout,
+the software watchdog service. If it then fails to call @c le_wdog_Kick() within the given timeout,
 the Supervisor is notified will take the action specified in @ref defFilesAdef_processWatchdogAction
+
+@verbatim
+watchdogTimeout: 10000 // Must call le_wdog_Kick() at least every 10 seconds.
+@endverbatim
+
+A special value "never" is permitted for this section.  If used, the watchdog will never time out.
+
+@verbatim
+watchdogTimeout: never  // Disable watchdog for these processes.
+@endverbatim
 
 @section defFilesAdef_provides Provides
 
@@ -677,16 +688,13 @@ requires:
 }
 @endverbatim
 
-@warning    Because configuration data can be saved to flash storage, granting write access to a
-            configuration tree can make it possible for the app to wear out
-            your flash device.  Granting an app write access to another
-            app's configuration settings creates a security hole, because it
-            it's possible for one app to interfere with the operation of another
-            app. It's especially dangerous to grant write access to the system tree, because
-            it's possible to completely compromise the target device. Even read access may
-            be dangerous if any kind of security key, including PIN and PUK codes, are kept in
-            the system tree. <b>Apps should never be given direct access
-            to the system tree.</b>
+@warning    Because config data can be saved to flash storage, granting write access to a config
+tree can make it possible for the app to wear out your flash device. Granting an untrusted app write
+access to another app's config settings creates a security hole, because it makes it possible for the
+untrusted app to interfere with the other app's operation. It's especially dangerous to grant write access
+to the system tree, because it's possible to completely compromise the target device. Even read access
+may be dangerous if any kind of security key, including PIN and PUK codes, are kept in the system
+tree. Don't give apps direct access to the <code>system tree</code>.
 
 @subsection defFilesAdef_requiresDir Dir
 
@@ -818,7 +826,7 @@ requires:
             information or launch a denial-of-service attack on other apps within the target
             device or other devices connected to the target device).
 
-@section defFilesAdef_sandbox Sandbox
+@section defFilesAdef_sandboxed Sandboxed
 
 Specifies if the app will be launched inside a sandbox.
 

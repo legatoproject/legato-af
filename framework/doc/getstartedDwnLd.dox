@@ -1,0 +1,32 @@
+/** @page getstartedDwnLd Download Files
+
+You have to download the Legato app framework and Legato packages to install Legato from the
+command-line. The Sierra Wireless Source <a href="http://source.sierrawireless.com/legato/">Legato</a>
+page has useful links.
+
+@section getstartedDwnLdPkgs_legato_io Framework
+
+Download Legato application framework and sample apps (with open source code) from <br>
+<a href="http://www.legato.io/">legato.io</a>.
+
+@section getstartedDwnLdPkgs_framework Packages
+
+Legato Packages are available at
+<a href="http://source.sierrawireless.com/resources/legato/downloads/">Legato Downloads</a>.
+
+The following packages are available:
+
+
+<a href="http://source.sierrawireless.com/resources/legato/wp7prebuiltyocto/">WP710x series pre-built Yocto image</a> <br>
+<a href="http://source.sierrawireless.com/resources/legato/legatolinuxdist/">Legato Linux source distribution</a> <br>
+<a href="http://source.sierrawireless.com/resources/legato/linuxtoolchain32bit/">Linux Toolchain - Linux PC i686 32-bit</a> <br>
+<a href="http://source.sierrawireless.com/resources/legato/linuxtoolchain64bit/">Linux Toolchain - Linux PC x86 64-bit</a> <br>
+<a href="http://source.sierrawireless.com/resources/legato/wp7drivers/">WP710x Windows drivers</a> <br>
+<a href="http://source.sierrawireless.com/resources/legato/wp7firmware/">WP710x firmware package</a> <br>
+<a href="http://source.sierrawireless.com/resources/legato/fwupdatepkg/">firmware update package</a>
+
+<HR>
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/

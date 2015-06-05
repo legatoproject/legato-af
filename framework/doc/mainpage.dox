@@ -1,53 +1,42 @@
-/** @mainpage Use Legato
+/** @mainpage Reference
 
-Legato is an open source embedded platform built on Linux designed to simplify 
-embedded IoT development.
+<h2>Welcome</h2>
 
-@subpage getstartedMain for installation and setup info.
+<a href="http://www.sierrawireless.com/productsandservices/airprime_wireless_modules/smart_modules/legato/">Legato</a>
+is an open source embedded platform built on Linux designed to simplify embedded IoT development.
 
-@subpage basicMain to get developing fast.
-
-<HR>
-
-More advanced topics:
-
-@subpage defFiles to define reusable external interfaces and internal content.
-
-@subpage languageIndependentAPIs to provide Legato APIs to other components.<br>
-
-@subpage legatoServices for building applications.
-
-@subpage c_APIs for C Language library.
-
-@subpage otherInfo on database schema and AirVantage.
+This is how the docs are organized:
+| Section                            | Description                                        |
+| ---------------------------------- | -------------------------------------------------- | 
+| @subpage getstartedMain                     | installation and setup info                        |
+| @subpage basicMain                     | essentials to get developing                        |
+| @subpage tools                            | target, host, & build tools
+| @subpage howToMain                     | frequently needed tasks                        |
+| @subpage defFiles                             | reusable external interfaces & internal content |
+| @subpage languageIndependentAPIs  | APIs for other components |
+| @subpage legatoServices            |   pre-built services                                |
+| @subpage c_APIs                          | C Language library                              |
+| @subpage otherInfo                       | AirVantage, db schema, platform constraints, Yocto |
+| @subpage aboutMain                  | version info, docs tips, glossary                    |
 
 <h2>Overview</h2>
 
-Legato has everything you need to connect IoT fast:
+Legato has everything you need to connect the IoT fast:
 
-Programming language APIs<br>
-Legato's APIs and development tools let you easily write new software components 
-and specify how applications will use those components.
- 
-Target runtime environment <br> 
-Legato's runtime environment has a set of daemon processes that 
- cooperatively implement execution sandboxes, secure IPC, fault monitoring, and autonomous 
- recovery on your target devices operating in the field.
- 
-Development and build tools <br> 
-Legato's build tools turn new code into applications ready packaged 
-for deployment to target devices. And there are other development tools that ease things like 
-testing, troubleshooting, and installing your new software on your devices.
+Programming language APIs &mdash; dev tools and APIs to easily write software
+components and specify how apps will use them.
 
-Documentation and automated tests <br> 
-Legato comes with a raft of @ref aboutLegatoDocsInfo "documentation" in a no nonsense 
- format to show you what to do, and automated tests ready to use in your development environment.
- 
- <HR>
-@subpage aboutLegato Legato
+Target runtime environment &mdash; set of daemon processes cooperatively implement
+execution sandboxes, secure IPC, fault monitoring.
+
+Development and build tools &mdash; target, host, and build tools to create apps ready for deployment
+to your devices.
+
+Documentation and automated tests &mdash; a raft of @ref aboutDocs "docs" and automated tests
+ready to use.
 
 <HR>
 
-Copyright (C) 2015 Sierra Wireless, Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 
 **/

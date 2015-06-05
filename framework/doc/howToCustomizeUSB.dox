@@ -1,0 +1,67 @@
+/** @page howToCustomizeUSB Customize Legato Yocto USB
+
+This topic provides details on how to customize the USB behavior of the Legato
+Yocto distribution when working with the following Sierra Wireless devices:
+- AR755x
+- AR8652
+- WP71xx
+
+The information is based on the USB Driver Developer Guide
+available from the <a href="http://source.sierrawireless.com/">Source</a>.
+
+@section howToCustomizeUSB_enumeration Enumeration Sequence
+
+USB endpoints are enumerated during the boot sequence as follows:
+
+First, the USB boot script (@c S41usb) starts @c /usr/bin/usb/boot_hsusb_composition.
+
+This script executes the following:
+@verbatim
+IF /etc/legato/usbmode exists
+THEN execute /etc/legato/usbsetup
+ELSE setup default composition
+@endverbatim
+
+The actions taken are described in the rest of this topic.
+
+@section howToCustomizeUSB_defaultEndpoints Default Endpoints
+
+The table shows all the possible USB interfaces available on the AR7 family.
+
+@image html USB_interfaces_AR7.png
+
+These endpoints are grouped into compositions, and a fixed set of compositions is provided
+as shown in the next table. Switching between these compositions is done using the
+@c AT!USBCOMP command. The default composition for the AR7 is composition 2.
+
+@image html USB_endpointCompositions_AR7.png
+
+@section howToCustomizeUSB_customizeEndpoints Customize Endpoints
+
+If none of the provided compositions meet your needs it's possible to fine-tune the USB configuration using a mechanism built into Legato.
+The first step is to create @c /etc/legato/usbmode. An example file is shipped in this directory in the default distribution, called @c usbmode.ex.
+@c usbmode contains a list, one per line, of the endpoints you wish to enumerate. For example, the default file contains
+
+@verbatim
+ecm
+acm
+nmea
+@endverbatim
+
+The full list of supported modes is:
+
+| Name     | Interface Type | Description                              | Target endpoint | Sample host endpoint   |
+| -------- | -------------- | ---------------------------------------- | --------------- | ---------------------- |
+| ecm      | CDC-ECM        | Providing an IP connection over USB      | NIC usb0        | NIC (eg enp0s20u6i22)  |
+| eem      | CDC-EEM        | Providing an IP connection over USB      | NIC usb0        | NIC (eg enp0s20u6i22)  |
+| acm      | CDC-ACM        | Providing an AT command port             | N/A             | /dev/ttyACM0           |
+| nmea     | serial         | NMEA strings when positioning is enabled | N/A             | /dev/ttyUSB0           |
+| audio    | USB audio      | Expose the target as a sound card        | N/A             | pcmC2D0c <br> pcmC2D0p |
+| serial   | serial         | A serial interface to the embedded Linux | /dev/ttyGS0     | /dev/ttyUSB0           |
+| usb_mbim | CDC-MBIM       | Mobile Broadband Interface Model <br> (an extension of CDC-NCM) | N/A | NIC (eg wwp0s20u6i12) <br> + cdc-wdm0 |
+
+<HR>
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+ **/

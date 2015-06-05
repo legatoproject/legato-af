@@ -6,7 +6,7 @@ Detailed info:
 @subpage ccodingStdsNameFuncs  <br>
 @subpage ccodingStdsParam
 
-Other C language standards' pages: 
+Other C language standards' pages:
 
 @ref ccodingStdsAbbr  <br>
 @ref ccodingStdsMain
@@ -15,8 +15,8 @@ Other C language standards' pages:
 
 Naming is arguably one of the most important aspects of coding. Good naming conventions have a huge impact on readability, which translates
 to easier code review and maintenance.
-  
-Time spent carefully choosing names or correcting poor naming will almost certainly pay back several times 
+
+Time spent carefully choosing names or correcting poor naming will almost certainly pay back several times
  in  savings of time and effort in peer reviews, testing, troubleshooting, and renovations (refactoring, re-engineering, design and implementation of new requirements).
 
 @subsection descript Be Descriptive
@@ -24,10 +24,10 @@ Time spent carefully choosing names or correcting poor naming will almost certai
 The most important requirement for names of identifiers, files, etc. is that they describe what they are. Don't call a pointer to a timer "p", or "tp" (is that toilet paper?).
  Call it "timerPtr" so at a glance, it's extremely obvious what it is.
 
-It's acceptable for loop counters to be numbered simply "i" (or "j" for a nested loop, or "k" for a nested nested loop), 
+It's acceptable for loop counters to be numbered simply "i" (or "j" for a nested loop, or "k" for a nested nested loop),
 because this is common usage, not only in programming, but also in mathematics.
 
-It's also acceptable for variables with ''very'' limited scope (i.e., limited to a handful of lines of code) to have very simplified names, 
+It's also acceptable for variables with ''very'' limited scope (i.e., limited to a handful of lines of code) to have very simplified names,
 if that improves readability through reduced clutter.  For example, "t" becomes more acceptable for a timer reference if it's used in a tiny code block like this:
 @code
 
@@ -46,9 +46,9 @@ static void StartTimer(void)
 @ref cstdsInterComponentInterfaces  <br>
 @ref cstdsInterModuleInterfaces  <br>
 
-Often, an identifier prefix is needed to prevent naming conflicts between identifiers that are exported to other modules as a part of an interface. 
-Two interfaces may each define a function called "GetSize".  To prevent naming conflicts (and avoid programmer confusion), 
-each of those interfaces mut use a unique prefix. Prefixes are also needed for other things besides functions: types, variables, files, and macros. 
+Often, an identifier prefix is needed to prevent naming conflicts between identifiers that are exported to other modules as a part of an interface.
+Two interfaces may each define a function called "GetSize".  To prevent naming conflicts (and avoid programmer confusion),
+each of those interfaces mut use a unique prefix. Prefixes are also needed for other things besides functions: types, variables, files, and macros.
 
 The structure of an interface-specific prefix differs based on the scope of the interface.  The possible scopes are:
 
@@ -61,8 +61,8 @@ Each part of the prefix must start with a lower case letter (unless it is a macr
 
 Underscores are used instead of capitalization to separate the parts of the prefix and to separate the prefix from the identifier for several reasons:
 
-- To make the prefix clearly stand out from the rest of the identifier. 
-- Because abbreviations tend to often be acronyms, which sometimes get capitalized improperly when using camel case. 
+- To make the prefix clearly stand out from the rest of the identifier.
+- Because abbreviations tend to often be acronyms, which sometimes get capitalized improperly when using camel case.
 - To make machine parsing these identifiers easier.
 
 @subsection cstdsInterComponentInterfaces Component Interfaces
@@ -72,11 +72,11 @@ Underscores are used instead of capitalization to separate the parts of the pref
 - company abbreviation
 - interface name abbreviation
 
-The company abbreviation indicates the company that owns the interface.  For Sierra Wireless, this is usually "swi". 
-For open-source projects, the abbreviation indicates interface's project, like the "Legato" 
+The company abbreviation indicates the company that owns the interface.  For Sierra Wireless, this is usually "swi".
+For open-source projects, the abbreviation indicates interface's project, like the "Legato"
 project that starts with @c le_.
 
-The interface name abbreviation is simply an abbreviation of the interface's name.  A memory management API might have @c mem as its abbreviation.  
+The interface name abbreviation is simply an abbreviation of the interface's name.  A memory management API might have @c mem as its abbreviation.
 This abbreviation should not be longer than 5 characters. Two to four characters is preferred.
 
 A timer API owned by Sierra Wireless might have the prefix @c swi_tmr_
@@ -102,7 +102,7 @@ le_mem_PoolRef_t le_mem_CreatePool(size_t blockSizeInBytes);
 
 @subsection cstdsInterModuleInterfaces Module Interfaces
 
-Inter-module interfaces have only one part to their prefix: an interface name abbreviation.  A Registration List module could use the 
+Inter-module interfaces have only one part to their prefix: an interface name abbreviation.  A Registration List module could use the
 prefix  @c rlist_. A Registration Module that implements the registration objects that get stored in the Registration List might use the prefix @c reg_:
 
 @code
@@ -111,39 +111,39 @@ void rlist_Remove(reg_Ref_t registration);
 reg_Ref_t rlist_FindByName(const char* name);
 @endcode
 
-Because inter-module interfaces are not seen outside of the component where they're defined, it's impossible to have a naming conflict between an inter-module 
-interface in one component and an inter-module interface in another component. Actually, there could still be a conflict at the link stage, if the symbols are allowed to leak out, 
-but a linker script file can be used to prevent this quite easily.  
+Because inter-module interfaces are not seen outside of the component where they're defined, it's impossible to have a naming conflict between an inter-module
+interface in one component and an inter-module interface in another component. Actually, there could still be a conflict at the link stage, if the symbols are allowed to leak out,
+but a linker script file can be used to prevent this quite easily.
 
-It's also impossible to have a naming conflict between an inter-component interface and an inter-module interface, because all interfaces 
-imported from outside a component will have both a company prefix and an interface name abbreviation. The difference in the prefixes also 
+It's also impossible to have a naming conflict between an inter-component interface and an inter-module interface, because all interfaces
+imported from outside a component will have both a company prefix and an interface name abbreviation. The difference in the prefixes also
 highlights the scope differences of the identifiers, whichincreases readability.
 
 @section cstdsFiles Files
 
-Like other forms identifiers, the most important requirement for file names is they be descriptive; the name of the file must clearly describe 
+Like other forms identifiers, the most important requirement for file names is they be descriptive; the name of the file must clearly describe
 what the file contains.
 
-The files must also be named in a way their names won't conflict with names of other files. This is mainly important for include files.  
-For example, don't call one of your header files "time.h", because that name will conflict with the C standard library file of the same name.  
-That's why inter-component interface headers must be prefixed with the company abbreviation.  
-The Sierra Wireless Transmogrifier"API include file could be named something like @c swi_transmog.h.  
-Prefixes aren't required for files only visible within a limited scope (e.g., implementation files or inter-module interfaces only 
+The files must also be named in a way their names won't conflict with names of other files. This is mainly important for include files.
+For example, don't call one of your header files "time.h", because that name will conflict with the C standard library file of the same name.
+That's why inter-component interface headers must be prefixed with the company abbreviation.
+The Sierra Wireless Transmogrifier"API include file could be named something like @c swi_transmog.h.
+Prefixes aren't required for files only visible within a limited scope (e.g., implementation files or inter-module interfaces only
 visible inside a single software component).
 
 @section cstdsMacros Macros
 
-Macros can be used in similar ways to variables and functions, but their behaviour has subtle differences that can result in bugs or code bloat if used incorrectly.  
-Compiler errors and warnings resulting from macro substitution can also be somewhat cryptic and difficult to understand if it isn't obvious that the code involved is a macro. 
- That's why it's important to easily distinguish a macro from a non-macro when reading code.  Macro names must be all uppercase, 
+Macros can be used in similar ways to variables and functions, but their behaviour has subtle differences that can result in bugs or code bloat if used incorrectly.
+Compiler errors and warnings resulting from macro substitution can also be somewhat cryptic and difficult to understand if it isn't obvious that the code involved is a macro.
+ That's why it's important to easily distinguish a macro from a non-macro when reading code.  Macro names must be all uppercase,
  with words separated using underscores.
 
-Names of macros can also conflict with the names of macros defined in include files from other modules. To reduce the chances of a naming conflict, 
-macros exported to other modules must have a prefix. Even macros only used within a single file should have a prefix if the names are likely to conflict with 
-names defined in standard C libraries or other included code that doesn't use prefixes.  
+Names of macros can also conflict with the names of macros defined in include files from other modules. To reduce the chances of a naming conflict,
+macros exported to other modules must have a prefix. Even macros only used within a single file should have a prefix if the names are likely to conflict with
+names defined in standard C libraries or other included code that doesn't use prefixes.
 
 <HR>
 
-Copyright (C) 2014 Sierra Wireless, Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 
 **/

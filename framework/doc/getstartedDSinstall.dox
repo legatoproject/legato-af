@@ -1,12 +1,14 @@
-/** @page getstartedDSinstall Developer Studio 
+/** @page getstartedDSinstall Developer Studio
 
-You can install the Legato ADK Developer Studio IDE on two platforms: 
+Please review the @subpage getstartedDSrequirements.
 
-@subpage getstartedDSlinux  <br>
-@subpage getstartedDSwindows
+You can install Legato with Developer Studio on two platforms:
+
+@subpage getstartedDSwindows <br>
+@subpage getstartedDSlinux
 
 <HR>
 
-Copyright (C) 2014 Sierra Wireless, Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 
 **/

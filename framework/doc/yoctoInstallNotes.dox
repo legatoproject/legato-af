@@ -1,0 +1,98 @@
+/** @page yoctoInstallNotes Yocto Install Notes
+
+Here are some helpful tips for Yocto Linux working with Sierra Wireless devices.
+
+@section getstartedInstallNotes_yoctoNoPwd Log on Without Password
+To log onto the target through the serial interface, log on as @b root with no password.
+This allows manual changes to other interfaces (e.g., USB if you want to run CDC-ECM).
+
+@section getstartedInstallNotes_yoctoCDC CDC-ECM for IP vs Ethernet
+Using CDC-ECM for IP connections will cause the MAC address to change every reboot because the
+kernel allocates software-defined MAC addresses to interfaces. This may cause new connections to be
+detected by your host every time you reboot the device. See @ref getstartedConfigIP and @ref toolsTarget_setNet
+
+@section getstartedInstallNotes_yoctoPrefIP  Setup Preferred IP
+Either boot with an Ethernet cable plugged in and let the device obtain an IP address using
+DHCP, or enable CDC-ECM and the micro-USB cable. You can then determine the IP address using
+@c ifconfig on the console or provide a fixed IP from your DHCP server. Then use @c ssh and @c scp to
+access the device and transfer files.
+
+@section getstartedInstallNotes_yoctoDefUSB Change Default USB Classes
+During the boot sequence, startup scripts run the file @c /etc/legato/usbsetup that
+enumerates the USB types listed in @c /etc/legato/usbmode.
+
+You can easily override default types by creating your own @c usbmode file in @c /mnt/flash/startup/usb.
+The new file will take precedence over the old one. By default, the device will enumerate an ECM port,
+an ACM port for AT commands and USB audio.
+
+@section getstartedInstallNotes_yoctoStaticIP Setup Target Static IP
+
+You can configure your target and development PC so it doesn't prompt for a password, run:
+@b bin/configtargetssh
+
+ It'll look like this:
+ @verbatim
+dave@devbox:~/legato$ bin/configtargetssh 192.168.1.2
+Generating new key pair... --->>> LEAVE THE PASSPHRASE EMPTY <<<---
+Generating public/private rsa key pair.
+Enter passphrase (empty for no passphrase):
+Enter same passphrase again:
+Your identification has been saved in /home/dave/.ssh/id_rsa.legatoTarget.
+Your public key has been saved in /home/dave/.ssh/id_rsa.legatoTarget.pub.
+The key fingerprint is:
+af:c5:e4:8c:7d:53:b4:a4:72:c8:67:f3:88:9c:3f:67 dave's key for Legato
+target devices.
+The key's randomart image is:
++--[ RSA 2048]----+
+|                 |
+|                 |
+|              o  |
+|         . . + . |
+|        S = * o  |
+|         X B =   |
+|        . @ + .  |
+|         o o..E  |
+|        .   .+   |
++-----------------+
+/home/dave/.ssh/known_hosts updated.
+Original contents retained as /home/dave/.ssh/known_hosts.old
+Connecting to the target...  (ENTER TARGET'S ROOT PASSWORD WHENEVER
+PROMPTED FOR A PASSWORD)
+(press ENTER if your target doesn't have a root password)
+The authenticity of host '192.168.1.2 (192.168.1.2)' can't be established.
+RSA key fingerprint is f2:2f:66:a5:14:20:bd:46:8f:a2:02:b3:99:6f:72:24.
+Are you sure you want to continue connecting (yes/no)? yes
+Warning: Permanently added '192.168.1.2' (RSA) to the list of known hosts.
+root@192.168.1.2's password:
+dave@devpc:~/legato$
+@endverbatim
+
+@section getstartedInstallNotes_yoctoReadWrite Read/Write rootfs
+
+It's convenient right now to enable r/w to rootfs, but it will be moving to a read-only model
+soon. If you change the rootfs (e.g., in /etc, /lib, /bin), you may cripple your device and have to
+re-install your rootfs.
+
+@section getstartedInstallNotes_yoctoNoDown Disable New Package Download
+The Yocto build defaults to disable new package downloads.
+
+Enable downloading new packages over the Internet, modify:
+
+@c <build-dir>/conf/local.conf value @c BB_NO_NETWORK to "0" .
+The file is only present after a build has run once.
+
+@section yoctoBSPTestReport Setup using BSPTestReport.xls
+The @c  BSPTestReport.xls spreadsheet is used for instructions and reports to help set up
+different BSP features to test. Start with the Contents sheet.
+
+@section getstartedInstallNotes_yoctoNFSRoot Use nfs root
+The file @b meta-swi/meta-swi-mdm9x15/conf/machine/qcom-mdm9615.conf
+contains examples if you need to include a lot of extra packages in your rootfs or if you build the debug version.
+See README.bsp for details.
+Remember to untar the generated rootfs to an exported file system. The file pointed to by the rootfs link contains the most recent root file system.
+There’s more info available at <a href="https://www.kernel.org/doc/Documentation/filesystems/nfs/nfsroot.txt">kernel docs</a>.
+<HR>
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/

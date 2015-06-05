@@ -1,12 +1,11 @@
 /** @page tools Tools
 
-Legato has tools for:
-
- @subpage toolsTarget "Target" <br>
- @subpage toolsHost "Host" <br>
+ @subpage toolsTarget <br>
+ @subpage toolsHost <br>
+ @subpage buildTools <br>
 
 <HR>
 
-Copyright (C) 2014 Sierra Wireless, Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 
 **/

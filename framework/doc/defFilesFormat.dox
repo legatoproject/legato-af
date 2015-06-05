@@ -1,7 +1,13 @@
 /** @page defFilesFormat Common File Format
 
-All of the definition files have the same format. They're divided into sections with content 
-specific to each section. A section always starts with a section name followed by a colon (':').
+All of the definition files have the same format. They're divided into sections.  Each section type
+has a set of permitted content, which could be simple, numerical or text values, named items, or
+other sections (subsections).
+
+
+@section defFileFormatSections Sections
+
+A section always starts with a section name followed by a colon (':').
 
 @code
 faultAction: restart
@@ -9,13 +15,13 @@ faultAction: restart
 maxFileSystemBytes: 200K
 @endcode
 
-Sections with content item lists always have curly braces around them.
+Sections that can have multiple content items always have curly braces around their content.
 
 @code
 sources:
 {
     helloWorld.c
-    object.cpp
+    myClass.cpp
 }
 @endcode
 
@@ -43,9 +49,86 @@ requires:
 }
 @endcode
 
+
+@section defFileFormatNamedItems Named Items
+
+A named item always begins with the item name followed by an equals sign ('=').
+
+@code
+myPool = 45
+@endcode
+
+If a named item can have multiple content items, then it must have curly braces around its content.
+
+@code
+myExe = { myComponent otherComponent }
+@endcode
+
+
+@section defFileFormatNumberValues Numerical Values
+
+Integers are required in some sections.
+
+@code
+maxFileDescriptors: 100
+@endcode
+
+Numbers can be expressed in multiples of 1024 by adding the 'K' suffix.
+
+@code
+maxFileSystemBytes: 120K
+@endcode
+
+
+@section defFileFormatTextValues Text Values
+
+Some sections contain text-based values.  The format of these varies depending on the type of
+section.
+
+
+@section defFileFormatUsingEnvVarsIn Environment Variables
+
+It's possible to use environment variables inside of <c>.sdef</c>, <c>.adef</c>, and
+<c>Component.cdef</c> files.
+
+This works the same way as in shell scripts, by prefixing the environment variable name with
+a dollar sign ($):
+
+@code
+requires:
+{
+    api:
+    {
+        $BUILD_ROOT/interfaces/httpdCtrl.api
+    }
+}
+@endcode
+
+If necessary, the variable name can also be enclosed in curly braces.
+
+@code
+requires:
+{
+    api:
+    {
+        ${PRODUCT_FAMILY}_interfaces/httpdCtrl.api
+    }
+}
+@endcode
+
+Some useful environment variables:
+
+ - @c LEGATO_ROOT = path to where the Legato framework sources are located
+ - @c TARGET = build target (e.g., ar7, wp7, localhost)
+ - @c LEGATO_BUILD = shorthand for <c>$LEGATO_ROOT/build/$TARGET</c>
+
+
+@section defFileFormatWhitespace Whitespace
+
 Tabs, spaces, new-lines, carriage-returns and comments act as token separators only, and are
-otherwise all ignored. Choice of indentation and spacing style is relatively
+otherwise all ignored. Consequently, choice of indentation and spacing style is relatively
 unrestricted.
+
 
 @section defFileFormatComments Comments
 
@@ -79,12 +162,12 @@ provides :     // Note that space is allowed between the section name and the co
             }
 }
 
-sources:{httpd.c}
+sources: {httpd.c}
 @endcode
 
 
 <HR>
 
-Copyright (C) 2015 Sierra Wireless, Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 
 **/

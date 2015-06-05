@@ -1,0 +1,26 @@
+/** @page getstartedCLinstallMain Command-line
+
+You can install Legato source packages and build it from scratch through the command line.
+
+Please review the @subpage getstartedCLrequirements.
+
+Downloads and other info available from the Sierra Wireless Source
+<a href="http://source.sierrawireless.com/legato/">Legato</a> page.
+
+<HR>
+
+@subpage getstartedPrepDevHost <br>
+@subpage getstartedDwnLd <br>
+@subpage getstartedCLinstall <br>
+@subpage getstartedCLbuild <br>
+@subpage getstartedTargetSW <br>
+@subpage getstartedSampleApps
+
+See @ref yoctoMain if you're a Yocto whiz, and you want
+to customize or rebuild the target.
+
+<HR>
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/

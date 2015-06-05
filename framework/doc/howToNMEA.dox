@@ -1,0 +1,90 @@
+/** @page howToNMEA NMEA Port Setup
+
+This topic summarizes how to setup an NMEA port on the AR755x platform.
+
+@section howToNMEA_setup Setup Target
+
+To setup an AR755x target, run the follow commands (only once):
+
+@code
+AT!ENTERCND="A710"
+AT!CUSTOM="GPSENABLE",1
+AT!CUSTOM="NMEAENABLE",1
+AT!CUSTOM="GPSSEL",1
+AT!GPSQMICONFIG=1
+AT!GPSNMEA=1
+AT!GPSNMEACONFIG=1,1
+AT!GPSNMEASENTENCE=29FF
+AT!GPSONLY=0
+AT!RESET
+@endcode
+
+@section howToNMEA_startNMEA Start NMEA
+
+Once, the target is setup, run this on the AR755x Linux console:
+
+@code start NMEA device:
+echo '$GPS_START' > /dev/nmea
+@endcode
+
+Then "/dev/nmea" file can be open in order to parse the NMEA frames.
+
+@warning If you need to use Legato positioning service in parallel, you can't use this command;
+you have to use le_posCtrl_Request().
+
+@section howToNMEA_stopNMEA Stop NMEA
+
+To stop the NMEA, run this on the AR755x Linux console:
+@code
+echo '$GPS_STOP' > /dev/nmea
+@endcode
+
+@warning If you need to use Legato positioning service in parallel, you can't use this command;
+you have to use le_posCtrl_Release().
+
+@section howToNMEA_getNMEA Get NMEA stream
+
+Here's an example of a dump of GNSS NMEA frames (here only $GNxxx frames):
+@code
+echo '$GPS_START' > /dev/nmea
+cat /dev/nmea | grep '$GN'
+
+$GNGNS,094821.0,4849.931307,N,00216.053323,E,AA,14,0.6,161.5,48.0,,*6D
+$GNGSA,A,2,05,13,18,21,27,29,31,,,,,,1.0,0.6,0.7*2C
+$GNGSA,A,2,68,69,74,75,76,84,86,,,,,,1.0,0.6,0.7*2E
+$GNGNS,094822.0,4849.931277,N,00216.053326,E,AA,15,0.6,161.5,48.0,,*6C
+$GNGSA,A,2,05,13,16,18,21,27,29,31,,,,,0.9,0.6,0.7*23
+$GNGSA,A,2,68,69,74,75,76,84,86,,,,,,0.9,0.6,0.7*26
+$GNGNS,094823.0,4849.931249,N,00216.053330,E,AA,15,0.6,161.5,48.0,,*67
+$GNGSA,A,2,05,13,16,18,21,27,29,31,,,,,0.9,0.6,0.7*23
+$GNGSA,A,2,68,69,74,75,76,84,86,,,,,,0.9,0.6,0.7*26
+$GNGNS,094824.0,4849.931225,N,00216.053333,E,AA,15,0.6,161.5,48.0,,*69
+$GNGSA,A,2,05,13,16,18,21,27,29,31,,,,,0.9,0.6,0.7*23
+$GNGSA,A,2,68,69,74,75,76,84,86,,,,,,0.9,0.6,0.7*26
+
+
+Decoding...
+
+$GNGNS: GNSS Fix data
+http://www.catb.org/gpsd/NMEA.html#_gns_fix_data
+
+$GNGSA: GNSS Active Satellites + Dilution of precision
+http://www.catb.org/gpsd/NMEA.html#_gsa_gps_dop_and_active_satellites
+
+2D-Fix with:
+- 8 GPS Satellites: 05,13,16,18,21,27,29,31
+- 7 Glonass Satellites: 68,69,74,75,76,84,86
+
+Time: 094824.0 --> 09:48:24 (UTC)
+Latitude: 4849.931225,N --> 48 + (49.931225 / 60) = 48.83218708333333
+Longitude: 00216.053333,E  --> 002 + (16.053333 / 60) = 2.26755555
+https://www.google.fr/maps/@48.8321871,2.2675556,17z​
+@endcode
+ 
+ 
+<HR>
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/
+

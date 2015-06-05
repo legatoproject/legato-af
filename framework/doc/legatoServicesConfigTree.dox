@@ -1,13 +1,13 @@
 /** @page legatoServicesConfigTree Config Tree
 
-Configuration tree services provide an easy way to manage target's configuration database. 
+Configuration tree services provide an easy way to manage target's configuration database.
 
-@subpage api_config <br>
+@subpage c_config <br>
 @subpage configTreePage <br>
-@subpage api_configAdmin
+@subpage c_configAdmin
 
 <HR>
 
-Copyright (C) 2014 Sierra Wireless, Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 
 **/

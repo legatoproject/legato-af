@@ -1,0 +1,22 @@
+/** @page getstartedTargetHostCom Target/Host Communications
+
+You need to @subpage getstartedConfigIP before you can install Legato on a target.
+
+We use a serial communication program like Minicom to access the target through the UART port to
+for console communications. Ethernet and Micro-USB ports are used for development. 
+See @ref getstartedDevKitCables for more info. 
+
+If you're using Minicom, you access the config and initialize menus through @c CTRL+A Z.
+
+Run as <b>root</b> user, so no password is required.
+
+Once the host and target are communicating, you can complete the target setup.
+
+@note Use the @ref toolsTarget_setNet tool to set your MAC address so you don't have to go through @c ifconfig every time
+you reboot the target.
+
+<HR>
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/

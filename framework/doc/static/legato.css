@@ -2,8 +2,8 @@
 
 body, table, div, p, dl {
 	font-family: "Open Sans", Helvetica, Arial, sans-serif;
-	font-size: 14px;
-	line-height: 1.4;
+	font-size: 15px;
+	line-height: 1.5;
     color: #030303;
 }
 
@@ -48,6 +48,10 @@ h3 {
 	font-size: 90%;
 }
 
+ht {
+    color : #e53B30;
+}
+
 dt {
 	font-weight: bold;
 }
@@ -90,6 +94,7 @@ h3.version {
         font-size: 90%;
         text-align: center;
 }
+
 
 div.qindex, div.navtab{
 	background-color: #fcfcfc;
@@ -183,6 +188,7 @@ div.fragment .line {
     font-family: monospace, fixed;
     white-space: pre;
     color: #333;
+    min-height: 19px;
 }
 
 div.ah {
@@ -627,20 +633,19 @@ address {
 }
 
 table.doxtable {
-	border-collapse:collapse;
+	border-collapse: collapse;
 }
 
 table.doxtable td, table.doxtable th {
-	border: 1px solid #2D4068;
+	border: 1.2px solid #621B4B;
 	padding: 3px 7px 2px;
 }
 
 table.doxtable th {
-	background-color: #374F7F;
-	color: #FFFFFF;
-	font-size: 110%;
-	padding-bottom: 4px;
-	padding-top: 5px;
+	color: #666666;
+	font-size: 100%;
+	padding-bottom: 1px;
+	padding-top: 1px;
 	text-align:left;
 }
 
@@ -904,6 +909,12 @@ dl.bug dt
 
 .image
 {
+        text-align: left;
+}
+
+center .image,
+.center .image
+{
         text-align: center;
 }
 
@@ -984,3 +995,14 @@ code, pre.fragment
 {
     word-spacing: -2px;
 }
+
+a.doc-version,
+a.doc-version:visited {
+    color: #030303;
+}
+
+a.doc-version em {
+    color: #aaa;
+    font-style: normal;
+}
+

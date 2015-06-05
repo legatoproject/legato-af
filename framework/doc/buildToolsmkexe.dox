@@ -1,4 +1,4 @@
-/** @page buildToolsmkexe mkexe 
+/** @page buildToolsmkexe mkexe
 
 Make Executable: run @c mkexe to create an executable program.
 
@@ -8,14 +8,14 @@ be used to build an entire app or system of interacting apps to deploy to a targ
 @c mkexe is only needed to build an executable program to copy to a target device and
 run outside of any app.  This sometimes comes in handy to build:
  - command-line tools that can be run by the root user through @c ssh or
- - programs executed by other on-target programs after the Legato framework has started 
+ - programs executed by other on-target programs after the Legato framework has started
  (e.g., scripts to run when a DHCP client is granted or loses a DHCP lease).
 
-To display usage, run 
-@verbatim mksys --help@endverbatim 
+To display usage, run
+@verbatim mksys --help@endverbatim
 
 <HR>
 
-Copyright (C) 2015 Sierra Wireless, Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 
 **/

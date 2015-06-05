@@ -1,0 +1,145 @@
+/** @page howToPortLegacyGen Port Legacy Apps General
+
+This topic provides general info on porting legacy apps to Legato.
+
+@section howToPortLegacyGen_portSelfContained Porting Self-contained Apps
+
+Use this method if:
+- the apps don't require root privileges.
+- you can't (or don't want to) make changes to source code.
+
+High-level steps <b>porting your app to Legato</b>:
+
+- Build the app’s executables and libraries using the legacy program’s build system.
+- Create an .adef file for your app.
+- Leave the @c executables: section in .adef empty.
+- Include files to be installed as part of the app (executables, libraries, configuration files, devices, etc.) in the @c files: section of .adef.
+- Use the @c requires: section of the @c .adef file to include files and directories that need to
+  be imported into the sandbox from the target’s file system (e.g., /dev/zero, /dev/null).
+- Add @c run: lines in the @c processes: section in the .adef to define processes that should run in the app.
+- Run @c mkapp on the .adef file to build the app.
+- Run @c instapp on the built app file to install the app on target.
+- Run @c app @c start @c appName on target to start the app.
+
+Detailed info:
+
+@ref defFiles <br>
+@ref basicAppsCreate
+
+Here's a @c foo.adef sample (for application foo) with executables bar1 and bar2 needing library
+lib1. The application name should be the same as the .adef file name:
+
+@code
+bundles:
+{
+    file:
+    {
+        [x] bar1    /bin/
+        [x] bar2    /bin/
+        [r] lib1    /lib/
+    }
+}
+
+processes:
+{
+    run:
+    {
+        (bar1)
+        (bar2)
+    }
+}
+@endcode
+
+To build the app, run:
+@code mkapp foo.adef @endcode
+
+Other app settings (e.g., @c faultAction) can also be set in the .adef files. See @ref defFilesAdef_processFaultAction.
+
+@section howToPortLegacyGen_portRootAccess Porting Apps with Root Access
+
+Use this method if you're going to change your source code. This method is necessary if your legacy apps require
+root privileges or access to system resources like @c /proc. It means your app will be ported as
+a @b non-sandboxed Legato app.
+
+In the .adef file, you'll have to turn-off sandboxing:
+
+@code
+sandboxed: false
+@endcode
+
+@section howToPortLegacyGen_portUsingAPIs Use Legato APIs and Build System
+
+The preferred method for porting a legacy app to Legato is to use the Legato build system, because it does
+framework initialization automatically.
+
+To use Legato's build system:
+
+@b Add this to all source files that will call Legato APIs:
+@code  #include "legato.h" @endcode
+
+@b Remove the legacy program's @b main() function. Complete any app-specific initializations
+and processing in the @c COMPONENT_INIT function. The Legato build system generates a main()
+function to initialize the Legato framework and call COMPONENT_INIT. This must be
+done for each executable in the app.
+
+Optionally, modify the source to use the Legato event loop.
+
+Optionally, modify the source to use Legato signal handlers, memory pools, IPC, etc.
+
+@b Write the @b adef file for the app.  The foo.adef file would be something like:
+
+@code
+executables:
+{
+    bar1 = ( bar1.c )
+    bar2 = ( bar2.c )
+}
+
+processes:
+{
+    run:
+    {
+        (bar1)
+        (bar2)
+    }
+}
+@endcode
+
+@b Build the app using <b>mkapp foo.adef -t target</b> where [target] is something like @c
+wp7 or @c ar7.
+
+@b Install the app on target using @b instapp.
+
+The event loop is an essential part of Legato's event-driven apps where programs act only when events
+are triggered; otherwise, these event-driven apps are idle and don't consume the CPU. Using the event
+loop, each thread in the program has its own event queue.
+
+Legacy apps may choose not to use the Legato event loop and can instead run their programs using
+legacy event processing.
+
+@note If legacy event handling is used in conjunction with the Legato event loop, extreme care must be
+taken so the two systems don't interfere with each other.
+
+Legato memory pools can also be used to allow programs to control memory use in a deterministic way;
+this avoids memory fragmentation, gives memory corruption protection, and allows Legato diagnostic
+tools to examine memory usage.
+
+Legato apps don't use @c malloc() and @c free() directly. If legacy apps use malloc() and free(), they
+won't have the benefits of Legato memory pools.
+
+@warning If memory pools are used in conjunction with malloc() and free(), memory fragmentation
+could occur.
+
+@section howToPortLegacyGen_ownMainFunc Use Your Own main() with Legato APIs
+
+Another option when porting legacy apps is to continue to use your own main() function and build system,
+and still take advantage of the Legato APIs.
+
+To use the Legato APIs, you'll need to link the @c liblegato.so library
+and include @c legato.h in any source files that call Legato APIs.
+
+<HR>
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/

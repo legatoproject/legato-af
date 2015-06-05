@@ -1,0 +1,30 @@
+/** @page sampleApps_airVantage AirVantage 
+
+@section airvantageDemo AirVantage demo
+
+This sample app demonstrates how to access
+<a href="http://www.sierrawireless.com/productsandservices/airvantage_m2m_cloud/">AirVantage</a>.
+
+You must setup an AirVantage connection to your Legato device @e before installing the AirVantage
+sample app: @ref connectingAirVantage. Ensure the AirVantage server URL is configured correctly.
+
+Run this to install the sample app:
+@verbatim
+$ cd apps/sample/airvantageDemo
+$ make wp7
+$ instapp airvantageDemo.wp7 <ip address>
+@endverbatim
+
+where @c <ip address> is the address of your target device.
+
+@ref sampleApps_startApp
+
+@section sampleApps_pushData Push Data
+
+See @ref airVantageConnectLib.
+
+<HR>
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/

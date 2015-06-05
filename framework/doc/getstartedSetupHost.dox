@@ -1,0 +1,14 @@
+/** @page getstartedSetupHost Setup Dev Host PC
+
+Legato can be installed on a host PC using Sierra Wireless' Developer Studio or by working with
+the command line:
+
+@subpage getstartedDSinstall &mdash; install and develop Legato with Developer Studio.
+
+@subpage getstartedCLinstallMain &mdash; install and develop Legato source files from the command-line.
+
+<HR>
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/

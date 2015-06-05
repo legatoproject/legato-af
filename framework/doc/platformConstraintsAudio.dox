@@ -1,0 +1,62 @@
+/** @page platformConstraintsAudio Audio
+
+Audio functions are constrained by the following platform limitations.
+ 
+This table lists possible audio connections:
+
+| Input\Output stream | Spkr | USB Tx | PCM Tx | I2S Tx | Mdm Tx | Rec |
+|                                    |:         :|:             :|:               :|:            :|:              :|:        :|
+| Mic                             |           |               |                 |              |   X(*)      |  X(*)  |
+| USB Rx                     |           |              |                  |              |   X   |    |
+| PCM Rx                    |           |              |                  |               |   X   |    |
+| I2S Rx                      |            |              |                  |               |          | X |
+| Mdm Rx                   |  X(*)    |    X       |      X        |          X   |          | X  |
+| Pb                           |     X(*)  |    X        |    X          |   X         |   X     |    |
+
+(*) AR platform only
+
+Pb = file playback <br>
+Rec = file recording
+
+Only 1 point to 1 point connection is possible except for Pb and Rec.
+Pb and Rec can be added to any active 1 point to 1 point connections or simply tied to 1 single stream.
+
+| Function \ IF      | I2S | PCM | USB | Analog (Mic / Spkr) | Mdm Tx  | Mdm Rx  | Pb  | Rec |
+|                             |:      :|:         :|:          :|:                                 :|:               :|:                :|:      :|:       :|
+| Gain (Set / Get) |       |             |           |            X(*)                |     X           |   X          |   X   |         |
+| Mute / Unmute  |       |             |           |              X(*)                |     X           |   X          |   X   |         |
+| NS                       |      |             |           |                                    |  X     |                |    |   |
+| EC                      |      |              |           |                                    |  X        |                |    |   |
+| IIR                       |      |             |            |                                    |  X        |   X          |    |   |
+| FIR                      |      |            |            |                                     |  X        |   X         |    |   |
+| AGC                    |  Only Tx | Only Tx | Only Tx | Only Spkr(*)   |   X   |    X          |   |    |
+
+(*) AR platform only
+
+NS = Noise Suppressor <br>
+EC = Echo Canceller  <br>
+IIR = Infinite Impulse Response filter <br>
+FIR = Finite Impulse Response filter <br>
+AGC = Automatic Gain Control
+ 
+<b>Playback and recording</b>
+
+File playback and file recording support these file types:
+- .wav
+- .amr
+- .awb
+
+One single file playback and one single file recording can be activated simultaneously.
+
+Continuous playback of one file doesn't work well.
+
+<b>PCM insertion/extraction</b>
+
+Only supports 16-bit sampling resolution on the AR7
+platform.
+
+<HR>
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/

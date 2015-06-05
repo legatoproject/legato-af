@@ -1,26 +1,26 @@
 /** @page getstartedLinuxAndroid Linux Android SDK
 
-Only a 64-bit Ubuntu 12.04 distribution is currently being tested. Other distributions are unknown at this time, but can be tried. 
+Only a 64-bit Ubuntu 12.04 distribution is currently being tested. Other distributions are unknown at this time, but can be tried.
 If you intend to rebuild the Yocto images, don't use Ubuntu 13.10: it does not work.
 
 @section instLinuxAndroid Setup fastboot
 
-Android tools use fastboot to replace the kernel and root filesystem on devices.  
+Android tools use fastboot to replace the kernel and root filesystem on devices.
 
-Download Android SDK tools from <a href="http://developer.android.com/sdk/index.html">here</a>. 
+Download Android SDK tools from <a href="http://developer.android.com/sdk/index.html">here</a>.
 
-Extract the file and add the directory containing the fastboot command to your path. 
+Extract the file and add the directory containing the fastboot command to your path.
 
 @section createDevRules Create Udev Rules
 
 By default, fastboot on Ubuntu can't communicate with a USB-connected device because of the default permissions. Create udev rules to overcome this.
-In the file /etc/udev/rules.d/51-android.rules insert the following two lines and save: 
+In the file /etc/udev/rules.d/51-android.rules insert the following two lines and save:
 @code SUBSYSTEM=="usb", ATTRS{idVendor}=="1199", MODE="0666" @endcode
 @code SUBSYSTEM=="usb", ATTRS{idVendor}=="18d1", MODE="0666" @endcode
-Then reboot your PC. 
+Then reboot your PC.
 
 <HR>
 
-Copyright (C)  Sierra Wireless Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 
 **/

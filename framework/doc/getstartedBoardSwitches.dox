@@ -2,7 +2,7 @@
 
 Dev kit board required switch settings:
 - XMODEM - off
--  UART2 - on
+-  UART2 - on (this is the default for Legato serial (console) communications)
 - CAN-2 LS - on
 - POWERON - high
 - BOOT - high
@@ -11,12 +11,12 @@ Dev kit board required switch settings:
 - SW300 - on
 - ETH - on
 - SDIO/CARD - on
-- AR7/WP7 - on (AR6/WP6 off)
+- AR7/WP7 - on (on means switches are in down position; AR6/WP6 are in up position)
 
 @image html BoardwithSwitchLabels.png
 
 <HR>
 
-Copyright (C) 2014 Sierra Wireless, Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 
 **/

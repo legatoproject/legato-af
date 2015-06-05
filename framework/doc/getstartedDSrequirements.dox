@@ -1,0 +1,49 @@
+/** @page getstartedDSrequirements Requirements
+
+These are the requirements for a Legato Developer Studio host PC.
+
+@section getstartedDSrequirements_hardware Hardware 
+
+Please make sure the following hardware requirements are fulfilled by the system where Developer Studio aims to be installed.
+
+Minimum: <br>
+CPU: Dual Core @ 2,6GHz <br>
+RAM: 4GB <br>
+This configuration has been identified as the minimum to run Developer Studio in normal conditions,
+but some latencies should be experienced when perspectives are loaded for the first time, or when
+heavy traffic load is received from the target.
+
+Recommended: <br>
+CPU: Dual Hyperthreaded or Quad Core @ 2,8GHz <br>
+RAM: 6GB <br>
+
+Ideal: <br>
+CPU: Quad Hyperthreaded Core (8x) @ 3,4GHz <br>
+RAM: 8GB <br>
+
+This configuration has been identified as the recommended one to run Developer Studio in
+comfortable conditions, with high performances & reduced latencies.
+
+<b>System display</b>
+
+Minimum: <br>
+19" display (e.g. 1280x1024px) <br>
+
+Recommended: <br>
+24" display (e.g. 1920x1080px) <br>
+
+@section getstartedDSrequirements_software Software 
+ 
+Developer Studio requires Java 7 to be installed on the host system in order to function properly.
+Please pay attention to the use the Java version (32 bits / 64 bits) consistent with the one you chose for Developer Studio.
+
+On Linux hosts: Java is automatically installed as dependency of Developer Studio.
+On Windows hosts:
+
+Legato Application Development Kit supports 64-bit hosts only; 64-bit Java version is required.
+
+<HR>
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/

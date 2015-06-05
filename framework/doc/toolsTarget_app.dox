@@ -1,29 +1,40 @@
 /** @page toolsTarget_app app
 
-Use the Application tool for an easy method to run the most commonly needed target functions. 
+Use the Application tool for an easy method to run the most commonly needed target functions.
 
 <h1>Usage</h1>
 
-<b><c> app [OPTION] APP_NAME [APP_NAME...] </c></b>
+<b><c>app [start|stop|restart|remove|status|version] APP_NAME [ APP_NAME ... ] <br>
+app [start|stop|restart|remove|status|version] '*' <br>
+app [list|status] <br>
+app install APP_NAME <br>
+app info [ APP_NAME ... ]  <br>
+</c></b>
 
-@verbatim app [start|stop|restart|remove|status|version] APP_NAME [ APP_NAME ... ] @endverbatim
-> For these actions, multiple application names can be specified.
+@verbatim app [start|stop|restart|remove|status|version] APP_NAME [ APP_NAME ... ]@endverbatim
+> Multiple app names can be specified.
+
+@verbatim app [start|stop|restart|remove|status|version] '*'@endverbatim
 > A wildcard '*' can be used to apply action to all apps.
 
 @warning
-Be careful not to accidentally remove system services apps that you might need (e.g., modemService app).
+Be careful not to accidentally remove system services apps that you might need (e.g., modemService
+app).
+
+@verbatim app list@endverbatim
+> Lists apps.
+
+@verbatim app status@endverbatim
+> List apps and their current status.
 
 @verbatim app install APP_NAME @endverbatim
-> Install app.
+> Install app. Specify one app name; must be provided on @c stdin.
 
-@verbatim app list @endverbatim
-> Lists apps.  
-
-@verbatim app status @endverbatim
-> List apps and their current status.
+@verbatim app info [ APP_NAME ... ] @endverbatim
+> Provides info on one or more apps' running state and processes' state (stopped or never started, running, paused).
 
 <HR>
 
-Copyright (C) 2015 Sierra Wireless, Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 
 **/

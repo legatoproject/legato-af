@@ -1,0 +1,35 @@
+/** @page toolsTarget_legato legato
+
+Use the @c legato tool to run the Legato framework.
+
+<h1>Usage</h1>
+
+<b><c> legato [start | stop | restart | version | help]</c></b>
+
+@verbatim legato start @endverbatim
+
+> Starts the Legato framework.
+
+@verbatim legato stop @endverbatim
+
+> Stops the Legato framework.
+
+@verbatim legato restart @endverbatim
+
+> Restarts the Legato framework.
+
+@verbatim legato version @endverbatim
+
+> Displays the intstalled Legato framework version.
+
+@verbatim legato help @endverbatim
+
+> Displays usage help.
+
+
+
+<HR>
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/

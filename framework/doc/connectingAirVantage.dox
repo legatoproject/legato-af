@@ -7,7 +7,7 @@ Detailed info: <br>
 
 API info is here: @ref swi_airvantage.h
 
-Complete AirVantage documentation: 
+Complete AirVantage documentation:
 https://doc.airvantage.net/display/USERGUIDE/Getting+Started
 
 @section overviewAVIConnect High-level Steps
@@ -21,7 +21,7 @@ Once you are connected to your AirVantage account, you can do the following step
 Create a new System in AirVantage Server:
 - From the `Inventory menu`, choose `Systems`.
 - Click the Create button (+ symbol): enter a Name (used for retrieval).
-- In the `Gateway` tab, click Create a New Gateway (+ symbol), a new windows will appear: 
+- In the `Gateway` tab, click Create a New Gateway (+ symbol), a new windows will appear:
 enter the IMEI of your device.
 - Click `Create`.
 - Once you got back on system creation window, click the `Application` field  select 'Legato_Beta'.
@@ -33,12 +33,12 @@ Force a connection using the Agent Shell, with Legato running:
 - Connect to the device using ssh
 - Telnet to the agent shell using "telnet localhost 2000"
 - In the agent shell, check the server URL by running: ":agent.config.server.url".
-- Verify the URL. It defaults to "tcp://na.airvantage.net:44900". If you need to change the server URL (e.g., to 'eu'), run: 
+- Verify the URL. It defaults to "tcp://na.airvantage.net:44900". If you need to change the server URL (e.g., to 'eu'), run:
 agent.config.server.url="tcp://eu.airvantage.net:44900". Then CTRL+D (to exit agent shell).
 - Restart Legato, and access agent shell again.
 - Request a connection by running ":agent.srvcon.connect()"
 
-This manually forces a connection to the server. You can also set up automatic connections or 
+This manually forces a connection to the server. You can also set up automatic connections or
 make user applications to trigger connections.
 
 Check device status on the AirVantage Server:
@@ -46,12 +46,12 @@ Check device status on the AirVantage Server:
 - From the `Monitor` menu, choose `Systems`
 - Browse to your device (by the name you created or the IMEI).
 - Click Details.
-  
+
 The `Last seen` field should be updated with a recent date.
 You can also see the initial data exchange in the Timeline screen.
 
 <HR>
 
-Copyright (C) 2014 Sierra Wireless, Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 
 **/

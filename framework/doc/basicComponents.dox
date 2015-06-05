@@ -1,76 +1,124 @@
 /** @page basicComponents Components
- 
+
 In Legato, a component is a collection of code and other files that are functionally related,
 along with one or more licenses that apply to the components' files.
 
 Components can be "built" generating output like object code libraries and
 other files. These files can be incorporated into applications and run on a target device.
 
-Legato components can also have language-independent interfaces and configuration data.
+Legato components can also have @ref basicInterfaces "language-independent interfaces"
+and @ref basicConfig "configuration data".
 
-@section componentBased Component-based Approach
+@section basicComponentsRationale Rationale
 
-It's important to manage complexity. The more complex a system becomes, 
-the harder it is to ensure required behaviour without unwanted effects. 
-The more complex the problem, the more complex the software, and there's 
-no avoiding this @a necessary @a complexity. 
-If complexity is carefully compartmentalized (broken into smaller pieces with 
-like behaviour requirements), complexity can be reduced. 
+It's important to manage complexity. The more complex a system becomes,
+the harder it is to ensure required behaviour without unwanted effects.
+However, the more complex the problem, the more complex the software, and there's
+no avoiding this @a necessary @a complexity.
+But, if complexity is carefully compartmentalized (broken into smaller pieces with
+like behaviour requirements), human beings can still manage it.
 
 Many approaches have been devised to reduce complexity like 'divide-and-conquer'
-where the system is broken down into small, manageable parts that together provide the 
-complete system behaviour.  t's proven that decoupling parts from each other (minimizing 
-interconnectedness) can dramatically reduce the overall system
-complexity and improve maintainability. Modularization and packaging support this.
+where the system is broken down into small, manageable parts that together provide the
+complete system behaviour.  It's proven that decoupling parts from each other (minimizing
+interconnectedness) can dramatically improve correctness and maintainability.
+Modularization and packaging support this.
 
-Component-based software development separates implementation from interface. That lets software 
-components be swapped out similar to hardware components (e.g., client components can be written to access 
-a standard telephony interface without knowing the implementation of the interface).  
+Component-based software development separates implementation from interface, allowing software
+components to be swapped-out similar to hardware components  E.g., a client component can be written
+to access a standard telephony interface without knowing the implementation of the interface; and
+this client can be used with different implementation components, depending on the underlying
+telephony network (cellular, PSTN, VoIP, etc.) the product supports.
 
-Legato is designed to make it easier to build systems using a component-based model. 
+Legato is designed to make it easier to build systems using a component-based model.
 
 Decoupling components and hiding implementation details within components (behind
 their interfaces) has a major impact on maintainability:
 
  - Clearly defining interface and components' roles and responsibilities allow
-   defect sources to be isolated more easily. 
+   defect sources to be isolated more easily.
  - Components can be swapped out with stubs, and interfaces can be instrumented to gather
    more troubleshooting information.
  - Component changes that don't affect its interfaces are constrained
    to that component.  This supports @c \a refactoring.
- - Test suites can be applied to components implementing the same interface so test reuse is also supported.
+ - Test suites can be applied to components implementing the same interface so test reuse is
+   also supported.
 
-A promise of component-based software development is to enable creative
-interconnection of components in previously unimagined ways to discover unique new solutions.
+Component-based software development also enables creative interconnection of components in
+previously unimagined ways to discover unique new solutions.
 
 Components designed for reuse with simple, clean interfaces using standard data types
 and methods can be recombined into different arrangements that exhibit different overall system
-behaviours.  Web mashups combine previously-constructed web services into 
-completely new applications because those web services provide well-defined 
+behaviours.  Web mashups can combine previously-constructed web services into
+completely new applications because those web services provide well-defined
 interfaces using standard access mechanisms and data formats.  The mashup
 doesn't care about how the web services are implemented; the mashup only cares about what the
-interfaces provide, adding the 'glue' code, and testing the new creation.
+interfaces provide.
 
-Further potential of component-based development is the ease of sharing (for free or
+A further potential of component-based development is the ease of sharing (for free or
 for pay) of these reusable components.  If a component is very useful to others, it can be
 shared and reused in accordance with the license that the author has chosen to release it under.
 
-@section programmingModel Component Programming Model
+@section basicComponentsLegato Legato Components
 
-Legato components generally follow an event-driven model. Callback functions
-are attached to specific events, and when events occur, a thread's event loop triggers the
-appropriate callbacks. 
+In the Legato world, each component is kept in its own directory.  The name of the directory
+is also the name of the component.
 
-After initialization functions run, Legato's event processing reacts to configured event handlers 
-and registered callbacks. This approach allows multiple components to be deployed to the same process, 
-reduces the risk of multi-threaded race conditions, and saves stack memory space.  
-Legato uses the term @a handler for an event handler, which is essentially a callback function.
+The component can contain any number of source code files, pre-compiled binary files, resource
+files (e.g., audio files or images), or whatever files the component needs.
 
-See @ref eventBasics for more info.
+Each component must have a <c> @ref defFilesCdef "Component.cdef" </c> file.  This file describes
+the component to the Legato @ref buildTools.  It lists what source files the component includes,
+what interfaces it uses or implements, what resource files it includes, and what files it needs
+in the target host runtime environment.
+
+Components that have source code files can be included in executables inside apps.  The build tools
+will generate the appropriate start-up code for the executable to ensure that the component gets
+initialized when the executable is started.
+
+
+@section basicComponentsProgrammingModel Component Programming Model
+
+Generally, Legato components are written using an event-driven model. Callback functions
+called "event handlers" (or "handlers" for short) are attached to specific events, and when
+events occur, the thread's event loop calls the appropriate handlers.
+
+Every component implements a special initialization function (<c>COMPONENT_INIT</c> in C).
+That function does whatever initialization is required for that component
+(e.g., initializes data structures, registers event handlers, starts threads, etc.) and returns.
+The process's main thread (auto-generated by the @ref buildTools) runs all the component
+initializers for all components in the executable and then enters the Legato event loop.
+The event loop then reacts to events by and calling registered handlers.
+
+This model allows multiple components to be deployed to the same process and even share a single
+thread within that process, without having to know anything about each other.  This reduces
+the risk of multi-threaded race conditions and saves stack memory space, while simplifying
+many programming tasks.
+
+Sometimes the @a judicious use of threads can considerably simplify a program,
+so multithreading is also supported by Legato, along with the usual thread
+synchronization tools (mutexes, semaphores, etc.) and the addition of
+@ref c_event_dispatchingToOtherThreads "queued function calls".
+
+If a component blocks a shared thread, it blocks every component sharing that thread.
+So, to maximize a component's reusability in different programs, it's best to avoid blocking
+the main thread.  Legato components can start their own, private threads to avoid this.
+And any thread can run its own event loop if an event-driven thread with blocking event handlers
+is desired.
+
+
+@section basicComponentsLegacyCode Legacy Code
+
+Sometimes you'll have a legacy program you want to include in your app without rewriting it
+in the style of a Legato component.  This can be done by building your legacy app using your
+normal build system (but using the appropriate cross-toolchain provided for your target device)
+and @b bundling the built programs and libraries into the app.
+
+@todo Better support components containing built legacy program files without sources.
 
 <HR>
 
-Copyright (C) 2014 Sierra Wireless, Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 
 **/
 

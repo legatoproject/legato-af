@@ -1,0 +1,44 @@
+/** @page basicAppsCompMulti Deploy Multiple Components
+
+
+Now that we have @e componentized the client and server functionality, we are free to
+deploy those components to any executables we want without having to change the components
+at all. In fact, multiple components can be included in a single executable.
+
+To demonstrate, we can put the two components @c greetClient and @c greetServer into the same
+executable. This is a simple change to helloWorld.adef like this:
+
+@verbatim
+executables:
+{
+    helloWorld = ( greetServer greetClient )
+}
+
+processes:
+{
+    run:
+    {
+        (helloWorld)
+    }
+}
+
+bindings:
+{
+     helloWorld.greetClient.hello -> helloWorld.greetServer.hello
+ }
+@endverbatim
+
+
+<HR>
+
+Now we can run @c mkapp to build the application.
+
+@code
+$ mkapp helloWorld.adef -t wp7
+@endcode
+
+<HR>
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/

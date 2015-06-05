@@ -43,6 +43,7 @@
 #nav-tree .label a {
   padding:2px;
   font-size: 0.95em;
+  letter-spacing: -.3px;
 }
 
 #nav-tree .item {

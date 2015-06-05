@@ -27,9 +27,9 @@ implementations.
 
 @section languageIndependentC_handlerParm Handler Parameters in C
 
-A handler parameter can be used in both events and regular functions. 
+A handler parameter can be used in both events and regular functions.
 This is how a handler parameter for a function in an interface file is mapped
-to actual C definitions (based on the @ref example).
+to actual C definitions (based on the @ref languageIndependentC_sampleAPI).
 
 @verbatim
 FUNCTION int32 UseCallback
@@ -58,7 +58,7 @@ If the @c contextPtr is not needed, then NULL can be used.
 @section languageIndependentC_event Events in C
 
 This is how an event in an interface file is mapped
-to actual C definitions (based on the @ref example).
+to actual C definitions (based on the @ref languageIndependentC_sampleAPI).
 
 @verbatim
 EVENT TestA
@@ -98,12 +98,12 @@ registered handler function.  If the @c contextPtr is not needed, then NULL can 
 @section languageIndependentC_handler Handlers in C
 
 This is how a handler in an interface file is mapped
-to actual C definitions (based on the @ref example):
+to actual C definitions (based on the @ref languageIndependentC_sampleAPI):
 
 @verbatim
 HANDLER TestAHandler
 (
-    int32 x   
+    int32 x
 );
 @endverbatim
 
@@ -141,21 +141,21 @@ void DisconnectService
 
 To use a service, a client must connect to the server using @c ConnectService().  This
 connection is only created for the current thread. Other threads must also call ConnectService()
-to use the service. 
+to use the service.
 
-For the main thread, @c ConnectService() is usually automatically called when the client app is 
+For the main thread, @c ConnectService() is usually automatically called when the client app is
 initialized. Disable this by using the .cdef provides @ref defFilesCdef_providesApiManualStart.
 
 If a client app uses multiple services, multiple @c ConnectService() functions
 need to be called; each function uses an appropriate prefix to distinguish these
-clients. If multiple client apps are used, each app must be initialized 
+clients. If multiple client apps are used, each app must be initialized
 separately, using the appropriate ConnectService() function.
 
 The DisconnectService() function closes a connection to the server.  It only
 closes the current thread connection; it must be called separately for each
-thread using a service. If a thread wants to use the service again, it must call 
-ConnectService() to re-connect. When the app exits, all connections for all threads 
-are automatically closed. A thread only needs to use DisconnectService() when it 
+thread using a service. If a thread wants to use the service again, it must call
+ConnectService() to re-connect. When the app exits, all connections for all threads
+are automatically closed. A thread only needs to use DisconnectService() when it
 wants to disconnect from a service while the app is still running (e.g., no longer needs
 the service so it can conserve resources).
 
@@ -207,15 +207,15 @@ authentication.
 
 @section languageIndependentC_asyncServer Asynchronous Server
 
-There are two alternatives to implement the server-side functionality. 
+There are two alternatives to implement the server-side functionality.
 
-The default case is where each server-side function has the same interface as the client-side 
+The default case is where each server-side function has the same interface as the client-side
 function. The server-side function takes the IN parameters, and returns the OUT parameters and
-function result when the function exits.  
+function result when the function exits.
 
 In the async-server case, the server-side function doesn't necessarily return the OUT parameters
-and function result when it exits.  Instead, there's a separate @c Respond function for each 
-server-side function. The OUT parameters and function result are returned by passing these values 
+and function result when it exits.  Instead, there's a separate @c Respond function for each
+server-side function. The OUT parameters and function result are returned by passing these values
 to the @c Respond function. The @c Respond function can be called at any time, normally after the
 server-side function has exited.
 
@@ -228,20 +228,20 @@ Enable it by using the .cdef provides @ref defFilesCdef_providesApiAsync.
 
 @section languageIndependentC_sampleAPI API File Sample Output
 
-Here's the generated client interface header file for the defn.api file from @ref example
+Here's the generated client interface header file for the defn.api file from @ref languageIndependentC_sampleAPI
 
 @verbinclude defn_interface.h
 
-Here's the generated client interface header file for the common.api file from @ref example
+Here's the generated client interface header file for the common.api file from @ref languageIndependentC_sampleAPI
 
 @verbinclude common_interface.h
 
-Here's the generated client interface header file for the example.api file from @ref example
+Here's the generated client interface header file for the example.api file from @ref languageIndependentC_sampleAPI
 
 @verbinclude example_interface.h
 
 <HR>
 
-Copyright (C) 2014 Sierra Wireless, Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 
 **/

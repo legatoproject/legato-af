@@ -1,0 +1,35 @@
+/** @page sampleApps Sample Apps
+
+Legato has these sample apps:
+
+@subpage sampleApps_airVantage <br>
+@subpage sampleApps_eCall <br>
+@subpage sampleApps_helloIpc <br>
+@subpage sampleApps_helloWorld <br>
+@subpage sampleApps_legacy <br>
+@subpage sampleApps_modemDemo <br>
+@subpage sampleApps_sms
+
+All sample apps are located in @c apps/sample/. The built apps are located in
+<code>build/\<target\>/bin/samples</code>.
+
+@section sampleApps_startApp Start App
+
+To start an app, run this on the target:
+
+@verbatim
+root@swi-mdm9x15:~# app start <app name>
+@endverbatim
+
+To stop an app on the target, run:
+@verbatim
+root@swi-mdm9x15:~# app stop <app name>
+@endverbatim
+
+Run @c app @c help for options.
+
+<HR>
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/

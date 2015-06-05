@@ -1,6 +1,6 @@
 /** @page basicSecuritySandbox Sandboxes
 
-Legato uses sandboxes to provide a security layer against untrusted apps running in the same 
+Legato uses sandboxes to provide a security layer against untrusted apps running in the same
 system. Legato sandboxes isolate apps from the rest of the system. This allows OEM and ISV
 components to safely coexist on the same device without fear of interfering or breaking the stack.
 
@@ -9,26 +9,26 @@ on users, permissions, and SMACK labels.
 
 Legato app sandboxes are chroot jails, where each app has its own unique user ID,
 group ID, and root directory.  Files are bound into the chroot jail using bind mounts.
-Chroot changes the root directory of a process to a specified location. The process then 
+Chroot changes the root directory of a process to a specified location. The process then
 only has access to files and directories under its root directory. Only processes with
-certain capabilities can find their way outside of their @c chrooted root directory, and 
+certain capabilities can find their way outside of their @c chrooted root directory, and
 
-Legato sandboxes also provide resource limitations. Resource limitations place 
-limits on the amount of system resources an app is allowed to consume. Without 
+Legato sandboxes also provide resource limitations. Resource limitations place
+limits on the amount of system resources an app is allowed to consume. Without
 resource limits, an isolated app can still cause damage by consuming all available resources.
 
-All sandboxes are created in RAM, which provides the benefit of automatically 
-removing all sandboxes during system shutdown. Legato sandboxes use bind mounts for importing 
+All sandboxes are created in RAM, which provides the benefit of automatically
+removing all sandboxes during system shutdown. Legato sandboxes use bind mounts for importing
 files from the root file system into sandboxes (defined using the @c .adef and @c .sdef @c requires
 section). Bind-mounted files are updated when the file is updated in the root file system.
 Bind-mounted files are not copied so memory requirements are minimal.
 
-A Legato sandboxed app can access services outside its sandbox. 
-All available services are advertised by the Service Directory. Apps connect to services 
+A Legato sandboxed app can access services outside its sandbox.
+All available services are advertised by the Service Directory. Apps connect to services
 through a request to the Service Directory. The Service Directory grants access only if the
 app has been explicitly bound to a service (using the @c .adef and @c .sdef @c bindings section).
 
-If you want to allow direct access to bind mount objects from the file system (e.g., files, directories, 
+If you want to allow direct access to bind mount objects from the file system (e.g., files, directories,
 named sockets and pipes, etc.), explicitly allow it through app configuration
  in the <c> .adef </c> and <c> .cdef </c>files @c requires section.
 

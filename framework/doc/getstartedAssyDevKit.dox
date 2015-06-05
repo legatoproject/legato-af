@@ -1,17 +1,14 @@
-/** @page getstartedAssyDevKit Assemble Device Dev Kit
+/** @page getstartedAssyDevKit Assemble Dev Kit
 
-
-@section assyOverview Assembly Overview
-
-Dev Kit contents are similar to this:
+The Legato dev kit contents are similar to this:
 
 @image html AirPrime_WP7_dev_kit_estore.jpg
 
-See the AirPrime – AR and WP Series-Development Kit User Guide-Re2.2.pdf 
-for complete information about the development kit boards (available on the USB flashdrive provided with the kit.)
+See the AirPrime – AR and WP Series-Development Kit User Guide-Re2.2.pdf
+for detailed information about the development kit boards (available on the USB flashdrive provided with the kit.)
 
-These instructions and photos are for an AirPrime WP7 module. Assembly for an AR7 module would be similar.
- 
+The instructions and photos in this topice are for an AirPrime WP7 module. Assembly for an AR7 module would be similar.
+
 <b>Quick start to set up a Legato development kit device  </b>
 
 Socket module parts (in the clear plastic box):
@@ -28,7 +25,7 @@ Other items - WP7 base insert and M2-18 socket board screws and nuts:
 Small socket board with one microUSB port only (under main board in kit):
 @image html socketboard.jpg
 
-Attach module base to socket board: 
+Attach module base to socket board:
 -# Fit posts into aligned holes.
 -# Fasten the base to the board using 4 x M2-18 screws and nuts (screws down).
 
@@ -39,25 +36,27 @@ Insert ‘interposer index’ (base insert) into the center of the base socket. 
 
 @image html socketwithbaseandinsertnotinstalled.jpg
 
-@image html socketwithbaseandinsert.jpg 
+@image html socketwithbaseandinsert.jpg
 
 Insert WP7 module into socket assembly (fit is @a not tight):
 @image html socketboardwithmodule.jpg
 
-@b Gently press the spring loaded cap into place. 
+@b Gently press the spring loaded cap into place.
 Be careful to align one side at a time: the cap posts only fit one way (logo will be on bottom right corner).
  Press down the first side at the spring-loaded hinge. Then align the second side, and press and gently hook hinge into place.
- 
+
 @image html socketboardwithcap.jpg
+
 @warning Don’t force the cap straight down as this could break the sides where  the hinges attach to the cap. Ensure you align one side first, then the other side.
+
 @image html socketboardwithcapsideview.jpg
 
 Attach the socket board to the main dev kit board using the J100/J101 board connectors: press firmly into place.
- @image html devkit_board_pic.jpg 
+ @image html devkit_board_pic.jpg
 
 <HR>
 
-Copyright (C) 2014 Sierra Wireless, Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 
 **/
 

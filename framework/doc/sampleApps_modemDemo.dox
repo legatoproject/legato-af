@@ -1,0 +1,65 @@
+/** @page sampleApps_modemDemo modem Demo
+
+This sample app demonstrates a modem app. It uses modem services with @c .adef bindings
+and related @ .cdef requires provides, and sources sections.
+
+Before you install this sample app:
+- register your SIM network. See @ref toolsTarget_cm_sim.
+- set an APN name. See @ref toolsTarget_cm_data.
+
+Run this to install the sample app:
+
+@verbatim
+$ cd apps/sample/modemDemo
+$ make wp7
+$ instapp modemDemo <ip address>
+@endverbatim
+
+where @c <ip address> is the address of your target device.
+
+If you're using an AR7 module in your device, substitute @c ar7 for @c wp7.
+
+@ref sampleApps_startApp
+
+@section sampleApps_modemDemoCmds Commands
+
+The @b modemDemo app accepts several commands (through sending the target a SMS message) and will reply with the results:
+
+- <b>Status</b> - return some status information of the target like radio is on/off and signal strength
+- <b>Sim</b> - returns sim state/info (iccid and imsi)
+- <b>Online</b> - turns on data connection
+- <b>Netinfo</b> - network information like gateway address
+- <b>Offline</b> - turns off data connection
+- <b>TestDataConnectionV4</b> - Test IPv4 data connection
+- <b>TestDataConnectionV6</b> - Test IPv6 data connection
+- <b>DataInfo</b> - Show data flow statistics
+- <b>DataReset</b> - Reset data flow statistics
+
+@section sampleApps_modemDemoCustom Customization
+
+The sample app can be customized by editing the @c modemDemo.adef and related C source files.
+
+In @c modemDemo.adef, you can add a @c send execution on start-up to notify you when the app is running.
+Uncomment the @c run line and replace @c +18005550199 by your own cell number.
+
+@code
+processes:
+{
+    run:
+    {
+        ( modemDemo )
+        ( send "+18005550199" "Welcome to modemDemo app")
+    }
+}
+@endcode
+
+In @c modemDemo/demo.c, it's also possible to extend the list of processed commands.
+
+See <br>
+@ref c_mdc 
+
+<HR>
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/

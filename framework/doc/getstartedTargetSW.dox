@@ -1,0 +1,68 @@
+/** @page getstartedTargetSW Setup Target Software
+
+To setup target software, you copy startup scripts from the host to the target, and then install
+libraries and executables.
+
+@section getstartedTargetSetup_copyStartScripts Copy Startup Scripts
+
+Startup scripts are copied automatically to the target when @c instlegato is run the first time (see @ref getstartedTargetSetup_copyLibExe) .
+
+You can also copy the scripts manually. Using ssh, access the target:
+
+@code ssh root@<target ip address> @endcode
+When prompted for a password, press enter.
+
+Then create the startup directory:
+@code mkdir -p  /mnt/flash/startup @endcode
+
+Then copy the startup files to the target by running the following from the dev host:
+@code
+scp targetFiles/mdm-9x15/startup/fg_* root@<target ip addr>:/mnt/flash/startup
+@endcode
+
+Scripts beginning with @c fg_ are run first during startup, and then everything else is runs in the background.
+You can add more scripts to customize your target. @c fg_ scripts must have executable permissions or they will not run.
+
+@note In the rare case you need to prevent legato starting automatically, run
+@code touch /mnt/flash/startup/STOPLEGATO @endcode
+
+@section getstartedTargetSetup_rebootTarget Reboot Target
+
+Wait for the target to fully reboot. The target IP address may have changed. Check it using
+@c ifconfig through the serial console before proceeding.
+
+@section getstartedTargetSetup_copyLibExe instlegato Copy Libs & Exes 
+
+To copy libraries and executables to the target, run:
+
+@code
+$ instlegato build/wp7 <target ip address>
+@endcode
+
+It will automatically start the Legato runtime components.
+
+If target startup scripts don't exist or don't match the ones in:
+@code targetFiles/mdm-9x15/startup @endcode
+they'll be copied to the target.
+
+Old startup files from the target will be copied to the host here:
+@code targetFiles/mdm-9x15/backup @endcode
+
+After the startup files are finished updating, the target will reboot.
+
+After the target restarts, run @c instlegato again to finish installation.
+
+Then you can build and run apps.
+
+<HR>
+
+Here's @subpage getstartedTargetIPv6 info.
+
+These are @subpage getstartedTargetDirs installed.
+
+
+<HR>
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/

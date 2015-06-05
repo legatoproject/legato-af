@@ -5,7 +5,7 @@ Legato has these tools to run on the target:
 @subpage toolsTarget_app <br>
 @subpage toolsTarget_cm <br>
 @subpage toolsTarget_config <br>
-@subpage toolsTarget_ecm <br>
+@subpage toolsTarget_configEcm <br>
 @subpage toolsTarget_execInApp <br>
 @subpage toolsTarget_fwUpdate <br>
 @subpage toolsTarget_inspect <br>

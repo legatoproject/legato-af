@@ -1,6 +1,8 @@
-/** @page toolsTarget_config config 
+/** @page toolsTarget_config config
 
 Use the Config tool to change a target's configuration database.
+
+Also see @ref howToConfigTree
 
 Functions supported include: inspect a tree, read/write values, and import/export
 enitre tree sections.

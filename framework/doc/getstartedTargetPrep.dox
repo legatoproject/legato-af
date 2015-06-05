@@ -1,14 +1,12 @@
-/** @page getstartedTargetPrep Prep Target Hardware
+/** @page getstartedTargetPrep Prep Target Device
 
-These are the high-level steps to setup a Legato development kit target device:
+You need to do these steps to setup a Legato development kit target device so it's ready to install
+Legato apps:
 
-@subpage getstartedConnectDevKit to setup the hardware.
+@subpage getstartedDevKitPrep <br>
+@subpage getstartedTargetHostCom <br>
 
-@subpage getstartedConfigIP to setup target and host communications.
-
-The target should then be ready to @ref getstartedInstallLegato.
-
-Information is also available to <a href = "Legato_USB.pdf">Customize Legato USB</a>.
+Information is also available to @ref howToCustomizeUSB.
 
 <HR>
 

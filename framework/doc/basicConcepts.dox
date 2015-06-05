@@ -1,15 +1,17 @@
-/** @page basicConcepts Basic Concepts
+/** @page basicConcepts Concepts
 
 @subpage basicRuntimeArch <br>
 @subpage basicSecurity <br>
 @subpage basicComponents <br>
 @subpage basicInterfaces <br>
 @subpage basicConfig <br>
-@subpage eventBasics <br>
+@subpage basicEvents <br>
 @subpage basicPwrMgmt <br>
 @subpage basicIPC <br>
 @subpage basicInternationalization <br>
 @subpage basicLog <br>
+
+@ref aboutDocsGlossary <br>
 
 <h2>Overview</h2>
 
@@ -20,7 +22,7 @@ Internet-of-things (IoT) easier, faster, and less expensive.
 
 <HR>
 
-Copyright (C) 2014 Sierra Wireless, Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 
 **/
 

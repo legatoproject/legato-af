@@ -3,10 +3,10 @@
 To maximize component reuse, it's vital components be designed for reuse.
 Reusability partly depends on portability, which the Legato framework provides, but it also
 depends largely on interoperability. Reusable components must be designed for
-interoperability with as many other things as possible, including things that don't 
+interoperability with as many other things as possible, including things that don't
 exist <i>- yet! </i>
 
-Interface design is the most important factor to make something interoperable. 
+Interface design is the most important factor to make something interoperable.
 Standardized data types and interaction methods must be used, and the simpler the interfaces,
 the better.
 
@@ -30,7 +30,7 @@ host device or even running within the same process.
 
 Virtually all programmers are familiar with function calls. While Legato
 allows normal libraries to use their specific programming-language function call
-interfaces, Legato also supports language-independent function call interfaces.  
+interfaces, Legato also supports language-independent function call interfaces.
 
 Using a simple interface definition language (IDL), you can
 create a function call API implemented in one language and called from another.
@@ -44,7 +44,7 @@ See @ref languageIndependentAPIs for more information.
 
 <HR>
 
-Copyright (C) 2014 Sierra Wireless, Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 
 **/
 

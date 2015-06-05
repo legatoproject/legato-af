@@ -1,13 +1,17 @@
-/** @page getstartedTargetMain Setup Target
+/** @page getstartedSetupTarget Setup Target Device
 
-@subpage getstartedTargetPrep to setup the target device hardware.
+The Legato development kit target device needs hardware and communications to be setup before you can
+install Legato:
 
-Then @ref getstartedInstallLegato.
+@subpage getstartedTargetPrep <br>
+@ref getstartedTargetHostCom
 
-If you're not installing Legato in an IDE, you need to @subpage getstartedTargetSetup 
-from a Linux command-line.
+<HR>
 
-@subpage getstartedRestoreUpgrade Upgrade your target.
+These advanced topics are available on how to rebuild or customize your Legato target: <br>
+@subpage getstartedRestoreUpgrade <br>
+@ref yoctoMain <br>
+@ref getstartedTargetSW
 
 <HR>
 

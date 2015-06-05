@@ -1,0 +1,54 @@
+/** @page  sampleApps_eCall eCall
+
+This sample app demonstrates how to test an eCall session.
+
+The @c eCallDemo app starts a test eCall session using the Legato eCall API and the position data
+returned by the Legato Positioning API.
+
+The 'trig' sample utility shows how to trigger the eCallDemo app to start the
+eCall session.
+
+The sample app uses @c ecallApp_StartSession() API to start a test eCall session.
+You can call @c ecallApp_StartSession() with the number of passengers as a parameter to start the
+session.
+
+This App uses the configuration tree to retrieve the following data:
+
+@verbatim
+$ config get eCallDemo:/
+
+/
+      settings/
+           psap<string> == <PSAP number>
+           hMinAccuracy<int> == <minimum horizontal accuracy value>
+           dirMinAccuracy<int> == <minimum direction accuracy value>
+@endverbatim
+
+ - 'psap' is the PSAP telephone number.
+ - 'hAccuracy' is the minimum expected horizontal accuracy to trust the position (in meters).
+ - 'dirAccuracy' is the minimum expected direction accuracy to trust the position (in degrees).
+
+You can set them by issuing the commands:
+@verbatim
+$ config set eCallDemo:/settings/psap <PSAP number>
+$ config set eCallDemo:/settings/hMinAccuracy <minimum horizontal accuracy value> int
+$ config set eCallDemo:/settings/dirMinAccuracy <minimum direction accuracy value> int
+@endverbatim
+*
+@section sampleApps_eCallTrig trig utility
+ 
+This utility triggers the eCallDemo application.
+
+Run @c trig like this:
+@verbatim
+$ execInApp eCallDemo trig <number of passengers>
+@endverbatim
+
+See <br>
+@ref c_ecall <br>
+
+<HR>
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/

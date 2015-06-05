@@ -141,27 +141,32 @@ The @c parameterList can contain one or more parameters separated by commas, or 
 if there are no parameters.  The scalar type refers to anything that's not an array or string
 (i.e. scalar types do not have a length). These parameters types are supported:
 
-- <tt> \<type\> \<name\> [ ( "IN" | "OUT" ) ]</tt>
+@code
+<tt> \<type\> \<name\> [ ( "IN" | "OUT" ) ]</tt>@endcode
      - scalar type
      - defaults to IN if a direction is not specified
 
-- <tt> \<type\> \<name\> "[" [ \<minSize\> ".." ] \<maxSize\> "]" "IN" </tt>
+@code
+<tt> \<type\> \<name\> "[" [ \<minSize\> ".." ] \<maxSize\> "]" "IN" </tt>@endcode
      - an IN array
      - @c maxSize specifies the maximum number of elements allowed for the array
      - optional @c minSize specifies the minimum number of elements required for the array
 
-- <tt> \<type\> \<name\> "[" \<minSize\> "]" "OUT" </tt>
+
+@code<tt> \<type\> \<name\> "[" \<minSize\> "]" "OUT" </tt>@endcode
      - an OUT array
      - array should be large enough to store @c minSize elements;  if supported by the
        function implemention, a shorter OUT array can be used.
 
-- <tt> "string" \<name\> "[" [ \<minSize\> ".." ] \<maxSize\> "]" "IN" </tt>
+
+@code<tt> "string" \<name\> "[" [ \<minSize\> ".." ] \<maxSize\> "]" "IN" </tt>@endcode
      - an IN string
      - @c maxSize specifies the maximum string length allowed,
      - optional @c minSize specifies the minimum string length required
      - string length is given as number of characters, excluding any terminating characters
 
-- <tt> "string" \<name\> "[" \<minSize\> "]" "OUT" </tt>
+
+@code<tt> "string" \<name\> "[" \<minSize\> "]" "OUT" </tt>@endcode
      - an OUT string
      - string should be large enough to store @c minSize characters; if supported by the
        function implemention, a shorter OUT string can be used.
@@ -185,7 +190,7 @@ EVENT <eventType>
 );
 @endverbatim
 
-The @c parameterList can contain one or more parameters separated by commas.  
+The @c parameterList can contain one or more parameters separated by commas.
 It can contain anything that's valid for a function, but it must contain one handler parameter.
 The parameters are used when registering a handler for the specified event.
 
@@ -206,7 +211,8 @@ HANDLER <handlerType>
 
 The @c parameterList can contain one or more parameters separated by commas, or can be empty
 if there are no parameters.  
-It can only contain scalar types, as described above for @ref languageIndependentSyntax_function.
+It can only contain scalar types or string types, as described above for 
+@ref languageIndependentSyntax_function.
 All the parameters should be IN parameters.  
 
 See @ref languageIndependentC_handler for details on the C code generated from the above handler
@@ -238,7 +244,7 @@ Any comments provided after an element in an ENUM or BITMASK, will be copied to 
 generated files, under the same conditions as function parameter comments.
 
 
-@section languageIndependentSyntax_sample Sample API  
+@section languageIndependentSyntax_sample Sample API
 
 Here's the @c defn.api file containing just type defintions
 
@@ -256,6 +262,6 @@ in @c defn.api and @c common.api
 
 <HR>
 
-Copyright (C) 2015 Sierra Wireless, Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 
 **/

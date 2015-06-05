@@ -1,0 +1,17 @@
+/** @page howToMain How To
+
+@subpage howToCustomizeUSB <br>
+@subpage howToDebug <br>
+@subpage howToConfigTree <br>
+@subpage howToPowerMgmt <br>
+@subpage howToNMEA <br>
+@subpage howToPortLegacyGen <br>
+@subpage howToPortLegacyC <br>
+@subpage howToLogs <br>
+
+<HR>
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+ **/
+
