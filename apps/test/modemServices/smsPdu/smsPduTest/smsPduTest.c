@@ -4,45 +4,55 @@
  *
  */
 
-#include <stdio.h>
-#include <unistd.h>
-#include <ctype.h>
-#include <string.h>
-#include <time.h>
-
-// Header files for CUnit
-#include <CUnit/Console.h>
-#include <CUnit/Basic.h>
+#include <legato.h>
+#include "smsPdu.h"
 
 #define PDU_MAX     256
 
-#include "le_sms_interface.h"
-#include "smsPdu.h"
 
-typedef struct {
-    const char * dest;
-    const char * text;
-    pa_sms_MsgType_t type;
-    struct {
-        const size_t length;
-        const uint8_t data[256];
-        le_result_t conversionResult;
-    } gsm_7bits, gsm_8bits;
-    struct {
-        const size_t length;
-        const uint8_t data[256];
-        le_result_t conversionResult;
-        uint8_t timestampIndex; // Use to not check timestamp value
-    } cdma_7bits, cdma_8bits ;
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test sequence Structure list
+ */
+//--------------------------------------------------------------------------------------------------
+typedef le_result_t (*TestFunc)(void);
+
+typedef struct
+{
+        char * name;
+        TestFunc ptrfunc;
+} my_struct;
+
+
+typedef struct
+{
+        const char * dest;
+        const char * text;
+        pa_sms_MsgType_t type;
+        struct
+        {
+                const size_t length;
+                const uint8_t data[256];
+                le_result_t conversionResult;
+        } gsm_7bits, gsm_8bits;
+        struct
+        {
+                const size_t length;
+                const uint8_t data[256];
+                le_result_t conversionResult;
+                uint8_t timestampIndex; // Use to not check timestamp value
+        } cdma_7bits, cdma_8bits ;
 } PduAssoc_t;
 
-const PduAssoc_t PduAssocDb[] = {
+const PduAssoc_t PduAssocDb[] =
+{
     /* 0 */
     {
         .dest = "+33661651866",
         .text = "Test sending message",
         .type = PA_SMS_SMS_SUBMIT,
-        .gsm_7bits = {
+        .gsm_7bits =
+        {
             .conversionResult = LE_OK,
             .length = 33,
             .data = {
@@ -52,17 +62,20 @@ const PduAssoc_t PduAssocDb[] = {
                 0xF0, 0xB9, 0x0C,
             },
         },
-        .gsm_8bits = {
+        .gsm_8bits =
+        {
             .conversionResult = LE_OK,
             .length = 35,
-            .data = {
+            .data =
+            {
                 0x00, 0x11, 0x00, 0x0B, 0x91, 0x33, 0x66, 0x61, 0x15, 0x68,
                 0xF6, 0x00, 0x04, 0xAD, 0x14, 0x54, 0x65, 0x73, 0x74, 0x20,
                 0x73, 0x65, 0x6E, 0x64, 0x69, 0x6E, 0x67, 0x20, 0x6D, 0x65,
                 0x73, 0x73, 0x61, 0x67, 0x65,
             },
         },
-        .cdma_7bits = {
+        .cdma_7bits =
+        {
             .conversionResult = LE_OK,
             .length = 54,
             .data = {
@@ -75,7 +88,8 @@ const PduAssoc_t PduAssocDb[] = {
             },
             .timestampIndex = 43,
         },
-        .cdma_8bits = {
+        .cdma_8bits =
+        {
             .conversionResult = LE_OK,
             .length = 56,
             .data = {
@@ -94,10 +108,12 @@ const PduAssoc_t PduAssocDb[] = {
         .dest = "+33617190547",
         .text = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Morbi in commodo lectus, quis volutpat erat.",
         .type = PA_SMS_SMS_SUBMIT,
-        .gsm_7bits = {
+        .gsm_7bits =
+        {
             .conversionResult = LE_OK,
             .length = 104,
-            .data = {
+            .data =
+            {
                 0x00, 0x11, 0x00, 0x0B, 0x91, 0x33, 0x16, 0x17, 0x09, 0x45,
                 0xF7, 0x00, 0x00, 0xAD, 0x65, 0xCC, 0xB7, 0xBC, 0xDC, 0x06,
                 0xA5, 0xE1, 0xF3, 0x7A, 0x1B, 0x44, 0x7E, 0xB3, 0xDF, 0x72,
@@ -111,7 +127,8 @@ const PduAssoc_t PduAssocDb[] = {
                 0x79, 0x98, 0xEE, 0x02,
             }
         },
-        .gsm_8bits = {
+        .gsm_8bits =
+        {
             .conversionResult = LE_OK,
             .length = 116,
             .data = {
@@ -129,7 +146,8 @@ const PduAssoc_t PduAssocDb[] = {
                 0x20, 0x65, 0x72, 0x61, 0x74, 0x2E,
             },
         },
-        .cdma_7bits = {
+        .cdma_7bits =
+        {
             .conversionResult = LE_OK,
             .length = 124,
             .data = {
@@ -149,7 +167,8 @@ const PduAssoc_t PduAssocDb[] = {
             },
             .timestampIndex = 113,
         },
-        .cdma_8bits = {
+        .cdma_8bits =
+        {
             .conversionResult = LE_OK,
             .length = 137,
             .data = {
@@ -176,10 +195,12 @@ const PduAssoc_t PduAssocDb[] = {
         .dest = "0617190547",
         .text = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Morbi in commodo lectus, quis volutpat erat.",
         .type = PA_SMS_SMS_SUBMIT,
-        .gsm_7bits = {
+        .gsm_7bits =
+        {
             .conversionResult = LE_OK,
             .length = 103,
-            .data = {
+            .data =
+            {
                 0x00, 0x11, 0x00, 0x0A, 0x81, 0x60, 0x71, 0x91, 0x50, 0x74,
                 0x00, 0x00, 0xAD, 0x65, 0xCC, 0xB7, 0xBC, 0xDC, 0x06, 0xA5,
                 0xE1, 0xF3, 0x7A, 0x1B, 0x44, 0x7E, 0xB3, 0xDF, 0x72, 0xD0,
@@ -193,7 +214,8 @@ const PduAssoc_t PduAssocDb[] = {
                 0x98, 0xEE, 0x02,
             }
         },
-        .gsm_8bits = {
+        .gsm_8bits =
+        {
             .conversionResult = LE_OK,
             .length = 115,
             .data = {
@@ -211,10 +233,12 @@ const PduAssoc_t PduAssocDb[] = {
                 0x65, 0x72, 0x61, 0x74, 0x2E,
             },
         },
-        .cdma_7bits = {
+        .cdma_7bits =
+        {
             .conversionResult = LE_OK,
             .length = 124,
-            .data = {
+            .data =
+            {
                 0x00, 0x00, 0x02, 0x10, 0x02, 0x04, 0x07, 0x02, 0xA9, 0x85,
                 0xC6, 0x69, 0x51, 0xC0, 0x08, 0x6C, 0x00, 0x03, 0x20, 0x00,
                 0x10, 0x01, 0x5A, 0x13, 0x2C, 0xCD, 0xFC, 0xB2, 0xED, 0x41,
@@ -231,10 +255,12 @@ const PduAssoc_t PduAssocDb[] = {
             },
             .timestampIndex = 113,
         },
-        .cdma_8bits = {
+        .cdma_8bits =
+        {
             .conversionResult = LE_OK,
             .length = 137,
-            .data = {
+            .data =
+            {
                 0x00, 0x00, 0x02, 0x10, 0x02, 0x04, 0x07, 0x02, 0xA9, 0x85,
                 0xC6, 0x69, 0x51, 0xC0, 0x08, 0x79, 0x00, 0x03, 0x20, 0x00,
                 0x10, 0x01, 0x67, 0x03, 0x2A, 0x63, 0x7B, 0x93, 0x2B, 0x69,
@@ -258,7 +284,8 @@ const PduAssoc_t PduAssocDb[] = {
         .dest = "+33661651866",
         .text = "Test with special char [ ...",
         .type = PA_SMS_SMS_SUBMIT,
-        .gsm_7bits = {
+        .gsm_7bits =
+        {
             .conversionResult = LE_OK,
             .length = 41,
             .data = {
@@ -269,7 +296,8 @@ const PduAssoc_t PduAssocDb[] = {
                 0x02, 0x00,
             }
         },
-        .gsm_8bits = {
+        .gsm_8bits =
+        {
             .conversionResult = LE_OK,
             .length = 43,
             .data = {
@@ -280,7 +308,8 @@ const PduAssoc_t PduAssocDb[] = {
                 0x2E, 0x2E, 0x2E, 0x00,
             },
         },
-        .cdma_7bits = {
+        .cdma_7bits =
+        {
             .conversionResult = LE_OK,
             .length = 61,
             .data = {
@@ -294,10 +323,12 @@ const PduAssoc_t PduAssocDb[] = {
             },
             .timestampIndex = 50,
         },
-        .cdma_8bits = {
+        .cdma_8bits =
+        {
             .conversionResult = LE_OK,
             .length = 64,
-            .data = {
+            .data =
+            {
                 0x00, 0x00, 0x02, 0x10, 0x02, 0x04, 0x07, 0x02, 0xCC, 0xD9,
                 0x85, 0x94, 0x61, 0x98, 0x08, 0x30, 0x00, 0x03, 0x20, 0x00,
                 0x10, 0x01, 0x1E, 0x00, 0xE2, 0xA3, 0x2B, 0x9B, 0xA1, 0x03,
@@ -314,10 +345,12 @@ const PduAssoc_t PduAssocDb[] = {
         .dest = "+33661651866",
         .text = "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890",
         .type = PA_SMS_SMS_SUBMIT,
-        .gsm_7bits = {
+        .gsm_7bits =
+        {
             .conversionResult = LE_OK,
             .length = 155,
-            .data = {
+            .data =
+            {
                 0x00, 0x11, 0x00, 0x0B, 0x91, 0x33, 0x66, 0x61, 0x15, 0x68,
                 0xF6, 0x00, 0x00, 0xAD, 0xA0, 0x31, 0xD9, 0x8C, 0x56, 0xB3,
                 0xDD, 0x70, 0x39, 0x58, 0x4C, 0x36, 0xA3, 0xD5, 0x6C, 0x37,
@@ -336,17 +369,21 @@ const PduAssoc_t PduAssocDb[] = {
                 0xCD, 0x76, 0xC3, 0xE5, 0x60, 0x00,
             },
         },
-        .gsm_8bits = {
+        .gsm_8bits =
+        {
             .conversionResult = LE_OVERFLOW,
             .length = 0,
-            .data = {
+            .data =
+            {
                 0x00,
             }
         },
-        .cdma_7bits = {
+        .cdma_7bits =
+        {
             .conversionResult = LE_OK,
             .length = 176,
-            .data = {
+            .data =
+            {
                 0x00, 0x00, 0x02, 0x10, 0x02, 0x04, 0x07, 0x02, 0xCC, 0xD9,
                 0x85, 0x94, 0x61, 0x98, 0x08, 0xA0, 0x00, 0x03, 0x20, 0x00,
                 0x10, 0x01, 0x8E, 0x15, 0x03, 0x16, 0x4C, 0xDA, 0x35, 0x6C,
@@ -369,10 +406,12 @@ const PduAssoc_t PduAssocDb[] = {
             },
             .timestampIndex = 165,
         },
-        .cdma_8bits = {
+        .cdma_8bits =
+        {
             .conversionResult = LE_OVERFLOW,
             .length = 0,
-            .data = {
+            .data =
+            {
                 0x00,
             },
             .timestampIndex = 0,
@@ -383,24 +422,30 @@ const PduAssoc_t PduAssocDb[] = {
         .dest = "+33661651866",
         .text = "[123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789",
         .type = PA_SMS_SMS_SUBMIT,
-        .gsm_7bits = {
+        .gsm_7bits =
+        {
             .conversionResult = LE_OVERFLOW,
             .length = 0,
-            .data = {
+            .data =
+            {
                 0x00,
             },
         },
-        .gsm_8bits = {
+        .gsm_8bits =
+        {
             .conversionResult = LE_OVERFLOW,
             .length = 0,
-            .data = {
+            .data =
+            {
                 0x00,
             }
         },
-        .cdma_7bits = {
+        .cdma_7bits =
+        {
             .conversionResult = LE_OK,
             .length = 176,
-            .data = {
+            .data =
+            {
                 0x00, 0x00, 0x02, 0x10, 0x02, 0x04, 0x07, 0x02, 0xCC, 0xD9,
                 0x85, 0x94, 0x61, 0x98, 0x08, 0xA0, 0x00, 0x03, 0x20, 0x00,
                 0x10, 0x01, 0x8E, 0x15, 0x05, 0xB6, 0x2C, 0x99, 0xB4, 0x6A,
@@ -422,7 +467,8 @@ const PduAssoc_t PduAssocDb[] = {
             },
             .timestampIndex = 165,
         },
-        .cdma_8bits = {
+        .cdma_8bits =
+        {
             .conversionResult = LE_OVERFLOW,
             .length = 0,
             .data = {
@@ -436,10 +482,12 @@ const PduAssoc_t PduAssocDb[] = {
         .dest = "+33661651866",
         .text = "Test with special char [ ] ^ { } \\ ~ | ...!",
         .type = PA_SMS_SMS_SUBMIT,
-        .gsm_7bits = {
+        .gsm_7bits =
+        {
             .conversionResult = LE_OK,
             .length = 60,
-            .data = {
+            .data =
+            {
                 0x00, 0x11, 0x00, 0x0B, 0x91, 0x33, 0x66, 0x61, 0x15, 0x68,
                 0xF6, 0x00, 0x00, 0xAD, 0x33, 0xD4, 0xF2, 0x9C, 0x0E, 0xBA,
                 0xA7, 0xE9, 0x68, 0xD0, 0x1C, 0x5E, 0x1E, 0xA7, 0xC3, 0x6C,
@@ -449,10 +497,12 @@ const PduAssoc_t PduAssocDb[] = {
                 0x00
             },
         },
-        .gsm_8bits = {
+        .gsm_8bits =
+        {
             .conversionResult = LE_OK,
             .length = 58,
-            .data = {
+            .data =
+            {
                 0x00, 0x11, 0x00, 0x0B, 0x91, 0x33, 0x66, 0x61, 0x15, 0x68,
                 0xF6, 0x00, 0x04, 0xAD, 0x2B, 0x54, 0x65, 0x73, 0x74, 0x20,
                 0x77, 0x69, 0x74, 0x68, 0x20, 0x73, 0x70, 0x65, 0x63, 0x69,
@@ -461,10 +511,12 @@ const PduAssoc_t PduAssocDb[] = {
                 0x7E, 0x20, 0x7C, 0x20, 0x2E, 0x2E, 0x2E, 0x21, 0x00,
             }
         },
-        .cdma_7bits = {
+        .cdma_7bits =
+        {
             .conversionResult = LE_OK,
             .length = 74,
-            .data = {
+            .data =
+            {
                 0x00, 0x00, 0x02, 0x10, 0x02, 0x04, 0x07, 0x02, 0xCC, 0xD9,
                 0x85, 0x94, 0x61, 0x98, 0x08, 0x3A, 0x00, 0x03, 0x20, 0x00,
                 0x10, 0x01, 0x28, 0x11, 0x5D, 0x4C, 0xBC, 0xFA, 0x20, 0xEF,
@@ -476,10 +528,12 @@ const PduAssoc_t PduAssocDb[] = {
             },
             .timestampIndex = 63,
         },
-        .cdma_8bits = {
+        .cdma_8bits =
+        {
             .conversionResult = LE_OK,
             .length = 79,
-            .data = {
+            .data =
+            {
                 0x00, 0x00, 0x02, 0x10, 0x02, 0x04, 0x07, 0x02, 0xCC, 0xD9,
                 0x85, 0x94, 0x61, 0x98, 0x08, 0x3F, 0x00, 0x03, 0x20, 0x00,
                 0x10, 0x01, 0x2D, 0x01, 0x5A, 0xA3, 0x2B, 0x9B, 0xA1, 0x03,
@@ -495,22 +549,25 @@ const PduAssoc_t PduAssocDb[] = {
 };
 
 
-typedef struct {
-    const size_t length;
-    const uint8_t data[256];
-    pa_sms_Protocol_t proto;
-    struct {
-        le_result_t result;
-        const char * source;
-        smsPdu_Encoding_t encoding;
-        pa_sms_Message_t message;
-    } expected;
+typedef struct
+{
+        const size_t length;
+        const uint8_t data[256];
+        pa_sms_Protocol_t proto;
+        struct
+        {
+                le_result_t result;
+                const char * source;
+                smsPdu_Encoding_t encoding;
+                pa_sms_Message_t message;
+        } expected;
 } PduReceived_t;
 
 /**
  * Array to store samples of received messages and their expected decoding.
  */
-const PduReceived_t PduReceivedDb[] = {
+const PduReceived_t PduReceivedDb[] =
+{
         /* 0 */ {
                 .proto = PA_SMS_PROTOCOL_GSM,
                 .length = 116,
@@ -527,12 +584,15 @@ const PduReceived_t PduReceivedDb[] = {
                         0x9E, 0x9E, 0x83, 0xEC, 0x6F, 0x76, 0x9D, 0x0E, 0x0F, 0xD3,
                         0x41, 0x65, 0x79, 0x98, 0xEE, 0x02,
                 },
-                .expected = {
+                .expected =
+                {
                         .result = LE_OK,
                         .encoding = SMSPDU_7_BITS,
-                        .message = {
+                        .message =
+                        {
                                 .type = PA_SMS_SMS_DELIVER,
-                                .smsDeliver = {
+                                .smsDeliver =
+                                {
                                         .oa = "+33643537919",
                                         .format = LE_SMS_FORMAT_TEXT,
                                         .scts = "14/07/31,20:55:17-00",
@@ -545,17 +605,21 @@ const PduReceived_t PduReceivedDb[] = {
         /* 1 */ {
                 .proto = PA_SMS_PROTOCOL_GSM,
                 .length = 33,
-                .data = {
+                .data =
+                {
                         0x07, 0x91, 0x33, 0x86, 0x09, 0x40, 0x00, 0xF0, 0x04, 0x0B,
                         0x91, 0x33, 0x76, 0x63, 0x47, 0x53, 0xF9, 0x00, 0x00, 0x41,
                         0x70, 0x13, 0x22, 0x30, 0x61, 0x80, 0x06, 0x53, 0x7A, 0x98,
                         0x5E, 0x9F, 0x03,
                 },
-                .expected = {
+                .expected =
+                {
                         .result = LE_OK,
-                        .message = {
+                        .message =
+                        {
                                 .type = PA_SMS_SMS_DELIVER,
-                                .smsDeliver = {
+                                .smsDeliver =
+                                {
                                         .oa = "+33673674359",
                                         .format = LE_SMS_FORMAT_TEXT,
                                         .scts = "14/07/31,22:03:16-00",
@@ -567,37 +631,36 @@ const PduReceived_t PduReceivedDb[] = {
         },
 };
 
-/* The suite initialization function.
-* Opens the temporary file used by the tests.
-* Returns zero on success, non-zero otherwise.
-*/
-int init_suite(void)
-{
-    return 0;
-}
 
-/* The suite cleanup function.
-* Closes the temporary file used by the tests.
-* Returns zero on success, non-zero otherwise.
-*/
-int clean_suite(void)
+static void DumpPDU
+(
+    const uint8_t * dataPtr,
+    size_t length
+)
 {
-    return 0;
-}
-
-void DumpPDU(const uint8_t * dataPtr, size_t length) {
     int i;
     const int columns = 32;
+    char logDump[255] = { 0 };
+    char dump[5] = { 0 };
 
-    for( i = 0; i < length+1; i++) {
-        fprintf(stderr, "%02X ", dataPtr[i]);
+    logDump[0] = 0;
+
+    for( i = 0; i < length+1; i++)
+    {
+        snprintf(dump,  5, "%02X ", dataPtr[i]);
+        strncat(logDump, dump, 255);
         if(i % columns == (columns-1) )
-            fprintf(stderr, "\n");
+        {
+            strncat(logDump, " ", 255);
+        }
     }
-    fprintf(stderr, "\n");
+    LE_INFO("%s", logDump);
 }
 
-void testDecodePdu()
+static le_result_t TestDecodePdu
+(
+    void
+)
 {
     pa_sms_Message_t message;
     le_result_t res;
@@ -609,43 +672,80 @@ void testDecodePdu()
     {
         const PduReceived_t * receivedPtr = &PduReceivedDb[i];
 
-        fprintf(stderr, "\n=> Index %d\n", i);
+        LE_INFO("=> Index %d", i);
 
         res = smsPdu_Decode(receivedPtr->proto,
-                            receivedPtr->data,
-                            receivedPtr->length,
-                            &message);
-        CU_ASSERT_EQUAL(res, receivedPtr->expected.result);
+                        receivedPtr->data,
+                        receivedPtr->length,
+                        &message);
+
+        if (res != receivedPtr->expected.result)
+        {
+            return LE_FAULT;
+        }
 
         if(res != LE_OK)
-            continue;
+        {
+            return LE_FAULT;
+        }
 
-        CU_ASSERT_EQUAL(message.type, receivedPtr->expected.message.type);
+        if (message.type != receivedPtr->expected.message.type)
+        {
+            return LE_FAULT;
+        }
 
         switch(message.type)
         {
             case PA_SMS_SMS_DELIVER:
-                fprintf(stderr, "Format: %u\n", message.smsDeliver.format);
-                fprintf(stderr, "Data (%u): %s\n", message.smsDeliver.dataLen, message.smsDeliver.data);
-                CU_ASSERT_EQUAL( message.smsDeliver.format, receivedPtr->expected.message.smsDeliver.format );
-                CU_ASSERT_STRING_EQUAL( message.smsDeliver.oa, receivedPtr->expected.message.smsDeliver.oa );
-                CU_ASSERT_STRING_EQUAL( message.smsDeliver.scts, receivedPtr->expected.message.smsDeliver.scts );
-                CU_ASSERT_EQUAL( message.smsDeliver.dataLen, receivedPtr->expected.message.smsDeliver.dataLen );
-                CU_ASSERT_EQUAL(0, memcmp(message.smsDeliver.data, receivedPtr->expected.message.smsDeliver.data, message.smsDeliver.dataLen) );
-                break;
+            {
+                LE_INFO("Format: %u", message.smsDeliver.format);
+                LE_INFO("Data (%u): %s", message.smsDeliver.dataLen, message.smsDeliver.data);
+                if(message.smsDeliver.format != receivedPtr->expected.message.smsDeliver.format)
+                {
+                    return LE_FAULT;
+                }
+
+                if(strcmp(message.smsDeliver.oa, receivedPtr->expected.message.smsDeliver.oa) != 0)
+                {
+                    return LE_FAULT;
+                }
+
+                if(strcmp(message.smsDeliver.scts, receivedPtr->expected.message.smsDeliver.scts) != 0)
+                {
+                    return LE_FAULT;
+                }
+
+                if(message.smsDeliver.dataLen != receivedPtr->expected.message.smsDeliver.dataLen )
+                {
+                    return LE_FAULT;
+                }
+                if(memcmp(message.smsDeliver.data, receivedPtr->expected.message.smsDeliver.data, message.smsDeliver.dataLen) != 0)
+                {
+                    return LE_FAULT;
+                }
+            }
+            break;
 
             case PA_SMS_SMS_SUBMIT:
-                CU_FAIL("Unexpected submit");
-                break;
+            {
+                LE_ERROR("Unexpected submit");
+                return LE_FAULT;
+            }
 
             default:
-                CU_FAIL("Unexpected type");
-                break;
+            {
+                LE_ERROR("Unexpected type");
+                return LE_FAULT;
+            }
         }
     }
+    return LE_OK;
 }
 
-void testEncodePdu()
+static le_result_t TestEncodePdu
+(
+    void
+)
 {
     pa_sms_Pdu_t pdu;
     pa_sms_Message_t message;
@@ -657,267 +757,410 @@ void testEncodePdu()
         const PduAssoc_t * assoc = &PduAssocDb[i];
         size_t messageLength = strlen(assoc->text);
 
-        fprintf(stderr, "\n=> Index %d\n", i);
+        // LE_INFO("
+        LE_INFO("=> Index %d", i);
 
-        fprintf(stderr, "Text (%zd): (%s)\n",messageLength, assoc->text);
+        LE_INFO("Text (%zd): (%s)",messageLength, assoc->text);
 
         /* GSM Encode 8 bits */
-        fprintf(stderr, "Encoding in 8 bits GSM\n");
+        LE_INFO("Encoding in 8 bits GSM");
         res = smsPdu_Encode(PA_SMS_PROTOCOL_GSM,
-                            (const uint8_t*)assoc->text,
-                            strlen(assoc->text),
-                            assoc->dest,
-                            SMSPDU_8_BITS,
-                            assoc->type,
-                            &pdu);
-        CU_ASSERT_EQUAL( res, assoc->gsm_8bits.conversionResult );
+                        (const uint8_t*)assoc->text,
+                        strlen(assoc->text),
+                        assoc->dest,
+                        SMSPDU_8_BITS,
+                        assoc->type,
+                        &pdu);
+
+        if (res != assoc->gsm_8bits.conversionResult)
+        {
+            return LE_FAULT;
+        }
 
         if ( res == LE_OK )
         {
-            fprintf(stderr, "Source: (%zu)\n", assoc->gsm_8bits.length);
+            LE_INFO("Source: (%zu)", assoc->gsm_8bits.length);
             DumpPDU(assoc->gsm_8bits.data, assoc->gsm_8bits.length);
 
-            fprintf(stderr, "Encoded: (%u)\n", pdu.dataLen);
+            LE_INFO("Encoded: (%u)", pdu.dataLen);
             DumpPDU(pdu.data, pdu.dataLen);
 
             /* Check */
-            CU_ASSERT_EQUAL( pdu.dataLen, assoc->gsm_8bits.length );
-            CU_ASSERT_EQUAL( memcmp(pdu.data, assoc->gsm_8bits.data, pdu.dataLen), 0);
+            if (pdu.dataLen != assoc->gsm_8bits.length)
+            {
+                return LE_FAULT;
+            }
+
+            if (memcmp(pdu.data, assoc->gsm_8bits.data, pdu.dataLen) != 0)
+            {
+                return LE_FAULT;
+            }
 
             /* Decode */
             res = smsPdu_Decode(PA_SMS_PROTOCOL_GSM,pdu.data,pdu.dataLen,&message);
-            CU_ASSERT_EQUAL( res, LE_OK );
-            CU_ASSERT_EQUAL( message.type, assoc->type );
+            if (res != LE_OK)
+            {
+                return LE_FAULT;
+            }
+            if (message.type != assoc->type)
+            {
+                return LE_FAULT;
+            }
 
             switch(message.type)
             {
                 case PA_SMS_SMS_DELIVER:
-                    CU_ASSERT_EQUAL( message.smsDeliver.format, LE_SMS_FORMAT_BINARY );
-                    CU_ASSERT_EQUAL( memcmp(message.smsDeliver.data,assoc->text,strlen(assoc->text)),0);
-                    break;
+                {
+                    if (message.smsDeliver.format != LE_SMS_FORMAT_BINARY)
+                    {
+                        return LE_FAULT;
+                    }
+
+                    if (memcmp(message.smsDeliver.data,assoc->text,strlen(assoc->text)) != 0)
+                    {
+                        return LE_FAULT;
+                    }
+                }
+                break;
 
                 case PA_SMS_SMS_SUBMIT:
-                    fprintf(stderr, "Data (%u): '%s'\n", message.smsSubmit.dataLen, message.smsSubmit.data);
-                    CU_ASSERT_EQUAL( message.smsSubmit.format, LE_SMS_FORMAT_BINARY );
-                    CU_ASSERT_EQUAL( memcmp(message.smsSubmit.data,assoc->text,strlen(assoc->text)),0);
-                    break;
+                {
+                    LE_INFO("Data (%u): '%s'", message.smsSubmit.dataLen, message.smsSubmit.data);
+                    if (message.smsSubmit.format != LE_SMS_FORMAT_BINARY)
+                    {
+                        return LE_FAULT;
+                    }
+                    if (memcmp(message.smsSubmit.data,assoc->text,strlen(assoc->text)) != 0)
+                    {
+                        return LE_FAULT;
+                    }
+                }
+                break;
 
                 default:
-                    CU_FAIL("Unexpected type");
-                    break;
+                {
+                    LE_ERROR("Unexpected type");
+                    return LE_FAULT;
+                }
             }
         }
-        fprintf(stderr, "------------------\n");
+        LE_INFO("------------------");
 
         /* GSM Encode 7 bits */
-        fprintf(stderr, "Encoding in 7 bits GSM \n");
+        LE_INFO("Encoding in 7 bits GSM ");
         res = smsPdu_Encode(PA_SMS_PROTOCOL_GSM,
-                            (const uint8_t*)assoc->text,
-                            strlen(assoc->text),
-                            assoc->dest,
-                            SMSPDU_7_BITS,
-                            assoc->type,
-                            &pdu);
-        CU_ASSERT_EQUAL( res, assoc->gsm_7bits.conversionResult );
+                        (const uint8_t*)assoc->text,
+                        strlen(assoc->text),
+                        assoc->dest,
+                        SMSPDU_7_BITS,
+                        assoc->type,
+                        &pdu);
+
+        if (res != assoc->gsm_7bits.conversionResult )
+        {
+            return LE_FAULT;
+        }
 
         if ( res == LE_OK )
         {
-            fprintf(stderr, "Source: (%zu)\n", assoc->gsm_7bits.length);
+            LE_INFO("Source: (%zu)", assoc->gsm_7bits.length);
             DumpPDU(assoc->gsm_7bits.data, assoc->gsm_7bits.length);
 
-            fprintf(stderr, "Encoded: (%u)\n", pdu.dataLen);
+            LE_INFO("Encoded: (%u)", pdu.dataLen);
             DumpPDU(pdu.data, pdu.dataLen);
 
             /* Check */
-            CU_ASSERT_EQUAL( pdu.dataLen, assoc->gsm_7bits.length );
-            CU_ASSERT_EQUAL( memcmp(pdu.data, assoc->gsm_7bits.data, pdu.dataLen), 0);
+            if (pdu.dataLen != assoc->gsm_7bits.length )
+            {
+                return LE_FAULT;
+            }
+
+            if (memcmp(pdu.data, assoc->gsm_7bits.data, pdu.dataLen) != 0 )
+            {
+                return LE_FAULT;
+            }
 
             /* Decode */
             res = smsPdu_Decode(PA_SMS_PROTOCOL_GSM,pdu.data,pdu.dataLen,&message);
-            CU_ASSERT_EQUAL( res, LE_OK );
-            CU_ASSERT_EQUAL( message.type, assoc->type );
-            fprintf(stderr, "Type: %u\n", message.type);
+            if (res != LE_OK)
+            {
+                return LE_FAULT;
+            }
+
+            if (message.type != assoc->type)
+            {
+                return LE_FAULT;
+            }
+            LE_INFO("Type: %u", message.type);
 
             switch(message.type)
             {
                 case PA_SMS_SMS_DELIVER:
-                    fprintf(stderr, "Format: %u\n", message.smsDeliver.format);
-                    fprintf(stderr, "Data (%u): '%s'\n", message.smsDeliver.dataLen, message.smsDeliver.data);
-                    CU_ASSERT_EQUAL( message.smsDeliver.format, LE_SMS_FORMAT_TEXT );
-                    CU_ASSERT_EQUAL( memcmp(message.smsDeliver.data,assoc->text,strlen(assoc->text)),0);
-                    break;
+                {
+                    LE_INFO("Format: %u", message.smsDeliver.format);
+                    LE_INFO("Data (%u): '%s'", message.smsDeliver.dataLen, message.smsDeliver.data);
+                    if (message.smsDeliver.format != LE_SMS_FORMAT_TEXT)
+                    {
+                        return LE_FAULT;
+                    }
+                    if (memcmp(message.smsDeliver.data,assoc->text,strlen(assoc->text)) != 0)
+                    {
+                        return LE_FAULT;
+                    }
+                }
+                break;
 
                 case PA_SMS_SMS_SUBMIT:
-                    fprintf(stderr, "Format: %u\n", message.smsSubmit.format);
-                    fprintf(stderr, "Data (%u): '%s'\n", message.smsSubmit.dataLen, message.smsSubmit.data);
-                    CU_ASSERT_EQUAL( message.smsSubmit.format, LE_SMS_FORMAT_TEXT );
-                    CU_ASSERT_EQUAL( memcmp(message.smsSubmit.data,assoc->text,strlen(assoc->text)),0);
-                    break;
+                {
+                    LE_INFO("Format: %u", message.smsSubmit.format);
+                    LE_INFO("Data (%u): '%s'", message.smsSubmit.dataLen, message.smsSubmit.data);
+                    LE_INFO("Data (%u): '%s'", message.smsDeliver.dataLen, message.smsDeliver.data);
+                    if (message.smsSubmit.format != LE_SMS_FORMAT_TEXT)
+                    {
+                        return LE_FAULT;
+                    }
+                    if (memcmp(message.smsSubmit.data,assoc->text,strlen(assoc->text)) != 0)
+                    {
+                        return LE_FAULT;
+                    }
+                }
+                break;
 
                 default:
-                    CU_FAIL("Unexpected type");
-                    break;
+                {
+                    LE_ERROR("Unexpected type");
+                    return LE_FAULT;
+                }
             }
         }
 
         /* CDMA Encode 8 bits */
-        fprintf(stderr, "Encoding in 8 bits CDMA\n");
+        LE_INFO("Encoding in 8 bits CDMA");
         res = smsPdu_Encode(PA_SMS_PROTOCOL_CDMA,
-            (const uint8_t*)assoc->text,
-            strlen(assoc->text),
-            assoc->dest,
-            SMSPDU_8_BITS,
-            assoc->type,
-            &pdu);
-        CU_ASSERT_EQUAL( res, assoc->cdma_8bits.conversionResult );
+                        (const uint8_t*)assoc->text,
+                        strlen(assoc->text),
+                        assoc->dest,
+                        SMSPDU_8_BITS,
+                        assoc->type,
+                        &pdu);
+        if (res != assoc->cdma_8bits.conversionResult)
+        {
+            return LE_FAULT;
+        }
 
         if ( res == LE_OK )
         {
             uint32_t timestampSize = 8;
             uint32_t indexAfterTimestamp = assoc->cdma_8bits.timestampIndex+timestampSize;
 
-            fprintf(stderr, "Source: (%zu)\n", assoc->cdma_8bits.length);
+            LE_INFO("Source: (%zu)", assoc->cdma_8bits.length);
             DumpPDU(assoc->cdma_8bits.data, assoc->cdma_8bits.length);
 
-            fprintf(stderr, "Encoded: (%u)\n", pdu.dataLen);
+            LE_INFO("Encoded: (%u)", pdu.dataLen);
             DumpPDU(pdu.data, pdu.dataLen);
 
             /* Check, exclude timestamp*/
-            CU_ASSERT_EQUAL( pdu.dataLen, assoc->cdma_8bits.length );
-            CU_ASSERT_EQUAL( memcmp(pdu.data, assoc->cdma_8bits.data,assoc->cdma_8bits.timestampIndex+1), 0);
-            CU_ASSERT_EQUAL( memcmp(&pdu.data[indexAfterTimestamp],
-                                    &assoc->cdma_8bits.data[indexAfterTimestamp],
-                                    assoc->cdma_8bits.length-indexAfterTimestamp), 0);
+            if (pdu.dataLen != assoc->cdma_8bits.length)
+            {
+                return LE_FAULT;
+            }
+
+            if ( memcmp(pdu.data, assoc->cdma_8bits.data, assoc->cdma_8bits.timestampIndex+1) != 0)
+            {
+                return LE_FAULT;
+            }
+
+            if (memcmp(&pdu.data[indexAfterTimestamp],
+                            &assoc->cdma_8bits.data[indexAfterTimestamp],
+                            assoc->cdma_8bits.length-indexAfterTimestamp) != 0)
+            {
+                return LE_FAULT;
+            }
 
             /* Decode */
-            res = smsPdu_Decode(PA_SMS_PROTOCOL_CDMA,pdu.data,pdu.dataLen,&message);
-            CU_ASSERT_EQUAL( res, LE_OK );
-            CU_ASSERT_EQUAL( message.type, assoc->type );
+            res = smsPdu_Decode(PA_SMS_PROTOCOL_CDMA, pdu.data,pdu.dataLen, &message);
+            if (res != LE_OK )
+            {
+                return LE_FAULT;
+            }
+            if (message.type != assoc->type)
+            {
+                return LE_FAULT;
+            }
 
             switch(message.type)
             {
-            case PA_SMS_SMS_DELIVER:
-                CU_ASSERT_EQUAL( message.smsDeliver.format, LE_SMS_FORMAT_BINARY );
-                CU_ASSERT_EQUAL( memcmp(message.smsDeliver.data,assoc->text,strlen(assoc->text)),0);
+                case PA_SMS_SMS_DELIVER:
+                {
+                    if (message.smsDeliver.format != LE_SMS_FORMAT_BINARY  )
+                    {
+                        return LE_FAULT;
+                    }
+                    if (memcmp(message.smsDeliver.data,assoc->text,strlen(assoc->text)) != 0)
+                    {
+                        return LE_FAULT;
+                    }
+                }
                 break;
 
-            case PA_SMS_SMS_SUBMIT:
-                fprintf(stderr, "Data (%u): '%s'\n", message.smsSubmit.dataLen, message.smsSubmit.data);
-                CU_ASSERT_EQUAL( message.smsSubmit.format, LE_SMS_FORMAT_BINARY );
-                CU_ASSERT_EQUAL( memcmp(message.smsSubmit.data,assoc->text,strlen(assoc->text)),0);
+                case PA_SMS_SMS_SUBMIT:
+                {
+                    LE_INFO("Data (%u): '%s'", message.smsSubmit.dataLen, message.smsSubmit.data);
+                    if (message.smsSubmit.format != LE_SMS_FORMAT_BINARY)
+                    {
+                        return LE_FAULT;
+                    }
+                    if (memcmp(message.smsSubmit.data,assoc->text,strlen(assoc->text)) != 0)
+                    {
+                        return LE_FAULT;
+                    }
+                }
                 break;
 
-            default:
-                CU_FAIL("Unexpected type");
-                break;
+                default:
+                {
+                    LE_ERROR("Unexpected type");
+                    return LE_FAULT;
+                }
             }
         }
 
-        fprintf(stderr, "------------------\n");
+        LE_INFO("------------------");
 
         /* CDMA Encode 7 bits */
-        fprintf(stderr, "Encoding in 7 bits CDMA \n");
+        LE_INFO("Encoding in 7 bits CDMA ");
         res = smsPdu_Encode(PA_SMS_PROTOCOL_CDMA,
-            (const uint8_t*)assoc->text,
-            strlen(assoc->text),
-            assoc->dest,
-            SMSPDU_7_BITS,
-            assoc->type,
-            &pdu);
-        CU_ASSERT_EQUAL( res, assoc->cdma_7bits.conversionResult );
+                        (const uint8_t*)assoc->text,
+                        strlen(assoc->text),
+                        assoc->dest,
+                        SMSPDU_7_BITS,
+                        assoc->type,
+                        &pdu);
+        if (res != assoc->cdma_7bits.conversionResult)
+        {
+            return LE_FAULT;
+        }
 
         if ( res == LE_OK )
         {
             uint32_t timestampSize = 8;
             uint32_t indexAfterTimestamp = assoc->cdma_7bits.timestampIndex+timestampSize;
 
-            fprintf(stderr, "Source: (%zu)\n", assoc->cdma_7bits.length);
+            LE_INFO("Source: (%zu)", assoc->cdma_7bits.length);
             DumpPDU(assoc->cdma_7bits.data, assoc->cdma_7bits.length);
 
-            fprintf(stderr, "Encoded: (%u)\n", pdu.dataLen);
+            LE_INFO("Encoded: (%u)", pdu.dataLen);
             DumpPDU(pdu.data, pdu.dataLen);
 
             /* Check, exclude timestamp*/
-            CU_ASSERT_EQUAL( pdu.dataLen, assoc->cdma_7bits.length );
-            CU_ASSERT_EQUAL( memcmp(pdu.data, assoc->cdma_7bits.data,assoc->cdma_7bits.timestampIndex+1), 0);
-            CU_ASSERT_EQUAL( memcmp(&pdu.data[indexAfterTimestamp],
-                                    &assoc->cdma_7bits.data[indexAfterTimestamp],
-                                    assoc->cdma_7bits.length-indexAfterTimestamp), 0);
+            if (pdu.dataLen != assoc->cdma_7bits.length)
+            {
+                return LE_FAULT;
+            }
+            if (memcmp(pdu.data, assoc->cdma_7bits.data,assoc->cdma_7bits.timestampIndex+1) != 0)
+            {
+                return LE_FAULT;
+            }
+            if (memcmp(&pdu.data[indexAfterTimestamp],
+                            &assoc->cdma_7bits.data[indexAfterTimestamp],
+                            assoc->cdma_7bits.length-indexAfterTimestamp) != 0)
+            {
+                return LE_FAULT;
+            }
 
             /* Decode */
             res = smsPdu_Decode(PA_SMS_PROTOCOL_CDMA,pdu.data,pdu.dataLen,&message);
-            CU_ASSERT_EQUAL( res, LE_OK );
-            CU_ASSERT_EQUAL( message.type, assoc->type );
+            if (res != LE_OK)
+            {
+                return LE_FAULT;
+            }
+            if (message.type != assoc->type)
+            {
+                return LE_FAULT;
+            }
 
             switch(message.type)
             {
-            case PA_SMS_SMS_DELIVER:
-                fprintf(stderr, "Format: %u\n", message.smsDeliver.format);
-                fprintf(stderr, "Data (%u): '%s'\n", message.smsDeliver.dataLen, message.smsDeliver.data);
-                CU_ASSERT_EQUAL( message.smsDeliver.format, LE_SMS_FORMAT_TEXT );
-                CU_ASSERT_EQUAL( memcmp(message.smsDeliver.data,assoc->text,strlen(assoc->text)),0);
+                case PA_SMS_SMS_DELIVER:
+                {
+                    LE_INFO("Format: %u", message.smsDeliver.format);
+                    LE_INFO("Data (%u): '%s'", message.smsDeliver.dataLen, message.smsDeliver.data);
+                    if (message.smsDeliver.format != LE_SMS_FORMAT_TEXT)
+                    {
+                        return LE_FAULT;
+                    }
+                    if (memcmp(message.smsDeliver.data,assoc->text,strlen(assoc->text)) != 0)
+                    {
+                        return LE_FAULT;
+                    }
+                }
                 break;
 
-            case PA_SMS_SMS_SUBMIT:
-                fprintf(stderr, "Format: %u\n", message.smsSubmit.format);
-                fprintf(stderr, "Data (%u): '%s'\n", message.smsSubmit.dataLen, message.smsSubmit.data);
-                CU_ASSERT_EQUAL( message.smsSubmit.format, LE_SMS_FORMAT_TEXT );
-                CU_ASSERT_EQUAL( memcmp(message.smsSubmit.data,assoc->text,strlen(assoc->text)),0);
+                case PA_SMS_SMS_SUBMIT:
+                {
+                    LE_INFO("Format: %u", message.smsSubmit.format);
+                    LE_INFO("Data (%u): '%s'", message.smsSubmit.dataLen, message.smsSubmit.data);
+                    if (message.smsSubmit.format != LE_SMS_FORMAT_TEXT)
+                    {
+                        return LE_FAULT;
+                    }
+                    if (memcmp(message.smsSubmit.data,assoc->text,strlen(assoc->text)) != 0)
+                    {
+                        return LE_FAULT;
+                    }
+                }
                 break;
 
-            default:
-                CU_FAIL("Unexpected type");
-                break;
+                default:
+                {
+                    LE_ERROR("Unexpected type");
+                    return LE_FAULT;
+                }
             }
         }
-
-        fprintf(stderr, "------------------\n");
-        fprintf(stderr, "\n");
+        LE_INFO("------------------");
     }
+
+    return LE_OK;
 }
 
+//--------------------------------------------------------------------------------------------------
+/*
+ * Check "logread -f | grep sms" log
+ * Start app : app start smsPduTest
+ */
+//--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
+    int i;
+    le_result_t res;
+
     // Init the test case / test suite data structures
     smsPdu_Initialize();
 
-
-
-    CU_TestInfo testCases[] =
+    my_struct testCases[] =
     {
-            { "Test EncodePdu", testEncodePdu },
-            { "Test DecodePdu", testDecodePdu },
-            CU_TEST_INFO_NULL,
+                    { "Test EncodePdu", TestEncodePdu },
+                    { "Test DecodePdu", TestDecodePdu },
+                    { "", NULL }
     };
 
-    CU_SuiteInfo suites[] =
+    for (i=0; testCases[i].ptrfunc != NULL; i++)
     {
-            { "PDU Convert tests", init_suite, clean_suite, testCases },
-            CU_SUITE_INFO_NULL,
-    };
-
-    // Initialize the CUnit test registry and register the test suite
-    if (CUE_SUCCESS != CU_initialize_registry())
-        exit(CU_get_error());
-
-    if ( CUE_SUCCESS != CU_register_suites(suites))
-    {
-        CU_cleanup_registry();
-        exit(CU_get_error());
+        LE_INFO("Test %s STARTED", testCases[i].name);
+        res =  testCases[i].ptrfunc();
+        if (res != LE_OK)
+        {
+            LE_ERROR("testCases %s FAILED", testCases[i].name);
+            LE_ERROR("cdmaPduTest FAILED and Exit");
+            exit(EXIT_FAILURE);
+        }
+        else
+        {
+            LE_INFO("Test %s PASSED", testCases[i].name);
+        }
     }
 
-    CU_basic_set_mode(CU_BRM_VERBOSE);
-    CU_basic_run_tests();
-
-    // Output summary of failures, if there were any
-    if ( CU_get_number_of_failures() > 0 )
-    {
-        fprintf(stdout,"\n [START]List of Failure :\n");
-        CU_basic_show_failures(CU_get_failure_list());
-        fprintf(stdout,"\n [STOP]List of Failure\n");
-
-        exit(EXIT_FAILURE);
-    }
-
+    LE_INFO("smsPduTest SUCCESS and Exit");
     exit(EXIT_SUCCESS);
 }

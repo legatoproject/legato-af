@@ -12,7 +12,7 @@ maxMemoryBytes: 2000K
 
 executables:
 {
-    foo = ( foo.c )
+    foo = ( foo )
 }
 
 processes:

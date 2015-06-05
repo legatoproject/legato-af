@@ -5,30 +5,13 @@
 #*******************************************************************************
 
 find_package(Legato REQUIRED)
-find_package(CUnit REQUIRED)
 
-set(APP_TARGET testModemMcc)
-
-message("CUNIT_INCLUDE_DIRS: ${CUNIT_INCLUDE_DIRS}")
-
-mkexe(${APP_TARGET}
-            mccTest
-            ${CUNIT_LIBRARIES}
-            -i ${CUNIT_INSTALL}/include
-            -i ${CUNIT_INSTALL}/include/CUnit
-            -i ${LEGATO_ROOT}/interfaces/modemServices
-            -i ${LEGATO_ROOT}/interfaces/audio
-        DEPENDS
-            legato
-            ## TODO: Remove this when the mk tools do dependency checking.
-            mccTest/Component.cdef
-            mccTest/main.c
-            mccTest/main.h
-            mccTest/le_mccTest.c
-            ${LEGATO_ROOT}/interfaces/modemServices/le_mdmDefs.api
-            )
-
-if(NOT ${LEGATO_TARGET} STREQUAL "localhost")
-    add_test(${APP_TARGET} ${EXECUTABLE_OUTPUT_PATH}/${APP_TARGET})
-    set_tests_properties(${APP_TARGET} PROPERTIES TIMEOUT 0)
-endif()
+mkapp(mccTest.adef
+    -i ${LEGATO_ROOT}/interfaces/modemServices
+    -i ${LEGATO_ROOT}/interfaces/audio
+    DEPENDS
+        legato
+        mccTest/Component.cdef
+        mccTest/le_mccTest.c
+        ${LEGATO_ROOT}/interfaces/modemServices/le_mdmDefs.api
+)

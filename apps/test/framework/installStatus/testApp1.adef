@@ -1,0 +1,12 @@
+executables:
+{
+    testApp1 = ( simpleTest )
+}
+
+processes:
+{
+    run:
+    {
+        ( testApp1 )
+    }
+}

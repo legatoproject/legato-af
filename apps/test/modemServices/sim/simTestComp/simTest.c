@@ -6,11 +6,6 @@
   *
   */
 
-#include "legato.h"
-#include <stdio.h>
-#include <semaphore.h>
-
-#include "interfaces.h"
 #include "main.h"
 
 // TODO: retrieve PIN and PUK from configuration in automatic mode
@@ -27,43 +22,46 @@
 #define PUK_BAD_LENGTH_TEST "12"
 
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Handler function for SIM States Notifications.
  *
  */
 //--------------------------------------------------------------------------------------------------
-static void TestSimStateHandler(le_sim_ObjRef_t simRef, void* contextPtr)
+static void TestSimStateHandler
+(
+    le_sim_Id_t     simId,
+    le_sim_States_t simState,
+    void*           contextPtr
+)
 {
     le_sim_States_t       state;
-    uint32_t              slot=le_sim_GetSlotNumber(simRef);
 
     // Get SIM state
-    state = le_sim_GetState(simRef);
+    state = le_sim_GetState(simId);
 
     switch(state)
     {
         case LE_SIM_INSERTED:
-            LE_INFO("-TEST- New state LE_SIM_INSERTED for SIM card.%d", slot);
+            LE_INFO("-TEST- New state LE_SIM_INSERTED for SIM card.%d", simId);
             break;
         case LE_SIM_ABSENT:
-            LE_INFO("-TEST- New state LE_SIM_ABSENT for SIM card.%d", slot);
+            LE_INFO("-TEST- New state LE_SIM_ABSENT for SIM card.%d", simId);
             break;
         case LE_SIM_READY:
-            LE_INFO("-TEST- New state LE_SIM_READY for SIM card.%d", slot);
+            LE_INFO("-TEST- New state LE_SIM_READY for SIM card.%d", simId);
             break;
         case LE_SIM_BLOCKED:
-            LE_INFO("-TEST- New state LE_SIM_BLOCKED for SIM card.%d", slot);
+            LE_INFO("-TEST- New state LE_SIM_BLOCKED for SIM card.%d", simId);
             break;
         case LE_SIM_BUSY:
-            LE_INFO("-TEST- New state LE_SIM_BUSY for SIM card.%d", slot);
+            LE_INFO("-TEST- New state LE_SIM_BUSY for SIM card.%d", simId);
             break;
         case LE_SIM_STATE_UNKNOWN:
-            LE_INFO("-TEST- New state LE_SIM_STATE_UNKNOWN for SIM card.%d", slot);
+            LE_INFO("-TEST- New state LE_SIM_STATE_UNKNOWN for SIM card.%d", simId);
             break;
         default:
-            LE_INFO("-TEST- New state %d for SIM card.%d", state, slot);
+            LE_INFO("-TEST- New state %d for SIM card.%d", state, simId);
             break;
     }
     if((state>=LE_SIM_INSERTED) && (state<=LE_SIM_STATE_UNKNOWN))
@@ -82,7 +80,11 @@ static void TestSimStateHandler(le_sim_ObjRef_t simRef, void* contextPtr)
  *
  */
 //--------------------------------------------------------------------------------------------------
-static void displaySIMState(le_sim_States_t state, uint32_t slot)
+static void DisplaySimState
+(
+    le_sim_States_t state,
+    le_sim_Id_t simId
+)
 {
     char string[100];
 
@@ -91,31 +93,41 @@ static void displaySIMState(le_sim_States_t state, uint32_t slot)
     switch(state)
     {
         case LE_SIM_INSERTED:
-            sprintf(string, "\nSIM Card state LE_SIM_INSERTED for SIM card.%d \n", slot);
+            sprintf(string, "\nSIM Card state LE_SIM_INSERTED for SIM card.%d \n", simId);
             break;
         case LE_SIM_ABSENT:
-            sprintf(string, "\nSIM Card state LE_SIM_ABSENT for SIM card.%d \n", slot);
+            sprintf(string, "\nSIM Card state LE_SIM_ABSENT for SIM card.%d \n", simId);
             break;
         case LE_SIM_READY:
-            sprintf(string, "\nSIM Card state LE_SIM_READY for SIM card.%d \n", slot);
+            sprintf(string, "\nSIM Card state LE_SIM_READY for SIM card.%d \n", simId);
             break;
         case LE_SIM_BLOCKED:
-            sprintf(string, "\nSIM Card state LE_SIM_BLOCKED for SIM card.%d \n", slot);
+            sprintf(string, "\nSIM Card state LE_SIM_BLOCKED for SIM card.%d \n", simId);
             break;
         case LE_SIM_BUSY:
-            sprintf(string, "\nSIM Card state LE_SIM_BUSY for SIM card.%d \n", slot);
+            sprintf(string, "\nSIM Card state LE_SIM_BUSY for SIM card.%d \n", simId);
             break;
         case LE_SIM_STATE_UNKNOWN:
-            sprintf(string, "\nSIM Card state LE_SIM_STATE_UNKNOWN for SIM card.%d \n", slot);
+            sprintf(string, "\nSIM Card state LE_SIM_STATE_UNKNOWN for SIM card.%d \n", simId);
             break;
         default:
-            sprintf(string, "\nSIM Card state %d for SIM card.%d \n", state, slot);
+            sprintf(string, "\nSIM Card state %d for SIM card.%d \n", state, simId);
             break;
     }
 
     Print(string);
 }
 
+
+void StateHandlerFunc
+(
+    le_sim_Id_t     simId,
+    le_sim_States_t simState,
+    void*           contextPtr
+)
+{
+    LE_INFO("StateHandlerFunc simId %d, state %d", simId, simState);
+}
 
 //--------------------------------------------------------------------------------------------------
 //                                       Test Functions
@@ -129,40 +141,32 @@ static void displaySIMState(le_sim_States_t state, uint32_t slot)
 //--------------------------------------------------------------------------------------------------
 void simTest_Create
 (
-    le_sim_Type_t cardNum,
+    le_sim_Id_t simId,
     const char* pinPtr
 )
 {
-    bool            presence=false;
-    le_sim_ObjRef_t simRef;
+    bool            presence = false;
     char            iccid[LE_SIM_ICCID_BYTES] = {0};
     char            imsi[LE_SIM_IMSI_BYTES] = {0};
     le_result_t     res;
 
-    // Get the handle on the requested SIM
-    simRef = le_sim_Create(cardNum);
-    LE_ASSERT(simRef!=NULL);
-
     // Enter PIN code
-    res = le_sim_EnterPIN(simRef, pinPtr);
+    res = le_sim_EnterPIN(simId, pinPtr);
     LE_ASSERT(res==LE_OK);
 
     // Get ICCID
-    res = le_sim_GetICCID(simRef, iccid, sizeof(iccid));
+    res = le_sim_GetICCID(simId, iccid, sizeof(iccid));
     LE_ASSERT(res==LE_OK);
     Print( iccid );
 
     // Get IMSI
-    res = le_sim_GetIMSI(simRef, imsi, sizeof(imsi));
+    res = le_sim_GetIMSI(simId, imsi, sizeof(imsi));
     LE_ASSERT(res==LE_OK);
     Print( imsi );
 
     // Check if SIM present
-    presence=le_sim_IsPresent(simRef);
+    presence = le_sim_IsPresent(simId);
     LE_ASSERT(presence);
-
-    // Unsubscribe to the SIM
-    le_sim_Delete(simRef);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -173,23 +177,18 @@ void simTest_Create
 //--------------------------------------------------------------------------------------------------
 void simTest_Lock
 (
-    le_sim_Type_t cardNum,
+    le_sim_Id_t simId,
     const char* pinPtr
 )
 {
     le_sim_States_t state;
-    le_sim_ObjRef_t simRef;
     bool doLock;
-    uint8_t loop=0;
+    uint8_t loop = 0;
     le_result_t     res;
 
-    // Get the handle on the requested SIM
-    simRef = le_sim_Create(cardNum);
-    LE_ASSERT(simRef!=NULL);
-
     // Get SIM state
-    state = le_sim_GetState(simRef);
-    displaySIMState(state, cardNum);
+    state = le_sim_GetState(simId);
+    DisplaySimState(state, simId);
     LE_ASSERT((state == LE_SIM_READY)||(state == LE_SIM_INSERTED));
 
     if(state == LE_SIM_READY)
@@ -199,8 +198,8 @@ void simTest_Lock
     else if (state == LE_SIM_INSERTED)
     {
         // Enter PIN code
-        res = le_sim_EnterPIN(simRef, pinPtr);
-        LE_ASSERT(res==LE_OK);
+        res = le_sim_EnterPIN(simId, pinPtr);
+        LE_ASSERT(res == LE_OK);
         doLock = false;
     }
 
@@ -214,16 +213,16 @@ void simTest_Lock
             LE_INFO("lock the SIM");
 
             // Lock PIN using a wrong PIN code (error code expected)
-            res = le_sim_Lock(simRef, FAIL_PIN_TEST);
-            LE_ASSERT(res==LE_FAULT);
+            res = le_sim_Lock(simId, FAIL_PIN_TEST);
+            LE_ASSERT(res == LE_FAULT);
 
             // Lock PIN using the correct PIN code
-            res = le_sim_Lock(simRef, pinPtr);
-            LE_ASSERT(res==LE_OK);
+            res = le_sim_Lock(simId, pinPtr);
+            LE_ASSERT(res == LE_OK);
 
             // Enter PIN code
-            res = le_sim_EnterPIN(simRef, pinPtr);
-            LE_ASSERT(res==LE_OK);
+            res = le_sim_EnterPIN(simId, pinPtr);
+            LE_ASSERT(res == LE_OK);
             doLock = false;
         }
         else
@@ -231,13 +230,13 @@ void simTest_Lock
             LE_INFO("unlock the SIM");
 
             // Unlock the SIM using a wrong PIN code (error code expected)
-            res = le_sim_Unlock(simRef, FAIL_PIN_TEST);
-            LE_ASSERT(res==LE_FAULT);
+            res = le_sim_Unlock(simId, FAIL_PIN_TEST);
+            LE_ASSERT(res == LE_FAULT);
 
             // Lock PIN using the correct PIN code
-            res = le_sim_Unlock(simRef, pinPtr);
-            LE_ASSERT(res==LE_OK);
-            doLock=true;
+            res = le_sim_Unlock(simId, pinPtr);
+            LE_ASSERT(res == LE_OK);
+            doLock = true;
         }
 
         loop++;
@@ -252,61 +251,56 @@ void simTest_Lock
 //--------------------------------------------------------------------------------------------------
 void simTest_Authentication
 (
-    le_sim_Type_t cardNum,
+    le_sim_Id_t simId,
     const char* pinPtr,
     const char* pukPtr
 )
 {
     le_result_t     res;
-    bool            ready=false;
-    int32_t         initTries=0;
-    int32_t         tries=0;
-    le_sim_ObjRef_t simRef;
+    bool            ready = false;
+    int32_t         initTries = 0;
+    int32_t         tries = 0;
     char            string[100];
 
-    memset(string,0,100);
-
-    // Get the handle on the requested SIM
-    simRef = le_sim_Create(cardNum);
-    LE_ASSERT(simRef!=NULL);
+    memset(string, 0, 100);
 
     // Get the remaining PIN entries
-    initTries=le_sim_GetRemainingPINTries(simRef);
+    initTries = le_sim_GetRemainingPINTries(simId);
 
     // Enter PIN code
-    res = le_sim_EnterPIN(simRef, FAIL_PIN_TEST);
-    LE_ASSERT(res==LE_FAULT);
+    res = le_sim_EnterPIN(simId, FAIL_PIN_TEST);
+    LE_ASSERT(res == LE_FAULT);
 
     // Get the remaining PIN entries
-    tries=le_sim_GetRemainingPINTries(simRef);
+    tries = le_sim_GetRemainingPINTries(simId);
     LE_ASSERT((initTries-tries) == 1);
 
     // Check that the SIM is not ready
-    ready=le_sim_IsReady(simRef);
+    ready = le_sim_IsReady(simId);
     LE_ASSERT(!ready);
 
     // Enter PIN code
-    res = le_sim_EnterPIN(simRef, pinPtr);
-    LE_ASSERT(res==LE_OK);
+    res = le_sim_EnterPIN(simId, pinPtr);
+    LE_ASSERT(res == LE_OK);
 
     // Check that the SIM is ready
-    ready=le_sim_IsReady(simRef);
+    ready = le_sim_IsReady(simId);
     LE_ASSERT(ready);
 
     // Change PIN
-    res = le_sim_ChangePIN(simRef, FAIL_PIN_TEST, NEW_PIN_TEST);
-    LE_ASSERT(res==LE_FAULT);
+    res = le_sim_ChangePIN(simId, FAIL_PIN_TEST, NEW_PIN_TEST);
+    LE_ASSERT(res == LE_FAULT);
 
     // Change the PIN code
-    res = le_sim_ChangePIN(simRef, pinPtr, NEW_PIN_TEST);
-    LE_ASSERT(res==LE_OK);
+    res = le_sim_ChangePIN(simId, pinPtr, NEW_PIN_TEST);
+    LE_ASSERT(res == LE_OK);
 
     // block the SIM:
     // while remaining PIN entries not null, enter a wrong PIN code
-    while((initTries=le_sim_GetRemainingPINTries(simRef))>0)
+    while((initTries = le_sim_GetRemainingPINTries(simId)) > 0)
     {
         // Enter PIN code
-        res = le_sim_EnterPIN(simRef, FAIL_PIN_TEST);
+        res = le_sim_EnterPIN(simId, FAIL_PIN_TEST);
     }
 
     if(initTries < 0)
@@ -316,15 +310,12 @@ void simTest_Authentication
     }
 
     // Unblock the SIM using a wrong PUK code (error expected)
-    res = le_sim_Unblock(simRef, FAIL_PUK_TEST, NEW_PIN_TEST);
-    LE_ASSERT(res==LE_FAULT);
+    res = le_sim_Unblock(simId, FAIL_PUK_TEST, NEW_PIN_TEST);
+    LE_ASSERT(res == LE_FAULT);
 
     // Unblock the SIM using the correct PUK code
-    res = le_sim_Unblock(simRef, pukPtr, NEW_PIN_TEST);
-    LE_ASSERT(res==LE_OK);
-
-    // Unsubscribe to the SIM
-    le_sim_Delete(simRef);
+    res = le_sim_Unblock(simId, pukPtr, NEW_PIN_TEST);
+    LE_ASSERT(res == LE_OK);
 
     Print("End simTest_Authentication");
 }
@@ -337,44 +328,36 @@ void simTest_Authentication
 //--------------------------------------------------------------------------------------------------
 void simTest_SimAbsent
 (
-    le_sim_Type_t cardNum
+    le_sim_Id_t simId
 )
 {
-    le_sim_ObjRef_t simRef;
-    int32_t         initTries=0;
+    int32_t         initTries = 0;
     le_result_t     res;
-    bool            ready=false;
-
-    // Get the handle on the requested SIM
-    simRef = le_sim_Create(cardNum);
-    LE_ASSERT(simRef!=NULL);
+    bool            ready = false;
 
     // Get the remaining PIN entries (error expected as no SIM)
-    initTries=le_sim_GetRemainingPINTries(simRef);
+    initTries = le_sim_GetRemainingPINTries(simId);
     LE_ASSERT((initTries == LE_NOT_FOUND) || (initTries == LE_FAULT));
 
     // Enter PIN code (error expected as no SIM)
-    res = le_sim_EnterPIN(simRef, PIN_TEMP);
+    res = le_sim_EnterPIN(simId, PIN_TEMP);
     LE_ASSERT((res == LE_NOT_FOUND) || (res == LE_FAULT));
 
     // Check that the SIM is not ready
-    ready=le_sim_IsReady(simRef);
+    ready = le_sim_IsReady(simId);
     LE_ASSERT(!ready);
 
     // Change PIN (error expected as no SIM)
-    res = le_sim_ChangePIN(simRef, PIN_TEMP, NEW_PIN_TEST);
+    res = le_sim_ChangePIN(simId, PIN_TEMP, NEW_PIN_TEST);
     LE_ASSERT((res == LE_NOT_FOUND) || (res == LE_FAULT));
 
     // Unblock PIN  (error expected as no SIM)
-    res = le_sim_Unblock(simRef, (char*)PUK_TEST1, PIN_TEMP);
+    res = le_sim_Unblock(simId, (char*)PUK_TEST1, PIN_TEMP);
     LE_ASSERT((res == LE_NOT_FOUND) || (res == LE_FAULT));
 
     // Unlock PIN  (error expected as no SIM)
-    res = le_sim_Unlock(simRef, PIN_TEMP);
+    res = le_sim_Unlock(simId, PIN_TEMP);
     LE_ASSERT((res == LE_NOT_FOUND) || (res == LE_FAULT));
-
-    // Unsubscribe to the SIM
-    le_sim_Delete(simRef);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -387,29 +370,21 @@ void simTest_SimSelect
 (
 )
 {
-    // Get the handle on the external SIM
-    le_sim_ObjRef_t simExtRef = le_sim_Create(LE_SIM_EXTERNAL_SLOT_1);
-    LE_ASSERT(simExtRef!=NULL);
-
-    // Get the handle on the embedded SIM
-    le_sim_ObjRef_t simEmbeddedRef = le_sim_Create(LE_SIM_EMBEDDED);
-    LE_ASSERT(simEmbeddedRef!=NULL);
-
     // Select the embedded SIM
-    le_result_t res = le_sim_SelectCard(simEmbeddedRef);
-    LE_ASSERT(res==LE_OK);
+    le_result_t res = le_sim_SelectCard(LE_SIM_EMBEDDED);
+    LE_ASSERT(res == LE_OK);
 
     // Get the selected card
-    le_sim_Type_t cardNum = le_sim_GetSelectedCard();
-    LE_ASSERT(cardNum==LE_SIM_EMBEDDED);
+    le_sim_Id_t simId = le_sim_GetSelectedCard();
+    LE_ASSERT(simId == LE_SIM_EMBEDDED);
 
     // Select the embedded SIM
-    res = le_sim_SelectCard(simExtRef);
-    LE_ASSERT(res==LE_OK);
+    res = le_sim_SelectCard(LE_SIM_EXTERNAL_SLOT_1);
+    LE_ASSERT(res == LE_OK);
 
     // Get the selected card
-    cardNum = le_sim_GetSelectedCard();
-    LE_ASSERT(cardNum==LE_SIM_EXTERNAL_SLOT_1);
+    simId = le_sim_GetSelectedCard();
+    LE_ASSERT(simId == LE_SIM_EXTERNAL_SLOT_1);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -420,49 +395,39 @@ void simTest_SimSelect
 //--------------------------------------------------------------------------------------------------
 void simTest_State
 (
-    le_sim_Type_t cardNum,
+    le_sim_Id_t simId,
     const char* pinPtr
 )
 {
     le_result_t                 res;
     le_sim_NewStateHandlerRef_t testHdlrRef;
     le_sim_States_t             state;
-    le_sim_ObjRef_t             simRef;
     char                        string[100];
 
     memset(string, 0, 100);
 
-    // Get the handle on the requested SIM
-    simRef = le_sim_Create(cardNum);
-
-    LE_ASSERT(simRef!=NULL);
-
     // Get SIM state
-    state = le_sim_GetState(simRef);
+    state = le_sim_GetState(simId);
 
-    LE_ASSERT((state>=LE_SIM_INSERTED) && (state<=LE_SIM_BUSY));
-    sprintf(string, "\nSIM Card.%d state:\n", cardNum);
+    LE_ASSERT((state >= LE_SIM_INSERTED) && (state <= LE_SIM_BUSY));
+    sprintf(string, "\nSIM Card.%d state:\n", simId);
     Print(string);
 
-    displaySIMState(state, cardNum);
+    DisplaySimState(state, simId);
 
     if(state == LE_SIM_INSERTED)
     {
         // Enter PIN code
-        res = le_sim_EnterPIN(simRef, pinPtr);
+        res = le_sim_EnterPIN(simId, pinPtr);
         LE_ASSERT(res==LE_OK);
 
         // Get SIM state
-        state = le_sim_GetState(simRef);
+        state = le_sim_GetState(simId);
         LE_ASSERT((state>=LE_SIM_INSERTED) && (state<=LE_SIM_BUSY));
     }
 
-    // Unsubscribe to the SIM
-    le_sim_Delete(simRef);
-
     // Add the state handler
-    testHdlrRef=le_sim_AddNewStateHandler(TestSimStateHandler, NULL);
-    LE_ASSERT(testHdlrRef!=NULL);
+    testHdlrRef = le_sim_AddNewStateHandler(TestSimStateHandler, NULL);
+    LE_ASSERT(testHdlrRef != NULL);
 }
-
 

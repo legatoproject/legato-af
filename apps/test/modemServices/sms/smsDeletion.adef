@@ -1,0 +1,23 @@
+executables:
+{
+    smsDeletion = ( smsDeletion)
+}
+
+processes:
+{
+    envVars:
+    {
+        LE_LOG_LEVEL = DEBUG
+    }
+    run:
+    {
+        ( smsDeletion )
+    }
+}
+
+start: manual
+
+bindings:
+{
+    smsDeletion.smsDeletion.le_sms -> modemService.le_sms
+}

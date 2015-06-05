@@ -1,15 +1,13 @@
 sources:
 {
     le_smsTest.c
-    main.c
 }
 
 requires:
 {
     api:
     {
-        le_cfg.api
-        le_sms.api [manual-start]
+        le_sms.api
         le_mdmDefs.api [types-only]
     }
 }

@@ -3,7 +3,7 @@ start: manual
 
 executables:
 {
-    badExe  = ( bad.c )
+    badExe  = ( bad )
 }
 
 

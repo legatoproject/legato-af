@@ -167,12 +167,28 @@ __attribute__((unused)) static pthread_mutex_t _Mutex = PTHREAD_MUTEX_INITIALIZE
 
 
 //--------------------------------------------------------------------------------------------------
-/* This global flag is shared by all client threads, and is used to indicate whether the common
- * data has been initialized.  It is only initialized once by the main thread, and is only read by
- * the other threads.  Thus, a mutex is not needed for accesses to this variable.
+/**
+ * This global flag is shared by all client threads, and is used to indicate whether the common
+ * data has been initialized.
+ *
+ * @warning Use InitMutex, defined below, to protect accesses to this data.
  */
 //--------------------------------------------------------------------------------------------------
 static bool CommonDataInitialized = false;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Mutex and associated macros for use with the above CommonDataInitialized.
+ */
+//--------------------------------------------------------------------------------------------------
+static pthread_mutex_t InitMutex = PTHREAD_MUTEX_INITIALIZER;   // POSIX "Fast" mutex.
+
+/// Locks the mutex.
+#define LOCK_INIT    LE_ASSERT(pthread_mutex_lock(&InitMutex) == 0);
+
+/// Unlocks the mutex.
+#define UNLOCK_INIT  LE_ASSERT(pthread_mutex_unlock(&InitMutex) == 0);
 
 
 //--------------------------------------------------------------------------------------------------
@@ -251,7 +267,8 @@ __attribute__((unused)) static le_msg_SessionRef_t GetCurrentSessionRef
     _ClientThreadData_t* clientThreadPtr = GetClientThreadDataPtr();
 
     // If the thread specific data is NULL, then the session ref has not been created.
-    LE_FATAL_IF(clientThreadPtr==NULL, "No client session for current thread");
+    LE_FATAL_IF(clientThreadPtr==NULL,
+                "ConnectService() not called for current thread");
 
     return clientThreadPtr->sessionRef;
 }
@@ -292,11 +309,13 @@ void ConnectService
 )
 {
     // If this is the first time the function is called, init the client common data.
+    LOCK_INIT
     if ( ! CommonDataInitialized )
     {
         InitCommonData();
         CommonDataInitialized = true;
     }
+    UNLOCK_INIT
 
     _ClientThreadData_t* clientThreadPtr = GetClientThreadDataPtr();
 
@@ -372,19 +391,24 @@ void DisconnectService
 static void _Handle_AddTestAHandler
 (
     void* _reportPtr,
-    void* _notUsed
+    void* _dataPtr
 )
 {
     le_msg_MessageRef_t _msgRef = _reportPtr;
     _Message_t* _msgPtr = le_msg_GetPayloadPtr(_msgRef);
     uint8_t* _msgBufPtr = _msgPtr->buffer;
 
-    // The clientContextPtr always exists and is always first.
+    // The clientContextPtr always exists and is always first. It is a safe reference to the client
+    // data object, but we already get the pointer to the client data object through the _dataPtr
+    // parameter, so we don't need to do anything with clientContextPtr, other than unpacking it.
     void* _clientContextPtr;
     _msgBufPtr = UnpackData( _msgBufPtr, &_clientContextPtr, sizeof(void*) );
 
-    // Pull out additional data from the context pointer
-    _ClientData_t* _clientDataPtr = _clientContextPtr;
+    // The client data pointer is passed in as a parameter, since the lookup in the safe ref map
+	// and check for NULL has already been done when this function is queued.
+    _ClientData_t* _clientDataPtr = _dataPtr;
+
+    // Pull out additional data from the client data pointer
     TestAHandlerFunc_t _handlerRef_AddTestAHandler = (TestAHandlerFunc_t)_clientDataPtr->handlerPtr;
     void* contextPtr = _clientDataPtr->contextPtr;
 
@@ -444,18 +468,23 @@ TestAHandlerRef_t AddTestAHandler
     _msgBufPtr = _msgPtr->buffer;
 
     // Pack the input parameters
-    // The input parameters are stored in the client data object, and it is
-    // a pointer to this object that is passed down.
+    // The handlerPtr and contextPtr input parameters are stored in the client data object, and it is
+    // a safe reference to this object that is passed down as the context pointer.  The handlerPtr is
+    // not passed down.
     // Create a new client data object and fill it in
     _ClientData_t* _clientDataPtr = le_mem_ForceAlloc(_ClientDataPool);
     _clientDataPtr->handlerPtr = (le_event_HandlerFunc_t)handlerPtr;
     _clientDataPtr->contextPtr = contextPtr;
     _clientDataPtr->callersThreadRef = le_thread_GetCurrent();
-    contextPtr = _clientDataPtr;
+    // Create a safeRef to be passed down as the contextPtr
+    _LOCK
+    contextPtr = le_ref_CreateRef(_HandlerRefMap, _clientDataPtr);
+    _UNLOCK
     _msgBufPtr = PackData( _msgBufPtr, &contextPtr, sizeof(void*) );
 
     // Send a request to the server and get the response.
-    LE_DEBUG("Sending message to server and waiting for response");
+    LE_DEBUG("Sending message to server and waiting for response : %ti bytes sent",
+             _msgBufPtr-_msgPtr->buffer);
     _responseMsgRef = le_msg_RequestSyncResponse(_msgRef);
     // It is a serious error if we don't get a valid response from the server
     LE_FATAL_IF(_responseMsgRef == NULL, "Valid response was not received from server");
@@ -467,11 +496,11 @@ TestAHandlerRef_t AddTestAHandler
     // Unpack the result first
     _msgBufPtr = UnpackData( _msgBufPtr, &_result, sizeof(_result) );
     // Put the handler reference result into the client data object, and
-    // then return a safe reference to the client data object as the reference.
+    // then return a safe reference to the client data object as the reference;
+    // this safe reference is contained in the contextPtr, which was assigned
+    // when the client data object was created.
     _clientDataPtr->handlerRef = (le_event_HandlerRef_t)_result;
-    _LOCK
-    _result = le_ref_CreateRef(_HandlerRefMap, _clientDataPtr);
-    _UNLOCK
+    _result = contextPtr;
 
     // Unpack any "out" parameters
 
@@ -518,6 +547,7 @@ void RemoveTestAHandler
     // the object since they are no longer needed.
     _LOCK
     _ClientData_t* clientDataPtr = le_ref_Lookup(_HandlerRefMap, addHandlerRef);
+    LE_FATAL_IF(clientDataPtr==NULL, "Invalid reference");
     le_ref_DeleteRef(_HandlerRefMap, addHandlerRef);
     _UNLOCK
     addHandlerRef = (TestAHandlerRef_t)clientDataPtr->handlerRef;
@@ -525,7 +555,8 @@ void RemoveTestAHandler
     _msgBufPtr = PackData( _msgBufPtr, &addHandlerRef, sizeof(TestAHandlerRef_t) );
 
     // Send a request to the server and get the response.
-    LE_DEBUG("Sending message to server and waiting for response");
+    LE_DEBUG("Sending message to server and waiting for response : %ti bytes sent",
+             _msgBufPtr-_msgPtr->buffer);
     _responseMsgRef = le_msg_RequestSyncResponse(_msgRef);
     // It is a serious error if we don't get a valid response from the server
     LE_FATAL_IF(_responseMsgRef == NULL, "Valid response was not received from server");
@@ -621,7 +652,8 @@ void allParameters
     _msgBufPtr = PackData( _msgBufPtr, &moreNumElements, sizeof(size_t) );
 
     // Send a request to the server and get the response.
-    LE_DEBUG("Sending message to server and waiting for response");
+    LE_DEBUG("Sending message to server and waiting for response : %ti bytes sent",
+             _msgBufPtr-_msgPtr->buffer);
     _responseMsgRef = le_msg_RequestSyncResponse(_msgRef);
     // It is a serious error if we don't get a valid response from the server
     LE_FATAL_IF(_responseMsgRef == NULL, "Valid response was not received from server");
@@ -681,7 +713,8 @@ void FileTest
     le_msg_SetFd(_msgRef, dataFile);
 
     // Send a request to the server and get the response.
-    LE_DEBUG("Sending message to server and waiting for response");
+    LE_DEBUG("Sending message to server and waiting for response : %ti bytes sent",
+             _msgBufPtr-_msgPtr->buffer);
     _responseMsgRef = le_msg_RequestSyncResponse(_msgRef);
     // It is a serious error if we don't get a valid response from the server
     LE_FATAL_IF(_responseMsgRef == NULL, "Valid response was not received from server");
@@ -732,7 +765,8 @@ void TriggerTestA
 
 
     // Send a request to the server and get the response.
-    LE_DEBUG("Sending message to server and waiting for response");
+    LE_DEBUG("Sending message to server and waiting for response : %ti bytes sent",
+             _msgBufPtr-_msgPtr->buffer);
     _responseMsgRef = le_msg_RequestSyncResponse(_msgRef);
     // It is a serious error if we don't get a valid response from the server
     LE_FATAL_IF(_responseMsgRef == NULL, "Valid response was not received from server");
@@ -755,19 +789,24 @@ void TriggerTestA
 static void _Handle_AddBugTestHandler
 (
     void* _reportPtr,
-    void* _notUsed
+    void* _dataPtr
 )
 {
     le_msg_MessageRef_t _msgRef = _reportPtr;
     _Message_t* _msgPtr = le_msg_GetPayloadPtr(_msgRef);
     uint8_t* _msgBufPtr = _msgPtr->buffer;
 
-    // The clientContextPtr always exists and is always first.
+    // The clientContextPtr always exists and is always first. It is a safe reference to the client
+    // data object, but we already get the pointer to the client data object through the _dataPtr
+    // parameter, so we don't need to do anything with clientContextPtr, other than unpacking it.
     void* _clientContextPtr;
     _msgBufPtr = UnpackData( _msgBufPtr, &_clientContextPtr, sizeof(void*) );
 
-    // Pull out additional data from the context pointer
-    _ClientData_t* _clientDataPtr = _clientContextPtr;
+    // The client data pointer is passed in as a parameter, since the lookup in the safe ref map
+	// and check for NULL has already been done when this function is queued.
+    _ClientData_t* _clientDataPtr = _dataPtr;
+
+    // Pull out additional data from the client data pointer
     BugTestHandlerFunc_t _handlerRef_AddBugTestHandler = (BugTestHandlerFunc_t)_clientDataPtr->handlerPtr;
     void* contextPtr = _clientDataPtr->contextPtr;
 
@@ -833,18 +872,23 @@ BugTestHandlerRef_t AddBugTestHandler
 
     // Pack the input parameters
     _msgBufPtr = PackString( _msgBufPtr, newPathPtr );
-    // The input parameters are stored in the client data object, and it is
-    // a pointer to this object that is passed down.
+    // The handlerPtr and contextPtr input parameters are stored in the client data object, and it is
+    // a safe reference to this object that is passed down as the context pointer.  The handlerPtr is
+    // not passed down.
     // Create a new client data object and fill it in
     _ClientData_t* _clientDataPtr = le_mem_ForceAlloc(_ClientDataPool);
     _clientDataPtr->handlerPtr = (le_event_HandlerFunc_t)handlerPtr;
     _clientDataPtr->contextPtr = contextPtr;
     _clientDataPtr->callersThreadRef = le_thread_GetCurrent();
-    contextPtr = _clientDataPtr;
+    // Create a safeRef to be passed down as the contextPtr
+    _LOCK
+    contextPtr = le_ref_CreateRef(_HandlerRefMap, _clientDataPtr);
+    _UNLOCK
     _msgBufPtr = PackData( _msgBufPtr, &contextPtr, sizeof(void*) );
 
     // Send a request to the server and get the response.
-    LE_DEBUG("Sending message to server and waiting for response");
+    LE_DEBUG("Sending message to server and waiting for response : %ti bytes sent",
+             _msgBufPtr-_msgPtr->buffer);
     _responseMsgRef = le_msg_RequestSyncResponse(_msgRef);
     // It is a serious error if we don't get a valid response from the server
     LE_FATAL_IF(_responseMsgRef == NULL, "Valid response was not received from server");
@@ -856,11 +900,11 @@ BugTestHandlerRef_t AddBugTestHandler
     // Unpack the result first
     _msgBufPtr = UnpackData( _msgBufPtr, &_result, sizeof(_result) );
     // Put the handler reference result into the client data object, and
-    // then return a safe reference to the client data object as the reference.
+    // then return a safe reference to the client data object as the reference;
+    // this safe reference is contained in the contextPtr, which was assigned
+    // when the client data object was created.
     _clientDataPtr->handlerRef = (le_event_HandlerRef_t)_result;
-    _LOCK
-    _result = le_ref_CreateRef(_HandlerRefMap, _clientDataPtr);
-    _UNLOCK
+    _result = contextPtr;
 
     // Unpack any "out" parameters
 
@@ -907,6 +951,7 @@ void RemoveBugTestHandler
     // the object since they are no longer needed.
     _LOCK
     _ClientData_t* clientDataPtr = le_ref_Lookup(_HandlerRefMap, addHandlerRef);
+    LE_FATAL_IF(clientDataPtr==NULL, "Invalid reference");
     le_ref_DeleteRef(_HandlerRefMap, addHandlerRef);
     _UNLOCK
     addHandlerRef = (BugTestHandlerRef_t)clientDataPtr->handlerRef;
@@ -914,7 +959,8 @@ void RemoveBugTestHandler
     _msgBufPtr = PackData( _msgBufPtr, &addHandlerRef, sizeof(BugTestHandlerRef_t) );
 
     // Send a request to the server and get the response.
-    LE_DEBUG("Sending message to server and waiting for response");
+    LE_DEBUG("Sending message to server and waiting for response : %ti bytes sent",
+             _msgBufPtr-_msgPtr->buffer);
     _responseMsgRef = le_msg_RequestSyncResponse(_msgRef);
     // It is a serious error if we don't get a valid response from the server
     LE_FATAL_IF(_responseMsgRef == NULL, "Valid response was not received from server");
@@ -937,19 +983,24 @@ void RemoveBugTestHandler
 static void _Handle_TestCallback
 (
     void* _reportPtr,
-    void* _notUsed
+    void* _dataPtr
 )
 {
     le_msg_MessageRef_t _msgRef = _reportPtr;
     _Message_t* _msgPtr = le_msg_GetPayloadPtr(_msgRef);
     uint8_t* _msgBufPtr = _msgPtr->buffer;
 
-    // The clientContextPtr always exists and is always first.
+    // The clientContextPtr always exists and is always first. It is a safe reference to the client
+    // data object, but we already get the pointer to the client data object through the _dataPtr
+    // parameter, so we don't need to do anything with clientContextPtr, other than unpacking it.
     void* _clientContextPtr;
     _msgBufPtr = UnpackData( _msgBufPtr, &_clientContextPtr, sizeof(void*) );
 
-    // Pull out additional data from the context pointer
-    _ClientData_t* _clientDataPtr = _clientContextPtr;
+    // The client data pointer is passed in as a parameter, since the lookup in the safe ref map
+	// and check for NULL has already been done when this function is queued.
+    _ClientData_t* _clientDataPtr = _dataPtr;
+
+    // Pull out additional data from the client data pointer
     CallbackTestHandlerFunc_t _handlerRef_TestCallback = (CallbackTestHandlerFunc_t)_clientDataPtr->handlerPtr;
     void* contextPtr = _clientDataPtr->contextPtr;
 
@@ -957,11 +1008,14 @@ static void _Handle_TestCallback
     uint32_t data;
     _msgBufPtr = UnpackData( _msgBufPtr, &data, sizeof(uint32_t) );
 
+    const char* name;
+    _msgBufPtr = UnpackString( _msgBufPtr, &name );
+
 
     // Call the registered handler
     if ( _handlerRef_TestCallback != NULL )
     {
-        _handlerRef_TestCallback( data, contextPtr );
+        _handlerRef_TestCallback( data, name, contextPtr );
     }
     else
     {
@@ -1025,18 +1079,23 @@ int32_t TestCallback
     _msgBufPtr = PackData( _msgBufPtr, &someParm, sizeof(uint32_t) );
     _msgBufPtr = PackData( _msgBufPtr, &dataArrayNumElements, sizeof(size_t) );
     _msgBufPtr = PackData( _msgBufPtr, dataArrayPtr, dataArrayNumElements*sizeof(uint8_t) );
-    // The input parameters are stored in the client data object, and it is
-    // a pointer to this object that is passed down.
+    // The handlerPtr and contextPtr input parameters are stored in the client data object, and it is
+    // a safe reference to this object that is passed down as the context pointer.  The handlerPtr is
+    // not passed down.
     // Create a new client data object and fill it in
     _ClientData_t* _clientDataPtr = le_mem_ForceAlloc(_ClientDataPool);
     _clientDataPtr->handlerPtr = (le_event_HandlerFunc_t)handlerPtr;
     _clientDataPtr->contextPtr = contextPtr;
     _clientDataPtr->callersThreadRef = le_thread_GetCurrent();
-    contextPtr = _clientDataPtr;
+    // Create a safeRef to be passed down as the contextPtr
+    _LOCK
+    contextPtr = le_ref_CreateRef(_HandlerRefMap, _clientDataPtr);
+    _UNLOCK
     _msgBufPtr = PackData( _msgBufPtr, &contextPtr, sizeof(void*) );
 
     // Send a request to the server and get the response.
-    LE_DEBUG("Sending message to server and waiting for response");
+    LE_DEBUG("Sending message to server and waiting for response : %ti bytes sent",
+             _msgBufPtr-_msgPtr->buffer);
     _responseMsgRef = le_msg_RequestSyncResponse(_msgRef);
     // It is a serious error if we don't get a valid response from the server
     LE_FATAL_IF(_responseMsgRef == NULL, "Valid response was not received from server");
@@ -1091,7 +1150,8 @@ void TriggerCallbackTest
     _msgBufPtr = PackData( _msgBufPtr, &data, sizeof(uint32_t) );
 
     // Send a request to the server and get the response.
-    LE_DEBUG("Sending message to server and waiting for response");
+    LE_DEBUG("Sending message to server and waiting for response : %ti bytes sent",
+             _msgBufPtr-_msgPtr->buffer);
     _responseMsgRef = le_msg_RequestSyncResponse(_msgRef);
     // It is a serious error if we don't get a valid response from the server
     LE_FATAL_IF(_responseMsgRef == NULL, "Valid response was not received from server");
@@ -1124,23 +1184,34 @@ static void ClientIndicationRecvHandler
     void* clientContextPtr;
     _msgBufPtr = UnpackData( _msgBufPtr, &clientContextPtr, sizeof(void*) );
 
+    // The clientContextPtr is a safe reference for the client data object.  If the client data
+    // pointer is NULL, this means the handler was removed before the event was reported to the
+    // client. This is valid, and the event will be dropped.
+    _LOCK
+    _ClientData_t* clientDataPtr = le_ref_Lookup(_HandlerRefMap, clientContextPtr);
+    _UNLOCK
+    if ( clientDataPtr == NULL )
+    {
+        LE_DEBUG("Ignore reported event after handler removed");
+        return;
+    }
+
     // Pull out the callers thread
-    _ClientData_t* clientDataPtr = clientContextPtr;
     le_thread_Ref_t callersThreadRef = clientDataPtr->callersThreadRef;
 
     // Trigger the appropriate event
     switch (msgPtr->id)
     {
         case _MSGID_AddTestAHandler :
-            le_event_QueueFunctionToThread(callersThreadRef, _Handle_AddTestAHandler, msgRef, NULL);
+            le_event_QueueFunctionToThread(callersThreadRef, _Handle_AddTestAHandler, msgRef, clientDataPtr);
             break;
 
         case _MSGID_AddBugTestHandler :
-            le_event_QueueFunctionToThread(callersThreadRef, _Handle_AddBugTestHandler, msgRef, NULL);
+            le_event_QueueFunctionToThread(callersThreadRef, _Handle_AddBugTestHandler, msgRef, clientDataPtr);
             break;
 
         case _MSGID_TestCallback :
-            le_event_QueueFunctionToThread(callersThreadRef, _Handle_TestCallback, msgRef, NULL);
+            le_event_QueueFunctionToThread(callersThreadRef, _Handle_TestCallback, msgRef, clientDataPtr);
             break;
 
         default: LE_ERROR("Unknowm msg id = %i for client thread = %p", msgPtr->id, callersThreadRef);

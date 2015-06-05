@@ -7,7 +7,7 @@ maxFileSystemBytes: 10000
 
 executables:
 {
-    limitsTest = ( limitsTest.c )
+    limitsTest = ( limitsTest )
 }
 
 processes:

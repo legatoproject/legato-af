@@ -1,33 +1,22 @@
 #!/bin/bash
 
+LoadTestLib
+
 targetAddr=$1
 targetType=${2:-ar7}
 
+OnFail() {
+    echo "Limits Test Failed!"
+}
+
+OnExit() {
+# Uninstall all the apps.
+    rmapp limitsTest.$targetType $targetAddr
+    rmapp largeValuesTest.$targetType $targetAddr
+    rmapp zeroFileSysSize.$targetType $targetAddr
+}
+
 scriptDir=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
-
-# Checks if the logStr is in the logs.  If not then exit with an error code.
-#
-# params:
-#       logStr      The log string to search for.
-checkLogStr () {
-    ssh root@$targetAddr "/sbin/logread | grep \"$1\""
-
-    if [ $? != 0 ]
-    then
-        echo "'$1' was not in the logs."
-        echo "Limits Test Failed!"
-        exit 1
-    fi
-}
-
-function CheckRet
-{
-    RETVAL=$?
-    if [ $RETVAL -ne 0 ]; then
-        echo -e $COLOR_ERROR "Exit Code $RETVAL" $COLOR_RESET
-        exit $RETVAL
-    fi
-}
 
 cd $scriptDir
 
@@ -65,9 +54,9 @@ ssh root@$targetAddr  "/usr/local/bin/app start zeroFileSysSize"
 sleep 2
 
 # Grep the logs to check the results.
-checkLogStr ".* limitsTest.* | ======== Passed ========"
-checkLogStr ".* largeValuesTest.* | ======== Passed ========"
-checkLogStr ".* zeroFileSysSizeTest.* | ======== Passed ========"
+CheckLogStr ">" 0 ".* limitsTest.* | ======== Passed ========"
+CheckLogStr ">" 0 ".* largeValuesTest.* | ======== Passed ========"
+CheckLogStr ">" 0 ".* zeroFileSysSizeTest.* | ======== Passed ========"
 
 
 echo "Limits Test Passed!"

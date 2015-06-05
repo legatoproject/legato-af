@@ -5,7 +5,7 @@
 # waits for the log watcher to finish with a result or kill it if it's taking too long
 # report the result of the log watcher
 
-# expects AR7_IP_ADDR to be exported and that it is the IP address of the target machine 
+# expects TARGET_IP_ADDR to be exported and that it is the IP address of the target machine 
 
 target_test_name=$1
 log_watcher=$2
@@ -22,7 +22,7 @@ function cleanup
             rm "${pipe_name}"
     fi
 # Make sure the app is stopped
-    ssh root@${AR7_IP_ADDR} "/usr/local/bin/app stop ${target_test_name}"
+    ssh root@${TARGET_IP_ADDR} "/usr/local/bin/app stop ${target_test_name}"
 }
 
 function on_fail ()
@@ -40,8 +40,8 @@ mkfifo "${pipe_name}"
 on_fail "-Couldn't create pipe ${pipe_name}"
 
 #-o StrictHostKeyChecking=no will cause yes/no to be suppressed and keys to be added without intervention
-ssh -o StrictHostKeyChecking=no root@${AR7_IP_ADDR} /sbin/logread -f >${pipe_name} &
-on_fail "-ssh couldn't connect to ${AR7_IP_ADDR}"
+ssh -o StrictHostKeyChecking=no root@${TARGET_IP_ADDR} /sbin/logread -f >${pipe_name} &
+on_fail "-ssh couldn't connect to ${TARGET_IP_ADDR}"
 ssh_pid=$!
 
 bash ${log_watcher} < ${pipe_name} &
@@ -49,8 +49,8 @@ on_fail "-${log_watcher} failed to start"
 watcher_pid=$! 
 
 # start the test app
-ssh root@${AR7_IP_ADDR} "/usr/local/bin/app start ${target_test_name}"
-on_fail "-ssh couldn't start ${target_test_name} on ${AR7_IP_ADDR}"
+ssh root@${TARGET_IP_ADDR} "/usr/local/bin/app start ${target_test_name}"
+on_fail "-ssh couldn't start ${target_test_name} on ${TARGET_IP_ADDR}"
 
 elapsed_time=0
 while [[ 1 ]]

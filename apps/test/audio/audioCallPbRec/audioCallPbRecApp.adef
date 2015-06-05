@@ -1,5 +1,3 @@
-sandboxed: false
-
 executables:
 {
     audioCallPbRecApp = ( $LEGATO_ROOT/apps/test/audio/audioCallPbRec/audioCallComp )
@@ -21,11 +19,6 @@ processes:
     envVars:
     {
         LE_LOG_LEVEL = DEBUG
-    }
-
-    run:
-    {
-        (audioCallPbRecApp "<tel number>")
     }
 
     maxFileBytes: 5000K

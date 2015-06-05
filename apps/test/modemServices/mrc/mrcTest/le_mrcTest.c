@@ -20,6 +20,7 @@
 #include "legato.h"
 #include <interfaces.h>
 
+
 /*
  * Flag set to 1 to perform the Radio Power test On AR7 platform
  * This test was previously deactivated, WP7 doesn't support it.
@@ -191,50 +192,6 @@ static void Testle_mrc_GetStateAndQual()
     if (res == LE_OK)
     {
         LE_ASSERT((quality>=0) && (quality<=5));
-    }
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Test: Neighbor Cells Information.
- *
- */
-//--------------------------------------------------------------------------------------------------
-static void Testle_mrc_GetNeighboringCellsInfo()
-{
-    le_mrc_NeighborCellsRef_t ngbrRef;
-    le_mrc_CellInfoRef_t cellRef;
-    uint32_t i = 0;
-    uint32_t cid = 0;
-    uint32_t lac = 0;
-    int32_t rxLevel = 0;
-
-    LE_INFO("Start Testle_mrc_GetNeighborCellsInfo");
-
-    ngbrRef = le_mrc_GetNeighborCellsInfo();
-    LE_ASSERT(ngbrRef);
-
-    if (ngbrRef)
-    {
-        i = 0;
-
-        cellRef = le_mrc_GetFirstNeighborCellInfo(ngbrRef);
-        LE_ASSERT(cellRef);
-        cid = le_mrc_GetNeighborCellId(cellRef);
-        lac = le_mrc_GetNeighborCellLocAreaCode(cellRef);
-        rxLevel = le_mrc_GetNeighborCellRxLevel(cellRef);
-        LE_INFO("Cell #%d, cid=%d, lac=%d, rxLevel=%d", i, cid, lac, rxLevel);
-
-        while ((cellRef = le_mrc_GetNextNeighborCellInfo(ngbrRef)) != NULL)
-        {
-            i++;
-            cid = le_mrc_GetNeighborCellId(cellRef);
-            lac = le_mrc_GetNeighborCellLocAreaCode(cellRef);
-            rxLevel = le_mrc_GetNeighborCellRxLevel(cellRef);
-            LE_INFO("Cell #%d, cid=%d, lac=%d, rxLevel=%d", i, cid, lac, rxLevel);
-        }
-
-        le_mrc_DeleteNeighborCellsInfo(ngbrRef);
     }
 }
 
@@ -439,9 +396,8 @@ static void Testle_mrc_RegisterMode()
     bool isManualOrigin, isManual;
 
     // Get the home PLMN to compare results.
-    res = le_sim_GetHomeNetworkMccMnc( mccHomeStr, LE_MRC_MCC_BYTES,
-                    mncHomeStr, LE_MRC_MNC_BYTES);
-
+    res = le_sim_GetHomeNetworkMccMnc(LE_SIM_EXTERNAL_SLOT_1, mccHomeStr, LE_MRC_MCC_BYTES,
+                                      mncHomeStr, LE_MRC_MNC_BYTES);
     LE_ERROR_IF(res != LE_OK, "Home PLMN can't be retrives for test case");
     LE_ASSERT(res == LE_OK);
     LE_INFO("Home PLMN is mcc.%s mnc.%s", mccHomeStr, mncHomeStr);
@@ -632,8 +588,8 @@ static void Testle_mrc_PerformCellularNetworkScan()
 {
     le_result_t res;
     le_mrc_RatBitMask_t bitMaskOrigin = 0;
-    le_mrc_ScanInformationListRef_t scanInfoListRef;
-    le_mrc_ScanInformationRef_t     scanInfoRef;
+    le_mrc_ScanInformationListRef_t scanInfoListRef = NULL;
+    le_mrc_ScanInformationRef_t     scanInfoRef = NULL;
 
     // Get the current rat preference.
     res = le_mrc_GetRatPreferences(&bitMaskOrigin);
@@ -776,6 +732,171 @@ static void Testle_mrc_TdScdmaBandPreferences()
 }
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test: Get Signal Metrics.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void Testle_mrc_GetSignalMetrics()
+{
+    le_result_t   res;
+    le_mrc_Rat_t  rat;
+    int32_t rxLevel = 0;
+    uint32_t er = 0;
+    int32_t ecio = 0;
+    int32_t rscp = 0;
+    int32_t sinr = 0;
+    int32_t rsrq = 0;
+    int32_t rsrp = 0;
+    int32_t snr = 0;
+    int32_t io = 0;
+
+    le_mrc_MetricsRef_t metricsRef = le_mrc_MeasureSignalMetrics();
+    LE_ASSERT(metricsRef != NULL);
+
+    rat = le_mrc_GetRatOfSignalMetrics(metricsRef);
+    LE_INFO("RAT of signal metrics is %d",rat);
+    switch(rat)
+    {
+        case LE_MRC_RAT_GSM:
+            res = le_mrc_GetGsmSignalMetrics(metricsRef, &rxLevel, &er);
+            LE_ASSERT(res == LE_OK);
+            LE_INFO("GSM metrics rxLevel.%ddBm, er.%d", rxLevel, er);
+            break;
+
+        case LE_MRC_RAT_UMTS:
+            res = le_mrc_GetUmtsSignalMetrics(metricsRef, &rxLevel, &er, &ecio, &rscp, &sinr);
+            LE_ASSERT(res == LE_OK);
+            LE_INFO("UMTS metrics rxLevel.%ddBm, er.%d, ecio.%010.1fdB, rscp.%ddBm, sinr.%ddB",
+                    rxLevel, er, ((double)ecio/10), rscp, sinr);
+            break;
+
+        case LE_MRC_RAT_LTE:
+            res = le_mrc_GetLteSignalMetrics(metricsRef, &rxLevel, &er, &rsrq, &rsrp, &snr);
+            LE_ASSERT(res == LE_OK);
+            LE_INFO("LTE metrics rxLevel.%ddBm, er.%d, rsrq.%010.1fdB, "
+                    "rsrp.%010.1fdBm, snr.%010.1fdB",
+                    rxLevel, er, ((double)rsrq/10), ((double)rsrp/10), ((double)snr/10));
+            break;
+
+        case LE_MRC_RAT_CDMA:
+            res = le_mrc_GetCdmaSignalMetrics(metricsRef,  &rxLevel, &er, &ecio, &sinr, &io);
+            LE_ASSERT(res == LE_OK);
+            LE_INFO("CDMA metrics rxLevel.%ddBm, er.%d, ecio.%010.1fdB, "
+                    "sinr.%ddB, io.%ddBm",
+                    rxLevel, er, ((double)ecio/10), sinr, io);
+            break;
+
+        default:
+            LE_FATAL("Unknown RAT!");
+            break;
+    }
+
+    le_mrc_DeleteSignalMetrics(metricsRef);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test: Neighbor Cells Information.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void Testle_mrc_GetNeighboringCellsInfo()
+{
+    le_result_t res;
+    le_mrc_NeighborCellsRef_t ngbrRef;
+    le_mrc_CellInfoRef_t cellRef;
+    uint32_t i = 0;
+    uint32_t cid = 0;
+    uint32_t lac = 0;
+    int32_t rxLevel = 0;
+    le_mrc_Rat_t rat = 0;
+    int32_t ecio = 0;
+    int32_t intraRsrp = 0;
+    int32_t intraRsrq = 0;
+    int32_t interRsrp = 0;
+    int32_t interRsrq = 0;
+
+    LE_INFO("Start Testle_mrc_GetNeighborCellsInfo");
+
+    ngbrRef = le_mrc_GetNeighborCellsInfo();
+    LE_ASSERT(ngbrRef);
+
+    if (ngbrRef)
+    {
+        i = 0;
+
+        cellRef = le_mrc_GetFirstNeighborCellInfo(ngbrRef);
+        LE_ASSERT(cellRef);
+        cid = le_mrc_GetNeighborCellId(cellRef);
+        lac = le_mrc_GetNeighborCellLocAreaCode(cellRef);
+        rxLevel = le_mrc_GetNeighborCellRxLevel(cellRef);
+        rat = le_mrc_GetNeighborCellRat(cellRef);
+        LE_INFO("Cell #%d, cid.%d, lac.%d, rxLevel.%ddBm, RAT.%d", i, cid, lac, rxLevel, rat);
+        // Specific values for UMTS and LTE
+        switch(rat)
+        {
+            case LE_MRC_RAT_UMTS:
+                ecio = le_mrc_GetNeighborCellUmtsEcIo(cellRef);
+                LE_INFO("Cell #%d, UMTS EcIo.%010.1fdB", i, ((double)ecio/10));
+                break;
+
+            case LE_MRC_RAT_LTE:
+                res = le_mrc_GetNeighborCellLteIntraFreq(cellRef, &intraRsrq, &intraRsrp);
+                LE_ASSERT(res == LE_OK);
+                res = le_mrc_GetNeighborCellLteInterFreq(cellRef, &interRsrq, &interRsrp);
+                LE_ASSERT(res == LE_OK);
+
+                LE_INFO("Cell #%d, LTE Intra-RSRQ.%010.1fdB, Intra-RSRP.%010.1fdBm, "
+                        "Inter-RSRQ.%010.1fdB, Inter-RSRP.%010.1fdBm",
+                        i, ((double)intraRsrq/10), ((double)intraRsrp/10),
+                        ((double)interRsrq/10), ((double)interRsrp/10));
+                break;
+
+            default:
+                LE_INFO("Nothing more to display");
+                break;
+        }
+
+        while ((cellRef = le_mrc_GetNextNeighborCellInfo(ngbrRef)) != NULL)
+        {
+            i++;
+            cid = le_mrc_GetNeighborCellId(cellRef);
+            lac = le_mrc_GetNeighborCellLocAreaCode(cellRef);
+            rxLevel = le_mrc_GetNeighborCellRxLevel(cellRef);
+            rat = le_mrc_GetNeighborCellRat(cellRef);
+            LE_INFO("Cell #%d, cid.%d, lac.%d, rxLevel.%ddBm, RAT.%d", i, cid, lac, rxLevel, rat);
+            // Specific values for UMTS and LTE
+            switch(rat)
+            {
+                case LE_MRC_RAT_UMTS:
+                    ecio = le_mrc_GetNeighborCellUmtsEcIo(cellRef);
+                    LE_INFO("Cell #%d, UMTS EcIo.%010.1fdB", i, ((double)ecio/10));
+                    break;
+
+                case LE_MRC_RAT_LTE:
+                    res = le_mrc_GetNeighborCellLteIntraFreq(cellRef, &intraRsrq, &intraRsrp);
+                    LE_ASSERT(res == LE_OK);
+                    res = le_mrc_GetNeighborCellLteInterFreq(cellRef, &interRsrq, &interRsrp);
+                    LE_ASSERT(res == LE_OK);
+
+                    LE_INFO("Cell #%d, LTE Intra-RSRQ.%010.1fdB, Intra-RSRP.%010.1fdBm, "
+                            "Inter-RSRQ.%010.1fdB, Inter-RSRP.%010.1fdBm",
+                            i, ((double)intraRsrq/10), ((double)intraRsrp/10),
+                            ((double)interRsrq/10), ((double)interRsrp/10));
+                    break;
+
+                default:
+                    LE_INFO("Nothing more to display");
+                    break;
+            }
+        }
+
+        le_mrc_DeleteNeighborCellsInfo(ngbrRef);
+    }
+}
+
 COMPONENT_INIT
 {
     LE_INFO("======== Start MRC Modem Services implementation Test========");
@@ -787,6 +908,10 @@ COMPONENT_INIT
     LE_INFO("======== GetRat Test ========");
     Testle_mrc_GetRat();
     LE_INFO("======== GetRat Test PASSED ========");
+
+    LE_INFO("======== GetSignalMetrics Test ========");
+    Testle_mrc_GetSignalMetrics();
+    LE_INFO("======== GetSignalMetrics Test PASSED ========");
 
     LE_INFO("======== GetNeighboringCellsInfo Test ========");
     Testle_mrc_GetNeighboringCellsInfo();

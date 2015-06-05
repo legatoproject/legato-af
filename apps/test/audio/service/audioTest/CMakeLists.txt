@@ -7,24 +7,14 @@
 
 find_package(Legato REQUIRED)
 
-set(APP_TARGET testAudioService)
+if( (LEGATO_COMPONENTS_AUDIO MATCHES "wp7") OR (LEGATO_COMPONENTS_AUDIO MATCHES "ar7") )
 
-if(${LEGATO_TARGET} STREQUAL "ar7")
-    mkexe(${APP_TARGET}
-                .
-                -C "-g -O0"
-                --verbose
-                -i ${LEGATO_ROOT}/interfaces/audio
-                -i ${LEGATO_ROOT}/interfaces/modemServices
-            DEPENDS
-                legato
-                ## TODO: Remove this when the mk tools do dependency checking.
-                Component.cdef
-                audioTest.c
-                )
+    # Creates application from audioTest.adef
+    mkapp(audioTest.adef
+            -i ${LEGATO_ROOT}/interfaces/audio
+            -i ${LEGATO_ROOT}/interfaces/modemServices
+        DEPENDS
+            legato
+    )
 
-    if(NOT ${LEGATO_TARGET} STREQUAL "localhost")
-        add_test(${APP_TARGET} ${EXECUTABLE_OUTPUT_PATH}/${APP_TARGET})
-        set_tests_properties(${APP_TARGET} PROPERTIES TIMEOUT 0)
-    endif()
 endif()

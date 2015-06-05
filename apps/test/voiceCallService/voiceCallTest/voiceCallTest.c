@@ -268,9 +268,9 @@ static void MyCallEventHandler
                         snprintf(reasonstring, REASON_STRING_LEN, "%s", "LE_VOICECALL_TERM_REMOTE_ENDED");
                     }
                     break;
-                    case LE_VOICECALL_TERM_NOT_DEFINED:
+                    case LE_VOICECALL_TERM_UNDEFINED:
                     {
-                        snprintf(reasonstring, REASON_STRING_LEN, "%s", "LE_VOICECALL_TERM_NOT_DEFINED");
+                        snprintf(reasonstring, REASON_STRING_LEN, "%s", "LE_VOICECALL_TERM_UNDEFINED");
                     }
                     break;
                     default:

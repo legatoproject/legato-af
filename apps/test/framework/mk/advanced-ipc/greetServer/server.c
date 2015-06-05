@@ -3,7 +3,7 @@
 
 #define MAX_GREETING_BYTES  256
 
-static char Greeting[MAX_GREETING_BYTES] = "Hello, World!";
+static const char* GreetingPtr = "Hello, World!";
 
 
 COMPONENT_INIT
@@ -12,7 +12,7 @@ COMPONENT_INIT
 
     if (le_arg_NumArgs() > 0)
     {
-        le_arg_GetArg(0, Greeting, sizeof(Greeting));
+        GreetingPtr = le_arg_GetArg(0);
 
         if (le_arg_NumArgs() > 1)
         {
@@ -20,11 +20,11 @@ COMPONENT_INIT
         }
     }
 
-    LE_INFO("Using '%s' as the greeting.", Greeting);
+    LE_INFO("Using '%s' as the greeting.", GreetingPtr);
 }
 
 
 void hello_Greet(void)
 {
-    LE_INFO("%s", Greeting);
+    LE_INFO("%s", GreetingPtr);
 }

@@ -1,0 +1,26 @@
+sandboxed: false
+
+executables:
+{
+    audioMemoryTest = ( audioMemoryTestComp )
+}
+
+maxFileSystemBytes: 256K
+
+processes:
+{
+    envVars:
+    {
+        LE_LOG_LEVEL = DEBUG
+    }
+
+    maxFileBytes: 5000K
+}
+
+start:
+    manual
+
+bindings:
+{
+    audioMemoryTest.audioMemoryTestComp.le_audio -> audioService.le_audio
+}

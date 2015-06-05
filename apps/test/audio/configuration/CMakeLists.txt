@@ -7,19 +7,11 @@
 
 find_package(Legato REQUIRED)
 
-set(APP_TARGET testAudioCfg)
 
-mkexe(${APP_TARGET}
-            cfgTest
-            -i ${LEGATO_ROOT}/interfaces/audio
-        DEPENDS
-            legato
-            ## TODO: Remove this when the mk tools do dependency checking.
-            cfgTest/Component.cdef
-            cfgTest/audioCfgTest.c
-            )
-
-if(NOT ${LEGATO_TARGET} STREQUAL "localhost")
-    add_test(${APP_TARGET} ${EXECUTABLE_OUTPUT_PATH}/${APP_TARGET})
-    set_tests_properties(${APP_TARGET} PROPERTIES TIMEOUT 0)
-endif()
+mkapp(cfgTest.adef
+    -i ${LEGATO_ROOT}/interfaces/audio
+    DEPENDS
+        legato
+        cfgTestComp/Component.cdef
+        cfgTestComp/audioCfgTest.c
+)

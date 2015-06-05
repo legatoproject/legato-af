@@ -60,7 +60,7 @@ function ExecWithTimeout
     COMMAND=$3
     COMMAND_ARGS=${*:4}
 
-    # Start a timer process, if it isn't stopped before the sleep returns the process will exit our
+    # Start a timer process, if it isn't stopped before the sleep returns the process will kill our
     # script.  Grab our PID so that the child can kill this script if it times out.
     PARENT=$$
 
@@ -78,8 +78,17 @@ function ExecWithTimeout
     $COMMAND $COMMAND_ARGS
     RET_VAL=$?
 
-    echo "Subprocess complete, killing timeout process $TIMER_PROCID."
+    # Get the PID of the "sleep" process that the timer process is waiting for.
+    # We have to kill that or ctest will wait for it to finish, even after we kill the timer (shell)
+    # process that started it.
+    SLEEP_PROCID=$(pgrep -P $TIMER_PROCID)
+
+    echo "Subprocess complete, killing timeout processes $TIMER_PROCID and $SLEEP_PROCID."
     kill $TIMER_PROCID || true
+    if [ "$SLEEP_PROCID" ]
+    then
+        kill $SLEEP_PROCID || true
+    fi
 
     # Report the exit status of the subprocess, and if required, kill the script.
     [ $RET_VAL -eq $EXIT_EXPECTED ] && echo "Subprocess had: SUCCEEDED."

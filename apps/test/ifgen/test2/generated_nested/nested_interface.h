@@ -8,8 +8,8 @@
  */
 
 
-#ifndef NESTED_H_INCLUDE_GUARD
-#define NESTED_H_INCLUDE_GUARD
+#ifndef NESTED_INTERFACE_H_INCLUDE_GUARD
+#define NESTED_INTERFACE_H_INCLUDE_GUARD
 
 
 #include "legato.h"
@@ -32,5 +32,5 @@
 #define NESTED_SIX 6
 
 
-#endif // NESTED_H_INCLUDE_GUARD
+#endif // NESTED_INTERFACE_H_INCLUDE_GUARD
 

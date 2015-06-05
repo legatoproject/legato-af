@@ -14,7 +14,7 @@ groups:
 
 executables:
 {
-  hello = ( helloWorld.c )
+  hello = ( helloWorld )
 }
 
 groups:

@@ -1,0 +1,54 @@
+#!/bin/sh
+
+
+# unit of seconds
+interval=0
+
+# number of samples
+numSamples=10
+
+# output log file name template
+logFileTemplate="${0}_log_`date +%F_%H-%M-%S`"
+
+
+
+# clean the logs
+/mnt/flash/startup/fg_02_RestartSyslogd
+
+# restart the test app
+app restart SubpoolFlux > /dev/null
+if [ $? -ne 0 ]
+then
+    echo "Error restarting app"
+fi
+
+# waiting for the subpools to be created
+echo "waiting for subpool to be created..."
+
+while ! logread | grep -q "Created all subpools"
+do
+    sleep 1
+done
+
+
+
+
+count=0
+
+#while [ $count -le $numSamples ]
+while ! logread | grep -q "FINISHED" 
+do
+    logFile="${logFileTemplate}_Sample${count}"
+    inspect pools `ps -ef | grep SubpoolFlux | grep -v grep | awk '{print $2}'` >> $logFile 
+    sleep $interval
+    count=$((count+1))
+done
+
+
+## temporary... remove me.  Or make this better.
+#free >> freeMemReport
+#
+#
+#tar -jcvf ${logFileTemplate}__Samples.tbz2 ${logFileTemplate}_Sample*
+#rm ${logFileTemplate}_Sample*
+

@@ -1,7 +1,7 @@
 
 executables:
 {
-    helloCpp = ( Hello.cpp )
+    helloCpp = ( cppComponent )
 }
 
 processes:

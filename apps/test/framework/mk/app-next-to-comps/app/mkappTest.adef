@@ -3,7 +3,7 @@ bundles:
     file:
     {
             ../files/xyz  /usr/share/files/
-        [r] ../libexternal/libexternal.so  /lib
+        [r] ../libexternal/libexternal.so  /lib/
     }
 }
 
@@ -17,10 +17,7 @@ requires:
 
 executables:
 {
-    fromSource = ( fromSource1.c "from Source 2.c" 'from Source 3.c' )
     fromComponents = ( foo bar foo )
-    mix = (fromSource1.c "from Source 2.c" "from Source 3.c" foo )
-    extern = (../libexternal/libexternal.so externalLibInit.c)
 }
 
 processes:
@@ -31,12 +28,12 @@ processes:
 
     run:
     {
-        proc1 = ( "fromSource" 'foo' "'bar'" - '"jam"' "--crazy=12" "-c 9")
-        proc2 = ( "fromSource foo bar - jam --crazy=12 -c 9" )
-        (mix foo
+        proc1 = ( "fromComponents" 'foo' "'bar'" - '"jam"' "--crazy=12" "-c 9")
+        proc2 = ( "fromComponents foo bar - jam --crazy=12 -c 9" )
+        (fromComponents foo
             bar // some random
                 // comment
-            - jam --crazy  // Three args on one line with a C++ comment.
+            - jam --crazy -c 9 // Three args on one line with a C++ comment.
             )
     }
 

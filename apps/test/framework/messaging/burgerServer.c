@@ -118,7 +118,7 @@ static void NewSessionHandler
     le_result_t result = le_msg_GetClientUserId(sessionRef, &clientUserId);
     LE_INFO("le_msg_GetClientUserId() returned '%s' with UID %u.",
             LE_RESULT_TXT(result),
-            clientUserId)
+            clientUserId);
     LE_INFO("getuid() returned %u.", myUserId);
     LE_TEST(clientUserId == myUserId);
 }

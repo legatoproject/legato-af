@@ -1,0 +1,20 @@
+start: manual
+
+executables:
+{
+    appInfoTest = (getAppInfo)
+}
+
+processes:
+{
+    run:
+    {
+        (appInfoTest)
+    }
+}
+
+bindings:
+{
+    appInfoTest.getAppInfo.le_appInfo -> <root>.le_appInfo
+}
+

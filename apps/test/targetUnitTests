@@ -1,25 +1,50 @@
 #!/bin/bash
 
 TARGET_ADDR=$1
+TARGET_TYPE=${2:-ar7}
+
+# This function is exported to the environment so all scripts started from here can use it
+# to find the test.shlib (so we can move it without having to update all the scripts, for e.g.)
+LoadTestLib(){
+    . $LEGATO_ROOT/apps/test/framework/test.shlib
+    # Throwing in a timestamp so we can see who's hogging the UUT
+    echo "========== Begin Test =========="
+    date
+}
+export -f LoadTestLib
+
 ORIG_DIR=$PWD
 SCRIPT_DIR=$(readlink -f $(dirname ${BASH_SOURCE[0]}))
 
 function RunTest()
 {
+    echo "################################# $1"
     TEST_FILE_DIR=$(dirname $1)
     TEST_FILE_NAME=$(basename $1)
 
     # Go to the directory of the test file.
     cd $SCRIPT_DIR/$TEST_FILE_DIR
 
-    # Run the test.
-    ./$TEST_FILE_NAME $TARGET_ADDR
+    # Check that test is an executable file (and by implication, exists)
+    if ! [[ -x ./$TEST_FILE_NAME ]]; then
+        echo "Test $1 is not an executable file"
+        exit 2
+    fi
 
-    # Check the return code.
-    RETVAL=$?
+    # Run the test.
+    ./$TEST_FILE_NAME $TARGET_ADDR $TARGET_TYPE 2>&1 | tee /tmp/test.out
+
+    # Check the return code of the unit test.
+    RETVAL=${PIPESTATUS[0]}
     if [ $RETVAL -ne 0 ]; then
         echo -e $COLOR_ERROR "Test '$TEST_FILE_NAME' Failed!" $COLOR_RESET
         exit $RETVAL
+    fi
+
+    # Check test output for missing commands
+    if grep "not found" /tmp/test.out; then
+        echo "Script contains errors"
+        exit 2
     fi
 }
 
@@ -27,13 +52,18 @@ function RunTest()
 RunTest framework/supervisor/supervisorTest.sh
 RunTest framework/watchdog/watchdogTest.sh
 RunTest framework/configTree/configTargetTests.sh
-RunTest framework/updateTool/updateToolTest.sh
 RunTest framework/smackAPI/smackApiTest.sh
 RunTest framework/smack/smackTest.sh
 RunTest framework/sandboxLimits/limitsTest.sh
+RunTest framework/updateDaemon/updateDaemonTest.sh
+RunTest framework/installStatus/installStatusTest.sh
+RunTest framework/inspect/inspectTest.sh
+RunTest framework/appInfo/appInfoTest.sh
+RunTest framework/appFallBack/appFallBackTest.sh
+RunTest framework/secStore/secStoreTest.sh
 
 # Clear out the any test apps, and clean up after any non-sandboxed ones.
 rmapp \* "$TARGET_ADDR"
-ssh root@$AR7_IP_ADDR "rm -rf \`find /mnt/flash/home/* -type d | grep app\`"
+ssh root@$TARGET_ADDR "rm -rf \`find /mnt/flash/home/* -type d | grep app\`"
 
 cd $ORIG_DIR

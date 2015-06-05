@@ -1,0 +1,12 @@
+sources:
+{
+    getAppInfo.c
+}
+
+requires:
+{
+    api:
+    {
+        le_appInfo.api
+    }
+}

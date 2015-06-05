@@ -118,7 +118,8 @@ EVENT BugTest
  */
 HANDLER CallbackTestHandler
 (
-    uint32 data IN
+    uint32 data IN,
+    string name[50] IN
 );
 
 /**

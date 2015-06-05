@@ -1,0 +1,19 @@
+executables:
+{
+    monAntennaTest = ( monAntennaTestComp )
+}
+
+processes:
+{
+    envVars:
+    {
+        LE_LOG_LEVEL = DEBUG
+    }
+}
+
+start: manual
+
+bindings:
+{
+    monAntennaTest.monAntennaTestComp.le_antenna -> modemService.le_antenna
+}

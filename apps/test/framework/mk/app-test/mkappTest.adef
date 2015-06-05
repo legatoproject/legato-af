@@ -25,15 +25,15 @@ bundles:
           files      /
 //          files/xyz/  /
     [r] libexternal  /lib/
+    [x] bin  /bin
+    [r] lib  /lib
+    [r] otherlib /lib
     }
 }
 
 executables:
 {
-    fromSource = ( fromSource1.c "from Source 2.c" 'from Source 3.c' )
     fromComponents = ( foo bar foo )
-    mix = (fromSource1.c "from Source 2.c" "from Source 3.c" foo )
-    extern = (libexternal/libexternal.$TARGET.so externalLibInit.c)
 }
 
 processes:
@@ -45,10 +45,10 @@ processes:
 
     run:
     {
-        proc1 = ( "fromSource" 'foo' "'bar'" - '"jam"' "--crazy=12" "-c 9")
-        proc2 = ( /bin/fromSource "foo /* bar - jam --crazy=12 -c 9" )
-        (/bin/fromSource)
-        ( mix foo
+        proc1 = ( "fromComponents" 'foo' "'bar'" - '"jam"' "--crazy=12" "-c 9")
+        proc2 = ( /bin/fromComponents "foo /* bar - jam --crazy=12 -c 9" )
+        (/bin/fromComponents)
+        ( fromComponents foo
      bar /* some random
             comment mess */
      - jam --crazy  // Three args on one line with a C++ comment.

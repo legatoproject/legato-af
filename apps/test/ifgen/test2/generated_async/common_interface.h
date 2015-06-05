@@ -11,8 +11,8 @@
  * Common definitions potentially across multiple .api files
  */
 
-#ifndef COMMON_H_INCLUDE_GUARD
-#define COMMON_H_INCLUDE_GUARD
+#ifndef COMMON_INTERFACE_H_INCLUDE_GUARD
+#define COMMON_INTERFACE_H_INCLUDE_GUARD
 
 
 #include "legato.h"
@@ -64,5 +64,5 @@ typedef enum
 common_EnumExample_t;
 
 
-#endif // COMMON_H_INCLUDE_GUARD
+#endif // COMMON_INTERFACE_H_INCLUDE_GUARD
 

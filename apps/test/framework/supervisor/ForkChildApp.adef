@@ -1,0 +1,17 @@
+start: manual
+
+executables:
+{
+    faultTest = ( faultTest )
+}
+
+processes:
+{
+    faultAction: ignore
+
+    // This needs to be "processName (executable appName faultType)"
+    run:
+    {
+        forkParent = (faultTest ForkChildApp forkChild)
+    }
+}

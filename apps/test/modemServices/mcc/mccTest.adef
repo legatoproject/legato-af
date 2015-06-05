@@ -1,0 +1,20 @@
+executables:
+{
+    mccTest = ( mccTest )
+}
+
+processes:
+{
+    envVars:
+    {
+        LE_LOG_LEVEL = DEBUG
+    }
+}
+
+start: manual
+
+bindings:
+{
+    mccTest.mccTest.le_mcc_call -> modemService.le_mcc_call
+    mccTest.mccTest.le_mcc_profile -> modemService.le_mcc_profile
+}

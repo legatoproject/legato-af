@@ -247,8 +247,8 @@ static uint8_t message[] =
 void test_pa_sms_SendPduMsg()
 {
     uint32_t  msgref;
-
-    msgref = pa_sms_SendPduMsg(PA_SMS_PROTOCOL_GSM,29,message);
+    pa_sms_SendingErrCode_t  errorCode;
+    msgref = pa_sms_SendPduMsg(PA_SMS_PROTOCOL_GSM,29,message, &errorCode);
     CU_ASSERT_EQUAL(msgref,15);
 }
 

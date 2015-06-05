@@ -19,11 +19,9 @@ static le_ecall_CallRef_t                LastTestECallRef = NULL;
 static le_audio_StreamRef_t             FeOutRef = NULL;
 static le_audio_StreamRef_t             FileAudioRef = NULL;
 static le_audio_ConnectorRef_t          AudioOutputConnectorRef = NULL;
-static le_audio_StreamEventHandlerRef_t StreamHandlerRef = NULL;
+static le_audio_MediaHandlerRef_t       MediaHandlerRef = NULL;
 static const char                       AudioFilePath[] = "/male.wav";
 static int                              AudioFileFd = -1;
-static le_thread_Ref_t                  VoicePromptThreadRef = NULL;
-static void StartFilePlayback();
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -71,130 +69,42 @@ static void DisconnectAudio
     close(AudioFileFd);
 }
 
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Handler function for Audio Stream Event Notifications.
  *
  */
 //--------------------------------------------------------------------------------------------------
-static void MyStreamEventHandler
+static void MyMediaEventHandler
 (
     le_audio_StreamRef_t          streamRef,
-    le_audio_StreamEventBitMask_t streamEventMask,
+    le_audio_MediaEvent_t          event,
     void*                         contextPtr
 )
 {
-    le_audio_FileEvent_t event;
-
-    if (streamEventMask & LE_AUDIO_BITMASK_FILE_EVENT)
+    switch(event)
     {
-        if(le_audio_GetFileEvent(streamRef, &event) == LE_OK)
-        {
-            switch(event)
+        case LE_AUDIO_MEDIA_ENDED:
+            LE_INFO("File event is LE_AUDIO_MEDIA_ENDED.");
+
+            if (le_audio_PlayFile(FileAudioRef, LE_AUDIO_NO_FD) != LE_OK)
             {
-                case LE_AUDIO_FILE_ENDED:
-                    LE_INFO("File event is LE_AUDIO_FILE_ENDED.");
-
-                    // TODO: The following sequence is a workaround to allow continuous file
-                    // playback. Normally, only le_audio_Disconnect() + le_audio_Connect() should be
-                    // called.
-                    if(FileAudioRef)
-                    {
-                        LE_INFO("Disconnect %p from connector.%p", FileAudioRef, AudioOutputConnectorRef);
-                        le_audio_RemoveStreamEventHandler(StreamHandlerRef);
-                        StreamHandlerRef = NULL;
-                        le_audio_Disconnect(AudioOutputConnectorRef, FileAudioRef);
-                        le_audio_Close(FileAudioRef);
-                        FileAudioRef = NULL;
-                    }
-
-                    close(AudioFileFd);
-                    if ((AudioFileFd=open(AudioFilePath, O_RDONLY)) == -1)
-                    {
-                        LE_ERROR("Open file %s failure: errno.%d (%s)",  AudioFilePath, errno, strerror(errno));
-                        DisconnectAudio();
-                        exit(0);
-                    }
-                    else
-                    {
-                        LE_INFO("Open file %s with AudioFileFd.%d",  AudioFilePath, AudioFileFd);
-                    }
-
-                    StartFilePlayback();
-                    break;
-
-                case LE_AUDIO_FILE_ERROR:
-                    LE_INFO("File event is LE_AUDIO_FILE_ERROR.");
-                    break;
+                LE_ERROR("Failed to play the file");
+                return;
             }
-        }
+            else
+            {
+                LE_INFO("file is now playing.");
+            }
+            break;
+
+        case LE_AUDIO_MEDIA_ERROR:
+            LE_INFO("File event is LE_AUDIO_MEDIA_ERROR.");
+            break;
     }
 }
 
-//--------------------------------------------------------------------------------------------------
-/**
- * Handler function for Audio Stream Event Notifications.
- *
- */
-//--------------------------------------------------------------------------------------------------
-static void StartFilePlayback
-(
-    void
-)
-{
-    LE_INFO("Start FilePlayback...");
-
-    FileAudioRef = le_audio_OpenFilePlayback(AudioFileFd);
-    LE_ERROR_IF((FileAudioRef==NULL), "OpenFilePlayback returns NULL!");
-
-    StreamHandlerRef = le_audio_AddStreamEventHandler(FileAudioRef,
-                                                    LE_AUDIO_BITMASK_FILE_EVENT,
-                                                    MyStreamEventHandler,
-                                                    NULL);
-
-    if (FileAudioRef && AudioOutputConnectorRef)
-    {
-        if(le_audio_Connect(AudioOutputConnectorRef, FileAudioRef) != LE_OK)
-        {
-            LE_ERROR("Failed to connect FilePlayback on output connector!");
-        }
-        else
-        {
-            LE_INFO("FilePlayback is now connected.");
-        }
-    }
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Thread to play voice prompt.
- *
- */
-//--------------------------------------------------------------------------------------------------
-static void* PlayVoicePromptThread
-(
-    void* context
-)
-{
-    le_audio_ConnectService();
-
-    if ((AudioFileFd=open(AudioFilePath, O_RDONLY)) == -1)
-    {
-        LE_ERROR("Open file %s failure: errno.%d (%s)",  AudioFilePath, errno, strerror(errno));
-        DisconnectAudio();
-        exit(0);
-    }
-    else
-    {
-        LE_INFO("Open file %s with AudioFileFd.%d",  AudioFilePath, AudioFileFd);
-    }
-
-    StartFilePlayback();
-    LE_INFO("Wait for end of file.");
-
-    le_event_RunLoop();
-    return NULL;
-}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -227,9 +137,35 @@ static void ConnectAudio
                     "Failed to connect I2S TX on Output connector!");
     }
 
-    // Start Voice prompt
-    VoicePromptThreadRef = le_thread_Create("PlayVoicePrompt", PlayVoicePromptThread, NULL);
-    le_thread_Start(VoicePromptThreadRef);
+    FileAudioRef = le_audio_OpenPlayer();
+    LE_ERROR_IF((FileAudioRef==NULL), "OpenFilePlayback returns NULL!");
+
+    MediaHandlerRef = le_audio_AddMediaHandler(FileAudioRef,
+                                                MyMediaEventHandler,
+                                                NULL);
+
+    if(le_audio_Connect(AudioOutputConnectorRef, FileAudioRef) != LE_OK)
+    {
+        LE_ERROR("Failed to connect FilePlayback on output connector!");
+        return;
+    }
+
+    if ((AudioFileFd=open(AudioFilePath, O_RDONLY)) == -1)
+    {
+        LE_ERROR("Open file %s failure: errno.%d (%s)",  AudioFilePath, errno, strerror(errno));
+        DisconnectAudio();
+        exit(0);
+    }
+    else
+    {
+        LE_INFO("Open file %s with AudioFileFd.%d",  AudioFilePath, AudioFileFd);
+    }
+
+    if (le_audio_PlayFile(FileAudioRef, AudioFileFd) != LE_OK)
+    {
+        LE_ERROR("Failed to play the file");
+        return;
+    }
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -266,6 +202,11 @@ static void MyECallEventHandler
         case LE_ECALL_STATE_WAITING_PSAP_START_IND:
         {
             LE_INFO("eCall state is LE_ECALL_STATE_WAITING_PSAP_START_IND.");
+            break;
+        }
+        case LE_ECALL_STATE_PSAP_START_IND_RECEIVED:
+        {
+            LE_INFO("eCall state is LE_ECALL_STATE_PSAP_START_IND_RECEIVED.");
             break;
         }
         case LE_ECALL_STATE_MSD_TX_STARTED:

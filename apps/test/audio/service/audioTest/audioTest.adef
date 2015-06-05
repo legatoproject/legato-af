@@ -1,0 +1,36 @@
+sandboxed: false
+
+executables:
+{
+    audioTest = ( audioTestComp )
+}
+
+maxFileSystemBytes: 256K
+
+
+
+processes:
+{
+    envVars:
+    {
+        LE_LOG_LEVEL = DEBUG
+    }
+
+    run:
+    {
+        (audioTest "<tel number>")
+    }
+
+    maxFileBytes: 5000K
+}
+
+start:
+    manual
+
+bindings:
+{
+    audioTest.audioTestComp.le_audio -> audioService.le_audio
+    audioTest.audioTestComp.le_mcc_call -> modemService.le_mcc_call
+    audioTest.audioTestComp.le_mcc_profile -> modemService.le_mcc_profile
+}
+

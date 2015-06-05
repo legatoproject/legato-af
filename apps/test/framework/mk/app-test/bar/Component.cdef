@@ -1,1 +1,1 @@
-sources: { bar.c}
+sources: { "src/bar.c"}

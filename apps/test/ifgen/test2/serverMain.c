@@ -30,6 +30,14 @@ void allParameters
 {
     int i;
 
+    // If a special value is passed down, return right away without assigning to any of the output
+    // parameters.  This could happen in a typical function, if an error is detected.
+    if ( a == COMMON_ZERO )
+    {
+        LE_DEBUG("Returning right away");
+        return;
+    }
+
     // Print out received values
     LE_PRINT_VALUE("%i", a);
     LE_PRINT_VALUE("%s", label);
@@ -181,7 +189,7 @@ static void CallbackTestHandlerQueued
 )
 {
     // Note that data, which is uint32_t, is just cast to void*, so cast it back.
-    CallbackTestHandlerRef( *((uint32_t*)dataPtr), contextPtr );
+    CallbackTestHandlerRef( *((uint32_t*)dataPtr), "some name from server", contextPtr );
 }
 
 

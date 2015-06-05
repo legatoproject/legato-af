@@ -29,14 +29,18 @@ add_subdirectory(modemServices/mdc/mdcIntegrationTest)
 add_subdirectory(modemServices/mdc/mdcUnitaryTest)
 add_subdirectory(modemServices/mrc)
 add_subdirectory(modemServices/sim)
+add_subdirectory(modemServices/simProfileSwap)
+add_subdirectory(modemServices/simToolkit)
 add_subdirectory(modemServices/info)
-add_subdirectory(modemServices/remoteMgmt)
 add_subdirectory(modemServices/ipsTest)
 add_subdirectory(modemServices/tempTest)
+add_subdirectory(modemServices/antennaTest)
+add_subdirectory(modemServices/riPin)
 
 if((INCLUDE_ECALL EQUAL 1) AND ((LEGATO_TARGET MATCHES "ar7") OR (LEGATO_TARGET MATCHES "ar86")))
     add_subdirectory(modemServices/ecall)
     add_subdirectory(modemServices/ecallWPrompt)
+    add_subdirectory(modemServices/ecallWVoice)
 endif()
 
 if(LEGATO_COMPONENTS_MODEM MATCHES "QMI")
@@ -59,13 +63,14 @@ endif()
 
 ## Positioning Services
 add_subdirectory(positioning/gnssTest)
-add_subdirectory(positioning/posDaemonTest)
-add_subdirectory(positioning/posCtrlTest)
+# To be implemented add_subdirectory(positioning/posDaemonTest)
+add_subdirectory(positioning/positioningTest)
 
 if(LEGATO_COMPONENTS_GNSS MATCHES "QMI")
     if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/positioning/qmi)
         add_subdirectory(positioning/qmi/position)
         add_subdirectory(positioning/qmi/xtra)
+        add_subdirectory(positioning/qmi/supl)
     endif()
 endif()
 
@@ -74,22 +79,21 @@ add_subdirectory(audio/pa)
 add_subdirectory(audio/service/audioTest)
 add_subdirectory(audio/service/memoryTest)
 add_subdirectory(audio/audioMcc)
-add_subdirectory(audio/audioMccExe)
 add_subdirectory(audio/audioCallPbRec)
 add_subdirectory(audio/dtmf)
 add_subdirectory(audio/configuration)
 add_subdirectory(audio/audioPlaybackRec)
-add_subdirectory(audio/audioPlaybackRecExe)
 
 ## Data Connection Service
 add_subdirectory(dataConnectionService)
 
-## Monitoring Service
-add_subdirectory(monitoring/antennaTest)
-
 ## Other Services ...
 add_subdirectory(cellNetService)
 add_subdirectory(voiceCallService)
+add_subdirectory(smsInboxService)
+
+# AirVantage Service
+add_subdirectory(avcService)
 
 # IfGen Tool
 add_subdirectory(ifgen/test2)

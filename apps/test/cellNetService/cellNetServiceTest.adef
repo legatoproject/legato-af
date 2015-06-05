@@ -1,0 +1,19 @@
+executables:
+{
+    cellNetServiceTest = ( cellNetServiceTest)
+}
+
+processes:
+{
+    run:
+    {
+        ( cellNetServiceTest )
+    }
+}
+
+start: manual
+
+bindings:
+{
+    cellNetServiceTest.cellNetServiceTest.le_cellnet -> cellNetService.le_cellnet
+}

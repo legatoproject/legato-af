@@ -32,7 +32,6 @@ static void ModelDeviceIdentityTest
     result = le_info_GetDeviceModel(modelDevice, sizeof(modelDevice));
     if (result == LE_OK)
     {
-        fprintf(stderr, "\n\n le_info_GetDeviceModel get => %s\r\n", modelDevice);
         LE_INFO("le_info_GetDeviceModel get => %s", modelDevice);
         LE_INFO("======== ModelDeviceIdentityTest PASSED ========");
     }
@@ -42,15 +41,12 @@ static void ModelDeviceIdentityTest
         switch (result)
         {
             case LE_OVERFLOW :
-                fprintf(stderr, "\n\n le_info_GetDeviceModel return LE_OVERFLOW \r\n");
                 LE_ERROR("le_info_GetDeviceModel return LE_OVERFLOW");
                 break;
             case  LE_FAULT :
-                fprintf(stderr, "\n\n le_info_GetDeviceModel return LE_FAULT \r\n");
                 LE_ERROR("le_info_GetDeviceModel return LE_FAULT");
                 break;
             default:
-                fprintf(stderr, "\n\n le_info_GetDeviceModel return code %d\r\n",result);
                 LE_ERROR("le_info_GetDeviceModel return code %d\r\n",result);
                 break;
         }
@@ -345,6 +341,92 @@ static void NaiTest
     }
 }
 
+/*
+ * This test le_info_GetManufacturerName API.
+ *
+ * API Tested:
+ *  le_info_GetManufacturerName().
+ */
+static void ManufacturerNameTest
+(
+    void
+)
+{
+    char manufacturerNameStr[LE_INFO_MAX_MFR_NAME_BYTES] = { 0 };
+
+    LE_INFO("======== ManufacturerNameTest ========");
+
+    le_result_t res = le_info_GetManufacturerName(manufacturerNameStr, LE_INFO_MAX_MFR_NAME_BYTES);
+
+    if (res == LE_OK)
+    {
+        LE_INFO("Manufacturer Name => '%s'",manufacturerNameStr);
+        LE_INFO("======== ManufacturerNameTest PASSED ========");
+    }
+    else
+    {
+        LE_ERROR("======== ManufacturerNameTest FAILED ========");
+    }
+}
+
+/*
+ * This test le_info_GetPriId API.
+ *
+ * API Tested:
+ *  - le_info_GetPriId().
+ */
+static void PriIdTest
+(
+    void
+)
+{
+    le_result_t result;
+    char priIdPn[LE_INFO_MAX_PRIID_PN_BYTES];
+    char priIdRev[LE_INFO_MAX_PRIID_REV_BYTES];
+
+    LE_INFO("======== PriidTest ========");
+
+    result = le_info_GetPriId(priIdPn, LE_INFO_MAX_PRIID_PN_BYTES, priIdRev, LE_INFO_MAX_PRIID_REV_BYTES);
+    if (result == LE_OK)
+    {
+        LE_INFO("le_info_GetPriId get priIdPn => %s", priIdPn);
+        LE_INFO("le_info_GetPriId get priIdRev => %s", priIdRev);
+    }
+    else
+    {
+        /* Other return values possibilities */
+        LE_ERROR("le_info_GetPriId return code %d",result);
+        LE_ERROR("======== PriidTest FAILED ========");
+        return;
+    }
+
+    result = le_info_GetPriId(priIdPn, 1, priIdRev, LE_INFO_MAX_PRIID_REV_BYTES);
+    if (result == LE_OVERFLOW)
+    {
+        LE_INFO("le_info_GetPriId return LE_OVERFLOW");
+    }
+    else
+    {
+        /* Other return values possibilities */
+        LE_ERROR("le_info_GetPriId return code %d",result);
+        LE_ERROR("======== PriidTest FAILED ========");
+        return;
+    }
+
+    result = le_info_GetPriId(priIdPn, LE_INFO_MAX_PRIID_PN_BYTES, priIdRev, 1);
+    if (result == LE_OVERFLOW)
+    {
+        LE_INFO("le_info_GetPriId return LE_OVERFLOW");
+        LE_INFO("======== PriidTest PASSED ========");
+    }
+    else
+    {
+        /* Other return values possibilities */
+        LE_ERROR("le_info_GetPriId return code %d",result);
+        LE_ERROR("======== PriidTest FAILED ========");
+    }
+}
+
 
 /*
  * Each Test called once.
@@ -370,6 +452,9 @@ COMPONENT_INIT
     NaiTest();
 
     ModelDeviceIdentityTest();
+    ManufacturerNameTest();
+
+    PriIdTest();
 
     // TODO add other le_info test.
     LE_INFO("======== Test LE_INFO implementation Tests SUCCESS ========");

@@ -2,19 +2,3 @@ sources:
 {
     smackApiTest.c
 }
-
-requires:
-{
-    api:
-    {
-        le_cfg.api
-    }
-}
-
-requires:
-{
-    component:
-    {
-        ${LEGATO_ROOT}/framework/c/src/security
-    }
-}

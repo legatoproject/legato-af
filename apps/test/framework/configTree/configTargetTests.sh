@@ -7,54 +7,25 @@
 #  Use of this work is subject to license.
 #---------------------------------------------------------------------------------------------------
 
+LoadTestLib
+
 targetAddr=$1
 targetType=${2:-ar7}
+
 appList="cfgSelfRead cfgSelfWrite cfgSystemRead cfgSystemWrite"
 
-
-
-
-#---------------------------------------------------------------------------------------------------
-#  Checks if the logStr is in the logs.
-#
-#  params:
-#      comparison  Either "==", ">", "<", "!="
-#      numMatches  The number of expected matches.
-#      logStr      The log string to search for.
-#---------------------------------------------------------------------------------------------------
-function checkLogStr
-{
-    numMatches=$(ssh root@$targetAddr "/sbin/logread | grep -c \"$3\"")
-
-    echo "$numMatches matches for '$3' "
-
-    if [ ! $numMatches $1 $2 ]
-    then
-        echo "$numMatches occurances of '$3' but $1 $2 expected"
-        echo "ConfigTree Test Failed!"
-        exit 1
-    fi
+OnFail() {
+    echo "ConfigTree Test Failed!"
 }
 
-
-
-
-#---------------------------------------------------------------------------------------------------
-#  Checks the return value of the last executed command.  If the return value indicates failure,
-#  then it will exit the script.
-#---------------------------------------------------------------------------------------------------
-function CheckRet
-{
-    RETVAL=$?
-
-    if [ $RETVAL -ne 0 ]; then
-        echo -e $COLOR_ERROR "Exit Code $RETVAL" $COLOR_RESET
-        exit $RETVAL
-    fi
+OnExit() {
+# best effort - clean up
+    echo "##########  Removing the apps."
+    for app in $appList
+    do
+        rmapp $app $targetAddr
+    done
 }
-
-
-
 
 #---------------------------------------------------------------------------------------------------
 #  Run our test apps on the device.
@@ -126,10 +97,10 @@ runApps
 
 
 echo "##########  Checking log results."
-checkLogStr "==" 1 "=====  Read ACL Test on tree: cfgSelfRead, successful.  ====="
-checkLogStr "==" 0 "=====  Write ACL Test on tree: cfgSelfWrite, successful.  ====="
-checkLogStr "==" 0 "=====  Read ACL Test on tree: system, successful.  ====="
-checkLogStr "==" 0 "=====  Write ACL Test on tree: system, successful.  ====="
+CheckLogStr "==" 1 "=====  Read ACL Test on tree: cfgSelfRead, successful.  ====="
+CheckLogStr "==" 0 "=====  Write ACL Test on tree: cfgSelfWrite, successful.  ====="
+CheckLogStr "==" 0 "=====  Read ACL Test on tree: system, successful.  ====="
+CheckLogStr "==" 0 "=====  Write ACL Test on tree: system, successful.  ====="
 
 
 
@@ -144,17 +115,10 @@ runApps
 
 
 echo "##########  Checking log results."
-checkLogStr "==" 1 "=====  Read ACL Test on tree: cfgSelfRead, successful.  ====="
-checkLogStr "==" 1 "=====  Write ACL Test on tree: cfgSelfWrite, successful.  ====="
-checkLogStr "==" 1 "=====  Read ACL Test on tree: system, successful.  ====="
-checkLogStr "==" 1 "=====  Write ACL Test on tree: system, successful.  ====="
+CheckLogStr "==" 1 "=====  Read ACL Test on tree: cfgSelfRead, successful.  ====="
+CheckLogStr "==" 1 "=====  Write ACL Test on tree: cfgSelfWrite, successful.  ====="
+CheckLogStr "==" 1 "=====  Read ACL Test on tree: system, successful.  ====="
+CheckLogStr "==" 1 "=====  Write ACL Test on tree: system, successful.  ====="
 
 
 
-
-echo "##########  Removing the apps."
-for app in $appList
-do
-    rmapp $app $targetAddr
-    CheckRet
-done

@@ -1,0 +1,13 @@
+requires:
+{
+    api:
+    {
+        clientSideA = trivial.api
+        clientSideB = trivial.api
+    }
+}
+
+sources:
+{
+    apiSharingClient.c
+}

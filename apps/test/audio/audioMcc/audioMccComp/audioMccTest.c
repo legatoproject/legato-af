@@ -24,7 +24,7 @@ static le_audio_StreamRef_t FileAudioRef = NULL;
 static le_audio_ConnectorRef_t AudioInputConnectorRef = NULL;
 static le_audio_ConnectorRef_t AudioOutputConnectorRef = NULL;
 
-static le_audio_StreamEventHandlerRef_t StreamHandlerRef = NULL;
+static le_audio_MediaHandlerRef_t MediaHandlerRef = NULL;
 
 static const char* DestinationNumber;
 static const char* AudioTestCase;
@@ -35,34 +35,26 @@ static int   AudioFileFd = -1;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Handler function for Stream Event Notifications.
+ * Handler function for Media Event Notifications.
  *
  */
 //--------------------------------------------------------------------------------------------------
-static void MyStreamEventHandler
+static void MyMediaEventHandler
 (
     le_audio_StreamRef_t          streamRef,
-    le_audio_StreamEventBitMask_t streamEventMask,
+    le_audio_MediaEvent_t          event,
     void*                         contextPtr
 )
 {
-    le_audio_FileEvent_t event;
-
-    if (streamEventMask & LE_AUDIO_BITMASK_FILE_EVENT)
+    switch(event)
     {
-        if(le_audio_GetFileEvent(streamRef, &event) == LE_OK)
-        {
-            switch(event)
-            {
-                case LE_AUDIO_FILE_ENDED:
-                    LE_INFO("File event is LE_AUDIO_FILE_ENDED.");
-                    break;
+        case LE_AUDIO_MEDIA_ENDED:
+            LE_INFO("File event is LE_AUDIO_MEDIA_ENDED.");
+            break;
 
-                case LE_AUDIO_FILE_ERROR:
-                    LE_INFO("File event is LE_AUDIO_FILE_ERROR.");
-                    break;
-            }
-        }
+        case LE_AUDIO_MEDIA_ERROR:
+            LE_INFO("File event is LE_AUDIO_MEDIA_ERROR.");
+            break;
     }
 }
 
@@ -89,11 +81,11 @@ static void ConnectAudioToFileRemotePlay
     }
 
     // Play Remote on input connector.
-    FileAudioRef = le_audio_OpenFilePlayback(AudioFileFd);
+    FileAudioRef = le_audio_OpenPlayer();
     LE_ERROR_IF((FileAudioRef==NULL), "OpenFilePlayback returns NULL!");
 
-    StreamHandlerRef = le_audio_AddStreamEventHandler(FileAudioRef, LE_AUDIO_BITMASK_FILE_EVENT, MyStreamEventHandler, NULL);
-    LE_ERROR_IF((StreamHandlerRef==NULL), "AddFileEventHandler returns NULL!");
+    MediaHandlerRef = le_audio_AddMediaHandler(FileAudioRef, MyMediaEventHandler, NULL);
+    LE_ERROR_IF((MediaHandlerRef==NULL), "AddMediaHandler returns NULL!");
 
     if (FileAudioRef && AudioInputConnectorRef)
     {
@@ -101,10 +93,19 @@ static void ConnectAudioToFileRemotePlay
         if(res!=LE_OK)
         {
             LE_ERROR("Failed to connect FilePlayback on input connector!");
+            return;
+        }
+
+        LE_INFO("FilePlayback is now connected.");
+        res = le_audio_PlayFile(FileAudioRef, AudioFileFd);
+
+        if(res != LE_OK)
+        {
+            LE_ERROR("Failed to play the file!");
         }
         else
         {
-            LE_INFO("FilePlayback is now connected.");
+            LE_INFO("File is now playing");
         }
     }
 }
@@ -131,7 +132,7 @@ static void ConnectAudioToFileRemoteRec
     }
 
     // Capture Remote on output connector.
-    FileAudioRef = le_audio_OpenFileRecording(AudioFileFd);
+    FileAudioRef = le_audio_OpenRecorder();
     LE_ERROR_IF((FileAudioRef==NULL), "OpenFileRecording returns NULL!");
 
     if (FileAudioRef && AudioOutputConnectorRef)
@@ -139,11 +140,20 @@ static void ConnectAudioToFileRemoteRec
         res = le_audio_Connect(AudioOutputConnectorRef, FileAudioRef);
         if(res!=LE_OK)
         {
-            LE_ERROR("Failed to connect FileRecording on output connector!");
+            LE_ERROR("Failed to connect Recorder on output connector!");
+            return;
+        }
+
+        LE_INFO("Recorder is now connected.");
+        res = le_audio_RecordFile(FileAudioRef, AudioFileFd);
+
+        if(res!=LE_OK)
+        {
+            LE_ERROR("Failed to record the file");
         }
         else
         {
-            LE_INFO("FileRecording is now connected.");
+            LE_INFO("File is now recording.");
         }
     }
 }
@@ -170,11 +180,11 @@ static void ConnectAudioToFileLocalPlay
     }
 
     // Play local on output connector.
-    FileAudioRef = le_audio_OpenFilePlayback(AudioFileFd);
+    FileAudioRef = le_audio_OpenPlayer();
     LE_ERROR_IF((FileAudioRef==NULL), "OpenFilePlayback returns NULL!");
 
-    StreamHandlerRef = le_audio_AddStreamEventHandler(FileAudioRef, LE_AUDIO_BITMASK_FILE_EVENT, MyStreamEventHandler, NULL);
-    LE_ERROR_IF((StreamHandlerRef==NULL), "AddFileEventHandler returns NULL!");
+    MediaHandlerRef = le_audio_AddMediaHandler(FileAudioRef, MyMediaEventHandler, NULL);
+    LE_ERROR_IF((MediaHandlerRef==NULL), "AddMediaHandler returns NULL!");
 
     if (FileAudioRef && AudioOutputConnectorRef)
     {
@@ -182,10 +192,19 @@ static void ConnectAudioToFileLocalPlay
         if(res!=LE_OK)
         {
             LE_ERROR("Failed to connect FilePlayback on output connector!");
+            return;
+        }
+
+        LE_INFO("FilePlayback is now connected.");
+        res = le_audio_PlayFile(FileAudioRef, AudioFileFd);
+
+        if(res != LE_OK)
+        {
+            LE_ERROR("Failed to play the file!");
         }
         else
         {
-            LE_INFO("FilePlayback is now connected.");
+            LE_INFO("File is now playing");
         }
     }
 }
@@ -212,7 +231,7 @@ static void ConnectAudioToFileLocalRec
     }
 
     // Capture local on input connector.
-    FileAudioRef = le_audio_OpenFileRecording(AudioFileFd);
+    FileAudioRef = le_audio_OpenRecorder();
     LE_ERROR_IF((FileAudioRef==NULL), "OpenFileRecording returns NULL!");
 
     if (FileAudioRef && AudioInputConnectorRef)
@@ -221,10 +240,19 @@ static void ConnectAudioToFileLocalRec
         if(res!=LE_OK)
         {
             LE_ERROR("Failed to connect FileRecording on input connector!");
+            return;
+        }
+
+        LE_INFO("Recorder is now connected.");
+        res = le_audio_RecordFile(FileAudioRef, AudioFileFd);
+
+        if(res!=LE_OK)
+        {
+            LE_ERROR("Failed to record the file");
         }
         else
         {
-            LE_INFO("FileRecording is now connected.");
+            LE_INFO("File is now recording.");
         }
     }
 }
@@ -589,10 +617,10 @@ static void DisconnectAllAudio
         FeOutRef = NULL;
     }
 
-    if(StreamHandlerRef)
+    if(MediaHandlerRef)
     {
-        le_audio_RemoveStreamEventHandler(StreamHandlerRef);
-        StreamHandlerRef = NULL;
+        le_audio_RemoveMediaHandler(MediaHandlerRef);
+        MediaHandlerRef = NULL;
     }
 
     close(AudioFileFd);
@@ -632,12 +660,12 @@ static void MyCallEventHandler
                 LE_INFO("Termination reason is LE_MCC_CALL_TERM_NETWORK_FAIL");
                 break;
 
-            case LE_MCC_CALL_TERM_BAD_ADDRESS:
-                LE_INFO("Termination reason is LE_MCC_CALL_TERM_BAD_ADDRESS");
+            case LE_MCC_CALL_TERM_UNASSIGNED_NUMBER:
+                LE_INFO("Termination reason is LE_MCC_CALL_TERM_UNASSIGNED_NUMBER");
                 break;
 
-            case LE_MCC_CALL_TERM_BUSY:
-                LE_INFO("Termination reason is LE_MCC_CALL_TERM_BUSY");
+            case LE_MCC_CALL_TERM_USER_BUSY:
+                LE_INFO("Termination reason is LE_MCC_CALL_TERM_USER_BUSY");
                 break;
 
             case LE_MCC_CALL_TERM_LOCAL_ENDED:
@@ -648,8 +676,8 @@ static void MyCallEventHandler
                 LE_INFO("Termination reason is LE_MCC_CALL_TERM_REMOTE_ENDED");
                 break;
 
-            case LE_MCC_CALL_TERM_NOT_DEFINED:
-                LE_INFO("Termination reason is LE_MCC_CALL_TERM_NOT_DEFINED");
+            case LE_MCC_CALL_TERM_UNDEFINED:
+                LE_INFO("Termination reason is LE_MCC_CALL_TERM_UNDEFINED");
                 break;
 
             default:

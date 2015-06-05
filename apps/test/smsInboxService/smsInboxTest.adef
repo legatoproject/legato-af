@@ -1,0 +1,16 @@
+executables:
+{
+    smsInboxTest = ( smsInboxTest)
+}
+
+processes:
+{
+
+}
+
+start: manual
+
+bindings:
+{
+    smsInboxTest.smsInboxTest.le_smsInbox1 -> smsInboxService.le_smsInbox1
+}

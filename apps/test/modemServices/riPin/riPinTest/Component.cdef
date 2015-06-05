@@ -1,0 +1,12 @@
+sources:
+{
+    riPinTest.c
+}
+
+requires:
+{
+    api:
+    {
+        le_riPin.api
+    }
+}

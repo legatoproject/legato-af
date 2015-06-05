@@ -14,6 +14,6 @@ libexternal/libexternal.%.so:
 	$(MAKE) -C libexternal $*
 
 clean:
-	rm -rf work staging obj bin lib build mix fromSource fromComponents *.ar7 *.localhost
+	rm -rf build *.ar7 *.localhost
 	$(MAKE) -C libexternal clean
 

@@ -1,0 +1,26 @@
+executables:
+{
+    positioningTest = ( positioningTest )
+}
+
+processes:
+{
+    envVars:
+    {
+        LE_LOG_LEVEL = DEBUG
+    }
+
+    run:
+    {
+        (positioningTest)
+    }
+}
+
+start: manual
+
+bindings:
+{
+    positioningTest.positioningTest.le_pos -> positioningService.le_pos
+    positioningTest.positioningTest.le_posCtrl -> positioningService.le_posCtrl
+    positioningTest.positioningTest.le_gnss -> positioningService.le_gnss
+}

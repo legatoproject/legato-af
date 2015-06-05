@@ -1,0 +1,106 @@
+# Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+# This file contains a few functions that are used in multiple test scripts.
+# Source this file to use the functions
+
+OnExit () {
+    # override OnExit to do your cleanup (on fail OR success)
+    :
+}
+trap OnExit EXIT
+
+OnFail () {
+    # override OnFail to do things that need to be done when tests fail
+    echo "---Fail---"
+}
+
+#---------------------------------------------------------------------------------------------------
+#  Checks the return value of the last executed command.  If the return value indicates failure,
+#  then it will exit the script.
+#---------------------------------------------------------------------------------------------------
+CheckRet () {
+    RETVAL=$?
+
+    if [ $RETVAL -ne 0 ]; then
+        echo -e $COLOR_ERROR "Exit Code $RETVAL" $COLOR_RESET
+        OnFail
+        exit $RETVAL
+    fi
+}
+
+# DoTheTest is an internal function and not intended for use outside this file
+DoTheTest () {
+    str=$1
+    num=$2
+    comp=$3
+    expect=$4
+
+    if ! TestMatches $num $comp $expect
+    then
+        echo "$num occurances of '$str' but $comp $expect expected"
+        OnFail
+        exit 1
+    fi
+}
+
+# TestMatches is an internal function and not intended for use outside this file
+TestMatches () {
+    numMatches=$1
+    test=$2
+    targetNum=$3
+
+    case $test in
+        '==') [ $numMatches -eq $targetNum ] ;;
+        '!=') [ $numMatches -ne $targetNum ] ;;
+        '<')  [ $numMatches -lt $targetNum ] ;;
+        '>')  [ $numMatches -gt $targetNum ] ;;
+        *)    echo "Bad test argument to TestMatches in test.shlib $@"
+              OnFail
+              exit 2 ;;
+    esac
+}
+
+#---------------------------------------------------------------------------------------------------
+# Checks if the logStr is in the logs.
+#
+# params:
+#       comparison      Either "==", ">", "<", "!="
+#       numMatches      The number of expected matches.
+#       logStr          The log string to search for.
+#---------------------------------------------------------------------------------------------------
+CheckLogStr () {
+
+    comparison=$1
+    expectedMatches=$2
+    logStr=$3
+
+    numMatches=$(ssh root@$targetAddr "/sbin/logread | grep -c \"$logStr\"")
+
+    echo "$numMatches matches for '$logStr' "
+
+    DoTheTest "$logStr" $numMatches $comparison $expectedMatches
+}
+
+#---------------------------------------------------------------------------------------------------
+# Checks if the logStr is in the logs.
+#
+# params:
+#       logPath         Path to the log file to check.
+#       comparison      Either "==", ">", "<", "!="
+#       numMatches      The number of expected matches.
+#       logStr          The log string to search for.
+#---------------------------------------------------------------------------------------------------
+CheckLogfileStr () {
+
+    logPath=$1
+    comparison=$2
+    expectedMatches=$3
+    logStr=$4
+
+    numMatches=$(ssh root@$targetAddr "cd $(dirname $logPath) && ls -1 | grep '$(basename $logPath)' | xargs grep -c '$logStr'")
+
+    echo "$numMatches matches for '$logStr' with logPath='$logPath'"
+
+    DoTheTest "$logStr" $numMatches $comparison $expectedMatches
+}
+

@@ -130,7 +130,7 @@ void eta_CheckResults(void)
     LE_ASSERT(Counter == 0);
 
     // We should be back to only one thread now.
-    le_mem_PoolRef_t pool = le_mem_FindPool("Thread Pool");
+    le_mem_PoolRef_t pool = _le_mem_FindPool("framework", "Thread Pool");
     LE_ASSERT(pool != NULL);
     le_mem_PoolStats_t stats;
     le_mem_GetStats(pool, &stats);

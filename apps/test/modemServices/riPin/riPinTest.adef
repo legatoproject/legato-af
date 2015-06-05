@@ -1,0 +1,11 @@
+executables:
+{
+    riPinTest = ( riPinTest )
+}
+
+start: manual
+
+bindings:
+{
+    riPinTest.riPinTest.le_riPin -> modemService.le_riPin
+}

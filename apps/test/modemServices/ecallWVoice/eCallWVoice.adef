@@ -1,0 +1,20 @@
+executables:
+{
+    eCallWVoice = ( eCallWVoice )
+}
+
+processes:
+{
+    envVars:
+    {
+        LE_LOG_LEVEL = DEBUG
+    }
+}
+
+start: manual
+
+bindings:
+{
+    eCallWVoice.eCallWVoice.le_ecall -> modemService.le_ecall
+    eCallWVoice.eCallWVoice.le_audio -> audioService.le_audio
+}

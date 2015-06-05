@@ -23,71 +23,6 @@
 #include "interfaces.h"
 
 
-#define SERVICE_BASE_BINDINGS_CFG  "/users/root/bindings"
-
-typedef void (*LegatoServiceInit_t)(void);
-
-typedef struct {
-    const char * appNamePtr;
-    const char * serviceNamePtr;
-    LegatoServiceInit_t serviceInitPtr;
-} ServiceInitEntry_t;
-
-#define SERVICE_ENTRY(aPP, sVC) { aPP, #sVC, sVC##_ConnectService },
-
-typedef void (*LegatoServiceInit_t)(void);
-
-
-const ServiceInitEntry_t ServiceInitEntries[] = {
-    SERVICE_ENTRY("modemService", le_sms)
-};
-
-
-static void SetupBindings(void)
-{
-    int serviceIndex;
-    char cfgPath[512];
-    le_cfg_IteratorRef_t iteratorRef;
-
-    /* Setup bindings */
-    for(serviceIndex = 0; serviceIndex < NUM_ARRAY_MEMBERS(ServiceInitEntries); serviceIndex++ )
-    {
-        const ServiceInitEntry_t * entryPtr = &ServiceInitEntries[serviceIndex];
-
-        /* Update binding in config tree */
-        LE_INFO("-> Bind %s", entryPtr->serviceNamePtr);
-
-        snprintf(cfgPath, sizeof(cfgPath), SERVICE_BASE_BINDINGS_CFG "/%s", entryPtr->serviceNamePtr);
-
-        iteratorRef = le_cfg_CreateWriteTxn(cfgPath);
-
-        le_cfg_SetString(iteratorRef, "app", entryPtr->appNamePtr);
-        le_cfg_SetString(iteratorRef, "interface", entryPtr->serviceNamePtr);
-
-        le_cfg_CommitTxn(iteratorRef);
-    }
-
-    /* Tel legato to reload its bindings */
-    system("sdir load");
-}
-
-static void ConnectServices(void)
-{
-    int serviceIndex;
-
-    /* Init services */
-    for(serviceIndex = 0; serviceIndex < NUM_ARRAY_MEMBERS(ServiceInitEntries); serviceIndex++ )
-    {
-        const ServiceInitEntry_t * entryPtr = &ServiceInitEntries[serviceIndex];
-
-        LE_INFO("-> Init %s", entryPtr->serviceNamePtr);
-        entryPtr->serviceInitPtr();
-    }
-
-    LE_INFO("All services bound!");
-}
-
-
 static le_sms_RxMessageHandlerRef_t HandlerRef1, HandlerRef2, HandlerRef3, HandlerRef4;
 
 
@@ -127,7 +62,6 @@ static void RxMessageHandler1
 
     if (le_sms_GetFormat(msgRef) == LE_SMS_FORMAT_TEXT)
     {
-
         res = le_sms_DeleteFromStorage(msgRef);
         if(res != LE_OK)
         {
@@ -218,23 +152,25 @@ static void RxMessageHandler4
 
     SmsMTHandlerRemover();
 
-    LE_INFO("sms Deletion test Exit\n");
-    exit(0);
+    LE_INFO("smsDeletion test PASSED");
+    LE_INFO("smsDeletion test Exit");
+    exit(EXIT_SUCCESS);
 }
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- *  App init
+ * App init
  *
+ * ME must be registered on Network with the SIM in ready state.
+ * Check "logread -f | grep sms" log
+ * Start app : app start smsDeletion
+ * Receive one sms MT
  */
 //--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
     LE_INFO("Start Multiple SMS deletion race test!");
-
-    SetupBindings();
-    ConnectServices();
 
     // First handler receives sms reference and try to delete it from storage.
     // Sms Deletion will be delayed until no more object references exist.
@@ -265,4 +201,6 @@ COMPONENT_INIT
     {
         LE_ERROR("le_sms_AddRxMessageHandler RxMessageHandler4 has failed!");
     }
+
+    LE_INFO("Wait for SMS incoming message");
 }

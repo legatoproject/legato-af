@@ -1,15 +1,12 @@
 #!/bin/bash
 
+LoadTestLib
+
 targetAddr=$1
 targetType=${2:-ar7}
 
-function CheckRet
-{
-    RETVAL=$?
-    if [ $RETVAL -ne 0 ]; then
-        echo -e $COLOR_ERROR "Exit Code $RETVAL" $COLOR_RESET
-        exit $RETVAL
-    fi
+OnFail() {
+    echo "SMACK API Test Failed!"
 }
 
 # Copy the test executable to the target.

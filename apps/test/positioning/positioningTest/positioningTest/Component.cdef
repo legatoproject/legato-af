@@ -1,0 +1,14 @@
+sources:
+{
+    positioningTest.c
+}
+
+requires:
+{
+    api:
+    {
+        le_pos.api
+        le_posCtrl.api
+        le_gnss.api
+    }
+}

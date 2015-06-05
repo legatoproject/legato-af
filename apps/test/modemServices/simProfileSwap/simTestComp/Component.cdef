@@ -1,0 +1,12 @@
+sources:
+{
+    simTest.c
+}
+
+requires:
+{
+    api:
+    {
+        le_sim.api
+    }
+}

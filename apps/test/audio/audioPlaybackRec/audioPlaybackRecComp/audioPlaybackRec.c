@@ -1,7 +1,11 @@
 /**
  * This module is for unit of the audio playback/recorder
  *
- *
+* You must issue the following commands:
+* @verbatim
+  $ app start audioPlaybackRec
+  $ execInApp audioPlaybackRec audioPlaybackRecTest <test case> [main audio path] [file's name] [option]
+ @endverbatim
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  *
  */
@@ -9,10 +13,65 @@
 #include "legato.h"
 #include <stdio.h>
 #include <pthread.h>
-
+#include <unistd.h>
 
 #include "interfaces.h"
 
+//--------------------------------------------------------------------------------------------------
+// Symbol and Enum definitions.
+//--------------------------------------------------------------------------------------------------
+#define ID_RIFF    0x46464952
+#define ID_WAVE    0x45564157
+#define ID_FMT     0x20746d66
+#define ID_DATA    0x61746164
+#define FORMAT_PCM 1
+
+//--------------------------------------------------------------------------------------------------
+// Data structures.
+//--------------------------------------------------------------------------------------------------
+
+struct
+{
+    enum
+    {
+        STOP,
+        PLAY,
+        PAUSE,
+        RESUME,
+        RECORD,
+        DISCONNECT
+    } typeOption;
+} OptionContext;
+
+typedef struct {
+    uint32_t riffId;         ///< "RIFF" constant. Marks the file as a riff file.
+    uint32_t riffSize;       ///< Size of the overall file - 8 bytes
+    uint32_t riffFmt;        ///< File Type Header. For our purposes, it always equals "WAVE".
+    uint32_t fmtId;          ///< Equals "fmt ". Format chunk marker. Includes trailing null
+    uint32_t fmtSize;        ///< Length of format data as listed above
+    uint16_t audioFormat;    ///< Audio format (PCM)
+    uint16_t channelsCount;  ///< Number of channels
+    uint32_t sampleRate;     ///< Sample frequency in Hertz
+    uint32_t byteRate;       ///< sampleRate * channelsCount * bps / 8
+    uint16_t blockAlign;     ///< channelsCount * bps / 8
+    uint16_t bitsPerSample;  ///< Bits per sample
+    uint32_t dataId;         ///< "data" chunk header. Marks the beginning of the data section.
+    uint32_t dataSize;       ///< Data size
+} WavHeader_t;
+
+typedef struct
+{
+    WavHeader_t hd;
+    uint32_t wroteLen;
+    int pipefd[2];
+    le_thread_Ref_t mainThreadRef;
+    bool playDone;
+}
+PbRecSamplesThreadCtx_t;
+
+//--------------------------------------------------------------------------------------------------
+//                                       Static declarations
+//--------------------------------------------------------------------------------------------------
 
 static le_audio_StreamRef_t MdmRxAudioRef = NULL;
 static le_audio_StreamRef_t MdmTxAudioRef = NULL;
@@ -23,17 +82,29 @@ static le_audio_StreamRef_t FileAudioRef = NULL;
 static le_audio_ConnectorRef_t AudioInputConnectorRef = NULL;
 static le_audio_ConnectorRef_t AudioOutputConnectorRef = NULL;
 
-static le_audio_StreamEventHandlerRef_t StreamHandlerRef = NULL;
+static le_audio_MediaHandlerRef_t MediaHandlerRef = NULL;
 
 static const char* AudioTestCase;
 static const char* MainAudioSoundPath;
 static const char* AudioFilePath;
-static const char* Option;
+
 static int   AudioFileFd = -1;
+static bool PlayInLoop = false;
+
+le_timer_Ref_t OptionTimerRef;
+le_timer_Ref_t  GainTimerRef = NULL;
+le_timer_Ref_t  MuteTimerRef = NULL;
+
+static PbRecSamplesThreadCtx_t PbRecSamplesThreadCtx;
+static le_thread_Ref_t RecPbThreadRef = NULL;
+
+static uint32_t ChannelsCount;
+static uint32_t SampleRate;
+static uint32_t BitsPerSample;
 
 static void DisconnectAllAudio(void);
+static void PlaySamples(void* param1Ptr,void* param2Ptr);
 
-le_timer_Ref_t  GainTimerRef = NULL;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -53,7 +124,7 @@ static void GainTimerHandler
 
     if ( increase )
     {
-        vol+=20;
+        vol+=1;
 
         if (vol == 100)
         {
@@ -62,7 +133,7 @@ static void GainTimerHandler
     }
     else
     {
-        vol-=20;
+        vol-=1;
 
         if (vol == 0)
         {
@@ -75,15 +146,492 @@ static void GainTimerHandler
 
     if (result != LE_OK)
     {
-        LE_ERROR("le_audio_SetGain error : %d", result);
+        LE_FATAL("le_audio_SetGain error : %d", result);
     }
 
     result = le_audio_GetGain(FileAudioRef, &getVol);
 
     if ((result != LE_OK) || (vol != getVol))
     {
-        LE_ERROR("le_audio_GetGain error : %d read volume: %d", result, getVol);
+        LE_FATAL("le_audio_GetGain error : %d read volume: %d", result, getVol);
     }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Timer handler function for volume playback MUTE test.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+
+static void MuteTimerHandler
+(
+    le_timer_Ref_t timerRef
+)
+{
+    static bool mute = false;
+    le_result_t result;
+
+    if ( mute )
+    {
+        result = le_audio_Unmute(FileAudioRef);
+        mute = false;
+        LE_INFO("Unmute audio Playback");
+    }
+    else
+    {
+        result = le_audio_Mute(FileAudioRef);
+        mute = true;
+        LE_INFO("Mute audio Playback");
+    }
+
+    if (result != LE_OK)
+    {
+        LE_FATAL("le_audio_Mute/le_audio_Unmute Failed %d", result);
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Rec Samples thread destructor.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+
+static void DestroyRecThread
+(
+    void *contextPtr
+)
+{
+    PbRecSamplesThreadCtx_t *threadCtxPtr = (PbRecSamplesThreadCtx_t*) contextPtr;
+
+    LE_INFO("wroteLen %d", threadCtxPtr->wroteLen);
+    close(AudioFileFd);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Rec Samples thread.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+
+static void* RecSamplesThread
+(
+    void* contextPtr
+)
+{
+    int pipefd[2];
+    int32_t len = 1024;
+    char data[len];
+    uint32_t channelsCount;
+    uint32_t sampleRate;
+    uint32_t bitsPerSample;
+    PbRecSamplesThreadCtx_t *threadCtxPtr = (PbRecSamplesThreadCtx_t*) contextPtr;
+
+    le_audio_ConnectService();
+
+    lseek(AudioFileFd, 0, SEEK_SET);
+
+    if (pipe(pipefd) == -1)
+    {
+        LE_ERROR("Failed to create the pipe");
+        return NULL;
+    }
+
+    LE_ASSERT(le_audio_SetSamplePcmChannelNumber(FileAudioRef, ChannelsCount) == LE_OK);
+    LE_ASSERT(le_audio_SetSamplePcmSamplingRate(FileAudioRef, SampleRate) == LE_OK);
+    LE_ASSERT(le_audio_SetSamplePcmSamplingResolution(FileAudioRef, BitsPerSample) == LE_OK);
+
+    LE_ASSERT(le_audio_GetSamplePcmChannelNumber(FileAudioRef, &channelsCount) == LE_OK);
+    LE_ASSERT(channelsCount == ChannelsCount);
+    LE_ASSERT(le_audio_GetSamplePcmSamplingRate(FileAudioRef, &sampleRate) == LE_OK);
+    LE_ASSERT(sampleRate == SampleRate);
+    LE_ASSERT(le_audio_GetSamplePcmSamplingResolution(FileAudioRef, &bitsPerSample) == LE_OK);
+    LE_ASSERT(bitsPerSample == BitsPerSample);
+
+    LE_ASSERT(le_audio_GetSamples(FileAudioRef, pipefd[1]) == LE_OK);
+    LE_INFO("Start getting samples...");
+
+    int32_t readLen;
+
+    while ((readLen = read( pipefd[0], data, len )))
+    {
+        int32_t len = write( AudioFileFd, data, readLen );
+
+        if (len < 0)
+        {
+            LE_ERROR("write error %d %d", readLen, len);
+            break;
+        }
+
+        threadCtxPtr->wroteLen += len;
+    }
+
+    return NULL;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Rec Samples.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+
+static void RecSamples
+(
+    void
+)
+{
+    memset(&PbRecSamplesThreadCtx,0,sizeof(PbRecSamplesThreadCtx_t));
+
+    RecPbThreadRef = le_thread_Create("RecSamples", RecSamplesThread, &PbRecSamplesThreadCtx);
+
+    le_thread_AddChildDestructor(RecPbThreadRef,
+                                DestroyRecThread,
+                                &PbRecSamplesThreadCtx);
+
+    le_thread_Start(RecPbThreadRef);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Play Samples thread destructor.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void DestroyPlayThread
+(
+    void *contextPtr
+)
+{
+    PbRecSamplesThreadCtx_t *threadCtxPtr = (PbRecSamplesThreadCtx_t*) contextPtr;
+
+    LE_INFO("DestroyPlayThread playDone %d PlayInLoop %d", threadCtxPtr->playDone, PlayInLoop);
+
+    if( threadCtxPtr->playDone && PlayInLoop )
+    {
+        le_event_QueueFunctionToThread(threadCtxPtr->mainThreadRef,
+                                        PlaySamples,
+                                        contextPtr,
+                                        NULL);
+    }
+    else
+    {
+        LE_DEBUG("Close pipe Tx");
+        close(threadCtxPtr->pipefd[1]);
+    }
+
+    RecPbThreadRef = NULL;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Play Samples thread.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void* PlaySamplesThread
+(
+    void* contextPtr
+)
+{
+    char data[1024];
+    int32_t len = 1;
+    uint32_t channelsCount;
+    uint32_t sampleRate;
+    uint32_t bitsPerSample;
+    PbRecSamplesThreadCtx_t *threadCtxPtr = (PbRecSamplesThreadCtx_t*) contextPtr;
+
+    le_audio_ConnectService();
+
+    lseek(AudioFileFd, 0, SEEK_SET);
+
+    if ( ( threadCtxPtr->pipefd[0] == -1 ) && ( threadCtxPtr->pipefd[1] == -1 ) )
+    {
+        if (pipe(threadCtxPtr->pipefd) == -1)
+        {
+            LE_ERROR("Failed to create the pipe");
+            return NULL;
+        }
+
+        LE_ASSERT(le_audio_SetSamplePcmChannelNumber(FileAudioRef, ChannelsCount) == LE_OK);
+        LE_ASSERT(le_audio_SetSamplePcmSamplingRate(FileAudioRef, SampleRate) == LE_OK);
+        LE_ASSERT(le_audio_SetSamplePcmSamplingResolution(FileAudioRef, BitsPerSample) == LE_OK);
+
+        LE_ASSERT(le_audio_GetSamplePcmChannelNumber(FileAudioRef, &channelsCount) == LE_OK);
+        LE_ASSERT(channelsCount == ChannelsCount);
+        LE_ASSERT(le_audio_GetSamplePcmSamplingRate(FileAudioRef, &sampleRate) == LE_OK);
+        LE_ASSERT(sampleRate == SampleRate);
+        LE_ASSERT(le_audio_GetSamplePcmSamplingResolution(FileAudioRef, &bitsPerSample) == LE_OK);
+        LE_ASSERT(bitsPerSample == BitsPerSample);
+
+        LE_ASSERT(le_audio_PlaySamples(FileAudioRef, threadCtxPtr->pipefd[0]) == LE_OK);
+        LE_INFO("Start playing samples...");
+    }
+
+    while ((len = read(AudioFileFd, data, 1024)) > 0)
+    {
+        int32_t wroteLen = write( threadCtxPtr->pipefd[1], data, len );
+
+        if (wroteLen <= 0)
+        {
+            LE_ERROR("write error %d", wroteLen);
+            return NULL;
+        }
+    }
+
+    threadCtxPtr->playDone = true;
+
+    return NULL;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Play Samples thread.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+
+static void PlaySamples
+(
+    void* param1Ptr,
+    void* param2Ptr
+)
+{
+    if (RecPbThreadRef == NULL)
+    {
+        RecPbThreadRef = le_thread_Create("PlaySamples", PlaySamplesThread, param1Ptr);
+
+        le_thread_AddChildDestructor(RecPbThreadRef,
+                                    DestroyPlayThread,
+                                    param1Ptr);
+
+        le_thread_Start(RecPbThreadRef);
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Execute next optional parameters
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void ExecuteNextOption
+(
+    void
+)
+{
+    static uint8_t numArgs = 3; // test case, audio sound path and audio file already treated;
+    bool nextOption = false;
+
+    if ( numArgs < le_arg_NumArgs() )
+    {
+        if ( strncmp(le_arg_GetArg(numArgs), "STOP", 4) == 0 )
+        {
+            le_clk_Time_t interval={0};
+            const char* stop = le_arg_GetArg(numArgs);
+
+            if (strlen(stop) > 5) // higher than "STOP="
+            {
+                LE_INFO("STOP will be done in %d seconds", atoi(stop+5));
+                interval.sec = atoi(stop+5);
+                le_timer_SetInterval(OptionTimerRef, interval);
+                OptionContext.typeOption = STOP;
+                le_timer_Start(OptionTimerRef);
+            }
+        }
+        else if ( strncmp(le_arg_GetArg(numArgs), "PLAY", 4) == 0 )
+        {
+            le_clk_Time_t interval={0};
+            const char* play = le_arg_GetArg(numArgs);
+            if (strlen(play) > 5) // higher than "PLAY="
+            {
+                LE_INFO("PLAY will be done in %d seconds", atoi(play+5));
+                interval.sec = atoi(play+5);
+                le_timer_SetInterval(OptionTimerRef, interval);
+                OptionContext.typeOption = PLAY;
+                le_timer_Start(OptionTimerRef);
+            }
+        }
+        else if ( strncmp(le_arg_GetArg(numArgs), "RECORD", 6) == 0 )
+        {
+            le_clk_Time_t interval={0};
+            const char* play = le_arg_GetArg(numArgs);
+            if (strlen(play) > 7) // higher than "RECORD="
+            {
+                LE_INFO("RECORD will be done in %d seconds", atoi(play+7));
+                interval.sec = atoi(play+7);
+                le_timer_SetInterval(OptionTimerRef, interval);
+                OptionContext.typeOption = RECORD;
+                le_timer_Start(OptionTimerRef);
+            }
+        }
+        else if ( strncmp(le_arg_GetArg(numArgs), "PAUSE", 5) == 0 )
+        {
+            le_clk_Time_t interval={0};
+            const char* pause = le_arg_GetArg(numArgs);
+
+            if (strlen(pause) > 6) // higher than "PAUSE="
+            {
+                LE_INFO("PAUSE will be done in %d seconds", atoi(pause+6));
+                interval.sec = atoi(pause+6);
+                le_timer_SetInterval(OptionTimerRef, interval);
+                OptionContext.typeOption = PAUSE;
+                le_timer_Start(OptionTimerRef);
+            }
+        }
+        else if ( strncmp(le_arg_GetArg(numArgs), "RESUME", 6) == 0 )
+        {
+            le_clk_Time_t interval={0};
+            const char* resume = le_arg_GetArg(numArgs);
+
+            if (strlen(resume) > 7) // higher than "RESUME="
+            {
+                LE_INFO("RESUME will be done in %d seconds", atoi(resume+7));
+                interval.sec = atoi(resume+7);
+                le_timer_SetInterval(OptionTimerRef, interval);
+                OptionContext.typeOption = RESUME;
+                le_timer_Start(OptionTimerRef);
+            }
+        }
+        else if ( strncmp(le_arg_GetArg(numArgs), "DISCONNECT", 10) == 0 )
+        {
+            le_clk_Time_t interval={0};
+            const char* resume = le_arg_GetArg(numArgs);
+
+            if (strlen(resume) > 11) // higher than "DISCONNECT="
+            {
+                LE_INFO("DISCONNECT will be done in %d seconds", atoi(resume+11));
+                interval.sec = atoi(resume+11);
+                le_timer_SetInterval(OptionTimerRef, interval);
+                OptionContext.typeOption = DISCONNECT;
+                le_timer_Start(OptionTimerRef);
+            }
+        }
+        else if ( strncmp(le_arg_GetArg(numArgs), "LOOP", 4) == 0 )
+        {
+            PlayInLoop = true;
+            nextOption = true;
+        }
+        else if ( strncmp(le_arg_GetArg(numArgs), "MUTE", 4) == 0 )
+        {
+
+            le_clk_Time_t interval;
+            interval.sec = 1;
+            interval.usec = 0;
+
+            LE_INFO("Test the MUTE function");
+
+            MuteTimerRef = le_timer_Create  ( "Mute timer" );
+            le_timer_SetHandler(MuteTimerRef, MuteTimerHandler);
+
+            le_timer_SetInterval(MuteTimerRef, interval);
+            le_timer_SetRepeat(MuteTimerRef,0);
+            le_timer_Start(MuteTimerRef);
+        }
+        else if ( strncmp(le_arg_GetArg(numArgs),"GAIN",4) == 0 )
+        {
+            le_clk_Time_t interval;
+            interval.sec = 0;
+            interval.usec = 100000;
+
+            LE_INFO("Test the playback volume");
+
+            GainTimerRef = le_timer_Create  ( "Gain timer" );
+            le_timer_SetHandler(GainTimerRef, GainTimerHandler);
+
+            le_audio_SetGain(FileAudioRef, 0);
+            le_timer_SetInterval(GainTimerRef, interval);
+            le_timer_SetRepeat(GainTimerRef,0);
+            le_timer_Start(GainTimerRef);
+        }
+
+        numArgs++;
+    }
+
+    if (nextOption)
+    {
+        ExecuteNextOption();
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Timer handler for optional parameters
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void OptionTimerHandler
+(
+    le_timer_Ref_t timerRef
+)
+{
+    le_result_t result;
+
+    LE_INFO("timeout for %d", OptionContext.typeOption);
+
+    switch (OptionContext.typeOption)
+    {
+        case STOP:
+            result = le_audio_Stop(FileAudioRef);
+            LE_INFO("Stop result %d", result);
+
+            if (RecPbThreadRef)
+            {
+                le_thread_Cancel(RecPbThreadRef);
+                RecPbThreadRef = NULL;
+            }
+
+            if ( strncmp(AudioTestCase,"PB_SAMPLES",10)==0 )
+            {
+                close(PbRecSamplesThreadCtx.pipefd[0]);
+                close(PbRecSamplesThreadCtx.pipefd[1]);
+                PbRecSamplesThreadCtx.pipefd[0] = -1;
+                PbRecSamplesThreadCtx.pipefd[1] = -1;
+                PbRecSamplesThreadCtx.playDone = 0;
+            }
+        break;
+        case PLAY:
+            if ( strncmp(AudioTestCase,"PB_SAMPLES",10)==0 )
+            {
+                PlaySamples(&PbRecSamplesThreadCtx, NULL);
+            }
+            else
+            {
+                result = le_audio_PlayFile(FileAudioRef,LE_AUDIO_NO_FD);
+                LE_INFO("Play result %d", result);
+            }
+        break;
+        case RECORD:
+        if ( strncmp(AudioTestCase,"REC_SAMPLES",11)==0 )
+        {
+            RecSamples();
+        }
+        else
+        {
+            result = le_audio_RecordFile(FileAudioRef,LE_AUDIO_NO_FD);
+
+            LE_INFO("Record result %d", result);
+        }
+        break;
+        case PAUSE:
+            result = le_audio_Pause(FileAudioRef);
+            LE_INFO("Pause result %d", result);
+        break;
+        case RESUME:
+            result = le_audio_Resume(FileAudioRef);
+            LE_INFO("Resume result %d", result);
+        break;
+        case DISCONNECT:
+            LE_INFO("disconnect all audio");
+            DisconnectAllAudio();
+        break;
+        default:
+        break;
+    }
+
+    ExecuteNextOption();
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -92,45 +640,57 @@ static void GainTimerHandler
  *
  */
 //--------------------------------------------------------------------------------------------------
-static void MyStreamEventHandler
+static void MyMediaEventHandler
 (
     le_audio_StreamRef_t          streamRef,
-    le_audio_StreamEventBitMask_t streamEventMask,
+    le_audio_MediaEvent_t          event,
     void*                         contextPtr
 )
 {
-    le_audio_FileEvent_t event;
-
-    if (streamEventMask & LE_AUDIO_BITMASK_FILE_EVENT)
+    if (!streamRef)
     {
-        if(le_audio_GetFileEvent(streamRef, &event) == LE_OK)
-        {
-            switch(event)
-            {
-                case LE_AUDIO_FILE_ENDED:
-                    LE_INFO("File event is LE_AUDIO_FILE_ENDED.");
-                    break;
+        LE_ERROR("Bad streamRef");
+        return;
+    }
 
-                case LE_AUDIO_FILE_ERROR:
-                    LE_INFO("File event is LE_AUDIO_FILE_ERROR.");
-                    break;
+
+    switch(event)
+    {
+        case LE_AUDIO_MEDIA_ENDED:
+            LE_INFO("File event is LE_AUDIO_MEDIA_ENDED.");
+            if (PlayInLoop)
+            {
+                le_audio_PlayFile(streamRef, LE_AUDIO_NO_FD);
             }
-        }
+            break;
+
+        case LE_AUDIO_MEDIA_ERROR:
+            LE_INFO("File event is LE_AUDIO_MEDIA_ERROR.");
+        break;
     }
 
     if (GainTimerRef)
     {
         le_timer_Stop (GainTimerRef);
         le_timer_Delete (GainTimerRef);
-
+        GainTimerRef = NULL;
     }
 
-    DisconnectAllAudio();
-
-    exit(0);
+    if (MuteTimerRef)
+    {
+        le_timer_Stop (MuteTimerRef);
+        le_timer_Delete (MuteTimerRef);
+        le_audio_Unmute(FileAudioRef);
+        MuteTimerRef = NULL;
+    }
 }
 
-
+//--------------------------------------------------------------------------------------------------
+/**
+ * Connect USB audio class to connectors
+ *
+ */
+//--------------------------------------------------------------------------------------------------
 static void ConnectAudioToUsb
 (
     void
@@ -156,6 +716,12 @@ static void ConnectAudioToUsb
     }
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Connect player to connector
+ *
+ */
+//--------------------------------------------------------------------------------------------------
 static void ConnectAudioToFileLocalPlay
 (
     void
@@ -174,48 +740,55 @@ static void ConnectAudioToFileLocalPlay
     }
 
     // Play local on output connector.
-    FileAudioRef = le_audio_OpenFilePlayback(AudioFileFd);
+    FileAudioRef = le_audio_OpenPlayer();
     LE_ERROR_IF((FileAudioRef==NULL), "OpenFilePlayback returns NULL!");
 
-    // Check for the test of the playback volume
-    if ( (Option!= NULL) && strncmp(Option,"GAIN",4) == 0 )
-    {
-        le_clk_Time_t interval;
-        interval.sec = 1;
-        interval.usec = 0;
-
-        LE_INFO("Test the playback volume");
-
-        GainTimerRef = le_timer_Create  ( "Gain timer" );
-        le_timer_SetHandler(GainTimerRef, GainTimerHandler);
-
-        le_audio_SetGain(FileAudioRef, 0);
-        le_timer_SetInterval(GainTimerRef, interval);
-        le_timer_SetRepeat(GainTimerRef,0);
-        le_timer_Start(GainTimerRef);
-    }
-    else
-    {
-        LE_INFO("playback volume set to default value");
-        le_audio_SetGain(FileAudioRef, 50);
-    }
-
-    StreamHandlerRef = le_audio_AddStreamEventHandler(FileAudioRef, LE_AUDIO_BITMASK_FILE_EVENT, MyStreamEventHandler, NULL);
+    MediaHandlerRef = le_audio_AddMediaHandler(FileAudioRef, MyMediaEventHandler, NULL);
 
     if (FileAudioRef && AudioOutputConnectorRef)
     {
         res = le_audio_Connect(AudioOutputConnectorRef, FileAudioRef);
-        if(res!=LE_OK)
+        if(res != LE_OK)
         {
             LE_ERROR("Failed to connect FilePlayback on output connector!");
+            return;
+        }
+
+        if (strncmp(AudioTestCase,"PB_SAMPLES",10)==0)
+        {
+            memset(&PbRecSamplesThreadCtx,0,sizeof(PbRecSamplesThreadCtx_t));
+            PbRecSamplesThreadCtx.pipefd[0] = -1;
+            PbRecSamplesThreadCtx.pipefd[1] = -1;
+            PbRecSamplesThreadCtx.mainThreadRef = le_thread_GetCurrent();
+
+            PlaySamples(&PbRecSamplesThreadCtx, NULL);
         }
         else
         {
             LE_INFO("FilePlayback is now connected.");
+            res = le_audio_PlayFile(FileAudioRef, AudioFileFd);
+
+            if(res != LE_OK)
+            {
+                LE_ERROR("Failed to play the file!");
+                return;
+            }
+            else
+            {
+                LE_INFO("File is now playing");
+            }
         }
+
+        ExecuteNextOption();
     }
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Connect recorder to connector
+ *
+ */
+//--------------------------------------------------------------------------------------------------
 static void ConnectAudioToFileLocalRec
 (
     void
@@ -234,8 +807,10 @@ static void ConnectAudioToFileLocalRec
     }
 
     // Capture local on input connector.
-    FileAudioRef = le_audio_OpenFileRecording(AudioFileFd);
+    FileAudioRef = le_audio_OpenRecorder();
     LE_ERROR_IF((FileAudioRef==NULL), "OpenFileRecording returns NULL!");
+
+    MediaHandlerRef = le_audio_AddMediaHandler(FileAudioRef, MyMediaEventHandler, NULL);
 
     if (FileAudioRef && AudioInputConnectorRef)
     {
@@ -243,15 +818,45 @@ static void ConnectAudioToFileLocalRec
         if(res!=LE_OK)
         {
             LE_ERROR("Failed to connect FileRecording on input connector!");
+            return;
+        }
+
+        LE_INFO("Recorder is now connected.");
+
+        if ( strncmp(AudioTestCase,"REC_SAMPLES",11)==0 )
+        {
+            memset(&PbRecSamplesThreadCtx,0,sizeof(PbRecSamplesThreadCtx_t));
+
+            RecSamples();
+
+            ExecuteNextOption();
         }
         else
         {
-            LE_INFO("FileRecording is now connected.");
+            res = le_audio_RecordFile(FileAudioRef, AudioFileFd);
+
+            if(res!=LE_OK)
+            {
+                LE_ERROR("Failed to record the file");
+                return;
+            }
+            else
+            {
+                LE_INFO("File is now recording.");
+            }
+
+            ExecuteNextOption();
         }
     }
 }
 
 #ifdef ENABLE_CODEC
+//--------------------------------------------------------------------------------------------------
+/**
+ * Connect speaker and MIC to connectors
+ *
+ */
+//--------------------------------------------------------------------------------------------------
 static void ConnectAudioToCodec
 (
     void
@@ -279,6 +884,12 @@ static void ConnectAudioToCodec
 }
 #endif
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Connect PCM to connectors
+ *
+ */
+//--------------------------------------------------------------------------------------------------
 static void ConnectAudioToPcm
 (
     void
@@ -305,6 +916,12 @@ static void ConnectAudioToPcm
     }
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Connect I2S to the connectors
+ *
+ */
+//--------------------------------------------------------------------------------------------------
 static void ConnectAudioToI2s
 (
     void
@@ -333,7 +950,12 @@ static void ConnectAudioToI2s
     LE_INFO("Open I2s: FeInRef.%p FeOutRef.%p", FeInRef, FeOutRef);
 }
 
-
+//--------------------------------------------------------------------------------------------------
+/**
+ * Connect audio
+ *
+ */
+//--------------------------------------------------------------------------------------------------
 static void ConnectAudio
 (
     void
@@ -370,12 +992,12 @@ static void ConnectAudio
         }
 
         // Connect SW-PCM
-        if (strcmp(AudioTestCase,"PB")==0)
+        if (strncmp(AudioTestCase,"PB",2)==0)
         {
             LE_INFO("Connect Local Play");
             ConnectAudioToFileLocalPlay();
         }
-        else if (strcmp(AudioTestCase,"REC")==0)
+        else if (strncmp(AudioTestCase,"REC",3)==0)
         {
             LE_INFO("Connect Local Rec ");
             ConnectAudioToFileLocalRec();
@@ -391,6 +1013,12 @@ static void ConnectAudio
     }
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Disconnect all streams and connectors
+ *
+ */
+//--------------------------------------------------------------------------------------------------
 static void DisconnectAllAudio
 (
     void
@@ -471,19 +1099,30 @@ static void DisconnectAllAudio
     }
 
     close(AudioFileFd);
+
+    exit(0);
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Helper.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
 static void PrintUsage()
 {
     int idx;
     bool sandboxed = (getuid() != 0);
     const char * usagePtr[] = {
             "Usage of the audioPlaybackRec test is:",
-            "   audioMccTest <test case> [main audio path] [file's name] [option]",
+            "   execInApp audioPlaybackRec audioPlaybackRecTest <test case>"
+              "[main audio path] [file's name] [option]",
             "",
             "Test cases are:",
             " - PB (for Local playback)",
             " - REC (for Local recording)",
+            " - PB_SAMPLES (for Local samples play)",
+            " - REC_SAMPLES (for Local samples recording) [option]",
             "",
             "Main audio paths are: (for file playback/recording only)",
 #if (ENABLE_CODEC == 1)
@@ -493,10 +1132,20 @@ static void PrintUsage()
             " - I2S (for devkit's codec use, execute 'wm8940_demo --i2s' command)",
             " - USB (for USB)",
             "",
-            "File's name can be the complete file's path",
-            "",
             "Options are:",
             " - GAIN (for playback gain testing)"
+            " - LOOP (to replay a file in loop) (optional)",
+            " - PLAY=<timer value> (to replay a file after a delay) (optional)",
+            " - RECORD=<timer value> (to record a file after a delay) (optional)",
+            " - STOP=<timer value> (to stop a file playback/capture after a delay) (optional)",
+            " - PAUSE=<timer value> (to pause a file playback/capture after a delay) (optional)",
+            " - RESUME=<timer value> (to resume a file playback/capture after a delay) (optional)",
+            " - DISCONNECT=<timer value> (to disconnect connectors and streams"
+              " after a delay) (optional)",
+            " - MUTE (for playback MUTE testing)",
+            " - ChannelNmbr SampleRate BitsPerSample (for REC_SAMPLES)",
+            "",
+            "File's name can be the complete file's path.",
     };
 
     for(idx = 0; idx < NUM_ARRAY_MEMBERS(usagePtr); idx++)
@@ -512,13 +1161,42 @@ static void PrintUsage()
     }
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * The signal event handler function for SIGINT/SIGTERM when process dies.
+ */
+//--------------------------------------------------------------------------------------------------
+static void SigHandler
+(
+    int sigNum
+)
+{
+    LE_INFO("Disconnect All Audio and end test");
+    if (RecPbThreadRef)
+    {
+        le_thread_Cancel(RecPbThreadRef);
+        RecPbThreadRef = NULL;
+    }
+    DisconnectAllAudio();
+    exit(EXIT_SUCCESS);
+}
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Initialize the test component.
+ * Start application with 'app start audioPlaybackRec' command
+ * Execute application with 'execInApp audioPlaybackRec audioPlaybackRecTest (see PrintUsage())'
+ */
+//--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
     LE_INFO("Init");
 
     if (le_arg_NumArgs() >= 1)
     {
+        // Register a signal event handler for SIGINT when user interrupts/terminates process
+        signal(SIGINT, SigHandler);
+
         LE_INFO("======== Start Audio implementation Test (audioPlaybackRecTest) ========");
 
         AudioTestCase = le_arg_GetArg(0);
@@ -532,19 +1210,34 @@ COMPONENT_INIT
             LE_INFO("   Audio file [%s]", AudioFilePath);
         }
 
-        if(le_arg_NumArgs() >= 4)
+        if ( (strncmp(AudioTestCase,"REC_SAMPLES",11)==0) ||
+             (strncmp(AudioTestCase,"PB_SAMPLES",10)==0) )
         {
-            Option = le_arg_GetArg(3);
+            if(le_arg_NumArgs() < 6)
+            {
+                PrintUsage();
+                LE_INFO("EXIT audioPlaybackRec");
+                exit(EXIT_FAILURE);
+            }
+            ChannelsCount = atoi(le_arg_GetArg(3));
+            SampleRate = atoi(le_arg_GetArg(4));
+            BitsPerSample = atoi(le_arg_GetArg(5));
+            LE_INFO("   Get/Play PCM samples with ChannelsCount.%d SampleRate.%d BitsPerSample.%d",
+                    ChannelsCount, SampleRate, BitsPerSample);
         }
+
+
+        OptionTimerRef = le_timer_Create("OptionTimer");
+        le_timer_SetHandler(OptionTimerRef, OptionTimerHandler);
 
         ConnectAudio();
 
-        LE_INFO("======== Audio implementation Test (audioMccTest) started successfully ========");
+        LE_INFO("======== Audio implementation Test (audioPlaybackRec) started successfully ========");
     }
     else
     {
         PrintUsage();
-        LE_INFO("EXIT audioMccTest");
+        LE_INFO("EXIT audioPlaybackRec");
         exit(EXIT_FAILURE);
     }
 }

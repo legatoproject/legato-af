@@ -7,19 +7,10 @@
 
 find_package(Legato REQUIRED)
 
-set(APP_TARGET testCellNetService)
-
-mkexe(  ${APP_TARGET}
-            .
-            -i ${LEGATO_ROOT}/interfaces/cellNetService
-        DEPENDS
-            legato
-            Component.cdef
-            cellNetServiceTest.c
-    )
-
-if(NOT ${LEGATO_TARGET} STREQUAL "localhost")
-    add_test(${APP_TARGET} ${EXECUTABLE_OUTPUT_PATH}/${APP_TARGET})
-    set_tests_properties(${APP_TARGET} PROPERTIES TIMEOUT 0)
-endif()
-
+mkapp(cellNetServiceTest.adef
+     -i ${LEGATO_ROOT}/interfaces/cellNetService
+     DEPENDS
+        cellNetServiceTest/Component.cdef
+        cellNetServiceTest/cellNetServiceTest.c
+        legato
+)

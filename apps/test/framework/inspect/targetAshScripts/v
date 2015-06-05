@@ -1,0 +1,123 @@
+#!/bin/sh
+
+
+# The log file should either indicate that the list is incomplete, or the list is complete with the correct end of list.
+# If neither of those is satisfied, then race condition might have occured. 
+
+
+if [ $# -gt 2 ]
+then
+    echo "$0 [num pools created] (optional)[log path]"
+    exit 1
+fi
+
+if [ -z "$2" ]
+then
+    logPath="./"
+else
+    logPath="$2/"
+fi
+
+if [ ! -e "$logPath" ]
+then
+    echo "log path [$logPath] doesn't exist."
+    exit 1
+fi
+
+numPools=$1
+numPools=$((numPools - 1))
+
+
+detectRace()
+{
+    echo "Detecting race condition from log files... `date`"
+
+    # The line that indicates the list is incomplete.
+    IncompleteListLine="Stopping inspection"
+
+    # The line that indicates the list is complete.
+    CompleteListLine="End of List"
+
+    # The last subpool - which represents the end of list
+    lastSubPool="Subpool${numPools}"
+
+    for file in "$logPath"/sampleMemPools_log_*
+    do
+        # List declared complete
+        # If a list is declared complete, the last reported subpool should be the last subpool.
+        if grep -q "$CompleteListLine" "$file" &&
+           ! tail -n 2 "$file" | grep -q "$lastSubPool"
+        then
+            echo "Race Condition: declared false complete list [$file]"
+        fi
+
+        # List declared incomplete
+        # If the list is declared incomplete, and the second last line is a subpool, and 
+        # if that subpool has alloc number (5th column) being 0, that means the subpool that's 
+        # released back to the free list is wrongly reported.
+        if grep -q "$IncompleteListLine" "$file" &&
+           tail -n 2 "$file" | head -n 1 | grep -q "Subpool" &&
+           [ "`tail -n 2 "$file" | head -n 1 | awk '{print $5}'`" -eq 0 ]
+        then
+            echo "Race Condition: declared incomplete list and the last item reported is wrong [$file]"
+        fi
+
+        # similar to the above, but the Inspect tool prints the last subpool correctly. 
+#        if grep -q "$IncompleteListLine" "$file" &&
+#           tail -n 2 "$file" | head -n 1 | grep -q "Subpool" &&
+#           ! tail -n 3 "$file" | head -n 1 | grep -q "Subpool" &&
+#           [ "`tail -n 2 "$file" | head -n 1 | awk '{print $5}'`" -eq 1 ]
+#        then
+#            echo "Near race condition: Incomplete list and last item is a subpool printed correctly [$file]"
+#        fi
+
+        # List declared neither complete nor incomplete
+        if ! grep -q "$CompleteListLine" "$file" &&
+           ! grep -q "$IncompleteListLine" "$file"
+        then
+            echo "No declaration of list completion - something is wrong [$file]"
+        fi 
+    done
+
+    echo "DONE `date`"
+}
+
+
+# This function is to tell how many log files actually came close to hitting the race condition.
+# This is more for stat purposes and also to see if the test conditions are effective in detecting race conditions.
+
+# If the last 3 lines contain "SuperPool" (which is always the last pool to be printed before the subpools), then it "came close"
+# The last line always prints the status (incomplete or complete list); the 2nd and 3rd last line might print "SuperPool", or "SuperPool" and the first subpool.
+reportRaceConditionCloseEncounters()
+{
+    echo "Reporting race condition close encounters...`date`"
+
+    fileCount=0
+    occurCount=0
+
+    for file in "$logPath"/sampleMemPools_log_*
+    do
+
+        if tail -n 3 "$file" | grep -q SuperPool
+        then
+            #echo "[$file]"
+            occurCount=$((occurCount+1))
+        fi 
+
+        fileCount=$((fileCount+1))
+    done
+
+    echo "$occurCount out of $fileCount files came close"
+    echo "DONE `date`"
+}
+
+
+
+# script body
+detectRace
+reportRaceConditionCloseEncounters
+
+
+
+
+

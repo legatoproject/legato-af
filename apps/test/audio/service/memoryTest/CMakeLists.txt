@@ -7,20 +7,13 @@
 
 find_package(Legato REQUIRED)
 
-set(APP_TARGET testAudioServiceMemory)
+if( (LEGATO_COMPONENTS_AUDIO MATCHES "wp7") OR (LEGATO_COMPONENTS_AUDIO MATCHES "ar7") )
 
-if(${LEGATO_TARGET} STREQUAL "ar7")
-    mkexe(${APP_TARGET}
-                .
-                -i ${LEGATO_ROOT}/interfaces/audio
-            DEPENDS
-                legato
-                ## TODO: Remove this when the mk tools do dependency checking.
-                Component.cdef
-                audioMemoryTest.c
-                )
-
-    add_test(${MEM_APP_TARGET} ${EXECUTABLE_OUTPUT_PATH}/${MEM_APP_TARGET} 1)
-    set_tests_properties(${MEM_APP_TARGET} PROPERTIES TIMEOUT 0)
+    # Creates application from audioMemoryTest.adef
+    mkapp(audioMemoryTest.adef
+            -i ${LEGATO_ROOT}/interfaces/audio
+        DEPENDS
+            legato
+    )
 
 endif()

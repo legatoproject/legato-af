@@ -44,14 +44,25 @@ void testFinal
 }
 
 
+static void NewHandleTestA
+(
+    int32_t x,
+    void* contextPtr
+)
+{
+    LE_PRINT_VALUE("%i", x);
+}
+
 
 void CallbackTestHandler
 (
     uint32_t data,
+    const char* namePtr,
     void* contextPtr
 )
 {
     LE_PRINT_VALUE("%d", data);
+    LE_PRINT_VALUE("'%s'", namePtr);
     LE_PRINT_VALUE("%p", contextPtr);
 
     // This should fail, because the callback can only be called once.
@@ -68,6 +79,19 @@ void test3(void)
 {
     banner("Test 3");
 
+    // Test what happens if an event is triggered, then the handler is removed.  The registered
+    // handler should not be called, even if there is a pending event, because the handler has
+    // been removed.
+    TestAHandlerRef_t handlerRef = AddTestAHandler(NewHandleTestA, NULL);
+    LE_PRINT_VALUE("%p", handlerRef);
+
+    LE_DEBUG("Triggering New TestA\n");
+    TriggerTestA();
+
+    RemoveTestAHandler(handlerRef);
+
+
+    // Test function callback parameters.
     int result;
 
     // This is not used in the test; this parameter was added to test a code generation bug fix.
@@ -154,6 +178,25 @@ void test1(void)
                   output,
                   &length,
                   "input string",
+                  response,
+                  sizeof(response),
+                  more,
+                  sizeof(more));
+
+    LE_PRINT_VALUE("%i", value);
+    LE_PRINT_ARRAY("%i", length, output);
+    LE_PRINT_VALUE("%s", response);
+    LE_PRINT_VALUE("%s", more);
+
+    // Call again with a special value, so that nothing is returned for the 'response' and 'more'
+    // output parameters. This could happen in a typical function, if an error is detected.
+    allParameters(COMMON_ZERO,
+                  &value,
+                  data,
+                  4,
+                  output,
+                  &length,
+                  "new string",
                   response,
                   sizeof(response),
                   more,

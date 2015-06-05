@@ -6,58 +6,19 @@
 #*******************************************************************************
 
 find_package(Legato REQUIRED)
-find_package(CUnit REQUIRED)
 
-set(APP_TARGET testModemSms)
+mkapp(smsTest.adef
+    -i ${LEGATO_ROOT}/interfaces/modemServices
+    DEPENDS
+        legato
+        smsTest/Component.cdef
+        smsTest/le_smsTest.c
+)
 
-message("CUNIT_INCLUDE_DIRS: ${CUNIT_INCLUDE_DIRS}")
-
-## TODO: Remove this when the mk tools do dependency checking.
-if(EXISTS ${LEGATO_ROOT}/components/modemServices/platformAdaptor/qmi/le_pa/pa_sms_qmi.c)
-
-    set(PA_SOURCES
-             ${LEGATO_ROOT}/components/modemServices/platformAdaptor/qmi/le_pa/pa_sms_qmi.c
-        )
-
-endif()
-
-
-mkexe(${APP_TARGET}
-            smsTest
-            ${CUNIT_LIBRARIES}
-            -i ${CUNIT_INSTALL}/include
-            -i ${CUNIT_INSTALL}/include/CUnit
-            -i ${LEGATO_ROOT}/interfaces/modemServices
-            -i ${LEGATO_ROOT}/components/modemServices/platformAdaptor/inc
-        DEPENDS
-            ## TODO: Remove this when the mk tools do dependency checking.
-            smsTest/Component.cdef
-            smsTest/main.c
-            smsTest/main.h
-            smsTest/le_smsTest.c
-            ${PA_SOURCES}
-            )
-
-if(NOT ${LEGATO_TARGET} STREQUAL "localhost")
-    add_test(${APP_TARGET} ${EXECUTABLE_OUTPUT_PATH}/${APP_TARGET})
-    set_tests_properties(${APP_TARGET} PROPERTIES TIMEOUT 0)
-endif()
-
-
-set(APP_TARGET testModemSmsDeletion)
-
-mkexe(${APP_TARGET}
-            smsDeletion
-            -i ${LEGATO_ROOT}/interfaces/modemServices
-            -i ${LEGATO_ROOT}/components/modemServices/platformAdaptor/inc
-        DEPENDS
-            ## TODO: Remove this when the mk tools do dependency checking.
-            smsDeletion/Component.cdef
-            smsDeletion/smsDeletion.c
-            ${PA_SOURCES}
-            )
-
-if(NOT ${LEGATO_TARGET} STREQUAL "localhost")
-    add_test(${APP_TARGET} ${EXECUTABLE_OUTPUT_PATH}/${APP_TARGET})
-    set_tests_properties(${APP_TARGET} PROPERTIES TIMEOUT 0)
-endif()
+mkapp(smsDeletion.adef
+    -i ${LEGATO_ROOT}/interfaces/modemServices
+    DEPENDS
+        legato
+        smsDeletion/Component.cdef
+        smsDeletion/smsDeletion.c
+)

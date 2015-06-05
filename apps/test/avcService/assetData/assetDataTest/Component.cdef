@@ -1,0 +1,13 @@
+requires:
+{
+    api:
+    {
+        le_cfg.api
+    }
+}
+
+sources:
+{
+    $LEGATO_ROOT/components/airVantage/avcDaemon/assetData.c
+    assetDataTest.c
+}

@@ -1,0 +1,13 @@
+provides:
+{
+    api:
+    {
+        serverSide1 = trivial.api
+        serverSide2 = trivial.api
+    }
+}
+
+sources:
+{
+    apiSharingServer.c
+}

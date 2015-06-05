@@ -7,20 +7,18 @@
 
 find_package(Legato REQUIRED)
 
-set(APP_TARGET testAudioDtmf)
-
-mkexe(${APP_TARGET}
-            dtmfTest
-            -i ${LEGATO_ROOT}/interfaces/modemServices
-            -i ${LEGATO_ROOT}/interfaces/audio
-        DEPENDS
-            legato
-            ## TODO: Remove this when the mk tools do dependency checking.
-            dtmfTest/Component.cdef
-            dtmfTest/audioDtmfTest.c
-            )
-
-if(NOT ${LEGATO_TARGET} STREQUAL "localhost")
-    add_test(${APP_TARGET} ${EXECUTABLE_OUTPUT_PATH}/${APP_TARGET})
-    set_tests_properties(${APP_TARGET} PROPERTIES TIMEOUT 0)
+if(LEGATO_COMPONENTS_AUDIO MATCHES "ar7")
+    set(CODEC_ENABLE_FLAG 1)
+else()
+     set(CODEC_ENABLE_FLAG 0)
 endif()
+
+mkapp(dtmfTest.adef
+    -i ${LEGATO_ROOT}/interfaces/modemServices
+    -i ${LEGATO_ROOT}/interfaces/audio
+    --cflags=-DENABLE_CODEC=${CODEC_ENABLE_FLAG}
+    DEPENDS
+        legato
+        dtmfTestComp/Component.cdef
+        dtmfTestComp/audioDtmfTest.c
+)

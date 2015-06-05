@@ -7,7 +7,7 @@ maxFileSystemBytes: 0  // Zero is not allowed so the default should be used.
 
 executables:
 {
-    zeroFileSysSizeTest = ( limitsTest.c )
+    zeroFileSysSizeTest = ( limitsTest )
 }
 
 processes:

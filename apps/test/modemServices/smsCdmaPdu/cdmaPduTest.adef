@@ -1,0 +1,22 @@
+executables:
+{
+    cdmaPduTest = ( cdmaPduTest )
+}
+
+processes:
+{
+    envVars:
+    {
+        LE_LOG_LEVEL = DEBUG
+    }
+    run:
+    {
+        ( cdmaPduTest )
+    }
+}
+
+start: manual
+
+bindings:
+{
+}

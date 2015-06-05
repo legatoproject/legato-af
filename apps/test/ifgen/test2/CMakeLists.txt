@@ -14,7 +14,7 @@ set_legato_component(${TEST_NAME})
 set(IFGEN_TOOL ${LEGATO_SOURCE_DIR}/bin/ifgen )
 
 # todo: There may be a better way to generate the imported file(s), as this is
-#       somewhat awkward to use.  
+#       somewhat awkward to use.
 add_custom_command (
     OUTPUT common_interface.h common_server.h
     COMMAND ${IFGEN_TOOL} ${CMAKE_CURRENT_SOURCE_DIR}/common.api
@@ -32,7 +32,7 @@ add_custom_command (
 )
 
 # Since the generated header files go into the BINARY_DIR, need to add this to the
-# include path for the compiler.  
+# include path for the compiler.
 add_definitions(-I${CMAKE_CURRENT_BINARY_DIR})
 
 #
@@ -71,7 +71,7 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/${TEST_SCRIPT}.in
 add_custom_command (
     OUTPUT async_server.c async_local.h
     COMMAND ${IFGEN_TOOL} ${CMAKE_CURRENT_SOURCE_DIR}/example.api
-                          --gen-server 
+                          --gen-server
                           --gen-server-interface
                           --gen-local
                           --async-server
@@ -91,4 +91,20 @@ add_legato_internal_executable(${TEST_SERVER} async_server.c asyncServerMain.c)
 # This goes into the "tests" directory, with all the other executables
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/${TEST_SCRIPT}.in
                ${EXECUTABLE_OUTPUT_PATH}/${TEST_SCRIPT})
+
+
+#
+# Build .api sharing test
+#
+set(TEST_SCRIPT testApiSharing.sh)
+set(TEST_CLIENT testApiSharing_client)
+set(TEST_SERVER testApiSharing_server)
+
+mkexe(${TEST_CLIENT} ${TEST_CLIENT})
+mkexe(${TEST_SERVER} ${TEST_SERVER})
+
+# This goes into the "tests" directory, with all the other executables
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/${TEST_SCRIPT}.in
+               ${EXECUTABLE_OUTPUT_PATH}/${TEST_SCRIPT})
+
 

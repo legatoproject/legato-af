@@ -1,0 +1,12 @@
+sources:
+{
+    simToolkitTest.c
+}
+
+requires:
+{
+    api:
+    {
+        le_sim.api
+    }
+}

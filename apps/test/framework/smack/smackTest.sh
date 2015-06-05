@@ -1,40 +1,15 @@
 #!/bin/bash
 
+LoadTestLib
+
 targetAddr=$1
 targetType=${2:-ar7}
 
+OnFail() {
+    echo "SMACK Test Failed!"
+}
+
 scriptDir=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
-
-# Checks if the logStr is in the logs.
-#
-# params:
-#       comparison      Either "==", ">", "<", "!="
-#       numMatches      The number of expected matches.
-#       logStr          The log string to search for.
-#
-checkLogStr () {
-    numMatches=$(ssh root@$targetAddr "/sbin/logread | grep -c \"$3\"")
-
-    echo "$numMatches matches for '$3' "
-
-    if [ ! $numMatches $1 $2 ]
-    then
-        echo "$numMatches occurances of '$3' but $1 $2 expected"
-        echo "Supervisor Test Failed!"
-        exit 1
-    fi
-}
-
-
-function CheckRet
-{
-    RETVAL=$?
-    if [ $RETVAL -ne 0 ]; then
-        echo -e $COLOR_ERROR "Exit Code $RETVAL" $COLOR_RESET
-        exit $RETVAL
-    fi
-}
-
 
 # List of apps
 appsList="fileClient fileServer"
@@ -96,7 +71,7 @@ echo "Stop all apps."
 ssh root@$targetAddr  "/usr/local/bin/app stop \"*\""
 
 echo "Grepping the logs to check the results."
-checkLogStr "==" 1 "File descriptor was passed correctly."
+CheckLogStr "==" 1 "File descriptor was passed correctly."
 
 echo "SMACK Test Passed!"
 exit 0

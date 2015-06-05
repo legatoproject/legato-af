@@ -24,25 +24,7 @@ static const char* GetProcLabel
 {
     static char label[24];
 
-    // Get the process's smack file name.
-    char smackFile[256];
-    LE_ASSERT(snprintf(smackFile, sizeof(smackFile), "/proc/%d/attr/current", pid) < sizeof(smackFile));
-
-    // Open the process's smack file.
-    int fd;
-
-    do
-    {
-        fd = open(smackFile, O_RDONLY);
-    }
-    while ( (fd == -1) && (errno == EINTR) );
-
-    LE_FATAL_IF(fd == -1, "Could not open %s.  %m.\n", smackFile);
-
-    LE_FATAL_IF(read(fd, label, sizeof(label)) < 0,
-                "Could not read from %s.  %m.\n", smackFile);
-
-    fd_Close(fd);
+    LE_TEST(smack_GetProcLabel(pid, label, sizeof(label)) == LE_OK);
 
     return label;
 }

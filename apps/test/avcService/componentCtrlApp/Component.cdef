@@ -1,0 +1,14 @@
+
+requires:
+{
+    api:
+    {
+        le_avc.api
+    }
+}
+
+sources:
+{
+    ctrlAppMain.c
+}
+

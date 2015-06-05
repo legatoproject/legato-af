@@ -1,0 +1,19 @@
+start: manual
+
+executables:
+{
+    SubpoolFlux = ( program )
+}
+
+processes:
+{
+    run:
+    {
+        // Create 100k subpools, delete from #1 to #99999, with 0.005sec interval between deletes
+        ( SubpoolFlux 1toN 5000000 100000 )
+    }
+}
+
+
+
+

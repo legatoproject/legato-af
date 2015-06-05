@@ -1,0 +1,12 @@
+sources:
+{
+    installNotify.c
+}
+
+requires:
+{
+    api:
+    {
+        le_instStat.api
+    }
+}

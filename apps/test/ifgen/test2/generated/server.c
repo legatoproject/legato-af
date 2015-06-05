@@ -384,7 +384,9 @@ static void AsyncResponse_AddTestAHandler
     _msgBufPtr = PackData( _msgBufPtr, &x, sizeof(int32_t) );
 
     // Send the async response to the client
-    LE_DEBUG("Sending message to client session %p", serverDataPtr->clientSessionRef);
+    LE_DEBUG("Sending message to client session %p : %ti bytes sent",
+             serverDataPtr->clientSessionRef,
+             _msgBufPtr-_msgPtr->buffer);
     SendMsgToClient(_msgRef);
 }
 
@@ -444,7 +446,9 @@ static void Handle_AddTestAHandler
 
 
     // Return the response
-    LE_DEBUG("Sending response to client session %p", le_msg_GetSession(_msgRef));
+    LE_DEBUG("Sending response to client session %p : %ti bytes sent",
+             le_msg_GetSession(_msgRef),
+             _msgBufPtr-_msgBufStartPtr);
     le_msg_Respond(_msgRef);
 }
 
@@ -469,6 +473,12 @@ static void Handle_RemoveTestAHandler
     // the object since they are no longer needed.
     _LOCK
     _ServerData_t* serverDataPtr = le_ref_Lookup(_HandlerRefMap, addHandlerRef);
+    if ( serverDataPtr == NULL )
+    {
+        _UNLOCK
+        LE_KILL_CLIENT("Invalid reference");
+        return;
+    }
     le_ref_DeleteRef(_HandlerRefMap, addHandlerRef);
     _UNLOCK
     addHandlerRef = (TestAHandlerRef_t)serverDataPtr->handlerRef;
@@ -490,7 +500,9 @@ static void Handle_RemoveTestAHandler
 
 
     // Return the response
-    LE_DEBUG("Sending response to client session %p", le_msg_GetSession(_msgRef));
+    LE_DEBUG("Sending response to client session %p : %ti bytes sent",
+             le_msg_GetSession(_msgRef),
+             _msgBufPtr-_msgBufStartPtr);
     le_msg_Respond(_msgRef);
 }
 
@@ -534,8 +546,8 @@ static void Handle_allParameters
     uint32_t b;
 
     uint32_t output[outputNumElements];
-    char response[responseNumElements];
-    char more[moreNumElements];
+    char response[responseNumElements]; response[0]=0;
+    char more[moreNumElements]; more[0]=0;
 
     // Call the function
     allParameters ( a, &b, data, dataNumElements, output, &outputNumElements, label, response, responseNumElements, more, moreNumElements );
@@ -553,7 +565,9 @@ static void Handle_allParameters
     _msgBufPtr = PackString( _msgBufPtr, more );
 
     // Return the response
-    LE_DEBUG("Sending response to client session %p", le_msg_GetSession(_msgRef));
+    LE_DEBUG("Sending response to client session %p : %ti bytes sent",
+             le_msg_GetSession(_msgRef),
+             _msgBufPtr-_msgBufStartPtr);
     le_msg_Respond(_msgRef);
 }
 
@@ -590,7 +604,9 @@ static void Handle_FileTest
     le_msg_SetFd(_msgRef, dataOut);
 
     // Return the response
-    LE_DEBUG("Sending response to client session %p", le_msg_GetSession(_msgRef));
+    LE_DEBUG("Sending response to client session %p : %ti bytes sent",
+             le_msg_GetSession(_msgRef),
+             _msgBufPtr-_msgBufStartPtr);
     le_msg_Respond(_msgRef);
 }
 
@@ -626,7 +642,9 @@ static void Handle_TriggerTestA
 
 
     // Return the response
-    LE_DEBUG("Sending response to client session %p", le_msg_GetSession(_msgRef));
+    LE_DEBUG("Sending response to client session %p : %ti bytes sent",
+             le_msg_GetSession(_msgRef),
+             _msgBufPtr-_msgBufStartPtr);
     le_msg_Respond(_msgRef);
 }
 
@@ -657,7 +675,9 @@ static void AsyncResponse_AddBugTestHandler
 
 
     // Send the async response to the client
-    LE_DEBUG("Sending message to client session %p", serverDataPtr->clientSessionRef);
+    LE_DEBUG("Sending message to client session %p : %ti bytes sent",
+             serverDataPtr->clientSessionRef,
+             _msgBufPtr-_msgPtr->buffer);
     SendMsgToClient(_msgRef);
 }
 
@@ -720,7 +740,9 @@ static void Handle_AddBugTestHandler
 
 
     // Return the response
-    LE_DEBUG("Sending response to client session %p", le_msg_GetSession(_msgRef));
+    LE_DEBUG("Sending response to client session %p : %ti bytes sent",
+             le_msg_GetSession(_msgRef),
+             _msgBufPtr-_msgBufStartPtr);
     le_msg_Respond(_msgRef);
 }
 
@@ -745,6 +767,12 @@ static void Handle_RemoveBugTestHandler
     // the object since they are no longer needed.
     _LOCK
     _ServerData_t* serverDataPtr = le_ref_Lookup(_HandlerRefMap, addHandlerRef);
+    if ( serverDataPtr == NULL )
+    {
+        _UNLOCK
+        LE_KILL_CLIENT("Invalid reference");
+        return;
+    }
     le_ref_DeleteRef(_HandlerRefMap, addHandlerRef);
     _UNLOCK
     addHandlerRef = (BugTestHandlerRef_t)serverDataPtr->handlerRef;
@@ -766,7 +794,9 @@ static void Handle_RemoveBugTestHandler
 
 
     // Return the response
-    LE_DEBUG("Sending response to client session %p", le_msg_GetSession(_msgRef));
+    LE_DEBUG("Sending response to client session %p : %ti bytes sent",
+             le_msg_GetSession(_msgRef),
+             _msgBufPtr-_msgBufStartPtr);
     le_msg_Respond(_msgRef);
 }
 
@@ -774,6 +804,7 @@ static void Handle_RemoveBugTestHandler
 static void AsyncResponse_TestCallback
 (
     uint32_t data,
+    const char* name,
     void* contextPtr
 )
 {
@@ -785,7 +816,7 @@ static void AsyncResponse_TestCallback
     // the client sesssion ref would be NULL.
     if ( serverDataPtr->clientSessionRef == NULL )
     {
-        LE_FATAL("Error in server data: no client session ref");
+        LE_FATAL("Handler passed to TestCallback() can't be called more than once");
     }
 
     // Will not be used if no data is sent back to client
@@ -802,9 +833,12 @@ static void AsyncResponse_TestCallback
 
     // Pack the input parameters
     _msgBufPtr = PackData( _msgBufPtr, &data, sizeof(uint32_t) );
+    _msgBufPtr = PackString( _msgBufPtr, name );
 
     // Send the async response to the client
-    LE_DEBUG("Sending message to client session %p", serverDataPtr->clientSessionRef);
+    LE_DEBUG("Sending message to client session %p : %ti bytes sent",
+             serverDataPtr->clientSessionRef,
+             _msgBufPtr-_msgPtr->buffer);
     SendMsgToClient(_msgRef);
 
     // The registered handler has been called, so no longer need the server data.
@@ -869,7 +903,9 @@ static void Handle_TestCallback
 
 
     // Return the response
-    LE_DEBUG("Sending response to client session %p", le_msg_GetSession(_msgRef));
+    LE_DEBUG("Sending response to client session %p : %ti bytes sent",
+             le_msg_GetSession(_msgRef),
+             _msgBufPtr-_msgBufStartPtr);
     le_msg_Respond(_msgRef);
 }
 
@@ -906,7 +942,9 @@ static void Handle_TriggerCallbackTest
 
 
     // Return the response
-    LE_DEBUG("Sending response to client session %p", le_msg_GetSession(_msgRef));
+    LE_DEBUG("Sending response to client session %p : %ti bytes sent",
+             le_msg_GetSession(_msgRef),
+             _msgBufPtr-_msgBufStartPtr);
     le_msg_Respond(_msgRef);
 }
 

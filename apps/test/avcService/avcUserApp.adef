@@ -1,0 +1,18 @@
+
+executables:
+{
+    avcUserApp = ( componentUserApp )
+}
+
+processes:
+{
+    run:
+    {
+        (avcUserApp)
+    }
+}
+
+bindings:
+{
+    avcUserApp.componentUserApp.le_avc -> avcService.le_avc
+}

@@ -1,7 +1,6 @@
 sources:
 {
     le_mccTest.c
-    main.c
 }
 
 requires:

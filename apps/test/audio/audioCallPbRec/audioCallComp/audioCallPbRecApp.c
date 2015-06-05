@@ -59,16 +59,14 @@ static const char* DestinationNumber;
  * Audio file path used for audio playback
  */
 //--------------------------------------------------------------------------------------------------
-static const char  AudioFilePbPath[] = "/opt/legato/apps/audioCallPbRecApp/usr/share/sounds/male.wav";
-// static const char  AudioFilePbPath[] = "/usr/share/sounds/male.wav";
+static const char  AudioFilePbPath[] = "/usr/share/sounds/male.wav";
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Audio file path used for audio recording
  */
 //--------------------------------------------------------------------------------------------------
-// static const char  AudioFileRecPath[] = "/record/remote.wav";
-static const char  AudioFileRecPath[] = "/opt/legato/apps/audioCallPbRecApp/record/remote.wav";
+static const char  AudioFileRecPath[] = "/record/remote.wav";
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -112,7 +110,7 @@ static void ConnectAudioToFileRemoteRec
 
 
     // Capture Remote on output connector.
-    FileAudioRef = le_audio_OpenFileRecording(AudioFileFd);
+    FileAudioRef = le_audio_OpenRecorder();
     LE_ERROR_IF((FileAudioRef==NULL), "OpenFileRecording returns NULL!");
 
     if (FileAudioRef && AudioOutputConnectorRef)
@@ -121,10 +119,19 @@ static void ConnectAudioToFileRemoteRec
         if(res!=LE_OK)
         {
             LE_ERROR("Failed to connect FileRecording on output connector!");
+            return;
+        }
+
+        LE_INFO("Recorder is now connected.");
+        res = le_audio_RecordFile(FileAudioRef, AudioFileFd);
+
+        if(res!=LE_OK)
+        {
+            LE_ERROR("Failed to record the file");
         }
         else
         {
-            LE_INFO("FileRecording is now connected.");
+            LE_INFO("File is now recording.");
         }
     }
 }
@@ -152,7 +159,7 @@ static void ConnectAudioToFileRemotePlay
     }
 
     // Play Remote on input connector.
-    FileAudioRef = le_audio_OpenFilePlayback(AudioFileFd);
+    FileAudioRef = le_audio_OpenPlayer();
     LE_ERROR_IF((FileAudioRef==NULL), "OpenFilePlayback returns NULL!");
 
     if (FileAudioRef && AudioInputConnectorRef)
@@ -161,10 +168,19 @@ static void ConnectAudioToFileRemotePlay
         if(res!=LE_OK)
         {
             LE_ERROR("Failed to connect FilePlayback on input connector!");
+            return;
+        }
+
+        LE_INFO("FilePlayback is now connected.");
+        res = le_audio_PlayFile(FileAudioRef, AudioFileFd);
+
+        if(res != LE_OK)
+        {
+            LE_ERROR("Failed to play the file!");
         }
         else
         {
-            LE_INFO("FilePlayback is now connected.");
+            LE_INFO("File is now playing");
         }
     }
 }
@@ -379,12 +395,12 @@ static void MyCallEventHandler
                 LE_INFO("Termination reason is LE_MCC_CALL_TERM_NETWORK_FAIL");
                 break;
 
-            case LE_MCC_CALL_TERM_BAD_ADDRESS:
-                LE_INFO("Termination reason is LE_MCC_CALL_TERM_BAD_ADDRESS");
+            case LE_MCC_CALL_TERM_UNASSIGNED_NUMBER:
+                LE_INFO("Termination reason is LE_MCC_CALL_TERM_UNASSIGNED_NUMBER");
                 break;
 
-            case LE_MCC_CALL_TERM_BUSY:
-                LE_INFO("Termination reason is LE_MCC_CALL_TERM_BUSY");
+            case LE_MCC_CALL_TERM_USER_BUSY:
+                LE_INFO("Termination reason is LE_MCC_CALL_TERM_USER_BUSY");
                 break;
 
             case LE_MCC_CALL_TERM_LOCAL_ENDED:
@@ -395,8 +411,8 @@ static void MyCallEventHandler
                 LE_INFO("Termination reason is LE_MCC_CALL_TERM_REMOTE_ENDED");
                 break;
 
-            case LE_MCC_CALL_TERM_NOT_DEFINED:
-                LE_INFO("Termination reason is LE_MCC_CALL_TERM_NOT_DEFINED");
+            case LE_MCC_CALL_TERM_UNDEFINED:
+                LE_INFO("Termination reason is LE_MCC_CALL_TERM_UNDEFINED");
                 break;
 
             default:
@@ -425,22 +441,6 @@ static void MyCallEventHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Thread that install the Call Event handler.
- *
- */
-//--------------------------------------------------------------------------------------------------
-static void* HandlerInstallerThread(void* contextPtr)
-{
-    le_mcc_profile_ObjRef_t profileRef = contextPtr;
-
-    le_mcc_profile_AddCallEventHandler(profileRef, MyCallEventHandler, NULL);
-
-    le_event_RunLoop();
-    return NULL;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Help.
  *
  */
@@ -451,7 +451,7 @@ static void PrintUsage()
     bool sandboxed = (getuid() != 0);
     const char * usagePtr[] = {
             "Usage of the 'audioCallPbRecApp' tool is:",
-            "   audioCallPbRecApp <tel number>",
+            "   execInApp audioCallPbRecApp audioCallPbRecApp <tel number>",
             "",
     };
 
@@ -477,28 +477,26 @@ static void PrintUsage()
 COMPONENT_INIT
 {
     LE_INFO("Start audioCallPbRecApp app.");
+    IsAnOutgoingCall = false;
 
     if (le_arg_NumArgs() == 1)
     {
         DestinationNumber = le_arg_GetArg(0);
+
+        le_mcc_profile_ObjRef_t profileRef=le_mcc_profile_GetByName("Modem-Sim1");
+        if ( profileRef == NULL )
+        {
+            LE_INFO("Unable to get the Call profile reference");
+            exit(EXIT_FAILURE);
+        }
+
+        le_mcc_profile_AddCallEventHandler(profileRef, MyCallEventHandler, NULL);
+        CallRef=le_mcc_profile_CreateCall(profileRef, DestinationNumber);
+        le_mcc_call_Start(CallRef);
     }
     else
     {
         PrintUsage();
         exit(EXIT_FAILURE);
     }
-
-    le_mcc_profile_ObjRef_t profileRef=le_mcc_profile_GetByName("Modem-Sim1");
-    if ( profileRef == NULL )
-    {
-        LE_INFO("Unable to get the Call profile reference");
-        exit(EXIT_FAILURE);
-    }
-
-    // Start the handler thread to monitor the call for the just created profile.
-    le_thread_Start(le_thread_Create("HandlerInstallerThread", HandlerInstallerThread, profileRef));
-
-    IsAnOutgoingCall = false;
-    CallRef=le_mcc_profile_CreateCall(profileRef, DestinationNumber);
-    le_mcc_call_Start(CallRef);
 }

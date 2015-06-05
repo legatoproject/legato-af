@@ -4,49 +4,61 @@
  *
  */
 
-#include <stdio.h>
-#include <unistd.h>
-#include <ctype.h>
-#include <string.h>
-#include <time.h>
-
-// Header files for CUnit
-#include <CUnit/Console.h>
-#include <CUnit/Basic.h>
-
-#define PDU_MAX     256
-
-#include "legato.h"
+#include <legato.h>
 #include "cdmaPdu.h"
 
-typedef struct {
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test sequence Structure list
+ */
+//--------------------------------------------------------------------------------------------------
+
+typedef le_result_t (*TestFunc)(void);
+
+typedef struct
+{
+        char * name;
+        TestFunc ptrfunc;
+} my_struct;
+
+typedef struct
+{
     cdmaPdu_t cdmaMessage;
-    struct {
+    struct
+    {
         const size_t    length;
         const uint8_t   data[256];
     } pduEncoded;
 } PDUAssoc_t;
 
-const PDUAssoc_t PDUAssocDb[] = {
-        /* 0 */ {
-                .pduEncoded = {
+const PDUAssoc_t PDUAssocDb[] =
+{
+        /* 0 */
+                {
+                .pduEncoded =
+                {
                         .length = 40,
-                        .data = {
+                        .data =
+                        {
                             0x00, 0x00, 0x02, 0x10, 0x02, 0x02, 0x07, 0x02, 0x8C, 0xE9,
                             0x5D, 0xCC, 0x65, 0x80, 0x06, 0x01, 0xFC, 0x08, 0x15, 0x00,
                             0x03, 0x16, 0x8D, 0x30, 0x01, 0x06, 0x10, 0x24, 0x18, 0x30,
                             0x60, 0x80, 0x03, 0x06, 0x10, 0x10, 0x04, 0x04, 0x48, 0x47,
                         },
                 },
-                .cdmaMessage = {
+                .cdmaMessage =
+                {
                       .messageFormat = CDMAPDU_MESSAGEFORMAT_POINTTOPOINT,
-                      .message = {
+                      .message =
+                      {
                           .parameterMask = CDMAPDU_PARAMETERMASK_TELESERVICE_ID |
                                            CDMAPDU_PARAMETERMASK_ORIGINATING_ADDR |
                                            CDMAPDU_PARAMETERMASK_BEARER_REPLY_OPTION |
                                            CDMAPDU_PARAMETERMASK_BEARER_DATA,
                           .teleServiceId = 0x1002 ,
-                          .originatingAddr = {
+                          .originatingAddr =
+                          {
                               .digitMode = 0,
                               .numberMode = 0,
                               .numberType = 0,
@@ -56,19 +68,23 @@ const PDUAssoc_t PDUAssocDb[] = {
                                   0x33, 0xA5, 0x77, 0x31, 0x96,
                               },
                           },
-                          .bearerReplyOption = {
+                          .bearerReplyOption =
+                          {
                               .replySeq = 0x3F,
                           },
-                          .bearerData = {
+                          .bearerData =
+                          {
                               .subParameterMask = CDMAPDU_SUBPARAMETERMASK_MESSAGE_IDENTIFIER |
                                                   CDMAPDU_SUBPARAMETERMASK_USER_DATA |
                                                   CDMAPDU_SUBPARAMETERMASK_MESSAGE_CENTER_TIME_STAMP,
-                              .messageIdentifier = {
+                              .messageIdentifier =
+                              {
                                   .messageType = CDMAPDU_MESSAGETYPE_DELIVER,
                                   .messageIdentifier = 26835,
                                   .headerIndication = 0,
                               },
-                              .userData = {
+                              .userData =
+                              {
                                   .messageEncoding = CDMAPDU_ENCODING_7BIT_ASCII,
                                   .messageType = 0x00,
                                   .fieldsNumber = 0x04,
@@ -76,7 +92,8 @@ const PDUAssoc_t PDUAssocDb[] = {
                                       0x83, 0x06, 0x0C, 0x10,
                                   },
                               },
-                              .messageCenterTimeStamp = {
+                              .messageCenterTimeStamp =
+                              {
                                   .year = 0x10,
                                   .month = 0x10,
                                   .day = 0x04,
@@ -89,9 +106,11 @@ const PDUAssoc_t PDUAssocDb[] = {
                 },
         },
         /* 1 */ {
-                .pduEncoded = {
+                .pduEncoded =
+                {
                         .length = 54,
-                        .data = {
+                        .data =
+                        {
                             0x00, 0x00, 0x02, 0x10, 0x02, 0x02, 0x07, 0x02, 0x8C, 0xD9,
                             0x85, 0x94, 0x61, 0x80, 0x06, 0x01, 0xFC, 0x08, 0x23, 0x00,
                             0x03, 0x16, 0x8D, 0x30, 0x01, 0x14, 0x10, 0xA5, 0x4C, 0xBC,
@@ -100,15 +119,18 @@ const PDUAssoc_t PDUAssocDb[] = {
                             0x07, 0x17, 0x44, 0x28, 0x00
                         },
                 },
-                .cdmaMessage = {
+                .cdmaMessage =
+                {
                       .messageFormat = CDMAPDU_MESSAGEFORMAT_POINTTOPOINT,
-                      .message = {
+                      .message =
+                      {
                           .parameterMask = CDMAPDU_PARAMETERMASK_TELESERVICE_ID |
                                            CDMAPDU_PARAMETERMASK_ORIGINATING_ADDR |
                                            CDMAPDU_PARAMETERMASK_BEARER_REPLY_OPTION |
                                            CDMAPDU_PARAMETERMASK_BEARER_DATA,
                           .teleServiceId = 0x1002 ,
-                          .originatingAddr = {
+                          .originatingAddr =
+                          {
                               .digitMode = 0,
                               .numberMode = 0,
                               .numberType = 0,
@@ -118,28 +140,34 @@ const PDUAssoc_t PDUAssocDb[] = {
                                   0x33, 0x66, 0x16, 0x51, 0x86,
                               },
                           },
-                          .bearerReplyOption = {
+                          .bearerReplyOption =
+                          {
                               .replySeq = 0x3F,
                           },
-                          .bearerData = {
+                          .bearerData =
+                          {
                               .subParameterMask = CDMAPDU_SUBPARAMETERMASK_MESSAGE_IDENTIFIER |
                                                   CDMAPDU_SUBPARAMETERMASK_USER_DATA |
                                                   CDMAPDU_SUBPARAMETERMASK_MESSAGE_CENTER_TIME_STAMP,
-                              .messageIdentifier = {
+                              .messageIdentifier =
+                              {
                                   .messageType = CDMAPDU_MESSAGETYPE_DELIVER,
                                   .messageIdentifier = 26835,
                                   .headerIndication = 0,
                               },
-                              .userData = {
+                              .userData =
+                              {
                                   .messageEncoding = CDMAPDU_ENCODING_7BIT_ASCII,
                                   .messageType = 0x00,
                                   .fieldsNumber = 0x14,
-                                  .chari = {
+                                  .chari =
+                                  {
                                       0xa9, 0x97, 0x9f, 0x44, 0x1c, 0xf2, 0xee, 0xc9, 0xa7, 0x76,
                                       0x74, 0x1b, 0x72, 0xf3, 0xe7, 0x87, 0x3e, 0x50
                                   },
                               },
-                              .messageCenterTimeStamp = {
+                              .messageCenterTimeStamp =
+                              {
                                   .year = 0x14,
                                   .month = 0x07,
                                   .day = 0x07,
@@ -153,38 +181,40 @@ const PDUAssoc_t PDUAssocDb[] = {
         },
 };
 
-
-/* The suite initialization function.
-* Opens the temporary file used by the tests.
-* Returns zero on success, non-zero otherwise.
-*/
-int Init_Suite(void)
+//--------------------------------------------------------------------------------------------------
+/**
+ * Dump a data pointer
+ */
+//--------------------------------------------------------------------------------------------------
+static void DumpPDU
+(
+    const uint8_t * dataPtr,
+    size_t length
+)
 {
-    return 0;
-}
-
-/* The suite cleanup function.
-* Closes the temporary file used by the tests.
-* Returns zero on success, non-zero otherwise.
-*/
-int Clean_Suite(void)
-{
-    return 0;
-}
-
-void DumpPDU(const uint8_t * dataPtr, size_t length) {
     int i;
-    const int columns = 128;
+    const int columns = 32;
+    char logDump[255] = { 0 };
+    char dump[5] = { 0 };
 
-    for( i = 0; i < length+1; i++) {
-        fprintf(stderr, "%02X ", dataPtr[i]);
+    logDump[0] = 0;
+
+    for( i = 0; i < length+1; i++)
+    {
+        snprintf(dump,  5, "%02X ", dataPtr[i]);
+        strncat(logDump, dump, 255);
         if(i % columns == (columns-1) )
-            fprintf(stderr, "\n");
+        {
+            strncat(logDump, " ", 255);
+        }
     }
-    fprintf(stderr, "\n");
+    LE_INFO("%s", logDump);
 }
 
-void testEncodePdu()
+static le_result_t TestEncodePdu
+(
+    void
+)
 {
     uint8_t     pduResult[256] = {0};
     uint32_t    pduSize = 0;
@@ -199,21 +229,31 @@ void testEncodePdu()
 
         /* Encode */
         res = cdmaPdu_Encode(&assoc->cdmaMessage ,pduResult , sizeof(pduResult), &pduSize);
-        fprintf(stderr, "pdu Size %d \n", pduSize);
+        LE_INFO("pdu Size %d", pduSize);
 
-        CU_ASSERT_EQUAL( res, LE_OK );
+        if (res != LE_OK)
+        {
+            return LE_FAULT;
+        }
 
         DumpPDU(pduResult,pduSize);
         DumpPDU(assoc->pduEncoded.data,assoc->pduEncoded.length);
 
-        CU_ASSERT_EQUAL( memcmp(pduResult,assoc->pduEncoded.data, pduSize) , 0);
+        if (memcmp(pduResult,assoc->pduEncoded.data, pduSize) != 0)
+        {
+            return LE_FAULT;
+        }
 
-        fprintf(stderr, "------------------\n");
-        fprintf(stderr, "\n");
+        LE_INFO("------------------");
     }
+
+    return LE_OK;
 }
 
-void testDecodePdu()
+static le_result_t TestDecodePdu
+(
+    void
+)
 {
     cdmaPdu_t message = {0};
     le_result_t res;
@@ -223,64 +263,67 @@ void testDecodePdu()
     {
         const PDUAssoc_t * assoc = &PDUAssocDb[i];
 
-        fprintf(stderr, "------------------\n");
+        LE_INFO("------------------");
         DumpPDU(assoc->pduEncoded.data,assoc->pduEncoded.length);
-        fprintf(stderr, "---------\n");
+        LE_INFO("---------");
 
         /* Decode */
         res = cdmaPdu_Decode(assoc->pduEncoded.data ,assoc->pduEncoded.length , &message);
-        CU_ASSERT_EQUAL( res, LE_OK );
+        if (res != LE_OK)
+        {
+            return LE_FAULT;
+        }
 
         cdmaPdu_Dump(&message);
         cdmaPdu_Dump(&assoc->cdmaMessage);
 
-        CU_ASSERT_EQUAL( memcmp(&message, &assoc->cdmaMessage, sizeof(message)) , 0);
+        if (memcmp(&message, &assoc->cdmaMessage, sizeof(message)) != 0)
+        {
+            return LE_FAULT;
+        }
 
-        fprintf(stderr, "------------------\n");
-        fprintf(stderr, "\n");
+        LE_INFO("------------------");
     }
+
+    return LE_OK;
 }
 
+//--------------------------------------------------------------------------------------------------
+/*
+ * Check "logread -f | grep PduTest" log
+ * Start app : app start cdmaPduTest
+ */
+//--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
+    int i;
+    le_result_t res;
+
     // Init the test case / test suite data structures
 
-
-    CU_TestInfo testCases[] =
+    my_struct testCases[] =
     {
-            { "Test EncodePdu", testEncodePdu },
-            { "Test DecodePdu", testDecodePdu },
-            CU_TEST_INFO_NULL,
+            { "Test EncodePdu", TestEncodePdu },
+            { "Test DecodePdu", TestDecodePdu },
+            { "", NULL }
     };
 
-    CU_SuiteInfo suites[] =
+    for (i=0; testCases[i].ptrfunc != NULL; i++)
     {
-            { "PDU Convert tests", Init_Suite, Clean_Suite, testCases },
-            CU_SUITE_INFO_NULL,
-    };
-
-    // Initialize the CUnit test registry and register the test suite
-    if (CUE_SUCCESS != CU_initialize_registry())
-        exit(CU_get_error());
-
-    if ( CUE_SUCCESS != CU_register_suites(suites))
-    {
-        CU_cleanup_registry();
-        exit(CU_get_error());
+        LE_INFO("Test %s STARTED", testCases[i].name);
+        res =  testCases[i].ptrfunc();
+        if (res != LE_OK)
+        {
+            LE_ERROR("Test %s FAILED", testCases[i].name);
+            LE_ERROR("cdmaPduTest FAILED and Exit");
+            exit(EXIT_FAILURE);
+        }
+        else
+        {
+            LE_INFO("Test %s PASSED", testCases[i].name);
+        }
     }
 
-    CU_basic_set_mode(CU_BRM_VERBOSE);
-    CU_basic_run_tests();
-
-    // Output summary of failures, if there were any
-    if ( CU_get_number_of_failures() > 0 )
-    {
-        fprintf(stdout,"\n [START]List of Failure :\n");
-        CU_basic_show_failures(CU_get_failure_list());
-        fprintf(stdout,"\n [STOP]List of Failure\n");
-
-        exit(EXIT_FAILURE);
-    }
-
+    LE_INFO("cdmaPduTest SUCCESS and Exit");
     exit(EXIT_SUCCESS);
 }

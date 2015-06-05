@@ -13,23 +13,33 @@ declare -A app_results
 declare -A app_test_message
 
 declare -a errors_summary
+#************************************
+TARGET_ADDR=$1
+TARGET_TYPE=$2
 
-if [[ $1 != "" ]]; then
-# this should already be true but we will enforce it as we are getting the target ip an the first
-# argument
-    export AR7_IP_ADDR=$1
+if [ -z "$TARGET_TYPE" ];then
+    echo "Error: No target type specified"
+    exit 1
 fi
-echo "Running watchdog tests on target ${AR7_IP_ADDR}"
+if [ -z "$TARGET_ADDR" ]; then
+    echo "Error: No target address specified"
+    exit 1
+fi
 
+# need to export this so the launcher script can find the target to listen to
+export TARGET_IP_ADDR=$TARGET_ADDR
+
+echo "Running watchdog tests on target ${TARGET_TYPE} at ${TARGET_ADDR}"
+#***************************************
 function build_apps
 {
     echo "Building watchdog test apps"
 # this makes all the apps we need at the moment.
-    make test.ar7
+    make targ=${TARGET_TYPE}
     on_fail "One or more watchdog test apps could not be built"
-# build the apps_list from the ls *.ar7 results and check future tests against people trying to
+# build the apps_list from the ls *.${TARGET_TYPE} results and check future tests against people trying to
 # call apps that aren't made
-    app_file_list=*.ar7;
+    app_file_list=*.${TARGET_TYPE};
 }
 
 function install_apps
@@ -37,7 +47,7 @@ function install_apps
     echo "Installing watchdog test apps on target"
     for app_file in $app_file_list
     do
-        instapp $app_file ${AR7_IP_ADDR}
+        instapp $app_file ${TARGET_ADDR}
         on_fail "Failed trying to install $app_file"
         app_name=$(echo "$app_file" | sed 's/\..*$//')
         app_installed_list="$app_installed_list $app_name"
@@ -96,11 +106,11 @@ function cleanup
     echo "Cleaning up"
     # we are shutting down. Best effort here, ignore failures.
     #stop all apps
-    ssh root@${AR7_IP_ADDR} "${bin_path}app stop '*'"
+    ssh root@${TARGET_ADDR} "${bin_path}app stop '*'"
     # remove installed test apps
     for app in $app_installed_list
     do
-        rmapp $app ${AR7_IP_ADDR}
+        rmapp $app ${TARGET_ADDR}
     done
 }
 
@@ -132,12 +142,12 @@ function config_args
         let arg_num=$arg_num+1
     done
 
-    ssh root@${AR7_IP_ADDR} ${config_command}
+    ssh root@${TARGET_ADDR} ${config_command}
 }
 
 # make sure legato is running on target. If start fails maybe it's already running.
 #
-output=$(ssh root@${AR7_IP_ADDR} "/usr/local/bin/legato start")
+output=$(ssh root@${TARGET_ADDR} "/usr/local/bin/legato start")
 on_fail "ssh root@target legato start failed"
 echo $output
 legato_start_match="already running|Starting the supervisor"
@@ -148,7 +158,7 @@ if ! [[ $output =~ $legato_start_match ]]; then
 fi
 
 # stop all apps on target
-ssh root@${AR7_IP_ADDR} "${bin_path}app stop '*'"
+ssh root@${TARGET_ADDR} "${bin_path}app stop '*'"
 #ignore exit code. Returns failure if apps aren't running on target but this is not an error
 
 build_apps
@@ -156,7 +166,7 @@ build_apps
 install_apps
 
 # Test if dogTest has a watchdogTimeout: s/b added by mkapp
-wdog_timeout_value=$(ssh root@${AR7_IP_ADDR} "${bin_path}config get apps/dogTest/watchdogTimeout")
+wdog_timeout_value=$(ssh root@${TARGET_ADDR} "${bin_path}config get apps/dogTest/watchdogTimeout")
 if [[ $wdog_timeout_value == "" ]]; then
     log_result "FAIL: mkapp didn't pass the watchdogTimeout: config from dogTest.adef"
 else
@@ -168,7 +178,7 @@ else
 fi
 
 # Test if dogTestNever has "watchdogTimeout: never" :s/b added by mkapp
-wdog_timeout_never_value=$(ssh root@${AR7_IP_ADDR} "${bin_path}config get apps/dogTestNever/watchdogTimeout")
+wdog_timeout_never_value=$(ssh root@${TARGET_ADDR} "${bin_path}config get apps/dogTestNever/watchdogTimeout")
 if [[ $wdog_timeout_never_value != "-1" ]]; then
     log_result "FAIL: mkapp didn't pass the 'watchdogTimeout: never' config from dogTestNever.adef"
 else
@@ -176,7 +186,7 @@ else
 fi
 
 # Test if dogTest has a watchdogAction: s/b added by mkapp
-wdog_action_value=$(ssh root@${AR7_IP_ADDR} "${bin_path}config get apps/dogTest/watchdogAction")
+wdog_action_value=$(ssh root@${TARGET_ADDR} "${bin_path}config get apps/dogTest/watchdogAction")
 if [[ $wdog_action_value == "" ]]; then
     log_result "FAIL: mkapp didn't pass the watchdogAction: config from dogTest.adef"
 else
@@ -202,7 +212,7 @@ fi
 
 # test that watchdog can handle a different (arbitrary) timeout
 export DOG_TEST_TIMEOUT=500
-ssh root@${AR7_IP_ADDR} "${bin_path}config set apps/dogTest/watchdogTimeout 500 int"
+ssh root@${TARGET_ADDR} "${bin_path}config set apps/dogTest/watchdogTimeout 500 int"
 on_fail "couldn't configure watchdogTimeout on target"
 config_args dogTest dogTest "400 50"
 set_test_message dogTest "Test if watchdog times out as per new timeout value we write to config watchdogTimeout:"
@@ -211,8 +221,8 @@ wait_for_results
 
 # test that watchdog uses default when there is no watchdogTimeout: configured
 export DOG_TEST_TIMEOUT=30000
-ssh root@${AR7_IP_ADDR} "${bin_path}config delete apps/dogTest/watchdogTimeout"
-config_args dogTest dogTest "29900 100"
+ssh root@${TARGET_ADDR} "${bin_path}config delete apps/dogTest/watchdogTimeout"
+config_args dogTest dogTest "29950 100"
 # after setting up the test we can run it concurrently with the rest of the tests below
 set_test_message dogTest "Test if watchdog times out at 30 second default with missing watchdogConfig:"
 launch dogTest dogTestWatcher.sh 90

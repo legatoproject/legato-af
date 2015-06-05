@@ -8,8 +8,8 @@
  */
 
 
-#ifndef EXAMPLE_H_INCLUDE_GUARD
-#define EXAMPLE_H_INCLUDE_GUARD
+#ifndef INTERFACE_H_INCLUDE_GUARD
+#define INTERFACE_H_INCLUDE_GUARD
 
 
 #include "legato.h"
@@ -137,12 +137,14 @@ typedef void (*BugTestHandlerFunc_t)
  * Define handler for callback testing
  *
  * @param data
+ * @param name
  * @param contextPtr
  */
 //--------------------------------------------------------------------------------------------------
 typedef void (*CallbackTestHandlerFunc_t)
 (
     uint32_t data,
+    const char* name,
     void* contextPtr
 );
 
@@ -316,5 +318,5 @@ void TriggerCallbackTest
 );
 
 
-#endif // EXAMPLE_H_INCLUDE_GUARD
+#endif // INTERFACE_H_INCLUDE_GUARD
 

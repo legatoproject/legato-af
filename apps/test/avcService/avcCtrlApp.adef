@@ -1,0 +1,21 @@
+
+executables:
+{
+    avcCtrlApp = ( componentCtrlApp )
+}
+
+processes:
+{
+    run:
+    {
+        // Normally should be executed with 'execInApp' using:
+        //     execInApp avcCtrlApp /bin/avcCtrlApp x
+        // where x is the test case number.
+        // (avcCtrlApp)
+    }
+}
+
+bindings:
+{
+    avcCtrlApp.componentCtrlApp.le_avc -> avcService.le_avc
+}

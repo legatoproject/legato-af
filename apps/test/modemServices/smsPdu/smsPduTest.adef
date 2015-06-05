@@ -1,0 +1,23 @@
+executables:
+{
+    smsPduTest = ( smsPduTest )
+}
+
+processes:
+{
+    envVars:
+    {
+        LE_LOG_LEVEL = DEBUG
+    }
+    run:
+    {
+        ( smsPduTest )
+    }
+}
+
+start: manual
+
+bindings:
+{
+    smsPduTest.smsPduTest.le_sms -> modemService.le_sms
+}

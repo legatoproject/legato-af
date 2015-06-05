@@ -1,5 +1,5 @@
 #*******************************************************************************
-# Copyright (C) 2014, Sierra Wireless Inc., all rights reserved.
+# Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 #
 # Use of this work is subject to license.
 #*******************************************************************************

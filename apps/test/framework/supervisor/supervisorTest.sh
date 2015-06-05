@@ -1,35 +1,12 @@
 #!/bin/bash
 
+LoadTestLib
+
 targetAddr=$1
 targetType=${2:-ar7}
 
-# Checks if the logStr is in the logs.
-#
-# params:
-#       comparison      Either "==", ">", "<", "!="
-#       numMatches      The number of expected matches.
-#       logStr          The log string to search for.
-#
-checkLogStr () {
-    numMatches=$(ssh root@$targetAddr "/sbin/logread | grep -c \"$3\"")
-
-    echo "$numMatches matches for '$3' "
-
-    if [ ! $numMatches $1 $2 ]
-    then
-        echo "$numMatches occurances of '$3' but $1 $2 expected"
-        echo "Supervisor Test Failed!"
-        exit 1
-    fi
-}
-
-function CheckRet
-{
-    RETVAL=$?
-    if [ $RETVAL -ne 0 ]; then
-        echo -e $COLOR_ERROR "Exit Code $RETVAL" $COLOR_RESET
-        exit $RETVAL
-    fi
+OnFail() {
+    echo "Supervisor Test Failed!"
 }
 
 # List of apps
@@ -63,9 +40,40 @@ do
     CheckRet
 done
 
+instapp ForkChildApp.$targetType $targetAddr
+instapp NonSandboxedForkChildApp.$targetType $targetAddr
+
 echo "Stop all other apps."
 ssh root@$targetAddr "/usr/local/bin/app stop \"*\""
 sleep 1
+
+echo "Testing handling of forked child in sandbox apps."
+
+ssh root@$targetAddr  "/usr/local/bin/app start ForkChildApp"
+CheckRet
+
+ssh root@$targetAddr  "/usr/local/bin/app stop ForkChildApp"
+CheckRet
+
+ssh root@$targetAddr  "/usr/local/bin/app start ForkChildApp"
+CheckRet
+
+ssh root@$targetAddr  "/usr/local/bin/app stop ForkChildApp"
+CheckRet
+
+echo "Testing handling of forked child in nonsandbox apps."
+
+ssh root@$targetAddr  "/usr/local/bin/app start NonSandboxedForkChildApp"
+CheckRet
+
+ssh root@$targetAddr  "/usr/local/bin/app stop NonSandboxedForkChildApp"
+CheckRet
+
+ssh root@$targetAddr  "/usr/local/bin/app start NonSandboxedForkChildApp"
+CheckRet
+
+ssh root@$targetAddr  "/usr/local/bin/app stop NonSandboxedForkChildApp"
+CheckRet
 
 echo "Clear the logs."
 ssh root@$targetAddr "killall syslogd"
@@ -89,21 +97,21 @@ echo "Uninstall all apps."
 ssh root@$targetAddr  "/usr/local/bin/app stop \"*\""
 
 echo "Grepping the logs to check the results."
-checkLogStr "==" 1 "======== Start 'FaultApp/noExit' Test ========"
-checkLogStr "==" 1 "======== Start 'FaultApp/noFault' Test ========"
-checkLogStr "==" 1 "======== Test 'FaultApp/noFault' Ended Normally ========"
-checkLogStr ">" 1 "======== Start 'FaultApp/progFault' Test ========"
-checkLogStr ">" 1 "======== Start 'FaultApp/sigFault' Test ========"
-checkLogStr ">" 1 "======== Start 'RestartApp/noExit' Test ========"
-checkLogStr "==" 1 "======== Start 'StopApp/noExit' Test ========"
+CheckLogStr "==" 1 "======== Start 'FaultApp/noExit' Test ========"
+CheckLogStr "==" 1 "======== Start 'FaultApp/noFault' Test ========"
+CheckLogStr "==" 1 "======== Test 'FaultApp/noFault' Ended Normally ========"
+CheckLogStr ">" 1 "======== Start 'FaultApp/progFault' Test ========"
+CheckLogStr ">" 1 "======== Start 'FaultApp/sigFault' Test ========"
+CheckLogStr ">" 1 "======== Start 'RestartApp/noExit' Test ========"
+CheckLogStr "==" 1 "======== Start 'StopApp/noExit' Test ========"
 
-checkLogStr "==" 1 "======== Start 'NonSandboxedFaultApp/noExit' Test ========"
-checkLogStr "==" 1 "======== Start 'NonSandboxedFaultApp/noFault' Test ========"
-checkLogStr "==" 1 "======== Test 'NonSandboxedFaultApp/noFault' Ended Normally ========"
-checkLogStr ">" 1 "======== Start 'NonSandboxedFaultApp/progFault' Test ========"
-checkLogStr ">" 1 "======== Start 'NonSandboxedFaultApp/sigFault' Test ========"
-checkLogStr ">" 1 "======== Start 'NonSandboxedRestartApp/noExit' Test ========"
-checkLogStr "==" 1 "======== Start 'NonSandboxedStopApp/noExit' Test ========"
+CheckLogStr "==" 1 "======== Start 'NonSandboxedFaultApp/noExit' Test ========"
+CheckLogStr "==" 1 "======== Start 'NonSandboxedFaultApp/noFault' Test ========"
+CheckLogStr "==" 1 "======== Test 'NonSandboxedFaultApp/noFault' Ended Normally ========"
+CheckLogStr ">" 1 "======== Start 'NonSandboxedFaultApp/progFault' Test ========"
+CheckLogStr ">" 1 "======== Start 'NonSandboxedFaultApp/sigFault' Test ========"
+CheckLogStr ">" 1 "======== Start 'NonSandboxedRestartApp/noExit' Test ========"
+CheckLogStr "==" 1 "======== Start 'NonSandboxedStopApp/noExit' Test ========"
 
 echo "Supervisor Test Passed!"
 exit 0

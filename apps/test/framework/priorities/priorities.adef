@@ -1,6 +1,6 @@
 executables:
 {
-    priorityTest = ( priorities.c )
+    priorityTest = ( ../priorities )
 }
 
 processes:

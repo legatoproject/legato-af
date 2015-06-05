@@ -1,0 +1,4 @@
+This directory contains scripts that will run on the target.
+The target uses the Ash shell so no bashisms can live in here,
+the scripts should be self contained and use only resources
+available on the target.

@@ -5,7 +5,7 @@ sandboxed: false
 
 executables:
 {
-    badExe  = ( bad.c )
+    badExe  = ( bad )
 }
 
 
