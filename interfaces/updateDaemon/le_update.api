@@ -1,0 +1,401 @@
+//--------------------------------------------------------------------------------------------------
+/**
+ * @page c_update Software Update
+ *
+ * @ref le_update_interface.h "API Reference"
+ *
+ * <HR>
+ *
+ * This API is used to control updates (install/remove) for the Legato application/firmware. Update
+ * package is combination of manifest and update data. Manifest contains metadata about the update
+ * task and all the update data are appended behind manifest. Update data means installation files
+ * (most likely tar ball), firmware files etc. Update package can be pictorially viewed as follows:
+ @verbatim
+
+                                 ++++++++++++++++++++++
+                                 +                    +
+                                 +   Manifest         +
+                                 +                    +
+                                 +                    +
+                                 ++++++++++++++++++++++
+                                 +                    +
+                                 +   Update_data1     +
+                                 +                    +
+                                 +                    +
+                                 ++++++++++++++++++++++
+                                 +                    +
+                                 +   Update_data2     +
+                                 +                    +
+                                 +                    +
+                                 ++++++++++++++++++++++
+                                 +                    +
+                                 +   Update_data3     +
+                                 +                    +
+                                 +                    +
+                                 ++++++++++++++++++++++
+                                           .
+                                           .
+                                           .
+                                           .
+                                 ++++++++++++++++++++++
+                                 +                    +
+                                 +   Update_dataN     +
+                                 +                    +
+                                 +                    +
+                                 ++++++++++++++++++++++
+
+ @endverbatim
+ *
+ * Update service provider follows the following state machine while doing an update:
+ @verbatim
+                       ------------------
+             Create()  |                |            Delete()
+             --------->|     NEW        |--------------------------------|
+                       |                |                                |
+                       ------------------                                |
+                       Start() |                                         |
+                               |                                         |
+                               |                                         |
+                               |                                         |
+           |--------------     |                                         |
+           |             |     |                                         |
+  ALL_ITEMS_UNPACKED=NO  V     V                                         |
+           |           ------------------                                |
+           |           |                |   Delete()/Error*              |
+           |           |   UNPACKING    |---------------------|          |
+           ------------|                |                     |          |
+                       ------------------                     V          V
+                               |                          ------------------
+                               |                          |                |
+                       ALL_ITEMS_UNPACKED = YES           |      FAILED    |
+                               |                          |                |
+                               V                          ------------------
+                       ------------------                          ^
+                       |                |     Delete()/Error*      |
+                 |---->|    APPLYING    |--------------------------|
+ ALL_ITEMS_DONE = NO   |                |
+                 |     ------------------
+                 |         |    |
+                 |_________|    |
+                           ALL_ITEMS_DONE = YES
+                                |
+                                V
+                       ------------------
+                       |                |
+                       |    SUCCESS     |
+                       |                |
+                       ------------------
+
+ *Error:  Any kind of error occurred during update.
+ @endverbatim
+ *
+ * @section API_Usage_Guideline API Usage Guideline
+ * This is the typical sequence of calling update API:
+ *
+ * - [MANDATORY] Client will provide update file descriptor (where manifest string is prepended at
+ *   the beginning) via le_update_Create() api. Update service provider returns a handle on success.
+ *
+ * - [OPTIONAL] Client may register any callback function for status update. It's highly recommended
+ *   to register callback function as client can only know its requested update status via callback
+ *   function.
+ *
+ * - [MANDATORY] Client can call le_update_Start() to start update task. It's an asynchronous API.
+ *   It returns after the update process(reading/parsing manifest, calling appropriate installation
+ *   or removal tool as per manifest command etc) has started, but doesn't verify if it finished).
+ *   Update service provider will notify the status of update task to client via callback function.
+ *   If no callback is registered, the client won't get any notification.
+ *
+ * - [OPTIONAL] Client may call le_update_GetErrorCode() to get the errors that lead update to failed
+ *   state. le_update_GetErrorCode() will return LE_UPDATE_ERR_NONE if update is in other state.
+ *
+ * - [MANDATORY] Client needs to call le_update_Delete() to deallocate resources. If le_update_Delete()
+ *   is called in the middle of an update, update service provider will stop the update and deallocate
+ *   resources if safe, otherwise the update service provider will deallocate resources after the
+ *   current update task is finished. If the manifest contains multiple update items, all of the
+ *   subsequent update items are deleted as part of deletion process. If the client disconnects
+ *   before deleting the update handle, the update will automatically be deleted, and if the update
+ *   is still in progress, it may be cancelled.
+ *
+ *
+ * @section update_example Sample Code
+ *
+ * This code sample calls an update service provider API to perform an update:
+ *
+ * @code
+ *
+ * void SoftwareUpdate
+ * (
+ *     void
+ * )
+ * {
+ *     int fd = 0;  // Update data coming via STDIN
+ *
+ *     le_update_HandleRef_t Handle;
+ *
+ *     // Create an update handle.
+ *     if ((Handle = le_update_Create(fd)) == NULL)
+ *     {
+ *          perror("Update failure, exiting.");
+ *          exit(EXIT_FAILURE);
+ *     }
+ *
+ *     // Register callback function.
+ *     if (le_update_AddProgressHandler(Handle, UpdateProgressHandler, NULL) == NULL)
+ *     {
+ *          perror("Can't register status handler");
+ *          exit(EXIT_FAILURE);
+ *     }
+ *
+ *     // Start update process(asynchronous). Completion will be notified via callback function.
+ *     if (le_update_Start(Handle) != LE_OK)
+ *     {
+ *          perror("Can't start update task !");
+ *          exit(EXIT_FAILURE);
+ *     }
+ * }
+ *
+ *
+ * // Sample callback function implementation.
+ * static void UpdateProgressHandler
+ * (
+ *     le_update_State_t updateState,   ///< Current State of ongoing update task in Update State
+ *                                      ///< machine.
+ *
+ *     uint percentDone,                ///< Percent done for current state.
+ *
+ *     void* contextPtr                 ///< Context pointer.
+ * )
+ * {
+ *
+ *     switch(updateState)
+ *     {
+ *         case LE_UPDATE_STATE_NEW:
+ *             // New update. Print this information.
+ *             fprintf(stdout, "New update started\n");
+ *             break;
+ *
+ *         case LE_UPDATE_STATE_UNPACKING:
+ *             fprintf(stdout, "Unpacking: %d \n", percentDone);
+ *             break;
+ *
+ *         case LE_UPDATE_STATE_APPLYING:
+ *             fprintf(stdout, "Applying: %d \n", percentDone);
+ *             break;
+ *
+ *         case LE_UPDATE_STATE_SUCCESS:
+ *             //Successful update(install/remove) task.
+ *             fprintf(stdout, "\nSUCCESS\n");
+ *             le_update_Delete(Handle);
+ *             exit(EXIT_SUCCESS);
+ *
+ *         case LE_UPDATE_STATE_FAILED:
+ *             // Failure in update, exit with failure code.
+ *             fprintf(stderr, "\nFAILED, ErrorCode: %d\n", le_update_GetErrorCode(Handle));
+ *             le_update_Delete(Handle);
+ *             exit(EXIT_FAILURE);
+ *     }
+ *
+ * }
+
+ * @endcode
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ */
+// -------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * @file le_update_interface.h
+ *
+ * Legato @ref c_update include file.
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ */
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Reference to update task. Used to identify an update task.
+ */
+//--------------------------------------------------------------------------------------------------
+REFERENCE Handle;
+
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * Length of the ID string. ID string is used to identify update item underway, e.g. for app
+ * update/remove ID string will contain appName, for firmware it will contain firmware version.
+ */
+//-------------------------------------------------------------------------------------------------
+DEFINE ID_STR_LEN = 64;
+
+
+//--------------------------------------------------------------------------------------------------
+// Symbol and Enum definitions.
+//--------------------------------------------------------------------------------------------------
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Supported commands inside manifest.
+ *
+ * @todo Add support of delta update.
+ *
+ * @note Subject to change.
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM Command
+{
+    CMD_INSTALL,              ///< Install tasks. This includes installation of apps, firmware.
+    CMD_REMOVE                ///< Removal tasks. This includes removal of apps.
+};
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Supported platform types to be updated (inside manifest).
+ *
+ * @note Subject to change.
+ *
+ * @todo Add support for framework, system etc.
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM ItemType
+{
+    APP,                       ///< App item
+    FIRMWARE                   ///< Firmware item
+};
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Different states in the update state machine. The state machine is maintained to track the
+ * update task underway.
+ *
+ * Example:
+ *     for successful installation task, state transitions look like:
+ *     STATE_NEW-->STATE_UNPACKING-->STATE_APPLYING-->STATE_SUCCESS.
+ *
+ * @note
+ *     Subject to change.
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM State
+{
+    STATE_NEW,                  ///< Requested new update task.
+    STATE_UNPACKING,            ///< Unpacking update data.
+    STATE_APPLYING,             ///< Applying update(i.e. installation/removal operation going on).
+    STATE_SUCCESS,              ///< Successfully completed all update task.
+    STATE_FAILED,               ///< Update failed due to some error or deletion request.
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Error code used to provide diagnostic information after a failed update.
+ *
+ * @note
+ *     Subject to change.
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM ErrorCode
+{
+    ERR_NONE,                     ///< No error.
+    ERR_BAD_MANIFEST,             ///< Found bad manifest in supplied update package.
+    ERR_IO_ERROR,                 ///< Encountered IO error
+    ERR_INTERNAL_ERROR,           ///< Something wrong happened while doing update.
+    ERR_OUT_OF_MEMORY,            ///< Not enough memory available to install update.
+    ERR_VERSION_MISMATCH,         ///< Software version mismatch.
+    ERR_WRONG_TARGET,             ///< Detected wrong target.
+};
+
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * Creates an update handle. This handle needs to be used in subsequent api calls.
+ *
+ * @return
+ *      - Null if already an update is going on.
+ *      - Handle reference if successful.
+ */
+//-------------------------------------------------------------------------------------------------
+FUNCTION Handle Create
+(
+     file fileDesc IN           ///< File descriptor containing the update package.
+);
+
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * Starts update process(i.e. parsing manifest, doing update as per manifest). This is an
+ * asynchronous function (it returns after the update process has started, but doesn't verify if it
+ * finishes). Client will get status through registered call back function.
+ *
+ * @return
+ *      - LE_OK if update starts successfully.
+ *      - LE_FAULT if update failed to start.
+ *
+ */
+//-------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Start
+(
+    Handle handle IN           ///< Handle of requested update task.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Deletes an update task that's underway. Either deletes the update task (if safe) or marks to
+ * delete it after current update current task is finished. If manifest contains multiple update
+ * items, all of the subsequent update items are cancelled as part of deletion process.
+ *
+ * @note The handle becomes invalid after it has been deleted..
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION void Delete
+(
+     Handle handle IN           ///< Handle of the underway update task.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function to get error code when update fails.
+ *
+ * @return
+ *      - Error code of encountered error.
+ *      - ERR_NONE if update is in any other state.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION ErrorCode GetErrorCode
+(
+     Handle handle IN           ///< Handle of the underway update task.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Client callback function to notify status of underway update task.
+ */
+//--------------------------------------------------------------------------------------------------
+HANDLER ProgressHandler
+(
+    State updateState       IN,  ///< Current State of underway update process in state machine.
+
+    uint  percentDone       IN   ///< Percent done for current state. As example: at state
+                                 ///< LE_UPDATE_STATE_UNPACKING, percentDone=80 means,
+                                 ///< 80% of the update file data is already transferred to
+                                 ///< unpack process.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Shows the status of the underway update process.
+ */
+//--------------------------------------------------------------------------------------------------
+EVENT Progress
+(
+    Handle handle IN,             ///< Update object reference.
+    handler ProgressHandler       ///< Progress handler
+);
+

@@ -1,3 +1,4 @@
+//--------------------------------------------------------------------------------------------------
 /**
  * @page c_le_data Data Connection
  *
@@ -11,21 +12,32 @@
  *
  * The data connection service provides a basic API for requesting and releasing a data connection.
  *
+ * @section le_data_binding IPC interfaces binding
+ *
+ * All the functions of this API are provided by the @b dataConnectionService application service.
+ *
+ * Here's a code sample binding to Data Connection services:
+ * @verbatim
+   bindings:
+   {
+      clientExe.clientComponent.le_data -> dataConnectionService.le_data
+   }
+   @endverbatim
  *
  * @section c_le_data_default Default Data Connection
  *
- * Default data connection is obtained using @ref le_data_Request.  Before the data
+ * Default data connection is obtained using le_data_Request().  Before the data
  * connection is requested, an application registers a connection state handler using
- * @ref le_data_AddConnectionStateHandler.  Once the data connection is established, the
+ * le_data_AddConnectionStateHandler().  Once the data connection is established, the
  * handler will be called indicating it's now connected.  If the state of the data
  * connection changes, then the handler will be called with the new state. To release a data
- * connection, an application can use @ref le_data_Release.
+ * connection, an application can use le_data_Release().
  *
- * If the default data connection is not currently available when @ref le_data_Request is called,
+ * If the default data connection is not currently available when le_data_Request() is called,
  * the data connection service first ensures all pre-conditions are satisfied (e.g.,
  * modem is registered on the network), before trying to start the data connection.
  *
- * If the default data connection is already available when @ref le_data_Request is called, a
+ * If the default data connection is already available when le_data_Request() is called, a
  * new connection will not be started.  Instead, the existing data connection will be used.  This
  * happens if another application also requested the default data connection.  This
  * is how multiple applications can share the same data connection.
@@ -38,8 +50,8 @@
  * issue a new connection request.
  *
  * The default data connection will not necessarily be released when an application calls
- * @ref le_data_Release.  The data connection will be released only after @ref le_data_Release
- * is called by all applications that previously called @ref le_data_Request.
+ * le_data_Release().  The data connection will be released only after le_data_Release
+ * is called by all applications that previously called le_data_Request().
  *
  * All configuration data required for the default data connection, like the Access Point Name
  * (APN), will be stored in the Config database.
@@ -80,19 +92,19 @@
  * Some applications may have data connection requirements that are not met by the default data
  * connection (e.g., use a least cost data link or disable roaming on mobile networks). You can do this
  * by:
- * - creating a request object using @ref le_data_CreateRequest,
- * - setting optional values on that request object using @ref le_data_SelectLeastCost or
- * @ref le_data_DisableRoaming,
- * - and then submitting that object to a data connection request using @ref le_data_SubmitRequest
+ * - creating a request object using le_data_CreateRequest(),
+ * - setting optional values on that request object using le_data_SelectLeastCost() or
+ * le_data_DisableRoaming(),
+ * - and then submitting that object to a data connection request using le_data_SubmitRequest
  *
- * @ref le_data_AddConnectionStateHandler and @ref le_data_Release APIs can continue to be
+ * le_data_AddConnectionStateHandler() and le_data_Release() APIs can continue to be
  * used, as described above.
  *
  * <HR>
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
-
+//--------------------------------------------------------------------------------------------------
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -101,8 +113,8 @@
  * Legato @ref c_le_data include file.
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
- *
  */
+//--------------------------------------------------------------------------------------------------
 
 
 //--------------------------------------------------------------------------------------------------

@@ -1,3 +1,4 @@
+//--------------------------------------------------------------------------------------------------
 /**
  * @page c_info Modem Information
  *
@@ -6,6 +7,18 @@
  * <HR>
  *
  * This file contains prototype definitions for Modem Information APIs.
+ *
+ * @section le_info_binding IPC interfaces binding
+ *
+ * All the functions of this API are provided by the @b modemService foundation service.
+ *
+ * Here's a code sample binding to modem services:
+ * @verbatim
+   bindings:
+   {
+      clientExe.clientComponent.le_info -> modemService.le_info
+   }
+   @endverbatim
  *
  * @section le_info_version Query Firmware Version
  *
@@ -37,18 +50,28 @@
  *
  * le_info_GetNai() is used to retrieve the CDMA Network Access Identifier (NAI) string.
  *
+ * le_info_GetManufacturerName() is used to retrive the Manufacturer name.
+ *
+ * le_info_GetPriId() is used to retrieve the Product Requirement Information Identifier (PRI ID)
+ *   Part Number and the Revision number.
+ * The Part number is a 7-digit string. Revision Number string contains 2-digit major
+ *  version + '.' char + 2-digit minor version (xx.xx).
+ *
  * <HR>
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
+//--------------------------------------------------------------------------------------------------
 
-
-/** @file le_info_interface.h
+//--------------------------------------------------------------------------------------------------
+/**
+ * @file le_info_interface.h
  *
  * Legato @ref c_info include file.
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
+//--------------------------------------------------------------------------------------------------
 
 // NOTE: string sizes are set to an arbitrary value.  The correct values
 //       still need to be filled in.
@@ -56,10 +79,16 @@
 //--------------------------------------------------------------------------------------------------
 /**
  * Maximum IMEI length (15 digits)
- * One extra byte is added for the null character.
  */
 //--------------------------------------------------------------------------------------------------
 DEFINE IMEI_MAX_LEN    = (15);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum IMEI length (15 digits)
+ * One extra byte is added for the null character.
+ */
+//--------------------------------------------------------------------------------------------------
 DEFINE IMEI_MAX_BYTES  = (IMEI_MAX_LEN+1);
 
 //--------------------------------------------------------------------------------------------------
@@ -68,6 +97,13 @@ DEFINE IMEI_MAX_BYTES  = (IMEI_MAX_LEN+1);
  */
 //--------------------------------------------------------------------------------------------------
 DEFINE MAX_VERS_LEN   = 256;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum length of a version string
+ * One extra byte is added for the null character.
+ */
+//--------------------------------------------------------------------------------------------------
 DEFINE MAX_VERS_BYTES = (MAX_VERS_LEN+1);
 
 //--------------------------------------------------------------------------------------------------
@@ -76,6 +112,13 @@ DEFINE MAX_VERS_BYTES = (MAX_VERS_LEN+1);
  */
 //--------------------------------------------------------------------------------------------------
 DEFINE MAX_MODEL_LEN   = 256;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum length of a model string
+ * One extra byte is added for the null character.
+ */
+//--------------------------------------------------------------------------------------------------
 DEFINE MAX_MODEL_BYTES = (MAX_MODEL_LEN+1);
 
 //--------------------------------------------------------------------------------------------------
@@ -84,6 +127,13 @@ DEFINE MAX_MODEL_BYTES = (MAX_MODEL_LEN+1);
  */
 //--------------------------------------------------------------------------------------------------
 DEFINE MAX_ESN_LEN   = 32;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum length of an Electronic Serial Number (ESN) string.
+ * One extra byte is added for the null character.
+ */
+//--------------------------------------------------------------------------------------------------
 DEFINE MAX_ESN_BYTES = (MAX_ESN_LEN+1);
 
 //--------------------------------------------------------------------------------------------------
@@ -92,6 +142,13 @@ DEFINE MAX_ESN_BYTES = (MAX_ESN_LEN+1);
  */
 //--------------------------------------------------------------------------------------------------
 DEFINE MAX_MEID_LEN   = 32;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum length of an Mobile Equipment Identifier (MEID) string.
+ * One extra byte is added for the null character.
+ */
+//--------------------------------------------------------------------------------------------------
 DEFINE MAX_MEID_BYTES = (MAX_MEID_LEN+1);
 
 //--------------------------------------------------------------------------------------------------
@@ -100,6 +157,13 @@ DEFINE MAX_MEID_BYTES = (MAX_MEID_LEN+1);
  */
 //--------------------------------------------------------------------------------------------------
 DEFINE MAX_MDN_LEN   = 32;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum length of an Mobile Directory Number (MDN) string.
+ * One extra byte is added for the null character.
+ */
+//--------------------------------------------------------------------------------------------------
 DEFINE MAX_MDN_BYTES = (MAX_MDN_LEN+1);
 
 //--------------------------------------------------------------------------------------------------
@@ -108,6 +172,13 @@ DEFINE MAX_MDN_BYTES = (MAX_MDN_LEN+1);
  */
 //--------------------------------------------------------------------------------------------------
 DEFINE MAX_MIN_LEN   = 32;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum length of an Mobile Station ISDN Number (MSISDN) string.
+ * One extra byte is added for the null character.
+ */
+//--------------------------------------------------------------------------------------------------
 DEFINE MAX_MIN_BYTES = (MAX_MIN_LEN+1);
 
 //--------------------------------------------------------------------------------------------------
@@ -116,7 +187,59 @@ DEFINE MAX_MIN_BYTES = (MAX_MIN_LEN+1);
  */
 //--------------------------------------------------------------------------------------------------
 DEFINE MAX_NAI_LEN   = 72;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum length of an Mobile Station ISDN Number (NAI) string.
+ * One extra byte is added for the null character.
+ */
+//--------------------------------------------------------------------------------------------------
 DEFINE MAX_NAI_BYTES = (MAX_NAI_LEN+1);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum length of an Manufacturer Name string.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_MFR_NAME_LEN   = 128;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum length of an Manufacturer Name string.
+ * One extra byte is added for the null character.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_MFR_NAME_BYTES = (MAX_MFR_NAME_LEN+1);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum length of the Product Requirement Information Identifier (PRI ID) Part Number string.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_PRIID_PN_LEN   = 7;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum length of the Product Requirement Information Identifier (PRI ID) Part Number string.
+ * One extra byte is added for the null character.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_PRIID_PN_BYTES = (MAX_PRIID_PN_LEN+1);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum length of the Product Requirement Information Identifier (PRI ID) Revision Number string.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_PRIID_REV_LEN   = 5;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum length of the Product Requirement Information Identifier (PRI ID) Revision Number string.
+ * One extra byte is added for the null character.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_PRIID_REV_BYTES = (MAX_PRIID_REV_LEN+1);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -252,6 +375,7 @@ FUNCTION le_result_t GetPrlVersion
     uint16 prlVersion OUT    ///< The Preferred Roaming List (PRL) version.
 );
 
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Get the CDMA Preferred Roaming List (PRL) only preferences status.
@@ -299,4 +423,39 @@ FUNCTION le_result_t GetNai
 (
     string naiStr[MAX_NAI_LEN] OUT      ///< The Network Access Identifier (NAI)
                                         ///<  string (null-terminated).
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Manufacturer Name string in ASCII text.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to get the value.
+ *      - LE_OVERFLOW      The Manufacturer Name length exceed the maximum length.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetManufacturerName
+(
+    string mfrNameStr[MAX_MFR_NAME_LEN] OUT    ///< The Manufacturer Name string (null-terminated).
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Product Requirement Information Part Number and Revision Number strings in ASCII text.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to get the value.
+ *      - LE_OVERFLOW      The Part or the Revision Number strings length exceed the maximum length.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetPriId
+(
+    string priIdPnStr[MAX_PRIID_PN_LEN] OUT,  ///< The Product Requirement Information Identifier
+                                              ///< (PRI ID) Part Number string (null-terminated).
+    string priIdRevStr[MAX_PRIID_REV_LEN] OUT ///< The Product Requirement Information Identifier
+                                              ///< (PRI ID) Revision Number string
+                                              ///< (null-terminated).
 );

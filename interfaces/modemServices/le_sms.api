@@ -1,3 +1,4 @@
+//--------------------------------------------------------------------------------------------------
 /**
  * @page c_sms SMS
  *
@@ -13,6 +14,18 @@
  * Usually, the radio module requests small power resources to send or receive a message.
  * It's often a good way to wake-up a device that was disconnected from the network or that was
  * operating in low power mode.
+ *
+ * @section le_sms_binding IPC interfaces binding
+ *
+ * All the functions of this API are provided by the @b modemService foundation service.
+ *
+ * Here's a code sample binding to modem services:
+ * @verbatim
+   bindings:
+   {
+      clientExe.clientComponent.le_sms -> modemService.le_sms
+   }
+   @endverbatim
  *
  * @section le_sms_ops_creating_msg Creating a Message object
  * There are 3 kinds of supported messages: text messages, binary messages, and PDU messages.
@@ -42,6 +55,16 @@
  *
  * After the Msg object is ready, call @c le_sms_Send().
  *
+ * @c le_sms_Send() is a blocking function, it will return once the Modem has given back a
+ * positive or negative answer to the sending operation. The return of @c le_sms_Send() API
+ * provides definitive status of the sending operation.
+ *
+ * When a message sending has failed, call le_sms_GetErrorCode() to retrieve the 3GPP message error
+ * code or le_sms_Get3GPP2ErrorCode() to retrieve the 3GPP2 message error code.
+ * If LE_SMS_ERROR_3GPP_PLATFORM_SPECIFIC or LE_SMS_ERROR_3GPP2_PLATFORM_SPECIFIC values is
+ * returned, call le_sms_GetPlatformSpecificErrorCode() to retrieve the platform specific error
+ * code.
+ *
  * @section le_sms_ops_async_sending Sending asynchronously a message.
  *
  * A text message can be sent with one simple function: le_sms_SendText(). You only have to pass
@@ -59,10 +82,11 @@
  * - the callback function to get a notification indicating the sending result: LE_SMS_SENT or
  *  LE_SMS_SENDING_FAILED.
  *
- *
- * @c le_sms_Send() is a blocking function, it will return once the Modem has given back a
- * positive or negative answer to the sending operation. The return of @c le_sms_Send() API
- * provides definitive status of the sending operation.
+ * When a message sending has failed, call le_sms_GetErrorCode() to retrieve the 3GPP message error
+ * code or le_sms_Get3GPP2ErrorCode() to retrieve the 3GPP2 message error code.
+ * If LE_SMS_ERROR_3GPP_PLATFORM_SPECIFIC or LE_SMS_ERROR_3GPP2_PLATFORM_SPECIFIC values is
+ * returned, call le_sms_GetPlatformSpecificErrorCode() to retrieve the platform specific error
+ * code.
  *
  * Message object is never deleted regardless of the sending result. Caller has to
  * delete it.
@@ -103,7 +127,7 @@
  *
  * Use the following APIs to retrieve message information and data from the Message
  * object:
- * - le_sms_GetFormat() - determine if it is a PDU, a binary or a text message.
+ * - le_sms_GetFormat() - determine if it is a binary or a text message.
  * - le_sms_GetSenderTel() - get the sender's Telephone number.
  * - le_sms_GetTimeStamp() - get the timestamp sets by the Service Center.
  * - le_sms_GetUserdataLen() - get the message content (text or binary) length.
@@ -112,8 +136,12 @@
  * - le_sms_GetBinary() - get the message binary content.
  * - le_sms_GetPDU() - get the message PDU data.
  *
- * @note If two (or more) registered handler functions exist, they are
+ * @note  - If two (or more) registered handler functions exist, they are
  * all called and get a different message object reference.
+ *
+ * @note  - For incoming SMS, format returned by le_sms_GetFormat is never LE_SMS_FORMAT_PDU.
+ *
+ * @note - 16 bit UCS2 format is not supported.
  *
  * If a succession of messages is received, a new Message object is created for each, and
  * the handler is called for each new message.
@@ -234,16 +262,36 @@
  * The sample replies to the sender by the message "Message from <phone number> received". Where
  * "phone number" is the sender's phone number.
  *
+ * Sample code for that application can be seen in the following pages:
+ * - @subpage c_smsSampleMO <br>
+ * - @subpage c_smsSampleMT
+ *
  * <HR>
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
+//--------------------------------------------------------------------------------------------------
 
-/** @file le_sms_interface.h
+//--------------------------------------------------------------------------------------------------
+/**
+ * @file le_sms_interface.h
  *
  * Legato @ref c_sms include file.
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ */
+//--------------------------------------------------------------------------------------------------
+
+/**
+ * @page c_smsSampleMO Sample code for Mobile Originated SMS message
+ *
+ * @include "apps/sample/sms/smsClient/smsMO.c"
+ */
+
+/**
+ * @page c_smsSampleMT Sample code for Mobile Terminated SMS message
+ *
+ * @include "apps/sample/sms/smsClient/smsMT.c"
  */
 
 USETYPES le_mdmDefs.api;
@@ -256,6 +304,12 @@ USETYPES le_mdmDefs.api;
  */
 //--------------------------------------------------------------------------------------------------
 DEFINE  TIMESTAMP_MAX_LEN   = (20);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Time stamp string length (including the null-terminator).
+ */
+//--------------------------------------------------------------------------------------------------
 DEFINE  TIMESTAMP_MAX_BYTES = (TIMESTAMP_MAX_LEN+1);
 
 //--------------------------------------------------------------------------------------------------
@@ -265,12 +319,17 @@ DEFINE  TIMESTAMP_MAX_BYTES = (TIMESTAMP_MAX_LEN+1);
  */
 //--------------------------------------------------------------------------------------------------
 DEFINE  TEXT_MAX_LEN    = (160);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test message string length (including the null-terminator).
+ */
+//--------------------------------------------------------------------------------------------------
 DEFINE  TEXT_MAX_BYTES  = (TEXT_MAX_LEN+1);
 
 //--------------------------------------------------------------------------------------------------
 /**
  * The raw binary message can be up to 140 bytes long.
- *
  */
 //--------------------------------------------------------------------------------------------------
 DEFINE  BINARY_MAX_BYTES  = (140);
@@ -278,7 +337,6 @@ DEFINE  BINARY_MAX_BYTES  = (140);
 //--------------------------------------------------------------------------------------------------
 /**
  * The PDU payload bytes long.
- *
  */
 //--------------------------------------------------------------------------------------------------
 DEFINE  PDU_MAX_PAYLOAD = (140);
@@ -286,7 +344,6 @@ DEFINE  PDU_MAX_PAYLOAD = (140);
 //--------------------------------------------------------------------------------------------------
 /**
  * The PDU message can be up to 36 (header) + 140 (payload) bytes long.
- *
  */
 //--------------------------------------------------------------------------------------------------
 DEFINE  PDU_MAX_BYTES     = (36+PDU_MAX_PAYLOAD);
@@ -294,7 +351,6 @@ DEFINE  PDU_MAX_BYTES     = (36+PDU_MAX_PAYLOAD);
 //--------------------------------------------------------------------------------------------------
 /**
  * Message Format.
- *
  */
 //--------------------------------------------------------------------------------------------------
 ENUM Format
@@ -308,7 +364,6 @@ ENUM Format
 //--------------------------------------------------------------------------------------------------
 /**
  * Message Status.
- *
  */
 //--------------------------------------------------------------------------------------------------
 ENUM Status
@@ -322,6 +377,144 @@ ENUM Status
     UNSENT,         ///< Message has not been sent.
     SENDING_FAILED, ///< Message sending has Failed.
     STATUS_UNKNOWN  ///< Unknown message status.
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * 3GPP2 Message Error code when the message sending has failed.
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM ErrorCode3GPP2
+{
+    ////< SMS Cause code specified in the 3GPP2 N.S0005-0 section 6.5.2.125
+    ERROR_ADDR_VACANT,                   ///< The SMS Destination Address is valid but is not.
+                                         ///<  currently allocated to an SMS terminal.
+    ERROR_ADDR_TRANSLATION_FAILURE,      ///< The SMS Destination Address is invalid.
+    ERROR_NETWORK_RESOURCE_SHORTAGE,     ///< The network transmission failed due to lack of
+                                         ///<  a network resource or link capacity.
+    ERROR_NETWORK_FAILURE,               ///< A network node failed, a link failed, or a
+                                         ///< required operation failed.
+    ERROR_INVALID_TELESERVICE_ID,        ///< The SMS_TeleserviceIdentifier is not known, is
+                                         ///<  not supported, or is not authorized by an
+                                         ///<  addressed functional entity.
+    ERROR_NETWORK_OTHER,                 ///< A network problem other than identified above.
+    ERROR_NO_PAGE_RESPONSE,              ///< The addressed MS-based SME is known, but it
+                                         ///<  does not respond to a page.
+    ERROR_DEST_BUSY,                     ///< The destination MS-based SME is SMS capable,
+                                         ///<  but is currently engaged in a call, a service,
+                                         ///<  or a call mode that precludes the use of SMS,
+                                         ///<  or the destination SME is congested.
+    ERROR_NO_ACK,                        ///< The destination SME does not acknowledge receipt
+                                         ///<  of the SMS delivery.
+    ERROR_DEST_RESOURCE_SHORTAGE,        ///< A required terminal resource is not available to
+                                         ///<  process this message.
+    ERROR_SMS_DELIVERY_POSTPONED,        ///< Delivery is not currently possible.
+    ERROR_DEST_OUT_OF_SERV,              ///< The addressed destination is out of
+                                         ///<  service for an extended period of time.
+    ERROR_DEST_NOT_AT_ADDR,              ///< The MS-based SME is no longer at the
+                                         ///< temporary SMS routing address.
+    ERROR_DEST_OTHER,                    ///< A terminal problem other than described above.
+    ERROR_RADIO_IF_RESOURCE_SHORTAGE,    ///< There is no channel available or there is
+                                         ///< radio congestion at this time.
+    ERROR_RADIO_IF_INCOMPATABILITY,      ///< The MS for an MS-based SME is operating in a
+                                         ///<  mode that does not support SMS at this time.
+    ERROR_RADIO_IF_OTHER,                ///< A radio interface problem to an MS-based SME
+                                         ///<  other than described above.
+    ERROR_ENCODING,                      ///< The size of a parameter or field is not
+                                         ///<  what is expected.
+    ERROR_SMS_ORIG_DENIED,               ///< The originating MIN is not recognized.
+    ERROR_SMS_TERM_DENIED,               ///< The destination is not authorized to receive
+                                         ///<  the SMS message.
+    ERROR_SUPP_SERV_NOT_SUPP,            ///< The originating supplementary service is
+                                         ///<  not known or supported.
+    ERROR_SMS_NOT_SUPP,                  ///< The originating supplementary service is
+                                         ///<  not known or supported.
+    ERROR_MISSING_EXPECTED_PARAM,        ///< An optional parameter that is required
+                                         ///<  for a particular function.
+    ERROR_MISSING_MAND_PARAM,            ///< A parameter is missing that is mandatory.
+                                         ///< for a particular message.
+    ERROR_UNRECOGNIZED_PARAM_VAL,        ///< A known parameter has an unknown or
+                                         ///<  unsupported value.
+    ERROR_UNEXPECTED_PARAM_VAL,          ///< A known parameter has a known but unexpected
+                                         ///<  value.
+    ERROR_USER_DATA_SIZE_ERR,            ///< The User Data size is too large for access
+                                         ///< technology, transport network, or call
+                                         ///< mode, etc
+    ERROR_GENERAL_OTHER,                 ///< Other general problems.
+
+    ERROR_3GPP2_PLATFORM_SPECIFIC,       ///< Platform specific code.
+    ERROR_3GPP2_MAX                      ///< Undefined reason.
+};
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Message Error code when the message sending has failed.
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM ErrorCode
+{
+    ////< Radio Protocol error codes specified in The 3GPP 24.011 ANEXE E Cause definition.
+    RP_ERROR_UNASSIGNED_NUMBER,               ///< Unassigned (unallocated) number
+    RP_ERROR_OPERATOR_DETERMINED_BARRING,     ///< Operator determined barring
+    RP_ERROR_CALL_BARRED,                     ///< Call barred
+    RP_ERROR_RESERVED,                        ///< Reserved
+    RP_ERROR_SMS_TRANSFER_REJECTED,           ///< Short message transfer rejected
+    RP_ERROR_MEMORY_CAP_EXCEEDED,             ///< Memory capacity exceeded
+    RP_ERROR_DESTINATION_OUT_OF_ORDER,        ///< Destination out of order
+    RP_ERROR_UNIDENTIFIED_SUBSCRIBER,         ///< Unidentified subscriber
+    RP_ERROR_FACILITY_REJECTED,               ///< Facility rejected
+    RP_ERROR_UNKNOWN_SUBSCRIBER,              ///< Unknown subscriber
+    RP_ERROR_NETWORK_OUT_OF_ORDER,            ///< Network out of order
+    RP_ERROR_TEMPORARY_FAILURE,               ///< Temporary failure
+    RP_ERROR_CONGESTION,                      ///< Congestion
+    RP_ERROR_RESOURCES_UNAVAILABLE,           ///< Resources unavailable, unspecified
+    RP_ERROR_REQUESTED_FACILITY_NOT_SUBSCRIBED,    ///< Resources facility not subscribed
+    RP_ERROR_REQUESTED_FACILITY_NOT_IMPLEMENTED,   ///< Resources facility not implemented
+    RP_ERROR_INVALID_SMS_TRANSFER_REFERENCE_VALUE, ///< Invalid short message transfer
+                                                   ///<  reference value
+    RP_ERROR_SEMANTICALLY_INCORRECT_MESSAGE,  ///< Sementically incorect message
+    RP_ERROR_INVALID_MANDATORY_INFO,          ///< Invalid mandatory information
+    RP_ERROR_MESSAGE_TYPE_NOT_IMPLEMENTED,    ///< Message type nonexistent or not implemented
+    RP_ERROR_MESSAGE_NOT_COMPATABLE_WITH_SMS, ///< Message not compatible with short message
+                                              ///<  protocol state
+    RP_ERROR_INFO_ELEMENT_NOT_IMPLEMENTED,    ///< Information element nonexistent
+                                              ///<   or not implemented
+    RP_ERROR_PROTOCOL_ERROR,                  ///< Protocol error, unspecified
+    RP_ERROR_INTERWORKING,                    ///< Interworking, unspecified
+
+    ////< Transfer Protocol error codes specified in The 3GPP 23.040 9.2.3.22 TP-Failure-Causes.
+    TP_ERROR_TELE_INTERWORKING_NOT_SUPPORTED,      ///< Telematic interworking not supported
+    TP_ERROR_SHORT_MESSAGE_TYPE_0_NOT_SUPPORTED,   ///< Short Message Type 0 not supported
+    TP_ERROR_SHORT_MESSAGE_CANNOT_BE_REPLACED,     ///< Cannot replace short message
+    TP_ERROR_UNSPECIFIED_PID_ERROR,                ///< Unspecified TP-PID error
+    TP_ERROR_DCS_NOT_SUPPORTED,                    ///< Data coding scheme (alphabet)
+                                                   ///<  not supported
+    TP_ERROR_MESSAGE_CLASS_NOT_SUPPORTED,          ///< Message class not supported
+    TP_ERROR_UNSPECIFIED_DCS_ERROR,                ///< Unspecified TP-DCS error
+    TP_ERROR_COMMAND_CANNOT_BE_ACTIONED,           ///< Command cannot be actioned
+    TP_ERROR_COMMAND_UNSUPPORTED,                  ///< Command unsupported
+    TP_ERROR_UNSPECIFIED_COMMAND_ERROR,            ///< Unspecified TP-Command error
+    TP_ERROR_TPDU_NOT_SUPPORTED,                   ///< TPDU not supported
+    TP_ERROR_SC_BUSY,                              ///< SC busy
+    TP_ERROR_NO_SC_SUBSCRIPTION,                   ///< No SC subscription
+    TP_ERROR_SC_SYS_FAILURE,                       ///< SC system failure
+    TP_ERROR_INVALID_SME_ADDRESS,                  ///< Invalid SME address
+    TP_ERROR_DESTINATION_SME_BARRED,               ///< Destination SME barred
+    TP_ERROR_SM_REJECTED_OR_DUPLICATE,             ///< SM Rejected-Duplicate SM
+    TP_ERROR_TP_VPF_NOT_SUPPORTED,                 ///< TP-VPF not supported
+    TP_ERROR_TP_VP_NOT_SUPPORTED,                  ///< TP-VP not supporte
+    TP_ERROR_SIM_SMS_STORAGE_FULL,                 ///< (U)SIM SMS storage full
+    TP_ERROR_NO_SMS_STORAGE_CAP_IN_SIM,            ///< No SMS storage capability in (U)SIM
+    TP_ERROR_MS_ERROR,                             ///< Error in MS
+    TP_ERROR_MEMORY_CAP_EXCEEDED,                  ///< Memory capacity exceeded
+    TP_ERROR_SIM_APP_TOOLKIT_BUSY,                 ///< (U)SIM Application Toolkit busy
+    TP_ERROR_SIM_DATA_DOWNLOAD_ERROR,              ///< (U)SIM data download error
+    TP_ERROR_UNSPECIFIED_ERROR,                    ///< Unspecified error cause
+
+    ERROR_3GPP_PLATFORM_SPECIFIC,                  ///< Platform specific code.
+    ERROR_3GPP_MAX                                 ///< Undefined reason.
 };
 
 
@@ -352,7 +545,7 @@ REFERENCE MsgList;
 //--------------------------------------------------------------------------------------------------
 HANDLER CallbackResult
 (
-    Msg msgRef,     ///< Reference to the message object.
+    Msg msgRef,           ///< Reference to the message object.
     Status status IN      ///< Status result.
 );
 
@@ -502,7 +695,57 @@ FUNCTION le_result_t Send
     Msg msgRef ///< Reference to the message object.
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the error code when a 3GPP2 message sending has Failed.
+ *
+ * @return The error code
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ *
+ * @note It is only applicable for 3GPP2 message sending failure, otherwise
+ *       LE_SMS_ERROR_3GPP2_MAX is returned.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION ErrorCode3GPP2 Get3GPP2ErrorCode
+(
+    Msg msgRef IN            ///< Reference to the message object.
+);
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Radio Protocol and the Transfer Protocol error code when a 3GPP message sending has
+ * failed.
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ *
+ * @note It is only applicable for 3GPP message sending failure, otherwise
+ *       LE_SMS_ERROR_3GPP_MAX is returned.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION void GetErrorCode
+(
+    Msg msgRef IN,            ///< Reference to the message object.
+    ErrorCode  rpCause OUT,   ///< Radio Protocol cause code.
+    ErrorCode  tpCause OUT    ///< Transfer Protocol cause code.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Called to get the platform specific error code.
+ *
+ * @return The platform specific error code.
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION int32 GetPlatformSpecificErrorCode
+(
+    Msg msgRef IN            ///< Reference to the message object.
+);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -533,7 +776,7 @@ FUNCTION Msg SendText
 //--------------------------------------------------------------------------------------------------
 FUNCTION Msg SendPdu
 (
-    uint8   pdu[PDU_MAX_BYTES] IN,                     ///< PDU message.
+    uint8    pdu[PDU_MAX_BYTES] IN,                    ///< PDU message.
     handler  CallbackResult                            ///< CallBack for sending result.
 );
 
@@ -557,12 +800,14 @@ FUNCTION Delete
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Get the message format (text or PDU).
+ * Get the message format.
  *
  * @return Message format.
  *
  * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
  *       function will not return.
+ *
+ * @note For incoming SMS, format returned by le_sms_GetFormat is never LE_SMS_FORMAT_PDU.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_sms_Format_t GetFormat

@@ -1,3 +1,4 @@
+//--------------------------------------------------------------------------------------------------
 /**
  * @page c_mcc_call Modem Call Control
  *
@@ -5,31 +6,46 @@
  *
  * <HR>
  *
+ * The Modem Call Control (mcc) API functions of this API are provided by the @b modemService
+ * service.
+ *
+ * @section le_mcc_call_binding IPC interfaces binding
+ *
+ * Here's a code sample binding to modem services:
+ * @verbatim
+   bindings:
+   {
+      clientExe.clientComponent.le_mcc_call -> modemService.le_mcc_call
+   }
+   @endverbatim
+ *
  * @section le_mcc_call_starting_a_call Starting a Call
  *
  * To initiate a call, create a new call object with a destination telephone
- * number calling the @c le_mcc_profile_CreateCall() function.
+ * number calling the le_mcc_profile_CreateCall() function.
  *
- * @c le_mcc_call_Start() must still initiate the call when ready.
+ * le_mcc_call_Start() must still initiate the call when ready.
  *
  * The le_mcc_call_Start() function initiates a call attempt (it's asynchronous because it can take
  * time for a call to connect).
  *
  * It's essential to register a handler function to get the call events. Use
- * @c le_mcc_profile_AddCallEventHandler() API to install that handler function.
+ * le_mcc_profile_AddCallEventHandler() API to install that handler function.
  * As the call attempt proceeds, the profile's registered call event handler will receive events.
  *
  * The le_mcc_profile_RemoveCallEventHandler() API uninstalls the handler function.
  *
  * The following APIs can be used to manage incoming or outgoing calls:
- * - @c le_mcc_call_GetTerminationReason() - termination reason.
- * - @c le_mcc_call_IsConnected() - connection status.
- * - @c le_mcc_call_GetRemoteTel() - displays remote party telephone number associated with the call.
- * - @c le_mcc_call_GetRxAudioStream() must be called to receive audio stream for this call.
+ * - le_mcc_call_GetTerminationReason() - termination reason.
+ * - le_mcc_call_GetPlatformSpecificTerminationCode() - the platform specific termination code (refer
+ * to your platform documentation for further details).
+ * - le_mcc_call_IsConnected() - connection status.
+ * - le_mcc_call_GetRemoteTel() - displays remote party telephone number associated with the call.
+ * - le_mcc_call_GetRxAudioStream() must be called to receive audio stream for this call.
  *  Audio received from the other end of the call uses this stream.
- * - @c le_mcc_call_GetTxAudioStream() must be called to transmit audio stream this call.
+ * - le_mcc_call_GetTxAudioStream() must be called to transmit audio stream this call.
  *   Audio generated on this end is sent on this stream.
- * - @c le_mcc_call_HangUp() will disconnect this call.
+ * - le_mcc_call_HangUp() will disconnect this call.
  *
  * When finished with the call object, call le_mcc_call_Delete() to free all the allocated resources
  * associated with the object. This will frees the reference, but remains active if other holders
@@ -122,11 +138,11 @@
  * @section le_mcc_call_answering_a_call Answering a call
  *
  * Receiving calls is similar sending calls. Add a handler through
- * @c le_mcc_profile_AddCallEventHandler() to be notified of incoming calls.
+ * le_mcc_profile_AddCallEventHandler() to be notified of incoming calls.
  *
- * To answer, call @c le_mcc_call_Answer(). To reject it, call @c le_mcc_call_Delete().
+ * To answer, call le_mcc_call_Answer(). To reject it, call le_mcc_call_Delete().
  *
- * This code example uses @c InstallAutomaticAnswer() to install a call event handler
+ * This code example uses InstallAutomaticAnswer() to install a call event handler
  * that  automatically answers incoming calls. The handler function verifies the incoming
  * call is permitted (through a predefined list), and then decides whether to answer or terminate it.
  * If a call is already active, it can add the new incoming call creating a conference call.
@@ -243,7 +259,7 @@
  *
  * @section le_mcc_call_ending_all_call Ending all calls
  *
- * A special function can be used to hang-up all the ongoing calls: @c le_mcc_call_HangUpAll().
+ * A special function can be used to hang-up all the ongoing calls: le_mcc_call_HangUpAll().
  * This function can be used to hang-up any calls that have been initiated through another client
  * like AT commands.
  *
@@ -256,12 +272,11 @@
  *
  * @todo Other Supplementary services will be available in a future release. Create simpler examples.
  *
- *
  * <HR>
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
-
+//--------------------------------------------------------------------------------------------------
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -303,12 +318,58 @@ ENUM Event
 //--------------------------------------------------------------------------------------------------
 ENUM TerminationReason
 {
-    TERM_NETWORK_FAIL,  ///< Network could not complete the call.
-    TERM_BAD_ADDRESS,   ///< Remote address could not be resolved.
-    TERM_BUSY,          ///< Callee is currently busy and cannot take the call.
-    TERM_LOCAL_ENDED,   ///< Local party ended the call.
-    TERM_REMOTE_ENDED,  ///< Remote party ended the call.
-    TERM_NOT_DEFINED    ///< Undefined reason.
+    TERM_LOCAL_ENDED,              ///< Local party ended the call (Normal Call Clearing).
+    TERM_REMOTE_ENDED,             ///< Remote party ended the call (Normal Call Clearing).
+    TERM_NETWORK_FAIL,             ///< Network could not complete the call.
+    TERM_UNASSIGNED_NUMBER,                                 ///< cf. 3GPP 24.008 Annex H
+    TERM_NO_ROUTE_TO_DESTINATION,                           ///< cf. 3GPP 24.008 Annex H
+    TERM_CHANNEL_UNACCEPTABLE,                              ///< cf. 3GPP 24.008 Annex H
+    TERM_OPERATOR_DETERMINED_BARRING,                       ///< cf. 3GPP 24.008 Annex H
+    TERM_USER_BUSY,                                         ///< cf. 3GPP 24.008 Annex H
+    TERM_NO_USER_RESPONDING,                                ///< cf. 3GPP 24.008 Annex H
+    TERM_USER_ALERTING_NO_ANSWER,                           ///< cf. 3GPP 24.008 Annex H
+    TERM_CALL_REJECTED,                                     ///< cf. 3GPP 24.008 Annex H
+    TERM_NUMBER_CHANGED,                                    ///< cf. 3GPP 24.008 Annex H
+    TERM_PREEMPTION,                                        ///< cf. 3GPP 24.008 Annex H
+    TERM_DESTINATION_OUT_OF_ORDER,                          ///< cf. 3GPP 24.008 Annex H
+    TERM_INVALID_NUMBER_FORMAT,                             ///< cf. 3GPP 24.008 Annex H
+    TERM_FACILITY_REJECTED,                                 ///< cf. 3GPP 24.008 Annex H
+    TERM_RESP_TO_STATUS_ENQUIRY,                            ///< cf. 3GPP 24.008 Annex H
+    TERM_NORMAL_UNSPECIFIED,                                ///< cf. 3GPP 24.008 Annex H
+    TERM_NO_CIRCUIT_OR_CHANNEL_AVAILABLE,                   ///< cf. 3GPP 24.008 Annex H
+    TERM_NETWORK_OUT_OF_ORDER,                              ///< cf. 3GPP 24.008 Annex H
+    TERM_TEMPORARY_FAILURE,                                 ///< cf. 3GPP 24.008 Annex H
+    TERM_SWITCHING_EQUIPMENT_CONGESTION,                    ///< cf. 3GPP 24.008 Annex H
+    TERM_ACCESS_INFORMATION_DISCARDED,                      ///< cf. 3GPP 24.008 Annex H
+    TERM_REQUESTED_CIRCUIT_OR_CHANNEL_NOT_AVAILABLE,        ///< cf. 3GPP 24.008 Annex H
+    TERM_RESOURCES_UNAVAILABLE_OR_UNSPECIFIED,              ///< cf. 3GPP 24.008 Annex H
+    TERM_QOS_UNAVAILABLE,                                   ///< cf. 3GPP 24.008 Annex H
+    TERM_REQUESTED_FACILITY_NOT_SUBSCRIBED,                 ///< cf. 3GPP 24.008 Annex H
+    TERM_INCOMING_CALLS_BARRED_WITHIN_CUG,                  ///< cf. 3GPP 24.008 Annex H
+    TERM_BEARER_CAPABILITY_NOT_AUTH,                        ///< cf. 3GPP 24.008 Annex H
+    TERM_BEARER_CAPABILITY_UNAVAILABLE,                     ///< cf. 3GPP 24.008 Annex H
+    TERM_SERVICE_OPTION_NOT_AVAILABLE,                      ///< cf. 3GPP 24.008 Annex H
+    TERM_ACM_LIMIT_EXCEEDED,                                ///< cf. 3GPP 24.008 Annex H
+    TERM_BEARER_SERVICE_NOT_IMPLEMENTED,                    ///< cf. 3GPP 24.008 Annex H
+    TERM_REQUESTED_FACILITY_NOT_IMPLEMENTED,                ///< cf. 3GPP 24.008 Annex H
+    TERM_ONLY_DIGITAL_INFORMATION_BEARER_AVAILABLE,         ///< cf. 3GPP 24.008 Annex H
+    TERM_SERVICE_OR_OPTION_NOT_IMPLEMENTED,                 ///< cf. 3GPP 24.008 Annex H
+    TERM_INVALID_TRANSACTION_IDENTIFIER,                    ///< cf. 3GPP 24.008 Annex H
+    TERM_USER_NOT_MEMBER_OF_CUG,                            ///< cf. 3GPP 24.008 Annex H
+    TERM_INCOMPATIBLE_DESTINATION,                          ///< cf. 3GPP 24.008 Annex H
+    TERM_INVALID_TRANSIT_NW_SELECTION,                      ///< cf. 3GPP 24.008 Annex H
+    TERM_SEMANTICALLY_INCORRECT_MESSAGE,                    ///< cf. 3GPP 24.008 Annex H
+    TERM_INVALID_MANDATORY_INFORMATION,                     ///< cf. 3GPP 24.008 Annex H
+    TERM_MESSAGE_TYPE_NON_IMPLEMENTED,                      ///< cf. 3GPP 24.008 Annex H
+    TERM_MESSAGE_TYPE_NOT_COMPATIBLE_WITH_PROTOCOL_STATE,   ///< cf. 3GPP 24.008 Annex H
+    TERM_INFORMATION_ELEMENT_NON_EXISTENT,                  ///< cf. 3GPP 24.008 Annex H
+    TERM_CONDITONAL_IE_ERROR,                               ///< cf. 3GPP 24.008 Annex H
+    TERM_MESSAGE_NOT_COMPATIBLE_WITH_PROTOCOL_STATE,        ///< cf. 3GPP 24.008 Annex H
+    TERM_RECOVERY_ON_TIMER_EXPIRY,                          ///< cf. 3GPP 24.008 Annex H
+    TERM_PROTOCOL_ERROR_UNSPECIFIED,                        ///< cf. 3GPP 24.008 Annex H
+    TERM_INTERWORKING_UNSPECIFIED,                          ///< cf. 3GPP 24.008 Annex H
+    TERM_PLATFORM_SPECIFIC,                                 ///< Platform specific code.
+    TERM_UNDEFINED    ///< Undefined reason.
 };
 
 
@@ -411,6 +472,21 @@ FUNCTION TerminationReason GetTerminationReason
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Called to get the platform specific termination code.
+ *
+ * @return The platform specific termination code.
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION int32 GetPlatformSpecificTerminationCode
+(
+    Obj callRef IN ///< The call reference to read from.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Called to get the transmitted audio stream. All audio generated on this
  * end of the call is sent on this stream.
  *
@@ -504,7 +580,7 @@ FUNCTION le_result_t HangUpAll
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetCallerIdRestrict
 (
-    le_mcc_call_ObjRef_t callRef IN, ///< The call reference.
+    Obj callRef IN, ///< The call reference.
     le_onoff_t clirStatusPtr OUT        ///< the Calling Line Identification Restriction (CLIR) status
 );
 
@@ -521,6 +597,6 @@ FUNCTION le_result_t GetCallerIdRestrict
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetCallerIdRestrict
 (
-    le_mcc_call_ObjRef_t callRef IN, ///< The call reference.
+    Obj callRef IN, ///< The call reference.
     le_onoff_t clirStatus IN         ///< The Calling Line Identification Restriction (CLIR) status.
 );

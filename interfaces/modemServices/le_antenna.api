@@ -1,23 +1,24 @@
-/**
- * @page c_mon Platform Monitoring
- *
- * @subpage c_antenna <br>
- * @subpage c_ips <br>
- *
- * <HR>
- *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
- */
-
+//--------------------------------------------------------------------------------------------------
 /**
  * @page c_antenna Antenna Monitoring
- *
  *
  * @ref le_antenna_interface.h "API Reference"
  *
  * <HR>
  *
  * This file contains prototype definitions for the antenna diagnosis APIs.
+ *
+ * @section le_antenna_binding IPC interfaces binding
+ *
+ * All the functions of this API are provided by the @b modemService foundation service.
+ *
+ * Here's a code sample binding to modem services:
+ * @verbatim
+   bindings:
+   {
+      clientExe.clientComponent.le_antenna -> modemService.le_antenna
+   }
+   @endverbatim
  *
  * @section le_antenna_cell_section Cellular or Diversity antenna
  *
@@ -59,6 +60,8 @@
  *
  * @section le_antenna_gnss_section GNSS antenna
  *
+ * @warning Ensure to check the supported antenna diagnosis for your specific platform.
+ *
  * @subsection le_antenna_gnss_diag_subsection Diagnostics principle
  *
  * This functionality allows to detect or not the presence of an antenna or to detect a defective
@@ -85,14 +88,12 @@
  * - CLOSE_CIRCUIT: short limit >= ADC value >= open limit.
  * - OPEN_CIRCUIT: ADC value < open limit.
  * - OVER_CURRENT: antenna is shorted and current HW protection circuitry has tripped.
- * 
+ *
  * @note The open threshold is always LOWER than the short threshold.
  *
  * @section API_desc API description
  *
  * le_antenna_Request() API allows the application to monitor the requested antenna.
- *
- * le_antenna_Release() API releases the associated antenna diagnostics.
  *
  * le_antenna_GetType() API retrieves the antenna type from an antenna reference.
  *
@@ -104,24 +105,28 @@
  *
  * le_antenna_GetOpenLimit() API gets the ADC value used to detect an open circuit.
  *
- * le_antenna_AddStatusHandler() API adds a handler to be notified when the requested antenna
+ * le_antenna_AddStatusEventHandler() API adds a handler to be notified when the requested antenna
  * status changed.
  *
- * le_antenna_RemoveStatusHandler() removes the antenna status handler.
+ * le_antenna_RemoveStatusEventHandler() removes the antenna status handler.
  *
  * le_antenna_GetStatus() API gets the current antenna status.
  *
+ * <HR>
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
+//--------------------------------------------------------------------------------------------------
 
-
-/** @file le_antenna_interface.h
+//--------------------------------------------------------------------------------------------------
+/**
+ * @file le_antenna_interface.h
  *
  * Legato @ref c_antenna include file.
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
+//--------------------------------------------------------------------------------------------------
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -170,23 +175,6 @@ ENUM Status
 FUNCTION Obj Request
 (
     Type antennaType  IN  ///< antenna to be monitored
-);
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Release an antenna monitoring.
- *
- * @note The release is possible only if no status handler is currently set on this specific antenna
- *
- * @return
- *      - LE_OK on success
- *      - LE_NOT_FOUND if the antenna reference is unknown
- *      - LE_BUSY if a status handler is set
- */
-//--------------------------------------------------------------------------------------------------
-FUNCTION le_result_t Release
-(
-    Obj     antennaRef  IN  ///< antenna reference
 );
 
 //--------------------------------------------------------------------------------------------------

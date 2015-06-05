@@ -1,3 +1,4 @@
+//--------------------------------------------------------------------------------------------------
 /**
  * @page c_audio Audio
  *
@@ -18,6 +19,18 @@
  * path of a voice call to connect the Modem Voice Received interface with the Speaker
  * interface, and at the same time, the Modem Voice Received interface can be also connected to a
  * Recorder Device interface.
+ *
+ * @section le_audio_binding IPC interfaces binding
+ *
+ * All the functions of this API are provided by the @b audioService foundation service.
+ *
+ * Here's a code sample binding to audio services:
+ * @verbatim
+   bindings:
+   {
+      clientExe.clientComponent.le_audio -> audioService.le_audio
+   }
+   @endverbatim
  *
  * @section le_audio_configuration Configure the Audio
  *
@@ -101,80 +114,8 @@
  * @note The hardware may or may not support the full 0-100 resolution, and if you want to see what
  * was actually set call le_audio_GetGain() after le_audio_SetGain() to get the real value.
  *
- * The users have also the possibility to register a handler function to catch some stream-related
- * notifications such as errors or audio file's events:
- *
- * le_audio_AddStreamEventHandler() function installs a handler for stream notifications.
- * You can specify the types of events to notify by passing a bit mask as a parameter (cf.
- * @c le_audio_StreamEventBitMask_t).
- *
- * le_audio_RemoveStreamEventHandler() function removes the stream handler function.
- *
- * @warning Only audio file-related events are managed in the current Legato's version.
- *
- * Once the stream event handler is called, the user can call the different functions to retrieve
- * the event's value:
- * - le_audio_GetFileEvent() gets the event's value related to audio file's events.
- *
- * @warning Only audio file-related functions are available in the current Legato's version.
- *
- * The code sample below shows how the User can install a file's event handler.
- * @code
- *
- * // Handler function for Stream Event Notifications.
- * static void MyStreamEventHandler
- * (
- *     le_audio_StreamRef_t          streamRef,
- *     le_audio_StreamEventBitMask_t streamEventMask,
- *     void*                         contextPtr
- * )
- * {
- *     le_audio_FileEvent_t event;
- *
- *     if (streamEventMask & LE_AUDIO_BITMASK_FILE_EVENT)
- *     {
- *         if(le_audio_GetFileEvent(streamRef, &event) == LE_OK)
- *         {
- *             switch(event)
- *             {
- *                 case LE_AUDIO_FILE_ENDED:
- *                     LE_INFO("File event is LE_AUDIO_FILE_ENDED.");
- *                     break;
- *
- *                 case LE_AUDIO_FILE_ERROR:
- *                     LE_INFO("File event is LE_AUDIO_FILE_ERROR.");
- *                     break;
- *             }
- *         }
- *     }
- * }
- *
- *
- * // I must install my audio file event handler as follows:
- * [...]
- *
- * int myAudioFileFd = -1;
- * le_audio_StreamRef_t fileAudioRef = NULL;
- * le_audio_StreamEventHandlerRef_t streamHandlerRef = NULL;
- *
- * myAudioFileFd=open("/myAudioFile.wav", O_RDONLY);
- *
- * fileAudioRef = le_audio_OpenFilePlayback(myAudioFileFd);
- * LE_ERROR_IF((fileAudioRef==NULL), "OpenFilePlayback returns NULL!");
- *
- * streamHandlerRef = le_audio_AddStreamEventHandler(fileAudioRef,
- *                                                   LE_AUDIO_BITMASK_FILE_EVENT,
- *                                                   MyStreamEventHandler,
- *                                                   NULL);
- * LE_ERROR_IF((streamHandlerRef==NULL), "AddFileEventHandler returns NULL!");
- *
- * // Audio playback automatically starts when I connect the fileAudioRef to the connector
- * le_audio_Connect(audioInputConnectorRef, fileAudioRef);
- *
- * [...]
- *
- * @endcode
- *
+ * @warning Ensure to check the list of supported audio streams for these functions on your
+ * specific platform.
  *
  * @section le_audio_connectors Create Audio connectors
  *
@@ -217,33 +158,70 @@
  *
  * @note The string is not case sensitive.
  *
- * @section le_audio_file_pb_rec Play and record audio
+ * @subsection le_audio_media_profile Set / Get media configuration
+ * A PCM sample configuration can be set to a play /record file (otherwise, a default
+ * configuration is used: PCM 16-bit audio @ 8KHz one channel).
+ *
+ * @subsection le_audio_pb_rec Play / Record a file
+ *
  *
  * An audio file can be played to any active output interfaces.
  *
- * You must open a "File Playback" interface by calling:
- * - le_audio_OpenFilePlayback(): returns an Audio Stream Reference for file playback.
- *                                   The audio file is played on the local audio interface like
- *                                   Speaker, USB Tx, PCM Tx, I2S Tx or on the remote audio
- *                                   interface Modem Voice Tx depending the kind of connector
- *                                   (input or output) is tied to.
+ * You must open a player interface by calling:
+ * - le_audio_OpenPlayer(): returns an Audio Stream Reference for file playback.
+ *                          An audio file can be played on the local audio interface like
+ *                          Speaker, USB Tx, PCM Tx, I2S Tx or on the remote audio
+ *                          interface Modem Voice Tx depending the kind of connector
+ *                          (input or output) is tied to.
  *
- * A "File Playback" interface can be opened only on an active output audio path. For instance, the
- * "I2S Tx" and "Modem Voice Rx" must be previously connected before opening and connecting the
- * "File Playback" interface on the same connector.
  *
  * Audio file recording can be done from any active input interfaces.
  *
  * You must open a "File Recording" interface by calling:
- * - le_audio_OpenFileRecording(): returns an Audio Stream Reference for file recording.
- *                                    The local audio interface like Microphone, USB Rx, PCM Rx,
- *                                    I2S Rx is recorded into an audio file; or the Modem Voice Rx
- *                                    remote audio interface is recorded into an audio file,
- *                                    depending the kind of connector (input or output) is tied to.
+ * - le_audio_OpenRecorder(): returns an Audio Stream Reference for file recording.
+ *                            The local audio interface like Microphone, USB Rx, PCM Rx,
+ *                            I2S Rx is recorded into an audio file; or the Modem Voice Rx
+ *                            remote audio interface is recorded into an audio file,
+ *                            depending the kind of connector (input or output) is tied to.
  *
- * A "File Recording" interface can be opened only on an active input audio path. For instance, the
- * "I2S Rx" and "Modem Voice Tx" must be previously connected before opening and connecting the
- * "File Recording" interface on the same connector.
+ * - le_audio_PlayFile(): must be called to play a specified file.
+ * - le_audio_PlaySamples(): must be called to initiate a playback using an audio flow. A pipe has
+ * to be opened first, thenthe audio data are sent throught the opened pipe.
+ *
+ * A PCM configuration must be set with:
+ *      - le_audio_SetSamplePcmChannelNumber(): can be called to set the channel number of a PCM
+ * sample.
+ *      - le_audio_SetSamplePcmSamplingRate(): can be called to set the sampling rate of a PCM
+ * sample.
+ *      - le_audio_SetSamplePcmSamplingResolution(): can be called to set the sampling resolution
+ * (in bits per sample) of a PCM sample.
+ * The PCM samples configuration can be retrieved with:
+ *      - le_audio_GetSamplePcmChannelNumber(): can be called to get the channel number of a PCM
+ * sample.
+ *      - le_audio_GetSamplePcmSamplingRate(): can be called to get the sampling rate of a PCM
+ * sample.
+ *      - le_audio_GetSamplePcmSamplingResolution(): can be called to get the sampling resolution
+ * (in bits per sample) of a PCM sample.
+ * The default configuration is PCM 16-bit audio @ 8KHz one channel.
+ *
+ * A play can be done only on a connected stream. For instance, the
+ * "I2S Tx", "Modem Voice Rx" and "Player" must be previously connected before playing a file.
+ *
+ * - le_audio_RecordFile(): must be called to record in a specified file.
+ * - le_audio_GetSamples(): must be called to get the audio samples.
+ *
+ * A record can be done only on a connected stream. For instance, the
+ * "I2S Rx", "Modem Voice Tx" and "Recorder" must be previously connected before recording a file.
+ *
+ * - le_audio_Stop(): can be called to stop a play/record. The playback/record is stopped
+ * playing/recording, the read/write position indicator associated with the file stream is rewound
+ * to the beginning of the file. A new file can be played/recorded using
+ * le_audio_PlayFile()/le_audio_PlaySamples()/le_audio_RecordFile()/le_audio_GetSamples().
+ * - le_audio_Pause(): can be called to pause a play/record. The file playing/recording is put in
+ * hold, the read/write position indicator of the file is not moved.
+ * - le_audio_Resume(): can be called to resume a paused play/record. The file playing/recording
+ * continue at the file's position indicator held after the pause.
+ *
  *
  * @note Only .wav file format is currently supported.
  *
@@ -282,21 +260,89 @@
  *
  *     // I get the interface reference for file playback.
  *     int fd = open("/myvoiceprompt.wav", O_RDONLY));
- *     le_audio_StreamRef_t fileAudioRef = le_audio_OpenFilePlayback(fd);
+ *     le_audio_StreamRef_t fileAudioRef = le_audio_OpenPlayer();
  *
  *     // The audio file is played on the input connector, the remote party can now hear the voice
  *     // prompt.
  *     if (fileAudioRef && audioInputConnectorRef)
  *     {
  *         le_audio_Connect(audioInputConnectorRef, fileAudioRef);
+ *         le_audio_PlayFile(fileAudioRef, fd);
  *     }
  * }
  *
  * @endcode
  *
- * @section le_audio_dtmf DTMF
+ * The users have also the possibility to register a handler function to catch some media-related
+ * notifications such as errors or audio events.
  *
- * @todo DTMF encoding will be available in a future release.
+ * le_audio_AddMediaHandler() function installs a handler for player/recorder stream
+ * notifications.
+ *
+ * le_audio_RemoveMediaHandler() function removes the player/recorder handler function.
+ *
+ * The code sample below shows how the User can install a file's event handler.
+ * @code
+ *
+ * // Handler function for Stream Event Notifications.
+ * static void MyMediaHandler
+ * (
+ *     le_audio_StreamRef_t          streamRef,
+ *     le_audio_MediaEvent_t         event,
+ *     void*                         contextPtr
+ * )
+ * {
+ *     switch(event)
+ *     {
+ *         case LE_AUDIO_MEDIA_ENDED:
+ *             LE_INFO("File event is LE_AUDIO_MEDIA_ENDED.");
+ *             break;
+ *
+ *         case LE_AUDIO_MEDIA_ERROR:
+ *             LE_INFO("File event is LE_AUDIO_MEDIA_ERROR.");
+ *             break;
+ *     }
+ * }
+ *
+ *
+ * // I must install my audio media event handler as follows:
+ * [...]
+ *
+ * int myAudioFileFd = -1;
+ * le_audio_StreamRef_t fileAudioRef = NULL;
+ * le_audio_MediaHandlerRef_t mediaHandlerRef = NULL;
+ *
+ * myAudioFileFd=open("/myAudioFile.wav", O_RDONLY);
+ *
+ * fileAudioRef = le_audio_OpenPlayer();
+ * LE_ERROR_IF((fileAudioRef==NULL), "le_audio_OpenPlayer returns NULL!");
+ *
+ * mediaHandlerRef = le_audio_AddMediaHandler(fileAudioRef,
+ *                                            MyMediaEventHandler,
+ *                                            NULL);
+
+ * LE_ERROR_IF((mediaHandlerRef==NULL), "AddMediaHandler returns NULL!");
+ *
+ *
+ * le_audio_Connect(audioInputConnectorRef, fileAudioRef);
+ *
+ * // Play the file
+ * le_audio_Play(fileAudioRef, myAudioFileFd);
+ *
+ * [...]
+ *
+ *
+ * @endcode
+ *
+ @section le_audio_dtmf DTMF
+ *
+ * The le_audio_PlayDtmf() function allows the application to play one or several DTMF on a playback
+ * stream. The duration and the pause of the DTMFs must also be specified with the input parameters.
+ *
+ * The le_audio_PlaySignallingDtmf() function allows the application to ask the Mobile Network to
+ * generate on the remote audio party the DTMFs. Compared with le_audio_PlayDtmf(),
+ * le_audio_PlaySignallingDtmf() function may offer a better signal quality, but the the duration
+ * and the pause timings may be less accurate.
  *
  * The application must register a handler function to detect incoming DTMF characters on a specific
  * input audio stream. The le_audio_AddDtmfDetectorHandler() function installs a handler for DTMF
@@ -412,6 +458,8 @@
  * of the first call, and then connect the new call to your current audio path.
  * Use SwitchVoiceCallAudio() for these actions.
  *
+ * @warning Duration and pause can be dependent on the platform and/or network capabilities.
+ *
  * When the high priority call terminates, you can return back to your previous call and reactivate its
  * audio with the SwitchBackVoiceCallAudio() function.
  *
@@ -526,34 +574,27 @@
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
+//--------------------------------------------------------------------------------------------------
 
-
-/** @file le_audio_interface.h
+//--------------------------------------------------------------------------------------------------
+/**
+ * @file le_audio_interface.h
  *
  * Legato @ref c_audio include file.
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
-
 //--------------------------------------------------------------------------------------------------
-/**
- * Stream Events Bit Mask
- */
-//--------------------------------------------------------------------------------------------------
-BITMASK StreamEventBitMask
-{
-    BITMASK_FILE_EVENT,    ///< event related to audio file's event
-};
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Audio file recording/playback events.
  */
 //--------------------------------------------------------------------------------------------------
-ENUM FileEvent
+ENUM MediaEvent
 {
-    FILE_ENDED,         ///< File playback has reached the end of file.
-    FILE_ERROR          ///< File recording/playback has encountered an error.
+    MEDIA_ENDED,         ///< File playback has reached the end of file.
+    MEDIA_ERROR          ///< File recording/playback has encountered an error.
 };
 
 //--------------------------------------------------------------------------------------------------
@@ -563,11 +604,11 @@ ENUM FileEvent
 //--------------------------------------------------------------------------------------------------
 ENUM Profile
 {
-    HANDSFREE,          ///< Handsfree profile.
-    HANDSET,            ///< Handset profile.
-    HEADSET,            ///< Headset profile.
-    TTY,     ///< Teletypewriter profile (for hearing impaired use cases).
-    USB                 ///< USB profile.
+    HANDSFREE,  ///< Handsfree profile.
+    HANDSET,    ///< Handset profile.
+    HEADSET,    ///< Headset profile.
+    TTY,        ///< Teletypewriter profile (for hearing impaired use cases).
+    USB         ///< USB profile.
 };
 
 //--------------------------------------------------------------------------------------------------
@@ -602,7 +643,21 @@ ENUM I2SChannel
  */
 //--------------------------------------------------------------------------------------------------
 DEFINE DTMF_MAX_LEN   = (100);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum DTMF string length.
+ * One extra byte is added for the null character.
+ */
+//--------------------------------------------------------------------------------------------------
 DEFINE DTMF_MAX_BYTES = (DTMF_MAX_LEN+1);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * No file descriptor define
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE NO_FD = (-1);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -611,14 +666,12 @@ DEFINE DTMF_MAX_BYTES = (DTMF_MAX_LEN+1);
 //--------------------------------------------------------------------------------------------------
 REFERENCE Stream;
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Reference type for Audio Connector
  */
 //--------------------------------------------------------------------------------------------------
 REFERENCE Connector;
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -714,26 +767,24 @@ FUNCTION Stream OpenI2sTx
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Open the audio stream for file playback.
+ * Open the audio stream for playback.
  *
  * @return Reference to the audio stream, NULL if the function fails.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION Stream OpenFilePlayback
+FUNCTION Stream OpenPlayer
 (
-    file fd      IN ///< The file descriptor.
 );
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Open the audio stream for file recording.
+ * Open the audio stream for recording.
  *
  * @return Reference to the audio stream, NULL if the function fails.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION Stream OpenFileRecording
+FUNCTION Stream OpenRecorder
 (
-    file fd      IN ///< The file descriptor.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -764,39 +815,22 @@ FUNCTION Stream OpenModemVoiceTx
  *
  */
 //--------------------------------------------------------------------------------------------------
-HANDLER StreamEventHandler
+HANDLER MediaHandler
 (
     Stream               streamRef  IN,       ///< The audio stream reference.
-    StreamEventBitMask   streamEventMask IN   ///< The type of stream events.
+    MediaEvent           event                ///< Event value.
 );
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This event provides information on audio stream events for the specified streamRef
+ * This event provides information on player / recorder stream events.
  *
  */
 //--------------------------------------------------------------------------------------------------
-EVENT StreamEvent
+EVENT Media
 (
     Stream               streamRef IN,        ///< The audio stream reference.
-    StreamEventBitMask   streamEventMask IN,  ///< The type of stream events to be notified.
-    handler StreamEventHandler
-);
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Retrieve the file-related event value.
- *
- * @return
- *      - LE_OK The function succeeded.
- *      - LE_NOT_FOUND The event is not related to a file event
- *      - LE_FAULT The function failed
- */
-//--------------------------------------------------------------------------------------------------
-FUNCTION le_result_t GetFileEvent
-(
-    Stream    streamRef IN,  ///< The audio stream reference.
-    FileEvent event     OUT  ///< The Audio file recording/playback events.
+    handler              MediaHandler
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -1270,4 +1304,252 @@ FUNCTION uint32 GetDefaultPcmTimeSlot
 //--------------------------------------------------------------------------------------------------
 FUNCTION I2SChannel GetDefaultI2sMode
 (
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Play a file on a playback stream.
+ *
+ * @return LE_FAULT         Function failed.
+ * @return LE_BAD_PARAMETER The audio stream reference is invalid.
+ * @return LE_BUSY          The player interface is already active.
+ * @return LE_OK            Function succeeded.
+ *
+ * Note: if the fd parameter is set to LE_AUDIO_NO_FD, the previous file descriptor is used to play
+ * again the file.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t PlayFile
+(
+    Stream streamRef IN, ///< Audio stream reference.
+    file fd          IN  ///< The file descriptor.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Initiate a playback sending samples over a pipe.
+ *
+ * @return LE_FAULT         Function failed.
+ * @return LE_BUSY          The player interface is already active.
+ * @return LE_OK            Function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t PlaySamples
+(
+    Stream streamRef IN, ///< Audio stream reference.
+    file fd          IN  ///< The file descriptor.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Record a file on a recording stream.
+ *
+ * @return LE_FAULT         Function failed.
+ * @return LE_BAD_PARAMETER The audio stream reference is invalid.
+ * @return LE_BUSY          The recorder interface is already active.
+ * @return LE_OK            Function succeeded.
+ *
+ * Note: if the fd parameter is set to LE_AUDIO_NO_FD, the previous file descriptor is used to record
+ * again the file.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t RecordFile
+(
+    Stream streamRef IN, ///< Audio stream reference.
+    file fd          IN  ///< The file descriptor.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get samples from a recording stream.
+ *
+ * @return LE_FAULT         Function failed.
+ * @return LE_BUSY          The recorder interface is already active.
+ * @return LE_OK            Function succeeded.
+ *
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetSamples
+(
+    Stream streamRef IN, ///< Audio stream reference.
+    file   fd        IN  ///< The file descriptor.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stop the file playback/recording.
+ *
+ * @return LE_FAULT         Function failed.
+ * @return LE_OK            Function succeeded.
+ *
+ * Note: the used file descriptor is not deallocated, but is is rewound to the beginning.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Stop
+(
+    Stream streamRef IN ///< Audio stream reference.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Pause the file playback/recording.
+ *
+ * @return LE_FAULT         Function failed.
+ * @return LE_OK            Function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Pause
+(
+    Stream streamRef IN ///< Audio stream reference.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Resume a file playback/recording (need to be in pause state).
+ *
+ * @return LE_FAULT         Function failed.
+ * @return LE_OK            Function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Resume
+(
+    Stream streamRef IN ///< Audio stream reference.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the channel number of a PCM sample.
+ *
+ * @return LE_FAULT         Function failed.
+ * @return LE_OK            Function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetSamplePcmChannelNumber
+(
+    Stream      streamRef IN,       ///< Audio stream reference.
+    uint32      nbChannel IN        ///< Channel Number
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the channel number of a PCM sample.
+ *
+ * @return LE_FAULT         Function failed.
+ * @return LE_OK            Function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetSamplePcmChannelNumber
+(
+    Stream      streamRef   IN,     ///< Audio stream reference.
+    uint32      nbChannel   OUT     ///< Channel Number
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the PCM sampling rate of a PCM sample.
+ *
+ * @return LE_FAULT         Function failed.
+ * @return LE_OK            Function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetSamplePcmSamplingRate
+(
+    Stream      streamRef   IN,     ///< Audio stream reference.
+    uint32      rate        IN      ///< PCM sampling Rate.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the PCM sampling rate of a PCM sample.
+ *
+ * @return LE_FAULT         Function failed.
+ * @return LE_OK            Function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetSamplePcmSamplingRate
+(
+    Stream      streamRef   IN,     ///< Audio stream reference.
+    uint32      rate        OUT     ///< PCM sampling Rate.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the sampling resolution (in bits per sample) of a PCM sample.
+ *
+ * @return LE_FAULT         Function failed.
+ * @return LE_OK            Function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetSamplePcmSamplingResolution
+(
+    Stream      streamRef   IN,     ///< Audio stream reference.
+    uint32      samplingRes IN      ///< Sampling resolution (in bits per sample).
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the sampling resolution (in bits per sample) of a PCM sample.
+ *
+ * @return LE_FAULT         Function failed.
+ * @return LE_OK            Function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetSamplePcmSamplingResolution
+(
+    Stream      streamRef   IN,     ///< Audio stream reference.
+    uint32      samplingRes OUT     ///< Sampling resolution (in bits per sample).
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to play a DTMF on a specific audio stream.
+ *
+ * @return LE_FORMAT_ERROR  The DTMF characters are invalid.
+ * @return LE_BUSY          A DTMF playback is already in progress on the playback stream.
+ * @return LE_FAULT         The function failed to play the DTMFs.
+ * @return LE_OK            The funtion succeeded.
+ *
+ * @note The process exits, if an invalid audio stream reference is given.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t PlayDtmf
+(
+    Stream  streamRef           IN, ///< Audio stream reference.
+    string  dtmf[DTMF_MAX_LEN]  IN, ///< DTMFs to play.
+    uint32  duration            IN, ///< DTMF duration in milliseconds.
+    uint32  pause               IN  ///< Pause duration between tones in milliseconds.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to ask to the Mobile Network to generate on the remote audio party
+ * the DTMFs.
+ *
+ * @return LE_FORMAT_ERROR  The DTMF characters are invalid.
+ * @return LE_BUSY          A DTMF playback is in progress.
+ * @return LE_FAULT         The function failed.
+ * @return LE_OK            The funtion succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t PlaySignallingDtmf
+(
+    string  dtmf[DTMF_MAX_LEN]  IN, ///< DTMFs to play.
+    uint32  duration            IN, ///< DTMF duration in milliseconds.
+    uint32  pause               IN  ///< Pause duration between tones in milliseconds.
 );

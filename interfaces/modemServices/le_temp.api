@@ -1,3 +1,4 @@
+//--------------------------------------------------------------------------------------------------
 /**
  * @page c_temp Temperature Monitoring
  *
@@ -9,6 +10,18 @@
  * warning and critical thresholds.
  *
  * @warning When a Critical event occurs, some platform can automatically switch off.
+ *
+ * @section le_temp_binding IPC interfaces binding
+ *
+ * All the functions of this API are provided by the @b modemService application service.
+ *
+ * Here's a code sample binding to modem services:
+ * @verbatim
+   bindings:
+   {
+      clientExe.clientComponent.le_temp -> modemService.le_temp
+   }
+   @endverbatim
  *
  * @section c_temp_radio Radio Temperature Thresholds
  *
@@ -84,16 +97,21 @@
  *  threshold is reached.
  * - le_temp_RemoveThresholdEventHandler() API removes the temperature handler.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
- */
-
-
-/** @file le_temp_interface.h
- *
- * Legato @ref le_temp include file.
+ * <HR>
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * @file le_temp_interface.h
+ *
+ * Legato @ref c_temp include file.
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ */
+//--------------------------------------------------------------------------------------------------
 
 
 //--------------------------------------------------------------------------------------------------
@@ -174,7 +192,7 @@ FUNCTION le_result_t GetRadioTemperature
  *                           the hiCritical threshold.
  *                         The loWwarning threshold is equal to or higher than
  *                           the hiWarning threshold.
- *                         The loWwarning threshold is equal to or lower than 
+ *                         The loWwarning threshold is equal to or lower than
  *                           the loCritical threshold.
  *      - LE_FAULT         The function failed to set the thresholds.
  */

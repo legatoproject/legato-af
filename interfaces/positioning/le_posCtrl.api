@@ -1,3 +1,4 @@
+//--------------------------------------------------------------------------------------------------
 /**
  * @page c_posCtrl Positioning Control API
  *
@@ -8,6 +9,20 @@
  * This API is used to enable and disable the positioning service.
  *
  * All other positioning functionality is provided by the @ref c_pos.
+ *
+ * @section le_posCtrl_binding IPC interfaces binding
+ *
+ * All the functions of this API are provided by the @b positioningService application service.
+ *
+ * Here's a code sample binding to Positioning services:
+ * @verbatim
+   bindings:
+   {
+      clientExe.clientComponent.le_posCtrl -> positioningService.le_posCtrl
+   }
+   @endverbatim
+ *
+ * @section le_posCtrl_ctrl Positioning control
  *
  * To request that the positioning service be activated, call le_posCtrl_Request().
  *
@@ -26,18 +41,22 @@
  *          of positioning information to allow access to positioning information by less-trusted
  *          applications, while only allowing control of the positioning system by more-trusted
  *          applications.
+ *
  * <HR>
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
+//--------------------------------------------------------------------------------------------------
 
-
-/** @file le_posCtrl_interface.h
+//--------------------------------------------------------------------------------------------------
+/**
+ * @file le_posCtrl_interface.h
  *
  * Legato @ref c_posCtrl include file.
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
+//--------------------------------------------------------------------------------------------------
 
 //--------------------------------------------------------------------------------------------------
 /**

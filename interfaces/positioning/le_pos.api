@@ -1,3 +1,4 @@
+//--------------------------------------------------------------------------------------------------
 /**
  * @page c_pos Positioning
  *
@@ -10,6 +11,18 @@
  *
  * @note    Enabling and disabling the positioning system is a privileged operation available
  *          only through the @ref c_posCtrl.
+ *
+ * @section le_pos_binding IPC interfaces binding
+ *
+ * All the functions of this API are provided by the @b positioningService application service.
+ *
+ * Here's a code sample binding to Positioning services:
+ * @verbatim
+   bindings:
+   {
+      clientExe.clientComponent.le_pos -> positioningService.le_pos
+   }
+   @endverbatim
  *
  * @section le_pos_fix Fix On Demand
  * The @c le_pos_Get2DLocation() function gets the last updated latitude, longitude
@@ -135,6 +148,7 @@
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
+//--------------------------------------------------------------------------------------------------
 
 /**
  * @interface le_pos_configdbPage_Hide
@@ -152,12 +166,15 @@
  *  If there is no configuration for 'acquisitionRate', it will be automatically set to 5 seconds.
  */
 
-/** @file le_pos_interface.h
+//--------------------------------------------------------------------------------------------------
+/**
+ * @file le_pos_interface.h
  *
  * Legato @ref c_pos include file.
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
+//--------------------------------------------------------------------------------------------------
 
 //--------------------------------------------------------------------------------------------------
 /**

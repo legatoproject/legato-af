@@ -1,5 +1,9 @@
-// -------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------
 /**
+ * @page c_sup_ctrl Supervisor Control API
+ *
+ * @ref le_sup_ctrl_interface.h "API Reference"
+ *
  * Supervisor API for controlling the framework and applications.  This API is only available to
  * privileged users.
  *
@@ -7,16 +11,20 @@
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
-  /** @file le_sup_ctrl_interface.h
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * @file le_sup_ctrl_interface.h
  *
  * Legato @ref c_sup_ctrl include file.
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
-// -------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------
 
 
-// -------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------
 /**
  * Starts an application.
  *
@@ -26,14 +34,14 @@
  *      LE_NOT_FOUND if the application is not installed.
  *      LE_FAULT if there was an error and the application could not be launched.
  */
-// -------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t StartApp
 (
     string appName[32] IN           ///< The name of the application to start.
 );
 
 
-// -------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------
 /**
  * Stops an application.
  *
@@ -41,14 +49,14 @@ FUNCTION le_result_t StartApp
  *      LE_OK if successful.
  *      LE_NOT_FOUND if the application could not be found.
  */
-// -------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t StopApp
 (
     string appName[32] IN           ///< The name of the application to stop.
 );
 
 
-// -------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------
 /**
  * Stops the Legato framework.
  *
@@ -57,7 +65,7 @@ FUNCTION le_result_t StopApp
  *      LE_DUPLICATE if the framework is in the process of shutting down because someone else has
                      already requested that the framework be stopped.
  */
-// -------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t StopLegato
 (
 );

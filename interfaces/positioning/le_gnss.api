@@ -1,3 +1,4 @@
+//--------------------------------------------------------------------------------------------------
 /**
  * @page c_gnss GNSS
  *
@@ -11,6 +12,18 @@
  *
  * This API provides function to configure the GNSS device and retrieve position information.
  *
+ * @section le_gnss_binding IPC interfaces binding
+ *
+ * All the functions of this API are provided by the @b positioningService application service.
+ *
+ * Here's a code sample binding to Positioning services:
+ * @verbatim
+   bindings:
+   {
+      clientExe.clientComponent.le_gnss -> positioningService.le_gnss
+   }
+   @endverbatim
+ *
  * @section le_gnss_ForceColdRestart Force cold restart
  *
  * The le_gnss_ForceColdRestart() function performs a "cold" restart of the GNSS device. The current
@@ -22,7 +35,26 @@
  *   - Time
  *   - Position
  *
- * @section le_gnss_ext_eph Extended Ephemeris
+ * @section le_gnss_SetGetConstellation GNSS constellation selection
+ *
+ * The le_gnss_SetConstellation() function selects the GNSS constellation(s) used in solution.
+ * If all GNSS constellations are disabled, the GNSS engine is disabled.
+ *
+ * @warning Your platform may require a reboot to take into account this change. Please refer to your
+ * platform documentation for further details.
+ *
+ * The following configurations are currently supported:
+ *   - GPS
+ *   - GPS + GLONASS
+ *
+ * All supported GNSS constellations are enabled by default.
+ * The le_gnss_GetConstellation() function gets the GNSS constellation(s) enabled to be used
+ * in solution.
+ *
+ *
+ * @section le_gnss_Assisted_GNSS Assisted GNSS
+ *
+ * @subsection le_gnss_Assisted_GNSS_EE Server based Extended Ephemeris
  *
  * @todo Add detailed documentation.
  *
@@ -90,19 +122,124 @@
  *
  * @endcode
  *
+ * @subsection le_gnss_Assisted_GNSS_UP 3GPP User Plane (OMA SUPL)
+ *
+ * That 3GPP User Plane A-GNSS (Assisted GNSS) protocol is defined by two different standardization
+ * bodies, 3GPP and Open Mobile Alliance (OMA). For more information, please refer to the standard.
+ *
+ * Both MS-Assisted and MS-Based position determination methods are supported in the User Plane.
+ *
+ * In MS-Assisted mode, the MS (Mobile Station) measures the signals from the GNSS satellites
+ *, then returns the retrieved GNSS data to the SUPL (Secure User Plan Location) server, where the
+ * position calculation is performed.
+ *
+ * In MS-Based mode, the MS gets the assistance data from the SUPL (Secure User Plan Location)
+ * server. The MS measures the signals from the GNSS satellites and makes the position calculation.
+ *
+ * The data transport over User Plan is done using the TCP/IP protocol.
+ *
+ * The Assisted-GNSS mode can be configured thru the le_gnss_SetSuplAssistedMode() function.
+ *
+ * The supported modes are the following:
+ * - Standalone mode: That 3GPP User Plane A-GNSS feature is deactivated.
+ * - MS-Based mode
+ * - MS-Assisted mode
+ *
+ * Moreover, the le_gnss_GetSuplAssistedMode() function reads the configured Assisted-GNSS mode.
+ *
+ * The SUPL server is configured using the le_gnss_SetSuplServerUrl() function. That function sets
+ * the SUPL server URL and optionally the port number.
+ *
+ * The SUPL certificate to be used in A-GNSS sessions is injected through the
+ * le_gnss_InjectSuplCertificate() function and deleted through the le_gnss_DeleteSuplCertificate()
+ * function.
+ *
+ *
  * <HR>
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
+//--------------------------------------------------------------------------------------------------
 
-
-
-/** @file le_gnss_interface.h
+//--------------------------------------------------------------------------------------------------
+/**
+ * @file le_gnss_interface.h
  *
  * Legato @ref c_gnss include file.
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum length of the SUP Server URL string.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_SUPL_SERVER_URL_LEN   = 256;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum SUPL certificate size.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_SUPL_CERTIFICATE_LEN   = 2000;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Assisted-GNSS mode
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM AssistedMode
+{
+    STANDALONE_MODE,         ///< Standalone mode
+    MS_BASED_MODE,           ///< MS-Based mode.
+    MS_ASSISTED_MODE         ///< MS-Assisted mode.
+};
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * GNSS constellation Bit Mask (8 bits) indicating the GNSS constellation(s)
+ * used in solution.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+BITMASK ConstellationBitMask
+{
+    CONSTELLATION_GPS,                      ///< GPS constellation used in solution.
+    CONSTELLATION_GLONASS                   ///< GLONASS constellation used in solution.
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the GNSS constellation bit mask
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT on failure
+ *  - LE_UNSUPPORTED request not supported
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetConstellation
+(
+    ConstellationBitMask constellationMask      IN  ///< GNSS constellation used in solution.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the GNSS constellation bit mask
+ *
+* @return
+*  - LE_OK on success
+*  - LE_FAULT on failure
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetConstellation
+(
+    ConstellationBitMask constellationMask      OUT  ///< GNSS constellation used in solution.
+);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -145,4 +282,88 @@ FUNCTION le_result_t GetExtendedEphemerisValidity
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t ForceColdRestart
 (
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function sets the SUPL Assisted-GNSS mode.
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT on failure
+ *  - LE_UNSUPPORTED request not supported
+ *  - LE_TIMEOUT a time-out occurred
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetSuplAssistedMode
+(
+    AssistedMode  assistedMode      IN  ///< Assisted-GNSS mode.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function gets the SUPL Assisted-GNSS mode.
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT on failure
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetSuplAssistedMode
+(
+    AssistedMode assistedMode      OUT  ///< Assisted-GNSS mode.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function sets the SUPL server URL.
+ * That server URL is a NULL-terminated string with a maximum string length (including NULL
+ * terminator) equal to 256. Optionally the port number is specified after a colon.
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT on failure
+ *  - LE_BUSY service is busy
+ *  - LE_TIMEOUT a time-out occurred
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetSuplServerUrl
+(
+    string  suplServerUrlPtr[MAX_SUPL_SERVER_URL_LEN]      IN  ///< SUPL server URL.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function injects the SUPL certificate to be used in A-GNSS sessions.
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT on failure
+ *  - LE_BUSY service is busy
+ *  - LE_TIMEOUT a time-out occurred
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t InjectSuplCertificate
+(
+    uint8  suplCertificateId      IN,        ///< Certificate ID of the SUPL certificate.
+                                             ///< Certificate ID range is 0 to 9
+    uint16 suplCertificateLen     IN,        ///< SUPL certificate size in Bytes.
+    string  suplCertificatePtr[MAX_SUPL_CERTIFICATE_LEN]   IN  ///< SUPL certificate contents.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function deletes the SUPL certificate.
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT on failure
+ *  - LE_BUSY service is busy
+ *  - LE_TIMEOUT a time-out occurred
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t DeleteSuplCertificate
+(
+    uint8  suplCertificateId      IN  ///< Certificate ID of the SUPL certificate.
+                                      ///< Certificate ID range is 0 to 9
 );

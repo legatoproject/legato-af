@@ -1,9 +1,11 @@
+//--------------------------------------------------------------------------------------------------
 /**
  * @page c_ecall eCall
  *
  * @ref le_ecall_interface.h "API Reference"
  *
  * <HR>
+ *
  * eCall is a technology initiative intended to bring rapid assistance to auto
  * accidents anywhere in the European Union. When a serious vehicle accident occurs,
  * sensors automatically trigger an eCall. When activated, the in-vehicle system (IVS)
@@ -22,6 +24,18 @@
  * This API applies for both PAN-EUROPEAN and ERA-GLONASS standards.
  *
  * @note eCall service is only available on automotive products.
+ *
+ * @section le_ecall_binding IPC interfaces binding
+ *
+ * All the functions of this API are provided by the @b modemService foundation service.
+ *
+ * Here's a code sample binding to modem services:
+ * @verbatim
+   bindings:
+   {
+      clientExe.clientComponent.le_ecall -> modemService.le_ecall
+   }
+   @endverbatim
  *
  * @section le_ecall_operation Operation modes
  *
@@ -102,12 +116,12 @@
  * @section le_ecall_concurrency Concurrency
  *
  * If another application tries to use the eCall service while a session is already in progress, the
- * le_ecall_StartManual(), le_ecall_StartAutomatic(), le_ecall_StartTest() and
- * le_ecall_End() functions will return a LE_BUSY error. The eCall session in progress
- * won't be interrupted or disturbed. The application can follow the session progress with 'state'
- * functions like le_ecall_GetState() and le_ecall_AddStateChangeHandler().
- * A manual eCall can't interrupt an automatic eCall, and an automatic eCall
- * can't interrupt a manual eCall.
+ * le_ecall_StartManual(), le_ecall_StartAutomatic(), le_ecall_StartTest() functions will return a
+ * LE_BUSY error. The eCall session in progress won't be interrupted or disturbed. The application
+ * can follow the session progress with 'state' functions like le_ecall_GetState() and
+ * le_ecall_AddStateChangeHandler().
+ * A manual eCall can't interrupt an automatic eCall, and an automatic eCall can't interrupt a
+ * manual eCall.
  *
  * @section le_ecall_eraglonass ERA-GLONASS compliancy
  *
@@ -245,6 +259,9 @@
  *
  * @endcode
  *
+ * If you want to have a look at a more in-depth usage of these APIs, please refer to the
+ * @subpage c_ecallAppMain .
+ *
  * @section le_ecall_configuration eCall configuration
  *
  * By default, the number to dial is read from the FDN/SDN (Fixed Dialling Numbers/Service
@@ -262,6 +279,13 @@
  * The NAD (Network Access Device, i.e. the Modem) deregistration time value can be set or get with:
  *  - le_ecall_SetNadDeregistrationTime()
  *  - le_ecall_GetNadDeregistrationTime()
+ *
+ * Time is set in hours where:
+ * -  from 1 to 60 minutes -> 1 hour
+ * - from 61 to 120 minutes -> 2hours, etc.
+ *
+ * Example: if @c deregTime parameter unit is minutes, the effective time is:
+ * @code ECallConfiguration.nad_deregistration_time = (deregTime+59)/60; @endcode
  *
  * After termination of an emergency call the in-vehicle system remains registered on the network
  * for the period of time, defined by the installation parameter 'NAD_DEREGISTRATION_TIME'.
@@ -287,7 +311,6 @@
  *
  * @section le_ecall_configdb Configuration tree
  * @copydoc le_ecall_configdbPage_Hide
- *
  *
  * <HR>
  *
@@ -349,7 +372,11 @@
  *
  * Several 'propulsionType' can be applied.
  *
+ * <HR>
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
+//--------------------------------------------------------------------------------------------------
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -384,7 +411,7 @@ REFERENCE Call;
  * MSD message length in bytes.
  */
 //--------------------------------------------------------------------------------------------------
-DEFINE  MSD_MAX_LEN = (282);
+DEFINE  MSD_MAX_LEN = (140);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -410,6 +437,7 @@ ENUM State
     STATE_CONNECTED,                  ///< Emergency call is established.
     STATE_DISCONNECTED,               ///< Emergency call is disconnected.
     STATE_WAITING_PSAP_START_IND,     ///< Waiting for PSAP start indication.
+    STATE_PSAP_START_IND_RECEIVED,    ///< PSAP start indication received.
     STATE_MSD_TX_STARTED,             ///< MSD transmission is started.
     STATE_LLNACK_RECEIVED,            ///< LL-NACK received.
     STATE_LLACK_RECEIVED,             ///< LL-ACK received.
@@ -707,6 +735,7 @@ FUNCTION le_result_t SetMsdPassengersCount
  *
  * @return
  *      - LE_OK on success
+ *      - LE_OVERFLOW The imported MSD length exceeds the MSD_MAX_LEN maximum length.
  *      - LE_DUPLICATE an MSD has been already imported
  *      - LE_BAD_PARAMETER bad eCall reference
  *      - LE_FAULT for other failures
@@ -738,7 +767,7 @@ FUNCTION le_result_t ImportMsd
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t ExportMsd
 (
-    Call       ecallRef   IN,           ///< eCall reference
+    Call       ecallRef   IN,       ///< eCall reference
     uint8      msd[MSD_MAX_LEN] OUT ///< the encoded MSD
 );
 
@@ -803,7 +832,6 @@ FUNCTION le_result_t StartTest
  *
  * @return
  *      - LE_OK on success
- *      - LE_BUSY an eCall session is still in progress
  *      - LE_BAD_PARAMETER bad eCall reference
  *      - LE_FAULT for other failures
  */
@@ -853,7 +881,7 @@ FUNCTION State GetState
  *
  * @return
  *  - LE_OK on success
- *  - LE_FAULT for other failures
+ *  - LE_FAULT on failures or if le_ecall_SetPsapNumber() has never been called before.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetPsapNumber

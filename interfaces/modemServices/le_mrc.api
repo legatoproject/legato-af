@@ -1,3 +1,4 @@
+//--------------------------------------------------------------------------------------------------
 /**
  * @page c_mrc Modem Radio Control
  *
@@ -5,13 +6,24 @@
  *
  * <HR>
  *
- * This file contains the the prototype definitions of the high level Modem Radio Control (MRC)
- * APIs.
+ * The Modem Radio Control (MRC) APIs is used to control cellular network environments.
  *
  * It's important for many M2M apps to know details about cellular network environments (like
  * network registration and signal quality).
  * It allows you to limit some M2M services based on the reliability of the network environment, and
  * provides information to control power consumption (power on or shutdown the radio module).
+ *
+ * @section le_mrc_binding IPC interfaces binding
+ *
+ * All the functions of this API are provided by the @b modemService service.
+ *
+ * Here's a code sample binding to modem services:
+ * @verbatim
+   bindings:
+   {
+      clientExe.clientComponent.le_mrc -> modemService.le_mrc
+   }
+   @endverbatim
  *
  * @section le_mrc_power Radio Power Management
  * le_mrc_SetRadioPower() API allows the application to power up or shutdown the radio module.
@@ -125,7 +137,25 @@
  * le_mrc_RegisterCellularNetwork() API registers on a cellular network.
  *
  * @section le_mrc_signal Signal Quality
+ *
  * le_mrc_GetSignalQual() retrieves the received signal strength details.
+ *
+ * You must call le_mrc_MeasureSignalMetrics() to measure the signal metrics of the main cell (aka
+ * the 'serving' cell). It returns a reference of le_mrc_MetricsRef_t type.
+ *
+ * When the signal metrics are no longer needed, you must call le_mrc_DeleteSignalMetrics() to free
+ * all allocated ressources associated with the Metrics object.
+ *
+ * le_mrc_GetRatOfSignalMetrics() returns the Radio Access Technology of the signal measures.
+ *
+ * le_mrc_GetGsmSignalMetrics() the signal strength in dBm and the bit error rate measured on GSM
+ * network.
+ *
+ * le_mrc_GetUmtsSignalMetrics() returns the signal metrics measured on UMTS network.
+ *
+ * le_mrc_GetLteSignalMetrics() returns the signal metrics measured on LTE network.
+ *
+ * le_mrc_GetCdmaSignalMetrics() returns the signal metrics measured on CDMA network.
  *
  * @section le_mrc_network_information Current Network Information
  * le_mrc_GetCurrentNetworkName() retrieves the Current Network Name.
@@ -151,89 +181,103 @@
  *
  *
  * Usage example:
-@code
-
-    le_mrc_ScanInformationListRef_t scanInformationList = NULL;
-
-    scanInformationList = le_mrc_PerformCellularNetworkScan(LE_MRC_BITMASK_RAT_ALL);
-
-    if (!scanInformationList)
-    {
-        fprintf(stdout, "Could not perform scan\n");
-        return;
-    }
-
-    le_mrc_ScanInformationRef_t cellRef;
-
-    for (cellRef=le_mrc_GetFirstCellularNetworkScan(scanInformationList);
-         cellRef!=NULL;
-         cellRef=le_mrc_GetNextCellularNetworkScan(scanInformationList))
-    {
-        le_mrc_Rat rat;
-        char mcc[4],mnc[4];
-        char name[100];
-
-        rat = le_mrc_GetCellularNetworkRat(cellRef);
-
-        fprintf(stdout, "Rat %d ",rat);
-
-        if (le_mrc_GetCellularNetworkMccMnc(cellRef,mcc,sizeof(mcc),mnc,sizeof(mnc))!=LE_OK)
-        {
-            fprintf(stdout, "Failed to get operator code.\n");
-        }
-        else
-        {
-            fprintf(stdout, "[%s-%s] ",mcc,mnc);
-        }
-
-        if (le_mrc_GetCellularNetworkName(cellRef, name, sizeof(name)) != LE_OK)
-        {
-            fprintf(stdout, "Failed to get operator name.\n");
-        }
-        else
-        {
-            fprintf(stdout, "%-32s",name);
-        }
-
-        fprintf(stdout,"%-15s,",le_mrc_IsCellularNetworkInUse(cellRef)?"Is used":"Is not used");
-
-        fprintf(stdout,"%-20s,",le_mrc_IsCellularNetworkAvailable(cellRef)?"Is available":"Is not available");
-
-        fprintf(stdout,"%-10s,",le_mrc_IsCellularNetworkHome(cellRef)?"Home":"Roaming");
-
-        fprintf(stdout,"%-10s]\n",le_mrc_IsCellularNetworkForbidden(cellRef)?"Forbidden":"Allowed");
-
-    }
-
-    le_mrc_DeleteCellularNetworkScan(scanInformationList);
-
-@endcode
+ * @code
+ *
+ *     le_mrc_ScanInformationListRef_t scanInformationList = NULL;
+ *
+ *     scanInformationList = le_mrc_PerformCellularNetworkScan(LE_MRC_BITMASK_RAT_ALL);
+ *
+ *     if (!scanInformationList)
+ *     {
+ *         fprintf(stdout, "Could not perform scan\n");
+ *         return;
+ *     }
+ *
+ *     le_mrc_ScanInformationRef_t cellRef;
+ *
+ *     for (cellRef=le_mrc_GetFirstCellularNetworkScan(scanInformationList);
+ *          cellRef!=NULL;
+ *          cellRef=le_mrc_GetNextCellularNetworkScan(scanInformationList))
+ *     {
+ *         le_mrc_Rat rat;
+ *         char mcc[4],mnc[4];
+ *         char name[100];
+ *
+ *         rat = le_mrc_GetCellularNetworkRat(cellRef);
+ *
+ *         fprintf(stdout, "Rat %d ",rat);
+ *
+ *         if (le_mrc_GetCellularNetworkMccMnc(cellRef,mcc,sizeof(mcc),mnc,sizeof(mnc))!=LE_OK)
+ *         {
+ *             fprintf(stdout, "Failed to get operator code.\n");
+ *         }
+ *         else
+ *         {
+ *             fprintf(stdout, "[%s-%s] ",mcc,mnc);
+ *         }
+ *
+ *         if (le_mrc_GetCellularNetworkName(cellRef, name, sizeof(name)) != LE_OK)
+ *         {
+ *             fprintf(stdout, "Failed to get operator name.\n");
+ *         }
+ *         else
+ *         {
+ *             fprintf(stdout, "%-32s",name);
+ *         }
+ *
+ *         fprintf(stdout,"%-15s,",le_mrc_IsCellularNetworkInUse(cellRef)?"Is used":"Is not used");
+ *
+ *         fprintf(stdout,"%-20s,",le_mrc_IsCellularNetworkAvailable(cellRef)?"Is available":"Is not available");
+ *
+ *         fprintf(stdout,"%-10s,",le_mrc_IsCellularNetworkHome(cellRef)?"Home":"Roaming");
+ *
+ *         fprintf(stdout,"%-10s]\n",le_mrc_IsCellularNetworkForbidden(cellRef)?"Forbidden":"Allowed");
+ *
+ *     }
+ *
+ *     le_mrc_DeleteCellularNetworkScan(scanInformationList);
+ *
+ * @endcode
  *
  *
  * @section le_mrc_ngbr Neighboring Cells Information
+ *
+ * @warning The following functions do not apply to CDMA network.
+ *
  * You must call le_mrc_GetNeighborCellsInfo() to retrieve the neighboring cells
  * information. It returns a reference of le_mrc_NeighborCellsRef_t type.
  *
  * When the neighboring cells information is no longer needed, you must call
- * le_mrc_DeleteNeighborCellsInfo() to free all allocated ressources associated with the
+ * le_mrc_DeleteNeighborCellsInfo() to free all allocated resources associated with the
  * object.
  *
  * Then, you can use the following function to get the information:
- * le_mrc_GetFirstNeighborCellInfo() and le_mrc_GetFirstNeighborCellInfo() allow to go among
- * the single cell information retrieved with le_mrc_GetNeighborCellsInfo(). These two functions
- * return a reference of le_mrc_CellInfoRef_t type.
- * le_mrc_GetNeighborCellId() gets the identifier of the cell specified with the
- * le_mrc_CellInfoRef_t parameter.
- * le_mrc_GetNeighborCellLac() gets the location area code of the cell specified with the
- * le_mrc_CellInfoRef_t parameter.
- * le_mrc_GetNeighborCellRxLevel() gets the signal strength (in dBm) of the cell specified
- * le_mrc_CellInfoRef_t parameter.
+ * - le_mrc_GetFirstNeighborCellInfo() and le_mrc_GetFirstNeighborCellInfo() allow to go among
+ *   the single cell information retrieved with le_mrc_GetNeighborCellsInfo(). These two functions
+ *   return a reference of le_mrc_CellInfoRef_t type.
+ * - le_mrc_GetNeighborCellId() gets the identifier of the cell specified with the
+ *   le_mrc_CellInfoRef_t parameter (can be called for any kind of RAT).
+ * - le_mrc_GetNeighborCellLocAreaCode() gets the location area code of the cell specified with the
+ *   le_mrc_CellInfoRef_t parameter (can be called for any kind of RAT). 0xFFFF value is returned
+ *   if the value is not available.
+ * - le_mrc_GetNeighborCellRxLevel() gets the signal strength (in dBm) of the cell specified with
+ *   the le_mrc_CellInfoRef_t parameter (can be called for any kind of RAT).
+ * - le_mrc_GetNeighborCellRat() gets the Radio Access Technology of the cell specified with
+ *   the le_mrc_CellInfoRef_t parameter.
+ * - le_mrc_GetNeighborCellUmtsEcIo() gets the Ec/Io (the received energy per chip divided by the
+ *   power density in the band measured in dBm on the primary CPICH channel of serving cell) of the
+ *   cell specified with the le_mrc_CellInfoRef_t parameter.
+ * - le_mrc_GetNeighborCellLteIntraFreq() gets the RSRP and RSRQ of the Interfrequency of the cell
+ *   specified with the le_mrc_CellInfoRef_t parameter.
+ * - le_mrc_GetNeighborCellLteInterFreq() gets the RSRP and RSRQ of the Interfrequency of the cell
+ *   specified with the le_mrc_CellInfoRef_t parameter.
  *
  *
  * <HR>
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
+//--------------------------------------------------------------------------------------------------
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -247,19 +291,37 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Mobile Country Code and Mobile network Code lengths
- *
+ * Mobile Country Code length
  */
 //--------------------------------------------------------------------------------------------------
 DEFINE  MCC_LEN     = 3;             // Mobile Country Code length (without null terminator)
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Mobile Country Code length
+ * One extra byte is added for the null character.
+ */
+//--------------------------------------------------------------------------------------------------
 DEFINE  MCC_BYTES   = (MCC_LEN + 1); // Mobile Country Code length (with null terminator)
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Mobile Network Code length
+ */
+//--------------------------------------------------------------------------------------------------
 DEFINE  MNC_LEN     = 3;             // Mobile network Code length (without null terminator)
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Mobile Network Code length
+ * One extra byte is added for the null character.
+ */
+//--------------------------------------------------------------------------------------------------
 DEFINE  MNC_BYTES   = (MNC_LEN + 1); // Mobile network Code length (with null terminator)
 
 //--------------------------------------------------------------------------------------------------
 /**
  * 2G/3G Band Bit Mask (64 bits)
- *
  */
 //--------------------------------------------------------------------------------------------------
 BITMASK BandBitMask
@@ -414,6 +476,12 @@ REFERENCE CellInfo;
 //--------------------------------------------------------------------------------------------------
 REFERENCE NeighborCells;
 
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Reference type for the signal metrics.
+ */
+//--------------------------------------------------------------------------------------------------
+REFERENCE Metrics;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -687,8 +755,8 @@ FUNCTION le_result_t AddPreferredOperator
  *  - LE_FAULT  Function failed.
  *  - LE_OK     Function succeeded.
  *
- * @note If one code is too long (max 3 digits), it is a fatal error, the
- *       function will not return.
+ * @note If one code is too long (max 3 digits), it's a fatal error, the
+ *       function won't return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t RemovePreferredOperator
@@ -719,8 +787,8 @@ FUNCTION PreferredOperatorList GetPreferredOperatorsList
  *  - NULL                          No operator information found.
  *  - le_mrc_PreferredOperatorRef   The Operator object reference.
  *
- * @note If the caller is passing a bad reference into this function, it is a fatal error, the
- *       function will not return.
+ * @note If the caller is passing a bad reference into this function, it's a fatal error, the
+ *       function won't return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION PreferredOperator GetFirstPreferredOperator
@@ -738,8 +806,8 @@ FUNCTION PreferredOperator GetFirstPreferredOperator
  *  - NULL                          No operator information found.
  *  - le_mrc_PreferredOperatorRef   The Operator object reference.
  *
- * @note If the caller is passing a bad reference into this function, it is a fatal error, the
- *       function will not return.
+ * @note If the caller is passing a bad reference into this function, it's a fatal error, the
+ *       function won't return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION PreferredOperator GetNextPreferredOperator
@@ -786,8 +854,8 @@ FUNCTION le_result_t GetPreferredOperatorDetails
  * @return LE_BAD_PARAMETER A bad parameter was passed.
  * @return LE_OK            The function succeeded.
  *
- * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
- *       function will not return.
+ * @note If the caller is passing a bad pointer into this function, it's a fatal error, the
+ *       function won't return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetNetRegState
@@ -803,8 +871,8 @@ FUNCTION le_result_t GetNetRegState
  * @return LE_BAD_PARAMETER A bad parameter was passed.
  * @return LE_OK            The function succeeded.
  *
- * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
- *       function will not return.
+ * @note If the caller is passing a bad pointer into this function, it's a fatal error, the
+ *       function won't return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetSignalQual
@@ -835,8 +903,8 @@ FUNCTION le_result_t SetRadioPower
  * @return LE_BAD_PARAMETER if powerPtr is NULL.
  * @return LE_OK            The function succeed.
  *
- * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
- *       function will not return.
+ * @note If the caller is passing a bad pointer into this function, it's a fatal error, the
+ *       function won't return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetRadioPower
@@ -852,8 +920,8 @@ FUNCTION le_result_t GetRadioPower
  * @return LE_BAD_PARAMETER A bad parameter was passed.
  * @return LE_OK            The function succeeded.
  *
- * @note If one code is too long (max 3 digits), it is a fatal error, the
- *       function will not return.
+ * @note If one code is too long (max 3 digits), it's a fatal error, the
+ *       function won't return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t RegisterCellularNetwork
@@ -884,8 +952,8 @@ FUNCTION ScanInformationList PerformCellularNetworkScan
  * @return NULL                         No scan information found.
  * @return le_mrc_ScanInformationRef_t  The Scan Information object reference.
  *
- * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
- *       function will not return.
+ * @note If the caller is passing a bad pointer into this function, it's a fatal error, the
+ *       function won't return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION ScanInformation GetFirstCellularNetworkScan
@@ -902,8 +970,8 @@ FUNCTION ScanInformation GetFirstCellularNetworkScan
  * @return NULL                         No scan information found.
  * @return le_mrc_ScanInformationRef_t  The Scan Information object reference.
  *
- * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
- *       function will not return.
+ * @note If the caller is passing a bad pointer into this function, it's a fatal error, the
+ *       function won't return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION ScanInformation GetNextCellularNetworkScan
@@ -989,7 +1057,7 @@ FUNCTION Rat GetCellularNetworkRat
  * This function must be called to check if a cellular network is currently in use.
  *
  * @return true     The network is in use
- * @return false    The network is not in use
+ * @return false    The network isn't in use
  *
  * @note
  *      On failure, the process exits, so you don't have to worry about checking the returned
@@ -1006,7 +1074,7 @@ FUNCTION bool IsCellularNetworkInUse
  * This function must be called to check if a cellular network is available.
  *
  * @return true     The network is available
- * @return false    The network is not available
+ * @return false    The network isn't available
  *
  * @note
  *      On failure, the process exits, so you don't have to worry about checking the returned
@@ -1062,8 +1130,8 @@ FUNCTION bool IsCellularNetworkForbidden
  *      - LE_OVERFLOW       if the Home Network Name can't fit in nameStr
  *      - LE_FAULT          on any other failure
  *
- * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
- *       function will not return.
+ * @note If the caller is passing a bad pointer into this function, it's a fatal error, the
+ *       function won't return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetCurrentNetworkName
@@ -1095,8 +1163,8 @@ FUNCTION le_result_t GetCurrentNetworkMccMnc
  * @return LE_BAD_PARAMETER A bad parameter was passed.
  * @return LE_OK            Function succeeded.
  *
- * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
- *       function will not return.
+ * @note If the caller is passing a bad pointer into this function, it's a fatal error, the
+ *       function won't return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetRadioAccessTechInUse
@@ -1128,7 +1196,7 @@ FUNCTION NeighborCells GetNeighborCellsInfo
 //--------------------------------------------------------------------------------------------------
 FUNCTION DeleteNeighborCellsInfo
 (
-    NeighborCells ngbrCellsRef IN  ///< The Neighboring Cells reference.
+    NeighborCells ngbrCellsRef IN  ///< Neighboring Cells reference.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -1139,13 +1207,13 @@ FUNCTION DeleteNeighborCellsInfo
  * @return NULL                   No Cell information object found.
  * @return le_mrc_CellInfoRef_t   The Cell information object reference.
  *
- * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
- *       function will not return.
+ * @note If the caller is passing a bad pointer into this function, it's a fatal error, the
+ *       function won't return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION CellInfo GetFirstNeighborCellInfo
 (
-    NeighborCells ngbrCellsRef IN  ///< The Neighboring Cells reference.
+    NeighborCells ngbrCellsRef IN  ///< Neighboring Cells reference.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -1154,15 +1222,15 @@ FUNCTION CellInfo GetFirstNeighborCellInfo
  * Neighboring Cells information retrieved with le_mrc_GetNeighborCellsInfo().
  *
  * @return NULL                   No Cell information object found.
- * @return le_mrc_CellInfoRef_t   The Cell information object reference.
+ * @return le_mrc_CellInfoRef_t   Cell information object reference.
  *
- * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
- *       function will not return.
+ * @note If the caller is passing a bad pointer into this function, it's a fatal error, the
+ *       function won't return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION CellInfo GetNextNeighborCellInfo
 (
-    NeighborCells ngbrCellsRef IN  ///< The Neighboring Cells reference.
+    NeighborCells ngbrCellsRef IN  ///< Neighboring Cells reference.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -1171,41 +1239,247 @@ FUNCTION CellInfo GetNextNeighborCellInfo
  *
  * @return The Cell Identifier.
  *
- * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
- *       function will not return.
+ * @note If the caller is passing a bad pointer into this function, it's a fatal error, the
+ *       function won't return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION uint32 GetNeighborCellId
 (
-    CellInfo     ngbrCellInfoRef IN    ///< The Cell information reference.
+    CellInfo     ngbrCellInfoRef IN    ///< Cell information reference.
 );
 
 //--------------------------------------------------------------------------------------------------
 /**
  * This function must be called to get the Location Area Code of a cell.
  *
- * @return The Location Area Code of a cell.
+ * @return The Location Area Code of a cell. 0xFFFF value is returned if the value is not available.
  *
- * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
- *       function will not return.
+ * @note If the caller is passing a bad pointer into this function, it's a fatal error, the
+ *       function won't return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION uint32 GetNeighborCellLocAreaCode
 (
-    CellInfo     ngbrCellInfoRef IN    ///< The Cell information reference.
+    CellInfo     ngbrCellInfoRef IN    ///< Cell information reference.
 );
 
 //--------------------------------------------------------------------------------------------------
 /**
  * This function must be called to get the signal strength of a cell.
  *
- * @return The signal strength of a cell.
+ * @return The signal strength of a cell in dBm.
  *
- * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
- *       function will not return.
+ * @note If the caller is passing a bad pointer into this function, it's a fatal error, the
+ *       function won't return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION int32 GetNeighborCellRxLevel
 (
-    CellInfo     ngbrCellInfoRef IN    ///< The Cell information reference.
+    CellInfo     ngbrCellInfoRef IN    ///< Cell information reference.
 );
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the Radio Access Technology of a cell.
+ *
+ * @return The Radio Access Technology of a cell.
+ *
+ * @note If the caller is passing a bad pointer into this function, it's a fatal error, the
+ *       function won't return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION Rat GetNeighborCellRat
+(
+    CellInfo     ngbrCellInfoRef IN    ///< Cell information reference.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the Ec/Io; the received energy per chip divided by the power
+ * density in the band measured in dBm on the primary CPICH channel of serving cell.
+ *
+ * @return
+ *  - The Ec/Io of a cell given in dB with 1 decimal place. (only applicable for UMTS network).
+ *  - 0xFFFFFFFF when the value isn't available.
+ *
+ * @note If the caller is passing a bad pointer into this function, it's a fatal error, the
+ *       function won't return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION int32 GetNeighborCellUmtsEcIo
+(
+    CellInfo     ngbrCellInfoRef IN    ///< Cell information reference.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the RSRP and RSRQ of the Intrafrequency of a LTE cell.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT on failure
+ *
+ * @note If the caller is passing a bad pointer into this function, it's a fatal error, the
+ *       function won't return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetNeighborCellLteIntraFreq
+(
+    CellInfo  ngbrCellInfoRef IN,  ///< Cell information reference.
+    int32     rsrq            OUT, ///< Reference Signal Received Quality value in dB with 1 decimal
+                                   ///< place
+    int32     rsrp            OUT  ///< Reference Signal Receiver Power value in dBm with 1 decimal
+                                   ///< place
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the RSRP and RSRQ of the Interfrequency of a LTE cell.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT on failure
+ *
+ * @note If the caller is passing a bad pointer into this function, it's a fatal error, the
+ *       function won't return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetNeighborCellLteInterFreq
+(
+    CellInfo  ngbrCellInfoRef IN,  ///< Cell information reference.
+    int32     rsrq            OUT, ///< Reference Signal Received Quality value in dB with 1 decimal
+                                   ///< place
+    int32     rsrp            OUT  ///< Reference Signal Receiver Power value in dBm with 1 decimal
+                                   ///< place
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to measure the signal metrics. It creates and returns a reference
+ * to the signal metrics.
+ *
+ * @return A reference to the signal metrics.
+ * @return NULL if no signal metrics are available.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION Metrics MeasureSignalMetrics
+(
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to delete the the signal metrics.
+ *
+ * @note
+ *      On failure, the process exits, so you don't have to worry about checking the returned
+ *      reference for validity.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION DeleteSignalMetrics
+(
+    Metrics  MetricsRef IN  ///< Signal metrics reference.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function returns the Radio Access Technology of the signal metrics.
+ *
+ * @return The Radio Access Technology of the signal measure.
+ *
+ * @note If the caller is passing a bad pointer into this function, it's a fatal error, the
+ *       function won't return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION Rat GetRatOfSignalMetrics
+(
+    Metrics  MetricsRef IN  ///< Signal metrics reference.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function returns the signal strength in dBm and the bit error rate measured on GSM network.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT on failure
+ *
+ * @note If the caller is passing a bad pointer into this function, it's a fatal error, the
+ *       function won't return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetGsmSignalMetrics
+(
+    Metrics  MetricsRef IN,  ///< Signal metrics reference.
+    int32    rssi       OUT, ///< Signal strength in dBm
+    uint32   ber        OUT  ///< Bit error rate.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function returns the signal metrics measured on UMTS network.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT on failure
+ *
+ * @note If the caller is passing a bad pointer into this function, it's a fatal error, the
+ *       function won't return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetUmtsSignalMetrics
+(
+    Metrics  MetricsRef IN,  ///< Signal metrics reference.
+    int32    ss         OUT, ///< Signal strength in dBm
+    uint32   bler       OUT, ///< Block error rate
+    int32    ecio       OUT, ///< Ec/Io value  in dB with 1 decimal place (15 = 1.5 dB)
+    int32    rscp       OUT, ///< Measured RSCP in dBm (only applicable for TD-SCDMA network)
+    int32    sinr       OUT  ///< Measured SINR in dB (only applicable for TD-SCDMA network)
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function returns the signal metrics measured on LTE network.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT on failure
+ *      - sinrPtr and ioPtr return 0xFFFFFFFF when the value isn't available.
+ *
+ * @note If the caller is passing a bad pointer into this function, it's a fatal error, the
+ *       function won't return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetLteSignalMetrics
+(
+    Metrics  MetricsRef IN,  ///< Signal metrics reference.
+    int32    ss         OUT, ///< Signal strength in dBm
+    uint32   bler       OUT, ///< Block error rate
+    int32    rsrq       OUT, ///< RSRQ value in dB as measured by L1 with 1 decimal place
+    int32    rsrp       OUT, ///< Current RSRP in dBm as measured by L1 with 1 decimal place
+    int32    snr        OUT  ///< SNR level in dB with 1 decimal place (15 = 1.5 dB)
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function returns the signal metrics measured on CDMA network.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT on failure
+ *      - rscpPtr and sinrPtr return 0xFFFFFFFF when the value isn't available.
+ *
+ * @note If the caller is passing a bad pointer into this function, it's a fatal error, the
+ *       function won't return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetCdmaSignalMetrics
+(
+    Metrics MetricsRef IN,  ///< Signal metrics reference.
+    int32   ss         OUT, ///< Signal strength in dBm
+    uint32  er         OUT, ///< Frame/Packet error rate
+    int32   ecio       OUT, ///< ECIO value in dB with 1 decimal place (15 = 1.5 dB)
+    int32   sinr       OUT, ///< SINR level in dB with 1 decimal place, (only applicable for 1xEV-DO). 
+    int32   io         OUT  ///< Received IO in dBm (only applicable for 1xEV-DO)
+);
+
+

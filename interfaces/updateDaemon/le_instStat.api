@@ -1,0 +1,75 @@
+//--------------------------------------------------------------------------------------------------
+/**
+ * @page c_le_instStat Install Status API
+ *
+ * @ref le_instStat_interface.h "API Reference"
+ *
+ * This API provides notifications of when applications are installed and uninstalled.
+ *
+ * <HR>
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ */
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * @file le_instStat_interface.h
+ *
+ * Legato @ref c_le_instStat include file.
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ */
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Define the maximum length of the name for an app update
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE APP_NAME_LEN = 47;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler for application install.  Called when an application is installed.
+ */
+//--------------------------------------------------------------------------------------------------
+HANDLER AppInstallHandler
+(
+    string appName[APP_NAME_LEN] IN         ///< Name of the application installed.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This event provides a notification of when an application is installed.
+ */
+//--------------------------------------------------------------------------------------------------
+EVENT AppInstallEvent
+(
+    handler AppInstallHandler
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler for application uninstall.  Called when an application is uninstalled.
+ */
+//--------------------------------------------------------------------------------------------------
+HANDLER AppUninstallHandler
+(
+    string appName[APP_NAME_LEN] IN         ///< Name of the application uninstalled.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This event provides a notification of when an application is uninstalled.
+ */
+//--------------------------------------------------------------------------------------------------
+EVENT AppUninstallEvent
+(
+    handler AppUninstallHandler
+);
+

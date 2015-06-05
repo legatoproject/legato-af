@@ -1,3 +1,4 @@
+//--------------------------------------------------------------------------------------------------
 /**
  * @page c_mcc Modem Call Control
  *
@@ -20,6 +21,18 @@
  * received through these profiles. Each profile represents a call type or specific configuration of a
  * given call (e.g., a profile can represent a given cellular modem/SIM combination - if the modem
  * in question supports multiple SIM operation).
+ *
+ * @section le_mcc_profile_binding IPC interfaces binding
+ *
+ * All the functions of this API are provided by the @b modemService service.
+ *
+ * Here's a code sample binding to modem services:
+ * @verbatim
+   bindings:
+   {
+      clientExe.clientComponent.le_mcc_profile -> modemService.le_mcc_profile
+   }
+   @endverbatim
  *
  * @section le_mcc_profiles Using Profiles
  *
@@ -78,6 +91,8 @@
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
+//--------------------------------------------------------------------------------------------------
+
 //--------------------------------------------------------------------------------------------------
 /**
  * @file le_mcc_profile_interface.h

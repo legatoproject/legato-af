@@ -1,5 +1,6 @@
+//--------------------------------------------------------------------------------------------------
 /**
- * @page c_le_cellnet Cellular Network 
+ * @page c_le_cellnet Cellular Network
  *
  * @ref le_cellnet_interface.h "API Reference"
  *
@@ -13,19 +14,31 @@
  *
  * If all of the above conditions are met, then the service indicates that the network is available.
  *
+ * @section le_cellnet_binding IPC interfaces binding
+ *
+ * All the functions of this API are provided by the @b cellNetService application service.
+ *
+ * Here's a code sample binding to Cellular Network services:
+ * @verbatim
+   bindings:
+   {
+      clientExe.clientComponent.le_cellnet -> cellNetService.le_cellnet
+   }
+   @endverbatim
+ *
  * @section c_le_cellnet_requesting Requesting the Cellular Network
  *
- * The Cellular Network can be requested using @ref le_cellnet_Request. The @ref le_cellnet_Request
+ * The Cellular Network can be requested using le_cellnet_Request(). The le_cellnet_Request
  * function will turn on the radio if it is switched off and it will unlock the SIM if a PIN code is
  * required (it will retrieve the needed information from the config DB,
  * cf. @ref c_le_cellnet_configdb).
  * Before the cellular network is requested, an application should register a network state handler
- * using @ref le_cellnet_AddStateHandler. Once the cellular network becomes available, the handler
+ * using le_cellnet_AddStateEventHandler(). Once the cellular network becomes available, the handler
  * will be called to indicate that the modem is now registered on the network.
  *
  * If the state of the network changes, then the handler will be called with the new state.
  *
- * To release the cellular network, an application can use @ref le_cellnet_Release. Once all user
+ * To release the cellular network, an application can use le_cellnet_Release(). Once all user
  * applications release the cellular network access, then the service will turn off the radio.
  *
  * All configuration data required for a network registration, such as the PIN code of the SIM, will
@@ -39,9 +52,9 @@
  * Some applications may have network requirements that are not met by the default cellular network
  * service. For example, it would specify the SIM on which it wants to operate.
  *
- * In this case, an application can create a request object using @ref le_cellnet_CreateRequest,
- * set optional values on that request object, using @ref le_cellnet_SelectSim and then submits that
- * object to a cellular network request, using @ref le_cellnet_SubmitRequest.
+ * In this case, an application can create a request object using le_cellnet_CreateRequest(),
+ * set optional values on that request object, using le_cellnet_SelectSim() and then submits that
+ * object to a cellular network request, using le_cellnet_SubmitRequest().
  *
  * @section c_le_cellnet_configdb Cellular Network configuration tree
  * @copydoc c_le_cellnet_configdbPage_Hide
@@ -64,7 +77,7 @@
 
   @endverbatim
  *
- *  - '1' is the sim slot number that @ref le_sim_GetSelectedCard is returning.
+ *  - '1' is the sim slot number that le_sim_GetSelectedCard() is returning.
  *
  *  - 'PIN_CODE' is the PIN code for the SIM card.
  *
@@ -73,7 +86,10 @@
  *   - is locked, Cellular Network Service will read automatically the config DB in order to try to
  * enter the pin for the SIM card.
  *   - is blocked, Cellular Network Service just log an error and did not try to enter the puk code.
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
+//--------------------------------------------------------------------------------------------------
 
 //--------------------------------------------------------------------------------------------------
 /**

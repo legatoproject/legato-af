@@ -1,3 +1,4 @@
+//--------------------------------------------------------------------------------------------------
 /**
  * @page c_le_voicecall Voice Call Service
  *
@@ -5,9 +6,20 @@
  *
  * <HR>
  *
- *
  * A voice call is needed for applications that want to establish a voice communication with
  *  a remote party.  The voice call can be over a mobile network, or over VoIP.
+ *
+ * @section le_voicecall_binding IPC interfaces binding
+ *
+ * All the functions of this API are provided by the @b voiceCallService application service.
+ *
+ * Here's a code sample binding to Voice Call services:
+ * @verbatim
+   bindings:
+   {
+      clientExe.clientComponent.le_voicecall -> voiceCallService.le_voicecall
+   }
+   @endverbatim
  *
  * @section c_le_voicecall_outgoing Starting a Voice call
  *
@@ -35,7 +47,7 @@
  * Once the @ref LE_VOICECALL_EVENT_CONNECTED voice call event is received by the application, it
  *  must get the Rx and Tx audio streams with le_voicecall_GetRxAudioStream() and
  *  le_voicecall_GetTxAudioStream() functions in order to set up the audio path. The audio path
- *  can be set up thanks to the audio API (cf. @page c_audio).
+ *  can be set up thanks to the audio API (cf. @ref c_audio).
  *
  * If a @ref LE_VOICECALL_EVENT_TERMINATED event is received, application can get the termination
  *  reason by using le_voicecall_GetTerminationReason().
@@ -73,8 +85,7 @@
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
-
-
+//--------------------------------------------------------------------------------------------------
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -83,7 +94,6 @@
  * Legato @ref c_le_voicecall include file.
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
- *
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -100,8 +110,7 @@ REFERENCE Call;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * voice call establishment states.
- *
+ * Voice call establishment states.
  */
 //--------------------------------------------------------------------------------------------------
 ENUM Event
@@ -119,25 +128,23 @@ ENUM Event
 
 //--------------------------------------------------------------------------------------------------
 /**
- * voice call termination reason.
- *
+ * Voice call termination reason.
  */
 //--------------------------------------------------------------------------------------------------
 ENUM TerminationReason
 {
-    TERM_NOT_DEFINED,   ///< Undefined reason.
     TERM_NETWORK_FAIL,  ///< Network could not complete the call.
     TERM_BAD_ADDRESS,   ///< Remote address could not be resolved.
     TERM_BUSY,          ///< Caller is currently busy and cannot take the call.
     TERM_LOCAL_ENDED,   ///< Local party ended the call.
-    TERM_REMOTE_ENDED   ///< Remote party ended the call.
+    TERM_REMOTE_ENDED,  ///< Remote party ended the call.
+    TERM_UNDEFINED      ///< Undefined reason.
 };
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Handler for voice call state changes
- *
+ * Handler for voice call state changes.
  */
 //--------------------------------------------------------------------------------------------------
 HANDLER StateHandler

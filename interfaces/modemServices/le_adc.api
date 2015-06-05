@@ -1,0 +1,74 @@
+//--------------------------------------------------------------------------------------------------
+/**
+ * @page c_adc ADC Channel API
+ *
+ * @ref le_adc_interface.h "API Reference"
+ *
+ * <HR>
+ *
+ * This API provides definitions for reading ADC inputs. 
+ *
+ * le_adc_ReadValue returns the value read from an ADC channel. It takes two arguments:
+ *     The first is the number of the ADC channel to read.
+ *     The second is used to return the value read.
+ *
+ * The ADC channels are multiplexed to a single Ananlog to Digital Converter.
+ * A call to le_adc_ReadValue will cause the associated channel to be connected to the input
+ * of the ADC, trigger a conversion and return the value read.
+ *
+ * At this time it is not possible to change the scaling factor, sample time or reference voltage.
+ * Channels EXT_ADC1 and EXT_ADC2 are externally available for general use and by default
+ * use 1.8V reference and return results in mV.
+ *
+ * <HR>
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ */
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * @file le_adc_interface.h
+ *
+ * Legato @ref c_adc include file.
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ */
+//--------------------------------------------------------------------------------------------------
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Available ADC channels
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM Input
+{
+    VBATT,
+    VCOIN,
+    PA_THERM,
+    PMIC_THERM,
+    XO_THERM,
+    EXT_ADC1,
+    EXT_ADC2,
+    PRI_ANT,
+    SEC_ANT,
+    GNSS_ANT,
+    END_OF_INPUTS
+};
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the value of an ADC input
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to get the thresholds.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t ReadValue
+(
+    uint8    adcChannel IN, ///< [IN] The adc channel to read (as per Inputs)
+    int32    adcValue OUT    ///< [OUT] The adc value
+);

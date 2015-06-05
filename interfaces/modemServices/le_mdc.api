@@ -1,3 +1,4 @@
+//--------------------------------------------------------------------------------------------------
 /**
  * @page c_mdc Modem Data Control
  *
@@ -11,13 +12,25 @@
  *
  * The Modem Data Control (mdc) API is used to manage data profiles and data sessions.
  *
+ * @section le_mdc_binding IPC interfaces binding
+ *
+ * All the functions of this API are provided by the @b modemService service.
+ *
+ * Here's a code sample binding to modem services:
+ * @verbatim
+   bindings:
+   {
+      clientExe.clientComponent.le_mdc -> modemService.le_mdc
+   }
+   @endverbatim
+ *
  * @section le_mdc_profile Data Profiles
  *
  * If a pre-defined data profile has been configured then this profile can
  * be loaded using @ref le_mdc_GetProfile.
  * The maximum number of data profiles supported is modem dependent and can be retrieved with
  * @ref le_mdc_NumProfiles.
- * A pre-defined data profile can also be retrieved using @ref GetProfileFromApn thanks to its APN.
+ * A pre-defined data profile can also be retrieved using @ref le_mdc_GetProfileFromApn thanks to its APN.
  *
  * @warning Ensure to check the list of supported data profiles for your specific platform.
  *
@@ -36,9 +49,9 @@
  *
  * @section le_mdc_session Data Sessions
  *
- * A data session can be started using @ref le_mdc_StartSession.  To start a data session, a
+ * A data session can be started using @ref le_mdc_StartSession. To start a data session, a
  * data profile must be created and written to the modem, or  an existing data profile
- * can be used.  A data session can be stopped using @ref le_mdc_StopSession.  The number of
+ * can be used. A data session can be stopped using @ref le_mdc_StopSession. The number of
  * simultaneous data sessions supported is dependent on the modem, but cannot be more than the
  * maximum number of supported profiles.
  *
@@ -48,7 +61,7 @@
  *
  * Once a data session starts, a Linux network interface is created.  It's the application's responsibility
  * to configure the network interface, usually through a DHCP client. Query the
- * interface name using @ref le_mdc_GetInterfaceName.  The IP Preference can be checked with
+ * interface name using @ref le_mdc_GetInterfaceName. The IP Preference can be checked with
  * @ref le_mdc_IsIPv4 or @ref le_mdc_IsIPv6 when the profile is connected. The IP address for the current data session
  * can be retreived by  @ref le_mdc_GetIPv4Address or @ref le_mdc_GetIPv6Address. The Gateway and DNS
  * addresses can be retrieved using @ref le_mdc_GetIPv4GatewayAddress, @ref le_mdc_GetIPv4DNSAddresses or
@@ -67,6 +80,7 @@
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
+//--------------------------------------------------------------------------------------------------
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -81,50 +95,84 @@
 // NOTE: string sizes are set to an arbitrary value.  The correct values
 //       still need to be filled in.
 
-/// Maximum number of bytes in a interface name (not including the null-terminator).
+/**
+ * Maximum number of bytes in a interface name (not including the null-terminator).
+ */
 DEFINE  INTERFACE_NAME_MAX_LEN = 10;
 
-/// Maximum number of bytes in a profile name (including the null-terminator).
+/**
+ * Maximum number of bytes in a profile name (including the null-terminator).
+ */
 DEFINE  INTERFACE_NAME_MAX_BYTES = (INTERFACE_NAME_MAX_LEN + 1);
 
-/// Maximum number of bytes in an IPv4 address (not including the null-terminator).
+/**
+ * Maximum number of bytes in an IPv4 address (not including the null-terminator).
+ */
 DEFINE  IPV4_ADDR_MAX_LEN = 15;
 
-/// Maximum number of bytes in an IPv4 address (including the null-terminator).
+/**
+ * Maximum number of bytes in an IPv4 address (including the null-terminator).
+ */
 DEFINE  IPV4_ADDR_MAX_BYTES = (IPV4_ADDR_MAX_LEN + 1);
 
-/// Maximum number of bytes in an IPv6 address (not including the null-terminator).
+/**
+ * Maximum number of bytes in an IPv6 address (not including the null-terminator).
+ */
 DEFINE  IPV6_ADDR_MAX_LEN = 39;
 
-/// Maximum number of bytes in an IPv6 address (including the null-terminator).
+/**
+ * Maximum number of bytes in an IPv6 address (including the null-terminator).
+ */
 DEFINE  IPV6_ADDR_MAX_BYTES = (IPV6_ADDR_MAX_LEN + 1);
 
-/// Maximum number of bytes in a apn name (not including the null-terminator).
+/**
+ * Maximum number of bytes in a apn name (not including the null-terminator).
+ */
 DEFINE  APN_NAME_MAX_LEN = 100;
 
-/// Maximum number of bytes in a apn name (including the null-terminator).
+/**
+ * Maximum number of bytes in a apn name (including the null-terminator).
+ */
 DEFINE  APN_NAME_MAX_BYTES = (APN_NAME_MAX_LEN + 1);
 
-/// Maximum number of bytes in a user name (not including the null-terminator).
+/**
+ * Maximum number of bytes in a user name (not including the null-terminator).
+ */
 DEFINE  USER_NAME_MAX_LEN = 64;
 
-/// Maximum number of bytes in a user name (including the null-terminator).
+/**
+ * Maximum number of bytes in a user name (including the null-terminator).
+ */
 DEFINE  USER_NAME_MAX_BYTES  = (USER_NAME_MAX_LEN + 1);
 
-/// Maximum number of bytes in a password name (not including the null-terminator).
+/**
+ * Maximum number of bytes in a password name (not including the null-terminator).
+ */
 DEFINE  PASSWORD_NAME_MAX_LEN = 100;
 
-/// Maximum number of bytes in a password name (including the null-terminator).
+/**
+ * Maximum number of bytes in a password name (including the null-terminator).
+ */
 DEFINE  PASSWORD_NAME_MAX_BYTES  = (PASSWORD_NAME_MAX_LEN + 1);
 
-/// Default profile definition
-DEFINE DEFAULT_PROFILE = 0;
+/**
+ * Default profile definition.
+ */
+DEFINE DEFAULT_PROFILE = -1;
 
 
-/// Reference to a modem data connection profile.
+//--------------------------------------------------------------------------------------------------
+/**
+ * Reference to a modem data connection profile.
+ */
+//--------------------------------------------------------------------------------------------------
 REFERENCE Profile;
 
-/// Enumeration of data bearer technologies.
+//--------------------------------------------------------------------------------------------------
+/**
+ * Enumeration of data bearer technologies.
+ */
+//--------------------------------------------------------------------------------------------------
 ENUM DataBearerTechnology
 {
     DATA_BEARER_TECHNOLOGY_UNKNOWN,               ///< Unknown
@@ -141,11 +189,14 @@ ENUM DataBearerTechnology
     DATA_BEARER_TECHNOLOGY_CDMA2000_EVDO,         ///< CDMA2000 HRPD (1xEV-DO)
     DATA_BEARER_TECHNOLOGY_CDMA2000_EVDO_REVA,    ///< CDMA2000 HRPD (1xEV-DO RevA)
     DATA_BEARER_TECHNOLOGY_CDMA2000_EHRPD         ///< CDMA2000 EHRPD
-
 };
 
 
-/// Enumeration of Packet Data Protocol.
+//--------------------------------------------------------------------------------------------------
+/**
+ * Enumeration of Packet Data Protocol.
+ */
+//--------------------------------------------------------------------------------------------------
 ENUM Pdp
 {
     PDP_UNKNOWN,    ///< Unknown
@@ -155,7 +206,11 @@ ENUM Pdp
 };
 
 
-/// Enumeration of Authentication.
+//--------------------------------------------------------------------------------------------------
+/**
+ * Enumeration of Authentication.
+ */
+//--------------------------------------------------------------------------------------------------
 ENUM Auth
 {
     AUTH_NONE,    ///< no authentication
@@ -167,7 +222,6 @@ ENUM Auth
 //--------------------------------------------------------------------------------------------------
 /**
  * Handler for Data session connection state changes.
- *
  */
 //--------------------------------------------------------------------------------------------------
 HANDLER SessionStateHandler
@@ -201,25 +255,6 @@ EVENT SessionState
 FUNCTION Profile GetProfile
 (
     uint32 index ///< index of the profile.
-);
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Remove the data profile
- *
- * @return
- *      - LE_OK on success
- *      - LE_BAD_PARAMETER if input parameter is incorrect
- *      - LE_FAULT for errors
- *
- * @note
- * A profile can't be removed until a handler is subscribed on this profile, or a session
- * is started
- */
-//--------------------------------------------------------------------------------------------------
-FUNCTION le_result_t RemoveProfile
-(
-    Profile profileRef ///< profile to remove.
 );
 
 //--------------------------------------------------------------------------------------------------

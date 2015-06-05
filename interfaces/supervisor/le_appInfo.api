@@ -1,0 +1,112 @@
+//--------------------------------------------------------------------------------------------------
+/**
+ * @page c_appInfo Application Information API
+ *
+ * @ref le_appInfo_interface.h "API Reference"
+ *
+ * This API provides information about applications.
+ *
+ * <HR>
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ */
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * @file le_appInfo_interface.h
+ *
+ * Legato @ref c_appInfo include file.
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ */
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum length of application names.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE APP_NAME_LEN = 47;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum length of process names.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE PROC_NAME_LEN = 47;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Application states.
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM State
+{
+    STOPPED,            ///< Application has been stopped or never started.
+    RUNNING             ///< Application is running.
+};
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Process states.
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM ProcState
+{
+    PROC_STOPPED,       ///< Process has been stopped or never started.
+    PROC_RUNNING,       ///< Process is running.
+    PROC_PAUSED         ///< Process has been paused.
+};
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets the state of the specified application.  The state of unknown applications is STOPPED.
+ *
+ * @return
+ *      The state of the specified application.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION State GetState
+(
+    string appName[APP_NAME_LEN] IN         ///< Name of the application.
+);
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ * Gets the state of the specified process in an application.  This function only works for
+ * configured processes that the Supervisor starts directly.
+ *
+ * @return
+ *      The state of the specified process.
+ */
+// -------------------------------------------------------------------------------------------------
+FUNCTION ProcState GetProcState
+(
+    string appName[APP_NAME_LEN] IN,        ///< Name of the application.
+    string procName[PROC_NAME_LEN] IN       ///< Name of the process.
+);
+
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * Gets the application name of the process with the specified PID.
+ *
+ * @return
+ *      LE_OK if the application name was successfully found.
+ *      LE_OVERFLOW if the application name could not fit in the provided buffer.
+ *      LE_NOT_FOUND if the process is not part of an application.
+ *      LE_FAULT if there was an error.
+ */
+//-------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetName
+(
+    int32 pid IN,                       ///< PID of the process.
+    string appName[APP_NAME_LEN] OUT    ///< Application name
+);
+

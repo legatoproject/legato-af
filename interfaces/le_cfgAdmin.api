@@ -1,78 +1,87 @@
-
-// -------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------
 /**
- *  @page api_configAdmin Config Tree Admin API
+ * @page c_configAdmin Config Tree Admin API
  *
- *  This API includes functions for importing and exporting subsections of the config tree to and
- *  from a file.
+ * @ref le_cfgAdmin_interface.h "API Reference"
  *
- *  This API also includes an iterator object that can be used to iterate over the list of trees
- *  currently known by the system.
+ * This API includes functions for importing and exporting subsections of the config tree to and
+ * from a file.
  *
- *  An example of printing the list of trees in a system:
+ * This API also includes an iterator object that can be used to iterate over the list of trees
+ * currently known by the system.
  *
- *  @code
- *  le_cfgAdmin_IteratorRef_t iteratorRef = le_cfgAdmin_CreateTreeIterator();
+ * An example of printing the list of trees in a system:
  *
- *  while (le_cfgAdmin_NextTree(iteratorRef) == LE_OK)
- *  {
- *      char treeName[MAX_TREE_NAME] = { 0 };
+ * @code
+ * le_cfgAdmin_IteratorRef_t iteratorRef = le_cfgAdmin_CreateTreeIterator();
  *
- *      if (le_cfgAdmin_GetTreeName(iteratorRef, treeName, sizeof(treeName)) == LE_OK)
- *      {
- *          printf("Tree: \"%s\"\n", treeName);
- *      }
- *      else
- *      {
- *          printf("Tree: \"%s\", truncated.\n", treeName);
- *      }
- *  }
+ * while (le_cfgAdmin_NextTree(iteratorRef) == LE_OK)
+ * {
+ *    char treeName[MAX_TREE_NAME] = { 0 };
  *
- *  le_cfgAdmin_ReleaseTreeIterator(iteratorRef);
- *  @endcode
+ *    if (le_cfgAdmin_GetTreeName(iteratorRef, treeName, sizeof(treeName)) == LE_OK)
+ *    {
+ *        printf("Tree: \"%s\"\n", treeName);
+ *    }
+ *    else
+ *    {
+ *        printf("Tree: \"%s\", truncated.\n", treeName);
+ *    }
+ * }
  *
- *  Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
- *  license.
- */
- /** @file le_cfgAdmin_interface.h
+ * le_cfgAdmin_ReleaseTreeIterator(iteratorRef);
+ * @endcode
  *
- * Legato @ref c_cfgAdmin include file.
+ * <HR>
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
-// -------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * @file le_cfgAdmin_interface.h
+ *
+ * Legato @ref c_configAdmin include file.
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ */
+//-------------------------------------------------------------------------------------------------
 
 USETYPES le_cfg.api;
 
 
-/// Reference to an iterator object that can be used to iterate over the list of trees.
+//-------------------------------------------------------------------------------------------------
+/**
+ * Reference to an iterator object that can be used to iterate over the list of trees.
+ */
+//-------------------------------------------------------------------------------------------------
 REFERENCE Iterator;
 
 
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 //  Import and export of the tree data.
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 
 
 
 
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 /**
- *  Read a subset of the configuration tree from the given filePath.  The tree then overwrites the
- *  node at the given nodePath.
+ * Read a subset of the configuration tree from the given filePath.  The tree then overwrites the
+ * node at the given nodePath.
  *
- *  This function will import a sub-tree as part of the iterator's current transaction.  This allows
- *  you to create an iterator on a given node.  Import a sub-tree, and then examine the contents of
- *  the import before deciding to commit the new data.
+ * This function will import a sub-tree as part of the iterator's current transaction.  This allows
+ * you to create an iterator on a given node.  Import a sub-tree, and then examine the contents of
+ * the import before deciding to commit the new data.
  *
- *  @return This function will return one of the following values:
+ * @return This function will return one of the following values:
  *
- *          - LE_OK            - The commit was completed successfuly.
- *          - LE_FAULT         - An I/O error occured while reading the data.
- *          - LE_FORMAT_ERROR  - The configuration data being imported appears corrupted.
+ *         - LE_OK            - The commit was completed successfuly.
+ *         - LE_FAULT         - An I/O error occured while reading the data.
+ *         - LE_FORMAT_ERROR  - The configuration data being imported appears corrupted.
  */
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 FUNCTION le_result_t ImportTree
 (
     le_cfg_IteratorRef_t iteratorRef IN,  ///< Write iterator that is being used for the import.
@@ -83,19 +92,19 @@ FUNCTION le_result_t ImportTree
 );
 
 
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 /**
- *  Take a node given from nodePath and stream it and it's children to the file given by filePath.
+ * Take a node given from nodePath and stream it and it's children to the file given by filePath.
  *
- *  This funciton uses the iterator's read transaction, and takes a snapshot of the current state of
- *  the tree.  The data write happens immediately.
+ * This funciton uses the iterator's read transaction, and takes a snapshot of the current state of
+ * the tree.  The data write happens immediately.
  *
- *  @return This function will return one of the following values:
+ * @return This function will return one of the following values:
  *
- *          - LE_OK     - The commit was completed successfuly.
- *          - LE_FAULT  - An I/O error occured while writing the data.
+ *         - LE_OK     - The commit was completed successfuly.
+ *         - LE_FAULT  - An I/O error occured while writing the data.
  */
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 FUNCTION le_result_t ExportTree
 (
     le_cfg_IteratorRef_t iteratorRef IN,  ///< Write iterator that is being used for the export.
@@ -108,18 +117,18 @@ FUNCTION le_result_t ExportTree
 
 
 
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 //  Tree maintenance.
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 
 
 
 
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 /**
- *  Delete a tree from the system, both from the filesystem and from memory.
+ * Delete a tree from the system, both from the filesystem and from memory.
  */
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 FUNCTION DeleteTree
 (
     string treeName[64] IN  ///< Name of the tree to delete.
@@ -128,44 +137,44 @@ FUNCTION DeleteTree
 
 
 
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 //  Iterating configuration trees.
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 
 
 
 
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 /**
- *  Create a new iterator object for iterating over the list of trees currently managed by the
- *  config tree daemon.
+ * Create a new iterator object for iterating over the list of trees currently managed by the
+ * config tree daemon.
  */
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 FUNCTION le_cfgAdmin_IteratorRef_t CreateTreeIterator
 (
 );
 
 
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 /**
- *  Release the iterator and free it's memory back to the system.
+ * Release the iterator and free it's memory back to the system.
  */
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 FUNCTION ReleaseTreeIterator
 (
     le_cfgAdmin_IteratorRef_t iteratorRef IN  ///< Iterator object to release.
 );
 
 
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 /**
- *  Read the name of the tree currently pointed at by the iterator.
+ * Read the name of the tree currently pointed at by the iterator.
  *
- *  @return LE_OK if there is enough room to copy the name into the supplied buffer.  LE_OVERFLOW if
- *          not.  LE_NOT_FOUND is returned if the list is empty or if the iterator hasn't been moved
- *          onto the first item yet.
+ * @return LE_OK if there is enough room to copy the name into the supplied buffer.  LE_OVERFLOW if
+ *         not.  LE_NOT_FOUND is returned if the list is empty or if the iterator hasn't been moved
+ *         onto the first item yet.
  */
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetTreeName
 (
     le_cfgAdmin_IteratorRef_t iteratorRef IN,  ///< Iterator object to read.
@@ -174,14 +183,14 @@ FUNCTION le_result_t GetTreeName
 );
 
 
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 /**
- *  Move onto the next tree in the list.  If there are no more trees this function returns false,
- *  otherwise true is returned.
+ * Move onto the next tree in the list.  If there are no more trees this function returns false,
+ * otherwise true is returned.
  *
- *  @return LE_OK if there are more trees to iterate through.  LE_NOT_FOUND if not.
+ * @return LE_OK if there are more trees to iterate through.  LE_NOT_FOUND if not.
  */
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 FUNCTION le_result_t NextTree
 (
     le_cfgAdmin_IteratorRef_t iteratorRef IN  ///< Iterator to iterate.

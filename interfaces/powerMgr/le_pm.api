@@ -1,11 +1,13 @@
-/** @page c_pm Power Manager
+//--------------------------------------------------------------------------------------------------
+/**
+ * @page c_pm Power Manager
  *
  * @ref le_pm_interface.h "API Reference"
  *
  * <HR>
  *
  * Components need access to the Power Manager to control the system's wake-up state.
- * Operations that need fast response times (e.g., maintaining call state or playing/recording a 
+ * Operations that need fast response times (e.g., maintaining call state or playing/recording a
  * media stream) result in high interrupt rates; keeping the system awake results in better performance
  * and power efficiency.
  *
@@ -13,6 +15,20 @@
  * registered components requests a wakeup source to be held. When all wakeup sources are
  * released, the system may enter a suspend state depending on the status of other (unrelated) wakeup
  * sources.
+ *
+ * @section le_pm_binding IPC interfaces binding
+ *
+ * All the functions of this API are provided by the @b powerMgr foundation service.
+ *
+ * Here's a code sample binding to Power Manager services:
+ * @verbatim
+   bindings:
+   {
+      clientExe.clientComponent.le_pm -> powerMgr.le_pm
+   }
+   @endverbatim
+ *
+ * @section le_pm_request Requesting and releasing a wakeup source
  *
  * The Power Manager service provides basic API for requesting and releasing a wakeup source.
  * Power Manager's clients call @c le_pm_NewWakeupSource() to create a wakeup source. This function
@@ -29,9 +45,9 @@
  *
  * <HR>
  *
- * Copyright (C) Sierra Wireless, Inc. 2015. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
-
+//--------------------------------------------------------------------------------------------------
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -40,8 +56,8 @@
  * Legato @ref c_pm include file.
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
- *
  */
+//--------------------------------------------------------------------------------------------------
 
 
 //--------------------------------------------------------------------------------------------------
@@ -49,7 +65,19 @@
  * Some useful constants
  */
 //--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum string length for a wake-up source tag (not including the null-terminator)
+ */
+//--------------------------------------------------------------------------------------------------
 DEFINE TAG_LEN = 31;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum string length for a wake-up source tag (including the null-terminator)
+ */
+//--------------------------------------------------------------------------------------------------
 DEFINE TAG_LEN_BYTES = TAG_LEN + 1;
 
 

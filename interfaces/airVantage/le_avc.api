@@ -1,3 +1,4 @@
+//--------------------------------------------------------------------------------------------------
 /**
  * @page c_le_avc AirVantage Connector
  *
@@ -26,7 +27,7 @@
  * download in progress; however, it <b>won't stop</b> an install in progress.
  *
  * The status of a pending update is sent to the control app using a notification.
- * The control app can use le_avc_AddStatusHandler() to register a handler function to
+ * The control app can use le_avc_AddStatusEventHandler() to register a handler function to
  * receive this notification. The notification will be received after a session is started using
  * le_avc_StartSession(). Sometimes, the modem firmware may decide to start a session with
  * the AirVantage server. In this case, the notification could also be received, even if the
@@ -46,13 +47,13 @@
  * install is pending. The control app can then use le_avc_AcceptInstall() to allow the
  * install to proceed. Note that even if the control app calls le_avc_AcceptInstall(), 
  * the install may still be blocked by an app using the @ref c_le_avc_update_app
- * functions. To defer the decision, the control app can use le_avc_DeferDownload() to
+ * functions. To defer the decision, the control app can use le_avc_DeferInstall() to
  * defer the install for the specified number of minutes. After the defer time has elapsed, the
  * pending install notification will be re-sent to allow the control app to make a new
  * decision, or again defer. There's no way to reject an install of a downloaded update; either
  * the download should be rejected, or the install decision can be continuously deferred.
  *
- * If a control app does not register for notifications using le_avc_AddStatusHandler(),
+ * If a control app does not register for notifications using le_avc_AddStatusEventHandler(),
  * then any pending downloads and installs will happen automatically, subject to any restrictions
  * imposed by app using the @ref c_le_avc_update_app functions.  Only one control
  * app will be allowed to register for notifications.  Any subsequent attempts will be 
@@ -84,6 +85,7 @@
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
+//--------------------------------------------------------------------------------------------------
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -92,8 +94,8 @@
  * Legato @ref c_le_avc include file.
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
- *
  */
+//--------------------------------------------------------------------------------------------------
 
 
 //--------------------------------------------------------------------------------------------------
@@ -114,8 +116,11 @@ ENUM Status
 {
     NO_UPDATE,            ///< There are no pending updates
     DOWNLOAD_PENDING,     ///< There is a pending download
+    DOWNLOAD_IN_PROGRESS, ///< There is a download in progress
+    DOWNLOAD_COMPLETE,    ///< The download has completed
     DOWNLOAD_FAILED,      ///< There was an error in downloading the update
     INSTALL_PENDING,      ///< There is a pending install (implies download complete)
+    INSTALL_IN_PROGRESS,  ///< There is an install in progress
     INSTALL_COMPLETE,     ///< The update has been successfully installed
     INSTALL_FAILED        ///< The was an error in installing the update
 };
@@ -128,6 +133,7 @@ ENUM Status
 //--------------------------------------------------------------------------------------------------
 ENUM UpdateType
 {
+    UNKNOWN_UPDATE,
     FIRMWARE_UPDATE,
     FRAMEWORK_UPDATE,
     APPLICATION_UPDATE

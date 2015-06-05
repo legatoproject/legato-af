@@ -1,4 +1,4 @@
-// -------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------
 /**
  * @page c_wdog Watchdog Service
  *
@@ -15,47 +15,59 @@
  * <HR>
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
- * license.
  */
- /** @file le_wdog_interface.h
+//--------------------------------------------------------------------------------------------------
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * @file le_wdog_interface.h
  *
  * Legato @ref c_wdog include file.
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 
 
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 /**
- * Special values that have specific meaning when used as durations in Timeout()
- * DEFINE TIMEOUT_NEVER     ///<  Suspend the watchdog so that it never times out
- * DEFINE TIMEOUT_NOW       ///<  Timeout immediately
+ * Special values that have specific meaning when used as durations in Timeout():
+ * - @ref LE_WDOG_TIMEOUT_NEVER
+ * - @ref LE_WDOG_TIMEOUT_NOW
  */
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 
+/**
+ * Suspend the watchdog so that it never times out.
+ */
 DEFINE TIMEOUT_NEVER = -1;
+
+/**
+ * Timeout immediately
+ */
 DEFINE TIMEOUT_NOW = 0;
 
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 /**
  * Kicks the watchdog timer.
  *
  * Once the watchdog has been kicked it must be kicked again before the expiration of the current
  * effective timeout else the configured WatchdogAction will be executed.
- *
  */
-// -------------------------------------------------------------------------------------------------
-FUNCTION Kick ();
+//-------------------------------------------------------------------------------------------------
+FUNCTION Kick
+(
+);
 
-// -------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 /**
  * Set a time out.
  *
  * The watchdog is kicked and a new effective timeout value is set. The new timeout will be
  * effective until the next kick at which point it will revert to the original value.
  */
-// -------------------------------------------------------------------------------------------------
-FUNCTION Timeout (
+//-------------------------------------------------------------------------------------------------
+FUNCTION Timeout
+(
     int32 milliseconds IN ///< The number of milliseconds until this timer expires
 );

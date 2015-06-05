@@ -1,0 +1,90 @@
+//--------------------------------------------------------------------------------------------------
+/**
+ * @page c_riPin Ring Indicator Signal
+ *
+ * @ref le_riPin_interface.h "API Reference"
+ *
+ * <HR>
+ *
+ * The Ring Indicator pin is used to allow the module to wake up a host device.
+ *
+ * @section c_riPin_binding IPC interfaces binding
+ *
+ * All the functions of this API are provided by the @b modemService app.
+ *
+ * Here's a code sample binding to modem services:
+ * @verbatim
+   bindings:
+   {
+      clientExe.clientComponent.le_riPin -> modemService.le_riPin
+   }
+   @endverbatim
+ *
+ * @section c_riPin_usage Ring Indication signal
+ *
+ *
+ * The RING pin can be configured to notify a host device with different timing of pulse signals for
+ * different module activities.
+ *
+ * - le_riPin_TakeRingSignal() function takes control of the Ring Indicator signal.
+ * - le_riPin_ReleaseRingSignal() function releases control of the Ring Indicator signal.
+ *
+ * @warning Your platform may require a reboot to take into account this change. Please refer to your
+ * platform documentation for further details.
+ *
+ * - le_riPin_PulseRingSignal() function sets the ring signal high for configurable duration of time
+ *   before lowering it.
+ *
+ * <HR>
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ */
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * @file le_riPin_interface.h
+ *
+ * Legato @ref c_riPin include file.
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ */
+//--------------------------------------------------------------------------------------------------
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Take control of the Ring Indicator signal.
+ *
+ * @return
+ *      - LE_OK     Function succeeded.
+ *      - LE_FAULT  Function failed.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t TakeRingSignal
+(
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Release control of the Ring Indicator signal.
+ *
+ * @return
+ *      - LE_OK     Function succeeded.
+ *      - LE_FAULT  Function failed.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t ReleaseRingSignal
+(
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the Ring Indicator signal to high for configurable duration of time before lowering it.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION PulseRingSignal
+(
+    uint32   duration    IN ///< [IN] Duration in ms
+);
