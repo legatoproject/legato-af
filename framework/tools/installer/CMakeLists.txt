@@ -63,8 +63,8 @@ mkexe(  appSetFilePermissions
             appSetFilePermissions.c
             -c ${CMAKE_CURRENT_SOURCE_DIR}/components
             -i ${PROJECT_SOURCE_DIR}/framework/c/src
-            -i ${PROJECT_SOURCE_DIR}/framework/c/src/security
             -i ${PROJECT_SOURCE_DIR}/framework/c/src/serviceDirectory
+            -i ${LEGATO_ROOT}/interfaces/supervisor
             ${CFLAGS_TARGET_IMPORTS}
             filePermissions
         DEPENDS
@@ -73,5 +73,5 @@ mkexe(  appSetFilePermissions
             components/filePermissions/Component.cdef
             components/filePermissions/filePermissions.h
             components/filePermissions/filePermissions.c
-            ${PROJECT_SOURCE_DIR}/framework/c/src/security/*
+            ${LEGATO_ROOT}/interfaces/supervisor/*
             )

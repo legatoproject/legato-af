@@ -1,277 +1,364 @@
-#!/bin/sh
-# Create and append manifest with application/firmware/system/framework.
+#!/bin/bash
+# Create and append manifest with application/firmware/script items.
 
-PrintUsage()
+SUPPORTED_TARGETS="ar7 ar86 wp7 wp85"
+
+copyright="
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+"
+
+if ! [ $LEGATO_ROOT ]; then echo "Run bin/legs first" >&2; exit 1; fi
+. "${LEGATO_ROOT}/framework/tools/scripts/shlib"
+
+help_short_desc="Create an update package for a target device."
+
+help_usage=(
+"TARGET OPTIONS"
+"-d UPDATE_FILE"
+"-h"
+"-v"
+)
+
+help_long_description=(
+"Creates a package containing update instructions and/or content to be installed"
+"on a target device."
+""
+"TARGET is the type of target device. The following targets are supported:"
+"    $SUPPORTED_TARGETS"
+""
+"When creating an update pack for a target device,"
+""
+"Options used when creating an update pack:"
+""
+"-ai APP_FILE"
+"    Add an application to the update for installation on the target."
+""
+"-ar APP_NAME"
+"    Specify an application to be removed from the target."
+""
+"-m FIRMWARE_FILE"
+"    Add a modem firmware image to the update for installation on the target."
+""
+"-o FILE_NAME"
+"    Specify output update file name. If not specified, default.update is used."
+""
+"Other options:"
+""
+"-v"
+"    Prints the Legato framework version."
+""
+"-d UPDATE_FILE"
+"    Prints an update file's manifest to the standard output stream."
+""
+"-h"
+"    Print this help text."
+""
+"Examples:"
+""
+"# Create an update package helloWorld.update that installs helloWorld app on an AR7xxx."
+"$(basename "$0")  ar7  -o helloWorld.update -ai  helloWorld.ar7"
+""
+"# Create update package which will install helloWorld and remove OldApp on an AR7XXX."
+"$(basename "$0")  ar7  -o InstallRemove.update -ai  helloWorld.ar7 -ar OldApp"
+""
+"# Display manifest information from an update file."
+"$(basename "$0") -d helloWorld.update"
+)
+
+
+# Define some shell constant(should match with manifest specification).
+
+readonly VERSION_PATH=$LEGATO_ROOT/version
+readonly TARGET_ID=$1
+readonly MIN_PARAMS=3
+
+readonly JSON_LE_VERSION_ID="\"versionID\""
+readonly JSON_DEVICE_ID="\"deviceID\""
+readonly JSON_PAYLOAD_SIZE="\"payload\""
+
+readonly JSON_FIELD_ITEMS="\"items\""
+readonly JSON_FIELD_TYPE="\"type\""
+readonly JSON_FIELD_NAME="\"name\""
+readonly JSON_FIELD_VERSION="\"version\""
+readonly JSON_FIELD_COMMAND="\"command\""
+readonly JSON_FIELD_SIZE="\"size\""
+
+readonly APP_PLATFORM="\"app\""
+readonly FIRMWARE_PLATFORM="\"firmware\""
+readonly SCRIPT_PLATFORM="\"script\""
+readonly CMD_INSTALL="\"install\""
+readonly CMD_REMOVE="\"remove\""
+readonly MANIFESTSIZE_FIELD_WIDTH=8
+
+# Shell global variables
+
+UpdateFile="default.update"
+ItemStr=""
+CompleteItemStr=""
+ManifestStr=""
+AllInputFileList=""
+PayLoadSize=0
+Size=0
+
+
+# Checks that its first argument is one of the supported target types.
+ValidateTarget()
 {
-    echo
-    echo "USAGE: `basename $0` update [app|system|firmware|framework] TARGET_ID BUILD_PATH"
-    echo "   or: `basename $0` remove [app|system] TARGET_ID NAME [NAME ...]"
-    echo "   or: `basename $0` remove [app|system] TARGET_ID '*'"
-    echo
-    echo "Creates install/uninstall file"
-    echo
-    echo "Installation file will be created in same directory as specifed in BUILD_PATH"
-    echo
-    echo "Uninstall file will be created in directory where this script is located"
-    echo
-    echo "In the first form, names of one application/system and its path are given."
-    echo
-    echo "In the second form, name of one or more(max 20) application/system is given."
-    echo
-    echo "In the third form, command acts on all application/system"
-    echo
+    for target in $SUPPORTED_TARGETS
+    do
+        if [ "$1" == "$target" ]
+        then
+            return 0
+        fi
+    done
+
+    ExitWithError "Unsupported target: '$1'"
 }
 
-VERSION_PATH=$LEGATO_ROOT/version
-MAX_PARAMS=23
-MIN_PARAMS=4
-ACTION=$1
-ACTION_TARGET=$2
-TARGET_ID=$3
-BUILD_PATH=$4
-MODULE_NAME=$(basename "$4" | sed 's/\.[^.]*$//')
 
-# Define some some shell local variables(taken from following lines of manifestUtil.c)
-#define JSON_FIELD_VERSION_ID           "versionID"
-#define JSON_FIELD_DEVICE_ID            "deviceID"
-#define JSON_FIELD_COMMAND              "command"
-#define JSON_FIELD_PAYLOAD_SIZE         "payloadSize"
-#define JSON_FIELD_HASH_KEY             "hashKey"
-
-JSON_LE_VERSION_ID="\"versionID\""
-JSON_DEVICE_ID="\"deviceID\""
-JSON_COMMAND="\"command\""
-JSON_PAYLOAD_SIZE="\"payloadSize\""
-JSON_HASH_KEY="\"hashKey\""
-UPDT_FILE_EXT=".update"
-UNINST_FILE_EXT=".uinst"
-MANIFESTSIZE_FIELD_WIDTH=8
-
-exitCode=0
-
-
-#Return Manifest string size
+# Returns Manifest string size
 GetManifestSize()
 {
-    local Str=$1
-    local StrLen=$(echo ${#Str} | sed -e :a -e "s/^.\{1,`expr $MANIFESTSIZE_FIELD_WIDTH - 1`\}$/0&/;ta")
+    Str=$1
+    StrLen=$(echo ${#Str} | sed -e :a -e "s/^.\{1,`expr $MANIFESTSIZE_FIELD_WIDTH - 1`\}$/0&/;ta")
     echo $StrLen
 }
 
+
+# Returns Legato version.
 GetLegatoVersion()
 {
     LEGATO_VERSION=`cat $VERSION_PATH`
     printf "$LEGATO_VERSION"
 }
 
-#This function takes payload size and command params as input create manifest string
-#Params Description
-#   $1=PayloadSize
-#   $2=Command Params
+
+# Makes manifest string. PayLoadSize variable should be set properly before calling this function.
 MakeManifestStr()
 {
-    local Colon=":"
-    local Comma=", "
-    local Space=" "
-    local Quote=\"
-    local PayLoadSize=$1
-    local Command=$ACTION$Space$ACTION_TARGET$Space$2
-    local ManifestStr="{"$JSON_LE_VERSION_ID$Colon$Quote$(GetLegatoVersion)$Quote$Comma
-    ManifestStr=$ManifestStr$JSON_DEVICE_ID$Colon$Quote$TARGET_ID$Quote$Comma
-    ManifestStr=$ManifestStr$JSON_PAYLOAD_SIZE$Colon$PayLoadSize$Comma
-    ManifestStr=$ManifestStr$JSON_COMMAND$Colon$Quote$Command$Quote"}"
-    # TODO: Add additional manifest params(example: hashKey) if needed
-
-   #Now obtain the manifest string size and prepend it with manifest string
-    local ManifestSize=$(GetManifestSize "$ManifestStr")
-    ManifestStr=$ManifestSize$ManifestStr
-    printf "$ManifestStr"
+    echo
+    echo  "{"
+    echo  " $JSON_LE_VERSION_ID: \"$(GetLegatoVersion)\","
+    echo  " $JSON_DEVICE_ID: \"$TARGET_ID\","
+    echo  " $JSON_PAYLOAD_SIZE: $PayLoadSize,"
+    echo  "$CompleteItemStr"
+    printf  "}"
 }
 
-# Calls this function if ACTION is specified as update
-HandleUpdateCmd()
+
+# Makes complete item string. ItemStr value should be enumerated before calling this function.
+MakeCompleteItemStr()
 {
-
-    local PayLoadSize=$(stat -c%s "$BUILD_PATH")
-
-    UPDATE_FILE=$(echo $BUILD_PATH|sed 's/\.[^.]*$//')$UPDT_FILE_EXT
-
-    echo "Creating update file: $UPDATE_FILE">&2
-
-    (MakeManifestStr $PayLoadSize "$MODULE_NAME";cat $BUILD_PATH)>$UPDATE_FILE
-
-    if [ $? -ne 0 ]
-    then
-        exitCode=1
-        echo "Failed to create update file: $UPDATE_FILE">&2
-    else
-        exitCode=0
-        echo "Successfully created update file: $UPDATE_FILE">&2
-    fi
+    printf " $JSON_FIELD_ITEMS: ["
+    echo   "$ItemStr"
+    printf " ]"
 }
 
-# Calls this function if ACTION is specified as remove
-HandleRemoveCmd()
+
+# Makes app item string. Size variable should be set properly before calling this function.
+MakeAppItemStr()
 {
+    appName=$(basename "$2" | sed 's/\.[^.]*$//')
+    echo
+    echo "  {"
+    echo "   $JSON_FIELD_TYPE: $APP_PLATFORM,"
+    echo "   $JSON_FIELD_NAME: \"$appName\","
 
-    local PayLoadSize="0"
+    case $1 in
 
-    UNINSTALL_FILE=$MODULE_NAME$UNINST_FILE_EXT
+    i)  # Install Command
+        echo "   $JSON_FIELD_COMMAND: $CMD_INSTALL,"
+        echo "   $JSON_FIELD_SIZE: $Size"
+        ;;
 
-    echo "Creating uninstall file:$UNINSTALL_FILE">&2
+    r)  #Remove command
+        echo "   $JSON_FIELD_COMMAND: $CMD_REMOVE"
+        ;;
 
-    (MakeManifestStr $PayLoadSize "$MODULE_LIST")>$UNINSTALL_FILE
+    esac
 
-    if [ $? -ne 0 ]
-    then
-        exitCode=1
-        echo "Failed to create uninstall file: $UNINSTALL_FILE">&2
-    else
-        exitCode=0
-        echo "Successfully created uninstall file: $UNINSTALL_FILE">&2
-    fi
+    printf "  }"
 }
 
+
+# Makes script item string. Size variable should be set properly before calling this function.
+MakeScriptItemStr()
+{
+    scriptName=$(basename "$1")
+    echo
+    echo   "  {"
+    echo   "   $JSON_FIELD_TYPE: $SCRIPT_PLATFORM,"
+    echo   "   $JSON_FIELD_NAME: \"$scriptName\","
+    echo   "   $JSON_FIELD_SIZE: $Size"
+    printf "  }"
+}
+
+
+# Makes firmware item string. Size variable should be set properly before calling this function.
+MakeFirmwareItemStr()
+{
+    echo
+    echo   "  {"
+    echo   "   $JSON_FIELD_TYPE: $FIRMWARE_PLATFORM,"
+    echo   "   $JSON_FIELD_SIZE: $Size"
+    printf "  }"
+}
+
+if [ "$LEGATO_ROOT" = "" ]
+then
+    ExitWithError "LEGATO_ROOT environment variable is empty"
+fi
+
+if ! [ -f "$VERSION_PATH" ]
+then
+    ExitWithError "Bad legato version file: $VERSION_PATH"
+fi
+
+# If no parameter given, just print the help.
+if [ $# -eq 0  ]
+then
+    ExitWithError "Too few arguments."
+fi
 
 # Check if they are asking for help.
-if [ "$1" = "-h" -o "$1" = "help" -o "$1" = "--help" ]
+CheckForHelp $@
+
+# Check if they are asking for version.
+if [ "$1" = "-v" -o "$1" = "version" -o "$1" = "--version" ]
 then
-    PrintUsage
+    echo "Legato version: $(GetLegatoVersion)"
     exit 0
 fi
 
-# Only update and remove command supported
-if [ "$ACTION" != "update" ] && [ "$ACTION" != "remove" ]
+# Check if they are asking for pretty printing manifest.
+if [ "$1" = "-d" -o "$1" = "dump" -o "$1" = "--dump" ]
 then
-    echo "Command not supported: $ACTION"
-    PrintUsage
-    exit 1
-fi
-
-# Currently remove not supported for firmware/framework
-if [ "$ACTION" = "remove" ] && ([ "$ACTION_TARGET" = "firmware" ] || [ "$ACTION_TARGET" = "framework" ])
-then
-    echo "$ACTION not supported for $ACTION_TARGET"
-    PrintUsage
-    exit 1
-fi
-
-# TODO: Add TARGET_ID validation
-# Minimum number of parameter must be 4, otherwise exit
-if [ $# -lt $MIN_PARAMS ]
-then
-    echo "Missing parameters. Minimum number of of params: $MIN_PARAMS"
-    PrintUsage
-    exit 1
-fi
-
-if [ "$ACTION" = "remove" ] && [ $# -gt $MAX_PARAMS ]
-then
-    echo "Too many parameters for command: $ACTION, allowed: $MAX_PARAMS, supplied: $#"
-    PrintUsage
-    exit 1
-fi
-
-if [ "$ACTION" = "update" ] && [ $# -gt $MIN_PARAMS ]
-then
-    echo "Too many parameters for command: $ACTION, allowed: $MIN_PARAMS, supplied: $#"
-    PrintUsage
-    exit 1
-fi
-
-# If command is update, then file in BUILD_PATH must be non-zero size
-if  [ "$ACTION" = "update" ] && [ ! -f $BUILD_PATH ]
-then
-    echo "cannot access:$BUILD_PATH, No such file"
-    PrintUsage
-    exit 1
-fi
-
-if  [ "$ACTION" = "update" ] && [ ! -s $BUILD_PATH ]
-then
-    echo "Invalid installation file:$BUILD_PATH"
-    PrintUsage
-    exit 1
-fi
-
-# Legato version file must be non-empty
-if   [ ! -f $VERSION_PATH ]
-then
-    echo "cannot access: $VERSION_PATH, No such file"
-    exit 1
-fi
-
-if [ ! -s $VERSION_PATH ]
-then
-    echo "Wrong legato version file: $VERSION_PATH"
-    exit 1
-fi
-
-# Build the list of application(s)/system(s) to operate on.
-MODULE_LIST=""
-if [ "$ACTION" = "remove" ] && ([ "$ACTION_TARGET" = "app" ] || [ "$ACTION_TARGET" = "system" ])
-then
-    if [ "$MODULE_NAME" = "*" ]
+    UpdateFile=$2
+    ManifestSize=$(head -c $MANIFESTSIZE_FIELD_WIDTH $UpdateFile)
+# Follow if checks whether ManifestSize is a number or not.
+    if [ "$ManifestSize" -eq "$ManifestSize" ] 2>/dev/null
     then
-        MODULE_LIST="*"
-        MODULE_NAME="removeAll"$ACTION_TARGET
-
-    elif [ $# -eq 4 ]
-    then
-        MODULE_LIST=$MODULE_NAME
-
+        echo "Manifest size: `expr $ManifestSize + 0` bytes"
+        echo "Manifest string, including manifest size:"
+        echo "$(head -c `expr $ManifestSize + $MANIFESTSIZE_FIELD_WIDTH` $UpdateFile)"
+        exit 0
     else
-        MODULE_NAME="removeMultiple"$ACTION_TARGET
-        shift
-        shift
-        shift
-        for arg in "$@"
-        do
-            MODULE_LIST="$MODULE_LIST $(basename $arg | sed 's/\.[^.]*$//')"
-        done
+        ExitWithError "Bad manifest size: $ManifestSize"
     fi
 fi
 
-# For framework/firmware, MODULE_NAME field will be empty.
-if [ "$ACTION" = "update" ] && ([ "$ACTION_TARGET" = "firmware" ] || [ "$ACTION_TARGET" = "framework" ])
+# Do the TARGET_ID validation
+ValidateTarget "$TARGET_ID"
+
+# Minimum number of parameter must be 3, otherwise exit
+if [ $# -lt $MIN_PARAMS ]
 then
-    MODULE_NAME=""
+    ExitWithError "Missing parameters. Minimum number of params: $MIN_PARAMS"
 fi
 
-case "$ACTION" in
+# Flag to check whether App & firmware are not put together.
+OtherItemFlag=0
+FwFlag=0
 
-update)
-    case "$ACTION_TARGET" in
+# Update-pack received right number of params. Now shift (to avoid TARGET_ID)  & start parsing options.
+shift
 
-    app|system|framework|firmware)
-        HandleUpdateCmd
+while getopts ":am:o:" opt; do
+    case $opt in
+
+    a)
+        # Application item, it should be followed by install/remove command.
+        OtherItemFlag=1   # Mark the OtherItemFlag
+        getopts ":i:r:" cmd
+
+        case $cmd in
+
+        i)
+            # Install command
+            Size=$(stat -c%s "$OPTARG")
+
+            if [ $? -ne 0 ] || [ $Size -eq 0 ]
+            then
+                ExitWithError "Bad app file: $OPTARG"
+            fi
+            PayLoadSize=`expr $PayLoadSize + $Size`
+            AllInputFileList=$AllInputFileList" ""$OPTARG"
+            ItemStr=$ItemStr$(MakeAppItemStr $cmd "$OPTARG")","
+            ;;
+
+        r)
+            # Remove command
+            ItemStr=$ItemStr$(MakeAppItemStr $cmd "$OPTARG")","
+            ;;
+
+        \?)
+            ExitWithError "Invalid command option: -$OPTARG"
+            ;;
+
+        :)
+            ExitWithError "Option -$OPTARG requires an argument."
+            ;;
+
+        esac
+        ;;
+    m)
+        # Modem firmware item
+        FwFlag=1    # Mark the firmware flag
+        Size=$(stat -c%s "$OPTARG")
+        if [ $? -ne 0 ] || [ $Size -eq 0 ]
+        then
+            ExitWithError "Bad firmware file: $OPTARG"
+        fi
+        PayLoadSize=`expr $PayLoadSize + $Size`
+        AllInputFileList=$AllInputFileList" ""$OPTARG"
+        ItemStr=$ItemStr$(MakeFirmwareItemStr "$OPTARG")","
         ;;
 
-    *)
-        echo "Update not possible for $ACTION_TARGET"
-        PrintUsage
-        exit 1
+    o)
+        # Output file
+        UpdateFile="$OPTARG"
+        ;;
+
+    \?)
+        ExitWithError "Invalid command option: -$OPTARG"
+        ;;
+
+    :)
+        ExitWithError "Option -$OPTARG requires an argument."
         ;;
 
     esac
-    ;;
 
-remove)
-    case "$ACTION_TARGET" in
+done
 
-    app|system)
-        HandleRemoveCmd
-        ;;
+# Other items can't be put with firmware
+if [ $OtherItemFlag -eq 1 ]  && [ $FwFlag -eq 1 ]
+then
+    ExitWithError "Firmware can't packed with other install items."
+fi
 
-    *)
-        echo "Remove not possible for $ACTION_TARGET"
-        PrintUsage
-        exit 1
-    ;;
+# Delete the last Comma
+ItemStr=${ItemStr%?}
 
-    esac
-    ;;
+CompleteItemStr=$(MakeCompleteItemStr)
 
-esac
+# Now obtain the manifest string size and prepend it with manifest string
+ManifestStr=$(MakeManifestStr)
+ManifestStr=$(GetManifestSize "$ManifestStr")$ManifestStr
 
-exit $exitCode
+if [ "$AllInputFileList" = "" ]
+then
+    # Only remove instructions are given.
+    (printf "$ManifestStr")>"$UpdateFile"
+else
+    # Now merge manifest string and all input file, and create final update file.
+    (printf "$ManifestStr"; cat $AllInputFileList)>"$UpdateFile"
+fi
+
+if [ $? -ne 0 ]
+then
+    ExitWithError "Failed to create update file: $UpdateFile">&2
+else
+    echo "Successfully created update file: $UpdateFile">&2
+    exit 0
+fi

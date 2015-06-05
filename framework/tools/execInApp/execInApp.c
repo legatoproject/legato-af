@@ -1,3 +1,4 @@
+//--------------------------------------------------------------------------------------------------
 /** @file execInApp.c
  *
  * Tool used to execute a process in a running application's sandbox.
@@ -369,20 +370,20 @@ COMPONENT_INIT
         ProcName = le_path_GetBasenamePtr(ExecPath, "/");
     }
 
-    le_sup_state_ConnectService();
+    le_appInfo_ConnectService();
 
-    le_sup_state_State_t appState;
-    appState = le_sup_state_GetAppState(AppName);
+    le_appInfo_State_t appState;
+    appState = le_appInfo_GetState(AppName);
 
     switch(appState)
     {
-    case LE_SUP_STATE_RUNNING:
-    case LE_SUP_STATE_PAUSED:
-        break;
-    default:
-        fprintf(stderr, "Application '%s' is not running.\n", AppName);
-        exit(EXIT_FAILURE);
-        break;
+        case LE_APPINFO_RUNNING:
+            break;
+
+        default:
+            fprintf(stderr, "Application '%s' is not running.\n", AppName);
+            exit(EXIT_FAILURE);
+            break;
     }
 
     app_Ref_t appRef = GetAppRef(AppName);
@@ -421,7 +422,7 @@ COMPONENT_INIT
 
         // Get the smack label for the process.
         char smackLabel[LIMIT_MAX_SMACK_LABEL_BYTES];
-        smack_GetAppLabel(AppName, smackLabel, sizeof(smackLabel));
+        appSmack_GetLabel(AppName, smackLabel, sizeof(smackLabel));
 
         // Set the process's SMACK label.
         smack_SetMyLabel(smackLabel);

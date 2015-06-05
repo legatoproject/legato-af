@@ -1,4 +1,4 @@
-#! /bin/bash
+#!/bin/bash
 # Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 
 # run every executable file in scripts with option -h except legs and this file
@@ -11,6 +11,13 @@ TOOLS_DIR="$LEGATO_ROOT/framework/tools/scripts"
 TOOL_NAMES=()
 export MARKUP_HELP_DOX="LEGATO_AUTO_DOX"
 
+OUTPUT_DIR=${1:-$DOC_DIR}
+MAIN_PAGE="${OUTPUT_DIR}/toolsHost.dox"
+
+echo "Building docs in $OUTPUT_DIR"
+
+mkdir -p $OUTPUT_DIR
+
 for file in $(find $TOOLS_DIR -type f -executable); do
     if [[ $file = *legs ]]; then
         echo "Skipping - $file"
@@ -20,12 +27,15 @@ for file in $(find $TOOLS_DIR -type f -executable); do
     elif [[ $file = *findtoolchain ]]; then
         # update-pack is not a user run tool. It will become a part of build.
         echo "Skipping - $file"
+    elif [[ $file = *mkinfo ]]; then
+        # mkinfo is not a user run tool. It will become a part of build.
+        echo "Skipping - $file"
     elif [[ $(basename "$file") = $(basename $0) ]]; then
         echo "Skipping - $file"
     else
         TOOL=$(basename "$file")
         TOOL_NAMES[${#TOOL_NAMES[@]}]="$TOOL"
-        DOC_FILE="$DOC_DIR"/"toolsHost_$TOOL".dox
+        DOC_FILE="${OUTPUT_DIR}/toolsHost_${TOOL}.dox"
         echo "/** @page toolsHost_$TOOL $TOOL" > "$DOC_FILE"
         helpText=$("$file" --help)
         if [[ "$helpText" =~ "<!--${MARKUP_HELP_DOX}-->" ]];
@@ -41,14 +51,14 @@ for file in $(find $TOOLS_DIR -type f -executable); do
 done
 
 # Use the template to create the host tool doc page
-rm -f "$HOST_TOOL_DOC.dox"
+rm -f $MAIN_PAGE
 while read line
 do
     if [[ "$line" = GENERATED_DOCS* ]]; then
         for t in ${TOOL_NAMES[@]}; do
-            echo "@subpage toolsHost_$t <br>" >> "$HOST_TOOL_DOC.dox"
+            echo "@subpage toolsHost_$t <br>" >> $MAIN_PAGE
         done
     else
-        echo "$line" >> "$HOST_TOOL_DOC.dox"
+        echo "$line" >> $MAIN_PAGE
     fi
 done < "$HOST_TOOL_DOC".tmpl

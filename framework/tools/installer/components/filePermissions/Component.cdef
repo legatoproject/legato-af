@@ -16,10 +16,7 @@ requires:
     api:
     {
         le_cfg.api
-    }
-
-    component:
-    {
-        ../../../c/src/security
+        le_appInfo.api
+        appSmack.api
     }
 }

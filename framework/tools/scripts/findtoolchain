@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Search in known locations for a cross-build tool chain.
-# The first argument is the target type (ar6, ar7, wp7)
+# The first argument is the target type (ar6, ar7, wp7, etc.)
 function PrintHelp()
 {
 cat << ENDHELP
@@ -23,7 +23,7 @@ HOST_ARCH=$(uname -m)
 # Select the appropriate list of toolchain directories to search, in order of preference
 # (most preferred first) based on the target name given.
 case "$1" in
-ar7 | wp7 | ar86 | virt_arm)
+ar7 | wp7 | ar86 | wp85 | virt_arm)
     TOOLCHAIN_DIRS=(
         /opt/swi/y16-ext/sysroots/$HOST_ARCH-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi
         /opt/swi/y14-ext/tmp/sysroots/$HOST_ARCH-linux/usr/bin/armv7a-vfp-neon-poky-linux-gnueabi

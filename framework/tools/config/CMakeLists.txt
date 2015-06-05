@@ -19,4 +19,4 @@ mkexe(  config
             config.c
         )
 
-add_dependencies(config le_cfg_api le_cfgAdmin_api jansson)
+add_dependencies(config jansson)

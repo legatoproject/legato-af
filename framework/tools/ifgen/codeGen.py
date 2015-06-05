@@ -467,7 +467,8 @@ FuncImplTemplate = """
     {{ func.parmListIn | printParmList("clientPack", sep="\n") | indent }}
 
     // Send a request to the server and get the response.
-    LE_DEBUG("Sending message to server and waiting for response");
+    LE_DEBUG("Sending message to server and waiting for response : %ti bytes sent",
+             _msgBufPtr-_msgPtr->buffer);
     _responseMsgRef = le_msg_RequestSyncResponse(_msgRef);
     // It is a serious error if we don't get a valid response from the server
     LE_FATAL_IF(_responseMsgRef == NULL, "Valid response was not received from server");
@@ -482,11 +483,11 @@ FuncImplTemplate = """
 
     $ if func.isAddHandler:
     // Put the handler reference result into the client data object, and
-    // then return a safe reference to the client data object as the reference.
+    // then return a safe reference to the client data object as the reference;
+    // this safe reference is contained in the contextPtr, which was assigned
+    // when the client data object was created.
     _clientDataPtr->handlerRef = (le_event_HandlerRef_t)_result;
-    _LOCK
-    _result = le_ref_CreateRef(_HandlerRefMap, _clientDataPtr);
-    _UNLOCK
+    _result = contextPtr;
     $ endif
     {% endif %}
 
@@ -517,19 +518,24 @@ ClientHandlerTemplate = """
 static void _Handle_{{func.name}}
 (
     void* _reportPtr,
-    void* _notUsed
+    void* _dataPtr
 )
 {
     le_msg_MessageRef_t _msgRef = _reportPtr;
     _Message_t* _msgPtr = le_msg_GetPayloadPtr(_msgRef);
     uint8_t* _msgBufPtr = _msgPtr->buffer;
 
-    // The clientContextPtr always exists and is always first.
+    // The clientContextPtr always exists and is always first. It is a safe reference to the client
+    // data object, but we already get the pointer to the client data object through the _dataPtr
+    // parameter, so we don't need to do anything with clientContextPtr, other than unpacking it.
     void* _clientContextPtr;
     _msgBufPtr = UnpackData( _msgBufPtr, &_clientContextPtr, sizeof(void*) );
 
-    // Pull out additional data from the context pointer
-    _ClientData_t* _clientDataPtr = _clientContextPtr;
+    // The client data pointer is passed in as a parameter, since the lookup in the safe ref map
+	// and check for NULL has already been done when this function is queued.
+    _ClientData_t* _clientDataPtr = _dataPtr;
+
+    // Pull out additional data from the client data pointer
     {{handler.name}} _handlerRef_{{func.name}} = ({{handler.name}})_clientDataPtr->handlerPtr;
     void* contextPtr = _clientDataPtr->contextPtr;
 
@@ -583,8 +589,19 @@ static void ClientIndicationRecvHandler
     void* clientContextPtr;
     _msgBufPtr = UnpackData( _msgBufPtr, &clientContextPtr, sizeof(void*) );
 
+    // The clientContextPtr is a safe reference for the client data object.  If the client data
+    // pointer is NULL, this means the handler was removed before the event was reported to the
+    // client. This is valid, and the event will be dropped.
+    _LOCK
+    _ClientData_t* clientDataPtr = le_ref_Lookup(_HandlerRefMap, clientContextPtr);
+    _UNLOCK
+    if ( clientDataPtr == NULL )
+    {
+        LE_DEBUG("Ignore reported event after handler removed");
+        return;
+    }
+
     // Pull out the callers thread
-    _ClientData_t* clientDataPtr = clientContextPtr;
     le_thread_Ref_t callersThreadRef = clientDataPtr->callersThreadRef;
 
     // Trigger the appropriate event
@@ -592,7 +609,7 @@ static void ClientIndicationRecvHandler
     {
         $ for func in funcList
         case _MSGID_{{func.name}} :
-            le_event_QueueFunctionToThread(callersThreadRef, _Handle_{{func.name}}, msgRef, NULL);
+            le_event_QueueFunctionToThread(callersThreadRef, _Handle_{{func.name}}, msgRef, clientDataPtr);
             break;
             {{""}}
         $ endfor
@@ -631,7 +648,7 @@ static void AsyncResponse_{{func.name}}
     // the client sesssion ref would be NULL.
     if ( serverDataPtr->clientSessionRef == NULL )
     {
-        LE_FATAL("Error in server data: no client session ref");
+        LE_FATAL("Handler passed to {{func.name}}() can't be called more than once");
     }
     {% endif %}
 
@@ -651,7 +668,9 @@ static void AsyncResponse_{{func.name}}
     {{ handler.parmList | printParmList("clientPack", sep="\n") | indent }}
 
     // Send the async response to the client
-    LE_DEBUG("Sending message to client session %p", serverDataPtr->clientSessionRef);
+    LE_DEBUG("Sending message to client session %p : %ti bytes sent",
+             serverDataPtr->clientSessionRef,
+             _msgBufPtr-_msgPtr->buffer);
     SendMsgToClient(_msgRef);
 
     $ if func.handlerName and not func.isAddHandler :
@@ -743,7 +762,9 @@ static void Handle_{{func.name}}
     {{ func.parmListOut | printParmList("handlerPack", sep="\n") | indent }}
 
     // Return the response
-    LE_DEBUG("Sending response to client session %p", le_msg_GetSession(_msgRef));
+    LE_DEBUG("Sending response to client session %p : %ti bytes sent",
+             le_msg_GetSession(_msgRef),
+             _msgBufPtr-_msgBufStartPtr);
     le_msg_Respond(_msgRef);
 }
 """
@@ -989,13 +1010,18 @@ LocalHeaderStartTemplate = """
 
 #define PROTOCOL_ID_STR "{{idString}}"
 
-#define SERVICE_INSTANCE_NAME "{{serviceName}}"
+#ifdef MK_TOOLS_BUILD
+    extern const char** {{ "ServiceInstanceNamePtr" | addNamePrefix }};
+    #define SERVICE_INSTANCE_NAME (*{{ "ServiceInstanceNamePtr" | addNamePrefix }})
+#else
+    #define SERVICE_INSTANCE_NAME "{{serviceName}}"
+#endif
 
 
 // todo: This will need to depend on the particular protocol, but the exact size is not easy to
 //       calculate right now, so in the meantime, pick a reasonably large size.  Once interface
 //       type support has been added, this will be replaced by a more appropriate size.
-#define _MAX_MSG_SIZE 1000
+#define _MAX_MSG_SIZE {{maxMsgSize}}
 
 // Define the message type for communicating between client and server
 typedef struct
@@ -1007,12 +1033,28 @@ _Message_t;
 """
 
 def WriteLocalHeaderFile(pf, ph, hashValue, fileName, serviceName):
+
+    # TODO: This is a temporary workaround. Some API files require a larger message size, so
+    #       hand-code the required size.  The size is not increased for all API files, because
+    #       this could significantly increase memory usage, although it is bumped up a little
+    #       bit from 1000 to 1100.
+    #
+    #       In the future, this size will be automatically calculated.
+    #
+    if fileName.endswith("le_secStore_local.h"):
+        maxMsgSize = 8500
+    elif fileName.endswith("le_cfg_local.h"):
+        maxMsgSize = 1600
+    else:
+        maxMsgSize = 1100
+
     WriteWarning(LocalHeaderFileText)
     WriteIncludeGuardBegin(LocalHeaderFileText, fileName)
 
     print >>LocalHeaderFileText, FormatCode(LocalHeaderStartTemplate,
                                             idString=hashValue,
-                                            serviceName=serviceName)
+                                            serviceName=serviceName,
+                                            maxMsgSize=maxMsgSize)
 
     # Write out the message IDs for the functions
     for i, name in enumerate(pf):
@@ -1114,12 +1156,28 @@ __attribute__((unused)) static pthread_mutex_t _Mutex = PTHREAD_MUTEX_INITIALIZE
 
 
 //--------------------------------------------------------------------------------------------------
-/* This global flag is shared by all client threads, and is used to indicate whether the common
- * data has been initialized.  It is only initialized once by the main thread, and is only read by
- * the other threads.  Thus, a mutex is not needed for accesses to this variable.
+/**
+ * This global flag is shared by all client threads, and is used to indicate whether the common
+ * data has been initialized.
+ *
+ * @warning Use InitMutex, defined below, to protect accesses to this data.
  */
 //--------------------------------------------------------------------------------------------------
 static bool CommonDataInitialized = false;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Mutex and associated macros for use with the above CommonDataInitialized.
+ */
+//--------------------------------------------------------------------------------------------------
+static pthread_mutex_t InitMutex = PTHREAD_MUTEX_INITIALIZER;   // POSIX "Fast" mutex.
+
+/// Locks the mutex.
+#define LOCK_INIT    LE_ASSERT(pthread_mutex_lock(&InitMutex) == 0);
+
+/// Unlocks the mutex.
+#define UNLOCK_INIT  LE_ASSERT(pthread_mutex_unlock(&InitMutex) == 0);
 
 
 //--------------------------------------------------------------------------------------------------
@@ -1198,7 +1256,8 @@ __attribute__((unused)) static le_msg_SessionRef_t GetCurrentSessionRef
     _ClientThreadData_t* clientThreadPtr = GetClientThreadDataPtr();
 
     // If the thread specific data is NULL, then the session ref has not been created.
-    LE_FATAL_IF(clientThreadPtr==NULL, "No client session for current thread");
+    LE_FATAL_IF(clientThreadPtr==NULL,
+                "{{ "ConnectService" | addNamePrefix }}() not called for current thread");
 
     return clientThreadPtr->sessionRef;
 }
@@ -1212,10 +1271,10 @@ __attribute__((unused)) static le_msg_SessionRef_t GetCurrentSessionRef
 static void InitCommonData(void)
 {
     // Allocate the client data pool
-    _ClientDataPool = le_mem_CreatePool("ClientData", sizeof(_ClientData_t));
+    _ClientDataPool = le_mem_CreatePool("{{ "ClientData" | addNamePrefix }}", sizeof(_ClientData_t));
 
     // Allocate the client thread pool
-    _ClientThreadDataPool = le_mem_CreatePool("ClientThreadData", sizeof(_ClientThreadData_t));
+    _ClientThreadDataPool = le_mem_CreatePool("{{ "ClientThreadData" | addNamePrefix }}", sizeof(_ClientThreadData_t));
 
     // Create the thread-local data key to be used to store a pointer to each thread object.
     LE_ASSERT(pthread_key_create(&_ThreadDataKey, NULL) == 0);
@@ -1224,7 +1283,7 @@ static void InitCommonData(void)
     // The size of the map should be based on the number of handlers defined multiplied by
     // the number of client threads.  Since this number can't be completely determined at
     // build time, just make a reasonable guess.
-    _HandlerRefMap = le_ref_CreateMap("ClientHandlers", 5);
+    _HandlerRefMap = le_ref_CreateMap("{{ "ClientHandlers" | addNamePrefix }}", 5);
 }
 """
 
@@ -1232,11 +1291,13 @@ ClientStartFuncCode = """
 {{ proto['startClientFunc'] }}
 {
     // If this is the first time the function is called, init the client common data.
+    LOCK_INIT
     if ( ! CommonDataInitialized )
     {
         InitCommonData();
         CommonDataInitialized = true;
     }
+    UNLOCK_INIT
 
     _ClientThreadData_t* clientThreadPtr = GetClientThreadDataPtr();
 
@@ -1306,7 +1367,7 @@ def WriteClientFile(headerFiles, pf, ph, genericFunctions):
 
     print >>ClientFileText, '\n' + '\n'.join('#include "%s"'%h for h in headerFiles) + '\n'
     print >>ClientFileText, DefaultPackerUnpacker
-    print >>ClientFileText, ClientGenericCode
+    print >>ClientFileText, FormatCode(ClientGenericCode)
 
     # Note that this does not need to be an ordered dictionary, unlike genericFunctions
     protoDict = { n: GetFuncPrototypeStr(f) for n,f in genericFunctions.items() }
@@ -1565,12 +1626,12 @@ ServerStartFuncCode = """
     le_msg_ProtocolRef_t protocolRef;
 
     // Create the server data pool
-    _ServerDataPool = le_mem_CreatePool("ServerData", sizeof(_ServerData_t));
+    _ServerDataPool = le_mem_CreatePool("{{ "ServerData" | addNamePrefix }}", sizeof(_ServerData_t));
 
     // Create safe reference map for handler references.
     // The size of the map should be based on the number of handlers defined for the server.
     // Don't expect that to be more than 2-3, so use 3 as a reasonable guess.
-    _HandlerRefMap = le_ref_CreateMap("ServerHandlers", 3);
+    _HandlerRefMap = le_ref_CreateMap("{{ "ServerHandlers" | addNamePrefix }}", 3);
 
     // Start the server side of the service
     protocolRef = le_msg_GetProtocolRef(PROTOCOL_ID_STR, sizeof(_Message_t));
@@ -1839,6 +1900,7 @@ def PostProcessAddHandler(f, flist, tlist):
 // the object since they are no longer needed.
 _LOCK
 _ClientData_t* clientDataPtr = le_ref_Lookup(_HandlerRefMap, addHandlerRef);
+LE_FATAL_IF(clientDataPtr==NULL, "Invalid reference");
 le_ref_DeleteRef(_HandlerRefMap, addHandlerRef);
 _UNLOCK
 addHandlerRef = ({parm.parmType})clientDataPtr->handlerRef;
@@ -1846,13 +1908,21 @@ le_mem_Release(clientDataPtr);
 """ + removeParm.clientPack
 
     # After we have unpacked the parameter, need to use it to look up data, so append the actions
-    # to the original handlerUnpack
+    # to the original handlerUnpack.
+    # Note: the four sets of braces for the if block are needed because this string is processed
+    # twice using str.format()
     removeParm.handlerUnpack += """
 // The passed in handlerRef is a safe reference for the server data object.  Need to get the
 // real handlerRef from the server data object and then delete both the safe reference and
 // the object since they are no longer needed.
 _LOCK
 _ServerData_t* serverDataPtr = le_ref_Lookup(_HandlerRefMap, addHandlerRef);
+if ( serverDataPtr == NULL )
+{{{{
+    _UNLOCK
+    LE_KILL_CLIENT("Invalid reference");
+    return;
+}}}}
 le_ref_DeleteRef(_HandlerRefMap, addHandlerRef);
 _UNLOCK
 addHandlerRef = ({func.type})serverDataPtr->handlerRef;
@@ -2007,8 +2077,7 @@ def WriteAllCode(commandArgs, parsedData, hashValue):
                                  parsedTypes,
                                  clientImportList,
                                  genericFunctions,
-                                 os.path.splitext( os.path.basename(commandArgs.interfaceFile) )[0],
-                                 # interfaceFname,
+                                 interfaceFname,
                                  headerComments)
         open(interfaceFpath, 'w').write( InterfaceHeaderFileText.getvalue() )
 
@@ -2040,7 +2109,7 @@ def WriteAllCode(commandArgs, parsedData, hashValue):
                               parsedTypes,
                               serverImportList,
                               genericFunctions,
-                              os.path.splitext( os.path.basename(commandArgs.interfaceFile) )[0],
+                              interfaceFname, # TODO: temporary workaround for naming conflicts.
                               # serverIncludeFname,
                               commandArgs.async)
         open(serverIncludeFpath, 'w').write( ServerIncludeFileText.getvalue() )

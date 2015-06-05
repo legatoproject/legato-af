@@ -70,10 +70,13 @@ static void SetInstalledFilesPermissions
 {
     // Get the smack labels to use.
     char dirLabel[LIMIT_MAX_SMACK_LABEL_BYTES];
-    smack_GetAppAccessLabel(appNamePtr, S_IROTH | S_IXOTH, dirLabel, sizeof(dirLabel));
+    appSmack_GetAccessLabel(appNamePtr,
+                            APPSMACK_ACCESS_FLAG_READ | APPSMACK_ACCESS_FLAG_EXECUTE,
+                            dirLabel,
+                            sizeof(dirLabel));
 
     char fileLabel[LIMIT_MAX_SMACK_LABEL_BYTES];
-    smack_GetAppLabel(appNamePtr, fileLabel, sizeof(fileLabel));
+    appSmack_GetLabel(appNamePtr, fileLabel, sizeof(fileLabel));
 
     // Get the path to the application's install directory.
     char installPath[LIMIT_MAX_PATH_BYTES] = APPS_INSTALL_DIR;
@@ -182,6 +185,37 @@ static mode_t GetCfgPermissions
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Convert mode to SMACK access flags.
+ **/
+//--------------------------------------------------------------------------------------------------
+static appSmack_AccessFlags_t ConverToSmackAccessFlags
+(
+    mode_t mode             ///< [IN] Access mode.
+)
+{
+    appSmack_AccessFlags_t flags = 0;
+
+    if ((mode & S_IROTH) > 0)
+    {
+        flags |= APPSMACK_ACCESS_FLAG_READ;
+    }
+
+    if ((mode & S_IWOTH) > 0)
+    {
+        flags |= APPSMACK_ACCESS_FLAG_WRITE;
+    }
+
+    if ((mode & S_IXOTH) > 0)
+    {
+        flags |= APPSMACK_ACCESS_FLAG_EXECUTE;
+    }
+
+    return flags;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Sets the permissions for the bundled directories.
  *
  * @note Kills the calling process on error.
@@ -229,7 +263,10 @@ static void SetBundledDirPermissions
 
             // Set the SMACK label.
             char smackLabel[LIMIT_MAX_SMACK_LABEL_BYTES];
-            smack_GetAppAccessLabel(appNamePtr, mode, smackLabel, sizeof(smackLabel));
+            appSmack_GetAccessLabel(appNamePtr,
+                                    ConverToSmackAccessFlags(mode),
+                                    smackLabel,
+                                    sizeof(smackLabel));
 
             smack_SetLabel(fullPath, smackLabel);
         }

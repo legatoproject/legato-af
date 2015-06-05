@@ -1,0 +1,43 @@
+#!/bin/bash
+# Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+# This file is not user callable. Used by mk tools.
+
+# Arg 1 is the staging directory of the app build.
+StagingDir=$1
+
+# Generates a file called info.properties in the app's staging directory.
+InfoFile="$1/info.properties"
+
+if [ -z $StagingDir ]
+    then
+        echo "No Staging Dir specified"
+        exit 1
+fi
+
+if ! [ -d $StagingDir ]
+    then
+        echo "No such directory $StagingDir"
+        exit 1
+fi
+
+rm -f $InfoFile
+
+# app checksum
+md5=$(find $StagingDir -type f | xargs cat | md5sum)
+md5=${md5%% *}
+echo "app.md5=$md5" > $InfoFile
+
+# app version
+app_version=$(grep '\` \+"version"' ${StagingDir}/root.cfg | sed -e 's/[ ]*\"\([^\"]*\)\"[ ]*\"\([^\"]*\)\".*/\2/')
+if [ "$app_version" != "" ]
+    then
+        echo app.version=$app_version >> $InfoFile
+fi
+
+# app build time
+printf "app.buildTime=%s\n" "$(date)" >> $InfoFile
+
+#framework version
+legato_version=$(cat $LEGATO_ROOT/version)
+echo legato.version=$legato_version >> $InfoFile

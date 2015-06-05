@@ -1,0 +1,141 @@
+#!/bin/bash
+copyright="
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+"
+
+if ! [ $LEGATO_ROOT ]; then echo "Run bin/legs first" >&2; exit 1; fi
+. "${LEGATO_ROOT}/framework/tools/scripts/shlib"
+
+help_short_desc="release legato project"
+
+help_usage=(
+""
+)
+
+help_long_description=(
+"Once Legato has been built for all targets, this script stages files"
+"and produces a tarball."
+)
+
+CheckForHelp $@
+
+EXCLUDE_PATTERN='proprietary|qmi/le_pa|mdm9x15/le_pa|test/.*/qmi|jenkins-build|.gitreview|.gitmodules|^airvantage$$'
+
+RELEASE_DIR=$LEGATO_ROOT/releases
+VERSION=$(cat $LEGATO_ROOT/version)
+STAGE_NAME=legato-$VERSION
+STAGE_DIR=$RELEASE_DIR/$STAGE_NAME
+PKG_NAME=$STAGE_NAME.tar.bz2
+PKG_NAME_LINK=legato.tar.bz2
+
+echo "Version = $VERSION"
+echo "Preparing package in $STAGE_DIR"
+
+rm -rf $STAGE_DIR
+mkdir -p $STAGE_DIR
+
+# Copy files managed by git, except the ones that match EXCLUDE_PATTERN
+git ls-tree -r --name-only HEAD | egrep -v $EXCLUDE_PATTERN | while read LINE ;
+do
+    echo "Copying $LINE"
+    install -D "$LINE" "$STAGE_DIR/$LINE"
+done
+
+# Copy PA binaries
+stage_pa_component() {
+    local apps_folder=$1
+    local service=$2
+    local comp_folder=$3
+    local pa_name=$4
+
+    for target in "${@:5}"; do
+        src="build/$target/platformServices/apps/$apps_folder/_build_$service.$target/staging/lib/libComponent_$pa_name.so"
+        dst="components/$comp_folder/platformAdaptor/pre-built/$target/$pa_name/"
+
+        if ! [ -e "$LEGATO_ROOT/$src" ]; then
+            echo "$src doesn't exist"
+            exit 1
+        fi
+
+        local toolchain_dir_env="${target^^}_TOOLCHAIN_DIR"
+        local toolchain_dir="${!toolchain_dir_env}"
+        if [ -z "$toolchain_dir" ]; then
+            toolchain_dir=$(framework/tools/scripts/findtoolchain $target)
+        fi
+
+        if [ -z "$toolchain_dir" ]; then
+            echo "$toolchain_dir_env not set and unable to find one"
+            exit 1
+        fi
+
+        local toolchain_prefix_env="${target^^}_TOOLCHAIN_PREFIX"
+        local toolchain_prefix="${!toolchain_prefix_env}"
+        if [ -z "$toolchain_prefix" ]; then
+            toolchain_prefix="$(find $toolchain_dir -name "*gcc" |xargs basename |sed 's/gcc//g' 2> /dev/null)"
+        fi
+
+        echo "Staging $pa_name for $service (target $target)"
+        echo "  $src -> $dst"
+        install -D $LEGATO_ROOT/$src $STAGE_DIR/$dst
+        if [ $? -ne 0 ]; then
+            ExitWithError "Unable to copy '$src'"
+        fi
+
+        $toolchain_dir/${toolchain_prefix}strip -s $STAGE_DIR/$dst/libComponent_$pa_name.so
+        if [ $? -ne 0 ]; then
+            ExitWithError "Unable to strip '$STAGE_DIR/$dst/libComponent_$pa_name.so'"
+        fi
+    done
+}
+
+stage_pa_component audio          audioService        audio           le_pa_audio     ar7 ar86 wp7 wp85
+stage_pa_component modem          modemService        modemServices   le_pa           ar7 ar86 wp7 wp85
+stage_pa_component modem          modemService        modemServices   le_pa_ecall     ar7 ar86
+stage_pa_component positioning    positioningService  positioning     le_pa_gnss      ar7 ar86 wp7 wp85
+stage_pa_component airVantage     avcService          airVantage      le_pa_avc       ar7 ar86 wp7 wp85
+stage_pa_component secureStorage  secStore            secStore        le_pa_secStore  ar7 ar86 wp7 wp85
+stage_pa_component fwupdate       fwupdateService     fwupdate        le_pa_fwupdate  ar7 ar86 wp7 wp85
+
+cp -R airvantage $STAGE_DIR
+cp version $STAGE_DIR
+cp package.properties $STAGE_DIR
+
+# Remove existing git folders
+for gitdir in $(find $STAGE_DIR -name ".git"); do
+    echo "Removing $gitdir"
+    rm -rf $gitdir
+done
+
+echo "Creating release package $RELEASE_DIR/$PKG_NAME"
+rm -f $RELEASE_DIR/$PKG_NAME
+cd $RELEASE_DIR && tar jcf $PKG_NAME $STAGE_NAME
+
+echo "Creating symlink as $PKG_NAME_LINK"
+rm -f $RELEASE_DIR/$PKG_NAME_LINK
+ln -s $PKG_NAME $RELEASE_DIR/$PKG_NAME_LINK
+
+# Copy images
+copy_images() {
+    local target=$1
+
+    for file in $(find build/$target -maxdepth 1 -regextype sed -regex '.*legato.*\.\(cwe\|yaffs2\)'); do
+        IMG_FULLNAME=$(basename $file)
+        IMG_NAME="${IMG_FULLNAME%.*}"
+        IMG_EXT="${IMG_FULLNAME##*.}"
+
+        DST_NAME="${IMG_NAME}-${target}-${VERSION}.${IMG_EXT}"
+        DST_NAME_LINK="${IMG_NAME}-${target}.${IMG_EXT}"
+
+        echo "Copying image as $DST_NAME"
+        cp $file $RELEASE_DIR/$DST_NAME
+
+        echo "Creating symlink as $DST_NAME_LINK"
+        rm -f $RELEASE_DIR/$DST_NAME_LINK
+        ln -s $DST_NAME $RELEASE_DIR/$DST_NAME_LINK
+    done
+}
+
+cd $LEGATO_ROOT
+for target in ar7 ar86 wp7 wp85; do
+    copy_images $target
+done

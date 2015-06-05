@@ -1,3 +1,4 @@
+#!/bin/bash
 # source this for functions only
 # Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 
@@ -68,7 +69,9 @@ PrintDescriptionSection() {
         echo "${bh}DESCRIPTION${eh}"
         for desc_line in "${help_long_description[@]}"; do
             printf "    %s\\n" "$desc_line"
-        done
+        done \
+            | sed 's^\@^\\@^g' \
+            | sed 's^<^\\<^g'
         echo ""
     fi
 }
@@ -78,7 +81,9 @@ PrintNotesSection() {
         echo "${bh}NOTES${eh}"
         for desc_line in "${help_notes[@]}"; do
             printf "    %s\\n" "$desc_line"
-        done
+        done \
+            | sed 's^\@^\\@^g' \
+            | sed 's^<^\\<^g'
         echo ""
     fi
 }
@@ -238,7 +243,7 @@ SshToTarget ()
         exit 1
     fi
 
-    ssh $SSH_OPTS root@$TARGET_IP $@
+    ssh $SSH_OPTS root@$TARGET_IP "$@"
 }
 
 # Shared (Master) ssh

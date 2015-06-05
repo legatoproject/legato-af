@@ -492,7 +492,7 @@ def ProcessHandlerFunc(tokens):
 def MakeHandlerExpr():
 
     # The expressions are checked in the given order, so the order must not be changed.
-    allParameters = StringParm | ArrayParm | SimpleParm
+    allParameters = StringParm | SimpleParm
 
     body = MakeListExpr(allParameters)
     all = ( pyparsing.Optional(pyparsing.cStyleComment)("comment")
@@ -523,7 +523,7 @@ def ProcessEventFunc(tokens):
 def MakeEventExpr():
 
     # The expressions are checked in the given order, so the order must not be changed.
-    allParameters = HandlerParm | StringParm | ArrayParm | SimpleParm
+    allParameters = HandlerParm | StringParm | ArrayParm | FileParm | SimpleParm
 
     body = MakeListExpr(allParameters)
     all = ( pyparsing.Optional(pyparsing.cStyleComment)("comment")
@@ -699,6 +699,10 @@ def ProcessDoxygen(tokens):
 # Any errors in the import statements will be caught during the normal processing of the main file.
 #
 def GetImportList(codeDefn):
+    # As an optimization, return an emtpy list right away if there are no import statements.
+    if not StringImport in codeDefn:
+        return []
+
     # Create the IMPORT expression, but ignore IMPORT statements in comments.
     importExpr = MakeImportExpr(useFailAction=False)
     importExpr.ignore(pyparsing.cppStyleComment)

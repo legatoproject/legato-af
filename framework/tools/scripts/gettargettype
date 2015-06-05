@@ -1,0 +1,44 @@
+#!/bin/bash
+copyright="
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+"
+
+if ! [ $LEGATO_ROOT ]; then echo "Run bin/legs first" >&2; exit 1; fi
+. "${LEGATO_ROOT}/framework/tools/scripts/shlib"
+
+# This script determines a target type from a target model.
+
+# Exit codes
+# 0 - Success
+# 1 - General error
+
+help_short_desc="determine target type from target model"
+
+help_usage=(
+"TARGET_MODEL"
+)
+
+help_long_description=(
+)
+
+CheckForHelp $@
+
+TARGET_MODEL=$(echo $1 | tr '[:lower:]' '[:upper:]')
+
+case $TARGET_MODEL in
+    AR7*)
+        echo ar7;;
+    AR86*)
+        echo ar86;;
+    WP85*)
+        echo wp85;;
+    WP71*)
+        echo wp7;;
+    VIRT*)
+        echo virt;;
+    *)
+        echo "Model '$TARGET_MODEL' not supported" 1>&2
+        exit 1
+        ;;
+esac
+

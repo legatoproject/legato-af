@@ -1,0 +1,164 @@
+#!/bin/bash
+copyright="
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+"
+
+if ! [ $LEGATO_ROOT ]; then echo "Run bin/legs first" >&2; exit 1; fi
+. "${LEGATO_ROOT}/framework/tools/scripts/shlib"
+
+help_short_desc="create Legato image partition"
+
+help_usage=(
+"[OPTIONS]"
+)
+
+help_long_description=(
+"Generate a partition for a Legato target."
+""
+"Options:"
+" - -t [TARGET]: target the image should be generated for (ar7, ...)"
+" - -d [STAGING_DIR]: staging directory for that platform"
+" - -o [OUTPUT_DIR]: output directory where the image will be stored"
+""
+"For ar7/ar86/wp7/ap85 targets:"
+""
+"   This creates a partition that you can use with fwupdate or airvantage"
+"   to update the legato within your target."
+)
+
+CheckForHelp $@
+
+while getopts ":t:o:d:" arg
+do
+    case $arg in
+    t)
+        TARGET=$OPTARG
+        echo "Target: $TARGET"
+        ;;
+    d)
+        STAGING_DIR=$(readlink -f $OPTARG)
+        echo "Input: $STAGING_DIR"
+        ;;
+    o)
+        OUTPUT_DIR=$(readlink -f $OPTARG)
+        echo "Output: $OUTPUT_DIR"
+        ;;
+    ?)
+        echo "$0: invalid option -$OPTARG"
+        usage_and_exit 1
+        ;;
+    esac
+done
+
+CheckRet() {
+    RETVAL=$?
+    if [ $RETVAL -ne 0 ]; then
+        echo "Exit Code $RETVAL"
+        exit $RETVAL
+    fi
+}
+
+VERSION=$(cat $LEGATO_ROOT/version)
+
+FindToolchain() {
+    toolchain_dir_env_name=${TARGET^^}_TOOLCHAIN_DIR
+
+    TOOLCHAIN_DIR=${!toolchain_dir_env_name}
+    if [ -z "$TOOLCHAIN_DIR" ]; then
+        TOOLCHAIN_DIR=$(findtoolchain $TARGET)
+    fi
+}
+
+FindTool() {
+    TOOL_NAME=$1
+    TOOL_VAR_DEST=$2
+
+    TOOL_PATH=$(find $TOOLCHAIN_ROOT/usr/bin $TOOLCHAIN_ROOT/usr/sbin -name $TOOL_NAME | head -1 2> /dev/null)
+    if [ -z "$TOOL_PATH" ]; then
+        echo "Unable to find $TOOL_NAME within toolchain, please update your toolchain."
+        exit 1
+    fi
+
+    export ${TOOL_VAR_DEST}=${TOOL_PATH}
+}
+
+CreateImg_mdm9x15() {
+
+    FindToolchain
+    if [ -z "$TOOLCHAIN_DIR" ]; then
+        echo "Unable to find toolchain"
+        exit 1
+    fi
+
+    TOOLCHAIN_ROOT=$(readlink -f "$TOOLCHAIN_DIR/../../..")
+
+    FindTool "mkyaffs2image" MKYAFFS2
+    FindTool "hdrcnv" HDRCNV
+    FindTool "cwezip" CWEZIP
+
+    PAGE_SIZE=4096
+    OOB_SIZE=160
+    COMPAT_BYTE=00000001
+
+    case $TARGET in
+        ar7)    PID='A911' ;;
+        ar86)   PID='A911' ;;
+        wp7)    PID='9X15' ;;
+        wp85)   PID='Y912'
+                PAGE_SIZE=2048
+                OOB_SIZE=64 ;;
+        *)
+            echo "Unknown product '$TARGET'"
+            exit 1
+        ;;
+    esac
+
+    IMG_TYPE=yaffs2
+
+    echo "$TARGET: Generating the framework image ($IMG_TYPE)"
+    LEGATO_IMG="$OUTPUT_DIR/legato.$IMG_TYPE"
+
+    case $IMG_TYPE in
+        yaffs2)
+            $MKYAFFS2 -c $PAGE_SIZE -s $OOB_SIZE "$STAGING_DIR" "$LEGATO_IMG"
+            CheckRet
+            ;;
+        *)
+            echo "Unknown image type '$IMG_TYPE'"
+            exit 1
+            ;;
+    esac
+
+    echo "$TARGET: Generating the framework cwe"
+    cd $OUTPUT_DIR
+
+    TMPMBN=$OUTPUT_DIR/temp.mbn
+    if [ -f ${TMPMBN}.hdr ] ; then rm -f ${TMPMBN}.hdr; fi
+    if [ -f ${TMPMBN}.cwe ] ; then rm -f ${TMPMBN}.cwe; fi
+    if [ -f ${TMPMBN}.cwe.z ] ; then rm -f ${TMPMBN}.cwe.z; fi
+    if [ -f legato.cwe ] ; then rm -f legato.cwe; fi
+    if [ -f legato.hdr ] ; then rm -f legato.hdr; fi
+    if [ -f legatoz.cwe ] ; then rm -f legatoz.cwe; fi
+    if [ -f legatoz.hdr ] ; then rm -f legatoz.hdr; fi
+
+    $HDRCNV ${LEGATO_IMG} -OH ${TMPMBN}.hdr -IT USER -PT 9X15 -V $VERSION -B $COMPAT_BYTE
+    cat ${TMPMBN}.hdr ${LEGATO_IMG} > ${TMPMBN}.cwe
+
+    # legato.cwe
+    $HDRCNV ${TMPMBN}.cwe -OH legato.hdr -IT APPL -PT $PID -V $VERSION -B $COMPAT_BYTE
+    cat legato.hdr ${TMPMBN}.cwe > legato.cwe
+
+    # legatoz.cwe
+    $CWEZIP ${TMPMBN}.cwe -c -o ${TMPMBN}.cwe.z
+    $HDRCNV ${TMPMBN}.cwe.z -OH legatoz.hdr -IT APPL -PT $PID -V $VERSION -B $COMPAT_BYTE
+    cat legatoz.hdr ${TMPMBN}.cwe.z > legatoz.cwe
+}
+
+case $TARGET in
+    ar7 | wp7 | wp85 | ar86)
+        CreateImg_mdm9x15
+        ;;
+    ?)
+        echo "$0: nothing to do for target $TARGET"
+        ;;
+esac

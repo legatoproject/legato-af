@@ -1,62 +1,45 @@
-# Get setup for cross-building for Sierra Wireless AR7xxx and WP7xxx target devices.
-# Note: they both use the same toolchain.
+# Get setup for cross-building for Sierra Wireless ARXxxx and WPXxxx target devices.
 
-# If the AR7 toolchain dir is not set to anything,
-if [ "$AR7_TOOLCHAIN_DIR" = "" ]
-then
-    # Search for an installed toolchain.
-    export AR7_TOOLCHAIN_DIR=$(findtoolchain ar7)
+# Note: they all currently use the same toolchain. In future that may not be true
+#       but the correct toolchain should be returned by the findtoolchain tool
 
-    if [ "$AR7_TOOLCHAIN_DIR" = "" ]
+set_toolchain_dir ()
+{
+    TARGET=$1
+    toolchain_dir_env_name=${TARGET^^}_TOOLCHAIN_DIR
+
+    if [ "${!toolchain_dir_env_name}" = "" ]
     then
-        echo "Unable to find compatible cross-build toolchain."
-    else
-        echo "AR7_TOOLCHAIN_DIR set to default ($AR7_TOOLCHAIN_DIR)."
+        # Search for an installed toolchain.
+        toolchain_dir=$(findtoolchain $TARGET)
+        if (($? > 0))
+        then
+            return 1
+        fi
+        eval "export ${toolchain_dir_env_name}=$toolchain_dir"
+
+        if [ "${!toolchain_dir_env_name}" = "" ]
+        then
+            echo "Unable to find compatible cross-build toolchain for target '$TARGET'."
+            return 1
+        else
+            echo "${toolchain_dir_env_name} set to default ("${!toolchain_dir_env_name}")."
+        fi
     fi
-else
+
     # Double check that the toolchain is actually installed.
-    if ! [ -f "$AR7_TOOLCHAIN_DIR/arm-poky-linux-gnueabi-gcc" ]
+    if ! [ -f "${!toolchain_dir_env_name}/arm-poky-linux-gnueabi-gcc" ]
     then
-        echo "*** WARNING: AR7 toolchain directory not found in '$AR7_TOOLCHAIN_DIR'"
+        echo "*** WARNING: $TARGET toolchain directory not found in '"${!toolchain_dir_env_name}"'"
+        echo "             Check value set for ${toolchain_dir_env_name}"
+        return 1
     fi
-fi
 
-# If the WP7 toolchain dir is not set to anything,
-if [ "$WP7_TOOLCHAIN_DIR" = "" ]
-then
-    export WP7_TOOLCHAIN_DIR=$(findtoolchain wp7)
+    return 0
+}
 
-    if [ "$WP7_TOOLCHAIN_DIR" = "" ]
-    then
-        echo "Unable to find compatible cross-build toolchain."
-    else
-        echo "WP7_TOOLCHAIN_DIR set to default ($WP7_TOOLCHAIN_DIR)."
-    fi
-else
-    # Double check that the toolchain is actually installed.
-    if ! [ -f "$WP7_TOOLCHAIN_DIR/arm-poky-linux-gnueabi-gcc" ]
-    then
-        echo "*** WARNING: WP7 toolchain directory not found in '$WP7_TOOLCHAIN_DIR'"
-    fi
-fi
-
-# If the AR86 toolchain dir is not set to anything,
-if [ "$AR86_TOOLCHAIN_DIR" = "" ]
-then
-    # Search for an installed toolchain.
-    export AR86_TOOLCHAIN_DIR=$(findtoolchain ar86)
-
-    if [ "$AR86_TOOLCHAIN_DIR" = "" ]
-    then
-        echo "Unable to find compatible cross-build toolchain."
-    else
-        echo "AR86_TOOLCHAIN_DIR set to default ($AR86_TOOLCHAIN_DIR)."
-    fi
-else
-    # Double check that the toolchain is actually installed.
-    if ! [ -f "$AR86_TOOLCHAIN_DIR/arm-poky-linux-gnueabi-gcc" ]
-    then
-        echo "*** WARNING: AR86 toolchain directory not found in '$AR86_TOOLCHAIN_DIR'"
-    fi
-fi
+for t in ar7 wp7 ar86 wp85
+do
+    set_toolchain_dir $t
+done
 

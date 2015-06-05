@@ -1486,6 +1486,10 @@ static void CommandArgHandler
         // The only parameter is the tree name.
         le_arg_AddPositionalCallback(TreeNameArgHandler);
     }
+    else if (strcmp(command, "help") == 0)
+    {
+        PrintHelpAndExit();
+    }
     else
     {
         fprintf(stderr,

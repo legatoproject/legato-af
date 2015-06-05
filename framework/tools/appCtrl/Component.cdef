@@ -3,7 +3,7 @@ requires:
     api:
     {
         le_sup_ctrl.api     [manual-start]
-        le_sup_state.api    [manual-start]
+        le_appInfo.api      [manual-start]
         le_cfg.api          [manual-start]
     }
 }

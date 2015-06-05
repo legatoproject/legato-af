@@ -506,7 +506,14 @@ _msgBufPtr = UnpackString( _msgBufPtr, &{parm.name} );\
         self.numBytes = "%s*sizeof(%s)" % (self.sizeVar, self.type)
         self.address = self.parmName
 
-        self.unpackName = "%s[%s]" % (self.name, self.sizeVar)
+        # Need to init the string to an empty string, in case the function that is called does not
+        # actually return a value in this string. This ensures that a valid string is packed, even
+        # if it is just empty.  The init has to be done in a separate statement, since the size
+        # of the string is variable.
+        #
+        # todo:
+        #  - If/when strings are packed/unpacked like other data, this init may no longer be needed.
+        self.unpackName = "%s[%s]; %s[0]=0" % (self.name, self.sizeVar, self.name)
         self.unpackAddr = self.name
 
         # todo:
@@ -541,15 +548,21 @@ class HandlerParmData(SimpleData):
         # Always an input parameter
         self.direction = DIR_IN
 
+        # TODO: There is additional code in codeGen.FuncImplTemplate, that uses the client data
+        #       block. Should the code below also go there, to be symmetric.
         self.clientPack = """\
-// The input parameters are stored in the client data object, and it is
-// a pointer to this object that is passed down.
+// The handlerPtr and contextPtr input parameters are stored in the client data object, and it is
+// a safe reference to this object that is passed down as the context pointer.  The handlerPtr is
+// not passed down.
 // Create a new client data object and fill it in
 _ClientData_t* _clientDataPtr = le_mem_ForceAlloc(_ClientDataPool);
 _clientDataPtr->handlerPtr = (le_event_HandlerFunc_t)handlerPtr;
 _clientDataPtr->contextPtr = contextPtr;
 _clientDataPtr->callersThreadRef = le_thread_GetCurrent();
-contextPtr = _clientDataPtr;\
+// Create a safeRef to be passed down as the contextPtr
+_LOCK
+contextPtr = le_ref_CreateRef(_HandlerRefMap, _clientDataPtr);
+_UNLOCK\
 """
 
         # Nothing to do in this case

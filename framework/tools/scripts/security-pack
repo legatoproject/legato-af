@@ -1,0 +1,8 @@
+#!/bin/bash
+
+# Script to encrypt data.
+# Customer need to fill this script.
+# $1=path to file
+
+# Here, do nothing but rename the file what it receive.
+cp "$1" "$1.sec"
