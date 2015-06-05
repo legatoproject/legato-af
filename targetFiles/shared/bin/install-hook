@@ -1,0 +1,7 @@
+#!/bin/sh
+
+# Customer need to fill this script. Pre/Post install script path is given as parameter.
+# Exit with any non-zero exit code will be considered as failure.
+# $1 = Script Path
+
+echo "`basename $0`: nothing to execute."

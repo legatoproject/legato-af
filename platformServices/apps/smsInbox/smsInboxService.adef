@@ -1,0 +1,36 @@
+sandboxed: false
+
+executables:
+{
+    smsInboxService = ( $LEGATO_ROOT/components/smsInboxService )
+}
+
+processes:
+{
+    run:
+    {
+        (smsInboxService)
+    }
+
+    faultAction: restart
+}
+
+bindings:
+{
+    smsInboxService.smsInboxService.le_sms -> modemService.le_sms
+    smsInboxService.smsInboxService.le_sim -> modemService.le_sim
+}
+
+requires:
+{
+    configTree: { [r] system }
+}
+
+provides:
+{
+    api:
+    {
+        le_smsInbox1 = smsInboxService.smsInboxService.le_smsInbox1
+        le_smsInbox2 = smsInboxService.smsInboxService.le_smsInbox2
+    }
+}

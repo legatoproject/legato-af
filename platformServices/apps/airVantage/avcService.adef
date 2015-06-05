@@ -1,15 +1,32 @@
+
 sandboxed: false
+
+// start: manual
 
 executables:
 {
-    avcDaemon = ( $LEGATO_ROOT/components/airVantage )
+    avcDaemon = ( $LEGATO_ROOT/components/airVantage/avcDaemon
+                  $LEGATO_ROOT/components/airVantage/avcAppUpdate )
+}
+
+bundles:
+{
+    file:
+    {
+        [x] avcStart.sh /bin/
+    }
 }
 
 processes:
 {
+    envVars:
+    {
+        LE_LOG_LEVEL = DEBUG
+    }
+
     run:
     {
-        (avcDaemon)
+        (avcStart.sh)
     }
 
     faultAction: restart
@@ -19,7 +36,22 @@ provides:
 {
     api:
     {
-        avcDaemon.airVantage.le_avc
+        avcDaemon.avcDaemon.le_avc
     }
 }
 
+requires:
+{
+    configTree:
+    {
+        [w] system
+    }
+}
+
+bindings:
+{
+    avcDaemon.avcAppUpdate.le_update -> <root>.le_update
+    avcDaemon.avcAppUpdate.le_instStat -> <root>.le_instStat
+    avcDaemon.avcAppUpdate.le_sup_ctrl -> <root>.le_sup_ctrl
+    avcDaemon.avcAppUpdate.le_appInfo -> <root>.le_appInfo
+}

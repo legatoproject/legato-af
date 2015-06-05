@@ -29,15 +29,27 @@ message("Building Legato for target ${LEGATO_TARGET}")
 # Import platform adapter environment variables.
 set(LEGATO_AUDIO_PA $ENV{LEGATO_AUDIO_PA})
 set(LEGATO_MODEM_PA $ENV{LEGATO_MODEM_PA})
+set(LEGATO_MODEM_PA_ECALL $ENV{LEGATO_MODEM_PA_ECALL})
 set(LEGATO_GNSS_PA $ENV{LEGATO_GNSS_PA})
-set(LEGATO_MON_PA $ENV{LEGATO_MON_PA})
+set(LEGATO_AVC_PA $ENV{LEGATO_AVC_PA})
+set(LEGATO_SECSTORE_PA $ENV{LEGATO_SECSTORE_PA})
+set(LEGATO_FWUPDATE_PA $ENV{LEGATO_FWUPDATE_PA})
 
 # Default Target configuration
 set(LEGATO_EMBEDDED CACHE BOOL TRUE "Target is an embedded device")
 set(LEGATO_COMPONENTS_MODEM "AT" CACHE STRING "Legato Modem Platform-Adapter to build")
 set(LEGATO_COMPONENTS_GNSS "AT" CACHE STRING "Legato Gnss Platform-Adapter to build")
 set(LEGATO_COMPONENTS_AUDIO "STUB" CACHE STRING "Legato Audio Platform-Adapter to build")
-set(LEGATO_COMPONENTS_MONITORING "AT" CACHE STRING "Legato Monitoring Platform-Adapter to build")
+set(LEGATO_COMPONENTS_AVC "AT" CACHE STRING "Legato AirVantage Controller Platform-Adapter to build")
+set(LEGATO_COMPONENTS_SECSTORE "AT" CACHE STRING "Legato Secure Storage Controller Platform-Adapter to build")
+set(LEGATO_COMPONENTS_FWUPDATE "AT" CACHE STRING "Legato FwUpdate Platform-Adapter to build")
+
+if(INCLUDE_ECALL EQUAL 1)
+    add_definitions(-DINCLUDE_ECALL)
+    message("Including eCall to target ${LEGATO_TARGET}")
+else()
+    message("Excluding eCall from target ${LEGATO_TARGET}")
+endif()
 
 # Target: ar6
 if(LEGATO_TARGET MATCHES "ar6")
@@ -47,37 +59,35 @@ elseif(LEGATO_TARGET MATCHES "ar7")
     set(LEGATO_COMPONENTS_MODEM "QMI")
     set(LEGATO_COMPONENTS_GNSS "QMI")
     set(LEGATO_COMPONENTS_AUDIO "ar7")
-    set(LEGATO_COMPONENTS_MONITORING "QMI")
-
-    if(INCLUDE_ECALL EQUAL 1)
-        add_definitions(-DINCLUDE_ECALL)
-        set(LEGATO_MODEM_PA_ECALL $ENV{LEGATO_MODEM_PA_ECALL})
-        message("Including eCall to target ${LEGATO_TARGET}")
-    else()
-        message("Excluding eCall from target ${LEGATO_TARGET}")
-    endif()
-
-# Target: wp7
-elseif(LEGATO_TARGET MATCHES "wp7")
-    set(LEGATO_COMPONENTS_MODEM "QMI")
-    set(LEGATO_COMPONENTS_GNSS "QMI")
-    set(LEGATO_COMPONENTS_AUDIO "wp7")
-    set(LEGATO_COMPONENTS_MONITORING "QMI")
+    set(LEGATO_COMPONENTS_AVC "QMI")
+    set(LEGATO_COMPONENTS_SECSTORE "QMI")
+    set(LEGATO_COMPONENTS_FWUPDATE "QMI")
 
 # Target: ar86
 elseif(LEGATO_TARGET MATCHES "ar86")
     set(LEGATO_COMPONENTS_MODEM "QMI")
     set(LEGATO_COMPONENTS_GNSS "QMI")
     set(LEGATO_COMPONENTS_AUDIO "ar86")
-    set(LEGATO_COMPONENTS_MONITORING "QMI")
+    set(LEGATO_COMPONENTS_AVC "QMI")
+    set(LEGATO_COMPONENTS_SECSTORE "QMI")
+    set(LEGATO_COMPONENTS_FWUPDATE "QMI")
 
-    if(INCLUDE_ECALL EQUAL 1)
-        add_definitions(-DINCLUDE_ECALL)
-        set(LEGATO_MODEM_PA_ECALL $ENV{LEGATO_MODEM_PA_ECALL})
-        message("Including eCall to target ${LEGATO_TARGET}")
-    else()
-        message("Excluding eCall from target ${LEGATO_TARGET}")
-    endif()
+# Target: wp7
+elseif(LEGATO_TARGET MATCHES "wp7")
+    set(LEGATO_COMPONENTS_MODEM "QMI")
+    set(LEGATO_COMPONENTS_GNSS "QMI")
+    set(LEGATO_COMPONENTS_AUDIO "wp7")
+    set(LEGATO_COMPONENTS_AVC "QMI")
+    set(LEGATO_COMPONENTS_SECSTORE "QMI")
+    set(LEGATO_COMPONENTS_FWUPDATE "QMI")
+
+# Target: wp85
+elseif(LEGATO_TARGET MATCHES "wp85")
+    set(LEGATO_COMPONENTS_MODEM "QMI")
+    set(LEGATO_COMPONENTS_GNSS "QMI")
+    set(LEGATO_COMPONENTS_AVC "QMI")
+    set(LEGATO_COMPONENTS_SECSTORE "QMI")
+    set(LEGATO_COMPONENTS_FWUPDATE "QMI")
 
 # Target: raspi
 elseif(LEGATO_TARGET MATCHES "raspi")
@@ -87,7 +97,9 @@ elseif(LEGATO_TARGET MATCHES "virt")
     set(LEGATO_COMPONENTS_MODEM "simu")
     set(LEGATO_COMPONENTS_GNSS "simu")
     set(LEGATO_COMPONENTS_AUDIO "simu")
-    set(LEGATO_COMPONENTS_MONITORING "simu")
+    set(LEGATO_COMPONENTS_AVC "simu")
+    set(LEGATO_COMPONENTS_SECSTORE "simu")
+    set(LEGATO_COMPONENTS_FWUPDATE "simu")
 
 # Target: localhost
 elseif(LEGATO_TARGET MATCHES "localhost")
@@ -150,13 +162,8 @@ else()
     add_definitions(-g -O0)
 endif()
 
-if(USE_CLANG EQUAL 1)
-    # All warnings
-    add_definitions(-Wall)
-else()
-    # All warnings and treat warnings as errors.
-    add_definitions(-Wall -Werror)
-endif()
+# All warnings and treat warnings as errors.
+add_definitions(-Wall -Werror)
 
 # Target is x86_64 or x86 ?
 get_filename_component(COMPILER_NAME ${CMAKE_C_COMPILER} NAME_WE)
@@ -215,6 +222,8 @@ set (LEGATO_COMPONENTS_AT_MANAGER_INCLUDE_DIRS
         modemServices/platformAdaptor/at/atManager/devices/adapter_layer/inc
         modemServices/platformAdaptor/at/atManager/devices/uart/inc
         )
+
+add_custom_target(api_headers)
 
 ## Building
 

@@ -9,8 +9,8 @@ Welcome to Legato!
         bison build-essential chrpath cifs-utils cmake coreutils curl desktop-file-utils
         diffstat docbook-utils doxygen fakeroot flex g++ gawk gcc git-core gitk graphviz
         help2man libgmp3-dev libmpfr-dev libreadline6-dev libtool libxml2-dev libxml-libxml-perl
-        make m4 python-pip python-jinja2 python-pysqlite2 quilt samba scons sed subversion
-        texi2html texinfo unzip wget
+        make m4 ninja-build python-pip python-jinja2 python-pysqlite2 quilt samba scons sed
+        subversion texi2html texinfo unzip wget
 
   - Cross toolchain(s).
 
@@ -48,8 +48,10 @@ Welcome to Legato!
 
 Target |  Description                    | Environment variable
 :------|---------------------------------|:-----------------------
-   ar7 | Sierra Wireless AR7xxx module   | ```AR7_TOOLCHAIN_DIR```
-   wp7 | Sierra Wireless WP7xxx module   | ```WP7_TOOLCHAIN_DIR```
+  ar7  | Sierra Wireless AR7xxx module   | ```AR7_TOOLCHAIN_DIR```
+  ar86 | Sierra Wireless AR86xx module   | ```AR86_TOOLCHAIN_DIR```
+  wp7  | Sierra Wireless WP7xxx module   | ```WP7_TOOLCHAIN_DIR```
+  wp85 | Sierra Wireless WP85xx module   | ```WP85_TOOLCHAIN_DIR```
 
 #### Documentation
 
@@ -91,6 +93,10 @@ Target |  Description                    | Environment variable
    ```./cmake``` - contains CMake scripts used by the build system.
 
    ```./framework``` - contains the source code for the Legato framework itself.
+
+   ```./platformServices``` - contains source code for apps, such as modemService
+                              and positioningService, that provide access to services offered
+                              by the platform.
 
    ```./targetFiles``` - contains files that are for installation on target devices.
 

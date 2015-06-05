@@ -9,9 +9,12 @@ APPS_BACKUP_ROOT=$LEGATO_ROOT/appsBackup
 APPS_SYS_CFG_BACKUP=sysCfgBack
 APPS_CFG_BACKUP=cfgBack
 SANDBOX_ROOT=/tmp/legato/sandboxes
+PREINSTALL_SCRIPT_RELATIVE_PATH=script/pre-install
+POSTINSTALL_SCRIPT_RELATIVE_PATH=script/post-install
 
 ACTION=$1
 APP_NAME=$(basename "$2" | sed 's/\.[^.]*$//')
+UNPACKED_APP_DIR_PATH=${3%/}
 
 exitCode=0
 
@@ -34,19 +37,15 @@ fi
 PrintUsage()
 {
     echo
-    echo "USAGE: `basename $0` [start|stop|restart|remove|status|version|info] APP_NAME [ APP_NAME ... ]"
-    echo "   or: `basename $0` [start|stop|restart|remove|status|version|info] '*'"
-    echo "   or: `basename $0` [list|status|info]"
-    echo "   or: `basename $0` install APP_NAME"
+    echo "USAGE: `basename $0` install APP_NAME UNPACKED_APP_DIR_PATH"
+    echo "   or: `basename $0` remove APP_NAME"
+    echo "   or: `basename $0` restore APP_NAME"
     echo
-    echo "In the first form, names of one or more applications are given."
+    echo "In the first form, app will be installed from specified path."
     echo
-    echo "In the second form, all installed applications will be acted upon."
+    echo "In the second form, specified app will be removed."
     echo
-    echo "In the third form, no application names are given."
-    echo
-    echo "In the fourth form, one application name is given and the application file must be"
-    echo "provided on stdin."
+    echo "In the third form, specified app will be restored if any backup is available."
     echo
 }
 
@@ -68,44 +67,6 @@ AppStatus()
     while [ $# -ge 1 ]
     do
         appCtrl "status" "$1"
-
-        if [ $? -ne 0 ]
-        then
-            exit 1
-        fi
-
-        shift
-    done
-}
-
-
-AppInfo()
-{
-    if [ $# -eq 0 ]
-    then
-        appCtrl "info"
-        exit $?
-    fi
-
-    while [ $# -ge 1 ]
-    do
-        appCtrl "info" "$1"
-
-        if [ $? -ne 0 ]
-        then
-            exit 1
-        fi
-
-        shift
-    done
-}
-
-
-AppVersion()
-{
-    while [ $# -ge 1 ]
-    do
-        appCtrl "version" "$1"
 
         if [ $? -ne 0 ]
         then
@@ -162,49 +123,35 @@ StopApp()
 InstallApp()
 # Takes a single application name as its only argument.
 {
-    echo "Installing app '$1'..."
+    appName="$1"
+    unpackedAppDirPath="$2"
+    preInstallScriptPath=$unpackedAppDirPath/$PREINSTALL_SCRIPT_RELATIVE_PATH
 
-    (
-        # Create the directory to install into.
-        mkdir -p "$APPS_ROOT/$1" &&
-
-        # Unpack the app into the app's install directory.
-        if ! which bsdtar > /dev/null 2>&1
-        then
-            tar xj -C "$APPS_ROOT/$1"
-        else
-            bsdtar xjop -f - -C "$APPS_ROOT/$1"
-        fi
-
-    )
-
-    if [ $? -ne 0 ]
+    # Check whether any pre-install script exists. If yes pass it to install-hook.
+    if [ -f "$preInstallScriptPath" ]
     then
-        rm -r "$APPS_ROOT/$1"
-        echo "Failed to unpack the application."
-        return 1
+        echo "Running pre-install script"
+
+        install-hook "$preInstallScriptPath"
+
+        if [ $? -ne 0 ]
+        then
+            echo "***Error: PreInstall script failed"
+            return 1
+        fi
     fi
 
     (
-        # Fix up the permissions.
-        (
-            if ! which bsdtar > /dev/null 2>&1
-            then
-                chown -R root:root "$APPS_ROOT/$1"
-            fi
-        ) &&
-        ( find "$APPS_ROOT/$1" -type d | xargs chmod a+x-ws ) &&
-        ( find "$APPS_ROOT/$1" ! -type d | xargs chmod a-xws ) &&
-        ( chmod -R a+x "$APPS_ROOT/$1/bin" ) &&
-
+        # Move the install directory of the app into the back up directory.
+        ( mv "$unpackedAppDirPath"  "$APPS_ROOT/$appName") &&
         # Install the application's configuration into the root user's configuration tree.
-        ( appCfgInstall "$1" ) &&
+        ( appCfgInstall "$appName" ) &&
 
         # Create a user account for the app.
-        ( appUserAdd "$1" ) &&
+        ( appUserAdd "$appName" ) &&
 
         # Set the permissions for the app.
-        ( appSetFilePermissions "$1" ) &&
+        ( appSetFilePermissions "$appName" ) &&
 
         # Load the latest IPC binding configuration into the Service Directory.
         ( sdir load )
@@ -212,10 +159,26 @@ InstallApp()
 
     if [ $? -ne 0 ]
     then
-        rm -r "$APPS_ROOT/$1"
-        echo "Failed to install the unpacked application"
+        rm -rf "$APPS_ROOT/$appName"
+        echo "FAILED"
         return 1
     else
+        # Check whether any post-install script exists. If yes pass it to install-hook.
+        postInstallScriptPath=$APPS_ROOT/$appName/$POSTINSTALL_SCRIPT_RELATIVE_PATH
+
+        if [ -f "$postInstallScriptPath" ]
+        then
+            echo "Running post-install script"
+
+            install-hook "$postInstallScriptPath"
+
+            if [ $? -ne 0 ]
+            then
+                rm -rf "$APPS_ROOT/$appName"
+                echo "***Error: PostInstall script failed"
+                return 1
+            fi
+        fi
         echo "DONE"
     fi
 }
@@ -374,6 +337,8 @@ RestoreBackupApp()
     then
         echo "FAILED to restore original version of app $appName"
         return 1
+    else
+        echo "DONE"
     fi
 }
 
@@ -418,23 +383,6 @@ fi
 
 case "$ACTION" in
 
-start)
-    CheckAppNameAvail
-    StartApp $APP_LIST
-    ;;
-
-stop)
-    CheckAppNameAvail
-    StopApp $APP_LIST
-    ;;
-
-restart)
-    CheckAppNameAvail
-    StopApp $APP_LIST
-    exitCode=0
-    StartApp $APP_LIST
-    ;;
-
 install)
     CheckAppNameAvail
 
@@ -443,6 +391,19 @@ install)
     then
         echo "***ERROR: One specific application name must be provided for install."
         PrintUsage
+        exit 1
+    fi
+
+    if [ "$UNPACKED_APP_DIR_PATH" = "" ]
+    then
+        echo "***ERROR: Missing app package path."
+        PrintUsage
+        exit 1
+    fi
+
+    if ! [ -d "$UNPACKED_APP_DIR_PATH" ]
+    then
+        echo "***ERROR: Provided wrong app package path: $UNPACKED_APP_DIR_PATH."
         exit 1
     fi
 
@@ -464,7 +425,7 @@ install)
 
     if [[ $appStatus == "not_installed" ]]
     then
-        InstallApp $APP_NAME
+        InstallApp "$APP_NAME" "$UNPACKED_APP_DIR_PATH"
 
         installStatus=$?
 
@@ -514,21 +475,21 @@ remove)
     done
     ;;
 
-status)
-    AppStatus $APP_LIST
-    ;;
-
-version)
+restore)
     CheckAppNameAvail
-    AppVersion $APP_LIST
-    ;;
 
-list)
-    ListApps
-    ;;
+    # Only one, specific application name allowed.
+    if [ "$APP_NAME" = "*" ]
+    then
+        echo "***ERROR: One specific application name must be provided for install."
+        PrintUsage
+        exit 1
+    fi
 
-info)
-    AppInfo $APP_LIST
+    echo "Restoring APP: $APP_NAME"
+    # Now call the restoring the app from backup
+    RestoreBackupApp $APP_NAME
+    exitCode=$?
     ;;
 
 *)
@@ -539,3 +500,5 @@ info)
 esac
 
 exit $exitCode
+
+

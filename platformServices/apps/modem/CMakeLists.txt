@@ -14,40 +14,8 @@ set(MODEM_COMPONENTS_DIR    ${LEGATO_ROOT}/components/modemServices)
 
 # TODO: Remove this when mk tools are doing dependency checking.
 set(LEGATO_MODEM_DAEMON_FILES
-        ${MODEM_COMPONENTS_DIR}/modemDaemon/Component.cdef
-        ${MODEM_COMPONENTS_DIR}/modemDaemon/le_fwupdate.c
-        ${MODEM_COMPONENTS_DIR}/modemDaemon/le_info.c
-        ${MODEM_COMPONENTS_DIR}/modemDaemon/le_mcc.c
-        ${MODEM_COMPONENTS_DIR}/modemDaemon/le_mcc_local.h
-        ${MODEM_COMPONENTS_DIR}/modemDaemon/le_mdc.c
-        ${MODEM_COMPONENTS_DIR}/modemDaemon/le_mdc_local.h
-        ${MODEM_COMPONENTS_DIR}/modemDaemon/le_mrc.c
-        ${MODEM_COMPONENTS_DIR}/modemDaemon/le_mrc_local.h
-        ${MODEM_COMPONENTS_DIR}/modemDaemon/le_ms.c
-        ${MODEM_COMPONENTS_DIR}/modemDaemon/le_sim.c
-        ${MODEM_COMPONENTS_DIR}/modemDaemon/le_sim_local.h
-        ${MODEM_COMPONENTS_DIR}/modemDaemon/le_sms.c
-        ${MODEM_COMPONENTS_DIR}/modemDaemon/le_sms_local.h
-        ${MODEM_COMPONENTS_DIR}/modemDaemon/le_ips.c
-        ${MODEM_COMPONENTS_DIR}/modemDaemon/le_temp_local.h
-        ${MODEM_COMPONENTS_DIR}/modemDaemon/le_temp.c
-        ${MODEM_COMPONENTS_DIR}/modemDaemon/smsPdu.c
-        ${MODEM_COMPONENTS_DIR}/modemDaemon/smsPdu.h
-        ${MODEM_COMPONENTS_DIR}/modemDaemon/cdmaPdu.c
-        ${MODEM_COMPONENTS_DIR}/modemDaemon/cdmaPdu.h
+        ${MODEM_COMPONENTS_DIR}/modemDaemon/*
     )
-
-if(INCLUDE_ECALL EQUAL 1)
-    # TODO: Remove this when mk tools are doing dependency checking.
-    set(LEGATO_MODEM_DAEMON_FILES
-            ${MODEM_COMPONENTS_DIR}/modemDaemon/asn1Msd.h
-            ${MODEM_COMPONENTS_DIR}/modemDaemon/asn1Msd.c
-            ${MODEM_COMPONENTS_DIR}/modemDaemon/le_ecall_local.h
-            ${MODEM_COMPONENTS_DIR}/modemDaemon/le_ecall.c
-        )
-    set(C_FLAGS   --cflags=-DINCLUDE_ECALL)
-endif()
-
 
 if (LEGATO_MODEM_PA MATCHES ".*/pre-built/.*")
 
@@ -96,32 +64,13 @@ elseif(LEGATO_COMPONENTS_MODEM MATCHES "QMI")
     message(STATUS "Building QMI modem PA from sources.")
 
     set(LEGATO_MODEM_PA_FILES
-            ${LEGATO_MODEM_PA}/Component.cdef
-            ${LEGATO_MODEM_PA}/info_qmi.h
-            ${LEGATO_MODEM_PA}/mcc_qmi.h
-            ${LEGATO_MODEM_PA}/mdc_qmi.h
-            ${LEGATO_MODEM_PA}/mrc_qmi.h
-            ${LEGATO_MODEM_PA}/pa_info_qmi.c
-            ${LEGATO_MODEM_PA}/pa_mcc_qmi.c
-            ${LEGATO_MODEM_PA}/pa_mdc_qmi.c
-            ${LEGATO_MODEM_PA}/pa_mrc_qmi.c
-            ${LEGATO_MODEM_PA}/pa_qmi.c
-            ${LEGATO_MODEM_PA}/pa_qmi_local.h
-            ${LEGATO_MODEM_PA}/pa_sim_qmi.c
-            ${LEGATO_MODEM_PA}/pa_sms_qmi.c
-            ${LEGATO_MODEM_PA}/pa_temp_qmi.c
-            ${LEGATO_MODEM_PA}/sim_qmi.h
-            ${LEGATO_MODEM_PA}/sms_qmi.h
-            ${LEGATO_MODEM_PA}/pa_ips_qmi.c
-            ${LEGATO_MODEM_PA}/swiQmi.c
-            ${LEGATO_MODEM_PA}/swiQmi.h
+            ${LEGATO_MODEM_PA}/*
         )
 
     if(LEGATO_MODEM_PA_ECALL MATCHES ".*/qmi/.*")
             # TODO: Remove this when mk tools are doing dependency checking.
-            set(LEGATO_MODEM_PA_FILES
-                    ${LEGATO_MODEM_PA_ECALL}/componentInit.c
-                    ${LEGATO_MODEM_PA_ECALL}/pa_ecall_qmi.c
+            list(APPEND LEGATO_MODEM_PA_FILES
+                    ${LEGATO_MODEM_PA_ECALL}/*
                 )
     endif()
 
@@ -141,7 +90,6 @@ else()
     message(FATAL_ERROR "Legato Modem Platform Adaptor '${LEGATO_COMPONENTS_MODEM}' not supported.")
 
 endif()
-
 
 mkapp(  modemService.adef
             -c ${MODEM_COMPONENTS_DIR}/platformAdaptor/qmi

@@ -23,61 +23,16 @@ elseif (NOT DEFINED LEGATO_COMPONENTS_AUDIO)
 
     message(FATAL_ERROR "Legato Audio Platform Adaptor (LEGATO_COMPONENTS_AUDIO) not selected.")
 
-elseif (LEGATO_COMPONENTS_AUDIO MATCHES "ar7")
+elseif ((LEGATO_COMPONENTS_AUDIO MATCHES "ar7") OR
+        (LEGATO_COMPONENTS_AUDIO MATCHES "ar86") OR
+        (LEGATO_COMPONENTS_AUDIO MATCHES "wp7") OR
+        (LEGATO_COMPONENTS_AUDIO MATCHES "wp85"))
 
-    message(STATUS "Building AR7 audio PA from sources.")
-
-    ## TODO: Remove this when the mk tools do dependency checking.
-    set (AUDIO_PA_SOURCES
-            ${LEGATO_AUDIO_PA}/pa_audio_ar7.c
-            ${LEGATO_AUDIO_PA}/pa_audio.c
-            ${LEGATO_AUDIO_PA}/pa_audio_local.h
-            ${LEGATO_AUDIO_PA}/swiQmi.c
-            ${LEGATO_AUDIO_PA}/swiQmi.h
-        )
-
-    set (AUDIO_PA_PROPRIETARY_INCLUDES
-            -i ${LEGATO_ROOT}/proprietary/qct/inc/framework
-            -i ${LEGATO_ROOT}/proprietary/qct/inc/services
-        )
-
-    set(LINK_DIRECTIVES     --ldflags=-lqmi_cci
-                            --ldflags=-lqmiservices
-                            --ldflags=${TARGET_SYSROOT}/usr/lib/libsierra_qcsi.a
-                            )
-
-elseif (LEGATO_COMPONENTS_AUDIO MATCHES "wp7")
-
-    message(STATUS "Building WP7 audio PA from sources.")
+    message(STATUS "Building audio PA from sources.")
 
     ## TODO: Remove this when the mk tools do dependency checking.
     set (AUDIO_PA_SOURCES
-            ${LEGATO_AUDIO_PA}/pa_audio_wp7.c
             ${LEGATO_AUDIO_PA}/pa_audio.c
-            ${LEGATO_AUDIO_PA}/pa_audio_local.h
-            ${LEGATO_AUDIO_PA}/swiQmi.c
-            ${LEGATO_AUDIO_PA}/swiQmi.h
-        )
-
-    set (AUDIO_PA_PROPRIETARY_INCLUDES
-            -i ${LEGATO_ROOT}/proprietary/qct/inc/framework
-            -i ${LEGATO_ROOT}/proprietary/qct/inc/services
-        )
-
-    set(LINK_DIRECTIVES     --ldflags=-lqmi_cci
-                            --ldflags=-lqmiservices
-                            --ldflags=${TARGET_SYSROOT}/usr/lib/libsierra_qcsi.a
-                            )
-
-elseif (LEGATO_COMPONENTS_AUDIO MATCHES "ar86")
-
-    message(STATUS "Building AR86 audio PA from sources.")
-
-    ## TODO: Remove this when the mk tools do dependency checking.
-    set (AUDIO_PA_SOURCES
-            ${LEGATO_AUDIO_PA}/pa_audio_ar86.c
-            ${LEGATO_AUDIO_PA}/pa_audio.c
-            ${LEGATO_AUDIO_PA}/pa_audio_local.h
             ${LEGATO_AUDIO_PA}/swiQmi.c
             ${LEGATO_AUDIO_PA}/swiQmi.h
         )
@@ -122,11 +77,13 @@ mkapp(  audioService.adef
             -i ${AUDIO_COMPONENT_DIR}/platformAdaptor
             ${AUDIO_PA_PROPRIETARY_INCLUDES}
             -v
+            --cflags="-g"
             ${LINK_DIRECTIVES}
         DEPENDS
             ## TODO: Remove all this when the mk tools do dependency checking.
             ${AUDIO_COMPONENT_DIR}/Component.cdef
             ${AUDIO_COMPONENT_DIR}/le_audio.c
+            ${AUDIO_COMPONENT_DIR}/le_media.c
             ${LEGATO_AUDIO_PA}/Component.cdef
             ${LEGATO_ROOT}/interfaces/audio/le_audio.api
             ${AUDIO_PA_SOURCES}

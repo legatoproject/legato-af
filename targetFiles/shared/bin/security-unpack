@@ -1,0 +1,7 @@
+#!/bin/sh
+
+# Customer need to fill this script. This script is used to decrypt data. Data is received via STDIN
+# Exit with any non-zero exit code will be considered as failure.
+
+# Here, do nothing but cat what it receives via stdin.
+cat -

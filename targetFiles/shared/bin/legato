@@ -12,8 +12,8 @@ StopLegatoTimeout=10
 
 ACTION=$1
 
-# Make sure /usr/local/bin is in the path.
-PATH=/usr/local/bin:$PATH
+# Make sure /usr/local/bin and /sbin is in the path.
+PATH=/usr/local/bin:/sbin:$PATH
 
 
 # Check if ps supports arguments.  If so, we need to run "ps aux" to be able
@@ -24,6 +24,15 @@ then
     PS=ps
 fi
 
+# Detect the PCONFIG file. This will disable the positioning service
+if [ -f /mnt/userrw/PCONFIG ]
+then
+    ENABLE_POS=false
+    ENABLE_OLDAV=false
+else
+    ENABLE_POS=true
+    ENABLE_OLDAV=true
+fi
 
 PrintUsage()
 {
@@ -54,6 +63,12 @@ LegatoStatus()
 
 StartLegato()
 {
+    # Provide information about the device model
+    if [ ! -f "/tmp/deviceModel" ]
+    then
+        bsinfo -l | grep ' - '`bsinfo -t | cut -d ' ' -f 4` | sed 's/^BS//;s/ - .*$//' > /tmp/deviceModel
+    fi
+
     # Make sure it isn't running already.
     if IsRunning supervisor
     then
@@ -69,7 +84,7 @@ StartLegato()
     # Configure the Supervisor to start the sysProcs.
     mkdir -p $SUPERVISOR_CONFIG_ROOT &&
     > $SUPERVISOR_CONFIG_ROOT/sysProcs
-    for procName in serviceDirectory logCtrlDaemon configTree watchdog
+    for procName in serviceDirectory logCtrlDaemon configTree watchdog updateDaemon
     do
         if [ ! -f "/usr/local/bin/$procName" ]
         then
@@ -102,8 +117,12 @@ StartLegato()
 
 StopLegato()
 {
+    wasRunning="no"
+
     if IsRunning supervisor
     then
+        wasRunning="yes"
+
         echo "Stopping Legato... "
 
         # Tell the Supervisor to shutdown Legato.
@@ -145,12 +164,24 @@ StopLegato()
     # Make sure the serviceDirectory isn't still running.
     if IsRunning serviceDirectory
     then
+        wasRunning="yes"
+
         echo "Service Directory still running. Killing it now ..."
+
         killall serviceDirectory > /dev/null 2>&1
+
+    fi
+
+    # supervisor mounted smack. supervisor is dead now so unmount smack else it may
+    # give us trouble if we need to unmount the things smack is mounted to
+    umount /opt/legato/smack
+
+    if [ $wasRunning = "yes" ]
+    then
+        echo "DONE."
     else
         echo "Legato wasn't running."
     fi
-    echo "DONE."
 }
 
 
@@ -158,6 +189,143 @@ AddUserToAppBinding()
 {
     config set users/$1/bindings/$2/app        $3
     config set users/root/bindings/$2/interface  $2
+}
+
+# Add binding configuration needed by the framework tools.
+# TODO: Remove this when the tools becomes command-line apps.
+# This should probably read a file created by the build to determine
+# what needs to be bound.
+AddBindings()
+{
+    # cm tool
+    AddUserToAppBinding root le_mdc modemService &&
+    AddUserToAppBinding root le_mrc modemService &&
+    AddUserToAppBinding root le_sim modemService &&
+    AddUserToAppBinding root le_sms modemService &&
+    AddUserToAppBinding root le_temp modemService &&
+    AddUserToAppBinding root le_adc modemService &&
+    AddUserToAppBinding root le_data dataConnectionService
+
+    # fwupdate tool
+    AddUserToAppBinding root le_info modemService &&
+    AddUserToAppBinding root le_fwupdate modemService
+
+    # agent
+    AddUserToAppBinding root le_posCtrl positioningService &&
+    AddUserToAppBinding root le_pos positioningService
+}
+
+StartupScriptMissing()
+{
+    ! ls /mnt/flash/startup/* > /dev/null 2>&1
+}
+
+StartupScriptOld()
+{
+    ! diff /mnt/flash/startup /mnt/flash/startupDefaults > /dev/null 2>&1
+}
+
+CopyDefaultsToStartup()
+{
+    mkdir -p /mnt/flash/startup
+    if ! cp -a /mnt/flash/startupDefaults/* /mnt/flash/startup/
+    then
+        echo "Copying default startup scripts failed"
+        exit 1
+    fi
+    echo "DONE."
+}
+
+BackupOldStartup()
+{
+    rm -rf /mnt/flash/startupBackups
+    if ! mv /mnt/flash/startup /mnt/flash/startupBackups
+    then
+        echo "Backing up old startup scripts failed"
+        exit 1
+    fi
+    echo "DONE."
+}
+
+InstallStartupScripts()
+{
+    echo "STARTUP SCRIPTS MISSING."
+    echo "Installing startup scripts..."
+
+    CopyDefaultsToStartup
+
+}
+
+UpdateStartupScripts()
+{
+    echo "STARTUP SCRIPTS OUT OF DATE."
+    echo "Backing up old startup scripts to /mnt/flash/startupBackups..."
+
+    BackupOldStartup
+
+    echo "Installing new startup scripts..."
+
+    CopyDefaultsToStartup
+}
+
+# Remove functions always assume we are removing from /mnt/flash
+# and never from built in /mnt/legato. /mnt/flash may or may not
+# be blank but we will try to delete anyway.
+RemoveAppUsers()
+{
+    for app in $(ls /mnt/flash/opt/legato/apps)
+    do
+        appName="app$app"
+        /usr/sbin/deluser "$appName"
+        rm -rf "/home/$appName"
+    done
+}
+
+RemoveLegato()
+{
+    echo "Removing old install"
+    RemoveAppUsers
+    rm -rf /mnt/flash/usr/local/*
+    rm -rf /mnt/flash/opt/*
+}
+
+UpdateAndRunApps()
+{
+    # Get the new app list
+    APP_LIST=`ls /usr/local/bin/apps`
+
+    if [ $ENABLE_POS = "false" ]
+    then
+        APP_LIST=$(echo $APP_LIST | sed 's/positioningService\.[^ ]*//')
+        echo "Skipping installation of positioningService due to configuration"
+    fi
+
+    if [ $ENABLE_OLDAV = "false" ]
+    then
+        APP_LIST=$(echo $APP_LIST | sed 's/airvantage\.[^ ]*//')
+        echo "Skipping installation of M3DA airvantage app due to configuration"
+    fi
+
+    # Install new versions of the bundled apps.
+    for appFile in $APP_LIST
+    do
+        APP_NAME=$(basename "$appFile" | sed "s/\.[^.]*$//") &&
+        cat /usr/local/bin/apps/$appFile | /usr/local/bin/app install ""$APP_NAME""
+    done
+
+    # Start the bundled apps.
+    for appFile in $APP_LIST
+    do
+        APP_NAME=$(basename "$appFile" | sed "s/\.[^.]*$//") &&
+        /usr/local/bin/app start $APP_NAME
+    done
+}
+
+InstallApps()
+{
+    AddBindings &&
+
+    UpdateAndRunApps
 }
 
 # This function is run during the boot sequence to see if a new Legato
@@ -169,7 +337,7 @@ BootCheck()
         echo "No legato installed in /mnt/legato"
     fi
 
-    if ! diff /mnt/legato/opt/legato/version /mnt/flash/opt/legato/version > /dev/null
+    if ! diff /mnt/legato/opt/legato/version /mnt/flash/opt/legato/builtInVersion >/dev/null 2>&1
     then
         echo "*** Initializing new Legato version ***"
 
@@ -178,55 +346,28 @@ BootCheck()
         then
             rm -fr /mnt/flash/startupDefaults
         fi
-        cp -R /mnt/legato/mnt/flash/startupDefaults /mnt/flash/startupDefaults
+        cp -a /mnt/legato/mnt/flash/startupDefaults /mnt/flash/
         echo "DONE"
+
+
+        # remove any possible left-over or corrupted legato files in /mnt/flash
+        RemoveLegato
+        # Copy over built in legato to /mnt/flash/
+        cp -a /mnt/legato/opt /mnt/flash/
 
         # Make sure the startup scripts are executable and owned by root.
         chown -R root:root /mnt/flash/startupDefaults &&
         chmod -R u+x /mnt/flash/startupDefaults || exit 1
 
-        # If there are no startup scripts installed yet, install them
-        if ! ls /mnt/flash/startup/* > /dev/null 2>&1
+        if StartupScriptMissing
         then
-            echo "STARTUP SCRIPTS MISSING."
-            echo "Installing startup scripts..."
-
-            mkdir -p /mnt/flash/startup
-            cp -R /mnt/flash/startupDefaults/* /mnt/flash/startup || exit 1
-
-            echo "DONE."
+            InstallStartupScripts
         fi
 
-        # If the startup scripts are out of date, update them
-        if ! diff /mnt/flash/startup /mnt/flash/startupDefaults > /dev/null
+        if StartupScriptOld
         then
-            echo "STARTUP SCRIPTS OUT OF DATE."
-            echo "Backing up old startup scripts to /mnt/flash/startupBackups..."
-
-            rm -rf /mnt/flash/startupBackups
-            mv /mnt/flash/startup /mnt/flash/startupBackups || exit 1
-
-            echo "DONE."
-            echo "Installing new startup scripts..."
-
-            mkdir -p /mnt/flash/startup
-            cp -R /mnt/flash/startupDefaults/* /mnt/flash/startup || exit 1
-
-            echo "DONE."
+            UpdateStartupScripts
         fi
-
-        # Copy over the contents of opt
-        cp -R /mnt/legato/opt /mnt/flash/opt
-
-        # Now we need the bind mounts in place to continue
-        /mnt/flash/startup/fg_00_BindMount
-
-        # Update the ld library cache such that all the new framework libraries under /usr/local/lib
-        # can be found by the dynamic linker.
-        echo "Updating dynamic linker configuration..."
-        umount /etc/ld.so.cache
-        /sbin/ldconfig -v -C /var/run/ld.so.cache &&
-        mount --bind /var/run/ld.so.cache /etc/ld.so.cache
 
         # Finally, touch a file to show that we need to run the post boot sequence
         touch /mnt/flash/startup/postcheck
@@ -242,93 +383,90 @@ PostBootCheck()
         return 0
     fi
 
-    # Add binding configuration needed by the framework tools.
-    # TODO: Remove this when the tools becomes command-line apps.
-    (
-        # cm tool
-        AddUserToAppBinding root le_mdc modemService &&
-        AddUserToAppBinding root le_mrc modemService &&
-        AddUserToAppBinding root le_sim modemService &&
-        AddUserToAppBinding root le_sms modemService &&
-        AddUserToAppBinding root le_data dataConnectionService
-
-        # fwupdate tool
-        AddUserToAppBinding root le_info modemService &&
-        AddUserToAppBinding root le_fwupdate modemService
-
-        # agent
-        AddUserToAppBinding root le_posCtrl positioningService &&
-        AddUserToAppBinding root le_pos positioningService
-    ) &&
-
-    # Install and start the bundled applications.
-    (
-        # Remove old versions of the bundled apps.
-        for appFile in `ls /usr/local/bin/apps`
-        do
-            APP_NAME=$(basename "$appFile" | sed "s/\.[^.]*$//") &&
-            /usr/local/bin/app remove ""$APP_NAME""
-        done
-
-        # Install new versions of the bundled apps.
-        for appFile in `ls /usr/local/bin/apps`
-        do
-            APP_NAME=$(basename "$appFile" | sed "s/\.[^.]*$//") &&
-            cat /usr/local/bin/apps/$appFile | /usr/local/bin/app install ""$APP_NAME""
-        done
-
-        # Start the bundled apps.
-        for appFile in `ls /usr/local/bin/apps`
-        do
-            APP_NAME=$(basename "$appFile" | sed "s/\.[^.]*$//") &&
-            /usr/local/bin/app start $APP_NAME
-        done
-    )
+    InstallApps &&
 
     rm /mnt/flash/startup/postcheck
+
+    # Setup the installed version file
+    cp /mnt/legato/opt/legato/version /mnt/flash/opt/legato/builtInVersion
 }
+
+# To see if it is already bind mounted
+CheckBindMount()
+{
+    local dir_path=$1
+    local mount_on=${2%$1}
+    local mounted_on=$(df $dir_path | grep -v Filesystem | awk '{print $6}')
+    if [ "$mounted_on" = "$mount_on" ]
+    then
+        return 0
+    fi
+    return 1
+}
+
+CreateMountpointsAndBind()
+{
+    local map=$1
+    local as=$2
+    echo "Remapping $map --> $as"
+    mkdir -p $map
+    mkdir -p $as
+    mount --bind $map $as
+}
+
+BindMount()
+{
+    local dir_path=$1
+    local mount_on=$3
+    if CheckBindMount $dir_path $mount_on 2>/dev/null
+    then
+        echo "Already mapped $mount_on --> $dir_path"
+    else
+        if ! mount | grep $ >/dev/null
+        then
+            CreateMountpointsAndBind $mount_on $dir_path
+        else
+            # display current binding
+            echo "$dir_path map needs updating"
+            df $dir_path
+            umount "$dir_path"
+            CreateMountpointsAndBind $mount_on $dir_path
+        fi
+    fi
+}
+
 
 InstallLegato()
 {
+    reboot_advised=""
+
     # Make sure the old version of the framework is shut down.
     StopLegato
 
-    if [ -f /opt/legato/usr/local/bin/legato ]
-    then
-        INSTALL_BASE=/mnt/legato
-        legato_part=true
-    else
-        INSTALL_BASE=/mnt/flash
-        legato_part=false
-    fi
-
     echo "Cleaning..."
 
-    # Remove the old version of the Legato framework.
-    rm -rf /usr/local/*
+    # RemoveLegato really removes what was installed and the next reboot would cause the
+    # built in to be installed but we are installing a new legato so we should recopy the
+    # builtInVersion file which marks this install as superceding the built in.
+    if diff /mnt/legato/opt/legato/version /mnt/flash/opt/legato/builtInVersion >/dev/null 2>&1
+    then
+        RemoveLegato
+        mkdir -p /mnt/flash/opt/legato
+        cp -a /mnt/legato/opt/legato/version /mnt/flash/opt/legato/builtInVersion
+    else
+        RemoveLegato
+    fi
 
     # Remove the old default startup scripts.
-    rm -rf $INSTALL_BASE/startupDefaults
+    rm -rf /mnt/flash/startupDefaults
 
     echo "Checking target environment..."
-    mount | grep ' /usr/local ' > /dev/null
-    if [ $? -ne 0 ]
-    then
-        echo "Remapping /usr/local --> $INSTALL_BASE/usr/local"
-        mkdir -p $INSTALL_BASE/usr/local
-        mkdir -p /usr/local
-        mount --bind $INSTALL_BASE/usr/local   /usr/local
-    fi
+    # make sure all our bind mounts are pointing to the right places
+    BindMount /opt on /mnt/flash/opt
+    BindMount /usr/local on /mnt/flash/usr/local
+    BindMount /home on /mnt/flash/home
 
-    mount | grep ' /opt ' > /dev/null
-    if [ $? -ne 0 ]
-    then
-        # Make /opt actually be /mnt/flash/opt.
-        echo "Remapping /opt --> /mnt/flash/opt"
-        mkdir -p /mnt/flash/opt
-        mkdir -p /opt
-        mount --bind /mnt/flash/opt /opt
-    fi
+    mkdir -p /home/root
 
     echo "Unpacking..."
 
@@ -340,16 +478,12 @@ InstallLegato()
     if ! which bsdtar > /dev/null 2>&1
     then
         tar x &&
-
-        # Make sure everything under /usr and /opt are owned by root and are in the root users group.
-        # TODO: This must be removed when switching to read-only root file system.
-        # This can be removed when we have a better version of tar on target.
+        # Old versions of firmware may have r/w rootfs and busybox tar.
+        echo "The firmware appears to be very old"
+        echo "Probably there will be features that won't work on such old firmware."
         chmod -R go-w /usr/local &&
         chown -R root:root /usr &&
         chown -R root:root /opt &&
-        # Just in case busybox tar set non-root ownership of /
-        # TODO: This must be removed when switching to read-only root file system.
-        # This can be removed when we have a better version of tar on target.
         chown root:root /
     else
         bsdtar xpom -f -
@@ -358,113 +492,41 @@ InstallLegato()
 
     # Make sure the startup scripts are executable and owned by root.
     chown -R root:root /mnt/flash/startupDefaults &&
-    chmod -R u+x /mnt/flash/startupDefaults || exit 1
+    chmod -R u+x /mnt/flash/startupDefaults || exit 1 # This is a very uninformative failure
 
-    # If there are no startup scripts installed yet, we cant continue until the scripts have
-    # been installed and the target has been rebooted.
-    if ! ls /mnt/flash/startup/* > /dev/null 2>&1
+    if StartupScriptMissing
     then
-        echo "STARTUP SCRIPTS MISSING."
-        echo "Installing startup scripts..."
-
-        mkdir -p /mnt/flash/startup
-        cp /mnt/flash/startupDefaults/* /mnt/flash/startup || exit 1
-
-        echo "DONE."
-        echo "**** REBOOT REQUIRED ****"
-        echo "Reboot target and restart legato framework installation process."
-        exit 42
+        InstallStartupScripts
+        reboot_advised="yes"
     fi
 
-    # If the startup scripts are out of date, we cant continue installation until the scripts
-    # have been updated and the target has been rebooted.
-    if ! diff /mnt/flash/startup /mnt/flash/startupDefaults > /dev/null
+    if StartupScriptOld
     then
-        echo "STARTUP SCRIPTS OUT OF DATE."
-        echo "Backing up old startup scripts to /mnt/flash/startupBackups..."
-
-        rm -rf /mnt/flash/startupBackups
-        mv /mnt/flash/startup /mnt/flash/startupBackups || exit 1
-
-        echo "DONE."
-        echo "Installing new startup scripts..."
-
-        mkdir -p /mnt/flash/startup
-        cp /mnt/flash/startupDefaults/* /mnt/flash/startup || exit 1
-
-        echo "DONE."
-        echo "**** REBOOT REQUIRED ****"
-        echo "Reboot target and restart legato framework installation process."
-        exit 42
+        UpdateStartupScripts
+        reboot_advised="yes"
     fi
 
-    # Update the ld library cache such that all the new framework libraries under /usr/local/lib
-    # can be found by the dynamic linker.
-    echo "Updating dynamic linker configuration..."
-    umount /etc/ld.so.cache
-    /sbin/ldconfig -v -C /var/run/ld.so.cache &&
-    mount --bind /var/run/ld.so.cache /etc/ld.so.cache &&
+    # make sure we are really up to date on our bind mounts
+    /mnt/flash/startup/fg_00_BindMount
 
     # Start up the new version of the framework.
     # This script makes sure the supervisor and installer runs with the "admin" SMACK label.
     /mnt/flash/startup/fg_10_StartLegato &&
 
-    # Add binding configuration needed by the framework tools.
-    # TODO: Remove this when the tools becomes command-line apps.
-    (
-        # cm tool
-        AddUserToAppBinding root le_mdc modemService &&
-        AddUserToAppBinding root le_mrc modemService &&
-        AddUserToAppBinding root le_sim modemService &&
-        AddUserToAppBinding root le_sms modemService &&
-        AddUserToAppBinding root le_data dataConnectionService
-
-        # fwupdate tool
-        AddUserToAppBinding root le_info modemService &&
-        AddUserToAppBinding root le_fwupdate modemService
-
-        # agent
-        AddUserToAppBinding root le_posCtrl positioningService &&
-        AddUserToAppBinding root le_pos positioningService
-    ) &&
-
-    # Install and start the bundled applications.
-    (
-        # Remove old versions of the bundled apps.
-        for appFile in `ls /usr/local/bin/apps`
-        do
-            APP_NAME=$(basename "$appFile" | sed "s/\.[^.]*$//") &&
-            /usr/local/bin/app remove ""$APP_NAME""
-        done
-
-        # Install new versions of the bundled apps.
-        for appFile in `ls /usr/local/bin/apps`
-        do
-            APP_NAME=$(basename "$appFile" | sed "s/\.[^.]*$//") &&
-            cat /usr/local/bin/apps/$appFile | /usr/local/bin/app install ""$APP_NAME""
-        done
-
-        # Start the bundled apps.
-        for appFile in `ls /usr/local/bin/apps`
-        do
-            APP_NAME=$(basename "$appFile" | sed "s/\.[^.]*$//") &&
-            /usr/local/bin/app start $APP_NAME
-        done
-    ) &&
+    InstallApps &&
 
     # Remove the app package files for the bundled applications to save space in flash.
-    # Or just copy back the version file if we're in a separate partition
-    if [ "$legato_part" = "true" ]
-    then
-        # Make sure the version file is correct
-        cp /opt/legato/version /mnt/legato/opt/legato/version
-    else
-        rm -rf /usr/local/bin/apps
-    fi
+    rm -rf /usr/local/bin/apps
 
     if [ $? -eq 0 ]
     then
         echo "SUCCESS"
+        if [ "$reboot_advised" = "yes" ]
+        then
+            echo "**** REBOOT ADVISED ****"
+            echo "Startup scripts have changed. A reboot is recommended to avoid possibility of system instability"
+            exit 42
+        fi
     else
         echo "FAILED"
         exit 1

@@ -1,0 +1,93 @@
+#!/bin/sh
+
+# Unpack an installer package to an unpack directory. The package will be received via STDIN
+# Param description
+#    $1 = AppName
+
+LEGATO_ROOT=/opt/legato
+APPS_UNPACK_ROOT=$LEGATO_ROOT/appsUnpack
+APP_NAME=$1
+APP_UNPACK_DIR=$APPS_UNPACK_ROOT/$APP_NAME
+
+PrintUsage()
+{
+    echo
+    echo "USAGE: `basename $0` APP_NAME"
+    echo "Application name should be given. Application file must be provided via STDIN"
+    echo
+}
+
+# Check if they are asking for help.
+if [ "$1" = "-h" -o "$1" = "help" -o "$1" = "--help" ]
+then
+    PrintUsage
+    exit 0
+fi
+
+# Check the parameters.
+if [ "$APP_NAME" = "" ]
+then
+    echo "****Error: Must provide an app name"
+    PrintUsage
+    exit 1
+fi
+
+# Check that the application root directory exists.
+if ! [ -d "$APPS_UNPACK_ROOT" ]
+then
+    mkdir -p "$APPS_UNPACK_ROOT"
+fi
+
+# Delete old unpack files if exists any.
+if [ -d "$APP_UNPACK_DIR" ]
+then
+    rm -rf "$APP_UNPACK_DIR"
+fi
+
+
+echo "Unpacking app '$1'..."
+
+(
+    # Create the directory to unpack.
+    mkdir -p "$APP_UNPACK_DIR" &&
+
+    # Unpack the app into the unpack directory.
+    (
+        if ! which bsdtar > /dev/null 2>&1
+        then
+            tar xj -C "$APP_UNPACK_DIR"
+        else
+            bsdtar xjop -f - -C "$APP_UNPACK_DIR"
+        fi
+     )
+)
+
+if [ $? -ne 0 ]
+then
+    rm -rf "$APP_UNPACK_DIR"
+    echo "Failed to unpack the application."
+    exit 1
+fi
+
+(
+    # Fix up the permissions.
+    (
+        if ! which bsdtar > /dev/null 2>&1
+        then
+            chown -R root:root "$APP_UNPACK_DIR"
+        fi
+    ) &&
+    ( find "$APP_UNPACK_DIR" -type d | xargs chmod a+x-ws ) &&
+    ( find "$APP_UNPACK_DIR" ! -type d | xargs chmod a-xws ) &&
+    ( chmod -R a+x "$APP_UNPACK_DIR/bin" )
+)
+
+if [ $? -ne 0 ]
+then
+    rm -rf "$APP_UNPACK_DIR"
+    echo "Failed to fix up the permission"
+    exit 1
+else
+    echo "DONE"
+    exit 0
+fi

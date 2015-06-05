@@ -5,6 +5,7 @@
 /Documentation*
 /releases
 /version
+/delivery
 doxygen.*.log
 doxygen.*.err
 _build_*
@@ -14,6 +15,7 @@ _build_*
 *.ar7
 *.wp7
 *.ar86
+*.wp85
 *.ar6
 *.raspi
 *.virt

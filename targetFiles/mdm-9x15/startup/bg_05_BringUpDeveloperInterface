@@ -3,6 +3,14 @@
 ecm_conf=/etc/legato/ecm.conf
 usbmode=/etc/legato/usbmode
 
+# If the PCONFIG flag is set then change the default IP address
+if [ -f /mnt/userrw/PCONFIG ]
+then
+    ecm_default_ip=192.168.200.1
+else
+    ecm_default_ip=192.168.1.2
+fi
+
 get_param()
 {
     local line=$( grep "$1" $ecm_conf 2>/dev/null )
@@ -11,7 +19,7 @@ get_param()
 
 # only do this if usbmode exists and ecm is part of usb composition
 if [ -f $usbmode ]; then
-    if grep ecm $usbmode; then
+    if grep ecm $usbmode || grep eem $usbmode; then
         # If the configuration file exists, get settings from there.
         if [ -f $ecm_conf ]; then
             ecm_netmask=$( get_param netmask.ipV4 )
@@ -19,10 +27,14 @@ if [ -f $usbmode ]; then
         else
             # Config file doesn't exist.  Use defaults.
             ecm_netmask=255.255.255.0
-            ecm_target_ip4=192.168.1.2
+            ecm_target_ip4=$ecm_default_ip
         fi
 
         ifconfig usb0 $ecm_target_ip4 netmask $ecm_netmask up
 
     fi
+elif [ -f /mnt/userrw/PCONFIG ]; then
+    # In this case we have to assume that the default
+    # USB composition includes ECM, so try and start it
+    ifconfig usb0 192.168.200.1 netmask 255.255.255.0 up
 fi

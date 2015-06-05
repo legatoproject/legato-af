@@ -3,4 +3,10 @@
 # This initializes the WM8940 codec through the SPI (Sierra Wireless Dev Kit
 # for AirPrime AR and WP Series)
 
-/usr/bin/wm8940_demo --pcm > /dev/null
+# Do not attempt this initialisation if the file /mnt/userrw/PCONFIG is present
+# Ref ticket 2383
+
+if [ ! -f /mnt/userrw/PCONFIG ]
+then
+    /usr/bin/wm8940_demo --pcm > /dev/null
+fi

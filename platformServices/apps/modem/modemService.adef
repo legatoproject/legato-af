@@ -1,10 +1,5 @@
 sandboxed: false
 
-executables:
-{
-    modemDaemon = (   $LEGATO_ROOT/components/modemServices/modemDaemon    )
-}
-
 processes:
 {
     run:
@@ -32,16 +27,23 @@ provides:
     api:
     {
         modemDaemon.modemDaemon.le_ecall
-        modemDaemon.modemDaemon.le_fwupdate
         modemDaemon.modemDaemon.le_info
         modemDaemon.modemDaemon.le_mcc_call
         modemDaemon.modemDaemon.le_mcc_profile
         modemDaemon.modemDaemon.le_mdc
         modemDaemon.modemDaemon.le_mrc
-        modemDaemon.modemDaemon.le_remoteMgmt
         modemDaemon.modemDaemon.le_sim
         modemDaemon.modemDaemon.le_sms
         modemDaemon.modemDaemon.le_ips
         modemDaemon.modemDaemon.le_temp
+        modemDaemon.modemDaemon.le_antenna
+        modemDaemon.modemDaemon.le_riPin
+        modemDaemon.modemDaemon.le_adc
     }
 }
+
+executables:
+{
+    modemDaemon = (   $LEGATO_ROOT/components/modemServices/modemDaemon    )
+}
+
