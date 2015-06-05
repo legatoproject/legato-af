@@ -350,6 +350,11 @@ void le_pm_StayAwake(le_pm_WakeupSourceRef_t w)
 
     // Validate the reference, check if it exists
     ws = ToWakeupSource(w);
+    // If the wakeup source is NULL then the client will have
+    // been killed and we can just return
+    if (NULL == ws) 
+        return;
+
     entry = (WakeupSource_t*)le_hashmap_Get(PowerManager.locks, ws->name);
     if (!entry)
         LE_FATAL("Wakeup source '%s' not created.\n", ws->name);
@@ -382,6 +387,11 @@ void le_pm_Relax(le_pm_WakeupSourceRef_t w)
 
     // Validate the reference, check if it exists
     ws = ToWakeupSource(w);
+    // If the wakeup source is NULL then the client will have
+    // been killed and we can just return
+    if (NULL == ws)
+        return;
+
     entry = (WakeupSource_t*)le_hashmap_Get(PowerManager.locks, ws->name);
     if (!entry)
         LE_FATAL("Wakeup source '%s' not created.\n", ws->name);

@@ -477,9 +477,10 @@ le_result_t pa_sms_SetMsgFormat
 //--------------------------------------------------------------------------------------------------
 int32_t pa_sms_SendPduMsg
 (
-    pa_sms_Protocol_t   protocol,   ///< [IN] protocol to use
-    uint32_t            length,     ///< [IN] The length of the TP data unit in bytes.
-    const uint8_t      *dataPtr     ///< [IN] The message.
+    pa_sms_Protocol_t        protocol,   ///< [IN] protocol to use
+    uint32_t                 length,     ///< [IN] The length of the TP data unit in bytes.
+    const uint8_t           *dataPtr,    ///< [IN] The message.
+    pa_sms_SendingErrCode_t *errorCode   ///< [OUT] The error code.
 )
 {
     int32_t result = LE_FAULT;

@@ -9,6 +9,7 @@ provides:
 sources:
 {
     le_audio.c
+    le_media.c
 }
 
 requires:

@@ -1,0 +1,27 @@
+sources:
+{
+    secStoreServer.c
+}
+
+requires:
+{
+    component:
+    {
+        $LEGATO_SECSTORE_PA
+        ${LEGATO_ROOT}/framework/c/src/appCfg
+    }
+
+    api:
+    {
+        le_appInfo.api
+        le_instStat.api
+    }
+}
+
+provides:
+{
+    api:
+    {
+        le_secStore.api
+    }
+}

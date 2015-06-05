@@ -1,0 +1,21 @@
+bundles:
+{
+    file:
+    {
+        [r] libComponent_le_pa_avc.so  /lib/
+    }
+}
+
+ldflags:
+{
+    -lComponent_le_pa_avc
+}
+
+requires:
+{
+    component:
+    {
+        $LEGATO_MODEM_PA
+        $LEGATO_FWUPDATE_PA
+    }
+}

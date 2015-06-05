@@ -183,64 +183,91 @@ le_result_t pa_audio_SetI2sChannelMode
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function must be called to start the playback thread.
+ * This function is used to play audio samples.
  *
  * @return LE_OK            The thread is started
  * @return LE_BAD_PARAMETER The interface is not valid
  * @return LE_DUPLICATE     The thread is already started
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_audio_StartPlayback
+le_result_t pa_audio_PlaySamples
 (
-    pa_audio_If_t interface,    ///< [IN] audio interface
-    int32_t       fd            ///< [IN] audio file descriptor
+    pa_audio_If_t interface,                        ///< [IN] audio interface
+    int32_t       fd,                               ///< [IN] audio file descriptor
+    pa_audio_SamplePcmConfig_t* samplePcmConfigPtr  ///< [IN] Sample configuration
 )
 {
-    return LE_OK;
+    return LE_FAULT;
 }
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function must be called to stop the playback thread.
+ * This function must be called to pause the playback/capture thread.
+ *
+ * @return LE_OK            The function is succeeded
+ * @return LE_FAULT         The function is failed
  *
  */
 //--------------------------------------------------------------------------------------------------
-void pa_audio_StopPlayback
+le_result_t pa_audio_Pause
 (
-    void
+    pa_audio_If_t interface    ///< [IN] audio interface
 )
 {
+    return LE_FAULT;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to resume the playback/capture thread.
+ *
+ * @return LE_OK            The function is succeeded
+ * @return LE_FAULT         The function is failed
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_audio_Resume
+(
+    pa_audio_If_t interface    ///< [IN] audio interface
+)
+{
+    return LE_FAULT;
 }
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function must be called to start the SW capture thread.
+ * This function must be called to stop an interface.
+ *
+ * @return LE_OK            The function is succeeded
+ * @return LE_FAULT         The function is failed
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_audio_Stop
+(
+    pa_audio_If_t interface    ///< [IN] audio interface
+)
+{
+    return LE_FAULT;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function is used to capture an audio stream.
  *
  * @return LE_OK            The thread is started
  * @return LE_BAD_PARAMETER The interface is not valid
  * @return LE_DUPLICATE     The thread is already started
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_audio_StartCapture
+le_result_t pa_audio_Capture
 (
-    pa_audio_If_t interface,    ///< [IN] audio interface
-    int32_t       fd            ///< [IN] audio file descriptor
+    pa_audio_If_t interface,                        ///< [IN] audio interface
+    int32_t       fd,                               ///< [IN] audio file descriptor
+    pa_audio_SamplePcmConfig_t* samplePcmConfigPtr  ///< [IN] Sample configuration
 )
 {
-    return LE_OK;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This function must be called to stop the SW capture thread.
- *
- */
-//--------------------------------------------------------------------------------------------------
-void pa_audio_StopCapture
-(
-    void
-)
-{
+    return LE_FAULT;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -264,9 +291,9 @@ le_result_t pa_audio_StartDtmfDecoder
 /**
  * This function must be called to stop the DTMF Decoder.
  *
- * @return LE_OK            The decoder is stopped
+ * @return LE_OK            The decoder is started
  * @return LE_BAD_PARAMETER The interface is not valid
- * @return LE_FAULT         On other errors
+ * @return LE_NOT_POSSIBLE  On other errors
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_audio_StopDtmfDecoder
@@ -558,15 +585,15 @@ le_audio_Companding_t pa_audio_GetPcmCompanding
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function must be called to register a handler for  for audio file events notifications.
+ * This function must be called to register a handler for stream events notifications.
  *
  * @return an handler reference.
  */
 //--------------------------------------------------------------------------------------------------
-le_audio_StreamEventHandlerRef_t pa_audio_AddFileEventHandler
+pa_audio_StreamEventHandlerRef_t pa_audio_AddStreamEventHandler
 (
-    pa_audio_FileEventHandlerFunc_t handlerFuncPtr, ///< [IN] The event handler function.
-    void*                           contextPtr      ///< [IN] The handler's context.
+    pa_audio_StreamEventHandlerFunc_t handlerFuncPtr, ///< [IN] The event handler function.
+    void*                             contextPtr      ///< [IN] The handler's context.
 )
 {
     // TODO: implement this one
@@ -575,15 +602,68 @@ le_audio_StreamEventHandlerRef_t pa_audio_AddFileEventHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function must be called to unregister the handler for audio file events.
+ * This function must be called to unregister the handler for audio stream events.
  *
  */
 //--------------------------------------------------------------------------------------------------
-void pa_audio_RemoveFileEventHandler
+void pa_audio_RemoveStreamEventHandler
 (
-    le_audio_StreamEventHandlerRef_t addHandlerRef ///< [IN]
+    pa_audio_StreamEventHandlerRef_t addHandlerRef ///< [IN]
 )
 {
     // TODO: implement this one
     return;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Play signalling DTMFs
+ *
+ * @return LE_OK            on success
+ * @return LE_DUPLICATE     The thread is already started
+ * @return LE_FAULT         on failure
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_audio_PlaySignallingDtmf
+(
+    const char*          dtmfPtr,   ///< [IN] The DTMFs to play.
+    uint32_t             duration,  ///< [IN] The DTMF duration in milliseconds.
+    uint32_t             pause      ///< [IN] The pause duration between tones in milliseconds.
+)
+{
+    // TODO: implement this one
+    return LE_FAULT;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Return true if an in-built Codec is present.
+ *
+ * @return true  if an in-built Codec is present, false otherwise.
+ */
+//--------------------------------------------------------------------------------------------------
+bool pa_audio_IsCodecPresent
+(
+    void
+)
+{
+    return false;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to mute or unmute the interface
+ *
+ * @return LE_FAULT         The function failed.
+ * @return LE_OK            The function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_audio_Mute
+(
+    pa_audio_If_t interface, ///< [IN] audio interface
+    bool          mute       ///< [IN] true to mute the interface, false to unmute
+)
+{
+    // TODO: implement this one
+    return LE_FAULT;
 }

@@ -6,6 +6,11 @@ bundles:
     }
 }
 
+ldflags:
+{
+    -lComponent_le_pa_gnss
+}
+
 requires:
 {
     component:

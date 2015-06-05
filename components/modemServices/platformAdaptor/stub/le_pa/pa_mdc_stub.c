@@ -89,6 +89,24 @@ le_result_t pa_mdc_GetInterfaceName
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Check whether the profile already exists on the modem ; if not, ask to the modem to create a new
+ * profile.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT on failure
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_mdc_InitializeProfile
+(
+    uint32_t   profileIndex     ///< [IN] The profile to write
+)
+{
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Write the profile data for the given profile
  *
  * @return
@@ -167,13 +185,13 @@ le_result_t pa_mdc_ReadProfile
  *      The process exits on failure
  */
 //--------------------------------------------------------------------------------------------------
-void pa_mdc_SetSessionStateHandler
+le_event_HandlerRef_t pa_mdc_AddSessionStateHandler
 (
     pa_mdc_SessionStateHandler_t handlerRef, ///< [IN] The session state handler function.
     void*                        contextPtr  ///< [IN] The context to be given to the handler.
 )
 {
-
+    return NULL;
 }
 
 //--------------------------------------------------------------------------------------------------

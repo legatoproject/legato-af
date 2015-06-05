@@ -15,12 +15,12 @@
 
 #define DEFAULT_SIMEVENT_POOL_SIZE  1
 
-static le_mem_PoolRef_t       SimEventPoolRef;
+static le_mem_PoolRef_t   SimEventPoolRef;
 
-static le_event_Id_t          EventUnsolicitedId;
-static le_event_Id_t          EventNewSimStateId;
+static le_event_Id_t      EventUnsolicitedId;
+static le_event_Id_t      EventNewSimStateId;
 
-static uint32_t               NumCard=1;
+static le_sim_Id_t        UimSelect = LE_SIM_EXTERNAL_SLOT_1; // external SIM selected by default
 
 
 /**
@@ -309,10 +309,10 @@ static void ReportStatus
 )
 {
     pa_sim_Event_t* eventPtr = le_mem_ForceAlloc(SimEventPoolRef);
-    eventPtr->simType = simCard;
+    eventPtr->simId = simCard;
     eventPtr->state = simState;
 
-    LE_DEBUG("Send Event SIM type %d, SIM state %d",eventPtr->simType,eventPtr->state);
+    LE_DEBUG("Send Event SIM identifier %d, SIM state %d",eventPtr->simId,eventPtr->state);
     le_event_ReportWithRefCounting(EventNewSimStateId,eventPtr);
 }
 
@@ -322,13 +322,17 @@ static void ReportStatus
  *
  */
 //--------------------------------------------------------------------------------------------------
-static void SIMUnsolHandler(void* reportPtr) {
+static void SIMUnsolHandler
+(
+    void* reportPtr
+)
+{
     atmgr_UnsolResponse_t* unsolPtr = reportPtr;
-    le_sim_States_t simState=LE_SIM_STATE_UNKNOWN;
+    le_sim_States_t simState = LE_SIM_STATE_UNKNOWN;
 
     if (CheckStatus(unsolPtr->line,&simState))
     {
-        ReportStatus(NumCard,simState);
+        ReportStatus(UimSelect,simState);
     }
 }
 
@@ -342,7 +346,10 @@ static void SIMUnsolHandler(void* reportPtr) {
  * @return LE_OK            The function succeeded.
  */
 
-static le_result_t SetIndicator()
+static le_result_t SetIndicator
+(
+    void
+)
 {
     uint32_t wind;
 
@@ -463,15 +470,15 @@ uint32_t pa_sim_CountSlots
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_sim_SelectCard
 (
-    le_sim_Type_t  cardNum     ///< The SIM to be selected
+    le_sim_Id_t  cardId     ///< The SIM to be selected
 )
 {
     char atcommand[ATCOMMAND_SIZE] ;
 
-    if ((cardNum==LE_SIM_EXTERNAL_SLOT_1) || (cardNum==LE_SIM_EXTERNAL_SLOT_2)) {
-        atcmdsync_PrepareString(atcommand,ATCOMMAND_SIZE,"at+whcnf=4,%d",cardNum);
+    if ((cardId==LE_SIM_EXTERNAL_SLOT_1) || (cardId==LE_SIM_EXTERNAL_SLOT_2)) {
+        atcmdsync_PrepareString(atcommand,ATCOMMAND_SIZE,"at+whcnf=4,%d",cardId);
     } else {
-        LE_DEBUG("This card number (%d) is not supported",cardNum);
+        LE_DEBUG("This card number (%d) is not supported",cardId);
         return LE_FAULT;
     }
 
@@ -490,7 +497,7 @@ le_result_t pa_sim_SelectCard
         return LE_FAULT;
         }
 
-    NumCard = cardNum;
+    UimSelect = cardId;
 
     return LE_OK;
 }
@@ -506,7 +513,7 @@ le_result_t pa_sim_SelectCard
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_sim_GetSelectedCard
 (
-    le_sim_Type_t*  cardNumPtr     ///< [OUT] The card number selected.
+    le_sim_Id_t*  cardIdPtr     ///< [OUT] The card number selected.
 )
 {
     le_result_t result=LE_OK;
@@ -531,11 +538,11 @@ le_result_t pa_sim_GetSelectedCard
         char* line = atcmdsync_GetLine(resRef,0);
         if (FIND_STRING("+WHCNF: 4,1",line))
         {
-            *cardNumPtr = 1;
+            *cardIdPtr = 1;
         }
         else if (FIND_STRING("+WHCNF: 4,2",line))
         {
-            *cardNumPtr = 2;
+            *cardIdPtr = 2;
         }
         else
         {
@@ -589,7 +596,7 @@ le_result_t pa_sim_GetCardIdentification
     char* line = atcmdsync_GetLine(resRef,0);
     if (CheckStatus(line,&simState))
     {
-        ReportStatus(NumCard,simState);
+        ReportStatus(UimSelect,simState);
     }
 
     // check error
@@ -663,7 +670,7 @@ le_result_t pa_sim_GetIMSI
     char* line = atcmdsync_GetLine(resRef,0);
     if (CheckStatus(line,&simState))
     {
-        ReportStatus(NumCard,simState);
+        ReportStatus(UimSelect,simState);
     }
 
     // If there is more than one line then it mean that the command is OK so the first line is
@@ -740,7 +747,7 @@ le_result_t pa_sim_GetState
 
     if (CheckStatus(line,statePtr))
     {
-        ReportStatus(NumCard,*statePtr);
+        ReportStatus(UimSelect,*statePtr);
         result = LE_OK;
     }
 
@@ -827,7 +834,7 @@ le_result_t pa_sim_EnterPIN
     char* line = atcmdsync_GetLine(resRef,0);
     if (CheckStatus(line,&simState))
     {
-        ReportStatus(NumCard,simState);
+        ReportStatus(UimSelect,simState);
     }
 
     le_mem_Release(resRef); // release atcmdsync_SendCommandDefault
@@ -874,7 +881,7 @@ le_result_t pa_sim_EnterPUK
     char* line = atcmdsync_GetLine(resRef,0);
     if (CheckStatus(line,&simState))
     {
-        ReportStatus(NumCard,simState);
+        ReportStatus(UimSelect,simState);
     }
 
     le_mem_Release(resRef); // release atcmdsync_SendCommandDefault
@@ -1052,7 +1059,7 @@ le_result_t pa_sim_ChangePIN
     char* line = atcmdsync_GetLine(resRef,0);
     if (CheckStatus(line,&simState))
     {
-        ReportStatus(NumCard,simState);
+        ReportStatus(UimSelect,simState);
     }
 
     le_mem_Release(resRef);     // Release atcmdsync_SendCommandDefault
@@ -1104,7 +1111,7 @@ le_result_t pa_sim_EnablePIN
     char* line = atcmdsync_GetLine(resRef,0);
     if (CheckStatus(line,&simState))
     {
-        ReportStatus(NumCard,simState);
+        ReportStatus(UimSelect,simState);
     }
 
     le_mem_Release(resRef);     // Release atcmdsync_SendCommandDefault
@@ -1157,7 +1164,7 @@ le_result_t pa_sim_DisablePIN
     char* line = atcmdsync_GetLine(resRef,0);
     if (CheckStatus(line,&simState))
     {
-        ReportStatus(NumCard,simState);
+        ReportStatus(UimSelect,simState);
     }
 
     le_mem_Release(resRef);     // Release atcmdsync_SendCommandDefault
@@ -1222,6 +1229,129 @@ le_result_t pa_sim_GetHomeNetworkMccMnc
     size_t    mccPtrSize,            ///< [IN] mccPtr buffer size
     char     *mncPtr,                ///< [OUT] Mobile Network Code
     size_t    mncPtrSize             ///< [IN] mncPtr buffer size
+)
+{
+    return LE_FAULT;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to open a logical channel on the SIM card.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT for unexpected error
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_sim_OpenLogicalChannel
+(
+    uint8_t* channelPtr  ///< [OUT] channel number
+)
+{
+    return LE_FAULT;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to close a logical channel on the SIM card.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT for unexpected error
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_sim_CloseLogicalChannel
+(
+    uint8_t channel  ///< [IN] channel number
+)
+{
+    return LE_FAULT;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to send an APDU message to the SIM card.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_OVERFLOW the response length exceed the maximum buffer length.
+ *      - LE_FAULT for unexpected error
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_sim_SendApdu
+(
+    const uint8_t* apduPtr, ///< [IN] APDU message buffer
+    uint32_t       apduLen, ///< [IN] APDU message length in bytes
+    uint8_t*       respPtr, ///< [OUT] APDU message response.
+    size_t*        lenPtr   ///< [IN,OUT] APDU message response length in bytes.
+)
+{
+    return LE_FAULT;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to trigger a SIM refresh.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT for unexpected error
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_sim_Refresh
+(
+    void
+)
+{
+    return LE_FAULT;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to register a handler for SIM Toolkit event notification handling.
+ *
+ * @return A handler reference, which is only needed for later removal of the handler.
+ *
+ * @note Doesn't return on failure, so there's no need to check the return value for errors.
+ */
+//--------------------------------------------------------------------------------------------------
+le_event_HandlerRef_t pa_sim_AddSimToolkitEventHandler
+(
+    pa_sim_SimToolkitEventHdlrFunc_t handler,    ///< [IN] The handler function.
+    void*                            contextPtr  ///< [IN] The context to be given to the handler.
+)
+{
+    return NULL;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to unregister the handler for SIM Toolkit event notification
+ * handling.
+ *
+ * @note Doesn't return on failure, so there's no need to check the return value for errors.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_sim_RemoveSimToolkitEventHandler
+(
+    le_event_HandlerRef_t handlerRef
+)
+{
+    return LE_FAULT;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to confirm a SIM Toolkit command.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT on failure
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_sim_ConfirmSimToolkitCommand
+(
+    bool  confirmation ///< [IN] true to accept, false to reject
 )
 {
     return LE_FAULT;

@@ -68,9 +68,44 @@
 //--------------------------------------------------------------------------------------------------
 #define SET_BIT_MASK_VALUE(_value_, _bitmask_) ((_value_ == true) ? _bitmask_ : 0)
 
+
 //--------------------------------------------------------------------------------------------------
 // Data structures.
 //--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * PAN-EUROPEAN specific context.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    bool            stopDialing;                 ///< flag indicating that no more call attempts are
+                                                 ///< possible
+    le_timer_Ref_t  remainingDialDurationTimer;  ///< the 120-second room timer within eCall is
+                                                 ///< allowed to redial the PSAP when the call has
+                                                 ///< been connected once
+}
+PanEuropeanContext_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * ERA-GLONASS specific context.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    uint16_t        manualDialAttempts;     ///< Manual dial attempts
+    uint16_t        autoDialAttempts;       ///< Automatic dial attempts
+    uint8_t         dialAttempts;           ///< generic dial attempts value
+    int8_t          dialAttemptsCount;      ///< counter of dial attempts
+    uint16_t        dialDuration;           ///< Dial duration value
+    uint16_t        nadDeregistrationTime;  ///< NAD deregistration time
+    le_timer_Ref_t  dialDurationTimer;      ///< Dial duration timer
+}
+EraGlonassContext_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -80,16 +115,37 @@
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
-    char             psapNumber[LE_MDMDEFS_PHONE_NUM_MAX_BYTES]; ///< PSAP telephone number
-    le_ecall_State_t state;                                      ///< eCall state
-    bool             isPushed;                                   ///< True if the MSD is pushed by
-                                                                 ///  the IVS, false if it  is sent
-                                                                 ///  when requested by the PSAP
-                                                                 ///  (pull)
-    uint32_t         maxRedialAttempts;                          ///< Maximum redial attempts
-    msd_t            msd;                                        ///< MSD
-    uint8_t          builtMsd[LE_ECALL_MSD_MAX_LEN];             ///< built MSD
-    size_t           builtMsdSize;                               ///< Size of the built MSD
+    char                    psapNumber[LE_MDMDEFS_PHONE_NUM_MAX_BYTES]; ///< PSAP telephone number
+    le_ecall_State_t        state;                                      ///< eCall state
+    bool                    isPushed;                                   ///< True if the MSD is
+                                                                        /// pushed by the IVS,
+                                                                        /// false if it  is sent
+                                                                        /// when requested by the
+                                                                        /// PSAP (pull)
+    bool                    isCompleted;                                ///< flag indicating
+                                                                        ///< whether the Modem
+                                                                        ///< successfully completed
+                                                                        ///< the MSD
+                                                                        ///< transmission and
+                                                                        ///< received two AL-ACKs
+    bool                    wasConnected;                               ///< flag indicating whether
+                                                                        ///< a connection with PSAP
+                                                                        ///< was established
+    bool                    isSessionStopped;                           ///< Flag indicating that
+                                                                        ///< the previous session
+                                                                        ///< was manually stopped.
+    uint32_t                maxRedialAttempts;                          ///< Maximum redial attempts
+    msd_t                   msd;                                        ///< MSD
+    uint8_t                 builtMsd[LE_ECALL_MSD_MAX_LEN];             ///< built MSD
+    size_t                  builtMsdSize;                               ///< Size of the built MSD
+    pa_ecall_StartType_t    startType;                                  ///< eCall start type
+    PanEuropeanContext_t    panEur;                                     ///< PAN-EUROPEAN context
+    EraGlonassContext_t     eraGlonass;                                 ///< ERA-GLONASS context
+    le_clk_Time_t           startTentativeTime;                         ///< relative time of a dial
+                                                                        ///< tentative
+    uint16_t                intervalBetweenAttempts;                    ///< interval value between
+                                                                        ///< dial attempts (in sec)
+    le_timer_Ref_t          intervalTimer;                              ///< interval timer
 }
 ECall_t;
 
@@ -97,6 +153,8 @@ ECall_t;
 //--------------------------------------------------------------------------------------------------
 // Static declarations.
 //--------------------------------------------------------------------------------------------------
+
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -112,7 +170,7 @@ static pa_ecall_SysStd_t SystemStandard;
  *
  */
 //--------------------------------------------------------------------------------------------------
-static le_event_Id_t ECallStateId;
+static le_event_Id_t ECallEventStateId;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -129,14 +187,6 @@ static ECall_t ECallObj;
  */
 //--------------------------------------------------------------------------------------------------
 static le_ref_MapRef_t ECallRefMap;
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Flag indicating that the previous session was manually stopped.
- *
- */
-//--------------------------------------------------------------------------------------------------
-static bool IsSessionStopped;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -189,6 +239,115 @@ static int32_t ConvertDdToDms
     LE_INFO("final result: %d", (int32_t)((deg*60*60.000 + min*60.000 + sec)*1000));
 
     return ((int32_t)((deg*60*60.000 + min*60.000 + sec)*1000));
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Dial Duration Timer handler.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void DialDurationTimerHandler
+(
+    le_timer_Ref_t timerRef
+)
+{
+    LE_INFO("[ERA-GLONASS] Dial duration expires! stop dialing...");
+
+    ECallObj.eraGlonass.dialAttemptsCount = 0;
+
+    // Stop any eCall tentative on going, the stop event will be notified by the Modem
+    pa_ecall_Stop();
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Remaining Dial Duration Timer handler.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void RemainingDialDurationTimerHandler
+(
+    le_timer_Ref_t timerRef
+)
+{
+    LE_INFO("[PAN-EUROPEAN] remaining dial duration expires! Stop dialing eCall...");
+    ECallObj.panEur.stopDialing = true;
+
+    // Stop any eCall tentative on going, the stop event will be notified by the Modem
+    pa_ecall_Stop();
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Interval Duration Timer handler.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void IntervalTimerHandler
+(
+    le_timer_Ref_t timerRef
+)
+{
+    if (SystemStandard == PA_ECALL_ERA_GLONASS)
+    {
+        // ERA-GLONASS
+        if(ECallObj.eraGlonass.dialAttemptsCount)
+        {
+            LE_INFO("[ERA-GLONASS] Interval duration expires! Start attempts #%d of %d",
+                    (ECallObj.eraGlonass.dialAttempts - ECallObj.eraGlonass.dialAttemptsCount + 1),
+                    ECallObj.eraGlonass.dialAttempts);
+            if(pa_ecall_Start(ECallObj.startType) == LE_OK)
+            {
+                ECallObj.eraGlonass.dialAttemptsCount--;
+            }
+        }
+        else
+        {
+            LE_WARN("[ERA-GLONASS] All the %d tries of %d attempts have been dialed or Dial duration"
+             "has expired, stop dialing...",
+                    ECallObj.eraGlonass.dialAttempts,
+                    ECallObj.eraGlonass.dialAttempts);
+        }
+    }
+    else
+    {
+        // PAN-EUROPEAN
+        if(!ECallObj.panEur.stopDialing)
+        {
+            LE_INFO("[PAN-EUROPEAN] Interval duration expires! Start again...");
+            pa_ecall_Start(ECallObj.startType);
+        }
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stop all the timers.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void StopTimers
+(
+    void
+)
+{
+    LE_DEBUG("Stop redial management timers");
+    if(ECallObj.intervalTimer)
+    {
+        LE_DEBUG("Stop the Interval timer");
+        le_timer_Stop(ECallObj.intervalTimer);
+    }
+    if(ECallObj.panEur.remainingDialDurationTimer)
+    {
+        LE_DEBUG("Stop the PAN-European RemainingDialDuration timer");
+        le_timer_Stop(ECallObj.panEur.remainingDialDurationTimer);
+    }
+    if(ECallObj.eraGlonass.dialDurationTimer)
+    {
+        LE_DEBUG("Stop the ERA-GLONASS DialDuration timer");
+        le_timer_Stop(ECallObj.eraGlonass.dialDurationTimer);
+    }
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -324,6 +483,11 @@ static le_result_t ParseAndSetPropulsionType
         ECallObj.msd.msdMsg.msdStruct.vehPropulsionStorageType.hydrogenStorage = true;
         return LE_OK;
     }
+    else if (!strcmp(propStr, "Other"))
+    {
+        ECallObj.msd.msdMsg.msdStruct.vehPropulsionStorageType.otherStorage = true;
+        return LE_OK;
+    }
     else
     {
         return LE_FAULT;
@@ -362,9 +526,9 @@ static le_result_t GetPropulsionType
             res = LE_FAULT;
             break;
         }
-        if ( strncmp(propStr, "", sizeof(propStr)) == 0 )
+        if ( strlen(propStr) == 0 )
         {
-            LE_ERROR("No node value set for '%s'", propStr);
+            LE_ERROR("No node value set for '%s'", CFG_NODE_PROP);
             res = LE_FAULT;
             break;
         }
@@ -415,24 +579,18 @@ static le_result_t LoadECallSettings
             if ( le_cfg_GetString(eCallCfg, CFG_NODE_VIN, vinStr, sizeof(vinStr), "") != LE_OK )
             {
                 LE_WARN("No node value set for '%s'", CFG_NODE_VIN);
-                res = LE_FAULT;
-                break;
             }
-            else if (strncmp(vinStr, "", sizeof(vinStr)) == 0)
+            else if (strlen(vinStr) > 0)
             {
-                res = LE_FAULT;
-                break;
+                memcpy((void *)&ECallObj.msd.msdMsg.msdStruct.vehIdentificationNumber,
+                    (const void *)vinStr,
+                    strlen(vinStr));
             }
-            memcpy((void *)&ECallObj.msd.msdMsg.msdStruct.vehIdentificationNumber,
-                   (const void *)vinStr,
-                   sizeof(ECallObj.msd.msdMsg.msdStruct.vehIdentificationNumber));
             LE_DEBUG("eCall settings, VIN is %s", vinStr);
         }
         else
         {
-            LE_ERROR("No value set for '%s' !", CFG_NODE_VIN);
-            res = LE_FAULT;
-            break;
+            LE_WARN("No value set for '%s' !", CFG_NODE_VIN);
         }
 
         // Get vehicle type
@@ -442,26 +600,19 @@ static le_result_t LoadECallSettings
             if ( le_cfg_GetString(eCallCfg, CFG_NODE_VEH, vehStr, sizeof(vehStr), "") != LE_OK )
             {
                 LE_WARN("No node value set for '%s'", CFG_NODE_VEH);
-                res = LE_FAULT;
-                break;
             }
-            else if (strncmp(vehStr, "", sizeof(vehStr)) == 0)
+            else if (strlen(vehStr) > 0)
             {
-                res = LE_FAULT;
-                break;
-            }
-            LE_DEBUG("eCall settings, vehicle is %s", vehStr);
-            if ((res = ParseAndSetVehicleType(vehStr)) != LE_OK)
-            {
-                LE_ERROR("Bad vehicle type!");
-                break;
+                LE_DEBUG("eCall settings, vehicle is %s", vehStr);
+                if ((res = ParseAndSetVehicleType(vehStr)) != LE_OK)
+                {
+                    LE_WARN("Bad vehicle type!");
+                }
             }
         }
         else
         {
-            LE_ERROR("No value set for '%s' !", CFG_NODE_VEH);
-            res = LE_FAULT;
-            break;
+            LE_WARN("No value set for '%s' !", CFG_NODE_VEH);
         }
 
         // Get MSD version
@@ -502,7 +653,7 @@ static le_result_t LoadECallSettings
                             sysStr);
                 }
                 else if ((strncmp(sysStr, "PAN-EUROPEAN", strlen("PAN-EUROPEAN")) != 0) &&
-                        (strncmp(sysStr, "ERA-GLONASS", strlen("ERA-GLONASS")) != 0))
+                         (strncmp(sysStr, "ERA-GLONASS", strlen("ERA-GLONASS")) != 0))
                 {
                     LE_WARN("Bad value set for '%s' ! Use the default one (%s)",
                             CFG_NODE_SYSTEM_STD,
@@ -536,14 +687,7 @@ static le_result_t LoadECallSettings
 
     le_cfg_CancelTxn(eCallCfg);
 
-    if (res != LE_FAULT)
-    {
-        return GetPropulsionType();
-    }
-    else
-    {
-        return res;
-    }
+    return GetPropulsionType();
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -677,18 +821,145 @@ static void ECallStateHandler
     le_ecall_State_t* statePtr
 )
 {
+
     LE_DEBUG("Handler Function called with state %d", *statePtr);
 
-    if (*statePtr == LE_ECALL_STATE_COMPLETED)
+    switch (*statePtr)
     {
-        IsSessionStopped = true;
-        // Invalidate MSD
-        memset(ECallObj.builtMsd, 0, sizeof(ECallObj.builtMsd));
-        ECallObj.builtMsdSize = 0;
+        case LE_ECALL_STATE_STARTED: /* eCall session started */
+        {
+            ECallObj.isCompleted = false;
+            ECallObj.startTentativeTime = le_clk_GetRelativeTime();
+            break;
+        }
+        case LE_ECALL_STATE_DISCONNECTED: /* Emergency call is disconnected */
+        {
+            if (!ECallObj.isCompleted && !ECallObj.isSessionStopped)
+            {
+                if (ECallObj.wasConnected)
+                {
+                    LE_ERROR("Connection with PSAP has dropped!");
+
+                    ECallObj.wasConnected = false;
+                    if (SystemStandard == PA_ECALL_ERA_GLONASS)
+                    {
+                        // ERA-GLONASS
+                        if(ECallObj.eraGlonass.dialAttemptsCount)
+                        {
+                            LE_INFO(
+                            "[ERA-GLONASS] Interval duration expires! Start attempts #%d of %d",
+                            (ECallObj.eraGlonass.dialAttempts
+                            - ECallObj.eraGlonass.dialAttemptsCount + 1),
+                            ECallObj.eraGlonass.dialAttempts);
+                            if(pa_ecall_Start(ECallObj.startType) == LE_OK)
+                            {
+                                ECallObj.eraGlonass.dialAttemptsCount--;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        // PAN-EUROPEAN
+                        LE_WARN("[PAN-EUROPEAN] Got 120 seconds to reconnect with PSAP");
+
+                        le_clk_Time_t interval = {120,0};
+
+                        LE_ERROR_IF( ((le_timer_SetInterval(
+                                    ECallObj.panEur.remainingDialDurationTimer, interval)
+                                    != LE_OK) ||
+                                    (le_timer_SetHandler(ECallObj.panEur.remainingDialDurationTimer,
+                                    RemainingDialDurationTimerHandler) != LE_OK) ||
+                                    (le_timer_Start(ECallObj.panEur.remainingDialDurationTimer)
+                                    != LE_OK)),
+                                    "Cannot start the RemainingDialDuration timer!");
+
+                        pa_ecall_Start(ECallObj.startType);
+                    }
+                }
+                else
+                {
+                    le_clk_Time_t time = le_clk_GetRelativeTime();
+                    le_clk_Time_t interval;
+                    interval.usec = 0;
+
+                    if ((time.sec-ECallObj.startTentativeTime.sec)
+                    >= ECallObj.intervalBetweenAttempts)
+                    {
+                        interval.sec = 1;
+                    }
+                    else
+                    {
+                        interval.sec = ECallObj.intervalBetweenAttempts -
+                                    (time.sec-ECallObj.startTentativeTime.sec);
+                    }
+
+                    LE_WARN("Failed to connect with PSAP! Redial in %d seconds", (int)interval.sec);
+
+                    LE_ERROR_IF( ((le_timer_SetInterval(ECallObj.intervalTimer, interval)
+                                    != LE_OK) ||
+                                    (le_timer_SetHandler(ECallObj.intervalTimer,
+                                    IntervalTimerHandler) != LE_OK) ||
+                                    (le_timer_Start(ECallObj.intervalTimer) != LE_OK)),
+                                    "Cannot start the Interval timer!");
+                }
+            }
+            break;
+        }
+        case LE_ECALL_STATE_CONNECTED: /* Emergency call is established */
+        {
+            ECallObj.wasConnected = true;
+            if(ECallObj.panEur.remainingDialDurationTimer)
+            {
+                LE_DEBUG("Stop the RemainingDialDuration timer");
+                le_timer_Stop(ECallObj.panEur.remainingDialDurationTimer);
+            }
+            if(ECallObj.intervalTimer)
+            {
+                LE_DEBUG("Stop the Interval timer");
+                le_timer_Stop(ECallObj.intervalTimer);
+            }
+            break;
+        }
+
+        case LE_ECALL_STATE_COMPLETED: /* eCall session completed */
+        {
+            ECallObj.isSessionStopped = true;
+            // Invalidate MSD
+            memset(ECallObj.builtMsd, 0, sizeof(ECallObj.builtMsd));
+            ECallObj.builtMsdSize = 0;
+            // The Modem successfully completed the MSD transmission and received two AL-ACKs
+            // (positive).
+            ECallObj.isCompleted = true;
+            StopTimers();
+            break;
+        }
+        case LE_ECALL_STATE_MSD_TX_STARTED: /* MSD transmission is started */
+        case LE_ECALL_STATE_WAITING_PSAP_START_IND: /* Waiting for PSAP start indication */
+        case LE_ECALL_STATE_PSAP_START_IND_RECEIVED: /* PSAP start indication received */
+        case LE_ECALL_STATE_LLNACK_RECEIVED: /* LL-NACK received */
+        case LE_ECALL_STATE_LLACK_RECEIVED: /* LL-ACK received */
+        case LE_ECALL_STATE_ALACK_RECEIVED_POSITIVE: /* AL-ACK received */
+        case LE_ECALL_STATE_ALACK_RECEIVED_CLEAR_DOWN: /* AL-ACK clear-down received */
+        case LE_ECALL_STATE_MSD_TX_COMPLETED: /* MSD transmission is complete */
+        case LE_ECALL_STATE_RESET: /* eCall session has lost synchronization and starts over */
+        case LE_ECALL_STATE_FAILED: /* Unsuccessful eCall session */
+        case LE_ECALL_STATE_STOPPED: /* eCall session has been stopped by the PSAP */
+        case LE_ECALL_STATE_MSD_TX_FAILED: /* MSD transmission has failed */
+        {
+            // Nothing to do, just report the event
+             break;
+        }
+
+        case LE_ECALL_STATE_UNKNOWN: /* Unknown state */
+        default:
+        {
+            LE_ERROR("Unknown eCall indication %d", *statePtr);
+            break;
+        }
     }
 
     // Notify all the registered client's handlers
-    le_event_Report(ECallStateId, statePtr, sizeof(le_ecall_State_t));
+    le_event_Report(ECallEventStateId, statePtr, sizeof(le_ecall_State_t));
 }
 
 
@@ -701,10 +972,11 @@ static void ECallStateHandler
 /**
  * This function must be called to initialize the eCall service
  *
- * @note If the initialization failed, it is a fatal error, the function will not return.
+ * @return LE_FAULT  The function failed.
+ * @return LE_OK     The function succeed.
  */
 //--------------------------------------------------------------------------------------------------
-void le_ecall_Init
+le_result_t le_ecall_Init
 (
     void
 )
@@ -714,12 +986,13 @@ void le_ecall_Init
     LE_INFO("le_ecall_Init called.");
 
     // Create an event Id for eCall State notification
-    ECallStateId = le_event_CreateId("ECallState", sizeof(le_ecall_State_t));
+    ECallEventStateId = le_event_CreateId("ECallState", sizeof(le_ecall_State_t));
 
     // Create the Safe Reference Map to use for eCall object Safe References.
     ECallRefMap = le_ref_CreateMap("ECallMap", ECALL_MAX);
 
-    IsSessionStopped = true;
+    // Initialize ECallObj
+    memset(&ECallObj, 0, sizeof(ECallObj));
 
     // Initialize MSD structure
     ECallObj.psapNumber[0] = '\0';
@@ -747,8 +1020,27 @@ void le_ecall_Init
     if (pa_ecall_Init(SystemStandard) != LE_OK)
     {
         LE_ERROR("Cannot initialize Platform Adaptor for eCall, cannot perform eCall!");
-        return;
+        return LE_FAULT;
     }
+
+    // Ecall Context initialization
+    ECallObj.startType = PA_ECALL_START_MANUAL;
+    ECallObj.wasConnected = false;
+    ECallObj.isCompleted = false;
+    ECallObj.isSessionStopped = true;
+    ECallObj.intervalTimer = le_timer_Create("Interval");
+    ECallObj.intervalBetweenAttempts = 30; // 30 seconds
+
+    ECallObj.panEur.stopDialing = false;
+    ECallObj.panEur.remainingDialDurationTimer = le_timer_Create("RemainingDialDuration");
+
+    ECallObj.eraGlonass.manualDialAttempts = 10;
+    ECallObj.eraGlonass.autoDialAttempts = 10;
+    ECallObj.eraGlonass.dialAttempts = 10;
+    ECallObj.eraGlonass.dialAttemptsCount = 10;
+    ECallObj.eraGlonass.dialDuration = 300;
+    ECallObj.eraGlonass.dialDurationTimer = le_timer_Create("DialDuration");
+
 
     // Add a config tree handler for eCall settings update.
     le_cfg_AddChangeHandler(CFG_MODEMSERVICE_ECALL_PATH, SettingsUpdate, NULL);
@@ -800,8 +1092,13 @@ void le_ecall_Init
              (int)ECallObj.msd.msdMsg.msdStruct.control.vehType);
 
     // Register a handler function for eCall state indications
-    LE_FATAL_IF((pa_ecall_AddEventHandler(ECallStateHandler) == NULL),
-                "Add pa_ecall_AddEventHandler failed");
+    if (pa_ecall_AddEventHandler(ECallStateHandler) == NULL)
+    {
+        LE_ERROR("Add pa_ecall_AddEventHandler failed");
+        return LE_FAULT;
+    }
+
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1019,20 +1316,16 @@ le_result_t le_ecall_SetMsdPassengersCount
 /**
  * Import an already prepared MSD.
  *
- * The MSD is not actually transferred at this point, this functions only creates a new MSD object.
- * It is still up to the caller to call le_ecall_LoadMsd().
+ * MSD is transmitted only after an emergency call has been established.
  *
  * @return
  *      - LE_OK on success
+ *      - LE_OVERFLOW The imported MSD length exceeds the MSD_MAX_LEN maximum length.
  *      - LE_DUPLICATE an MSD has been already imported
  *      - LE_BAD_PARAMETER bad eCall reference
  *      - LE_FAULT for other failures
  *
- * @note If MSD code is too long (max MSD_MAX_LEN bytes) fatal errors is logged by
- * killing the calling
- *       process after logging the message at EMERGENCY.
- *
-* @note On failure, the process exits, so you don't have to worry about checking the returned
+ * @note On failure, the process exits, so you don't have to worry about checking the returned
  *       reference for validity.
  */
 //--------------------------------------------------------------------------------------------------
@@ -1050,10 +1343,13 @@ le_result_t le_ecall_ImportMsd
         return LE_BAD_PARAMETER;
     }
 
-    LE_FATAL_IF((msdNumElements > sizeof(ecallPtr->builtMsd)),
-                "Imported MSD is too long (%zd > %zd)",
-                msdNumElements,
-                sizeof(ecallPtr->builtMsd));
+    if (msdNumElements > sizeof(ecallPtr->builtMsd))
+    {
+        LE_ERROR("Imported MSD is too long (%zd > %zd)",
+                 msdNumElements,
+                 sizeof(ecallPtr->builtMsd));
+        return LE_OVERFLOW;
+    }
 
     if (ecallPtr->builtMsdSize > 0)
     {
@@ -1096,10 +1392,13 @@ le_result_t le_ecall_ExportMsd
         return LE_BAD_PARAMETER;
     }
 
-    LE_FATAL_IF((sizeof(ecallPtr->builtMsd) > *msdNumElementsPtr),
-                "Encoded MSD is too long for your buffer (%zd > %zd)!",
-                sizeof(ecallPtr->builtMsd),
-                *msdNumElementsPtr);
+    if (sizeof(ecallPtr->builtMsd) > *msdNumElementsPtr)
+    {
+        LE_ERROR("Encoded MSD is too long for your buffer (%zd > %zd)!",
+                 sizeof(ecallPtr->builtMsd),
+                 *msdNumElementsPtr);
+        return LE_OVERFLOW;
+    }
 
     if (ecallPtr->builtMsdSize == 0)
     {
@@ -1136,14 +1435,16 @@ le_result_t le_ecall_StartAutomatic
     le_ecall_CallRef_t    ecallRef   ///< [IN] eCall reference
 )
 {
+    le_result_t result = LE_FAULT;
     ECall_t*   ecallPtr = le_ref_Lookup(ECallRefMap, ecallRef);
+
     if (ecallPtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", ecallRef);
         return LE_BAD_PARAMETER;
     }
 
-    if (!IsSessionStopped)
+    if (!ECallObj.isSessionStopped)
     {
         LE_ERROR("An eCall session is already in progress");
         return LE_BUSY;
@@ -1164,13 +1465,50 @@ le_result_t le_ecall_StartAutomatic
     if (LoadMsd(ecallPtr) != LE_OK)
     {
         LE_ERROR("The MSD is not valid!");
-        return LE_FAULT;
+        result = LE_FAULT;
     }
     else
     {
-        IsSessionStopped = false;
-        return pa_ecall_StartAutomatic();
+        ECallObj.isSessionStopped = false;
+
+        if (SystemStandard == PA_ECALL_ERA_GLONASS)
+        {
+            ECallObj.eraGlonass.dialAttemptsCount = ECallObj.eraGlonass.autoDialAttempts;
+        }
+
+        // Update eCall start type
+        ECallObj.startType = PA_ECALL_START_AUTO;
+
+        if (pa_ecall_Start(PA_ECALL_START_AUTO) == LE_OK)
+        {
+            // Manage redial policy for ERA-GLONASS
+            if (SystemStandard == PA_ECALL_ERA_GLONASS)
+            {
+                if (ECallObj.eraGlonass.dialAttemptsCount == ECallObj.eraGlonass.dialAttempts)
+                {
+                    // If it is the 1st tentative, I arm the Dial Duration timer
+                    le_clk_Time_t interval;
+                    interval.sec = ECallObj.eraGlonass.dialDuration;
+                    interval.usec = 0;
+
+                    LE_ERROR_IF( ((le_timer_SetInterval(ECallObj.eraGlonass.dialDurationTimer,
+                                                        interval) != LE_OK) ||
+                                (le_timer_SetHandler(ECallObj.eraGlonass.dialDurationTimer,
+                                                    DialDurationTimerHandler) != LE_OK) ||
+                                (le_timer_Start(ECallObj.eraGlonass.dialDurationTimer) != LE_OK)),
+                                "Cannot start the DialDuration timer!");
+                }
+                ECallObj.eraGlonass.dialAttemptsCount--;
+            }
+            result = LE_OK;
+        }
+        else
+        {
+            result = LE_FAULT;
+        }
     }
+
+    return result;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1191,14 +1529,16 @@ le_result_t le_ecall_StartManual
     le_ecall_CallRef_t    ecallRef   ///< [IN] eCall reference
 )
 {
+    le_result_t result = LE_FAULT;
     ECall_t*   ecallPtr = le_ref_Lookup(ECallRefMap, ecallRef);
+
     if (ecallPtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", ecallRef);
         return LE_BAD_PARAMETER;
     }
 
-    if (!IsSessionStopped)
+    if (!ECallObj.isSessionStopped)
     {
         LE_ERROR("An eCall session is already in progress");
         return LE_BUSY;
@@ -1219,13 +1559,50 @@ le_result_t le_ecall_StartManual
     if (LoadMsd(ecallPtr) != LE_OK)
     {
         LE_ERROR("The MSD is not valid!");
-        return LE_FAULT;
+        result = LE_FAULT;
     }
     else
     {
-        IsSessionStopped = false;
-        return pa_ecall_StartManual();
+        ECallObj.isSessionStopped = false;
+
+        if (SystemStandard == PA_ECALL_ERA_GLONASS)
+        {
+            ECallObj.eraGlonass.dialAttemptsCount = ECallObj.eraGlonass.manualDialAttempts;
+        }
+
+        // Update eCall start type
+        ECallObj.startType = PA_ECALL_START_MANUAL;
+
+        if (pa_ecall_Start(PA_ECALL_START_MANUAL) == LE_OK)
+        {
+            // Manage redial policy for ERA-GLONASS
+            if (SystemStandard == PA_ECALL_ERA_GLONASS)
+            {
+                if (ECallObj.eraGlonass.dialAttemptsCount == ECallObj.eraGlonass.dialAttempts)
+                {
+                    // If it is the 1st tentative, I arm the Dial Duration timer
+                    le_clk_Time_t interval;
+                    interval.sec = ECallObj.eraGlonass.dialDuration;
+                    interval.usec = 0;
+
+                    LE_ERROR_IF( ((le_timer_SetInterval(ECallObj.eraGlonass.dialDurationTimer,
+                                                        interval) != LE_OK) ||
+                                (le_timer_SetHandler(ECallObj.eraGlonass.dialDurationTimer,
+                                                    DialDurationTimerHandler) != LE_OK) ||
+                                (le_timer_Start(ECallObj.eraGlonass.dialDurationTimer) != LE_OK)),
+                                "Cannot start the DialDuration timer!");
+                }
+                ECallObj.eraGlonass.dialAttemptsCount--;
+            }
+            result = LE_OK;
+        }
+        else
+        {
+            result = LE_FAULT;
+        }
     }
+
+    return result;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1247,13 +1624,15 @@ le_result_t le_ecall_StartTest
 )
 {
     ECall_t*   ecallPtr = le_ref_Lookup(ECallRefMap, ecallRef);
+    le_result_t result = LE_FAULT;
+
     if (ecallPtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", ecallRef);
         return LE_BAD_PARAMETER;
     }
 
-    if (!IsSessionStopped)
+    if (!ECallObj.isSessionStopped)
     {
         LE_ERROR("An eCall session is already in progress");
         return LE_BUSY;
@@ -1274,13 +1653,50 @@ le_result_t le_ecall_StartTest
     if (LoadMsd(ecallPtr) != LE_OK)
     {
         LE_ERROR("The MSD is not valid!");
-        return LE_FAULT;
+        result = LE_FAULT;
     }
     else
     {
-        IsSessionStopped = false;
-        return pa_ecall_StartTest();
+        ECallObj.isSessionStopped = false;
+
+        if (SystemStandard == PA_ECALL_ERA_GLONASS)
+        {
+            ECallObj.eraGlonass.dialAttemptsCount = ECallObj.eraGlonass.manualDialAttempts;
+        }
+
+        // Update eCall start type
+        ECallObj.startType = PA_ECALL_START_TEST;
+
+        if (pa_ecall_Start(PA_ECALL_START_TEST) == LE_OK)
+        {
+            // Manage redial policy for ERA-GLONASS
+            if (SystemStandard == PA_ECALL_ERA_GLONASS)
+            {
+                if (ECallObj.eraGlonass.dialAttemptsCount == ECallObj.eraGlonass.dialAttempts)
+                {
+                    // If it is the 1st tentative, I arm the Dial Duration timer
+                    le_clk_Time_t interval;
+                    interval.sec = ECallObj.eraGlonass.dialDuration;
+                    interval.usec = 0;
+
+                    LE_ERROR_IF( ((le_timer_SetInterval(ECallObj.eraGlonass.dialDurationTimer,
+                                                        interval) != LE_OK) ||
+                                (le_timer_SetHandler(ECallObj.eraGlonass.dialDurationTimer,
+                                                    DialDurationTimerHandler) != LE_OK) ||
+                                (le_timer_Start(ECallObj.eraGlonass.dialDurationTimer) != LE_OK)),
+                                "Cannot start the DialDuration timer!");
+                }
+                ECallObj.eraGlonass.dialAttemptsCount--;
+            }
+            result = LE_OK;
+        }
+        else
+        {
+            result = LE_FAULT;
+        }
     }
+
+    return result;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1289,7 +1705,6 @@ le_result_t le_ecall_StartTest
  *
  * @return
  *      - LE_OK on success
- *      - LE_BUSY an eCall session is still in progress
  *      - LE_BAD_PARAMETER bad eCall reference
  *      - LE_FAULT for other failures
  */
@@ -1300,31 +1715,27 @@ le_result_t le_ecall_End
 )
 {
     ECall_t*   ecallPtr = le_ref_Lookup(ECallRefMap, ecallRef);
+    le_result_t result;
+
     if (ecallPtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", ecallRef);
         return LE_BAD_PARAMETER;
     }
 
-    if (ecallPtr->state != LE_ECALL_STATE_COMPLETED)
-    {
-        LE_ERROR("An eCall session is still in progress");
-        return LE_BUSY;
-    }
-
-    if (!(ecallPtr->msd.msdMsg.msdStruct.control.testCall) &&
-         (ecallPtr->msd.msdMsg.msdStruct.control.automaticActivation))
-    {
-        LE_ERROR("An automatic eCall session cannot be ended!");
-        return LE_FAULT;
-    }
-
     // Invalidate MSD
     memset(ecallPtr->builtMsd, 0, sizeof(ecallPtr->builtMsd));
     ecallPtr->builtMsdSize = 0;
 
-    IsSessionStopped = true;
-    return (pa_ecall_End());
+    ECallObj.isSessionStopped = true;
+
+    result = pa_ecall_End();
+    if(result == LE_OK)
+    {
+        StopTimers();
+    }
+
+    return (result);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1371,7 +1782,7 @@ le_ecall_StateChangeHandlerRef_t le_ecall_AddStateChangeHandler
     }
 
     handlerRef = le_event_AddLayeredHandler("ECallStateHandler",
-                                            ECallStateId,
+                                            ECallEventStateId,
                                             FirstLayerECallStateChangeHandler,
                                             (le_event_HandlerFunc_t)handlerPtr);
 
@@ -1456,7 +1867,7 @@ le_result_t le_ecall_SetPsapNumber
  *
  * @return
  *  - LE_OK on success
- *  - LE_FAULT for other failures
+ *  - LE_FAULT on failures or if le_ecall_SetPsapNumber() has never been called before.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_ecall_GetPsapNumber
@@ -1509,6 +1920,7 @@ le_result_t le_ecall_SetNadDeregistrationTime
     uint16_t    deregTime  ///< [IN] the NAD_DEREGISTRATION_TIME value (in minutes).
 )
 {
+    ECallObj.eraGlonass.nadDeregistrationTime = deregTime;
     return pa_ecall_SetNadDeregistrationTime(deregTime);
 }
 
@@ -1526,7 +1938,16 @@ le_result_t le_ecall_GetNadDeregistrationTime
     uint16_t*    deregTimePtr  ///< [OUT] the NAD_DEREGISTRATION_TIME value (in minutes).
 )
 {
-    return pa_ecall_GetNadDeregistrationTime(deregTimePtr);
+    le_result_t result;
+
+    result = pa_ecall_GetNadDeregistrationTime(deregTimePtr);
+    if(result == LE_OK)
+    {
+        // Update eCall Context value
+        ECallObj.eraGlonass.nadDeregistrationTime = *deregTimePtr;
+    }
+
+    return result;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1577,7 +1998,8 @@ le_result_t le_ecall_SetIntervalBetweenDialAttempts
     uint16_t    pause   ///< [IN] the minimum interval value in seconds
 )
 {
-    return pa_ecall_SetIntervalBetweenDialAttempts(pause);
+    ECallObj.intervalBetweenAttempts = pause;
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1594,7 +2016,14 @@ le_result_t le_ecall_GetIntervalBetweenDialAttempts
      uint16_t*    pausePtr   ///< [OUT] the minimum interval value in seconds
 )
 {
-    return pa_ecall_GetIntervalBetweenDialAttempts(pausePtr);
+    if (pausePtr == NULL)
+    {
+        LE_ERROR("pausePtr is NULL !");
+        return LE_FAULT;
+    }
+
+    *pausePtr = ECallObj.intervalBetweenAttempts;
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1615,7 +2044,9 @@ le_result_t le_ecall_SetEraGlonassManualDialAttempts
     uint16_t    attempts  ///< [IN] the MANUAL_DIAL_ATTEMPTS value
 )
 {
-    return pa_ecall_SetEraGlonassManualDialAttempts(attempts);
+    ECallObj.eraGlonass.manualDialAttempts = attempts;
+    ECallObj.eraGlonass.dialAttempts = attempts;
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1636,7 +2067,9 @@ le_result_t le_ecall_SetEraGlonassAutoDialAttempts
     uint16_t    attempts  ///< [IN] the AUTO_DIAL_ATTEMPTS value
 )
 {
-    return pa_ecall_SetEraGlonassAutoDialAttempts(attempts);
+    ECallObj.eraGlonass.autoDialAttempts = attempts;
+    ECallObj.eraGlonass.dialAttempts = attempts;
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1656,7 +2089,8 @@ le_result_t le_ecall_SetEraGlonassDialDuration
     uint16_t    duration   ///< [IN] the ECALL_DIAL_DURATION time value (in seconds)
 )
 {
-    return pa_ecall_SetEraGlonassDialDuration(duration);
+    ECallObj.eraGlonass.dialDuration = duration;
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1679,7 +2113,8 @@ le_result_t le_ecall_GetEraGlonassManualDialAttempts
         return LE_FAULT;
     }
 
-    return pa_ecall_GetEraGlonassManualDialAttempts(attemptsPtr);
+    *attemptsPtr = ECallObj.eraGlonass.manualDialAttempts;
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1702,7 +2137,8 @@ le_result_t le_ecall_GetEraGlonassAutoDialAttempts
         return LE_FAULT;
     }
 
-    return pa_ecall_GetEraGlonassAutoDialAttempts(attemptsPtr);
+    *attemptsPtr = ECallObj.eraGlonass.autoDialAttempts;
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1725,7 +2161,8 @@ le_result_t le_ecall_GetEraGlonassDialDuration
         return LE_FAULT;
     }
 
-    return pa_ecall_GetEraGlonassDialDuration(durationPtr);
+    *durationPtr = ECallObj.eraGlonass.dialDuration;
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------

@@ -75,7 +75,7 @@ static bool ChecktStatus_WindCode
     {
         case 2: /* the calling party is alerting */
         {
-            *terminationPtr = LE_MCC_CALL_TERM_NOT_DEFINED;
+            *terminationPtr = LE_MCC_CALL_TERM_UNDEFINED;
             *eventPtr = LE_MCC_CALL_EVENT_ALERTING;
             break;
         }
@@ -117,7 +117,7 @@ static bool ChecktStatus_CssuCode
     bool result = true;
     uint32_t value = atoi(valuePtr);
 
-    *terminationPtr = LE_MCC_CALL_TERM_NOT_DEFINED;
+    *terminationPtr = LE_MCC_CALL_TERM_UNDEFINED;
     switch (value)
     {
         case 5: /* call on hold has been released (during a voice call) */
@@ -156,7 +156,7 @@ static void MCCInternalHandler(void* reportPtr) {
 
     atcmd_CountLineParameter(unsolPtr->line);
 
-    callData.TerminationEvent = LE_MCC_CALL_TERM_NOT_DEFINED;
+    callData.terminationEvent = LE_MCC_CALL_TERM_UNDEFINED;
 
     if ( (FIND_STRING("OK",unsolPtr->line)) )
     {
@@ -172,21 +172,21 @@ static void MCCInternalHandler(void* reportPtr) {
     else if ( (FIND_STRING("NO CARRIER",unsolPtr->line)) )
     {
         callData.event = LE_MCC_CALL_EVENT_TERMINATED;
-        callData.TerminationEvent = LE_MCC_CALL_TERM_REMOTE_ENDED;
+        callData.terminationEvent = LE_MCC_CALL_TERM_REMOTE_ENDED;
         UnregisterDial();
         le_event_Report(EventCallData,&callData,sizeof(callData));
     }
     else if ( (FIND_STRING("BUSY",unsolPtr->line)) )
     {
         callData.event = LE_MCC_CALL_EVENT_TERMINATED;
-        callData.TerminationEvent = LE_MCC_CALL_TERM_BUSY;
+        callData.terminationEvent = LE_MCC_CALL_TERM_USER_BUSY;
         UnregisterDial();
         le_event_Report(EventCallData,&callData,sizeof(callData));
     }
     else if ( (FIND_STRING("NO ANSWER",unsolPtr->line)) )
     {
         callData.event = LE_MCC_CALL_EVENT_TERMINATED;
-        callData.TerminationEvent = LE_MCC_CALL_TERM_REMOTE_ENDED;
+        callData.terminationEvent = LE_MCC_CALL_TERM_REMOTE_ENDED;
         UnregisterDial();
         le_event_Report(EventCallData,&callData,sizeof(callData));
     }
@@ -204,7 +204,7 @@ static void MCCInternalHandler(void* reportPtr) {
     else if ( (FIND_STRING("+WIND:",atcmd_GetLineParameter(unsolPtr->line,1))) )
     {
     if ( ChecktStatus_WindCode(atcmd_GetLineParameter(unsolPtr->line,2),
-            &(callData.event),&(callData.TerminationEvent)))
+            &(callData.event),&(callData.terminationEvent)))
         {
             le_event_Report(EventCallData,&callData,sizeof(callData));
         }
@@ -212,7 +212,7 @@ static void MCCInternalHandler(void* reportPtr) {
     else if ( (FIND_STRING("+CSSU:",atcmd_GetLineParameter(unsolPtr->line,1))) )
     {
     if ( ChecktStatus_CssuCode(atcmd_GetLineParameter(unsolPtr->line,2),
-            &(callData.event),&(callData.TerminationEvent)))
+            &(callData.event),&(callData.terminationEvent)))
         {
             le_event_Report(EventCallData,&callData,sizeof(callData));
         }
@@ -509,7 +509,7 @@ le_result_t pa_mcc_HangUp
         pa_mcc_CallEventData_t callData;
         memset(&callData,0,sizeof(callData));
         callData.event = LE_MCC_CALL_EVENT_TERMINATED;
-        callData.TerminationEvent = LE_MCC_CALL_TERM_LOCAL_ENDED;
+        callData.terminationEvent = LE_MCC_CALL_TERM_LOCAL_ENDED;
         le_event_Report(EventCallData,&callData,sizeof(callData));
     }
 

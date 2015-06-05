@@ -11,6 +11,8 @@
 #include "legato.h"
 #include "interfaces.h"
 #include "pa_audio.h"
+#include "le_audio_local.h"
+#include "le_media_local.h"
 
 //--------------------------------------------------------------------------------------------------
 // Symbol and Enum definitions.
@@ -49,13 +51,6 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Define the maximum size of format stream related field.
- */
-//--------------------------------------------------------------------------------------------------
-#define FORMAT_NAME_MAX_LEN             30
-#define FORMAT_NAME_MAX_BYTES           (FORMAT_NAME_MAX_LEN+1)
-//--------------------------------------------------------------------------------------------------
-/**
  * Macro to verify if an interface is an output interface.
  */
 //--------------------------------------------------------------------------------------------------
@@ -63,15 +58,21 @@
                                         (interface == PA_AUDIO_IF_DSP_FRONTEND_USB_TX) || \
                                         (interface == PA_AUDIO_IF_DSP_BACKEND_MODEM_VOICE_TX) || \
                                         (interface == PA_AUDIO_IF_DSP_FRONTEND_PCM_TX) || \
-                                        (interface == PA_AUDIO_IF_DSP_FRONTEND_I2S_TX) \
+                                        (interface == PA_AUDIO_IF_DSP_FRONTEND_I2S_TX) || \
+                                        (interface == PA_AUDIO_IF_DSP_FRONTEND_FILE_CAPTURE) \
                                     )
-
 
 //--------------------------------------------------------------------------------------------------
 // Data structures.
 //--------------------------------------------------------------------------------------------------
 
-// TODO: We could have one single structure for both DTMF and stream events
+//--------------------------------------------------------------------------------------------------
+/**
+ * Reference type used by Add/Remove functions for EVENT 'StreamEvent'
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct StreamEventHandlerRef* StreamEventHandlerRef_t;
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Stream Event Handler Reference Node structure (information related to stream event handlers).
@@ -80,53 +81,34 @@
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
-    void*                           streamRef;
-    le_event_HandlerRef_t           handlerRef;
-    le_audio_StreamEventBitMask_t   streamEventMask;
-    le_dls_Link_t                   link;
-} StreamEventHandlerRefNode_t;
+    le_event_HandlerRef_t               handlerRef;
+    StreamEventHandlerRef_t             streamHandlerRef;
+    pa_audio_StreamEventBitMask_t       streamEventMask;
+    struct le_audio_Stream*             streamPtr;
+    void*                               userCtx;
+    le_dls_Link_t                       link;
+}
+StreamEventHandlerRefNode_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * DTMF Handler Reference Node structure (information related to DTMF detector handlers).
+ * Open stream structure.
+ * Objects of this type are used to open an audio stream.
  *
  */
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
-    void*                 streamRef;
-    le_event_HandlerRef_t handlerRef;
-    le_dls_Link_t         link;
-} DtmfHandlerRefNode_t;
+    pa_audio_If_t    audioInterface;
+    union
+    {
+        int32_t                 timeslot;
+        le_audio_I2SChannel_t   mode;
+        int32_t                 fd;
+    } param;
 
-//--------------------------------------------------------------------------------------------------
-/**
- * Audio stream structure.
- * Objects of this type are used to define an audio stream.
- *
- */
-//--------------------------------------------------------------------------------------------------
-typedef struct le_audio_Stream {
-    bool             isInput;                       ///< Flag to specify if the stream is an input
-                                                    ///  or output.
-    pa_audio_If_t    audioInterface;                ///< Audio interface identifier.
-    char             format[FORMAT_NAME_MAX_BYTES]; ///< The name of the audio encoding as used by
-                                                    ///  the Real-Time Protocol (RTP), specified by
-                                                    ///  the IANA organisation.
-    uint32_t         gain;                          ///< Gain
-    int32_t          fd;                            ///< Audio file descriptor for playback or capture
-    le_hashmap_Ref_t connectorList;                 ///< list of connectors to which the audio
-                                                    ///  stream is tied to.
-    le_dls_List_t    streamRefWithDtmfHdlrList;     ///< List containing information related to
-                                                    ///  DTMF detector handlers
-    le_event_Id_t    dtmfDetectionEventId;          ///< Event ID to report detected DTMF
-    // TODO: DTMF related objects and stream event related objects must be merged
-    le_dls_List_t    streamRefWithEventHdlrList;    ///< List containing information related to
-                                                    ///  stream event handlers
-    le_event_Id_t    streamEventId;                 ///< Event ID to report stream events
-    le_audio_FileEvent_t fileEvent;                 ///< Event related to audio file
-    char             dtmfChar;                      ///< Detected DTMF
-} le_audio_Stream_t;
+}
+OpenStream_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -138,10 +120,10 @@ typedef struct le_audio_Stream {
 typedef struct le_audio_Connector {
     le_hashmap_Ref_t streamInList;            ///< list of input streams tied to this connector.
     le_hashmap_Ref_t streamOutList;           ///< list of output streams tied to this connector.
-    bool             captureThreadIsStarted;  ///< Capture thread flag tied to this connector.
-    bool             playbackThreadIsStarted; ///< Playback thread flag tied to this connector.
+    le_msg_SessionRef_t sessionRef;           ///< client sessionRef
     le_dls_Link_t    connectorsLink;          ///< link for all connector
-} le_audio_Connector_t;
+}
+le_audio_Connector_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -157,8 +139,29 @@ struct hashMapList {
 };
 
 //--------------------------------------------------------------------------------------------------
+/**
+ * SessionRef node structure used for the sessionRef list.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    le_msg_SessionRef_t sessionRef;           ///< client sessionRef
+    le_dls_Link_t       link;                 ///< link for SessionRefList
+}
+SessionRefNode_t;
+
+//--------------------------------------------------------------------------------------------------
 //                                       Static declarations
 //--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The memory pool for the clients sessionRef objects
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mem_PoolRef_t SessionRefPool;
+
 //--------------------------------------------------------------------------------------------------
 /**
  * The memory pool for audio stream objects
@@ -204,13 +207,6 @@ static le_mem_PoolRef_t AudioHashMapPool;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * The memory pool for stream reference node objects (used by DTMF add/remove handler functions)
- */
-//--------------------------------------------------------------------------------------------------
-static le_mem_PoolRef_t StreamRefNodePool;
-
-//--------------------------------------------------------------------------------------------------
-/**
  * The memory pool for stream reference node objects (used by stream event add/remove handler
  * functions)
  */
@@ -223,18 +219,7 @@ static le_mem_PoolRef_t StreamEventHandlerRefNodePool;
  *
  */
 //--------------------------------------------------------------------------------------------------
-static le_audio_Stream_t*   MicStreamPtr=NULL;
-static le_audio_Stream_t*   SpeakerStreamPtr=NULL;
-static le_audio_Stream_t*   UsbRxStreamPtr=NULL;
-static le_audio_Stream_t*   UsbTxStreamPtr=NULL;
-static le_audio_Stream_t*   PcmRxStreamPtr=NULL;
-static le_audio_Stream_t*   PcmTxStreamPtr=NULL;
-static le_audio_Stream_t*   I2sRxStreamPtr=NULL;
-static le_audio_Stream_t*   I2sTxStreamPtr=NULL;
-static le_audio_Stream_t*   ModemVoiceRxStreamPtr=NULL;
-static le_audio_Stream_t*   ModemVoiceTxStreamPtr=NULL;
-static le_audio_Stream_t*   FilePbStreamPtr=NULL;
-static le_audio_Stream_t*   FileCaptureStreamPtr=NULL;
+static le_audio_Stream_t*   AudioStream[PA_AUDIO_NUM_INTERFACES] = { NULL };
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -244,6 +229,28 @@ static le_audio_Stream_t*   FileCaptureStreamPtr=NULL;
 //--------------------------------------------------------------------------------------------------
 static le_ref_MapRef_t AudioConnectorRefMap;
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Safe Reference Map for stream event handler.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static le_ref_MapRef_t StreamEventHandlerRefMap;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Default PCM configuation values.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static pa_audio_SamplePcmConfig_t SampleDefaultPcmConfig =
+{
+    .sampleRate = 8000,
+    .channelsCount = 1,
+    .bitsPerSample = 16,
+    .fileSize = -1,
+    .pcmFormat = PCM_WAVE
+};
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -270,8 +277,7 @@ size_t HashAudioRef
  *
  */
 //--------------------------------------------------------------------------------------------------
-
-bool EqualsAudioRef
+static bool EqualsAudioRef
 (
     const void* firstSafeRef,    ///< [IN] First SafeRef for comparing.
     const void* secondSafeRef    ///< [IN] Second SafeRef for comparing.
@@ -432,6 +438,8 @@ static void DeleteAllConnectorPathsFromStream
             CloseStreamPaths(streamPtr, currentConnectorPtr->streamInList);
         }
     }
+
+    pa_audio_ResetDspAudioPath();
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -461,206 +469,8 @@ static void CloseAllConnectorPaths
 
         CloseStreamPaths(currentStreamPtr,connectorPtr->streamOutList);
     }
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This function clean all hashmap
- *
- */
-//--------------------------------------------------------------------------------------------------
-static void ClearHashMap
-(
-    le_audio_Connector_t* connectorPtr
-)
-{
-    le_hashmap_It_Ref_t streamIterator;
-
-    if (connectorPtr == NULL)
-    {
-        LE_KILL_CLIENT("connectorPtr is NULL !");
-        return;
-    }
-
-    streamIterator = le_hashmap_GetIterator(connectorPtr->streamInList);
-    while (le_hashmap_NextNode(streamIterator)==LE_OK)
-    {
-        le_audio_Stream_t const * currentStreamPtr = le_hashmap_GetValue(streamIterator);
-
-        le_hashmap_Remove(currentStreamPtr->connectorList,connectorPtr);
-    }
-
-    streamIterator = le_hashmap_GetIterator(connectorPtr->streamOutList);
-    while (le_hashmap_NextNode(streamIterator)==LE_OK)
-    {
-        le_audio_Stream_t const * currentStreamPtr = le_hashmap_GetValue(streamIterator);
-
-        le_hashmap_Remove(currentStreamPtr->connectorList,connectorPtr);
-    }
-
-    le_hashmap_RemoveAll(connectorPtr->streamInList);
-    le_hashmap_RemoveAll(connectorPtr->streamOutList);
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This function starts the threads tied to an input connector
- *
- * @return LE_OK    The threads have started or are already started
- * @return LE_FAULT The thread failed to start
- *
- */
-//--------------------------------------------------------------------------------------------------
-static le_result_t StartThreadsOnInputConnector
-(
-    le_audio_Connector_t*   connectorPtr   ///< [IN] The connector.
-)
-{
-    if (connectorPtr == NULL)
-    {
-        LE_KILL_CLIENT("connectorPtr is NULL !");
-        return LE_FAULT;
-    }
-
-    le_hashmap_It_Ref_t streamIterator = le_hashmap_GetIterator(connectorPtr->streamInList);
-
-    LE_DEBUG("Check connector input %p",streamIterator);
-
-    while (le_hashmap_NextNode(streamIterator)==LE_OK)
-    {
-        le_audio_Stream_t const * currentStreamPtr = le_hashmap_GetValue(streamIterator);
-
-        LE_DEBUG("audioInterface %d", currentStreamPtr->audioInterface);
-
-        if (currentStreamPtr->audioInterface == PA_AUDIO_IF_DSP_FRONTEND_FILE_PLAY)
-        {
-            if ( pa_audio_StartPlayback(currentStreamPtr->audioInterface,
-                                        currentStreamPtr->fd) == LE_OK )
-            {
-                connectorPtr->playbackThreadIsStarted = true;
-            }
-            else
-            {
-                return LE_FAULT;
-            }
-        }
-    }
-
-    return LE_OK;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This function stops the threads tied to an input connector
- *
- * @return LE_OK    The thread is stopped
- * @return LE_BUSY  The thread failed to stop
- */
-//--------------------------------------------------------------------------------------------------
-static le_result_t StopThreadsOnInputConnector
-(
-    void
-)
-{
-    // Try to find, for all connector, one stream that need the capture thread
-    le_dls_Link_t* linkConnectorPtr = le_dls_Peek(&AllConnectorList);
-
-    while (linkConnectorPtr!=NULL)
-    {
-        le_audio_Connector_t* currentConnectorPtr = CONTAINER_OF(linkConnectorPtr,
-                                                                 le_audio_Connector_t,
-                                                                 connectorsLink);
-
-        currentConnectorPtr->captureThreadIsStarted = false;
-        currentConnectorPtr->playbackThreadIsStarted = false;
-        linkConnectorPtr = le_dls_PeekNext(&AllConnectorList,linkConnectorPtr);
-    }
-
-    pa_audio_StopCapture();
-    pa_audio_StopPlayback();
 
     pa_audio_ResetDspAudioPath();
-    return LE_OK;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This function starts the threads tied to an output connector
- *
- * @return LE_OK    The threads have started or are already started
- * @return LE_FAULT The thread failed to start
- */
-//--------------------------------------------------------------------------------------------------
-static le_result_t StartThreadsOnOutputConnector
-(
-    le_audio_Connector_t*   connectorPtr   ///< [IN] The connector.
-)
-{
-    if (connectorPtr == NULL)
-    {
-        LE_KILL_CLIENT("connectorPtr is NULL !");
-        return LE_FAULT;
-    }
-
-    le_hashmap_It_Ref_t streamIterator = le_hashmap_GetIterator(connectorPtr->streamOutList);
-
-    LE_DEBUG("Check connector input %p",streamIterator);
-
-    while (le_hashmap_NextNode(streamIterator)==LE_OK)
-    {
-        le_audio_Stream_t const * currentStreamPtr = le_hashmap_GetValue(streamIterator);
-
-        LE_DEBUG("audioInterface %d", currentStreamPtr->audioInterface);
-
-        if (currentStreamPtr->audioInterface == PA_AUDIO_IF_DSP_FRONTEND_FILE_CAPTURE)
-        {
-            if ( pa_audio_StartCapture(currentStreamPtr->audioInterface,
-                                        currentStreamPtr->fd) == LE_OK )
-            {
-                connectorPtr->captureThreadIsStarted = true;
-            }
-            else
-            {
-                return LE_FAULT;
-            }
-        }
-    }
-
-    return LE_OK;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This function stops the threads tied to an output connector
- *
- * @return LE_OK    The thread is stopped
- * @return LE_BUSY  The thread failed to stop
- */
-//--------------------------------------------------------------------------------------------------
-static le_result_t StopThreadsOnOutputConnector
-(
-    void
-)
-{
-    // Try to find, for all connector, one stream that need the playback thread
-    le_dls_Link_t* linkConnectorPtr = le_dls_Peek(&AllConnectorList);
-
-    while (linkConnectorPtr!=NULL)
-    {
-        le_audio_Connector_t* currentConnectorPtr = CONTAINER_OF(linkConnectorPtr,
-                                                                 le_audio_Connector_t,
-                                                                 connectorsLink);
-
-        currentConnectorPtr->captureThreadIsStarted = false;
-        currentConnectorPtr->playbackThreadIsStarted = false;
-        linkConnectorPtr = le_dls_PeekNext(&AllConnectorList,linkConnectorPtr);
-    }
-
-    pa_audio_StopCapture();
-    pa_audio_StopPlayback();
-
-    pa_audio_ResetDspAudioPath();
-    return LE_OK;
 }
 
 
@@ -746,65 +556,44 @@ static void ReleaseHashMapElement
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function remove all the handler references from the Handlers' lists tied to the stream
+ * This function clean all hashmap
  *
- * TODO: We should have one single list for DTMF and other events.
  */
 //--------------------------------------------------------------------------------------------------
-static void RemoveAllHandlersFromHdlrLists
+static void ClearHashMap
 (
-    le_audio_Stream_t* streamPtr
+    le_audio_Connector_t* connectorPtr
 )
 {
-    le_dls_Link_t*               linkPtr;
+    le_hashmap_It_Ref_t streamIterator;
 
-    // DTMF handlers
-    if(ModemVoiceRxStreamPtr)
+    if (connectorPtr == NULL)
     {
-        DtmfHandlerRefNode_t* nodePtr;
-
-        // Remove corresponding node from the streamRefWithDtmfHdlrList
-        linkPtr = le_dls_Peek(&(ModemVoiceRxStreamPtr->streamRefWithDtmfHdlrList));
-        while (linkPtr != NULL)
-        {
-            nodePtr = CONTAINER_OF(linkPtr, DtmfHandlerRefNode_t, link);
-            if (nodePtr->handlerRef)
-            {
-                le_dls_Remove(&(ModemVoiceRxStreamPtr->streamRefWithDtmfHdlrList), &nodePtr->link);
-                le_mem_Release(nodePtr);
-                break;
-            }
-            linkPtr = le_dls_PeekNext(&ModemVoiceRxStreamPtr->streamRefWithDtmfHdlrList, linkPtr);
-        }
-        // if No more DTMF handlers (list is void), stop DTMF decoder
-        if (le_dls_Peek(&(ModemVoiceRxStreamPtr->streamRefWithDtmfHdlrList)) == NULL)
-        {
-            pa_audio_StopDtmfDecoder(PA_AUDIO_IF_DSP_BACKEND_DTMF_RX);
-        }
-
-        // TODO: do the same loop on the other input interfaces
+        LE_KILL_CLIENT("connectorPtr is NULL !");
+        return;
     }
 
-    // Stream events handlers
-    // TODO: Fix bad research management in existing streams
-    if (streamPtr->streamRefWithEventHdlrList.headLinkPtr != NULL)
+    streamIterator = le_hashmap_GetIterator(connectorPtr->streamInList);
+    while (le_hashmap_NextNode(streamIterator)==LE_OK)
     {
-        StreamEventHandlerRefNode_t* nodePtr;
+        le_audio_Stream_t const * currentStreamPtr = le_hashmap_GetValue(streamIterator);
 
-        // Remove corresponding node from the streamRefWithEventHdlrList
-        linkPtr = le_dls_Peek(&(streamPtr->streamRefWithEventHdlrList));
-        while (linkPtr != NULL)
-        {
-            nodePtr = CONTAINER_OF(linkPtr, StreamEventHandlerRefNode_t, link);
-            if (nodePtr->handlerRef)
-            {
-                le_dls_Remove(&(streamPtr->streamRefWithEventHdlrList), &nodePtr->link);
-                le_mem_Release(nodePtr);
-                break;
-            }
-            linkPtr = le_dls_PeekNext(&streamPtr->streamRefWithEventHdlrList, linkPtr);
-        }
+        le_hashmap_Remove(currentStreamPtr->connectorList,connectorPtr);
     }
+
+    streamIterator = le_hashmap_GetIterator(connectorPtr->streamOutList);
+    while (le_hashmap_NextNode(streamIterator)==LE_OK)
+    {
+        le_audio_Stream_t const * currentStreamPtr = le_hashmap_GetValue(streamIterator);
+
+        le_hashmap_Remove(currentStreamPtr->connectorList,connectorPtr);
+    }
+
+    le_hashmap_RemoveAll(connectorPtr->streamInList);
+    le_hashmap_RemoveAll(connectorPtr->streamOutList);
+
+    ReleaseHashMapElement(connectorPtr->streamInList);
+    ReleaseHashMapElement(connectorPtr->streamOutList);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -827,8 +616,205 @@ static void InitializeStream
     streamPtr->audioInterface = 0;
     streamPtr->isInput = false;
     streamPtr->gain=0;
+    streamPtr->fd=LE_AUDIO_NO_FD;
     memset(streamPtr->format, 0, sizeof(streamPtr->format));
     streamPtr->connectorList = GetHashMapElement();
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function verify the validity of the DTMFs.
+ *
+ * @return true   All the DTMF are valid.
+ * @return false  One or more DTMF are not valid.
+ */
+//--------------------------------------------------------------------------------------------------
+static bool AreDtmfValid
+(
+    const char*   dtmfPtr  ///< [IN] The DTMFs to verify.
+)
+{
+    char dtmfSet[] = "1234567890*#abcdABCD";
+    uint32_t bufLen = strlen(dtmfPtr);
+    uint32_t dtmfCount = strspn (dtmfPtr, dtmfSet);
+
+    if (bufLen != dtmfCount)
+    {
+        return false;
+    }
+    else
+    {
+        return true;
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The first-layer File Event Handler.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void FirstLayerStreamEventHandler
+(
+    void* reportPtr,
+    void* secondLayerHandlerFunc
+)
+{
+    pa_audio_StreamEvent_t* streamEventPtr = reportPtr;
+    StreamEventHandlerRefNode_t* streamRefNodePtr = le_event_GetContextPtr();
+
+
+    if ((AudioStream[streamEventPtr->interface]->streamRef == NULL)||
+        (streamRefNodePtr == NULL))
+    {
+        LE_KILL_CLIENT("Invalid reference provided!");
+        return;
+    }
+
+    switch ( streamEventPtr->streamEvent )
+    {
+        case PA_AUDIO_BITMASK_MEDIA_EVENT:
+        {
+            le_audio_MediaHandlerFunc_t clientHandlerFunc = secondLayerHandlerFunc;
+                clientHandlerFunc(AudioStream[streamEventPtr->interface]->streamRef,
+                      streamEventPtr->event.mediaEvent,
+                      streamRefNodePtr->userCtx);
+        }
+        break;
+
+        case PA_AUDIO_BITMASK_DTMF_DETECTION:
+        {
+            le_audio_DtmfDetectorHandlerFunc_t clientHandlerFunc = secondLayerHandlerFunc;
+                clientHandlerFunc(AudioStream[streamEventPtr->interface]->streamRef,
+                      streamEventPtr->event.dtmf,
+                      streamRefNodePtr->userCtx);
+        }
+        break;
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add handler function for EVENT 'StreamEvent'
+ *
+ * This event provides information on player / recorder stream events.
+ */
+//--------------------------------------------------------------------------------------------------
+static StreamEventHandlerRef_t AddStreamEventHandler
+(
+    le_audio_StreamRef_t streamRef,
+    le_event_HandlerFunc_t handlerPtr,
+    pa_audio_StreamEventBitMask_t streamEventBitMask,
+    void* contextPtr
+)
+{
+    le_event_HandlerRef_t  handlerRef;
+    le_audio_Stream_t*     streamPtr = le_ref_Lookup(AudioStreamRefMap, streamRef);
+
+    if (streamPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid stream reference (%p) provided!", streamRef);
+        return NULL;
+    }
+    if (handlerPtr == NULL)
+    {
+        LE_KILL_CLIENT("Handler function is NULL !");
+        return NULL;
+    }
+
+    LE_DEBUG("Add stream event handler on interface %d.", streamPtr->audioInterface);
+
+    // Associate the handlerRef to the streamRef
+    StreamEventHandlerRefNode_t* streamRefNodePtr = le_mem_ForceAlloc(
+                                                                StreamEventHandlerRefNodePool);
+    streamRefNodePtr->streamEventMask = streamEventBitMask;
+
+    streamRefNodePtr->link = LE_DLS_LINK_INIT;
+
+    streamRefNodePtr->streamPtr = streamPtr;
+
+    handlerRef = le_event_AddLayeredHandler("StreamEventHandler",
+                                            streamPtr->streamEventId,
+                                            FirstLayerStreamEventHandler,
+                                            handlerPtr);
+
+    streamRefNodePtr->userCtx = contextPtr;
+
+    le_event_SetContextPtr(handlerRef, streamRefNodePtr);
+
+    streamRefNodePtr->handlerRef = handlerRef;
+
+    le_dls_Queue(&(streamPtr->streamRefWithEventHdlrList),&(streamRefNodePtr->link));
+
+    streamRefNodePtr->streamHandlerRef = le_ref_CreateRef( StreamEventHandlerRefMap,
+                                                                streamRefNodePtr );
+
+    return streamRefNodePtr->streamHandlerRef;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * le_audio_RemoveStreamEventHandler handler REMOVE function
+ */
+//--------------------------------------------------------------------------------------------------
+static void RemoveStreamEventHandler
+(
+    StreamEventHandlerRef_t addHandlerRef ///< [IN]
+)
+{
+    StreamEventHandlerRefNode_t* streamRefNodePtr = le_ref_Lookup(StreamEventHandlerRefMap,
+                                                                  addHandlerRef);
+
+    if (streamRefNodePtr == NULL)
+    {
+        LE_WARN("Invalid reference (%p) provided!", streamRefNodePtr);
+        return;
+    }
+
+    le_event_RemoveHandler((le_event_HandlerRef_t)streamRefNodePtr->handlerRef);
+
+    le_ref_DeleteRef(StreamEventHandlerRefMap, streamRefNodePtr->streamHandlerRef);
+
+    if (streamRefNodePtr->streamEventMask == PA_AUDIO_BITMASK_DTMF_DETECTION)
+    {
+        pa_audio_StopDtmfDecoder(streamRefNodePtr->streamPtr->audioInterface);
+    }
+
+    le_dls_Remove(&streamRefNodePtr->streamPtr->streamRefWithEventHdlrList,
+                  &streamRefNodePtr->link);
+
+    le_mem_Release(streamRefNodePtr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function remove all the handler references from the Handlers' lists tied to the stream
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void RemoveAllHandlersFromHdlrLists
+(
+    le_audio_Stream_t* streamPtr
+)
+{
+    le_dls_Link_t*               linkPtr;
+
+    // Stream events handlers
+    if (streamPtr->streamRefWithEventHdlrList.headLinkPtr != NULL)
+    {
+        StreamEventHandlerRefNode_t* nodePtr;
+
+        // Remove corresponding node from the streamRefWithEventHdlrList
+        linkPtr = le_dls_Peek(&(streamPtr->streamRefWithEventHdlrList));
+        while (linkPtr != NULL)
+        {
+            nodePtr = CONTAINER_OF(linkPtr, StreamEventHandlerRefNode_t, link);
+
+            linkPtr = le_dls_PeekNext(&streamPtr->streamRefWithEventHdlrList, linkPtr);
+
+            RemoveStreamEventHandler(nodePtr->streamHandlerRef);
+        }
+    }
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -846,6 +832,13 @@ static void DestructStream
 
     le_audio_Stream_t* streamPtr = objPtr;
 
+    pa_audio_Stop(streamPtr->audioInterface);
+
+    if (streamPtr->fd != LE_AUDIO_NO_FD)
+    {
+        close(streamPtr->fd);
+    }
+
     DeleteAllConnectorPathsFromStream (streamPtr);
 
     RemoveAllHandlersFromHdlrLists(streamPtr);
@@ -853,203 +846,229 @@ static void DestructStream
     le_hashmap_RemoveAll(streamPtr->connectorList);
     ReleaseHashMapElement(streamPtr->connectorList);
 
-    StopThreadsOnInputConnector ();
-    StopThreadsOnOutputConnector ();
+    // Invalidate the Safe Reference.
+    le_ref_DeleteRef(AudioStreamRefMap, streamPtr->streamRef);
 
-    switch (streamPtr->audioInterface)
-    {
-        case PA_AUDIO_IF_CODEC_MIC :
-            MicStreamPtr = NULL;
-            break;
-        case PA_AUDIO_IF_CODEC_SPEAKER:
-            SpeakerStreamPtr = NULL;
-            break;
-        case PA_AUDIO_IF_DSP_FRONTEND_USB_RX:
-            UsbRxStreamPtr = NULL;
-            break;
-        case PA_AUDIO_IF_DSP_FRONTEND_USB_TX:
-            UsbTxStreamPtr = NULL;
-            break;
-        case PA_AUDIO_IF_DSP_BACKEND_MODEM_VOICE_RX:
-            ModemVoiceRxStreamPtr = NULL;
-            break;
-        case PA_AUDIO_IF_DSP_BACKEND_MODEM_VOICE_TX:
-            ModemVoiceTxStreamPtr = NULL;
-            break;
-        case PA_AUDIO_IF_DSP_FRONTEND_PCM_RX:
-            PcmRxStreamPtr = NULL;
-            break;
-        case PA_AUDIO_IF_DSP_FRONTEND_PCM_TX:
-            PcmTxStreamPtr = NULL;
-            break;
-        case PA_AUDIO_IF_DSP_FRONTEND_I2S_RX:
-            I2sRxStreamPtr = NULL;
-            break;
-        case PA_AUDIO_IF_DSP_FRONTEND_I2S_TX:
-            I2sTxStreamPtr = NULL;
-            break;
-        case PA_AUDIO_IF_DSP_FRONTEND_FILE_PLAY:
-            FilePbStreamPtr = NULL;
-            break;
-        case PA_AUDIO_IF_DSP_FRONTEND_FILE_CAPTURE:
-            FileCaptureStreamPtr = NULL;
-            break;
-        case PA_AUDIO_NUM_INTERFACES:
-        case PA_AUDIO_IF_DSP_BACKEND_DTMF_RX:
-            break;
-    }
+    AudioStream[streamPtr->audioInterface] = NULL;
 }
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function is called when a connector is deleted
+ * Internal stream event Handler.
  *
  */
 //--------------------------------------------------------------------------------------------------
-static void DestructConnector
+static void StreamEventHandler
 (
-    void *objPtr
-)
-{
-    LE_ASSERT(objPtr);
-
-    le_audio_Connector_t* connectorPtr = objPtr;
-
-    le_hashmap_RemoveAll(connectorPtr->streamInList);
-    le_hashmap_RemoveAll(connectorPtr->streamInList);
-
-    ReleaseHashMapElement(connectorPtr->streamInList);
-    ReleaseHashMapElement(connectorPtr->streamOutList);
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * The first-layer DTMF Event Handler.
- *
- */
-//--------------------------------------------------------------------------------------------------
-static void FirstLayerDtmfDetectorHandler
-(
-    void* reportPtr,
-    void* secondLayerHandlerFunc
-)
-{
-    le_audio_StreamRef_t*              streamRef = reportPtr;
-    le_audio_DtmfDetectorHandlerFunc_t clientHandlerFunc = secondLayerHandlerFunc;
-
-    le_audio_Stream_t*  streamPtr = le_ref_Lookup(AudioStreamRefMap, *streamRef);
-    if (streamPtr == NULL)
-    {
-        LE_KILL_CLIENT("Invalid stream reference (%p) provided!", *streamRef);
-        return;
-    }
-
-    LE_DEBUG("[%c] DTMF detected!", streamPtr->dtmfChar);
-
-    clientHandlerFunc(*streamRef, streamPtr->dtmfChar, le_event_GetContextPtr());
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Internal Dtmf detector Handler.
- *
- */
-//--------------------------------------------------------------------------------------------------
-static void DtmfDetectorHandler
-(
-    char  dtmf
-)
-{
-    void*                 streamRefTmp = NULL;
-    DtmfHandlerRefNode_t* nodePtr;
-    le_dls_Link_t*        linkPtr;
-
-    LE_DEBUG("[%c] DTMF detected!", dtmf);
-
-    // Report DTMF to all registered handlers
-    linkPtr = le_dls_Peek(&(ModemVoiceRxStreamPtr->streamRefWithDtmfHdlrList));
-    while (linkPtr != NULL)
-    {
-        nodePtr = CONTAINER_OF(linkPtr, DtmfHandlerRefNode_t, link);
-        LE_DEBUG("Found streamRef.%p", nodePtr->streamRef);
-        if(nodePtr->streamRef != streamRefTmp)
-        {
-            // Notify only once on one streamRef
-            ModemVoiceRxStreamPtr->dtmfChar=dtmf;
-
-            le_event_Report(ModemVoiceRxStreamPtr->dtmfDetectionEventId,
-                            &nodePtr->streamRef,
-                            sizeof(nodePtr->streamRef));
-            streamRefTmp = nodePtr->streamRef;
-        }
-        linkPtr = le_dls_PeekNext(&ModemVoiceRxStreamPtr->streamRefWithDtmfHdlrList, linkPtr);
-    }
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * The first-layer File Event Handler.
- *
- */
-//--------------------------------------------------------------------------------------------------
-static void FirstLayerStreamEventHandler
-(
-    void* reportPtr,
-    void* secondLayerHandlerFunc
-)
-{
-    le_audio_StreamRef_t*             streamRef = reportPtr;
-    le_audio_StreamEventHandlerFunc_t clientHandlerFunc = secondLayerHandlerFunc;
-
-    le_audio_Stream_t*  streamPtr = le_ref_Lookup(AudioStreamRefMap, *streamRef);
-    if (streamPtr == NULL)
-    {
-        LE_KILL_CLIENT("Invalid stream reference (%p) provided!", *streamRef);
-        return;
-    }
-
-    // TODO: Manage other types of events
-    clientHandlerFunc(*streamRef, LE_AUDIO_BITMASK_FILE_EVENT, le_event_GetContextPtr());
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Internal File Handler.
- *
- */
-//--------------------------------------------------------------------------------------------------
-static void FileHandler
-(
-    le_audio_FileEvent_t  event,
+    pa_audio_StreamEvent_t* streamEventPtr,
     void*                 contextPtr
 )
 {
-    StreamEventHandlerRefNode_t* nodePtr;
-    le_dls_Link_t*   linkPtr;
+    LE_DEBUG("Event detected, interface %d, streamEvent %d", streamEventPtr->interface,
+                                                             streamEventPtr->streamEvent);
 
-    LE_DEBUG("%d event detected!", event);
+    if (!AudioStream[streamEventPtr->interface] ||
+        !AudioStream[streamEventPtr->interface]->streamEventId)
+    {
+        LE_ERROR("Stream not opened %d !!!!!", streamEventPtr->interface);
+        return;
+    }
 
-    // TODO: Run the research on all stream objects
-    linkPtr = le_dls_Peek(&(FilePbStreamPtr->streamRefWithEventHdlrList));
+    le_event_Report(AudioStream[streamEventPtr->interface]->streamEventId,
+                    streamEventPtr,
+                    sizeof(pa_audio_StreamEvent_t));
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Open an audio stream.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static le_audio_StreamRef_t OpenAudioStream
+(
+    OpenStream_t* streamPtr
+)
+{
+    LE_DEBUG("Open audio stream (%d)", streamPtr->audioInterface);
+
+    if (!AudioStream[streamPtr->audioInterface])
+    {
+        AudioStream[streamPtr->audioInterface] = le_mem_ForceAlloc(AudioStreamPool);
+
+        InitializeStream(AudioStream[streamPtr->audioInterface]);
+
+        AudioStream[streamPtr->audioInterface]->audioInterface = streamPtr->audioInterface;
+        AudioStream[streamPtr->audioInterface]->isInput = !IS_OUTPUT_IF(streamPtr->audioInterface);
+        AudioStream[streamPtr->audioInterface]->streamRefWithEventHdlrList=LE_DLS_LIST_INIT;
+        AudioStream[streamPtr->audioInterface]->sessionRefList=LE_DLS_LIST_INIT;
+
+        // Create and return a Safe Reference for this stream object.
+        AudioStream[streamPtr->audioInterface]->streamRef = le_ref_CreateRef(AudioStreamRefMap,
+                                                            AudioStream[streamPtr->audioInterface]);
+
+        // Specifc treatment of the asked audio interface
+        switch ( streamPtr->audioInterface )
+        {
+            case PA_AUDIO_IF_CODEC_MIC:
+            case PA_AUDIO_IF_CODEC_SPEAKER:
+                if ( !pa_audio_IsCodecPresent() )
+                {
+                    LE_WARN("This device does not provide an in-built Codec");
+                    le_mem_Release(AudioStream[streamPtr->audioInterface]);
+                    AudioStream[streamPtr->audioInterface] = NULL;
+                    return NULL;
+                }
+            break;
+            case PA_AUDIO_IF_DSP_FRONTEND_PCM_RX:
+            case PA_AUDIO_IF_DSP_FRONTEND_PCM_TX:
+                if ( pa_audio_SetPcmTimeSlot(streamPtr->audioInterface,  streamPtr->param.timeslot) != LE_OK )
+                {
+                    LE_WARN("Cannot set timeslot of Secondary PCM interface");
+                    le_mem_Release(AudioStream[streamPtr->audioInterface]);
+                    AudioStream[streamPtr->audioInterface] = NULL;
+                    return NULL;
+                }
+                // Default mode must be Master
+                if ( pa_audio_SetMasterMode(streamPtr->audioInterface) != LE_OK )
+                {
+                    LE_WARN("Cannot open Secondary PCM input as Master");
+                    le_mem_Release(AudioStream[streamPtr->audioInterface]);
+                    AudioStream[streamPtr->audioInterface] = NULL;
+                    return NULL;
+                }
+            break;
+            case PA_AUDIO_IF_DSP_FRONTEND_I2S_RX:
+            case PA_AUDIO_IF_DSP_FRONTEND_I2S_TX:
+                if ( pa_audio_SetI2sChannelMode(streamPtr->audioInterface, streamPtr->param.mode) != LE_OK )
+                {
+                    LE_WARN("Cannot set the channel mode of I2S interface");
+                    le_mem_Release(AudioStream[streamPtr->audioInterface]);
+                    AudioStream[streamPtr->audioInterface] = NULL;
+                    return NULL;
+                }
+            break;
+            case PA_AUDIO_IF_DSP_FRONTEND_FILE_PLAY:
+            case PA_AUDIO_IF_DSP_FRONTEND_FILE_CAPTURE:
+                AudioStream[streamPtr->audioInterface]->fd = streamPtr->param.fd;
+                AudioStream[streamPtr->audioInterface]->streamEventId = le_event_CreateId("streamEventId",
+                                                                    sizeof(pa_audio_StreamEvent_t));
+
+                memcpy( &AudioStream[streamPtr->audioInterface]->samplePcmConfig,
+                        &SampleDefaultPcmConfig,
+                        sizeof(pa_audio_SamplePcmConfig_t) );
+            break;
+            case PA_AUDIO_IF_DSP_BACKEND_MODEM_VOICE_RX:
+                // streamEventId needed for DTMF detection
+                AudioStream[streamPtr->audioInterface]->streamEventId = le_event_CreateId("streamEventId",
+                                                                    sizeof(pa_audio_StreamEvent_t));
+            default:
+            break;
+        }
+
+    }
+    else
+    {
+        le_mem_AddRef(AudioStream[streamPtr->audioInterface]);
+    }
+
+    SessionRefNode_t* newSessionRefPtr = le_mem_ForceAlloc(SessionRefPool);
+    newSessionRefPtr->sessionRef = le_audio_GetClientSessionRef();
+    newSessionRefPtr->link = LE_DLS_LINK_INIT;
+
+    // Add the new sessionRef into the the sessionRef list
+    le_dls_Queue(&AudioStream[streamPtr->audioInterface]->sessionRefList,
+                        &(newSessionRefPtr->link));
+
+    return AudioStream[streamPtr->audioInterface]->streamRef;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Remove the client sessionRef from the audio stream, and release the audio stream if asked
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void RemoveSessionRefFromAudioStream
+(
+    le_audio_Stream_t*  streamPtr,
+    le_msg_SessionRef_t sessionRef,
+    bool                releaseAudioStream
+)
+{
+    SessionRefNode_t* sessionRefNodePtr;
+    le_dls_Link_t* linkPtr;
+
+    // Remove corresponding node from the sessionRefList
+    linkPtr = le_dls_Peek(&(streamPtr->sessionRefList));
     while (linkPtr != NULL)
     {
-        nodePtr = CONTAINER_OF(linkPtr, StreamEventHandlerRefNode_t, link);
-        LE_DEBUG("Found streamRef.%p streamEventMask %d", nodePtr->streamRef, nodePtr->streamEventMask);
+        sessionRefNodePtr = CONTAINER_OF(linkPtr, SessionRefNode_t, link);
 
-        if(nodePtr->streamEventMask & LE_AUDIO_BITMASK_FILE_EVENT)
+        linkPtr = le_dls_PeekNext(&(streamPtr->sessionRefList), linkPtr);
+
+        // Remove corresponding node from the sessionRefList
+        if ( sessionRefNodePtr->sessionRef == sessionRef )
         {
-            // Notify only once on one streamRef
-            FilePbStreamPtr->fileEvent=event;
+            le_dls_Remove(&(streamPtr->sessionRefList),
+                &(sessionRefNodePtr->link));
 
-            le_event_Report(FilePbStreamPtr->streamEventId,
-                            &nodePtr->streamRef,
-                            sizeof(nodePtr->streamRef));
+            le_mem_Release(sessionRefNodePtr);
+
+            if (releaseAudioStream)
+            {
+                LE_DEBUG("Release stream %d", streamPtr->audioInterface);
+                le_mem_Release(streamPtr);
+            }
         }
-        linkPtr = le_dls_PeekNext(&FilePbStreamPtr->streamRefWithEventHdlrList, linkPtr);
     }
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * handler function to the close session service
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void CloseSessionEventHandler
+(
+    le_msg_SessionRef_t sessionRef,
+    void*               contextPtr
+)
+{
+    le_ref_IterRef_t iterRef = le_ref_GetIterator(AudioConnectorRefMap);
 
+    le_result_t result = le_ref_NextNode(iterRef);
+
+    // Close connectors
+    while ( result == LE_OK )
+    {
+        le_audio_ConnectorRef_t connectorRef = (le_audio_ConnectorRef_t) le_ref_GetSafeRef(iterRef);
+        le_audio_Connector_t* connectorPtr = le_ref_Lookup(AudioConnectorRefMap, connectorRef);
+
+        // Get the next value in the reference maps (before releasing the node)
+        result = le_ref_NextNode(iterRef);
+
+        // Check if the session reference saved matchs with the current session reference.
+        if (connectorPtr->sessionRef == sessionRef)
+        {
+            // Release the data connexion
+            LE_DEBUG("Delete connector %p", connectorRef);
+            le_audio_DeleteConnector( connectorRef );
+        }
+    }
+
+    // Close audio stream
+    int i;
+
+    for (i = 0; i < PA_AUDIO_NUM_INTERFACES; i++)
+    {
+        if (AudioStream[i] != NULL)
+        {
+            RemoveSessionRefFromAudioStream(AudioStream[i], sessionRef, true);
+        }
+    }
+}
 
 //--------------------------------------------------------------------------------------------------
 //                                       Public declarations
@@ -1075,29 +1094,37 @@ COMPONENT_INIT
     // Allocate the audio connector pool.
     AudioConnectorPool = le_mem_CreatePool("AudioConnectorPool", sizeof(le_audio_Connector_t));
     le_mem_ExpandPool(AudioConnectorPool, CONNECTOR_DEFAULT_POOL_SIZE);
-    le_mem_SetDestructor(AudioConnectorPool,DestructConnector);
 
     AudioHashMapPool = le_mem_CreatePool("AudiohashMapPool", sizeof(struct hashMapList));
     le_mem_ExpandPool(AudioHashMapPool, HASHMAP_DEFAULT_POOL_SIZE);
+
+    SessionRefPool = le_mem_CreatePool("SessionRefPool", sizeof(SessionRefNode_t));
+    le_mem_ExpandPool(SessionRefPool, MAX_NUM_OF_STREAM);
 
     // init HashMapList
     AudioHashMapList = LE_DLS_LIST_INIT;
 
     // Create the Safe Reference Map to use for Connector object Safe References.
     AudioConnectorRefMap = le_ref_CreateMap("AudioConMap", MAX_NUM_OF_CONNECTOR);
-    // Allocate the stream reference nodes pool (used by DTMF add/remove handler functions).
-    StreamRefNodePool = le_mem_CreatePool("StreamRefNodePool", sizeof(DtmfHandlerRefNode_t));
+
     // Allocate the stream reference nodes pool.
     StreamEventHandlerRefNodePool = le_mem_CreatePool("StreamEventHandlerRefNodePool",
                                                 sizeof(StreamEventHandlerRefNode_t));
 
-    // Register a handler function for DTMFs
-    LE_ERROR_IF((pa_audio_SetDtmfDetectorHandler(DtmfDetectorHandler) != LE_OK),
-                "Add pa_audio_SetDtmfDetectorHandler failed");
+    // Create the safe Reference Map to use for the Stream Event object safe Reference.
+    StreamEventHandlerRefMap =  le_ref_CreateMap("StreamEventHandlerRefMap", MAX_NUM_OF_CONNECTOR);
 
-    // Register a handler function for file's events
-    LE_ERROR_IF((pa_audio_AddFileEventHandler(FileHandler, NULL) == NULL),
-                "Add pa_audio_AddFileEventHandler failed");
+    // Register a handler function for streams events
+    LE_ERROR_IF((pa_audio_AddStreamEventHandler(StreamEventHandler, NULL) == NULL),
+                "pa_audio_AddStreamEventHandler failed");
+
+    // Add a handler to the close session service
+    le_msg_AddServiceCloseHandler( le_audio_GetServiceRef(),
+                                   CloseSessionEventHandler,
+                                   NULL );
+
+    // init multimedia service
+    le_media_Init();
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1112,25 +1139,11 @@ le_audio_StreamRef_t le_audio_OpenMic
     void
 )
 {
-    if (!MicStreamPtr)
-    {
-        MicStreamPtr = le_mem_ForceAlloc(AudioStreamPool);
+    OpenStream_t openStream;
 
-        InitializeStream(MicStreamPtr);
+    openStream.audioInterface = PA_AUDIO_IF_CODEC_MIC;
 
-        MicStreamPtr->audioInterface = PA_AUDIO_IF_CODEC_MIC;
-        MicStreamPtr->isInput = true;
-        MicStreamPtr->streamRefWithEventHdlrList=LE_DLS_LIST_INIT;
-
-    }
-    else
-    {
-        le_mem_AddRef(MicStreamPtr);
-    }
-
-    LE_DEBUG("Open Microphone input audio stream (%p)", MicStreamPtr);
-    // Create and return a Safe Reference for this stream object.
-    return le_ref_CreateRef(AudioStreamRefMap, MicStreamPtr);
+    return OpenAudioStream(&openStream);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1145,25 +1158,11 @@ le_audio_StreamRef_t le_audio_OpenSpeaker
     void
 )
 {
-    if (!SpeakerStreamPtr)
-    {
-        SpeakerStreamPtr = le_mem_ForceAlloc(AudioStreamPool);
+    OpenStream_t openStream;
 
-        InitializeStream(SpeakerStreamPtr);
+    openStream.audioInterface = PA_AUDIO_IF_CODEC_SPEAKER;
 
-        SpeakerStreamPtr->audioInterface = PA_AUDIO_IF_CODEC_SPEAKER;
-        SpeakerStreamPtr->isInput = false;
-        SpeakerStreamPtr->streamRefWithEventHdlrList=LE_DLS_LIST_INIT;
-
-    }
-    else
-    {
-        le_mem_AddRef(SpeakerStreamPtr);
-    }
-
-    LE_DEBUG("Open Speaker output audio stream (%p)", SpeakerStreamPtr);
-    // Create and return a Safe Reference for this stream object.
-    return le_ref_CreateRef(AudioStreamRefMap, SpeakerStreamPtr);
+    return OpenAudioStream(&openStream);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1178,24 +1177,11 @@ le_audio_StreamRef_t le_audio_OpenUsbRx
     void
 )
 {
-    if (!UsbRxStreamPtr)
-    {
-        UsbRxStreamPtr = le_mem_ForceAlloc(AudioStreamPool);
+    OpenStream_t openStream;
 
-        InitializeStream(UsbRxStreamPtr);
+    openStream.audioInterface = PA_AUDIO_IF_DSP_FRONTEND_USB_RX;
 
-        UsbRxStreamPtr->audioInterface = PA_AUDIO_IF_DSP_FRONTEND_USB_RX;
-        UsbRxStreamPtr->isInput = true;
-        UsbRxStreamPtr->streamRefWithEventHdlrList=LE_DLS_LIST_INIT;
-    }
-    else
-    {
-        le_mem_AddRef(UsbRxStreamPtr);
-    }
-
-    LE_DEBUG("Open USB RX input audio stream (%p)", UsbRxStreamPtr);
-    // Create and return a Safe Reference for this stream object.
-    return le_ref_CreateRef(AudioStreamRefMap, UsbRxStreamPtr);
+    return OpenAudioStream(&openStream);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1210,25 +1196,11 @@ le_audio_StreamRef_t le_audio_OpenUsbTx
     void
 )
 {
-    if (!UsbTxStreamPtr)
-    {
-        UsbTxStreamPtr = le_mem_ForceAlloc(AudioStreamPool);
+    OpenStream_t openStream;
 
-        InitializeStream(UsbTxStreamPtr);
+    openStream.audioInterface = PA_AUDIO_IF_DSP_FRONTEND_USB_TX;
 
-        UsbTxStreamPtr->audioInterface = PA_AUDIO_IF_DSP_FRONTEND_USB_TX;
-        UsbTxStreamPtr->isInput = false;
-        UsbTxStreamPtr->streamRefWithEventHdlrList=LE_DLS_LIST_INIT;
-
-    }
-    else
-    {
-        le_mem_AddRef(UsbTxStreamPtr);
-    }
-
-    LE_DEBUG("Open USB TX output audio stream (%p)", UsbTxStreamPtr);
-    // Create and return a Safe Reference for this stream object.
-    return le_ref_CreateRef(AudioStreamRefMap, UsbTxStreamPtr);
+    return OpenAudioStream(&openStream);
 }
 
 
@@ -1244,40 +1216,12 @@ le_audio_StreamRef_t le_audio_OpenPcmRx
     uint32_t timeslot  ///< [IN] The time slot number.
 )
 {
-    if (!PcmRxStreamPtr)
-    {
-        PcmRxStreamPtr = le_mem_ForceAlloc(AudioStreamPool);
+    OpenStream_t openStream;
 
-        InitializeStream(PcmRxStreamPtr);
+    openStream.audioInterface = PA_AUDIO_IF_DSP_FRONTEND_PCM_RX;
+    openStream.param.timeslot = timeslot;
 
-        PcmRxStreamPtr->audioInterface = PA_AUDIO_IF_DSP_FRONTEND_PCM_RX;
-        PcmRxStreamPtr->isInput = true;
-        PcmRxStreamPtr->streamRefWithEventHdlrList=LE_DLS_LIST_INIT;
-
-        if ( pa_audio_SetPcmTimeSlot(PA_AUDIO_IF_DSP_FRONTEND_PCM_RX, timeslot) != LE_OK )
-        {
-            LE_WARN("Cannot set timeslot of Secondary PCM RX interface");
-            le_mem_Release(PcmRxStreamPtr);
-            PcmRxStreamPtr = NULL;
-            return NULL;
-        }
-        // Default mode must be Master
-        if ( pa_audio_SetMasterMode(PA_AUDIO_IF_DSP_FRONTEND_PCM_RX) != LE_OK )
-        {
-            LE_WARN("Cannot open Secondary PCM RX input as Master");
-            le_mem_Release(PcmRxStreamPtr);
-            PcmRxStreamPtr = NULL;
-            return NULL;
-        }
-    }
-    else
-    {
-        le_mem_AddRef(PcmRxStreamPtr);
-    }
-
-    LE_DEBUG("Open Secondary PCM RX input audio stream (%p)", PcmRxStreamPtr);
-    // Create and return a Safe Reference for this stream object.
-    return le_ref_CreateRef(AudioStreamRefMap, PcmRxStreamPtr);
+    return OpenAudioStream(&openStream);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1292,40 +1236,12 @@ le_audio_StreamRef_t le_audio_OpenPcmTx
     uint32_t timeslot  ///< [IN] The time slot number.
 )
 {
-    if (!PcmTxStreamPtr)
-    {
-        PcmTxStreamPtr = le_mem_ForceAlloc(AudioStreamPool);
+    OpenStream_t openStream;
 
-        InitializeStream(PcmTxStreamPtr);
+    openStream.audioInterface = PA_AUDIO_IF_DSP_FRONTEND_PCM_TX;
+    openStream.param.timeslot = timeslot;
 
-        PcmTxStreamPtr->audioInterface = PA_AUDIO_IF_DSP_FRONTEND_PCM_TX;
-        PcmTxStreamPtr->isInput = false;
-        PcmTxStreamPtr->streamRefWithEventHdlrList=LE_DLS_LIST_INIT;
-
-        if ( pa_audio_SetPcmTimeSlot(PA_AUDIO_IF_DSP_FRONTEND_PCM_TX, timeslot) != LE_OK )
-        {
-            LE_WARN("Cannot set timeslot of Secondary PCM TX interface");
-            le_mem_Release(PcmRxStreamPtr);
-            PcmRxStreamPtr = NULL;
-            return NULL;
-        }
-        // Default mode must be Master
-        if ( pa_audio_SetMasterMode(PA_AUDIO_IF_DSP_FRONTEND_PCM_TX) != LE_OK )
-        {
-            LE_WARN("Cannot open Secondary PCM TX input as Master");
-            le_mem_Release(PcmTxStreamPtr);
-            PcmTxStreamPtr = NULL;
-            return NULL;
-        }
-    }
-    else
-    {
-        le_mem_AddRef(PcmTxStreamPtr);
-    }
-
-    LE_DEBUG("Open Secondary PCM TX output audio stream (%p)", PcmTxStreamPtr);
-    // Create and return a Safe Reference for this stream object.
-    return le_ref_CreateRef(AudioStreamRefMap, PcmTxStreamPtr);
+    return OpenAudioStream(&openStream);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1340,32 +1256,12 @@ le_audio_StreamRef_t le_audio_OpenI2sRx
     le_audio_I2SChannel_t mode  ///< [IN] The channel mode.
 )
 {
-    if (!I2sRxStreamPtr)
-    {
-        I2sRxStreamPtr = le_mem_ForceAlloc(AudioStreamPool);
+    OpenStream_t openStream;
 
-        InitializeStream(I2sRxStreamPtr);
+    openStream.audioInterface = PA_AUDIO_IF_DSP_FRONTEND_I2S_RX;
+    openStream.param.mode = mode;
 
-        I2sRxStreamPtr->audioInterface = PA_AUDIO_IF_DSP_FRONTEND_I2S_RX;
-        I2sRxStreamPtr->isInput = true;
-        I2sRxStreamPtr->streamRefWithEventHdlrList=LE_DLS_LIST_INIT;
-
-        if ( pa_audio_SetI2sChannelMode(PA_AUDIO_IF_DSP_FRONTEND_I2S_RX, mode) != LE_OK )
-        {
-            LE_WARN("Cannot set the channel mode of I2S RX interface");
-            le_mem_Release(I2sRxStreamPtr);
-            I2sRxStreamPtr = NULL;
-            return NULL;
-        }
-    }
-    else
-    {
-        le_mem_AddRef(I2sRxStreamPtr);
-    }
-
-    LE_DEBUG("Open I2S RX input audio stream (%p)", I2sRxStreamPtr);
-    // Create and return a Safe Reference for this stream object.
-    return le_ref_CreateRef(AudioStreamRefMap, I2sRxStreamPtr);
+    return OpenAudioStream(&openStream);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1380,102 +1276,53 @@ le_audio_StreamRef_t le_audio_OpenI2sTx
     le_audio_I2SChannel_t mode  ///< [IN] The channel mode.
 )
 {
-    if (!I2sTxStreamPtr)
-    {
-        I2sTxStreamPtr = le_mem_ForceAlloc(AudioStreamPool);
+    OpenStream_t openStream;
 
-        InitializeStream(I2sTxStreamPtr);
+    openStream.audioInterface = PA_AUDIO_IF_DSP_FRONTEND_I2S_TX;
+    openStream.param.mode = mode;
 
-        I2sTxStreamPtr->audioInterface = PA_AUDIO_IF_DSP_FRONTEND_I2S_TX;
-        I2sTxStreamPtr->isInput = false;
-        I2sTxStreamPtr->streamRefWithEventHdlrList=LE_DLS_LIST_INIT;
-
-        if ( pa_audio_SetI2sChannelMode(PA_AUDIO_IF_DSP_FRONTEND_I2S_TX, mode) != LE_OK )
-        {
-            LE_WARN("Cannot set the channel mode of I2S TX interface");
-            le_mem_Release(PcmRxStreamPtr);
-            PcmRxStreamPtr = NULL;
-            return NULL;
-        }
-    }
-    else
-    {
-        le_mem_AddRef(I2sTxStreamPtr);
-    }
-
-    LE_DEBUG("Open I2S TX output audio stream (%p)", I2sTxStreamPtr);
-    // Create and return a Safe Reference for this stream object.
-    return le_ref_CreateRef(AudioStreamRefMap, I2sTxStreamPtr);
+    return OpenAudioStream(&openStream);
 }
+
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Open the audio stream for file playback.
+ * Open the audio stream for playback.
  *
  * @return Reference to the audio stream, NULL if the function fails.
  */
 //--------------------------------------------------------------------------------------------------
-le_audio_StreamRef_t le_audio_OpenFilePlayback
+le_audio_StreamRef_t le_audio_OpenPlayer
 (
-    int32_t     fd  ///< [IN] The audio file descriptor.
+    void
 )
 {
-    if (!FilePbStreamPtr)
-    {
-        FilePbStreamPtr = le_mem_ForceAlloc(AudioStreamPool);
+    OpenStream_t openStream;
 
-        InitializeStream(FilePbStreamPtr);
+    openStream.audioInterface = PA_AUDIO_IF_DSP_FRONTEND_FILE_PLAY;
+    openStream.param.fd = LE_AUDIO_NO_FD;
 
-        FilePbStreamPtr->audioInterface = PA_AUDIO_IF_DSP_FRONTEND_FILE_PLAY;
-        FilePbStreamPtr->fd = fd;
-        FilePbStreamPtr->isInput = true;
-        FilePbStreamPtr->streamRefWithEventHdlrList=LE_DLS_LIST_INIT;
-        FilePbStreamPtr->streamEventId = le_event_CreateId("streamEventId",
-                                                           sizeof(le_audio_StreamRef_t));
-    }
-    else
-    {
-        le_mem_AddRef(FilePbStreamPtr);
-    }
-
-    LE_DEBUG("Open the audio stream for local file playback. (%p)", FilePbStreamPtr);
-    // Create and return a Safe Reference for this stream object.
-    return le_ref_CreateRef(AudioStreamRefMap, FilePbStreamPtr);
+    return OpenAudioStream(&openStream);
 }
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Open the audio stream for file recording.
+ * Open the audio stream for recording.
  *
  * @return Reference to the audio stream, NULL if the function fails.
  */
 //--------------------------------------------------------------------------------------------------
-le_audio_StreamRef_t le_audio_OpenFileRecording
+le_audio_StreamRef_t le_audio_OpenRecorder
 (
-    int32_t     fd  ///< [IN] The audio file descriptor.
+    void
 )
 {
-    if (!FileCaptureStreamPtr)
-    {
-        FileCaptureStreamPtr = le_mem_ForceAlloc(AudioStreamPool);
+    OpenStream_t openStream;
 
-        InitializeStream(FileCaptureStreamPtr);
+    openStream.audioInterface = PA_AUDIO_IF_DSP_FRONTEND_FILE_CAPTURE;
+    openStream.param.fd = LE_AUDIO_NO_FD;
 
-        FileCaptureStreamPtr->audioInterface = PA_AUDIO_IF_DSP_FRONTEND_FILE_CAPTURE;
-        FileCaptureStreamPtr->fd = fd;
-        FileCaptureStreamPtr->isInput = false;
-        FileCaptureStreamPtr->streamRefWithEventHdlrList=LE_DLS_LIST_INIT;
-        FileCaptureStreamPtr->streamEventId = le_event_CreateId("streamEventId",
-                                                            sizeof(le_audio_StreamRef_t));
-    }
-    else
-    {
-        le_mem_AddRef(FileCaptureStreamPtr);
-    }
-
-    LE_DEBUG("Open the audio stream for local file recording (%p), fd.%d", FileCaptureStreamPtr, fd);
-    // Create and return a Safe Reference for this stream object.
-    return le_ref_CreateRef(AudioStreamRefMap, FileCaptureStreamPtr);
+    return OpenAudioStream(&openStream);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1490,26 +1337,11 @@ le_audio_StreamRef_t le_audio_OpenModemVoiceRx
     void
 )
 {
-    if (!ModemVoiceRxStreamPtr)
-    {
-        ModemVoiceRxStreamPtr = le_mem_ForceAlloc(AudioStreamPool);
+    OpenStream_t openStream;
 
-        InitializeStream(ModemVoiceRxStreamPtr);
+    openStream.audioInterface = PA_AUDIO_IF_DSP_BACKEND_MODEM_VOICE_RX;
 
-        ModemVoiceRxStreamPtr->audioInterface = PA_AUDIO_IF_DSP_BACKEND_MODEM_VOICE_RX;
-        ModemVoiceRxStreamPtr->isInput = true;
-        ModemVoiceRxStreamPtr->streamRefWithDtmfHdlrList=LE_DLS_LIST_INIT;
-        ModemVoiceRxStreamPtr->dtmfDetectionEventId = le_event_CreateId("DtmfMdmVoiceRx",
-                                                                        sizeof(le_audio_StreamRef_t));
-    }
-    else
-    {
-        le_mem_AddRef(ModemVoiceRxStreamPtr);
-    }
-
-    LE_DEBUG("Open Modem Voice RX input audio stream (%p)", ModemVoiceRxStreamPtr);
-    // Create and return a Safe Reference for this stream object.
-    return le_ref_CreateRef(AudioStreamRefMap, ModemVoiceRxStreamPtr);
+    return OpenAudioStream(&openStream);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1524,24 +1356,11 @@ le_audio_StreamRef_t le_audio_OpenModemVoiceTx
     void
 )
 {
-    if (!ModemVoiceTxStreamPtr)
-    {
-        ModemVoiceTxStreamPtr = le_mem_ForceAlloc(AudioStreamPool);
+    OpenStream_t openStream;
 
-        InitializeStream(ModemVoiceTxStreamPtr);
+    openStream.audioInterface = PA_AUDIO_IF_DSP_BACKEND_MODEM_VOICE_TX;
 
-        ModemVoiceTxStreamPtr->audioInterface = PA_AUDIO_IF_DSP_BACKEND_MODEM_VOICE_TX;
-        ModemVoiceTxStreamPtr->isInput = false;
-        ModemVoiceTxStreamPtr->streamRefWithEventHdlrList=LE_DLS_LIST_INIT;
-    }
-    else
-    {
-        le_mem_AddRef(ModemVoiceTxStreamPtr);
-    }
-
-    LE_DEBUG("Open Modem Voice TX output audio stream (%p)", ModemVoiceTxStreamPtr);
-    // Create and return a Safe Reference for this stream object.
-    return le_ref_CreateRef(AudioStreamRefMap, ModemVoiceTxStreamPtr);
+    return OpenAudioStream(&openStream);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1604,8 +1423,7 @@ void le_audio_Close
         return;
     }
 
-    // Invalidate the Safe Reference.
-    le_ref_DeleteRef(AudioStreamRefMap, streamRef);
+    RemoveSessionRefFromAudioStream(streamPtr, le_audio_GetClientSessionRef(), false);
 
     le_mem_Release(streamPtr);
 }
@@ -1722,15 +1540,9 @@ le_result_t le_audio_Mute
         return LE_BAD_PARAMETER;
     }
 
-    if ( pa_audio_GetGain(streamPtr->audioInterface, &streamPtr->gain) != LE_OK )
+    if ( pa_audio_Mute(streamPtr->audioInterface, true) != LE_OK )
     {
-        LE_ERROR("Cannot get stream gain");
-        return LE_FAULT;
-    }
-
-    if ( pa_audio_SetGain(streamPtr->audioInterface, 0) != LE_OK )
-    {
-        LE_ERROR("Cannot set stream gain");
+        LE_ERROR("Cannot mute the interface");
         return LE_FAULT;
     }
 
@@ -1762,12 +1574,12 @@ le_result_t le_audio_Unmute
         return LE_BAD_PARAMETER;
     }
 
-    if ( pa_audio_SetGain(streamPtr->audioInterface, streamPtr->gain) != LE_OK )
+
+    if ( pa_audio_Mute(streamPtr->audioInterface, false) != LE_OK )
     {
-        LE_ERROR("Cannot set stream gain");
+        LE_ERROR("Cannot unmute the interface");
         return LE_FAULT;
     }
-
     return LE_OK;
 }
 
@@ -1787,11 +1599,9 @@ le_audio_ConnectorRef_t le_audio_CreateConnector
 
     newConnectorPtr->streamInList   = GetHashMapElement();
     newConnectorPtr->streamOutList  = GetHashMapElement();
+    newConnectorPtr->sessionRef = le_audio_GetClientSessionRef();
 
     newConnectorPtr->connectorsLink = LE_DLS_LINK_INIT;
-
-    newConnectorPtr->captureThreadIsStarted = false;
-    newConnectorPtr->playbackThreadIsStarted = false;
 
     // Add the new connector into the the connector list
     le_dls_Queue(&AllConnectorList,&(newConnectorPtr->connectorsLink));
@@ -1913,18 +1723,6 @@ le_result_t le_audio_Connect
         {
             return LE_FAULT;
         }
-
-        if (StartThreadsOnInputConnector (connectorPtr)!=LE_OK)
-        {
-            LE_DEBUG("Capture thread is not started");
-            return LE_BUSY;
-        }
-
-        if (StartThreadsOnOutputConnector (connectorPtr)!=LE_OK)
-        {
-            LE_DEBUG("Playback thread is not started");
-            return LE_BUSY;
-        }
     }
 
     return LE_OK;
@@ -1964,15 +1762,14 @@ void le_audio_Disconnect
         CloseStreamPaths (streamPtr,connectorPtr->streamOutList);
         le_hashmap_Remove(connectorPtr->streamInList,streamPtr);
         le_hashmap_Remove(streamPtr->connectorList,connectorPtr);
-        StopThreadsOnInputConnector();
     }
     else
     {
         CloseStreamPaths (streamPtr,connectorPtr->streamInList);
         le_hashmap_Remove(connectorPtr->streamOutList,streamPtr);
         le_hashmap_Remove(streamPtr->connectorList,connectorPtr);
-        StopThreadsOnOutputConnector();
     }
+    pa_audio_ResetDspAudioPath();
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1987,52 +1784,26 @@ le_audio_DtmfDetectorHandlerRef_t le_audio_AddDtmfDetectorHandler
     void*                              contextPtr    ///< [IN] The handler's context.
 )
 {
-    le_event_HandlerRef_t  handlerRef;
-    le_audio_Stream_t*     streamPtr = le_ref_Lookup(AudioStreamRefMap, streamRef);
+    le_audio_Stream_t* streamPtr = le_ref_Lookup(AudioStreamRefMap, streamRef);
 
     if (streamPtr == NULL)
     {
         LE_KILL_CLIENT("Invalid stream reference (%p) provided!", streamRef);
         return NULL;
     }
-    if (handlerPtr == NULL)
+
+    if (pa_audio_StartDtmfDecoder(streamPtr->audioInterface) != LE_OK)
     {
-        LE_KILL_CLIENT("Handler function is NULL !");
+        LE_ERROR("Bad Interface!");
         return NULL;
     }
 
-    if (streamPtr->audioInterface != PA_AUDIO_IF_DSP_BACKEND_MODEM_VOICE_RX)
-    {
-        LE_ERROR("Interface not yet supported!");
-        return NULL;
-    }
-    else
-    {
-        LE_DEBUG("Add DTMF detector handler on interface %d.", streamPtr->audioInterface);
-
-        handlerRef = le_event_AddLayeredHandler("DtmfDecoderHandler",
-                                                streamPtr->dtmfDetectionEventId,
-                                                FirstLayerDtmfDetectorHandler,
-                                                (le_event_HandlerFunc_t)handlerPtr);
-
-        le_event_SetContextPtr(handlerRef, contextPtr);
-
-        // if list is void that means it is the first added handler
-        if (le_dls_Peek(&(ModemVoiceRxStreamPtr->streamRefWithDtmfHdlrList)) == NULL)
-        {
-            pa_audio_StartDtmfDecoder(PA_AUDIO_IF_DSP_BACKEND_DTMF_RX);
-        }
-
-        // Associate the handlerRef to the streamRef
-        DtmfHandlerRefNode_t* streamRefNodePtr = le_mem_ForceAlloc(StreamRefNodePool);
-        streamRefNodePtr->streamRef = streamRef;
-        streamRefNodePtr->handlerRef = handlerRef;
-        streamRefNodePtr->link = LE_DLS_LINK_INIT;
-        le_dls_Queue(&(ModemVoiceRxStreamPtr->streamRefWithDtmfHdlrList),&(streamRefNodePtr->link));
-
-        return (le_audio_DtmfDetectorHandlerRef_t)(handlerRef);
-
-    }
+    return (le_audio_DtmfDetectorHandlerRef_t) AddStreamEventHandler(
+                                                    streamRef,
+                                                    (le_event_HandlerFunc_t) handlerPtr,
+                                                    PA_AUDIO_BITMASK_DTMF_DETECTION,
+                                                    contextPtr
+                                                    );
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -2045,34 +1816,7 @@ void le_audio_RemoveDtmfDetectorHandler
     le_audio_DtmfDetectorHandlerRef_t addHandlerRef ///< [IN]
 )
 {
-    DtmfHandlerRefNode_t* nodePtr;
-    le_dls_Link_t*   linkPtr;
-
-    le_event_RemoveHandler((le_event_HandlerRef_t)addHandlerRef);
-
-    if(ModemVoiceRxStreamPtr)
-    {
-        // Remove corresponding node from the streamRefWithDtmfHdlrList
-        linkPtr = le_dls_Peek(&(ModemVoiceRxStreamPtr->streamRefWithDtmfHdlrList));
-        while (linkPtr != NULL)
-        {
-            nodePtr = CONTAINER_OF(linkPtr, DtmfHandlerRefNode_t, link);
-            if (nodePtr->handlerRef == (le_event_HandlerRef_t)addHandlerRef)
-            {
-                le_dls_Remove(&(ModemVoiceRxStreamPtr->streamRefWithDtmfHdlrList), &nodePtr->link);
-                le_mem_Release(nodePtr);
-                break;
-            }
-            linkPtr = le_dls_PeekNext(&ModemVoiceRxStreamPtr->streamRefWithDtmfHdlrList, linkPtr);
-        }
-        // if No more DTMF handlers (list is void), stop DTMF decoder
-        if (le_dls_Peek(&(ModemVoiceRxStreamPtr->streamRefWithDtmfHdlrList)) == NULL)
-        {
-            pa_audio_StopDtmfDecoder(PA_AUDIO_IF_DSP_BACKEND_DTMF_RX);
-        }
-
-        // TODO: do the same loop on the other input interfaces
-    }
+    RemoveStreamEventHandler( (StreamEventHandlerRef_t) addHandlerRef );
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -2509,20 +2253,27 @@ le_audio_I2SChannel_t le_audio_GetDefaultI2sMode
     return pa_audio_GetDefaultI2sMode();
 }
 
+
 //--------------------------------------------------------------------------------------------------
 /**
- * le_audio_AddStreamEventHandler handler ADD function
+ * Add handler function for EVENT 'le_audio_Media'
+ *
+ * This event provides information on player / recorder stream events.
  */
 //--------------------------------------------------------------------------------------------------
-le_audio_StreamEventHandlerRef_t le_audio_AddStreamEventHandler
+le_audio_MediaHandlerRef_t le_audio_AddMediaHandler
 (
-    le_audio_StreamRef_t            streamRef,       ///< [IN] The audio stream reference.
-    le_audio_StreamEventBitMask_t   streamEventMask, ///< [IN] The type of stream events to be notified.
-    le_audio_StreamEventHandlerFunc_t handlerPtr,      ///< [IN] The file handler function.
-    void*                           contextPtr       ///< [IN] The handler's context.
+    le_audio_StreamRef_t streamRef,
+        ///< [IN]
+        ///< The audio stream reference.
+
+    le_audio_MediaHandlerFunc_t handlerPtr,
+        ///< [IN]
+
+    void* contextPtr
+        ///< [IN]
 )
 {
-    le_event_HandlerRef_t  handlerRef;
     le_audio_Stream_t*     streamPtr = le_ref_Lookup(AudioStreamRefMap, streamRef);
 
     if (streamPtr == NULL)
@@ -2530,93 +2281,49 @@ le_audio_StreamEventHandlerRef_t le_audio_AddStreamEventHandler
         LE_KILL_CLIENT("Invalid stream reference (%p) provided!", streamRef);
         return NULL;
     }
-    if (handlerPtr == NULL)
-    {
-        LE_KILL_CLIENT("Handler function is NULL !");
-        return NULL;
-    }
 
     if ((streamPtr->audioInterface != PA_AUDIO_IF_DSP_FRONTEND_FILE_PLAY) &&
-        (streamPtr->audioInterface != PA_AUDIO_IF_DSP_FRONTEND_FILE_CAPTURE) &&
-        (streamEventMask != LE_AUDIO_BITMASK_FILE_EVENT))
+        (streamPtr->audioInterface != PA_AUDIO_IF_DSP_FRONTEND_FILE_CAPTURE))
     {
-        // TODO: All the interfaces must be available
         LE_ERROR("Bad Interface!");
         return NULL;
     }
-    else
-    {
-        LE_DEBUG("Add stream event handler on interface %d.", streamPtr->audioInterface);
 
-        handlerRef = le_event_AddLayeredHandler("StreamEventHandler",
-                                                streamPtr->streamEventId,
-                                                FirstLayerStreamEventHandler,
-                                                (le_event_HandlerFunc_t)handlerPtr);
-
-        le_event_SetContextPtr(handlerRef, contextPtr);
-
-        // Associate the handlerRef to the streamRef
-        StreamEventHandlerRefNode_t* streamRefNodePtr = le_mem_ForceAlloc(
-                                                                StreamEventHandlerRefNodePool);
-        streamRefNodePtr->streamRef = streamRef;
-        streamRefNodePtr->handlerRef = handlerRef;
-        streamRefNodePtr->streamEventMask = streamEventMask;
-        streamRefNodePtr->link = LE_DLS_LINK_INIT;
-        le_dls_Queue(&(streamPtr->streamRefWithEventHdlrList),&(streamRefNodePtr->link));
-
-        return (le_audio_StreamEventHandlerRef_t)(handlerRef);
-    }
+    return (le_audio_MediaHandlerRef_t) AddStreamEventHandler(streamRef,
+                                                                (le_event_HandlerFunc_t) handlerPtr,
+                                                                PA_AUDIO_BITMASK_MEDIA_EVENT,
+                                                                contextPtr
+                                                              );
 }
 
 //--------------------------------------------------------------------------------------------------
 /**
- * le_audio_RemoveStreamEventHandler handler REMOVE function
+ * Remove handler function for EVENT 'le_audio_Media'
  */
 //--------------------------------------------------------------------------------------------------
-void le_audio_RemoveStreamEventHandler
+void le_audio_RemoveMediaHandler
 (
-    le_audio_StreamEventHandlerRef_t addHandlerRef ///< [IN]
+    le_audio_MediaHandlerRef_t addHandlerRef
+        ///< [IN]
 )
 {
-    StreamEventHandlerRefNode_t* nodePtr;
-    le_dls_Link_t*               linkPtr;
-
-    le_event_RemoveHandler((le_event_HandlerRef_t)addHandlerRef);
-
-    // TODO: Fix bad research management in existing streams
-
-    if (FilePbStreamPtr)
-    {
-        // Remove corresponding node from the streamRefWithEventHdlrList
-        linkPtr = le_dls_Peek(&(FilePbStreamPtr->streamRefWithEventHdlrList));
-        while (linkPtr != NULL)
-        {
-            nodePtr = CONTAINER_OF(linkPtr, StreamEventHandlerRefNode_t, link);
-            if (nodePtr->handlerRef == (le_event_HandlerRef_t)addHandlerRef)
-            {
-                le_dls_Remove(&(FilePbStreamPtr->streamRefWithEventHdlrList), &nodePtr->link);
-                le_mem_Release(nodePtr);
-                break;
-            }
-            linkPtr = le_dls_PeekNext(&FilePbStreamPtr->streamRefWithEventHdlrList, linkPtr);
-        }
-    }
+    RemoveStreamEventHandler( (StreamEventHandlerRef_t) addHandlerRef );
 }
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Open the audio stream for file playback.
+ * Stop the file playback/recording.
  *
- * @return
- *      - LE_OK The function succeeded.
- *      - LE_NOT_FOUND The event is not related to a file event
- *      - LE_FAULT The function failed
+ * @return LE_FAULT         Function failed.
+ * @return LE_OK            Function succeeded.
+ *
+ * Note: the used file descriptor is not deallocated, but is is rewound to the beginning.
+ *
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_audio_GetFileEvent
+le_result_t le_audio_Stop
 (
-    le_audio_StreamRef_t  streamRef,  ///< [IN] The audio stream reference.
-    le_audio_FileEvent_t* eventPtr    ///< The Audio file recording/playback events.
+    le_audio_StreamRef_t  streamRef  ///< [IN] The audio stream reference.
 )
 {
     le_audio_Stream_t* streamPtr = le_ref_Lookup(AudioStreamRefMap, streamRef);
@@ -2626,11 +2333,541 @@ le_result_t le_audio_GetFileEvent
         LE_KILL_CLIENT("Invalid reference (%p) provided!", streamRef);
         return LE_FAULT;
     }
+
+    return pa_audio_Stop(streamPtr->audioInterface);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Pause the file playback/recording.
+ *
+ * @return LE_FAULT         Function failed.
+ * @return LE_OK            Function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_audio_Pause
+(
+    le_audio_StreamRef_t  streamRef  ///< [IN] The audio stream reference.
+)
+{
+    le_audio_Stream_t* streamPtr = le_ref_Lookup(AudioStreamRefMap, streamRef);
+
+    if (streamPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", streamRef);
+        return LE_FAULT;
+    }
+
+    return pa_audio_Pause(streamPtr->audioInterface);
+
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Resume a file playback/recording (need to be in pause state).
+ *
+ * @return LE_FAULT         Function failed.
+ * @return LE_OK            Function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_audio_Resume
+(
+    le_audio_StreamRef_t  streamRef
+)
+{
+    le_audio_Stream_t* streamPtr = le_ref_Lookup(AudioStreamRefMap, streamRef);
+
+    if (streamPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", streamRef);
+        return LE_FAULT;
+    }
+
+    return pa_audio_Resume(streamPtr->audioInterface);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Play a file on a playback stream.
+ *
+ * @return LE_FAULT         Function failed.
+ * @return LE_BAD_PARAMETER The audio stream reference is invalid.
+ * @return LE_BUSY          The player interface is already active.
+ * @return LE_OK            Function succeeded.
+ *
+ * Note: if the fd parameter is set to LE_AUDIO_NO_FD, the previous file descriptor is used to play
+ * again the file.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_audio_PlayFile
+(
+    le_audio_StreamRef_t  streamRef,  ///< [IN] The audio stream reference.
+    int32_t               fd          ///< [IN] The audio file descriptor.
+)
+{
+    le_audio_Stream_t* streamPtr = le_ref_Lookup(AudioStreamRefMap, streamRef);
+    pa_audio_SamplePcmConfig_t samplePcmConfig;
+
+    if (streamPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", streamRef);
+        return LE_FAULT;
+    }
+
+    if (( fd != LE_AUDIO_NO_FD ) && ( streamPtr->fd != fd ))
+    {
+        // close previous file
+        close(streamPtr->fd);
+        streamPtr->fd = fd;
+    }
     else
     {
-        // TODO manage verification on event type
-        *eventPtr = streamPtr->fileEvent;
+        lseek(streamPtr->fd, 0, SEEK_SET);
+    }
+
+    if ( le_media_Open(streamPtr, &samplePcmConfig) != LE_OK )
+    {
+        return LE_FAULT;
+    }
+
+    if ( streamPtr->fd != LE_AUDIO_NO_FD )
+    {
+        return pa_audio_PlaySamples(streamPtr->audioInterface, streamPtr->fd, &samplePcmConfig);
+    }
+    else
+    {
+        return LE_FAULT;
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Initiate a playback sending samples over a pipe.
+ *
+ * @return LE_FAULT         Function failed.
+ * @return LE_BUSY          The player interface is already active.
+ * @return LE_OK            Function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_audio_PlaySamples
+(
+    le_audio_StreamRef_t streamRef , ///< Audio stream reference.
+    int32_t              fd          ///< The file descriptor.
+)
+{
+    le_audio_Stream_t* streamPtr = le_ref_Lookup(AudioStreamRefMap, streamRef);
+
+    if (streamPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", streamRef);
+        return LE_FAULT;
+    }
+
+    if ( streamPtr->fd != LE_AUDIO_NO_FD )
+    {
+        // close previous file
+        close(streamPtr->fd);
+    }
+
+    streamPtr->fd = fd;
+
+    streamPtr->samplePcmConfig.pcmFormat = PCM_RAW;
+
+    if ( streamPtr->fd != LE_AUDIO_NO_FD )
+    {
+        return pa_audio_PlaySamples(streamPtr->audioInterface,
+                                    streamPtr->fd,
+                                    &streamPtr->samplePcmConfig);
+    }
+    else
+    {
+        return LE_FAULT;
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Record a file on a recording stream.
+ *
+ * @return LE_FAULT         Function failed.
+ * @return LE_BAD_PARAMETER The audio stream reference is invalid.
+ * @return LE_BUSY          The recorder interface is already active.
+ * @return LE_OK            Function succeeded.
+ *
+ * Note: if the fd parameter is set to LE_AUDIO_NO_FD, the previous file descriptor is used to record
+ * again the file.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_audio_RecordFile
+(
+    le_audio_StreamRef_t streamRef , ///< Audio stream reference.
+    int32_t              fd          ///< The file descriptor.
+)
+{
+    le_audio_Stream_t* streamPtr = le_ref_Lookup(AudioStreamRefMap, streamRef);
+
+    if (streamPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", streamRef);
+        return LE_FAULT;
+    }
+
+    if (( fd != LE_AUDIO_NO_FD ) && ( streamPtr->fd != fd ))
+    {
+        // close previous file
+        close(streamPtr->fd);
+        streamPtr->fd = fd;
+    }
+
+    streamPtr->samplePcmConfig.pcmFormat = PCM_WAVE;
+
+    if ( streamPtr->fd != LE_AUDIO_NO_FD )
+    {
+        return pa_audio_Capture( streamPtr->audioInterface,
+                                streamPtr->fd,
+                                &streamPtr->samplePcmConfig);
+    }
+    else
+    {
+        return LE_FAULT;
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Record a file on a recording stream.
+ *
+ * @return LE_FAULT         Function failed.
+ * @return LE_BUSY          The recorder interface is already active.
+ * @return LE_OK            Function succeeded.
+ *
+ * Note: if the fd parameter is set to LE_AUDIO_NO_FD, the previous file descriptor is used to record
+ * again the file.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_audio_GetSamples
+(
+    le_audio_StreamRef_t streamRef , ///< Audio stream reference.
+    int32_t              fd          ///< The file descriptor.
+)
+{
+    le_audio_Stream_t* streamPtr = le_ref_Lookup(AudioStreamRefMap, streamRef);
+
+    if (streamPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", streamRef);
+        return LE_FAULT;
+    }
+
+    if ( streamPtr->fd != LE_AUDIO_NO_FD )
+    {
+        // close previous file
+        close(streamPtr->fd);
+    }
+
+    streamPtr->fd = fd;
+
+    streamPtr->samplePcmConfig.pcmFormat = PCM_RAW;
+
+    if ( streamPtr->fd != LE_AUDIO_NO_FD )
+    {
+        return pa_audio_Capture( streamPtr->audioInterface,
+                                streamPtr->fd,
+                                &streamPtr->samplePcmConfig);
+    }
+    else
+    {
+        return LE_FAULT;
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the channel number of a PCM sample.
+ *
+ * @return LE_FAULT         Function failed.
+ * @return LE_OK            Function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_audio_SetSamplePcmChannelNumber
+(
+    le_audio_StreamRef_t streamRef,
+        ///< [IN]
+        ///< Audio stream reference.
+
+    uint32_t nbChannel
+        ///< [IN]
+        ///< Channel Number
+)
+{
+    le_audio_Stream_t* streamPtr = le_ref_Lookup(AudioStreamRefMap, streamRef);
+
+    if (streamPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", streamRef);
+        return LE_FAULT;
+    }
+
+    streamPtr->samplePcmConfig.channelsCount = nbChannel;
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the channel number of a PCM sample.
+ *
+ * @return LE_FAULT         Function failed.
+ * @return LE_OK            Function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_audio_GetSamplePcmChannelNumber
+(
+    le_audio_StreamRef_t streamRef,
+        ///< [IN]
+        ///< Audio stream reference.
+
+    uint32_t* nbChannelPtr
+        ///< [OUT]
+        ///< Channel Number
+)
+{
+    le_audio_Stream_t* streamPtr = le_ref_Lookup(AudioStreamRefMap, streamRef);
+
+    if (streamPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", streamRef);
+        return LE_FAULT;
+    }
+
+    *nbChannelPtr = streamPtr->samplePcmConfig.channelsCount;
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the PCM sampling rate of a PCM sample.
+ *
+ * @return LE_FAULT         Function failed.
+ * @return LE_OK            Function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_audio_SetSamplePcmSamplingRate
+(
+    le_audio_StreamRef_t streamRef,
+        ///< [IN]
+        ///< Audio stream reference.
+
+    uint32_t rate
+        ///< [IN]
+        ///< PCM sampling Rate.
+)
+{
+    le_audio_Stream_t* streamPtr = le_ref_Lookup(AudioStreamRefMap, streamRef);
+
+    if (streamPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", streamRef);
+        return LE_FAULT;
+    }
+
+    streamPtr->samplePcmConfig.sampleRate = rate;
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the PCM sampling rate of a PCM sample.
+ *
+ * @return LE_FAULT         Function failed.
+ * @return LE_OK            Function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_audio_GetSamplePcmSamplingRate
+(
+    le_audio_StreamRef_t streamRef,
+        ///< [IN]
+        ///< Audio stream reference.
+
+    uint32_t* ratePtr
+        ///< [OUT]
+        ///< PCM sampling Rate.
+)
+{
+    le_audio_Stream_t* streamPtr = le_ref_Lookup(AudioStreamRefMap, streamRef);
+
+    if (streamPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", streamRef);
+        return LE_FAULT;
+    }
+
+    *ratePtr = streamPtr->samplePcmConfig.sampleRate;
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the sampling resolution (in bits per sample) of a PCM sample.
+ *
+ * @return LE_FAULT         Function failed.
+ * @return LE_OK            Function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_audio_SetSamplePcmSamplingResolution
+(
+    le_audio_StreamRef_t streamRef,
+        ///< [IN]
+        ///< Audio stream reference.
+
+    uint32_t samplingRes
+        ///< [IN]
+        ///< Sampling resolution (in bits per sample).
+)
+{
+    le_audio_Stream_t* streamPtr = le_ref_Lookup(AudioStreamRefMap, streamRef);
+
+    if (streamPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", streamRef);
+        return LE_FAULT;
+    }
+
+    streamPtr->samplePcmConfig.bitsPerSample = samplingRes;
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the sampling resolution (in bits per sample) of a PCM sample.
+ *
+ * @return LE_FAULT         Function failed.
+ * @return LE_OK            Function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_audio_GetSamplePcmSamplingResolution
+(
+    le_audio_StreamRef_t streamRef,
+        ///< [IN]
+        ///< Audio stream reference.
+
+    uint32_t* samplingResPtr
+        ///< [OUT]
+        ///< Sampling resolution (in bits per sample).
+)
+{
+    le_audio_Stream_t* streamPtr = le_ref_Lookup(AudioStreamRefMap, streamRef);
+
+    if (streamPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", streamRef);
+        return LE_FAULT;
+    }
+
+    *samplingResPtr = streamPtr->samplePcmConfig.bitsPerSample;
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to play a DTMF on a specific audio stream.
+ *
+ * @return LE_FORMAT_ERROR  The DTMF characters are invalid.
+ * @return LE_BUSY          A DTMF playback is already in progress on the playback stream.
+ * @return LE_FAULT         The function failed to play the DTMFs.
+ * @return LE_OK            The funtion succeeded.
+ *
+ * @note The process exits, if an invalid audio stream reference is given.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_audio_PlayDtmf
+(
+    le_audio_StreamRef_t streamRef, ///< [IN] The audio stream reference.
+    const char*          dtmfPtr,   ///< [IN] The DTMFs to play.
+    uint32_t             duration,  ///< [IN] The DTMF duration in milliseconds.
+    uint32_t             pause      ///< [IN] The pause duration between tones in milliseconds.
+)
+{
+    le_audio_Stream_t*     streamPtr = le_ref_Lookup(AudioStreamRefMap, streamRef);
+    if (streamPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid stream reference (%p) provided!", streamRef);
+        return LE_BAD_PARAMETER;
+    }
+    if (dtmfPtr == NULL)
+    {
+        LE_KILL_CLIENT("dtmfPtr is NULL !");
+        return LE_FAULT;
+    }
+    if(strlen(dtmfPtr) > LE_AUDIO_DTMF_MAX_LEN)
+    {
+        LE_KILL_CLIENT("strlen(dtmfPtr) > %d", LE_AUDIO_DTMF_MAX_LEN);
+        return LE_FAULT;
+    }
+
+    if (!AreDtmfValid(dtmfPtr))
+    {
+        LE_ERROR("DTMF are not valid!");
+        return LE_FORMAT_ERROR;
+    }
+
+    return le_media_PlayDtmf(streamPtr, dtmfPtr, duration, pause);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to ask to the Mobile Network to generate on the remote audio party
+ * the DTMFs.
+ *
+ * @return LE_FORMAT_ERROR  The DTMF characters are invalid.
+ * @return LE_BUSY          A DTMF playback is in progress.
+ * @return LE_FAULT         The function failed.
+ * @return LE_OK            The funtion succeeded.
+ *
+ * @note The process exits, if an invalid audio stream reference is given.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_audio_PlaySignallingDtmf
+(
+    const char*          dtmfPtr,   ///< [IN] The DTMFs to play.
+    uint32_t             duration,  ///< [IN] The DTMF duration in milliseconds.
+    uint32_t             pause      ///< [IN] The pause duration between tones in milliseconds.
+)
+{
+    le_result_t res;
+
+    if (!AreDtmfValid(dtmfPtr))
+    {
+        return LE_FORMAT_ERROR;
+    }
+
+    res = pa_audio_PlaySignallingDtmf(dtmfPtr, duration, pause);
+    if (res == LE_DUPLICATE)
+    {
+        return LE_BUSY;
+    }
+    else if (res == LE_OK)
+    {
         return LE_OK;
+    }
+    else
+    {
+        return LE_FAULT;
     }
 }
 

@@ -277,4 +277,54 @@ le_result_t pa_info_GetNai
         ///< [IN]
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Manufacturer Name string in ASCII text.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to get the value.
+ *      - LE_OVERFLOW      The Manufacturer Name length exceed the maximum length.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_info_GetManufacturerName
+(
+    char* mfrNameStr,
+        ///< [OUT]
+        ///< The Manufacturer Name string (null-terminated).
+
+    size_t mfrNameStrNumElements
+        ///< [IN]
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Product Requirement Information Part Number and Revision Number strings in ASCII text.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to get the value.
+ *      - LE_OVERFLOW      The Part or the Revision Number strings length exceed the maximum length.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_info_GetPriId
+(
+    char* priIdPnStr,
+        ///< [OUT]
+        ///< The Product Requirement Information Identifier
+        ///<  (PRI ID) Part Number string (null-terminated).
+
+    size_t priIdPnStrNumElements,
+        ///< [IN]
+
+    char* priIdRevStr,
+        ///< [OUT]
+        ///< The Product Requirement Information Identifier
+        ///<  (PRI ID) Revision Number string (null-terminated).
+
+    size_t priIdRevStrNumElements
+        ///< [IN]
+);
+
 #endif // LEGATO_PAINFO_INCLUDE_GUARD

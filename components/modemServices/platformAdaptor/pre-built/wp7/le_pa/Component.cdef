@@ -5,3 +5,8 @@ bundles:
         [r] libComponent_le_pa.so   /lib/
     }
 }
+
+ldflags:
+{
+    -lComponent_le_pa
+}

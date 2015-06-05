@@ -1075,3 +1075,20 @@ void pa_mrc_DeleteNeighborCellsInfo
     return ;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function measures the Signal metrics.
+ *
+ * @return LE_FAULT         The function failed.
+ * @return LE_OK            The function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_mrc_MeasureSignalMetrics
+(
+    pa_mrc_SignalMetrics_t* metricsPtr    ///< [OUT] The signal metrics.
+)
+{
+    // TODO: implement this function
+    return LE_FAULT;
+}

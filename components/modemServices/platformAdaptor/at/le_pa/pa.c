@@ -23,10 +23,11 @@
 #include "pa_mdc_local.h"
 #include "pa_mcc_local.h"
 #include "pa_ecall.h"
-#include "pa_fwupdate_local.h"
 #include "pa_common_local.h"
 #include "pa_ips.h"
 #include "pa_temp.h"
+#include "pa_antenna.h"
+#include "pa_adc_local.h"
 
 static le_thread_Ref_t  PaThreadRef = NULL;
 
@@ -113,7 +114,6 @@ static le_result_t  SetNewSmsIndication()
                                     PA_SMS_DS_0,
                                     PA_SMS_BFR_0)  != LE_OK)
         {
-            //              LE_FATAL("Set New SMS message indication failed");
             LE_ERROR("Set New SMS message indication failed");
             return LE_FAULT;
         }
@@ -126,7 +126,6 @@ static le_result_t  SetNewSmsIndication()
                                 ds,
                                 bfr)  != LE_OK)
     {
-        //          LE_FATAL("Set New SMS message indication failed");
         LE_ERROR("Set New SMS message indication failed");
         return LE_FAULT;
     }
@@ -194,9 +193,10 @@ static void* PAThreadInit(void* context)
     pa_mdc_Init();
     pa_mcc_Init();
     pa_ecall_Init(PA_ECALL_PAN_EUROPEAN);
-    pa_fwupdate_Init();
     pa_ips_Init();
     pa_temp_Init();
+    pa_antenna_Init();
+    pa_adc_Init();
 
     le_sem_Post(semPtr);
     le_event_RunLoop();

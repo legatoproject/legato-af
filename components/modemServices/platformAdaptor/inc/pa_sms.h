@@ -52,7 +52,6 @@
 // Symbol and Enum definitions.
 //--------------------------------------------------------------------------------------------------
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Option mask.
@@ -151,15 +150,29 @@ pa_sms_SmsSubmit_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * PDU error code structure
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    le_sms_ErrorCode3GPP2_t  code3GPP2;              ///< Last sending failure error code.
+    le_sms_ErrorCode_t       rp;                     ///< Last sending failure error code.
+    le_sms_ErrorCode_t       tp;                     ///< Last sending failure error code.
+    int32_t                  platformSpecific;       ///< Platform specific error code.
+}
+pa_sms_SendingErrCode_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
  * PDU message type structure.
- *
  */
 //--------------------------------------------------------------------------------------------------
 typedef struct {
-    le_sms_Status_t     status;                           ///< mandatory, status of msg in memory
-    pa_sms_Protocol_t   protocol;                         ///< mandatory, protocol used for encoding
-    uint8_t             data[LE_SMS_PDU_MAX_BYTES];         ///< mandatory, SMS user data (in HEX)
-    uint32_t            dataLen;                          ///< mandatory, number of characters
+    le_sms_Status_t         status;                      ///< mandatory, status of msg in memory
+    pa_sms_Protocol_t       protocol;                    ///< mandatory, protocol used for encoding
+    uint8_t                 data[LE_SMS_PDU_MAX_BYTES];  ///< mandatory, SMS user data (in HEX)
+    uint32_t                dataLen;                     ///< mandatory, number of characters
+    pa_sms_SendingErrCode_t errorCode;                   ///< Last sending failure error code.
 }
 pa_sms_Pdu_t;
 
@@ -243,9 +256,10 @@ le_result_t pa_sms_ClearNewMsgHandler
 //--------------------------------------------------------------------------------------------------
 int32_t pa_sms_SendPduMsg
 (
-    pa_sms_Protocol_t   protocol,   ///< [IN] protocol to use
-    uint32_t            length,     ///< [IN] The length of the TP data unit in bytes.
-    const uint8_t      *dataPtr     ///< [IN] The message.
+    pa_sms_Protocol_t        protocol,   ///< [IN] protocol to use
+    uint32_t                 length,     ///< [IN] The length of the TP data unit in bytes.
+    const uint8_t           *dataPtr,    ///< [IN] The message.
+    pa_sms_SendingErrCode_t *errorCode   ///< [OUT] The error code.
 );
 
 //--------------------------------------------------------------------------------------------------

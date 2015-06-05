@@ -1083,6 +1083,42 @@ le_result_t pa_gnss_Release
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Set the GNSS constellation bit mask
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT on failure
+ *  - LE_UNSUPPORTED request not supported
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_gnss_SetConstellation
+(
+    le_gnss_ConstellationBitMask_t constellationMask  ///< [IN] GNSS constellation used in solution.
+)
+{
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the GNSS constellation bit mask
+ *
+* @return
+*  - LE_OK on success
+*  - LE_FAULT on failure
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_gnss_GetConstellation
+(
+    le_gnss_ConstellationBitMask_t *constellationMaskPtr ///< [OUT] GNSS constellation used in
+                                                         ///< solution
+)
+{
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This function must be called to start the gnss acquisition.
  *
  * @return LE_FAULT  The function failed.
@@ -1253,11 +1289,7 @@ void pa_gnss_RemovePositionDataHandler
  * This function must be called to get the location's data.
  *
  * @return LE_FAULT         The function cannot get internal position information
- * @return LE_BAD_PARAMETER The positionRef is invalid
  * @return LE_OK            The function succeeded.
- *
- * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
- *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_gnss_GetLastPositionData
@@ -1265,15 +1297,16 @@ le_result_t pa_gnss_GetLastPositionData
     pa_Gnss_Position_Ref_t  positionRef   ///< [OUT] Reference to a position struct
 )
 {
-    if (positionRef==NULL)
+    if (positionRef == NULL)
     {
-        LE_WARN("Parameter are not valid");
-        return LE_BAD_PARAMETER;
+        LE_WARN("positionRef is NULL");
+        return LE_FAULT;
     }
-
-    memcpy(positionRef,&LastPosition,sizeof(LastPosition));
-
-    return LE_OK;
+    else
+    {
+        memcpy(positionRef, &LastPosition, sizeof(LastPosition));
+        return LE_OK;
+    }
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1325,6 +1358,106 @@ le_result_t pa_gnss_GetExtendedEphemerisValidityTimes
 le_result_t pa_gnss_ForceRestart
 (
     pa_gnss_Restart_t  restartType ///< [IN] type of restart
+)
+{
+    return LE_FAULT;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function sets the SUPL Assisted-GNSS mode.
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT on failure
+ *  - LE_UNSUPPORTED request not supported
+ *  - LE_TIMEOUT a time-out occurred
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_gnss_SetSuplAssistedMode
+(
+    le_gnss_AssistedMode_t  assistedMode      ///< [IN] Assisted-GNSS mode.
+)
+{
+    return LE_FAULT;
+
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function gets the SUPL Assisted-GNSS mode.
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT on failure
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_gnss_GetSuplAssistedMode
+(
+    le_gnss_AssistedMode_t *assistedModePtr      ///< [OUT] Assisted-GNSS mode.
+)
+{
+    return LE_FAULT;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function sets the SUPL server URL.
+ * That server URL is a NULL-terminated string with a maximum string length (including NULL
+ * terminator) equal to 256. Optionally the port number is specified after a colon.
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT on failure
+ *  - LE_BUSY service is busy
+ *  - LE_TIMEOUT a time-out occurred
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_gnss_SetSuplServerUrl
+(
+    const char*  suplServerUrlPtr      ///< [IN] SUPL server URL.
+)
+{
+    return LE_FAULT;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function injects the SUPL certificate to be used in A-GNSS sessions.
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT on failure
+ *  - LE_BUSY service is busy
+ *  - LE_TIMEOUT a time-out occurred
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_gnss_InjectSuplCertificate
+(
+    uint8_t  suplCertificateId,      ///< [IN] Certificate ID of the SUPL certificate.
+                                     ///< Certificate ID range is 0 to 9
+    uint16_t suplCertificateLen,     ///< [IN] SUPL certificate size in Bytes.
+    const char*  suplCertificatePtr  ///< [IN] SUPL certificate contents.
+)
+{
+    return LE_FAULT;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function deletes the SUPL certificate.
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT on failure
+ *  - LE_BUSY service is busy
+ *  - LE_TIMEOUT a time-out occurred
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_gnss_DeleteSuplCertificate
+(
+    uint8_t  suplCertificateId  ///< [IN]  Certificate ID of the SUPL certificate.
+                                ///< Certificate ID range is 0 to 9
 )
 {
     return LE_FAULT;

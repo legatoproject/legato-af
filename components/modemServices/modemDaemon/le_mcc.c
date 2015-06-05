@@ -83,17 +83,15 @@ le_mcc_Profile_t;
 typedef struct le_mcc_call_Obj
 {
     char                            telNumber[LE_MDMDEFS_PHONE_NUM_MAX_BYTES]; ///< Telephone number
-    le_mcc_Direction_t              direction;                      ///< Call direction
-    int16_t                         callId;                         ///< Outgoing call ID
-    le_mcc_Profile_t*               profile;                        ///< Profile to which the call
-                                                                    ///<  belongs
-    le_mcc_call_Event_t             event;                          ///< Last Call event
-    le_mcc_call_TerminationReason_t termination;                    ///< Call termination reason
-    le_audio_StreamRef_t            txAudioStreamRef;               ///< The transmitted audio
-                                                                    ///<  stream reference
-    le_audio_StreamRef_t            rxAudioStreamRef;               ///< The received audio stream
-                                                                    ///<  reference
-    pa_mcc_clir_t                   clirStatus;                     ///< Call CLIR status
+    le_mcc_Direction_t              direction;         ///< Call direction
+    int16_t                         callId;            ///< Outgoing call ID
+    le_mcc_Profile_t*               profile;           ///< Profile to which the call belongs
+    le_mcc_call_Event_t             event;             ///< Last Call event
+    le_mcc_call_TerminationReason_t termination;       ///< Call termination reason
+    int32_t                         terminationCode;   ///< Platform specific termination code
+    le_audio_StreamRef_t            txAudioStreamRef;  ///< The transmitted audio stream reference
+    le_audio_StreamRef_t            rxAudioStreamRef;  ///< The received audio stream reference
+    pa_mcc_clir_t                   clirStatus;        ///< Call CLIR status
 }
 le_mcc_Call_t;
 
@@ -299,7 +297,8 @@ static le_mcc_CallReference_t* CreateCallObject
     le_mcc_Direction_t              direction,
     int16_t                         id,
     le_mcc_call_Event_t             event,
-    le_mcc_call_TerminationReason_t termination
+    le_mcc_call_TerminationReason_t termination,
+    int32_t                         terminationCode
 )
 {
     le_mcc_Call_t* callPtr = (le_mcc_Call_t*)le_mem_ForceAlloc(MccCallPool);
@@ -309,6 +308,7 @@ static le_mcc_CallReference_t* CreateCallObject
     callPtr->direction = direction;
     callPtr->event = event;
     callPtr->termination = termination;
+    callPtr->terminationCode = terminationCode;
     callPtr->rxAudioStreamRef = NULL;
     callPtr->txAudioStreamRef = NULL;
     callPtr->clirStatus = PA_MCC_DEACTIVATE_CLIR;
@@ -424,7 +424,8 @@ static le_mcc_call_ObjRef_t UpdateCallObject
             LE_DEBUG("Found a call (ID.%d).", eventPtr->callId);
             callPtr->profile = currProfilePtr;
             callPtr->event = eventPtr->event;
-            callPtr->termination = eventPtr->TerminationEvent;
+            callPtr->termination = eventPtr->terminationEvent;
+            callPtr->terminationCode = eventPtr->terminationCode;
             if(eventPtr->event == LE_MCC_CALL_EVENT_TERMINATED)
             {
                 callPtr->callId = -1;
@@ -514,7 +515,8 @@ static void NewCallEventHandler
                                                                         INCOMING_CALL,
                                                                         dataPtr->callId,
                                                                         dataPtr->event,
-                                                                        dataPtr->TerminationEvent);
+                                                                        dataPtr->terminationEvent,
+                                                                        dataPtr->terminationCode);
 
             currProfilePtr->callRef = newReferencePtr->callRef;
         }
@@ -553,10 +555,11 @@ static void NewCallEventHandler
 /**
  * This function must be called to initialize the Modem Call Control
  *
- * @note If the initialization failed, it is a fatal error, the function will not return.
+ * @return LE_FAULT  The function failed.
+ * @return LE_OK     The function succeed.
  */
 //--------------------------------------------------------------------------------------------------
-void le_mcc_Init
+le_result_t le_mcc_Init
 (
     void
 )
@@ -586,7 +589,11 @@ void le_mcc_Init
     // BEGIN, TODO Profile creation should not belong to this module
     // Create a default Modem-Sim1 profile
     profilePtr = (struct le_mcc_profile_Obj*)le_mem_ForceAlloc(MccProfilePool);
-    LE_FATAL_IF((profilePtr == NULL), "No Space for a new profile !");
+    if (profilePtr == NULL)
+    {
+        LE_CRIT("No Space for a new profile !");
+        return LE_FAULT;
+    }
 
     memset(profilePtr, 0, sizeof(*profilePtr));
 
@@ -614,7 +621,7 @@ void le_mcc_Init
     // guaranteed to find a free entry, otherwise, we would have already exited above.
     for (idx=0; idx<MCC_MAX_PROFILE; idx++)
     {
-        LE_DEBUG("ProfileTable[%i] = %p", idx, ProfileTable[idx])
+        LE_DEBUG("ProfileTable[%i] = %p", idx, ProfileTable[idx]);
 
         if (ProfileTable[idx] == NULL)
         {
@@ -626,8 +633,13 @@ void le_mcc_Init
     // END TODO
 
     // Register a handler function for Call Event indications
-    LE_FATAL_IF((pa_mcc_SetCallEventHandler(NewCallEventHandler) != LE_OK),
-                "Add pa_mcc_SetCallEventHandler failed");
+    if(pa_mcc_SetCallEventHandler(NewCallEventHandler) != LE_OK)
+    {
+        LE_CRIT("Add pa_mcc_SetCallEventHandler failed");
+        return LE_FAULT;
+    }
+
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -665,7 +677,7 @@ le_mcc_profile_ObjRef_t le_mcc_profile_GetByName
 
     for (idx=0; idx<MCC_MAX_PROFILE; idx++)
     {
-        LE_DEBUG("ProfileTable[%i] = %p", idx, ProfileTable[idx])
+        LE_DEBUG("ProfileTable[%i] = %p", idx, ProfileTable[idx]);
 
         if (ProfileTable[idx] != NULL)
         {
@@ -905,7 +917,8 @@ le_mcc_call_ObjRef_t le_mcc_profile_CreateCall
                                                                 OUTGOING_CALL,
                                                                 -1,
                                                                 LE_MCC_CALL_EVENT_TERMINATED,
-                                                                LE_MCC_CALL_TERM_NOT_DEFINED);
+                                                                LE_MCC_CALL_TERM_UNDEFINED,
+                                                                -1);
 
     LE_DEBUG("Create Call ref.%p", newReferencePtr->callRef);
     // Return a Safe Reference for this Call object.
@@ -1103,10 +1116,36 @@ le_mcc_call_TerminationReason_t le_mcc_call_GetTerminationReason
     if (callPtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", callRef);
-        return LE_MCC_CALL_TERM_NOT_DEFINED;
+        return LE_MCC_CALL_TERM_UNDEFINED;
     }
 
     return (callPtr->termination);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Called to get the platform specific termination code.
+ *
+ * @return The platform specific termination code.
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+int32_t le_mcc_call_GetPlatformSpecificTerminationCode
+(
+    le_mcc_call_ObjRef_t callRef   ///< [IN] The call reference to read from.
+)
+{
+    le_mcc_Call_t* callPtr = le_ref_Lookup(MccCallRefMap, callRef);
+
+    if (callPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", callRef);
+        return -1;
+    }
+
+    return (callPtr->terminationCode);
 }
 
 //--------------------------------------------------------------------------------------------------

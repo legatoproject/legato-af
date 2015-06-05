@@ -147,10 +147,23 @@ typedef char pa_sim_Puk_t[PA_SIM_PUK_MAX_LEN+1];
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
-    le_sim_Type_t    simType; ///< The SIM type.
+    le_sim_Id_t      simId;   ///< The SIM identififier
     le_sim_States_t  state;   ///< The SIM state.
 }
 pa_sim_Event_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Event type used for SIM Toolkit notification.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    le_sim_Id_t        simId;      ///< The SIM identififier
+    le_sim_StkEvent_t  stkEvent;   ///< The SIM Toolkit event.
+}
+pa_sim_StkEvent_t;
 
 //--------------------------------------------------------------------------------------------------
 // APIs.
@@ -158,12 +171,22 @@ pa_sim_Event_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Prototype for handler functions used to report that a new SIM state notification.
+ * Prototype for handler functions used to report a new SIM state notification.
  *
  * @param event The event notification.
  */
 //--------------------------------------------------------------------------------------------------
 typedef void (*pa_sim_NewStateHdlrFunc_t)(pa_sim_Event_t* eventPtr);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Prototype for handler functions used to report a SIM Toolkit event.
+ *
+ * @param event The SIM Toolkit notification.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef void (*pa_sim_SimToolkitEventHdlrFunc_t)(pa_sim_StkEvent_t* eventPtr);
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -176,7 +199,7 @@ typedef void (*pa_sim_NewStateHdlrFunc_t)(pa_sim_Event_t* eventPtr);
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_sim_SelectCard
 (
-    le_sim_Type_t  sim     ///< The SIM to be selected
+    le_sim_Id_t      simId   ///< [IN]  The SIM identififier
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -190,7 +213,7 @@ le_result_t pa_sim_SelectCard
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_sim_GetSelectedCard
 (
-    le_sim_Type_t*  simTypePtr     ///< [OUT] The SIM type selected.
+    le_sim_Id_t*  simIdPtr     ///< [OUT] The SIM identififier.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -430,6 +453,108 @@ le_result_t pa_sim_GetHomeNetworkMccMnc
     size_t    mccPtrSize,            ///< [IN] mccPtr buffer size
     char     *mncPtr,                ///< [OUT] Mobile Network Code
     size_t    mncPtrSize             ///< [IN] mncPtr buffer size
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to open a logical channel on the SIM card.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT for unexpected error
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_sim_OpenLogicalChannel
+(
+    uint8_t* channelPtr  ///< [OUT] channel number
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to close a logical channel on the SIM card.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT for unexpected error
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_sim_CloseLogicalChannel
+(
+    uint8_t channel  ///< [IN] channel number
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to send an APDU message to the SIM card.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_OVERFLOW the response length exceed the maximum buffer length.
+ *      - LE_FAULT for unexpected error
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_sim_SendApdu
+(
+    const uint8_t* apduPtr, ///< [IN] APDU message buffer
+    uint32_t       apduLen, ///< [IN] APDU message length in bytes
+    uint8_t*       respPtr, ///< [OUT] APDU message response.
+    size_t*        lenPtr   ///< [IN,OUT] APDU message response length in bytes.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to trigger a SIM refresh.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT for unexpected error
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_sim_Refresh
+(
+    void
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to register a handler for SIM Toolkit event notification handling.
+ *
+ * @return A handler reference, which is only needed for later removal of the handler.
+ *
+ * @note Doesn't return on failure, so there's no need to check the return value for errors.
+ */
+//--------------------------------------------------------------------------------------------------
+le_event_HandlerRef_t pa_sim_AddSimToolkitEventHandler
+(
+    pa_sim_SimToolkitEventHdlrFunc_t handler,    ///< [IN] The handler function.
+    void*                            contextPtr  ///< [IN] The context to be given to the handler.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to unregister the handler for SIM Toolkit event notification
+ * handling.
+ *
+ * @note Doesn't return on failure, so there's no need to check the return value for errors.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_sim_RemoveSimToolkitEventHandler
+(
+    le_event_HandlerRef_t handlerRef
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to confirm a SIM Toolkit command.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT on failure
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_sim_ConfirmSimToolkitCommand
+(
+    bool  confirmation ///< [IN] true to accept, false to reject
 );
 
 #endif // LEGATO_PASIM_INCLUDE_GUARD

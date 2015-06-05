@@ -69,7 +69,7 @@ static le_event_Id_t CellNetStateEvent;
 //--------------------------------------------------------------------------------------------------
 static void LoadSimFromConfigDb
 (
-    uint32_t simNumber
+    le_sim_Id_t simId
 )
 {
     uint32_t attemptCounter = CONFIGDB_ATTEMPT_MAX;
@@ -77,17 +77,16 @@ static void LoadSimFromConfigDb
     char configPath[LIMIT_MAX_PATH_BYTES];
     snprintf(configPath, sizeof(configPath), "%s/%d",
              CFG_MODEMSERVICE_SIM_PATH,
-             simNumber);
+             simId);
 
-    LE_DEBUG("Start reading SIM-%d information in ConfigDB",simNumber);
+    LE_DEBUG("Start reading SIM-%d information in ConfigDB",simId);
 
     le_result_t result;
-    le_sim_ObjRef_t simRef = le_sim_Create(simNumber);
     le_sim_States_t simState;
 
     do
     {
-        simState = le_sim_GetState(simRef);
+        simState = le_sim_GetState(simId);
 
         switch (simState)
         {
@@ -101,23 +100,23 @@ static void LoadSimFromConfigDb
                 result = le_cfg_GetString(simCfg,CFG_NODE_PIN,simPin,sizeof(simPin),"");
                 if ( result != LE_OK )
                 {
-                    LE_WARN("PIN string too large for SIM-%d",simNumber);
+                    LE_WARN("PIN string too large for SIM-%d",simId);
                     le_cfg_CancelTxn(simCfg);
                     return;
                 }
                 if ( strncmp(simPin,"",sizeof(simPin))==0 )
                 {
-                    LE_WARN("PIN not set for SIM-%d",simNumber);
+                    LE_WARN("PIN not set for SIM-%d",simId);
                     le_cfg_CancelTxn(simCfg);
                     return;
                 }
-                if ( (result = le_sim_EnterPIN(simRef,simPin)) != LE_OK )
+                if ( (result = le_sim_EnterPIN(simId,simPin)) != LE_OK )
                 {
-                    LE_ERROR("Error.%d Failed to enter SIM pin for SIM-%d",result,simNumber);
+                    LE_ERROR("Error.%d Failed to enter SIM pin for SIM-%d",result,simId);
                     le_cfg_CancelTxn(simCfg);
                     return;
                 }
-                LE_DEBUG("Sim-%d is unlocked", simNumber);
+                LE_DEBUG("Sim-%d is unlocked", simId);
 
                 le_cfg_CancelTxn(simCfg);
                 attemptCounter = 1;
@@ -125,7 +124,7 @@ static void LoadSimFromConfigDb
             }
             case LE_SIM_BLOCKED:
             {
-                LE_EMERG("Be carefull the sim-%d is BLOCKED, need to enter PUK code",simNumber);
+                LE_EMERG("Be carefull the sim-%d is BLOCKED, need to enter PUK code",simId);
                 attemptCounter = 1;
                 break;
             }
@@ -138,16 +137,16 @@ static void LoadSimFromConfigDb
                 else
                 {
                     LE_WARN("Sim-%d was busy when loading configuration,"
-                            "retry in 1 seconds",simNumber);
+                            "retry in 1 seconds",simId);
                 }
                 sleep(1); // Retry in 1 second.
                 break;
             case LE_SIM_READY:
-                LE_DEBUG("Sim-%d is ready",simNumber);
+                LE_DEBUG("Sim-%d is ready",simId);
                 attemptCounter = 1;
                 break;
             case LE_SIM_ABSENT:
-                LE_WARN("Sim-%d is absent",simNumber);
+                LE_WARN("Sim-%d is absent",simId);
                 attemptCounter = 1;
                 break;
             case LE_SIM_STATE_UNKNOWN:
@@ -216,7 +215,6 @@ static void StartCellNetTimerHandler
 {
     le_onoff_t  radioState;
     le_result_t result;
-    uint32_t    i;
 
     if(RequestCount == 0)
     {
@@ -232,18 +230,15 @@ static void StartCellNetTimerHandler
             // The radio is ON, stop and delete the Timer.
             le_timer_Delete(timerRef);
 
-            // Load SIM configuration from Config DB into the first SIM card found
-            for (i=1 ; i<=LE_SIM_TYPE_MAX ; i++)
-            {
+            // Load SIM configuration from Config DB
+            le_sim_Id_t simSelected = le_sim_GetSelectedCard();
 
-                le_sim_ObjRef_t simRef = le_sim_Create(i);
-                if (le_sim_IsPresent(simRef))
-                {
-                    LoadSimFromConfigDb(i);
-                    SendCellNetStateEvent();
-                    return;
-                }
+            if (le_sim_IsPresent(simSelected))
+            {
+                LoadSimFromConfigDb(simSelected);
+                SendCellNetStateEvent();
             }
+
         }
         else
         {
@@ -267,23 +262,20 @@ static void StartCellularNetwork
 {
     le_onoff_t  radioState;
     le_result_t result;
-    uint32_t    i;
 
     result=le_mrc_GetRadioPower(&radioState);
     if ((result == LE_OK) && (radioState == LE_ON))
     {
         IsOn = true;
-        // Load SIM configuration from ConfigDB into the first SIM card found
-        for (i=1 ; i<=LE_SIM_TYPE_MAX ; i++)
+        // Load SIM configuration from Config DB
+        le_sim_Id_t simSelected = le_sim_GetSelectedCard();
+
+        if (le_sim_IsPresent(simSelected))
         {
-            le_sim_ObjRef_t simRef = le_sim_Create(i);
-            if (le_sim_IsPresent(simRef))
-            {
-                LoadSimFromConfigDb(i);
-                SendCellNetStateEvent();
-                return;
-            }
+            LoadSimFromConfigDb(simSelected);
+            SendCellNetStateEvent();
         }
+
     }
     else
     {
@@ -432,16 +424,14 @@ static void ProcessCommand
 //--------------------------------------------------------------------------------------------------
 static void SimStateHandler
 (
-    le_sim_ObjRef_t simRef,
-    void*        contextPtr)
+    le_sim_Id_t     simId,
+    le_sim_States_t simState,
+    void*           contextPtr
+)
 {
-    le_sim_States_t   state;
-    uint32_t          slot=le_sim_GetSlotNumber(simRef);
-
-    state = le_sim_GetState(simRef);
-    if (state == LE_SIM_INSERTED)
+    if (simState == LE_SIM_INSERTED)
     {
-        LoadSimFromConfigDb(slot);
+        LoadSimFromConfigDb(simId);
         SendCellNetStateEvent();
     }
 }

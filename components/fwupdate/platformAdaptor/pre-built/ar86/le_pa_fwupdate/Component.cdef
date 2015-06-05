@@ -1,0 +1,20 @@
+bundles:
+{
+    file:
+    {
+        [r] libComponent_le_pa_fwupdate.so  /lib/
+    }
+}
+
+ldflags:
+{
+    -lComponent_le_pa_fwupdate
+}
+
+requires:
+{
+    component:
+    {
+        $LEGATO_MODEM_PA
+    }
+}

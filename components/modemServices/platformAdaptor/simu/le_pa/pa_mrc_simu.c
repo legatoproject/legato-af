@@ -97,7 +97,7 @@ static bool IsNetworkInUse
     }
 
     // @TODO Compare MCC/MNC
- 
+
     return true;
 }
 
@@ -898,6 +898,24 @@ le_result_t pa_mrc_GetNetworkRegistrationMode
 )
 {
     return LE_NOT_POSSIBLE;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function measures the Signal metrics.
+ *
+ * @return LE_FAULT         The function failed.
+ * @return LE_OK            The function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_mrc_MeasureSignalMetrics
+(
+    pa_mrc_SignalMetrics_t* metricsPtr    ///< [OUT] The signal metrics.
+)
+{
+    // TODO: implement this function
+    return LE_FAULT;
 }
 
 /**

@@ -17,7 +17,6 @@
 //--------------------------------------------------------------------------------------------------
 typedef struct atmgr {
     struct ATManagerStateMachine atManager;     ///< FSM
-    le_event_FdHandlerRef_t fdHandlerRef;       ///< fd handler of the device
     le_event_Id_t resumeInterfaceId;            ///< event to start an interface
     le_event_Id_t suspendInterfaceId;           ///< event to stop an interface
     le_event_Id_t subscribeUnsolicitedId;       ///< event to add unsolicited to the FSM

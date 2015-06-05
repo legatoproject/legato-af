@@ -1,0 +1,12 @@
+requires:
+{
+    api:
+    {
+        le_avc.api  [types-only]
+    }
+}
+
+sources:
+{
+    pa_avc_default.c
+}

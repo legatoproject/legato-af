@@ -14,8 +14,6 @@
  *  - @subpage c_pa_mcc
  *  - @subpage c_pa_info
  *  - @subpage c_pa_ecall
- *  - @subpage c_pa_fwupdate
- *  - @subpage c_pa_remoteMgmt
  *
  * <HR>
  *

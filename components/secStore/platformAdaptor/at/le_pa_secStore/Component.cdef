@@ -1,0 +1,11 @@
+
+requires:
+{
+    component: { $LEGATO_ROOT/components/secStore/platformAdaptor/default/le_pa_secStore_default }
+}
+
+sources:
+{
+    pa_secStore.c
+}
+

@@ -15,11 +15,9 @@
 #include "le_sms_local.h"
 #include "le_mdc_local.h"
 #include "le_mcc_local.h"
-#ifdef INCLUDE_ECALL
 #include "le_ecall_local.h"
-#endif
-#include "le_remoteMgmt_local.h"
 #include "le_temp_local.h"
+#include "le_antenna_local.h"
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -37,11 +35,8 @@ COMPONENT_INIT
     le_sms_Init();
     le_mdc_Init();
     le_mcc_Init();
-    le_remoteMgmt_Init();
     le_temp_Init();
-
-#ifdef INCLUDE_ECALL
+    le_antenna_Init();
     le_ecall_Init();
-#endif
 }
 

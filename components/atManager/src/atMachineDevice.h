@@ -24,7 +24,7 @@ typedef struct atdevice
     uint32_t                handle;     ///< Handle of the device.
     le_da_Device_t          deviceItf;  ///< Pointer to the device interface function pointer set
                                         ///< (write, read, close, ioctl).
-    le_event_FdMonitorRef_t fdMonitor;  ///< fd event monitor associated to Handle
+    le_fdMonitor_Ref_t fdMonitor;  ///< fd event monitor associated to Handle
 }
 atdevice_t;
 

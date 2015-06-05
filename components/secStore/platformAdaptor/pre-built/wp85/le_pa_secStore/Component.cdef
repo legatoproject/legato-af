@@ -1,0 +1,17 @@
+bundles:
+{
+    file:
+    {
+        [r] libComponent_le_pa_secStore.so  /lib/
+    }
+}
+
+ldflags:
+{
+    -lComponent_le_pa_secStore
+}
+
+requires:
+{
+    component: { $LEGATO_MODEM_PA }
+}

@@ -83,6 +83,12 @@
 //--------------------------------------------------------------------------------------------------
 #define MRC_MAX_SCAN    10
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum number of Signal Metrics objects we expect to have at one time.
+ */
+//--------------------------------------------------------------------------------------------------
+#define MAX_NUM_METRICS 1
 
 //--------------------------------------------------------------------------------------------------
 // Data structures.
@@ -182,7 +188,6 @@ static le_mem_PoolRef_t CellListPool;
 //--------------------------------------------------------------------------------------------------
 /**
  * Pool for cell information safe reference.
- *
  */
 //--------------------------------------------------------------------------------------------------
 static le_mem_PoolRef_t  CellInfoSafeRefPool;
@@ -190,7 +195,6 @@ static le_mem_PoolRef_t  CellInfoSafeRefPool;
 //--------------------------------------------------------------------------------------------------
 /**
  * Safe Reference Map for all neighboring cells information list objects
- *
  */
 //--------------------------------------------------------------------------------------------------
 static le_ref_MapRef_t CellListRefMap;
@@ -198,7 +202,6 @@ static le_ref_MapRef_t CellListRefMap;
 //--------------------------------------------------------------------------------------------------
 /**
  * Safe Reference Map for one neighboring cell information objects
- *
  */
 //--------------------------------------------------------------------------------------------------
 static le_ref_MapRef_t CellRefMap;
@@ -214,7 +217,6 @@ static le_mem_PoolRef_t PrefOpsListPool;
 //--------------------------------------------------------------------------------------------------
 /**
  * Pool for preferred PLMN operators safe reference.
- *
  */
 //--------------------------------------------------------------------------------------------------
 static le_mem_PoolRef_t  PreferredOperatorsSafeRefPool;
@@ -222,7 +224,6 @@ static le_mem_PoolRef_t  PreferredOperatorsSafeRefPool;
 //--------------------------------------------------------------------------------------------------
 /**
  * Safe Reference Map for Preferred operators list.
- *
  */
 //--------------------------------------------------------------------------------------------------
 static le_ref_MapRef_t PreferredOperatorsListRefMap;
@@ -230,7 +231,6 @@ static le_ref_MapRef_t PreferredOperatorsListRefMap;
 //--------------------------------------------------------------------------------------------------
 /**
  * Safe Reference Map for Preferred operators.
- *
  */
 //--------------------------------------------------------------------------------------------------
 static le_ref_MapRef_t PreferredOperatorsRefMap;
@@ -238,7 +238,6 @@ static le_ref_MapRef_t PreferredOperatorsRefMap;
 //--------------------------------------------------------------------------------------------------
 /**
  * Event ID for New Network Registration State notification.
- *
  */
 //--------------------------------------------------------------------------------------------------
 static le_event_Id_t NewNetRegStateId;
@@ -246,7 +245,6 @@ static le_event_Id_t NewNetRegStateId;
 //--------------------------------------------------------------------------------------------------
 /**
  * Memory Pool for Listed ScanInformation.
- *
  */
 //--------------------------------------------------------------------------------------------------
 static le_mem_PoolRef_t  ScanInformationListPool;
@@ -254,7 +252,6 @@ static le_mem_PoolRef_t  ScanInformationListPool;
 //--------------------------------------------------------------------------------------------------
 /**
  * Memory Pool for Listed Information structure safe reference.
- *
  */
 //--------------------------------------------------------------------------------------------------
 static le_mem_PoolRef_t  ScanInformationSafeRefPool;
@@ -262,7 +259,6 @@ static le_mem_PoolRef_t  ScanInformationSafeRefPool;
 //--------------------------------------------------------------------------------------------------
 /**
  * Safe Reference Map for Scan Information List.
- *
  */
 //--------------------------------------------------------------------------------------------------
 static le_ref_MapRef_t ScanInformationListRefMap;
@@ -270,7 +266,6 @@ static le_ref_MapRef_t ScanInformationListRefMap;
 //--------------------------------------------------------------------------------------------------
 /**
  * Safe Reference Map for one Scan Information.
- *
  */
 //--------------------------------------------------------------------------------------------------
 static le_ref_MapRef_t ScanInformationRefMap;
@@ -282,6 +277,20 @@ static le_ref_MapRef_t ScanInformationRefMap;
  */
 //--------------------------------------------------------------------------------------------------
 static le_event_Id_t RatChangeId;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Memory Pool for Signal Metrics data.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mem_PoolRef_t  MetricsPool;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Safe Reference Map for ignal Metrics.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_ref_MapRef_t MetricsRefMap;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -485,6 +494,12 @@ void le_mrc_Init
     //  References.
     PreferredOperatorsListRefMap = le_ref_CreateMap("PreferredOperatorsListRefMap",
                     MAX_NUM_PREFERRED_OPERATORS_LISTS);
+
+    // Create the pool for Signal Metrics.
+    MetricsPool = le_mem_CreatePool("MetricsPool", sizeof(pa_mrc_SignalMetrics_t));
+
+    // Create the Safe Reference Map to use for Signal Metrics object Safe References.
+    MetricsRefMap = le_ref_CreateMap("MetricsRefMap", MAX_NUM_METRICS);
 
     // Create an event Id for new Network Registration State notification
     NewNetRegStateId = le_event_CreateIdWithRefCounting("NewNetRegState");
@@ -2307,10 +2322,10 @@ uint32_t le_mrc_GetNeighborCellId
 /**
  * This function must be called to get the Location Area Code of a cell.
  *
- * @return The Location Area Code of a cell.
+ * @return The Location Area Code of a cell. 0xFFFF value is returned if the value is not available.
  *
- * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
- *       function will not return.
+ * @note If the caller is passing a bad pointer into this function, it's a fatal error, the
+ *       function won't return.
  */
 //--------------------------------------------------------------------------------------------------
 uint32_t le_mrc_GetNeighborCellLocAreaCode
@@ -2332,7 +2347,7 @@ uint32_t le_mrc_GetNeighborCellLocAreaCode
 /**
  * This function must be called to get the signal strength of a cell.
  *
- * @return The signal strength of a cell.
+ * @return The signal strength of a cell in dBm.
  *
  * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
  *       function will not return.
@@ -2352,3 +2367,409 @@ int32_t le_mrc_GetNeighborCellRxLevel
 
     return (cellInfoPtr->rxLevel);
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the Radio Access Technology of a cell.
+ *
+ * @return The Radio Access Technology of a cell.
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+le_mrc_Rat_t le_mrc_GetNeighborCellRat
+(
+    le_mrc_CellInfoRef_t     ngbrCellInfoRef ///< [IN] The Cell information reference
+)
+{
+    pa_mrc_CellInfo_t* cellInfoPtr = le_ref_Lookup(CellRefMap, ngbrCellInfoRef);
+    if (cellInfoPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", ngbrCellInfoRef);
+        return LE_FAULT;
+    }
+
+    return (cellInfoPtr->rat);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the Ec/Io; the received energy per chip divided by the power
+ * density in the band measured in dBm on the primary CPICH channel of serving cell.
+ *
+ * @return
+ *  - The Ec/Io of a cell given in dB with 1 decimal place. (only applicable for UMTS network).
+ *  - 0xFFFFFFFF when the value is not available.
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+int32_t le_mrc_GetNeighborCellUmtsEcIo
+(
+    le_mrc_CellInfoRef_t     ngbrCellInfoRef ///< [IN] The Cell information reference
+)
+{
+    pa_mrc_CellInfo_t* cellInfoPtr = le_ref_Lookup(CellRefMap, ngbrCellInfoRef);
+    if (cellInfoPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", ngbrCellInfoRef);
+        return LE_FAULT;
+    }
+
+    return (cellInfoPtr->umtsEcIo);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the RSRP and RSRQ of the Intrafrequency of a LTE cell.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT on failure
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mrc_GetNeighborCellLteIntraFreq
+(
+    le_mrc_CellInfoRef_t  ngbrCellInfoRef, ///< [IN] The Cell information reference
+    int32_t*              rsrqPtr,         ///< [OUT] Reference Signal Received Quality value in dB
+                                           ///< with 1 decimal place
+    int32_t*              rsrpPtr          ///< [OUT] Reference Signal Receiver Power value in dBm
+                                           ///< with 1 decimal place
+)
+{
+    pa_mrc_CellInfo_t* cellInfoPtr = le_ref_Lookup(CellRefMap, ngbrCellInfoRef);
+    if (cellInfoPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", ngbrCellInfoRef);
+        return LE_FAULT;
+    }
+    else
+    {
+        *rsrpPtr = cellInfoPtr->lteIntraRsrp;
+        *rsrqPtr = cellInfoPtr->lteIntraRsrq;
+        return LE_OK;
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the RSRP and RSRQ of the Interfrequency of a LTE cell.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT on failure
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mrc_GetNeighborCellLteInterFreq
+(
+    le_mrc_CellInfoRef_t  ngbrCellInfoRef, ///< [IN] The Cell information reference
+    int32_t*              rsrqPtr,         ///< [OUT] Reference Signal Received Quality value in dB
+                                           ///< with 1 decimal place
+    int32_t*              rsrpPtr          ///< [OUT] Reference Signal Receiver Power value in dBm
+                                           ///< with 1 decimal place
+)
+{
+    pa_mrc_CellInfo_t* cellInfoPtr = le_ref_Lookup(CellRefMap, ngbrCellInfoRef);
+    if (cellInfoPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", ngbrCellInfoRef);
+        return LE_FAULT;
+    }
+    else
+    {
+        *rsrpPtr = cellInfoPtr->lteInterRsrp;
+        *rsrqPtr = cellInfoPtr->lteInterRsrq;
+        return LE_OK;
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to measure the signal metrics. It creates and returns a reference
+ * to the signal metrics.
+ *
+ * @return A reference to the signal metrics.
+ * @return NULL if no signal metrics are available.
+ */
+//--------------------------------------------------------------------------------------------------
+le_mrc_MetricsRef_t le_mrc_MeasureSignalMetrics
+(
+    void
+)
+{
+    pa_mrc_SignalMetrics_t* metricsPtr = (pa_mrc_SignalMetrics_t*)le_mem_ForceAlloc(MetricsPool);
+
+    if (metricsPtr != NULL)
+    {
+        if (pa_mrc_MeasureSignalMetrics(metricsPtr) == LE_OK)
+        {
+            // Create and return a Safe Reference for this object.
+            return le_ref_CreateRef(MetricsRefMap, metricsPtr);
+        }
+        else
+        {
+            le_mem_Release(metricsPtr);
+            LE_ERROR("Unable to measure the signal metrics!");
+            return NULL;
+        }
+    }
+    else
+    {
+        LE_ERROR("Unable to allocate memory for signal metrics!");
+        return NULL;
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to delete the the signal metrics.
+ *
+ * @note
+ *      On failure, the process exits, so you don't have to worry about checking the returned
+ *      reference for validity.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_mrc_DeleteSignalMetrics
+(
+    le_mrc_MetricsRef_t  MetricsRef ///< [IN] The signal metrics reference.
+)
+{
+    pa_mrc_SignalMetrics_t* metricsPtr = le_ref_Lookup(MetricsRefMap, MetricsRef);
+    if (metricsPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", MetricsRef);
+        return;
+    }
+
+    // Invalidate the Safe Reference.
+    le_ref_DeleteRef(MetricsRefMap, MetricsRef);
+
+    le_mem_Release(metricsPtr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function returns the Radio Access Technology of the signal metrics.
+ *
+ * @return The Radio Access Technology of the signal measure.
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+le_mrc_Rat_t le_mrc_GetRatOfSignalMetrics
+(
+    le_mrc_MetricsRef_t  MetricsRef ///< [IN] The signal metrics reference.
+)
+{
+    pa_mrc_SignalMetrics_t* metricsPtr = le_ref_Lookup(MetricsRefMap, MetricsRef);
+    if (metricsPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", MetricsRef);
+        return LE_MRC_RAT_UNKNOWN;
+    }
+    else
+    {
+        return (metricsPtr->rat);
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function returns the signal strength in dBm and the bit error rate measured on GSM network.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT on failure
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mrc_GetGsmSignalMetrics
+(
+    le_mrc_MetricsRef_t MetricsRef, ///< [IN] The signal metrics reference.
+    int32_t*            rssiPtr,    ///< [OUT] Signal strength in dBm
+    uint32_t*           berPtr      ///< [OUT] Bit error rate.
+)
+{
+    pa_mrc_SignalMetrics_t* metricsPtr = le_ref_Lookup(MetricsRefMap, MetricsRef);
+    if (metricsPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", MetricsRef);
+        return LE_FAULT;
+    }
+    else
+    {
+        if (metricsPtr->rat == LE_MRC_RAT_GSM)
+        {
+            *rssiPtr = metricsPtr->ss;
+            *berPtr = metricsPtr->er;
+
+            return LE_OK;
+        }
+        else
+        {
+            LE_ERROR("The measured signal is not GSM (RAT.%d)", metricsPtr->rat);
+            return LE_FAULT;
+        }
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function returns the signal metrics measured on UMTS network.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT on failure
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mrc_GetUmtsSignalMetrics
+(
+    le_mrc_MetricsRef_t MetricsRef, ///< [IN] The signal metrics reference.
+    int32_t*            ssPtr,      ///< [OUT] Signal strength in dBm
+    uint32_t*           blerPtr,    ///< [OUT] Block error rate
+    int32_t*            ecioPtr,    ///< [OUT] Ec/Io value  in dB with 1 decimal place (15 = 1.5 dB)
+    int32_t*            rscpPtr,    ///< [OUT] Measured RSCP in dBm (only applicable for TD-SCDMA
+                                    ///<       network)
+    int32_t*            sinrPtr     ///< [OUT] Measured SINR in dB (only applicable for TD-SCDMA
+                                    ///<       network)
+)
+{
+    pa_mrc_SignalMetrics_t* metricsPtr = le_ref_Lookup(MetricsRefMap, MetricsRef);
+    if (metricsPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", MetricsRef);
+        return LE_FAULT;
+    }
+    else
+    {
+        if (metricsPtr->rat == LE_MRC_RAT_UMTS)
+        {
+            *ssPtr = metricsPtr->ss;
+            *blerPtr = metricsPtr->er;
+            *ecioPtr = metricsPtr->umtsMetrics.ecio;
+            *rscpPtr = metricsPtr->umtsMetrics.rscp;
+            *sinrPtr = metricsPtr->umtsMetrics.sinr;
+
+            return LE_OK;
+        }
+        else
+        {
+            LE_ERROR("The measured signal is not UMTS (RAT.%d)", metricsPtr->rat);
+            return LE_FAULT;
+        }
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function returns the signal metrics measured on LTE network.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT on failure
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mrc_GetLteSignalMetrics
+(
+    le_mrc_MetricsRef_t MetricsRef, ///< [IN] The signal metrics reference.
+    int32_t*            ssPtr,      ///< [OUT] Signal strength in dBm
+    uint32_t*           blerPtr,    ///< [OUT] Block error rate
+    int32_t*            rsrqPtr,    ///< [OUT] RSRQ value in dB as measured by L1 with 1 decimal place
+    int32_t*            rsrpPtr,    ///< [OUT] Current RSRP in dBm as measured by L1 with 1 decimal place
+    int32_t*            snrPtr      ///< [OUT] SNR level in dB with 1 decimal place (15 = 1.5 dB)
+)
+{
+    pa_mrc_SignalMetrics_t* metricsPtr = le_ref_Lookup(MetricsRefMap, MetricsRef);
+    if (metricsPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", MetricsRef);
+        return LE_FAULT;
+    }
+    else
+    {
+        if (metricsPtr->rat == LE_MRC_RAT_LTE)
+        {
+            *ssPtr = metricsPtr->ss;
+            *blerPtr = metricsPtr->er;
+            *rsrqPtr = metricsPtr->lteMetrics.rsrq;
+            *rsrpPtr = metricsPtr->lteMetrics.rsrp;
+            *snrPtr = metricsPtr->lteMetrics.snr;
+
+            return LE_OK;
+        }
+        else
+        {
+            LE_ERROR("The measured signal is not LTE (RAT.%d)", metricsPtr->rat);
+            return LE_FAULT;
+        }
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function returns the signal metrics measured on CDMA network.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT on failure
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mrc_GetCdmaSignalMetrics
+(
+    le_mrc_MetricsRef_t MetricsRef, ///< [IN] The signal metrics reference.
+    int32_t*            ssPtr,      ///< [OUT] Signal strength in dBm
+    uint32_t*           erPtr,      ///< [OUT] Frame/Packet error rate
+    int32_t*            ecioPtr,    ///< [OUT] ECIO value in dB with 1 decimal place (15 = 1.5 dB)
+    int32_t*            sinrPtr,    ///< [OUT] SINR level in dB with 1 decimal place, (only
+                                    ///<       applicable for 1xEV-DO)
+    int32_t*            ioPtr       ///< [OUT] Received IO in dBm (only applicable for 1xEV-DO)
+)
+{
+    pa_mrc_SignalMetrics_t* metricsPtr = le_ref_Lookup(MetricsRefMap, MetricsRef);
+    if (metricsPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", MetricsRef);
+        return LE_FAULT;
+    }
+    else
+    {
+        if (metricsPtr->rat == LE_MRC_RAT_CDMA)
+        {
+            *ssPtr = metricsPtr->ss;
+            *erPtr = metricsPtr->er;
+            *ecioPtr = metricsPtr->cdmaMetrics.ecio;
+            *sinrPtr = metricsPtr->cdmaMetrics.sinr;
+            *ioPtr = metricsPtr->cdmaMetrics.io;
+
+            return LE_OK;
+        }
+        else
+        {
+            LE_ERROR("The measured signal is not CDMA (RAT.%d)", metricsPtr->rat);
+            return LE_FAULT;
+        }
+    }
+}
+
+
+

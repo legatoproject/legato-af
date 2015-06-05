@@ -26,12 +26,12 @@ static le_event_Id_t          EventNewSmsId;
 static le_event_HandlerRef_t  NewSMSHandlerRef;
 
 static int SmsServerListenFd;
-static le_event_FdMonitorRef_t SmsServerMonitorRef;
+static le_fdMonitor_Ref_t SmsServerMonitorRef;
 
 typedef struct {
     bool used;
     int fd;
-    le_event_FdMonitorRef_t fdMonitorRef;
+    le_fdMonitor_Ref_t fdMonitorRef;
 }
 SmsServerConnection_t;
 
@@ -170,9 +170,10 @@ le_result_t pa_sms_ClearNewMsgHandler
 //--------------------------------------------------------------------------------------------------
 int32_t pa_sms_SendPduMsg
 (
-    pa_sms_Protocol_t   protocol,   ///< [IN] protocol to use
-    uint32_t            length,     ///< [IN] The length of the TP data unit in bytes.
-    const uint8_t      *dataPtr     ///< [IN] The message.
+    pa_sms_Protocol_t        protocol,   ///< [IN] protocol to use
+    uint32_t                 length,     ///< [IN] The length of the TP data unit in bytes.
+    const uint8_t           *dataPtr,    ///< [IN] The message.
+    pa_sms_SendingErrCode_t *errorCode   ///< [OUT] The error code.
 )
 {
     le_result_t res;
@@ -611,9 +612,12 @@ static le_result_t SmsServerHandleLocalMessage
 //--------------------------------------------------------------------------------------------------
 static void SmsServerRead
 (
-    int connFd
+    int connFd,
+    short events
 )
 {
+    LE_ASSERT(events == POLLIN);
+
     ssize_t readSz;
     union {
         pa_sms_SimuPdu_t header;
@@ -631,16 +635,25 @@ static void SmsServerRead
 
         LE_INFO("Client has disconnected (fd=%d)", connFd);
 
-        /* Find structure */
+        /* Find connection record */
         for(fdIndex = 0; fdIndex < PA_SMS_SIMU_MAX_CONN; fdIndex++)
         {
             if(SmsServerConnections[fdIndex].fd == connFd)
             {
                 LE_DEBUG("Releasing connection idx=%d fd=%d", fdIndex, connFd);
 
-                le_event_DeleteFdMonitor(SmsServerConnections[fdIndex].fdMonitorRef);
+                le_fdMonitor_Delete(SmsServerConnections[fdIndex].fdMonitorRef);
 
-                SmsServerConnections[fdIndex].fd = 0;
+                // Close the connection.
+                int result;
+                do
+                {
+                    result = close(connFd);
+                } while ((result == -1) && (errno == EINTR));
+                LE_CRIT_IF(result == -1, "close() failed for connection fd %d. Errno %m.", connFd);
+
+                // Clear out the connection record.
+                SmsServerConnections[fdIndex].fd = -1;
                 SmsServerConnections[fdIndex].fdMonitorRef = NULL;
                 SmsServerConnections[fdIndex].used = false;
 
@@ -713,9 +726,10 @@ static void SmsServerConn
 
     SmsServerConnections[fdIndex].used = true;
     SmsServerConnections[fdIndex].fd = connFd;
-    SmsServerConnections[fdIndex].fdMonitorRef = le_event_CreateFdMonitor(monitorFdName, connFd);
-
-    le_event_SetFdHandler(SmsServerConnections[fdIndex].fdMonitorRef, LE_EVENT_FD_READABLE, SmsServerRead);
+    SmsServerConnections[fdIndex].fdMonitorRef = le_fdMonitor_Create(monitorFdName,
+                                                                     connFd,
+                                                                     SmsServerRead,
+                                                                     POLLIN);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -725,10 +739,33 @@ static void SmsServerConn
 //--------------------------------------------------------------------------------------------------
 static void SmsServerError
 (
-    int fd
+    void
 )
 {
     LE_FATAL("SMS Server Error");
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Event handler for file descriptor events for the SMS server listen socket.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void SmsServerListenEvent
+(
+    int fd,         ///< Socket file descriptor.
+    short events    ///< Bit map of events.  Expect POLLIN (readable) and POLLERR (error).
+)
+//--------------------------------------------------------------------------------------------------
+{
+    if (events & POLLERR)
+    {
+        SmsServerError();
+    }
+
+    if (events & POLLIN)
+    {
+        SmsServerConn(fd);
+    }
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -759,11 +796,10 @@ static le_result_t InitSmsServer
     res = listen(SmsServerListenFd, 1024);
     LE_FATAL_IF( (res < 0), "Error when starting to listen on socket ..." );
 
-    SmsServerMonitorRef = le_event_CreateFdMonitor("SmsSimuFd", SmsServerListenFd);
-
-    le_event_SetFdHandler(SmsServerMonitorRef, LE_EVENT_FD_ERROR, SmsServerError);
-    le_event_SetFdHandler(SmsServerMonitorRef, LE_EVENT_FD_READABLE, SmsServerConn);
-
+    SmsServerMonitorRef = le_fdMonitor_Create("SmsSimuFd",
+                                              SmsServerListenFd,
+                                              SmsServerListenEvent,
+                                              POLLIN);
     return LE_OK;
 }
 

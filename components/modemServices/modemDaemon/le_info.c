@@ -356,3 +356,73 @@ le_result_t le_info_GetNai
 
     return pa_info_GetNai(naiStr, naiStrNumElements);
 }
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Manufacturer Name string in ASCII text.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to get the value.
+ *      - LE_OVERFLOW      The Manufacturer Name length exceed the maximum length.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_info_GetManufacturerName
+(
+    char* mfrNameStr,
+        ///< [OUT]
+        ///< The Manufacturer Name string (null-terminated).
+
+    size_t mfrNameStrNumElements
+        ///< [IN]
+)
+{
+    if (mfrNameStr == NULL)
+    {
+        LE_KILL_CLIENT("mfrNameStr is NULL !");
+        return LE_FAULT;
+    }
+
+    return pa_info_GetManufacturerName(mfrNameStr, mfrNameStrNumElements);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Product Requirement Information Part Number and Revision Number strings in ASCII text.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to get the value.
+ *      - LE_OVERFLOW      The Part or the Revision Number strings length exceed the maximum length.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_info_GetPriId
+(
+    char* priIdPnStr,
+        ///< [OUT]
+        ///< The Product Requirement Information Identifier
+        ///<  (PRI ID) Part Number string (null-terminated).
+
+    size_t priIdPnStrNumElements,
+        ///< [IN]
+
+    char* priIdRevStr,
+        ///< [OUT]
+        ///< The Product Requirement Information Identifier
+        ///<  (PRI ID) Revision Number string (null-terminated).
+
+    size_t priIdRevStrNumElements
+        ///< [IN]
+)
+{
+    if ( (priIdPnStr == NULL) || (priIdRevStr == NULL))
+    {
+        LE_KILL_CLIENT("priIdPnStr or priIdRevStr is NULL.");
+        return LE_FAULT;
+    }
+
+    return pa_info_GetPriId(priIdPnStr, priIdPnStrNumElements,
+        priIdRevStr, priIdRevStrNumElements);
+}

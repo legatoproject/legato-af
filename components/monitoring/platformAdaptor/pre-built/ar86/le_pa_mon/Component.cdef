@@ -1,7 +1,0 @@
-bundles:
-{
-    file:
-    {
-        [r] libComponent_le_pa_mon.so   /lib/
-    }
-}

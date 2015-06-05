@@ -1,0 +1,4 @@
+sources:
+{
+    pa_secStore_default.c
+}

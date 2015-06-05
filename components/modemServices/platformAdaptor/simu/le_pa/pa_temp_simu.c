@@ -9,11 +9,64 @@
 #include "legato.h"
 #include "interfaces.h"
 #include "pa_temp.h"
+#include "pa_simu.h"
 
 //--------------------------------------------------------------------------------------------------
 //                                       Public declarations
 //--------------------------------------------------------------------------------------------------
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Storage structure for radio thresholds.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct {
+    int32_t hiWarningTemp;  ///< The high warning temperature threshold in degree celsius.
+    int32_t hiCriticalTemp; ///< The high critical temperature threshold in degree celsius.
+}
+RadioThresholds_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Storage structure for platform thresholds.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct {
+    int32_t lowWarningTemp;  ///< The low warning temperature threshold in degree celsius.
+    int32_t hiWarningTemp;   ///< The high warning temperature threshold in degree celsius.
+    int32_t lowCriticalTemp; ///< The low critical temperature threshold in degree celsius.
+    int32_t hiCriticalTemp;  ///< The high critical temperature threshold in degree celsius.
+}
+PlatformThresholds_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Storage structure for thresholds.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct {
+    RadioThresholds_t radio;
+    PlatformThresholds_t platform;
+}
+Thresholds_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Global structure to store active thresholds.
+ */
+//--------------------------------------------------------------------------------------------------
+static Thresholds_t Thresholds = {
+    .radio = {
+        .hiWarningTemp = PA_SIMU_TEMP_DEFAULT_RADIO_HIGH_WARN,
+        .hiCriticalTemp = PA_SIMU_TEMP_DEFAULT_RADIO_HIGH_CRIT,
+    },
+    .platform = {
+        .lowWarningTemp = PA_SIMU_TEMP_DEFAULT_PLATFORM_LOW_WARN,
+        .hiWarningTemp = PA_SIMU_TEMP_DEFAULT_PLATFORM_HIGH_WARN,
+        .lowCriticalTemp = PA_SIMU_TEMP_DEFAULT_PLATFORM_LOW_CRIT,
+        .hiCriticalTemp = PA_SIMU_TEMP_DEFAULT_PLATFORM_HIGH_CRIT,
+    },
+};
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -31,7 +84,8 @@ le_result_t pa_temp_GetRadioTemperature
         ///< [OUT] The Radio temperature level in degree celsius.
 )
 {
-    return LE_FAULT;
+    *radioTempPtr = PA_SIMU_TEMP_DEFAULT_RADIO_TEMP;
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -50,7 +104,8 @@ le_result_t pa_temp_GetPlatformTemperature
         ///< [OUT] The Platform temperature level in degree celsius.
 )
 {
-    return LE_FAULT;
+    *platformTempPtr = PA_SIMU_TEMP_DEFAULT_PLATFORM_TEMP;
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -60,8 +115,6 @@ le_result_t pa_temp_GetPlatformTemperature
  *
  * @return
  *      - LE_OK            The function succeeded.
- *      - LE_BAD_PARAMETER The hiWarning threshold + 1 is equal to or higher than
- *                           the hiCritical threshold.
  *      - LE_FAULT         The function failed to set the thresholds.
  */
 //--------------------------------------------------------------------------------------------------
@@ -76,7 +129,9 @@ le_result_t pa_temp_SetRadioThresholds
         ///< [IN] The high critical temperature threshold in degree celsius.
 )
 {
-    return LE_FAULT;
+    Thresholds.radio.hiWarningTemp = hiWarningTemp;
+    Thresholds.radio.hiCriticalTemp = hiCriticalTemp;
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -100,7 +155,9 @@ le_result_t pa_temp_GetRadioThresholds
         ///<  in degree celsius.
 )
 {
-    return LE_FAULT;
+    *hiWarningTempPtr = Thresholds.radio.hiWarningTemp;
+    *hiCriticalTempPtr = Thresholds.radio.hiCriticalTemp;
+    return LE_OK;
 }
 
 
@@ -111,12 +168,6 @@ le_result_t pa_temp_GetRadioThresholds
  *
  * @return
  *      - LE_OK            The function succeeded.
- *      - LE_BAD_PARAMETER The hiWarning threshold + 1 is equal to or higher than
- *                           the hiCritical threshold.
- *                         The loWwarning threshold is equal to or higher than
- *                           the hiWarning threshold.
- *                         The loWwarning threshold is equal to or lower than
- *                           the loCritical threshold.
  *      - LE_FAULT         The function failed to set the thresholds.
  */
 //--------------------------------------------------------------------------------------------------
@@ -139,7 +190,11 @@ le_result_t pa_temp_SetPlatformThresholds
         ///< [IN] The high critical temperature threshold in degree celsius.
 )
 {
-    return LE_FAULT;
+    Thresholds.platform.lowWarningTemp = lowWarningTemp;
+    Thresholds.platform.hiWarningTemp = hiWarningTemp;
+    Thresholds.platform.lowCriticalTemp = lowCriticalTemp;
+    Thresholds.platform.hiCriticalTemp = hiCriticalTemp;
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -171,7 +226,11 @@ le_result_t pa_temp_GetPlatformThresholds
         ///<  in degree celsius.
 )
 {
-    return LE_FAULT;
+    *lowWarningTempPtr = Thresholds.platform.lowWarningTemp;
+    *hiWarningTempPtr = Thresholds.platform.hiWarningTemp;
+    *lowCriticalTempPtr = Thresholds.platform.lowCriticalTemp;
+    *hiCriticalTempPtr = Thresholds.platform.hiCriticalTemp;
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------

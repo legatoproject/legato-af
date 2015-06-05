@@ -57,11 +57,21 @@ pa_mrc_NetworkRegSetting_t;
 //--------------------------------------------------------------------------------------------------
 typedef struct pa_mrc_CellInfo
 {
-    le_dls_Link_t    link;       ///< Structure is part of a @ref c_doublyLinkedList
-    uint32_t         index;      ///< The cell number.
-    uint32_t         id;         ///< The cell identifier.
-    uint16_t         lac;        ///< The location area code.
-    int16_t          rxLevel;    ///< The cell Rx level measurement.
+    le_dls_Link_t    link;          ///< Structure is part of a @ref c_doublyLinkedList
+    uint32_t         index;         ///< The cell number.
+    uint32_t         id;            ///< The cell identifier.
+    uint16_t         lac;           ///< The location area code.
+    int16_t          rxLevel;       ///< The cell Rx level measurement.
+    le_mrc_Rat_t     rat;           ///< The cell Radio Access Technology.
+    int32_t          umtsEcIo;      ///< The Ec/Io of a UMTS cell.
+    int32_t          lteIntraRsrp;  ///< The Reference Signal Receiver Power value of the
+                                    ///  Intrafrequency of a LTE cell.
+    int32_t          lteIntraRsrq;  ///< The Reference Signal Receiver Quality value of the
+                                    ///  Intrafrequency of a LTE cell.
+    int32_t          lteInterRsrp;  ///< The Reference Signal Receiver Power value of the
+                                    ///  Intrafrequency of a LTE cell.
+    int32_t          lteInterRsrq;  ///< The Reference Signal Receiver Quality value of the
+                                    ///  Intrafrequency of a LTE cell.
 }
 pa_mrc_CellInfo_t;
 
@@ -123,6 +133,67 @@ typedef struct
     le_dls_Link_t       link;           ///< link for the list
 }
 pa_mrc_ScanInformation_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * UMTS metrics.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    int32_t   ecio; ///< Ec/Io value  in dB with 1 decimal place (15 = 1.5 dB)
+    int32_t   rscp; ///< Measured RSCP in dBm (only applicable for TD-SCDMA network)
+    int32_t   sinr; ///< Measured SINR in dB (only applicable for TD-SCDMA network)
+}
+pa_mrc_UmtsMetrics_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * LTE metrics.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    int32_t  rsrq; ///< RSRQ value in dB as measured by L1
+    int32_t  rsrp; ///< Current RSRP in dBm as measured by L1
+    int32_t  snr;  ///< SNR level in dB with 1 decimal place (15 = 1.5 dB)
+}
+pa_mrc_LteMetrics_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * CDMA metrics.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    int32_t  ecio;  ///< ECIO value in dB with 1 decimal place (15 = 1.5 dB)
+    int32_t  sinr;  ///< SINR level in dB with 1 decimal place, (only applicable for 1xEV-DO)
+    int32_t  io;    ///< Received IO in dBm (only applicable for 1xEV-DO)
+}
+pa_mrc_CdmaMetrics_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Signal metrics.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    le_mrc_Rat_t             rat;          ///< RAT of the measured signal
+    int32_t                  ss;           ///< Signal strength in dBm
+    uint32_t                 er;           ///< Bit/Block/Frame/Packet error rate
+    union {                                ///< Additional information for UMTS/LTE/CDMA
+        pa_mrc_UmtsMetrics_t umtsMetrics;
+        pa_mrc_LteMetrics_t  lteMetrics;
+        pa_mrc_CdmaMetrics_t cdmaMetrics;
+    };
+}
+pa_mrc_SignalMetrics_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -643,6 +714,20 @@ le_result_t pa_mrc_GetNetworkRegistrationMode
     size_t  mccPtrSize,   ///< [IN] mccPtr buffer size
     char*   mncPtr,       ///< [OUT] Mobile Network Code
     size_t  mncPtrSize    ///< [IN] mncPtr buffer size
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function measures the Signal metrics.
+ *
+ * @return LE_FAULT         The function failed.
+ * @return LE_OK            The function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_mrc_MeasureSignalMetrics
+(
+    pa_mrc_SignalMetrics_t* metricsPtr    ///< [OUT] The signal metrics.
 );
 
 #endif // LEGATO_PARC_INCLUDE_GUARD

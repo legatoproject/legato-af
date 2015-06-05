@@ -9,10 +9,10 @@ requires:
         le_sim.api        [types-only]
         le_sms.api        [types-only]
         le_ecall.api      [types-only]
-        le_fwupdate.api   [types-only]
-        le_remoteMgmt.api [types-only]
         le_info.api       [types-only]
-        le_temp.api         [types-only]
+        le_temp.api       [types-only]
+        le_antenna.api    [types-only]
+        le_adc.api        [types-only]
     }
 }
 
@@ -27,10 +27,11 @@ sources:
     pa_sim.c
     pa_sms.c
     pa_ecall.c
-    pa_fwupdate.c
-    pa_remoteMgmt.c
     pa_ips.c
     pa_temp.c
+    pa_antenna.c
+    pa_riPin.c
+    pa_adc.c
 }
 
 requires:

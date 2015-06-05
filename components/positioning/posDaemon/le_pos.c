@@ -623,7 +623,7 @@ static void LoadPositioningFromConfigDb
 
     LE_DEBUG("Set acquisition rate to value %d", rate);
     // TODO: how to stop/start device in order to limit power consumption?
-    LE_FATAL_IF((pa_gnss_SetAcquisitionRate(rate) != LE_OK),
+    LE_CRIT_IF((pa_gnss_SetAcquisitionRate(rate) != LE_OK),
                 "Failed to set GNSS's acquisition rate!");
 
     // Add a configDb handler to check if the acquition rate change.
@@ -727,7 +727,7 @@ COMPONENT_INIT
     }
     else
     {
-        LE_FATAL("PA GNSS module not available");
+        LE_CRIT("GNSS module not available");
     }
 
     LE_DEBUG("Positioning service started.");
@@ -867,23 +867,27 @@ le_pos_MovementHandlerRef_t le_pos_AddMovementHandler
     posSampleHandlerNodePtr->horizontalMagnitude = horizontalMagnitude;
     posSampleHandlerNodePtr->verticalMagnitude = verticalMagnitude;
 
-    LE_FATAL_IF((pa_gnss_SetAcquisitionRate(rate) != LE_OK),
-                "Failed to set GNSS's acquisition rate!");
-
-    le_dls_Queue(&PosSampleHandlerList, &(posSampleHandlerNodePtr->link));
+    if (pa_gnss_SetAcquisitionRate(rate) != LE_OK)
+    {
+        LE_WARN("Failed to set GNSS's acquisition rate! Use the default one...");
+    }
 
     // Start acquisition
     if (NumOfHandlers == 0)
     {
-//         LE_ERROR("Add PA handler");
-        LE_FATAL_IF(((PAHandlerRef=pa_gnss_AddPositionDataHandler(PosSampleHandlerfunc)) == NULL),
-                    "Failed to add PA GNSS's handler!");
+        if ((PAHandlerRef=pa_gnss_AddPositionDataHandler(PosSampleHandlerfunc)) == NULL)
+        {
+            LE_ERROR("Failed to add PA GNSS's handler!");
+            le_mem_Release(posSampleHandlerNodePtr);
+            return NULL;
+        }
 
-// TODO: how to stop/start device in order to limit power consumption?
-//         LE_FATAL_IF((pa_gnss_Start() != LE_OK),
-//                     "Failed to start GNSS's acquisition!");
+        // TODO: how to stop/start device in order to limit power consumption?
+        //         LE_CRIT_IF((pa_gnss_Start() != LE_OK),
+        //                     "Failed to start GNSS's acquisition!");
     }
 
+    le_dls_Queue(&PosSampleHandlerList, &(posSampleHandlerNodePtr->link));
     NumOfHandlers++;
 
     return (le_pos_MovementHandlerRef_t)posSampleHandlerNodePtr;

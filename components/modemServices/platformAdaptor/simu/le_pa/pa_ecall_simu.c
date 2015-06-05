@@ -214,15 +214,16 @@ le_result_t pa_ecall_LoadMsd
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function must be called to start an eCall test.
+ * This function must be called to start the eCall.
  *
- * @return LE_FAULT  The function failed.
- * @return LE_OK     The function succeed.
+ * @return
+ *      LE_OK if successful.
+ *      LE_FAULT if unsuccessful.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_ecall_StartTest
+le_result_t pa_ecall_Start
 (
-    void
+    pa_ecall_StartType_t callType
 )
 {
     // TODO implementation
@@ -231,30 +232,14 @@ le_result_t pa_ecall_StartTest
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function must be called to start an automatic eCall.
+ * This function must be called to stop the eCall.
  *
- * @return LE_FAULT  The function failed.
- * @return LE_OK     The function succeed.
+ * @return
+ *      LE_OK if successful.
+ *      LE_FAULT if unsuccessful.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_ecall_StartAutomatic
-(
-    void
-)
-{
-    // TODO implementation
-    return LE_FAULT;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This function must be called to start a manual eCall.
- *
- * @return LE_FAULT  The function failed.
- * @return LE_OK     The function succeed.
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t pa_ecall_StartManual
+le_result_t pa_ecall_Stop
 (
     void
 )

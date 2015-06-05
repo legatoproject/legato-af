@@ -14,7 +14,6 @@
 #define PA_SIMU_INFO_DEFAULT_IMEI           "314159265358979"
 #define PA_SIMU_INFO_DEFAULT_FW_VERSION     "Firmware 1.00"
 #define PA_SIMU_INFO_DEFAULT_BOOT_VERSION   "Bootloader 1.00"
-#define PA_SIMU_INFO_DEFAULT_DEVICE_MODEL   "VIRT_X86"
 
 /* Radio Control */
 
@@ -84,11 +83,17 @@ le_result_t ecall_simu_Init
     void
 );
 
-/* Firmware Update */
+/* Temperature */
 
-le_result_t fwupdate_simu_Init
-(
-    void
-);
+#define PA_SIMU_TEMP_DEFAULT_RADIO_TEMP              29
+#define PA_SIMU_TEMP_DEFAULT_PLATFORM_TEMP           32
+
+#define PA_SIMU_TEMP_DEFAULT_RADIO_HIGH_WARN        110
+#define PA_SIMU_TEMP_DEFAULT_RADIO_HIGH_CRIT        140
+
+#define PA_SIMU_TEMP_DEFAULT_PLATFORM_LOW_WARN      -40
+#define PA_SIMU_TEMP_DEFAULT_PLATFORM_HIGH_WARN      85
+#define PA_SIMU_TEMP_DEFAULT_PLATFORM_LOW_CRIT      -45
+#define PA_SIMU_TEMP_DEFAULT_PLATFORM_HIGH_CRIT     130
 
 #endif /* PA_SIMU_INCLUDE_GUARD */

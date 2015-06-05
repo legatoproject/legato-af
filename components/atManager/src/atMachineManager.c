@@ -224,11 +224,17 @@ static void StopTimer
 //--------------------------------------------------------------------------------------------------
 static void RxNewData
 (
-    int fd  ///< File descriptor to read on
+    int fd, ///< File descriptor to read on
+    short events ///< Event reported on fd (expect only POLLIN)
 )
 {
+    if (events & ~POLLIN)
+    {
+        LE_CRIT("Unexpected event(s) on fd %d (0x%hX).", fd, events);
+    }
+
     int32_t size = 0;
-    ATManagerStateMachine_t *atManagerRef = le_event_GetContextPtr();
+    ATManagerStateMachine_t *atManagerRef = le_fdMonitor_GetContextPtr();
     ATParserStateMachineRef_t  atParserRef = &(atManagerRef->curContext.atParser) ;
 
     LE_DEBUG("Start read");
@@ -298,7 +304,7 @@ void atmachinemanager_Resume
 )
 {
     char monitorName[64];
-    le_event_FdMonitorRef_t fdMonitorRef;
+    le_fdMonitor_Ref_t fdMonitorRef;
     struct atmgr *interfacePtr = le_event_GetContextPtr();
 
     if (interfacePtr->atManager.curContext.atDevice.fdMonitor) {
@@ -316,22 +322,24 @@ void atmachinemanager_Resume
     LE_FATAL_IF(interfacePtr->atManager.curContext.atDevice.handle==-1,"Open device failed");
 
     // Create a File Descriptor Monitor object for the serial port's file descriptor.
-    snprintf(monitorName,64,"%s-Monitor",interfacePtr->atManager.curContext.atDevice.name);
-    monitorName[63]='\0';
-    fdMonitorRef = le_event_CreateFdMonitor(monitorName,
-                                            interfacePtr->atManager.curContext.atDevice.handle);
-    // Register a read handler.
-    interfacePtr->fdHandlerRef = le_event_SetFdHandler(
-                                                        fdMonitorRef,
-                                                        LE_EVENT_FD_READABLE,
-                                                        RxNewData);
+    snprintf(monitorName,
+             sizeof(monitorName),
+             "%s-Monitor",
+             interfacePtr->atManager.curContext.atDevice.name);
+
+    fdMonitorRef = le_fdMonitor_Create(monitorName,
+                                       interfacePtr->atManager.curContext.atDevice.handle,
+                                       RxNewData,
+                                       POLLIN);
+
     interfacePtr->atManager.curContext.atDevice.fdMonitor = fdMonitorRef;
 
-    le_event_SetFdHandlerContextPtr(interfacePtr->fdHandlerRef,&(interfacePtr->atManager));
+    le_fdMonitor_SetContextPtr(fdMonitorRef, &(interfacePtr->atManager));
 
+    if (le_log_GetFilterLevel() == LE_LOG_DEBUG)
     {
         char threadName[25];
-        le_thread_GetName(le_thread_GetCurrent(),threadName,25);
+        le_thread_GetName(le_thread_GetCurrent(), threadName, 25);
         LE_DEBUG("Resume %s with handle(%d)(%p) [%s]",
                  threadName,
                  interfacePtr->atManager.curContext.atDevice.handle,
@@ -375,7 +383,7 @@ void atmachinemanager_Suspend
     le_timer_SetHandler(interfacePtr->atManager.curContext.atCommandTimer,NULL);
     le_timer_Delete(interfacePtr->atManager.curContext.atCommandTimer);
 
-    le_event_DeleteFdMonitor(interfacePtr->atManager.curContext.atDevice.fdMonitor);
+    le_fdMonitor_Delete(interfacePtr->atManager.curContext.atDevice.fdMonitor);
     interfacePtr->atManager.curContext.atDevice.deviceItf.close(
                                     interfacePtr->atManager.curContext.atDevice.handle);
 

@@ -15,10 +15,11 @@
 /**
  * This function must be called to initialize the SMS operations component
  *
- * @note If the initialization failed, it is a fatal error, the function will not return.
+ * @return LE_FAULT  The function failed.
+ * @return LE_OK     The function succeed.
  */
 //--------------------------------------------------------------------------------------------------
-void le_sms_Init
+le_result_t le_sms_Init
 (
     void
 );

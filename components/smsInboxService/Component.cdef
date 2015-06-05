@@ -1,0 +1,24 @@
+provides:
+{
+    api:
+    {
+        le_smsInbox1.api
+        le_smsInbox2 = le_smsInbox1.api
+    }
+}
+
+requires:
+{
+    api:
+    {
+        le_sim.api
+        le_sms.api
+        le_cfg.api
+    }
+}
+
+sources:
+{
+    le_smsInbox.c
+    smsInbox.c
+}

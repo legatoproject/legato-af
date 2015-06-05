@@ -26,7 +26,7 @@ typedef struct le_mdc_Profile {
     le_event_Id_t sessionStateEvent;        ///< Event to report when session changes state
     pa_mdc_ProfileData_t modemData;         ///< Profile data that is written to the modem
     le_mdc_ProfileRef_t profileRef;         ///< Profile Safe Reference
-    uint32_t handlerCount;                  ///< Number of handler allocated to the profile
+    uint8_t isConnected;                    ///< Session is connected
     le_dls_Link_t link;                     ///< Link into the profile list - Must be the last field
 }
 le_mdc_Profile_t;
@@ -159,7 +159,6 @@ static void NewSessionStateHandler
 )
 {
     bool isConnected;
-    le_event_Id_t event;
 
     if ( IS_TRACE_ENABLED )
     {
@@ -167,20 +166,30 @@ static void NewSessionStateHandler
         LE_PRINT_VALUE("%i", sessionStatePtr->newState);
     }
 
-    le_mdc_Profile_t* profilePtr = le_event_GetContextPtr();
-
-    // Init the data for the event report
-    isConnected = (sessionStatePtr->newState != PA_MDC_DISCONNECTED);
+    // Search the profile
+    le_mdc_Profile_t* profilePtr = SearchProfileInList(sessionStatePtr->profileIndex);
 
     if (profilePtr == NULL)
     {
-        LE_CRIT("Invalid reference found!");
-        return;
+        LE_DEBUG("Reference not created");
     }
+    else
+    {
+        // Init the data for the event report
+        isConnected = (sessionStatePtr->newState != PA_MDC_DISCONNECTED);
 
-    // Report the event for the given profile
-    event = profilePtr->sessionStateEvent;
-    le_event_Report(event, &isConnected, sizeof(isConnected));
+        LE_DEBUG("profileIndex %d isConnected %d", sessionStatePtr->profileIndex,
+                                                    profilePtr->isConnected);
+        LE_DEBUG("isConnected %d",isConnected);
+
+        if (profilePtr->isConnected != isConnected)
+        {
+
+            // Report the event for the given profile
+            le_event_Report(profilePtr->sessionStateEvent, &isConnected, sizeof(isConnected));
+            profilePtr->isConnected = isConnected;
+        }
+    }
 
     // Free the received report data
     le_mem_Release(sessionStatePtr);
@@ -228,7 +237,13 @@ static le_mdc_ProfileRef_t CreateModemProfile
     if (!profilePtr)
     {
         char eventName[32] = {0};
-        profilePtr = le_mem_TryAlloc(DataProfilePool);
+
+        if ( pa_mdc_InitializeProfile(index) != LE_OK )
+        {
+            return NULL;
+        }
+
+        profilePtr = le_mem_ForceAlloc(DataProfilePool);
 
         if (profilePtr == NULL)
         {
@@ -254,6 +269,8 @@ static le_mdc_ProfileRef_t CreateModemProfile
         // Init the remaining fields
         profilePtr->callRef = 0;
 
+        profilePtr->isConnected = 0xFF;
+
         // Init the link
         profilePtr->link = LE_DLS_LINK_INIT;
 
@@ -265,14 +282,8 @@ static le_mdc_ProfileRef_t CreateModemProfile
             LE_PRINT_VALUE("%u", index);
         }
 
-        pa_mdc_SetSessionStateHandler(NewSessionStateHandler, profilePtr);
-
         // Create a Safe Reference for this data profile object.
         profilePtr->profileRef = le_ref_CreateRef(DataProfileRefMap, profilePtr);
-    }
-    else
-    {
-         le_mem_AddRef(profilePtr);
     }
 
     return profilePtr->profileRef;
@@ -287,8 +298,6 @@ static le_mdc_ProfileRef_t CreateModemProfile
 /**
  * Initialize the MDC component.
  *
- * @note
- *      The process exits on failure
  */
 //--------------------------------------------------------------------------------------------------
 void le_mdc_Init
@@ -313,6 +322,9 @@ void le_mdc_Init
 
     // Create the Safe Reference Map to use for the session state handler object Safe References.
     StateHandlerRefMap = le_ref_CreateMap("StateHandlerRefMap", PA_MDC_MAX_PROFILE);
+
+    // Subscribe to the session state handler
+    pa_mdc_AddSessionStateHandler(NewSessionStateHandler, NULL);
 
     // Initialize the profile list
     ProfileList = LE_DLS_LIST_INIT;
@@ -344,17 +356,7 @@ le_mdc_ProfileRef_t le_mdc_GetProfile
         }
     }
 
-    if ( ( ( index >= PA_MDC_MIN_INDEX_3GPP_PROFILE ) &&
-         ( index <= PA_MDC_MAX_INDEX_3GPP_PROFILE ) ) ||
-         ( ( index >= PA_MDC_MIN_INDEX_3GPP2_PROFILE ) &&
-           ( index <= PA_MDC_MAX_INDEX_3GPP2_PROFILE ) ) )
-    {
-        return CreateModemProfile(index);
-    }
-    else
-    {
-        return NULL;
-    }
+    return CreateModemProfile(index);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -426,8 +428,6 @@ le_result_t le_mdc_GetProfileFromApn
         {
             return LE_OK;
         }
-
-        le_mdc_RemoveProfile(*profileRefPtr);
     }
 
     return LE_NOT_FOUND;
@@ -457,55 +457,6 @@ uint32_t le_mdc_GetProfileIndex
     }
 
     return profilePtr->profileIndex;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Remove the data profile
- *
- * @return
- *      - LE_OK on success
- *      - LE_BAD_PARAMETER if input parameter is incorrect
- *      - LE_FAULT for errors
- *
- * @note
- * A profile can't be removed until a handler is subscribed on this profile, or a session
- * is started
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t le_mdc_RemoveProfile
-(
-    le_mdc_ProfileRef_t profileRef ///< profile to remove.
-)
-{
-    le_mdc_Profile_t* profilePtr = le_ref_Lookup(DataProfileRefMap, profileRef);
-
-    bool isConnected = false;
-
-    if ( profilePtr == NULL )
-    {
-        LE_ERROR("Invalid reference (%p) found!", profileRef);
-        return LE_BAD_PARAMETER;
-    }
-
-    // If handlers are not removed, do not release the profile
-    if ( profilePtr->handlerCount )
-    {
-        return LE_FAULT;
-    }
-
-    // check if a session has been started
-    le_mdc_GetSessionState(profileRef, &isConnected);
-
-    if ( isConnected )
-    {
-        return LE_FAULT;
-    }
-
-    /* Delete the memory */
-    le_mem_Release(profilePtr);
-
-    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -674,9 +625,6 @@ le_mdc_SessionStateHandlerRef_t le_mdc_AddSessionStateHandler
 
     le_event_SetContextPtr(sessionStateHandlerPtr->handlerRef, contextPtr);
 
-    /* Update the handler counter */
-    profilePtr->handlerCount++;
-
     le_mdc_SessionStateHandlerRef_t HandlerRef = le_ref_CreateRef( StateHandlerRefMap,
                                                                 sessionStateHandlerPtr );
 
@@ -709,19 +657,6 @@ void le_mdc_RemoveSessionStateHandler
     }
 
     le_event_RemoveHandler(sessionStateHandlerPtr->handlerRef);
-
-    /* update the handler counter */
-    le_mdc_Profile_t* profilePtr = le_ref_Lookup(DataProfileRefMap, sessionStateHandlerPtr->profileRef);
-
-    if ( profilePtr )
-    {
-        profilePtr->handlerCount--;
-    }
-    else
-    {
-        LE_KILL_CLIENT("Invalid reference (%p) found!", sessionStateHandlerPtr->profileRef);
-        return;
-    }
 
     /* Release the reference */
     le_ref_DeleteRef(StateHandlerRefMap, sessionStateHandlerRef);

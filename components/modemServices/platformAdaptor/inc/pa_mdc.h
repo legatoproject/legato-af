@@ -76,7 +76,7 @@
  * Maximum index value supported for 3GPP profile
  */
 //--------------------------------------------------------------------------------------------------
-#define PA_MDC_MAX_INDEX_3GPP2_PROFILE 106
+#define PA_MDC_MAX_INDEX_3GPP2_PROFILE 107
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -255,6 +255,20 @@ le_result_t pa_mdc_ReadProfile
     pa_mdc_ProfileData_t* profileDataPtr    ///< [OUT] The profile data
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Check whether the profile already exists on the modem ; if not, ask to the modem to create a new
+ * profile.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT on failure
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_mdc_InitializeProfile
+(
+    uint32_t   profileIndex     ///< [IN] The profile to write
+);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -378,7 +392,7 @@ le_result_t pa_mdc_GetSessionState
  *      The process exits on failure
  */
 //--------------------------------------------------------------------------------------------------
-void pa_mdc_SetSessionStateHandler
+le_event_HandlerRef_t pa_mdc_AddSessionStateHandler
 (
     pa_mdc_SessionStateHandler_t handlerRef, ///< [IN] The session state handler function.
     void*                        contextPtr  ///< [IN] The context to be given to the handler.

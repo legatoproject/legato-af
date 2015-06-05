@@ -10,6 +10,7 @@
 #include "interfaces.h"
 #include "pa_simu.h"
 #include "pa_temp.h"
+#include "pa_antenna.h"
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -47,11 +48,11 @@ void le_pa_Init
     res = ecall_simu_Init();
     LE_FATAL_IF(res != LE_OK, "PA eCall Init Failed");
 
-    res = fwupdate_simu_Init();
-    LE_FATAL_IF(res != LE_OK, "PA fwupdate Init Failed");
-
     res = pa_temp_Init();
-    LE_FATAL_IF(res != LE_OK, "PA pa_temp_Init Failed");
+    LE_FATAL_IF(res != LE_OK, "PA Temperature Failed");
+
+    res = pa_antenna_Init();
+    LE_FATAL_IF(res != LE_OK, "PA Antenna Failed");
 }
 
 //--------------------------------------------------------------------------------------------------

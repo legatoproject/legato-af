@@ -16,8 +16,6 @@
 /**
  * Initialize the MDC component.
  *
- * @note
- *      The process exits on failure
  */
 //--------------------------------------------------------------------------------------------------
 void le_mdc_Init

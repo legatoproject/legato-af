@@ -19,7 +19,7 @@ static uint32_t PinRemainingAttempts = PIN_REMAINING_ATTEMPS_DEFAULT;
 static uint32_t PukRemainingAttempts = PUK_REMAINING_ATTEMPS_DEFAULT;
 static le_sim_States_t CurrentState = LE_SIM_INSERTED;
 static bool PinSecurity = true;
-const le_sim_Type_t SelectedCard = 1;
+const le_sim_Id_t SelectedCard = 1;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -46,7 +46,7 @@ static le_mem_PoolRef_t SimStateEventPool;
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_sim_SelectCard
 (
-    le_sim_Type_t  sim     ///< The SIM to be selected
+    le_sim_Id_t  sim     ///< The SIM to be selected
 )
 {
     LE_DEBUG("Select Card: %d", sim);
@@ -67,10 +67,10 @@ le_result_t pa_sim_SelectCard
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_sim_GetSelectedCard
 (
-    le_sim_Type_t*  simTypePtr     ///< [OUT] The SIM type selected.
+    le_sim_Id_t*  simIdPtr     ///< [OUT] The SIM identifier selected.
 )
 {
-    *simTypePtr = SelectedCard;
+    *simIdPtr = SelectedCard;
     return LE_OK;
 }
 
@@ -88,11 +88,11 @@ static void ReportSimState
 )
 {
     pa_sim_Event_t* eventPtr = le_mem_ForceAlloc(SimStateEventPool);
-    eventPtr->simType   = SelectedCard;
+    eventPtr->simId   = SelectedCard;
     eventPtr->state     = CurrentState;
 
     // @todo: This needs to change to le_event_ReportWithPoolObj (yet to be implemented).
-    LE_DEBUG("Send Event SIM number %d, SIM state %d", eventPtr->simType, eventPtr->state);
+    LE_DEBUG("Send Event SIM number %d, SIM state %d", eventPtr->simId, eventPtr->state);
     le_event_ReportWithRefCounting(SimStateEvent, eventPtr);
 }
 
@@ -791,6 +791,128 @@ le_result_t pa_sim_GetHomeNetworkMccMnc
     return LE_OK;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to open a logical channel on the SIM card.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT for unexpected error
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_sim_OpenLogicalChannel
+(
+    uint8_t* channelPtr  ///< [OUT] channel number
+)
+{
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to close a logical channel on the SIM card.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT for unexpected error
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_sim_CloseLogicalChannel
+(
+    uint8_t channel  ///< [IN] channel number
+)
+{
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to send an APDU message to the SIM card.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_OVERFLOW the response length exceed the maximum buffer length.
+ *      - LE_FAULT for unexpected error
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_sim_SendApdu
+(
+    const uint8_t* apduPtr, ///< [IN] APDU message buffer
+    uint32_t       apduLen, ///< [IN] APDU message length in bytes
+    uint8_t*       respPtr, ///< [OUT] APDU message response.
+    size_t*        lenPtr   ///< [IN,OUT] APDU message response length in bytes.
+)
+{
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to trigger a SIM refresh.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT for unexpected error
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_sim_Refresh
+(
+    void
+)
+{
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to register a handler for SIM Toolkit event notification handling.
+ *
+ * @return A handler reference, which is only needed for later removal of the handler.
+ *
+ * @note Doesn't return on failure, so there's no need to check the return value for errors.
+ */
+//--------------------------------------------------------------------------------------------------
+le_event_HandlerRef_t pa_sim_AddSimToolkitEventHandler
+(
+    pa_sim_SimToolkitEventHdlrFunc_t handler,    ///< [IN] The handler function.
+    void*                            contextPtr  ///< [IN] The context to be given to the handler.
+)
+{
+    return NULL;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to unregister the handler for SIM Toolkit event notification
+ * handling.
+ *
+ * @note Doesn't return on failure, so there's no need to check the return value for errors.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_sim_RemoveSimToolkitEventHandler
+(
+    le_event_HandlerRef_t handlerRef
+)
+{
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to confirm a SIM Toolkit command.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT on failure
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_sim_ConfirmSimToolkitCommand
+(
+    bool  confirmation ///< [IN] true to accept, false to reject
+)
+{
+    return LE_OK;
+}
 
 /**
  * SIM Stub initialization.
@@ -813,4 +935,5 @@ le_result_t sim_simu_Init
 
     return LE_OK;
 }
+
 

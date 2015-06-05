@@ -320,28 +320,28 @@ static le_result_t SetApnFromFile
     le_mdc_ProfileRef_t profileRef
 )
 {
-    le_sim_ObjRef_t sim1Ref;
+    le_result_t error = LE_FAULT;
     char mccString[LE_MRC_MCC_BYTES]={0};
     char mncString[LE_MRC_MNC_BYTES]={0};
     char mccMncApn[100+1] = {0};
 
-    // Hard coded, supposed we use the sim-1, need to be improved ?
-    sim1Ref = le_sim_Create(1);
-    if ( sim1Ref == NULL)
+    // Load SIM configuration from Config DB
+    le_sim_Id_t simSelected = le_sim_GetSelectedCard();
+
+    // Get MCC/MNC
+    error = le_sim_GetHomeNetworkMccMnc(simSelected,
+                                    mccString,
+                                    LE_MRC_MCC_BYTES,
+                                    mncString,
+                                    LE_MRC_MNC_BYTES);
+
+    if (error != LE_OK)
     {
-        LE_WARN("Could not create the sim-1");
+        LE_WARN("Could not find MCC/MNC");
+
         return LE_FAULT;
     }
 
-    // Get MCC/MNC
-    if (le_sim_GetHomeNetworkMccMnc(mccString,
-                                    LE_MRC_MCC_BYTES,
-                                    mncString,
-                                    LE_MRC_MNC_BYTES) != LE_OK)
-    {
-        LE_WARN("Could not find MCC/MNC");
-        return LE_FAULT;
-    }
     LE_DEBUG("Search of [%s:%s] into file %s",mccString,mncString,APN_FILE);
 
     // Find APN value for [MCC/MNC]
@@ -407,7 +407,7 @@ static void LoadSelectedTechProfile
     }
     else
     {
-        LE_FATAL("Only 'cellular' technology is supported");
+        LE_CRIT("Only 'cellular' technology is supported");
     }
 }
 
@@ -825,11 +825,18 @@ static le_result_t AddNameserversToResolvConf
         return LE_OK;
     }
 
-    FILE* resolvConfPtr;
+    FILE*  resolvConfPtr;
+    mode_t oldMask;
+
+    // allow fopen to create file with mode=644
+    oldMask = umask(022);
 
     resolvConfPtr = fopen("/etc/resolv.conf", "w");
     if (resolvConfPtr == NULL)
     {
+        // restore old mask
+        umask(oldMask);
+
         LE_WARN("fopen on /etc/resolv.conf failed");
         return LE_FAULT;
     }
@@ -837,6 +844,9 @@ static le_result_t AddNameserversToResolvConf
     // Set DNS 1 if needed
     if ( addDns1 && (fprintf(resolvConfPtr, "nameserver %s\n", dns1Ptr) < 0) )
     {
+        // restore old mask
+        umask(oldMask);
+
         LE_WARN("fprintf failed");
         if ( fclose(resolvConfPtr) != 0 )
         {
@@ -848,6 +858,9 @@ static le_result_t AddNameserversToResolvConf
     // Set DNS 2 if needed
     if ( addDns2 && (fprintf(resolvConfPtr, "nameserver %s\n", dns2Ptr) < 0) )
     {
+        // restore old mask
+        umask(oldMask);
+
         LE_WARN("fprintf failed");
         if ( fclose(resolvConfPtr) != 0 )
         {
@@ -859,11 +872,24 @@ static le_result_t AddNameserversToResolvConf
     // Append rest of the file
     if (resolvConfSourcePtr != NULL)
     {
-        if ( 0 > fwrite(resolvConfSourcePtr, sizeof(char), strlen(resolvConfSourcePtr), resolvConfPtr) )
+        size_t writeLen = strlen(resolvConfSourcePtr);
+
+        if ( writeLen != fwrite(resolvConfSourcePtr, sizeof(char), writeLen, resolvConfPtr) )
         {
-            LE_FATAL("Writing resolv.conf failed");
+            // restore old mask
+            umask(oldMask);
+
+            LE_CRIT("Writing resolv.conf failed");
+            if ( fclose(resolvConfPtr) != 0 )
+            {
+                LE_WARN("fclose failed");
+            }
+            return LE_FAULT;
         }
     }
+
+    // restore old mask
+    umask(oldMask);
 
     if ( fclose(resolvConfPtr) != 0 )
     {
@@ -893,7 +919,8 @@ static le_result_t RemoveNameserversFromResolvConf
     char* currentLinePtr = resolvConfSourcePtr;
     int currentLinePos = 0;
 
-    FILE* resolvConfPtr;
+    FILE*  resolvConfPtr;
+    mode_t oldMask;
 
     if (resolvConfSourcePtr == NULL)
     {
@@ -901,9 +928,15 @@ static le_result_t RemoveNameserversFromResolvConf
         return LE_OK;
     }
 
+    // allow fopen to create file with mode=644
+    oldMask = umask(022);
+
     resolvConfPtr = fopen("/etc/resolv.conf", "w");
     if (resolvConfPtr == NULL)
     {
+        // restore old mask
+        umask(oldMask);
+
         LE_WARN("fopen on /etc/resolv.conf failed");
         return LE_FAULT;
     }
@@ -951,6 +984,9 @@ static le_result_t RemoveNameserversFromResolvConf
             currentLinePos++;
         }
     }
+
+    // restore old mask
+    umask(oldMask);
 
     if ( fclose(resolvConfPtr) != 0 )
     {

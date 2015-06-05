@@ -16,11 +16,11 @@
 /**
  * Initialize the MCC component.
  *
- * @note
- *      The process exits on failure
+ * @return LE_FAULT  The function failed.
+ * @return LE_OK     The function succeed.
  */
 //--------------------------------------------------------------------------------------------------
-void le_mcc_Init
+le_result_t le_mcc_Init
 (
     void
 );

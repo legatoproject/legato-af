@@ -306,16 +306,16 @@ static void VoiceSessionStateHandler
                 }
                 break;
 
-                case LE_MCC_CALL_TERM_BAD_ADDRESS:
+                case LE_MCC_CALL_TERM_UNASSIGNED_NUMBER:
                 {
-                    LE_DEBUG("Termination reason is LE_MCC_CALL_TERM_BAD_ADDRESS");
+                    LE_DEBUG("Termination reason is LE_MCC_CALL_TERM_UNASSIGNED_NUMBER");
                     ctxPtr->lastTerminationReason = LE_VOICECALL_TERM_BAD_ADDRESS;
                 }
                 break;
 
-                case LE_MCC_CALL_TERM_BUSY:
+                case LE_MCC_CALL_TERM_USER_BUSY:
                 {
-                    LE_DEBUG("Termination reason is LE_MCC_CALL_TERM_BUSY");
+                    LE_DEBUG("Termination reason is LE_MCC_CALL_TERM_USER_BUSY");
                     ctxPtr->lastTerminationReason = LE_VOICECALL_TERM_BUSY;
                 }
                 break;
@@ -334,17 +334,17 @@ static void VoiceSessionStateHandler
                 }
                 break;
 
-                case LE_MCC_CALL_TERM_NOT_DEFINED:
+                case LE_MCC_CALL_TERM_UNDEFINED:
                 {
-                    LE_DEBUG("Termination reason is LE_MCC_CALL_TERM_NOT_DEFINED");
-                    ctxPtr->lastTerminationReason = LE_VOICECALL_TERM_NOT_DEFINED;
+                    LE_DEBUG("Termination reason is LE_MCC_CALL_TERM_UNDEFINED");
+                    ctxPtr->lastTerminationReason = LE_VOICECALL_TERM_UNDEFINED;
                 }
                 break;
 
                 default:
                 {
                     LE_DEBUG("Termination reason is %d", term);
-                    ctxPtr->lastTerminationReason = LE_VOICECALL_TERM_NOT_DEFINED;
+                    ctxPtr->lastTerminationReason = LE_VOICECALL_TERM_UNDEFINED;
                 }
                 break;
             }

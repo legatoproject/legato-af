@@ -1,6 +1,7 @@
 sources:
 {
     pa_audio_simu.c
+    pa_media_simu.c
 }
 
 requires:

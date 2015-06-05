@@ -26,7 +26,7 @@
  *
  * <HR>
  *
- * Copyright (C) Sierra Wireless, Inc. 2015. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 
@@ -106,8 +106,6 @@ le_event_HandlerRef_t* pa_temp_AddTempEventHandler
  *
  * @return
  *      - LE_OK            The function succeeded.
- *      - LE_BAD_PARAMETER The hiWarning threshold + 1 is equal to or higher than
- *                           the hiCritical threshold.
  *      - LE_FAULT         The function failed to set the thresholds.
  */
 //--------------------------------------------------------------------------------------------------
@@ -151,12 +149,6 @@ le_result_t pa_temp_GetRadioThresholds
  *
  * @return
  *      - LE_OK            The function succeeded.
- *      - LE_BAD_PARAMETER The hiWarning threshold + 1 is equal to or higher than
- *                           the hiCritical threshold.
- *                         The loWwarning threshold is equal to or higher than
- *                           the hiWarning threshold.
- *                         The loWwarning threshold is equal to or lower than
- *                           the loCritical threshold.
  *      - LE_FAULT         The function failed to set the thresholds.
  */
 //--------------------------------------------------------------------------------------------------

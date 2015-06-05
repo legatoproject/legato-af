@@ -1,0 +1,28 @@
+
+provides:
+{
+    api:
+    {
+        le_avc.api
+    }
+}
+
+sources:
+{
+    assetData.c
+    lwm2m.c
+    avcServer.c
+}
+
+requires:
+{
+    api:
+    {
+        le_cfg.api
+    }
+
+    component:
+    {
+        $LEGATO_AVC_PA
+    }
+}

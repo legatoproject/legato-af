@@ -1,0 +1,21 @@
+
+provides:
+{
+    api:
+    {
+        le_fwupdate.api
+    }
+}
+
+sources:
+{
+    fwupdateServer.c
+}
+
+requires:
+{
+    component:
+    {
+        $LEGATO_FWUPDATE_PA
+    }
+}

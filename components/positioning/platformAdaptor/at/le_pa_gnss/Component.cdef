@@ -6,4 +6,8 @@ sources:
 requires:
 {
     component: { $LEGATO_ROOT/components/atManager }
+    api:
+    {
+        le_gnss.api    [types-only]
+    }
 }

@@ -495,7 +495,7 @@ int32_t msd_EncodeMsdMessage
         if(msdDataPtr->msdMsg.msdStruct.vehDirection != 0xFF)
         {
             LE_ERROR("Bad Vehicle direction.%d (> 179 degrees && != 255)",
-                     msdDataPtr->msdMsg.msdStruct.vehDirection)
+                     msdDataPtr->msdMsg.msdStruct.vehDirection);
             return LE_FAULT;
         }
     }

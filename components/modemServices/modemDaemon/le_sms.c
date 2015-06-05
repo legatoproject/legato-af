@@ -110,12 +110,13 @@ typedef struct le_sms_Msg
     char              timestamp[LE_SMS_TIMESTAMP_MAX_BYTES]; ///< SMS time stamp (in text mode).
     pa_sms_Pdu_t      pdu;                                 ///< SMS PDU
     bool              pduReady;                            ///< Is the PDU value ready?
-    union {
+    union
+    {
         char          text[LE_SMS_TEXT_MAX_BYTES];         ///< SMS text
         uint8_t       binary[LE_SMS_BINARY_MAX_BYTES];     ///< SMS binary
     };
     size_t            userdataLen;                         ///< Length of data associated with SMS
-                                                           ///  formats text or binary
+    ///  formats text or binary
     pa_sms_Protocol_t protocol;                            ///< SMS Protocol (GSM or CDMA)
     int32_t           smsUserCount;                        ///< Current sms user counter.
     bool              delAsked;                            ///< Whether the SMS deletion is asked.
@@ -157,11 +158,11 @@ typedef struct le_sms_MsgList
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
-        CmdType_t           command;        ///< The command.
-        le_sms_MsgRef_t     msgRef;         ///< The message reference.
-        le_sms_Msg_t*       msgPtr;         ///< The Message object.
-        void                *callBackPtr;   ///< The Callback Response.
-        void                *Context;       ///< Context.
+    CmdType_t           command;        ///< The command.
+    le_sms_MsgRef_t     msgRef;         ///< The message reference.
+    le_sms_Msg_t*       msgPtr;         ///< The Message object.
+    void                *callBackPtr;   ///< The Callback Response.
+    void                *Context;       ///< Context.
 } CmdRequest_t;
 
 
@@ -260,7 +261,7 @@ static void ReInitializeList
 
             if (msgPtr->delAsked)
             {
-               le_sms_DeleteFromStorage(nodePtr->msgRef);
+                le_sms_DeleteFromStorage(nodePtr->msgRef);
             }
             msgPtr->smsUserCount --;
 
@@ -305,6 +306,10 @@ static le_sms_Msg_t* CreateAndPopulateMessage
     newSmsMsgObjPtr->pduReady = false;
     newSmsMsgObjPtr->pdu.status = LE_SMS_UNSENT;
     newSmsMsgObjPtr->pdu.dataLen = 0;
+    newSmsMsgObjPtr->pdu.errorCode.code3GPP2 = LE_SMS_ERROR_3GPP2_MAX;
+    newSmsMsgObjPtr->pdu.errorCode.rp = LE_SMS_ERROR_3GPP_MAX;
+    newSmsMsgObjPtr->pdu.errorCode.tp = LE_SMS_ERROR_3GPP_MAX;
+    newSmsMsgObjPtr->pdu.errorCode.platformSpecific = 0;
     newSmsMsgObjPtr->inAList = false;
     newSmsMsgObjPtr->readonly = true;
     newSmsMsgObjPtr->storageIdx = storageIdx;
@@ -322,9 +327,9 @@ static le_sms_Msg_t* CreateAndPopulateMessage
             newSmsMsgObjPtr->format = LE_SMS_FORMAT_PDU;
             break;
         default:
-            // CreateAndPopulateMessage is called by my internal handler. I don't know how to face
-            // this error, so it is a fatal error.
-            LE_FATAL("Unknown or not supported SMS format %d", newSmsMsgObjPtr->format);
+            LE_CRIT("Unknown or not supported SMS format %d", newSmsMsgObjPtr->format);
+            le_mem_Release(newSmsMsgObjPtr);
+            return NULL;
             break;
     }
 
@@ -337,32 +342,35 @@ static le_sms_Msg_t* CreateAndPopulateMessage
     switch (newSmsMsgObjPtr->format)
     {
         case LE_SMS_FORMAT_PDU:
-            // CreateAndPopulateMessage is called by my internal handler. I don't know how to face
-            // this error, so it is a fatal error.
-            LE_ASSERT(messagePduPtr->dataLen <= LE_SMS_PDU_MAX_BYTES);
+            LE_CRIT_IF((messagePduPtr->dataLen > LE_SMS_PDU_MAX_BYTES),
+                       "messagePduPtr->dataLen.%d > LE_SMS_PDU_MAX_BYTES.%d !",
+                       messagePduPtr->dataLen,
+                       LE_SMS_PDU_MAX_BYTES);
             break;
         case LE_SMS_FORMAT_BINARY:
-            // CreateAndPopulateMessage is called by my internal handler. I don't know how to face
-            // this error, so it is a fatal error.
-            LE_ASSERT(messageConvertedPtr->smsDeliver.dataLen <= LE_SMS_BINARY_MAX_BYTES);
+            LE_CRIT_IF((messageConvertedPtr->smsDeliver.dataLen > LE_SMS_BINARY_MAX_BYTES),
+                       "smsDeliver.dataLen.%d > LE_SMS_BINARY_MAX_BYTES.%d !",
+                       messageConvertedPtr->smsDeliver.dataLen,
+                       LE_SMS_BINARY_MAX_BYTES);
             newSmsMsgObjPtr->userdataLen = messageConvertedPtr->smsDeliver.dataLen;
             memcpy(newSmsMsgObjPtr->binary,
-                    messageConvertedPtr->smsDeliver.data,
-                    LE_SMS_BINARY_MAX_BYTES);
+                messageConvertedPtr->smsDeliver.data,
+                LE_SMS_BINARY_MAX_BYTES);
             break;
         case LE_SMS_FORMAT_TEXT:
-            // CreateAndPopulateMessage is called by my internal handler. I don't know how to face
-            // this error, so it is a fatal error.
-            LE_ASSERT(messageConvertedPtr->smsDeliver.dataLen < LE_SMS_TEXT_MAX_BYTES);
+            LE_CRIT_IF((messageConvertedPtr->smsDeliver.dataLen >= LE_SMS_TEXT_MAX_BYTES),
+                       "smsDeliver.dataLen.%d >= LE_SMS_TEXT_MAX_BYTES.%d !",
+                       messageConvertedPtr->smsDeliver.dataLen,
+                       LE_SMS_TEXT_MAX_BYTES);
             newSmsMsgObjPtr->userdataLen = messageConvertedPtr->smsDeliver.dataLen;
             memcpy(newSmsMsgObjPtr->text,
-                    messageConvertedPtr->smsDeliver.data,
-                    LE_SMS_TEXT_MAX_BYTES);
+                messageConvertedPtr->smsDeliver.data,
+                LE_SMS_TEXT_MAX_BYTES);
             break;
         default:
-            // CreateAndPopulateMessage is called by my internal handler. I don't know how to face
-            // this error, so it is a fatal error.
-            LE_FATAL("Unknown SMS format %d", newSmsMsgObjPtr->format);
+            LE_CRIT("Unknown SMS format %d", newSmsMsgObjPtr->format);
+            le_mem_Release(newSmsMsgObjPtr);
+            return NULL;
             break;
     }
 
@@ -432,14 +440,14 @@ static int32_t GetMessagesFromMem
         if (pa_sms_RdPDUMsgFromMem(arrayPtr[i],protocol, storage, &messagePdu) != LE_OK)
         {
             LE_ERROR("pa_sms_RdMsgFromMem failed");
-            return LE_FAULT;
+            continue;
         }
 
         if (messagePdu.dataLen > LE_SMS_PDU_MAX_BYTES)
         {
             LE_ERROR("PDU length out of range (%u) for message %d !",
-                     messagePdu.dataLen,
-                     arrayPtr[i]);
+                            messagePdu.dataLen,
+                            arrayPtr[i]);
             continue;
         }
 
@@ -447,23 +455,27 @@ static int32_t GetMessagesFromMem
         pa_sms_Message_t messageConverted;
 
         if (smsPdu_Decode(messagePdu.protocol,
-                          messagePdu.data,
-                          messagePdu.dataLen,
-                          &messageConverted) == LE_OK)
+                        messagePdu.data,
+                        messagePdu.dataLen,
+                        &messageConverted) == LE_OK)
         {
             if (messageConverted.type != PA_SMS_SMS_SUBMIT)
             {
+                le_sms_Msg_t* newSmsMsgObjPtr = CreateAndPopulateMessage(arrayPtr[i],
+                                &messagePdu,
+                                &messageConverted);
+                if (newSmsMsgObjPtr == NULL)
+                {
+                    LE_ERROR("Cannot create a new message object! Jump to next one...");
+                    continue;
+                }
+                // Store sms area stockage information
+                newSmsMsgObjPtr->storage = storage;
+                newSmsMsgObjPtr->inAList = true;
+
                 // Allocate a new node message for the List SMS Message node.
                 le_sms_MsgReference_t* newReferencePtr =
                                 (le_sms_MsgReference_t*)le_mem_ForceAlloc(ReferencePool);
-
-                le_sms_Msg_t* newSmsMsgObjPtr = CreateAndPopulateMessage(arrayPtr[i],
-                                                                         &messagePdu,
-                                                                         &messageConverted);
-                // Store sms area stockage information
-                newSmsMsgObjPtr->storage = storage;
-
-                newSmsMsgObjPtr->inAList = true;
                 // Create a Safe Reference for this Message object.
                 newReferencePtr->msgRef = le_ref_CreateRef(MsgRefMap, newSmsMsgObjPtr);
                 (newSmsMsgObjPtr->smsUserCount)++;
@@ -480,8 +492,8 @@ static int32_t GetMessagesFromMem
             else
             {
                 LE_WARN("Unexpected message type %d for message %d",
-                        messageConverted.type,
-                        arrayPtr[i]);
+                                messageConverted.type,
+                                arrayPtr[i]);
             }
         }
         else
@@ -716,31 +728,31 @@ static le_result_t EncodeMessageToPdu
     {
         case LE_SMS_FORMAT_TEXT:
             LE_DEBUG("Try to encode Text Msg %p, tel.%s, text.%s, userdataLen %zd, protocol %d",
-                    msgPtr, msgPtr->tel, msgPtr->text, msgPtr->userdataLen, msgPtr->protocol);
+                            msgPtr, msgPtr->tel, msgPtr->text, msgPtr->userdataLen, msgPtr->protocol);
 
             /* @todo send split messages */
             result = smsPdu_Encode(msgPtr->protocol,
-                                   (const uint8_t*)msgPtr->text,
-                                   msgPtr->userdataLen,
-                                   msgPtr->tel,
-                                   SMSPDU_7_BITS,
-                                   PA_SMS_SMS_SUBMIT,
-                                   &(msgPtr->pdu));
+                            (const uint8_t*)msgPtr->text,
+                            msgPtr->userdataLen,
+                            msgPtr->tel,
+                            SMSPDU_7_BITS,
+                            PA_SMS_SMS_SUBMIT,
+                            &(msgPtr->pdu));
 
             break;
 
         case LE_SMS_FORMAT_BINARY:
             LE_DEBUG("Try to encode Binary Msg.%p, tel.%s, binary.%p, userdataLen.%zd, protocol %d",
-                    msgPtr, msgPtr->tel, msgPtr->binary, msgPtr->userdataLen, msgPtr->protocol);
+                            msgPtr, msgPtr->tel, msgPtr->binary, msgPtr->userdataLen, msgPtr->protocol);
 
             /* @todo send split messages */
             result = smsPdu_Encode(msgPtr->protocol,
-                                   msgPtr->binary,
-                                   msgPtr->userdataLen,
-                                   msgPtr->tel,
-                                   SMSPDU_8_BITS,
-                                   PA_SMS_SMS_SUBMIT,
-                                   &(msgPtr->pdu));
+                            msgPtr->binary,
+                            msgPtr->userdataLen,
+                            msgPtr->tel,
+                            SMSPDU_8_BITS,
+                            PA_SMS_SMS_SUBMIT,
+                            &(msgPtr->pdu));
 
             break;
 
@@ -806,13 +818,13 @@ static void NewSmsHandler
     pa_sms_Pdu_t   messagePdu;
 
     LE_DEBUG("Handler Function called with message ID %d with protocol %d",
-                newMessageIndicationPtr->msgIndex,
-                newMessageIndicationPtr->protocol);
+        newMessageIndicationPtr->msgIndex,
+        newMessageIndicationPtr->protocol);
 
     if (pa_sms_RdPDUMsgFromMem(newMessageIndicationPtr->msgIndex,
-                               newMessageIndicationPtr->protocol,
-                               newMessageIndicationPtr->storage,
-                               &messagePdu) != LE_OK)
+                    newMessageIndicationPtr->protocol,
+                    newMessageIndicationPtr->storage,
+                    &messagePdu) != LE_OK)
     {
         LE_ERROR("pa_sms_RdPDUMsgFromMem failed");
     }
@@ -826,9 +838,9 @@ static void NewSmsHandler
         pa_sms_Message_t    messageConverted;
 
         if ( smsPdu_Decode(messagePdu.protocol,
-                           messagePdu.data,
-                           messagePdu.dataLen,
-                           &messageConverted) == LE_OK )
+                        messagePdu.data,
+                        messagePdu.dataLen,
+                        &messageConverted) == LE_OK )
         {
             if (messageConverted.type == PA_SMS_SMS_DELIVER)
             {
@@ -836,6 +848,11 @@ static void NewSmsHandler
                                 newMessageIndicationPtr->msgIndex,
                                 &messagePdu,
                                 &messageConverted);
+                if (newSmsMsgObjPtr == NULL)
+                {
+                    LE_CRIT("Cannot create a new message object, no report!");
+                    return;
+                }
                 newSmsMsgObjPtr->storage = newMessageIndicationPtr->storage;
                 // Notify all the registered client's handlers with own reference.
                 le_event_Report(NewSmsEventId, (void*)&newSmsMsgObjPtr, sizeof(le_sms_MsgRef_t));
@@ -924,8 +941,7 @@ static le_result_t CheckAndEncodeMessage
             char mcc[LE_MRC_MCC_BYTES];
             char mnc[LE_MRC_MCC_BYTES];
 
-            if ( le_sim_GetHomeNetworkMccMnc(mcc, LE_MRC_MCC_BYTES, mnc,
-                            LE_MRC_MCC_BYTES) != LE_OK)
+            if (pa_sim_GetHomeNetworkMccMnc(mcc, LE_MRC_MCC_BYTES, mnc, LE_MRC_MCC_BYTES) != LE_OK)
             {
                 LE_ERROR("Could not retreive MCC/MNC");
             }
@@ -1074,7 +1090,7 @@ static void ProcessSmsSendingCommandHandler
             LE_DEBUG("LE_SMS_CMD_TYPE_SEND message (%p) ", messageRef);
 
             le_result_t res = pa_sms_SendPduMsg(msgPtr->protocol,
-                            msgPtr->pdu.dataLen, msgPtr->pdu.data);
+                            msgPtr->pdu.dataLen, msgPtr->pdu.data, &msgPtr->pdu.errorCode);
 
             if ( res == LE_OK)
             {
@@ -1128,10 +1144,11 @@ static void* SmsSenderThread
 /**
  * This function must be called to initialize the SMS operations component
  *
- * @note If the initialization failed, it is a fatal error, the function will not return.
+ * @return LE_FAULT  The function failed.
+ * @return LE_OK     The function succeed.
  */
 //--------------------------------------------------------------------------------------------------
-void le_sms_Init
+le_result_t le_sms_Init
 (
     void
 )
@@ -1160,12 +1177,17 @@ void le_sms_Init
     NewSmsEventId = le_event_CreateId("NewSms", sizeof(le_sms_Msg_t*));
 
     // Register a handler function for new message indication
-    LE_FATAL_IF((pa_sms_SetNewMsgHandler(NewSmsHandler) != LE_OK),
-                "Add pa_sms_SetNewMsgHandler failed");
+    if (pa_sms_SetNewMsgHandler(NewSmsHandler) != LE_OK)
+    {
+        LE_CRIT("Add pa_sms_SetNewMsgHandler failed");
+        return LE_FAULT;
+    }
 
     // Init the SMS command Event Id
     CommandSmsEventId = le_event_CreateId("SMS Send Command", sizeof(CmdRequest_t));
     le_thread_Start(le_thread_Create("SmsSenderThread", SmsSenderThread, NULL));
+
+    return LE_OK;
 }
 
 
@@ -1196,6 +1218,10 @@ le_sms_MsgRef_t le_sms_Create
     msgPtr->pduReady = false;
     msgPtr->pdu.status = LE_SMS_UNSENT;
     msgPtr->pdu.dataLen = 0;
+    msgPtr->pdu.errorCode.code3GPP2 = LE_SMS_ERROR_3GPP2_MAX;
+    msgPtr->pdu.errorCode.rp = LE_SMS_ERROR_3GPP_MAX;
+    msgPtr->pdu.errorCode.tp = LE_SMS_ERROR_3GPP_MAX;
+    msgPtr->pdu.errorCode.platformSpecific = 0;
     msgPtr->readonly = false;
     msgPtr->inAList = false;
     msgPtr->smsUserCount = 1;
@@ -1258,7 +1284,7 @@ void le_sms_Delete
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function must be called to get the message format (text or PDU).
+ * This function must be called to get the message format.
  *
  * @return The message format.
  *
@@ -1411,8 +1437,8 @@ le_result_t le_sms_GetTimeStamp
 (
     le_sms_MsgRef_t  msgRef,       ///< [IN] The pointer to the message data structure.
     char*            timestampPtr, ///< [OUT] The message time stamp (in text mode).
-                                   ///        string format: "yy/MM/dd,hh:mm:ss+/-zz"
-                                   ///        (Year/Month/Day,Hour:Min:Seconds+/-TimeZone)
+    ///        string format: "yy/MM/dd,hh:mm:ss+/-zz"
+    ///        (Year/Month/Day,Hour:Min:Seconds+/-TimeZone)
     size_t           len           ///< [IN] The length of timestamp string.
 )
 {
@@ -1524,18 +1550,18 @@ size_t le_sms_GetPDULen
 le_sms_MsgRef_t le_sms_SendText
 (
     const char* destStr,
-        ///< [IN]
-        ///< Telephone number string.
+    ///< [IN]
+    ///< Telephone number string.
 
     const char* textStr,
-        ///< [IN]
-        ///< SMS text.
+    ///< [IN]
+    ///< SMS text.
 
     le_sms_CallbackResultFunc_t handlerPtr,
-        ///< [IN]
+    ///< [IN]
 
     void* contextPtr
-        ///< [IN]
+    ///< [IN]
 )
 {
     le_result_t res = LE_FAULT;
@@ -1598,17 +1624,17 @@ le_sms_MsgRef_t le_sms_SendText
 le_sms_MsgRef_t le_sms_SendPdu
 (
     const uint8_t* pduPtr,
-        ///< [IN]
-        ///< PDU message.
+    ///< [IN]
+    ///< PDU message.
 
     size_t pduNumElements,
-        ///< [IN]
+    ///< [IN]
 
     le_sms_CallbackResultFunc_t handlerPtr,
-        ///< [IN]
+    ///< [IN]
 
     void* contextPtr
-        ///< [IN]
+    ///< [IN]
 )
 {
     le_result_t res = LE_FAULT;
@@ -1711,7 +1737,7 @@ le_result_t le_sms_SetText
     msgPtr->userdataLen=length;
     msgPtr->pduReady = false;
     LE_DEBUG("try to copy data %s, len.%zd @ msgPtr->text.%p for msgPtr.%p",
-             textPtr, length, msgPtr->text, msgPtr);
+        textPtr, length, msgPtr->text, msgPtr);
 
     return (le_utf8_Copy(msgPtr->text, textPtr, sizeof(msgPtr->text), NULL));
 }
@@ -2044,7 +2070,7 @@ le_result_t le_sms_GetPDU
 le_sms_RxMessageHandlerRef_t le_sms_AddRxMessageHandler
 (
     le_sms_RxMessageHandlerFunc_t handlerFuncPtr, ///< [IN] The handler function for message
-                                                       ///  reception.
+    ///  reception.
     void*                              contextPtr      ///< [IN] The handler's context.
 )
 {
@@ -2057,9 +2083,9 @@ le_sms_RxMessageHandlerRef_t le_sms_AddRxMessageHandler
     }
 
     handlerRef = le_event_AddLayeredHandler("NewMsgHandler",
-                                            NewSmsEventId,
-                                            FirstLayerNewSmsHandler,
-                                            (le_event_HandlerFunc_t)handlerFuncPtr);
+                    NewSmsEventId,
+                    FirstLayerNewSmsHandler,
+                    (le_event_HandlerFunc_t)handlerFuncPtr);
 
     le_event_SetContextPtr(handlerRef, contextPtr);
 
@@ -2114,30 +2140,140 @@ le_result_t le_sms_Send
         return LE_NOT_FOUND;
     }
 
-    result = CheckAndEncodeMessage(msgPtr);
-
     /* Send */
-    if (result == LE_OK)
+    if (CheckAndEncodeMessage(msgPtr) == LE_OK)
     {
         LE_DEBUG("Try to send PDU Msg %p, pdu.%p, pduLen.%u with protocol %d",
-                  msgPtr, msgPtr->pdu.data, msgPtr->pdu.dataLen, msgPtr->protocol);
+                        msgPtr, msgPtr->pdu.data, msgPtr->pdu.dataLen, msgPtr->protocol);
 
-        result = pa_sms_SendPduMsg(msgPtr->protocol, msgPtr->pdu.dataLen, msgPtr->pdu.data);
-    }
+        result = pa_sms_SendPduMsg(msgPtr->protocol, msgPtr->pdu.dataLen,
+                        msgPtr->pdu.data, &msgPtr->pdu.errorCode);
 
-    if (result < 0)
-    {
-        LE_ERROR("Error.%d : Failed to send Message Object %p", result, msgPtr);
-        result = LE_FAULT;
+        if (result < 0)
+        {
+            LE_ERROR("Error.%d : Failed to send Message Object %p", result, msgPtr);
+            result = LE_FAULT;
+        }
+        else
+        {
+            /* @todo Get message reference for acknowledge message feature */
+            msgPtr->pdu.status = LE_SMS_SENT;
+            result = LE_OK;
+        }
     }
     else
     {
-        /* @todo Get message reference for acknowledge message feature */
-        msgPtr->pdu.status = LE_SMS_SENT;
-        result = LE_OK;
+        LE_ERROR("Cannot encode Message Object %p", msgPtr);
+        result = LE_FORMAT_ERROR;
     }
 
     return result;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the error code when a 3GPP2 message sending has Failed.
+ *
+ * @return The error code
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ *
+ * @note It is only applicable for 3GPP2 message sending failure, otherwise
+ *       LE_SMS_ERROR_3GPP2_MAX is returned.
+ */
+//--------------------------------------------------------------------------------------------------
+le_sms_ErrorCode3GPP2_t le_sms_Get3GPP2ErrorCode
+(
+    le_sms_MsgRef_t msgRef
+        ///< [IN]
+        ///< Reference to the message object.
+)
+{
+    le_sms_Msg_t* msgPtr = le_ref_Lookup(MsgRefMap, msgRef);
+
+    if (msgPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", msgRef);
+    }
+
+    return msgPtr->pdu.errorCode.code3GPP2;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Radio Protocol and the Transfer Protocol error code when a 3GPP message sending has
+ * failed.
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ *
+ * @note It is only applicable for 3GPP message sending failure, otherwise
+ *       LE_SMS_ERROR_3GPP_MAX is returned.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_sms_GetErrorCode
+(
+    le_sms_MsgRef_t msgRef,
+        ///< [IN]
+        ///< Reference to the message object.
+
+    le_sms_ErrorCode_t* rpCausePtr,
+        ///< [OUT]
+        ///< Radio Protocol cause code.
+
+    le_sms_ErrorCode_t* tpCausePtr
+        ///< [OUT]
+        ///< Transfer Protocol cause code.
+)
+{
+    le_sms_Msg_t* msgPtr = le_ref_Lookup(MsgRefMap, msgRef);
+
+    if (msgPtr == msgRef)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", msgRef);
+    }
+
+    if (rpCausePtr == NULL)
+    {
+        LE_KILL_CLIENT("rpCausePtr is NULL");
+    }
+
+    if (tpCausePtr == NULL)
+    {
+        LE_KILL_CLIENT("tpCausePtr is NULL");
+    }
+
+    *rpCausePtr = msgPtr->pdu.errorCode.rp;
+    *tpCausePtr = msgPtr->pdu.errorCode.tp;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Called to get the platform specific error code.
+ *
+ * @return The platform specific error code.
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+int32_t le_sms_GetPlatformSpecificErrorCode
+(
+    le_sms_MsgRef_t msgRef
+        ///< [IN]
+        ///< Reference to the message object.
+)
+{
+    le_sms_Msg_t* msgPtr = le_ref_Lookup(MsgRefMap, msgRef);
+
+    if (msgPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", msgRef);
+    }
+
+    return msgPtr->pdu.errorCode.platformSpecific;
 }
 
 //--------------------------------------------------------------------------------------------------

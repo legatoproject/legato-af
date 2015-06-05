@@ -16,10 +16,11 @@
 /**
  * This function must be called to initialize the GNSS
  *
- * @note If the initialization failed, it is a fatal error, the function will not return.
+ * @return LE_FAULT  The function failed.
+ * @return LE_OK     The function succeed.
  */
 //--------------------------------------------------------------------------------------------------
-void gnss_Init
+le_result_t gnss_Init
 (
     void
 );

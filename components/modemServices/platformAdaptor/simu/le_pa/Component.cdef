@@ -7,13 +7,14 @@ sources:
     pa_simu.c
     pa_sim_simu.c
     pa_sms_simu.c
-    pa_fwupdate_simu.c
     pa_ecall_simu.c
-    pa_remoteMgmt_simu.c
     pa_ips_simu.c
     pa_temp_simu.c
+    pa_antenna_simu.c
+    pa_adc_simu.c
     ${LEGATO_ROOT}/components/modemServices/modemDaemon/smsPdu.c
     ${LEGATO_ROOT}/components/modemServices/modemDaemon/cdmaPdu.c
+    pa_riPin_simu.c
 }
 
 requires:
@@ -28,10 +29,10 @@ requires:
         le_mcc_call.api [types-only]
         le_audio.api    [types-only]
         le_ecall.api    [types-only]
-        le_fwupdate.api [types-only]
         le_info.api     [types-only]
         le_temp.api     [types-only]
-        le_remoteMgmt.api [types-only]
         le_ips.api      [types-only]
+        le_antenna.api  [types-only]
+        le_adc.api      [types-only]
     }
 }

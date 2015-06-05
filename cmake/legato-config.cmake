@@ -20,6 +20,7 @@ set(LEGATO_TOOL_MKAPP                       ${LEGATO_SOURCE_DIR}/bin/mkapp)
 set(LEGATO_TOOL_MKEXE                       ${LEGATO_SOURCE_DIR}/bin/mkexe)
 set(LEGATO_TOOL_MKCOMP                      ${LEGATO_SOURCE_DIR}/bin/mkcomp)
 set(LEGATO_TOOL_MKSYS                       ${LEGATO_SOURCE_DIR}/bin/mksys)
+set(LEGATO_TOOL_MKDOC                       ${LEGATO_SOURCE_DIR}/bin/mkdoc)
 
 # C Framework
 set(LEGATO_INCLUDE_DIRS ${LEGATO_INCLUDE_DIRS}
@@ -240,4 +241,29 @@ function(add_legato_internal_executable)
 
     add_legato_executable(${ARGN})
 
+endfunction()
+
+# Function to generate the interface header from the API file to make it
+# available for documentation.
+function(generate_header API_FILE)
+
+    get_filename_component(API_NAME ${API_FILE} NAME_WE)
+
+    set(API_PATH    "${CMAKE_CURRENT_SOURCE_DIR}/${API_FILE}")
+    set(HEADER_PATH "${CMAKE_CURRENT_BINARY_DIR}/${API_NAME}_interface.h")
+
+    add_custom_command( OUTPUT ${HEADER_PATH}
+                        COMMAND ${LEGATO_TOOL_IFGEN} --gen-interface ${API_PATH}
+                        --import-dir ${CMAKE_CURRENT_SOURCE_DIR}/audio
+                        --import-dir ${CMAKE_CURRENT_SOURCE_DIR}/modemServices
+                        ${ARGN}
+                        COMMENT "ifgen '${API_FILE}': ${HEADER_PATH}"
+                        DEPENDS ${API_FILE} legato
+                        )
+
+    add_custom_target(  ${API_NAME}_if
+                        DEPENDS ${HEADER_PATH}
+                        )
+
+    add_dependencies( api_headers ${API_NAME}_if)
 endfunction()

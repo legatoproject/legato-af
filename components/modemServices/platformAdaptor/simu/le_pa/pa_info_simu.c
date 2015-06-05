@@ -12,6 +12,8 @@
 #include "interfaces.h"
 #include "pa_simu.h"
 
+#include <sys/utsname.h>
+
 //--------------------------------------------------------------------------------------------------
 /**
  * This function get the International Mobile Equipment Identity (IMEI).
@@ -126,8 +128,8 @@ le_result_t pa_info_GetBootloaderVersion
  * This function gets the device model identity.
  *
  * @return
- * - LE_NOT_POSSIBLE  The function failed to get the value.
- * - LE_TIMEOUT       No response was received from the Modem.
+ * - LE_FAULT         The function failed to get the value.
+ * - LE_OVERFLOW      The device model identity length exceed the maximum length.
  * - LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
@@ -137,20 +139,54 @@ le_result_t pa_info_GetDeviceModel
 )
 {
     le_result_t res;
-    char buffer[PA_INFO_DEVICE_MODEL_MAX_LEN+1];
+    char buffer[PA_INFO_DEVICE_MODEL_MAX_LEN+1] = {0};
+    struct utsname unameStruct;
 
-    res = le_cfg_QuickGetString(PA_SIMU_CFG_MODEM_ROOT "/info/deviceModel", buffer, sizeof(buffer), PA_SIMU_INFO_DEFAULT_DEVICE_MODEL);
+    res = le_cfg_QuickGetString(PA_SIMU_CFG_MODEM_ROOT "/info/deviceModel", buffer, sizeof(buffer), "");
 
     switch (res)
     {
         case LE_OK:
             res = le_utf8_Copy(model, buffer, sizeof(pa_info_DeviceModel_t), NULL);
-            LE_WARN_IF(res != LE_OK, "Error when copying string: %d", res);
             break;
 
         default:
             LE_FATAL("Unexpected result: %i", res);
             break;
+    }
+
+    // Get arch from uname instead
+    if (buffer[0] == '\0')
+    {
+        int unameRes;
+
+        unameRes = uname(&unameStruct);
+        if (unameRes != 0)
+        {
+            LE_WARN("Unable to uname.");
+            return LE_FAULT;
+        }
+
+        if ( (0 == strcmp(unameStruct.machine, "armv5tejl")) ||
+             (0 == strcmp(unameStruct.machine, "armv7l")) )
+        {
+            res = le_utf8_Copy(model, "VIRT_ARM", sizeof(pa_info_DeviceModel_t), NULL);
+        }
+        else if (0 == strcmp(unameStruct.machine, "i686"))
+        {
+            res = le_utf8_Copy(model, "VIRT_X86", sizeof(pa_info_DeviceModel_t), NULL);
+        }
+        else
+        {
+            LE_ERROR("Unknown machine '%s'", unameStruct.machine);
+            return LE_FAULT;
+        }
+    }
+
+    if (res != LE_OK)
+    {
+        LE_WARN("Error when copying string: %d", res);
+        return LE_FAULT;
     }
 
     return LE_OK;
@@ -285,3 +321,80 @@ le_result_t pa_info_GetNai
     return LE_FAULT;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Manufacturer Name string in ASCII text.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to get the value.
+ *      - LE_OVERFLOW      The Manufacturer Name length exceed the maximum length.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_info_GetManufacturerName
+(
+    char* mfrNameStr,
+        ///< [OUT]
+        ///< The Manufacturer Name string (null-terminated).
+
+    size_t mfrNameStrNumElements
+        ///< [IN]
+)
+{
+    return LE_FAULT;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Product Requirement Information Part Number and Revision Number strings in ASCII text.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to get the value.
+ *      - LE_OVERFLOW      The Part or the Revision Number strings length exceed the maximum length.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_info_GetPriId
+(
+    char* priIdPnStr,
+        ///< [OUT]
+        ///< The Product Requirement Information Identifier
+        ///<  (PRI ID) Part Number string (null-terminated).
+
+    size_t priIdPnStrNumElements,
+        ///< [IN]
+
+    char* priIdRevStr,
+        ///< [OUT]
+        ///< The Product Requirement Information Identifier
+        ///<  (PRI ID) Revision Number string (null-terminated).
+
+    size_t priIdRevStrNumElements
+        ///< [IN]
+)
+{
+    le_result_t res = LE_FAULT;
+
+    if ( (priIdPnStr == NULL) || (priIdRevStr == NULL))
+    {
+        LE_ERROR("priIdPnStr or priIdRevStr is NULL.");
+        res =  LE_FAULT;
+    }
+
+    if (priIdPnStrNumElements < LE_INFO_MAX_PRIID_PN_BYTES)
+    {
+        LE_ERROR("priIdPnStrNumElements lentgh (%d) too small < %d",
+                        (int) priIdPnStrNumElements, LE_INFO_MAX_PRIID_PN_BYTES);
+        res = LE_OVERFLOW;
+    }
+
+    if (priIdRevStrNumElements < LE_INFO_MAX_PRIID_REV_BYTES)
+    {
+        LE_ERROR("priIdRevStrNumElements lentgh (%d) too small < %d",
+                        (int) priIdRevStrNumElements, LE_INFO_MAX_PRIID_REV_BYTES);
+        res = LE_OVERFLOW;
+    }
+
+    return res;
+}

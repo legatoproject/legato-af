@@ -1,6 +1,7 @@
 sources:
 {
     pa_audio.c
+    pa_media.c
 }
 
 requires:

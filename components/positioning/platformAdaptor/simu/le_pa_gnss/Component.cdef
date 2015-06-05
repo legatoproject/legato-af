@@ -6,4 +6,8 @@ sources:
 requires:
 {
     component: { $LEGATO_MODEM_PA }
+    api:
+    {
+        le_gnss.api    [types-only]
+    }
 }

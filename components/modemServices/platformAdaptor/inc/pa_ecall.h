@@ -5,7 +5,7 @@
  *
  * <HR>
  *
- * @section pa_info_toc Table of Contents
+ * @section pa_ecall_toc Table of Contents
  *
  *  - @ref pa_ecall_intro
  *  - @ref pa_ecall_rational
@@ -65,6 +65,19 @@ typedef enum
 }
 pa_ecall_SysStd_t;
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * eCall start Type.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+typedef enum
+{
+    PA_ECALL_START_MANUAL   = 0, ///< eCall start manual.
+    PA_ECALL_START_AUTO     = 1, ///< eCall start automatic.
+    PA_ECALL_START_TEST     = 2, ///< eCall start test.
+}
+pa_ecall_StartType_t;
 
 //--------------------------------------------------------------------------------------------------
 // APIs.
@@ -230,41 +243,31 @@ le_result_t pa_ecall_LoadMsd
     size_t    msdSize   ///< [IN] msd buffer size
 );
 
+
 //--------------------------------------------------------------------------------------------------
 /**
- * This function must be called to start an eCall test.
+ * This function must be called to start the eCall.
  *
- * @return LE_FAULT  The function failed.
- * @return LE_OK     The function succeed.
+ * @return
+ *      LE_OK if successful.
+ *      LE_FAULT if unsuccessful.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_ecall_StartTest
+le_result_t pa_ecall_Start
 (
-    void
+    pa_ecall_StartType_t callType
 );
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function must be called to start an automatic eCall.
+ * This function must be called to stop the eCall.
  *
- * @return LE_FAULT  The function failed.
- * @return LE_OK     The function succeed.
+ * @return
+ *      LE_OK if successful.
+ *      LE_FAULT if unsuccessful.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_ecall_StartAutomatic
-(
-    void
-);
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This function must be called to start a manual eCall.
- *
- * @return LE_FAULT  The function failed.
- * @return LE_OK     The function succeed.
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t pa_ecall_StartManual
+le_result_t pa_ecall_Stop
 (
     void
 );
@@ -284,76 +287,6 @@ le_result_t pa_ecall_End
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Set the minimum interval value between dial attempts.
- *
- * @return
- *  - LE_OK on success
- *  - LE_FAULT for other failures
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t pa_ecall_SetIntervalBetweenDialAttempts
-(
-    uint16_t    pause   ///< [IN] the minimum interval value in seconds
-);
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Get the minimum interval value between dial attempts.
- *
- * @return
- *  - LE_OK on success
- *  - LE_FAULT for other failures
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t pa_ecall_GetIntervalBetweenDialAttempts
-(
-     uint16_t*    pausePtr   ///< [OUT] the minimum interval value in seconds
-);
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Set the Dial Duration time in seconds.
- *
- * @return
- *  - LE_OK on success
- *  - LE_FAULT on failure
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t pa_ecall_SetEraGlonassDialDuration
-(
-    uint16_t    duration   ///< [IN] the Dial Duration time in seconds.
-);
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Set the Manual dial Attempts value.
- *
- * @return
- *  - LE_OK on success
- *  - LE_FAULT on failure
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t pa_ecall_SetEraGlonassManualDialAttempts
-(
-    uint16_t    attempts  ///< [IN] the Manual dial Attempts value.
-);
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Set the Automatic dial Attempts value.
- *
- * @return
- *  - LE_OK on success
- *  - LE_FAULT on failure
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t pa_ecall_SetEraGlonassAutoDialAttempts
-(
-    uint16_t    attempts  ///< [IN] the Automatic dial Attempts value.
-);
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Set the 'NAD Deregistration Time' value in minutes.
  *
  * @return
@@ -364,48 +297,6 @@ le_result_t pa_ecall_SetEraGlonassAutoDialAttempts
 le_result_t pa_ecall_SetNadDeregistrationTime
 (
     uint16_t    deregTime  ///< [IN] the 'NAD Deregistration Time' value in minutes.
-);
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Get the Dial Duration time in seconds.
- *
- * @return
- *  - LE_OK on success
- *  - LE_FAULT on failure
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t pa_ecall_GetEraGlonassDialDuration
-(
-    uint16_t*    durationPtr  ///< [OUT] the Dial Duration time in seconds.
-);
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Get the Manual dial Attempts value.
- *
- * @return
- *  - LE_OK on success
- *  - LE_FAULT on failure
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t pa_ecall_GetEraGlonassManualDialAttempts
-(
-    uint16_t*    attemptsPtr  ///< [OUT] the Manual dial Attempts value.
-);
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Get the Automatic dial Attempts value.
- *
- * @return
- *  - LE_OK on success
- *  - LE_FAULT on failure
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t pa_ecall_GetEraGlonassAutoDialAttempts
-(
-    uint16_t*    attemptsPtr  ///< [OUT] the Automatic dial Attempts value.
 );
 
 //--------------------------------------------------------------------------------------------------

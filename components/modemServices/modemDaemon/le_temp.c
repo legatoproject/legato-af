@@ -216,6 +216,13 @@ le_result_t le_temp_SetRadioThresholds
         ///< [IN] The high critical temperature threshold in degree celsius.
 )
 {
+    if ((hiWarningTemp + 1) >= hiCriticalTemp)
+    {
+        LE_ERROR("hiWarningTemp(%d) is higther or close to the hiCriticalTemp (%d)",
+                        hiWarningTemp,  hiCriticalTemp);
+        return LE_BAD_PARAMETER;
+    }
+
     return pa_temp_SetRadioThresholds(hiWarningTemp, hiCriticalTemp);
 }
 
@@ -285,8 +292,19 @@ le_result_t le_temp_SetPlatformThresholds
         ///< [IN] The high critical temperature threshold in degree celsius.
 )
 {
-   return pa_temp_SetPlatformThresholds (lowCriticalTemp, lowWarningTemp,
-                        hiWarningTemp, hiCriticalTemp);
+    if ( (lowCriticalTemp >= lowWarningTemp)
+         || (lowWarningTemp >= hiWarningTemp)
+         || ((hiWarningTemp + 1) >= hiCriticalTemp) )
+    {
+        LE_ERROR("Condition lowCriticalTemp < lowWarningTemp"
+                        " < hiWarningTemp < hiCriticalTemp FAILED");
+        LE_ERROR("Condition %d < %d < %d < %d FAILED",
+             lowCriticalTemp, lowWarningTemp, hiWarningTemp, hiCriticalTemp );
+        return LE_BAD_PARAMETER;
+    }
+
+   return pa_temp_SetPlatformThresholds(lowCriticalTemp, lowWarningTemp,
+                                        hiWarningTemp, hiCriticalTemp);
 }
 
 
