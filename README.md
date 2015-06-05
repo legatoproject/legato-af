@@ -10,7 +10,7 @@ Welcome to Legato!
         diffstat docbook-utils doxygen fakeroot flex g++ gawk gcc git-core gitk graphviz
         help2man libgmp3-dev libmpfr-dev libreadline6-dev libtool libxml2-dev libxml-libxml-perl
         make m4 ninja-build python-pip python-jinja2 python-pysqlite2 quilt samba scons sed
-        subversion texi2html texinfo unzip wget
+        subversion texi2html texinfo unzip wget ninja-build
 
   - Cross toolchain(s).
 
