@@ -24,10 +24,13 @@
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
-    int timerFD;                       ///< System timer used by the thread.
-    le_dls_List_t activeTimerList;     ///< Linked list of running legato timers for this thread
-    le_timer_Ref_t firstTimerPtr;      ///< Pointer to the first timer on the active list
-                                       ///< or NULL if there are no timers on the active list
+    int timerFD;                        ///< System timer used by the thread.
+    le_dls_List_t activeTimerList;      ///< Linked list of running legato timers for this thread
+    le_timer_Ref_t firstTimerPtr;       ///< Pointer to the timer on the active list that is
+                                        ///  associated with the currently running timerFD,
+                                        ///  or NULL if there are no timers on the active list.
+                                        ///  This is normally the first timer on the list.
+
 }
 timer_ThreadRec_t;
 
@@ -58,6 +61,20 @@ void timer_InitThread
 (
     void
 );
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Accessor for clock type negotiated between clock and timerfd routines.
+ *
+ * Used by clock functions to ensure clock coherence.
+ */
+//--------------------------------------------------------------------------------------------------
+int timer_GetClockType
+(
+    void
+);
+
 
 
 #endif /* LEGATO_SRC_TIMER_H_INCLUDE_GUARD */

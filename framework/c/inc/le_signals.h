@@ -5,14 +5,6 @@
  *
  * <HR>
  *
- * @ref c_signals_eventHandlers <br>
- * @ref c_signals_mixedHandlers <br>
- * @ref c_signals_multiThread <br>
- * @ref c_signals_limitations <br>
- * @ref c_signals_blocking <br>
- *
- * @section c_signals_intro Introduction
- *
  * Signals are software interrupts that can be sent to a running process or thread to
  * indicate exceptional situations. The action taken when an event is received depends on the
  * current settings for the signal and may be set to either:

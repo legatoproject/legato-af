@@ -6,6 +6,7 @@
  */
 
 #include "legato.h"
+#include "timer.h"
 
 
 // Microseconds should be less than this value.
@@ -35,11 +36,10 @@ le_clk_Time_t le_clk_GetRelativeTime(void)
     struct timespec systemTime;
     le_clk_Time_t relativeTime;
 
-    // todo: ARM compiler doesn't like CLOCK_BOOTTIME
-    //if ( clock_gettime(CLOCK_BOOTTIME, &systemTime) < 0 )
-    if ( clock_gettime(CLOCK_MONOTONIC, &systemTime) < 0 )
+    // Use a clock coherent with timerfd functions.
+    if (0 > clock_gettime(timer_GetClockType(), &systemTime))
     {
-        LE_FATAL("CLOCK_BOOTTIME is not supported for Relative time");
+        LE_FATAL("clock_gettime() failed. errno = %d (%m)", errno);
     }
 
     relativeTime.sec = systemTime.tv_sec;

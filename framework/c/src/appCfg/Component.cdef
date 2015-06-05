@@ -1,0 +1,13 @@
+sources:
+{
+    appCfg.c
+}
+
+
+requires:
+{
+    api:
+    {
+        le_cfg.api
+    }
+}

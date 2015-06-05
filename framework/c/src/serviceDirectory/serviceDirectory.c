@@ -282,7 +282,7 @@ typedef struct
 {
     le_dls_Link_t           link;           ///< Used to link onto user's Service List.
     int                     fd;             ///< Fd of the connection socket.
-    le_event_FdMonitorRef_t fdMonitorRef;   ///< FD Monitor object monitoring this connection.
+    le_fdMonitor_Ref_t fdMonitorRef;   ///< FD Monitor object monitoring this connection.
     User_t*                 userPtr;        ///< Pointer to the User object for the client uid.
     pid_t                   pid;            ///< Process ID of client process.
     svcdir_ServiceId_t      serviceId;      ///< Service identifier.
@@ -346,7 +346,7 @@ typedef struct
     le_dls_Link_t           link;           ///< Used to link onto unbound or waiting clients lists.
     ClientConnectionState_t state;          ///< State of the client connection.
     int                     fd;             ///< Fd of the connection socket.
-    le_event_FdMonitorRef_t fdMonitorRef;   ///< FD Monitor object monitoring this connection.
+    le_fdMonitor_Ref_t fdMonitorRef;   ///< FD Monitor object monitoring this connection.
     User_t*                 userPtr;        ///< Pointer to the User object for the client uid.
     pid_t                   pid;            ///< Process ID of client process.
     svcdir_ServiceId_t      serviceId;      ///< Service identifier.
@@ -376,13 +376,13 @@ static int ServerSocketFd;
 //--------------------------------------------------------------------------------------------------
 /// FD Monitor for the Client Socket.  Used to detect when clients connect to the Client Socket.
 //--------------------------------------------------------------------------------------------------
-static le_event_FdMonitorRef_t ClientSocketMonitorRef;
+static le_fdMonitor_Ref_t ClientSocketMonitorRef;
 
 
 //--------------------------------------------------------------------------------------------------
 /// FD Monitor for the Server Socket.  Used to detect when servers connect to the Server Socket.
 //--------------------------------------------------------------------------------------------------
-static le_event_FdMonitorRef_t ServerSocketMonitorRef;
+static le_fdMonitor_Ref_t ServerSocketMonitorRef;
 
 
 
@@ -862,6 +862,54 @@ static void CreateBinding
 )
 //--------------------------------------------------------------------------------------------------
 {
+    // Get references to the client and server User objects.
+    // NOTE: This increments the reference counts on these objects.
+    User_t* clientUserPtr = GetUser(clientUserId);
+    User_t* serverUserPtr = GetUser(serverUserId);
+
+    // See if the client already has a bind for this service name.
+    Binding_t* oldBindingPtr = FindBinding(clientUserPtr, clientServiceName);
+    if (oldBindingPtr != NULL)
+    {
+        // Ignore this binding if its the same as one that already exists.
+        if (   (0 == strcmp(oldBindingPtr->serverUserPtr->name, serverUserPtr->name))
+            && (0 == strcmp(oldBindingPtr->serverServiceName, serverServiceName) ) )
+        {
+            LE_DEBUG("Ignoring duplicate binding of <%s>.%s -> <%s>.%s.",
+                    clientUserPtr->name,
+                    clientServiceName,
+                    serverUserPtr->name,
+                    serverServiceName);
+            le_mem_Release(clientUserPtr);
+            le_mem_Release(serverUserPtr);
+            return;
+        }
+
+        // Warn if it's not the same.
+        LE_WARN("Replacing binding of <%s>.%s -> <%s>.%s with -> <%s>.%s.",
+                clientUserPtr->name,
+                clientServiceName,
+                oldBindingPtr->serverUserPtr->name,
+                oldBindingPtr->serverServiceName,
+                serverUserPtr->name,
+                serverServiceName);
+
+        // Delete the old binding.
+        // NOTE: Do this after getting a reference to the client's User object so the
+        //       User object's reference count doesn't drop to zero.  Otherwise, the User object
+        //       could get deleted and have to be recreated.
+        le_mem_Release(oldBindingPtr);
+    }
+    else
+    {
+        LE_DEBUG("Creating binding: <%s>.%s -> <%s>.%s",
+                 clientUserPtr->name,
+                 clientServiceName,
+                 serverUserPtr->name,
+                 serverServiceName);
+    }
+
+    // Create a new binding object.
     Binding_t* bindingPtr = le_mem_ForceAlloc(BindingPoolRef);
 
     bindingPtr->link = LE_DLS_LINK_INIT;
@@ -877,38 +925,12 @@ static void CreateBinding
                  sizeof(bindingPtr->serverServiceName),
                  NULL);
 
-    // The Binding object holds a reference to the client and server User objects.
-    bindingPtr->clientUserPtr = GetUser(clientUserId);
-    bindingPtr->serverUserPtr = GetUser(serverUserId);
+    // The Binding object holds the references to the client and server User objects.
+    bindingPtr->clientUserPtr = clientUserPtr;
+    bindingPtr->serverUserPtr = serverUserPtr;
 
     bindingPtr->serverConnectionPtr = NULL;
     bindingPtr->waitingClientsList = LE_DLS_LIST_INIT;
-
-    // See if the client already has a bind for this service name.
-    Binding_t* oldBindingPtr = FindBinding(bindingPtr->clientUserPtr, clientServiceName);
-    if (oldBindingPtr != NULL)
-    {
-        LE_WARN("Replacing binding of <%s>.%s -> <%s>.%s with -> <%s>.%s.",
-                bindingPtr->clientUserPtr->name,
-                clientServiceName,
-                oldBindingPtr->serverUserPtr->name,
-                oldBindingPtr->serverServiceName,
-                bindingPtr->serverUserPtr->name,
-                bindingPtr->serverServiceName);
-
-        // Delete the old binding.
-        // NOTE: This should happen after the new binding gets a reference to the user to
-        //       avoid wasting time deleting the User object and then recreating it again.
-        le_mem_Release(oldBindingPtr);
-    }
-    else
-    {
-        LE_DEBUG("Creating binding: <%s>.%s -> <%s>.%s",
-                 bindingPtr->clientUserPtr->name,
-                 bindingPtr->clientServiceName,
-                 bindingPtr->serverUserPtr->name,
-                 bindingPtr->serverServiceName);
-    }
 
     // Add the Binding to the client User's Binding List.
     le_dls_Queue(&bindingPtr->clientUserPtr->bindingList, &bindingPtr->link);
@@ -957,10 +979,13 @@ static void CreateHardCodedBindings
     CreateBinding(uid, "LogClient", uid, "LogClient");
     CreateBinding(uid, "LogControl", uid, "LogControl");
     CreateBinding(uid, "le_sup_ctrl", uid, "le_sup_ctrl");
-    CreateBinding(uid, "le_sup_state", uid, "le_sup_state");
     CreateBinding(uid, "le_sup_wdog", uid, "le_sup_wdog");
     CreateBinding(uid, "le_cfg", uid, "le_cfg");
     CreateBinding(uid, "le_cfgAdmin", uid, "le_cfgAdmin");
+    CreateBinding(uid, "le_update", uid, "le_update");
+    CreateBinding(uid, "le_instStat", uid, "le_instStat");
+    CreateBinding(uid, "le_appInfo", uid, "le_appInfo");
+    CreateBinding(uid, "appSmack", uid, "appSmack");
 }
 
 
@@ -1080,11 +1105,11 @@ static void ProcessAdvertisementFromServer
 //--------------------------------------------------------------------------------------------------
 static void ClientErrorHandler
 (
-    int fd  ///< [in] File descriptor for the connection.
+    void
 )
 //--------------------------------------------------------------------------------------------------
 {
-    ClientConnection_t* connectionPtr = le_event_GetContextPtr();
+    ClientConnection_t* connectionPtr = le_fdMonitor_GetContextPtr();
 
     LE_ASSERT(connectionPtr != NULL);
 
@@ -1104,13 +1129,13 @@ static void ClientErrorHandler
  * @note The Context Pointer is a pointer to a Client Connection object.
  */
 //--------------------------------------------------------------------------------------------------
-static void ClientReadHangUpHandler
+static void ClientHangUpHandler
 (
-    int fd  ///< [in] File descriptor for the connection.
+    void
 )
 //--------------------------------------------------------------------------------------------------
 {
-    ClientConnection_t* connectionPtr = le_event_GetContextPtr();
+    ClientConnection_t* connectionPtr = le_fdMonitor_GetContextPtr();
 
     LE_ASSERT(connectionPtr != NULL);
 
@@ -1177,7 +1202,7 @@ static void ClientReadHandler
 //--------------------------------------------------------------------------------------------------
 {
     le_result_t result;
-    ClientConnection_t* clientConnectionPtr = le_event_GetContextPtr();
+    ClientConnection_t* clientConnectionPtr = le_fdMonitor_GetContextPtr();
 
     LE_ASSERT(clientConnectionPtr != NULL);
 
@@ -1228,6 +1253,37 @@ static void ClientReadHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * File descriptor event handler for sockets connected to clients.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void ClientSocketHandler
+(
+    int fd,
+    short events
+)
+//--------------------------------------------------------------------------------------------------
+{
+    if (events & POLLERR)
+    {
+        ClientErrorHandler();
+    }
+    else if (events & (POLLRDHUP | POLLHUP))
+    {
+        ClientHangUpHandler();
+    }
+    else if (events & POLLIN)
+    {
+        ClientReadHandler(fd);
+    }
+
+    LE_CRIT_IF(events & ~(POLLERR | POLLRDHUP | POLLHUP | POLLIN),
+               "Unexpected file descriptor events (0x%hX)",
+               events);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Create a Client Connection object to track a given connection to a given client process.
  **/
 //--------------------------------------------------------------------------------------------------
@@ -1258,22 +1314,10 @@ static void CreateClientConnection
     char fdMonName[64];  // Buffer for holding the FD Monitor's name string.
 
     snprintf(fdMonName, sizeof(fdMonName), "Client:fd%duid%upid%d", fd, uid, pid);
-    connectionPtr->fdMonitorRef = le_event_CreateFdMonitor(fdMonName, fd);
-    le_event_FdHandlerRef_t handlerRef;
-    handlerRef = le_event_SetFdHandler(connectionPtr->fdMonitorRef,
-                                       LE_EVENT_FD_ERROR,
-                                       ClientErrorHandler);
-    le_event_SetFdHandlerContextPtr(handlerRef, connectionPtr);
-    handlerRef = le_event_SetFdHandler(connectionPtr->fdMonitorRef,
-                                       LE_EVENT_FD_READABLE,
-                                       ClientReadHandler);
-    le_event_SetFdHandlerContextPtr(handlerRef, connectionPtr);
-    handlerRef = le_event_SetFdHandler(connectionPtr->fdMonitorRef,
-                                       LE_EVENT_FD_READ_HANG_UP,
-                                       ClientReadHangUpHandler);
+    connectionPtr->fdMonitorRef = le_fdMonitor_Create(fdMonName, fd, ClientSocketHandler, POLLIN);
 
-    // Set a pointer to the Connection object as the FD Handler context.
-    le_event_SetFdHandlerContextPtr(handlerRef, connectionPtr);
+    // Set a pointer to the Connection object as the handler context.
+    le_fdMonitor_SetContextPtr(connectionPtr->fdMonitorRef, connectionPtr);
 }
 
 
@@ -1315,7 +1359,7 @@ static void ClientConnectionDestructor
     // Delete the File Descriptor Monitor object.
     if (connectionPtr->fdMonitorRef != NULL)
     {
-        le_event_DeleteFdMonitor(connectionPtr->fdMonitorRef);
+        le_fdMonitor_Delete(connectionPtr->fdMonitorRef);
         connectionPtr->fdMonitorRef = NULL;
     }
 
@@ -1336,10 +1380,16 @@ static void ClientConnectionDestructor
 //--------------------------------------------------------------------------------------------------
 static void ClientConnectHandler
 (
-    int fd  ///< [in] File descriptor of the socket that has received a connection request.
+    int fd,     ///< [in] File descriptor of the socket that has received a connection request.
+    short events    ///< [in] Event set (bit map).  Should be only POLLIN.
 )
 //--------------------------------------------------------------------------------------------------
 {
+    if (events & ~POLLIN)
+    {
+        LE_CRIT("Unexpected fd event(s): 0x%hX", events);
+    }
+
     // Accept the connection, setting the connection to be non-blocking.
     fd = accept4(fd, NULL, NULL, SOCK_NONBLOCK);
 
@@ -1389,11 +1439,11 @@ static void ClientConnectHandler
 //--------------------------------------------------------------------------------------------------
 static void ServerErrorHandler
 (
-    int fd  ///< [in] File descriptor for the connection.
+    void
 )
 //--------------------------------------------------------------------------------------------------
 {
-    ServerConnection_t* connectionPtr = le_event_GetContextPtr();
+    ServerConnection_t* connectionPtr = le_fdMonitor_GetContextPtr();
 
     LE_ASSERT(connectionPtr != NULL);
 
@@ -1413,13 +1463,13 @@ static void ServerErrorHandler
  * @note The Context Pointer is a pointer to a Server Connection object.
  */
 //--------------------------------------------------------------------------------------------------
-static void ServerReadHangUpHandler
+static void ServerHangUpHandler
 (
-    int fd  ///< [in] File descriptor for the connection.
+    void
 )
 //--------------------------------------------------------------------------------------------------
 {
-    ServerConnection_t* connectionPtr = le_event_GetContextPtr();
+    ServerConnection_t* connectionPtr = le_fdMonitor_GetContextPtr();
 
     LE_ASSERT(connectionPtr != NULL);
 
@@ -1446,7 +1496,7 @@ static void ServerReadHandler
 //--------------------------------------------------------------------------------------------------
 {
     le_result_t result;
-    ServerConnection_t* connectionPtr = le_event_GetContextPtr();
+    ServerConnection_t* connectionPtr = le_fdMonitor_GetContextPtr();
 
     LE_ASSERT(connectionPtr != NULL);
 
@@ -1494,6 +1544,37 @@ static void ServerReadHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * File descriptor event handler for sockets connected to servers.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void ServerSocketHandler
+(
+    int fd,
+    short events
+)
+//--------------------------------------------------------------------------------------------------
+{
+    if (events & POLLERR)
+    {
+        ServerErrorHandler();
+    }
+    else if (events & (POLLRDHUP | POLLHUP))
+    {
+        ServerHangUpHandler();
+    }
+    else if (events & POLLIN)
+    {
+        ServerReadHandler(fd);
+    }
+
+    LE_CRIT_IF(events & ~(POLLERR | POLLRDHUP | POLLHUP | POLLIN),
+               "Unexpected file descriptor events (0x%hX)",
+               events);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Create a Server Connection object to track a given connection to a given server process.
  **/
 //--------------------------------------------------------------------------------------------------
@@ -1522,22 +1603,10 @@ static void CreateServerConnection
     char fdMonName[64];  // Buffer for holding the FD Monitor's name string.
 
     snprintf(fdMonName, sizeof(fdMonName), "Server:fd%duid%upid%d", fd, uid, pid);
-    connectionPtr->fdMonitorRef = le_event_CreateFdMonitor(fdMonName, fd);
-    le_event_FdHandlerRef_t handlerRef;
-    handlerRef = le_event_SetFdHandler(connectionPtr->fdMonitorRef,
-                                       LE_EVENT_FD_ERROR,
-                                       ServerErrorHandler);
-    le_event_SetFdHandlerContextPtr(handlerRef, connectionPtr);
-    handlerRef = le_event_SetFdHandler(connectionPtr->fdMonitorRef,
-                                       LE_EVENT_FD_READABLE,
-                                       ServerReadHandler);
-    le_event_SetFdHandlerContextPtr(handlerRef, connectionPtr);
-    handlerRef = le_event_SetFdHandler(connectionPtr->fdMonitorRef,
-                                       LE_EVENT_FD_READ_HANG_UP,
-                                       ServerReadHangUpHandler);
+    connectionPtr->fdMonitorRef = le_fdMonitor_Create(fdMonName, fd, ServerSocketHandler, POLLIN);
 
-    // Set a pointer to the Connection object as the FD Handler context.
-    le_event_SetFdHandlerContextPtr(handlerRef, connectionPtr);
+    // Set a pointer to the Connection object as the handler context.
+    le_fdMonitor_SetContextPtr(connectionPtr->fdMonitorRef, connectionPtr);
 }
 
 
@@ -1610,7 +1679,7 @@ static void ServerConnectionDestructor
     // Delete the File Descriptor Monitor object.
     if (connectionPtr->fdMonitorRef != NULL)
     {
-        le_event_DeleteFdMonitor(connectionPtr->fdMonitorRef);
+        le_fdMonitor_Delete(connectionPtr->fdMonitorRef);
         connectionPtr->fdMonitorRef = NULL;
     }
 
@@ -1631,10 +1700,16 @@ static void ServerConnectionDestructor
 //--------------------------------------------------------------------------------------------------
 static void ServerConnectHandler
 (
-    int fd  ///< [in] File descriptor of the socket that has received a connection request.
+    int fd,     ///< [in] File descriptor of the socket that has received a connection request.
+    short events    ///< [in] Event set (bit map).  Should be only POLLIN.
 )
 //--------------------------------------------------------------------------------------------------
 {
+    if (events & ~POLLIN)
+    {
+        LE_CRIT("Unexpected fd event(s): 0x%hX", events);
+    }
+
     // Accept the connection, setting the connection to be non-blocking.
     fd = accept4(fd, NULL, NULL, SOCK_NONBLOCK);
 
@@ -2187,10 +2262,14 @@ COMPONENT_INIT
     ServerSocketFd = OpenSocket(STRINGIZE(LE_SVCDIR_SERVER_SOCKET_NAME));
 
     // Start listening for connection attempts.
-    ClientSocketMonitorRef = le_event_CreateFdMonitor("Client Socket", ClientSocketFd);
-    le_event_SetFdHandler(ClientSocketMonitorRef, LE_EVENT_FD_READABLE, ClientConnectHandler);
-    ServerSocketMonitorRef = le_event_CreateFdMonitor("Server Socket", ServerSocketFd);
-    le_event_SetFdHandler(ServerSocketMonitorRef, LE_EVENT_FD_READABLE, ServerConnectHandler);
+    ClientSocketMonitorRef = le_fdMonitor_Create("Client Socket",
+                                                 ClientSocketFd,
+                                                 ClientConnectHandler,
+                                                 POLLIN);
+    ServerSocketMonitorRef = le_fdMonitor_Create("Server Socket",
+                                                 ServerSocketFd,
+                                                 ServerConnectHandler,
+                                                 POLLIN);
     if (listen(ClientSocketFd, MAX_CONNECT_REQUEST_BACKLOG) != 0)
     {
         LE_FATAL("Client socket listen() call failed with errno %d (%m).", errno);

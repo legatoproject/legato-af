@@ -1,23 +1,41 @@
 //--------------------------------------------------------------------------------------------------
 /** @file fdMonitor.c
  *
- * @section fdMon_DataStructures    Data Structures
+ * @section fdMonitor_DataStructures    Data Structures
  *
  *  - <b> FD Monitors </b> - One per monitored file descriptor.  Keeps track of the file descriptor,
  *                  what fd events are being monitored, and what thread is doing the monitoring.
  *
  * FD Monitor objects are allocated from the FD Monitor Pool and are kept on the FD Monitor List.
  *
- * @section fdMon_Algorithm     Algorithm
+ * @section fdMonitor_Algorithm     Algorithm
  *
  * When a file descriptor event is detected by the Event Loop, fdMon_Report() is called with
- * the FD Monitor Reference (a safe reference) and the type of event that was detected.
- * fdMon_Report() queues a function call (DispatchToHandler) to the calling thread. When that
- * function gets called, it does a look-up of the safe reference.  If it finds an FD Monitor
- * object matching that reference, then it calls its registered handler function for that event.
+ * the FD Monitor Reference (a safe reference) and a bit map containing the events that were
+ * detected.  fdMon_Report() queues a function call (DispatchToHandler()) to the calling thread.
+ * When that function gets called, it does a look-up of the safe reference.  If it finds an
+ * FD Monitor object matching that reference (it could have been deleted in the meantime), then
+ * it calls its registered handler function for that event.
  *
  * The reason it was decided not to use Publish-Subscribe Events for this feature is that Event IDs
  * can't be deleted, and yet FD Monitors can.
+ *
+ * In some cases (e.g., with regular files), the fd doesn't support epoll().  In those cases, we
+ * treat the fd as if it is always ready to be read from and written to.  If either EPOLLIN or
+ * EPOLLOUT are enabled in the epoll events set for such an fd, DispatchToHandler() is immediately
+ * queued to the thread's Event Queue
+ *  - When the FD Monitor is created,
+ *  - When DispatchToHandler() finishes running the handler function and the FD Monitor has not been
+ *      deleted and still has at least one of EPOLLIN or EPOLLOUT enabled.
+ *  - When le_fdMonitor_Enable() is called for an FD Monitor from outside that FD Monitor's handler.
+ *
+ * @section fdMonitor_Threads Threads
+ *
+ * Only the thread that creates an FD Monitor is allowed to perform operations on that FD Monitor,
+ * including deleting the FD Monitor.
+ *
+ * The Safe Reference Map is shared between threads, though, so any access to it must be protected
+ * from races.
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
@@ -27,12 +45,13 @@
 #include "eventLoop.h"
 #include "thread.h"
 #include "fdMonitor.h"
+#include "limit.h"
 
 #include <pthread.h>
 
 
 /// Maximum number of bytes in a File Descriptor Monitor's name, including the null terminator.
-#define MAX_FD_MONITOR_NAME_BYTES  32
+#define MAX_FD_MONITOR_NAME_BYTES  LIMIT_MAX_MEM_POOL_NAME_BYTES
 
 /// The number of objects in the process-wide FD Monitor Pool, from which all FD Monitor
 /// objects are allocated.
@@ -40,27 +59,14 @@
 #define DEFAULT_FD_MONITOR_POOL_SIZE 10
 
 
-/// Pointer to a File Descriptor Monitor object.
-typedef struct FdMonitor* FdMonitorPtr_t;
-
-
 //--------------------------------------------------------------------------------------------------
 /**
- * Handler object.
+ * Thread-specific data key for the FD Monitor Ptr of the currently running fd event handler.
  *
- * This stores the registration information for a handler function.  They are allocated from the
- * Handler Pool and are stored on an FD Monitor object's Handler List.  Outside this module,
- * these are referred to using a safe reference.
- */
+ * This data item will be NULL if the thread is not currently running an fd event handler.
+ **/
 //--------------------------------------------------------------------------------------------------
-typedef struct
-{
-    le_event_FdHandlerFunc_t    handlerFunc;    ///< The function.
-    void*                       contextPtr;     ///< The context pointer for this handler.
-    FdMonitorPtr_t              monitorPtr;     ///< Pointer to the FD Monitor for this handler.
-    void*                       safeRef;        ///< Safe Reference for this object.
-}
-Handler_t;
+static pthread_key_t FDMonitorPtrKey;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -71,9 +77,6 @@ Handler_t;
  * They are allocated from a per-thread FD Monitor Sub-Pool and are kept on the thread's
  * FD Monitor List.  In addition, each has a Safe Reference created from the
  * FD Monitor Reference Map.
- *
- * @warning These can be accessed by multiple threads.
- *          Great care must be taken to prevent races when accessing these objects.
  */
 //--------------------------------------------------------------------------------------------------
 typedef struct FdMonitor
@@ -81,11 +84,13 @@ typedef struct FdMonitor
     le_dls_Link_t           link;               ///< Used to link onto a thread's FD Monitor List.
     int                     fd;                 ///< File descriptor being monitored.
     uint32_t                epollEvents;        ///< epoll(7) flags for events being monitored.
-    bool                    wakeUp;             ///< optional EPOLLWAEKUP flag on FD
-    le_event_FdMonitorRef_t safeRef;            ///< Safe Reference for this object.
+    bool                    isAlwaysReady;      ///< Don't use epoll(7).  Treat as always ready.
+    le_fdMonitor_Ref_t safeRef;            ///< Safe Reference for this object.
     event_PerThreadRec_t*   threadRecPtr;       ///< Ptr to per-thread data for monitoring thread.
 
-    Handler_t   handlerArray[LE_EVENT_NUM_FD_EVENT_TYPES];  ///< Handler objects (1 per event type)
+    le_fdMonitor_HandlerFunc_t  handlerFunc;    ///< Handler function.
+    void*                       contextPtr;     ///< The context pointer for this handler.
+
     char        name[MAX_FD_MONITOR_NAME_BYTES];            ///< UTF-8 name of this object.
 }
 FdMonitor_t;
@@ -113,16 +118,6 @@ static le_ref_MapRef_t FdMonitorRefMap;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * The Safe Reference Map to be used to create FD Event Handler References.
- *
- * @warning This can be accessed by multiple threads.  Use the Mutex to protect it from races.
- */
-//--------------------------------------------------------------------------------------------------
-static le_ref_MapRef_t HandlerRefMap;
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Mutex used to protect shared data structures in this module.
  */
 //--------------------------------------------------------------------------------------------------
@@ -146,6 +141,8 @@ static le_log_TraceRef_t TraceRef;
 /// Takes the same parameters as LE_DEBUG() et. al.
 #define TRACE(...) LE_TRACE(TraceRef, ##__VA_ARGS__)
 
+/// Macro used to check if trace output is enabled in this module.
+#define IS_TRACE_ENABLED() LE_IS_TRACE_ENABLED(TraceRef)
 
 
 // ==============================================
@@ -154,96 +151,152 @@ static le_log_TraceRef_t TraceRef;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Converts an Event Loop API file descriptor event type identifier into an epoll(7) event flag.
+ * Converts a set of poll(2) event flags into a set of epoll(7) event flags.
  *
- * See 'man epoll_ctl' for more information.
- *
- * @return A single epoll event flag.
+ * @return Bit map containing epoll(7) events flags.
  */
 //--------------------------------------------------------------------------------------------------
-static uint32_t ConvertToEPollFlag
+static uint32_t PollToEPoll
 (
-    le_event_FdEventType_t  fdEventType, ///< [in] The Event Loop API's fd event type identifier.
-    bool                    wakeUp       ///< [in] Optional EPOLLWAKEUP flag for epoll_wait()
+    short  pollFlags   ///< [in] Bit map containing poll(2) event flags.
 )
 //--------------------------------------------------------------------------------------------------
 {
-    uint32_t flag;
+    uint32_t epollFlags = 0;
 
-    flag = (wakeUp ? EPOLLWAKEUP : 0);
-
-    switch (fdEventType)
+    if (pollFlags & POLLIN)
     {
-        case LE_EVENT_FD_READABLE:
-
-            return flag | EPOLLIN;
-
-        case LE_EVENT_FD_READABLE_URGENT:
-
-            return flag | EPOLLPRI;
-
-        case LE_EVENT_FD_WRITEABLE:
-
-            return flag | EPOLLOUT;
-
-        case LE_EVENT_FD_WRITE_HANG_UP:
-
-            return flag | EPOLLHUP;
-
-        case LE_EVENT_FD_READ_HANG_UP:
-
-            return flag | EPOLLRDHUP;
-
-        case LE_EVENT_FD_ERROR:
-
-            return flag | EPOLLERR;
+        epollFlags |= EPOLLIN;
     }
 
-    LE_FATAL("Invalid fd event type %d.", fdEventType);
+    if (pollFlags & POLLPRI)
+    {
+        epollFlags |= EPOLLPRI;
+    }
+
+    if (pollFlags & POLLOUT)
+    {
+        epollFlags |= EPOLLOUT;
+    }
+
+    if (pollFlags & POLLHUP)
+    {
+        epollFlags |= EPOLLHUP;
+    }
+
+    if (pollFlags & POLLRDHUP)
+    {
+        epollFlags |= EPOLLRDHUP;
+    }
+
+    if (pollFlags & POLLERR)
+    {
+        epollFlags |= EPOLLERR;
+    }
+
+    return epollFlags;
 }
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Get a pointer to a constant string containing a human readable name for a type of fd event.
+ * Converts a set of epoll(7) event flags into a set of poll(2) event flags.
  *
- * @return Pointer to the name.
+ * @return Bit map containing poll(2) events flags.
  */
 //--------------------------------------------------------------------------------------------------
-const char* GetFdEventTypeName
+static short EPollToPoll
 (
-    le_event_FdEventType_t eventType
+    uint32_t  epollFlags    ///< [in] Bit map containing epoll(7) event flags.
 )
 //--------------------------------------------------------------------------------------------------
 {
-    switch (eventType)
+    short pollFlags = 0;
+
+    if (epollFlags & EPOLLIN)
     {
-        case LE_EVENT_FD_READABLE:
-
-            return "readable";
-
-        case LE_EVENT_FD_READABLE_URGENT:
-
-            return "readable-urgent";
-
-        case LE_EVENT_FD_WRITEABLE:
-
-            return "writeable";
-
-        case LE_EVENT_FD_WRITE_HANG_UP:
-
-            return "write-hangup";
-
-        case LE_EVENT_FD_READ_HANG_UP:
-
-            return "read-hangup";
-
-        case LE_EVENT_FD_ERROR:
-
-            return "error";
+        pollFlags |= POLLIN;
     }
 
-    LE_FATAL("Unknown event type %d.", eventType);
+    if (epollFlags & EPOLLPRI)
+    {
+        pollFlags |= POLLPRI;
+    }
+
+    if (epollFlags & EPOLLOUT)
+    {
+        pollFlags |= POLLOUT;
+    }
+
+    if (epollFlags & EPOLLHUP)
+    {
+        pollFlags |= POLLHUP;
+    }
+
+    if (epollFlags & EPOLLRDHUP)
+    {
+        pollFlags |= POLLRDHUP;
+    }
+
+    if (epollFlags & EPOLLERR)
+    {
+        pollFlags |= POLLERR;
+    }
+
+    return pollFlags;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get a human readable string describing the fd events in a given bit map.
+ *
+ * @return buffPtr.
+ */
+//--------------------------------------------------------------------------------------------------
+static const char* GetPollEventsText
+(
+    char* buffPtr,      ///< Pointer to buffer to put the string in.
+    size_t buffSize,    ///< Size of the buffer, in bytes.
+    short events        ///< Bit map of events (see 'man 2 poll').
+)
+//--------------------------------------------------------------------------------------------------
+{
+    int bytesWritten = snprintf(buffPtr, buffSize, "0x%hX ( ", events);
+
+    if ((bytesWritten < buffSize) && (events & ~(POLLIN | POLLOUT | POLLHUP | POLLRDHUP | POLLERR)))
+    {
+        bytesWritten += snprintf(buffPtr + bytesWritten, buffSize - bytesWritten, "--invalid-- )");
+    }
+    else
+    {
+        if ((bytesWritten < buffSize) && (events & POLLIN))
+        {
+            bytesWritten += snprintf(buffPtr + bytesWritten, buffSize - bytesWritten, "POLLIN ");
+        }
+        if ((bytesWritten < buffSize) && (events & POLLOUT))
+        {
+            bytesWritten += snprintf(buffPtr + bytesWritten, buffSize - bytesWritten, "POLLOUT ");
+        }
+        if ((bytesWritten < buffSize) && (events & POLLHUP))
+        {
+            bytesWritten += snprintf(buffPtr + bytesWritten, buffSize - bytesWritten, "POLLHUP ");
+        }
+        if ((bytesWritten < buffSize) && (events & POLLRDHUP))
+        {
+            bytesWritten += snprintf(buffPtr + bytesWritten, buffSize - bytesWritten, "POLLRDHUP ");
+        }
+        if ((bytesWritten < buffSize) && (events & POLLERR))
+        {
+            bytesWritten += snprintf(buffPtr + bytesWritten, buffSize - bytesWritten, "POLLERR ");
+        }
+        if (bytesWritten < buffSize)
+        {
+            snprintf(buffPtr + bytesWritten, buffSize - bytesWritten, ")");
+        }
+    }
+
+    return buffPtr;
 }
 
 
@@ -258,6 +311,11 @@ static void StopMonitoringFd
 )
 //--------------------------------------------------------------------------------------------------
 {
+    if (fdMonitorPtr->isAlwaysReady)
+    {
+        return;
+    }
+
     TRACE("Deleting fd %d (%s) from thread's epoll set.",
           fdMonitorPtr->fd,
           fdMonitorPtr->name);
@@ -266,23 +324,24 @@ static void StopMonitoringFd
     {
         if (errno == EBADF)
         {
-            TRACE("epoll_ctl(DEL) for fd %d resulted in EBADF.  Probably because connection"
-                  " closed before deleting FD Monitor %s.",
-                  fdMonitorPtr->fd,
-                  fdMonitorPtr->name);
+            LE_FATAL("epoll_ctl(DEL) resulted in EBADF.  Probably because fd %d was closed"
+                        " before deleting FD Monitor '%s'.",
+                     fdMonitorPtr->fd,
+                     fdMonitorPtr->name);
         }
         else if (errno == ENOENT)
         {
-            TRACE("epoll_ctl(DEL) for fd %d resulted in ENOENT.  Probably because we stopped"
-                  " monitoring before deleting the FD Monitor %s.",
-                  fdMonitorPtr->fd,
-                  fdMonitorPtr->name);
+            LE_FATAL("epoll_ctl(DEL) resulted in ENOENT.  Probably because fd %d was closed"
+                        " before deleting FD Monitor '%s'.",
+                     fdMonitorPtr->fd,
+                     fdMonitorPtr->name);
         }
         else
         {
-            LE_FATAL("epoll_ctl(DEL) failed for fd %d. errno = %d (%m)",
+            LE_FATAL("epoll_ctl(DEL) failed for fd %d. errno = %d (%m). FD Monitor '%s'.",
                      fdMonitorPtr->fd,
-                     errno);
+                     errno,
+                     fdMonitorPtr->name);
         }
     }
 }
@@ -291,8 +350,6 @@ static void StopMonitoringFd
 //--------------------------------------------------------------------------------------------------
 /**
  * Deletes a FD Monitor object for a given thread.
- *
- * @warning Assumes that the Mutex lock is already held.
  */
 //--------------------------------------------------------------------------------------------------
 static void DeleteFdMonitor
@@ -301,7 +358,6 @@ static void DeleteFdMonitor
 )
 //--------------------------------------------------------------------------------------------------
 {
-    int i;
     event_PerThreadRec_t*   perThreadRecPtr = thread_GetEventRecPtr();
 
     LE_ASSERT(perThreadRecPtr == fdMonitorPtr->threadRecPtr);
@@ -313,14 +369,6 @@ static void DeleteFdMonitor
 
     // Delete the Safe References used for the FD Monitor and any of its Handler objects.
     le_ref_DeleteRef(FdMonitorRefMap, fdMonitorPtr->safeRef);
-    for (i = 0; i < LE_EVENT_NUM_FD_EVENT_TYPES; i++)
-    {
-        void* safeRef = fdMonitorPtr->handlerArray[i].safeRef;
-        if (safeRef != NULL)
-        {
-            le_ref_DeleteRef(HandlerRefMap, safeRef);
-        }
-    }
 
     UNLOCK
 
@@ -340,12 +388,11 @@ static void DeleteFdMonitor
 static void DispatchToHandler
 (
     void* param1Ptr,    ///< FD Monitor safe reference.
-    void* param2Ptr     ///< FD event type.
+    void* param2Ptr     ///< epoll() event flags.
 )
 //--------------------------------------------------------------------------------------------------
 {
-    le_event_FdEventType_t eventType = (le_event_FdEventType_t)param2Ptr;
-    event_PerThreadRec_t* perThreadRecPtr = thread_GetEventRecPtr();
+    uint32_t epollEventFlags = (uint32_t)(size_t)param2Ptr;
 
     LOCK
 
@@ -355,40 +402,69 @@ static void DispatchToHandler
     UNLOCK
 
     // If the FD Monitor object has been deleted, we can just ignore this.
-    if (fdMonitorPtr != NULL)
+    if (fdMonitorPtr == NULL)
     {
-        LE_ASSERT(perThreadRecPtr == fdMonitorPtr->threadRecPtr);
-
-        Handler_t* handlerPtr = &(fdMonitorPtr->handlerArray[eventType]);
-
-        if (handlerPtr->handlerFunc != NULL)
-        {
-            // Set the thread's Context Pointer.
-            event_SetCurrentContextPtr(handlerPtr->contextPtr);
-
-            // Call the handler function.
-            handlerPtr->handlerFunc(fdMonitorPtr->fd);
-        }
-        else
-        {
-            TRACE("Discarding event %s for FD Monitor %s (fd %d).",
-                  GetFdEventTypeName(eventType),
-                  fdMonitorPtr->name,
-                  fdMonitorPtr->fd);
-
-            // If this is a write hang-up, then we need to tell epoll to stop monitoring
-            // this fd, because otherwise we could end up wasting power and spamming the
-            // log with debug messages while we detect and discard this event over and over.
-            if (eventType == LE_EVENT_FD_WRITE_HANG_UP)
-            {
-                StopMonitoringFd(fdMonitorPtr);
-            }
-        }
+        TRACE("Discarding events for non-existent FD Monitor %p.", param1Ptr);
+        return;
     }
-    else
+
+    // Sanity check: The FD monitor must belong to the current thread.
+    LE_ASSERT(thread_GetEventRecPtr() == fdMonitorPtr->threadRecPtr);
+
+    // Mask out any events that have been disabled since epoll_wait() reported these events to us.
+    epollEventFlags &= (fdMonitorPtr->epollEvents | EPOLLERR | EPOLLHUP | EPOLLRDHUP);
+
+    // If there's nothing left to report to the handler, don't call it.
+    if (epollEventFlags == 0)
     {
-        TRACE("Discarding event %s for non-existent FD Monitor.", GetFdEventTypeName(eventType));
+        // Note: if the fd is always ready to read or write (is not supported by epoll()), then
+        //       we will only end up in here if both POLLIN and POLLOUT are disabled, in which case
+        //       returning now will prevent re-queuing of DispatchToHandler(), which is what we
+        //       want.  When either POLLIN or POLLOUT are re-enabled, le_fdMonitor_Enable() will
+        //       call fdMon_Report() to get things going again.
+        return;
     }
+
+    // Translate the epoll() events into poll() events.
+    short pollEvents = EPollToPoll(epollEventFlags);
+
+    if (IS_TRACE_ENABLED())
+    {
+        char eventsTextBuff[128];
+
+        TRACE("Calling event handler for FD Monitor %s (fd %d, events %s).",
+              fdMonitorPtr->name,
+              fdMonitorPtr->fd,
+              GetPollEventsText(eventsTextBuff, sizeof(eventsTextBuff), pollEvents));
+    }
+
+    // Increment the reference count on the Monitor object in case the handler deletes it.
+    le_mem_AddRef(fdMonitorPtr);
+
+    // Store a pointer to the FD Monitor as thread-specific data so le_fdMonitor_GetMonitor()
+    // and le_fdMonitor_GetContextPtr() can find it.
+    LE_ASSERT(pthread_setspecific(FDMonitorPtrKey, fdMonitorPtr) == 0);
+
+    // Set the thread's event loop Context Pointer.
+    event_SetCurrentContextPtr(fdMonitorPtr->contextPtr);
+
+    // Call the handler function.
+    fdMonitorPtr->handlerFunc(fdMonitorPtr->fd, pollEvents);
+
+    // Clear the thread-specific pointer to the FD Monitor.
+    LE_ASSERT(pthread_setspecific(FDMonitorPtrKey, NULL) == 0);
+
+    // If this fd is always ready (is not supported by epoll) and either POLLIN or POLLOUT
+    // are enabled, then queue up another dispatcher for this FD Monitor.
+    // If neither are enabled, then le_fdMonitor_Enable() will queue the dispatcher
+    // when one of them is re-enabled.
+    if ((fdMonitorPtr->isAlwaysReady) && (fdMonitorPtr->epollEvents & (EPOLLIN | EPOLLOUT)))
+    {
+        fdMon_Report(fdMonitorPtr->safeRef, fdMonitorPtr->epollEvents & (EPOLLIN | EPOLLOUT));
+    }
+
+    // Release our reference.  We don't need the Monitor object anymore.
+    le_mem_Release(fdMonitorPtr);
 }
 
 
@@ -403,6 +479,11 @@ static void UpdateEpollFd
 )
 //--------------------------------------------------------------------------------------------------
 {
+    if (monitorPtr->isAlwaysReady)
+    {
+        return;
+    }
+
     struct epoll_event ev;
 
     ev.events = monitorPtr->epollEvents;
@@ -414,8 +495,8 @@ static void UpdateEpollFd
     {
         if (errno == EBADF)
         {
-            TRACE("epoll_ctl(MOD) for fd %d resulted in EBADF.  Probably because connection"
-                  " closed before deleting FD Monitor %s.",
+            LE_FATAL("epoll_ctl(MOD) resulted in EBADF.  Probably because fd %d was closed"
+                     " before deleting FD Monitor '%s'.",
                   monitorPtr->fd,
                   monitorPtr->name);
         }
@@ -430,53 +511,6 @@ static void UpdateEpollFd
     }
 }
 
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Enables monitoring of a specific event on a specific FD.
- **/
-//--------------------------------------------------------------------------------------------------
-static void EnableFdMonitoring
-(
-    FdMonitor_t*            monitorPtr,
-    le_event_FdEventType_t  eventType
-)
-//--------------------------------------------------------------------------------------------------
-{
-    // Add the epoll event flag to the flag set being monitored for this fd.
-    // (Not necessary for EPOLLERR or EPOLLHUP.  They are always monitored, no matter what.)
-    uint32_t epollEventFlag = ConvertToEPollFlag(eventType, monitorPtr->wakeUp); // Note: checks eventType.
-    if ((epollEventFlag != EPOLLERR) && (epollEventFlag != EPOLLHUP))
-    {
-        monitorPtr->epollEvents |= epollEventFlag;
-
-        UpdateEpollFd(monitorPtr);
-    }
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Disables monitoring of a specific event on a specific FD.
- **/
-//--------------------------------------------------------------------------------------------------
-static void DisableFdMonitoring
-(
-    FdMonitor_t*            monitorPtr,
-    le_event_FdEventType_t  eventType
-)
-//--------------------------------------------------------------------------------------------------
-{
-    // Remove the epoll event flag from the flag set being monitored for this fd.
-    // (Not possible for EPOLLERR or EPOLLHUP.  They are always monitored, no matter what.)
-    uint32_t epollEventFlag = ConvertToEPollFlag(eventType, monitorPtr->wakeUp); // Note: checks eventType.
-    if ((epollEventFlag != EPOLLERR) && (epollEventFlag != EPOLLHUP))
-    {
-        monitorPtr->epollEvents &= (~epollEventFlag);
-
-        UpdateEpollFd(monitorPtr);
-    }
-}
 
 
 // ==============================================
@@ -502,14 +536,15 @@ void fdMon_Init
     FdMonitorPool = le_mem_CreatePool("FdMonitor", sizeof(FdMonitor_t));
     le_mem_ExpandPool(FdMonitorPool, DEFAULT_FD_MONITOR_POOL_SIZE);
 
-    // Create the Safe Reference Maps.
+    // Create the Safe Reference Map.
     /// @todo Make this configurable.
     FdMonitorRefMap = le_ref_CreateMap("FdMonitors", DEFAULT_FD_MONITOR_POOL_SIZE);
-    HandlerRefMap = le_ref_CreateMap("FdEventHandlers",
-                                     DEFAULT_FD_MONITOR_POOL_SIZE * LE_EVENT_NUM_FD_EVENT_TYPES);
 
     // Get a reference to the trace keyword that is used to control tracing in this module.
     TraceRef = le_log_GetTraceRef("fdMonitor");
+
+    // Create the thread-specific data key for the FD Monitor Ptr of the current running handler.
+    LE_ASSERT(pthread_key_create(&FDMonitorPtrKey, NULL) == 0);
 }
 
 
@@ -546,47 +581,15 @@ void fdMon_Report
 )
 //--------------------------------------------------------------------------------------------------
 {
-    // Queue up function calls for any flags set in epoll's event.
-
-    if (eventFlags & EPOLLIN)
-    {
-        le_event_QueueFunction(DispatchToHandler, safeRef, (void*)LE_EVENT_FD_READABLE);
-    }
-
-    if (eventFlags & EPOLLPRI)
-    {
-        le_event_QueueFunction(DispatchToHandler, safeRef, (void*)LE_EVENT_FD_READABLE_URGENT);
-    }
-
-    if (eventFlags & EPOLLOUT)
-    {
-        le_event_QueueFunction(DispatchToHandler, safeRef, (void*)LE_EVENT_FD_WRITEABLE);
-    }
-
-    if (eventFlags & EPOLLHUP)
-    {
-        le_event_QueueFunction(DispatchToHandler, safeRef, (void*)LE_EVENT_FD_WRITE_HANG_UP);
-    }
-
-    if (eventFlags & EPOLLRDHUP)
-    {
-        le_event_QueueFunction(DispatchToHandler, safeRef, (void*)LE_EVENT_FD_READ_HANG_UP);
-    }
-
-    if (eventFlags & EPOLLERR)
-    {
-        le_event_QueueFunction(DispatchToHandler, safeRef, (void*)LE_EVENT_FD_ERROR);
-    }
-
-    LE_CRIT_IF(eventFlags & ~(EPOLLIN | EPOLLPRI | EPOLLOUT | EPOLLHUP | EPOLLRDHUP | EPOLLERR),
-               "Extra flags found in fd event report. (%xd)",
-               eventFlags);
+    le_event_QueueFunction(DispatchToHandler, safeRef, (void*)(ssize_t)eventFlags);
 }
 
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Delete all FD Monitor objects for the calling thread.
+ *
+ * @note    This is only called by the thread that is being destructed.
  */
 //--------------------------------------------------------------------------------------------------
 void fdMon_DestructThread
@@ -619,16 +622,32 @@ void fdMon_DestructThread
  * If that thread is blocked, no events will be detected for that file descriptor until that
  * thread is unblocked and returns to its event loop.
  *
- * @return
- *      A reference to the object, which is needed for later deletion.
+ * Events that can be enabled for monitoring:
  *
- * @note Doesn't return on failure, so there's no need to check the return value for errors.
+ * - @c POLLIN = Data available to read.
+ * - @c POLLPRI = Urgent data available to read (e.g., out-of-band data on a socket).
+ * - @c POLLOUT = Writing to the fd should accept some data now.
+ *
+ * These are bitmask values and can be combined using the bit-wise OR operator ('|').
+ *
+ * The following events are always monitored, even if not requested:
+ *
+ * - @c POLLRDHUP = Other end of stream socket closed or shutdown.
+ * - @c POLLERR = Error occurred.
+ * - @c POLLHUP = Hang up.
+ *
+ * @return
+ *      Reference to the object, which is needed for later deletion.
+ *
+ * @note Doesn't return on failure, there's no need to check the return value for errors.
  */
 //--------------------------------------------------------------------------------------------------
-le_event_FdMonitorRef_t le_event_CreateFdMonitor
+le_fdMonitor_Ref_t le_fdMonitor_Create
 (
-    const char*     name,       ///< [in] Name of the object (for diagnostics).
-    int             fd          ///< [in] File descriptor to be monitored for events.
+    const char*             name,       ///< [in] Name of the object (for diagnostics).
+    int                     fd,         ///< [in] File descriptor to be monitored for events.
+    le_fdMonitor_HandlerFunc_t handlerFunc, ///< [in] Handler function.
+    short                   events      ///< [in] Initial set of events to be monitored.
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -641,16 +660,11 @@ le_event_FdMonitorRef_t le_event_CreateFdMonitor
     // Initialize the object.
     fdMonitorPtr->link = LE_DLS_LINK_INIT;
     fdMonitorPtr->fd = fd;
+    fdMonitorPtr->epollEvents = PollToEPoll(events) | EPOLLWAKEUP;  // Non-deferrable by default.
+    fdMonitorPtr->isAlwaysReady = false;
     fdMonitorPtr->threadRecPtr = perThreadRecPtr;
-    memset(fdMonitorPtr->handlerArray, 0, sizeof(fdMonitorPtr->handlerArray));
-
-    // To start with, no events are in the set to be monitored.  They will be added as handlers
-    // are registered for them. (Although, EPOLLHUP and EPOLLERR will always be monitored
-    // regardless of what flags we specify).  We use epoll in "level-triggered mode".
-    fdMonitorPtr->epollEvents = 0;
-
-    // Assume that the event should wake up the system; can be changed later.
-    fdMonitorPtr->wakeUp = true;
+    fdMonitorPtr->handlerFunc = handlerFunc;
+    fdMonitorPtr->contextPtr = NULL;
 
     // Copy the name into it.
     if (le_utf8_Copy(fdMonitorPtr->name, name, sizeof(fdMonitorPtr->name), NULL) == LE_OVERFLOW)
@@ -672,7 +686,22 @@ le_event_FdMonitorRef_t le_event_CreateFdMonitor
     ev.data.ptr = fdMonitorPtr->safeRef;
     if (epoll_ctl(perThreadRecPtr->epollFd, EPOLL_CTL_ADD, fd, &ev) == -1)
     {
-        LE_FATAL("epoll_ctl(ADD) failed for fd %d. errno = %d (%m)", fd, errno);
+        if (errno == EPERM)
+        {
+            LE_DEBUG("fd %d doesn't support epoll(), assuming always readable and writeable.", fd);
+            fdMonitorPtr->isAlwaysReady = true;
+
+            // If either EPOLLIN or EPOLLOUT are enabled, queue up the handler for this now.
+            uint32_t epollEvents = fdMonitorPtr->epollEvents & (EPOLLIN | EPOLLOUT);
+            if (epollEvents != 0)
+            {
+                fdMon_Report(fdMonitorPtr->safeRef, epollEvents);
+            }
+        }
+        else
+        {
+            LE_FATAL("epoll_ctl(ADD) failed for fd %d. errno = %d (%m)", fd, errno);
+        }
     }
 
     UNLOCK
@@ -683,14 +712,21 @@ le_event_FdMonitorRef_t le_event_CreateFdMonitor
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Indicate if the system should be woken up from suspend state when an event happens for a
- * File Descriptor Monitor object.
+ * Enables monitoring for events on a file descriptor.
+ *
+ * Events that can be enabled for monitoring:
+ *
+ * - @c POLLIN = Data available to read.
+ * - @c POLLPRI = Urgent data available to read (e.g., out-of-band data on a socket).
+ * - @c POLLOUT = Writing to the fd should accept some data now.
+ *
+ * These are bitmask values and can be combined using the bit-wise OR operator ('|').
  */
 //--------------------------------------------------------------------------------------------------
-void le_event_WakeUp
+void le_fdMonitor_Enable
 (
-    le_event_FdMonitorRef_t  monitorRef, ///< [in] Reference to the File Descriptor Monitor object.
-    bool                     wakeUp      ///< [in] Optional EPOLLWAKEUP flag for epoll_wait().
+    le_fdMonitor_Ref_t  monitorRef, ///< [in] Reference to the File Descriptor Monitor object.
+    short               events      ///< [in] Bit map of events.
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -709,33 +745,66 @@ void le_event_WakeUp
                 monitorPtr->name,
                 monitorPtr->fd);
 
-    monitorPtr->wakeUp = wakeUp;
+    short filteredEvents = events & (POLLIN | POLLOUT | POLLPRI);
+
+    if (filteredEvents != events)
+    {
+        char textBuff[64];
+
+        LE_WARN("Attempt to enable events that can't be disabled (%s).",
+                GetPollEventsText(textBuff, sizeof(textBuff), events & ~filteredEvents));
+    }
+
+    uint32_t epollEvents = PollToEPoll(filteredEvents);
+
+    // If the fd doesn't support epoll, we assume it is always ready for read and write.
+    // As long as EPOLLIN or EPOLLOUT (or both) is enabled for one of these fds, DispatchToHandler()
+    // keeps re-queueing itself to the thread's event queue.  But it will stop doing that if
+    // EPOLLIN and EPOLLOUT are both disabled.  So, here is where we get things going again when
+    // EPOLLIN or EPOLLOUT is enabled outside DispatchToHandler() for that fd.
+    if ( (monitorPtr->isAlwaysReady)
+        && (epollEvents & (EPOLLIN | EPOLLOUT))
+        && ((monitorPtr->epollEvents & (EPOLLIN | EPOLLOUT)) == 0) )
+    {
+        // Fetch the pointer to the FD Monitor from thread-specific data.
+        // This will be NULL if we are not inside an FD Monitor handler.
+        FdMonitor_t* handlerMonitorPtr = pthread_getspecific(FDMonitorPtrKey);
+
+        // If no handler is running or some other fd's handler is running,
+        if ((handlerMonitorPtr == NULL) || (handlerMonitorPtr->safeRef == monitorRef))
+        {
+            // Queue up DispatchToHandler() for this fd.
+            fdMon_Report(monitorRef, epollEvents & (EPOLLIN | EPOLLOUT));
+        }
+    }
+
+    // Bit-wise OR the newly enabled event flags into the FD Monitor's epoll(7) flags set.
+    monitorPtr->epollEvents |= epollEvents;
+
+    UpdateEpollFd(monitorPtr);
 }
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Registers a handler for a specific type of file descriptor event with a given
- * File Descriptor Monitor object.
+ * Disables monitoring for events on a file descriptor.
  *
- * When the handler function is called, it will be called by the the thread that registered
- * the handler, which must also be the same thread that created the FD Monitor object.
+ * Events that can be disabled for monitoring:
  *
- * @return A reference to the handler function.
+ * - @c POLLIN = Data available to read.
+ * - @c POLLPRI = Urgent data available to read (e.g., out-of-band data on a socket).
+ * - @c POLLOUT = Writing to the fd should accept some data now.
  *
- * @note    Doesn't return on failure, so there's no need to check the return value for errors.
+ * These are bitmask values and can be combined using the bit-wise OR operator ('|').
  */
 //--------------------------------------------------------------------------------------------------
-le_event_FdHandlerRef_t le_event_SetFdHandler
+void le_fdMonitor_Disable
 (
-    le_event_FdMonitorRef_t  monitorRef, ///< [in] Reference to the File Descriptor Monitor object.
-    le_event_FdEventType_t   eventType,  ///< [in] The type of event to be reported to this handler.
-    le_event_FdHandlerFunc_t handlerFunc ///< [in] The handler function.
+    le_fdMonitor_Ref_t  monitorRef, ///< [in] Reference to the File Descriptor Monitor object.
+    short               events      ///< [in] Bit map of events.
 )
 //--------------------------------------------------------------------------------------------------
 {
-    LE_ASSERT(handlerFunc != NULL);
-
     // Look up the File Descriptor Monitor object using the safe reference provided.
     // Note that the safe reference map is shared by all threads in the process, so it
     // must be protected using the mutex.  The File Descriptor Monitor objects, on the other
@@ -751,118 +820,42 @@ le_event_FdHandlerRef_t le_event_SetFdHandler
                 monitorPtr->name,
                 monitorPtr->fd);
 
-    // Get a pointer to the Handler object in the appropriate spot for this type of event in the
-    // FD Monitor's array of handlers.
-    Handler_t* handlerPtr = &(monitorPtr->handlerArray[eventType]);
+    short filteredEvents = events & (POLLIN | POLLOUT | POLLPRI);
 
-    // Double check that no one has tried setting this handler yet.
-    LE_FATAL_IF(handlerPtr->handlerFunc != NULL,
-                "FD handler already set for event '%s' on FD Monitor '%s' (fd %d).",
-                GetFdEventTypeName(eventType),
-                monitorPtr->name,
-                monitorPtr->fd);
+    LE_WARN_IF(filteredEvents != events,
+               "Only POLLIN, POLLOUT, and POLLPRI events can be disabled. (fd monitor '%s')",
+               monitorPtr->name);
 
-    // Initialize the Handler object.
-    handlerPtr->handlerFunc = handlerFunc;
-    handlerPtr->contextPtr = NULL;
-    handlerPtr->monitorPtr = monitorPtr;
-    LOCK
-    handlerPtr->safeRef = le_ref_CreateRef(HandlerRefMap, handlerPtr);
-    UNLOCK
+    // Convert the events from POLLxx events to EPOLLxx events.
+    uint32_t epollEvents = PollToEPoll(filteredEvents);
 
-    // Enable the monitoring of this event.
-    EnableFdMonitoring(monitorPtr, eventType);
+    // Remove them from the FD Monitor's epoll(7) flags set.
+    monitorPtr->epollEvents &= (~epollEvents);
 
-    return handlerPtr->safeRef;
+    UpdateEpollFd(monitorPtr);
 }
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Sets the Context Pointer for a handler for a file descriptor event.  This can be retrieved
- * by the handler by calling le_event_GetContextPtr() when the handler function is running.
+ * Sets if processing of events on a given fd is deferrable (the system is allowed to go to
+ * sleep while there are monitored events pending for this fd) or urgent (the system will be kept
+ * awake until there are no monitored events waiting to be handled for this fd).
+ *
+ * If the process has @c CAP_EPOLLWAKEUP (or @c CAP_BLOCK_SUSPEND) capability, then fd events are
+ * considered urgent by default.
+ *
+ * If the process does not have @c CAP_EPOLLWAKEUP (or @c CAP_BLOCK_SUSPEND) capability, then fd
+ * events are always deferrable, and calls to this function have no effect.
  */
 //--------------------------------------------------------------------------------------------------
-void le_event_SetFdHandlerContextPtr
+void le_fdMonitor_SetDeferrable
 (
-    le_event_FdHandlerRef_t handlerRef, ///< [in] Reference to the handler.
-    void*                   contextPtr  ///< [in] Opaque context pointer value.
+    le_fdMonitor_Ref_t monitorRef,  ///< [in] Reference to the File Descriptor Monitor object.
+    bool               isDeferrable ///< [in] true (deferrable) or false (urgent).
 )
 //--------------------------------------------------------------------------------------------------
 {
-    LOCK
-
-    Handler_t* handlerPtr = le_ref_Lookup(HandlerRefMap, handlerRef);
-
-    LE_ASSERT(handlerPtr != NULL);
-
-    handlerPtr->contextPtr = contextPtr;
-
-    UNLOCK
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Deregisters a handler for a file descriptor event.
- */
-//--------------------------------------------------------------------------------------------------
-void le_event_ClearFdHandler
-(
-    le_event_FdHandlerRef_t  handlerRef  ///< [in] Reference to the handler.
-)
-//--------------------------------------------------------------------------------------------------
-{
-    // Look up the Handler object using the safe reference provided.
-    // Note that the safe reference map is shared by all threads in the process, so it
-    // must be protected using the mutex.  The Handler objects, on the other
-    // hand, are only allowed to be accessed by the one thread that created them, so it is
-    // safe to unlock the mutex after doing the safe reference lookup.
-    LOCK
-    Handler_t* handlerPtr = le_ref_Lookup(HandlerRefMap, handlerRef);
-    UNLOCK
-
-    LE_FATAL_IF(handlerPtr == NULL, "FD event handler %p doesn't exist!", handlerRef);
-
-    FdMonitor_t* monitorPtr = handlerPtr->monitorPtr;
-
-    LE_FATAL_IF(thread_GetEventRecPtr() != monitorPtr->threadRecPtr,
-                "FD Monitor '%s' (fd %d) is owned by another thread.",
-                monitorPtr->name,
-                monitorPtr->fd);
-
-    LE_ASSERT(handlerPtr->handlerFunc != NULL);
-
-    le_event_FdEventType_t eventType = INDEX_OF_ARRAY_MEMBER(monitorPtr->handlerArray, handlerPtr);
-    LE_ASSERT(eventType < LE_EVENT_NUM_FD_EVENT_TYPES);
-
-    // Clear the Handler object.
-    handlerPtr->handlerFunc = NULL;
-    handlerPtr->contextPtr = NULL;
-    LOCK
-    le_ref_DeleteRef(HandlerRefMap, handlerPtr->safeRef);
-    UNLOCK
-    handlerPtr->safeRef = NULL;
-
-    // Disable the monitoring of this event.
-    DisableFdMonitoring(monitorPtr, eventType);
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Deregisters a handler for a file descriptor event.
- */
-//--------------------------------------------------------------------------------------------------
-void le_event_ClearFdHandlerByEventType
-(
-    le_event_FdMonitorRef_t  monitorRef, ///< [in] Reference to the File Descriptor Monitor object.
-    le_event_FdEventType_t   eventType   ///< [in] The type of event to clear the handler for.
-)
-//--------------------------------------------------------------------------------------------------
-{
-    LE_ASSERT(eventType < LE_EVENT_NUM_FD_EVENT_TYPES);
-
     // Look up the File Descriptor Monitor object using the safe reference provided.
     // Note that the safe reference map is shared by all threads in the process, so it
     // must be protected using the mutex.  The File Descriptor Monitor objects, on the other
@@ -878,39 +871,109 @@ void le_event_ClearFdHandlerByEventType
                 monitorPtr->name,
                 monitorPtr->fd);
 
-    // Get a pointer to the Handler object in the appropriate spot for this type of event in the
-    // FD Monitor's array of handlers.
-    Handler_t* handlerPtr = &(monitorPtr->handlerArray[eventType]);
+    // Set/clear the EPOLLWAKEUP flag in the FD Monitor's epoll(7) flags set.
+    if (isDeferrable)
+    {
+        monitorPtr->epollEvents &= ~EPOLLWAKEUP;
+    }
+    else
+    {
+        monitorPtr->epollEvents |= EPOLLWAKEUP;
+    }
 
-    LE_CRIT_IF(handlerPtr->handlerFunc == NULL,
-               "Handler cleared when not set for FD Monitor '%s' (fd %d), event type %d.",
-               monitorPtr->name,
-               monitorPtr->fd,
-               eventType);
+    UpdateEpollFd(monitorPtr);
+}
 
-    // Clear the Handler object.
-    handlerPtr->handlerFunc = NULL;
-    handlerPtr->contextPtr = NULL;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets the Context Pointer for File Descriptor Monitor's handler function.  This can be retrieved
+ * by the handler by calling le_fdMonitor_GetContextPtr() when the handler function is running.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_fdMonitor_SetContextPtr
+(
+    le_fdMonitor_Ref_t  monitorRef, ///< [in] Reference to the File Descriptor Monitor.
+    void*               contextPtr  ///< [in] Opaque context pointer value.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // Look up the File Descriptor Monitor object using the safe reference provided.
+    // Note that the safe reference map is shared by all threads in the process, so it
+    // must be protected using the mutex.  The File Descriptor Monitor objects, on the other
+    // hand, are only allowed to be accessed by the one thread that created them, so it is
+    // safe to unlock the mutex after doing the safe reference lookup.
     LOCK
-    le_ref_DeleteRef(HandlerRefMap, handlerPtr->safeRef);
+    FdMonitor_t* monitorPtr = le_ref_Lookup(FdMonitorRefMap, monitorRef);
     UNLOCK
-    handlerPtr->safeRef = NULL;
 
-    // Disable the monitoring of this event.
-    DisableFdMonitoring(monitorPtr, eventType);
+    LE_FATAL_IF(monitorPtr == NULL, "File Descriptor Monitor %p doesn't exist!", monitorRef);
+    LE_FATAL_IF(thread_GetEventRecPtr() != monitorPtr->threadRecPtr,
+                "FD Monitor '%s' (fd %d) is owned by another thread.",
+                monitorPtr->name,
+                monitorPtr->fd);
+
+    monitorPtr->contextPtr = contextPtr;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets the Context Pointer for File Descriptor Monitor's handler function.
+ *
+ * @return  The context pointer set using le_fdMonitor_SetContextPtr(), or NULL if it hasn't been
+ *          set.
+ *
+ * @note    This only works inside the handler function.
+ */
+//--------------------------------------------------------------------------------------------------
+void* le_fdMonitor_GetContextPtr
+(
+    void
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // Fetch the pointer to the FD Monitor from thread-specific data.
+    FdMonitor_t* monitorPtr = pthread_getspecific(FDMonitorPtrKey);
+
+    LE_FATAL_IF(monitorPtr == NULL, "Not inside an fd event handler.");
+
+    return monitorPtr->contextPtr;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets a reference to the File Descriptor Monitor whose handler function is currently running.
+ *
+ * @return  File Descriptor Monitor reference.
+ *
+ * @note    This only works inside the handler function.
+ **/
+//--------------------------------------------------------------------------------------------------
+le_fdMonitor_Ref_t le_fdMonitor_GetMonitor
+(
+    void
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // Fetch the pointer to the FD Monitor from thread-specific data.
+    FdMonitor_t* monitorPtr = pthread_getspecific(FDMonitorPtrKey);
+
+    LE_FATAL_IF(monitorPtr == NULL, "Not inside an fd event handler.");
+
+    return monitorPtr->safeRef;
 }
 
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Deletes a file descriptor monitor object.
- *
- * This will automatically remove all handlers added to the object.
  */
 //--------------------------------------------------------------------------------------------------
-void le_event_DeleteFdMonitor
+void le_fdMonitor_Delete
 (
-    le_event_FdMonitorRef_t monitorRef  ///< [in] Reference to the File Descriptor Monitor object.
+    le_fdMonitor_Ref_t monitorRef  ///< [in] Reference to the File Descriptor Monitor object.
 )
 //--------------------------------------------------------------------------------------------------
 {

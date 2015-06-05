@@ -1,19 +1,7 @@
 /**
  * @page c_doublyLinkedList Doubly Linked List API
  *
- * @ref le_doublyLinkedList.h "Click here for the API Reference documentation."
- *
- * <HR>
- *
- * @ref dls_createList <br>
- * @ref dls_createNode <br>
- * @ref dls_add <br>
- * @ref dls_remove <br>
- * @ref dls_peek <br>
- * @ref dls_swap <br>
- * @ref dls_query <br>
- * @ref dls_fifo <br>
- * @ref dls_synch <br>
+ * @ref le_doublyLinkedList.h "API Reference"
  *
  * <HR>
  *

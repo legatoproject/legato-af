@@ -93,17 +93,13 @@ typedef struct le_msg_Session
     bool                            isClient;       ///< true = client-side, false = server-side.
     int                             socketFd;       ///< File descriptor for the connected socket.
     le_thread_Ref_t                 threadRef;      ///< The thread that handles this session.
-    le_event_FdMonitorRef_t         fdMonitorRef;   ///< File descriptor monitor for the socket.
+    le_fdMonitor_Ref_t              fdMonitorRef;   ///< File descriptor monitor for the socket.
     le_msg_ServiceRef_t             serviceRef;     ///< The service being accessed.
 
     le_dls_List_t                   txnList;        ///< List of request messages that have been
                                                     ///  sent and are waiting for their response.
 
     le_dls_List_t                   transmitQueue;  ///< Queue of messages waiting to be sent.
-
-    le_event_FdHandlerRef_t         writeabilityHandlerRef; ///< Reference for socket fd
-                                                            ///  writeability notification handler.
-                                                            ///  NULL if no handler is set.
 
     le_dls_List_t                   receiveQueue;   ///< Queue of received messages waiting to be
                                                     /// processed.
@@ -488,7 +484,6 @@ static Session_t* CreateSession
 
     sessionPtr->txnList = LE_DLS_LIST_INIT;
     sessionPtr->transmitQueue = LE_DLS_LIST_INIT;
-    sessionPtr->writeabilityHandlerRef = NULL;
     sessionPtr->receiveQueue = LE_DLS_LIST_INIT;
 
     sessionPtr->contextPtr = NULL;
@@ -532,7 +527,7 @@ static void CloseSession
     // Delete the socket and the FD Monitor.
     if (sessionPtr->fdMonitorRef != NULL)
     {
-        le_event_DeleteFdMonitor(sessionPtr->fdMonitorRef);
+        le_fdMonitor_Delete(sessionPtr->fdMonitorRef);
         sessionPtr->fdMonitorRef = NULL;
     }
     fd_Close(sessionPtr->socketFd);
@@ -626,9 +621,6 @@ static void ConnectToServiceDirectory
 }
 
 
-static void ClientSocketWriteable(int);
-static void ServerSocketWriteable(int);
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Tells a Session object's FD Monitor to start notifying us when the session's socket FD becomes
@@ -641,24 +633,7 @@ static void EnableWriteabilityNotification
 )
 //--------------------------------------------------------------------------------------------------
 {
-    if (sessionPtr->writeabilityHandlerRef == NULL)
-    {
-        le_event_FdHandlerFunc_t handlerFunc;
-
-        if (sessionPtr->isClient)
-        {
-            handlerFunc = ClientSocketWriteable;
-        }
-        else
-        {
-            handlerFunc = ServerSocketWriteable;
-        }
-
-        sessionPtr->writeabilityHandlerRef = le_event_SetFdHandler(sessionPtr->fdMonitorRef,
-                                                                   LE_EVENT_FD_WRITEABLE,
-                                                                   handlerFunc);
-        le_event_SetFdHandlerContextPtr(sessionPtr->writeabilityHandlerRef, sessionPtr);
-    }
+    le_fdMonitor_Enable(sessionPtr->fdMonitorRef, POLLOUT);
 }
 
 
@@ -674,11 +649,7 @@ static inline void DisableWriteabilityNotification
 )
 //--------------------------------------------------------------------------------------------------
 {
-    if (sessionPtr->writeabilityHandlerRef != NULL)
-    {
-        le_event_ClearFdHandler(sessionPtr->writeabilityHandlerRef);
-        sessionPtr->writeabilityHandlerRef = NULL;
-    }
+    le_fdMonitor_Disable(sessionPtr->fdMonitorRef, POLLOUT);
 }
 
 
@@ -868,13 +839,10 @@ static void ProcessReceivedMessages
 //--------------------------------------------------------------------------------------------------
 static void ClientSocketHangUp
 (
-    int fd      ///< [in] The file descriptor that experienced the event.
+    Session_t* sessionPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
-    // Get the Session object.
-    Session_t* sessionPtr = le_event_GetContextPtr();
-
     TRACE("Socket closed for session with service (%s:%s).",
           le_msg_GetServiceName(sessionPtr->serviceRef),
           le_msg_GetProtocolIdStr(le_msg_GetServiceProtocol(sessionPtr->serviceRef)));
@@ -920,13 +888,10 @@ static void ClientSocketHangUp
 //--------------------------------------------------------------------------------------------------
 static void ClientSocketError
 (
-    int fd      ///< [in] The file descriptor that experienced the event.
+    Session_t* sessionPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
-    // Get the Session object.
-    Session_t* sessionPtr = le_event_GetContextPtr();
-
     LE_ERROR("Error detected on socket for session with service (%s:%s).",
              le_msg_GetServiceName(sessionPtr->serviceRef),
              le_msg_GetProtocolIdStr(le_msg_GetSessionProtocol(sessionPtr)));
@@ -942,7 +907,7 @@ static void ClientSocketError
             // If the error occurs while the session is open, handle it as a close.
             // NOTE: We are currently running a handler that has the same Context Pointer
             // as the Client Socket Hang Up handler, so we can just call that handler directly.
-            ClientSocketHangUp(fd);
+            ClientSocketHangUp(sessionPtr);
             break;
 
         case LE_MSG_SESSION_STATE_CLOSED:
@@ -995,13 +960,10 @@ static void ReceiveMessages
 //--------------------------------------------------------------------------------------------------
 static void ServerSocketHangUp
 (
-    int fd      ///< [in] The file descriptor that experienced the event.
+    Session_t* sessionPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
-    // Get the Session object.
-    Session_t* sessionPtr = le_event_GetContextPtr();
-
     LE_FATAL_IF(sessionPtr->state != LE_MSG_SESSION_STATE_OPEN,
                 "Unexpected session state (%d).",
                 sessionPtr->state);
@@ -1021,20 +983,17 @@ static void ServerSocketHangUp
 //--------------------------------------------------------------------------------------------------
 static void ServerSocketError
 (
-    int fd      ///< [in] The file descriptor that experienced the event.
+    Session_t* sessionPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
-    // Get the Session object.
-    Session_t* sessionPtr = le_event_GetContextPtr();
+    LE_FATAL_IF(sessionPtr->state != LE_MSG_SESSION_STATE_OPEN,
+                "Unexpected session state (%d).",
+                sessionPtr->state);
 
     LE_ERROR("Error detected on socket for session with service (%s:%s).",
              le_msg_GetServiceName(sessionPtr->serviceRef),
              le_msg_GetProtocolIdStr(le_msg_GetSessionProtocol(sessionPtr)));
-
-    LE_FATAL_IF(sessionPtr->state != LE_MSG_SESSION_STATE_OPEN,
-                "Unexpected session state (%d).",
-                sessionPtr->state);
 
     DeleteSession(sessionPtr);
 }
@@ -1129,13 +1088,10 @@ static void SendFromTransmitQueue
 //--------------------------------------------------------------------------------------------------
 static void ClientSocketReadable
 (
-    int fd      ///< [in] The file descriptor that experienced the event.
+    Session_t* sessionPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
-    // Get the Session object.
-    Session_t* sessionPtr = le_event_GetContextPtr();
-
     switch (sessionPtr->state)
     {
         case LE_MSG_SESSION_STATE_CLOSED:
@@ -1182,13 +1138,10 @@ static void ClientSocketReadable
 //--------------------------------------------------------------------------------------------------
 static void ClientSocketWriteable
 (
-    int fd      ///< [in] The file descriptor that experienced the event.
+    Session_t* sessionPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
-    // Get the Session object.
-    Session_t* sessionPtr = le_event_GetContextPtr();
-
     switch (sessionPtr->state)
     {
         case LE_MSG_SESSION_STATE_OPENING:
@@ -1210,19 +1163,51 @@ static void ClientSocketWriteable
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * File descriptor monitoring event handler function for client-side of IPC sockets.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void ClientSocketEventHandler
+(
+    int fd,         ///< Socket file descriptor.
+    short events    ///< Bit map of events that occurred (see 'man 2 poll')
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // Get the Session object.
+    Session_t* sessionPtr = le_fdMonitor_GetContextPtr();
+
+    if (events & POLLIN)
+    {
+        ClientSocketReadable(sessionPtr);
+    }
+
+    if (events & (POLLHUP | POLLRDHUP))
+    {
+        ClientSocketHangUp(sessionPtr);
+    }
+    else if (events & POLLERR)
+    {
+        ClientSocketError(sessionPtr);
+    }
+    else if (events & POLLOUT)
+    {
+        ClientSocketWriteable(sessionPtr);
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Server-side handler for when a Session's socket becomes ready for reading (i.e., handle
  * an incoming message).
  */
 //--------------------------------------------------------------------------------------------------
 static void ServerSocketReadable
 (
-    int fd      ///< [in] The file descriptor that experienced the event.
+    Session_t* sessionPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
-    // Get the Session object.
-    Session_t* sessionPtr = le_event_GetContextPtr();
-
     LE_FATAL_IF(sessionPtr->state != LE_MSG_SESSION_STATE_OPEN,
                 "Unexpected session state (%d).",
                 sessionPtr->state);
@@ -1242,13 +1227,10 @@ static void ServerSocketReadable
 //--------------------------------------------------------------------------------------------------
 static void ServerSocketWriteable
 (
-    int fd      ///< [in] The file descriptor that experienced the event.
+    Session_t* sessionPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
-    // Get the Session object.
-    Session_t* sessionPtr = le_event_GetContextPtr();
-
     LE_FATAL_IF(sessionPtr->state != LE_MSG_SESSION_STATE_OPEN,
                 "Unexpected session state (%d).",
                 sessionPtr->state);
@@ -1259,8 +1241,42 @@ static void ServerSocketWriteable
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Start monitoring for readable, writeable, hang-up, and error events on a given Session's
- * connected socket.
+ * File descriptor monitoring event handler function for server-side of IPC sockets.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void ServerSocketEventHandler
+(
+    int fd,         ///< Socket file descriptor.
+    short events    ///< Bit map of events that occurred (see 'man 2 poll')
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // Get the Session object.
+    Session_t* sessionPtr = le_fdMonitor_GetContextPtr();
+
+    if (events & POLLIN)
+    {
+        ServerSocketReadable(sessionPtr);
+    }
+
+    if (events & (POLLHUP | POLLRDHUP))
+    {
+        ServerSocketHangUp(sessionPtr);
+    }
+    else if (events & POLLERR)
+    {
+        ServerSocketError(sessionPtr);
+    }
+    else if (events & POLLOUT)
+    {
+        ServerSocketWriteable(sessionPtr);
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Start monitoring for events on a given Session's connected socket.
  *
  * @note    This function is used for both clients and servers.
  */
@@ -1268,37 +1284,18 @@ static void ServerSocketWriteable
 static void StartSocketMonitoring
 (
     Session_t*                  sessionPtr,
-    le_event_FdHandlerFunc_t    readableHandler,
-    le_event_FdHandlerFunc_t    closedHandler,
-    le_event_FdHandlerFunc_t    errorHandler
+    le_fdMonitor_HandlerFunc_t  handlerFunc
 )
 //--------------------------------------------------------------------------------------------------
 {
-    le_event_FdHandlerRef_t handlerRef;
-
     const char* serviceName = le_msg_GetServiceName(sessionPtr->serviceRef);
 
-    sessionPtr->fdMonitorRef = le_event_CreateFdMonitor(serviceName, sessionPtr->socketFd);
+    sessionPtr->fdMonitorRef = le_fdMonitor_Create( serviceName,
+                                                    sessionPtr->socketFd,
+                                                    handlerFunc,
+                                                    POLLIN  );
 
-    handlerRef = le_event_SetFdHandler(sessionPtr->fdMonitorRef,
-                                       LE_EVENT_FD_READABLE,
-                                       readableHandler);
-    le_event_SetFdHandlerContextPtr(handlerRef, sessionPtr);
-
-    handlerRef = le_event_SetFdHandler(sessionPtr->fdMonitorRef,
-                                       LE_EVENT_FD_READ_HANG_UP,
-                                       closedHandler);
-    le_event_SetFdHandlerContextPtr(handlerRef, sessionPtr);
-
-    handlerRef = le_event_SetFdHandler(sessionPtr->fdMonitorRef,
-                                       LE_EVENT_FD_WRITE_HANG_UP,
-                                       closedHandler);
-    le_event_SetFdHandlerContextPtr(handlerRef, sessionPtr);
-
-    handlerRef = le_event_SetFdHandler(sessionPtr->fdMonitorRef,
-                                       LE_EVENT_FD_ERROR,
-                                       errorHandler);
-    le_event_SetFdHandlerContextPtr(handlerRef, sessionPtr);
+    le_fdMonitor_SetContextPtr(sessionPtr->fdMonitorRef, sessionPtr);
 }
 
 
@@ -1327,10 +1324,7 @@ static void AttemptOpen
     fd_SetNonBlocking(sessionPtr->socketFd);
 
     // Start monitoring for events on this socket.
-    StartSocketMonitoring(sessionPtr,
-                          ClientSocketReadable,
-                          ClientSocketHangUp,
-                          ClientSocketError);
+    StartSocketMonitoring(sessionPtr, ClientSocketEventHandler);
 
     // NOTE: The next step will be for the server to send us an LE_OK "hello" message, or the
     // connection will be closed if something goes wrong.
@@ -1658,6 +1652,8 @@ le_msg_SessionRef_t msgSession_GetSessionContainingLink
  * Creates a server-side Session object for a given client connection to a given Service.
  *
  * @return A reference to the newly created Session object, or NULL if failed.
+ *
+ * @note Closes the file descriptor on failure.
  */
 //--------------------------------------------------------------------------------------------------
 le_msg_SessionRef_t msgSession_CreateServerSideSession
@@ -1671,6 +1667,7 @@ le_msg_SessionRef_t msgSession_CreateServerSideSession
     if (SendSessionOpenResponse(fd) != LE_OK)
     {
         // Something went wrong.  Abort.
+        fd_Close(fd);
         return NULL;
     }
 
@@ -1685,10 +1682,7 @@ le_msg_SessionRef_t msgSession_CreateServerSideSession
     sessionPtr->socketFd = fd;
 
     // Start monitoring the server-side session connection socket for events.
-    StartSocketMonitoring(sessionPtr,
-                          ServerSocketReadable,
-                          ServerSocketHangUp,
-                          ServerSocketError);
+    StartSocketMonitoring(sessionPtr, ServerSocketEventHandler);
 
     // The session is officially open.
     sessionPtr->state = LE_MSG_SESSION_STATE_OPEN;
@@ -1920,10 +1914,7 @@ void le_msg_OpenSessionSync
             fd_SetNonBlocking(sessionRef->socketFd);
 
             // Start monitoring for events on this socket.
-            StartSocketMonitoring(sessionRef,
-                                  ClientSocketReadable,
-                                  ClientSocketHangUp,
-                                  ClientSocketError);
+            StartSocketMonitoring(sessionRef, ClientSocketEventHandler);
 
             sessionRef->state = LE_MSG_SESSION_STATE_OPEN;
         }
@@ -1998,10 +1989,7 @@ le_result_t msgSession_TryOpenSessionSync
             fd_SetNonBlocking(sessionRef->socketFd);
 
             // Start monitoring for events on this socket.
-            StartSocketMonitoring(sessionRef,
-                                  ClientSocketReadable,
-                                  ClientSocketHangUp,
-                                  ClientSocketError);
+            StartSocketMonitoring(sessionRef, ClientSocketEventHandler);
 
             sessionRef->state = LE_MSG_SESSION_STATE_OPEN;
         }

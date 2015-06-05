@@ -3,12 +3,6 @@
  * @ref le_semaphore.h "API Reference"
  *
  * <HR>
- *
- * @ref create_semaphore <br>
- * @ref use_semaphore <br>
- * @ref delete_semaphore <br>
- * @ref diagnostics_semaphore <br>
- *
  * This API provides standard semaphore functionality, but with added diagnostic capabilities.
  * These semaphores can only be shared by threads within the same process.
  *

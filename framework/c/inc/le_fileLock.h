@@ -1,18 +1,9 @@
 /**
  * @page c_flock File Locking API
  *
- * @ref le_fileLock.h "Click here for the API reference documentation."
+ * @ref le_fileLock.h "API Reference"
  *
  * <HR>
- *
- * @ref c_flock_cooperative <br>
- * @ref c_flock_locks <br>
- * @ref c_flock_streams <br>
- * @ref c_flock_nonblock <br>
- * @ref c_flock_threads <br>
- * @ref c_flock_replicateFd <br>
- * @ref c_flock_limitations <br>
- *
  *
  * File locking is a form of IPC used to synchronize multiple processes' access to
  * common files.

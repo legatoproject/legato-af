@@ -69,6 +69,23 @@ mem_Iter_Ref_t mem_iter_Create
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Gets the memory pool list change counter from the specified iterator. 
+ *
+ * @return
+ *      LE_OK if successful; the poolListChgCntRef out param points to the current instance of the
+ *      memory pool list change counter
+ *      LE_FAULT if there was an error.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t mem_iter_GetPoolsListChgCnt
+(
+    mem_Iter_Ref_t iterator,        ///< [IN] The iterator to get the pool list change counter from.
+    uint32_t* poolListChgCntRef     ///< [OUT] Memory pool list change counter.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Gets the next memory pool from the specified iterator.  The first time this function is called
  * after mem_iter_Create() is called the first memory pool in the list is returned.  The second
  * time this function is called the second memory pool is returned and so on.
@@ -79,13 +96,16 @@ mem_Iter_Ref_t mem_iter_Create
  *      the calling process.
  *
  * @return
- *      A memory pool from the iterator's list of memory pools.
- *      NULL if there are no more memory pools in the list.
+ *      LE_OK if successful; the memPool out parameter would point to either a memory pool from the 
+ *      iterator's list of memory pools, or NULL if there are no more memory pools in the list.
+ *      LE_FAULT if there was an error.
  */
 //--------------------------------------------------------------------------------------------------
-le_mem_PoolRef_t mem_iter_GetNextPool
+
+le_result_t mem_iter_GetNextPool
 (
-    mem_Iter_Ref_t iterator     ///< [IN] The iterator to get the next mem pool from.
+    mem_Iter_Ref_t iterator,    ///< [IN] The iterator to get the next mem pool from.
+    le_mem_PoolRef_t* memPool   ///< [OUT] A memory pool from the iterator's list of memory pools.
 );
 
 

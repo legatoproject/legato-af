@@ -21,11 +21,13 @@ set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--enable-new-dtags")
 # Includes
 include_directories(inc)
 include_directories(src/logDaemon)
-include_directories(src/security)
 include_directories(src/supervisor)
 include_directories(src/serviceDirectory)
+include_directories(src/updateDaemon)
 
 # Definitions
+add_definitions(-DLEGATO_COMPONENT=framework)
+
 set(LEGATO_FRAMEWORK_NICE_LEVEL "$ENV{LEGATO_FRAMEWORK_NICE_LEVEL}")
 set(LE_RUNTIME_DIR "$ENV{LE_RUNTIME_DIR}")
 
@@ -43,6 +45,7 @@ add_subdirectory(src/supervisor)
 add_subdirectory(src/serviceDirectory)
 add_subdirectory(src/configTree)
 add_subdirectory(src/watchdog)
+add_subdirectory(src/updateDaemon)
 
 # Tests
 enable_testing()

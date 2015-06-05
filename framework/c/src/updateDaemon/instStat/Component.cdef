@@ -1,0 +1,20 @@
+sources:
+{
+    instStat.c
+}
+
+requires:
+{
+    component:
+    {
+        appCfg
+    }
+}
+
+provides:
+{
+    api:
+    {
+        le_instStat.api
+    }
+}

@@ -306,7 +306,7 @@ static le_result_t HandleOptionWithValue
     const char* valueStr    ///< Ptr to the value string (null-terminated).
 )
 {
-    le_result_t result;
+    le_result_t result = LE_FAULT;
 
     if (recPtr->type == LE_ARG_OPTION_INT_VAR)
     {

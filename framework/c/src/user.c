@@ -432,28 +432,28 @@ void user_Init
         // Check for errors.
         if (!gotMinUidValue)
         {
-            LE_WARN("Could not read UID_MIN from '/etc/login.defs'.  Using default value.");
+            LE_DEBUG("Could not read UID_MIN from '/etc/login.defs'.  Using default value.");
         }
 
         if (!gotMaxUidValue)
         {
-            LE_WARN("Could not read UID_MAX from '/etc/login.defs'.  Using default value.");
+            LE_DEBUG("Could not read UID_MAX from '/etc/login.defs'.  Using default value.");
         }
 
         if (!gotMinGidValue)
         {
-            LE_WARN("Could not read GID_MIN from '/etc/login.defs'.  Using default value.");
+            LE_DEBUG("Could not read GID_MIN from '/etc/login.defs'.  Using default value.");
         }
 
         if (!gotMaxGidValue)
         {
-            LE_WARN("Could not read GID_MAX from '/etc/login.defs'.  Using default value.");
+            LE_DEBUG("Could not read GID_MAX from '/etc/login.defs'.  Using default value.");
         }
     }
     else
     {
-        LE_WARN("Could not read UID_MIN, UID_MAX, GID_MIN and GID_MAX from '/etc/login.defs'.  \
-Using default values.");
+        LE_DEBUG("Could not read UID_MIN, UID_MAX, GID_MIN and GID_MAX from '/etc/login.defs'."
+                 "  Using default values.");
     }
 
     // Get a suggestion on the size of the password entry buffer.
@@ -1732,11 +1732,11 @@ le_result_t user_GetAppUid
 )
 {
     char userName[LIMIT_MAX_APP_NAME_BYTES];
-    
+
     if (user_AppNameToUserName(appName, userName, sizeof(userName)) == LE_OVERFLOW)
     {
         return LE_OVERFLOW;
     }
-    
+
     return user_GetUid(userName, uidPtr);
 }

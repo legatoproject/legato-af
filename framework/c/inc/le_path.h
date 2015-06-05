@@ -7,9 +7,6 @@
  *
  * <HR>
  *
- * @ref c_path_dirAndBasename <br>
- * @ref c_path_threads <br>
- *
  * Paths are text strings that contain nodes separated by character separators.  Paths are used in
  * many common applications like file system addressing, URLs, etc. so being able to parse them
  * is quite important.

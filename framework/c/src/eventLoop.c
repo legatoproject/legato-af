@@ -97,6 +97,7 @@
 #include "eventLoop.h"
 #include "thread.h"
 #include "fdMonitor.h"
+#include "limit.h"
 
 #include <pthread.h>
 #include <sys/eventfd.h>
@@ -104,9 +105,6 @@
 // ==============================================
 //  PRIVATE DATA
 // ==============================================
-
-#define MAX_HANDLER_NAME_BYTES 16
-#define MAX_EVENT_NAME_BYTES   32   ///< Should be at least 15 longer than the handler name.
 
 /// Maximum number of events that can be received from epoll_wait() at one time.
 #define MAX_EPOLL_EVENTS 32
@@ -150,7 +148,7 @@ typedef struct
     le_sls_Link_t       link;                   ///< Used to link into the Event List.
     void*               id;                     ///< The Event ID (safe ref) assigned to this event.
     le_dls_List_t       handlerList;            ///< List of Handlers registered for this event.
-    char                name[MAX_EVENT_NAME_BYTES]; ///< The name of the event.
+    char                name[LIMIT_MAX_EVENT_NAME_BYTES]; ///< The name of the event.
     le_mem_PoolRef_t    reportPoolRef;          ///< Pool for this event's Report objects.
     size_t              payloadSize;            ///< Size of the Report payload, in bytes.
     bool                isRefCounted;           ///< true = payload is a ref-counted object pointer.
@@ -206,7 +204,7 @@ typedef struct
     Event_t*                eventPtr;   ///< Ptr to the Event obj for the event that this handles.
     void*                   contextPtr; ///< The context pointer for this handler.
     void*                   safeRef;    ///< Safe Reference for this object.
-    char                    name[MAX_HANDLER_NAME_BYTES];   ///< UTF-8 name of the handler.
+    char                    name[LIMIT_MAX_EVENT_HANDLER_NAME_BYTES];///< UTF-8 name of the handler.
 
     le_event_LayeredHandlerFunc_t   firstLayerFunc;     ///< First-layer handler function.
     void*                           secondLayerFunc;    ///< Second-layer handler function.
@@ -394,7 +392,7 @@ static Event_t* CreateEvent
     // Create the memory pool from which reports for this event are to be allocated.
     // Note: We can't delete pools, so we don't allow Event Ids to be deleted.
     /// @todo Make this configurable.
-    char poolNameStr[MAX_EVENT_NAME_BYTES + 8];
+    char poolNameStr[LIMIT_MAX_EVENT_NAME_BYTES + 8];
     size_t bytesCopied;
     le_utf8_Copy(poolNameStr, eventPtr->name, sizeof(poolNameStr), &bytesCopied);
     if (LE_OVERFLOW == le_utf8_Copy(poolNameStr + bytesCopied,
@@ -640,6 +638,10 @@ static void ProcessEventReports
     // to zero.
     uint64_t numReports = ReadEventFd(perThreadRecPtr);
 
+    // Process only those event reports that are already on the queue.  Anything reported by the
+    // event handlers will have to wait until next time ProcessEventReports() is called.
+    // This approach ensures that event handlers that re-queue events to the event
+    // queue don't cause fd events to be starved.
     for (; numReports > 0; numReports--)
     {
         ProcessOneEventReport(perThreadRecPtr);
@@ -1548,11 +1550,15 @@ le_result_t le_event_ServiceLoop
         // check if someone has cancelled the thread and terminate the thread now, if so.
         pthread_testcancel();
     }
-    // Otherwise, if epoll_wait() returned zero, something has gone horribly wrong, because
-    // it should never return zero.
+    // Otherwise, if epoll_wait() returned zero, then either this function was called without
+    // waiting for the eventfd to be readable, or the eventfd was readable momentarily, but
+    // something changed between the time the application code detected the readable condition
+    // and now that made the eventfd not readable anymore.
     else
     {
-        LE_FATAL("epoll_wait() returned zero!");
+        LE_DEBUG("epoll_wait() returned zero.");
+
+        return LE_WOULD_BLOCK;
     }
 
     // Read the eventfd to reset it to zero so epoll stops telling us about it until more

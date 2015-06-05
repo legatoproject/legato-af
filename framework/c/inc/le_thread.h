@@ -5,15 +5,6 @@
  *
  * <HR>
  *
- * @ref threadCreating <br>
- * @ref threadTerminating <br>
- * @ref threadJoining <br>
- * @ref threadLocalData <br>
- * @ref threadSynchronization <br>
- * @ref threadDestructors <br>
- * @ref threadLegatoizing <br>
- *
- *
  * Generally, using single-threaded, event-driven programming (registering callbacks to be called
  * by an event handling loop running in a single thread) is more efficient than using
  * multiple threads. With single-threaded, event driven designs:

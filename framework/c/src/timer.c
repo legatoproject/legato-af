@@ -1,8 +1,9 @@
 /**
  * @file timer.c
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Implementation of the @ref c_timer.
  *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 #include "legato.h"
@@ -17,7 +18,6 @@
 
 #define DEFAULT_POOL_NAME "Default Timer Pool"
 #define DEFAULT_POOL_INITIAL_SIZE 1
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -52,6 +52,16 @@ static le_mem_PoolRef_t TimerMemPoolRef = NULL;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Clocks to be used by timerfd and clock routines.
+ * Defaults to CLOCK_MONOTONIC. Initialized in timer_Init().
+ */
+//--------------------------------------------------------------------------------------------------
+static int TimerClockType = CLOCK_MONOTONIC;
+static int ClockClockType = CLOCK_MONOTONIC;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Trace reference used for controlling tracing in this module.
  **/
 //--------------------------------------------------------------------------------------------------
@@ -64,6 +74,15 @@ static le_log_TraceRef_t TraceRef;
 /// Macro used to query current trace state in this module
 #define IS_TRACE_ENABLED LE_IS_TRACE_ENABLED(TraceRef)
 
+/// Workaround to CLOCK_BOOTTIME & CLOCK_BOOTTIME_ALARM not being defined on older
+/// versions of the glibc.
+/// Values are extracted from <linux/time.h> and are provided by <time.h> in more recent glibc.
+#ifndef CLOCK_BOOTTIME
+# define CLOCK_BOOTTIME         7
+#endif
+#ifndef CLOCK_BOOTTIME_ALARM
+# define CLOCK_BOOTTIME_ALARM   9
+#endif
 
 
 // =============================================
@@ -305,11 +324,48 @@ static void RestartTimerFD
 
     // Start the actual timerFD
     if ( timerfd_settime(threadRecPtr->timerFD, TFD_TIMER_ABSTIME, &timerInterval, NULL) < 0 )
-        perror("ERROR");
+    {
+        // Since we were able to create the timerFD, this should always work.
+        LE_FATAL("timerfd_settime() failed with errno = %d (%m)", errno);
+    }
+
     TRACE("timer '%s' started", timerPtr->name);
 
     // Store the timer for future reference
     threadRecPtr->firstTimerPtr = timerPtr;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stop the timerFD
+ */
+//--------------------------------------------------------------------------------------------------
+static void StopTimerFD
+(
+    void
+)
+{
+    timer_ThreadRec_t* threadRecPtr = thread_GetTimerRecPtr();
+    struct itimerspec timerInterval;
+
+    // Setting all values to zero will stop the timerFD
+    timerInterval.it_value.tv_sec = 0;
+    timerInterval.it_value.tv_nsec = 0;
+    timerInterval.it_interval.tv_sec = 0;
+    timerInterval.it_interval.tv_nsec = 0;
+
+    // Stop the actual timerFD
+    if ( timerfd_settime(threadRecPtr->timerFD, TFD_TIMER_ABSTIME, &timerInterval, NULL) < 0 )
+    {
+        // Since we were able to create the timerFD, this should always work.
+        LE_FATAL("timerfd_settime() failed with errno = %d (%m)", errno);
+    }
+
+    TRACE("timerFD=%i stopped", threadRecPtr->timerFD);
+
+    // There is no active timer
+    threadRecPtr->firstTimerPtr = NULL;
 }
 
 
@@ -325,7 +381,6 @@ static void ProcessExpiredTimer
 {
     timer_ThreadRec_t* threadRecPtr = thread_GetTimerRecPtr();
 
-    // todo: Should we print out the name of the expired timer here?
     TRACE("Timer '%s' expired", expiredTimer->name);
 
     // Keep track of the number of times the timer has expired, regardless of whether it repeats.
@@ -366,7 +421,8 @@ static void ProcessExpiredTimer
 //--------------------------------------------------------------------------------------------------
 static void TimerFdHandler
 (
-    int fd    ///< The timer FD for reading
+    int fd,         ///< The timer FD for reading
+    short events    ///< The event bit map.
 )
 {
     uint64_t expiry;
@@ -374,19 +430,40 @@ static void TimerFdHandler
     timer_ThreadRec_t* threadRecPtr = thread_GetTimerRecPtr();
     Timer_t* firstTimerPtr;
 
+    LE_ASSERT((events & ~POLLIN) == 0);
+
     //TRACE("timer fd=%i expired", fd);
 
+    // Read the timerFD to clear the timer expiry; we don't actually do anything with the value.
+    // If there is nothing to read, then we had a stale timer, which can happen sometimes, e.g
+    // the timer expires, TimerFdHandler() is queued onto the event loop, and then the timer is
+    // stopped before TimerFdHandler() is called.
     numBytes = read(fd, &expiry, sizeof(expiry));
+    if ( numBytes == -1 )
+    {
+        if ( errno == EAGAIN )
+        {
+            LE_INFO("Stale timer expired");
+            return;
+        }
+        else
+        {
+            LE_FATAL("TimerFD read failed with errno = %d (%m)", errno);
+        }
+    }
     LE_ERROR_IF(numBytes != 8, "On TimerFD read, unexpected numBytes=%zd", numBytes);
     LE_ERROR_IF(expiry != 1,  "On TimerFD read, unexpected expiry=%u", (unsigned int)expiry);
 
     // Pop off the first timer from the active list, and make sure it is the expected timer.
-    // If it is, then process it.  Also need to reset the expected timer, in case processing
-    // the current timer will cause the same timer to be started again, and put back at the
-    // start of the active list.
     firstTimerPtr = PopFromTimerList(&threadRecPtr->activeTimerList);
     LE_ASSERT( threadRecPtr->firstTimerPtr == firstTimerPtr );
+
+    // Need to reset the expected timer, in case processing the current timer will cause the same
+    // timer to be started again, and put back at the start of the active list. This is necessary
+    // since the timerFD is no longer running, so there is no timer associated with it.
     threadRecPtr->firstTimerPtr = NULL;
+
+    // It is the expected timer so process it.
     ProcessExpiredTimer(firstTimerPtr);
 
     // Check if there are any other timers that have since expired, pop them off the
@@ -403,13 +480,20 @@ static void TimerFdHandler
         firstTimerPtr = PeekFromTimerList(&threadRecPtr->activeTimerList);
     }
 
+    // While processing expired timers in the above loop, it is possible that a timer was started,
+    // put in the active list, and expired before the loop completed. If the active list is empty,
+    // but the timerFD is still running, then we need to stop it.
+    if ( (firstTimerPtr == NULL) && ( threadRecPtr->firstTimerPtr != NULL ) )
+    {
+        StopTimerFD();
+    }
+
     // If the next timer on the active list exists, then if the timerFD is not running, or it is
     // running a timer that is no longer at the beginning of the active list, then (re)start the
     // timerFD.  The timerFD could be running here, if the expiry handler started a new timer,
     // although it might no longer be at the beginning of the list, if we had multiple timers
     // expire, and one of them is a repetitive timer.
-    if ( (firstTimerPtr != NULL) &&
-         ( threadRecPtr->firstTimerPtr != firstTimerPtr ) )
+    if ( (firstTimerPtr != NULL) && ( threadRecPtr->firstTimerPtr != firstTimerPtr ) )
     {
         RestartTimerFD(firstTimerPtr);
     }
@@ -435,8 +519,44 @@ void timer_Init
     void
 )
 {
+    struct timespec tS;
+    int timerFd;
+
     TimerMemPoolRef = le_mem_CreatePool(DEFAULT_POOL_NAME, sizeof(Timer_t));
     le_mem_ExpandPool(TimerMemPoolRef, DEFAULT_POOL_INITIAL_SIZE);
+
+    // Assume CLOCK_MONOTONIC is supported both by timerfd and clock routines.
+    // Then, query O/S to see if we could use CLOCK_BOOTTIME/_ALARM.
+    if (!clock_gettime(CLOCK_BOOTTIME, &tS))
+    {
+        // Supported, see if we could use the _ALARM version for timerfd.
+        timerFd = timerfd_create(CLOCK_BOOTTIME_ALARM, 0);
+        if (0 <= timerFd)
+        {
+            // Success, use CLOCK_BOOTTIME_ALARM for timerfd and
+            // CLOCK_BOOTTIME for clock routines.
+            close(timerFd);
+            TimerClockType = CLOCK_BOOTTIME_ALARM;
+            ClockClockType = CLOCK_BOOTTIME;
+        }
+        else
+        {
+            // Fail, try using CLOCK_BOOTTIME for timerfd.
+            timerFd = timerfd_create(CLOCK_BOOTTIME, 0);
+            if (0 <= timerFd)
+            {
+                // Success, use CLOCK_BOOTTIME for both and warn.
+                close(timerFd);
+                LE_WARN("Using CLOCK_BOOTTIME: alarm wakeups not supported.");
+                TimerClockType = ClockClockType = CLOCK_BOOTTIME;
+            }
+            // Else fall through to use default CLOCK_MONOTONIC.
+        }
+    }
+
+    if (CLOCK_MONOTONIC == ClockClockType)
+        // Nice try, warn that we're using CLOCK_MONOTONIC for both.
+        LE_WARN("Using CLOCK_MONOTONIC: no alarm wakeups, timer stops in low power mode.");
 
     // Get a reference to the trace keyword that is used to control tracing in this module.
     TraceRef = le_log_GetTraceRef("timers");
@@ -461,6 +581,19 @@ void timer_InitThread
     recPtr->timerFD = -1;
     recPtr->activeTimerList = LE_DLS_LIST_INIT;
     recPtr->firstTimerPtr = NULL;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Accessor for clock type negotiated between clock and timerfd routines.
+ *
+ * Used by clock functions to ensure clock coherence.
+ */
+//--------------------------------------------------------------------------------------------------
+int timer_GetClockType(void)
+{
+    return ClockClockType;
 }
 
 
@@ -626,7 +759,7 @@ le_result_t le_timer_SetRepeat
  * @return
  *      - LE_OK on success
  *      - LE_BUSY if the timer is currently running
- 
+ *
  * @note
  *      If an invalid timer object is given, the process exits
  */
@@ -731,7 +864,6 @@ le_result_t le_timer_Start
 
     timer_ThreadRec_t* threadRecPtr = thread_GetTimerRecPtr();
     Timer_t* firstTimerPtr;
-    le_dls_Link_t* linkPtr;
 
     // todo: verify that the minimum number of fields have been appropriately initialized
 
@@ -743,17 +875,22 @@ le_result_t le_timer_Start
     }
     if ( threadRecPtr->timerFD == -1 )
     {
-        le_event_FdMonitorRef_t fdMonitorRef;
+        // We want a non-blocking FD (TFD_NONBLOCK), because sometimes the expiry handler is called
+        // even though there is nothing to read from the FD, e.g. race condition where timer is
+        // stopped after it expired but before the handler was called.
+        // We also want the FD to close on exec (TFD_CLOEXEC) so that the FD is not inherited by
+        // any child processes.
+        threadRecPtr->timerFD = timerfd_create(TimerClockType, TFD_NONBLOCK | TFD_CLOEXEC);
+        if (0 > threadRecPtr->timerFD)
+            // Should have succeeded if checks in timer_Init() passed.
+            LE_FATAL("timerfd_create() failed with errno = %d (%m)", errno);
 
-        // todo: add error checking
-        threadRecPtr->timerFD = timerfd_create(CLOCK_MONOTONIC, 0);
         LE_PRINT_VALUE("%i", threadRecPtr->timerFD);
         threadRecPtr->firstTimerPtr = NULL;
 
         // Register the timerFD with the event loop.
         // It will not be triggered until the timer is actually started
-        fdMonitorRef = le_event_CreateFdMonitor("Timer", threadRecPtr->timerFD);
-        le_event_SetFdHandler(fdMonitorRef, LE_EVENT_FD_READABLE, TimerFdHandler);
+        (void)le_fdMonitor_Create("Timer", threadRecPtr->timerFD, TimerFdHandler, POLLIN);
     }
 
     // Add the timer to the timer list. This is the only place we reset the expiry count.
@@ -764,9 +901,7 @@ le_result_t le_timer_Start
 
     // Get the first timer from the active list. This is needed to determine whether the timerFD
     // needs to be restarted, in case the new timer was put at the beginning of the list.
-    // todo: is there a better way to do this?
-    linkPtr = le_dls_Peek(&threadRecPtr->activeTimerList);
-    firstTimerPtr = CONTAINER_OF(linkPtr, Timer_t, link);
+    firstTimerPtr = PeekFromTimerList(&threadRecPtr->activeTimerList);
 
     // If the timerFD is not running, or it is running a timer that is no longer at the beginning
     // of the active list, then (re)start the timerFD.
@@ -828,18 +963,8 @@ le_result_t le_timer_Stop
             }
             else
             {
-                struct itimerspec timerInterval;
+                StopTimerFD();
 
-                // Setting the interval to zero will stop the timerFD
-                timerInterval.it_value.tv_sec = 0;
-                timerInterval.it_value.tv_nsec = 0;
-                timerInterval.it_interval.tv_sec = 0;
-                timerInterval.it_interval.tv_nsec = 0;
-
-                // Stop the actual timerFD
-                if ( timerfd_settime(threadRecPtr->timerFD, TFD_TIMER_ABSTIME, &timerInterval, NULL) < 0 )
-                    perror("ERROR");
-                TRACE("timerFD=%i stopped", threadRecPtr->timerFD);
             }
         }
     }

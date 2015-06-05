@@ -125,16 +125,17 @@
  */
 //--------------------------------------------------------------------------------------------------
 #define LIMIT_MAX_TIMER_NAME_LEN                31
-#define LIMIT_MAX_TIMER_NAME_BYTES              (LIMIT_MAX_TIMER_NAME_LEN+1)
+#define LIMIT_MAX_TIMER_NAME_BYTES              (LIMIT_MAX_TIMER_NAME_LEN + 1)
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Maximum string length and byte storage size of memory pool names.
+ * Maximum string length and byte storage size of memory pool names (excluding the component
+ * name prefix).
  */
 //--------------------------------------------------------------------------------------------------
 #define LIMIT_MAX_MEM_POOL_NAME_LEN             31
-#define LIMIT_MAX_MEM_POOL_NAME_BYTES           (LIMIT_MAX_MEM_POOL_NAME_LEN+1)
+#define LIMIT_MAX_MEM_POOL_NAME_BYTES           (LIMIT_MAX_MEM_POOL_NAME_LEN + 1)
 
 
 //--------------------------------------------------------------------------------------------------
@@ -143,7 +144,7 @@
  */
 //--------------------------------------------------------------------------------------------------
 #define LIMIT_MAX_ENV_VAR_NAME_LEN              31
-#define LIMIT_MAX_ENV_VAR_NAME_BYTES            (LIMIT_MAX_TIMER_NAME_LEN+1)
+#define LIMIT_MAX_ENV_VAR_NAME_BYTES            (LIMIT_MAX_TIMER_NAME_LEN + 1)
 
 
 //--------------------------------------------------------------------------------------------------
@@ -152,7 +153,7 @@
  */
 //--------------------------------------------------------------------------------------------------
 #define LIMIT_MAX_PRIORITY_NAME_LEN             6
-#define LIMIT_MAX_PRIORITY_NAME_BYTES           (LIMIT_MAX_PRIORITY_NAME_LEN+1)
+#define LIMIT_MAX_PRIORITY_NAME_BYTES           (LIMIT_MAX_PRIORITY_NAME_LEN + 1)
 
 
 //--------------------------------------------------------------------------------------------------
@@ -161,7 +162,7 @@
  */
 //--------------------------------------------------------------------------------------------------
 #define LIMIT_MAX_FAULT_ACTION_NAME_LEN         20
-#define LIMIT_MAX_FAULT_ACTION_NAME_BYTES       (LIMIT_MAX_FAULT_ACTION_NAME_LEN+1)
+#define LIMIT_MAX_FAULT_ACTION_NAME_BYTES       (LIMIT_MAX_FAULT_ACTION_NAME_LEN + 1)
 
 
 //--------------------------------------------------------------------------------------------------
@@ -218,6 +219,23 @@
  */
 //--------------------------------------------------------------------------------------------------
 #define LIMIT_MAX_SERVICE_NAME_BYTES    128
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum size of an event handler name.
+ **/
+//--------------------------------------------------------------------------------------------------
+#define LIMIT_MAX_EVENT_HANDLER_NAME_BYTES 32
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum size of an event name.
+ **/
+//--------------------------------------------------------------------------------------------------
+#define LIMIT_MAX_EVENT_NAME_BYTES   32   ///< Should be at least 15 longer than the handler name.
+
 
 
 

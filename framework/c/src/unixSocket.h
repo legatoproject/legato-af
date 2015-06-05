@@ -127,9 +127,9 @@
  * accepting, and connecting.  Refer to the man pages for listen(), accept() and connect()
  * for more information.
  *
- * When a socket is a listening socket, the socket will appear readable to an @ref c_eventLoop
- * File Descriptor Monitor when a connection is waiting to be accepted.  That is, a connection
- * handler can be registered by registering a handler for the LE_EVENT_FD_READABLE event type.
+ * When a socket is a listening socket, the socket will appear readable to a File Descriptor Monitor
+ * (see @ref c_fdMonitor) when a connection is waiting to be accepted.  That is, a connection
+ * handler can be registered by registering a handler for the @c POLLIN event type.
  *
  *
  * @section c_unixSocketsSendingAndReceiving Sending and Receiving

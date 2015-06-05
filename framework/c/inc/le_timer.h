@@ -1,89 +1,88 @@
 /**
-@page c_timer Timer API
-
-@ref le_timer.h "Click here for the API Reference documentation."
-
-<HR>
-
- @ref timer_objects <br>
- @ref timer_usage <br>
- @ref timer_errors <br>
- @ref timer_troubleshooting <br>
-
-This module provides an API for managing and using timers.
-
-@note
-This is an initial version of the API that only provides support for relative timers (e.g., expires
-in 10 seconds).  Absolute timers allow a specific time/date to be used, and will be supported in a
-future version of this API.
-
-
-@section timer_objects Creating/Deleting Timer Objects
-
-Timers are created using @ref le_timer_Create. The timer name is used for logging purposes only.
-
-The following attributes of the timer can be set:
- - @ref le_timer_SetHandler
- - @ref le_timer_SetInterval
- - @ref le_timer_SetRepeat
- - @ref le_timer_SetContextPtr
-
-The repeat count defaults to 1, so that the timer is initially a one-shot timer. All the other
-attributes must be explicitly set.  At a minimum, the interval must be set before the timer can be
-used.  Note that these attributes can only be set if the timer is not currently running; otherwise,
-an error will be returned.
-
-A timer is deleted using @ref le_timer_Delete.  If the timer is currently running, then it will be
-stopped first, before being deleted.
-
-
-@section timer_usage Using Timers
-
-A timer can be started using @ref le_timer_Start. If it's already running, then it won't be
-modified; instead an error will be returned.  To restart a currently running timer, use @ref
-le_timer_Restart.
-
-A timer can be stopped using @ref le_timer_Stop.  If it is not currently running, an error
-will be returned, and nothing more will be done.
-
-To determine if the timer is currently running, use @ref le_timer_IsRunning.
-
-When a timer expires, if the timer expiry handler was set by @ref le_timer_SetHandler, the
-handler will be called with a reference to the expired timer. If additional data is required in the
-handler, @ref le_timer_SetContextPtr can be used to set the appropriate context before starting the
-timer, and @ref le_timer_GetContextPtr can be used to retrieve the context while in the handler.
-
-The number of times that a timer has expired can be retrieved by @ref le_timer_GetExpiryCount. This
-count is independent of whether there is an expiry handler for the timer.
-
-
-@section timer_errors Fatal Errors
-
-The process will exit under any of the following conditions:
- - If an invalid timer object is given to:
-    - @ref le_timer_Delete
-    - @ref le_timer_SetHandler
-    - @ref le_timer_SetInterval
-    - @ref le_timer_SetRepeat
-    - @ref le_timer_Start
-    - @ref le_timer_Stop
-    - @ref le_timer_Restart
-    - @ref le_timer_SetContextPtr
-    - @ref le_timer_GetContextPtr
-    - @ref le_timer_GetExpiryCount
-
-
-@section timer_troubleshooting Troubleshooting
-
-Timers can be traced by enabling the log trace keyword "timers" in the "framework" component.
-
-See @ref c_log_controlling for more information.
-
-<HR>
-
-Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
-
-*/
+ * @page c_timer Timer API
+ * 
+ * @ref le_timer.h "API Reference"
+ * 
+ * <HR>
+ * 
+ * This module provides an API for managing and using timers.
+ * 
+ * @note
+ * This is an initial version of the API that only provides support for relative timers (e.g., expires
+ * in 10 seconds).  Absolute timers allow a specific time/date to be used, and will be supported in a
+ * future version of this API.
+ * 
+ * 
+ * @section timer_objects Creating/Deleting Timer Objects
+ * 
+ * Timers are created using @ref le_timer_Create. The timer name is used for logging purposes only.
+ * 
+ * The following attributes of the timer can be set:
+ *  - @ref le_timer_SetHandler
+ *  - @ref le_timer_SetInterval
+ *  - @ref le_timer_SetRepeat
+ *  - @ref le_timer_SetContextPtr
+ * 
+ * The repeat count defaults to 1, so that the timer is initially a one-shot timer. All the other
+ * attributes must be explicitly set.  At a minimum, the interval must be set before the timer can be
+ * used.  Note that these attributes can only be set if the timer is not currently running; otherwise,
+ * an error will be returned.
+ * 
+ * A timer is deleted using @ref le_timer_Delete.  If the timer is currently running, then it will be
+ * stopped first, before being deleted.
+ * 
+ * @section timer_usage Using Timers
+ * 
+ * A timer can be started using @ref le_timer_Start. If it's already running, then it won't be
+ * modified; instead an error will be returned.  To restart a currently running timer, use @ref
+ * le_timer_Restart.
+ * 
+ * A timer can be stopped using @ref le_timer_Stop.  If it's not currently running, an error
+ * will be returned, and nothing more will be done.
+ * 
+ * To determine if the timer is currently running, use @ref le_timer_IsRunning.
+ * 
+ * When a timer expires, if the timer expiry handler is set by @ref le_timer_SetHandler, the
+ * handler will be called with a reference to the expired timer. If additional data is required in the
+ * handler, @ref le_timer_SetContextPtr can be used to set the appropriate context before starting the
+ * timer, and @ref le_timer_GetContextPtr can be used to retrieve the context while in the handler.
+ * 
+ * The number of times that a timer has expired can be retrieved by @ref le_timer_GetExpiryCount. This
+ * count is independent of whether there is an expiry handler for the timer.
+ * 
+ * @section le_timer_thread Timer Threads
+ * A timer should only be used by the thread that created it. It's not safe for a thread to use
+ * or manipulate a timer that belongs to another thread. The timer expiry handler is called by the
+ * event loop of the thread that starts the timer. 
+ * 
+ * See @ref c_event_integratingLegacyPosix for details.
+ * 
+ * @section timer_errors Fatal Errors
+ * 
+ * The process will exit under any of the following conditions:
+ *  - If an invalid timer object is given to:
+ *     - @ref le_timer_Delete
+ *     - @ref le_timer_SetHandler
+ *     - @ref le_timer_SetInterval
+ *     - @ref le_timer_SetRepeat
+ *     - @ref le_timer_Start
+ *     - @ref le_timer_Stop
+ *     - @ref le_timer_Restart
+ *     - @ref le_timer_SetContextPtr
+ *     - @ref le_timer_GetContextPtr
+ *     - @ref le_timer_GetExpiryCount
+ * 
+ * @section timer_troubleshooting Troubleshooting
+ * 
+ * Timers can be traced by enabling the log trace keyword "timers" in the "framework" component.
+ * 
+ * See @ref c_log_controlling for more information.
+ * 
+ * <HR>
+ * 
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * 
+ */
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -94,6 +93,7 @@ Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  *
  */
+//--------------------------------------------------------------------------------------------------
 
 #ifndef LEGATO_TIMER_INCLUDE_GUARD
 #define LEGATO_TIMER_INCLUDE_GUARD

@@ -42,7 +42,7 @@ $ foo bar baz
  * @section c_args_positional Positional Arguments
  *
  * Positional arguments are arguments that <b>do not</b> start with a "-" or "--"; except for
- * "-" or "--" by itself (these @i are positional arguments).
+ * "-" or "--" by itself (these are positional arguments).
  *
  * For example, the following command line has four positional arguments ("foo", "bar", "-",
  * and "--").  A flag option ("-x"), and two string options ("-f ./infile" and

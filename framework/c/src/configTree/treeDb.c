@@ -1639,15 +1639,22 @@ static void GetTreePath
     // scissors --> paper      3 -> 1
 
     static const char* revNames[] = { "paper", "rock", "scissors" };
+    int printSize;
 
     LE_ASSERT((revisionId >= 1) && (revisionId <= 3));
 
-    snprintf(pathBuffer,
-             pathSize,
-             "%s/%s.%s",
-             CFG_TREE_PATH,
-             treeNameRef,
-             revNames[revisionId - 1]);
+    printSize = snprintf(pathBuffer,
+                         pathSize,
+                         "%s/%s.%s",
+                         CFG_TREE_PATH,
+                         treeNameRef,
+                         revNames[revisionId - 1]);
+
+    if (printSize >= pathSize)
+    {
+       LE_ERROR("Unable to store config tree path in buffer");
+       pathBuffer[0] = '\0';
+    }
 }
 
 
@@ -1667,11 +1674,11 @@ static bool TreeFileExists
 )
 // -------------------------------------------------------------------------------------------------
 {
-    char fullPathPtr[LE_CFG_STR_LEN_BYTES] = "";
-    GetTreePath(treeNameRef, revisionId, fullPathPtr, sizeof(fullPathPtr));
+    char fullPath[LE_CFG_STR_LEN_BYTES] = "";
+    GetTreePath(treeNameRef, revisionId, fullPath, sizeof(fullPath));
 
     // Make sure this part was successful.
-    if (fullPathPtr == NULL)
+    if (fullPath[0] == '\0')
     {
         return false;
     }
@@ -1679,7 +1686,7 @@ static bool TreeFileExists
     // Now call into the Linux and ask the file system if the file exists.
     bool result = false;
 
-    if (access(fullPathPtr, R_OK) != -1)
+    if (access(fullPath, R_OK) != -1)
     {
         result = true;
     }

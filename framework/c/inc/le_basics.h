@@ -170,8 +170,8 @@ le_onoff_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function takes the characters as an argument and puts quotes around them.  
- * 
+ * This function takes the characters as an argument and puts quotes around them.
+ *
  * Code sample:
  *
  * @code
@@ -191,12 +191,15 @@ le_onoff_t;
  *    const char name[] = STRINGIZE(NAME);
  * @endcode
  *
- * then compiling it using the <b>gcc -c</b> command makes it equivalent to the 
+ * then compiling it using the following command line makes it equivalent to the
  * example above:
  *
  * @code
  *    $ gcc -c -DNAME=foo file.c
  * @endcode
+ *
+ * The <c>-DNAME=foo</c> defines a macro called <c>NAME</c> with a value <c>foo</c>.
+ * The C preprocessor then replaces <c>STRINGIZE(NAME)</c> with <c>"foo"</c>.
  */
 //--------------------------------------------------------------------------------------------------
 #define STRINGIZE(x)  STRINGIZE_EXPAND(x)

@@ -1,8 +1,9 @@
-/** @page c_APIs C Runtime Library
+/**
+ * @page c_APIs C Runtime Library
  *
  * @ref cApiOverview
  *
- * Legato has these C language runtime APIs:
+ * <HR>
  *
  * @subpage c_basics  <br>
  * @subpage c_args  <br>
@@ -10,6 +11,7 @@
  * @subpage c_doublyLinkedList  <br>
  * @subpage c_memory  <br>
  * @subpage c_eventLoop  <br>
+ * @subpage c_fdMonitor  <br>
  * @subpage c_flock  <br>
  * @subpage c_hashmap  <br>
  * @subpage c_hex  <br>
@@ -29,23 +31,24 @@
  * @subpage c_test  <br>
  * @subpage c_utf8  <br>
  *
- @section cApiOverview Overview
- *
- * <b>Object-Oriented Design</b>
+ * @section cApiOverview Overview
+ * Here is some background info on Legato's C Language APIs.
+ * 
+ * @subsection Object-Oriented Design
  *
  * The Legato framework is constructed in an object-oriented manner.
  *
- * The C programming language was created before object-oriented programming became
- * popular so it has no native support for OOP features like inheritance, private object
- * members, member functions, and overloading.  Object-oriented designs can still be
- * implemented in C, though.
+ * The C programming language was created before object-oriented programming was
+ * popular so it doesn't have native support for OOP features like inheritance, private object
+ * members, member functions, and overloading. But object-oriented designs can still be
+ * implemented in C.
  *
  * In the Legato C APIs, classes are hidden behind opaque "reference" data types.
  * You can get references to objects created behind the scenes in Legato, but
  * you can never see the structure of those objects. The implementation is hidden from view.
  * Access to object properties is made available through accessor functions.
  *
- * <b>Opaque Types</b>
+ *  @subsection Opaque Types
  *
  * The basic "opaque data type" offered by the C programming language is the "void pointer" (void *).
  * The idea is that a pointer to an object of type @a T can be cast to point to a void type
@@ -68,7 +71,7 @@
  * typedef struct le_foo* le_foo_Ref_t;
  * @endcode
  *
- * However, "struct le_foo" would @a not be defined in the API header or @a anywhere outside of the
+ * But "struct le_foo" would @a not be defined in the API header or @a anywhere outside of the
  * hypothetical Foo API's implementation files. This makes "struct le_foo" an "incomplete type"
  * for all code outside of the Foo API implementation files. Incomplete types can't be used
  * because the compiler doesn't have enough information about them to generate any code
@@ -82,8 +85,9 @@
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
-
-/** @file legato.h
+//--------------------------------------------------------------------------------------------------
+/**
+ * @file legato.h
  *
  * This file includes all the commonly-used Legato API header files.
  * It's provided as a convenience to avoid including
@@ -91,6 +95,7 @@
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
+//--------------------------------------------------------------------------------------------------
 
 #ifndef LEGATO_H_INCLUDE_GUARD
 #define LEGATO_H_INCLUDE_GUARD
@@ -135,6 +140,10 @@
 #include <grp.h>
 #include <sys/xattr.h>
 #include <fts.h>
+#include <poll.h>
+#include <sys/epoll.h>
+#include <sys/prctl.h>
+
 
 #ifdef __cplusplus
 extern "C" {
@@ -152,6 +161,7 @@ extern "C" {
 #include "le_safeRef.h"
 #include "le_thread.h"
 #include "le_eventLoop.h"
+#include "le_fdMonitor.h"
 #include "le_hashmap.h"
 #include "le_signals.h"
 #include "le_args.h"

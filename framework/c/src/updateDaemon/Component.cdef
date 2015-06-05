@@ -1,0 +1,26 @@
+provides:
+{
+    api:
+    {
+        le_update.api
+    }
+}
+
+requires:
+{
+    api:
+    {
+        le_fwupdate.api  [manual-start]
+    }
+
+    component:
+    {
+        instStat
+    }
+}
+
+sources:
+{
+    updateDaemon.c
+    manifest.c
+}

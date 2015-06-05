@@ -25,9 +25,9 @@
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
-    le_event_FdMonitorRef_t     monitorRef;
-    int                         fd;
-    le_dls_List_t               handlerObjList;
+    le_fdMonitor_Ref_t  monitorRef;
+    int                 fd;
+    le_dls_List_t       handlerObjList;
 }
 MonitorObj_t;
 
@@ -120,9 +120,19 @@ static HandlerObj_t* FindHandlerObj
 //--------------------------------------------------------------------------------------------------
 static void OurSigHandler
 (
-    int fd      // The monitored file descriptor.
+    int fd,         ///< The monitored file descriptor.
+    short events    ///< The event or events (bit mask) that occurred on the fd.
 )
 {
+    if (events & ~POLLIN)
+    {
+        LE_CRIT("Unexpected event set (0x%hx) from signal fd.", events);
+        if ((events & POLLIN) == 0)
+        {
+            return;
+        }
+    }
+
     while(1)
     {
         // Do a read of the signal fd.
@@ -332,10 +342,10 @@ void le_sig_SetEventHandler
                                NULL) == LE_OK);
 
         // Create the monitor.
-        monitorObjPtr->monitorRef = le_event_CreateFdMonitor(monitorName, monitorObjPtr->fd);
-
-        // Register our handler for this monitor.
-        le_event_SetFdHandler(monitorObjPtr->monitorRef, LE_EVENT_FD_READABLE, OurSigHandler);
+        monitorObjPtr->monitorRef = le_fdMonitor_Create(monitorName,
+                                                        monitorObjPtr->fd,
+                                                        OurSigHandler,
+                                                        POLLIN);
     }
 }
 
@@ -357,7 +367,7 @@ void le_sig_DeleteAll
     if (monitorObjPtr != NULL)
     {
         // Delete the monitor.
-        le_event_DeleteFdMonitor(monitorObjPtr->monitorRef);
+        le_fdMonitor_Delete(monitorObjPtr->monitorRef);
 
         // Close the file descriptor.
         while(1)

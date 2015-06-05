@@ -129,6 +129,8 @@ le_msg_SessionRef_t msgSession_GetSessionContainingLink
  * Creates a server-side Session object for a given client connection to a given Service.
  *
  * @return A reference to the newly created Session object.
+ *
+ * @note Closes the file descriptor on failure.
  */
 //--------------------------------------------------------------------------------------------------
 le_msg_SessionRef_t msgSession_CreateServerSideSession

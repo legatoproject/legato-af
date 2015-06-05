@@ -1,18 +1,9 @@
 /**
  * @page c_singlyLinkedList Singly Linked List API
  *
- * @ref le_singlyLinkedList.h "Click here for the API Reference documentation."
+ * @ref le_singlyLinkedList.h "API Reference"
  *
  * <HR>
- *
- * @ref sls_createList <br>
- * @ref sls_createNode <br>
- * @ref sls_add <br>
- * @ref sls_remove <br>
- * @ref sls_peek <br>
- * @ref sls_query <br>
- * @ref sls_fifo <br>
- * @ref sls_synch <br>
  *
  * A singly linked list is a data structure consisting of a group of nodes linked together linearly.
  * Each node consists of data elements and a link to the next node.  The main advantage of linked

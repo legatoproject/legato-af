@@ -333,25 +333,23 @@ static void CallOpenHandler
 //--------------------------------------------------------------------------------------------------
 static void DirectorySocketWriteable
 (
-    int fd
+    Service_t* servicePtr
 )
 //--------------------------------------------------------------------------------------------------
 {
-    Service_t* servicePtr = le_event_GetContextPtr();
-
     if (servicePtr->state == LE_MSG_SERVICE_CONNECTING)
     {
         // Must have connected (or failed to do so).
         int errCode = unixSocket_GetErrorState(servicePtr->directorySocketFd);
 
         // Disable writeability notification.
-        le_event_ClearFdHandlerByEventType(servicePtr->fdMonitorRef, LE_EVENT_FD_WRITEABLE);
+        le_fdMonitor_Disable(servicePtr->fdMonitorRef, POLLOUT);
 
         // If connection successful,
         if (errCode == 0)
         {
             // Send the Service ID to the Service Directory.
-            msgService_SendServiceId(servicePtr, fd);
+            msgService_SendServiceId(servicePtr, servicePtr->directorySocketFd);
 
             servicePtr->state = LE_MSG_SERVICE_ADVERTISED;
 
@@ -385,17 +383,16 @@ static void DirectorySocketWriteable
 //--------------------------------------------------------------------------------------------------
 static void DirectorySocketReadable
 (
-    int fd
+    Service_t* servicePtr
 )
 //--------------------------------------------------------------------------------------------------
 {
-    Service_t* servicePtr = le_event_GetContextPtr();
     le_result_t result;
 
     int clientSocketFd;
 
     // Receive the Client connection file descriptor from the Service Directory.
-    result = unixSocket_ReceiveMsg(fd,
+    result = unixSocket_ReceiveMsg(servicePtr->directorySocketFd,
                                    NULL,   // dataBuffPtr
                                    0,      // dataBuffSize
                                    &clientSocketFd,
@@ -413,6 +410,13 @@ static void DirectorySocketReadable
     else if (clientSocketFd < 0)
     {
         LE_ERROR("Received something other than a file descriptor from Service Directory for (%s:%s).",
+                 servicePtr->id.name,
+                 le_msg_GetProtocolIdStr(servicePtr->id.protocolRef));
+    }
+    // This should never happen before we have sent our advertisement to the Service Directory.
+    else if (servicePtr->state == LE_MSG_SERVICE_CONNECTING)
+    {
+        LE_FATAL("Received fd from Service Directory before advertisement sent for (%s:%s).",
                  servicePtr->id.name,
                  le_msg_GetProtocolIdStr(servicePtr->id.protocolRef));
     }
@@ -442,13 +446,11 @@ static void DirectorySocketReadable
 //--------------------------------------------------------------------------------------------------
 static void DirectorySocketClosed
 (
-    int fd
+    Service_t* servicePtr
 )
 //--------------------------------------------------------------------------------------------------
 {
-    Service_t* servicePtr = le_event_GetContextPtr();
-
-    LE_FATAL("Permission to offer service (%s:%s) has been denied.",
+    LE_FATAL("Connection to Service Directory lost for service (%s:%s).",
              servicePtr->id.name,
              le_msg_GetProtocolIdStr(servicePtr->id.protocolRef));
 }
@@ -463,15 +465,52 @@ static void DirectorySocketClosed
 //--------------------------------------------------------------------------------------------------
 static void DirectorySocketError
 (
-    int fd
+    Service_t* servicePtr
 )
 //--------------------------------------------------------------------------------------------------
 {
-    Service_t* servicePtr = le_event_GetContextPtr();
-
     LE_FATAL("Error on Service Directory connection for service (%s:%s).",
              servicePtr->id.name,
              le_msg_GetProtocolIdStr(servicePtr->id.protocolRef));
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handles events detected on the file descriptor for the socket connection to the
+ * Service Directory.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void DirectorySocketEventHandler
+(
+    int     fd,
+    short   events
+)
+//--------------------------------------------------------------------------------------------------
+{
+    Service_t* servicePtr = le_fdMonitor_GetContextPtr();
+
+    LE_ASSERT(fd == servicePtr->directorySocketFd);
+
+    if (events & (POLLHUP | POLLRDHUP))
+    {
+        DirectorySocketClosed(servicePtr);
+    }
+    else if (events & POLLERR)
+    {
+        DirectorySocketError(servicePtr);
+    }
+    else
+    {
+        if (events & POLLIN)
+        {
+            DirectorySocketReadable(servicePtr);
+        }
+        if (events & POLLOUT)
+        {
+            DirectorySocketWriteable(servicePtr);
+        }
+    }
 }
 
 
@@ -487,8 +526,6 @@ static void StartMonitoringDirectorySocket
 )
 //--------------------------------------------------------------------------------------------------
 {
-    le_event_FdHandlerRef_t handlerRef;
-
     char name[LIMIT_MAX_MEM_POOL_NAME_BYTES];
     char* destPtr = name;
     size_t spaceLeft = sizeof(name);
@@ -501,32 +538,13 @@ static void StartMonitoringDirectorySocket
     spaceLeft -= bytesCopied;
     le_utf8_Copy(destPtr, le_msg_GetProtocolIdStr(servicePtr->id.protocolRef), spaceLeft, NULL);
 
-    servicePtr->fdMonitorRef = le_event_CreateFdMonitor(name, servicePtr->directorySocketFd);
+    servicePtr->fdMonitorRef = le_fdMonitor_Create(name,
+                                                   servicePtr->directorySocketFd,
+                                                   DirectorySocketEventHandler,
+                                                   POLLOUT | POLLIN);
 
-    handlerRef = le_event_SetFdHandler(servicePtr->fdMonitorRef,
-                                       LE_EVENT_FD_WRITEABLE,
-                                       DirectorySocketWriteable);
-    le_event_SetFdHandlerContextPtr(handlerRef, servicePtr);
+    le_fdMonitor_SetContextPtr(servicePtr->fdMonitorRef, servicePtr);
 
-    handlerRef = le_event_SetFdHandler(servicePtr->fdMonitorRef,
-                                       LE_EVENT_FD_READABLE,
-                                       DirectorySocketReadable);
-    le_event_SetFdHandlerContextPtr(handlerRef, servicePtr);
-
-    handlerRef = le_event_SetFdHandler(servicePtr->fdMonitorRef,
-                                       LE_EVENT_FD_READ_HANG_UP,
-                                       DirectorySocketClosed);
-    le_event_SetFdHandlerContextPtr(handlerRef, servicePtr);
-
-    handlerRef = le_event_SetFdHandler(servicePtr->fdMonitorRef,
-                                       LE_EVENT_FD_WRITE_HANG_UP,
-                                       DirectorySocketClosed);
-    le_event_SetFdHandlerContextPtr(handlerRef, servicePtr);
-
-    handlerRef = le_event_SetFdHandler(servicePtr->fdMonitorRef,
-                                       LE_EVENT_FD_ERROR,
-                                       DirectorySocketError);
-    le_event_SetFdHandlerContextPtr(handlerRef, servicePtr);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1149,7 +1167,7 @@ void le_msg_HideService
 //--------------------------------------------------------------------------------------------------
 {
     // Stop monitoring the directory socket.
-    le_event_DeleteFdMonitor(serviceRef->fdMonitorRef);
+    le_fdMonitor_Delete(serviceRef->fdMonitorRef);
     serviceRef->fdMonitorRef = NULL;
 
     // Close the connection with the Service Directory.

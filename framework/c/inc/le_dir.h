@@ -3,12 +3,6 @@
  *
  * @ref le_dir.h "API Reference"
  *
- * <HR>
- *
- * @ref c_dir_create <br>
- * @ref c_dir_delete <br>
- * @ref c_dir_read <br>
- *
  * @section c_dir_create Creating Directories
  *
  * To create a directory at a specific location, call @c le_dir_Make() passing in the path name of the

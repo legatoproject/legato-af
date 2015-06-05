@@ -1,16 +1,10 @@
 /**
  * @page c_safeRef Safe References API
  *
- * @ref le_safeRef.h "API reference documentation"
+ * @ref le_safeRef.h "API Reference"
  *
  * <HR>
  *
- * @ref c_safeRef_create <br>
- * @ref c_safeRef_lookup <br>
- * @ref c_safeRef_delete <br> 
- *  @ref c_safeRef_map <br>
- * @ref c_safeRef_multithreading <br>
- * @ref c_safeRef_example <br>
  *
  * The term "reference" is used to mean "opaque data that refers to some conceptual object".
  * It is intentionally vague to support "information hiding".  Behind the

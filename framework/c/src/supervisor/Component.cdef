@@ -2,6 +2,11 @@ sources:
 {
     supervisor.c
     config.c
+    resourceLimits.c
+    sandbox.c
+    app.c
+    proc.c
+    watchdogAction.c
 }
 
 provides:
@@ -9,8 +14,9 @@ provides:
     api:
     {
         le_sup_ctrl.api [async] [manual-start]
-        le_sup_state.api        [manual-start]
         le_sup_wdog.api [async] [manual-start]
+        le_appInfo.api          [manual-start]
+        appSmack.api            [manual-start]
     }
 }
 
@@ -26,6 +32,13 @@ requires:
 {
     component:
     {
-        ../security
+        appSmack
     }
+}
+
+cflags:
+{
+    -DLE_SVCDIR_SERVER_SOCKET_NAME=${LE_SVCDIR_SERVER_SOCKET_NAME}
+    -DLE_SVCDIR_CLIENT_SOCKET_NAME=${LE_SVCDIR_CLIENT_SOCKET_NAME}
+    -DLE_RUNTIME_DIR=$LE_RUNTIME_DIR
 }

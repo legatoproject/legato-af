@@ -1,15 +1,9 @@
-/** @page c_hashmap HashMap API
- *
+/**
+ * @page c_hashmap HashMap API
  *
  * @ref le_hashmap.h "API Reference"
  *
  * <HR>
- *
- * @ref c_hashmap_create <br>
- * @ref c_hashmap_insert <br>
- * @ref c_hashmap_iterating <br>
- * @ref c_hashmap_tracing <br>
- *
  *
  * This API provides a straightforward HashMap implementation.
  *
@@ -165,12 +159,15 @@
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
-/** @file le_hashmap.h
+//--------------------------------------------------------------------------------------------------
+/**
+ * @file le_hashmap.h
  *
  * Legato @ref c_hashmap include file.
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
+//--------------------------------------------------------------------------------------------------
 
 #ifndef LEGATO_HASHMAP_INCLUDE_GUARD
 #define LEGATO_HASHMAP_INCLUDE_GUARD

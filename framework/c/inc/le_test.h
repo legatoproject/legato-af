@@ -5,13 +5,6 @@
  *
  * <HR>
  *
- * @ref c_test_modes <br>
- * @ref c_test_setup <br>
- * @ref c_test_testing <br>
- * @ref c_test_result <br>
- * @ref c_test_multiThread <br>
- * @ref c_test_multiProcess <br>
- *
  * Unit testing is an important aspect of a quantifiable quality assurance methodology.  Although
  * unit testing requires some extra overhead (the writing of the unit tests) during the development
  * process it can provide enormous benefits during the project life cycle.
@@ -260,7 +253,7 @@ void _le_test_Join(le_test_ChildRef_t child);
  * @return A reference to the child process (see LE_TEST_JOIN()).
  **/
 //--------------------------------------------------------------------------------------------------
-#define LE_TEST_FORK(...)       _le_test_Fork(__VA_ARGS__ ,NULL)
+#define LE_TEST_FORK(exePath, ...) _le_test_Fork(exePath, ##__VA_ARGS__, NULL)
 
 
 //--------------------------------------------------------------------------------------------------

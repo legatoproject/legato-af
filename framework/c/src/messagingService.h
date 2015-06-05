@@ -50,7 +50,7 @@ typedef struct le_msg_Service
     int             directorySocketFd;  ///< File descriptor of socket connected to the
                                         ///  Service Directory (or -1 if not connected).
 
-    le_event_FdMonitorRef_t fdMonitorRef;///< File descriptor monitor for the directory socket.
+    le_fdMonitor_Ref_t fdMonitorRef;///< File descriptor monitor for the directory socket.
 
     le_thread_Ref_t serverThread;       ///< Thread that is acting as server in this process,
                                         ///  or NULL if no server exists in this process.

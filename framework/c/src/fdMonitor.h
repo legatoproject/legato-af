@@ -13,8 +13,6 @@
 #ifndef LEGATO_FD_MONITOR_H_INCLUDE_GUARD
 #define LEGATO_FD_MONITOR_H_INCLUDE_GUARD
 
-#include <sys/epoll.h>
-
 //--------------------------------------------------------------------------------------------------
 /** Fallback definition of EPOLLWAKEUP
  *

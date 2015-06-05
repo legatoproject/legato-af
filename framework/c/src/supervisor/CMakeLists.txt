@@ -12,17 +12,15 @@ find_package(Legato REQUIRED)
 mkexe(  supervisor
             ../supervisor
             -i ${LEGATO_ROOT}/interfaces/supervisor
+            -i appSmack
             -i ..
-            -i ../security
             -i ../serviceDirectory
             --cflags=-DNO_LOG_CONTROL
             --cflags=-DLEGATO_FRAMEWORK_NICE_LEVEL=${LEGATO_FRAMEWORK_NICE_LEVEL}
-            --cflags=-DLE_RUNTIME_DIR='"${LE_RUNTIME_DIR}"'
             ${CFLAGS_TARGET_IMPORTS}
         DEPENDS
-            ../security/*
             ./*
-            ${LEGATO_ROOT}/interfaces/supervisor/le_sup_ctrl.api
-            ${LEGATO_ROOT}/interfaces/supervisor/le_sup_state.api
-            ${LEGATO_ROOT}/interfaces/supervisor/le_sup_wdog.api
+            ${LEGATO_ROOT}/interfaces/supervisor/*
+            ${LEGATO_ROOT}/interfaces/le_cfg.api
+            appSmack/*
         )

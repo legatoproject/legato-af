@@ -1,16 +1,9 @@
 /**
  * @page c_logging Logging API
  *
- *
  * @ref le_log.h "API Reference"
  *
  * <HR>
- *
- * @ref c_log_logging <br>
- * @ref c_log_controlling <br>
-  * @ref c_log_format <br>
-  * @ref c_log_debugFiles <br>
- *
  *
  * The Legato Logging API provides a toolkit allowing code to be instrumented with error, warning,
  * informational, and debugging messages. These messages can be turned on or off remotely and pushed or pulled
@@ -18,13 +11,9 @@
  *
  * @section c_log_logging Logging Basics
  *
- * @ref c_log_levels <br>
- * @ref c_log_basic_logging <br>
- * @ref c_log_conditional_logging <br>
- * @ref c_log_loging_fatals <br>
- * @ref c_log_tracing <br>
- * @ref c_log_resultTxt
- *
+ * Legato's logging can be configured through this API, and there's also a command-line target
+ * @ref toolsTarget_log tool available.
+ * 
  * @subsection c_log_levels Levels
  *
  * Log messages are categorized according to the severity of the information being logged.
@@ -96,7 +85,7 @@
  *
  * @subsection c_log_loging_fatals Fatal Errors
  *
- * There are some special logging macros that are intended for logging fatal errors:
+ * There are some special logging macros intended for fatal errors:
  *
  *  - @ref LE_FATAL(formatString, ...) \n
  *    Always kills the calling process after logging the message at EMERGENCY level (never returns).
@@ -183,15 +172,8 @@
  *
  * @section c_log_controlling Log Controls
  *
- * @ref c_log_control_tool <br>
- * @ref c_log_control_config <br>
- * @ref c_log_control_environment_vars <br>
- * @ref c_log_control_env_level <br>
- * @ref c_log_control_env_trace <br>
- * @ref c_log_control_functions <br>
- *
  * Log level filtering and tracing can be controlled at runtime using:
- *  - the command-line Log Control Tool ("log")
+ *  - the command-line Log Control Tool (@ref toolsTarget_log)
  *  - configuration settings
  *  - environment variables
  *  - function calls.
@@ -281,12 +263,14 @@ $ export LE_LOG_TRACE=framework/fdMonitor:framework/logControl
  * logging functionality.  In some situations, it can be convenient
  * to control logging programmatically in C.
  *
- * To set the log filter level, @ref le_log_SetFilterLevel() is provided.
+ * le_log_SetFilterLevel() sets the log filter level.
+ *
+ * le_log_GetFilterLevel() gets the log filter level.
  *
  * Trace keywords can be enabled and disabled programmatically by calling
  * @ref le_log_EnableTrace() and @ref le_log_DisableTrace().
  *
- * 
+ *
  * @section c_log_format Log Formats
  *
  * Log entries can also contain any of these:
@@ -334,15 +318,15 @@ Jan  3 02:37:56  INFO  | processName[pid]/componentName T=threadName | fileName.
  syslog-1418694851
  @endverbatim
 
-* If the fault action for that app's process is to reboot the target, the output location is changed to 
-* this (and is preserved across reboots): 
+* If the fault action for that app's process is to reboot the target, the output location is changed to
+* this (and is preserved across reboots):
 
  @verbatim
  /mnt/flash/legato_logs/<app-name>/<exe-name>/
  @endverbatim
 
 * To save on RAM and flash space, only the most recent 4 copies of each file are preserved.
-* 
+*
  * @todo May need to support log format configuration through command-line arguments or a
  *       configuration file.
  *
@@ -382,7 +366,9 @@ typedef enum
 }
 le_log_Level_t;
 
-/* @cond PrivateFunctions */
+
+//--------------------------------------------------------------------------------------------------
+/// @cond HIDDEN_IN_USER_DOCS
 
 typedef struct le_log_Session* le_log_SessionRef_t;
 
@@ -439,19 +425,21 @@ extern
 #endif
 le_log_Level_t* LE_LOG_LEVEL_FILTER_PTR;
 
-/* @endcond */
+
+/// @endcond
+//--------------------------------------------------------------------------------------------------
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Internal macro to filter out messages that do not meet the current filtering level.
  */
 //--------------------------------------------------------------------------------------------------
-#define _LE_LOG_MSG(level, formatString, ...)  \
-    if ((LE_LOG_LEVEL_FILTER_PTR == NULL) || (level >= *LE_LOG_LEVEL_FILTER_PTR))     \
-    {                                          \
-        _le_log_Send(level, NULL, LE_LOG_SESSION, __FILE__, __func__, __LINE__, \
-                formatString, ##__VA_ARGS__);  \
-    }
+#define _LE_LOG_MSG(level, formatString, ...) \
+    do { \
+        if ((LE_LOG_LEVEL_FILTER_PTR == NULL) || (level >= *LE_LOG_LEVEL_FILTER_PTR)) \
+            _le_log_Send(level, NULL, LE_LOG_SESSION, __FILE__, __func__, __LINE__, \
+                    formatString, ##__VA_ARGS__); \
+    } while(0)
 
 
 //--------------------------------------------------------------------------------------------------
@@ -490,22 +478,22 @@ le_log_Level_t* LE_LOG_LEVEL_FILTER_PTR;
 
 /** @ref LE_DEBUG if condition is met. */
 #define LE_DEBUG_IF(condition, formatString, ...)                                                   \
-        if (condition) { _LE_LOG_MSG(LE_LOG_DEBUG, formatString, ##__VA_ARGS__) }
+        if (condition) { _LE_LOG_MSG(LE_LOG_DEBUG, formatString, ##__VA_ARGS__); }
 /** @ref LE_INFO if condition is met. */
 #define LE_INFO_IF(condition, formatString, ...)                                                    \
-        if (condition) { _LE_LOG_MSG(LE_LOG_INFO, formatString, ##__VA_ARGS__) }
+        if (condition) { _LE_LOG_MSG(LE_LOG_INFO, formatString, ##__VA_ARGS__); }
 /** @ref LE_WARN if condition is met. */
 #define LE_WARN_IF(condition, formatString, ...)                                                    \
-        if (condition) { _LE_LOG_MSG(LE_LOG_WARN, formatString, ##__VA_ARGS__) }
+        if (condition) { _LE_LOG_MSG(LE_LOG_WARN, formatString, ##__VA_ARGS__); }
 /** @ref LE_ERROR if condition is met. */
 #define LE_ERROR_IF(condition, formatString, ...)                                                   \
-        if (condition) { _LE_LOG_MSG(LE_LOG_ERR, formatString, ##__VA_ARGS__) }
+        if (condition) { _LE_LOG_MSG(LE_LOG_ERR, formatString, ##__VA_ARGS__); }
 /** @ref LE_CRIT if condition is met. */
 #define LE_CRIT_IF(condition, formatString, ...)                                                    \
-        if (condition) { _LE_LOG_MSG(LE_LOG_CRIT, formatString, ##__VA_ARGS__) }
+        if (condition) { _LE_LOG_MSG(LE_LOG_CRIT, formatString, ##__VA_ARGS__); }
 /** @ref LE_EMERG if condition is met. */
 #define LE_EMERG_IF(condition, formatString, ...)                                                   \
-        if (condition) { _LE_LOG_MSG(LE_LOG_EMERG, formatString, ##__VA_ARGS__) }
+        if (condition) { _LE_LOG_MSG(LE_LOG_EMERG, formatString, ##__VA_ARGS__); }
 
 
 //--------------------------------------------------------------------------------------------------
@@ -582,11 +570,11 @@ const char* _le_log_GetResultCodeString
  * Logs the string if the keyword has been enabled by a runtime tool or configuration setting.
  */
 //--------------------------------------------------------------------------------------------------
-#define LE_TRACE(traceRef, string, ...) \
-        if (le_log_IsTraceEnabled(traceRef)) \
-        { \
-            _le_log_Send(-1, traceRef, LE_LOG_SESSION, __FILE__, __func__, __LINE__, \
-                    string, ##__VA_ARGS__); \
+#define LE_TRACE(traceRef, string, ...)                                                             \
+        if (le_log_IsTraceEnabled(traceRef))                                                        \
+        {                                                                                           \
+            _le_log_Send(-1, traceRef, LE_LOG_SESSION, __FILE__, __func__, __LINE__,                \
+                    string, ##__VA_ARGS__);                                                         \
         }
 
 
@@ -637,6 +625,27 @@ static inline void le_log_SetFilterLevel
 )
 {
     _le_log_SetFilterLevel(LE_LOG_SESSION, level);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets the log filter level for the calling component.
+ **/
+//--------------------------------------------------------------------------------------------------
+static inline le_log_Level_t le_log_GetFilterLevel
+(
+    void
+)
+{
+    if (LE_LOG_LEVEL_FILTER_PTR != NULL)
+    {
+        return *LE_LOG_LEVEL_FILTER_PTR;
+    }
+    else
+    {
+        return LE_LOG_INFO; // Default.
+    }
 }
 
 

@@ -3,14 +3,9 @@
 /**
  * @page c_pathIter Path Iterator API
  *
- * @ref le_pathIter.h "Click here for the API reference documentation."
+ * @ref le_pathIter.h "API Reference"
  *
  * <HR>
- *
- * @ref c_pathIter_create <br>
- * @ref c_pathIter_iterate <br>
- * @ref c_pathIter_absoluteRelative <br>
- * @ref c_pathIter_modifyPath <br>
  *
  * Paths are text strings that contain nodes separated by character separators.  Paths are used in
  * many common applications like file system addressing, URLs, etc. so being able to parse them

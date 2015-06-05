@@ -69,7 +69,8 @@ le_result_t addr_GetLibDataSection
         {
             // The line is the section we are looking for if it specifies our library and has an
             // access mode of "rw-p" which we infer is the text section.
-            if ( (strstr(line, libNamePtr) != NULL) && (strstr(line, "rw-p") != NULL) )
+            if ( (strstr(line, libNamePtr) != NULL) &&
+                 ( (strstr(line, "rw-p") != NULL) || (strstr(line, "rwxp") != NULL) ) )
             {
                 // The line should begin with the starting address of the section.
                 // Convert it to an address value.

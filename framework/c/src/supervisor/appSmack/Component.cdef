@@ -1,0 +1,13 @@
+sources:
+{
+    appSmack.c
+}
+
+
+provides:
+{
+    api:
+    {
+        appSmack.api [manual-start]
+    }
+}

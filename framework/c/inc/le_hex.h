@@ -74,4 +74,14 @@ int32_t le_hex_BinaryToString
     uint32_t       stringSize  ///< [IN] size of string array
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function convert hexa string into integer
+ *
+ * @return
+ *      \return return the value or -1 if not possible.
+ */
+//--------------------------------------------------------------------------------------------------
+int le_hex_HexaToInteger(char s[]);
+
 #endif // LEGATO_HEX_INCLUDE_GUARD

@@ -1426,7 +1426,9 @@ static void ClientIpcSessionClosed
 
     if (runningProcObjPtr == NULL)
     {
-        LE_CRIT("Unknown IPC session (%p) closed!", ipcSessionRef);
+        // This can happen if a client connects, but gets killed before it registers any
+        // log sessions.
+        LE_DEBUG("Unknown IPC session (%p) closed.", ipcSessionRef);
         return;
     }
 

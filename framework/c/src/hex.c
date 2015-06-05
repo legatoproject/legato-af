@@ -137,3 +137,43 @@ int32_t le_hex_BinaryToString
 
     return idxString;
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function convert hexa string into integer
+ *
+ * @return
+ *      \return return the value or -1 if not possible.
+ */
+//--------------------------------------------------------------------------------------------------
+int le_hex_HexaToInteger(char s[])
+{
+  int   i;
+  int n=0;
+
+  if(s == NULL)
+  {
+    return (-1);
+  }
+
+  for(i=0; s[i]!= '\0'; i++)
+  {
+    if(s[i] <= '9' && s[i] >= '0' )
+    {
+      n=n*16+s[i]- '0';
+    }
+    else if (s[i]>= 'a' && s[i]<= 'f')
+    {
+      n=n*16+ (int)s[i] - 'a' + 10;
+    }
+    else if (s[i]>= 'A' && s[i]<= 'F')
+    {
+      n=n*16+ (int)s[i] - 'A' + 10;
+    }
+    else
+    {
+      return (-1);
+    }
+  }
+  return (n);
+}

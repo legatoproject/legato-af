@@ -5,20 +5,6 @@
  *
  * <HR>
  *
- * @ref c_messagingInteractionModel <br>
- * @ref c_messagingAddressing <br>
- * @ref c_messagingProtocols <br>
- * @ref c_messagingClientUsage <br>
- * @ref c_messagingServerUsage <br>
- * @ref c_messagingStartUp <br>
- * @ref c_messagingMemoryManagement <br>
- * @ref c_messagingSecurity <br>
- * @ref c_messagingClientUserIdChecking <br>
- * @ref c_messagingSendingFileDescriptors <br>
- * @ref c_messagingTroubleshooting <br>
- * @ref c_messagingFutureEnhancements <br>
- * @ref c_messagingDesignNotes <br>
- *
  * Message-based interfaces in Legato are implemented in layers.
  * This low-level messaging API is at the bottom layer.
  * It's designed to support higher layers of the messaging system.  But it's also
@@ -747,19 +733,6 @@
  * @warning DO NOT SEND DIRECTORY FILE DESCRIPTORS.  That can be exploited to break out of chroot()
  *          jails.
  *
- * @section c_messagingTroubleshooting Troubleshooting
- *
- * If you are running as the super-user (root), you can trace messaging traffic using @b TBD.
- * You can also inspect message queues and view lists of outstanding message objects within
- * processes using the Process Inspector tool.
- *
- * If you are leaking messages by forgetting to release them when you are finished with them,
- * you will see warning messages in the log indicating that your message pool is growing.
- * You should be able to tell by the name of the expanding pool which messaging service it is
- * related to.
- *
- * @todo Finish this section later, when the diagnostic tools become available.
- *
  * @section c_messagingFutureEnhancements Future Enhancements
  *
  * As an optimization to reduce the number of copies in cases where the sender of a message
@@ -783,6 +756,19 @@
  * that the client release the message explicitly in all cases, because the consequences of using
  * an invalid reference can be catastrophic and much more difficult to debug than forgetting to
  * release a message (which will generate pool growth warning messages in the log).
+ *
+ * @section c_messagingTroubleshooting Troubleshooting
+ *
+ * If you are running as the super-user (root), you can trace messaging traffic using @b TBD.
+ * You can also inspect message queues and view lists of outstanding message objects within
+ * processes using the Process Inspector tool.
+ *
+ * If you are leaking messages by forgetting to release them when you are finished with them,
+ * you will see warning messages in the log indicating that your message pool is growing.
+ * You should be able to tell by the name of the expanding pool which messaging service it is
+ * related to.
+ *
+ * @todo Finish this section later, when the diagnostic tools become available.
  *
  * <HR>
  *

@@ -19,6 +19,7 @@
 
 #include "legato.h"
 #include "hsieh_hash.h"
+#include "limit.h"
 
 /**
  * A struct to hold the data in the table
@@ -225,8 +226,12 @@ le_hashmap_Ref_t le_hashmap_Create
      * Initial entries for each hash are actually doubly linked list objects which store
      * where the starting entry is in the pool.
      */
-    mapRef->entryPoolRef = le_mem_ExpandPool(le_mem_CreatePool(nameStr, sizeof(Entry_t)), mapRef->bucketCount/2);
-    le_mem_SetNumObjsToForce(mapRef->entryPoolRef, mapRef->bucketCount/8);
+    char poolName[LIMIT_MAX_MEM_POOL_NAME_BYTES] = "hashMap_";
+    le_utf8_Append(poolName, nameStr, sizeof(poolName), NULL);
+    mapRef->entryPoolRef = le_mem_ExpandPool(le_mem_CreatePool(poolName,
+                                                               sizeof(Entry_t)),
+                                                               mapRef->bucketCount / 2);
+    le_mem_SetNumObjsToForce(mapRef->entryPoolRef, mapRef->bucketCount / 8);
 
     mapRef->bucketsPtr = malloc(mapRef->bucketCount * sizeof(le_dls_List_t));
     LE_ASSERT(mapRef->bucketsPtr);

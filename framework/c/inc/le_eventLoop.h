@@ -1,32 +1,39 @@
 /**
  * @page c_eventLoop Event Loop API
  *
- * @ref le_eventLoop.h "Click here for the API reference documentation."
+ * @ref le_eventLoop.h "API Reference"
  *
  * <HR>
  *
- *  @ref c_event_deferredFunctionCalls <br>
- *  @ref c_event_publishSubscribe <br>
- *  @ref c_event_layeredPublishSubscribe <br>
- *  @ref c_event_files <br>
- *  @ref c_event_dispatchingToOtherThreads <br>
- *  @ref c_event_miscThreadingTopics <br>
- *  @ref c_event_troubleshooting <br>
- *  @ref c_event_integratingLegacyPosix <br>
-
- * The Event Loop API supports Legato's @ref programmingModel.  In this event-driven
- * programming model, a central <b> event loop </b> calls <b> event handler </b> functions in
- * response to <b>event reports</b>.
+ * The Event Loop API supports the event-driven programming model, which is favoured in Legato
+ * (but not forced).  Each thread that uses this system has a central <b>event loop</b>
+ * which calls <b>event handler</b> functions in response to <b>event reports</b>.
  *
  * Software components register their event handler functions with the event system (either
  * directly through the Event Loop API or indirectly through other APIs that use the Event Loop API)
  * so the central event loop knows the functions to call in response to defined events.
  *
- * Every event loop has an <b>event queue</b>, which is a queue of events waiting to be handled by that event loop.
- * The following different usage patterns are supported by the Event Loop API:
+ * Every event loop has an <b>event queue</b>, which is a queue of events waiting to be handled by
+ * that event loop.
  *
  * @note When the process dies, all events, event loops, queues, reports, and handlers will be
  * automatically cleared.
+ *
+ * The following different usage patterns are supported by the Event Loop API:
+ *
+ * @ref c_event_deferredFunctionCalls <br>
+ * @ref c_event_dispatchingToOtherThreads <br>
+ * @ref c_event_publishSubscribe <br>
+ * @ref c_event_layeredPublishSubscribe <br>
+ *
+ * Other Legato C Runtime Library APIs using the event loop include:
+ *
+ * @ref c_fdMonitor <br>
+ * @ref c_timer <br>
+ * @ref c_args <br>
+ * @ref c_signals <br>
+ * @ref c_messaging <br>
+ *
  *
  * @section c_event_deferredFunctionCalls Deferred Function Calls
  *
@@ -64,6 +71,109 @@
  * in special cases (which will increase the client's code complexity and may leak API
  * implementation details to the client), the API function can defers executing the
  * call-back until later by queuing an error handling function onto the Event Queue.
+ *
+ * @section c_event_dispatchingToOtherThreads Dispatching Function Execution to Other Threads
+ *
+ * In multi-threaded programs, sometimes the implementor needs
+ * to ask another thread to run a function because:
+ * - The function to be executed takes a long time, but doesn't have to be done at a high priority.
+ * - A call needs to be made into a non-thread-safe API function.
+ * - A blocking function needs to be called, but the current thread can't afford to block.
+ *
+ * To assist with this, the Event Loop API provides @c le_event_QueueFunctionToThread(). It
+ * works the same as le_event_QueueFunction(), except that it queues the function onto a
+ * specific thread's Event Queue.
+ *
+ * If the other thread isn't running the Event Loop, then the queued function will
+ * never be executed.
+ *
+ * This code sample shows two arguments started by the process's main
+ * thread, and executed in the background by a low-priority thread. The result is reported back
+ * to the client through a completion callback running in the same thread that requested that the
+ * computation be performed.
+ *
+ * @code
+ * static le_mem_PoolRef_t ComputeRequestPool;
+ * static le_thread_Ref_t LowPriorityThreadRef;
+ *
+ * typedef struct
+ * {
+ *     size_t           arg1;                                   // First argument
+ *     size_t           arg2;                                   // Second argument
+ *     ssize_t          result;                                 // The result
+ *     void           (*completionCallback)(ssize_t result);    // The client's completion callback
+ *     le_thread_Ref_t  requestingThreadRef;                    // The client's thread.
+ * }
+ * ComputeRequest_t;
+ *
+ * // Main function of low-priority background thread.
+ * static void* LowPriorityThreadMain
+ * (
+ *     void* contextPtr // not used.
+ * )
+ * {
+ *     le_event_RunLoop();
+ * }
+ *
+ * COMPONENT_INIT
+ * {
+ *     ComputeRequestPool = le_mem_CreatePool("Compute Request", sizeof(ComputeRequest_t));
+ *
+ *     LowPriorityThreadRef = le_thread_Create("Background Computation Thread",
+ *                                             LowPriorityThreadMain,
+ *                                             NULL);
+ *     le_thread_SetPriority(LowPriorityThreadRef, LE_THREAD_PRIORITY_IDLE);
+ *     le_thread_Start(LowPriorityThreadRef);
+ * }
+ *
+ * // This function gets run by a low-priority, background thread.
+ * static void ComputeResult
+ * (
+ *     void* param1Ptr, // request object pointer
+ *     void* param2Ptr  // not used
+ * )
+ * {
+ *     ComputeRequest_t* requestPtr = param1Ptr;
+ *
+ *     requestPtr->result = DoSomeReallySlowComputation(requestPtr->arg1, requestPtr->arg2);
+ *
+ *     le_event_QueueFunctionToThread(requestPtr->requestingThreadRef,
+ *                                    ProcessResult,
+ *                                    requestPtr,
+ *                                    NULL);
+ * }
+ *
+ * // This function gets called by a component running in the main thread.
+ * static void ComputeResultInBackground
+ * (
+ *      size_t arg1,
+ *      size_t arg2,
+ *      void (*completionCallback)(ssize_t result)
+ * )
+ * {
+ *     ComputeRequest_t* requestPtr = le_mem_ForceAlloc(ComputeRequestPool);
+ *     requestPtr->arg1 = arg1;
+ *     requestPtr->arg2 = arg2;
+ *     requestPtr->requestingThreadRef = le_thread_GetCurrent();
+ *     requestPtr->completionCallback = completionCallback;
+ *     le_event_QueueFunctionToThread(LowPriorityThreadRef,
+ *                                    ComputeResult,
+ *                                    requestPtr,
+ *                                    NULL);
+ * }
+ *
+ * // This function gets run by the main thread.
+ * static void ProcessResult
+ * (
+ *     void* param1Ptr, // request object pointer
+ *     void* param2Ptr  // not used
+ * )
+ * {
+ *     ComputeRequest_t* requestPtr = param1Ptr;
+ *     completionCallback(requestPtr->result);
+ *     le_mem_Release(requestPtr);
+ * }
+ * @endcode
  *
  * @section c_event_publishSubscribe Publish-Subscribe Events
  *
@@ -260,220 +370,6 @@
  * function pointers in code that uses this Temperature Sensor API.
  *
  *
- * @section c_event_files Working with File Descriptors
- *
- * In a POSIX environment, like Linux, file descriptors are used for most process I/O.
- * Many components will need to be notified when one or more file descriptors are
- * ready to read from or write to, or experience an error or hang-up.
- *
- * In conventional programs, it's common to block a thread on a call to @c read(), @c write(),
- * @c accept(), @c select(), @c poll(), or some variant of those functions.
- * But if that's done in a thread shared with other components, those other
- * components would be unable to run when needed.  To avoid this, the Legato
- * event system provides methods to monitor file descriptors and report related events so they
- * won't interfere with other software sharing the same thread.
- *
- * To start monitoring a file descriptor:
- * -# a <b> File Descriptor Monitor </b> object is created for that file descriptor (by calling
- *    le_event_CreateFdMonitor() ) and
- * -# event handler functions are registered with it (by calling le_event_SetFdHandler()).
- * -# optionally, make the event deferrable until next system resume (by calling le_event_WakeUp()
- *    with wakeUp flag set to 'false').
- *
- * File descriptor event handler functions receive a file descriptor as their only parameter,
- * instead of receiving a report pointer.  See @ref le_event_FdEventType_t for a list of events
- * that can be handled for file descriptors.
- *
- * For example:
- *
- * @code
-
-COMPONENT_INIT
-{
-    // Open the serial port.
-    int fd = open("/dev/ttyS0", O_RDWR|O_NONBLOCK);
-    LE_FATAL_IF(fd == -1, "open failed with errno %d (%m)", errno);
-
-    // Create a File Descriptor Monitor object for the serial port's file descriptor.
-    le_event_FdMonitorRef_t fdMonitor = le_event_CreateFdMonitor("PortMonitor", fd);
-
-    // Register a read handler (note: context pointer is unused in this example).
-    le_event_SetFdHandler(fdMonitor, LE_EVENT_FD_READABLE, MyReadHandler);
-}
-
-
-static void MyReadHandler(int fd)
-{
-    char buff[MY_BUFF_SIZE];
-
-    ssize_t bytesRead = read(fd, buff, sizeof(buff));
-
-    ...
-}
-
- * @endcode
- *
- * If an event occurs on a file descriptor where there is no handler for that event on that file descriptor,
- * the event will be ignored. If a handler is later registered for that event, and that event's
- * trigger condition is still true (e.g., the file descriptor still has data available to be read), then the
- * event will be reported to the handler at that time. If the event trigger condition is gone
- *  (e.g., the file descriptor no longer has data available to read), then the event will not be reported
- * until its trigger condition becomes true again.
- *
- * If events occur on different file descriptors at the same time, the order in which the handlers
- * are called is implementation-dependent. If multiple events occur on the same file descriptor at the same
- * time, handlers will be called in the same order as the events appear in the
- * @ref le_event_FdEventType_t enumeration (first event's handler will be called first). For
- * example, if data arrives and the far end closes the connection, the "readable" event handler
- * would be called before the "read hang up" event handler.
- *
- * When a file descriptor no longer needs to be monitored, the File Descriptor Monitor object
- * is deleted by calling le_event_DeleteFdMonitor().  There's no need to remove its handlers first.
- *
- * @warning Depending on the implementation, strange behaviour may occur if a file descriptor is
- * closed while being monitored and then the same file descriptor is reused for something else
- * before its Monitor object is deleted. Always delete the Monitor object for a file descriptor
- * when it is closed.
- *
- * A file descriptor event handler can be removed (deregistered) using @c le_event_ClearFdHandler()
- * or le_event_ClearFdHandlerByEventType().
- * This is useful monitor writeability.  When the file descriptor is writeable,
- * but there's nothing to write, the writeability handler will be continuously run
- * until it's cleared or enough data is written into the file descriptor to cause it to become
- * unwriteable.
- * Allowing the handler to continually run is a colossal waste of CPU cycles
- * and power. To prevent this, clear the writeability handler and set it again later when an
- * attempt to write is rejected because the file descriptor is no longer writeable.
- *
- * @code
-static void DoWrite()
-{
-    le_result_t result = WriteMoreStuff();
-    if (result == LE_WOULD_BLOCK)
-    {
-        // The connection is not writeable (because its send buffers are full).
-        // Register for notification when it becomes writeable again.
-        FdWriteableHandlerRef = le_event_SetFdHandler(FdMonitorRef,
-                                                      LE_EVENT_FD_WRITEABLE,
-                                                      ContinueWriting);
-    }
-    else
-    {
-        ...
-    }
-}
-
-static void ContinueWriting(int fd)
-{
-    le_event_ClearFdHandler(FdWriteableHandlerRef);
-
-    DoWrite();
-}
- * @endcode
- *
- * @section c_event_dispatchingToOtherThreads Dispatching Function Execution to Other Threads
- *
- * In multi-threaded programs, sometimes the implementor needs
- * to ask another thread to run a function because:
- * - The function to be executed takes a long time, but doesn't have to be done at a high priority.
- * - A call needs to be made into a non-thread-safe API function.
- * - A blocking function needs to be called, but the current thread can't afford to block.
- *
- * To assist with this, the Event Loop API provides @c le_event_QueueFunctionToThread(). It
- * works the same as le_event_QueueFunction(), except that it queues the function onto a
- * specific thread's Event Queue.
- *
- * If the other thread isn't running the Event Loop, then the queued function will
- * never be executed.
- *
- * This code sample shows two arguments started by the process's main
- * thread, and executed in the background by a low-priority thread. The result is reported back
- * to the client through a completion callback running in the same thread that requested that the
- * computation be performed.
- *
- * @code
- * static le_mem_PoolRef_t ComputeRequestPool;
- * static le_thread_Ref_t LowPriorityThreadRef;
- *
- * typedef struct
- * {
- *     size_t           arg1;                                   // First argument
- *     size_t           arg2;                                   // Second argument
- *     ssize_t          result;                                 // The result
- *     void           (*completionCallback)(ssize_t result);    // The client's completion callback
- *     le_thread_Ref_t  requestingThreadRef;                    // The client's thread.
- * }
- * ComputeRequest_t;
- *
- * // Main function of low-priority background thread.
- * static void* LowPriorityThreadMain
- * (
- *     void* contextPtr // not used.
- * )
- * {
- *     le_event_RunLoop();
- * }
- *
- * COMPONENT_INIT
- * {
- *     ComputeRequestPool = le_mem_CreatePool("Compute Request", sizeof(ComputeRequest_t));
- *
- *     LowPriorityThreadRef = le_thread_Create("Background Computation Thread",
- *                                             LowPriorityThreadMain,
- *                                             NULL);
- *     le_thread_SetPriority(LowPriorityThreadRef, LE_THREAD_PRIORITY_IDLE);
- *     le_thread_Start(LowPriorityThreadRef);
- * }
- *
- * // This function gets run by a low-priority, background thread.
- * static void ComputeResult
- * (
- *     void* param1Ptr, // request object pointer
- *     void* param2Ptr  // not used
- * )
- * {
- *     ComputeRequest_t* requestPtr = param1Ptr;
- *
- *     requestPtr->result = DoSomeReallySlowComputation(requestPtr->arg1, requestPtr->arg2);
- *
- *     le_event_QueueFunctionToThread(requestPtr->requestingThreadRef,
- *                                    ProcessResult,
- *                                    requestPtr,
- *                                    NULL);
- * }
- *
- * // This function gets called by a component running in the main thread.
- * static void ComputeResultInBackground
- * (
- *      size_t arg1,
- *      size_t arg2,
- *      void (*completionCallback)(ssize_t result)
- * )
- * {
- *     ComputeRequest_t* requestPtr = le_mem_ForceAlloc(ComputeRequestPool);
- *     requestPtr->arg1 = arg1;
- *     requestPtr->arg2 = arg2;
- *     requestPtr->requestingThreadRef = le_thread_GetCurrent();
- *     requestPtr->completionCallback = completionCallback;
- *     le_event_QueueFunctionToThread(LowPriorityThreadRef,
- *                                    ComputeResult,
- *                                    requestPtr,
- *                                    NULL);
- * }
- *
- * // This function gets run by the main thread.
- * static void ProcessResult
- * (
- *     void* param1Ptr, // request object pointer
- *     void* param2Ptr  // not used
- * )
- * {
- *     ComputeRequest_t* requestPtr = param1Ptr;
- *     completionCallback(requestPtr->result);
- *     le_mem_Release(requestPtr);
- * }
- * @endcode
- *
  * @section c_event_reportingRefCountedObjects Event Reports Containing Reference-Counted Objects
  *
  *Sometimes you need to report an event where the report payload is pointing to a
@@ -563,24 +459,6 @@ static void ContinueWriting(int fd)
  * deregisters any handlers and deletes the thread's Event Loop, its Event
  * Queue, and any event reports still in that Event Queue.
  *
- * Monitoring a file descriptor is performed by the Event Loop of the thread that
- * created the Monitor object for that file descriptor.  If that thread is blocked, no events
- * will be detected for that file descriptor until that thread is unblocked and returns to its
- * Event Loop.  Likewise, if the thread that creates a File Descriptor Monitor object does not
- * run an Event Loop at all, no events will be detected for that file descriptor.
- *
- * It's not recommended to use the same file descriptor to monitor two threads at the same time.
- *
- * @section c_event_troubleshooting Troubleshooting
- *
- * A logging keyword can be enabled to view a given thread's event handling activity.  The keyword name
- * depends on the thread and process name where the thread is located.
- * For example, the keyword "P/T/events" controls logging for a thread named "T" running inside
- * a process named "P".
- *
- * @todo Add a reference to the Process Inspector and its capabilities for inspecting Event Queues,
- * Event Loops, Handlers and Event Report statistics.
- *
  * @section c_event_integratingLegacyPosix Integrating with Legacy POSIX Code
  *
  * Many legacy programs written on top of POSIX APIs will have previously built their own event loop
@@ -602,6 +480,16 @@ static void ContinueWriting(int fd)
  * the caller's responsibility to check the return code from le_event_ServiceLoop() and keep
  * calling until it indicates that there is no more work to be done.
  *
+ * @section c_event_troubleshooting Troubleshooting
+ *
+ * A logging keyword can be enabled to view a given thread's event handling activity.  The keyword name
+ * depends on the thread and process name where the thread is located.
+ * For example, the keyword "P/T/events" controls logging for a thread named "T" running inside
+ * a process named "P".
+ *
+ * @todo Add a reference to the Process Inspector and its capabilities for inspecting Event Queues,
+ * Event Loops, Handlers and Event Report statistics.
+
  * <HR>
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
@@ -655,7 +543,11 @@ typedef struct le_event_Id* le_event_Id_t;
 #endif
 
 // This macro is set by the build system.  However, if it hasn't been set, use a sensible default.
+// TODO: Remove this.
 #ifndef COMPONENT_INIT
+    /**
+     * Initialization event handler function.
+     */
     #define COMPONENT_INIT LE_CI_LINKAGE void _le_event_InitializeComponent(void)
 #endif
 
@@ -699,19 +591,6 @@ typedef void (*le_event_LayeredHandlerFunc_t)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Prototype for file descriptor event handler functions look like this:
- *
- * @param fd    [in] File descriptor that experienced the event.
- */
-//--------------------------------------------------------------------------------------------------
-typedef void (*le_event_FdHandlerFunc_t)
-(
-    int fd
-);
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Prototype for deferred functions look like this:
  * @param param1Ptr [in] Value passed in as param1Ptr to le_event_QueueFunction().
  * @param param2Ptr [in] Value passed in as param2Ptr to le_event_QueueFunction().
@@ -728,16 +607,6 @@ typedef void (*le_event_DeferredFunc_t)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * File Descriptor Monitor reference.
- *
- * Used to refer to File Descriptor Monitor objects.
- */
-//--------------------------------------------------------------------------------------------------
-typedef struct le_event_FdMonitor* le_event_FdMonitorRef_t;
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Handler reference.
  *
  *Used to refer to handlers that have been added for events. Only needed if
@@ -745,36 +614,6 @@ typedef struct le_event_FdMonitor* le_event_FdMonitorRef_t;
  */
 //--------------------------------------------------------------------------------------------------
 typedef struct le_event_Handler* le_event_HandlerRef_t;
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * File Descriptor Handler reference.
- *
- * Used to refer to handlers that have been set for File Descriptor events.  Only needed if
- * you need to set te handler's context pointer or remove the handler later.
- */
-//--------------------------------------------------------------------------------------------------
-typedef struct le_event_FdHandler* le_event_FdHandlerRef_t;
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Enumerates all the different types of events that can be generated for a file descriptor.
- */
-//--------------------------------------------------------------------------------------------------
-typedef enum
-{
-    LE_EVENT_FD_READABLE,           ///< Data is available for reading.
-    LE_EVENT_FD_READABLE_URGENT,    ///< Urgent/out-of-band data is available for reading.
-    LE_EVENT_FD_WRITEABLE,          ///< Ready to accept data for writing.
-    LE_EVENT_FD_WRITE_HANG_UP,      ///< Far end shutdown their reading while we were still writing.
-    LE_EVENT_FD_READ_HANG_UP,       ///< Far end shutdown their writing while we were still reading.
-    LE_EVENT_FD_ERROR,              ///< Experienced an error.
-}
-le_event_FdEventType_t;
-
-#define LE_EVENT_NUM_FD_EVENT_TYPES 6   ///< Number of members in the le_event_FdEventType_t enum.
 
 
 //--------------------------------------------------------------------------------------------------
@@ -938,118 +777,6 @@ void le_event_SetContextPtr
 void* le_event_GetContextPtr
 (
     void
-);
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Creates a File Descriptor Monitor.
- *
- * Creates an object that will monitor a given file descriptor for events.
- *
- * The monitoring will be performed by the event loop of the thread that created the Monitor object.
- * If that thread is blocked, no events will be detected for that file descriptor until that
- * thread is unblocked and returns to its event loop.
- *
- * @return
- *      Reference to the object, which is needed for later deletion.
- *
- * @note Doesn't return on failure, there's no need to check the return value for errors.
- */
-//--------------------------------------------------------------------------------------------------
-le_event_FdMonitorRef_t le_event_CreateFdMonitor
-(
-    const char*             name,       ///< [in] Name of the object (for diagnostics).
-    int                     fd          ///< [in] File descriptor to be monitored for events.
-);
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Registers a handler for a specific type of file descriptor event with a given
- * File Descriptor Monitor object.
- *
- * When the handler function is called, it will be called by the the thread that registered
- * the handler, which must also be the same thread that created the FD Monitor object.
- *
- * @return  Reference to the handler function. (Only needed if the handler's context pointer
- *          needs to be set.)
- *
- * @note
- * - Doesn't return on failure, there's no need to check the return value for errors.
- * - The only way to deregister an FD Monitor event handler is to delete the FD Monitor object.
- *   Otherwise, there can be races between event reports and handler registration/deregistration
- *   that could result in spurious handler function calls.
- */
-//--------------------------------------------------------------------------------------------------
-le_event_FdHandlerRef_t le_event_SetFdHandler
-(
-    le_event_FdMonitorRef_t  monitorRef, ///< [in] Reference to the File Descriptor Monitor object.
-    le_event_FdEventType_t   eventType,  ///< [in] Type of event to be reported to this handler.
-    le_event_FdHandlerFunc_t handlerFunc ///< [in] Handler function.
-);
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Indicate if the event is deferrable or system should stay awake while processing the event from
- * File Descriptor Monitor object. Components wanting to take advantage of this feature have to be
- * assigned CAP_EPOLLWAKEUP (or CAP_BLOCK_SUSPEND) capability.
- */
-//--------------------------------------------------------------------------------------------------
-void le_event_WakeUp
-(
-    le_event_FdMonitorRef_t monitorRef, ///< [in] Reference to the File Descriptor Monitor object.
-    bool                    wakeUp      ///< [in] true (wake up) or false (deferred, no wake up).
-);
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Sets the Context Pointer for a handler for a file descriptor event.  This can be retrieved
- * by the handler by calling le_event_GetContextPtr() when the handler function is running.
- */
-//--------------------------------------------------------------------------------------------------
-void le_event_SetFdHandlerContextPtr
-(
-    le_event_FdHandlerRef_t handlerRef, ///< [in] Reference to the handler.
-    void*                   contextPtr  ///< [in] Opaque context pointer value.
-);
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Deregisters a handler for a file descriptor event.
- */
-//--------------------------------------------------------------------------------------------------
-void le_event_ClearFdHandler
-(
-    le_event_FdHandlerRef_t  handlerRef  ///< [in] Reference to the handler.
-);
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Deregisters a handler for a file descriptor event.
- */
-//--------------------------------------------------------------------------------------------------
-void le_event_ClearFdHandlerByEventType
-(
-    le_event_FdMonitorRef_t  monitorRef, ///< [in] Reference to the File Descriptor Monitor object.
-    le_event_FdEventType_t   eventType   ///< [in] The type of event to clear the handler for.
-);
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Deletes a file descriptor monitor object.
- *
- * This will automatically remove all handlers added to the object.
- */
-//--------------------------------------------------------------------------------------------------
-void le_event_DeleteFdMonitor
-(
-    le_event_FdMonitorRef_t monitorRef  ///< [in] Reference to the File Descriptor Monitor object.
 );
 
 
