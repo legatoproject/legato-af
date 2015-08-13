@@ -4,13 +4,15 @@ Welcome to Legato!
 #### Dependencies
 
   - Ubuntu 12.04 or newer.
-  - Packages required:
+  - Install the packages required:
 
-        bison build-essential chrpath cifs-utils cmake coreutils curl desktop-file-utils
-        diffstat docbook-utils doxygen fakeroot flex g++ gawk gcc git-core gitk graphviz
-        help2man libgmp3-dev libmpfr-dev libreadline6-dev libtool libxml2-dev libxml-libxml-perl
-        make m4 ninja-build python-pip python-jinja2 python-pysqlite2 quilt samba scons sed
-        subversion texi2html texinfo unzip wget ninja-build
+        sudo apt-get install bison build-essential chrpath cifs-utils cmake \
+        coreutils curl desktop-file-utils diffstat docbook-utils doxygen \
+        fakeroot flex g++ gawk gcc git-core gitk graphviz help2man \
+        libgmp3-dev libmpfr-dev libreadline6-dev libtool libxml2-dev \
+        libxml-libxml-perl make m4 ninja-build python-pip python-jinja2 \
+        python-pysqlite2 quilt samba scons sed subversion texi2html texinfo \
+        unzip wget ninja-build
 
   - Cross toolchain(s).
 
