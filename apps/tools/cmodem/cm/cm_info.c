@@ -32,6 +32,8 @@ void cm_info_PrintInfoHelp
             "\tcm info device\n\n"
             "To print the IMEI:\n"
             "\tcm info imei\n\n"
+            "To print the serial number:\n"
+            "\tcm info fsn\n\n"
             "To print the firmware version:\n"
             "\tcm info firmware\n\n"
             "To print the bootloader version:\n"
@@ -62,6 +64,32 @@ void cm_info_PrintImei
     else
     {
         printf("%s\n", imei);
+    }
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * Print the serial number
+ */
+//-------------------------------------------------------------------------------------------------
+void cm_info_PrintSerialNumber
+(
+    bool withHeaders
+)
+{
+    le_result_t result;
+    char serialNumber[LE_INFO_MAX_PSN_BYTES] = {0};
+
+    result = le_info_GetPlatformSerialNumber(serialNumber, sizeof(serialNumber));
+    LE_ASSERT(result == LE_OK);
+
+    if(withHeaders)
+    {
+        cm_cmn_FormatPrint("FSN", serialNumber);
+    }
+    else
+    {
+        printf("%s\n", serialNumber);
     }
 }
 
@@ -162,6 +190,7 @@ void cm_info_ProcessInfoCommand
     {
         cm_info_PrintDeviceModel(true);
         cm_info_PrintImei(true);
+        cm_info_PrintSerialNumber(true);
         cm_info_PrintFirmwareVersion(true);
         cm_info_PrintBootloaderVersion(true);
     }
@@ -180,6 +209,10 @@ void cm_info_ProcessInfoCommand
     else if (strcmp(command, "imei") == 0)
     {
         cm_info_PrintImei(false);
+    }
+    else if (strcmp(command, "fsn") == 0)
+    {
+        cm_info_PrintSerialNumber(false);
     }
     else
     {

@@ -214,7 +214,7 @@ static void CGEVUnsolHandler
         if (numParam == 4) {
             sessionStatePtr = le_mem_ForceAlloc(NewSessionStatePool);
             sessionStatePtr->profileIndex = atoi(atcmd_GetLineParameter(unsolPtr->line,4));
-            sessionStatePtr->newState = PA_MDC_DISCONNECTED;
+            sessionStatePtr->newState = LE_MDC_DISCONNECTED;
 
             SetCurrentDataSessionIndex(INVALID_PROFILE_INDEX);
 
@@ -618,8 +618,7 @@ le_result_t pa_mdc_WriteProfile
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_mdc_StartSessionIPV4
 (
-    uint32_t profileIndex,        ///< [IN] The profile to use
-    pa_mdc_CallRef_t* callRefPtr  ///< [OUT] Reference used for stopping the data session
+    uint32_t profileIndex        ///< [IN] The profile to use
 )
 {
     le_result_t result=LE_FAULT;
@@ -652,7 +651,6 @@ le_result_t pa_mdc_StartSessionIPV4
 
     if (result==LE_OK) {
         SetCurrentDataSessionIndex(profileIndex);
-        memcpy(callRefPtr, &profileIndex, sizeof(void*));
     } else {
         SetCurrentDataSessionIndex(INVALID_PROFILE_INDEX);
     }
@@ -675,8 +673,7 @@ le_result_t pa_mdc_StartSessionIPV4
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_mdc_StartSessionIPV6
 (
-    uint32_t profileIndex,        ///< [IN] The profile to use
-    pa_mdc_CallRef_t* callRefPtr  ///< [OUT] Reference used for stopping the data session
+    uint32_t profileIndex        ///< [IN] The profile to use
 )
 {
     return LE_OK;
@@ -696,8 +693,7 @@ le_result_t pa_mdc_StartSessionIPV6
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_mdc_StartSessionIPV4V6
 (
-    uint32_t profileIndex,        ///< [IN] The profile to use
-    pa_mdc_CallRef_t* callRefPtr  ///< [OUT] Reference used for stopping the data session
+    uint32_t profileIndex        ///< [IN] The profile to use
 )
 {
     return LE_OK;
@@ -737,7 +733,7 @@ le_result_t pa_mdc_GetSessionType
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_mdc_StopSession
 (
-    pa_mdc_CallRef_t callRef         ///< [IN] The call reference returned when starting the sessions
+    uint32_t profileIndex        ///< [IN] The profile to use
 )
 {
     if ( GetCurrentDataSessionIndex() == INVALID_PROFILE_INDEX )
@@ -769,15 +765,15 @@ le_result_t pa_mdc_StopSession
 le_result_t pa_mdc_GetSessionState
 (
     uint32_t profileIndex,                    ///< [IN] The profile to use
-    pa_mdc_SessionState_t* sessionStatePtr  ///< [OUT] The data session state
+    le_mdc_ConState_t* sessionStatePtr        ///< [OUT] The data session state
 )
 {
     // All other profiles are always disconnected
     if ( profileIndex != GetCurrentDataSessionIndex() )
     {
-        *sessionStatePtr = PA_MDC_DISCONNECTED;
+        *sessionStatePtr = LE_MDC_DISCONNECTED;
     } else {
-        *sessionStatePtr = PA_MDC_CONNECTED;
+        *sessionStatePtr = LE_MDC_CONNECTED;
     }
 
     return LE_OK;
@@ -842,11 +838,11 @@ le_result_t pa_mdc_GetInterfaceName
     // Only one network interface is currently supported, thus X is 0, so hard-code the name.
     const char pppInterfaceNameStr[] = "ppp0";
 
-    pa_mdc_SessionState_t sessionState;
+    le_mdc_ConState_t sessionState;
     le_result_t result;
 
     result = pa_mdc_GetSessionState(profileIndex, &sessionState);
-    if ( (result != LE_OK) || (sessionState == PA_MDC_DISCONNECTED) )
+    if ( (result != LE_OK) || (sessionState != LE_MDC_CONNECTED) )
     {
         return LE_FAULT;
     }
@@ -997,11 +993,11 @@ le_result_t pa_mdc_GetDNSAddresses
     struct sockaddr_in addr;
     struct __res_state res;
 
-    pa_mdc_SessionState_t sessionState;
+    le_mdc_ConState_t sessionState;
     le_result_t result;
 
     result = pa_mdc_GetSessionState(profileIndex, &sessionState);
-    if ( (result != LE_OK) || (sessionState == PA_MDC_DISCONNECTED) )
+    if ( (result != LE_OK) || (sessionState != LE_MDC_CONNECTED) )
     {
         return LE_FAULT;
     }

@@ -32,7 +32,7 @@ le_result_t pa_ips_Init
  *      - LE_FAULT         The function failed to get the value.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_ips_GetInputVoltage
+LE_SHARED le_result_t pa_ips_GetInputVoltage
 (
     uint32_t* inputVoltagePtr
         ///< [OUT]

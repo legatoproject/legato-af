@@ -197,6 +197,30 @@ pa_mrc_SignalMetrics_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Signal Strength change indication structure.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct {
+    le_mrc_Rat_t  rat;          ///< RAT of the measured signal
+    int32_t       ss;           ///< Signal strength in dBm
+}
+pa_mrc_SignalStrengthIndication_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Prototype for handler functions used to report Signal Strength changes.
+ *
+ * @param ssIndPtr The Signal Strength change indication.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef void (*pa_mrc_SignalStrengthIndHdlrFunc_t)
+(
+    pa_mrc_SignalStrengthIndication_t* ssIndPtr
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Prototype for handler functions used to report the Network registration state.
  *
  * @param regStatePtr The Network registration state.
@@ -231,7 +255,7 @@ typedef void (*pa_mrc_RatChangeHdlrFunc_t)
  * @return LE_OK     The function succeed.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mrc_SetRadioPower
+LE_SHARED le_result_t pa_mrc_SetRadioPower
 (
     le_onoff_t    power   ///< [IN] The power state.
 );
@@ -244,7 +268,7 @@ le_result_t pa_mrc_SetRadioPower
  * @return LE_OK     The function succeed.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mrc_GetRadioPower
+LE_SHARED le_result_t pa_mrc_GetRadioPower
 (
      le_onoff_t*    powerPtr   ///< [OUT] The power state.
 );
@@ -258,7 +282,7 @@ le_result_t pa_mrc_GetRadioPower
  * @note Doesn't return on failure, so there's no need to check the return value for errors.
  */
 //--------------------------------------------------------------------------------------------------
-le_event_HandlerRef_t pa_mrc_SetRatChangeHandler
+LE_SHARED le_event_HandlerRef_t pa_mrc_SetRatChangeHandler
 (
     pa_mrc_RatChangeHdlrFunc_t handlerFuncPtr ///< [IN] The handler function.
 );
@@ -270,7 +294,7 @@ le_event_HandlerRef_t pa_mrc_SetRatChangeHandler
  *
  */
 //--------------------------------------------------------------------------------------------------
-void pa_mrc_RemoveRatChangeHandler
+LE_SHARED void pa_mrc_RemoveRatChangeHandler
 (
     le_event_HandlerRef_t handlerRef
 );
@@ -284,7 +308,7 @@ void pa_mrc_RemoveRatChangeHandler
  * @note Doesn't return on failure, so there's no need to check the return value for errors.
  */
 //--------------------------------------------------------------------------------------------------
-le_event_HandlerRef_t pa_mrc_AddNetworkRegHandler
+LE_SHARED le_event_HandlerRef_t pa_mrc_AddNetworkRegHandler
 (
     pa_mrc_NetworkRegHdlrFunc_t regStateHandler ///< [IN] The handler function to handle the
                                                 ///        Network registration state.
@@ -297,7 +321,7 @@ le_event_HandlerRef_t pa_mrc_AddNetworkRegHandler
  * @note Doesn't return on failure, so there's no need to check the return value for errors.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mrc_RemoveNetworkRegHandler
+LE_SHARED le_result_t pa_mrc_RemoveNetworkRegHandler
 (
     le_event_HandlerRef_t handlerRef
 );
@@ -311,7 +335,7 @@ le_result_t pa_mrc_RemoveNetworkRegHandler
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mrc_ConfigureNetworkReg
+LE_SHARED le_result_t pa_mrc_ConfigureNetworkReg
 (
     pa_mrc_NetworkRegSetting_t  setting ///< [IN] The selected Network registration setting.
 );
@@ -326,7 +350,7 @@ le_result_t pa_mrc_ConfigureNetworkReg
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mrc_GetNetworkRegConfig
+LE_SHARED le_result_t pa_mrc_GetNetworkRegConfig
 (
     pa_mrc_NetworkRegSetting_t*  settingPtr   ///< [OUT] The selected Network registration setting.
 );
@@ -341,7 +365,7 @@ le_result_t pa_mrc_GetNetworkRegConfig
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mrc_GetNetworkRegState
+LE_SHARED le_result_t pa_mrc_GetNetworkRegState
 (
     le_mrc_NetRegState_t* statePtr  ///< [OUT] The network registration state.
 );
@@ -357,7 +381,7 @@ le_result_t pa_mrc_GetNetworkRegState
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mrc_GetSignalStrength
+LE_SHARED le_result_t pa_mrc_GetSignalStrength
 (
     int32_t*          rssiPtr    ///< [OUT] The received signal strength (in dBm).
 );
@@ -372,7 +396,7 @@ le_result_t pa_mrc_GetSignalStrength
  *      - LE_FAULT on any other failure
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mrc_GetCurrentNetwork
+LE_SHARED le_result_t pa_mrc_GetCurrentNetwork
 (
     char       *nameStr,               ///< [OUT] the home network Name
     size_t      nameStrSize,           ///< [IN]  the nameStr size
@@ -388,7 +412,7 @@ le_result_t pa_mrc_GetCurrentNetwork
  *
  */
 //--------------------------------------------------------------------------------------------------
-void pa_mrc_DeleteScanInformation
+LE_SHARED void pa_mrc_DeleteScanInformation
 (
     le_dls_List_t *scanInformationListPtr ///< [IN] list of pa_mrc_ScanInformation_t
 );
@@ -404,7 +428,7 @@ void pa_mrc_DeleteScanInformation
  *
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mrc_PerformNetworkScan
+LE_SHARED le_result_t pa_mrc_PerformNetworkScan
 (
     le_mrc_RatBitMask_t ratMask,               ///< [IN] The network mask
     pa_mrc_ScanType_t   scanType,              ///< [IN] the scan type
@@ -421,7 +445,7 @@ le_result_t pa_mrc_PerformNetworkScan
  *      - LE_FAULT for all other errors
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mrc_GetScanInformationName
+LE_SHARED le_result_t pa_mrc_GetScanInformationName
 (
     pa_mrc_ScanInformation_t *scanInformationPtr,   ///< [IN] The scan information
     char *namePtr, ///< [OUT] Name of operator
@@ -435,7 +459,7 @@ le_result_t pa_mrc_GetScanInformationName
  * @return Number of Preferred operator found.
  */
 //--------------------------------------------------------------------------------------------------
-int32_t pa_mrc_GetPreferredOperatorsList
+LE_SHARED int32_t pa_mrc_GetPreferredOperatorsList
 (
     le_dls_List_t*   preferredOperatorListPtr,    ///< [IN/OUT] The preferred operators list.
     bool  plmnStatic,   ///< [IN] Include Static preferred Operators.
@@ -451,7 +475,7 @@ int32_t pa_mrc_GetPreferredOperatorsList
  *      - LE_FAULT          For all other errors
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mrc_AddPreferredOperators
+LE_SHARED le_result_t pa_mrc_AddPreferredOperators
 (
     le_dls_List_t      *preferredOperatorsListPtr,   ///< [IN] List of preferred network operator
     const char*         mccPtr,                      ///< [IN] Mobile Country Code
@@ -469,7 +493,7 @@ le_result_t pa_mrc_AddPreferredOperators
  *      - LE_FAULT          For all other errors
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mrc_RemovePreferredOperators
+LE_SHARED le_result_t pa_mrc_RemovePreferredOperators
 (
     le_dls_List_t      *preferredOperatorsListPtr,   ///< [IN] List of preferred network operator
     const char*         mccPtr,                      ///< [IN] Mobile Country Code
@@ -483,7 +507,7 @@ le_result_t pa_mrc_RemovePreferredOperators
  *
  */
 //--------------------------------------------------------------------------------------------------
-void pa_mrc_DeletePreferredOperatorsList
+LE_SHARED void pa_mrc_DeletePreferredOperatorsList
 (
     le_dls_List_t      *preferredOperatorsListPtr ///< [IN] List of preferred network operator
 );
@@ -497,7 +521,7 @@ void pa_mrc_DeletePreferredOperatorsList
  *      - LE_FAULT          for all other errors
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mrc_SavePreferredOperators
+LE_SHARED le_result_t pa_mrc_SavePreferredOperators
 (
     le_dls_List_t      *preferredOperatorsListPtr ///< [IN] List of preferred network operator
 );
@@ -512,7 +536,7 @@ le_result_t pa_mrc_SavePreferredOperators
  * @return LE_OK            The function succeeded to register.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mrc_RegisterNetwork
+LE_SHARED le_result_t pa_mrc_RegisterNetwork
 (
     const char *mccPtr,   ///< [IN] Mobile Country Code
     const char *mncPtr    ///< [IN] Mobile Network Code
@@ -527,7 +551,7 @@ le_result_t pa_mrc_RegisterNetwork
  *      - LE_FAULT          for all other errors
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mrc_SetAutomaticNetworkRegistration
+LE_SHARED le_result_t pa_mrc_SetAutomaticNetworkRegistration
 (
     void
 );
@@ -540,7 +564,7 @@ le_result_t pa_mrc_SetAutomaticNetworkRegistration
  * @return LE_OK    The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mrc_GetRadioAccessTechInUse
+LE_SHARED le_result_t pa_mrc_GetRadioAccessTechInUse
 (
     le_mrc_Rat_t*   ratPtr    ///< [OUT] The Radio Access Technology.
 );
@@ -554,7 +578,7 @@ le_result_t pa_mrc_GetRadioAccessTechInUse
  * - LE_FAULT           on failure
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mrc_SetRatPreferences
+LE_SHARED le_result_t pa_mrc_SetRatPreferences
 (
     le_mrc_RatBitMask_t ratMask  ///< [IN] A bit mask to set the Radio Access Technology
                                  ///<    preferences.
@@ -569,7 +593,7 @@ le_result_t pa_mrc_SetRatPreferences
  * - LE_FAULT           on failure
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mrc_SetAutomaticRatPreference
+LE_SHARED le_result_t pa_mrc_SetAutomaticRatPreference
 (
     void
 );
@@ -583,7 +607,7 @@ le_result_t pa_mrc_SetAutomaticRatPreference
  * - LE_FAULT           on failure
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mrc_GetRatPreferences
+LE_SHARED le_result_t pa_mrc_GetRatPreferences
 (
     le_mrc_RatBitMask_t* ratMaskPtr  ///< [OUT] A bit mask to get the Radio Access Technology
                                      ///<  preferences.
@@ -598,7 +622,7 @@ le_result_t pa_mrc_GetRatPreferences
  * - LE_FAULT           on failure
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mrc_SetBandPreferences
+LE_SHARED le_result_t pa_mrc_SetBandPreferences
 (
     le_mrc_BandBitMask_t bands      ///< [IN] A bit mask to set the Band preferences.
 );
@@ -612,7 +636,7 @@ le_result_t pa_mrc_SetBandPreferences
  * - LE_FAULT           on failure
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mrc_GetBandPreferences
+LE_SHARED le_result_t pa_mrc_GetBandPreferences
 (
     le_mrc_BandBitMask_t* bandsPtr ///< [OUT] A bit mask to get the Band preferences.
 );
@@ -626,7 +650,7 @@ le_result_t pa_mrc_GetBandPreferences
  * - LE_FAULT           on failure
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mrc_SetLteBandPreferences
+LE_SHARED le_result_t pa_mrc_SetLteBandPreferences
 (
     le_mrc_LteBandBitMask_t bands ///< [IN] A bit mask to set the LTE Band preferences.
 );
@@ -640,7 +664,7 @@ le_result_t pa_mrc_SetLteBandPreferences
  * - LE_FAULT           on failure
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mrc_GetLteBandPreferences
+LE_SHARED le_result_t pa_mrc_GetLteBandPreferences
 (
     le_mrc_LteBandBitMask_t* bandsPtr ///< [OUT] A bit mask to get the LTE Band preferences.
 );
@@ -654,7 +678,7 @@ le_result_t pa_mrc_GetLteBandPreferences
  * - LE_FAULT           on failure
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mrc_SetTdScdmaBandPreferences
+LE_SHARED le_result_t pa_mrc_SetTdScdmaBandPreferences
 (
     le_mrc_TdScdmaBandBitMask_t bands ///< [IN] A bit mask to set the TD-SCDMA Band Preferences.
 );
@@ -668,7 +692,7 @@ le_result_t pa_mrc_SetTdScdmaBandPreferences
  * - LE_FAULT           on failure
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mrc_GetTdScdmaBandPreferences
+LE_SHARED le_result_t pa_mrc_GetTdScdmaBandPreferences
 (
     le_mrc_TdScdmaBandBitMask_t* bandsPtr ///< [OUT] A bit mask to get the TD-SCDMA Band
                                           ///<  preferences.
@@ -685,7 +709,7 @@ le_result_t pa_mrc_GetTdScdmaBandPreferences
  *                           been retrieved.
  */
 //--------------------------------------------------------------------------------------------------
-int32_t pa_mrc_GetNeighborCellsInfo
+LE_SHARED int32_t pa_mrc_GetNeighborCellsInfo
 (
     le_dls_List_t*   cellInfoListPtr    ///< [IN/OUT] The Neighboring Cells information.
 );
@@ -696,7 +720,7 @@ int32_t pa_mrc_GetNeighborCellsInfo
  *
  */
 //--------------------------------------------------------------------------------------------------
-void pa_mrc_DeleteNeighborCellsInfo
+LE_SHARED void pa_mrc_DeleteNeighborCellsInfo
 (
     le_dls_List_t *cellInfoListPtr ///< [IN] list of pa_mrc_CellInfo_t
 );
@@ -707,7 +731,7 @@ void pa_mrc_DeleteNeighborCellsInfo
  *
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mrc_GetNetworkRegistrationMode
+LE_SHARED le_result_t pa_mrc_GetNetworkRegistrationMode
 (
     bool*   isManualPtr,  ///< [OUT] true if the scan mode is manual, false if it is automatic.
     char*   mccPtr,       ///< [OUT] Mobile Country Code
@@ -725,9 +749,54 @@ le_result_t pa_mrc_GetNetworkRegistrationMode
  *
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mrc_MeasureSignalMetrics
+LE_SHARED le_result_t pa_mrc_MeasureSignalMetrics
 (
     pa_mrc_SignalMetrics_t* metricsPtr    ///< [OUT] The signal metrics.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to register a handler for Signal Strength change handling.
+ *
+ * @return A handler reference, which is only needed for later removal of the handler.
+ *
+ * @note Doesn't return on failure, so there's no need to check the return value for errors.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_event_HandlerRef_t pa_mrc_AddSignalStrengthIndHandler
+(
+    pa_mrc_SignalStrengthIndHdlrFunc_t ssIndHandler, ///< [IN] The handler function to handle the
+                                                     ///        Signal Strength change indication.
+    void*                              contextPtr    ///< [IN] The context to be given to the handler.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to unregister the handler for Signal Strength change handling.
+ *
+ * @note Doesn't return on failure, so there's no need to check the return value for errors.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED void pa_mrc_RemoveSignalStrengthIndHandler
+(
+    le_event_HandlerRef_t handlerRef
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to set and activate the signal strength thresholds for signal
+ * strength indications
+ *
+ * @return
+ *  - LE_FAULT  Function failed.
+ *  - LE_OK     Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_mrc_SetSignalStrengthIndThresholds
+(
+    le_mrc_Rat_t rat,                 ///< Radio Access Technology
+    int32_t      lowerRangeThreshold, ///< [IN] lower-range threshold in dBm
+    int32_t      upperRangeThreshold  ///< [IN] upper-range strength threshold in dBm
 );
 
 #endif // LEGATO_PARC_INCLUDE_GUARD

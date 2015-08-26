@@ -18,6 +18,7 @@
 #include "cm_temp.h"
 #include "cm_common.h"
 #include "cm_adc.h"
+#include "cm_ips.h"
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -73,13 +74,20 @@ const cm_Service_t Services[] = {
         .helpHandler = cm_temp_PrintTempHelp,
         .commandHandler = cm_temp_ProcessTempCommand,
     },
-    /* adc */
+    /* ADC */
     {
         .serviceNamePtr = "adc",
         .defaultCommandPtr = "help",
         .helpHandler = cm_adc_PrintAdcHelp,
         .commandHandler = cm_adc_ProcessAdcCommand
-    }
+    },
+    /* IPS */
+    {
+        .serviceNamePtr = "ips",
+        .defaultCommandPtr = "read",
+        .helpHandler = cm_ips_PrintIpsHelp,
+        .commandHandler = cm_ips_ProcessIpsCommand
+    },    
 };
 
 //--------------------------------------------------------------------------------------------------

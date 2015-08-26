@@ -54,8 +54,19 @@
  *  Maximum allowed size for application name strings.
  */
 //--------------------------------------------------------------------------------------------------
-#define MAX_APP_NAME        LE_INSTSTAT_APP_NAME_LEN
+#define MAX_APP_NAME        LE_LIMIT_APP_NAME_LEN
 #define MAX_APP_NAME_BYTES  (MAX_APP_NAME + 1)
+
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Maximum allowed size for application process name strings.
+ */
+//--------------------------------------------------------------------------------------------------
+#define MAX_PROC_NAME        LE_LIMIT_PROC_NAME_LEN
+#define MAX_PROC_NAME_BYTES  (MAX_PROC_NAME + 1)
 
 
 
@@ -233,14 +244,12 @@ static assetData_InstanceDataRef_t CurrentObj9 = NULL;
 
 
 
-
 //--------------------------------------------------------------------------------------------------
 /**
- *  Used to capture the # of bytes downloaded during a SOTA update.
+ *  Was the uninstall being handled initiated locally, or remotely?
  */
 //--------------------------------------------------------------------------------------------------
-static size_t BytesDownloaded = 0;
-
+static bool IsLocalUninstall = false;
 
 
 
@@ -726,10 +735,25 @@ static void App1FieldHandler
     if (   (fieldId == AO0F_STATE)
         && (action == ASSET_DATA_ACTION_READ))
     {
-        LE_WARN("Application process object state hardcoded to 1.");
-        LE_ASSERT(assetData_client_SetInt(instanceRef,
-                                          LO1F_STATE,
-                                          1) == LE_OK);
+        char appName[MAX_APP_NAME_BYTES] = "";
+        char procName[MAX_PROC_NAME_BYTES] = "";
+
+        if (assetData_GetAppNameFromInstance(instanceRef, appName, sizeof(appName)) != LE_OK)
+        {
+            LE_ERROR("Could not read app name for object instance.");
+            return;
+        }
+
+        if (assetData_client_GetString(instanceRef, LO1F_NAME, procName, sizeof(procName)) != LE_OK)
+        {
+            LE_ERROR("Could not read process name for app, '%s', from asset data.", appName);
+            return;
+        }
+
+        le_appInfo_ProcState_t state = le_appInfo_GetProcState(appName, procName);
+        LE_ASSERT(assetData_client_SetInt(instanceRef, LO1F_STATE, state) == LE_OK);
+
+        LE_DEBUG("Application '%s' process, '%s' state read as %d", appName, procName, state);
     }
 }
 
@@ -1067,29 +1091,32 @@ static void AppUninstallHandler
         return;
     }
 
-    assetData_InstanceDataRef_t appObject9Ref = NULL;
-
+    // If this uninstall was requested by AirVantage, then move the object into it's initial state.
+    // Otherwise this is a local uninstall, so check for an instance of object 9 for this
+    // application and delete that instance if found.
     if (CurrentObj9 != NULL)
     {
         LE_DEBUG("LWM2M Uninstall of application.");
 
-        appObject9Ref = CurrentObj9;
+        SetObj9State(CurrentObj9, US_INITIAL, UR_INITIAL_VALUE);
         CurrentObj9 = NULL;
     }
     else
     {
-        LE_DEBUG("External Uninstall of application.");
+        LE_DEBUG("Local Uninstall of application.");
 
-        appObject9Ref = GetObject9InstanceForApp(appName, false);
+        IsLocalUninstall = true;
+        assetData_InstanceDataRef_t objectRef = GetObject9InstanceForApp(appName, false);
+
+        if (objectRef != NULL)
+        {
+            assetData_DeleteInstance(objectRef);
+        }
     }
 
-    // Set associated obj 9 state to uninstalled, then delete the Legato objects for this app.
-    if (appObject9Ref != NULL)
-    {
-        SetObj9State(appObject9Ref, US_INITIAL, UR_INITIAL_VALUE);
-    }
-
+    // Now, delete any app objects.
     DeleteLegatoObjectsForApp(appName);
+    IsLocalUninstall = false;
 }
 
 
@@ -1176,18 +1203,15 @@ static void UpdateProgressHandler
 //--------------------------------------------------------------------------------------------------
 void OnUriDownloadUpdate
 (
-    le_avc_Status_t updateStatus,  ///< Status of the download in question.
-    size_t bytesReceived           ///< Number of bytes received during the download.
+    le_avc_Status_t updateStatus  ///< Status of the download in question.
 )
 //--------------------------------------------------------------------------------------------------
 {
-    LE_DEBUG("OnUriDownloadUpdate: %zu", bytesReceived);
 
     switch (updateStatus)
     {
         case LE_AVC_DOWNLOAD_COMPLETE:
             LE_DEBUG("Download complete.");
-            BytesDownloaded = bytesReceived;
             SetObj9State(CurrentObj9, US_DELIVERED, UR_INITIAL_VALUE);
             CurrentObj9 = NULL;
             break;
@@ -1224,6 +1248,12 @@ void OnUriDownloadUpdate
         case LE_AVC_INSTALL_PENDING:
             LE_DEBUG("Install pending.");
             break;
+
+        // Should never get these values, so ignore them.
+        case LE_AVC_SESSION_STARTED:
+        case LE_AVC_SESSION_STOPPED:
+            LE_INFO("Received unexpected updateStatus %i", updateStatus);
+            break;
     }
 }
 
@@ -1242,10 +1272,9 @@ static void StartInstall
 //--------------------------------------------------------------------------------------------------
 {
     int firmwareFd;
+    LE_DEBUG("Install application from SWI FOTA.");
 
-    LE_INFO("Install application from %zu bytes of SWI FOTA.", BytesDownloaded);
-
-    le_result_t result = pa_avc_ReadImage(&firmwareFd, BytesDownloaded);
+    le_result_t result = pa_avc_ReadImage(&firmwareFd);
 
     if (result == LE_OK)
     {
@@ -1447,7 +1476,7 @@ static void Object9FieldActivityHandler
 
                 static char uri[MAX_URI_STR_BYTES] = "";
                 assetData_client_GetString(instanceRef, O9F_PACKAGE_URI, uri, sizeof(uri));
-                LE_INFO("Attempt to download from Url: %s", uri);
+                LE_DEBUG("Attempt to download from Url: %s", uri);
 
                 if (CurrentObj9 != NULL)
                 {
@@ -1515,7 +1544,16 @@ static void Object9FieldActivityHandler
                 }
 
                 CurrentObj9 = instanceRef;
-                StartUninstall();
+                IsLocalUninstall = false;
+
+                LE_DEBUG("Ignoring Uninstall.");
+                // StartUninstall();
+
+                // signal the server that the app is removed, though it is actually running
+                LE_DEBUG("LWM2M Uninstall - Reset State to initial.");
+
+                SetObj9State(CurrentObj9, US_INITIAL, UR_INITIAL_VALUE);
+                CurrentObj9 = NULL;
             }
             break;
 
@@ -1610,11 +1648,14 @@ static void Object9ActivityHandler
                 int state;
                 LE_ASSERT(assetData_client_GetInt(instanceRef, O9F_UPDATE_STATE, &state) == LE_OK);
 
-                if (   (strlen(appName) > 0)
-                    && (state == US_INSTALLED))
+                // remove the application regardless of the state of the application
+                if ( strlen(appName) > 0)
                 {
-                    CurrentObj9 = instanceRef;
-                    StartUninstall();
+                    if ( IsLocalUninstall == false )
+                    {
+                        CurrentObj9 = instanceRef;
+                        StartUninstall();
+                    }
                     CurrentObj9 = NULL;
                 }
             }

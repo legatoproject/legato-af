@@ -111,7 +111,7 @@ typedef char pa_info_DeviceModel_t[PA_INFO_DEVICE_MODEL_MAX_LEN + 1];
  *      - LE_FAULT for any other errors
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_info_GetFirmwareVersion
+LE_SHARED le_result_t pa_info_GetFirmwareVersion
 (
     char* versionPtr,        ///< [OUT] Firmware version string
     size_t versionSize       ///< [IN] Size of version buffer
@@ -129,7 +129,7 @@ le_result_t pa_info_GetFirmwareVersion
  *      - LE_FAULT for any other errors
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_info_GetBootloaderVersion
+LE_SHARED le_result_t pa_info_GetBootloaderVersion
 (
     char* versionPtr,        ///< [OUT] Firmware version string
     size_t versionSize       ///< [IN] Size of version buffer
@@ -146,7 +146,7 @@ le_result_t pa_info_GetBootloaderVersion
  * - LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_info_GetImei
+LE_SHARED le_result_t pa_info_GetImei
 (
     pa_info_Imei_t imei   ///< [OUT] IMEI value
 );
@@ -162,7 +162,7 @@ le_result_t pa_info_GetImei
  * - LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_info_GetDeviceModel
+LE_SHARED le_result_t pa_info_GetDeviceModel
 (
     pa_info_DeviceModel_t model   ///< [OUT] Model string (null-terminated).
 );
@@ -178,7 +178,7 @@ le_result_t pa_info_GetDeviceModel
  *      - LE_OVERFLOW      The device Mobile Equipment identifier length exceed the maximum length.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_info_GetMeid
+LE_SHARED le_result_t pa_info_GetMeid
 (
     char* meidStr,           ///< [OUT] Firmware version string
     size_t meidStrSize       ///< [IN] Size of version buffer
@@ -195,7 +195,7 @@ le_result_t pa_info_GetMeid
  *      - LE_OVERFLOW      The Electric SerialNumbe length exceed the maximum length.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_info_GetEsn
+LE_SHARED le_result_t pa_info_GetEsn
 (
     char* esnStr,
         ///< [OUT]
@@ -217,7 +217,7 @@ le_result_t pa_info_GetEsn
  *      - LE_OVERFLOW      The CDMA Mobile Identification Number length exceed the maximum length.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_info_GetMin
+LE_SHARED le_result_t pa_info_GetMin
 (
     char        *minStr,    ///< [OUT] The phone Number
     size_t       minStrSize ///< [IN]  Size of phoneNumberStr
@@ -232,7 +232,7 @@ le_result_t pa_info_GetMin
  *      - LE_FAULT         The function failed to get the value.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_info_GetPrlVersion
+LE_SHARED le_result_t pa_info_GetPrlVersion
 (
     uint16_t* prlVersionPtr
         ///< [OUT]
@@ -250,7 +250,7 @@ le_result_t pa_info_GetPrlVersion
  *      - LE_FAULT         The function failed to get the value.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_info_GetPrlOnlyPreference
+LE_SHARED le_result_t pa_info_GetPrlOnlyPreference
 (
     bool* prlOnlyPreferencePtr      ///< The Cdma PRL only preferences status.
 );
@@ -266,7 +266,7 @@ le_result_t pa_info_GetPrlOnlyPreference
  *      - LE_OVERFLOW      The Mobile Station ISDN Numbe length exceed the maximum length.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_info_GetNai
+LE_SHARED le_result_t pa_info_GetNai
 (
     char* naiStr,
         ///< [OUT]
@@ -287,7 +287,7 @@ le_result_t pa_info_GetNai
  *      - LE_OVERFLOW      The Manufacturer Name length exceed the maximum length.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_info_GetManufacturerName
+LE_SHARED le_result_t pa_info_GetManufacturerName
 (
     char* mfrNameStr,
         ///< [OUT]
@@ -308,7 +308,7 @@ le_result_t pa_info_GetManufacturerName
  *      - LE_OVERFLOW      The Part or the Revision Number strings length exceed the maximum length.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_info_GetPriId
+LE_SHARED le_result_t pa_info_GetPriId
 (
     char* priIdPnStr,
         ///< [OUT]
@@ -324,6 +324,27 @@ le_result_t pa_info_GetPriId
         ///<  (PRI ID) Revision Number string (null-terminated).
 
     size_t priIdRevStrNumElements
+        ///< [IN]
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Platform Serial Number (PSN) string.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_OVERFLOW if Platform Serial Number to big to fit in provided buffer
+ *      - LE_FAULT for any other errors
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_info_GetPlatformSerialNumber
+(
+    char* platformSerialNumberStr,
+        ///< [OUT]
+        ///< Platform Serial Number string.
+
+    size_t platformSerialNumberStrNumElements
         ///< [IN]
 );
 

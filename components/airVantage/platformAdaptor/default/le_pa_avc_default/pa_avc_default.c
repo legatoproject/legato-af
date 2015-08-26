@@ -228,8 +228,7 @@ le_result_t pa_avc_StartURIDownload
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_avc_ReadImage
 (
-    int* fdPtr,         ///< [OUT] File descriptor for the image, ready for reading.
-    size_t numBytes     ///< [IN] Size of image in bytes
+    int* fdPtr         ///< [OUT] File descriptor for the image, ready for reading.
 )
 {
     LE_ERROR("Unsupported function called");

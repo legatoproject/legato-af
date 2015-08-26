@@ -480,6 +480,7 @@ int32_t pa_sms_SendPduMsg
     pa_sms_Protocol_t        protocol,   ///< [IN] protocol to use
     uint32_t                 length,     ///< [IN] The length of the TP data unit in bytes.
     const uint8_t           *dataPtr,    ///< [IN] The message.
+    uint32_t                 timeout,    ///< [IN] Timeout in seconds.
     pa_sms_SendingErrCode_t *errorCode   ///< [OUT] The error code.
 )
 {
@@ -911,3 +912,168 @@ le_result_t pa_sms_SetSmsc
     return LE_FAULT;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Activate Cell Broadcast message notification
+ *
+ * @return
+ *  - LE_FAULT         Function failed.
+ *  - LE_OK            Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_sms_ActivateCellBroadcast
+(
+    pa_sms_Protocol_t protocol
+)
+{
+    return LE_FAULT;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Deactivate Cell Broadcast message notification
+ *
+ * @return
+ *  - LE_FAULT         Function failed.
+ *  - LE_OK            Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_sms_DeactivateCellBroadcast
+(
+    pa_sms_Protocol_t protocol
+)
+{
+    return LE_FAULT;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add Cell Broadcast message Identifiers range.
+ *
+ * @return
+ *  - LE_FAULT         Function failed.
+ *  - LE_OK            Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_sms_AddCellBroadcastIds
+(
+    uint16_t fromId,
+        ///< [IN]
+        ///< Starting point of the range of cell broadcast message identifier.
+
+    uint16_t toId
+        ///< [IN]
+        ///< Ending point of the range of cell broadcast message identifier.
+)
+{
+    return LE_FAULT;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Remove Cell Broadcast message Identifiers range.
+ *
+ * @return
+ *  - LE_FAULT         Function failed.
+ *  - LE_OK            Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_sms_RemoveCellBroadcastIds
+(
+    uint16_t fromId,
+        ///< [IN]
+        ///< Starting point of the range of cell broadcast message identifier.
+
+    uint16_t toId
+        ///< [IN]
+        ///< Ending point of the range of cell broadcast message identifier.
+)
+{
+    return LE_FAULT;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add CDMA Cell Broadcast category services.
+ *
+ * @return
+ *  - LE_FAULT         Function failed.
+ *  - LE_OK            Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_sms_AddCdmaCellBroadcastServices
+(
+    le_sms_CdmaServiceCat_t serviceCat,
+        ///< [IN]
+        ///< Service category assignment. Reference to 3GPP2 C.R1001-D
+        ///< v1.0 Section 9.3.1 Standard Service Category Assignments.
+
+    le_sms_Languages_t language
+        ///< [IN]
+        ///< Language Indicator. Reference to
+        ///< 3GPP2 C.R1001-D v1.0 Section 9.2.1 Language Indicator
+        ///< Value Assignments
+)
+{
+    return LE_FAULT;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Remove CDMA Cell Broadcast category services.
+ *
+ * @return
+ *  - LE_FAULT         Function failed.
+ *  - LE_OK            Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_sms_RemoveCdmaCellBroadcastServices
+(
+    le_sms_CdmaServiceCat_t serviceCat,
+        ///< [IN]
+        ///< Service category assignment. Reference to 3GPP2 C.R1001-D
+        ///< v1.0 Section 9.3.1 Standard Service Category Assignments.
+
+    le_sms_Languages_t language
+        ///< [IN]
+        ///< Language Indicator. Reference to
+        ///< 3GPP2 C.R1001-D v1.0 Section 9.2.1 Language Indicator
+        ///< Value Assignments
+)
+{
+    return LE_FAULT;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Clear Cell Broadcast message Identifiers range.
+ *
+ * @return
+ *  - LE_FAULT         Function failed.
+ *  - LE_OK            Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_sms_ClearCellBroadcastIds
+(
+    void
+)
+{
+    return LE_FAULT;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Clear CDMA Cell Broadcast category services.
+ *
+ * @return
+ *  - LE_FAULT         Function failed.
+ *  - LE_OK            Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_sms_ClearCdmaCellBroadcastServices
+(
+    void
+)
+{
+    return LE_FAULT;
+}

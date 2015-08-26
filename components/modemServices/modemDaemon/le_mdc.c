@@ -15,6 +15,29 @@
 // Include macros for printing out values
 #include "le_print.h"
 
+#include "jansson.h"
+
+//--------------------------------------------------------------------------------------------------
+// Symbol and Enum definitions.
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The file to read for the APN.
+ */
+//--------------------------------------------------------------------------------------------------
+#ifdef LEGATO_EMBEDDED
+#define APN_FILE "/opt/legato/apps/modemService/usr/local/share/apns.json"
+#else
+#define APN_FILE le_arg_GetArg(0)
+#endif
+// @TODO change the APN file when modemservices becomes a sandboxed app.
+//#define APN_FILE "/usr/local/share/apns.json"
+
+//--------------------------------------------------------------------------------------------------
+// Data structures.
+//--------------------------------------------------------------------------------------------------
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Data Control Profile structure.
@@ -22,12 +45,12 @@
 //--------------------------------------------------------------------------------------------------
 typedef struct le_mdc_Profile {
     uint32_t profileIndex;                  ///< Index of the profile on the modem
-    void*    callRef;                       ///< Reference for current call, if connected
     le_event_Id_t sessionStateEvent;        ///< Event to report when session changes state
     pa_mdc_ProfileData_t modemData;         ///< Profile data that is written to the modem
     le_mdc_ProfileRef_t profileRef;         ///< Profile Safe Reference
-    uint8_t isConnected;                    ///< Session is connected
-    le_dls_Link_t link;                     ///< Link into the profile list - Must be the last field
+    le_mdc_ConState_t ConnectionStatus;     ///< Data session connection status.
+    le_mdc_DisconnectionReason_t disc;      ///< Disconnection reason
+    int32_t  discCode;                      ///< Platform specific disconnection code
 }
 le_mdc_Profile_t;
 
@@ -43,11 +66,8 @@ typedef struct le_mdc_SessionStateHandler {
 le_mdc_SessionStateHandler_t;
 
 //--------------------------------------------------------------------------------------------------
-/**
- * List of profile
- */
+// Static declarations.
 //--------------------------------------------------------------------------------------------------
-static le_dls_List_t ProfileList;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -107,11 +127,11 @@ static le_mdc_Profile_t* SearchProfileInList
     uint32_t index ///< index of the search profile.
 )
 {
-    le_dls_Link_t* profileLinkPtr = le_dls_Peek(&ProfileList);
+    le_ref_IterRef_t iterRef = le_ref_GetIterator(DataProfileRefMap);
 
-    while(profileLinkPtr)
+    while (le_ref_NextNode(iterRef) == LE_OK)
     {
-        le_mdc_Profile_t* profilePtr = CONTAINER_OF(profileLinkPtr,le_mdc_Profile_t,link);
+        le_mdc_Profile_t* profilePtr = (le_mdc_Profile_t*) le_ref_GetValue(iterRef);
 
         if ( profilePtr->profileIndex == index )
         {
@@ -121,10 +141,6 @@ static le_mdc_Profile_t* SearchProfileInList
             }
 
             return profilePtr;
-        }
-        else
-        {
-            profileLinkPtr = le_dls_PeekNext(&ProfileList,profileLinkPtr);
         }
     }
 
@@ -142,10 +158,13 @@ static void FirstLayerSessionStateChangeHandler
     void* secondLayerHandlerFunc
 )
 {
-    bool*           isConnectedPtr = reportPtr;
+    le_mdc_Profile_t** profilePtr = reportPtr;
     le_mdc_SessionStateHandlerFunc_t clientHandlerFunc = secondLayerHandlerFunc;
 
-    clientHandlerFunc(*isConnectedPtr, le_event_GetContextPtr());
+    clientHandlerFunc(  (*profilePtr)->profileRef,
+                        (*profilePtr)->ConnectionStatus,
+                        le_event_GetContextPtr()
+                     );
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -158,8 +177,6 @@ static void NewSessionStateHandler
     pa_mdc_SessionStateData_t* sessionStatePtr      ///< New session state
 )
 {
-    bool isConnected;
-
     if ( IS_TRACE_ENABLED )
     {
         LE_PRINT_VALUE("%i", sessionStatePtr->profileIndex);
@@ -175,19 +192,21 @@ static void NewSessionStateHandler
     }
     else
     {
-        // Init the data for the event report
-        isConnected = (sessionStatePtr->newState != PA_MDC_DISCONNECTED);
+        LE_DEBUG("profileIndex %d ConnectionStatus %d", sessionStatePtr->profileIndex,
+                                                        profilePtr->ConnectionStatus);
 
-        LE_DEBUG("profileIndex %d isConnected %d", sessionStatePtr->profileIndex,
-                                                    profilePtr->isConnected);
-        LE_DEBUG("isConnected %d",isConnected);
-
-        if (profilePtr->isConnected != isConnected)
+        if (profilePtr->ConnectionStatus != sessionStatePtr->newState)
         {
-
             // Report the event for the given profile
-            le_event_Report(profilePtr->sessionStateEvent, &isConnected, sizeof(isConnected));
-            profilePtr->isConnected = isConnected;
+            le_event_Report(profilePtr->sessionStateEvent, &profilePtr, sizeof(profilePtr));
+            profilePtr->ConnectionStatus = sessionStatePtr->newState;
+        }
+
+        // Get disconnection reason
+        if (sessionStatePtr->newState == LE_MDC_DISCONNECTED)
+        {
+            profilePtr->disc = sessionStatePtr->disc;
+            profilePtr->discCode = sessionStatePtr->discCode;
         }
     }
 
@@ -204,14 +223,8 @@ static void DataProfileDestructor (void *objPtr)
 {
     le_mdc_Profile_t* profilePtr = (le_mdc_Profile_t*) objPtr;
 
-    if ( le_dls_IsInList(&ProfileList, &profilePtr->link) )
-    {
-        /* Remove the profile from the dls list */
-        le_dls_Remove(&ProfileList, &profilePtr->link);
-
-        /* Release the reference */
-        le_ref_DeleteRef(DataProfileRefMap, profilePtr->profileRef);
-    }
+    /* Release the reference */
+    le_ref_DeleteRef(DataProfileRefMap, profilePtr->profileRef);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -264,18 +277,12 @@ static le_mdc_ProfileRef_t CreateModemProfile
 
         // Each profile has its own event for reporting session state changes
         snprintf(eventName,sizeof(eventName)-1, "profile-%d",index);
-        profilePtr->sessionStateEvent = le_event_CreateId(eventName, sizeof(bool));
+        profilePtr->sessionStateEvent = le_event_CreateId(eventName, sizeof(le_mdc_Profile_t*));
 
         // Init the remaining fields
-        profilePtr->callRef = 0;
-
-        profilePtr->isConnected = 0xFF;
-
-        // Init the link
-        profilePtr->link = LE_DLS_LINK_INIT;
-
-        // Add the profile to the Profile List
-        le_dls_Stack(&ProfileList, &(profilePtr->link));
+        profilePtr->ConnectionStatus = -1;
+        profilePtr->disc = LE_MDC_DISC_UNDEFINED;
+        profilePtr->discCode = 0;
 
         if ( IS_TRACE_ENABLED )
         {
@@ -287,6 +294,96 @@ static le_mdc_ProfileRef_t CreateModemProfile
     }
 
     return profilePtr->profileRef;
+}
+
+// -------------------------------------------------------------------------------------------------
+/**
+ *  This function will attempt to read apn definition for mcc/mnc in file apnFilePtr
+ *
+ * @return LE_OK        Function was able to find an APN
+ * @return LE_NOT_FOUND Function was not able to find an APN for this (MCC,MNC)
+ * @return LE_FAULT     There was an issue with the APN source
+ */
+// -------------------------------------------------------------------------------------------------
+static le_result_t FindApnFromFile
+(
+    const char* apnFilePtr, ///< [IN] apn file
+    const char* mccPtr,     ///< [IN] mcc
+    const char* mncPtr,     ///< [IN] mnc
+    char * mccMncApnPtr,    ///< [OUT] apn for mcc/mnc
+    size_t mccMncApnSize    ///< [IN] size of mccMncApn buffer
+)
+{
+    le_result_t result = LE_FAULT;
+    json_t *root, *apns, *apnArray;
+    json_error_t error;
+    int i;
+
+    root = json_load_file(apnFilePtr, 0, &error);
+    if (root == NULL ) {
+        LE_WARN("Document not parsed successfully. \n");
+        return result;
+    }
+
+    apns = json_object_get( root, "apns" );
+    if ( !json_is_object(apns) )
+    {
+        LE_WARN("apns is not an object\n");
+        json_decref(root);
+        return result;
+    }
+
+    apnArray = json_object_get( apns, "apn" );
+    if ( !json_is_array(apnArray) )
+    {
+        LE_WARN("apns is not an array\n");
+        json_decref(root);
+        return result;
+    }
+
+    result = LE_NOT_FOUND;
+    for( i = 0; i < json_array_size(apnArray); i++ )
+    {
+        json_t *data, *mcc, *mnc, *apn;
+        const char* mccRead;
+        const char* mncRead;
+        const char* apnRead;
+        data = json_array_get( apnArray, i );
+        if ( !json_is_object( data ))
+        {
+            LE_WARN("data %d is not an object",i);
+            result = LE_FAULT;
+            break;
+        }
+
+        mcc = json_object_get( data, "@mcc" );
+        mccRead = json_string_value(mcc);
+
+        mnc = json_object_get( data, "@mnc" );
+        mncRead = json_string_value(mnc);
+
+        if ( !(strcmp(mccRead,mccPtr))
+            &&
+             !(strcmp(mncRead,mncPtr))
+           )
+        {
+            apn = json_object_get( data, "@apn" );
+            apnRead = json_string_value(apn);
+
+            if ( le_utf8_Copy(mccMncApnPtr,apnRead,mccMncApnSize,NULL) != LE_OK)
+            {
+                LE_WARN("Apn buffer is too small");
+                break;
+            }
+            LE_INFO("[%s:%s] Got APN '%s'", mccPtr, mncPtr, mccMncApnPtr);
+            // @note Stop on the first json entry for mcc/mnc, need to be improved?
+            result = LE_OK;
+            break;
+        }
+    }
+
+    json_decref(root);
+    return result;
 }
 
 // =============================================
@@ -325,9 +422,6 @@ void le_mdc_Init
 
     // Subscribe to the session state handler
     pa_mdc_AddSessionStateHandler(NewSessionStateHandler, NULL);
-
-    // Initialize the profile list
-    ProfileList = LE_DLS_LIST_INIT;
 }
 
 // =============================================
@@ -417,16 +511,25 @@ le_result_t le_mdc_GetProfileFromApn
     for (; profileIndex <= profileIndexMax; profileIndex++)
     {
         char tmpApn[LE_MDC_APN_NAME_MAX_LEN];
+        le_result_t res = LE_FAULT;
+
+        *profileRefPtr = NULL;
 
         memset(tmpApn, 0, LE_MDC_APN_NAME_MAX_LEN);
 
         *profileRefPtr = le_mdc_GetProfile(profileIndex);
 
-        le_mdc_GetAPN(*profileRefPtr, tmpApn, LE_MDC_APN_NAME_MAX_LEN);
-
-        if ( strncmp(apnPtr, tmpApn, apnLen ) == 0 )
+        if (*profileRefPtr)
         {
-            return LE_OK;
+            res = le_mdc_GetAPN(*profileRefPtr, tmpApn, LE_MDC_APN_NAME_MAX_LEN);
+        }
+
+        if (res == LE_OK)
+        {
+            if ( strncmp(apnPtr, tmpApn, apnLen ) == 0 )
+            {
+                return LE_OK;
+            }
         }
     }
 
@@ -480,7 +583,6 @@ le_result_t le_mdc_StartSession
 {
     le_mdc_Profile_t* profilePtr = le_ref_Lookup(DataProfileRefMap, profileRef);
     le_result_t result;
-    pa_mdc_CallRef_t callRef = NULL;
 
     if (profilePtr == NULL)
     {
@@ -492,26 +594,21 @@ le_result_t le_mdc_StartSession
     {
         case LE_MDC_PDP_IPV4:
         {
-            result = pa_mdc_StartSessionIPV4(profilePtr->profileIndex, &callRef);
+            result = pa_mdc_StartSessionIPV4(profilePtr->profileIndex);
         }
         break;
         case LE_MDC_PDP_IPV6:
         {
-            result =  pa_mdc_StartSessionIPV6(profilePtr->profileIndex, &callRef);
+            result =  pa_mdc_StartSessionIPV6(profilePtr->profileIndex);
         }
         break;
         case LE_MDC_PDP_IPV4V6:
         {
-            result =  pa_mdc_StartSessionIPV4V6(profilePtr->profileIndex, &callRef);
+            result =  pa_mdc_StartSessionIPV4V6(profilePtr->profileIndex);
         }
         break;
         default:
             return LE_FAULT;
-    }
-
-    if ( ( result == LE_OK ) && callRef )
-    {
-        profilePtr->callRef = callRef;
     }
 
     return result;
@@ -543,7 +640,7 @@ le_result_t le_mdc_StopSession
         return LE_BAD_PARAMETER;
     }
 
-    return pa_mdc_StopSession(profilePtr->callRef);
+    return pa_mdc_StopSession(profilePtr->profileIndex);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -559,7 +656,7 @@ le_result_t le_mdc_StopSession
 le_result_t le_mdc_GetSessionState
 (
     le_mdc_ProfileRef_t profileRef,        ///< [IN] Query this profile object
-    bool*   isConnectedPtr       ///< [OUT] Data session state
+    le_mdc_ConState_t*   statePtr          ///< [OUT] Data session state
 )
 {
     le_mdc_Profile_t* profilePtr = le_ref_Lookup(DataProfileRefMap, profileRef);
@@ -568,18 +665,15 @@ le_result_t le_mdc_GetSessionState
         LE_KILL_CLIENT("Invalid reference (%p) found!", profileRef);
         return LE_BAD_PARAMETER;
     }
-    if (isConnectedPtr == NULL)
+    if (statePtr == NULL)
     {
         LE_KILL_CLIENT("isConnectedPtr is NULL !");
         return LE_BAD_PARAMETER;
     }
 
     le_result_t result;
-    pa_mdc_SessionState_t sessionState;
 
-    result = pa_mdc_GetSessionState(profilePtr->profileIndex, &sessionState);
-
-    *isConnectedPtr = ( (result == LE_OK) && (sessionState != PA_MDC_DISCONNECTED) );
+    result = pa_mdc_GetSessionState(profilePtr->profileIndex, statePtr);
 
     return result;
 }
@@ -1145,10 +1239,10 @@ le_result_t le_mdc_SetPDP
     }
 
     le_result_t result;
-    bool isConnected;
+    le_mdc_ConState_t state;
 
-    result = le_mdc_GetSessionState(profileRef, &isConnected);
-    if ( (result != LE_OK) || isConnected )
+    result = le_mdc_GetSessionState(profileRef, &state);
+    if ( (result != LE_OK) || (state == LE_MDC_CONNECTED) )
     {
         return LE_FAULT;
     }
@@ -1233,10 +1327,10 @@ le_result_t le_mdc_SetAPN
     }
 
     le_result_t result;
-    bool isConnected;
+    le_mdc_ConState_t state;
 
-    result = le_mdc_GetSessionState(profileRef, &isConnected);
-    if ( (result != LE_OK) || isConnected )
+    result = le_mdc_GetSessionState(profileRef, &state);
+    if ( (result != LE_OK) || (state == LE_MDC_CONNECTED) )
     {
         return LE_FAULT;
     }
@@ -1245,6 +1339,60 @@ le_result_t le_mdc_SetAPN
     strcpy(profilePtr->modemData.apn, apnPtr);
 
     return pa_mdc_WriteProfile(profilePtr->profileIndex, &profilePtr->modemData);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the Access Point Name (APN) for the given profile according to the home network mcc/mnc.
+ *
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_BAD_PARAMETER if an input parameter is not valid
+ *      - LE_FAULT for all other errors
+ *
+ * @note
+ *      The process exits, if an invalid profile object is given
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mdc_SetDefaultAPN
+(
+    le_mdc_ProfileRef_t profileRef ///< [IN] Query this profile object
+)
+{
+    le_result_t error = LE_FAULT;
+    char mccString[LE_MRC_MCC_BYTES]={0};
+    char mncString[LE_MRC_MNC_BYTES]={0};
+    char mccMncApn[100+1] = {0};
+
+    // Load SIM configuration from Config DB
+    le_sim_Id_t simSelected = le_sim_GetSelectedCard();
+
+    // Get MCC/MNC
+    error = le_sim_GetHomeNetworkMccMnc(simSelected,
+                                    mccString,
+                                    LE_MRC_MCC_BYTES,
+                                    mncString,
+                                    LE_MRC_MNC_BYTES);
+
+    if (error != LE_OK)
+    {
+        LE_WARN("Could not find MCC/MNC");
+
+        return LE_FAULT;
+    }
+
+    LE_DEBUG("Search of [%s:%s] into file %s",mccString,mncString,APN_FILE);
+
+    // Find APN value for [MCC/MNC]
+    if ( FindApnFromFile(APN_FILE,mccString,mncString,mccMncApn,sizeof(mccMncApn)) != LE_OK )
+    {
+        LE_WARN("Could not find %s/%s in %s",mccString,mncString,APN_FILE);
+        return LE_FAULT;
+    }
+
+    // Save the APN value into the modem
+    return le_mdc_SetAPN(profileRef,mccMncApn);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1339,6 +1487,13 @@ le_result_t le_mdc_SetAuthentication
     {
         LE_KILL_CLIENT("Password name is too long (%zd) > LE_MDC_PASSWORD_NAME_MAX_LEN (%d)!",
                         strlen(password),LE_MDC_PASSWORD_NAME_MAX_LEN);
+        return LE_FAULT;
+    }
+
+    le_mdc_ConState_t state;
+    result = le_mdc_GetSessionState(profileRef, &state);
+    if ( (result != LE_OK) || (state == LE_MDC_CONNECTED) )
+    {
         return LE_FAULT;
     }
 
@@ -1450,4 +1605,60 @@ uint32_t le_mdc_NumProfiles
 )
 {
     return PA_MDC_MAX_PROFILE;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Called to get the disconnection reason.
+ *
+ * @return The disconnection reason.
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+le_mdc_DisconnectionReason_t le_mdc_GetDisconnectionReason
+(
+    le_mdc_ProfileRef_t profileRef
+        ///< [IN]
+        ///< profile reference
+)
+{
+    le_mdc_Profile_t* profilePtr = le_ref_Lookup(DataProfileRefMap, profileRef);
+
+    if (profilePtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", profileRef);
+        return LE_MDC_DISC_UNDEFINED;
+    }
+
+    return (profilePtr->disc);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Called to get the platform specific disconnection code.
+ *
+ * @return The platform specific disconnection code.
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+int32_t le_mdc_GetPlatformSpecificDisconnectionCode
+(
+    le_mdc_ProfileRef_t profileRef
+        ///< [IN]
+        ///< profile reference
+)
+{
+    le_mdc_Profile_t* profilePtr = le_ref_Lookup(DataProfileRefMap, profileRef);
+
+    if (profilePtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", profileRef);
+        return LE_MDC_DISC_UNDEFINED;
+    }
+
+    return (profilePtr->discCode);
 }

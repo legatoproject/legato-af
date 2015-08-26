@@ -645,8 +645,8 @@ static int32_t Convert8BitsTo7Bits
 static int32_t Convert7BitsTo8Bits
 (
     const uint8_t *a7bitPtr,     ///< [IN] 7bits array to convert
-    int            pos,          ///< [IN] startin position of conversion
-    int            length,       ///< [IN] size of 7bits byte convertion
+    int            pos,          ///< [IN] starting position of conversion
+    int            length,       ///< [IN] size of 7bits byte conversion
     uint8_t       *a8bitPtr,     ///< [OUT] 8bits array restul
     size_t         a8bitSize     ///< [IN] 8bits array size.
 )
@@ -744,6 +744,11 @@ static inline void WriteByte
     bufPtr[pos]=val;
 }
 
+/*
+ * 3GPP 04.11
+ *  - 8.2.5.1 Originator address element
+ *  - 8.2.5.2 Destination address element
+ */
 static uint32_t ConvertBinaryIntoPhoneNumber
 (
     const uint8_t* binPtr,
@@ -759,7 +764,7 @@ static uint32_t ConvertBinaryIntoPhoneNumber
         return -1;
     }
 
-    uint8_t pos=0;
+    uint8_t pos = 0;
     uint8_t phoneLength = binPtr[0];
     uint8_t toa = binPtr[1];
 
@@ -773,7 +778,21 @@ static uint32_t ConvertBinaryIntoPhoneNumber
     for(idx=0; idx<binSize;idx++,pos+=2)
     {
         char tmp = phonePtr[pos+1];
-        phonePtr[pos+1] = phonePtr[pos];
+        /*
+         *  As specified in 3GPP 04.11, the “F” end mark should not be decoded if present.
+         *
+         *  If the RP-Destination or RP-Originator Address contains an odd number of digits,
+         *  bits 5 to 8 (last digit) of the last octet shall be filled with an end mark coded
+         *  as "1111".
+         */
+        if ( phonePtr[pos] != 'F')
+        {
+            phonePtr[pos+1] = phonePtr[pos];
+        }
+        else
+        {
+            phonePtr[pos+1] = '\0';
+        }
         phonePtr[pos] = tmp;
     }
 
@@ -813,20 +832,24 @@ static size_t ConvertPhoneNumberIntoBinary
     return phoneLength;
 }
 
+/*
+ * TP-SCTS 03.40
+ * TP-SCTS: Service Center Time Stamp (7 bytes)
+ */
 static uint32_t ConvertBinaryIntoTimestamp
 (
     const uint8_t* binPtr,
     uint32_t       binSize,
-    char*          timestampPtr,
-    uint32_t       timestampSize
+    char*          timeStampPtr,
+    uint32_t       timeStampSize
 )
 {
     if (binSize != 7) {
-        snprintf(timestampPtr, timestampSize, "xx/xx/xx,xx:xx:xxxxx");
+        snprintf(timeStampPtr, timeStampSize, "xx/xx/xx,xx:xx:xxxxx");
         return 7;
     }
 
-    snprintf(timestampPtr,timestampSize,
+    snprintf(timeStampPtr,timeStampSize,
             "%u%u/%u%u/%u%u,%u%u:%u%u:%u%u%c%u%u",
             binPtr[0]&0x0F,
             (binPtr[0]>>4)&0x0F,
@@ -840,33 +863,72 @@ static uint32_t ConvertBinaryIntoTimestamp
             (binPtr[4]>>4)&0x0F,
             binPtr[5]&0x0F,
             (binPtr[5]>>4)&0x0F,
-            binPtr[6]&0x80?'-':'+',
-            binPtr[6]&0x0F,
-            (binPtr[6]&0x70)>>4
+            /*
+             * GSM 3GPP 03.40 (9.2.3.11)  TP-Service-Centre-Time-Stamp (TP-SCTS).
+             * The Time Zone indicates the difference, expressed in quarters of an hour, between
+             * the local time and GMT. In the first of the two semi-octets, the first bit (bit 3
+             * of the seventh octet of the TP-Service-Centre-Time-Stamp field) represents the
+             * algebraic sign of this difference (0: positive, 1: negative)
+             */
+            binPtr[6]&0x08?'-':'+',
+            binPtr[6]&0x07,
+            binPtr[6]>>4
     );
 
     return binSize;
 }
 
+/* TP-DCS Fields are defined in the 3GPP 03.38 */
 static smsPdu_Encoding_t DetermineEncoding
 (
-    uint8_t tp_dcs
+    uint8_t tpDcs
 )
 {
     smsPdu_Encoding_t encoding = SMSPDU_ENCODING_UNKNOWN;
 
-    /* Coding Group Bits 7..4 */
-    if ((tp_dcs >> 6) == 0) // 00xx
+    /* TP-DCS Fields are defined in the 3GPP 03.38
+     * Coding Group Bits 7..4
+     * 00xx xxxx : General Data Coding indication
+     *
+     * Bit 1  Bit 0     Message Class:
+     * 0      0         Class 0
+     * 0      1         Class 1    default meaning: ME-specific.
+     * 1      0         Class 2    SIM-specific message.
+     * 1      1         Class 3    default meaning: TE specific (see GSM TS 07.05)
+     *
+     * Bits 3 and 2 indicate the alphabet being used, as follows :
+     * Bit 3     Bit2      Alphabet:
+     * 0          0           Default alphabet
+     * 0          1           8 bit
+     * 1          0           UCS2 (16bit) [10]
+     * 1          1           Reserved
+     */
+    if ((tpDcs >> 6) == 0)
     {
-        encoding = ((tp_dcs >> 2) & 0x3);
+        encoding = ((tpDcs >> 2) & 0x3);
     }
-    else if ((tp_dcs >> 4) == 0xF) // 1111
+    /* 1111 xxxx :  Data coding/message class
+     *
+     * Bit 1  Bit 0     Message Class:
+     * 0      0         Class 0
+     * 0      1         Class 1    default meaning: ME-specific.
+     * 1      0         Class 2    SIM-specific message.
+     * 1      1         Class 3    default meaning: TE specific (see GSM TS 07.05)
+     *
+     * Bit 3
+     * 0        is reserved, set to 0.
+     *
+     * Bit 2    Message coding:
+     * 0        Default alphabet
+     * 1        8-bit data
+     */
+    else if ((tpDcs >> 4) == 0xF)
     {
-        encoding = (tp_dcs >> 2) & 1;
+        encoding = (tpDcs >> 2) & 1;
     }
     else
     {
-        LE_DEBUG("this encoding is not supported (tp_dcs %u)", tp_dcs);
+        LE_DEBUG("this encoding is not supported (tpDcs %u)", tpDcs);
         return LE_FAULT;
     }
 
@@ -887,10 +949,10 @@ static le_result_t DecodeGsmPdu
     int pos = 0;
     uint8_t firstByte;
     char address[LE_MDMDEFS_PHONE_NUM_MAX_BYTES] = {0};
-    char timestamp[LE_SMS_TIMESTAMP_MAX_BYTES] = {0};
+    char timeStamp[LE_SMS_TIMESTAMP_MAX_BYTES] = {0};
     uint8_t addressLen;
-    uint8_t tp_dcs;
-    uint8_t tp_udl;
+    uint8_t tpDcs,tpPid;
+    uint8_t tpUdl;
     smsPdu_Encoding_t encoding;
 
     memset(smsPtr, 0, sizeof(pa_sms_Message_t));
@@ -901,8 +963,22 @@ static le_result_t DecodeGsmPdu
 #endif
 
     firstByte = ReadByte(dataPtr,pos++);
+    if (IS_TRACE_ENABLED)
+    {
+        LE_DEBUG("firstByte 0x%02X", firstByte);
+    }
 
-    /* TP-MTI */
+    /*
+     * TP-MTI 2 bits
+     * TP-MTI  direction   message type
+     * 0 0     MS → SC     SMS-DELIVER-REPORT
+     * 0 0     SC → MS     SMS-DELIVER
+     * 0 1     MS → SC     SMS-SUBMIT
+     * 0 1     SC → MS     SMS-SUBMIT-REPORT
+     * 1 0     MS → SC     SMS-COMMAND
+     * 1 0     SC → MS     SMS-STATUS-REPORT
+     * 1 1     any     Reserved
+     */
     switch(firstByte & 0x03)
     {
         case 0x00:
@@ -914,7 +990,7 @@ static le_result_t DecodeGsmPdu
             smsPtr->smsSubmit.option = PA_SMS_OPTIONMASK_NO_OPTION;
             break;
         default:
-            LE_ERROR("Decoding this message is not supported.");
+            LE_ERROR("Decoding this message is not supported TP-MTI %d.", firstByte & 0x03);
             return LE_UNSUPPORTED;
     }
 
@@ -924,43 +1000,98 @@ static le_result_t DecodeGsmPdu
         pos++; // skip TP-MR
     }
 
-    /* TP-DA: Destination Address for SMS-SUBMIT */
-    /* TP-OA: Originating Address for SMS-DELIVER */
+    /* TP-DA: Destination Address for SMS-SUBMIT
+     * TP-OA: Originating Address for SMS-DELIVER
+     */
     {
+        uint8_t addressType;
         addressLen = ReadByte(dataPtr,pos);
+        addressType = ReadByte(dataPtr,pos+1);
 
-        pos += ConvertBinaryIntoPhoneNumber(
-                    &dataPtr[pos],
-                    (addressLen+1)>>1,
-                    address,
-                    LE_MDMDEFS_PHONE_NUM_MAX_BYTES);
+        /* Check for Alphanumeric Address 7 BITS format */
+        if ( (addressType & 0xF0) ==  0xD0 )
+        {
+            int addressAlphanumericLen = ((addressLen / 2) * 8 ) / 7;
+            if (IS_TRACE_ENABLED)
+            {
+                LE_DEBUG("Alphanumeric Address 7_BITS addressLen %d, addressAlphanumericLen %d",
+                                addressLen, addressAlphanumericLen);
+            }
+
+            if (addressAlphanumericLen <= 0)
+            {
+                LE_ERROR("Address length %d is <= 0 ", addressAlphanumericLen);
+                return LE_UNSUPPORTED;
+            }
+            /* Alphanumeric Address 7_BITS */
+            pos += 2;
+            Convert7BitsTo8Bits(&dataPtr[pos],
+                            0,
+                            addressAlphanumericLen,
+                            (uint8_t *) address,
+                            LE_MDMDEFS_PHONE_NUM_MAX_BYTES);
+
+            /* Align on the next field if the number of useful semi-octets
+             * within the address value is odd
+             */
+            if (addressLen % 2)
+            {
+                pos += (addressLen/2) + 1;
+            }
+            else
+            {
+                pos += (addressLen/2);
+            }
+        }
+        else
+        {
+            pos += ConvertBinaryIntoPhoneNumber(
+                            &dataPtr[pos],
+                            (addressLen+1)>>1,
+                            address,
+                            LE_MDMDEFS_PHONE_NUM_MAX_BYTES);
+        }
     }
+    /* Address */
 
     /* TP-PID: Protocol identifier (1 byte) */
-    pos++;
+    tpPid = ReadByte(dataPtr,pos++);
 
     /* TP-DCS: Data Coding Scheme (1 byte) */
-    tp_dcs = ReadByte(dataPtr,pos++);
+    tpDcs = ReadByte(dataPtr,pos++);
+
+    /*
+     * check that we have a supported message type ( 7- or 8-bits characters)
+     * tpDcs Field are defined in the 3GPP 03.38
+     */
+    encoding = DetermineEncoding(tpDcs);
 
     if(smsPtr->type == PA_SMS_SMS_DELIVER)
     {
         /* TP-SCTS: Service Center Time Stamp (7 bytes) */
         pos += ConvertBinaryIntoTimestamp(
-            &dataPtr[pos],
-            7,
-            timestamp,
-            LE_SMS_TIMESTAMP_MAX_BYTES
+                        &dataPtr[pos],
+                        7,
+                        timeStamp,
+                        LE_SMS_TIMESTAMP_MAX_BYTES
         );
     }
 
-    // check that we have a supported message type ( 7- or 8-bits characters)
-    encoding = DetermineEncoding(tp_dcs);
+    if (IS_TRACE_ENABLED)
+    {
+        LE_DEBUG("Address: %s", address);
+        DumpPdu("TP-SCTS", &dataPtr[pos-7], 7);
+        LE_DEBUG("tpPid 0x%02X, tpDcs 0x%02X, encoding %d, timeStamp %s",
+                        tpPid, tpDcs, encoding, timeStamp);
+    }
 
     switch(encoding)
     {
         case SMSPDU_7_BITS:
         case SMSPDU_8_BITS:
             break;
+        case SMSPDU_UCS_2:
+        case SMSPDU_ENCODING_UNKNOWN:
         default:
             LE_ERROR("Message format not supported.");
             return LE_UNSUPPORTED;
@@ -973,15 +1104,26 @@ static le_result_t DecodeGsmPdu
     }
 
     /* TP-UDL: User Data Length (1 byte) */
-    tp_udl = ReadByte(dataPtr,pos++);
+    tpUdl = ReadByte(dataPtr,pos++);
 
-    // Check if we have a user data header
+    /* Check if we have a user data header */
     uint8_t messageLen = 0; // message length in character (7- or 8-bit depending on the encoding)
-    uint8_t tp_udhi = firstByte & (1<<6);
-    uint8_t tp_udhl = tp_udhi ? ReadByte(dataPtr,pos++) : 0;
-    if (tp_udhl)
+    /* GSM 3GPP 03.40  TP-User-Data-Header-Indicator (TP-UDHI) (9.2.3.23) */
+    uint8_t tpUdhi = firstByte & (1<<6);
+    /* GSM 3GPP 03.40  Length of User Data Header in the TP-User-Data (TP-UDHI) (9.2.3.24) */
+    uint8_t tpUdhl = tpUdhi ? ReadByte(dataPtr,pos++) : 0;
+
+    if (IS_TRACE_ENABLED)
     {
-        LE_DEBUG("Multi part SMS are not available yet");
+        LE_DEBUG("tpUdhi %d, tpUdhl %d, tpUdl %d, UserData pos %d",
+                        tpUdhi, tpUdhl, tpUdl, pos);
+        DumpPdu("TP-User Data", &dataPtr[pos], tpUdl);
+    }
+
+    if (tpUdhl)
+    {
+        LE_WARN("Multi part SMS are not available yet");
+        DumpPdu("TP-User Data Header",&dataPtr[pos-1], tpUdhl+1);
         return LE_UNSUPPORTED;
     }
 
@@ -995,7 +1137,7 @@ static le_result_t DecodeGsmPdu
         case PA_SMS_SMS_DELIVER:
             le_utf8_Copy(smsPtr->smsDeliver.oa, address, sizeof(smsPtr->smsDeliver.oa), NULL);
             smsPtr->smsDeliver.option |= PA_SMS_OPTIONMASK_OA;
-            le_utf8_Copy(smsPtr->smsDeliver.scts, timestamp, sizeof(smsPtr->smsDeliver.scts), NULL);
+            le_utf8_Copy(smsPtr->smsDeliver.scts, timeStamp, sizeof(smsPtr->smsDeliver.scts), NULL);
             smsPtr->smsDeliver.option |= PA_SMS_OPTIONMASK_SCTS;
 
             destDataPtr = smsPtr->smsDeliver.data;
@@ -1021,7 +1163,7 @@ static le_result_t DecodeGsmPdu
     switch(encoding)
     {
         case SMSPDU_8_BITS:
-            messageLen = tp_udl-tp_udhl;
+            messageLen = tpUdl-tpUdhl;
 
             *formatPtr = LE_SMS_FORMAT_BINARY;
             if (messageLen<destDataSize)
@@ -1038,13 +1180,12 @@ static le_result_t DecodeGsmPdu
             break;
 
         case SMSPDU_7_BITS:
-            messageLen = (tp_udl*7 - tp_udhl*8) /7;
+            messageLen = (tpUdl*7 - tpUdhl*8) /7;
             if (messageLen <= 0) {
                 LE_ERROR("the message length %d is <0 ",messageLen);
                 return LE_FAULT;
             }
-            pos -= (tp_udhl*8+6)/7; // translate the pos in 7bits char unit
-
+            pos -= (tpUdhl*8+6)/7; // translate the pos in 7bits char unit
             *formatPtr = LE_SMS_FORMAT_TEXT;
             int size = Convert7BitsTo8Bits(&dataPtr[pos],
                                             0,messageLen,
@@ -1055,6 +1196,7 @@ static le_result_t DecodeGsmPdu
                 return LE_OVERFLOW;
             }
             *destDataLenPtr = size;
+            LE_INFO(" messageLen %d, pos %d, size %d ", messageLen, pos, size);
             break;
 
         default:
@@ -1081,8 +1223,8 @@ static le_result_t EncodeGsmPdu
 )
 {
     const int maxSmsLength = 160;
-    uint8_t tp_udhi = 0;
-    uint8_t tp_dcs = 0x00;
+    uint8_t tpUdhi = 0;
+    uint8_t tpDcs = 0x00;
     uint8_t firstByte = 0x00;
     uint8_t addressToa;
 
@@ -1109,12 +1251,12 @@ static le_result_t EncodeGsmPdu
     {
         case PA_SMS_SMS_DELIVER:
             firstByte = 0x00; // MTI (00)
-            firstByte |= tp_udhi << 6;
+            firstByte |= tpUdhi << 6;
             break;
 
         case PA_SMS_SMS_SUBMIT:
             firstByte = 0x11; // MTI (01) | VPF (10)
-            firstByte |= tp_udhi << 6;
+            firstByte |= tpUdhi << 6;
             break;
 
         default:
@@ -1147,10 +1289,10 @@ static le_result_t EncodeGsmPdu
     switch(encoding)
     {
         case SMSPDU_7_BITS: // GSM 7 bits encoding (GSM 03.38)
-            tp_dcs = 0x00;
+            tpDcs = 0x00;
             break;
         case SMSPDU_8_BITS:
-            tp_dcs = 0x04;
+            tpDcs = 0x04;
             break;
         case SMSPDU_UCS_2:
             LE_ERROR("UCS-2 encoding is not supported.");
@@ -1210,7 +1352,7 @@ static le_result_t EncodeGsmPdu
         WriteByte(pduPtr->data, pos++, 0x00);
 
         /* TP-DCS: Data Coding Scheme (1 byte) */
-        WriteByte(pduPtr->data, pos++, tp_dcs);
+        WriteByte(pduPtr->data, pos++, tpDcs);
 
         if(messageType == PA_SMS_SMS_SUBMIT)
         {
@@ -1224,7 +1366,7 @@ static le_result_t EncodeGsmPdu
         int messageLen = min(length, maxSmsLength);
         WriteByte(pduPtr->data, pos++, messageLen);
 
-        if(tp_udhi)
+        if(tpUdhi)
         {
             LE_ERROR("Udhi not supported");
         }
@@ -1304,6 +1446,124 @@ static le_result_t DecodeMessageGsm
 
     return result;
 }
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Decode the content of GW Cell Broadcast message define in the 3GPP 03.41
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t DecodeMessageGWCB
+(
+    const uint8_t*    dataPtr,  ///< [IN] PDU data to decode
+    size_t            dataSize, ///< [IN] PDU data size
+    pa_sms_Message_t* smsPtr    ///< [OUT] Buffer to store decoded data
+)
+{
+    smsPdu_Encoding_t encoding;
+
+    /* SMS Cell Broad cast message type */
+    smsPtr->type =  PA_SMS_SMS_CELL_BROADCAST;
+    /* SMS CB Data Coding Scheme */
+    smsPtr->cellBroadcast.dcs = dataPtr[4];
+    /* SMS CB Serial number 3GPP 03.41 */
+    smsPtr->cellBroadcast.serialNum = (dataPtr[0] << 8) | dataPtr[1];
+    /* SMS CB Message identifier 3GPP 03.41 */
+    smsPtr->cellBroadcast.mId = (dataPtr[2] << 8) | dataPtr[3];
+    /* SMS CB Page Page Parameter 3GPP 03.41 */
+    smsPtr->cellBroadcast.pp = dataPtr[5];
+
+    LE_DEBUG("Cell Broadcast SN 0x%04X, MI 0x%04X, DCS 0x%02X, PP 0x%02X",
+        smsPtr->cellBroadcast.serialNum,
+        smsPtr->cellBroadcast.mId,
+        smsPtr->cellBroadcast.dcs,
+        smsPtr->cellBroadcast.pp);
+
+    smsPtr->pdu.protocol = PA_SMS_PROTOCOL_GW_CB;
+
+    DumpPdu("Dump Cell Broadcast PDU",dataPtr, dataSize);
+
+    /* SMS Cell Broadcast Data Coding Scheme defined in 3GPP 03.38 */
+    encoding = DetermineEncoding(smsPtr->cellBroadcast.dcs);
+
+    switch(encoding)
+    {
+        case SMSPDU_7_BITS:
+        case SMSPDU_8_BITS:
+            break;
+        case SMSPDU_UCS_2:
+        case SMSPDU_ENCODING_UNKNOWN:
+        default:
+            LE_ERROR("Message format not supported.");
+            return LE_UNSUPPORTED;
+    }
+
+    uint8_t * destDataPtr = smsPtr->cellBroadcast.data;
+    size_t    destDataSize = sizeof(smsPtr->cellBroadcast.data);
+    uint32_t * destDataLenPtr = &(smsPtr->cellBroadcast.dataLen);
+    le_sms_Format_t * formatPtr = &(smsPtr->cellBroadcast.format);
+
+    switch(encoding)
+    {
+        case SMSPDU_8_BITS:
+        {
+            *formatPtr = LE_SMS_FORMAT_BINARY;
+            if (dataSize < destDataSize)
+            {
+                /* Content of message started dataPtr + 6 */
+                memcpy(destDataPtr,&dataPtr[6],dataSize);
+                *destDataLenPtr = dataSize;
+            }
+            else
+            {
+                LE_ERROR("Overflow occurs when converting 8bits to 8bits %d>%d",
+                                (int) dataSize, (int)destDataSize);
+                return LE_OVERFLOW;
+            }
+        }
+        break;
+
+        case SMSPDU_7_BITS:
+        {
+            /**
+             * (dataSize - 6) = complete PDU size - cell broadcast header size (6 bytes)
+             *                = 8-bit user data length
+             *
+             * To know the 7-bit text length contained in a 8-bit message length, the 7-bit
+             * length conversation is computed like this:
+             *      <8-bit user data length> * 8 (bit) / 7 (bit).
+             */
+            uint16_t messageLen = ((dataSize - 6) * 8) / 7;
+            if (messageLen <= 0)
+            {
+                LE_ERROR("the message length %d is < 0 ",messageLen);
+                return LE_FAULT;
+            }
+            *formatPtr = LE_SMS_FORMAT_TEXT;
+            /* Content of message started dataPtr + 6 */
+            int size = Convert7BitsTo8Bits(&dataPtr[6],
+                            0, messageLen,
+                            destDataPtr, destDataSize);
+            if (size == LE_OVERFLOW)
+            {
+                LE_ERROR("Overflow occurs when converting 7bits to 8bits ");
+                return LE_OVERFLOW;
+            }
+            *destDataLenPtr = size;
+            LE_DEBUG("MessageLen %d, size %d text '%s'",
+                messageLen, size, smsPtr->cellBroadcast.data);
+        }
+        break;
+
+        default:
+            LE_ERROR("Decoding error");
+            return LE_FAULT;
+    }
+
+    return LE_OK;
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1728,23 +1988,23 @@ static le_result_t DecodeDate
     size_t                dateSize         ///< [IN] size of date
 )
 {
-    uint32_t timestampSize;
+    uint32_t timeStampSize;
 
-    timestampSize = 18;
-    if (timestampSize>dateSize)
+    timeStampSize = 18;
+    if (timeStampSize>dateSize)
     {
-        LE_WARN("Buffer overflow will occur (%d>%zd)",timestampSize,dateSize);
+        LE_WARN("Buffer overflow will occur (%d>%zd)",timeStampSize,dateSize);
         return LE_OVERFLOW;
     }
 
-    snprintf(date, timestampSize-1, "%d/%d/%d,%d:%d:%d",
+    snprintf(date, timeStampSize-1, "%d/%d/%d,%d:%d:%d",
              ConvertFromByte(dateParameter->year),
              ConvertFromByte(dateParameter->month),
              ConvertFromByte(dateParameter->day),
              ConvertFromByte(dateParameter->hours),
              ConvertFromByte(dateParameter->minutes),
              ConvertFromByte(dateParameter->seconds));
-    date[timestampSize] = '\0';
+    date[timeStampSize] = '\0';
 
     return LE_OK;
 }
@@ -2254,11 +2514,16 @@ le_result_t smsPdu_Decode
     if (IS_TRACE_ENABLED)
     {
         DumpPdu("PDU to decode",dataPtr,dataSize);
+        LE_DEBUG("Protocol to decode %d", protocol);
     }
 
     if (protocol == PA_SMS_PROTOCOL_GSM)
     {
         result = DecodeMessageGsm(dataPtr,dataSize,smsPtr);
+    }
+    else if (protocol == PA_SMS_PROTOCOL_GW_CB)
+    {
+        result = DecodeMessageGWCB(dataPtr,dataSize,smsPtr);
     }
     else if ( protocol == PA_SMS_PROTOCOL_CDMA)
     {

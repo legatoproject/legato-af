@@ -125,14 +125,20 @@ static void OperationHandler
                                             sizeof(valueData),
                                             &bytesWritten);
 
-        if ( result != LE_OK )
-        {
-            pa_avc_OperationReportError(opRef, PA_AVC_OPERR_INTERNAL);
-            return;
-        }
+        if ( result == LE_OVERFLOW )
+            opErr = PA_AVC_OPERR_OBJ_INST_UNAVAIL;
+        else if ( result != LE_OK )
+            opErr = PA_AVC_OPERR_INTERNAL;
 
-        // Send the valid response
-        pa_avc_OperationReportSuccess(opRef, valueData, bytesWritten);
+        if ( opErr != PA_AVC_OPERR_NO_ERROR )
+        {
+            pa_avc_OperationReportError(opRef, opErr);
+        }
+        else
+        {
+            // Send the valid response
+            pa_avc_OperationReportSuccess(opRef, valueData, bytesWritten);
+        }
 
         // TODO: Refactor so I don't need a return here.
         return;
@@ -183,6 +189,8 @@ static void OperationHandler
 
             if ( result == LE_NOT_FOUND )
                 opErr = PA_AVC_OPERR_RESOURCE_UNSUPPORTED;
+            else if ( result == LE_OVERFLOW )
+                opErr = PA_AVC_OPERR_OBJ_INST_UNAVAIL;
             else if ( result != LE_OK )
                 opErr = PA_AVC_OPERR_INTERNAL;
 
@@ -326,7 +334,7 @@ static void UpdateRequiredHandler
  * Handler function for RegUpdateTimerRef expiry
  */
 //--------------------------------------------------------------------------------------------------
-void RegUpdateTimerHandler
+static void RegUpdateTimerHandler
 (
     le_timer_Ref_t timerRef    ///< This timer has expired
 )

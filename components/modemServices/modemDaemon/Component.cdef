@@ -3,7 +3,6 @@ requires:
     api:
     {
         le_cfg.api
-        le_audio.api
         le_pm.api
     }
 }
@@ -17,14 +16,14 @@ provides:
         le_mrc.api
         le_sim.api
         le_mdc.api
-        le_mcc_profile.api
-        le_mcc_call.api
+        le_mcc.api
         le_ecall.api
         le_ips.api
         le_temp.api
         le_antenna.api
         le_riPin.api
         le_adc.api
+        le_rtc.api
     }
 }
 
@@ -46,6 +45,7 @@ sources:
     le_antenna.c
     le_riPin.c
     le_adc.c
+    le_rtc.c
 }
 
 requires:

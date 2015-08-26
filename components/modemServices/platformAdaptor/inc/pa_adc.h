@@ -39,7 +39,7 @@
  *      - LE_FAULT         The function failed to get the thresholds.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_adc_ReadValue
+LE_SHARED le_result_t pa_adc_ReadValue
 (
     uint8_t  adcChannel,
     int32_t* adcValuePtr

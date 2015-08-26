@@ -10,9 +10,8 @@ requires:
 {
     api:
     {
-        le_mcc_call.api
-        le_mcc_profile.api
-        le_audio.api [types-only]
+        le_mcc.api
+        le_audio.api
     }
 }
 

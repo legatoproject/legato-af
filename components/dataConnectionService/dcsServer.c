@@ -31,7 +31,7 @@
 
 #include "le_print.h"
 
-#include "jansson.h"
+
 
 
 //--------------------------------------------------------------------------------------------------
@@ -54,14 +54,7 @@
 #define DCS_TECH_LEN      16
 #define DCS_TECH_BYTES    (DCS_TECH_LEN+1)
 
-//--------------------------------------------------------------------------------------------------
-/**
- * The file to read for the APN.
- */
-//--------------------------------------------------------------------------------------------------
-#define APN_FILE "/opt/legato/apps/dataConnectionService/usr/local/share/apns.json"
-// @TODO change the APN file when dataConnectionService become a sandboxed app.
-//#define APN_FILE "/usr/local/share/apns.json"
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -118,7 +111,8 @@ InterfaceDataBackup_t;
 //--------------------------------------------------------------------------------------------------
 static void DataSessionStateHandler
 (
-    bool   isConnected,
+    le_mdc_ProfileRef_t profileRef,
+    le_mdc_ConState_t ConnectionStatus,
     void*  contextPtr
 );
 
@@ -220,141 +214,6 @@ static bool IsApnEmpty
     return (strcmp(apnName,"")==0);
 }
 
-// -------------------------------------------------------------------------------------------------
-/**
- *  This function will attempt to read apn definition for mcc/mnc in file apnFilePtr
- *
- * @return LE_OK        Function was able to find an APN
- * @return LE_NOT_FOUND Function was not able to find an APN for this (MCC,MNC)
- * @return LE_FAULT     There was an issue with the APN source
- */
-// -------------------------------------------------------------------------------------------------
-static le_result_t FindApnFromFile
-(
-    const char* apnFilePtr, ///< [IN] apn file
-    const char* mccPtr,     ///< [IN] mcc
-    const char* mncPtr,     ///< [IN] mnc
-    char * mccMncApnPtr,    ///< [OUT] apn for mcc/mnc
-    size_t mccMncApnSize    ///< [IN] size of mccMncApn buffer
-)
-{
-    le_result_t result = LE_FAULT;
-    json_t *root, *apns, *apnArray;
-    json_error_t error;
-    int i;
-
-    root = json_load_file(apnFilePtr, 0, &error);
-    if (root == NULL ) {
-        LE_WARN("Document not parsed successfully. \n");
-        return result;
-    }
-
-    apns = json_object_get( root, "apns" );
-    if ( !json_is_object(apns) )
-    {
-        LE_WARN("apns is not an object\n");
-        json_decref(root);
-        return result;
-    }
-
-    apnArray = json_object_get( apns, "apn" );
-    if ( !json_is_array(apnArray) )
-    {
-        LE_WARN("apns is not an array\n");
-        json_decref(root);
-        return result;
-    }
-
-    result = LE_NOT_FOUND;
-    for( i = 0; i < json_array_size(apnArray); i++ )
-    {
-        json_t *data, *mcc, *mnc, *apn;
-        const char* mccRead;
-        const char* mncRead;
-        const char* apnRead;
-        data = json_array_get( apnArray, i );
-        if ( !json_is_object( data ))
-        {
-            LE_WARN("data %d is not an object",i);
-            result = LE_FAULT;
-            break;
-        }
-
-        mcc = json_object_get( data, "@mcc" );
-        mccRead = json_string_value(mcc);
-
-        mnc = json_object_get( data, "@mnc" );
-        mncRead = json_string_value(mnc);
-
-        if ( !(strcmp(mccRead,mccPtr))
-            &&
-             !(strcmp(mncRead,mncPtr))
-           )
-        {
-            apn = json_object_get( data, "@apn" );
-            apnRead = json_string_value(apn);
-
-            if ( le_utf8_Copy(mccMncApnPtr,apnRead,mccMncApnSize,NULL) != LE_OK)
-            {
-                LE_WARN("Apn buffer is too small");
-                break;
-            }
-            LE_INFO("[%s:%s] Got APN '%s'", mccPtr, mncPtr, mccMncApnPtr);
-            // @note Stop on the first json entry for mcc/mnc, need to be improved?
-            result = LE_OK;
-            break;
-        }
-    }
-
-    json_decref(root);
-    return result;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Set the APN for the profile by reading the APN file.
- */
-//--------------------------------------------------------------------------------------------------
-static le_result_t SetApnFromFile
-(
-    le_mdc_ProfileRef_t profileRef
-)
-{
-    le_result_t error = LE_FAULT;
-    char mccString[LE_MRC_MCC_BYTES]={0};
-    char mncString[LE_MRC_MNC_BYTES]={0};
-    char mccMncApn[100+1] = {0};
-
-    // Load SIM configuration from Config DB
-    le_sim_Id_t simSelected = le_sim_GetSelectedCard();
-
-    // Get MCC/MNC
-    error = le_sim_GetHomeNetworkMccMnc(simSelected,
-                                    mccString,
-                                    LE_MRC_MCC_BYTES,
-                                    mncString,
-                                    LE_MRC_MNC_BYTES);
-
-    if (error != LE_OK)
-    {
-        LE_WARN("Could not find MCC/MNC");
-
-        return LE_FAULT;
-    }
-
-    LE_DEBUG("Search of [%s:%s] into file %s",mccString,mncString,APN_FILE);
-
-    // Find APN value for [MCC/MNC]
-    if ( FindApnFromFile(APN_FILE,mccString,mncString,mccMncApn,sizeof(mccMncApn)) != LE_OK )
-    {
-        LE_WARN("Could not find %s/%s in %s",mccString,mncString,APN_FILE);
-        return LE_FAULT;
-    }
-
-    // Save the APN value into the modem
-    return le_mdc_SetAPN(profileRef,mccMncApn);
-}
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Load the profile of the selected technology (retrieved from the config tree)
@@ -398,8 +257,8 @@ static void LoadSelectedTechProfile
         // MobileProfileRef is now referencing the default profile to use for data connection
         if ( IsApnEmpty(MobileProfileRef) )
         {
-            LE_INFO("Search for APN in the database");
-            if ( SetApnFromFile(MobileProfileRef) != LE_OK )
+            LE_INFO("Set default APN");
+            if ( le_mdc_SetDefaultAPN(MobileProfileRef) != LE_OK )
             {
                 LE_WARN("Could not set APN from file");
             }
@@ -1087,7 +946,9 @@ static void TryStartDataSession
     // if there was an update of profileRef
     if (MobileSessionStateHandlerRef == NULL)
     {
-        MobileSessionStateHandlerRef = le_mdc_AddSessionStateHandler(MobileProfileRef, DataSessionStateHandler, &MobileProfileRef);
+        MobileSessionStateHandlerRef = le_mdc_AddSessionStateHandler(MobileProfileRef,
+                                                                     DataSessionStateHandler,
+                                                                     NULL);
     }
 
     result = le_mdc_StartSession(MobileProfileRef);
@@ -1160,7 +1021,7 @@ static void StartDcsTimerHandler
     le_timer_Ref_t timerRef
 )
 {
-    bool        sessionState;
+    le_mdc_ConState_t  sessionState;
     le_result_t result;
 
     if(RequestCount == 0)
@@ -1171,7 +1032,7 @@ static void StartDcsTimerHandler
     else
     {
         result = le_mdc_GetSessionState(MobileProfileRef, &sessionState);
-        if ((result == LE_OK) && (sessionState))
+        if ((result == LE_OK) && (sessionState == LE_MDC_CONNECTED))
         {
             if (SetRouteConfiguration(MobileProfileRef) != LE_OK)
             {
@@ -1238,7 +1099,7 @@ static void TryStopDataSession
     le_timer_Ref_t timerRef
 )
 {
-    bool        sessionState;
+    le_mdc_ConState_t sessionState;
     le_result_t result;
 
     result = le_mdc_GetSessionState(MobileProfileRef, &sessionState);
@@ -1284,7 +1145,7 @@ static void StopDcsTimerHandler
     le_timer_Ref_t timerRef
 )
 {
-    bool        sessionState;
+    le_mdc_ConState_t sessionState;
     le_result_t result;
 
     if(RequestCount != 0)
@@ -1400,26 +1261,25 @@ static void ProcessCommand
 //--------------------------------------------------------------------------------------------------
 static void DataSessionStateHandler
 (
-    bool   isConnected,
+    le_mdc_ProfileRef_t profileRef,
+    le_mdc_ConState_t ConnectionStatus,
     void*  contextPtr
 )
 {
-    le_mdc_ProfileRef_t profileRef = (*(le_mdc_ProfileRef_t*)contextPtr);
-
     uint32_t profileIndex = le_mdc_GetProfileIndex(profileRef);
 
     LE_PRINT_VALUE("%d", profileIndex);
-    LE_PRINT_VALUE("%i", isConnected);
+    LE_PRINT_VALUE("%i", ConnectionStatus);
 
     // Update global state variable
-    IsConnected = isConnected;
+    IsConnected = (ConnectionStatus == LE_MDC_CONNECTED) ? true : false;
 
     // Send the state event to applications
-    SendConnStateEvent(isConnected);
+    SendConnStateEvent(IsConnected);
 
     // Restart data connection, if it has gone down, and there are still valid requests
     // todo: this mechanism needs to be much better
-    if ( ( RequestCount>0 ) && ( !isConnected ) )
+    if ( ( RequestCount>0 ) && ( !IsConnected ) )
     {
         // Give the modem some time to recover from whatever caused the loss of the data
         // connection, before trying to recover.
@@ -1491,7 +1351,9 @@ static void* DataThread
     le_cellnet_AddStateEventHandler(CellNetStateHandler, NULL);
 
     // Register for data session state changes
-    MobileSessionStateHandlerRef = le_mdc_AddSessionStateHandler(MobileProfileRef, DataSessionStateHandler, &MobileProfileRef);
+    MobileSessionStateHandlerRef = le_mdc_AddSessionStateHandler(   MobileProfileRef,
+                                                                    DataSessionStateHandler,
+                                                                    NULL );
 
     // Run the event loop
     le_event_RunLoop();

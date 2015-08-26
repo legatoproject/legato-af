@@ -199,6 +199,40 @@ le_result_t pa_gnss_ForceRestart
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * This function enables the GNSS device.
+ *
+ * @return LE_FAULT         The function failed.
+ * @return LE_OK            The function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_gnss_Enable
+(
+    void
+)
+{
+    return LE_FAULT;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function disables the GNSS device.
+ *
+ * @return LE_FAULT         The function failed.
+ * @return LE_OK            The function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_gnss_Disable
+(
+    void
+)
+{
+    return LE_FAULT;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This function sets the SUPL Assisted-GNSS mode.
  *
  * @return

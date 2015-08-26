@@ -353,6 +353,7 @@ le_antenna_StatusEventHandlerRef_t le_antenna_AddStatusEventHandler
     }
     else
     {
+        LE_ERROR("Status event hanlder not subscribed");
         return NULL;
     }
 }
@@ -425,6 +426,65 @@ le_result_t le_antenna_GetStatus
 
     // Get the open limit
     return pa_antenna_GetStatus( antennaCtxPtr->antennaType, statusPtr );
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the external ADC used to monitor the requested antenna.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_NOT_FOUND if the antenna reference is unknown
+ *      - LE_UNSUPPORTED request not supported
+ *      - LE_FAULT on other failure
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_antenna_SetExternalAdc
+(
+    le_antenna_ObjRef_t    antennaRef,  ///< antenna reference
+    int8_t                 adcId        ///< The external ADC used to monitor the requested antenna
+)
+{
+    if ( antennaRef == NULL )
+    {
+        LE_ERROR("Invalid reference %p", antennaRef);
+        return LE_NOT_FOUND;
+    }
+
+    // Get the context from the reference
+    AntennaCtx_t*  antennaCtxPtr = le_ref_Lookup( AntennaRefMap, antennaRef );
+
+    return pa_antenna_SetExternalAdc(antennaCtxPtr->antennaType, adcId);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the external ADC channel used to monitor the requested antenna.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_NOT_FOUND if the antenna reference is unknown
+ *      - LE_UNSUPPORTED request not supported
+ *      - LE_FAULT on other failure
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_antenna_GetExternalAdc
+(
+    le_antenna_ObjRef_t    antennaRef,  ///< antenna reference
+    int8_t*                adcIdPtr     ///< The external ADC used to monitor the requested antenna
+)
+{
+    if ( antennaRef == NULL )
+    {
+        LE_ERROR("Invalid reference %p", antennaRef);
+
+        return LE_NOT_FOUND;
+    }
+
+    // Get the context from the reference
+    AntennaCtx_t*  antennaCtxPtr = le_ref_Lookup( AntennaRefMap, antennaRef );
+
+    return pa_antenna_GetExternalAdc(antennaCtxPtr->antennaType, adcIdPtr);
 }
 
 //--------------------------------------------------------------------------------------------------

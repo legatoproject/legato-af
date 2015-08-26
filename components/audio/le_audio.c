@@ -617,7 +617,6 @@ static void InitializeStream
     streamPtr->isInput = false;
     streamPtr->gain=0;
     streamPtr->fd=LE_AUDIO_NO_FD;
-    memset(streamPtr->format, 0, sizeof(streamPtr->format));
     streamPtr->connectorList = GetHashMapElement();
 }
 
@@ -922,7 +921,8 @@ static le_audio_StreamRef_t OpenAudioStream
             break;
             case PA_AUDIO_IF_DSP_FRONTEND_PCM_RX:
             case PA_AUDIO_IF_DSP_FRONTEND_PCM_TX:
-                if ( pa_audio_SetPcmTimeSlot(streamPtr->audioInterface,  streamPtr->param.timeslot) != LE_OK )
+                if ( pa_audio_SetPcmTimeSlot(streamPtr->audioInterface, streamPtr->param.timeslot)
+                                                                                          != LE_OK )
                 {
                     LE_WARN("Cannot set timeslot of Secondary PCM interface");
                     le_mem_Release(AudioStream[streamPtr->audioInterface]);
@@ -940,7 +940,8 @@ static le_audio_StreamRef_t OpenAudioStream
             break;
             case PA_AUDIO_IF_DSP_FRONTEND_I2S_RX:
             case PA_AUDIO_IF_DSP_FRONTEND_I2S_TX:
-                if ( pa_audio_SetI2sChannelMode(streamPtr->audioInterface, streamPtr->param.mode) != LE_OK )
+                if ( pa_audio_SetI2sChannelMode(streamPtr->audioInterface, streamPtr->param.mode)
+                                                                                          != LE_OK )
                 {
                     LE_WARN("Cannot set the channel mode of I2S interface");
                     le_mem_Release(AudioStream[streamPtr->audioInterface]);
@@ -948,19 +949,28 @@ static le_audio_StreamRef_t OpenAudioStream
                     return NULL;
                 }
             break;
-            case PA_AUDIO_IF_DSP_FRONTEND_FILE_PLAY:
             case PA_AUDIO_IF_DSP_FRONTEND_FILE_CAPTURE:
+                AudioStream[streamPtr->audioInterface]->encodingFormat = LE_AUDIO_WAVE;
+                AudioStream[streamPtr->audioInterface]->sampleAmrConfig.amrMode =
+                                                                           LE_AUDIO_AMR_NB_7_4_KBPS;
+                AudioStream[streamPtr->audioInterface]->sampleAmrConfig.dtx = true;
+                // No break here
+            case PA_AUDIO_IF_DSP_FRONTEND_FILE_PLAY:
                 AudioStream[streamPtr->audioInterface]->fd = streamPtr->param.fd;
-                AudioStream[streamPtr->audioInterface]->streamEventId = le_event_CreateId("streamEventId",
+                AudioStream[streamPtr->audioInterface]->streamEventId = le_event_CreateId(
+                                                                    "streamEventId",
                                                                     sizeof(pa_audio_StreamEvent_t));
 
                 memcpy( &AudioStream[streamPtr->audioInterface]->samplePcmConfig,
                         &SampleDefaultPcmConfig,
                         sizeof(pa_audio_SamplePcmConfig_t) );
+
+
             break;
             case PA_AUDIO_IF_DSP_BACKEND_MODEM_VOICE_RX:
                 // streamEventId needed for DTMF detection
-                AudioStream[streamPtr->audioInterface]->streamEventId = le_event_CreateId("streamEventId",
+                AudioStream[streamPtr->audioInterface]->streamEventId = le_event_CreateId(
+                                                                    "streamEventId",
                                                                     sizeof(pa_audio_StreamEvent_t));
             default:
             break;
@@ -1074,9 +1084,6 @@ static void CloseSessionEventHandler
 //                                       Public declarations
 //--------------------------------------------------------------------------------------------------
 
-#ifdef PRE_BUILT_PA
-void _le_pa_audio_COMPONENT_INIT(void);
-#endif /* PRE_BUILT_PA */
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1087,10 +1094,6 @@ void _le_pa_audio_COMPONENT_INIT(void);
 //--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
-    #ifdef PRE_BUILT_PA
-    _le_pa_audio_COMPONENT_INIT();
-    #endif /* PRE_BUILT_PA */
-
     // Allocate the audio stream pool.
     AudioStreamPool = le_mem_CreatePool("AudioStreamPool", sizeof(le_audio_Stream_t));
     le_mem_ExpandPool(AudioStreamPool, STREAM_DEFAULT_POOL_SIZE);
@@ -1369,43 +1372,6 @@ le_audio_StreamRef_t le_audio_OpenModemVoiceTx
     openStream.audioInterface = PA_AUDIO_IF_DSP_BACKEND_MODEM_VOICE_TX;
 
     return OpenAudioStream(&openStream);
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Get the audio format of an input or output stream.
- *
- * @return LE_FAULT         The function failed.
- * @return LE_OK            The function succeeded.
- * @return LE_OVERFLOW      The format buffer wasn't big enough to accept the audio format string
- *
- * @note The process exits, if an invalid audio stream reference is given or if the formatPtr
- *       pointer is NULL.
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t le_audio_GetFormat
-(
-    le_audio_StreamRef_t streamRef,  ///< [IN] The audio stream reference.
-    char*                formatPtr,  ///< [OUT] The name of the audio encoding as used by the
-                                     ///  Real-Time Protocol (RTP), specified by the IANA organisation.
-    size_t               len         ///< [IN]  The length of format string.
-)
-{
-    le_audio_Stream_t* streamPtr = le_ref_Lookup(AudioStreamRefMap, streamRef);
-
-    if (streamPtr == NULL)
-    {
-        LE_KILL_CLIENT("Invalid reference (%p) provided!", streamRef);
-        return LE_FAULT;
-    }
-
-    if (formatPtr == NULL)
-    {
-        LE_KILL_CLIENT("formatPtr is NULL !");
-        return LE_FAULT;
-    }
-
-    return (le_utf8_Copy(formatPtr, streamPtr->format, len, NULL));
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -2325,7 +2291,7 @@ void le_audio_RemoveMediaHandler
  * @return LE_FAULT         Function failed.
  * @return LE_OK            Function succeeded.
  *
- * Note: the used file descriptor is not deallocated, but is is rewound to the beginning.
+ * @note the used file descriptor is not deallocated, but is is rewound to the beginning.
  *
  */
 //--------------------------------------------------------------------------------------------------
@@ -2405,8 +2371,10 @@ le_result_t le_audio_Resume
  * @return LE_BUSY          The player interface is already active.
  * @return LE_OK            Function succeeded.
  *
- * Note: if the fd parameter is set to LE_AUDIO_NO_FD, the previous file descriptor is used to play
- * again the file.
+ * @note the fd is closed by the IPC API. To play again the same file, the fd parameter can be set
+ * to LE_AUDIO_NO_FD: in this case, the previous file descriptor is re-used.
+ * If the fd as to be kept on its side, the application should duplicate the fd (e.g., using dup() )
+ * before calling the API.
  *
  */
 //--------------------------------------------------------------------------------------------------
@@ -2459,6 +2427,11 @@ le_result_t le_audio_PlayFile
  * @return LE_BUSY          The player interface is already active.
  * @return LE_OK            Function succeeded.
  *
+ * @note the fd is closed by the IPC API. To use again the same pipe, the fd parameter can be set
+ * to LE_AUDIO_NO_FD: in this case, the previous file descriptor is re-used.
+ * If the fd as to be kept on its side, the application should duplicate the fd (e.g., using dup() )
+ * before calling the API.
+ *
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_audio_PlaySamples
@@ -2499,15 +2472,17 @@ le_result_t le_audio_PlaySamples
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Record a file on a recording stream.
+ * Record a file on a recorder stream.
  *
  * @return LE_FAULT         Function failed.
  * @return LE_BAD_PARAMETER The audio stream reference is invalid.
  * @return LE_BUSY          The recorder interface is already active.
  * @return LE_OK            Function succeeded.
  *
- * Note: if the fd parameter is set to LE_AUDIO_NO_FD, the previous file descriptor is used to record
- * again the file.
+ * @note the fd is closed by the API. To record again the same file, the fd parameter can be set to
+ * LE_AUDIO_NO_FD: in this case, the previous file descriptor is re-used.
+ * If the fd as to be kept on its side, the application should duplicate the fd (e.g., using dup() )
+ * before calling the API.
  *
  */
 //--------------------------------------------------------------------------------------------------
@@ -2518,6 +2493,7 @@ le_result_t le_audio_RecordFile
 )
 {
     le_audio_Stream_t* streamPtr = le_ref_Lookup(AudioStreamRefMap, streamRef);
+    pa_audio_SamplePcmConfig_t samplePcmConfig;
 
     if (streamPtr == NULL)
     {
@@ -2525,20 +2501,28 @@ le_result_t le_audio_RecordFile
         return LE_FAULT;
     }
 
+
     if (( fd != LE_AUDIO_NO_FD ) && ( streamPtr->fd != fd ))
     {
         // close previous file
         close(streamPtr->fd);
         streamPtr->fd = fd;
     }
+    else
+    {
+        lseek(streamPtr->fd, 0, SEEK_SET);
+    }
+
+    if ( le_media_Open(streamPtr, &samplePcmConfig) != LE_OK )
+    {
+        return LE_FAULT;
+    }
 
     streamPtr->samplePcmConfig.pcmFormat = PCM_WAVE;
 
     if ( streamPtr->fd != LE_AUDIO_NO_FD )
     {
-        return pa_audio_Capture( streamPtr->audioInterface,
-                                streamPtr->fd,
-                                &streamPtr->samplePcmConfig);
+        return pa_audio_Capture(streamPtr->audioInterface, streamPtr->fd, &samplePcmConfig);
     }
     else
     {
@@ -2548,14 +2532,16 @@ le_result_t le_audio_RecordFile
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Record a file on a recording stream.
+ * Record a file on a recorder stream.
  *
  * @return LE_FAULT         Function failed.
  * @return LE_BUSY          The recorder interface is already active.
  * @return LE_OK            Function succeeded.
  *
- * Note: if the fd parameter is set to LE_AUDIO_NO_FD, the previous file descriptor is used to record
- * again the file.
+ * @note the fd is closed by the API. To use again the same pipe, the fd parameter can be set to
+ * LE_AUDIO_NO_FD: in this case, the previous file descriptor is re-used.
+ * If the fd as to be kept on its side, the application should duplicate the fd (e.g., using dup() )
+ * before calling the API.
  *
  */
 //--------------------------------------------------------------------------------------------------
@@ -2879,3 +2865,200 @@ le_result_t le_audio_PlaySignallingDtmf
     }
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the encoding format of a recorder stream.
+ *
+ * @return LE_FAULT         Function failed.
+ * @return LE_OK            Function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_audio_SetEncodingFormat
+(
+    le_audio_StreamRef_t streamRef,
+        ///< [IN]
+        ///< Audio stream reference.
+
+    le_audio_Format_t format
+        ///< [IN]
+        ///< Encoding format.
+)
+{
+    le_audio_Stream_t* streamPtr = le_ref_Lookup(AudioStreamRefMap, streamRef);
+
+    if (streamPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid stream reference (%p) provided!", streamRef);
+        return LE_FAULT;
+    }
+
+    streamPtr->encodingFormat = format;
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the encoding format of a recorder stream.
+ *
+ * @return LE_FAULT         Function failed.
+ * @return LE_OK            Function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_audio_GetEncodingFormat
+(
+    le_audio_StreamRef_t streamRef,
+        ///< [IN]
+        ///< Audio stream reference.
+
+    le_audio_Format_t* formatPtr
+        ///< [OUT]
+        ///< Encoding format.
+)
+{
+    le_audio_Stream_t* streamPtr = le_ref_Lookup(AudioStreamRefMap, streamRef);
+
+    if (streamPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid stream reference (%p) provided!", streamRef);
+        return LE_FAULT;
+    }
+
+    *formatPtr = streamPtr->encodingFormat;
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the AMR mode for AMR encoder.
+ *
+ * @return LE_FAULT         Function failed.
+ * @return LE_OK            Function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_audio_SetSampleAmrMode
+(
+    le_audio_StreamRef_t streamRef,
+        ///< [IN]
+        ///< Audio stream reference.
+
+    le_audio_AmrMode_t mode
+        ///< [IN]
+        ///< AMR mode.
+)
+{
+    le_audio_Stream_t* streamPtr = le_ref_Lookup(AudioStreamRefMap, streamRef);
+
+    if (streamPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid stream reference (%p) provided!", streamRef);
+        return LE_FAULT;
+    }
+
+    streamPtr->sampleAmrConfig.amrMode = mode;
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the AMR mode for AMR encoder.
+ *
+ * @return LE_FAULT         Function failed.
+ * @return LE_OK            Function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_audio_GetSampleAmrMode
+(
+    le_audio_StreamRef_t streamRef,
+        ///< [IN]
+        ///< Audio stream reference.
+
+    le_audio_AmrMode_t* modePtr
+        ///< [OUT]
+        ///< AMR mode.
+)
+{
+    le_audio_Stream_t* streamPtr = le_ref_Lookup(AudioStreamRefMap, streamRef);
+
+    if (streamPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid stream reference (%p) provided!", streamRef);
+        return LE_FAULT;
+    }
+
+    *modePtr = streamPtr->sampleAmrConfig.amrMode;
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the AMR discontinuous transmission (DTX)
+ *
+ * @return LE_FAULT         Function failed.
+ * @return LE_OK            Function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_audio_SetSampleAmrDtx
+(
+    le_audio_StreamRef_t streamRef,
+        ///< [IN]
+        ///< Audio stream reference.
+
+    bool dtx
+        ///< [IN]
+        ///< DTX.
+)
+{
+    le_audio_Stream_t* streamPtr = le_ref_Lookup(AudioStreamRefMap, streamRef);
+
+    if (streamPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid stream reference (%p) provided!", streamRef);
+        return LE_FAULT;
+    }
+
+    streamPtr->sampleAmrConfig.dtx = dtx;
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the AMR discontinuous transmission (DTX) value.
+ *
+ * @return LE_FAULT         Function failed.
+ * @return LE_OK            Function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_audio_GetSampleAmrDtx
+(
+    le_audio_StreamRef_t streamRef,
+        ///< [IN]
+        ///< Audio stream reference.
+
+    bool* dtxPtr
+        ///< [OUT]
+        ///< DTX.
+)
+{
+    le_audio_Stream_t* streamPtr = le_ref_Lookup(AudioStreamRefMap, streamRef);
+
+    if (streamPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid stream reference (%p) provided!", streamRef);
+        return LE_FAULT;
+    }
+
+    *dtxPtr = streamPtr->sampleAmrConfig.dtx;
+
+    return LE_OK;
+}

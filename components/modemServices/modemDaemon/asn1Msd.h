@@ -48,7 +48,7 @@ msd_VehicleType_t;
  *
  */
 //--------------------------------------------------------------------------------------------------
-typedef struct {
+typedef struct __attribute__ ((__packed__)) {
    char    isowmi[3];
    char    isovds[6];
    char    isovisModelyear[1];
@@ -120,7 +120,7 @@ typedef struct {
    uint8_t  dataLen;
    uint8_t* oid;
    uint8_t* data;
-}msd_optionalData_t;
+} msd_optionalData_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -158,7 +158,7 @@ typedef struct {
    /* Optional */
    bool               optionalDataPres;
    msd_optionalData_t optionalData;
-}msd_Message_t;
+} msd_Message_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -257,7 +257,7 @@ typedef struct {
 
       bool presentOtherNotCriticalFailures;
       bool otherNotCriticalFailures;
-   }diagnosticResult;
+   } diagnosticResult;
 
    bool presentCrashInfo;
    struct
@@ -285,8 +285,8 @@ typedef struct {
 
       bool presentCrashAnotherType;
       bool crashAnotherType;
-   }crashType;
-}msd_EraGlonassData_t;
+   } crashType;
+} msd_EraGlonassData_t;
 
 //--------------------------------------------------------------------------------------------------
 /**

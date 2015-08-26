@@ -69,20 +69,6 @@ static void TemperatureChangeHandler
     le_event_ReportWithRefCounting(TemperatureThresholdEventId, thresholdEventPtr);
 }
 
-//--------------------------------------------------------------------------------------------------
-/**
- * handler function to the close session service
- *
- */
-//--------------------------------------------------------------------------------------------------
-static void CloseSessionEventHandler
-(
-    le_msg_SessionRef_t sessionRef,
-    void*               contextPtr
-)
-{
-    LE_DEBUG("Temperature client killed");
-}
 
 //--------------------------------------------------------------------------------------------------
 //                                       Public declarations
@@ -360,13 +346,6 @@ void le_temp_Init
     void
 )
 {
-    // Add a handler to the close session service
-    le_msg_AddServiceCloseHandler(
-                    le_temp_GetServiceRef(),
-                    CloseSessionEventHandler,
-                    NULL
-    );
-
     // Create an event Id for temperature change notification
     TemperatureThresholdEventId = le_event_CreateIdWithRefCounting("TemperatureThresholdEvent");
 

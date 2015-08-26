@@ -102,7 +102,7 @@ typedef void (*pa_ecall_EventHandlerFunc_t)
  * @return LE_FAULT if unsuccessful.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_ecall_Init
+LE_SHARED le_result_t pa_ecall_Init
 (
     pa_ecall_SysStd_t sysStd ///< [IN] Choosen system (PA_ECALL_PAN_EUROPEAN or PA_ECALL_ERA_GLONASS)
 );
@@ -115,7 +115,7 @@ le_result_t pa_ecall_Init
  * @return LE_OK     The function succeed.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_ecall_SetOperationMode
+LE_SHARED le_result_t pa_ecall_SetOperationMode
 (
     le_ecall_OpMode_t mode ///< [IN] Operation mode
 );
@@ -128,7 +128,7 @@ le_result_t pa_ecall_SetOperationMode
  * @return LE_OK     The function succeed.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_ecall_GetOperationMode
+LE_SHARED le_result_t pa_ecall_GetOperationMode
 (
     le_ecall_OpMode_t* mode ///< [OUT] Operation mode
 );
@@ -142,7 +142,7 @@ le_result_t pa_ecall_GetOperationMode
  * @note Doesn't return on failure, so there's no need to check the return value for errors.
  */
 //--------------------------------------------------------------------------------------------------
-le_event_HandlerRef_t pa_ecall_AddEventHandler
+LE_SHARED le_event_HandlerRef_t pa_ecall_AddEventHandler
 (
     pa_ecall_EventHandlerFunc_t   handlerFuncPtr ///< [IN] The event handler function.
 );
@@ -154,7 +154,7 @@ le_event_HandlerRef_t pa_ecall_AddEventHandler
  * @note Doesn't return on failure, so there's no need to check the return value for errors.
  */
 //--------------------------------------------------------------------------------------------------
-void pa_ecall_RemoveEventHandler
+LE_SHARED void pa_ecall_RemoveEventHandler
 (
     le_event_HandlerRef_t handlerRef
 );
@@ -168,7 +168,7 @@ void pa_ecall_RemoveEventHandler
  * @return LE_OK     The function succeed.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_ecall_SetPsapNumber
+LE_SHARED le_result_t pa_ecall_SetPsapNumber
 (
     char psap[LE_MDMDEFS_PHONE_NUM_MAX_BYTES] ///< [IN] Public Safely Answering Point number
 );
@@ -182,7 +182,7 @@ le_result_t pa_ecall_SetPsapNumber
  * @return LE_OK        The function succeed.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_ecall_GetPsapNumber
+LE_SHARED le_result_t pa_ecall_GetPsapNumber
 (
     char*    psapPtr, ///< [OUT] Public Safely Answering Point number
     size_t   len      ///< [IN] The length of SMSC string.
@@ -198,7 +198,7 @@ le_result_t pa_ecall_GetPsapNumber
  *  - LE_FAULT for other failures
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_ecall_UseUSimNumbers
+LE_SHARED le_result_t pa_ecall_UseUSimNumbers
 (
     void
 );
@@ -211,7 +211,7 @@ le_result_t pa_ecall_UseUSimNumbers
  * @return LE_OK     The function succeed.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_ecall_SetMsdTxMode
+LE_SHARED le_result_t pa_ecall_SetMsdTxMode
 (
     le_ecall_MsdTxMode_t mode
 );
@@ -224,25 +224,10 @@ le_result_t pa_ecall_SetMsdTxMode
  * @return LE_OK     The function succeed.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_ecall_GetMsdTxMode
+LE_SHARED le_result_t pa_ecall_GetMsdTxMode
 (
     le_ecall_MsdTxMode_t* modePtr
 );
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This function must be called to load the Minimum Set of Data for the eCall.
- *
- * @return LE_FAULT  The function failed.
- * @return LE_OK     The function succeed.
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t pa_ecall_LoadMsd
-(
-    uint8_t  *msdPtr,   ///< [IN] Encoded Msd
-    size_t    msdSize   ///< [IN] msd buffer size
-);
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -253,9 +238,10 @@ le_result_t pa_ecall_LoadMsd
  *      LE_FAULT if unsuccessful.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_ecall_Start
+LE_SHARED le_result_t pa_ecall_Start
 (
-    pa_ecall_StartType_t callType
+    pa_ecall_StartType_t callType,
+    uint32_t *           callIdPtr
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -267,7 +253,7 @@ le_result_t pa_ecall_Start
  *      LE_FAULT if unsuccessful.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_ecall_Stop
+LE_SHARED le_result_t pa_ecall_Stop
 (
     void
 );
@@ -280,7 +266,7 @@ le_result_t pa_ecall_Stop
  * @return LE_OK     The function succeed.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_ecall_End
+LE_SHARED le_result_t pa_ecall_End
 (
     void
 );
@@ -294,7 +280,7 @@ le_result_t pa_ecall_End
  *  - LE_FAULT on failure
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_ecall_SetNadDeregistrationTime
+LE_SHARED le_result_t pa_ecall_SetNadDeregistrationTime
 (
     uint16_t    deregTime  ///< [IN] the 'NAD Deregistration Time' value in minutes.
 );
@@ -308,11 +294,23 @@ le_result_t pa_ecall_SetNadDeregistrationTime
  *  - LE_FAULT on failure
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_ecall_GetNadDeregistrationTime
+LE_SHARED le_result_t pa_ecall_GetNadDeregistrationTime
 (
     uint16_t*    deregTimePtr  ///< [OUT] the 'NAD Deregistration Time' value in minutes.
 );
 
-
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to send the Minimum Set of Data for the eCall.
+ *
+ * @return LE_FAULT  The function failed.
+ * @return LE_OK     The function succeed.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_ecall_SendMsd
+(
+    uint8_t  *msdPtr,   ///< [IN] Encoded Msd
+    size_t    msdSize   ///< [IN] msd buffer size
+);
 
 #endif // LEGATO_PAECALL_INCLUDE_GUARD

@@ -1,6 +1,6 @@
 //-------------------------------------------------------------------------------------------------
 /**
- * @file cm_adc.h
+ * @file cm_adc.c
  *
  * Handle adc related functionality. ADC channels are under the control of the modem as the adc
  * is muxed with the antennae inputs and used by the modem for antenna diagnostics. Therefore
@@ -39,7 +39,7 @@ void cm_adc_PrintAdcHelp
     void
 )
 {
-    printf("Adc usage\n"
+    printf("ADC usage\n"
            "==========\n\n"
            "To print known adc channels:\n"
            "\tcm adc list\n\n"
@@ -84,20 +84,23 @@ static le_result_t cm_adc_ReadAndPrintValue
 
     for (i = 0; i < NUM_ARRAY_MEMBERS(ChannelNameStr); i++)
     {
-        if (strcmp (ChannelNameStr[i], channelName) == 0)
+        if (strcmp(ChannelNameStr[i], channelName) == 0)
         {
             found = true;
             result = le_adc_ReadValue(i, &value);
-            LE_ASSERT(result == LE_OK);
-
-            printf("%s:%d\n", channelName, value);
+            if (result == LE_OK)
+            {
+                printf("%s:%d\n", channelName, value);
+            }
             break;
         }
     }
+
     if (!found)
     {
         printf("Unknown channel: %s", channelName);
     }
+
     return result;
 }
 
@@ -123,6 +126,7 @@ void cm_adc_ProcessAdcCommand
     else if (strcmp(command, "read") == 0)
     {
         const char* channelName;
+
         if(numArgs < 3)
         {
             printf("adc read requires a channel name\n");
@@ -132,7 +136,9 @@ void cm_adc_ProcessAdcCommand
         {
             printf("adc read extra arguments will be ignored\n");
         }
+
         channelName = le_arg_GetArg(2);
+
         if(LE_OK != cm_adc_ReadAndPrintValue(channelName))
         {
             printf("Read %s failed.\n", channelName);

@@ -1,0 +1,21 @@
+version: 1.0
+sandboxed: false
+start: manual
+
+executables:
+{
+    avsysinfo = (avSysInfo)
+}
+
+processes:
+{
+    run:
+    {
+        (avsysinfo)
+    }
+}
+
+bindings:
+{
+    avsysinfo.avSysInfo.le_avdata -> avcService.le_avdata
+}

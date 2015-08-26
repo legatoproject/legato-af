@@ -398,3 +398,27 @@ le_result_t pa_info_GetPriId
 
     return res;
 }
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Platform Serial Number (PSN) string.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_OVERFLOW if Platform Serial Number to big to fit in provided buffer
+ *      - LE_FAULT for any other errors
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_info_GetPlatformSerialNumber
+(
+    char* platformSerialNumberStr,
+        ///< [OUT]
+        ///< Platform Serial Number string.
+
+    size_t platformSerialNumberStrNumElements
+        ///< [IN]
+)
+{
+    return LE_FAULT;
+}

@@ -265,8 +265,7 @@ le_result_t pa_mdc_GetDataBearerTechnology
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_mdc_StartSessionIPV4
 (
-    uint32_t profileIndex,        ///< [IN] The profile to use
-    pa_mdc_CallRef_t* callRefPtr  ///< [OUT] Reference used for stopping the data session
+    uint32_t profileIndex       ///< [IN] The profile to use
 )
 {
     if ( StartProfile[profileIndex] )
@@ -294,8 +293,7 @@ le_result_t pa_mdc_StartSessionIPV4
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_mdc_StartSessionIPV6
 (
-    uint32_t profileIndex,        ///< [IN] The profile to use
-    pa_mdc_CallRef_t* callRefPtr  ///< [OUT] Reference used for stopping the data session
+    uint32_t profileIndex        ///< [IN] The profile to use
 )
 {
     return LE_OK;
@@ -313,8 +311,7 @@ le_result_t pa_mdc_StartSessionIPV6
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_mdc_StartSessionIPV4V6
 (
-    uint32_t profileIndex,        ///< [IN] The profile to use
-    pa_mdc_CallRef_t* callRefPtr  ///< [OUT] Reference used for stopping the data session
+    uint32_t profileIndex        ///< [IN] The profile to use
 )
 {
     return LE_OK;
@@ -368,7 +365,7 @@ le_result_t pa_mdc_ResetDataFlowStatistics
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_mdc_StopSession
 (
-    pa_mdc_CallRef_t callRef         ///< [IN] The call reference returned when starting the sessions
+    uint32_t profileIndex        ///< [IN] The profile to use
 )
 {
     bool startProfile = *((bool*) callRef);

@@ -39,7 +39,7 @@
  * SMSInbox directory path.
  */
 //--------------------------------------------------------------------------------------------------
-#define SMSINBOX_PATH "/tmp/smsInBox/"
+#define SMSINBOX_PATH "/data/smsInbox/"
 #define MSG_PATH "msg/"
 #define CONF_PATH "cfg/"
 
@@ -73,6 +73,13 @@
  */
 //--------------------------------------------------------------------------------------------------
 #define MAX_APPS 16
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Default size of message box.
+ */
+//--------------------------------------------------------------------------------------------------
+#define DEFAULT_MBOX_SIZE 10
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -157,7 +164,7 @@ EntryDesc_t;
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
-    char     name[LE_SMSINBOX_MAILBOX_LEN];  ///< App name
+    char *    namePtr;                  ///< App name
     uint32_t inboxSize;                 ///< Max messages in the inbox
     uint32_t msgCount;                  ///< Number message
 
@@ -191,6 +198,25 @@ typedef struct
 }
 RxMsgReport_t;
 
+//--------------------------------------------------------------------------------------------------
+//                                       Extern declarations
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * message box names.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+extern const char* le_smsInbox_mboxName[];
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * message boxes Number.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+extern const uint8_t le_smsInbox_NbMbx;
 
 //--------------------------------------------------------------------------------------------------
 //                                       Static declarations
@@ -962,9 +988,9 @@ static void PerformDeletion
 
     for (i=0; i < MAX_APPS; i++)
     {
-        if ( strlen(Apps[i].name) != 0 )
+        if ( Apps[i].namePtr && (strlen(Apps[i].namePtr) != 0) )
         {
-            deleted &= IsDeleted(messageId, Apps[i].name);
+            deleted &= IsDeleted(messageId, Apps[i].namePtr);
         }
     }
 
@@ -993,9 +1019,9 @@ static le_result_t AddMsgInAppCfg
     MessageId_t messageId     ///<[IN] message to add
 )
 {
-    uint32_t pathLen = GetSMSInboxConfigPathLen(appsPtr->name);
+    uint32_t pathLen = GetSMSInboxConfigPathLen(appsPtr->namePtr);
     char path[pathLen];
-    GetSMSInboxConfigPath(appsPtr->name, path, pathLen);
+    GetSMSInboxConfigPath(appsPtr->namePtr, path, pathLen);
     json_t* jsonMsgIdPtr = NULL;
     json_t* jsonPtr;
     json_t* jsonArrayPtr;
@@ -1023,7 +1049,7 @@ static le_result_t AddMsgInAppCfg
             EntryDesc_t modif;
             modif.type = DESC_BOOL;
             modif.uVal.boolVal = true;
-            char* key[2]={JSON_ISDELETED, appsPtr->name};
+            char* key[2]={JSON_ISDELETED, appsPtr->namePtr};
 
             if (ModifyMsgEntry(messageId, key, 2, &modif) != LE_OK)
             {
@@ -1099,9 +1125,9 @@ static le_result_t EncodeMsgEntry
     int i;
     for (i=0; i < MAX_APPS; i++)
     {
-        if ( strlen(Apps[i].name) != 0 )
+        if ( Apps[i].namePtr && (strlen(Apps[i].namePtr) != 0) )
         {
-            AddBooleanKeyInJsonObject(jsonUnreadPtr, Apps[i].name, true);
+            AddBooleanKeyInJsonObject(jsonUnreadPtr, Apps[i].namePtr, true);
         }
     }
 
@@ -1111,9 +1137,9 @@ static le_result_t EncodeMsgEntry
     json_t *jsonDeletePtr = json_object();
     for (i=0; i < MAX_APPS; i++)
     {
-        if ( strlen(Apps[i].name) != 0 )
+        if ( Apps[i].namePtr && (strlen(Apps[i].namePtr) != 0) )
         {
-            AddBooleanKeyInJsonObject(jsonDeletePtr, Apps[i].name, false);
+            AddBooleanKeyInJsonObject(jsonDeletePtr, Apps[i].namePtr, false);
         }
     }
 
@@ -1275,7 +1301,7 @@ static le_result_t CreateMsgEntry
     // For all the applications
     for (i = 0; i < MAX_APPS; i++)
     {
-        if ( strlen(Apps[i].name) )
+        if ( Apps[i].namePtr && strlen(Apps[i].namePtr) )
         {
             AddMsgInAppCfg(&Apps[i], NextMessageId);
         }
@@ -1491,31 +1517,35 @@ static le_result_t LoadInboxSettings
 )
 {
     int i=0;
-    char configPath[64];
+    char mboxConfigPath[100];
 
-    snprintf(configPath, sizeof(configPath), "%s/%s", CFG_SMSINBOX_PATH, CFG_NODE_APPS);
-    le_cfg_IteratorRef_t appIter = le_cfg_CreateReadTxn(configPath);
+    while (i < le_smsInbox_NbMbx)
+    {
+        memset(mboxConfigPath,0,100);
+        snprintf(mboxConfigPath, sizeof(mboxConfigPath), "%s/%s/%s",
+                                                         CFG_SMSINBOX_PATH,
+                                                         CFG_NODE_APPS,
+                                                         le_smsInbox_mboxName[i]);
 
-    if(le_cfg_GoToFirstChild(appIter) != LE_OK)
-    {
-        LE_ERROR("Missing SMS Inbox configuration!");
-        return LE_FAULT;
-    }
-    do
-    {
-        if(le_cfg_GetNodeName(appIter, "", Apps[i].name, sizeof(Apps[i].name)) != LE_OK)
+        le_cfg_IteratorRef_t appIter = le_cfg_CreateWriteTxn(mboxConfigPath);
+
+        // if node does not exist, use the default profile
+        if (!le_cfg_NodeExists(appIter, ""))
         {
-            LE_ERROR("Bad SMS Inbox configuration!");
-            return LE_FAULT;
+            LE_INFO("use default size le_smsInbox_mboxName[i]");
+            Apps[i].inboxSize = DEFAULT_MBOX_SIZE;
         }
-        Apps[i].inboxSize = le_cfg_GetInt(appIter, "", 0);
-        LE_INFO("App \"%s\" uses an Inbox that can contain up to %d messages",
-                Apps[i].name, Apps[i].inboxSize);
+        else
+        {
+            Apps[i].inboxSize = le_cfg_GetInt(appIter, "", DEFAULT_MBOX_SIZE);
+        }
+
+        Apps[i].namePtr = (char*) le_smsInbox_mboxName[i];
+
+        le_cfg_CancelTxn(appIter);
 
         i++;
-    } while(le_cfg_GoToNextSibling(appIter) == LE_OK);
-
-    le_cfg_CancelTxn(appIter);
+    }
 
     for (i = 0; i < MAX_APPS; i++)
     {
@@ -1575,8 +1605,7 @@ COMPONENT_INIT
     le_mem_ExpandPool(RxMsgReportPool, MAX_APPS);
 
     // Retrieve the smsInbox settings from the configuration tree
-    LE_FATAL_IF((LoadInboxSettings() != LE_OK),
-                "There are missing smsInBox settings, exit service!");
+    LoadInboxSettings();
 
     // Initialization of the smsInbox directory
     InitSmsInBoxDirectory();
@@ -1622,7 +1651,7 @@ SmsInbox_SessionRef_t SmsInbox_Open
 
     for (i=0; i < MAX_APPS; i++)
     {
-        if (strcmp(Apps[i].name, mboxName) == 0)
+        if (Apps[i].namePtr && (strcmp(Apps[i].namePtr, mboxName) == 0))
         {
             MboxSession_t* mboxSessionPtr = (MboxSession_t*) le_mem_ForceAlloc(MboxSessionPool);
 
@@ -1766,7 +1795,7 @@ void SmsInbox_DeleteMsg
         return;
     }
 
-    if (CheckMessageIdInMbox(mboxSessionPtr->mboxCtxPtr->name, msgId) != LE_OK)
+    if (CheckMessageIdInMbox(mboxSessionPtr->mboxCtxPtr->namePtr, msgId) != LE_OK)
     {
         LE_ERROR("message not included into the mbox");
         return;
@@ -1776,14 +1805,14 @@ void SmsInbox_DeleteMsg
     EntryDesc_t modif;
     modif.type = DESC_BOOL;
     modif.uVal.boolVal = true;
-    char* key[2]={JSON_ISDELETED, mboxSessionPtr->mboxCtxPtr->name};
+    char* key[2]={JSON_ISDELETED, mboxSessionPtr->mboxCtxPtr->namePtr};
 
     if (ModifyMsgEntry(messageId, key, 2, &modif) != LE_OK)
     {
         LE_ERROR("ModifyMsgEntry error");
     }
 
-    if (DeleteMsgInAppCfg(mboxSessionPtr->mboxCtxPtr->name, messageId) != LE_OK)
+    if (DeleteMsgInAppCfg(mboxSessionPtr->mboxCtxPtr->namePtr, messageId) != LE_OK)
     {
         LE_ERROR("DeleteMsgInAppCfg error");
     }
@@ -1831,7 +1860,7 @@ le_result_t SmsInbox_GetImsi
         return LE_BAD_PARAMETER;
     }
 
-    if (CheckMessageIdInMbox(mboxSessionPtr->mboxCtxPtr->name, msgId) != LE_OK)
+    if (CheckMessageIdInMbox(mboxSessionPtr->mboxCtxPtr->namePtr, msgId) != LE_OK)
     {
         LE_ERROR("message not included into the mbox");
         return LE_BAD_PARAMETER;
@@ -1853,7 +1882,7 @@ le_result_t SmsInbox_GetImsi
     decode.uVal.str.lenStr = imsiNumElements;
     char* key[1] = {JSON_IMSI};
 
-    if ((res = DecodeMsgEntry(mboxSessionPtr->mboxCtxPtr->name, messageId, key, 1, &decode))
+    if ((res = DecodeMsgEntry(mboxSessionPtr->mboxCtxPtr->namePtr, messageId, key, 1, &decode))
                                                                                         == LE_OK)
     {
         SmsInbox_MarkRead(sessionRef, msgId);
@@ -1893,7 +1922,7 @@ le_sms_Format_t SmsInbox_GetFormat
         return 0;
     }
 
-    if (CheckMessageIdInMbox(mboxSessionPtr->mboxCtxPtr->name, msgId) != LE_OK)
+    if (CheckMessageIdInMbox(mboxSessionPtr->mboxCtxPtr->namePtr, msgId) != LE_OK)
     {
         LE_ERROR("message not included into the mbox");
         return 0;
@@ -1904,7 +1933,7 @@ le_sms_Format_t SmsInbox_GetFormat
     decode.type = DESC_INT;
     char* key[1] = {JSON_FORMAT};
 
-    if (DecodeMsgEntry(mboxSessionPtr->mboxCtxPtr->name, messageId, key, 1, &decode) == LE_OK)
+    if (DecodeMsgEntry(mboxSessionPtr->mboxCtxPtr->namePtr, messageId, key, 1, &decode) == LE_OK)
     {
         SmsInbox_MarkRead(sessionRef, msgId);
         return decode.uVal.val;
@@ -1952,7 +1981,7 @@ le_result_t SmsInbox_GetSenderTel
         return LE_BAD_PARAMETER;
     }
 
-    if (CheckMessageIdInMbox(mboxSessionPtr->mboxCtxPtr->name, msgId) != LE_OK)
+    if (CheckMessageIdInMbox(mboxSessionPtr->mboxCtxPtr->namePtr, msgId) != LE_OK)
     {
         LE_ERROR("message not included into the mbox");
         return LE_BAD_PARAMETER;
@@ -1967,7 +1996,7 @@ le_result_t SmsInbox_GetSenderTel
     memset(telPtr,0,telNumElements);
     char* key[1] = {JSON_SENDERTEL};
 
-    if ((res = DecodeMsgEntry(mboxSessionPtr->mboxCtxPtr->name, messageId, key, 1, &decode))
+    if ((res = DecodeMsgEntry(mboxSessionPtr->mboxCtxPtr->namePtr, messageId, key, 1, &decode))
                                                                                            == LE_OK)
     {
         SmsInbox_MarkRead(sessionRef, msgId);
@@ -2017,7 +2046,7 @@ le_result_t SmsInbox_GetTimeStamp
         return LE_BAD_PARAMETER;
     }
 
-    if (CheckMessageIdInMbox(mboxSessionPtr->mboxCtxPtr->name, msgId) != LE_OK)
+    if (CheckMessageIdInMbox(mboxSessionPtr->mboxCtxPtr->namePtr, msgId) != LE_OK)
     {
         LE_ERROR("message not included into the mbox");
         return LE_BAD_PARAMETER;
@@ -2032,7 +2061,7 @@ le_result_t SmsInbox_GetTimeStamp
     char* key[1] = {JSON_TIMESTAMP};
     le_result_t res;
 
-    if ( (res = DecodeMsgEntry(mboxSessionPtr->mboxCtxPtr->name, messageId, key, 1, &decode))
+    if ( (res = DecodeMsgEntry(mboxSessionPtr->mboxCtxPtr->namePtr, messageId, key, 1, &decode))
                                                                                           == LE_OK )
     {
         SmsInbox_MarkRead(sessionRef, msgId);
@@ -2068,7 +2097,7 @@ size_t SmsInbox_GetMsgLen
         return LE_BAD_PARAMETER;
     }
 
-    if (CheckMessageIdInMbox(mboxSessionPtr->mboxCtxPtr->name, msgId) != LE_OK)
+    if (CheckMessageIdInMbox(mboxSessionPtr->mboxCtxPtr->namePtr, msgId) != LE_OK)
     {
         LE_ERROR("message not included into the mbox");
         return LE_BAD_PARAMETER;
@@ -2081,7 +2110,7 @@ size_t SmsInbox_GetMsgLen
     char* key[1] = {JSON_MSGLEN};
     le_result_t res;
 
-    if ( (res = DecodeMsgEntry(mboxSessionPtr->mboxCtxPtr->name,
+    if ( (res = DecodeMsgEntry(mboxSessionPtr->mboxCtxPtr->namePtr,
                                 messageId,
                                 key,
                                 1,
@@ -2136,7 +2165,7 @@ le_result_t SmsInbox_GetText
         return LE_BAD_PARAMETER;
     }
 
-    if (CheckMessageIdInMbox(mboxSessionPtr->mboxCtxPtr->name, msgId) != LE_OK)
+    if (CheckMessageIdInMbox(mboxSessionPtr->mboxCtxPtr->namePtr, msgId) != LE_OK)
     {
         LE_ERROR("message not included into the mbox");
         return LE_BAD_PARAMETER;
@@ -2155,7 +2184,7 @@ le_result_t SmsInbox_GetText
     decode.uVal.str.lenStr = len;
     char* key[1] = {JSON_TEXT};
 
-    res = DecodeMsgEntry(mboxSessionPtr->mboxCtxPtr->name, messageId, key, 1, &decode);
+    res = DecodeMsgEntry(mboxSessionPtr->mboxCtxPtr->namePtr, messageId, key, 1, &decode);
 
     if ( res == LE_OK )
     {
@@ -2212,7 +2241,7 @@ le_result_t SmsInbox_GetBinary
         return LE_BAD_PARAMETER;
     }
 
-    if (CheckMessageIdInMbox(mboxSessionPtr->mboxCtxPtr->name, msgId) != LE_OK)
+    if (CheckMessageIdInMbox(mboxSessionPtr->mboxCtxPtr->namePtr, msgId) != LE_OK)
     {
         LE_ERROR("message not included into the mbox");
         return LE_BAD_PARAMETER;
@@ -2231,7 +2260,7 @@ le_result_t SmsInbox_GetBinary
     decode.uVal.str.lenStr = len;
     char* key[1] = {JSON_BIN};
 
-    res = DecodeMsgEntry(mboxSessionPtr->mboxCtxPtr->name, messageId, key, 1, &decode);
+    res = DecodeMsgEntry(mboxSessionPtr->mboxCtxPtr->namePtr, messageId, key, 1, &decode);
 
     if ( res == LE_OK )
     {
@@ -2295,7 +2324,7 @@ le_result_t SmsInbox_GetPdu
         return 0;
     }
 
-    if (CheckMessageIdInMbox(mboxSessionPtr->mboxCtxPtr->name, msgId) != LE_OK)
+    if (CheckMessageIdInMbox(mboxSessionPtr->mboxCtxPtr->namePtr, msgId) != LE_OK)
     {
         LE_ERROR("message not included into the mbox");
         return 0;
@@ -2314,7 +2343,7 @@ le_result_t SmsInbox_GetPdu
     decode.uVal.str.lenStr = len;
     char* key[1] = {JSON_PDU};
 
-    res = DecodeMsgEntry(mboxSessionPtr->mboxCtxPtr->name, messageId, key, 1, &decode);
+    res = DecodeMsgEntry(mboxSessionPtr->mboxCtxPtr->namePtr, messageId, key, 1, &decode);
 
     if ( res == LE_OK )
     {
@@ -2362,10 +2391,10 @@ uint32_t SmsInbox_GetFirst
         return 0;
     }
 
-    uint32_t pathLen = GetSMSInboxConfigPathLen( mboxSessionPtr->mboxCtxPtr->name );
+    uint32_t pathLen = GetSMSInboxConfigPathLen( mboxSessionPtr->mboxCtxPtr->namePtr );
     char path[pathLen];
     memset(path,0,pathLen);
-    GetSMSInboxConfigPath(mboxSessionPtr->mboxCtxPtr->name, path, pathLen);
+    GetSMSInboxConfigPath(mboxSessionPtr->mboxCtxPtr->namePtr, path, pathLen);
     le_result_t res = LE_OK;
     MessageId_t messageId=0;
 
@@ -2528,7 +2557,7 @@ bool SmsInbox_IsUnread
         return LE_BAD_PARAMETER;
     }
 
-    if (CheckMessageIdInMbox(mboxSessionPtr->mboxCtxPtr->name, msgId) != LE_OK)
+    if (CheckMessageIdInMbox(mboxSessionPtr->mboxCtxPtr->namePtr, msgId) != LE_OK)
     {
         LE_ERROR("message not included into the mbox");
         return LE_BAD_PARAMETER;
@@ -2537,9 +2566,9 @@ bool SmsInbox_IsUnread
     MessageId_t messageId = (MessageId_t) msgId;
     EntryDesc_t decode;
     decode.type = DESC_BOOL;
-    char* key[] = {JSON_ISUNREAD, mboxSessionPtr->mboxCtxPtr->name};
+    char* key[] = {JSON_ISUNREAD, mboxSessionPtr->mboxCtxPtr->namePtr};
 
-    if (DecodeMsgEntry(mboxSessionPtr->mboxCtxPtr->name, messageId, key, 2, &decode) == LE_OK)
+    if (DecodeMsgEntry(mboxSessionPtr->mboxCtxPtr->namePtr, messageId, key, 2, &decode) == LE_OK)
     {
         return decode.uVal.boolVal;
     }
@@ -2578,7 +2607,7 @@ void SmsInbox_MarkRead
         return;
     }
 
-    if (CheckMessageIdInMbox(mboxSessionPtr->mboxCtxPtr->name, msgId) != LE_OK)
+    if (CheckMessageIdInMbox(mboxSessionPtr->mboxCtxPtr->namePtr, msgId) != LE_OK)
     {
         LE_ERROR("message not included into the mbox");
         return;
@@ -2588,7 +2617,7 @@ void SmsInbox_MarkRead
     EntryDesc_t modif;
     modif.type = DESC_BOOL;
     modif.uVal.boolVal = false;
-    char* key[2]={JSON_ISUNREAD, mboxSessionPtr->mboxCtxPtr->name};
+    char* key[2]={JSON_ISUNREAD, mboxSessionPtr->mboxCtxPtr->namePtr};
 
     if (ModifyMsgEntry(messageId, key, 2, &modif) != LE_OK)
     {
@@ -2623,7 +2652,7 @@ void SmsInbox_MarkUnread
         return;
     }
 
-    if (CheckMessageIdInMbox(mboxSessionPtr->mboxCtxPtr->name, msgId) != LE_OK)
+    if (CheckMessageIdInMbox(mboxSessionPtr->mboxCtxPtr->namePtr, msgId) != LE_OK)
     {
         LE_ERROR("message not included into the mbox");
         return;
@@ -2633,7 +2662,7 @@ void SmsInbox_MarkUnread
     EntryDesc_t modif;
     modif.type = DESC_BOOL;
     modif.uVal.boolVal = true;
-    char* key[2]={JSON_ISUNREAD, mboxSessionPtr->mboxCtxPtr->name};
+    char* key[2]={JSON_ISUNREAD, mboxSessionPtr->mboxCtxPtr->namePtr};
 
     if (ModifyMsgEntry(messageId, key, 2, &modif) != LE_OK)
     {

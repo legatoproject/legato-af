@@ -8,10 +8,10 @@
 
 #include "legato.h"
 #include "pa_mrc.h"
-#include "pa_sim.h"
 
 #include "pa_simu.h"
 
+le_mrc_Rat_t   Rat = LE_MRC_RAT_GSM;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -42,35 +42,6 @@ static le_mem_PoolRef_t ScanInformationPool;
  */
 //--------------------------------------------------------------------------------------------------
 static le_onoff_t RadioPower = LE_ON;
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This function converts a string to RAT enum.
- *
- * @return Converted RAT
- */
-//--------------------------------------------------------------------------------------------------
-static le_mrc_Rat_t ConvertStringToRat(const char * ratPtr)
-{
-    if(0 == strcmp(ratPtr, "GSM"))
-    {
-        return LE_MRC_RAT_GSM;
-    }
-    else if(0 == strcmp(ratPtr, "UMTS"))
-    {
-        return LE_MRC_RAT_UMTS;
-    }
-    else if(0 == strcmp(ratPtr, "LTE"))
-    {
-        return LE_MRC_RAT_LTE;
-    }
-    else if(0 == strcmp(ratPtr, "CDMA"))
-    {
-        return LE_MRC_RAT_CDMA;
-    }
-
-    return LE_MRC_RAT_UNKNOWN;
-}
 
 
 //--------------------------------------------------------------------------------------------------
@@ -319,30 +290,6 @@ le_result_t pa_mrc_GetNetworkRegState
     le_mrc_NetRegState_t* statePtr  ///< [OUT] The network registration state.
 )
 {
-    le_sim_States_t simState;
-    le_result_t res;
-
-    if(RadioPower != LE_ON)
-    {
-        *statePtr = LE_MRC_REG_NONE;
-        return LE_OK;
-    }
-
-    res = pa_sim_GetState(&simState);
-    if(res != LE_OK)
-    {
-        return LE_COMM_ERROR;
-    }
-
-    if(simState != LE_SIM_READY)
-    {
-        *statePtr = LE_MRC_REG_SEARCHING;
-        return LE_OK;
-    }
-
-    /* @todo Handle other states with ConfigDB */
-
-    *statePtr = LE_MRC_REG_HOME;
     return LE_OK;
 }
 
@@ -648,6 +595,19 @@ le_result_t pa_mrc_SetAutomaticNetworkRegistration
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * This function set the current Radio Access Technology in use.
+ */
+//--------------------------------------------------------------------------------------------------
+void pa_mrcSimu_SetRadioAccessTechInUse
+(
+    le_mrc_Rat_t   rat  ///< [IN] The Radio Access Technology.
+)
+{
+    Rat = rat;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This function gets the Radio Access Technology.
  *
  * @return LE_FAULT The function failed to get the Signal Quality information.
@@ -659,24 +619,7 @@ le_result_t pa_mrc_GetRadioAccessTechInUse
     le_mrc_Rat_t*   ratPtr    ///< [OUT] The Radio Access Technology.
 )
 {
-    le_result_t res;
-    char ratStr[513];
-
-    res = le_cfg_QuickGetString(PA_SIMU_CFG_MODEM_ROOT "/radio/rat", ratStr, sizeof(ratStr), PA_SIMU_MRC_DEFAULT_RAT);
-    if (res != LE_OK)
-    {
-        LE_FATAL("Unable to get SIM state");
-    }
-
-    LE_DEBUG("Current RAT: %s", ratStr);
-
-    *ratPtr = ConvertStringToRat(ratStr);
-
-    if (ratPtr == LE_MRC_RAT_UNKNOWN)
-    {
-        return LE_FAULT;
-    }
-
+    *ratPtr = Rat;
     return LE_OK;
 }
 
@@ -912,6 +855,63 @@ le_result_t pa_mrc_GetNetworkRegistrationMode
 le_result_t pa_mrc_MeasureSignalMetrics
 (
     pa_mrc_SignalMetrics_t* metricsPtr    ///< [OUT] The signal metrics.
+)
+{
+    // TODO: implement this function
+    return LE_FAULT;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to register a handler for Signal Strength change handling.
+ *
+ * @return A handler reference, which is only needed for later removal of the handler.
+ *
+ * @note Doesn't return on failure, so there's no need to check the return value for errors.
+ */
+//--------------------------------------------------------------------------------------------------
+le_event_HandlerRef_t pa_mrc_AddSignalStrengthIndHandler
+(
+    pa_mrc_SignalStrengthIndHdlrFunc_t ssIndHandler, ///< [IN] The handler function to handle the
+                                                     ///        Signal Strength change indication.
+    void*                              contextPtr    ///< [IN] The context to be given to the handler.
+)
+{
+    // TODO: implement this function
+    return NULL;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to unregister the handler for Signal Strength change handling.
+ *
+ * @note Doesn't return on failure, so there's no need to check the return value for errors.
+ */
+//--------------------------------------------------------------------------------------------------
+void pa_mrc_RemoveSignalStrengthIndHandler
+(
+    le_event_HandlerRef_t handlerRef
+)
+{
+    // TODO: implement this function
+    return ;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to set and activate the signal strength thresholds for signal
+ * strength indications
+ *
+ * @return
+ *  - LE_FAULT  Function failed.
+ *  - LE_OK     Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_mrc_SetSignalStrengthIndThresholds
+(
+    le_mrc_Rat_t rat,                 ///< Radio Access Technology
+    int32_t      lowerRangeThreshold, ///< [IN] lower-range threshold in dBm
+    int32_t      upperRangeThreshold  ///< [IN] upper-range strength threshold in dBm
 )
 {
     // TODO: implement this function

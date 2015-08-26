@@ -562,10 +562,6 @@ void cm_sms_ProcessSmsCommand
     {
         cm_sms_Monitor();
     }
-    else if (strcmp(command, "delete") == 0)
-    {
-        cm_sms_Monitor();
-    }
     else if (strcmp(command, "send") == 0)
     {
         cm_cmn_CheckEnoughParams(2, numArgs, "Destination or content missing. e.g. cm sms send <number> <content>");

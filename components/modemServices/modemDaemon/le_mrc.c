@@ -174,6 +174,21 @@ typedef struct
     le_dls_Link_t *currentLink;         // link for iterator
 } ScanInfoList_t;
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Signal Strength Indication Handler context.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    le_mrc_SignalStrengthChangeHandlerFunc_t handlerFuncPtr; ///< Handler function.
+    void*                                    handlerCtxPtr;  ///< Handler's context.
+    le_mrc_Rat_t                             rat;            ///< Radio Access Technology.
+    int32_t                                  ssPrevious;     ///< last recorded signal strength.
+    int32_t                                  ssThreshold;    ///< Signal strength threshold in dBm.
+    le_dls_Link_t                            link;           ///< Object node link.
+} SignalStrengthHandlerCtx_t;
 
 //--------------------------------------------------------------------------------------------------
 // Static declarations.
@@ -205,7 +220,6 @@ static le_ref_MapRef_t CellListRefMap;
  */
 //--------------------------------------------------------------------------------------------------
 static le_ref_MapRef_t CellRefMap;
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -292,6 +306,16 @@ static le_mem_PoolRef_t  MetricsPool;
 //--------------------------------------------------------------------------------------------------
 static le_ref_MapRef_t MetricsRefMap;
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Event IDs for Signal Strength notification.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static le_event_Id_t GsmSsChangeId;
+static le_event_Id_t UmtsSsChangeId;
+static le_event_Id_t LteSsChangeId;
+static le_event_Id_t CdmaSsChangeId;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -437,6 +461,125 @@ static void RatChangeHandler
 }
 
 //--------------------------------------------------------------------------------------------------
+/**
+ * The first-layer Signal Strength Change Handler.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void FirstLayerSsChangeHandler
+(
+    void* reportPtr,
+    void* secondLayerHandlerFunc
+)
+{
+    pa_mrc_SignalStrengthIndication_t*       ssIndPtr = (pa_mrc_SignalStrengthIndication_t*)reportPtr;
+    le_mrc_SignalStrengthChangeHandlerFunc_t clientHandlerFunc = secondLayerHandlerFunc;
+
+    clientHandlerFunc(ssIndPtr->ss, le_event_GetContextPtr());
+
+    // The reportPtr is a reference counted object, so need to release it
+    le_mem_Release(reportPtr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The first-layer Signal Strength Change Handler for GSM.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void FirstLayerGsmSsChangeHandler
+(
+    void* reportPtr,
+    void* secondLayerHandlerFunc
+)
+{
+    FirstLayerSsChangeHandler(reportPtr, secondLayerHandlerFunc);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The first-layer Signal Strength Change Handler for UMTS.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void FirstLayerUmtsSsChangeHandler
+(
+    void* reportPtr,
+    void* secondLayerHandlerFunc
+)
+{
+    FirstLayerSsChangeHandler(reportPtr, secondLayerHandlerFunc);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The first-layer Signal Strength Change Handler for LTE.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void FirstLayerLteSsChangeHandler
+(
+    void* reportPtr,
+    void* secondLayerHandlerFunc
+)
+{
+    FirstLayerSsChangeHandler(reportPtr, secondLayerHandlerFunc);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The first-layer Signal Strength Change Handler for CDMA.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void FirstLayerCdmaSsChangeHandler
+(
+    void* reportPtr,
+    void* secondLayerHandlerFunc
+)
+{
+    FirstLayerSsChangeHandler(reportPtr, secondLayerHandlerFunc);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The Signal Strength Indication Handler.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void SignalStrengthIndHandlerFunc
+(
+    pa_mrc_SignalStrengthIndication_t* ssIndPtr
+)
+{
+    LE_INFO("Signal Strength Ind Handler called with RAT.%d and ss.%d",
+             ssIndPtr->rat, ssIndPtr->ss);
+
+    switch(ssIndPtr->rat)
+    {
+        case LE_MRC_RAT_GSM:
+            le_event_ReportWithRefCounting(GsmSsChangeId, ssIndPtr);
+            break;
+
+        case LE_MRC_RAT_UMTS:
+            le_event_ReportWithRefCounting(UmtsSsChangeId, ssIndPtr);
+            break;
+
+        case LE_MRC_RAT_LTE:
+            le_event_ReportWithRefCounting(LteSsChangeId, ssIndPtr);
+            break;
+
+        case LE_MRC_RAT_CDMA:
+            le_event_ReportWithRefCounting(CdmaSsChangeId, ssIndPtr);
+            break;
+
+        case LE_MRC_RAT_UNKNOWN:
+        default:
+            break ;
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
 // APIs.
 //--------------------------------------------------------------------------------------------------
 
@@ -507,11 +650,20 @@ void le_mrc_Init
     // Create an event Id for RAT change notification
     RatChangeId = le_event_CreateIdWithRefCounting("RatChange");
 
+    // Create an event Id for Signal Strength change notification
+    GsmSsChangeId = le_event_CreateIdWithRefCounting("GsmSsChange");
+    UmtsSsChangeId = le_event_CreateIdWithRefCounting("UmtsSsChange");
+    LteSsChangeId = le_event_CreateIdWithRefCounting("LteSsChange");
+    CdmaSsChangeId = le_event_CreateIdWithRefCounting("CdmaSsChange");
+
     // Register a handler function for new Registration State indication
     pa_mrc_AddNetworkRegHandler(NewRegStateHandler);
 
     // Register a handler function for new RAT change indication
     pa_mrc_SetRatChangeHandler(RatChangeHandler);
+
+    // Register a handler function for Signal Strength change indication
+    pa_mrc_AddSignalStrengthIndHandler(SignalStrengthIndHandlerFunc, NULL);
 
     // Get & Set the Network registration state notification
     LE_DEBUG("Get the Network registration state notification configuration");
@@ -928,8 +1080,9 @@ le_result_t le_mrc_GetTdScdmaBandPreferences
  * Add a preferred operator by specifying the MCC/MNC and the Radio Access Technology.
  *
  * @return
- *  - LE_FAULT  Function failed.
- *  - LE_OK     Function succeeded.
+ *  - LE_FAULT         Function failed.
+ *  - LE_OUT_OF_RANGE  RAT mask is out of range.
+ *  - LE_OK            Function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_mrc_AddPreferredOperator
@@ -971,6 +1124,12 @@ le_result_t le_mrc_AddPreferredOperator
     {
         LE_KILL_CLIENT("strlen(mnc) > %d", LE_MRC_MNC_LEN);
         return LE_FAULT;
+    }
+
+    if(ratMask > (LE_MRC_BITMASK_RAT_MAX-1))
+    {
+        LE_ERROR("RAT mask is out of range");
+        return LE_OUT_OF_RANGE;
     }
 
     if (pa_mrc_GetPreferredOperatorsList(&preferredOperatorsList, false, true) <= 0)
@@ -1405,6 +1564,7 @@ void le_mrc_RemoveRatChangeHandler
 {
     le_event_RemoveHandler((le_event_HandlerRef_t)handlerRef);
 }
+
 //--------------------------------------------------------------------------------------------------
 /**
  * This function must be called to set the power of the Radio Module.
@@ -2771,5 +2931,100 @@ le_result_t le_mrc_GetCdmaSignalMetrics
     }
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to register an handler for Signal Strength value changes.
+ *
+ * @return A handler reference, which is only needed for later removal of the handler.
+ *
+ * @note Doesn't return on failure, so there's no need to check the return value for errors.
+ */
+//--------------------------------------------------------------------------------------------------
+le_mrc_SignalStrengthChangeHandlerRef_t le_mrc_AddSignalStrengthChangeHandler
+(
+    le_mrc_Rat_t                             rat,                 ///< [IN] Radio Access Technology
+    int32_t                                  lowerRangeThreshold, ///< [IN] lower-range Signal
+                                                                  ///      strength threshold in dBm
+    int32_t                                  upperRangeThreshold, ///< [IN] upper-range Signal
+                                                                  ///      strength threshold in dBm
+    le_mrc_SignalStrengthChangeHandlerFunc_t handlerFuncPtr,      ///< [IN] The handler function
+    void*                                    contextPtr           ///< [IN] The handler's context
+)
+{
+    le_event_HandlerRef_t        handlerRef;
 
+    if (handlerFuncPtr == NULL)
+    {
+        LE_KILL_CLIENT("Handler function is NULL !");
+        return NULL;
+    }
+
+    if((!lowerRangeThreshold) || (!upperRangeThreshold) ||
+       (lowerRangeThreshold >= upperRangeThreshold)     ||
+       (rat< LE_MRC_RAT_GSM) || (rat> LE_MRC_RAT_CDMA))
+    {
+        LE_KILL_CLIENT("Bad input parameters !");
+        return NULL;
+    }
+
+    if (pa_mrc_SetSignalStrengthIndThresholds(rat,
+                                              lowerRangeThreshold,
+                                              upperRangeThreshold) != LE_OK)
+    {
+        LE_KILL_CLIENT("Failed to set PA Signal Strength Indication thresholds!");
+        return NULL;
+    }
+
+    switch(rat)
+    {
+        case LE_MRC_RAT_GSM:
+            handlerRef = le_event_AddLayeredHandler("GsmSsChangeHandler",
+                                                    GsmSsChangeId,
+                                                    FirstLayerGsmSsChangeHandler,
+                                                    (le_event_HandlerFunc_t)handlerFuncPtr);
+            break;
+
+        case LE_MRC_RAT_UMTS:
+            handlerRef = le_event_AddLayeredHandler("UmtsSsChangeHandler",
+                                                    UmtsSsChangeId,
+                                                    FirstLayerUmtsSsChangeHandler,
+                                                    (le_event_HandlerFunc_t)handlerFuncPtr);
+            break;
+
+        case LE_MRC_RAT_LTE:
+            handlerRef = le_event_AddLayeredHandler("LteSsChangeHandler",
+                                                    LteSsChangeId,
+                                                    FirstLayerLteSsChangeHandler,
+                                                    (le_event_HandlerFunc_t)handlerFuncPtr);
+            break;
+
+        case LE_MRC_RAT_CDMA:
+            handlerRef = le_event_AddLayeredHandler("CdmaSsChangeHandler",
+                                                    CdmaSsChangeId,
+                                                    FirstLayerCdmaSsChangeHandler,
+                                                    (le_event_HandlerFunc_t)handlerFuncPtr);
+            break;
+
+        case LE_MRC_RAT_UNKNOWN:
+        default:
+            return NULL;
+    }
+
+    le_event_SetContextPtr(handlerRef, contextPtr);
+
+    return (le_mrc_SignalStrengthChangeHandlerRef_t)(handlerRef);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to remove an handler for Signal Strength value changes.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_mrc_RemoveSignalStrengthChangeHandler
+(
+    le_mrc_SignalStrengthChangeHandlerRef_t    handlerRef ///< [IN] The handler reference.
+)
+{
+   le_event_RemoveHandler((le_event_HandlerRef_t)handlerRef);
+}
 

@@ -18,10 +18,10 @@
 //--------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------
 /**
- * Define the maximum number of Modem profiles.
+ * Define the maximum number of Call profiles.
  */
 //--------------------------------------------------------------------------------------------------
-#define MCC_MAX_PROFILE 25
+#define MCC_MAX_PROFILE 15
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -39,40 +39,9 @@
 #define MCC_PROFILE_NAME_MAX_BYTES  (MCC_PROFILE_NAME_MAX_LEN+1)
 
 //--------------------------------------------------------------------------------------------------
-/**
- *  Enumeration of the call direction.
- */
-//--------------------------------------------------------------------------------------------------
-typedef enum
-{
-    OUTGOING_CALL,  ///< Outgoing call.
-    INCOMING_CALL,  ///< Incoming call.
-}
-le_mcc_Direction_t;
-
-
-//--------------------------------------------------------------------------------------------------
 // Data structures.
 //--------------------------------------------------------------------------------------------------
 
-//--------------------------------------------------------------------------------------------------
-/**
- * Modem Call Control Profile structure.
- *
- */
-//--------------------------------------------------------------------------------------------------
-typedef struct le_mcc_profile_Obj
-{
-    char                           name[MCC_PROFILE_NAME_MAX_BYTES]; ///< Name of the profile
-    le_mcc_profile_State_t         state;                            ///< State of the profile
-    uint32_t                       profileIndex;                     ///< Index of the profile
-    le_event_Id_t                  stateChangeEventId;               ///< Profile's state change
-                                                                     ///<  Event ID
-    le_mcc_call_ObjRef_t           callRef;                          ///< Reference for current
-                                                                     ///<  call, if connected
-    le_event_Id_t                  callEventId;                      ///< Call Event Id
-}
-le_mcc_Profile_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -80,33 +49,33 @@ le_mcc_Profile_t;
  *
  */
 //--------------------------------------------------------------------------------------------------
-typedef struct le_mcc_call_Obj
+typedef struct le_mcc_Call
 {
     char                            telNumber[LE_MDMDEFS_PHONE_NUM_MAX_BYTES]; ///< Telephone number
-    le_mcc_Direction_t              direction;         ///< Call direction
     int16_t                         callId;            ///< Outgoing call ID
-    le_mcc_Profile_t*               profile;           ///< Profile to which the call belongs
-    le_mcc_call_Event_t             event;             ///< Last Call event
-    le_mcc_call_TerminationReason_t termination;       ///< Call termination reason
+    le_mcc_Event_t                  event;             ///< Last Call event
+    le_mcc_TerminationReason_t      termination;       ///< Call termination reason
     int32_t                         terminationCode;   ///< Platform specific termination code
-    le_audio_StreamRef_t            txAudioStreamRef;  ///< The transmitted audio stream reference
-    le_audio_StreamRef_t            rxAudioStreamRef;  ///< The received audio stream reference
     pa_mcc_clir_t                   clirStatus;        ///< Call CLIR status
+    le_mcc_CallRef_t                callRef;           ///< The call reference.
+    bool                            inProgress;        ///< call in progress
+    int16_t                         refCount;          ///< ref count
+    le_dls_List_t                   sessionRefList;    ///< Clients sessionRef list
 }
 le_mcc_Call_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Data structure to keep a list of the call references.
+ * SessionRef node structure used for the sessionRef list.
  *
  */
 //--------------------------------------------------------------------------------------------------
-typedef struct le_mcc_CallReference
+typedef struct
 {
-    le_mcc_call_ObjRef_t callRef;     ///< The call reference.
-    le_dls_Link_t        link;        ///< Object node link
+    le_msg_SessionRef_t sessionRef;           ///< client sessionRef
+    le_dls_Link_t       link;                 ///< link for SessionRefList
 }
-le_mcc_CallReference_t;
+SessionRefNode_t;
 
 //--------------------------------------------------------------------------------------------------
 //                                       Static declarations
@@ -114,36 +83,21 @@ le_mcc_CallReference_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Create and initialize the Call list.
- *
+ * The memory pool for the clients sessionRef objects
  */
 //--------------------------------------------------------------------------------------------------
-le_dls_List_t CallList;
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Memory Pool for Call Profiles.
- *
- */
-//--------------------------------------------------------------------------------------------------
-static le_mem_PoolRef_t   MccProfilePool;
+static le_mem_PoolRef_t SessionRefPool;
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Memory Pool for Calls.
+ * Safe Reference Map for Calls objects.
  *
  */
 //--------------------------------------------------------------------------------------------------
 static le_mem_PoolRef_t   MccCallPool;
 
-//--------------------------------------------------------------------------------------------------
-/**
- * Safe Reference Map for Call Profiles objects.
- *
- */
-//--------------------------------------------------------------------------------------------------
-static le_ref_MapRef_t MccProfileRefMap;
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -155,20 +109,19 @@ static le_ref_MapRef_t MccCallRefMap;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Memory Pool for message references.
- *
- */
-//--------------------------------------------------------------------------------------------------
-static le_mem_PoolRef_t   ReferencePool;
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Call handlers counters.
  *
  */
 //--------------------------------------------------------------------------------------------------
 static uint32_t   CallHandlerCount;
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Call state event handler.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static le_event_Id_t CallStateEventId;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -178,69 +131,6 @@ static uint32_t   CallHandlerCount;
 //--------------------------------------------------------------------------------------------------
 static le_pm_WakeupSourceRef_t WakeupSource = NULL;
 #define CALL_WAKEUP_SOURCE_NAME "call"
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This table keeps track of the allocated modem profile objects.
- *
- * Since the maximum number of profile objects is known, we can use a table here instead of a
- * linked list.  If a particular entry is NULL, then the profile has not been allocated yet.
- * Since this variable is static, all entries are initially 0 (i.e NULL).
- *
- * The modem profile index is the index into this table +1.
- */
-//--------------------------------------------------------------------------------------------------
-static le_mcc_Profile_t* ProfileTable[MCC_MAX_PROFILE]; // TODO: Verify if we have a maximum number of profiles
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Open Audio
- *
- */
-//--------------------------------------------------------------------------------------------------
-static void OpenAudio
-(
-    le_mcc_Call_t* callPtr
-)
-{
-    if(callPtr)
-    {
-        callPtr->txAudioStreamRef = le_audio_OpenModemVoiceTx();
-        callPtr->rxAudioStreamRef = le_audio_OpenModemVoiceRx();
-
-        LE_DEBUG("Open audio.");
-    }
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Close Audio
- *
- */
-//--------------------------------------------------------------------------------------------------
-static void CloseAudio
-(
-    le_mcc_Call_t* callPtr
-)
-{
-    if(callPtr)
-    {
-        if (callPtr->rxAudioStreamRef)
-        {
-            le_audio_Close(callPtr->rxAudioStreamRef);
-            callPtr->rxAudioStreamRef = NULL;
-        }
-        if (callPtr->txAudioStreamRef)
-        {
-            le_audio_Close(callPtr->txAudioStreamRef);
-            callPtr->txAudioStreamRef = NULL;
-        }
-
-        LE_DEBUG("Close audio.");
-    }
-}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -255,190 +145,113 @@ static void CallDestructor
 {
     le_mcc_Call_t *callPtr = (le_mcc_Call_t*)objPtr;
 
-    if (callPtr)
+    // Invalidate the Safe Reference.
+    le_ref_DeleteRef(MccCallRefMap, callPtr->callRef);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Update the reference count of a callRef.
+ * The goal is to have enough callRef to provide each handler.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void UpdateReferenceCount
+(
+    le_mcc_Call_t* callPtr
+)
+{
+    while (callPtr->refCount < CallHandlerCount)
     {
-        if (callPtr->event != LE_MCC_CALL_EVENT_TERMINATED)
-        {
-            CloseAudio(callPtr);
-            pa_mcc_HangUp();
-        }
+        callPtr->refCount++;
+        le_mem_AddRef(callPtr);
     }
 }
 
 //--------------------------------------------------------------------------------------------------
 /**
- * The first-layer Profile State Change Handler.
+ * Get a call object.
  *
  */
 //--------------------------------------------------------------------------------------------------
-static void FirstLayerProfileStateChangeHandler
+static le_mcc_Call_t* GetCallObject
 (
-    void* reportPtr,
-    void* secondLayerHandlerFunc
+    const char*                     destinationPtr,
+    int16_t                         id,
+    bool                            getInProgess
 )
 {
-    le_mcc_profile_State_t* statePtr = reportPtr;
-    le_mcc_profile_StateChangeHandlerFunc_t clientHandlerFunc = secondLayerHandlerFunc;
+    le_mcc_Call_t* callPtr = NULL;
 
-    LE_DEBUG("Send Profile State change [%d]",*statePtr);
-    clientHandlerFunc(*statePtr, le_event_GetContextPtr());
+    le_ref_IterRef_t iterRef = le_ref_GetIterator(MccCallRefMap);
+
+    while (le_ref_NextNode(iterRef) == LE_OK)
+    {
+        callPtr = (le_mcc_Call_t*) le_ref_GetValue(iterRef);
+
+        // Check callId
+        if ( (id != (-1)) && (callPtr->callId == id) &&
+             ( (getInProgess && callPtr->inProgress) || !getInProgess ) )
+        {
+            return callPtr;
+        }
+
+        // check phone number
+        if ( (strncmp(destinationPtr, callPtr->telNumber, sizeof(callPtr->telNumber)) == 0) &&
+             ( (getInProgess && callPtr->inProgress) || !getInProgess ) )
+        {
+            return callPtr;
+        }
+    }
+
+    return NULL;
 }
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Create a call object and return a reference on it.
+ * Create a call object.
  *
  */
 //--------------------------------------------------------------------------------------------------
-static le_mcc_CallReference_t* CreateCallObject
+static le_mcc_Call_t* CreateCallObject
 (
-    le_mcc_Profile_t*               profilePtr,
     const char*                     destinationPtr,
-    le_mcc_Direction_t              direction,
     int16_t                         id,
-    le_mcc_call_Event_t             event,
-    le_mcc_call_TerminationReason_t termination,
+    le_mcc_Event_t             event,
+    le_mcc_TerminationReason_t termination,
     int32_t                         terminationCode
 )
 {
-    le_mcc_Call_t* callPtr = (le_mcc_Call_t*)le_mem_ForceAlloc(MccCallPool);
+    le_mcc_Call_t* callPtr = NULL;
+
+    // New call
+    callPtr = (le_mcc_Call_t*)le_mem_ForceAlloc(MccCallPool);
+
+    if (!callPtr)
+    {
+        LE_ERROR("callPtr null !!!!");
+        return NULL;
+    }
+
     le_utf8_Copy(callPtr->telNumber, destinationPtr, sizeof(callPtr->telNumber), NULL);
-    callPtr->profile = profilePtr;
     callPtr->callId = id;
-    callPtr->direction = direction;
     callPtr->event = event;
     callPtr->termination = termination;
     callPtr->terminationCode = terminationCode;
-    callPtr->rxAudioStreamRef = NULL;
-    callPtr->txAudioStreamRef = NULL;
     callPtr->clirStatus = PA_MCC_DEACTIVATE_CLIR;
+    callPtr->inProgress = false;
+    callPtr->refCount = 1;
+    callPtr->sessionRefList=LE_DLS_LIST_INIT;
 
-    le_mcc_CallReference_t* newReferencePtr = (le_mcc_CallReference_t*)le_mem_ForceAlloc(ReferencePool);
     // Create a Safe Reference for this Call object.
-    newReferencePtr->callRef = le_ref_CreateRef(MccCallRefMap, callPtr);
-    newReferencePtr->link = LE_DLS_LINK_INIT;
+    callPtr->callRef = le_ref_CreateRef(MccCallRefMap, callPtr);
 
-    // Insert the message in the List.
-    le_dls_Queue(&CallList, &(newReferencePtr->link));
+    // Update reference count
+    UpdateReferenceCount(callPtr);
 
-    return newReferencePtr;
+    return callPtr;
 }
 
-//--------------------------------------------------------------------------------------------------
-/**
- * Get the profile object address.
- *
- */
-//--------------------------------------------------------------------------------------------------
-static le_mcc_Profile_t* GetProfile
-(
-    const char* profileNamePtr
-)
-{
-    // TODO Review how to retrieve the profile
-    uint32_t idx;
-
-    for (idx=0; idx<MCC_MAX_PROFILE; idx++)
-    {
-        if (ProfileTable[idx] != NULL)
-        {
-            if (!strncmp(ProfileTable[idx]->name, profileNamePtr, sizeof(ProfileTable[idx]->name)))
-            {
-                le_mem_AddRef((void *)ProfileTable[idx]);
-                return (ProfileTable[idx]);
-            }
-        }
-    }
-    return NULL;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Verify and update the profile state.
- *
- */
-//--------------------------------------------------------------------------------------------------
-static void UpdateProfileState
-(
-    le_mcc_Profile_t*     profilePtr,
-    le_mcc_call_Event_t   event
-)
-{
-    bool notify = false;
-
-    if (event == LE_MCC_CALL_EVENT_TERMINATED)
-    {
-        if (profilePtr->state != LE_MCC_PROFILE_IDLE)
-        {
-            profilePtr->state = LE_MCC_PROFILE_IDLE;
-            notify = true;
-        }
-    }
-    else
-    {
-        if (profilePtr->state != LE_MCC_PROFILE_IN_USE)
-        {
-            profilePtr->state = LE_MCC_PROFILE_IN_USE;
-            notify = true;
-        }
-    }
-
-    if(notify)
-    {
-        // Notify all the registered Profile state handlers
-        LE_DEBUG("Notify the Profile State handler (state.%d)", profilePtr->state);
-        le_event_Report(profilePtr->stateChangeEventId,
-                        (void*)&(profilePtr->state),
-                        sizeof(le_mcc_profile_State_t));
-    }
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Look for an existing Call object and update it.
- *
- * TODO: Manage multiple calls on one profile, for now I manage only one call.
- */
-//--------------------------------------------------------------------------------------------------
-static le_mcc_call_ObjRef_t UpdateCallObject
-(
-    pa_mcc_CallEventData_t*  eventPtr,
-    le_mcc_Profile_t*        currProfilePtr
-)
-{
-    le_dls_Link_t*          linkPtr;
-    le_mcc_CallReference_t* nodePtr = NULL;
-
-    LE_DEBUG("Look for call ID.%d.", eventPtr->callId);
-
-    linkPtr = le_dls_Peek(&CallList);
-    while (linkPtr != NULL)
-    {
-        // Get the node from CallList
-        nodePtr = CONTAINER_OF(linkPtr, le_mcc_CallReference_t, link);
-        le_mcc_Call_t* callPtr = le_ref_Lookup(MccCallRefMap, nodePtr->callRef);
-        // Should never happen
-        LE_FATAL_IF((callPtr == NULL), "Invalid reference (%p) provided!", nodePtr->callRef);
-        if (callPtr->callId == (int16_t)eventPtr->callId)
-        {
-            LE_DEBUG("Found a call (ID.%d).", eventPtr->callId);
-            callPtr->profile = currProfilePtr;
-            callPtr->event = eventPtr->event;
-            callPtr->termination = eventPtr->terminationEvent;
-            callPtr->terminationCode = eventPtr->terminationCode;
-            if(eventPtr->event == LE_MCC_CALL_EVENT_TERMINATED)
-            {
-                callPtr->callId = -1;
-            }
-            return (nodePtr->callRef);
-        }
-
-        // Move to the next node.
-        linkPtr = le_dls_PeekNext(&CallList, linkPtr);
-    }
-
-    return NULL;
-}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -452,8 +265,8 @@ static void FirstLayerCallEventHandler
     void* secondLayerHandlerFunc
 )
 {
-    le_mcc_call_ObjRef_t *callRef = reportPtr;
-    le_mcc_profile_CallEventHandlerFunc_t clientHandlerFunc = secondLayerHandlerFunc;
+    le_mcc_CallRef_t *callRef = reportPtr;
+    le_mcc_CallEventHandlerFunc_t clientHandlerFunc = secondLayerHandlerFunc;
 
     le_mcc_Call_t* callPtr = le_ref_Lookup(MccCallRefMap, *callRef);
 
@@ -464,8 +277,9 @@ static void FirstLayerCallEventHandler
     }
 
     LE_DEBUG("Send Call Event for [%p] with [%d]",*callRef,callPtr->event);
-    clientHandlerFunc(*callRef,callPtr->event, le_event_GetContextPtr());
+    clientHandlerFunc(*callRef, callPtr->event, le_event_GetContextPtr());
 }
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -478,74 +292,111 @@ static void NewCallEventHandler
     pa_mcc_CallEventData_t*  dataPtr
 )
 {
-    le_mcc_Profile_t* currProfilePtr = NULL;
-
-    if ((currProfilePtr = GetProfile("Modem-Sim1")) == NULL)
-    {
-        LE_CRIT("Didn't find the profile!");
-        return;
-    }
+    le_mcc_Call_t* callPtr = NULL;
 
     // Acquire wakeup source on first indication of call
-    if (LE_MCC_CALL_EVENT_SETUP == dataPtr->event ||
-        LE_MCC_CALL_EVENT_ORIGINATING == dataPtr->event ||
-        LE_MCC_CALL_EVENT_INCOMING == dataPtr->event)
+    if (LE_MCC_EVENT_SETUP == dataPtr->event ||
+        LE_MCC_EVENT_ORIGINATING == dataPtr->event ||
+        LE_MCC_EVENT_INCOMING == dataPtr->event)
     {
         // Note: 3GPP calls have both SETUP and INCOMING states, so
         // this will warn on INCOMING state as a second "stay awake"
         le_pm_StayAwake(WakeupSource);
-        // Return if SETUP or ORIGINATING, but process INCOMING
-        if (LE_MCC_CALL_EVENT_INCOMING != dataPtr->event)
-            return;
     }
 
-    // Update Profile State
-    UpdateProfileState(currProfilePtr, dataPtr->event);
+    // Check if we have already an ongoing callPtr for this call
+    callPtr = GetCallObject("", dataPtr->callId, true);
 
-    // Check if event regards an outgoing or incoming Call
-    if ((currProfilePtr->callRef = UpdateCallObject(dataPtr, currProfilePtr)) == NULL)
+    if (callPtr == NULL)
     {
-        // This event is for an incoming call
-        if ((dataPtr->event == LE_MCC_CALL_EVENT_INCOMING) && (CallHandlerCount))
-        {
-            // Create the Call object for new incoming call.
-            LE_DEBUG("Create incoming call");
-            le_mcc_CallReference_t* newReferencePtr = CreateCallObject (currProfilePtr,
-                                                                        dataPtr->phoneNumber,
-                                                                        INCOMING_CALL,
-                                                                        dataPtr->callId,
-                                                                        dataPtr->event,
-                                                                        dataPtr->terminationEvent,
-                                                                        dataPtr->terminationCode);
+        // Call not in progress
+        // check if a callPtr exists with the same number
+        callPtr = GetCallObject(dataPtr->phoneNumber, -1, false);
 
-            currProfilePtr->callRef = newReferencePtr->callRef;
+        if (callPtr == NULL)
+        {
+            callPtr = CreateCallObject (dataPtr->phoneNumber,
+                                        dataPtr->callId,
+                                        dataPtr->event,
+                                        dataPtr->terminationEvent,
+                                        dataPtr->terminationCode);
         }
+
+        callPtr->inProgress = true;
+    }
+    else
+    {
+        callPtr->event = dataPtr->event;
+        callPtr->termination = dataPtr->terminationEvent;
+        callPtr->terminationCode = dataPtr->terminationCode;
+
+        // Update reference count
+        UpdateReferenceCount(callPtr);
     }
 
     // Handle call state transition
     switch (dataPtr->event)
     {
-        case LE_MCC_CALL_EVENT_CONNECTED:
-            OpenAudio(le_ref_Lookup(MccCallRefMap, currProfilePtr->callRef));
-            break;
-        case LE_MCC_CALL_EVENT_TERMINATED:
-            CloseAudio(le_ref_Lookup(MccCallRefMap, currProfilePtr->callRef));
-            break;
-        default :
-            break;
+         case LE_MCC_EVENT_TERMINATED:
+            // Release wakeup source once call termination is processed
+            le_pm_Relax(WakeupSource);
+            callPtr->inProgress = false;
+        break;
+        default:
+        break;
     }
 
     // Call the client's handler
-    LE_DEBUG("Notify the Call event handler (callRef.%p)", currProfilePtr->callRef);
-    le_event_Report(currProfilePtr->callEventId,
-                    &(currProfilePtr->callRef),
-                    sizeof(currProfilePtr->callRef));
-
-    // Release wakeup source once call termination is processed
-    if (LE_MCC_CALL_EVENT_TERMINATED == dataPtr->event)
-        le_pm_Relax(WakeupSource);
+    le_event_Report(CallStateEventId,
+                    &callPtr->callRef,
+                    sizeof(callPtr->callRef));
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * handler function to the close session service
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void CloseSessionEventHandler
+(
+    le_msg_SessionRef_t sessionRef,
+    void*               contextPtr
+)
+{
+    le_mcc_Call_t* callPtr = NULL;
+    SessionRefNode_t* sessionRefNodePtr;
+    le_dls_Link_t* linkPtr;
+
+    le_ref_IterRef_t iterRef = le_ref_GetIterator(MccCallRefMap);
+
+    while (le_ref_NextNode(iterRef) == LE_OK)
+    {
+        callPtr = (le_mcc_Call_t*) le_ref_GetValue(iterRef);
+
+        // Remove corresponding node from the sessionRefList
+        linkPtr = le_dls_Peek(&(callPtr->sessionRefList));
+
+        while (linkPtr != NULL)
+        {
+            sessionRefNodePtr = CONTAINER_OF(linkPtr, SessionRefNode_t, link);
+
+            linkPtr = le_dls_PeekNext(&(callPtr->sessionRefList), linkPtr);
+
+            // Remove corresponding node from the sessionRefList
+            if ( sessionRefNodePtr->sessionRef == sessionRef )
+            {
+                le_dls_Remove(&(callPtr->sessionRefList),
+                    &(sessionRefNodePtr->link));
+
+                le_mem_Release(sessionRefNodePtr);
+
+                callPtr->refCount--;
+                le_mem_Release(callPtr);
+            }
+        }
+    }
+}
 
 //--------------------------------------------------------------------------------------------------
 //                                       Public declarations
@@ -564,73 +415,21 @@ le_result_t le_mcc_Init
     void
 )
 {
-    le_mcc_Profile_t* profilePtr;
-    int               idx;
-    char              eventName[32];
-
-    // Create a pool for Profile objects
-    MccProfilePool = le_mem_CreatePool("MccProfilePool", sizeof(struct le_mcc_profile_Obj));
-    le_mem_ExpandPool(MccProfilePool, MCC_MAX_PROFILE);
-
-    // Create the Safe Reference Map to use for Profile object Safe References.
-    MccProfileRefMap = le_ref_CreateMap("MccProfileMap", MCC_MAX_PROFILE);
-
     // Create a pool for Call objects
-    MccCallPool = le_mem_CreatePool("MccCallPool", sizeof(struct le_mcc_call_Obj));
+    MccCallPool = le_mem_CreatePool("MccCallPool", sizeof(struct le_mcc_Call));
     le_mem_ExpandPool(MccCallPool, MCC_MAX_CALL);
     le_mem_SetDestructor(MccCallPool, CallDestructor);
+
+    SessionRefPool = le_mem_CreatePool("SessionRefPool", sizeof(SessionRefNode_t));
+    le_mem_ExpandPool(SessionRefPool, MCC_MAX_CALL);
 
     // Create the Safe Reference Map to use for Call object Safe References.
     MccCallRefMap = le_ref_CreateMap("MccCallMap", MCC_MAX_CALL);
 
-    // Create a pool for Call references list
-    ReferencePool = le_mem_CreatePool("MccReferencePool", sizeof(le_mcc_call_ObjRef_t));
-
-    // BEGIN, TODO Profile creation should not belong to this module
-    // Create a default Modem-Sim1 profile
-    profilePtr = (struct le_mcc_profile_Obj*)le_mem_ForceAlloc(MccProfilePool);
-    if (profilePtr == NULL)
-    {
-        LE_CRIT("No Space for a new profile !");
-        return LE_FAULT;
-    }
-
-    memset(profilePtr, 0, sizeof(*profilePtr));
-
-    // It's okay if the name is truncated, since we use strncmp() in the load function
-    le_utf8_Copy(profilePtr->name, "Modem-Sim1", sizeof(profilePtr->name), NULL);
-
-    // Each profile has its own event for reporting state changes
-    le_utf8_Copy(eventName, profilePtr->name, sizeof(eventName), NULL);
-    le_utf8_Append(eventName, "-StateChangeEvent", sizeof(eventName), NULL);
-    profilePtr->stateChangeEventId = le_event_CreateId(eventName, sizeof(le_mcc_profile_State_t));
-
     // Initialize call wakeup source - succeeds or terminates caller
     WakeupSource = le_pm_NewWakeupSource(0, CALL_WAKEUP_SOURCE_NAME);
 
-    // Init the remaining fields
-    profilePtr->callRef = NULL;
-    profilePtr->state = LE_MCC_PROFILE_IDLE;
-
-    // Each profile has its own event for reporting call
-    le_utf8_Copy(eventName, profilePtr->name, sizeof(eventName), NULL);
-    le_utf8_Append(eventName, "-CallEvent", sizeof(eventName), NULL);
-    profilePtr->callEventId = le_event_CreateId(eventName, sizeof(le_mcc_call_ObjRef_t));
-
-    // Loop through the table until we find the first free modem profile index.  We are
-    // guaranteed to find a free entry, otherwise, we would have already exited above.
-    for (idx=0; idx<MCC_MAX_PROFILE; idx++)
-    {
-        LE_DEBUG("ProfileTable[%i] = %p", idx, ProfileTable[idx]);
-
-        if (ProfileTable[idx] == NULL)
-        {
-            ProfileTable[idx] = profilePtr;
-            profilePtr->profileIndex = idx+1;
-            break;
-        }
-    }
-    // END TODO
+    CallStateEventId = le_event_CreateId("CallStateEventId", sizeof(le_mcc_CallRef_t));
 
     // Register a handler function for Call Event indications
     if(pa_mcc_SetCallEventHandler(NewCallEventHandler) != LE_OK)
@@ -639,361 +438,162 @@ le_result_t le_mcc_Init
         return LE_FAULT;
     }
 
+    // Add a handler to the close session service
+    le_msg_AddServiceCloseHandler( le_mcc_GetServiceRef(),
+                                   CloseSessionEventHandler,
+                                   NULL );
+
     return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
-// CALL PROFILE.
-//--------------------------------------------------------------------------------------------------
-
-//--------------------------------------------------------------------------------------------------
 /**
- *  Access a particular profile by name.
+ * Create a call reference.
  *
- *  @return The profileRef or NULL if profileName is not found.
+ * @note Return NULL if call reference can't be created
  *
- *  @note If profil name is too long (max 100 digits), it is a fatal error,
- *        the function will not return
+ * @note If destination number is too long (max LE_MDMDEFS_PHONE_NUM_MAX_LEN digits),
+ * it is a fatal error, the function will not return.
+ *
  */
 //--------------------------------------------------------------------------------------------------
-le_mcc_profile_ObjRef_t le_mcc_profile_GetByName
+le_mcc_CallRef_t le_mcc_Create
 (
-    const char* profileNamePtr           ///< [IN] The name of the profile to search for.
+    const char* phoneNumPtr
+        ///< [IN]
+        ///< The target number we are going to
+        ///< call.
 )
 {
-    int  idx;
-
-    if (profileNamePtr == NULL)
+    if (phoneNumPtr == NULL)
     {
-        LE_KILL_CLIENT("profileNamePtr is NULL !");
+        LE_KILL_CLIENT("phoneNumPtr is NULL !");
         return NULL;
     }
 
-    if (strlen(profileNamePtr) > MCC_PROFILE_NAME_MAX_LEN)
+    if(strlen(phoneNumPtr) > (LE_MDMDEFS_PHONE_NUM_MAX_BYTES-1))
     {
-        LE_KILL_CLIENT("strlen(profileNamePtr) > %d", MCC_PROFILE_NAME_MAX_LEN);
-        return NULL;
-    }
-
-    for (idx=0; idx<MCC_MAX_PROFILE; idx++)
-    {
-        LE_DEBUG("ProfileTable[%i] = %p", idx, ProfileTable[idx]);
-
-        if (ProfileTable[idx] != NULL)
-        {
-            if (!strncmp(ProfileTable[idx]->name, profileNamePtr, sizeof(ProfileTable[idx]->name)))
-            {
-                le_mem_AddRef((void *)ProfileTable[idx]);
-                // Create a Safe Reference for this Profile object.
-                return le_ref_CreateRef(MccProfileRefMap, ProfileTable[idx]);
-                break;
-            }
-        }
-    }
-    return NULL;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This function must be called to release a Call Profile.
- *
- * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
- *       function will not return.
- */
-//--------------------------------------------------------------------------------------------------
-void le_mcc_profile_Release
-(
-    le_mcc_profile_ObjRef_t  profileRef    ///< [IN] The Call profile reference.
-)
-{
-    le_mcc_Profile_t* profilePtr = le_ref_Lookup(MccProfileRefMap, profileRef);
-
-    if (profilePtr == NULL)
-    {
-        LE_KILL_CLIENT("Invalid reference (%p) provided!", profileRef);
-        return;
-    }
-
-    // Invalidate the Safe Reference.
-    le_ref_DeleteRef(MccProfileRefMap, profileRef);
-
-    le_mem_Release(profilePtr);
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This function is used to determine the current state of a given profile.
- *
- * @return The current state of the profile.
- *
- * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
- *       function will not return.
- */
-//--------------------------------------------------------------------------------------------------
-le_mcc_profile_State_t le_mcc_profile_GetState
-(
-    le_mcc_profile_ObjRef_t    profileRef   ///< [IN] The profile reference to read.
-)
-{
-    le_mcc_Profile_t* profilePtr = le_ref_Lookup(MccProfileRefMap, profileRef);
-
-    if (profilePtr == NULL)
-    {
-        LE_KILL_CLIENT("Invalid reference (%p) provided!", profileRef);
-        return LE_MCC_PROFILE_NOT_AVAILABLE;
-    }
-
-    return profilePtr->state;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Called to add an event handler for profile state changes.
- *
- * @return A reference to the new event handler object.
- *
- * @note It is a fatal error if this function does succeed.  If this function fails, it will not
- *       return.
- */
-//--------------------------------------------------------------------------------------------------
-le_mcc_profile_StateChangeHandlerRef_t le_mcc_profile_AddStateChangeHandler
-(
-    le_mcc_profile_ObjRef_t                  profileRef,      ///< [IN] The profile reference.
-    le_mcc_profile_StateChangeHandlerFunc_t  handlerFuncPtr,  ///< [IN] The event handler function.
-    void*                                    contextPtr       ///< [IN] The handlers context.
-)
-{
-    le_event_HandlerRef_t handlerRef;
-
-    le_mcc_Profile_t* profilePtr = le_ref_Lookup(MccProfileRefMap, profileRef);
-
-    if (profilePtr == NULL)
-    {
-        LE_KILL_CLIENT("Invalid reference (%p) provided!", profileRef);
-        return NULL;
-    }
-    if (handlerFuncPtr == NULL)
-    {
-        LE_KILL_CLIENT("Handler function is NULL !");
-        return NULL;
-    }
-
-    handlerRef = le_event_AddLayeredHandler("ProfileStateChangeHandler",
-                                            profilePtr->stateChangeEventId,
-                                            FirstLayerProfileStateChangeHandler,
-                                            (le_event_HandlerFunc_t)handlerFuncPtr);
-
-    le_event_SetContextPtr(handlerRef, contextPtr);
-
-    return (le_mcc_profile_StateChangeHandlerRef_t)(handlerRef);
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Remove the registered event handler. Call this function when you no longer desire to receive
- * state change events.
- *
- * @note Doesn't return on failure, so there's no need to check the return value for errors.
- */
-//--------------------------------------------------------------------------------------------------
-void le_mcc_profile_RemoveStateChangeHandler
-(
-    le_mcc_profile_StateChangeHandlerRef_t handlerRef   ///< [IN] The handler object to remove.
-)
-{
-    le_event_RemoveHandler((le_event_HandlerRef_t)handlerRef);
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Register an event handler that will be notified when an event occurs on call associated with
- * a given profile.
- *
- * The registered handler will receive events for both incoming and outgoing calls.
- *
- * @return A reference to the new event handler object.
- *
- * @note It is a fatal error if this function does succeed.  If this function fails, it will not
- *       return.
- */
-//--------------------------------------------------------------------------------------------------
-le_mcc_profile_CallEventHandlerRef_t le_mcc_profile_AddCallEventHandler
-(
-    le_mcc_profile_ObjRef_t                 profileRef,     ///< [IN] The profile to update.
-    le_mcc_profile_CallEventHandlerFunc_t   handlerFuncPtr, ///< [IN] The event handler function.
-    void*                                   contextPtr      ///< [IN] The handlers context.
-)
-{
-    le_event_HandlerRef_t  handlerRef;
-    le_mcc_Profile_t* profilePtr = le_ref_Lookup(MccProfileRefMap, profileRef);
-
-    if (profilePtr == NULL)
-    {
-        LE_KILL_CLIENT("Invalid reference (%p) provided!", profileRef);
-        return NULL;
-    }
-    if (handlerFuncPtr == NULL)
-    {
-        LE_KILL_CLIENT("Handler function is NULL !");
-        return NULL;
-    }
-
-    handlerRef = le_event_AddLayeredHandler("ProfileStateChangeHandler",
-                                            profilePtr->callEventId,
-                                            FirstLayerCallEventHandler,
-                                            (le_event_HandlerFunc_t)handlerFuncPtr);
-
-    le_event_SetContextPtr(handlerRef, contextPtr);
-
-    CallHandlerCount++;
-    return (le_mcc_profile_CallEventHandlerRef_t)(handlerRef);
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Remove the registered event handler. Call this function when you no longer wish to be notified of
- * events on calls.
- *
- * @note Doesn't return on failure, so there's no need to check the return value for errors.
- */
-//--------------------------------------------------------------------------------------------------
-void le_mcc_profile_RemoveCallEventHandler
-(
-    le_mcc_profile_CallEventHandlerRef_t handlerRef   ///< [IN] The handler object to remove.
-)
-{
-    le_event_RemoveHandler((le_event_HandlerRef_t)handlerRef);
-    CallHandlerCount--;
-}
-
-//--------------------------------------------------------------------------------------------------
-// CALL.
-//--------------------------------------------------------------------------------------------------
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Create a new call object with a destination telephone number.
- *
- * The call is not actually established at this point. It is still up to the caller to call
- * le_mcc_call_Start when ready.
- *
- * @return A reference to the new Call object.
- *
- * @note On failure, the process exits, so you don't have to worry about checking the returned
- *       reference for validity.
- *
- * @note If destination number is too long (max 17 digits), it is a fatal error, the
- *       function will not return.
- */
-//--------------------------------------------------------------------------------------------------
-le_mcc_call_ObjRef_t le_mcc_profile_CreateCall
-(
-    le_mcc_profile_ObjRef_t profileRef,     ///< [IN] The profile to create a new call on.
-    const char*             destinationPtr  ///< [IN] The target number we are going to call.
-)
-{
-    le_mcc_Profile_t* profilePtr = le_ref_Lookup(MccProfileRefMap, profileRef);
-    if (profilePtr == NULL)
-    {
-        LE_KILL_CLIENT("Invalid reference (%p) provided!", profileRef);
-        return NULL;
-    }
-
-    if (destinationPtr == NULL)
-    {
-        LE_KILL_CLIENT("destinationPtr is NULL !");
-        return NULL;
-    }
-
-    if(strlen(destinationPtr) > (LE_MDMDEFS_PHONE_NUM_MAX_BYTES-1))
-    {
-        LE_KILL_CLIENT("strlen(destinationPtr) > %d", (LE_MDMDEFS_PHONE_NUM_MAX_BYTES-1));
+        LE_KILL_CLIENT("strlen(phoneNumPtr) > %d", (LE_MDMDEFS_PHONE_NUM_MAX_BYTES-1));
         return NULL;
     }
 
     // Create the Call object.
-    le_mcc_CallReference_t* newReferencePtr = CreateCallObject (profilePtr,
-                                                                destinationPtr,
-                                                                OUTGOING_CALL,
-                                                                -1,
-                                                                LE_MCC_CALL_EVENT_TERMINATED,
-                                                                LE_MCC_CALL_TERM_UNDEFINED,
-                                                                -1);
+    le_mcc_Call_t* mccCallPtr = GetCallObject(phoneNumPtr, -1, false);
 
-    LE_DEBUG("Create Call ref.%p", newReferencePtr->callRef);
+    if (mccCallPtr != NULL)
+    {
+        le_mem_AddRef(mccCallPtr);
+        mccCallPtr->refCount++;
+    }
+    else
+    {
+        mccCallPtr = CreateCallObject (phoneNumPtr,
+                                        -1,
+                                        LE_MCC_EVENT_TERMINATED,
+                                        LE_MCC_TERM_UNDEFINED,
+                                        -1);
+    }
+
+    // Manage client session
+    SessionRefNode_t* newSessionRefPtr = le_mem_ForceAlloc(SessionRefPool);
+    newSessionRefPtr->sessionRef = le_mcc_GetClientSessionRef();
+    newSessionRefPtr->link = LE_DLS_LINK_INIT;
+
+    // Add the new sessionRef into the the sessionRef list
+    le_dls_Queue(&mccCallPtr->sessionRefList,
+                    &(newSessionRefPtr->link));
+
+    if (mccCallPtr==NULL)
+    {
+        LE_ERROR("mccCallPtr null!!!!");
+        return NULL;
+    }
+
+    LE_DEBUG("Create Call ref.%p", mccCallPtr->callRef);
+
     // Return a Safe Reference for this Call object.
-    return (newReferencePtr->callRef);
+    return (mccCallPtr->callRef);
 }
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Call to free up a call reference.
  *
- * @note This will free the reference, but not necessarily hang up an active call. If there are
- *       other holders of this reference then the call will remain active.
+ * @return
+ *     - LE_OK        The function succeed.
+ *     - LE_NOT_FOUND The call reference was not found.
+ *     - LE_FAULT      The function failed.
  *
- * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
- *       function will not return.
+ *
  */
 //--------------------------------------------------------------------------------------------------
-void le_mcc_call_Delete
+le_result_t le_mcc_Delete
 (
-    le_mcc_call_ObjRef_t callRef   ///< [IN] The call object to free.
+    le_mcc_CallRef_t callRef   ///< [IN] The call object to free.
 )
 {
-    le_mcc_CallReference_t* nodePtr;
-    le_dls_Link_t*          linkPtr;
-    le_mcc_Call_t*          callPtr = le_ref_Lookup(MccCallRefMap, callRef);
+    le_mcc_Call_t* callPtr = le_ref_Lookup(MccCallRefMap, callRef);
 
     if (callPtr == NULL)
     {
-        LE_KILL_CLIENT("Invalid reference (%p) provided!", callRef);
-        return;
+        LE_ERROR("Invalid reference (%p) provided!", callRef);
+        return LE_NOT_FOUND;
     }
 
-    linkPtr = le_dls_Peek(&CallList);
-    while (linkPtr != NULL)
+    if (callPtr->inProgress)
     {
-        // Get the node from Call Ref List
-        nodePtr = CONTAINER_OF(linkPtr, le_mcc_CallReference_t, link);
-        if (nodePtr->callRef == callRef)
+        return LE_FAULT;
+    }
+    else
+    {
+        SessionRefNode_t* sessionRefNodePtr;
+        le_dls_Link_t* linkPtr;
+
+        callPtr->refCount--;
+        LE_DEBUG("refcount %d", callPtr->refCount);
+
+        // Remove corresponding node from the sessionRefList
+        linkPtr = le_dls_Peek(&(callPtr->sessionRefList));
+
+        while (linkPtr != NULL)
         {
-            // Remove the object from the Cal reference List.
-            le_dls_Remove(&CallList, &nodePtr->link);
-            break;
+            sessionRefNodePtr = CONTAINER_OF(linkPtr, SessionRefNode_t, link);
+            linkPtr = le_dls_PeekNext(&(callPtr->sessionRefList), linkPtr);
+
+            if ( sessionRefNodePtr->sessionRef == le_mcc_GetClientSessionRef() )
+            {
+                le_dls_Remove(  &(callPtr->sessionRefList),
+                                &(sessionRefNodePtr->link));
+
+                le_mem_Release(sessionRefNodePtr);
+            }
         }
 
-        // Move to the next node.
-        linkPtr = le_dls_PeekNext(&CallList, linkPtr);
+        le_mem_Release(callPtr);
+        return LE_OK;
     }
-
-    // Invalidate the Safe Reference.
-    le_ref_DeleteRef(MccCallRefMap, callRef);
-
-    le_mem_Release(callPtr);
 }
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Start a call attempt.
  *
- * Due to the length of time a call can take to connect, this is an asynchronous call.
+ * Asynchronous due to possible time to connect.
  *
- * As the call attempt proceeds, the profile's registered call event handler will receive events.
+ * As the call attempt proceeds, the profile's registered call event handler receives events.
  *
- * @return LE_OK       The function succeed.
- * @return LE_BUSY     A voice call is already ongoing.
+ * @return LE_OK            Function succeed.
  *
- * @note This is an asynchronous call.  On successful return you only know that a call has been
- *       started. You can not assume that a call has been made at that point.
+ * * @note As this is an asynchronous call, a successful only confirms a call has been
+ *       started. Don't assume a call has been successful yet.
  *
  * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
  *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_mcc_call_Start
+le_result_t le_mcc_Start
 (
-    le_mcc_call_ObjRef_t callRef   ///< [IN] Reference to the call object.
+    le_mcc_CallRef_t callRef   ///< [IN] Reference to the call object.
 )
 {
     uint8_t        callId;
@@ -1018,6 +618,7 @@ le_result_t le_mcc_call_Start
                           &callId);
 
     callPtr->callId = (int16_t)callId;
+    callPtr->inProgress = true;
 
     return res;
 
@@ -1033,9 +634,9 @@ le_result_t le_mcc_call_Start
  *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
-bool le_mcc_call_IsConnected
+bool le_mcc_IsConnected
 (
-    le_mcc_call_ObjRef_t  callRef  ///< [IN] The call reference to read.
+    le_mcc_CallRef_t  callRef  ///< [IN] The call reference to read.
 )
 {
     le_mcc_Call_t* callPtr = le_ref_Lookup(MccCallRefMap, callRef);
@@ -1046,7 +647,7 @@ bool le_mcc_call_IsConnected
         return false;
     }
 
-    if (callPtr->event == LE_MCC_CALL_EVENT_CONNECTED)
+    if (callPtr->event == LE_MCC_EVENT_CONNECTED)
     {
         return true;
     }
@@ -1060,11 +661,11 @@ bool le_mcc_call_IsConnected
 /**
  * Read out the remote party telephone number associated with the call in question.
  *
- * The output parameter is updated with the Telephone number. If the Telephone number string exceed
- * the value of 'len' parameter, a LE_OVERFLOW error code is returned and 'telPtr' is filled until
+ * Output parameter is updated with the telephone number. If the Telephone number string length exceeds
+ * the value of 'len' parameter, the LE_OVERFLOW error code is returned and 'telPtr' is used until
  * 'len-1' characters and a null-character is implicitly appended at the end of 'telPtr'.
- * Note tht 'len' sould be at least equal to LE_MDMDEFS_PHONE_NUM_MAX_BYTES, otherwise LE_OVERFLOW error code
- * will be common.
+ * Note that 'len' sould be at least equal to LE_MDMDEFS_PHONE_NUM_MAX_BYTES, otherwise LE_OVERFLOW
+ * error code will be common.
  *
  * @return LE_OVERFLOW      The Telephone number length exceed the maximum length.
  * @return LE_OK            The function succeeded.
@@ -1073,9 +674,9 @@ bool le_mcc_call_IsConnected
  *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_mcc_call_GetRemoteTel
+le_result_t le_mcc_GetRemoteTel
 (
-    le_mcc_call_ObjRef_t callRef,    ///< [IN]  The call reference to read from.
+    le_mcc_CallRef_t callRef,    ///< [IN]  The call reference to read from.
     char*                telPtr,     ///< [OUT] The telephone number string.
     size_t               len         ///< [IN]  The length of telephone number string.
 )
@@ -1106,9 +707,9 @@ le_result_t le_mcc_call_GetRemoteTel
  *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
-le_mcc_call_TerminationReason_t le_mcc_call_GetTerminationReason
+le_mcc_TerminationReason_t le_mcc_GetTerminationReason
 (
-    le_mcc_call_ObjRef_t callRef   ///< [IN] The call reference to read from.
+    le_mcc_CallRef_t callRef   ///< [IN] The call reference to read from.
 )
 {
     le_mcc_Call_t* callPtr = le_ref_Lookup(MccCallRefMap, callRef);
@@ -1116,7 +717,7 @@ le_mcc_call_TerminationReason_t le_mcc_call_GetTerminationReason
     if (callPtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", callRef);
-        return LE_MCC_CALL_TERM_UNDEFINED;
+        return LE_MCC_TERM_UNDEFINED;
     }
 
     return (callPtr->termination);
@@ -1132,9 +733,9 @@ le_mcc_call_TerminationReason_t le_mcc_call_GetTerminationReason
  *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
-int32_t le_mcc_call_GetPlatformSpecificTerminationCode
+int32_t le_mcc_GetPlatformSpecificTerminationCode
 (
-    le_mcc_call_ObjRef_t callRef   ///< [IN] The call reference to read from.
+    le_mcc_CallRef_t callRef   ///< [IN] The call reference to read from.
 )
 {
     le_mcc_Call_t* callPtr = le_ref_Lookup(MccCallRefMap, callRef);
@@ -1150,61 +751,7 @@ int32_t le_mcc_call_GetPlatformSpecificTerminationCode
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Called to get the transmitted audio stream of the call in question. All audio generated on this
- * end of the call is sent on this stream.
- *
- * @return The transmitted audio stream reference.
- *
- * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
- *       function will not return.
- */
-//--------------------------------------------------------------------------------------------------
-le_audio_StreamRef_t le_mcc_call_GetTxAudioStream
-(
-    le_mcc_call_ObjRef_t callRef   ///< [IN] The call reference to read from.
-)
-{
-    le_mcc_Call_t* callPtr = le_ref_Lookup(MccCallRefMap, callRef);
-
-    if (callPtr == NULL)
-    {
-        LE_KILL_CLIENT("Invalid reference (%p) provided!", callRef);
-        return NULL;
-    }
-
-    return le_audio_OpenModemVoiceTx();
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Called to get the received audio stream of the call in question. All audio received from the
- * other end of the call is received on this stream.
- *
- * @return The received audio stream reference.
- *
- * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
- *       function will not return.
- */
-//--------------------------------------------------------------------------------------------------
-le_audio_StreamRef_t le_mcc_call_GetRxAudioStream
-(
-    le_mcc_call_ObjRef_t callRef   ///< [IN] The call reference to read from.
-)
-{
-    le_mcc_Call_t* callPtr = le_ref_Lookup(MccCallRefMap, callRef);
-
-    if (callPtr == NULL)
-    {
-        LE_KILL_CLIENT("Invalid reference (%p) provided!", callRef);
-        return NULL;
-    }
-
-    return le_audio_OpenModemVoiceRx();
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- *  This function will answer to the incoming call.
+ *  Answers incoming call.
  *
  * @return LE_TIMEOUT       No response was received from the Modem.
  * @return LE_OK            The function succeeded.
@@ -1213,9 +760,9 @@ le_audio_StreamRef_t le_mcc_call_GetRxAudioStream
  *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_mcc_call_Answer
+le_result_t le_mcc_Answer
 (
-    le_mcc_call_ObjRef_t callRef   ///< [IN] The call reference.
+    le_mcc_CallRef_t callRef   ///< [IN] The call reference.
 )
 {
     le_result_t result;
@@ -1230,26 +777,26 @@ le_result_t le_mcc_call_Answer
     result = pa_mcc_Answer();
     if (result == LE_OK )
     {
-        callPtr->event = LE_MCC_CALL_EVENT_CONNECTED;
+        callPtr->event = LE_MCC_EVENT_CONNECTED;
     }
     return result;
 }
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function will disconnect, or hang up the specified call. Any active call disconnect handlers
+ * Disconnect, or hang up, the specifed call. Any active call handlers
  * will be notified.
  *
  * @return LE_TIMEOUT       No response was received from the Modem.
- * @return LE_OK            The function succeeded.
+ * @return LE_OK            Function succeeded.
  *
  * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
  *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_mcc_call_HangUp
+le_result_t le_mcc_HangUp
 (
-    le_mcc_call_ObjRef_t callRef   ///< [IN] The call to end.
+    le_mcc_CallRef_t callRef   ///< [IN] The call to end.
 )
 {
     le_mcc_Call_t* callPtr = le_ref_Lookup(MccCallRefMap, callRef);
@@ -1260,7 +807,7 @@ le_result_t le_mcc_call_HangUp
         return LE_NOT_FOUND;
     }
 
-    if (callPtr->event != LE_MCC_CALL_EVENT_TERMINATED)
+    if (callPtr->inProgress)
     {
         return (pa_mcc_HangUp());
     }
@@ -1275,12 +822,12 @@ le_result_t le_mcc_call_HangUp
  * This function will disconnect, or hang up all the ongoing calls. Any active call handlers will
  * be notified.
  *
- * @return LE_TIMEOUT       No response was received from the Modem.
  * @return LE_FAULT         The function failed.
+ * @return LE_TIMEOUT       No response was received from the Modem.
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_mcc_call_HangUpAll
+le_result_t le_mcc_HangUpAll
 (
     void
 )
@@ -1303,9 +850,9 @@ le_result_t le_mcc_call_HangUpAll
  *    - LE_NOT_FOUND The call reference was not found.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_mcc_call_GetCallerIdRestrict
+le_result_t le_mcc_GetCallerIdRestrict
 (
-    le_mcc_call_ObjRef_t callRef, ///< [IN] The call reference.
+    le_mcc_CallRef_t callRef, ///< [IN] The call reference.
     le_onoff_t* clirStatusPtr        ///< [OUT] the Calling Line Identification Restriction (CLIR) status
 )
 {
@@ -1347,9 +894,9 @@ le_result_t le_mcc_call_GetCallerIdRestrict
  *
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_mcc_call_SetCallerIdRestrict
+le_result_t le_mcc_SetCallerIdRestrict
 (
-    le_mcc_call_ObjRef_t callRef, ///< [IN] The call reference.
+    le_mcc_CallRef_t callRef, ///< [IN] The call reference.
     le_onoff_t clirStatus         ///< [IN] The Calling Line Identification Restriction (CLIR) status.
 )
 {
@@ -1369,6 +916,91 @@ le_result_t le_mcc_call_SetCallerIdRestrict
     {
         callPtr->clirStatus = PA_MCC_DEACTIVATE_CLIR;
     }
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add handler function for EVENT 'le_mcc_CallEvent'
+ *
+ * Register an event handler that will be notified when an event occurs on call.
+ *
+ * @return A reference to the new event handler object.
+ *
+ * @note It is a fatal error if this function does succeed.  If this function fails, it will not
+ *       return.
+ */
+//--------------------------------------------------------------------------------------------------
+le_mcc_CallEventHandlerRef_t le_mcc_AddCallEventHandler
+(
+    le_mcc_CallEventHandlerFunc_t       handlerFuncPtr, ///< [IN] The event handler function.
+    void*                                   contextPtr      ///< [IN] The handlers context.
+)
+{
+    le_event_HandlerRef_t  handlerRef;
+
+    if (handlerFuncPtr == NULL)
+    {
+        LE_KILL_CLIENT("Handler function is NULL !");
+        return NULL;
+    }
+
+    handlerRef = le_event_AddLayeredHandler("ProfileStateChangeHandler",
+                                            CallStateEventId,
+                                            FirstLayerCallEventHandler,
+                                            (le_event_HandlerFunc_t)handlerFuncPtr);
+
+    le_event_SetContextPtr(handlerRef, contextPtr);
+
+    CallHandlerCount++;
+
+    return (le_mcc_CallEventHandlerRef_t)(handlerRef);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Remove the registered event handler. Call this function when you no longer wish to be notified of
+ * events on calls.
+ *
+ * @note Doesn't return on failure, so there's no need to check the return value for errors.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_mcc_RemoveCallEventHandler
+(
+    le_mcc_CallEventHandlerRef_t handlerRef   ///< [IN] The handler object to remove.
+)
+{
+    CallHandlerCount--;
+
+    le_event_RemoveHandler((le_event_HandlerRef_t)handlerRef);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function returns the call identifier number.
+ *
+ *
+ * @return
+ *    - LE_OK        The function succeed.
+ *    - LE_NOT_FOUND The call reference was not found.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mcc_GetCallIdentifier
+(
+    le_mcc_CallRef_t callRef, ///< [IN] The call reference.
+    int32_t* callIdPtr             ///< [OUT] Call identifier
+)
+{
+    le_mcc_Call_t* callPtr = le_ref_Lookup(MccCallRefMap, callRef);
+
+    if (callPtr == NULL)
+    {
+        LE_ERROR("Invalid reference (%p) provided!", callRef);
+        return LE_NOT_FOUND;
+    }
+
+    *callIdPtr = callPtr->callId;
 
     return LE_OK;
 }

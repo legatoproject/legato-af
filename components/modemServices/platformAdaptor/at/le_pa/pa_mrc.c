@@ -1092,3 +1092,60 @@ le_result_t pa_mrc_MeasureSignalMetrics
     // TODO: implement this function
     return LE_FAULT;
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to register a handler for Signal Strength change handling.
+ *
+ * @return A handler reference, which is only needed for later removal of the handler.
+ *
+ * @note Doesn't return on failure, so there's no need to check the return value for errors.
+ */
+//--------------------------------------------------------------------------------------------------
+le_event_HandlerRef_t pa_mrc_AddSignalStrengthIndHandler
+(
+    pa_mrc_SignalStrengthIndHdlrFunc_t ssIndHandler, ///< [IN] The handler function to handle the
+                                                     ///        Signal Strength change indication.
+    void*                              contextPtr    ///< [IN] The context to be given to the handler.
+)
+{
+    // TODO: implement this function
+    return NULL;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to unregister the handler for Signal Strength change handling.
+ *
+ * @note Doesn't return on failure, so there's no need to check the return value for errors.
+ */
+//--------------------------------------------------------------------------------------------------
+void pa_mrc_RemoveSignalStrengthIndHandler
+(
+    le_event_HandlerRef_t handlerRef
+)
+{
+    // TODO: implement this function
+    return ;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to set and activate the signal strength thresholds for signal
+ * strength indications
+ *
+ * @return
+ *  - LE_FAULT  Function failed.
+ *  - LE_OK     Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_mrc_SetSignalStrengthIndThresholds
+(
+    le_mrc_Rat_t rat,                 ///< Radio Access Technology
+    int32_t      lowerRangeThreshold, ///< [IN] lower-range threshold in dBm
+    int32_t      upperRangeThreshold  ///< [IN] upper-range strength threshold in dBm
+)
+{
+    // TODO: implement this function
+    return LE_FAULT;
+}

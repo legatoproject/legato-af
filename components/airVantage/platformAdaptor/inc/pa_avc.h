@@ -56,7 +56,6 @@
 typedef enum
 {
     PA_AVC_ACCEPT,          ///< Accept the requested action, i.e. download or install
-    PA_AVC_REJECT,          ///< Reject the requested action, i.e. download or install
     PA_AVC_DEFER            ///< Defer the requested action, i.e. download or install
 }
 pa_avc_Selection_t;
@@ -115,8 +114,7 @@ typedef struct pa_avc_LWM2MOperationData* pa_avc_LWM2MOperationDataRef_t;
 //--------------------------------------------------------------------------------------------------
 typedef void (*pa_avc_URIDownloadHandlerFunc_t)
 (
-    le_avc_Status_t updateStatus,
-    size_t bytesReceived
+    le_avc_Status_t updateStatus
 );
 
 
@@ -128,7 +126,9 @@ typedef void (*pa_avc_URIDownloadHandlerFunc_t)
 typedef void (*pa_avc_AVMSMessageHandlerFunc_t)
 (
     le_avc_Status_t updateStatus,
-    le_avc_UpdateType_t updateType
+    le_avc_UpdateType_t updateType,
+    int32_t totalNumBytes,
+    int32_t dloadProgress
 );
 
 
@@ -170,7 +170,7 @@ typedef void (*pa_avc_LWM2MUpdateRequiredHandlerFunc_t)
  *      - LE_FAULT on error
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_avc_StartSession
+LE_SHARED le_result_t pa_avc_StartSession
 (
     void
 );
@@ -185,7 +185,7 @@ le_result_t pa_avc_StartSession
  *      - LE_FAULT on error
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_avc_StopSession
+LE_SHARED le_result_t pa_avc_StopSession
 (
     void
 );
@@ -202,7 +202,7 @@ le_result_t pa_avc_StopSession
  * TODO: Should this take an additional parameter to specify who is doing the download/install
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_avc_SendSelection
+LE_SHARED le_result_t pa_avc_SendSelection
 (
     pa_avc_Selection_t selection,   ///< [IN] Action to take for pending download or install
     uint32_t deferTime              ///< [IN] If action is DEFER, then defer time in minutes
@@ -216,7 +216,7 @@ le_result_t pa_avc_SendSelection
  * @return opType
  */
 //--------------------------------------------------------------------------------------------------
-pa_avc_OpType_t pa_avc_GetOpType
+LE_SHARED pa_avc_OpType_t pa_avc_GetOpType
 (
     pa_avc_LWM2MOperationDataRef_t opRef    ///< [IN] Reference to LWM2M operation
 );
@@ -227,7 +227,7 @@ pa_avc_OpType_t pa_avc_GetOpType
  * Get the operation address for the give LWM2M Operation
  */
 //--------------------------------------------------------------------------------------------------
-void pa_avc_GetOpAddress
+LE_SHARED void pa_avc_GetOpAddress
 (
     pa_avc_LWM2MOperationDataRef_t opRef,   ///< [IN] Reference to LWM2M operation
     const char** objPrefixPtrPtr,           ///< [OUT] Pointer to object prefix string
@@ -242,7 +242,7 @@ void pa_avc_GetOpAddress
  * Get the operation payload for the give LWM2M Operation
  */
 //--------------------------------------------------------------------------------------------------
-void pa_avc_GetOpPayload
+LE_SHARED void pa_avc_GetOpPayload
 (
     pa_avc_LWM2MOperationDataRef_t opRef,   ///< [IN] Reference to LWM2M operation
     const uint8_t** payloadPtrPtr,          ///< [OUT] Pointer to payload, or NULL if no payload
@@ -260,7 +260,7 @@ void pa_avc_GetOpPayload
  *      - LE_FAULT on error
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_avc_OperationReportSuccess
+LE_SHARED le_result_t pa_avc_OperationReportSuccess
 (
     pa_avc_LWM2MOperationDataRef_t opRef,   ///< [IN] Reference to LWM2M operation
     const uint8_t* respPayloadPtr,          ///< [IN] Payload, or NULL if no payload
@@ -278,7 +278,7 @@ le_result_t pa_avc_OperationReportSuccess
  *      - LE_FAULT on error
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_avc_OperationReportError
+LE_SHARED le_result_t pa_avc_OperationReportError
 (
     pa_avc_LWM2MOperationDataRef_t opRef,   ///< [IN] Reference to LWM2M operation
     pa_avc_OpErr_t opError                  ///< [IN] Operation error
@@ -294,7 +294,7 @@ le_result_t pa_avc_OperationReportError
  *      - LE_FAULT on error
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_avc_RegistrationUpdate
+LE_SHARED le_result_t pa_avc_RegistrationUpdate
 (
     const char* updatePtr,          ///< [IN] List formatted for QMI_LWM2M_REG_UPDATE_REQ
     size_t updateNumBytes,          ///< [IN] Size of the update list
@@ -316,7 +316,7 @@ le_result_t pa_avc_RegistrationUpdate
  *      - LE_FAULT on error
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_avc_StartURIDownload
+LE_SHARED le_result_t pa_avc_StartURIDownload
 (
     const char* uriPtr,                         ///< [IN] URI giving location of file to download
     pa_avc_URIDownloadHandlerFunc_t handlerRef  ///< [IN] Handler to receive download status,
@@ -332,10 +332,9 @@ le_result_t pa_avc_StartURIDownload
  *      - LE_FAULT on failure
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_avc_ReadImage
+LE_SHARED le_result_t pa_avc_ReadImage
 (
-    int* fdPtr,         ///< [OUT] File descriptor for the image, ready for reading.
-    size_t numBytes     ///< [IN] Size of image in bytes
+    int* fdPtr        ///< [OUT] File descriptor for the image, ready for reading.
 );
 
 
@@ -346,7 +345,7 @@ le_result_t pa_avc_ReadImage
  * If the handler is NULL, then the previous handler will be removed.
  */
 //--------------------------------------------------------------------------------------------------
-void pa_avc_SetAVMSMessageHandler
+LE_SHARED void pa_avc_SetAVMSMessageHandler
 (
     pa_avc_AVMSMessageHandlerFunc_t handlerRef          ///< [IN] Handler for AVMS update status
 );
@@ -359,7 +358,7 @@ void pa_avc_SetAVMSMessageHandler
  * If the handler is NULL, then the previous handler will be removed.
  */
 //--------------------------------------------------------------------------------------------------
-void pa_avc_SetLWM2MOperationHandler
+LE_SHARED void pa_avc_SetLWM2MOperationHandler
 (
     pa_avc_LWM2MOperationHandlerFunc_t handlerRef       ///< [IN] Handler for LWM2M Operation
 );
@@ -372,7 +371,7 @@ void pa_avc_SetLWM2MOperationHandler
  * If the handler is NULL, then the previous handler will be removed.
  */
 //--------------------------------------------------------------------------------------------------
-void pa_avc_SetLWM2MUpdateRequiredHandler
+LE_SHARED void pa_avc_SetLWM2MUpdateRequiredHandler
 (
     pa_avc_LWM2MUpdateRequiredHandlerFunc_t handlerRef  ///< [IN] Handler for LWM2M Update Required
 );

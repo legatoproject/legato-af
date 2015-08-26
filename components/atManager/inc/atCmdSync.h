@@ -143,7 +143,7 @@ le_result_t atcmdsync_Init
  * @return pointer to the response
  */
 //--------------------------------------------------------------------------------------------------
-atcmdsync_ResultRef_t  atcmdsync_SendCommand
+LE_SHARED atcmdsync_ResultRef_t  atcmdsync_SendCommand
 (
     atmgr_Ref_t  interfaceRef, ///< Interface where to send the sync command
     atcmd_Ref_t  atReqRef      ///< AT Request to execute
@@ -155,7 +155,7 @@ atcmdsync_ResultRef_t  atcmdsync_SendCommand
  *
  */
 //--------------------------------------------------------------------------------------------------
-size_t atcmdsync_GetNumLines
+LE_SHARED size_t atcmdsync_GetNumLines
 (
     atcmdsync_ResultRef_t  resultRef
 );
@@ -166,7 +166,7 @@ size_t atcmdsync_GetNumLines
  *
  */
 //--------------------------------------------------------------------------------------------------
-char* atcmdsync_GetLine
+LE_SHARED char* atcmdsync_GetLine
 (
     atcmdsync_ResultRef_t   resultRef,
     uint32_t                index
@@ -179,7 +179,7 @@ char* atcmdsync_GetLine
  *
  */
 //--------------------------------------------------------------------------------------------------
-char* atcmdsync_GetFinalLine
+LE_SHARED char* atcmdsync_GetFinalLine
 (
     atcmdsync_ResultRef_t   resultRef
 );
@@ -190,7 +190,7 @@ char* atcmdsync_GetFinalLine
  *
  */
 //--------------------------------------------------------------------------------------------------
-void atcmdsync_Print
+LE_SHARED void atcmdsync_Print
 (
     atcmdsync_ResultRef_t   resultRef
 );
@@ -202,7 +202,7 @@ void atcmdsync_Print
  * @return the event id
  */
 //--------------------------------------------------------------------------------------------------
-le_event_Id_t atcmdsync_GetIntermediateEventId
+LE_SHARED le_event_Id_t atcmdsync_GetIntermediateEventId
 (
     void
 );
@@ -214,7 +214,7 @@ le_event_Id_t atcmdsync_GetIntermediateEventId
  * @return the event id
  */
 //--------------------------------------------------------------------------------------------------
-le_event_Id_t atcmdsync_GetFinalEventId
+LE_SHARED le_event_Id_t atcmdsync_GetFinalEventId
 (
     void
 );
@@ -226,7 +226,7 @@ le_event_Id_t atcmdsync_GetFinalEventId
  * @return le_timer_ExpiryHandler_t hander
  */
 //--------------------------------------------------------------------------------------------------
-le_timer_ExpiryHandler_t  atcmdsync_GetTimerExpiryHandler
+LE_SHARED le_timer_ExpiryHandler_t  atcmdsync_GetTimerExpiryHandler
 (
 );
 
@@ -241,7 +241,7 @@ le_timer_ExpiryHandler_t  atcmdsync_GetTimerExpiryHandler
  * @return LE_OK when pattern match : OK
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t atcmdsync_SendStandard
+LE_SHARED le_result_t atcmdsync_SendStandard
 (
     atmgr_Ref_t             interfaceRef,   ///< [IN] Interface where to send the sync command
     const char             *commandPtr,     ///< [IN] the command string to execute
@@ -257,7 +257,7 @@ le_result_t atcmdsync_SendStandard
  * @return reference on a new atcommand
  */
 //--------------------------------------------------------------------------------------------------
-atcmd_Ref_t atcmdsync_PrepareStandardCommand
+LE_SHARED atcmd_Ref_t atcmdsync_PrepareStandardCommand
 (
     const char          *commandPtr,    ///< [IN] the command string to execute
     const char         **intermediatePatternPtr, ///< [IN] intermediate pattern expected
@@ -275,7 +275,7 @@ atcmd_Ref_t atcmdsync_PrepareStandardCommand
  * @return LE_OK when finalSuccessPattern match
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t atcmdsync_CheckCommandResult
+LE_SHARED le_result_t atcmdsync_CheckCommandResult
 (
     atcmdsync_ResultRef_t  resultRef,    ///< [IN] the command result to check
     const char           **finalSuccessPatternPtr, ///< [IN] final pattern that will succeed
@@ -290,7 +290,7 @@ le_result_t atcmdsync_CheckCommandResult
  * @return LE_OK the string is filled
  */
 //--------------------------------------------------------------------------------------------------
-void atcmdsync_PrepareString
+LE_SHARED void atcmdsync_PrepareString
 (
     char        *commandPtr,    ///< [OUT] the command result to check
     uint32_t     commandSize,   ///< [IN] the commandPtr buffer size

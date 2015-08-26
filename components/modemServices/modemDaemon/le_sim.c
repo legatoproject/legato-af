@@ -523,6 +523,12 @@ static void NewSimStateHandler
             break;
     }
 
+    if ( eventPtr->simId != SelectedCard )
+    {
+        LE_DEBUG("New selected card");
+        SelectedCard = eventPtr->simId;
+    }
+
     // Notify all the registered client handlers
     simEvent.simId = eventPtr->simId;
     simEvent.state = eventPtr->state;
@@ -1310,12 +1316,6 @@ le_result_t le_sim_Unblock
     if(strlen(newpinPtr) > LE_SIM_PIN_MAX_LEN)
     {
         LE_KILL_CLIENT("strlen(newpinPtr) > %d", LE_SIM_PIN_MAX_LEN);
-        return LE_BAD_PARAMETER;
-    }
-
-    if(strlen(pukPtr) > LE_SIM_PIN_MAX_LEN)
-    {
-        LE_KILL_CLIENT("strlen(pukPtr) > %d", LE_SIM_PIN_MAX_LEN);
         return LE_BAD_PARAMETER;
     }
 

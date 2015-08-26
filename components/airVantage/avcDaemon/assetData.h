@@ -65,7 +65,7 @@ typedef struct assetData_AssetData* assetData_AssetDataRef_t;
  * Reference to an asset data instance.
  */
 //--------------------------------------------------------------------------------------------------
-typedef struct assetData_InstanceData* assetData_InstanceDataRef_t;
+typedef struct le_avdata_AssetInstance* assetData_InstanceDataRef_t;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -151,7 +151,7 @@ le_result_t FormatString
  *      - LE_FAULT on any other error
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t assetData_CreateInstanceById
+LE_SHARED le_result_t assetData_CreateInstanceById
 (
     const char* appNamePtr,                         ///< [IN] App containing the asset
     int assetId,                                    ///< [IN] Asset id within the App
@@ -171,7 +171,7 @@ le_result_t assetData_CreateInstanceById
  *      - LE_FAULT on any other error
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t assetData_CreateInstanceByName
+LE_SHARED le_result_t assetData_CreateInstanceByName
 (
     const char* appNamePtr,                         ///< [IN] App containing the asset
     const char* assetNamePtr,                       ///< [IN] Asset name within the App
@@ -186,7 +186,18 @@ le_result_t assetData_CreateInstanceByName
  * Delete the given asset instance
  */
 //--------------------------------------------------------------------------------------------------
-void assetData_DeleteInstance
+LE_SHARED void assetData_DeleteInstance
+(
+    assetData_InstanceDataRef_t instanceRef         ///< [IN] Asset instance to delete
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Delete the given asset instance, and if no more instances, also delete the asset data.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED void assetData_DeleteInstanceAndAsset
 (
     assetData_InstanceDataRef_t instanceRef         ///< [IN] Asset instance to delete
 );
@@ -202,7 +213,7 @@ void assetData_DeleteInstance
  *      - LE_FAULT on any other error
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t assetData_GetAssetRefById
+LE_SHARED le_result_t assetData_GetAssetRefById
 (
     const char* appNamePtr,                         ///< [IN] App containing the asset
     int assetId,                                    ///< [IN] Asset id within the App
@@ -220,7 +231,7 @@ le_result_t assetData_GetAssetRefById
  *      - LE_FAULT on any other error
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t assetData_GetAssetRefByName
+LE_SHARED le_result_t assetData_GetAssetRefByName
 (
     const char* appNamePtr,                         ///< [IN] App containing the asset
     const char* assetNamePtr,                       ///< [IN] Asset name within the App
@@ -238,7 +249,7 @@ le_result_t assetData_GetAssetRefByName
  *      - LE_FAULT on any other error
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t assetData_GetInstanceRefById
+LE_SHARED le_result_t assetData_GetInstanceRefById
 (
     const char* appNamePtr,                         ///< [IN] App containing the asset
     int assetId,                                    ///< [IN] Asset id within the App
@@ -257,7 +268,7 @@ le_result_t assetData_GetInstanceRefById
  *      - LE_FAULT on any other error
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t assetData_GetInstanceRefByName
+LE_SHARED le_result_t assetData_GetInstanceRefByName
 (
     const char* appNamePtr,                         ///< [IN] App containing the asset
     const char* assetNamePtr,                       ///< [IN] Asset name within the App
@@ -275,7 +286,7 @@ le_result_t assetData_GetInstanceRefByName
  *      - LE_FAULT on error
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t assetData_GetAppNameFromAsset
+LE_SHARED le_result_t assetData_GetAppNameFromAsset
 (
     assetData_AssetDataRef_t assetRef,          ///< [IN] Asset data to use
     char* nameBufPtr,                           ///< [OUT] The App name
@@ -292,7 +303,7 @@ le_result_t assetData_GetAppNameFromAsset
  *      - LE_FAULT on error
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t assetData_GetAssetIdFromAsset
+LE_SHARED le_result_t assetData_GetAssetIdFromAsset
 (
     assetData_AssetDataRef_t assetRef,          ///< [IN] Asset data to use
     int* assetIdPtr                             ///< [OUT] The Asset id
@@ -308,7 +319,7 @@ le_result_t assetData_GetAssetIdFromAsset
  *      - LE_FAULT on error
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t assetData_GetAppNameFromInstance
+LE_SHARED le_result_t assetData_GetAppNameFromInstance
 (
     assetData_InstanceDataRef_t instanceRef,    ///< [IN] Asset instance to use
     char* nameBufPtr,                           ///< [OUT] The App name
@@ -325,10 +336,26 @@ le_result_t assetData_GetAppNameFromInstance
  *      - LE_FAULT on error
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t assetData_GetAssetIdFromInstance
+LE_SHARED le_result_t assetData_GetAssetIdFromInstance
 (
     assetData_InstanceDataRef_t instanceRef,    ///< [IN] Asset instance to use
     int* assetIdPtr                             ///< [OUT] The Asset id
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get a reference to the Asset from the specified asset instance
+ *
+ * @return:
+ *      - LE_OK on success
+ *      - LE_FAULT on error
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t assetData_GetAssetRefFromInstance
+(
+    assetData_InstanceDataRef_t instanceRef,    ///< [IN] Asset instance to use
+    assetData_AssetDataRef_t* assetRefPtr       ///< [OUT] Reference to specified asset
 );
 
 
@@ -341,10 +368,27 @@ le_result_t assetData_GetAssetIdFromInstance
  *      - LE_FAULT on error
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t assetData_GetInstanceId
+LE_SHARED le_result_t assetData_GetInstanceId
 (
     assetData_InstanceDataRef_t instanceRef,    ///< [IN] Asset instance to use
     int* instanceIdPtr                          ///< [OUT] The instance id
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the field id for the given field name
+ *
+ * @return:
+ *      - LE_OK on success
+ *      - LE_FAULT on error
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t assetData_GetFieldIdFromName
+(
+    assetData_InstanceDataRef_t instanceRef,    ///< [IN] Asset instance to use
+    const char* fieldNamePtr,                   ///< [IN] The field name
+    int* fieldIdPtr                             ///< [OUT] The field id
 );
 
 
@@ -358,7 +402,7 @@ le_result_t assetData_GetInstanceId
  *      - LE_FAULT on any other error
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t assetData_client_GetInt
+LE_SHARED le_result_t assetData_client_GetInt
 (
     assetData_InstanceDataRef_t instanceRef,    ///< [IN] Asset instance to use
     int fieldId,                                ///< [IN] Field to read
@@ -376,7 +420,7 @@ le_result_t assetData_client_GetInt
  *      - LE_FAULT on any other error
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t assetData_client_SetInt
+LE_SHARED le_result_t assetData_client_SetInt
 (
     assetData_InstanceDataRef_t instanceRef,    ///< [IN] Asset instance to use
     int fieldId,                                ///< [IN] Field to write
@@ -394,7 +438,7 @@ le_result_t assetData_client_SetInt
  *      - LE_FAULT on any other error
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t assetData_client_GetBool
+LE_SHARED le_result_t assetData_client_GetBool
 (
     assetData_InstanceDataRef_t instanceRef,    ///< [IN] Asset instance to use
     int fieldId,                                ///< [IN] Field to read
@@ -412,7 +456,7 @@ le_result_t assetData_client_GetBool
  *      - LE_FAULT on any other error
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t assetData_client_SetBool
+LE_SHARED le_result_t assetData_client_SetBool
 (
     assetData_InstanceDataRef_t instanceRef,    ///< [IN] Asset instance to use
     int fieldId,                                ///< [IN] Field to write
@@ -431,7 +475,7 @@ le_result_t assetData_client_SetBool
  *      - LE_FAULT on any other error
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t assetData_client_GetString
+LE_SHARED le_result_t assetData_client_GetString
 (
     assetData_InstanceDataRef_t instanceRef,    ///< [IN] Asset instance to use
     int fieldId,                                ///< [IN] Field to read
@@ -451,7 +495,7 @@ le_result_t assetData_client_GetString
  *      - LE_FAULT on any other error
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t assetData_client_SetString
+LE_SHARED le_result_t assetData_client_SetString
 (
     assetData_InstanceDataRef_t instanceRef,    ///< [IN] Asset instance to use
     int fieldId,                                ///< [IN] Field to write
@@ -468,7 +512,7 @@ le_result_t assetData_client_SetString
  *      - On error, NULL
  */
 //--------------------------------------------------------------------------------------------------
-assetData_FieldActionHandlerRef_t assetData_client_AddFieldActionHandler
+LE_SHARED assetData_FieldActionHandlerRef_t assetData_client_AddFieldActionHandler
 (
     assetData_AssetDataRef_t assetRef,                  ///< [IN] Asset to monitor
     int fieldId,                                        ///< [IN] Field within asset to monitor
@@ -482,7 +526,7 @@ assetData_FieldActionHandlerRef_t assetData_client_AddFieldActionHandler
  * Remove a handler previously registered with assetData_client_AddFieldActionHandler
  */
 //--------------------------------------------------------------------------------------------------
-void assetData_client_RemoveFieldActionHandler
+LE_SHARED void assetData_client_RemoveFieldActionHandler
 (
     assetData_FieldActionHandlerRef_t handlerRef
 );
@@ -497,7 +541,7 @@ void assetData_client_RemoveFieldActionHandler
  *      - On error, NULL
  */
 //--------------------------------------------------------------------------------------------------
-assetData_AssetActionHandlerRef_t assetData_client_AddAssetActionHandler
+LE_SHARED assetData_AssetActionHandlerRef_t assetData_client_AddAssetActionHandler
 (
     assetData_AssetDataRef_t assetRef,                  ///< [IN] Asset to monitor
     assetData_AssetActionHandlerFunc_t handlerPtr,      ///< [IN] Handler to call upon action
@@ -510,7 +554,7 @@ assetData_AssetActionHandlerRef_t assetData_client_AddAssetActionHandler
  * Remove a handler previously registered with assetData_client_AddAssetActionHandler
  */
 //--------------------------------------------------------------------------------------------------
-void assetData_client_RemoveAssetActionHandler
+LE_SHARED void assetData_client_RemoveAssetActionHandler
 (
     assetData_AssetActionHandlerRef_t handlerRef
 );
@@ -526,7 +570,7 @@ void assetData_client_RemoveAssetActionHandler
  *      - LE_FAULT on any other error
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t assetData_server_GetInt
+LE_SHARED le_result_t assetData_server_GetInt
 (
     assetData_InstanceDataRef_t instanceRef,    ///< [IN] Asset instance to use
     int fieldId,                                ///< [IN] Field to read
@@ -544,7 +588,7 @@ le_result_t assetData_server_GetInt
  *      - LE_FAULT on any other error
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t assetData_server_SetInt
+LE_SHARED le_result_t assetData_server_SetInt
 (
     assetData_InstanceDataRef_t instanceRef,    ///< [IN] Asset instance to use
     int fieldId,                                ///< [IN] Field to write
@@ -562,7 +606,7 @@ le_result_t assetData_server_SetInt
  *      - LE_FAULT on any other error
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t assetData_server_GetBool
+LE_SHARED le_result_t assetData_server_GetBool
 (
     assetData_InstanceDataRef_t instanceRef,    ///< [IN] Asset instance to use
     int fieldId,                                ///< [IN] Field to read
@@ -580,7 +624,7 @@ le_result_t assetData_server_GetBool
  *      - LE_FAULT on any other error
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t assetData_server_SetBool
+LE_SHARED le_result_t assetData_server_SetBool
 (
     assetData_InstanceDataRef_t instanceRef,    ///< [IN] Asset instance to use
     int fieldId,                                ///< [IN] Field to write
@@ -599,7 +643,7 @@ le_result_t assetData_server_SetBool
  *      - LE_FAULT on any other error
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t assetData_server_GetString
+LE_SHARED le_result_t assetData_server_GetString
 (
     assetData_InstanceDataRef_t instanceRef,    ///< [IN] Asset instance to use
     int fieldId,                                ///< [IN] Field to read
@@ -619,7 +663,7 @@ le_result_t assetData_server_GetString
  *      - LE_FAULT on any other error
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t assetData_server_SetString
+LE_SHARED le_result_t assetData_server_SetString
 (
     assetData_InstanceDataRef_t instanceRef,    ///< [IN] Asset instance to use
     int fieldId,                                ///< [IN] Field to write
@@ -639,7 +683,7 @@ le_result_t assetData_server_SetString
  *      - LE_FAULT on any other error
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t assetData_server_GetValue
+LE_SHARED le_result_t assetData_server_GetValue
 (
     assetData_InstanceDataRef_t instanceRef,    ///< [IN] Asset instance to use
     int fieldId,                                ///< [IN] Field to read
@@ -661,7 +705,7 @@ le_result_t assetData_server_GetValue
  *      - LE_FAULT on any other error
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t assetData_server_SetValue
+LE_SHARED le_result_t assetData_server_SetValue
 (
     assetData_InstanceDataRef_t instanceRef,    ///< [IN] Asset instance to use
     int fieldId,                                ///< [IN] Field to write
@@ -681,7 +725,7 @@ le_result_t assetData_server_SetValue
  *      - LE_FAULT on any other error
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t assetData_server_GetValueAsBinary
+LE_SHARED le_result_t assetData_server_GetValueAsBinary
 (
     assetData_InstanceDataRef_t instanceRef,    ///< [IN] Asset instance to use
     int fieldId,                                ///< [IN] Field to read
@@ -701,7 +745,7 @@ le_result_t assetData_server_GetValueAsBinary
  *      - LE_FAULT on any other error
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t assetData_server_Execute
+LE_SHARED le_result_t assetData_server_Execute
 (
     assetData_InstanceDataRef_t instanceRef,    ///< [IN] Asset instance to use
     int fieldId                                 ///< [IN] Field to execute
@@ -717,7 +761,7 @@ le_result_t assetData_server_Execute
  *      - On error, NULL
  */
 //--------------------------------------------------------------------------------------------------
-assetData_FieldActionHandlerRef_t assetData_server_AddFieldActionHandler
+LE_SHARED assetData_FieldActionHandlerRef_t assetData_server_AddFieldActionHandler
 (
     assetData_AssetDataRef_t assetRef,                  ///< [IN] Asset to monitor
     int fieldId,                                        ///< [IN] Field within asset to monitor
@@ -731,7 +775,7 @@ assetData_FieldActionHandlerRef_t assetData_server_AddFieldActionHandler
  * Remove a handler previously registered with assetData_server_AddFieldActionHandler
  */
 //--------------------------------------------------------------------------------------------------
-void assetData_server_RemoveFieldActionHandler
+LE_SHARED void assetData_server_RemoveFieldActionHandler
 (
     assetData_FieldActionHandlerRef_t handlerRef
 );
@@ -746,7 +790,7 @@ void assetData_server_RemoveFieldActionHandler
  *      - On error, NULL
  */
 //--------------------------------------------------------------------------------------------------
-assetData_AssetActionHandlerRef_t assetData_server_AddAssetActionHandler
+LE_SHARED assetData_AssetActionHandlerRef_t assetData_server_AddAssetActionHandler
 (
     assetData_AssetDataRef_t assetRef,                  ///< [IN] Asset to monitor
     assetData_AssetActionHandlerFunc_t handlerPtr,      ///< [IN] Handler to call upon action
@@ -759,7 +803,7 @@ assetData_AssetActionHandlerRef_t assetData_server_AddAssetActionHandler
  * Remove a handler previously registered with assetData_server_AddAssetActionHandler
  */
 //--------------------------------------------------------------------------------------------------
-void assetData_server_RemoveAssetActionHandler
+LE_SHARED void assetData_server_RemoveAssetActionHandler
 (
     assetData_AssetActionHandlerRef_t handlerRef
 );
@@ -773,7 +817,7 @@ void assetData_server_RemoveAssetActionHandler
  *        then this can be added in the future.
  */
 //--------------------------------------------------------------------------------------------------
-void assetData_server_SetAllAssetActionHandler
+LE_SHARED void assetData_server_SetAllAssetActionHandler
 (
     assetData_AssetActionHandlerFunc_t handlerPtr,      ///< [IN] Handler to call upon action
     void* contextPtr                                    ///< [IN] User specified context pointer
@@ -785,7 +829,7 @@ void assetData_server_SetAllAssetActionHandler
  * Init this sub-component
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t assetData_Init
+LE_SHARED le_result_t assetData_Init
 (
     void
 );

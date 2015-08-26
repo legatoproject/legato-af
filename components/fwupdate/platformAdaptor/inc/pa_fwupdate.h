@@ -51,7 +51,7 @@
  *      - LE_FAULT on failure
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_fwupdate_Download
+LE_SHARED le_result_t pa_fwupdate_Download
 (
     int fd   ///< [IN] File descriptor of the image, opened to the start of the image.
 );
@@ -66,10 +66,9 @@ le_result_t pa_fwupdate_Download
  *      - LE_FAULT on failure
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_fwupdate_Read
+LE_SHARED le_result_t pa_fwupdate_Read
 (
-    int* fdPtr,         ///< [OUT] File descriptor for the image, ready for reading.
-    size_t numBytes     ///< [IN] Size of image in bytes
+    int* fdPtr         ///< [OUT] File descriptor for the image, ready for reading.
 );
 
 #endif // LEGATO_PA_FWUPDATE_INCLUDE_GUARD

@@ -5,6 +5,7 @@
 
 #include "legato.h"
 #include "atMachineString.h"
+#include "../inc/atCmdSync.h"
 
 #define DEFAULT_ATSTRING_POOL_SIZE      1
 static le_mem_PoolRef_t    AtStringPool;

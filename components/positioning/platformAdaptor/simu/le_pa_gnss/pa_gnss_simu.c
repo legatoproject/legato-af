@@ -266,6 +266,40 @@ le_result_t pa_gnss_GetExtendedEphemerisValidityTimes
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * This function enables the use of the 'Extended Ephemeris' file into the GNSS device.
+ *
+ * @return LE_FAULT         The function failed to enable the 'Extended Ephemeris' file.
+ * @return LE_OK            The function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_gnss_EnableExtendedEphemerisFile
+(
+    void
+)
+{
+    return LE_FAULT;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function disables the use of the 'Extended Ephemeris' file into the GNSS device.
+ *
+ * @return LE_FAULT         The function failed to disable the 'Extended Ephemeris' file.
+ * @return LE_OK            The function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_gnss_DisableExtendedEphemerisFile
+(
+    void
+)
+{
+    return LE_FAULT;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This function must be called to restart the GNSS device.
  *
  * @return LE_FAULT         The function failed.
@@ -275,6 +309,40 @@ le_result_t pa_gnss_GetExtendedEphemerisValidityTimes
 le_result_t pa_gnss_ForceRestart
 (
     pa_gnss_Restart_t  restartType ///< [IN] type of restart
+)
+{
+    return LE_FAULT;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function disables the GNSS device.
+ *
+ * @return LE_FAULT         The function failed.
+ * @return LE_OK            The function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_gnss_Disable
+(
+    void
+)
+{
+    return LE_FAULT;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function enables the GNSS device.
+ *
+ * @return LE_FAULT         The function failed.
+ * @return LE_OK            The function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_gnss_Enable
+(
+    void
 )
 {
     return LE_FAULT;

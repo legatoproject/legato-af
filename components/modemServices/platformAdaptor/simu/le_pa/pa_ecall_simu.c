@@ -190,13 +190,13 @@ le_result_t pa_ecall_GetMsdTxMode
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function must be called to load the Minimum Set of Data for the eCall.
+ * This function must be called to send the Minimum Set of Data for the eCall.
  *
  * @return LE_FAULT  The function failed.
  * @return LE_OK     The function succeed.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_ecall_LoadMsd
+le_result_t pa_ecall_SendMsd
 (
     uint8_t  *msdPtr,   ///< [IN] Encoded Msd
     size_t    msdSize   ///< [IN] msd buffer size
@@ -223,7 +223,8 @@ le_result_t pa_ecall_LoadMsd
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_ecall_Start
 (
-    pa_ecall_StartType_t callType
+    pa_ecall_StartType_t callType,
+    uint32_t *           callIdPtr
 )
 {
     // TODO implementation

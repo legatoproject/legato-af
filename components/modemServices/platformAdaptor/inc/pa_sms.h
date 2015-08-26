@@ -54,6 +54,13 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * The default timeout to send a SMS message in second.
+ */
+//--------------------------------------------------------------------------------------------------
+#define PA_SMS_SENDING_TIMEOUT (120)
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Option mask.
  * It is used to know which option is present in the pa_sms_Message_t.
  *
@@ -77,10 +84,13 @@ pa_sms_OptionMask_t;
 //--------------------------------------------------------------------------------------------------
 typedef enum
 {
-    PA_SMS_SMS_DELIVER       = 0, ///< SMS-DELIVER (in the direction Service Center to Mobile station).
-    PA_SMS_SMS_SUBMIT        = 1, ///< SMS-SUBMIT (in the direction Mobile station to Service Center).
-    PA_SMS_SMS_STATUS_REPORT = 2, ///< SMS-STATUS-REPORT.
-    PA_SMS_PDU               = 3  ///< PDU message.
+    PA_SMS_SMS_DELIVER        = 0, ///< SMS-DELIVER (in the direction Service Center
+                                   ///< to Mobile station).
+    PA_SMS_SMS_SUBMIT         = 1, ///< SMS-SUBMIT (in the direction Mobile station to Service
+                                   ///< Center).
+    PA_SMS_SMS_STATUS_REPORT  = 2, ///< SMS-STATUS-REPORT.
+    PA_SMS_PDU                = 3, ///< PDU message.
+    PA_SMS_SMS_CELL_BROADCAST = 4  ///< SMS Cell Broadcast.
 }
 pa_sms_MsgType_t;
 
@@ -92,9 +102,10 @@ pa_sms_MsgType_t;
 //--------------------------------------------------------------------------------------------------
 typedef enum
 {
-    PA_SMS_PROTOCOL_UNKNOWN = 0, ///< Unknown message protocol.
+    PA_SMS_PROTOCOL_UNKNOWN = 0,  ///< Unknown message protocol.
     PA_SMS_PROTOCOL_GSM     = 1,  ///< GSM message protocol.
     PA_SMS_PROTOCOL_CDMA    = 2,  ///< CDMA message protocol.
+    PA_SMS_PROTOCOL_GW_CB   = 3   ///< GW Cell Broadcast message protocol.
 }
 pa_sms_Protocol_t;
 
@@ -106,9 +117,10 @@ pa_sms_Protocol_t;
 //--------------------------------------------------------------------------------------------------
 typedef enum
 {
-    PA_SMS_STORAGE_UNKNOWN = 0,  ///< Unknown storage.
-    PA_SMS_STORAGE_NV     = 1,   ///< Memory SMS storage.
-    PA_SMS_STORAGE_SIM    = 2,   ///< Sim SMS storage.
+    PA_SMS_STORAGE_UNKNOWN = 0,   ///< Unknown storage.
+    PA_SMS_STORAGE_NV      = 1,   ///< Memory SMS storage.
+    PA_SMS_STORAGE_SIM     = 2,   ///< Sim SMS storage.
+    PA_SMS_STORAGE_NONE    = 3    ///< No SMS Storage (for SMS CB).
 }
 pa_sms_Storage_t;
 //--------------------------------------------------------------------------------------------------
@@ -178,6 +190,24 @@ pa_sms_Pdu_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Cell Broad Cast message type structure.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    pa_sms_Protocol_t   protocol;                    ///< mandatory, protocol used for encoding
+    le_sms_Format_t     format;                      ///< mandatory, SMS user data format
+    uint8_t             data[LE_SMS_TEXT_MAX_BYTES]; ///< mandatory, SMS user data
+    uint32_t            dataLen;                     ///< SMS user data length
+    uint16_t            serialNum;                   ///< SMS CB Serial Number 3GPP 03.41
+    uint16_t            mId;                         ///< SMS CB Message ID 3GPP 03.41
+    uint8_t             dcs;                         ///< SMS CB Data Coding Scheme 3GPP 03.41
+    uint8_t             pp;                          ///< SMS CB Page Parameter 3GPP 03.41
+}
+pa_sms_CellBroadcast_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Generic Message structure.
  *
  */
@@ -188,6 +218,7 @@ typedef struct {
         pa_sms_SmsDeliver_t       smsDeliver;
         pa_sms_SmsSubmit_t        smsSubmit;
         pa_sms_Pdu_t              pdu;
+        pa_sms_CellBroadcast_t    cellBroadcast;
     };
 }
 pa_sms_Message_t;
@@ -199,9 +230,11 @@ pa_sms_Message_t;
  */
 //--------------------------------------------------------------------------------------------------
 typedef struct {
-    uint32_t          msgIndex; ///< Message index
-    pa_sms_Protocol_t protocol; ///< protocol used
-    pa_sms_Storage_t  storage;  ///< SMS Storage used
+    uint32_t          msgIndex;    ///< Message index
+    pa_sms_Protocol_t protocol;    ///< protocol used
+    pa_sms_Storage_t  storage;     ///< SMS Storage used
+    uint8_t           pduLen;      ///< Cell Broadcast PDU len
+    uint8_t           pduCB[255];  ///< Cell Broadcast PDU data
 }
 pa_sms_NewMessageIndication_t;
 
@@ -226,7 +259,7 @@ typedef void (*pa_sms_NewMsgHdlrFunc_t)
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_sms_SetNewMsgHandler
+LE_SHARED le_result_t pa_sms_SetNewMsgHandler
 (
     pa_sms_NewMsgHdlrFunc_t msgHandler   ///< [IN] The handler function to handle a new message
                                          ///       reception.
@@ -240,7 +273,7 @@ le_result_t pa_sms_SetNewMsgHandler
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_sms_ClearNewMsgHandler
+LE_SHARED le_result_t pa_sms_ClearNewMsgHandler
 (
     void
 );
@@ -254,11 +287,12 @@ le_result_t pa_sms_ClearNewMsgHandler
  * @return a positive value   The function succeeded. The value represents the message reference.
  */
 //--------------------------------------------------------------------------------------------------
-int32_t pa_sms_SendPduMsg
+LE_SHARED int32_t pa_sms_SendPduMsg
 (
     pa_sms_Protocol_t        protocol,   ///< [IN] protocol to use
     uint32_t                 length,     ///< [IN] The length of the TP data unit in bytes.
     const uint8_t           *dataPtr,    ///< [IN] The message.
+    uint32_t                 timeout,    ///< [IN] Timeout in seconds.
     pa_sms_SendingErrCode_t *errorCode   ///< [OUT] The error code.
 );
 
@@ -272,7 +306,7 @@ int32_t pa_sms_SendPduMsg
  * @return LE_OK           The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_sms_RdPDUMsgFromMem
+LE_SHARED le_result_t pa_sms_RdPDUMsgFromMem
 (
     uint32_t            index,      ///< [IN]  The place of storage in memory.
     pa_sms_Protocol_t   protocol,   ///< [IN] The protocol used for this message
@@ -292,7 +326,7 @@ le_result_t pa_sms_RdPDUMsgFromMem
  * @return LE_OK             The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_sms_ListMsgFromMem
+LE_SHARED le_result_t pa_sms_ListMsgFromMem
 (
     le_sms_Status_t     status,     ///< [IN] The status of message in memory.
     pa_sms_Protocol_t   protocol,   ///< [IN] The protocol to read
@@ -312,7 +346,7 @@ le_result_t pa_sms_ListMsgFromMem
  * @return LE_OK             The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_sms_DelMsgFromMem
+LE_SHARED le_result_t pa_sms_DelMsgFromMem
 (
     uint32_t            index,    ///< [IN] Index of the message to be deleted.
     pa_sms_Protocol_t   protocol, ///< [IN] protocol
@@ -328,7 +362,7 @@ le_result_t pa_sms_DelMsgFromMem
  * @return LE_OK           The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_sms_DelAllMsg
+LE_SHARED le_result_t pa_sms_DelAllMsg
 (
     void
 );
@@ -342,7 +376,7 @@ le_result_t pa_sms_DelAllMsg
  * @return LE_OK           The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_sms_ChangeMessageStatus
+LE_SHARED le_result_t pa_sms_ChangeMessageStatus
 (
     uint32_t            index,    ///< [IN] Index of the message to be deleted.
     pa_sms_Protocol_t   protocol, ///< [IN] protocol
@@ -360,7 +394,7 @@ le_result_t pa_sms_ChangeMessageStatus
  *   - LE_OK           The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_sms_GetSmsc
+LE_SHARED le_result_t pa_sms_GetSmsc
 (
     char*        smscPtr,  ///< [OUT] The Short message service center string.
     size_t       len       ///< [IN] The length of SMSC string.
@@ -376,11 +410,152 @@ le_result_t pa_sms_GetSmsc
  *   - LE_OK           The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_sms_SetSmsc
+LE_SHARED le_result_t pa_sms_SetSmsc
 (
     const char*    smscPtr  ///< [IN] The Short message service center.
 );
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Activate Cell Broadcast message notification
+ *
+ * @return
+ *  - LE_FAULT         Function failed.
+ *  - LE_OK            Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_sms_ActivateCellBroadcast
+(
+    pa_sms_Protocol_t protocol
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Deactivate Cell Broadcast message notification
+ *
+ * @return
+ *  - LE_FAULT         Function failed.
+ *  - LE_OK            Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_sms_DeactivateCellBroadcast
+(
+    pa_sms_Protocol_t protocol
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add Cell Broadcast message Identifiers range.
+ *
+ * @return
+ *  - LE_FAULT         Function failed.
+ *  - LE_OK            Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_sms_AddCellBroadcastIds
+(
+    uint16_t fromId,
+        ///< [IN]
+        ///< Starting point of the range of cell broadcast message identifier.
+
+    uint16_t toId
+        ///< [IN]
+        ///< Ending point of the range of cell broadcast message identifier.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Remove Cell Broadcast message Identifiers range.
+ *
+ * @return
+ *  - LE_FAULT         Function failed.
+ *  - LE_OK            Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_sms_RemoveCellBroadcastIds
+(
+    uint16_t fromId,
+        ///< [IN]
+        ///< Starting point of the range of cell broadcast message identifier.
+
+    uint16_t toId
+        ///< [IN]
+        ///< Ending point of the range of cell broadcast message identifier.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Clear Cell Broadcast message Identifiers range.
+ *
+ * @return
+ *  - LE_FAULT         Function failed.
+ *  - LE_OK            Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_sms_ClearCellBroadcastIds
+(
+    void
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add CDMA Cell Broadcast category services.
+ *
+ * @return
+ *  - LE_FAULT         Function failed.
+ *  - LE_OK            Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_sms_AddCdmaCellBroadcastServices
+(
+    le_sms_CdmaServiceCat_t serviceCat,
+        ///< [IN]
+        ///< Service category assignment. Reference to 3GPP2 C.R1001-D
+        ///< v1.0 Section 9.3.1 Standard Service Category Assignments.
+
+    le_sms_Languages_t language
+        ///< [IN]
+        ///< Language Indicator. Reference to
+        ///< 3GPP2 C.R1001-D v1.0 Section 9.2.1 Language Indicator
+        ///< Value Assignments
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Remove CDMA Cell Broadcast category services.
+ *
+ * @return
+ *  - LE_FAULT         Function failed.
+ *  - LE_OK            Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_sms_RemoveCdmaCellBroadcastServices
+(
+    le_sms_CdmaServiceCat_t serviceCat,
+        ///< [IN]
+        ///< Service category assignment. Reference to 3GPP2 C.R1001-D
+        ///< v1.0 Section 9.3.1 Standard Service Category Assignments.
+
+    le_sms_Languages_t language
+        ///< [IN]
+        ///< Language Indicator. Reference to
+        ///< 3GPP2 C.R1001-D v1.0 Section 9.2.1 Language Indicator
+        ///< Value Assignments
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Clear CDMA Cell Broadcast category services.
+ *
+ * @return
+ *  - LE_FAULT         Function failed.
+ *  - LE_OK            Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_sms_ClearCdmaCellBroadcastServices
+(
+    void
+);
 
 #endif // LEGATO_PASMS_INCLUDE_GUARD

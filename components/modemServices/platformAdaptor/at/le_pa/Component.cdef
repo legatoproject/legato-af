@@ -2,8 +2,7 @@ requires:
 {
     api:
     {
-        le_audio.api      [types-only]
-        le_mcc_call.api   [types-only]
+        le_mcc.api        [types-only]
         le_mdc.api        [types-only]
         le_mrc.api        [types-only]
         le_sim.api        [types-only]
@@ -13,6 +12,7 @@ requires:
         le_temp.api       [types-only]
         le_antenna.api    [types-only]
         le_adc.api        [types-only]
+        le_rtc.api        [types-only]
     }
 }
 
@@ -32,6 +32,7 @@ sources:
     pa_antenna.c
     pa_riPin.c
     pa_adc.c
+    pa_rtc.c
 }
 
 requires:

@@ -62,7 +62,7 @@ typedef void (*pa_temp_ThresholdInd_HandlerFunc_t)
  *      - LE_FAULT         The function failed to get the temperature.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_temp_GetRadioTemperature
+LE_SHARED le_result_t pa_temp_GetRadioTemperature
 (
     int32_t* radioTempPtr
         ///< [OUT]
@@ -78,7 +78,7 @@ le_result_t pa_temp_GetRadioTemperature
  *      - LE_FAULT         The function failed to get the temperature.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_temp_GetPlatformTemperature
+LE_SHARED le_result_t pa_temp_GetPlatformTemperature
 (
     int32_t* platformTempPtr
         ///< [OUT]
@@ -93,7 +93,7 @@ le_result_t pa_temp_GetPlatformTemperature
  * @return A handler reference, which is only needed for later removal of the handler.
  */
 //--------------------------------------------------------------------------------------------------
-le_event_HandlerRef_t* pa_temp_AddTempEventHandler
+LE_SHARED le_event_HandlerRef_t* pa_temp_AddTempEventHandler
 (
     pa_temp_ThresholdInd_HandlerFunc_t   msgHandler
 );
@@ -109,7 +109,7 @@ le_event_HandlerRef_t* pa_temp_AddTempEventHandler
  *      - LE_FAULT         The function failed to set the thresholds.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_temp_SetRadioThresholds
+LE_SHARED le_result_t pa_temp_SetRadioThresholds
 (
     int32_t hiWarningTemp,
         ///< [IN]
@@ -129,7 +129,7 @@ le_result_t pa_temp_SetRadioThresholds
  *      - LE_FAULT         The function failed to get the thresholds.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_temp_GetRadioThresholds
+LE_SHARED le_result_t pa_temp_GetRadioThresholds
 (
     int32_t* hiWarningTempPtr,
         ///< [OUT]
@@ -152,7 +152,7 @@ le_result_t pa_temp_GetRadioThresholds
  *      - LE_FAULT         The function failed to set the thresholds.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_temp_SetPlatformThresholds
+LE_SHARED le_result_t pa_temp_SetPlatformThresholds
 (
     int32_t lowCriticalTemp,
         ///< [IN]
@@ -181,7 +181,7 @@ le_result_t pa_temp_SetPlatformThresholds
  *      - LE_FAULT         The function failed to get the thresholds.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_temp_GetPlatformThresholds
+LE_SHARED le_result_t pa_temp_GetPlatformThresholds
 (
     int32_t* lowCriticalTempPtr,
         ///< [OUT]
@@ -209,6 +209,10 @@ le_result_t pa_temp_GetPlatformThresholds
  * @return
  * - LE_OK if successful.
  * - LE_FAULT if unsuccessful.
+ *
+ * @note This function should not be called from outside the platform adapter.
+ *
+ * @todo Move this prototype to another (internal) header.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_temp_Init

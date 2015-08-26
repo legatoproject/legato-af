@@ -7,7 +7,7 @@
 #ifndef PA_SIMU_INCLUDE_GUARD
 #define PA_SIMU_INCLUDE_GUARD
 
-#define PA_SIMU_CFG_MODEM_ROOT	"/simulation/modem"
+#define PA_SIMU_CFG_MODEM_ROOT  "/simulation/modem"
 
 /* Info */
 
@@ -34,40 +34,16 @@ bool mrc_simu_IsOnline
 
 /* SIM */
 
-#define PA_SIMU_SIM_DEFAULT_ICCID   "12345678901234567890"
-#define PA_SIMU_SIM_DEFAULT_IMSI    "424242424242424"
-#define PA_SIMU_SIM_DEFAULT_NUM     "+33600112233"
-#define PA_SIMU_SIM_DEFAULT_PIN     "0000"
-#define PA_SIMU_SIM_DEFAULT_PUK     "12345678"
-#define PA_SIMU_SIM_DEFAULT_STATE   "READY"
-#define PA_SIMU_SIM_DEFAULT_CARRIER "Simu"
 #define PA_SIMU_SIM_DEFAULT_MCC     "01"
 #define PA_SIMU_SIM_DEFAULT_MNC     "001"
 
-le_result_t sim_simu_Init
-(
-    void
-);
+
 
 /* SMS */
 
 #define PA_SIMU_SMS_DEFAULT_SMSC    ""
 
 le_result_t sms_simu_Init
-(
-    void
-);
-
-/* MDC */
-
-#define PA_SIMU_MDC_DEFAULT_IF      "eth0"
-#define PA_SIMU_MDC_DEFAULT_APN     "internet"
-#define PA_SIMU_MDC_DEFAULT_GW      "192.168.100.1"
-#define PA_SIMU_MDC_DEFAULT_IP      "192.168.100.10"
-#define PA_SIMU_MDC_PRIMARY_DNS     "8.8.8.8"
-#define PA_SIMU_MDC_SECONDARY_DNS   "8.8.4.4"
-
-le_result_t mdc_simu_Init
 (
     void
 );

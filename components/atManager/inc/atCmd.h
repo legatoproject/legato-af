@@ -25,19 +25,19 @@
  *
  * @section atcmd_rational Rational
  *
- * As we work with event approch, we must be aware that some @ref le_event_Id_t must be create
+ * As we work with the event approach, we must be aware that some @ref le_event_Id_t must be create
  * to be able to be wake up by the "atMgr thread".
  * These @ref le_event_Id_t will be used for intermediate or final pattern matching.
  *
  * @subsection atcmd_handler Handler implementation
  *
- * As a developper, we need to add a handler to @ref le_event_Id_t and its report pointer will be
+ * As a developer, we need to add a handler to @ref le_event_Id_t and its report pointer will be
  * an @ref atcmd_Response_t.
- * With that the developper can know from which AT Command there is an intermediate or a final
+ * With that the developer can know from which AT Command there is an intermediate or a final
  * pattern.
  *
  * There is another handler to implement, this is the @ref le_timer_ExpiryHandler_t.
- * The developper should implement this handler, and he has to know that when calling
+ * The developer should implement this handler, and he has to know that when calling
  * @ref le_timer_GetContextPtr, he will have a reference on an @ref atcmd_Ref_t
  *
  * @subsection atcmd_functions Functions
@@ -223,7 +223,7 @@ typedef struct atresponse {
  * @return pointer to the new AT Command
  */
 //--------------------------------------------------------------------------------------------------
-atcmd_Ref_t atcmd_Create
+LE_SHARED atcmd_Ref_t atcmd_Create
 (
     void
 );
@@ -234,7 +234,7 @@ atcmd_Ref_t atcmd_Create
  *
  */
 //--------------------------------------------------------------------------------------------------
-void atcmd_AddFinalResp
+LE_SHARED void atcmd_AddFinalResp
 (
     atcmd_Ref_t     atCommandRef,  ///< AT Command
     le_event_Id_t   reportId,      ///< Event Id to report to
@@ -248,7 +248,7 @@ void atcmd_AddFinalResp
  *
  */
 //--------------------------------------------------------------------------------------------------
-void atcmd_AddIntermediateResp
+LE_SHARED void atcmd_AddIntermediateResp
 (
     atcmd_Ref_t     atCommandRef,          ///< AT Command
     le_event_Id_t   reportId,              ///< Event Id to report to
@@ -261,7 +261,7 @@ void atcmd_AddIntermediateResp
  *
  */
 //--------------------------------------------------------------------------------------------------
-void atcmd_AddCommand
+LE_SHARED void atcmd_AddCommand
 (
     atcmd_Ref_t     atCommandRef,  ///< AT Command
     const char     *commandPtr,    ///< the command to send
@@ -274,7 +274,7 @@ void atcmd_AddCommand
  *
  */
 //--------------------------------------------------------------------------------------------------
-void atcmd_AddData
+LE_SHARED void atcmd_AddData
 (
     atcmd_Ref_t     atCommandRef,  ///< AT Command
     const char     *dataPtr,       ///< the data to send if expectPrompt is true
@@ -287,7 +287,7 @@ void atcmd_AddData
  *
  */
 //--------------------------------------------------------------------------------------------------
-void atcmd_SetTimer
+LE_SHARED void atcmd_SetTimer
 (
     atcmd_Ref_t              atCommandRef,  ///< AT Command
     uint32_t                 timer,          ///< the timer
@@ -300,7 +300,7 @@ void atcmd_SetTimer
  *
  */
 //--------------------------------------------------------------------------------------------------
-uint32_t atcmd_GetId
+LE_SHARED uint32_t atcmd_GetId
 (
     atcmd_Ref_t atCommandRef  ///< AT Command
 );
@@ -311,7 +311,7 @@ uint32_t atcmd_GetId
  *
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t atcmd_GetCommand
+LE_SHARED le_result_t atcmd_GetCommand
 (
     atcmd_Ref_t  atCommandRef,  ///< AT Command
     char        *commandPtr,    ///< [IN/OUT] command buffer
@@ -335,7 +335,7 @@ le_result_t atcmd_GetCommand
  * @return the number of paremeter in the line
  */
 //--------------------------------------------------------------------------------------------------
-uint32_t atcmd_CountLineParameter
+LE_SHARED uint32_t atcmd_CountLineParameter
 (
     char        *linePtr       ///< [IN/OUT] line to parse
 );
@@ -350,7 +350,7 @@ uint32_t atcmd_CountLineParameter
  * @return pointer to the string at pos position in Line
  */
 //--------------------------------------------------------------------------------------------------
-char* atcmd_GetLineParameter
+LE_SHARED char* atcmd_GetLineParameter
 (
     const char* linePtr,   ///< [IN] Line to read
     uint32_t    pos     ///< [IN] Position to read
@@ -364,7 +364,7 @@ char* atcmd_GetLineParameter
  * @return number of char really copy
  */
 //--------------------------------------------------------------------------------------------------
-uint32_t atcmd_CopyStringWithoutQuote
+LE_SHARED uint32_t atcmd_CopyStringWithoutQuote
 (
     char*       outBufferPtr,  ///< [OUT] final buffer
     const char* inBufferPtr,   ///< [IN] initial buffer

@@ -87,7 +87,16 @@ typedef struct le_pos_Sample
     int32_t         direction;       ///< direction
     bool            directionAccuracyValid; ///< if true, direction accuracy is set
     int32_t         directionAccuracy; ///< direction accuracy
-    le_dls_Link_t   link;            ///< Object node link
+    bool            dateValid;          ///< if true, date is set
+    uint16_t        year;               ///< UTC Year A.D. [e.g. 2014].
+    uint16_t        month;              ///< UTC Month into the year [range 1...12].
+    uint16_t        day;                ///< UTC Days into the month [range 1...31].
+    bool            timeValid;          ///< if true, time is set
+    uint16_t        hours;              ///< UTC Hours into the day [range 0..23].
+    uint16_t        minutes;            ///< UTC Minutes into the hour [range 0..59].
+    uint16_t        seconds;            ///< UTC Seconds into the minute [range 0..59].
+    uint16_t        milliseconds;       ///< UTC Milliseconds into the second [range 0..999].
+    le_dls_Link_t   link;               ///< Object node link
 }
 le_pos_Sample_t;
 
@@ -539,13 +548,22 @@ static void PosSampleHandlerfunc
                     posSampleNodePtr->direction = position->track;
                     posSampleNodePtr->directionAccuracyValid = position->trackUncertaintyValid;
                     posSampleNodePtr->directionAccuracy = position->trackUncertainty;
+                    posSampleNodePtr->dateValid = position->dateValid;
+                    posSampleNodePtr->year = position->date.year;
+                    posSampleNodePtr->month = position->date.month;
+                    posSampleNodePtr->day = position->date.day;
+                    posSampleNodePtr->timeValid = position->timeValid;
+                    posSampleNodePtr->hours = position->time.hours;
+                    posSampleNodePtr->minutes = position->time.minutes;
+                    posSampleNodePtr->seconds = position->time.seconds;
+                    posSampleNodePtr->milliseconds = position->time.milliseconds;
                     posSampleNodePtr->link = LE_DLS_LINK_INIT;
 
                     // Add the node to the queue of the list by passing in the node's link.
                     le_dls_Queue(&PosSampleList, &(posSampleNodePtr->link));
                 }
 
-                // Save the infirmation reported to the handler function
+                // Save the information reported to the handler function
                 posSampleHandlerNodePtr->lastLat = position->latitude;
                 posSampleHandlerNodePtr->lastLong = position->longitude;
                 posSampleHandlerNodePtr->lastAlt = position->altitude;
@@ -760,7 +778,7 @@ le_posCtrl_ActivationRef_t le_posCtrl_Request
     if (CurrentActivationsCount == 0)
     {
         // Start the GNSS acquisition.
-        if (pa_gnss_Start() != LE_OK)
+        if (le_gnss_Start() != LE_OK)
         {
             le_ref_DeleteRef(ActivationRequestRefMap, reqRef);
             le_mem_Release(clientRequestPtr);
@@ -805,7 +823,7 @@ void le_posCtrl_Release
             CurrentActivationsCount--;
             if(CurrentActivationsCount == 0)
             {
-                pa_gnss_Stop();
+                le_gnss_Stop();
             }
         }
         le_ref_DeleteRef(ActivationRequestRefMap, ref);
@@ -996,6 +1014,141 @@ le_result_t le_pos_sample_Get2DLocation
 
     return result;
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the position sample's time.
+ *
+ * @return LE_FAULT         Function failed to get the time.
+ * @return LE_OUT_OF_RANGE  The retrieved time is invalid (all fields are set to 0).
+ * @return LE_OK            Function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_pos_sample_GetTime
+(
+    le_pos_SampleRef_t  positionSampleRef,  ///< [IN] The position sample's reference.
+    uint16_t* hoursPtr,                     ///< UTC Hours into the day [range 0..23].
+    uint16_t* minutesPtr,                   ///< UTC Minutes into the hour [range 0..59].
+    uint16_t* secondsPtr,                   ///< UTC Seconds into the minute [range 0..59].
+    uint16_t* millisecondsPtr               ///< UTC Milliseconds into the second [range 0..999].
+)
+{
+    le_result_t result = LE_OK;
+    le_pos_Sample_t* positionSamplePtr = le_ref_Lookup(PosSampleMap,positionSampleRef);
+
+    if ( positionSamplePtr == NULL) {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!",positionSampleRef);
+        return LE_FAULT;
+    }
+
+    if (positionSamplePtr->timeValid)
+    {
+        result = LE_OK;
+        if (hoursPtr)
+        {
+            *hoursPtr = positionSamplePtr->hours;
+        }
+        if (minutesPtr)
+        {
+            *minutesPtr = positionSamplePtr->minutes;
+        }
+        if (secondsPtr)
+        {
+            *secondsPtr = positionSamplePtr->seconds;
+        }
+        if (millisecondsPtr)
+        {
+            *millisecondsPtr = positionSamplePtr->milliseconds;
+        }
+    }
+    else
+    {
+        result = LE_OUT_OF_RANGE;
+        if (hoursPtr)
+        {
+            *hoursPtr = 0;
+        }
+        if (minutesPtr)
+        {
+            *minutesPtr = 0;
+        }
+        if (secondsPtr)
+        {
+            *secondsPtr = 0;
+        }
+        if (millisecondsPtr)
+        {
+            *millisecondsPtr = 0;
+        }
+    }
+
+    return result;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the position sample's date.
+ *
+ * @return LE_FAULT         Function failed to get the date.
+ * @return LE_OUT_OF_RANGE  The retrieved date is invalid (all fields are set to 0).
+ * @return LE_OK            Function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_pos_sample_GetDate
+(
+    le_pos_SampleRef_t  positionSampleRef,  ///< [IN] The position sample's reference.
+    uint16_t* yearPtr,                      ///< UTC Year A.D. [e.g. 2014].
+    uint16_t* monthPtr,                     ///< UTC Month into the year [range 1...12].
+    uint16_t* dayPtr                        ///< UTC Days into the month [range 1...31].
+)
+{
+    le_result_t result = LE_OK;
+    le_pos_Sample_t* positionSamplePtr = le_ref_Lookup(PosSampleMap,positionSampleRef);
+
+    if ( positionSamplePtr == NULL) {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!",positionSampleRef);
+        return LE_FAULT;
+    }
+
+    if (positionSamplePtr->dateValid)
+    {
+        result = LE_OK;
+        if (yearPtr)
+        {
+            *yearPtr = positionSamplePtr->year;
+        }
+        if (monthPtr)
+        {
+            *monthPtr = positionSamplePtr->month;
+        }
+        if (dayPtr)
+        {
+            *dayPtr = positionSamplePtr->day;
+        }
+    }
+    else
+    {
+        result = LE_OUT_OF_RANGE;
+        if (yearPtr)
+        {
+            *yearPtr = 0;
+        }
+        if (monthPtr)
+        {
+            *monthPtr = 0;
+        }
+        if (dayPtr)
+        {
+            *dayPtr = 0;
+        }
+    }
+
+    return result;
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1394,6 +1547,144 @@ le_result_t le_pos_Get3DLocation
         }
         return result;
     }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the time of the last updated location
+ *
+ * @return LE_FAULT         Function failed to get the time.
+ * @return LE_OUT_OF_RANGE  The retrieved time is invalid (all fields are set to 0).
+ * @return LE_OK            Function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_pos_GetTime
+(
+    uint16_t* hoursPtr,            ///< UTC Hours into the day [range 0..23].
+    uint16_t* minutesPtr,          ///< UTC Minutes into the hour [range 0..59].
+    uint16_t* secondsPtr,          ///< UTC Seconds into the minute [range 0..59].
+    uint16_t* millisecondsPtr      ///< UTC Milliseconds into the second [range 0..999].
+)
+{
+    le_result_t result = LE_FAULT;
+    pa_Gnss_Position_t  data;
+
+    // Register a handler function for Call Event indications
+    if (pa_gnss_GetLastPositionData(&data) != LE_OK)
+    {
+        result = LE_FAULT;
+    }
+    else
+    {
+        if (data.timeValid)
+        {
+            result = LE_OK;
+            if (hoursPtr)
+            {
+                *hoursPtr = data.time.hours;
+            }
+            if (minutesPtr)
+            {
+                *minutesPtr = data.time.minutes;
+            }
+            if (secondsPtr)
+            {
+                *secondsPtr = data.time.seconds;
+            }
+            if (millisecondsPtr)
+            {
+                *millisecondsPtr = data.time.milliseconds;
+            }
+        }
+        else
+        {
+            result = LE_OUT_OF_RANGE;
+            if (hoursPtr)
+            {
+                *hoursPtr = 0;
+            }
+            if (minutesPtr)
+            {
+                *minutesPtr = 0;
+            }
+            if (secondsPtr)
+            {
+                *secondsPtr = 0;
+            }
+            if (millisecondsPtr)
+            {
+                *millisecondsPtr = 0;
+            }
+        }
+    }
+
+    return result;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the date of the last updated location
+ *
+ * @return LE_FAULT         Function failed to get the date.
+ * @return LE_OUT_OF_RANGE  The retrieved date is invalid (all fields are set to 0).
+ * @return LE_OK            Function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_pos_GetDate
+(
+    uint16_t* yearPtr,             ///< UTC Year A.D. [e.g. 2014].
+    uint16_t* monthPtr,            ///< UTC Month into the year [range 1...12].
+    uint16_t* dayPtr               ///< UTC Days into the month [range 1...31].
+)
+{
+    le_result_t result = LE_FAULT;
+    pa_Gnss_Position_t  data;
+
+    // Register a handler function for Call Event indications
+    if (pa_gnss_GetLastPositionData(&data) != LE_OK)
+    {
+        result = LE_FAULT;
+    }
+    else
+    {
+        if (data.dateValid)
+        {
+            result = LE_OK;
+            if (yearPtr)
+            {
+                *yearPtr = data.date.year;
+            }
+            if (monthPtr)
+            {
+                *monthPtr = data.date.month;
+            }
+            if (dayPtr)
+            {
+                *dayPtr = data.date.day;
+            }
+        }
+        else
+        {
+            result = LE_OUT_OF_RANGE;
+            if (yearPtr)
+            {
+                *yearPtr = 0;
+            }
+            if (monthPtr)
+            {
+                *monthPtr = 0;
+            }
+            if (dayPtr)
+            {
+                *dayPtr = 0;
+            }
+        }
+    }
+
+    return result;
 }
 
 //--------------------------------------------------------------------------------------------------

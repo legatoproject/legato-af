@@ -165,6 +165,17 @@ typedef struct
 }
 pa_audio_SamplePcmConfig_t;
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Configuration of AMR samples.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    le_audio_AmrMode_t amrMode;      ///< AMR mode
+    bool dtx;                        ///< AMR discontinuous transmission
+}
+pa_audio_SampleAmrConfig_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -200,27 +211,13 @@ typedef struct pa_audio_StreamEventHandlerRef* pa_audio_StreamEventHandlerRef_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function must be called to initialize the PA Audio module.
- *
- * @return
- *      LE_OK if successful.
- *      LE_FAULT if unsuccessful.
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t pa_audio_Init
-(
-    void
-);
-
-//--------------------------------------------------------------------------------------------------
-/**
  * This function must be called to set the timeslot number of a PCM interface.
  *
  * @return LE_FAULT         The function failed to set the timeslot number.
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_audio_SetPcmTimeSlot
+LE_SHARED le_result_t pa_audio_SetPcmTimeSlot
 (
     pa_audio_If_t interface,
     uint32_t      timeslot
@@ -234,7 +231,7 @@ le_result_t pa_audio_SetPcmTimeSlot
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_audio_SetI2sChannelMode
+LE_SHARED le_result_t pa_audio_SetI2sChannelMode
 (
     pa_audio_If_t          interface,
     le_audio_I2SChannel_t  mode
@@ -248,7 +245,7 @@ le_result_t pa_audio_SetI2sChannelMode
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_audio_SetMasterMode
+LE_SHARED le_result_t pa_audio_SetMasterMode
 (
     pa_audio_If_t interface
 );
@@ -261,7 +258,7 @@ le_result_t pa_audio_SetMasterMode
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_audio_SetSlaveMode
+LE_SHARED le_result_t pa_audio_SetSlaveMode
 (
     pa_audio_If_t interface
 );
@@ -274,7 +271,7 @@ le_result_t pa_audio_SetSlaveMode
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_audio_SetDspAudioPath
+LE_SHARED le_result_t pa_audio_SetDspAudioPath
 (
     pa_audio_If_t inputInterface,    ///< [IN] input audio interface
     pa_audio_If_t outputInterface    ///< [IN] output audio interface
@@ -288,7 +285,7 @@ le_result_t pa_audio_SetDspAudioPath
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_audio_FlagForResetDspAudioPath
+LE_SHARED le_result_t pa_audio_FlagForResetDspAudioPath
 (
     pa_audio_If_t inputInterface,    ///< [IN] input audio interface
     pa_audio_If_t outputInterface    ///< [IN] output audio interface
@@ -300,7 +297,7 @@ le_result_t pa_audio_FlagForResetDspAudioPath
  *
  */
 //--------------------------------------------------------------------------------------------------
-void pa_audio_ResetDspAudioPath
+LE_SHARED void pa_audio_ResetDspAudioPath
 (
     void
 );
@@ -314,7 +311,7 @@ void pa_audio_ResetDspAudioPath
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_audio_SetGain
+LE_SHARED le_result_t pa_audio_SetGain
 (
     pa_audio_If_t interface,    ///< [IN] audio interface
     uint32_t      gain          ///< [IN] gain value [0..100] (0 means 'muted', 100 is the
@@ -329,7 +326,7 @@ le_result_t pa_audio_SetGain
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_audio_GetGain
+LE_SHARED le_result_t pa_audio_GetGain
 (
     pa_audio_If_t interface,    ///< [IN] audio interface
     uint32_t     *gainPtr       ///< [OUT] gain value [0..100] (0 means 'muted', 100 is the
@@ -345,7 +342,7 @@ le_result_t pa_audio_GetGain
  * @return LE_DUPLICATE     The thread is already started
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_audio_PlaySamples
+LE_SHARED le_result_t pa_audio_PlaySamples
 (
     pa_audio_If_t interface,                        ///< [IN] audio interface
     int32_t       fd,                               ///< [IN] audio file descriptor
@@ -361,7 +358,7 @@ le_result_t pa_audio_PlaySamples
  *
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_audio_Pause
+LE_SHARED le_result_t pa_audio_Pause
 (
     pa_audio_If_t interface    ///< [IN] audio interface
 );
@@ -374,7 +371,7 @@ le_result_t pa_audio_Pause
  * @return LE_FAULT         The function is failed
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_audio_Resume
+LE_SHARED le_result_t pa_audio_Resume
 (
     pa_audio_If_t interface    ///< [IN] audio interface
 );
@@ -388,7 +385,7 @@ le_result_t pa_audio_Resume
  *
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_audio_Stop
+LE_SHARED le_result_t pa_audio_Stop
 (
     pa_audio_If_t interface    ///< [IN] audio interface
 );
@@ -402,7 +399,7 @@ le_result_t pa_audio_Stop
  * @return LE_DUPLICATE     The thread is already started
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_audio_Capture
+LE_SHARED le_result_t pa_audio_Capture
 (
     pa_audio_If_t interface,                        ///< [IN] audio interface
     int32_t       fd,                               ///< [IN] audio file descriptor
@@ -418,7 +415,7 @@ le_result_t pa_audio_Capture
  * @return LE_FAULT         On other errors
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_audio_StartDtmfDecoder
+LE_SHARED le_result_t pa_audio_StartDtmfDecoder
 (
     pa_audio_If_t interface    ///< [IN] audio interface
 );
@@ -432,7 +429,7 @@ le_result_t pa_audio_StartDtmfDecoder
  * @return LE_FAULT         On other errors
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_audio_StopDtmfDecoder
+LE_SHARED LE_SHARED le_result_t pa_audio_StopDtmfDecoder
 (
     pa_audio_If_t interface    ///< [IN] audio interface
 );
@@ -447,7 +444,7 @@ le_result_t pa_audio_StopDtmfDecoder
  *
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_audio_NoiseSuppressorSwitch
+LE_SHARED le_result_t pa_audio_NoiseSuppressorSwitch
 (
     pa_audio_If_t interface,    ///< [IN] audio interface
     le_onoff_t    switchOnOff   ///< [IN] switch ON or OFF
@@ -463,7 +460,7 @@ le_result_t pa_audio_NoiseSuppressorSwitch
  *
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_audio_EchoCancellerSwitch
+LE_SHARED le_result_t pa_audio_EchoCancellerSwitch
 (
     pa_audio_If_t interface,    ///< [IN] audio interface
     le_onoff_t    switchOnOff   ///< [IN] switch ON or OFF
@@ -480,7 +477,7 @@ le_result_t pa_audio_EchoCancellerSwitch
  *
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_audio_FirFilterSwitch
+LE_SHARED le_result_t pa_audio_FirFilterSwitch
 (
     pa_audio_If_t interface,    ///< [IN] audio interface
     le_onoff_t    switchOnOff   ///< [IN] switch ON or OFF
@@ -497,7 +494,7 @@ le_result_t pa_audio_FirFilterSwitch
  *
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_audio_IirFilterSwitch
+LE_SHARED le_result_t pa_audio_IirFilterSwitch
 (
     pa_audio_If_t interface,    ///< [IN] audio interface
     le_onoff_t    switchOnOff   ///< [IN] switch ON or OFF
@@ -514,7 +511,7 @@ le_result_t pa_audio_IirFilterSwitch
  *
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_audio_AutomaticGainControlSwitch
+LE_SHARED le_result_t pa_audio_AutomaticGainControlSwitch
 (
     pa_audio_If_t interface,    ///< [IN] audio interface
     le_onoff_t    switchOnOff   ///< [IN] switch ON or OFF
@@ -529,7 +526,7 @@ le_result_t pa_audio_AutomaticGainControlSwitch
  *
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_audio_SetProfile
+LE_SHARED le_result_t pa_audio_SetProfile
 (
     le_audio_Profile_t profile   ///< [IN] The audio profile.
 );
@@ -543,7 +540,7 @@ le_result_t pa_audio_SetProfile
  *
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_audio_GetProfile
+LE_SHARED le_result_t pa_audio_GetProfile
 (
     le_audio_Profile_t* profilePtr  ///< [OUT] The audio profile.
 );
@@ -558,7 +555,7 @@ le_result_t pa_audio_GetProfile
  * @return LE_OK            Function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_audio_SetPcmSamplingRate
+LE_SHARED le_result_t pa_audio_SetPcmSamplingRate
 (
     uint32_t    rate         ///< [IN] Sampling rate in Hz.
 );
@@ -573,7 +570,7 @@ le_result_t pa_audio_SetPcmSamplingRate
  * @return LE_OK            Function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_audio_SetPcmSamplingResolution
+LE_SHARED le_result_t pa_audio_SetPcmSamplingResolution
 (
     uint32_t  bitsPerSample   ///< [IN] Sampling resolution (bits/sample).
 );
@@ -588,7 +585,7 @@ le_result_t pa_audio_SetPcmSamplingResolution
  * @return LE_OK            Function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_audio_SetPcmCompanding
+LE_SHARED le_result_t pa_audio_SetPcmCompanding
 (
     le_audio_Companding_t companding   ///< [IN] Companding.
 );
@@ -600,7 +597,7 @@ le_result_t pa_audio_SetPcmCompanding
  * @return The sampling rate in Hz.
  */
 //--------------------------------------------------------------------------------------------------
-uint32_t pa_audio_GetPcmSamplingRate
+LE_SHARED uint32_t pa_audio_GetPcmSamplingRate
 (
     void
 );
@@ -612,7 +609,7 @@ uint32_t pa_audio_GetPcmSamplingRate
  * @return The sampling resolution (bits/sample).
  */
 //--------------------------------------------------------------------------------------------------
-uint32_t pa_audio_GetPcmSamplingResolution
+LE_SHARED uint32_t pa_audio_GetPcmSamplingResolution
 (
     void
 );
@@ -624,7 +621,7 @@ uint32_t pa_audio_GetPcmSamplingResolution
  * @return The PCM companding.
  */
 //--------------------------------------------------------------------------------------------------
-le_audio_Companding_t pa_audio_GetPcmCompanding
+LE_SHARED le_audio_Companding_t pa_audio_GetPcmCompanding
 (
     void
 );
@@ -636,7 +633,7 @@ le_audio_Companding_t pa_audio_GetPcmCompanding
  * @return the time slot number.
  */
 //--------------------------------------------------------------------------------------------------
-uint32_t pa_audio_GetDefaultPcmTimeSlot
+LE_SHARED uint32_t pa_audio_GetDefaultPcmTimeSlot
 (
     void
 );
@@ -648,7 +645,7 @@ uint32_t pa_audio_GetDefaultPcmTimeSlot
  * @return the I2S channel mode.
  */
 //--------------------------------------------------------------------------------------------------
-le_audio_I2SChannel_t pa_audio_GetDefaultI2sMode
+LE_SHARED le_audio_I2SChannel_t pa_audio_GetDefaultI2sMode
 (
     void
 );
@@ -660,7 +657,7 @@ le_audio_I2SChannel_t pa_audio_GetDefaultI2sMode
  * @return an handler reference.
  */
 //--------------------------------------------------------------------------------------------------
-pa_audio_StreamEventHandlerRef_t pa_audio_AddStreamEventHandler
+LE_SHARED pa_audio_StreamEventHandlerRef_t pa_audio_AddStreamEventHandler
 (
     pa_audio_StreamEventHandlerFunc_t  handlerFuncPtr, ///< [IN] The event handler function.
     void*                              contextPtr      ///< [IN] The handler's context.
@@ -672,7 +669,7 @@ pa_audio_StreamEventHandlerRef_t pa_audio_AddStreamEventHandler
  *
  */
 //--------------------------------------------------------------------------------------------------
-void pa_audio_RemoveStreamEventHandler
+LE_SHARED void pa_audio_RemoveStreamEventHandler
 (
     pa_audio_StreamEventHandlerRef_t addHandlerRef ///< [IN]
 );
@@ -686,7 +683,7 @@ void pa_audio_RemoveStreamEventHandler
  * @return LE_FAULT         on failure
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_audio_PlaySignallingDtmf
+LE_SHARED le_result_t pa_audio_PlaySignallingDtmf
 (
     const char*          dtmfPtr,   ///< [IN] The DTMFs to play.
     uint32_t             duration,  ///< [IN] The DTMF duration in milliseconds.
@@ -700,7 +697,7 @@ le_result_t pa_audio_PlaySignallingDtmf
  * @return true  if an in-built Codec is present, false otherwise.
  */
 //--------------------------------------------------------------------------------------------------
-bool pa_audio_IsCodecPresent
+LE_SHARED bool pa_audio_IsCodecPresent
 (
     void
 );
@@ -713,7 +710,7 @@ bool pa_audio_IsCodecPresent
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_audio_Mute
+LE_SHARED le_result_t pa_audio_Mute
 (
     pa_audio_If_t interface, ///< [IN] audio interface
     bool          mute       ///< [IN] true to mute the interface, false to unmute

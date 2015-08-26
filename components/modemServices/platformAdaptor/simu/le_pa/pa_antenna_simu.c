@@ -116,6 +116,43 @@ le_result_t pa_antenna_GetStatus
     return LE_FAULT;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the external ADC used to monitor the requested antenna.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_UNSUPPORTED request not supported
+ *      - LE_FAULT on other failure
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_antenna_SetExternalAdc
+(
+    le_antenna_Type_t    antennaType,   ///< Antenna type
+    int8_t               adcId          ///< The external ADC used to monitor the requested antenna
+)
+{
+    return LE_FAULT;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the external ADC used to monitor the requested antenna.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_UNSUPPORTED request not supported
+ *      - LE_FAULT on other failure
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_antenna_GetExternalAdc
+(
+    le_antenna_Type_t    antennaType,  ///< Antenna type
+    int8_t*              adcIdPtr      ///< The external ADC used to monitor the requested antenna
+)
+{
+    return LE_FAULT;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**

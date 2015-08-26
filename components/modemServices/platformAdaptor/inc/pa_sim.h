@@ -197,7 +197,7 @@ typedef void (*pa_sim_SimToolkitEventHdlrFunc_t)(pa_sim_StkEvent_t* eventPtr);
  * @return LE_OK            The function succeeded.
   */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_sim_SelectCard
+LE_SHARED le_result_t pa_sim_SelectCard
 (
     le_sim_Id_t      simId   ///< [IN]  The SIM identififier
 );
@@ -211,7 +211,7 @@ le_result_t pa_sim_SelectCard
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_sim_GetSelectedCard
+LE_SHARED le_result_t pa_sim_GetSelectedCard
 (
     le_sim_Id_t*  simIdPtr     ///< [OUT] The SIM identififier.
 );
@@ -226,7 +226,7 @@ le_result_t pa_sim_GetSelectedCard
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_sim_GetCardIdentification
+LE_SHARED le_result_t pa_sim_GetCardIdentification
 (
     pa_sim_CardId_t iccid     ///< [OUT] ICCID value
 );
@@ -241,7 +241,7 @@ le_result_t pa_sim_GetCardIdentification
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_sim_GetIMSI
+LE_SHARED le_result_t pa_sim_GetIMSI
 (
     pa_sim_Imsi_t imsi   ///< [OUT] IMSI value
 );
@@ -256,7 +256,7 @@ le_result_t pa_sim_GetIMSI
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_sim_GetState
+LE_SHARED le_result_t pa_sim_GetState
 (
     le_sim_States_t* statePtr    ///< [OUT] SIM state
 );
@@ -270,7 +270,7 @@ le_result_t pa_sim_GetState
  * @note Doesn't return on failure, so there's no need to check the return value for errors.
  */
 //--------------------------------------------------------------------------------------------------
-le_event_HandlerRef_t pa_sim_AddNewStateHandler
+LE_SHARED le_event_HandlerRef_t pa_sim_AddNewStateHandler
 (
     pa_sim_NewStateHdlrFunc_t handler ///< [IN] The handler function.
 );
@@ -282,7 +282,7 @@ le_event_HandlerRef_t pa_sim_AddNewStateHandler
  * @note Doesn't return on failure, so there's no need to check the return value for errors.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_sim_RemoveNewStateHandler
+LE_SHARED le_result_t pa_sim_RemoveNewStateHandler
 (
     le_event_HandlerRef_t handlerRef
 );
@@ -297,7 +297,7 @@ le_result_t pa_sim_RemoveNewStateHandler
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_sim_EnterPIN
+LE_SHARED le_result_t pa_sim_EnterPIN
 (
     pa_sim_PinType_t   type,  ///< [IN] pin type
     const pa_sim_Pin_t pin    ///< [IN] pin code
@@ -317,7 +317,7 @@ le_result_t pa_sim_EnterPIN
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_sim_EnterPUK
+LE_SHARED le_result_t pa_sim_EnterPUK
 (
     pa_sim_PukType_t   type, ///< [IN] puk type
     const pa_sim_Puk_t puk,  ///< [IN] PUK code
@@ -334,7 +334,7 @@ le_result_t pa_sim_EnterPUK
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_sim_GetPINRemainingAttempts
+LE_SHARED le_result_t pa_sim_GetPINRemainingAttempts
 (
     pa_sim_PinType_t type,       ///< [IN] The pin type
     uint32_t*        attemptsPtr ///< [OUT] The number of attempts still possible
@@ -350,7 +350,7 @@ le_result_t pa_sim_GetPINRemainingAttempts
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_sim_GetPUKRemainingAttempts
+LE_SHARED le_result_t pa_sim_GetPUKRemainingAttempts
 (
     pa_sim_PukType_t type,       ///< [IN] The puk type
     uint32_t*        attemptsPtr ///< [OUT] The number of attempts still possible
@@ -366,7 +366,7 @@ le_result_t pa_sim_GetPUKRemainingAttempts
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_sim_ChangePIN
+LE_SHARED le_result_t pa_sim_ChangePIN
 (
     pa_sim_PinType_t   type,    ///< [IN] The code type
     const pa_sim_Pin_t oldcode, ///< [IN] Old code
@@ -383,7 +383,7 @@ le_result_t pa_sim_ChangePIN
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_sim_EnablePIN
+LE_SHARED le_result_t pa_sim_EnablePIN
 (
     pa_sim_PinType_t   type,  ///< [IN] The pin type
     const pa_sim_Pin_t code   ///< [IN] code
@@ -399,7 +399,7 @@ le_result_t pa_sim_EnablePIN
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_sim_DisablePIN
+LE_SHARED le_result_t pa_sim_DisablePIN
 (
     pa_sim_PinType_t   type,  ///< [IN] The code type.
     const pa_sim_Pin_t code   ///< [IN] code
@@ -415,7 +415,7 @@ le_result_t pa_sim_DisablePIN
  *      - LE_FAULT on any other failure
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_sim_GetSubscriberPhoneNumber
+LE_SHARED le_result_t pa_sim_GetSubscriberPhoneNumber
 (
     char        *phoneNumberStr,    ///< [OUT] The phone Number
     size_t       phoneNumberStrSize ///< [IN]  Size of phoneNumberStr
@@ -431,7 +431,7 @@ le_result_t pa_sim_GetSubscriberPhoneNumber
  *      - LE_FAULT on any other failure
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_sim_GetHomeNetworkOperator
+LE_SHARED le_result_t pa_sim_GetHomeNetworkOperator
 (
     char       *nameStr,               ///< [OUT] the home network Name
     size_t      nameStrSize            ///< [IN]  the nameStr size
@@ -447,7 +447,7 @@ le_result_t pa_sim_GetHomeNetworkOperator
  *      - LE_FAULT for unexpected error
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_sim_GetHomeNetworkMccMnc
+LE_SHARED le_result_t pa_sim_GetHomeNetworkMccMnc
 (
     char     *mccPtr,                ///< [OUT] Mobile Country Code
     size_t    mccPtrSize,            ///< [IN] mccPtr buffer size
@@ -464,7 +464,7 @@ le_result_t pa_sim_GetHomeNetworkMccMnc
  *      - LE_FAULT for unexpected error
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_sim_OpenLogicalChannel
+LE_SHARED le_result_t pa_sim_OpenLogicalChannel
 (
     uint8_t* channelPtr  ///< [OUT] channel number
 );
@@ -478,7 +478,7 @@ le_result_t pa_sim_OpenLogicalChannel
  *      - LE_FAULT for unexpected error
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_sim_CloseLogicalChannel
+LE_SHARED le_result_t pa_sim_CloseLogicalChannel
 (
     uint8_t channel  ///< [IN] channel number
 );
@@ -493,7 +493,7 @@ le_result_t pa_sim_CloseLogicalChannel
  *      - LE_FAULT for unexpected error
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_sim_SendApdu
+LE_SHARED le_result_t pa_sim_SendApdu
 (
     const uint8_t* apduPtr, ///< [IN] APDU message buffer
     uint32_t       apduLen, ///< [IN] APDU message length in bytes
@@ -510,7 +510,7 @@ le_result_t pa_sim_SendApdu
  *      - LE_FAULT for unexpected error
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_sim_Refresh
+LE_SHARED le_result_t pa_sim_Refresh
 (
     void
 );
@@ -524,7 +524,7 @@ le_result_t pa_sim_Refresh
  * @note Doesn't return on failure, so there's no need to check the return value for errors.
  */
 //--------------------------------------------------------------------------------------------------
-le_event_HandlerRef_t pa_sim_AddSimToolkitEventHandler
+LE_SHARED le_event_HandlerRef_t pa_sim_AddSimToolkitEventHandler
 (
     pa_sim_SimToolkitEventHdlrFunc_t handler,    ///< [IN] The handler function.
     void*                            contextPtr  ///< [IN] The context to be given to the handler.
@@ -538,7 +538,7 @@ le_event_HandlerRef_t pa_sim_AddSimToolkitEventHandler
  * @note Doesn't return on failure, so there's no need to check the return value for errors.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_sim_RemoveSimToolkitEventHandler
+LE_SHARED le_result_t pa_sim_RemoveSimToolkitEventHandler
 (
     le_event_HandlerRef_t handlerRef
 );
@@ -552,7 +552,7 @@ le_result_t pa_sim_RemoveSimToolkitEventHandler
  *      - LE_FAULT on failure
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_sim_ConfirmSimToolkitCommand
+LE_SHARED le_result_t pa_sim_ConfirmSimToolkitCommand
 (
     bool  confirmation ///< [IN] true to accept, false to reject
 );

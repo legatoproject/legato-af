@@ -106,7 +106,7 @@ AssetData_t;
  * Data contained in a single asset instance
  */
 //--------------------------------------------------------------------------------------------------
-typedef struct assetData_InstanceData
+typedef struct le_avdata_AssetInstance
 {
     int instanceId;              ///< Id for this instance
     AssetData_t* assetDataPtr;   ///< Back reference to asset data containing this instance
@@ -157,6 +157,7 @@ typedef struct
     };
     void* contextPtr;       ///< User supplied context pointer
     int fieldId;            ///< If action is on a field
+    bool isClient;          ///< Is handler registered by client or server
     le_dls_Link_t link;     ///< For adding to field or asset action list
 }
 ActionHandlerData_t;
@@ -237,6 +238,14 @@ static le_mem_PoolRef_t StringValuePoolRef = NULL;
  */
 //--------------------------------------------------------------------------------------------------
 static le_hashmap_Ref_t AssetMap = NULL;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maps (appName, assetName) to an AssetData block.  Initialized in assetData_Init().
+ */
+//--------------------------------------------------------------------------------------------------
+static le_hashmap_Ref_t AssetMapByName = NULL;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -489,7 +498,7 @@ static le_result_t CreateFieldFromModel
 
         case DATA_TYPE_STRING:
             le_cfg_GetString(assetCfg, "default", strBuf, sizeof(strBuf), "");
-            le_utf8_Copy(fieldDataPtr->strValuePtr, strBuf, sizeof(fieldDataPtr->strValuePtr), NULL);
+            le_utf8_Copy(fieldDataPtr->strValuePtr, strBuf, STRING_VALUE_NUMBYTES, NULL);
             break;
 
         case DATA_TYPE_NONE:
@@ -693,7 +702,8 @@ static le_result_t AddAssetData
 )
 {
     AssetData_t* assetDataPtr;
-    char* nameIdPtr;
+    char* appNameAssetIdPtr;
+    char* appNameAssetNamePtr;
 
     assetDataPtr = le_mem_ForceAlloc(AssetDataPoolRef);
     assetDataPtr->assetId = assetId;
@@ -704,18 +714,23 @@ static le_result_t AddAssetData
     le_utf8_Copy(assetDataPtr->assetName, assetNamePtr, sizeof(assetDataPtr->assetName), NULL);
     le_utf8_Copy(assetDataPtr->appName, appNamePtr, sizeof(assetDataPtr->appName), NULL);
 
-    // put in AssetMap
-    nameIdPtr = le_mem_ForceAlloc(AddressStringPoolRef);
+    // Put (appName, assetId) key in AssetMap, pointing to the assetData block
+    // Put (appName, assetName) key in AssetMapByName, pointing to the same assetData block
+    appNameAssetIdPtr = le_mem_ForceAlloc(AddressStringPoolRef);
+    appNameAssetNamePtr = le_mem_ForceAlloc(AddressStringPoolRef);
 
-    if ( FormatString(nameIdPtr, 100, "%s/%i", appNamePtr, assetId) != LE_OK )
+    if ( ( FormatString(appNameAssetIdPtr, 100, "%s/%i", appNamePtr, assetId) != LE_OK ) ||
+         ( FormatString(appNameAssetNamePtr, 100, "%s/%s", appNamePtr, assetNamePtr) != LE_OK ) )
     {
         le_mem_Release(assetDataPtr);
-        le_mem_Release(nameIdPtr);
+        le_mem_Release(appNameAssetIdPtr);
+        le_mem_Release(appNameAssetNamePtr);
         return LE_FAULT;
     }
 
     // todo: 'Put' returns a value, but not sure what it's for.
-    le_hashmap_Put(AssetMap, nameIdPtr, assetDataPtr);
+    le_hashmap_Put(AssetMap, appNameAssetIdPtr, assetDataPtr);
+    le_hashmap_Put(AssetMapByName, appNameAssetNamePtr, assetDataPtr);
 
     // Return the pointer to the newly allocated block
     *assetDataPtrPtr = assetDataPtr;
@@ -748,6 +763,43 @@ static le_result_t GetAssetData
     }
 
     *assetDataPtrPtr = le_hashmap_Get(AssetMap, &key);
+
+    if ( *assetDataPtrPtr != NULL )
+    {
+        return LE_OK;
+    }
+    else
+    {
+        return LE_NOT_FOUND;
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get an asset data block from AssetMapByName and return it
+ *
+ * @return:
+ *      - LE_OK on success
+ *      - LE_NOT_FOUND if not found in AssetMapByName
+ *      - LE_FAULT on any other error
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t GetAssetDataByName
+(
+    const char* appNamePtr,         ///< [IN]
+    const char* assetNamePtr,       ///< [IN]
+    AssetData_t** assetDataPtrPtr   ///< [OUT] Pointer to found asset data block
+)
+{
+    char key[100];
+
+    if ( FormatString(key, sizeof(key), "%s/%s", appNamePtr, assetNamePtr) != LE_OK )
+    {
+        return LE_FAULT;
+    }
+
+    *assetDataPtrPtr = le_hashmap_Get(AssetMapByName, &key);
 
     if ( *assetDataPtrPtr != NULL )
     {
@@ -824,6 +876,87 @@ static le_result_t CreateAssetDataFromModel
     }
 
     return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Create new AssetData block from the appropriate asset model using the asset name
+ *
+ * This is only for application defined assets.
+ *
+ * @return:
+ *      - LE_OK on success
+ *      - LE_NOT_FOUND if asset not found
+ *      - LE_FAULT on any other error
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t CreateAssetDataFromModelByName
+(
+    const char* appNamePtr,         ///< [IN] App name
+    const char* assetNamePtr,       ///< [IN] Asset name
+    AssetData_t** assetDataPtrPtr   ///< [OUT] Pointer to asset data block
+)
+{
+    le_result_t result = LE_NOT_FOUND;
+    int assetId = -1;
+    le_cfg_IteratorRef_t assetCfg;
+    char strBuf[LIMIT_MAX_PATH_BYTES] = "";     // Generic buffer for reading string data
+
+    if ( FormatString(strBuf, sizeof(strBuf), "/apps/%s/assets", appNamePtr) != LE_OK )
+    {
+        return LE_FAULT;
+    }
+
+    // Open a config read transaction for the asset model
+    assetCfg = le_cfg_CreateReadTxn(strBuf);
+
+    if (le_cfg_IsEmpty(assetCfg, ""))
+    {
+        LE_ERROR("Asset model for %s is not found", appNamePtr);
+        result = LE_NOT_FOUND;
+    }
+
+    else if (le_cfg_GoToFirstChild(assetCfg) != LE_OK)
+    {
+        LE_ERROR("Asset list for %s is empty", appNamePtr);
+        result = LE_NOT_FOUND;
+    }
+
+    else do
+    {
+        // Get the assetId
+        le_cfg_GetNodeName(assetCfg, "", strBuf, sizeof(strBuf));
+        assetId = atoi(strBuf);
+        LE_PRINT_VALUE("%i", assetId);
+
+        // Get the associated assetName
+        le_cfg_GetString(assetCfg, "name", strBuf, sizeof(strBuf), "");
+        LE_PRINT_VALUE("%s", strBuf);
+        LE_PRINT_VALUE("%s", assetNamePtr);
+
+        // If this is the assetName we're interested in, then we're done searching
+        if ( strcmp(assetNamePtr, strBuf) == 0 )
+        {
+            result = LE_OK;
+            break;
+        }
+
+    } while ( le_cfg_GoToNextSibling(assetCfg) == LE_OK );
+
+    // Regardless of success/failure, stop the transaction
+    le_cfg_CancelTxn(assetCfg);
+
+    // Create and store new AssetData block, if we found the asset definition
+    if ( result == LE_OK )
+    {
+        if ( AddAssetData(appNamePtr, assetId, assetNamePtr, assetDataPtrPtr) != LE_OK )
+        {
+            result = LE_FAULT;
+        }
+    }
+
+    return result;
 }
 
 
@@ -1020,7 +1153,8 @@ static le_result_t CallFieldActionHandlers
 (
 	InstanceData_t* instanceDataPtr,    	///< [IN] Asset instance that action occurred on.
 	int fieldId,                            ///< [IN] Field that action occurred on
-    assetData_ActionTypes_t action
+    assetData_ActionTypes_t action,         ///< [IN] The action that occurred
+    bool isClient                           ///< [IN] Is action from client or server
 )
 {
     ActionHandlerData_t* handlerDataPtr;
@@ -1038,10 +1172,16 @@ static le_result_t CallFieldActionHandlers
         // those handlers that are applicable for this field.
         if ( fieldId == handlerDataPtr->fieldId )
         {
-            handlerDataPtr->fieldActionHandlerPtr(instanceDataPtr,
-                                                  fieldId,
-                                                  action,
-                                                  handlerDataPtr->contextPtr);
+            // Client registered handlers should only be called by server actions, and server
+            // registered handlers should only be called by client actions.
+            if ( ( handlerDataPtr->isClient && !isClient ) ||
+                 ( !handlerDataPtr->isClient && isClient ) )
+            {
+                handlerDataPtr->fieldActionHandlerPtr(instanceDataPtr,
+                                                      fieldId,
+                                                      action,
+                                                      handlerDataPtr->contextPtr);
+            }
         }
 
         linkPtr = le_dls_PeekNext(&instanceDataPtr->assetDataPtr->fieldActionList, linkPtr);
@@ -1232,7 +1372,7 @@ le_result_t static GetInt
     }
 
     // Call any registered handlers to be notified of read
-    CallFieldActionHandlers( instanceRef, fieldId, ASSET_DATA_ACTION_READ );
+    CallFieldActionHandlers( instanceRef, fieldId, ASSET_DATA_ACTION_READ, isClient );
 
     // Get the value and return it
     *valuePtr = fieldDataPtr->intValue;
@@ -1280,7 +1420,7 @@ le_result_t static SetInt
     fieldDataPtr->intValue = value;
 
     // Call any registered handlers to be notified of write.
-    CallFieldActionHandlers( instanceRef, fieldId, ASSET_DATA_ACTION_WRITE );
+    CallFieldActionHandlers( instanceRef, fieldId, ASSET_DATA_ACTION_WRITE, isClient );
 
     return LE_OK;
 }
@@ -1323,7 +1463,7 @@ le_result_t static GetBool
     }
 
     // Call any registered handlers to be notified of read
-    CallFieldActionHandlers( instanceRef, fieldId, ASSET_DATA_ACTION_READ );
+    CallFieldActionHandlers( instanceRef, fieldId, ASSET_DATA_ACTION_READ, isClient );
 
     // Get the value and return it
     *valuePtr = fieldDataPtr->boolValue;
@@ -1371,7 +1511,7 @@ le_result_t static SetBool
     fieldDataPtr->boolValue = value;
 
     // Call any registered handlers to be notified of write.
-    CallFieldActionHandlers( instanceRef, fieldId, ASSET_DATA_ACTION_WRITE );
+    CallFieldActionHandlers( instanceRef, fieldId, ASSET_DATA_ACTION_WRITE, isClient );
 
     return LE_OK;
 }
@@ -1416,7 +1556,7 @@ le_result_t static GetString
     }
 
     // Call any registered handlers to be notified of read
-    CallFieldActionHandlers( instanceRef, fieldId, ASSET_DATA_ACTION_READ );
+    CallFieldActionHandlers( instanceRef, fieldId, ASSET_DATA_ACTION_READ, isClient );
 
     // Get the value and return it
     return le_utf8_Copy(strBufPtr, fieldDataPtr->strValuePtr, strBufNumBytes, NULL);
@@ -1466,7 +1606,7 @@ le_result_t static SetString
     // Call any registered handlers to be notified of write.
     // todo: If result is LE_OVERFLOW here, should we still call the registered handlers?
     //       They have no way of knowing that the stored value has overflowed.
-    CallFieldActionHandlers( instanceRef, fieldId, ASSET_DATA_ACTION_WRITE );
+    CallFieldActionHandlers( instanceRef, fieldId, ASSET_DATA_ACTION_WRITE, isClient );
 
     return result;
 }
@@ -1496,6 +1636,7 @@ static assetData_FieldActionHandlerRef_t AddFieldActionHandler
     newHandlerDataPtr->fieldActionHandlerPtr = handlerPtr;
     newHandlerDataPtr->contextPtr = contextPtr;
     newHandlerDataPtr->fieldId = fieldId;
+    newHandlerDataPtr->isClient = isClient;
 
     newHandlerDataPtr->link = LE_DLS_LINK_INIT;
     le_dls_Queue(&assetRef->fieldActionList, &newHandlerDataPtr->link);
@@ -1528,6 +1669,7 @@ static assetData_AssetActionHandlerRef_t AddAssetActionHandler
     newHandlerDataPtr->assetActionHandlerPtr = handlerPtr;
     newHandlerDataPtr->contextPtr = contextPtr;
     newHandlerDataPtr->fieldId = -1;
+    newHandlerDataPtr->isClient = isClient;
 
     newHandlerDataPtr->link = LE_DLS_LINK_INIT;
     le_dls_Queue(&assetRef->assetActionList, &newHandlerDataPtr->link);
@@ -1582,6 +1724,7 @@ le_result_t assetData_CreateInstanceById
     {
         return LE_FAULT;
     }
+
     else if ( result == LE_NOT_FOUND )
     {
         if ( CreateAssetDataFromModel(appNamePtr, assetId, &assetDataPtr) != LE_OK )
@@ -1685,8 +1828,41 @@ le_result_t assetData_CreateInstanceByName
     assetData_InstanceDataRef_t* instanceRefPtr     ///< [OUT] Reference to created instance
 )
 {
-    // IMPLEMENT LATER
-    return LE_FAULT;
+    le_result_t result;
+    AssetData_t* assetDataPtr;
+    InstanceData_t* assetInstPtr;
+
+    LE_INFO("Creating asset instance for %s/%s", appNamePtr, assetNamePtr);
+
+    // Get an existing AssetData block from AssetMapByName, or create a new one
+    result = GetAssetDataByName(appNamePtr, assetNamePtr, &assetDataPtr);
+    if ( (result == LE_OK) && (instanceId >= 0) )
+    {
+        // Make sure it is not a duplicate
+        if ( GetInstanceFromAssetData(assetDataPtr, instanceId, &assetInstPtr) == LE_OK )
+        {
+            return LE_DUPLICATE;
+        }
+    }
+
+    else if ( result == LE_FAULT )
+    {
+        return LE_FAULT;
+    }
+
+    else if ( result == LE_NOT_FOUND )
+    {
+        if ( CreateAssetDataFromModelByName(appNamePtr, assetNamePtr, &assetDataPtr) != LE_OK )
+        {
+            return LE_FAULT;
+        }
+    }
+
+    // Now that we've mapped assetName to assetId, create the requested instance.
+    return assetData_CreateInstanceById(appNamePtr,
+                                        assetDataPtr->assetId,
+                                        instanceId,
+                                        instanceRefPtr);
 }
 
 
@@ -1748,6 +1924,107 @@ void assetData_DeleteInstance
 
     // Lastly, release the instance data.
     le_mem_Release(instanceRef);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Delete the given asset instance, and if no more instances, also delete the asset data.
+ */
+//--------------------------------------------------------------------------------------------------
+void assetData_DeleteInstanceAndAsset
+(
+    assetData_InstanceDataRef_t instanceRef         ///< [IN] Asset instance to delete
+)
+{
+    // Keep reference to asset data containing this instance.
+    AssetData_t* assetDataPtr = instanceRef->assetDataPtr;
+
+    // Delete the instance
+    assetData_DeleteInstance(instanceRef);
+
+    // If there are no more instances, then also delete the data for this asset
+    if ( le_dls_Peek(&assetDataPtr->instanceList) == NULL )
+    {
+        /*
+         * Release all items in fieldActionList
+         */
+
+        ActionHandlerData_t* handlerDataPtr;
+        le_dls_Link_t* linkPtr;
+
+        // Get the first item from the handler list
+        linkPtr = le_dls_Pop(&assetDataPtr->fieldActionList);
+
+        // Loop through the list, deleting each item
+        while ( linkPtr != NULL )
+        {
+            handlerDataPtr = CONTAINER_OF(linkPtr, ActionHandlerData_t, link);
+            le_mem_Release(handlerDataPtr);
+
+            linkPtr = le_dls_Pop(&assetDataPtr->fieldActionList);
+        }
+
+
+        /*
+         * Release all items in assetActionList
+         */
+
+        // Get the first item from the handler list
+        linkPtr = le_dls_Pop(&assetDataPtr->assetActionList);
+
+        // Loop through the list, deleting each item
+        while ( linkPtr != NULL )
+        {
+            handlerDataPtr = CONTAINER_OF(linkPtr, ActionHandlerData_t, link);
+            le_mem_Release(handlerDataPtr);
+
+            linkPtr = le_dls_Pop(&assetDataPtr->assetActionList);
+        }
+
+
+        /*
+         * Remove the asset data from the AssetMaps
+         */
+
+        char appNameAssetId[100];
+        char* appNameAssetIdKeyPtr;
+        char appNameAssetName[100];
+        char* appNameAssetNameKeyPtr;
+
+        if ( FormatString(appNameAssetId,
+                          sizeof(appNameAssetId),
+                          "%s/%i",
+                          assetDataPtr->appName,
+                          assetDataPtr->assetId) == LE_OK )
+        {
+            // The key stored in the hashmap also has to be released, so get it first, before
+            // removing the data from the hashmap.
+            appNameAssetIdKeyPtr = le_hashmap_GetStoredKey(AssetMap, appNameAssetId);
+            le_hashmap_Remove(AssetMap, appNameAssetId);
+            le_mem_Release(appNameAssetIdKeyPtr);
+        }
+
+        if ( FormatString(appNameAssetName,
+                          sizeof(appNameAssetId),
+                          "%s/%s",
+                          assetDataPtr->appName,
+                          assetDataPtr->assetName) == LE_OK )
+        {
+            // The key stored in the hashmap also has to be released, so get it first, before
+            // removing the data from the hashmap.
+            appNameAssetNameKeyPtr = le_hashmap_GetStoredKey(AssetMapByName, appNameAssetName);
+            le_hashmap_Remove(AssetMapByName, appNameAssetName);
+            le_mem_Release(appNameAssetNameKeyPtr);
+        }
+
+
+        /*
+         * Release the allocated asset data
+         */
+
+        le_mem_Release(assetDataPtr);
+    }
 }
 
 
@@ -1934,6 +2211,27 @@ le_result_t assetData_GetAssetIdFromInstance
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Get a reference to the Asset from the specified asset instance
+ *
+ * @return:
+ *      - LE_OK on success
+ *      - LE_FAULT on error
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t assetData_GetAssetRefFromInstance
+(
+    assetData_InstanceDataRef_t instanceRef,    ///< [IN] Asset instance to use
+    assetData_AssetDataRef_t* assetRefPtr       ///< [OUT] Reference to specified asset
+)
+{
+    *assetRefPtr = instanceRef->assetDataPtr;
+
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Get the instance id for the specified asset instance
  *
  * @return:
@@ -1950,6 +2248,62 @@ le_result_t assetData_GetInstanceId
     *instanceIdPtr = instanceRef->instanceId;
 
     return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the field id for the given field name
+ *
+ * @return:
+ *      - LE_OK on success
+ *      - LE_FAULT on error
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t assetData_GetFieldIdFromName
+(
+    assetData_InstanceDataRef_t instanceRef,    ///< [IN] Asset instance to use
+    const char* fieldNamePtr,                   ///< [IN] The field name
+    int* fieldIdPtr                             ///< [OUT] The field id
+)
+{
+    /*
+     * NOTE:
+     *   The main use for this function is to get the fieldId that is then passed to the various
+     *   assetData_client_Get* functions.  This is not particularly efficient as it requires
+     *   iterating twice through the field list.  One alternative would be to add a new set of
+     *   assetData_client_Get* functions that take a field name instead of field id.
+     *
+     *   For now, assume that the performance is good enough, but if it becomes an issue then
+     *   this second set of functions may need to be added.  Of course, there might also be some
+     *   other alternative solution that has not yet been considered.
+     */
+
+    FieldData_t* fieldDataPtr;
+    le_dls_Link_t* fieldLinkPtr;
+
+    // Get the start of the field list
+    fieldLinkPtr = le_dls_Peek(&instanceRef->fieldList);
+
+    //LE_PRINT_VALUE("%s", instanceRef->assetDataPtr->appName);
+    //LE_PRINT_VALUE("%s", instanceRef->assetDataPtr->assetName);
+
+    // Loop through the fields
+    while ( fieldLinkPtr != NULL )
+    {
+        fieldDataPtr = CONTAINER_OF(fieldLinkPtr, FieldData_t, link);
+        //LE_PRINT_VALUE("%s", fieldDataPtr->name);
+
+        if ( strcmp(fieldDataPtr->name, fieldNamePtr) == 0 )
+        {
+            *fieldIdPtr = fieldDataPtr->fieldId;
+            return LE_OK;
+        }
+
+        fieldLinkPtr = le_dls_PeekNext(&instanceRef->fieldList, fieldLinkPtr);
+    }
+
+    return LE_FAULT;
 }
 
 
@@ -2313,7 +2667,7 @@ le_result_t assetData_server_GetValue
     //LE_PRINT_VALUE("%s", fieldDataPtr->name);
 
     // Call any registered handlers to be notified of read
-    CallFieldActionHandlers( instanceRef, fieldId, ASSET_DATA_ACTION_READ );
+    CallFieldActionHandlers( instanceRef, fieldId, ASSET_DATA_ACTION_READ, false );
 
     switch ( fieldDataPtr->type )
     {
@@ -2395,7 +2749,7 @@ le_result_t assetData_server_SetValue
     // Call any registered handlers to be notified of write.
     // todo: If result is LE_OVERFLOW here, should we still call the registered handlers?
     //       They have no way of knowing that the stored value has overflowed.
-    CallFieldActionHandlers( instanceRef, fieldId, ASSET_DATA_ACTION_WRITE );
+    CallFieldActionHandlers( instanceRef, fieldId, ASSET_DATA_ACTION_WRITE, false );
 
     return result;
 }
@@ -2435,7 +2789,7 @@ le_result_t assetData_server_GetValueAsBinary
     //LE_PRINT_VALUE("%s", fieldDataPtr->name);
 
     // Call any registered handlers to be notified of read
-    CallFieldActionHandlers( instanceRef, fieldId, ASSET_DATA_ACTION_READ );
+    CallFieldActionHandlers( instanceRef, fieldId, ASSET_DATA_ACTION_READ, false );
 
     switch ( fieldDataPtr->type )
     {
@@ -2514,7 +2868,7 @@ le_result_t assetData_server_Execute
     }
 
     // Call any registered handlers to act upon the execute
-    CallFieldActionHandlers( instanceRef, fieldId, ASSET_DATA_ACTION_EXEC );
+    CallFieldActionHandlers( instanceRef, fieldId, ASSET_DATA_ACTION_EXEC, false );
 
     return LE_OK;
 }
@@ -2623,13 +2977,20 @@ le_result_t assetData_Init
     FieldDataPoolRef = le_mem_CreatePool("Field data pool", sizeof(FieldData_t));
     InstanceDataPoolRef = le_mem_CreatePool("Instance data pool", sizeof(InstanceData_t));
     AssetDataPoolRef = le_mem_CreatePool("Asset data pool", sizeof(AssetData_t));
-    ActionHandlerDataPoolRef = le_mem_CreatePool("Action handler data pool", sizeof(ActionHandlerData_t));
+    ActionHandlerDataPoolRef = le_mem_CreatePool("Action handler data pool",
+                                                 sizeof(ActionHandlerData_t));
 
     StringValuePoolRef = le_mem_CreatePool("String value pool", STRING_VALUE_NUMBYTES);
     AddressStringPoolRef = le_mem_CreatePool("Address pool", 100);
 
     // Create AssetMap that maps (appName, assetId) to an AssetData block.
     AssetMap = le_hashmap_Create("Asset Map", 31, le_hashmap_HashString, le_hashmap_EqualsString);
+
+    // Create AssetMapByName that maps (appName, assetName) to an AssetData block.
+    AssetMapByName = le_hashmap_Create("AssetNameIdMap",
+                                       31,
+                                       le_hashmap_HashString,
+                                       le_hashmap_EqualsString);
 
     // Pre-load the /lwm2m/9 object into the AssetMap; don't actually need to use the assetRef here.
     assetData_AssetDataRef_t lwm2mAssetRef;
@@ -2777,15 +3138,25 @@ static le_result_t WriteTLVHeader
 //--------------------------------------------------------------------------------------------------
 static le_result_t WriteFieldTLV
 (
-    FieldData_t* fieldDataPtr,          ///< [IN] The field to write to the TLV
-    uint8_t* bufPtr,                    ///< [OUT] Buffer for writing the TLV
-    size_t bufNumBytes,                 ///< [IN] Size of buffer
-    size_t* numBytesWrittenPtr             ///< [OUT] # bytes written to buffer.
+    assetData_InstanceDataRef_t instRef,    ///< [IN] Asset instance containing field to write
+    FieldData_t* fieldDataPtr,              ///< [IN] The field to write to the TLV
+    uint8_t* bufPtr,                        ///< [OUT] Buffer for writing the TLV
+    size_t bufNumBytes,                     ///< [IN] Size of buffer
+    size_t* numBytesWrittenPtr              ///< [OUT] # bytes written to buffer.
 )
 {
     le_result_t result = LE_OK;
     size_t numBytesWritten;
     int strLength;
+
+    // Provide enough space for max field size, which is 256 bytes for a string, plus max header
+    // size, which is 6 bytes.  Thus will ensure overflow doesn't happen when putting data in
+    // tmpBuffer.  Overflow will be checked when trying to copy to the output buffer in bufPtr.
+    uint8_t tmpBuffer[256+6];
+    uint8_t* tmpBufferPtr = tmpBuffer;
+
+    // Call any registered handlers to be notified of read
+    CallFieldActionHandlers( instRef, fieldDataPtr->fieldId, ASSET_DATA_ACTION_READ, false );
 
     switch ( fieldDataPtr->type )
     {
@@ -2793,26 +3164,26 @@ static le_result_t WriteFieldTLV
             WriteTLVHeader(TLV_TYPE_RESOURCE,
                            fieldDataPtr->fieldId,
                            4,
-                           bufPtr,
-                           bufNumBytes,
+                           tmpBufferPtr,
+                           sizeof(tmpBuffer),
                            &numBytesWritten);
-            bufPtr += numBytesWritten;
-            WriteUint(bufPtr, fieldDataPtr->intValue, 4);
+            tmpBufferPtr += numBytesWritten;
+            WriteUint(tmpBufferPtr, fieldDataPtr->intValue, 4);
 
-            *numBytesWrittenPtr = numBytesWritten+4;
+            numBytesWritten += 4;
             break;
 
         case DATA_TYPE_BOOL:
             WriteTLVHeader(TLV_TYPE_RESOURCE,
                            fieldDataPtr->fieldId,
                            1,
-                           bufPtr,
-                           bufNumBytes,
+                           tmpBufferPtr,
+                           sizeof(tmpBuffer),
                            &numBytesWritten);
-            bufPtr += numBytesWritten;
-            WriteUint(bufPtr, fieldDataPtr->boolValue, 1);
+            tmpBufferPtr += numBytesWritten;
+            WriteUint(tmpBufferPtr, fieldDataPtr->boolValue, 1);
 
-            *numBytesWrittenPtr = numBytesWritten+1;
+            numBytesWritten += 1;
             break;
 
         case DATA_TYPE_STRING:
@@ -2821,16 +3192,19 @@ static le_result_t WriteFieldTLV
             WriteTLVHeader(TLV_TYPE_RESOURCE,
                            fieldDataPtr->fieldId,
                            strLength,
-                           bufPtr,
-                           bufNumBytes,
+                           tmpBufferPtr,
+                           sizeof(tmpBuffer),
                            &numBytesWritten);
 
-            bufPtr += numBytesWritten;
-            bufNumBytes -= numBytesWritten;
+            tmpBufferPtr += numBytesWritten;
 
-            result = le_utf8_Copy((char*)bufPtr, fieldDataPtr->strValuePtr, bufNumBytes, NULL);
+            result = le_utf8_Copy((char*)tmpBufferPtr,
+                                  fieldDataPtr->strValuePtr,
+                                  sizeof(tmpBuffer)-numBytesWritten,
+                                  NULL);
 
-            *numBytesWrittenPtr = numBytesWritten+strLength;
+            // Assumes no overflow; that will be checked below
+            numBytesWritten += strLength;
             break;
 
         case DATA_TYPE_NONE:
@@ -2838,6 +3212,22 @@ static le_result_t WriteFieldTLV
             result = LE_FAULT;
             *numBytesWrittenPtr = 0;
             break;
+    }
+
+    // Successfully got the data, so copy to output buffer, if there is room.
+    if ( result == LE_OK )
+    {
+        if ( numBytesWritten <= bufNumBytes )
+        {
+            memcpy(bufPtr, tmpBuffer, numBytesWritten);
+            *numBytesWrittenPtr = numBytesWritten;
+        }
+        else
+        {
+            LE_WARN("Overflow: oiid=%i, rid=%i", instRef->instanceId, fieldDataPtr->fieldId);
+            *numBytesWrittenPtr = 0;
+            result = LE_OVERFLOW;
+        }
     }
 
     return result;
@@ -2857,7 +3247,7 @@ static le_result_t WriteFieldTLV
 le_result_t assetData_WriteFieldListToTLV
 (
     assetData_InstanceDataRef_t instanceRef,    ///< [IN] Asset instance to use
-    uint8_t* bufPtr,                            ///< [OUT] Buffer for writing the header
+    uint8_t* bufPtr,                            ///< [OUT] Buffer for writing the TLV list
     size_t bufNumBytes,                         ///< [IN] Size of buffer
     size_t* numBytesWrittenPtr                  ///< [OUT] # bytes written to buffer.
 )
@@ -2884,7 +3274,8 @@ le_result_t assetData_WriteFieldListToTLV
         if ( fieldDataPtr->access & ACCESS_WRITE )
         {
             LE_PRINT_VALUE("%i read", fieldDataPtr->fieldId);
-            result = WriteFieldTLV(fieldDataPtr,
+            result = WriteFieldTLV(instanceRef,
+                                   fieldDataPtr,
                                    startBufPtr,
                                    endBufPtr-startBufPtr,
                                    &fieldNumBytesWritten);
@@ -2919,7 +3310,7 @@ static le_result_t WriteInstanceToTLV
 (
     assetData_InstanceDataRef_t instanceRef,    ///< [IN] Asset instance to use
     int fieldId,                                ///< [IN] Field to write, or -1 for all fields
-    uint8_t* bufPtr,                            ///< [OUT] Buffer for writing the header
+    uint8_t* bufPtr,                            ///< [OUT] Buffer for writing the object instance
     size_t bufNumBytes,                         ///< [IN] Size of buffer
     size_t* numBytesWrittenPtr                  ///< [OUT] # bytes written to buffer.
 )
@@ -2928,7 +3319,7 @@ static le_result_t WriteInstanceToTLV
     FieldData_t* fieldDataPtr;
     size_t totalNumBytesWritten;
     size_t numBytesWritten;
-    uint8_t tmpBuffer[256];
+    uint8_t tmpBuffer[256-6];  // leave enough space for maximum header size of 6 bytes
 
     // Need to write the field TLVs first, to know how many bytes will be in the instance TLV.
     // Either read all the allowable TLVs, or just the one specified.
@@ -2950,24 +3341,40 @@ static le_result_t WriteInstanceToTLV
         if ( result != LE_OK )
             return result;
 
-        WriteFieldTLV(fieldDataPtr, tmpBuffer, sizeof(tmpBuffer), &totalNumBytesWritten);
+        WriteFieldTLV(instanceRef,
+                      fieldDataPtr,
+                      tmpBuffer,
+                      sizeof(tmpBuffer),
+                      &totalNumBytesWritten);
     }
 
-    // Now write the instance TLV to the real buffer
-    WriteTLVHeader(TLV_TYPE_OBJ_INST,
-                   instanceRef->instanceId,
-                   totalNumBytesWritten,
-                   bufPtr,
-                   bufNumBytes,
-                   &numBytesWritten);
+    // If there is room in the output buffer, write the instance TLV to it.  Ensure that all the
+    // TLV data will fit, plus 6 bytes for header.
+    if ( totalNumBytesWritten + 6 <= bufNumBytes )
+    {
+        WriteTLVHeader(TLV_TYPE_OBJ_INST,
+                       instanceRef->instanceId,
+                       totalNumBytesWritten,
+                       bufPtr,
+                       bufNumBytes,
+                       &numBytesWritten);
 
-    bufPtr += numBytesWritten;
-    bufNumBytes -= numBytesWritten;
+        bufPtr += numBytesWritten;
+        bufNumBytes -= numBytesWritten;
 
-    memcpy(bufPtr, tmpBuffer, totalNumBytesWritten);
-    *numBytesWrittenPtr = numBytesWritten+totalNumBytesWritten;
+        memcpy(bufPtr, tmpBuffer, totalNumBytesWritten);
+        *numBytesWrittenPtr = numBytesWritten+totalNumBytesWritten;
 
-    return LE_OK;
+        result = LE_OK;
+    }
+    else
+    {
+        LE_WARN("Overflow: oiid=%i, rid=%i", instanceRef->instanceId, fieldId);
+        *numBytesWrittenPtr = 0;
+        result = LE_OVERFLOW;
+    }
+
+    return result;
 }
 
 
@@ -3136,14 +3543,14 @@ static le_result_t ReadFieldValueFromTLV
     switch ( fieldDataPtr->type )
     {
         case DATA_TYPE_INT:
-            if ( valueNumBytes != 4 )
+            if ( valueNumBytes != 1 && valueNumBytes != 2 && valueNumBytes != 4 )
             {
                 LE_ERROR("Invalid value length = %i", valueNumBytes);
                 result = LE_FAULT;
             }
             else
             {
-                ReadUint(bufPtr, (uint32_t*)&fieldDataPtr->intValue, 4);
+                ReadUint(bufPtr, (uint32_t*)&fieldDataPtr->intValue, valueNumBytes);
             }
             break;
 
@@ -3181,7 +3588,7 @@ static le_result_t ReadFieldValueFromTLV
     }
 
     // Call any registered handlers to be notified of write.
-    CallFieldActionHandlers( instanceRef, fieldId, ASSET_DATA_ACTION_WRITE );
+    CallFieldActionHandlers( instanceRef, fieldId, ASSET_DATA_ACTION_WRITE, false );
 
     return result;
 }

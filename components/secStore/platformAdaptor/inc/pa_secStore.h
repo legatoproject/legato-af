@@ -28,7 +28,7 @@
  *      LE_FAULT if there was some other error.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_secStore_Write
+LE_SHARED le_result_t pa_secStore_Write
 (
     const char* pathPtr,            ///< [IN] Path to write to.
     const uint8_t* bufPtr,          ///< [IN] Buffer containing the data to write.
@@ -49,7 +49,7 @@ le_result_t pa_secStore_Write
  *      LE_FAULT if there was some other error.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_secStore_Read
+LE_SHARED le_result_t pa_secStore_Read
 (
     const char* pathPtr,            ///< [IN] Path to read from.
     uint8_t* bufPtr,                ///< [OUT] Buffer to store the data in.
@@ -69,7 +69,7 @@ le_result_t pa_secStore_Read
  *      LE_FAULT if there was an error.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_secStore_Delete
+LE_SHARED le_result_t pa_secStore_Delete
 (
     const char* pathPtr             ///< [IN] Path to delete.
 );
@@ -86,7 +86,7 @@ le_result_t pa_secStore_Delete
  *      LE_FAULT if there was an error.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_secStore_GetSize
+LE_SHARED le_result_t pa_secStore_GetSize
 (
     const char* pathPtr,            ///< [IN] Path.
     size_t* sizePtr                 ///< [OUT] Size in bytes of all items in the path.

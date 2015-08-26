@@ -8,32 +8,71 @@
 
 #include "legato.h"
 #include "pa_sim.h"
-
-#include "le_cfg_interface.h"
-#include "pa_simu.h"
+#include "pa_sim_simu.h"
 
 #define PIN_REMAINING_ATTEMPS_DEFAULT   3
 #define PUK_REMAINING_ATTEMPS_DEFAULT   3
 
 static uint32_t PinRemainingAttempts = PIN_REMAINING_ATTEMPS_DEFAULT;
 static uint32_t PukRemainingAttempts = PUK_REMAINING_ATTEMPS_DEFAULT;
-static le_sim_States_t CurrentState = LE_SIM_INSERTED;
-static bool PinSecurity = true;
-const le_sim_Id_t SelectedCard = 1;
-
-//--------------------------------------------------------------------------------------------------
-/**
- * SIM state event ID used to report SIM state events to the registered event handlers.
- */
-//--------------------------------------------------------------------------------------------------
-static le_event_Id_t SimStateEvent;
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Memory pool for event state parameters.
- */
-//--------------------------------------------------------------------------------------------------
+static le_sim_Id_t SelectedCard = 1;
+static le_sim_States_t SimState;
+static char HomeMcc[LE_MRC_MCC_BYTES]="";
+static char HomeMnc[LE_MRC_MNC_BYTES]="";
+static pa_sim_Imsi_t Imsi = "";
+static pa_sim_CardId_t Iccid = "";
+static char PhoneNumber[LE_MDMDEFS_PHONE_NUM_MAX_BYTES] = "";
+static char* HomeNetworkOperator = NULL;
+static char Pin[PA_SIM_PIN_MAX_LEN+1]="";
+static char Puk[PA_SIM_PUK_MAX_LEN+1]="";
+static bool StkConfirmation = false;
+static le_event_Id_t SimToolkitEvent;
+static pa_sim_NewStateHdlrFunc_t SimStateHandler;
 static le_mem_PoolRef_t SimStateEventPool;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the Puk code
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void pa_simSimu_SetPuk
+(
+    char* puk
+)
+{
+    strncpy(Puk, puk, PA_SIM_PUK_MAX_LEN);
+    Puk[PA_SIM_PUK_MAX_LEN]='\0';
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the Pin code
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void pa_simSimu_SetPin
+(
+    char* pin
+)
+{
+    strncpy(Pin, pin, LE_SIM_PIN_MIN_LEN);
+    Pin[LE_SIM_PIN_MIN_LEN]='\0';
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Select the Sim
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void pa_simSimu_SetSelectCard
+(
+    le_sim_Id_t simId
+)
+{
+    SelectedCard = simId;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -49,10 +88,7 @@ le_result_t pa_sim_SelectCard
     le_sim_Id_t  sim     ///< The SIM to be selected
 )
 {
-    LE_DEBUG("Select Card: %d", sim);
-
-    if(sim != SelectedCard)
-        return LE_NOT_POSSIBLE;
+    LE_ASSERT(sim == SelectedCard);
 
     return LE_OK;
 }
@@ -74,164 +110,60 @@ le_result_t pa_sim_GetSelectedCard
     return LE_OK;
 }
 
-const char * SimStateStrings[LE_SIM_STATE_UNKNOWN] = {
-        "INSERTED",
-        "ABSENT",
-        "READY",
-        "BLOCKED",
-        "BUSY",
-};
-
-static void ReportSimState
-(
-    void
-)
-{
-    pa_sim_Event_t* eventPtr = le_mem_ForceAlloc(SimStateEventPool);
-    eventPtr->simId   = SelectedCard;
-    eventPtr->state     = CurrentState;
-
-    // @todo: This needs to change to le_event_ReportWithPoolObj (yet to be implemented).
-    LE_DEBUG("Send Event SIM number %d, SIM state %d", eventPtr->simId, eventPtr->state);
-    le_event_ReportWithRefCounting(SimStateEvent, eventPtr);
-}
-
-static void SetSimState
-(
-    le_sim_States_t state
-);
-
-static le_sim_States_t GetSimState
-(
-    void
-);
-
-static void SetPinSecurity
-(
-    bool pinSecurity
-)
-{
-    if(PinSecurity == pinSecurity)
-        return;
-
-    PinSecurity = pinSecurity;
-
-    le_cfg_QuickSetBool(PA_SIMU_CFG_MODEM_ROOT "/sim/1/pinSecurity", PinSecurity);
-
-    /* Update state accordingly */
-    /* => if we are unsecured, INSERTED state doesn't exist */
-    if( (!PinSecurity) && (GetSimState() == LE_SIM_INSERTED) )
-    {
-        SetSimState(LE_SIM_READY);
-    }
-}
-
-static bool GetPinSecurity
-(
-    void
-)
-{
-    PinSecurity = le_cfg_QuickGetBool(PA_SIMU_CFG_MODEM_ROOT "/sim/1/pinSecurity", PinSecurity);
-
-    return PinSecurity;
-}
-
-static void SetSimState
+//--------------------------------------------------------------------------------------------------
+/**
+ * Report the Sim state
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void pa_simSimu_ReportSimState
 (
     le_sim_States_t state
 )
 {
-    const char * stateStr = "";
+    SimState = state;
 
-    if ((state < 0) || (state >= LE_SIM_STATE_UNKNOWN))
-        stateStr = "UNKNOWN";
-
-    stateStr = SimStateStrings[state];
-
-    le_cfg_QuickSetString(PA_SIMU_CFG_MODEM_ROOT "/sim/1/state", stateStr);
-
-    if(CurrentState != state)
+    if (SimStateHandler)
     {
-        LE_INFO("New SIM state: %s", stateStr);
+        pa_sim_Event_t* eventPtr = le_mem_ForceAlloc(SimStateEventPool);
+        eventPtr->simId   = SelectedCard;
+        eventPtr->state     = SimState;
 
-        CurrentState = state;
-        ReportSimState();
+        SimStateHandler(eventPtr);
     }
 }
 
-static le_sim_States_t GetSimState
+//--------------------------------------------------------------------------------------------------
+/**
+ * Report the Stk event
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void pa_simSimu_ReportStkEvent
 (
-    void
+    le_sim_StkEvent_t  leStkEvent
 )
 {
-    le_result_t res;
-    char stateStr[513];
-    le_sim_States_t newState = LE_SIM_STATE_UNKNOWN;
-    int i;
+    pa_sim_StkEvent_t  stkEvent;
+    stkEvent.simId = SelectedCard;
+    stkEvent.stkEvent = leStkEvent;
 
-    res = le_cfg_QuickGetString(PA_SIMU_CFG_MODEM_ROOT "/sim/1/state", stateStr, sizeof(stateStr), PA_SIMU_SIM_DEFAULT_STATE);
-    if (res != LE_OK)
-    {
-        LE_FATAL("Unable to get SIM state");
-    }
-
-    for (i = 0; i < LE_SIM_STATE_UNKNOWN; i++)
-    {
-        if (strncmp(stateStr, SimStateStrings[i], sizeof(stateStr)) == 0)
-        {
-            newState = (le_sim_States_t) i;
-            break;
-        }
-    }
-
-    if(newState != CurrentState)
-    {
-        if(newState == LE_SIM_INSERTED)
-        {
-            SetPinSecurity(true);
-        }
-
-        CurrentState = newState;
-        ReportSimState();
-    }
-
-    return newState;
+    le_event_Report(SimToolkitEvent, &stkEvent, sizeof(stkEvent));
 }
 
-static le_result_t CheckPIN
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function set the card identification (ICCID).
+ *
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void pa_simSimu_SetCardIdentification
 (
-    const pa_sim_Pin_t pin    ///< [IN] pin code
+    pa_sim_CardId_t iccid
 )
 {
-    char simPin[PA_SIM_PIN_MAX_LEN + 1];
-    le_result_t res;
-
-    LE_DEBUG("Checking PIN %s", pin);
-
-    res = le_cfg_QuickGetString(PA_SIMU_CFG_MODEM_ROOT "/sim/1/pinCode", simPin, sizeof(pa_sim_Pin_t), PA_SIMU_SIM_DEFAULT_PIN);
-    if (res != LE_OK)
-    {
-        LE_FATAL("Unable to get PIN code");
-    }
-
-    /* Check SIM code is valid */
-    if (strncmp(pin, simPin, sizeof(pa_sim_Pin_t)) != 0)
-    {
-        LE_DEBUG("Bad Pin (expected %s)", simPin);
-        return LE_BAD_PARAMETER;
-    }
-
-    LE_DEBUG("Pin OK");
-    return LE_OK;
-}
-
-static le_result_t SetPIN
-(
-    const pa_sim_Pin_t pin    ///< [IN] pin code
-)
-{
-    le_cfg_QuickSetString(PA_SIMU_CFG_MODEM_ROOT "/sim/1/pinCode", pin);
-    return LE_OK;
+    memcpy(Iccid, iccid, sizeof(pa_sim_CardId_t));
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -251,9 +183,7 @@ le_result_t pa_sim_GetCardIdentification
     pa_sim_CardId_t iccid     ///< [OUT] ICCID value
 )
 {
-    le_result_t res;
-
-    switch (GetSimState())
+    switch (SimState)
     {
         case LE_SIM_BLOCKED:
         case LE_SIM_INSERTED:
@@ -263,27 +193,23 @@ le_result_t pa_sim_GetCardIdentification
             return LE_NOT_POSSIBLE;
     }
 
-    res = le_cfg_QuickGetString(PA_SIMU_CFG_MODEM_ROOT "/sim/1/iccid", iccid, sizeof(pa_sim_CardId_t), PA_SIMU_SIM_DEFAULT_ICCID);
-    if (res != LE_OK)
-    {
-        LE_FATAL("Unable to get ICCID");
-    }
-    else
-    {
-        LE_DEBUG("ICCID: %s", iccid);
-    }
-
-    switch (res)
-    {
-        case LE_OK:
-            break;
-
-        default:
-            LE_FATAL("Unexpected result: %i", res);
-            break;
-    }
+    memcpy(iccid, Iccid, sizeof(pa_sim_CardId_t));
 
     return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function set the International Mobile Subscriber Identity (IMSI).
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void pa_simSimu_SetIMSI
+(
+    pa_sim_Imsi_t imsi   ///< [OUT] IMSI value
+)
+{
+    strncpy(Imsi, imsi, sizeof(pa_sim_Imsi_t));
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -303,9 +229,7 @@ le_result_t pa_sim_GetIMSI
     pa_sim_Imsi_t imsi   ///< [OUT] IMSI value
 )
 {
-    le_result_t res;
-
-    switch (GetSimState())
+    switch (SimState)
     {
         case LE_SIM_READY:
             break;
@@ -313,15 +237,7 @@ le_result_t pa_sim_GetIMSI
             return LE_NOT_POSSIBLE;
     }
 
-    res = le_cfg_QuickGetString(PA_SIMU_CFG_MODEM_ROOT "/sim/1/imsi", imsi, sizeof(pa_sim_Imsi_t), PA_SIMU_SIM_DEFAULT_IMSI);
-    if (res != LE_OK)
-    {
-        LE_FATAL("Unable to get IMSI");
-    }
-    else
-    {
-        LE_DEBUG("IMSI: %s", imsi);
-    }
+    strncpy(imsi, Imsi, sizeof(pa_sim_Imsi_t));
 
     return LE_OK;
 }
@@ -343,12 +259,7 @@ le_result_t pa_sim_GetState
     le_sim_States_t* statePtr    ///< [OUT] SIM state
 )
 {
-    *statePtr = GetSimState();
-
-    if(*statePtr == LE_SIM_STATE_UNKNOWN)
-    {
-        return LE_NOT_POSSIBLE;
-    }
+    *statePtr = SimState;
 
     return LE_OK;
 }
@@ -367,11 +278,10 @@ le_event_HandlerRef_t pa_sim_AddNewStateHandler
     pa_sim_NewStateHdlrFunc_t handler ///< [IN] The handler function.
 )
 {
-    LE_FATAL_IF( (handler == NULL), "new SIM State handler is NULL");
+    SimStateHandler = handler;
 
-    return le_event_AddHandler("SimStateHandler",
-                               SimStateEvent,
-                               (le_event_HandlerFunc_t) handler);
+    // just for returning something
+    return (le_event_HandlerRef_t) SimStateHandler;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -386,7 +296,7 @@ le_result_t pa_sim_RemoveNewStateHandler
     le_event_HandlerRef_t handlerRef
 )
 {
-    le_event_RemoveHandler(handlerRef);
+    SimStateHandler = NULL;
 
     return LE_OK;
 }
@@ -410,9 +320,7 @@ le_result_t pa_sim_EnterPIN
     const pa_sim_Pin_t pin    ///< [IN] pin code
 )
 {
-    le_result_t res;
-
-    switch (GetSimState())
+    switch (SimState)
     {
         case LE_SIM_INSERTED:
             break;
@@ -420,40 +328,26 @@ le_result_t pa_sim_EnterPIN
             return LE_NOT_POSSIBLE;
     }
 
-    res = CheckPIN(pin);
-
-    /* Check SIM code is valid */
-    switch (res)
+    // add a function to check the PIN
+    if (strncmp(Pin, pin, strlen(Pin) ) != 0)
     {
-        case LE_COMM_ERROR:
-            break;
+        if (PinRemainingAttempts == 1)
+        {
+            /* Blocked */
+            pa_simSimu_ReportSimState(LE_SIM_BLOCKED);
+        }
 
-        case LE_BAD_PARAMETER:
-            if (PinRemainingAttempts == 1)
-            {
-                /* Blocked */
-                SetSimState(LE_SIM_BLOCKED);
+        PinRemainingAttempts--;
 
-                PinRemainingAttempts = PIN_REMAINING_ATTEMPS_DEFAULT;
-                PukRemainingAttempts = PUK_REMAINING_ATTEMPS_DEFAULT;
-            }
-            else
-            {
-                PinRemainingAttempts--;
-            }
-
-            break;
-
-        case LE_OK:
-            PinRemainingAttempts = PIN_REMAINING_ATTEMPS_DEFAULT;
-            SetSimState(LE_SIM_READY);
-            break;
-
-        default:
-            LE_FATAL("Unexpected result %d", res);
+        return LE_BAD_PARAMETER;
+    }
+    else
+    {
+        PinRemainingAttempts = PIN_REMAINING_ATTEMPS_DEFAULT;
+        pa_simSimu_ReportSimState(LE_SIM_READY);
     }
 
-    return res;
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -479,10 +373,7 @@ le_result_t pa_sim_EnterPUK
     const pa_sim_Pin_t pin   ///< [IN] new PIN code
 )
 {
-    le_result_t res;
-    char simPuk[PA_SIM_PUK_MAX_LEN + 1];
-
-    switch (GetSimState())
+    switch (SimState)
     {
         case LE_SIM_BLOCKED:
             break;
@@ -490,14 +381,8 @@ le_result_t pa_sim_EnterPUK
             return LE_NOT_POSSIBLE;
     }
 
-    res = le_cfg_QuickGetString(PA_SIMU_CFG_MODEM_ROOT "/sim/1/pukCode", simPuk, sizeof(pa_sim_Puk_t), PA_SIMU_SIM_DEFAULT_PUK);
-    if (res != LE_OK)
-    {
-        LE_FATAL("Unable to get PUK code");
-    }
-
     /* Check PUK code is valid */
-    if (strncmp(puk, simPuk, sizeof(pa_sim_Puk_t)) != 0)
+    if (strncmp(puk, Puk, sizeof(pa_sim_Puk_t)) != 0)
     {
         if (PukRemainingAttempts <= 1)
         {
@@ -512,14 +397,8 @@ le_result_t pa_sim_EnterPUK
         return LE_BAD_PARAMETER;
     }
 
-    /* Set new PIN code */
-    res = SetPIN(pin);
-    if (res != LE_OK)
-    {
-        LE_FATAL("Unable to set new PIN");
-    }
-
-    SetSimState(LE_SIM_READY);
+    PinRemainingAttempts = PUK_REMAINING_ATTEMPS_DEFAULT;
+    pa_simSimu_ReportSimState(LE_SIM_READY);
 
     return LE_OK;
 }
@@ -543,7 +422,16 @@ le_result_t pa_sim_GetPINRemainingAttempts
     uint32_t*        attemptsPtr ///< [OUT] The number of attempts still possible
 )
 {
-    *attemptsPtr = (PinRemainingAttempts-1);
+    switch (SimState)
+    {
+        case LE_SIM_BUSY:
+        case LE_SIM_STATE_UNKNOWN:
+            return LE_NOT_POSSIBLE;
+        default:
+        break;
+    }
+
+    *attemptsPtr = PinRemainingAttempts;
     return LE_OK;
 }
 
@@ -566,6 +454,15 @@ le_result_t pa_sim_GetPUKRemainingAttempts
     uint32_t*        attemptsPtr ///< [OUT] The number of attempts still possible
 )
 {
+    switch (SimState)
+    {
+        case LE_SIM_BUSY:
+        case LE_SIM_STATE_UNKNOWN:
+            return LE_NOT_POSSIBLE;
+        default:
+        break;
+    }
+
     *attemptsPtr = (PukRemainingAttempts-1);
     return LE_OK;
 }
@@ -589,9 +486,7 @@ le_result_t pa_sim_ChangePIN
     const pa_sim_Pin_t newcode  ///< [IN] New code
 )
 {
-    le_result_t res;
-
-    switch (GetSimState())
+    switch (SimState)
     {
         case LE_SIM_READY:
             break;
@@ -599,13 +494,12 @@ le_result_t pa_sim_ChangePIN
             return LE_NOT_POSSIBLE;
     }
 
-    res = CheckPIN(oldcode);
+    if (strncmp(Pin, oldcode, strlen(Pin)) != 0)
+    {
+        return LE_FAULT;
+    }
 
-    if (res != LE_OK)
-        return res;
-
-    /* Set new PIN code */
-    return SetPIN(newcode);
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -627,9 +521,7 @@ le_result_t pa_sim_EnablePIN
     const pa_sim_Pin_t code   ///< [IN] code
 )
 {
-    le_result_t res;
-
-    switch (GetSimState())
+    switch (SimState)
     {
         case LE_SIM_READY:
             break;
@@ -637,19 +529,12 @@ le_result_t pa_sim_EnablePIN
             return LE_NOT_POSSIBLE;
     }
 
-    if(PinSecurity)
+    if (strncmp(code,Pin,strlen(Pin)) != 0)
     {
-        LE_WARN("PIN Security already enabled");
         return LE_NOT_POSSIBLE;
     }
 
-    res = SetPIN(code);
-
-    if (res != LE_OK)
-        return LE_NOT_POSSIBLE;
-
-    SetPinSecurity(true);
-    return res;
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -671,12 +556,10 @@ le_result_t pa_sim_DisablePIN
     const pa_sim_Pin_t code   ///< [IN] code
 )
 {
-    le_result_t res;
-
     if (code[0] == '\0')
         return LE_BAD_PARAMETER;
 
-    switch (GetSimState())
+    switch (SimState)
     {
         case LE_SIM_INSERTED:
         case LE_SIM_READY:
@@ -685,18 +568,27 @@ le_result_t pa_sim_DisablePIN
             return LE_NOT_POSSIBLE;
     }
 
-    if(!PinSecurity)
+
+    if (strncmp(code,Pin,strlen(Pin)) != 0)
     {
         return LE_NOT_POSSIBLE;
     }
 
-    res = CheckPIN(code);
+    return LE_OK;
+}
 
-    if (res != LE_OK)
-        return LE_BAD_PARAMETER;
-
-    SetPinSecurity(false);
-    return res;
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the SIM Phone Number.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void pa_simSimu_SetSubscriberPhoneNumber
+(
+    char        *phoneNumberStr
+)
+{
+    strncpy(PhoneNumber, phoneNumberStr, LE_MDMDEFS_PHONE_NUM_MAX_BYTES);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -715,15 +607,37 @@ le_result_t pa_sim_GetSubscriberPhoneNumber
     size_t       phoneNumberStrSize ///< [IN]  Size of phoneNumberStr
 )
 {
-    le_result_t res;
-
-    res = le_cfg_QuickGetString(PA_SIMU_CFG_MODEM_ROOT "/sim/1/number", phoneNumberStr, phoneNumberStrSize, PA_SIMU_SIM_DEFAULT_NUM);
-    if (res != LE_OK)
+    switch (SimState)
     {
-        LE_FATAL("Unable to get subscriber phone number");
+        case LE_SIM_READY:
+            break;
+        default:
+            return LE_NOT_POSSIBLE;
     }
 
+    if (phoneNumberStrSize < strlen(PhoneNumber))
+    {
+        return LE_OVERFLOW;
+    }
+
+    strncpy(phoneNumberStr, PhoneNumber, phoneNumberStrSize);
+
     return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to set the Home Network Name information.
+ */
+//--------------------------------------------------------------------------------------------------
+void pa_simSimu_SetHomeNetworkOperator
+(
+    char       *nameStr
+)
+{
+    int len = strlen(nameStr)+1;
+    HomeNetworkOperator = malloc( len );
+    strcpy(HomeNetworkOperator, nameStr);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -745,15 +659,40 @@ le_result_t pa_sim_GetHomeNetworkOperator
     size_t      nameStrSize            ///< [IN] the nameStr size
 )
 {
-    le_result_t res;
-
-    res = le_cfg_QuickGetString(PA_SIMU_CFG_MODEM_ROOT "/sim/carrierName", nameStr, nameStrSize, PA_SIMU_SIM_DEFAULT_CARRIER);
-    if (res != LE_OK)
+    switch (SimState)
     {
-        LE_FATAL("Unable to get carrier name");
+        case LE_SIM_READY:
+            break;
+        default:
+            return LE_FAULT;
     }
 
+    if ( nameStrSize < strlen(HomeNetworkOperator) )
+    {
+        return LE_OVERFLOW;
+    }
+
+    strncpy(nameStr, HomeNetworkOperator, nameStrSize );
+
     return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to set the Home Network MCC MNC.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void pa_simSimu_SetHomeNetworkMccMnc
+(
+    char     *mccPtr,
+    char     *mncPtr
+)
+{
+    LE_ASSERT((strlen(mccPtr) <= LE_MRC_MCC_BYTES) && (strlen(mncPtr) <= LE_MRC_MNC_BYTES));
+
+    strcpy(HomeMcc, mccPtr);
+    strcpy(HomeMnc, mncPtr);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -774,19 +713,22 @@ le_result_t pa_sim_GetHomeNetworkMccMnc
     size_t    mncPtrSize             ///< [IN] mncPtr buffer size
 )
 {
-    le_result_t res;
-
-    res = le_cfg_QuickGetString(PA_SIMU_CFG_MODEM_ROOT "/sim/mcc", mccPtr, mccPtrSize, PA_SIMU_SIM_DEFAULT_MCC);
-    if (res != LE_OK)
+    switch (SimState)
     {
-        LE_FATAL("Unable to get MCC");
+        case LE_SIM_READY:
+            break;
+        default:
+            return LE_FAULT;
     }
 
-    res = le_cfg_QuickGetString(PA_SIMU_CFG_MODEM_ROOT "/sim/mnc", mncPtr, mncPtrSize, PA_SIMU_SIM_DEFAULT_MNC);
-    if (res != LE_OK)
+
+    if ( ( mccPtrSize <  strlen(HomeMcc) ) || ( mncPtrSize <  strlen(HomeMnc) ) )
     {
-        LE_FATAL("Unable to get MNC");
+        return LE_OVERFLOW;
     }
+
+    strncpy(mccPtr, HomeMcc, mccPtrSize );
+    strncpy(mncPtr, HomeMnc, mncPtrSize );
 
     return LE_OK;
 }
@@ -878,7 +820,13 @@ le_event_HandlerRef_t pa_sim_AddSimToolkitEventHandler
     void*                            contextPtr  ///< [IN] The context to be given to the handler.
 )
 {
-    return NULL;
+    le_event_HandlerRef_t handlerRef = le_event_AddHandler("SimToolkitEventHandler",
+                                           SimToolkitEvent,
+                                           (le_event_HandlerFunc_t) handler);
+
+    le_event_SetContextPtr (handlerRef, contextPtr);
+
+    return handlerRef;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -899,6 +847,20 @@ le_result_t pa_sim_RemoveSimToolkitEventHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * This function must be called to set the expected confirmation command.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void pa_simSimu_SetExpectedStkConfirmationCommand
+(
+    bool  confirmation ///< [IN] true to accept, false to reject
+)
+{
+    StkConfirmation = confirmation;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This function must be called to confirm a SIM Toolkit command.
  *
  * @return
@@ -911,27 +873,27 @@ le_result_t pa_sim_ConfirmSimToolkitCommand
     bool  confirmation ///< [IN] true to accept, false to reject
 )
 {
+    LE_ASSERT(StkConfirmation == confirmation);
+
     return LE_OK;
 }
 
+//--------------------------------------------------------------------------------------------------
 /**
  * SIM Stub initialization.
  *
  * @return LE_OK           The function succeeded.
  */
-le_result_t sim_simu_Init
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_simSimu_Init
 (
     void
 )
 {
     LE_INFO("PA SIM Init");
 
-    SimStateEvent = le_event_CreateIdWithRefCounting("SimStateEvent");
     SimStateEventPool = le_mem_CreatePool("SimEventPool", sizeof(pa_sim_Event_t));
-
-    /* Read initial tree */
-    GetPinSecurity();
-    GetSimState();
+    SimToolkitEvent = le_event_CreateId("SimToolkitEvent", sizeof(pa_sim_StkEvent_t));
 
     return LE_OK;
 }

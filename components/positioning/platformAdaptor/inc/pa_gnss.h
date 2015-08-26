@@ -151,7 +151,7 @@ typedef pa_Gnss_Position_t* pa_Gnss_Position_Ref_t;
  * @return LE_OK     The function succeed.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_gnss_Init
+LE_SHARED le_result_t pa_gnss_Init
 (
     void
 );
@@ -164,7 +164,7 @@ le_result_t pa_gnss_Init
  * @return LE_OK     The function succeed.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_gnss_Release
+LE_SHARED le_result_t pa_gnss_Release
 (
     void
 );
@@ -179,7 +179,7 @@ le_result_t pa_gnss_Release
  *  - LE_UNSUPPORTED request not supported
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_gnss_SetConstellation
+LE_SHARED le_result_t pa_gnss_SetConstellation
 (
     le_gnss_ConstellationBitMask_t constellationMask  ///< [IN] GNSS constellation used in solution.
 );
@@ -194,7 +194,7 @@ le_result_t pa_gnss_SetConstellation
 *  - LE_FAULT on failure
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_gnss_GetConstellation
+LE_SHARED le_result_t pa_gnss_GetConstellation
 (
     le_gnss_ConstellationBitMask_t *constellationMaskPtr ///< [OUT] GNSS constellation used
                                                          ///< in solution
@@ -208,7 +208,7 @@ le_result_t pa_gnss_GetConstellation
  * @return LE_OK     The function succeed.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_gnss_Start
+LE_SHARED le_result_t pa_gnss_Start
 (
     void
 );
@@ -221,7 +221,7 @@ le_result_t pa_gnss_Start
  * @return LE_OK     The function succeed.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_gnss_Stop
+LE_SHARED le_result_t pa_gnss_Stop
 (
     void
 );
@@ -235,7 +235,7 @@ le_result_t pa_gnss_Stop
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_gnss_SetAcquisitionRate
+LE_SHARED le_result_t pa_gnss_SetAcquisitionRate
 (
     uint32_t rate     ///< [IN] rate in seconds
 );
@@ -258,7 +258,7 @@ typedef void(*pa_gnss_PositionDataHandlerFunc_t)(pa_Gnss_Position_Ref_t position
  * @note Doesn't return on failure, so there's no need to check the return value for errors.
  */
 //--------------------------------------------------------------------------------------------------
-le_event_HandlerRef_t pa_gnss_AddPositionDataHandler
+LE_SHARED le_event_HandlerRef_t pa_gnss_AddPositionDataHandler
 (
     pa_gnss_PositionDataHandlerFunc_t handler ///< [IN] The handler function.
 );
@@ -270,7 +270,7 @@ le_event_HandlerRef_t pa_gnss_AddPositionDataHandler
  * @note Doesn't return on failure, so there's no need to check the return value for errors.
  */
 //--------------------------------------------------------------------------------------------------
-void pa_gnss_RemovePositionDataHandler
+LE_SHARED void pa_gnss_RemovePositionDataHandler
 (
     le_event_HandlerRef_t    handlerRef ///< [IN] The handler reference.
 );
@@ -283,7 +283,7 @@ void pa_gnss_RemovePositionDataHandler
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_gnss_GetLastPositionData
+LE_SHARED le_result_t pa_gnss_GetLastPositionData
 (
     pa_Gnss_Position_Ref_t  positionRef   ///< [OUT] Reference to a position struct
 );
@@ -297,7 +297,7 @@ le_result_t pa_gnss_GetLastPositionData
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_gnss_LoadExtendedEphemerisFile
+LE_SHARED le_result_t pa_gnss_LoadExtendedEphemerisFile
 (
     int32_t       fd      ///< [IN] extended ephemeris file descriptor
 );
@@ -310,12 +310,39 @@ le_result_t pa_gnss_LoadExtendedEphemerisFile
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_gnss_GetExtendedEphemerisValidityTimes
+LE_SHARED le_result_t pa_gnss_GetExtendedEphemerisValidityTimes
 (
     le_clk_Time_t *startTimePtr,    ///< [OUT] Start time
     le_clk_Time_t *stopTimePtr      ///< [OUT] Stop time
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function enables the use of the 'Extended Ephemeris' file into the GNSS device.
+ *
+ * @return LE_FAULT         The function failed to enable the 'Extended Ephemeris' file.
+ * @return LE_OK            The function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_gnss_EnableExtendedEphemerisFile
+(
+    void
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function disables the use of the 'Extended Ephemeris' file into the GNSS device.
+ *
+ * @return LE_FAULT         The function failed to disable the 'Extended Ephemeris' file.
+ * @return LE_OK            The function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_gnss_DisableExtendedEphemerisFile
+(
+    void
+);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -325,9 +352,37 @@ le_result_t pa_gnss_GetExtendedEphemerisValidityTimes
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_gnss_ForceRestart
+LE_SHARED le_result_t pa_gnss_ForceRestart
 (
     pa_gnss_Restart_t  restartType ///< [IN] type of restart
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function enables the GNSS device.
+ *
+ * @return LE_FAULT         The function failed.
+ * @return LE_OK            The function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_gnss_Enable
+(
+    void
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function disables the GNSS device.
+ *
+ * @return LE_FAULT         The function failed.
+ * @return LE_OK            The function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_gnss_Disable
+(
+    void
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -341,7 +396,7 @@ le_result_t pa_gnss_ForceRestart
  *  - LE_TIMEOUT a time-out occurred
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_gnss_SetSuplAssistedMode
+LE_SHARED le_result_t pa_gnss_SetSuplAssistedMode
 (
     le_gnss_AssistedMode_t  assistedMode      ///< [IN] Assisted-GNSS mode.
 );
@@ -355,7 +410,7 @@ le_result_t pa_gnss_SetSuplAssistedMode
  *  - LE_FAULT on failure
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_gnss_GetSuplAssistedMode
+LE_SHARED le_result_t pa_gnss_GetSuplAssistedMode
 (
     le_gnss_AssistedMode_t *assistedModePtr      ///< [OUT] Assisted-GNSS mode.
 );
@@ -373,7 +428,7 @@ le_result_t pa_gnss_GetSuplAssistedMode
  *  - LE_TIMEOUT a time-out occurred
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_gnss_SetSuplServerUrl
+LE_SHARED le_result_t pa_gnss_SetSuplServerUrl
 (
     const char*  suplServerUrlPtr      ///< [IN] SUPL server URL.
 );
@@ -389,7 +444,7 @@ le_result_t pa_gnss_SetSuplServerUrl
  *  - LE_TIMEOUT a time-out occurred
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_gnss_InjectSuplCertificate
+LE_SHARED le_result_t pa_gnss_InjectSuplCertificate
 (
     uint8_t  suplCertificateId,      ///< [IN] Certificate ID of the SUPL certificate.
                                      ///< Certificate ID range is 0 to 9
@@ -408,7 +463,7 @@ le_result_t pa_gnss_InjectSuplCertificate
  *  - LE_TIMEOUT a time-out occurred
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_gnss_DeleteSuplCertificate
+LE_SHARED le_result_t pa_gnss_DeleteSuplCertificate
 (
     uint8_t  suplCertificateId  ///< [IN]  Certificate ID of the SUPL certificate.
                                 ///< Certificate ID range is 0 to 9

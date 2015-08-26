@@ -16,7 +16,6 @@
 #include "pa_media.h"
 #include <math.h>
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Values used for DTMF sampling.
@@ -56,12 +55,13 @@ DtmfThreadCtx_t;
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
-    pa_media_AmrDecoderContext_t*   paAmrCtxPtr;    // AMR context in the PA
-    int32_t                         fd_in;          // File descriptor of the file to decode
-    int32_t                         fd_out;         // pipe output
-    int32_t                         fd_pcm;         // pipe input
-    le_audio_MediaHandlerRef_t      mediaHandler;   // media handler reference
-    le_audio_Stream_t*              streamPtr;      // stream conrtext
+    pa_media_AmrDecoderContext_t*   paAmrDecoderCtxPtr; ///< AMR decoder context in the PA
+    pa_media_AmrEncoderContext_t*   paAmrEncoderCtxPtr; ///< AMR encoder context in the PA
+    int32_t                         fd_in;              ///< File descriptor of the file to decode
+    int32_t                         fd_pipe_input;      ///< pipe input
+    int32_t                         fd_pipe_output;     ///< pipe output
+    le_audio_MediaHandlerRef_t      mediaHandler;       ///< media handler reference
+    le_audio_Stream_t*              streamPtr;          ///< stream conrtext
 }
 MediaAmrContext_t;
 
@@ -334,8 +334,9 @@ static void MyMediaAmrHandler
 
     if (amrCtxtPtr)
     {
+        close(amrCtxtPtr->fd_pipe_output);
+        close(amrCtxtPtr->fd_pipe_input);
 
-        close(amrCtxtPtr->fd_pcm);
         le_audio_RemoveMediaHandler(amrCtxtPtr->mediaHandler);
 
         // set the initial fd in the stream context
@@ -362,14 +363,14 @@ static void* PlayAmrThread
 
     while (1)
     {
-        uint8_t outBuffer[amrCtxtPtr->paAmrCtxPtr->bufferSize];
+        uint8_t outBuffer[amrCtxtPtr->paAmrDecoderCtxPtr->bufferSize];
 
         /* Decode the packet */
-        if ( pa_media_DecodeAmrFrames( amrCtxtPtr->paAmrCtxPtr,
+        if ( pa_media_DecodeAmrFrames( amrCtxtPtr->paAmrDecoderCtxPtr,
                                         amrCtxtPtr->fd_in,
                                         outBuffer ) == LE_OK )
         {
-            write(amrCtxtPtr->fd_out, outBuffer, amrCtxtPtr->paAmrCtxPtr->bufferSize);
+            write(amrCtxtPtr->fd_pipe_input, outBuffer, amrCtxtPtr->paAmrDecoderCtxPtr->bufferSize);
         }
         else
         {
@@ -377,10 +378,89 @@ static void* PlayAmrThread
         }
     }
 
-    close(amrCtxtPtr->fd_out);
-    pa_media_ReleaseAmrDecoder(amrCtxtPtr->paAmrCtxPtr);
+    // close can be interrupted by a signal, retry if it is the case
+    int result;
+    do
+    {
+        result = close(amrCtxtPtr->fd_pipe_input);
+    }
+    while ((result == -1) && (errno == EINTR));
+    LE_CRIT_IF(result == -1, "Failed to close audio input pipe (%m).");
+
+    pa_media_ReleaseAmrDecoder(amrCtxtPtr->paAmrDecoderCtxPtr);
 
     LE_DEBUG("PlayAmrThread end");
+
+    return NULL;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * AMR encoding thread.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void* RecordAmrThread
+(
+    void* contextPtr
+)
+{
+    MediaAmrContext_t * amrCtxtPtr = (MediaAmrContext_t *) contextPtr;
+    le_result_t result = LE_OK;
+
+    LE_DEBUG("RecordAmrThread");
+
+    while (result == LE_OK)
+    {
+        uint32_t outputBufLen = 500;
+        uint8_t outputBuf[outputBufLen];
+        uint8_t inputBuf[amrCtxtPtr->paAmrEncoderCtxPtr->bufferSize];
+        uint32_t readLen = 0;
+
+        while ( (result == LE_OK) && (readLen != amrCtxtPtr->paAmrEncoderCtxPtr->bufferSize) )
+        {
+            uint32_t len = read(amrCtxtPtr->fd_pipe_output,
+                           inputBuf+readLen,
+                           amrCtxtPtr->paAmrEncoderCtxPtr->bufferSize-readLen);
+
+            if (len <= 0)
+            {
+                LE_DEBUG("read error %d", len);
+                result = LE_FAULT;
+            }
+            else
+            {
+                readLen += len;
+            }
+        }
+
+        if ( result == LE_OK )
+        {
+            if (pa_media_EncodeAmrFrames(amrCtxtPtr->paAmrEncoderCtxPtr,
+                                     inputBuf,
+                                     readLen,
+                                     outputBuf,
+                                     &outputBufLen) == LE_OK)
+            {
+                int32_t writeLen = write( amrCtxtPtr->fd_in, outputBuf, outputBufLen );
+
+                if (writeLen != outputBufLen)
+                {
+                    LE_ERROR("write error %d", writeLen);
+                    result = LE_FAULT;
+                }
+            }
+            else
+            {
+                LE_ERROR("pa_media_EncodeAmrFrames error");
+                result = LE_FAULT;
+            }
+        }
+    }
+
+    pa_media_ReleaseAmrEncoder(amrCtxtPtr->paAmrEncoderCtxPtr);
+
+    LE_DEBUG("RecordAmrThread end");
 
     return NULL;
 }
@@ -392,7 +472,7 @@ static void* PlayAmrThread
  *
  */
 //--------------------------------------------------------------------------------------------------
-static le_result_t TreatWavFile
+static le_result_t PlayWavFile
 (
     int32_t                     fd,
     pa_audio_SamplePcmConfig_t* samplePcmConfigPtr
@@ -431,7 +511,7 @@ static le_result_t TreatWavFile
  *
  */
 //--------------------------------------------------------------------------------------------------
-static le_result_t TreatAmrFile
+static le_result_t PlayAmrFile
 (
     le_audio_Stream_t*         streamPtr,
     pa_audio_SamplePcmConfig_t* samplePcmConfigPtr
@@ -449,25 +529,31 @@ static le_result_t TreatAmrFile
     if ( strncmp(header, "#!AMR", 5) == 0 )
     {
         MediaAmrContext_t * amrCtxtPtr = le_mem_ForceAlloc(AudioAmrContextPool);
-        pa_media_AmrFormat_t format = PA_MEDIA_AMR_MAX;
+        le_media_Format_t format = LE_MEDIA_FORMAT_MAX;
         int pipefd[2];
+
+        if (amrCtxtPtr == NULL)
+        {
+            LE_ERROR("Failed to allocate memeory");
+            return LE_FAULT;
+        }
 
         memset(amrCtxtPtr, 0, sizeof(MediaAmrContext_t));
 
         if ( strncmp(header+5, "-WB\n", 4) == 0 )
         {
             LE_DEBUG("AMR-WB found");
-            format = PA_MEDIA_AMR_WB;
+            format = LE_MEDIA_AMR_WB;
         }
         else if ( strncmp(header+5, "-NB\n", 4) == 0 )
         {
             LE_DEBUG("AMR-NB found");
-            format = PA_MEDIA_AMR_NB;
+            format = LE_MEDIA_AMR_NB;
         }
         else if ( strncmp(header+5, "\n", 1) == 0 )
         {
             LE_DEBUG("AMR-NB found");
-            format = PA_MEDIA_AMR_NB;
+            format = LE_MEDIA_AMR_NB;
             lseek(streamPtr->fd, -3, SEEK_CUR);
         }
         else
@@ -477,14 +563,14 @@ static le_result_t TreatAmrFile
             return LE_FAULT;
         }
 
-        if ( pa_media_InitAmrDecoder(format, &amrCtxtPtr->paAmrCtxPtr) != LE_OK )
+        if ( pa_media_InitAmrDecoder(format, &amrCtxtPtr->paAmrDecoderCtxPtr) != LE_OK )
         {
             LE_ERROR("Failed to init AMR Decoder");
             le_mem_Release(amrCtxtPtr);
             return LE_FAULT;
         }
 
-        if (format == PA_MEDIA_AMR_WB)
+        if (format == LE_MEDIA_AMR_WB)
         {
             samplePcmConfigPtr->sampleRate = 16000;
         }
@@ -505,9 +591,9 @@ static le_result_t TreatAmrFile
         }
 
         amrCtxtPtr->fd_in = streamPtr->fd;
-        amrCtxtPtr->fd_out = pipefd[1];
+        amrCtxtPtr->fd_pipe_input = pipefd[1];
         streamPtr->fd = pipefd[0];
-        amrCtxtPtr->fd_pcm = pipefd[0];
+        amrCtxtPtr->fd_pipe_output = pipefd[0];
         amrCtxtPtr->streamPtr = streamPtr;
 
         amrCtxtPtr->mediaHandler = le_audio_AddMediaHandler(streamPtr->streamRef,
@@ -520,6 +606,148 @@ static le_result_t TreatAmrFile
     return LE_OK;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function gets the format regarding to the AMR mode.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static le_media_Format_t GetFormat
+(
+    le_audio_AmrMode_t amrMode
+)
+{
+    uint8_t i=0;
+
+    struct
+    {
+        le_audio_AmrMode_t amrMode;
+        le_media_Format_t  format;
+    }   EncodingFormat[] = {
+                                { LE_AUDIO_AMR_NB_4_75_KBPS,        LE_MEDIA_AMR_NB     },
+                                { LE_AUDIO_AMR_NB_5_15_KBPS,        LE_MEDIA_AMR_NB     },
+                                { LE_AUDIO_AMR_NB_5_9_KBPS,         LE_MEDIA_AMR_NB     },
+                                { LE_AUDIO_AMR_NB_6_7_KBPS,         LE_MEDIA_AMR_NB     },
+                                { LE_AUDIO_AMR_NB_7_4_KBPS,         LE_MEDIA_AMR_NB     },
+                                { LE_AUDIO_AMR_NB_7_95_KBPS,        LE_MEDIA_AMR_NB     },
+                                { LE_AUDIO_AMR_NB_10_2_KBPS,        LE_MEDIA_AMR_NB     },
+                                { LE_AUDIO_AMR_NB_12_2_KBPS,        LE_MEDIA_AMR_NB     },
+                                { LE_AUDIO_AMR_WB_6_6_KBPS,         LE_MEDIA_AMR_WB     },
+                                { LE_AUDIO_AMR_WB_8_85_KBPS,        LE_MEDIA_AMR_WB     },
+                                { LE_AUDIO_AMR_WB_12_65_KBPS,       LE_MEDIA_AMR_WB     },
+                                { LE_AUDIO_AMR_WB_14_25_KBPS,       LE_MEDIA_AMR_WB     },
+                                { LE_AUDIO_AMR_WB_15_85_KBPS,       LE_MEDIA_AMR_WB     },
+                                { LE_AUDIO_AMR_WB_18_25_KBPS,       LE_MEDIA_AMR_WB     },
+                                { LE_AUDIO_AMR_WB_19_85_KBPS,       LE_MEDIA_AMR_WB     },
+                                { LE_AUDIO_AMR_WB_23_05_KBPS,       LE_MEDIA_AMR_WB     },
+                                { LE_AUDIO_AMR_WB_23_85_KBPS,       LE_MEDIA_AMR_WB     },
+                                { 0,                                LE_MEDIA_FORMAT_MAX }
+                            };
+
+    while (EncodingFormat[i].format != LE_MEDIA_FORMAT_MAX)
+    {
+        if (EncodingFormat[i].amrMode == amrMode)
+        {
+            return EncodingFormat[i].format;
+        }
+
+        i++;
+    }
+
+    return LE_MEDIA_FORMAT_MAX;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function starts the file recording in AMR format.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t RecordAmrFile
+(
+    le_audio_Stream_t*         streamPtr,
+    pa_audio_SamplePcmConfig_t* samplePcmConfigPtr
+)
+{
+    int pipefd[2];
+    int32_t wroteLen = 0;
+
+    le_media_Format_t format = GetFormat(streamPtr->sampleAmrConfig.amrMode);
+
+    if ((format != LE_MEDIA_AMR_NB) && (format != LE_MEDIA_AMR_WB))
+    {
+        LE_ERROR("Bad AMR mode");
+        return LE_FAULT;
+    }
+
+    MediaAmrContext_t *amrCtxtPtr = le_mem_ForceAlloc(AudioAmrContextPool);
+
+    if (amrCtxtPtr == NULL)
+    {
+        LE_ERROR("Failed to allocate memeory");
+        return LE_FAULT;
+    }
+
+    memset(amrCtxtPtr, 0, sizeof(MediaAmrContext_t));
+
+    if ( pa_media_InitAmrEncoder(   &streamPtr->sampleAmrConfig,
+                                    &amrCtxtPtr->paAmrEncoderCtxPtr
+                                ) != LE_OK )
+    {
+        LE_ERROR("Failed to init AMR Decoder");
+        le_mem_Release(amrCtxtPtr);
+        return LE_FAULT;
+    }
+
+
+
+    if (pipe(pipefd) == -1)
+    {
+        LE_ERROR("Failed to create the pipe");
+        le_mem_Release(amrCtxtPtr);
+        return LE_FAULT;
+    }
+
+    amrCtxtPtr->fd_in = streamPtr->fd;
+    amrCtxtPtr->fd_pipe_input = pipefd[1];
+    streamPtr->fd = pipefd[1];
+    amrCtxtPtr->fd_pipe_output = pipefd[0];
+    amrCtxtPtr->streamPtr = streamPtr;
+
+    samplePcmConfigPtr->channelsCount = 1;
+    samplePcmConfigPtr->bitsPerSample = 16;
+    samplePcmConfigPtr->fileSize = (-1);
+
+    if (format == LE_MEDIA_AMR_WB)
+    {
+        samplePcmConfigPtr->sampleRate = 16000;
+
+        wroteLen = write(amrCtxtPtr->fd_in, "#!AMR-WB\n", 9);
+    }
+    else
+    {
+        samplePcmConfigPtr->sampleRate = 8000;
+
+        wroteLen = write(amrCtxtPtr->fd_in, "#!AMR\n", 6);
+    }
+
+    if (wroteLen <= 0)
+    {
+        LE_ERROR("Failed to write in given fd");
+        le_mem_Release(amrCtxtPtr);
+        close(pipefd[0]);
+        close(pipefd[1]);
+        return LE_FAULT;
+    }
+
+    amrCtxtPtr->mediaHandler = le_audio_AddMediaHandler(streamPtr->streamRef,
+                                       MyMediaAmrHandler, amrCtxtPtr);
+
+
+    le_thread_Start(le_thread_Create("PlaySamples", RecordAmrThread, amrCtxtPtr));
+
+    return LE_OK;
+}
 
 //--------------------------------------------------------------------------------------------------
 //                                       Public declarations
@@ -609,20 +837,52 @@ le_result_t le_media_Open
     pa_audio_SamplePcmConfig_t* samplePcmConfigPtr  ///< [IN] Sample configuration
 )
 {
-    // First, check if the file is a wav
-    if (TreatWavFile(streamPtr->fd, samplePcmConfigPtr) == LE_OK)
+    switch (streamPtr->audioInterface)
     {
-        // wav file found
-        return LE_OK;
+        case PA_AUDIO_IF_DSP_FRONTEND_FILE_PLAY:
+        {
+            // First, check if the file is a wav
+            if (PlayWavFile(streamPtr->fd, samplePcmConfigPtr) == LE_OK)
+            {
+                // wav file found
+                return LE_OK;
+            }
+            else if (PlayAmrFile(streamPtr, samplePcmConfigPtr) == LE_OK)
+            {
+                return LE_OK;
+            }
+            else
+            {
+                return LE_FAULT;
+            }
+        }
+        break;
+        case PA_AUDIO_IF_DSP_FRONTEND_FILE_CAPTURE:
+        {
+            switch (streamPtr->encodingFormat)
+            {
+                case LE_AUDIO_WAVE:
+                {
+                    memcpy( samplePcmConfigPtr,
+                            &streamPtr->samplePcmConfig,
+                            sizeof(pa_audio_SamplePcmConfig_t));
+
+                    return LE_OK;
+                }
+                break;
+                case LE_AUDIO_AMR:
+                    return RecordAmrFile(streamPtr, samplePcmConfigPtr);
+                break;
+                default:
+                break;
+            }
+        }
+        break;
+        default:
+        break;
     }
-    else if (TreatAmrFile(streamPtr, samplePcmConfigPtr) == LE_OK)
-    {
-        return LE_OK;
-    }
-    else
-    {
-        return LE_FAULT;
-    }
+
+    return LE_FAULT;
 }
 
 //--------------------------------------------------------------------------------------------------

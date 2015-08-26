@@ -1,0 +1,30 @@
+sources:
+{
+    appInfo.c
+}
+
+assets:
+{
+    Application_Info =
+    {
+        variables:
+        {
+            string Name
+            string Status
+            string PID
+            string Memory_Used
+            string CPU
+        }
+    }
+}
+
+requires:
+{
+    api:
+    {
+        le_avdata.api
+        le_cfg.api
+        le_appInfo.api
+    }
+}
+

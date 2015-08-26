@@ -9,6 +9,8 @@
 
 #include "interfaces.h"
 #include "pa_simu.h"
+#include "pa_sim_simu.h"
+#include "pa_mdc_simu.h"
 #include "pa_temp.h"
 #include "pa_antenna.h"
 
@@ -36,13 +38,13 @@ void le_pa_Init
     res = mrc_simu_Init();
     LE_FATAL_IF(res != LE_OK, "PA MRC Init Failed");
 
-    res = sim_simu_Init();
+    res = pa_simSimu_Init();
     LE_FATAL_IF(res != LE_OK, "PA SIM Init Failed");
 
     res = sms_simu_Init();
     LE_FATAL_IF(res != LE_OK, "PA SMS Init Failed");
 
-    res = mdc_simu_Init();
+    res = pa_mdcSimu_Init();
     LE_FATAL_IF(res != LE_OK, "PA MDC Init Failed");
 
     res = ecall_simu_Init();

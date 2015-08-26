@@ -86,9 +86,9 @@ pa_mcc_cug_t;
 //--------------------------------------------------------------------------------------------------
 typedef struct {
     uint8_t                         callId;                 ///< Outgoing call Id
-    le_mcc_call_Event_t             event;                  ///< Event generated
+    le_mcc_Event_t                  event;                  ///< Event generated
     char                            phoneNumber[LE_MDMDEFS_PHONE_NUM_MAX_BYTES];  ///< the phone number
-    le_mcc_call_TerminationReason_t terminationEvent;       ///< the termination reason
+    le_mcc_TerminationReason_t      terminationEvent;       ///< the termination reason
     int32_t                         terminationCode;        ///< the corresponding termination code
 }
 pa_mcc_CallEventData_t;
@@ -118,7 +118,7 @@ typedef void (*pa_mcc_CallEventHandlerFunc_t)
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mcc_SetCallEventHandler
+LE_SHARED le_result_t pa_mcc_SetCallEventHandler
 (
     pa_mcc_CallEventHandlerFunc_t   handlerFuncPtr ///< [IN] The event handler function.
 );
@@ -126,11 +126,9 @@ le_result_t pa_mcc_SetCallEventHandler
 //--------------------------------------------------------------------------------------------------
 /**
  * This function must be called to unregister the handler for incoming calls handling.
- *
- *
  */
 //--------------------------------------------------------------------------------------------------
-void pa_mcc_ClearCallEventHandler
+LE_SHARED void pa_mcc_ClearCallEventHandler
 (
     void
 );
@@ -144,7 +142,7 @@ void pa_mcc_ClearCallEventHandler
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mcc_VoiceDial
+LE_SHARED le_result_t pa_mcc_VoiceDial
 (
     const char*    pn,        ///< [IN] The phone number.
     pa_mcc_clir_t  clir,      ///< [IN] The CLIR supplementary service subscription.
@@ -161,7 +159,7 @@ le_result_t pa_mcc_VoiceDial
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mcc_Answer
+LE_SHARED le_result_t pa_mcc_Answer
 (
     void
 );
@@ -175,7 +173,7 @@ le_result_t pa_mcc_Answer
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mcc_HangUp
+LE_SHARED le_result_t pa_mcc_HangUp
 (
     void
 );
@@ -189,7 +187,7 @@ le_result_t pa_mcc_HangUp
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mcc_HangUpAll
+LE_SHARED LE_SHARED le_result_t pa_mcc_HangUpAll
 (
     void
 );

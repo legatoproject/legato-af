@@ -8,6 +8,7 @@
 
 #include "legato.h"
 #include "interfaces.h"
+#include "../inc/pa_ips.h"
 
 //--------------------------------------------------------------------------------------------------
 //                                       Public declarations

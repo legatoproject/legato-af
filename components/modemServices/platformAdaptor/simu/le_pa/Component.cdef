@@ -12,6 +12,7 @@ sources:
     pa_temp_simu.c
     pa_antenna_simu.c
     pa_adc_simu.c
+    pa_rtc_simu.c
     ${LEGATO_ROOT}/components/modemServices/modemDaemon/smsPdu.c
     ${LEGATO_ROOT}/components/modemServices/modemDaemon/cdmaPdu.c
     pa_riPin_simu.c
@@ -26,13 +27,13 @@ requires:
         le_mrc.api      [types-only]
         le_mdc.api      [types-only]
         le_sim.api      [types-only]
-        le_mcc_call.api [types-only]
-        le_audio.api    [types-only]
+        le_mcc.api      [types-only]
         le_ecall.api    [types-only]
         le_info.api     [types-only]
         le_temp.api     [types-only]
         le_ips.api      [types-only]
         le_antenna.api  [types-only]
         le_adc.api      [types-only]
+        le_rtc.api      [types-only]
     }
 }

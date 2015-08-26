@@ -369,9 +369,6 @@ static void DeleteAppItems
     pa_secStore_Delete(path);
 }
 
-#ifdef PRE_BUILT_PA
-void _le_pa_secStore_COMPONENT_INIT(void);
-#endif /* PRE_BUILT_PA */
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -380,10 +377,6 @@ void _le_pa_secStore_COMPONENT_INIT(void);
 //--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
-    #ifdef PRE_BUILT_PA
-    _le_pa_secStore_COMPONENT_INIT();
-    #endif /* PRE_BUILT_PA */
-
     // Register a handler to be called when ever any apps are uninstalled.
     le_instStat_AddAppUninstallEventHandler(DeleteAppItems, NULL);
 }

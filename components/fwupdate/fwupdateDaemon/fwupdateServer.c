@@ -54,9 +54,6 @@ le_result_t le_fwupdate_Download
     return pa_fwupdate_Download(fd);
 }
 
-#ifdef PRE_BUILT_PA
-void _le_pa_fwupdate_COMPONENT_INIT(void);
-#endif /* PRE_BUILT_PA */
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -65,8 +62,5 @@ void _le_pa_fwupdate_COMPONENT_INIT(void);
 //--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
-    #ifdef PRE_BUILT_PA
-    _le_pa_fwupdate_COMPONENT_INIT();
-    #endif /* PRE_BUILT_PA */
 }
 

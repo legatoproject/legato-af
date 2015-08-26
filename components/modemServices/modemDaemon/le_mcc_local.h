@@ -25,6 +25,21 @@ le_result_t le_mcc_Init
     void
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function returns the call identifier number.
+ *
+ *
+ * @return
+ *    - LE_OK        The function succeed.
+ *    - LE_NOT_FOUND The call reference was not found.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mcc_GetCallIdentifier
+(
+    le_mcc_CallRef_t callRef,       ///< [IN] The call reference.
+    int32_t* callIdPtr             ///< [OUT] Call identifier
+);
 
 #endif // LEGATO_MCC_LOCAL_INCLUDE_GUARD
 

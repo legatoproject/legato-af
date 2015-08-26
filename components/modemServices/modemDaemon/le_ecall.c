@@ -3,6 +3,10 @@
  *
  * This file contains the source code of the eCall API.
  *
+ * builtMsdSize eCall object's member is used to check whether the MSD has to be encoded or not:
+ * - if builtMsdSize > 1, the MSD has been already encoded or imported;
+ * - if builtMsdSize <= 1, the MSD is not yet encoded nor imported.
+ *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  *
  */
@@ -12,7 +16,7 @@
 #include "mdmCfgEntries.h"
 #include "asn1Msd.h"
 #include "pa_ecall.h"
-
+#include "le_mcc_local.h"
 
 //--------------------------------------------------------------------------------------------------
 // Symbol and Enum definitions.
@@ -115,6 +119,7 @@ EraGlonassContext_t;
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
+    le_ecall_CallRef_t      ref;                                        ///< eCall reference
     char                    psapNumber[LE_MDMDEFS_PHONE_NUM_MAX_BYTES]; ///< PSAP telephone number
     le_ecall_State_t        state;                                      ///< eCall state
     bool                    isPushed;                                   ///< True if the MSD is
@@ -122,6 +127,8 @@ typedef struct
                                                                         /// false if it  is sent
                                                                         /// when requested by the
                                                                         /// PSAP (pull)
+    bool                    isStarted;                                  ///< Flag indicating that
+                                                                        ///< an eCall is started.
     bool                    isCompleted;                                ///< flag indicating
                                                                         ///< whether the Modem
                                                                         ///< successfully completed
@@ -138,6 +145,10 @@ typedef struct
     msd_t                   msd;                                        ///< MSD
     uint8_t                 builtMsd[LE_ECALL_MSD_MAX_LEN];             ///< built MSD
     size_t                  builtMsdSize;                               ///< Size of the built MSD
+    bool                    isMsdImported;                              ///< True if the MSD is
+                                                                        ///  imported, false when it
+                                                                        ///  is built thanks to
+                                                                        ///  SetMsdXxx() functions
     pa_ecall_StartType_t    startType;                                  ///< eCall start type
     PanEuropeanContext_t    panEur;                                     ///< PAN-EUROPEAN context
     EraGlonassContext_t     eraGlonass;                                 ///< ERA-GLONASS context
@@ -146,15 +157,30 @@ typedef struct
     uint16_t                intervalBetweenAttempts;                    ///< interval value between
                                                                         ///< dial attempts (in sec)
     le_timer_Ref_t          intervalTimer;                              ///< interval timer
+    uint32_t                callId;                                     ///< call identifier of the
+                                                                        ///< call
+    le_mcc_TerminationReason_t termination;                             ///< Call termination reason
+    int32_t                 specificTerm;                               ///< specific call
+                                                                        ///< termination reason
 }
 ECall_t;
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Report state structure.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    le_ecall_CallRef_t      ref;                                        ///< eCall reference
+    le_ecall_State_t        state;                                      ///< eCall state
+}
+ReportState_t;
 
 //--------------------------------------------------------------------------------------------------
 // Static declarations.
 //--------------------------------------------------------------------------------------------------
-
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -243,6 +269,24 @@ static int32_t ConvertDdToDms
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Report an eCall State to all eCall references.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void ReportState
+(
+    le_ecall_State_t state
+)
+{
+    ReportState_t reportState;
+
+    reportState.ref = ECallObj.ref;
+    reportState.state = state;
+    le_event_Report(ECallEventStateId, &(reportState), sizeof(reportState));
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Dial Duration Timer handler.
  *
  */
@@ -255,6 +299,8 @@ static void DialDurationTimerHandler
     LE_INFO("[ERA-GLONASS] Dial duration expires! stop dialing...");
 
     ECallObj.eraGlonass.dialAttemptsCount = 0;
+
+    ReportState(LE_ECALL_STATE_END_OF_REDIAL_PERIOD);
 
     // Stop any eCall tentative on going, the stop event will be notified by the Modem
     pa_ecall_Stop();
@@ -273,6 +319,8 @@ static void RemainingDialDurationTimerHandler
 {
     LE_INFO("[PAN-EUROPEAN] remaining dial duration expires! Stop dialing eCall...");
     ECallObj.panEur.stopDialing = true;
+
+    ReportState(LE_ECALL_STATE_END_OF_REDIAL_PERIOD);
 
     // Stop any eCall tentative on going, the stop event will be notified by the Modem
     pa_ecall_Stop();
@@ -297,7 +345,7 @@ static void IntervalTimerHandler
             LE_INFO("[ERA-GLONASS] Interval duration expires! Start attempts #%d of %d",
                     (ECallObj.eraGlonass.dialAttempts - ECallObj.eraGlonass.dialAttemptsCount + 1),
                     ECallObj.eraGlonass.dialAttempts);
-            if(pa_ecall_Start(ECallObj.startType) == LE_OK)
+            if(pa_ecall_Start(ECallObj.startType, &ECallObj.callId) == LE_OK)
             {
                 ECallObj.eraGlonass.dialAttemptsCount--;
             }
@@ -308,6 +356,8 @@ static void IntervalTimerHandler
              "has expired, stop dialing...",
                     ECallObj.eraGlonass.dialAttempts,
                     ECallObj.eraGlonass.dialAttempts);
+
+            ReportState(LE_ECALL_STATE_END_OF_REDIAL_PERIOD);
         }
     }
     else
@@ -316,7 +366,7 @@ static void IntervalTimerHandler
         if(!ECallObj.panEur.stopDialing)
         {
             LE_INFO("[PAN-EUROPEAN] Interval duration expires! Start again...");
-            pa_ecall_Start(ECallObj.startType);
+            pa_ecall_Start(ECallObj.startType, &ECallObj.callId);
         }
     }
 }
@@ -559,7 +609,7 @@ static le_result_t GetPropulsionType
 //--------------------------------------------------------------------------------------------------
 static le_result_t LoadECallSettings
 (
-    void
+    ECall_t* eCallPtr
 )
 {
     le_result_t res = LE_OK;
@@ -570,7 +620,6 @@ static le_result_t LoadECallSettings
 
     le_cfg_IteratorRef_t eCallCfg = le_cfg_CreateReadTxn(configPath);
 
-    do
     {
         // Get VIN
         if (le_cfg_NodeExists(eCallCfg, CFG_NODE_VIN))
@@ -582,9 +631,9 @@ static le_result_t LoadECallSettings
             }
             else if (strlen(vinStr) > 0)
             {
-                memcpy((void *)&ECallObj.msd.msdMsg.msdStruct.vehIdentificationNumber,
-                    (const void *)vinStr,
-                    strlen(vinStr));
+                memcpy((void *)&(eCallPtr->msd.msdMsg.msdStruct.vehIdentificationNumber),
+                       (const void *)vinStr,
+                       strlen(vinStr));
             }
             LE_DEBUG("eCall settings, VIN is %s", vinStr);
         }
@@ -618,14 +667,14 @@ static le_result_t LoadECallSettings
         // Get MSD version
         if (le_cfg_NodeExists(eCallCfg, CFG_NODE_MSDVERSION))
         {
-            ECallObj.msd.version = le_cfg_GetInt(eCallCfg, CFG_NODE_MSDVERSION, 0);
-            LE_DEBUG("eCall settings, MSD version is %d", ECallObj.msd.version);
-            if (ECallObj.msd.version == 0)
+            eCallPtr->msd.version = le_cfg_GetInt(eCallCfg, CFG_NODE_MSDVERSION, 0);
+            LE_DEBUG("eCall settings, MSD version is %d", eCallPtr->msd.version);
+            if (eCallPtr->msd.version == 0)
             {
                 LE_WARN("No correct value set for '%s' ! Use the default one (%d)",
                         CFG_NODE_MSDVERSION,
                         DEFAULT_MSD_VERSION);
-                ECallObj.msd.version = 1;
+                eCallPtr->msd.version = 1;
             }
         }
         else
@@ -633,7 +682,7 @@ static le_result_t LoadECallSettings
             LE_WARN("No value set for '%s' ! Use the default one (%d)",
                     CFG_NODE_MSDVERSION,
                     DEFAULT_MSD_VERSION);
-            ECallObj.msd.version = 1;
+            eCallPtr->msd.version = 1;
         }
 
         // Get system standard
@@ -681,9 +730,7 @@ static le_result_t LoadECallSettings
             }
             LE_INFO("Selected standard is %s (%d)", sysStr, SystemStandard);
         }
-
-        break;
-    } while (false);
+    }
 
     le_cfg_CancelTxn(eCallCfg);
 
@@ -701,57 +748,57 @@ static void SettingsUpdate
 )
 {
     LE_INFO("eCall settings have changed!");
-    LoadECallSettings();
+    LoadECallSettings(&ECallObj);
 }
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Build an MSD from the eCall data object if needed, and load it into the Modem.
+ * Encode an MSD from the eCall data object.
  *
  */
 //--------------------------------------------------------------------------------------------------
-static le_result_t LoadMsd
+static le_result_t EncodeMsd
 (
-    ECall_t*   ecallPtr
+    ECall_t*   eCallPtr
 )
 {
     uint8_t outOptionalDataForEraGlonass[160]={0}; ///< 160 Bytes is guaranteed enough
                                                    ///< for the data part
     uint8_t oid[] = {1,4,1}; ///< OID version supported
 
-    LE_FATAL_IF((ecallPtr == NULL), "ecallPtr is NULL !");
+    LE_FATAL_IF((eCallPtr == NULL), "eCallPtr is NULL !");
 
-    if (ecallPtr->builtMsdSize <= 1)
+    if (!eCallPtr->isMsdImported)
     {
         LE_DEBUG("eCall MSD: VIN.%17s, version.%d, veh.%d",
-                (char*)&ecallPtr->msd.msdMsg.msdStruct.vehIdentificationNumber.isowmi[0],
-                ecallPtr->msd.version,
-                (int)ecallPtr->msd.msdMsg.msdStruct.control.vehType);
+                (char*)&eCallPtr->msd.msdMsg.msdStruct.vehIdentificationNumber.isowmi[0],
+                eCallPtr->msd.version,
+                (int)eCallPtr->msd.msdMsg.msdStruct.control.vehType);
 
         LE_DEBUG("eCall MSD: gasoline.%d, diesel.%d, gas.%d, propane.%d, electric.%d, hydrogen.%d",
-                ecallPtr->msd.msdMsg.msdStruct.vehPropulsionStorageType.gasolineTankPresent,
-                ecallPtr->msd.msdMsg.msdStruct.vehPropulsionStorageType.dieselTankPresent,
-                ecallPtr->msd.msdMsg.msdStruct.vehPropulsionStorageType.compressedNaturalGas,
-                ecallPtr->msd.msdMsg.msdStruct.vehPropulsionStorageType.liquidPropaneGas,
-                ecallPtr->msd.msdMsg.msdStruct.vehPropulsionStorageType.electricEnergyStorage,
-                ecallPtr->msd.msdMsg.msdStruct.vehPropulsionStorageType.hydrogenStorage);
+                eCallPtr->msd.msdMsg.msdStruct.vehPropulsionStorageType.gasolineTankPresent,
+                eCallPtr->msd.msdMsg.msdStruct.vehPropulsionStorageType.dieselTankPresent,
+                eCallPtr->msd.msdMsg.msdStruct.vehPropulsionStorageType.compressedNaturalGas,
+                eCallPtr->msd.msdMsg.msdStruct.vehPropulsionStorageType.liquidPropaneGas,
+                eCallPtr->msd.msdMsg.msdStruct.vehPropulsionStorageType.electricEnergyStorage,
+                eCallPtr->msd.msdMsg.msdStruct.vehPropulsionStorageType.hydrogenStorage);
 
         LE_DEBUG("eCall MSD: isPosTrusted.%d, lat.%d, long.%d, dir.%d",
-                ecallPtr->msd.msdMsg.msdStruct.control.positionCanBeTrusted,
-                ecallPtr->msd.msdMsg.msdStruct.vehLocation.latitude,
-                ecallPtr->msd.msdMsg.msdStruct.vehLocation.longitude,
-                ecallPtr->msd.msdMsg.msdStruct.vehDirection);
+                eCallPtr->msd.msdMsg.msdStruct.control.positionCanBeTrusted,
+                eCallPtr->msd.msdMsg.msdStruct.vehLocation.latitude,
+                eCallPtr->msd.msdMsg.msdStruct.vehLocation.longitude,
+                eCallPtr->msd.msdMsg.msdStruct.vehDirection);
 
         LE_DEBUG("eCall MSD: isPax.%d, paxCount.%d",
-                ecallPtr->msd.msdMsg.msdStruct.numberOfPassengersPres,
-                ecallPtr->msd.msdMsg.msdStruct.numberOfPassengers);
+                eCallPtr->msd.msdMsg.msdStruct.numberOfPassengersPres,
+                eCallPtr->msd.msdMsg.msdStruct.numberOfPassengers);
 
         // Encode optional Data for ERA GLONASS if any
         if(SystemStandard == PA_ECALL_ERA_GLONASS)
         {
-            ecallPtr->msd.msdMsg.optionalData.oid = oid;
-            ecallPtr->msd.msdMsg.optionalData.oidlen = sizeof( oid );
-            if ((ecallPtr->msd.msdMsg.optionalData.dataLen =
+            eCallPtr->msd.msdMsg.optionalData.oid = oid;
+            eCallPtr->msd.msdMsg.optionalData.oidlen = sizeof( oid );
+            if ((eCallPtr->msd.msdMsg.optionalData.dataLen =
                 msd_EncodeOptionalDataForEraGlonass(
                     &EraGlonassDataObj, outOptionalDataForEraGlonass))
                 < 0)
@@ -759,15 +806,15 @@ static le_result_t LoadMsd
                 LE_ERROR("Unable to encode optional Data for ERA GLONASS!");
                 return LE_FAULT;
             }
-            ecallPtr->msd.msdMsg.optionalDataPres = true;
-            ecallPtr->msd.msdMsg.optionalData.data = outOptionalDataForEraGlonass;
+            eCallPtr->msd.msdMsg.optionalDataPres = true;
+            eCallPtr->msd.msdMsg.optionalData.data = outOptionalDataForEraGlonass;
 
             LE_DEBUG("eCall optional Data: Length %d",
-                    ecallPtr->msd.msdMsg.optionalData.dataLen);
+                    eCallPtr->msd.msdMsg.optionalData.dataLen);
         }
 
         // Encode MSD message
-        if ((ecallPtr->builtMsdSize = msd_EncodeMsdMessage(&ecallPtr->msd, ecallPtr->builtMsd))
+        if ((eCallPtr->builtMsdSize = msd_EncodeMsdMessage(&eCallPtr->msd, eCallPtr->builtMsd))
             == LE_FAULT)
         {
             LE_ERROR("Unable to encode the MSD!");
@@ -776,18 +823,10 @@ static le_result_t LoadMsd
     }
     else
     {
-        LE_DEBUG("an MSD has been imported, no need to encode it.");
+        LE_WARN("an MSD has been imported, no need to encode it.");
     }
 
-    if (pa_ecall_LoadMsd(ecallPtr->builtMsd, ecallPtr->builtMsdSize) != LE_OK)
-    {
-        LE_ERROR("Unable to load the MSD!");
-        return LE_FAULT;
-    }
-    else
-    {
-        return LE_OK;
-    }
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -802,12 +841,14 @@ static void FirstLayerECallStateChangeHandler
     void* secondLayerHandlerFunc
 )
 {
-    le_ecall_State_t*                 statePtr = reportPtr;
+    ReportState_t *reportStatePtr = reportPtr;
     le_ecall_StateChangeHandlerFunc_t clientHandlerFunc = secondLayerHandlerFunc;
 
-    LE_DEBUG("First Layer Handler Function called with state %d", *statePtr);
+    LE_DEBUG("First Layer Handler Function called with state %d for eCall ref.%p",
+             reportStatePtr->state,
+             reportStatePtr->ref);
 
-    clientHandlerFunc(*statePtr, le_event_GetContextPtr());
+    clientHandlerFunc(reportStatePtr->ref, reportStatePtr->state, le_event_GetContextPtr());
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -821,7 +862,6 @@ static void ECallStateHandler
     le_ecall_State_t* statePtr
 )
 {
-
     LE_DEBUG("Handler Function called with state %d", *statePtr);
 
     switch (*statePtr)
@@ -829,9 +869,13 @@ static void ECallStateHandler
         case LE_ECALL_STATE_STARTED: /* eCall session started */
         {
             ECallObj.isCompleted = false;
+            ECallObj.isStarted = true;
             ECallObj.startTentativeTime = le_clk_GetRelativeTime();
+            ECallObj.termination = LE_MCC_TERM_UNDEFINED;
+            ECallObj.specificTerm = 0;
             break;
         }
+
         case LE_ECALL_STATE_DISCONNECTED: /* Emergency call is disconnected */
         {
             if (!ECallObj.isCompleted && !ECallObj.isSessionStopped)
@@ -851,7 +895,7 @@ static void ECallStateHandler
                             (ECallObj.eraGlonass.dialAttempts
                             - ECallObj.eraGlonass.dialAttemptsCount + 1),
                             ECallObj.eraGlonass.dialAttempts);
-                            if(pa_ecall_Start(ECallObj.startType) == LE_OK)
+                            if(pa_ecall_Start(ECallObj.startType, &ECallObj.callId) == LE_OK)
                             {
                                 ECallObj.eraGlonass.dialAttemptsCount--;
                             }
@@ -873,7 +917,7 @@ static void ECallStateHandler
                                     != LE_OK)),
                                     "Cannot start the RemainingDialDuration timer!");
 
-                        pa_ecall_Start(ECallObj.startType);
+                        pa_ecall_Start(ECallObj.startType, &ECallObj.callId);
                     }
                 }
                 else
@@ -905,6 +949,7 @@ static void ECallStateHandler
             }
             break;
         }
+
         case LE_ECALL_STATE_CONNECTED: /* Emergency call is established */
         {
             ECallObj.wasConnected = true;
@@ -930,9 +975,11 @@ static void ECallStateHandler
             // The Modem successfully completed the MSD transmission and received two AL-ACKs
             // (positive).
             ECallObj.isCompleted = true;
+            ECallObj.isMsdImported = false;
             StopTimers();
             break;
         }
+
         case LE_ECALL_STATE_MSD_TX_STARTED: /* MSD transmission is started */
         case LE_ECALL_STATE_WAITING_PSAP_START_IND: /* Waiting for PSAP start indication */
         case LE_ECALL_STATE_PSAP_START_IND_RECEIVED: /* PSAP start indication received */
@@ -958,11 +1005,68 @@ static void ECallStateHandler
         }
     }
 
-    // Notify all the registered client's handlers
-    le_event_Report(ECallEventStateId, statePtr, sizeof(le_ecall_State_t));
+    // DISCONNECTED event is sent by CallEventHandler() function
+    if (*statePtr != LE_ECALL_STATE_DISCONNECTED)
+    {
+        ReportState(*statePtr);
+    }
 }
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Internal call event handler function.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void CallEventHandler
+(
+    le_mcc_CallRef_t  callRef,
+    le_mcc_Event_t   event,
+    void* contextPtr
+)
+{
+    int32_t callId;
+    ECall_t* eCallPtr = (ECall_t*) contextPtr;
+
+    if ( !eCallPtr )
+    {
+        LE_ERROR("NULL eCallPtr !!!");
+        return;
+    }
+
+    LE_DEBUG("isStarted %d event %d", eCallPtr->isStarted, event);
+
+    if (eCallPtr->isStarted)
+    {
+        le_result_t res = le_mcc_GetCallIdentifier(callRef, &callId);
+
+        if ( res != LE_OK )
+        {
+            LE_ERROR("Error in GetCallIdentifier %d", res);
+            return;
+        }
+
+        LE_DEBUG("callId %d eCallPtr->callId %d", callId, eCallPtr->callId);
+
+        if ((callId == eCallPtr->callId) && (event == LE_MCC_EVENT_TERMINATED))
+        {
+            eCallPtr->termination = le_mcc_GetTerminationReason(callRef);
+            eCallPtr->specificTerm = le_mcc_GetPlatformSpecificTerminationCode(callRef);
+            eCallPtr->callId = -1;
+
+            // Termination reason are updated, report the DISCONNECTED event
+            ReportState(LE_ECALL_STATE_DISCONNECTED);
+
+            eCallPtr->isStarted = false;
+        }
+    }
+
+    if (event == LE_MCC_EVENT_TERMINATED)
+    {
+        le_mcc_Delete(callRef);
+    }
+}
 
 //--------------------------------------------------------------------------------------------------
 //                                       Public declarations
@@ -986,7 +1090,7 @@ le_result_t le_ecall_Init
     LE_INFO("le_ecall_Init called.");
 
     // Create an event Id for eCall State notification
-    ECallEventStateId = le_event_CreateId("ECallState", sizeof(le_ecall_State_t));
+    ECallEventStateId = le_event_CreateId("ECallState", sizeof(ReportState_t));
 
     // Create the Safe Reference Map to use for eCall object Safe References.
     ECallRefMap = le_ref_CreateMap("ECallMap", ECALL_MAX);
@@ -1012,20 +1116,21 @@ le_result_t le_ecall_Init
     ECallObj.msd.msdMsg.msdStruct.vehPropulsionStorageType.hydrogenStorage = false;
 
     // Retrieve the eCall settings from the configuration tree, including the static values of MSD
-    if (LoadECallSettings() != LE_OK)
+    if (LoadECallSettings(&ECallObj) != LE_OK)
     {
-        LE_ERROR("There are missing eCall settings, cannot perform eCall!");
+        LE_ERROR("There are missing eCall settings, can't perform eCall!");
     }
 
     if (pa_ecall_Init(SystemStandard) != LE_OK)
     {
-        LE_ERROR("Cannot initialize Platform Adaptor for eCall, cannot perform eCall!");
+        LE_ERROR("Cannot initialize Platform Adaptor for eCall, can't perform eCall!");
         return LE_FAULT;
     }
 
     // Ecall Context initialization
     ECallObj.startType = PA_ECALL_START_MANUAL;
     ECallObj.wasConnected = false;
+    ECallObj.isStarted = false;
     ECallObj.isCompleted = false;
     ECallObj.isSessionStopped = true;
     ECallObj.intervalTimer = le_timer_Create("Interval");
@@ -1040,7 +1145,6 @@ le_result_t le_ecall_Init
     ECallObj.eraGlonass.dialAttemptsCount = 10;
     ECallObj.eraGlonass.dialDuration = 300;
     ECallObj.eraGlonass.dialDurationTimer = le_timer_Create("DialDuration");
-
 
     // Add a config tree handler for eCall settings update.
     le_cfg_AddChangeHandler(CFG_MODEMSERVICE_ECALL_PATH, SettingsUpdate, NULL);
@@ -1064,6 +1168,7 @@ le_result_t le_ecall_Init
     ECallObj.state = LE_ECALL_STATE_COMPLETED;
     memset(ECallObj.builtMsd, 0, sizeof(ECallObj.builtMsd));
     ECallObj.builtMsdSize = 0;
+    ECallObj.isMsdImported = false;
 
     // Initialize the eCall ERA-GLONASS Data object
     memset(&EraGlonassDataObj, 0, sizeof(EraGlonassDataObj));
@@ -1098,15 +1203,27 @@ le_result_t le_ecall_Init
         return LE_FAULT;
     }
 
+    // Initialize call identifier
+    ECallObj.callId = -1;
+
+    // Initialize call termination
+    ECallObj.termination = LE_MCC_TERM_UNDEFINED;
+
+    // Add a handler on calls
+    le_mcc_AddCallEventHandler(CallEventHandler, &ECallObj);
+
+    // Register object, which also means it was initialized properly
+    ECallObj.ref = le_ref_CreateRef(ECallRefMap, &ECallObj);
+
     return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
 /**
  * This function configures the eCall operation mode to eCall only, only emergency number can be
- * used to start an eCall session. The modem does not try to register on the Cellular network.
+ * used to start an eCall session. The modem doesn't try to register on the Cellular network.
  * This function forces the modem to behave as eCall only mode whatever U/SIM operation mode.
- * The change does not persist over power cycles.
+ * The change doesn't persist over power cycles.
  * This function can be called before making an eCall.
  *
  * @return
@@ -1180,12 +1297,12 @@ le_result_t le_ecall_GetConfiguredOperationMode
 /**
  * Create a new eCall object
  *
- * The eCall is not actually established at this point. It is still up to the caller to call
+ * The eCall is not actually established at this point. It's still up to the caller to call
  * le_ecall_Start() when ready.
  *
  * @return A reference to the new Call object.
  *
- * @note On failure, the process exits, so you don't have to worry about checking the returned
+ * @note On failure, the process exits; you don't have to worry about checking the returned
  *       reference for validity.
  */
 //--------------------------------------------------------------------------------------------------
@@ -1194,8 +1311,8 @@ le_ecall_CallRef_t le_ecall_Create
     void
 )
 {
-    // Create a new Safe Reference for the Call object.
-    return ((le_ecall_CallRef_t)le_ref_CreateRef(ECallRefMap, &ECallObj));
+    LE_FATAL_IF(ECallObj.ref == NULL, "eCall object was not initialized properly.");
+    return ECallObj.ref;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1203,7 +1320,7 @@ le_ecall_CallRef_t le_ecall_Create
  * Call to free up a call reference.
  *
  * @note This will free the reference, but not necessarily stop an active eCall. If there are
- *       other holders of this reference then the eCall will remain active.
+ *       other holders of this reference the eCall will remain active.
  */
 //--------------------------------------------------------------------------------------------------
 void le_ecall_Delete
@@ -1211,28 +1328,18 @@ void le_ecall_Delete
     le_ecall_CallRef_t ecallRef     ///< [IN] eCall reference
 )
 {
-    ECall_t*   ecallPtr = le_ref_Lookup(ECallRefMap, ecallRef);
-    if (ecallPtr == NULL)
-    {
-        LE_KILL_CLIENT("Invalid reference (%p) provided!", ecallRef);
-        return;
-    }
-
-    // Invalidate the Safe Reference.
-    le_ref_DeleteRef(ECallRefMap, ecallRef);
+    return;
 }
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Set the position transmitted by the MSD.
  *
- * The MSD is not actually transferred at this point. It is still up to the caller to call
- * le_ecall_LoadMsd() when the MSD is fully built with the le_ecall_SetMsdXxx() functions.
- *
  * @return
  *      - LE_OK on success
  *      - LE_DUPLICATE an MSD has been already imported
  *      - LE_BAD_PARAMETER bad eCall reference
+ *      - LE_FAULT on other failures
  *
  * @note The process exits, if an invalid eCall reference is given
  */
@@ -1247,40 +1354,36 @@ le_result_t le_ecall_SetMsdPosition
                                     ///       True North).
 )
 {
-    ECall_t*   ecallPtr = le_ref_Lookup(ECallRefMap, ecallRef);
-    if (ecallPtr == NULL)
+    ECall_t*   eCallPtr = le_ref_Lookup(ECallRefMap, ecallRef);
+    if (eCallPtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", ecallRef);
         return LE_BAD_PARAMETER;
     }
 
-    if (ecallPtr->builtMsdSize > 1)
+    if (eCallPtr->isMsdImported)
     {
         LE_ERROR("An MSD has been already imported!");
         return LE_DUPLICATE;
     }
 
-    ecallPtr->msd.msdMsg.msdStruct.control.positionCanBeTrusted = isTrusted;
-    ecallPtr->msd.msdMsg.msdStruct.vehLocation.latitude = ConvertDdToDms(latitude);
-    ecallPtr->msd.msdMsg.msdStruct.vehLocation.longitude = ConvertDdToDms(longitude);
-    ecallPtr->msd.msdMsg.msdStruct.vehDirection = direction;
+    eCallPtr->msd.msdMsg.msdStruct.control.positionCanBeTrusted = isTrusted;
+    eCallPtr->msd.msdMsg.msdStruct.vehLocation.latitude = ConvertDdToDms(latitude);
+    eCallPtr->msd.msdMsg.msdStruct.vehLocation.longitude = ConvertDdToDms(longitude);
+    eCallPtr->msd.msdMsg.msdStruct.vehDirection = direction;
 
-    // Set to 1 to avoid MSD overwriting with 'ImportMSD'
-    ecallPtr->builtMsdSize = 1;
-    return LE_OK;
+    return EncodeMsd(eCallPtr);
 }
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Set the number of passengers transmitted by the MSD.
  *
- * The MSD is not actually transferred at this point. It is still up to the caller to call
- * le_ecall_LoadMsd() when the MSD is fully built with the le_ecall_SetMsdXxx() functions.
- *
  * @return
  *      - LE_OK on success
  *      - LE_DUPLICATE an MSD has been already imported
  *      - LE_BAD_PARAMETER bad eCall reference
+ *      - LE_FAULT on other failures
  *
  * @note The process exits, if an invalid eCall reference is given
  */
@@ -1291,25 +1394,23 @@ le_result_t le_ecall_SetMsdPassengersCount
     uint32_t            paxCount    ///< [IN] number of passengers
 )
 {
-    ECall_t*   ecallPtr = le_ref_Lookup(ECallRefMap, ecallRef);
-    if (ecallPtr == NULL)
+    ECall_t*   eCallPtr = le_ref_Lookup(ECallRefMap, ecallRef);
+    if (eCallPtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", ecallRef);
         return LE_BAD_PARAMETER;
     }
 
-    if (ecallPtr->builtMsdSize > 1)
+    if (eCallPtr->isMsdImported)
     {
         LE_ERROR("An MSD has been already imported!");
         return LE_DUPLICATE;
     }
 
-    ecallPtr->msd.msdMsg.msdStruct.numberOfPassengersPres = true;
-    ecallPtr->msd.msdMsg.msdStruct.numberOfPassengers = paxCount;
+    eCallPtr->msd.msdMsg.msdStruct.numberOfPassengersPres = true;
+    eCallPtr->msd.msdMsg.msdStruct.numberOfPassengers = paxCount;
 
-    // Set to 1 to avoid MSD overwriting with 'ImportMSD'
-    ecallPtr->builtMsdSize = 1;
-    return LE_OK;
+    return EncodeMsd(eCallPtr);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1321,11 +1422,10 @@ le_result_t le_ecall_SetMsdPassengersCount
  * @return
  *      - LE_OK on success
  *      - LE_OVERFLOW The imported MSD length exceeds the MSD_MAX_LEN maximum length.
- *      - LE_DUPLICATE an MSD has been already imported
  *      - LE_BAD_PARAMETER bad eCall reference
  *      - LE_FAULT for other failures
  *
- * @note On failure, the process exits, so you don't have to worry about checking the returned
+ * @note On failure, the process exits; you don't have to worry about checking the returned
  *       reference for validity.
  */
 //--------------------------------------------------------------------------------------------------
@@ -1336,31 +1436,63 @@ le_result_t le_ecall_ImportMsd
     size_t              msdNumElements ///< [IN] the prepared MSD size in bytes
 )
 {
-    ECall_t*   ecallPtr = le_ref_Lookup(ECallRefMap, ecallRef);
-    if (ecallPtr == NULL)
+    ECall_t*   eCallPtr = le_ref_Lookup(ECallRefMap, ecallRef);
+    if (eCallPtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", ecallRef);
         return LE_BAD_PARAMETER;
     }
 
-    if (msdNumElements > sizeof(ecallPtr->builtMsd))
+    if (msdNumElements > sizeof(eCallPtr->builtMsd))
     {
         LE_ERROR("Imported MSD is too long (%zd > %zd)",
                  msdNumElements,
-                 sizeof(ecallPtr->builtMsd));
+                 sizeof(eCallPtr->builtMsd));
         return LE_OVERFLOW;
     }
 
-    if (ecallPtr->builtMsdSize > 0)
-    {
-        LE_ERROR("An MSD has been already imported!");
-        return LE_DUPLICATE;
-    }
-
-    memcpy(ecallPtr->builtMsd, msdPtr, msdNumElements);
-    ecallPtr->builtMsdSize = msdNumElements;
+    memcpy(eCallPtr->builtMsd, msdPtr, msdNumElements);
+    eCallPtr->builtMsdSize = msdNumElements;
+    eCallPtr->isMsdImported = true;
 
     return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Send the MSD.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_BAD_PARAMETER bad eCall reference
+ *      - LE_FAULT for other failures
+ *
+ * @note On failure, the process exits, so you don't have to worry about checking the returned
+ *       reference for validity.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_ecall_SendMsd
+(
+    le_ecall_CallRef_t  ecallRef      ///< [IN] eCall reference
+)
+{
+    ECall_t*   eCallPtr = le_ref_Lookup(ECallRefMap, ecallRef);
+    if (eCallPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", ecallRef);
+        return LE_BAD_PARAMETER;
+    }
+
+    eCallPtr->msd.msdMsg.msdStruct.messageIdentifier++;
+
+    // Update MSD with msg ID
+    if (EncodeMsd(eCallPtr) != LE_OK)
+    {
+        LE_ERROR("Encode MSD failure (msg ID)");
+        return LE_FAULT;
+    }
+
+    return pa_ecall_SendMsd(eCallPtr->builtMsd, eCallPtr->builtMsdSize);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1374,45 +1506,42 @@ le_result_t le_ecall_ImportMsd
  *      - LE_BAD_PARAMETER bad eCall reference
  *      - LE_FAULT for other failures
  *
- * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ * @note If the caller is passing a bad pointer into this function, it's a fatal error, the
  *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_ecall_ExportMsd
 (
     le_ecall_CallRef_t  ecallRef,           ///< [IN] eCall reference
-    uint8_t*            msdPtr,             ///< [OUT] The encoded MSD message.
+    uint8_t*            msdPtr,             ///< [OUT] encoded MSD message.
     size_t*             msdNumElementsPtr   ///< [IN,OUT] The encoded MSD size in bytes
 )
 {
-    ECall_t*   ecallPtr = le_ref_Lookup(ECallRefMap, ecallRef);
-    if (ecallPtr == NULL)
+    ECall_t*   eCallPtr = le_ref_Lookup(ECallRefMap, ecallRef);
+    if (eCallPtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", ecallRef);
         return LE_BAD_PARAMETER;
     }
 
-    if (sizeof(ecallPtr->builtMsd) > *msdNumElementsPtr)
+    if (sizeof(eCallPtr->builtMsd) > *msdNumElementsPtr)
     {
         LE_ERROR("Encoded MSD is too long for your buffer (%zd > %zd)!",
-                 sizeof(ecallPtr->builtMsd),
+                 sizeof(eCallPtr->builtMsd),
                  *msdNumElementsPtr);
         return LE_OVERFLOW;
     }
 
-    if (ecallPtr->builtMsdSize == 0)
+    if ((!eCallPtr->isMsdImported) &&
+        (eCallPtr->builtMsdSize = msd_EncodeMsdMessage(&eCallPtr->msd,
+                                                        eCallPtr->builtMsd)) == LE_FAULT)
     {
-        LE_WARN("MSD is not yet encoded, try to encode it.");
-        if ((ecallPtr->builtMsdSize = msd_EncodeMsdMessage(&ecallPtr->msd,
-                                                           ecallPtr->builtMsd)) == LE_FAULT)
-        {
-            LE_ERROR("Unable to encode the MSD!");
-            return LE_NOT_FOUND;
-        }
+        LE_ERROR("Unable to encode the MSD!");
+        return LE_NOT_FOUND;
     }
 
-    memcpy(msdPtr, ecallPtr->builtMsd , *msdNumElementsPtr);
-    *msdNumElementsPtr = ecallPtr->builtMsdSize;
+    memcpy(msdPtr, eCallPtr->builtMsd , *msdNumElementsPtr);
+    *msdNumElementsPtr = eCallPtr->builtMsdSize;
 
     return LE_OK;
 }
@@ -1436,9 +1565,9 @@ le_result_t le_ecall_StartAutomatic
 )
 {
     le_result_t result = LE_FAULT;
-    ECall_t*   ecallPtr = le_ref_Lookup(ECallRefMap, ecallRef);
+    ECall_t*   eCallPtr = le_ref_Lookup(ECallRefMap, ecallRef);
 
-    if (ecallPtr == NULL)
+    if (eCallPtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", ecallRef);
         return LE_BAD_PARAMETER;
@@ -1451,61 +1580,60 @@ le_result_t le_ecall_StartAutomatic
     }
 
     // Hang up all the ongoing calls using the communication channel required for eCall
-    if (le_mcc_call_HangUpAll() != LE_OK)
+    if (le_mcc_HangUpAll() != LE_OK)
     {
         LE_ERROR("Hang up ongoing call(s) failed");
         return LE_FAULT;
     }
 
-    ecallPtr->msd.msdMsg.msdStruct.messageIdentifier++;
-    ecallPtr->msd.msdMsg.msdStruct.timestamp =
-    ecallPtr->msd.msdMsg.msdStruct.control.automaticActivation = true;
-    ecallPtr->msd.msdMsg.msdStruct.control.testCall = false;
+    eCallPtr->msd.msdMsg.msdStruct.messageIdentifier = 0;
+    eCallPtr->msd.msdMsg.msdStruct.timestamp = (uint32_t)time(NULL);
+    eCallPtr->msd.msdMsg.msdStruct.control.automaticActivation = true;
+    eCallPtr->msd.msdMsg.msdStruct.control.testCall = false;
 
-    if (LoadMsd(ecallPtr) != LE_OK)
+    // Update MSD with msg ID, timestamp and control flags
+    if (EncodeMsd(eCallPtr) != LE_OK)
     {
-        LE_ERROR("The MSD is not valid!");
-        result = LE_FAULT;
+        LE_ERROR("Encode MSD failure (msg ID, timestamp and control flags)");
+        return LE_FAULT;
+    }
+
+    ECallObj.isSessionStopped = false;
+
+    if (SystemStandard == PA_ECALL_ERA_GLONASS)
+    {
+        ECallObj.eraGlonass.dialAttemptsCount = ECallObj.eraGlonass.autoDialAttempts;
+    }
+
+    // Update eCall start type
+    ECallObj.startType = PA_ECALL_START_AUTO;
+
+    if (pa_ecall_Start(PA_ECALL_START_AUTO, &ECallObj.callId) == LE_OK)
+    {
+        // Manage redial policy for ERA-GLONASS
+        if (SystemStandard == PA_ECALL_ERA_GLONASS)
+        {
+            if (ECallObj.eraGlonass.dialAttemptsCount == ECallObj.eraGlonass.dialAttempts)
+            {
+                // If it's the 1st tentative, I arm the Dial Duration timer
+                le_clk_Time_t interval;
+                interval.sec = ECallObj.eraGlonass.dialDuration;
+                interval.usec = 0;
+
+                LE_ERROR_IF( ((le_timer_SetInterval(ECallObj.eraGlonass.dialDurationTimer,
+                                                    interval) != LE_OK) ||
+                            (le_timer_SetHandler(ECallObj.eraGlonass.dialDurationTimer,
+                                                DialDurationTimerHandler) != LE_OK) ||
+                            (le_timer_Start(ECallObj.eraGlonass.dialDurationTimer) != LE_OK)),
+                            "Cannot start the DialDuration timer!");
+            }
+            ECallObj.eraGlonass.dialAttemptsCount--;
+        }
+        result = LE_OK;
     }
     else
     {
-        ECallObj.isSessionStopped = false;
-
-        if (SystemStandard == PA_ECALL_ERA_GLONASS)
-        {
-            ECallObj.eraGlonass.dialAttemptsCount = ECallObj.eraGlonass.autoDialAttempts;
-        }
-
-        // Update eCall start type
-        ECallObj.startType = PA_ECALL_START_AUTO;
-
-        if (pa_ecall_Start(PA_ECALL_START_AUTO) == LE_OK)
-        {
-            // Manage redial policy for ERA-GLONASS
-            if (SystemStandard == PA_ECALL_ERA_GLONASS)
-            {
-                if (ECallObj.eraGlonass.dialAttemptsCount == ECallObj.eraGlonass.dialAttempts)
-                {
-                    // If it is the 1st tentative, I arm the Dial Duration timer
-                    le_clk_Time_t interval;
-                    interval.sec = ECallObj.eraGlonass.dialDuration;
-                    interval.usec = 0;
-
-                    LE_ERROR_IF( ((le_timer_SetInterval(ECallObj.eraGlonass.dialDurationTimer,
-                                                        interval) != LE_OK) ||
-                                (le_timer_SetHandler(ECallObj.eraGlonass.dialDurationTimer,
-                                                    DialDurationTimerHandler) != LE_OK) ||
-                                (le_timer_Start(ECallObj.eraGlonass.dialDurationTimer) != LE_OK)),
-                                "Cannot start the DialDuration timer!");
-                }
-                ECallObj.eraGlonass.dialAttemptsCount--;
-            }
-            result = LE_OK;
-        }
-        else
-        {
-            result = LE_FAULT;
-        }
+        result = LE_FAULT;
     }
 
     return result;
@@ -1530,9 +1658,9 @@ le_result_t le_ecall_StartManual
 )
 {
     le_result_t result = LE_FAULT;
-    ECall_t*   ecallPtr = le_ref_Lookup(ECallRefMap, ecallRef);
+    ECall_t*   eCallPtr = le_ref_Lookup(ECallRefMap, ecallRef);
 
-    if (ecallPtr == NULL)
+    if (eCallPtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", ecallRef);
         return LE_BAD_PARAMETER;
@@ -1545,61 +1673,60 @@ le_result_t le_ecall_StartManual
     }
 
     // Hang up all the ongoing calls using the communication channel required for eCall
-    if (le_mcc_call_HangUpAll() != LE_OK)
+    if (le_mcc_HangUpAll() != LE_OK)
     {
         LE_ERROR("Hang up ongoing call(s) failed");
         return LE_FAULT;
     }
 
-    ecallPtr->msd.msdMsg.msdStruct.messageIdentifier++;
-    ecallPtr->msd.msdMsg.msdStruct.timestamp =
-    ecallPtr->msd.msdMsg.msdStruct.control.automaticActivation = false;
-    ecallPtr->msd.msdMsg.msdStruct.control.testCall = false;
+    eCallPtr->msd.msdMsg.msdStruct.messageIdentifier = 0;
+    eCallPtr->msd.msdMsg.msdStruct.timestamp = (uint32_t)time(NULL);
+    eCallPtr->msd.msdMsg.msdStruct.control.automaticActivation = false;
+    eCallPtr->msd.msdMsg.msdStruct.control.testCall = false;
 
-    if (LoadMsd(ecallPtr) != LE_OK)
+    // Update MSD with msg ID, timestamp and control flags
+    if (EncodeMsd(eCallPtr) != LE_OK)
     {
-        LE_ERROR("The MSD is not valid!");
-        result = LE_FAULT;
+        LE_ERROR("Encode MSD failure (msg ID, timestamp and control flags)");
+        return LE_FAULT;
+    }
+
+    ECallObj.isSessionStopped = false;
+
+    if (SystemStandard == PA_ECALL_ERA_GLONASS)
+    {
+        ECallObj.eraGlonass.dialAttemptsCount = ECallObj.eraGlonass.manualDialAttempts;
+    }
+
+    // Update eCall start type
+    ECallObj.startType = PA_ECALL_START_MANUAL;
+
+    if (pa_ecall_Start(PA_ECALL_START_MANUAL, &ECallObj.callId) == LE_OK)
+    {
+        // Manage redial policy for ERA-GLONASS
+        if (SystemStandard == PA_ECALL_ERA_GLONASS)
+        {
+            if (ECallObj.eraGlonass.dialAttemptsCount == ECallObj.eraGlonass.dialAttempts)
+            {
+                // If it's the 1st tentative, I arm the Dial Duration timer
+                le_clk_Time_t interval;
+                interval.sec = ECallObj.eraGlonass.dialDuration;
+                interval.usec = 0;
+
+                LE_ERROR_IF( ((le_timer_SetInterval(ECallObj.eraGlonass.dialDurationTimer,
+                                                    interval) != LE_OK) ||
+                            (le_timer_SetHandler(ECallObj.eraGlonass.dialDurationTimer,
+                                                DialDurationTimerHandler) != LE_OK) ||
+                            (le_timer_Start(ECallObj.eraGlonass.dialDurationTimer) != LE_OK)),
+                            "Cannot start the DialDuration timer!");
+            }
+            ECallObj.eraGlonass.dialAttemptsCount--;
+        }
+        result = LE_OK;
     }
     else
     {
-        ECallObj.isSessionStopped = false;
-
-        if (SystemStandard == PA_ECALL_ERA_GLONASS)
-        {
-            ECallObj.eraGlonass.dialAttemptsCount = ECallObj.eraGlonass.manualDialAttempts;
-        }
-
-        // Update eCall start type
-        ECallObj.startType = PA_ECALL_START_MANUAL;
-
-        if (pa_ecall_Start(PA_ECALL_START_MANUAL) == LE_OK)
-        {
-            // Manage redial policy for ERA-GLONASS
-            if (SystemStandard == PA_ECALL_ERA_GLONASS)
-            {
-                if (ECallObj.eraGlonass.dialAttemptsCount == ECallObj.eraGlonass.dialAttempts)
-                {
-                    // If it is the 1st tentative, I arm the Dial Duration timer
-                    le_clk_Time_t interval;
-                    interval.sec = ECallObj.eraGlonass.dialDuration;
-                    interval.usec = 0;
-
-                    LE_ERROR_IF( ((le_timer_SetInterval(ECallObj.eraGlonass.dialDurationTimer,
-                                                        interval) != LE_OK) ||
-                                (le_timer_SetHandler(ECallObj.eraGlonass.dialDurationTimer,
-                                                    DialDurationTimerHandler) != LE_OK) ||
-                                (le_timer_Start(ECallObj.eraGlonass.dialDurationTimer) != LE_OK)),
-                                "Cannot start the DialDuration timer!");
-                }
-                ECallObj.eraGlonass.dialAttemptsCount--;
-            }
-            result = LE_OK;
-        }
-        else
-        {
-            result = LE_FAULT;
-        }
+        result = LE_FAULT;
     }
 
     return result;
@@ -1623,10 +1750,10 @@ le_result_t le_ecall_StartTest
     le_ecall_CallRef_t    ecallRef   ///< [IN] eCall reference
 )
 {
-    ECall_t*   ecallPtr = le_ref_Lookup(ECallRefMap, ecallRef);
+    ECall_t*   eCallPtr = le_ref_Lookup(ECallRefMap, ecallRef);
     le_result_t result = LE_FAULT;
 
-    if (ecallPtr == NULL)
+    if (eCallPtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", ecallRef);
         return LE_BAD_PARAMETER;
@@ -1639,61 +1766,60 @@ le_result_t le_ecall_StartTest
     }
 
     // Hang up all the ongoing calls using the communication channel required for eCall
-    if (le_mcc_call_HangUpAll() != LE_OK)
+    if (le_mcc_HangUpAll() != LE_OK)
     {
         LE_ERROR("Hang up ongoing call(s) failed");
         return LE_FAULT;
     }
 
-    ecallPtr->msd.msdMsg.msdStruct.messageIdentifier++;
-    ecallPtr->msd.msdMsg.msdStruct.timestamp =
-    ecallPtr->msd.msdMsg.msdStruct.control.automaticActivation = false;
-    ecallPtr->msd.msdMsg.msdStruct.control.testCall = true;
+    eCallPtr->msd.msdMsg.msdStruct.messageIdentifier = 0;
+    eCallPtr->msd.msdMsg.msdStruct.timestamp = (uint32_t)time(NULL);
+    eCallPtr->msd.msdMsg.msdStruct.control.automaticActivation = false;
+    eCallPtr->msd.msdMsg.msdStruct.control.testCall = true;
 
-    if (LoadMsd(ecallPtr) != LE_OK)
+    // Update MSD with msg ID, timestamp and control flags
+    if (EncodeMsd(eCallPtr) != LE_OK)
     {
-        LE_ERROR("The MSD is not valid!");
-        result = LE_FAULT;
+        LE_ERROR("Encode MSD failure (msg ID, timestamp and control flags)");
+        return LE_FAULT;
+    }
+
+    ECallObj.isSessionStopped = false;
+
+    if (SystemStandard == PA_ECALL_ERA_GLONASS)
+    {
+        ECallObj.eraGlonass.dialAttemptsCount = ECallObj.eraGlonass.manualDialAttempts;
+    }
+
+    // Update eCall start type
+    ECallObj.startType = PA_ECALL_START_TEST;
+
+    if (pa_ecall_Start(PA_ECALL_START_TEST, &ECallObj.callId) == LE_OK)
+    {
+        // Manage redial policy for ERA-GLONASS
+        if (SystemStandard == PA_ECALL_ERA_GLONASS)
+        {
+            if (ECallObj.eraGlonass.dialAttemptsCount == ECallObj.eraGlonass.dialAttempts)
+            {
+                // If it's the 1st tentative, I arm the Dial Duration timer
+                le_clk_Time_t interval;
+                interval.sec = ECallObj.eraGlonass.dialDuration;
+                interval.usec = 0;
+
+                LE_ERROR_IF( ((le_timer_SetInterval(ECallObj.eraGlonass.dialDurationTimer,
+                                                    interval) != LE_OK) ||
+                            (le_timer_SetHandler(ECallObj.eraGlonass.dialDurationTimer,
+                                                DialDurationTimerHandler) != LE_OK) ||
+                            (le_timer_Start(ECallObj.eraGlonass.dialDurationTimer) != LE_OK)),
+                            "Cannot start the DialDuration timer!");
+            }
+            ECallObj.eraGlonass.dialAttemptsCount--;
+        }
+        result = LE_OK;
     }
     else
     {
-        ECallObj.isSessionStopped = false;
-
-        if (SystemStandard == PA_ECALL_ERA_GLONASS)
-        {
-            ECallObj.eraGlonass.dialAttemptsCount = ECallObj.eraGlonass.manualDialAttempts;
-        }
-
-        // Update eCall start type
-        ECallObj.startType = PA_ECALL_START_TEST;
-
-        if (pa_ecall_Start(PA_ECALL_START_TEST) == LE_OK)
-        {
-            // Manage redial policy for ERA-GLONASS
-            if (SystemStandard == PA_ECALL_ERA_GLONASS)
-            {
-                if (ECallObj.eraGlonass.dialAttemptsCount == ECallObj.eraGlonass.dialAttempts)
-                {
-                    // If it is the 1st tentative, I arm the Dial Duration timer
-                    le_clk_Time_t interval;
-                    interval.sec = ECallObj.eraGlonass.dialDuration;
-                    interval.usec = 0;
-
-                    LE_ERROR_IF( ((le_timer_SetInterval(ECallObj.eraGlonass.dialDurationTimer,
-                                                        interval) != LE_OK) ||
-                                (le_timer_SetHandler(ECallObj.eraGlonass.dialDurationTimer,
-                                                    DialDurationTimerHandler) != LE_OK) ||
-                                (le_timer_Start(ECallObj.eraGlonass.dialDurationTimer) != LE_OK)),
-                                "Cannot start the DialDuration timer!");
-                }
-                ECallObj.eraGlonass.dialAttemptsCount--;
-            }
-            result = LE_OK;
-        }
-        else
-        {
-            result = LE_FAULT;
-        }
+        result = LE_FAULT;
     }
 
     return result;
@@ -1714,18 +1840,19 @@ le_result_t le_ecall_End
     le_ecall_CallRef_t    ecallRef   ///< [IN] eCall reference
 )
 {
-    ECall_t*   ecallPtr = le_ref_Lookup(ECallRefMap, ecallRef);
+    ECall_t*   eCallPtr = le_ref_Lookup(ECallRefMap, ecallRef);
     le_result_t result;
 
-    if (ecallPtr == NULL)
+    if (eCallPtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", ecallRef);
         return LE_BAD_PARAMETER;
     }
 
     // Invalidate MSD
-    memset(ecallPtr->builtMsd, 0, sizeof(ecallPtr->builtMsd));
-    ecallPtr->builtMsdSize = 0;
+    memset(eCallPtr->builtMsd, 0, sizeof(eCallPtr->builtMsd));
+    eCallPtr->builtMsdSize = 0;
+    eCallPtr->isMsdImported = false;
 
     ECallObj.isSessionStopped = true;
 
@@ -1752,14 +1879,14 @@ le_ecall_State_t le_ecall_GetState
     le_ecall_CallRef_t      ecallRef
 )
 {
-    ECall_t*   ecallPtr = le_ref_Lookup(ECallRefMap, ecallRef);
-    if (ecallPtr == NULL)
+    ECall_t*   eCallPtr = le_ref_Lookup(ECallRefMap, ecallRef);
+    if (eCallPtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", ecallRef);
         return LE_ECALL_STATE_UNKNOWN;
     }
 
-    return (ecallPtr->state);
+    return (eCallPtr->state);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1808,7 +1935,7 @@ void le_ecall_RemoveStateChangeHandler
 /**
  * Set the Public Safely Answering Point telephone number.
  *
- * @note Important! This function doesn't modified the U/SIM content.
+ * @note Important! This function doesn't modify the U/SIM content.
  *
  * @return
  *  - LE_OK on success
@@ -1873,7 +2000,7 @@ le_result_t le_ecall_SetPsapNumber
 le_result_t le_ecall_GetPsapNumber
 (
     char   *psapPtr,           ///< [OUT] Public Safely Answering Point number
-    size_t  len  ///< [IN] The maximum length of PSAP number.
+    size_t  len  ///< [IN] maximum length of PSAP number.
 )
 {
     if (psapPtr == NULL)
@@ -1917,7 +2044,7 @@ le_result_t le_ecall_UseUSimNumbers
 //--------------------------------------------------------------------------------------------------
 le_result_t le_ecall_SetNadDeregistrationTime
 (
-    uint16_t    deregTime  ///< [IN] the NAD_DEREGISTRATION_TIME value (in minutes).
+    uint16_t    deregTime  ///< [IN] NAD_DEREGISTRATION_TIME value (in minutes).
 )
 {
     ECallObj.eraGlonass.nadDeregistrationTime = deregTime;
@@ -1935,7 +2062,7 @@ le_result_t le_ecall_SetNadDeregistrationTime
 //--------------------------------------------------------------------------------------------------
 le_result_t le_ecall_GetNadDeregistrationTime
 (
-    uint16_t*    deregTimePtr  ///< [OUT] the NAD_DEREGISTRATION_TIME value (in minutes).
+    uint16_t*    deregTimePtr  ///< [OUT] NAD_DEREGISTRATION_TIME value (in minutes).
 )
 {
     le_result_t result;
@@ -1986,7 +2113,7 @@ le_result_t le_ecall_GetMsdTxMode
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Set the minimum interval value between dial attempts.
+ * Set the minimum interval value between dial attempts. Available for both manual and test modes.
  *
  * @return
  *  - LE_OK on success
@@ -2013,7 +2140,7 @@ le_result_t le_ecall_SetIntervalBetweenDialAttempts
 //--------------------------------------------------------------------------------------------------
 le_result_t le_ecall_GetIntervalBetweenDialAttempts
 (
-     uint16_t*    pausePtr   ///< [OUT] the minimum interval value in seconds
+     uint16_t*    pausePtr   ///< [OUT] minimum interval value in seconds
 )
 {
     if (pausePtr == NULL)
@@ -2032,7 +2159,7 @@ le_result_t le_ecall_GetIntervalBetweenDialAttempts
  * failed, it should be repeated maximally ECALL_MANUAL_DIAL_ATTEMPTS-1 times within the maximal
  * time limit of ECALL_DIAL_DURATION. The default value is 10.
  * Redial attempts stop once the call has been cleared down correctly, or if counter/timer reached
- * their limits.
+ * their limits. Available for both manual and test modes.
  *
  * @return
  *  - LE_OK on success
@@ -2041,7 +2168,7 @@ le_result_t le_ecall_GetIntervalBetweenDialAttempts
 //--------------------------------------------------------------------------------------------------
 le_result_t le_ecall_SetEraGlonassManualDialAttempts
 (
-    uint16_t    attempts  ///< [IN] the MANUAL_DIAL_ATTEMPTS value
+    uint16_t    attempts  ///< [IN] MANUAL_DIAL_ATTEMPTS value
 )
 {
     ECallObj.eraGlonass.manualDialAttempts = attempts;
@@ -2064,7 +2191,7 @@ le_result_t le_ecall_SetEraGlonassManualDialAttempts
 //--------------------------------------------------------------------------------------------------
 le_result_t le_ecall_SetEraGlonassAutoDialAttempts
 (
-    uint16_t    attempts  ///< [IN] the AUTO_DIAL_ATTEMPTS value
+    uint16_t    attempts  ///< [IN] AUTO_DIAL_ATTEMPTS value
 )
 {
     ECallObj.eraGlonass.autoDialAttempts = attempts;
@@ -2074,7 +2201,7 @@ le_result_t le_ecall_SetEraGlonassAutoDialAttempts
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Set the ECALL_DIAL_DURATION time. It is the maximum time the IVS have to connect the emergency
+ * Set the ECALL_DIAL_DURATION time. It's the maximum time the IVS have to connect the emergency
  * call to the PSAP, including all redial attempts.
  * If the call is not connected within this time (or ManualDialAttempts/AutoDialAttempts dial
  * attempts), it will stop.
@@ -2086,7 +2213,7 @@ le_result_t le_ecall_SetEraGlonassAutoDialAttempts
 //--------------------------------------------------------------------------------------------------
 le_result_t le_ecall_SetEraGlonassDialDuration
 (
-    uint16_t    duration   ///< [IN] the ECALL_DIAL_DURATION time value (in seconds)
+    uint16_t    duration   ///< [IN] ECALL_DIAL_DURATION time value (in seconds)
 )
 {
     ECallObj.eraGlonass.dialDuration = duration;
@@ -2104,7 +2231,7 @@ le_result_t le_ecall_SetEraGlonassDialDuration
 //--------------------------------------------------------------------------------------------------
 le_result_t le_ecall_GetEraGlonassManualDialAttempts
 (
-    uint16_t*    attemptsPtr  ///< [OUT] the MANUAL_DIAL_ATTEMPTS value
+    uint16_t*    attemptsPtr  ///< [OUT] MANUAL_DIAL_ATTEMPTS value
 )
 {
     if (attemptsPtr == NULL)
@@ -2112,6 +2239,8 @@ le_result_t le_ecall_GetEraGlonassManualDialAttempts
         LE_KILL_CLIENT("attemptsPtr is NULL !");
         return LE_FAULT;
     }
+
+    LE_FATAL_IF(ECallObj.ref == NULL, "eCall object was not initialized properly.");
 
     *attemptsPtr = ECallObj.eraGlonass.manualDialAttempts;
     return LE_OK;
@@ -2128,7 +2257,7 @@ le_result_t le_ecall_GetEraGlonassManualDialAttempts
 //--------------------------------------------------------------------------------------------------
 le_result_t le_ecall_GetEraGlonassAutoDialAttempts
 (
-    uint16_t*    attemptsPtr  ///< [OUT] the AUTO_DIAL_ATTEMPTS value
+    uint16_t*    attemptsPtr  ///< [OUT] AUTO_DIAL_ATTEMPTS value
 )
 {
     if (attemptsPtr == NULL)
@@ -2136,6 +2265,8 @@ le_result_t le_ecall_GetEraGlonassAutoDialAttempts
         LE_KILL_CLIENT("attemptsPtr is NULL !");
         return LE_FAULT;
     }
+
+    LE_FATAL_IF(ECallObj.ref == NULL, "eCall object was not initialized properly.");
 
     *attemptsPtr = ECallObj.eraGlonass.autoDialAttempts;
     return LE_OK;
@@ -2152,7 +2283,7 @@ le_result_t le_ecall_GetEraGlonassAutoDialAttempts
 //--------------------------------------------------------------------------------------------------
 le_result_t le_ecall_GetEraGlonassDialDuration
 (
-    uint16_t*    durationPtr  ///< [OUT] the ECALL_DIAL_DURATION time value (in seconds)
+    uint16_t*    durationPtr  ///< [OUT] ECALL_DIAL_DURATION time value (in seconds)
 )
 {
     if (durationPtr == NULL)
@@ -2160,6 +2291,8 @@ le_result_t le_ecall_GetEraGlonassDialDuration
         LE_KILL_CLIENT("durationPtr is NULL !");
         return LE_FAULT;
     }
+
+    LE_FATAL_IF(ECallObj.ref == NULL, "eCall object was not initialized properly.");
 
     *durationPtr = ECallObj.eraGlonass.dialDuration;
     return LE_OK;
@@ -2170,25 +2303,28 @@ le_result_t le_ecall_GetEraGlonassDialDuration
  * Set the ERA-GLONASS crash severity parameter
  *
  * @return
- *  - LE_OK on success
- *  - LE_DUPLICATE an MSD has been already imported
- *  - LE_BAD_PARAMETER bad eCall reference
+ *      - LE_OK on success
+ *      - LE_DUPLICATE an MSD has been already imported
+ *      - LE_BAD_PARAMETER bad eCall reference
+ *      - LE_FAULT on other failures
+ *
+ * @note The process exits, if an invalid eCall reference is given
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_ecall_SetMsdEraGlonassCrashSeverity
 (
     le_ecall_CallRef_t  ecallRef,       ///< [IN] eCall reference
-    uint32_t            crashSeverity   ///< [IN] the ERA-GLONASS crash severity parameter
+    uint32_t            crashSeverity   ///< [IN] ERA-GLONASS crash severity parameter
 )
 {
-    ECall_t*   ecallPtr = le_ref_Lookup(ECallRefMap, ecallRef);
-    if (ecallPtr == NULL)
+    ECall_t*   eCallPtr = le_ref_Lookup(ECallRefMap, ecallRef);
+    if (eCallPtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", ecallRef);
         return LE_BAD_PARAMETER;
     }
 
-    if (ecallPtr->builtMsdSize > 1)
+    if (eCallPtr->isMsdImported)
     {
         LE_ERROR("An MSD has been already imported!");
         return LE_DUPLICATE;
@@ -2197,21 +2333,21 @@ le_result_t le_ecall_SetMsdEraGlonassCrashSeverity
     EraGlonassDataObj.presentCrashSeverity = true;
     EraGlonassDataObj.crashSeverity = crashSeverity;
 
-    // Set to 1 to avoid MSD overwriting with 'ImportMSD'
-    ecallPtr->builtMsdSize = 1;
-
-    return LE_OK;
+    return EncodeMsd(eCallPtr);
 }
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Reset the ERA-GLONASS crash severity parameter. Therefore that optional parameter is not included
+ * Reset the ERA-GLONASS crash severity parameter. Optional parameter is not included
  * in the MSD message.
  *
  * @return
- *  - LE_OK on success
- *  - LE_DUPLICATE an MSD has been already imported
- *  - LE_BAD_PARAMETER bad eCall reference
+ *      - LE_OK on success
+ *      - LE_DUPLICATE an MSD has been already imported
+ *      - LE_BAD_PARAMETER bad eCall reference
+ *      - LE_FAULT on other failures
+ *
+ * @note The process exits, if an invalid eCall reference is given
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_ecall_ResetMsdEraGlonassCrashSeverity
@@ -2220,14 +2356,14 @@ le_result_t le_ecall_ResetMsdEraGlonassCrashSeverity
 
 )
 {
-    ECall_t*   ecallPtr = le_ref_Lookup(ECallRefMap, ecallRef);
-    if (ecallPtr == NULL)
+    ECall_t*   eCallPtr = le_ref_Lookup(ECallRefMap, ecallRef);
+    if (eCallPtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", ecallRef);
         return LE_BAD_PARAMETER;
     }
 
-    if (ecallPtr->builtMsdSize > 1)
+    if (eCallPtr->isMsdImported)
     {
         LE_ERROR("An MSD has been already imported!");
         return LE_DUPLICATE;
@@ -2235,7 +2371,7 @@ le_result_t le_ecall_ResetMsdEraGlonassCrashSeverity
 
     EraGlonassDataObj.presentCrashSeverity = false;
 
-    return LE_OK;
+    return EncodeMsd(eCallPtr);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -2243,9 +2379,12 @@ le_result_t le_ecall_ResetMsdEraGlonassCrashSeverity
  * Set the ERA-GLONASS diagnostic result using a bit mask.
  *
  * @return
- *  - LE_OK on success
- *  - LE_DUPLICATE an MSD has been already imported
- *  - LE_BAD_PARAMETER bad eCall reference
+ *      - LE_OK on success
+ *      - LE_DUPLICATE an MSD has been already imported
+ *      - LE_BAD_PARAMETER bad eCall reference
+ *      - LE_FAULT on other failures
+ *
+ * @note The process exits, if an invalid eCall reference is given
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -2256,14 +2395,14 @@ le_result_t le_ecall_SetMsdEraGlonassDiagnosticResult
                                                              ///< result bit mask.
 )
 {
-    ECall_t*   ecallPtr = le_ref_Lookup(ECallRefMap, ecallRef);
-    if (ecallPtr == NULL)
+    ECall_t*   eCallPtr = le_ref_Lookup(ECallRefMap, ecallRef);
+    if (eCallPtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", ecallRef);
         return LE_BAD_PARAMETER;
     }
 
-    if (ecallPtr->builtMsdSize > 1)
+    if (eCallPtr->isMsdImported)
     {
         LE_ERROR("An MSD has been already imported!");
         return LE_DUPLICATE;
@@ -2399,10 +2538,7 @@ le_result_t le_ecall_SetMsdEraGlonassDiagnosticResult
         GET_BIT_MASK_VALUE(diagnosticResultMask
                            ,LE_ECALL_DIAG_RESULT_OTHER_NOT_CRITICAL_FAILURES);
 
-    // Set to 1 to avoid MSD overwriting with 'ImportMSD'
-    ecallPtr->builtMsdSize = 1;
-
-    return LE_OK;
+    return EncodeMsd(eCallPtr);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -2411,9 +2547,12 @@ le_result_t le_ecall_SetMsdEraGlonassDiagnosticResult
  * not included in the MSD message.
  *
  * @return
- *  - LE_OK on success
- *  - LE_DUPLICATE an MSD has been already imported
- *  - LE_BAD_PARAMETER bad eCall reference
+ *      - LE_OK on success
+ *      - LE_DUPLICATE an MSD has been already imported
+ *      - LE_BAD_PARAMETER bad eCall reference
+ *      - LE_FAULT on other failures
+ *
+ * @note The process exits, if an invalid eCall reference is given
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_ecall_ResetMsdEraGlonassDiagnosticResult
@@ -2421,14 +2560,14 @@ le_result_t le_ecall_ResetMsdEraGlonassDiagnosticResult
     le_ecall_CallRef_t   ecallRef       ///< [IN] eCall reference
 )
 {
-    ECall_t*   ecallPtr = le_ref_Lookup(ECallRefMap, ecallRef);
-    if (ecallPtr == NULL)
+    ECall_t*   eCallPtr = le_ref_Lookup(ECallRefMap, ecallRef);
+    if (eCallPtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", ecallRef);
         return LE_BAD_PARAMETER;
     }
 
-    if (ecallPtr->builtMsdSize > 1)
+    if (eCallPtr->isMsdImported)
     {
         LE_ERROR("An MSD has been already imported!");
         return LE_DUPLICATE;
@@ -2437,7 +2576,7 @@ le_result_t le_ecall_ResetMsdEraGlonassDiagnosticResult
     LE_DEBUG("DiagnosticResult mask reseted");
     EraGlonassDataObj.presentDiagnosticResult = false;
 
-    return LE_OK;
+    return EncodeMsd(eCallPtr);
 }
 
 
@@ -2446,9 +2585,12 @@ le_result_t le_ecall_ResetMsdEraGlonassDiagnosticResult
  * Set the ERA-GLONASS crash type bit mask
  *
  * @return
- *  - LE_OK on success
- *  - LE_DUPLICATE an MSD has been already imported
- *  - LE_BAD_PARAMETER bad eCall reference
+ *      - LE_OK on success
+ *      - LE_DUPLICATE an MSD has been already imported
+ *      - LE_BAD_PARAMETER bad eCall reference
+ *      - LE_FAULT on other failures
+ *
+ * @note The process exits, if an invalid eCall reference is given
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_ecall_SetMsdEraGlonassCrashInfo
@@ -2457,14 +2599,14 @@ le_result_t le_ecall_SetMsdEraGlonassCrashInfo
     le_ecall_CrashInfoBitMask_t crashInfoMask   ///< ERA-GLONASS crash type bit mask.
 )
 {
-    ECall_t*   ecallPtr = le_ref_Lookup(ECallRefMap, ecallRef);
-    if (ecallPtr == NULL)
+    ECall_t*   eCallPtr = le_ref_Lookup(ECallRefMap, ecallRef);
+    if (eCallPtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", ecallRef);
         return LE_BAD_PARAMETER;
     }
 
-    if (ecallPtr->builtMsdSize > 1)
+    if (eCallPtr->isMsdImported)
     {
         LE_ERROR("An MSD has been already imported!");
         return LE_DUPLICATE;
@@ -2507,21 +2649,21 @@ le_result_t le_ecall_SetMsdEraGlonassCrashInfo
     EraGlonassDataObj.crashType.crashAnotherType =
         GET_BIT_MASK_VALUE(crashInfoMask, LE_ECALL_CRASH_INFO_CRASH_ANOTHER_TYPE);
 
-    // Set to 1 to avoid MSD overwriting with 'ImportMSD'
-    ecallPtr->builtMsdSize = 1;
-
-    return LE_OK;
+    return EncodeMsd(eCallPtr);
 }
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Reset the ERA-GLONASS crash type bit mask. Therefore that optional parameter is not included
+ * Reset the ERA-GLONASS crash type bit mask. Optional parameter is not included
  * in the MSD message.
  *
  * @return
- *  - LE_OK on success
- *  - LE_DUPLICATE an MSD has been already imported
- *  - LE_BAD_PARAMETER bad eCall reference
+ *      - LE_OK on success
+ *      - LE_DUPLICATE an MSD has been already imported
+ *      - LE_BAD_PARAMETER bad eCall reference
+ *      - LE_FAULT on other failures
+ *
+ * @note The process exits, if an invalid eCall reference is given
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_ecall_ResetMsdEraGlonassCrashInfo
@@ -2529,14 +2671,14 @@ le_result_t le_ecall_ResetMsdEraGlonassCrashInfo
     le_ecall_CallRef_t   ecallRef       ///< [IN] eCall reference
 )
 {
-    ECall_t*   ecallPtr = le_ref_Lookup(ECallRefMap, ecallRef);
-    if (ecallPtr == NULL)
+    ECall_t*   eCallPtr = le_ref_Lookup(ECallRefMap, ecallRef);
+    if (eCallPtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", ecallRef);
         return LE_BAD_PARAMETER;
     }
 
-    if (ecallPtr->builtMsdSize > 1)
+    if (eCallPtr->isMsdImported)
     {
         LE_ERROR("An MSD has been already imported!");
         return LE_DUPLICATE;
@@ -2546,6 +2688,61 @@ le_result_t le_ecall_ResetMsdEraGlonassCrashInfo
 
     EraGlonassDataObj.presentCrashInfo = false;
 
-    return LE_OK;
+    return EncodeMsd(eCallPtr);
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Called to get the termination reason.
+ *
+ * @return The termination reason.
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+le_mcc_TerminationReason_t le_ecall_GetTerminationReason
+(
+    le_ecall_CallRef_t ecallRef
+        ///< [IN]
+        ///< eCall reference.
+)
+{
+    ECall_t* eCallPtr = le_ref_Lookup(ECallRefMap, ecallRef);
+
+    if (eCallPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", ecallRef);
+        return LE_MCC_TERM_UNDEFINED;
+    }
+
+    return eCallPtr->termination;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Called to get the platform specific termination code.
+ *
+ * @return The platform specific termination code.
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+int32_t le_ecall_GetPlatformSpecificTerminationCode
+(
+    le_ecall_CallRef_t ecallRef
+        ///< [IN]
+        ///< eCall reference.
+)
+{
+    ECall_t* eCallPtr = le_ref_Lookup(ECallRefMap, ecallRef);
+
+    if (eCallPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", ecallRef);
+        return LE_MCC_TERM_UNDEFINED;
+    }
+
+    return eCallPtr->specificTerm;
+}

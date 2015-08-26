@@ -22,7 +22,6 @@
  * the message length, then it encodes the message in PDU if it is a Text or a Binary message, and
  * finally it forwards the message to the modem for sending.
  *
- *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  *
  */
@@ -31,6 +30,7 @@
 #include "pa_sms.h"
 #include "pa_sim.h"
 #include "smsPdu.h"
+#include "time.h"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -47,9 +47,10 @@
 //--------------------------------------------------------------------------------------------------
 /**
  * Maximum number of Message objects we expect to have at one time.
+ * GSM SMS in the SIM and memory, CDMA SMS in the SIM and memory.
  */
 //--------------------------------------------------------------------------------------------------
-#define MAX_NUM_OF_SMS_MSG    MAX_NUM_OF_SMS_MSG_IN_STORAGE
+#define MAX_NUM_OF_SMS_MSG    (MAX_NUM_OF_SMS_MSG_IN_STORAGE*4)
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -58,23 +59,10 @@
 //--------------------------------------------------------------------------------------------------
 #define MAX_NUM_OF_LIST    128
 
-//--------------------------------------------------------------------------------------------------
-/**
- * Message Type.
- *
- */
-//--------------------------------------------------------------------------------------------------
-typedef enum
-{
-    LE_SMS_TYPE_RECEIVED    = 0, ///< Received message.
-    LE_SMS_TYPE_SUBMITTED   = 1, ///< Message submitted to transmission.
-    LE_SMS_TYPE_PDU         = 2, ///< PDU message.
-}
-le_sms_Type_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * SMS commnd Type.
+ * SMS command Type.
  *
  */
 //--------------------------------------------------------------------------------------------------
@@ -121,6 +109,18 @@ typedef struct le_sms_Msg
     int32_t           smsUserCount;                        ///< Current sms user counter.
     bool              delAsked;                            ///< Whether the SMS deletion is asked.
     pa_sms_Storage_t  storage;                             ///< SMS storage location
+
+    /// SMS Cell Broadcast parameters
+    uint16_t          messageId;                           ///< SMS Cell Broadcast message Id.
+    uint16_t          messageSerialNumber;                 ///< SMS Cell Broadcast message Serial
+                                                           ///< Number.
+    /// SMS timer parameters
+    le_timer_Ref_t    timerRef;                            ///< Timer reference to send SMS.
+    bool              timeoutExpires;                      ///< Timeout expired to send SMS.
+    struct timespec   timeSendingLimit;                    ///< Time limit to send the SMS.
+    uint32_t          timeoutValue;                        ///< Timeout value to send the SMS.
+    void *            callBack;
+    void *            ctx;
 }le_sms_Msg_t;
 
 
@@ -223,8 +223,14 @@ static le_event_Id_t NewSmsEventId;
  * Event ID for message sending commands.
  */
 //--------------------------------------------------------------------------------------------------
-static le_event_Id_t CommandSmsEventId;
+static le_event_Id_t SmsCommandEventId;
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Semaphore to synchronize threads.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_sem_Ref_t SmsSem;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -315,17 +321,32 @@ static le_sms_Msg_t* CreateAndPopulateMessage
     newSmsMsgObjPtr->storageIdx = storageIdx;
     newSmsMsgObjPtr->smsUserCount = 0;
     newSmsMsgObjPtr->delAsked = false;
+    newSmsMsgObjPtr->messageId = 0;
+    newSmsMsgObjPtr->messageSerialNumber = 0;
+    newSmsMsgObjPtr->timeoutExpires = false;
+    newSmsMsgObjPtr->timerRef = NULL;
+    newSmsMsgObjPtr->timeSendingLimit.tv_sec = 0;
+    newSmsMsgObjPtr->timeoutValue = 0;
 
     switch (messageConvertedPtr->type)
     {
         case PA_SMS_SMS_DELIVER:
-            newSmsMsgObjPtr->type = LE_SMS_TYPE_RECEIVED;
+            newSmsMsgObjPtr->type = LE_SMS_TYPE_RX;
             newSmsMsgObjPtr->format = messageConvertedPtr->smsDeliver.format;
             break;
         case PA_SMS_PDU:
-            newSmsMsgObjPtr->type = LE_SMS_TYPE_PDU;
+            newSmsMsgObjPtr->type = LE_SMS_TYPE_RX;
             newSmsMsgObjPtr->format = LE_SMS_FORMAT_PDU;
             break;
+        case PA_SMS_SMS_CELL_BROADCAST:
+            newSmsMsgObjPtr->type = LE_SMS_TYPE_BROADCAST_RX;
+            newSmsMsgObjPtr->format = messageConvertedPtr->cellBroadcast.format;
+            memcpy(newSmsMsgObjPtr->pdu.data, messagePduPtr->data, messagePduPtr->dataLen);
+            newSmsMsgObjPtr->messageId = messageConvertedPtr->cellBroadcast.mId;
+            newSmsMsgObjPtr->messageSerialNumber = messageConvertedPtr->cellBroadcast.serialNum;
+            newSmsMsgObjPtr->pduReady = true;
+            break;
+
         default:
             LE_CRIT("Unknown or not supported SMS format %d", newSmsMsgObjPtr->format);
             le_mem_Release(newSmsMsgObjPtr);
@@ -343,29 +364,64 @@ static le_sms_Msg_t* CreateAndPopulateMessage
     {
         case LE_SMS_FORMAT_PDU:
             LE_CRIT_IF((messagePduPtr->dataLen > LE_SMS_PDU_MAX_BYTES),
-                       "messagePduPtr->dataLen.%d > LE_SMS_PDU_MAX_BYTES.%d !",
-                       messagePduPtr->dataLen,
-                       LE_SMS_PDU_MAX_BYTES);
+                            "messagePduPtr->dataLen.%d > LE_SMS_PDU_MAX_BYTES.%d !",
+                            messagePduPtr->dataLen,
+                            LE_SMS_PDU_MAX_BYTES);
             break;
         case LE_SMS_FORMAT_BINARY:
-            LE_CRIT_IF((messageConvertedPtr->smsDeliver.dataLen > LE_SMS_BINARY_MAX_BYTES),
-                       "smsDeliver.dataLen.%d > LE_SMS_BINARY_MAX_BYTES.%d !",
-                       messageConvertedPtr->smsDeliver.dataLen,
-                       LE_SMS_BINARY_MAX_BYTES);
-            newSmsMsgObjPtr->userdataLen = messageConvertedPtr->smsDeliver.dataLen;
-            memcpy(newSmsMsgObjPtr->binary,
-                messageConvertedPtr->smsDeliver.data,
-                LE_SMS_BINARY_MAX_BYTES);
+            if (messageConvertedPtr->type == PA_SMS_SMS_CELL_BROADCAST)
+            {
+                LE_CRIT_IF((messageConvertedPtr->cellBroadcast.dataLen > LE_SMS_BINARY_MAX_BYTES),
+                                "cellBroadcast.dataLen.%d > LE_SMS_BINARY_MAX_BYTES.%d !",
+                                messageConvertedPtr->cellBroadcast.dataLen,
+                                LE_SMS_BINARY_MAX_BYTES);
+                newSmsMsgObjPtr->userdataLen = messageConvertedPtr->cellBroadcast.dataLen;
+                memcpy(newSmsMsgObjPtr->binary,
+                    messageConvertedPtr->cellBroadcast.data,
+                    LE_SMS_BINARY_MAX_BYTES);
+                LE_DEBUG("CB Bin data len (%d), %s",
+                                    (int) newSmsMsgObjPtr->userdataLen,
+                                    newSmsMsgObjPtr->binary);
+            }
+            else
+            {
+                LE_CRIT_IF((messageConvertedPtr->smsDeliver.dataLen > LE_SMS_BINARY_MAX_BYTES),
+                                "smsDeliver.dataLen.%d > LE_SMS_BINARY_MAX_BYTES.%d !",
+                                messageConvertedPtr->smsDeliver.dataLen,
+                                LE_SMS_BINARY_MAX_BYTES);
+                newSmsMsgObjPtr->userdataLen = messageConvertedPtr->smsDeliver.dataLen;
+                memcpy(newSmsMsgObjPtr->binary,
+                    messageConvertedPtr->smsDeliver.data,
+                    LE_SMS_BINARY_MAX_BYTES);
+            }
             break;
         case LE_SMS_FORMAT_TEXT:
-            LE_CRIT_IF((messageConvertedPtr->smsDeliver.dataLen >= LE_SMS_TEXT_MAX_BYTES),
-                       "smsDeliver.dataLen.%d >= LE_SMS_TEXT_MAX_BYTES.%d !",
-                       messageConvertedPtr->smsDeliver.dataLen,
-                       LE_SMS_TEXT_MAX_BYTES);
-            newSmsMsgObjPtr->userdataLen = messageConvertedPtr->smsDeliver.dataLen;
-            memcpy(newSmsMsgObjPtr->text,
-                messageConvertedPtr->smsDeliver.data,
-                LE_SMS_TEXT_MAX_BYTES);
+            if (messageConvertedPtr->type == PA_SMS_SMS_CELL_BROADCAST)
+            {
+                LE_CRIT_IF((messageConvertedPtr->cellBroadcast.dataLen >= LE_SMS_TEXT_MAX_BYTES),
+                                "cellBroadcast.dataLen.%d >= LE_SMS_TEXT_MAX_BYTES.%d !",
+                                messageConvertedPtr->cellBroadcast.dataLen,
+                                LE_SMS_TEXT_MAX_BYTES);
+                newSmsMsgObjPtr->userdataLen = messageConvertedPtr->cellBroadcast.dataLen;
+                le_utf8_Copy(newSmsMsgObjPtr->text,
+                    (char *) messageConvertedPtr->cellBroadcast.data,
+                    messageConvertedPtr->cellBroadcast.dataLen,
+                    &newSmsMsgObjPtr->userdataLen);
+                LE_DEBUG("CB TEXT data len (%d), %s",
+                    (int) newSmsMsgObjPtr->userdataLen,
+                    newSmsMsgObjPtr->text);
+            }
+            else
+            {
+                LE_CRIT_IF((messageConvertedPtr->smsDeliver.dataLen >= LE_SMS_TEXT_MAX_BYTES),
+                                "smsDeliver.dataLen.%d >= LE_SMS_TEXT_MAX_BYTES.%d !",
+                                messageConvertedPtr->smsDeliver.dataLen,
+                                LE_SMS_TEXT_MAX_BYTES);
+                newSmsMsgObjPtr->userdataLen = messageConvertedPtr->smsDeliver.dataLen;
+                memcpy(newSmsMsgObjPtr->text,
+                    messageConvertedPtr->smsDeliver.data,
+                    LE_SMS_TEXT_MAX_BYTES);
+            }
             break;
         default:
             LE_CRIT("Unknown SMS format %d", newSmsMsgObjPtr->format);
@@ -437,7 +493,13 @@ static int32_t GetMessagesFromMem
     for (i=0 ; i < numOfMsg ; i++)
     {
         // Try to read message for protocol mode
-        if (pa_sms_RdPDUMsgFromMem(arrayPtr[i],protocol, storage, &messagePdu) != LE_OK)
+        le_result_t res;
+
+        le_sem_Wait(SmsSem);
+        res = pa_sms_RdPDUMsgFromMem(arrayPtr[i],protocol, storage, &messagePdu);
+        le_sem_Post(SmsSem);
+
+        if (res != LE_OK)
         {
             LE_ERROR("pa_sms_RdMsgFromMem failed");
             continue;
@@ -535,7 +597,10 @@ static int32_t ListReceivedMessages
     }
 
     /* Get Indexes */
+    le_sem_Wait(SmsSem);
     result = pa_sms_ListMsgFromMem(status, protocol, &numTot, idxArray, storage);
+    le_sem_Post(SmsSem);
+
     if (result != LE_OK)
     {
         LE_ERROR("pa_sms_ListMsgFromMem failed");
@@ -565,6 +630,7 @@ static int32_t ListReceivedMessages
     }
     else
     {
+        LE_ERROR("Too much SMS to read %d", numTot);
         return LE_FAULT;
     }
 
@@ -604,7 +670,7 @@ static int32_t ListAllReceivedMessages
                             PA_SMS_STORAGE_SIM);
             if (res < 0)
             {
-                LE_ERROR("SMS Sim storage is not available, return %d",res);
+                LE_ERROR("SMS read Sim storage is not available, return %d",res);
                 return LE_FAULT;
             }
             msgCount += res;
@@ -614,7 +680,7 @@ static int32_t ListAllReceivedMessages
                             PA_SMS_STORAGE_SIM);
             if (res < 0)
             {
-                LE_ERROR("SMS Sim storage is not available, return %d",res);
+                LE_ERROR("SMS unread Sim storage is not available, return %d",res);
                 return LE_FAULT;
             }
             msgCount += res;
@@ -625,7 +691,7 @@ static int32_t ListAllReceivedMessages
                             PA_SMS_STORAGE_NV);
             if (res < 0)
             {
-                LE_ERROR("SMS memory storage is not available, return %d",res);
+                LE_ERROR("SMS read memory storage is not available, return %d",res);
                 return LE_FAULT;
             }
             msgCount += res;
@@ -636,7 +702,7 @@ static int32_t ListAllReceivedMessages
                             PA_SMS_STORAGE_NV);
             if (res < 0)
             {
-                LE_ERROR("SMS memory storage is not available, return %d",res);
+                LE_ERROR("SMS unread memory storage is not available, return %d",res);
                 return LE_FAULT;
             }
             msgCount += res;
@@ -647,7 +713,7 @@ static int32_t ListAllReceivedMessages
                             PA_SMS_STORAGE_SIM);
             if (res < 0)
             {
-                LE_WARN("SMS CDMA sim storage is not available, return %d", res);
+                LE_WARN("SMS CDMA read sim storage is not available, return %d", res);
             }
             else
             {
@@ -660,7 +726,7 @@ static int32_t ListAllReceivedMessages
                             PA_SMS_STORAGE_SIM);
             if (res < 0)
             {
-                LE_WARN("SMS CDMA sim storage is not available, return %d", res);
+                LE_WARN("SMS CDMA unread sim storage is not available, return %d", res);
             }
             else
             {
@@ -683,7 +749,7 @@ static int32_t ListAllReceivedMessages
                     PA_SMS_STORAGE_NV);
     if (res < 0)
     {
-        LE_WARN("SMS CDMA memory storage is not available, return %d", res);
+        LE_WARN("SMS CDMA read memory storage is not available, return %d", res);
     }
     else
     {
@@ -696,7 +762,7 @@ static int32_t ListAllReceivedMessages
                     PA_SMS_STORAGE_NV);
     if (res < 0)
     {
-        LE_WARN("SMS CDMA memory storage is not available, return %d", res);
+        LE_WARN("SMS CDMA unread memory storage is not available, return %d", res);
     }
     else
     {
@@ -816,15 +882,34 @@ static void NewSmsHandler
 )
 {
     pa_sms_Pdu_t   messagePdu;
+    le_result_t res = LE_OK;
 
-    LE_DEBUG("Handler Function called with message ID %d with protocol %d",
+    LE_DEBUG("Handler Function called with message ID %d with protocol %d, Storage %d",
         newMessageIndicationPtr->msgIndex,
-        newMessageIndicationPtr->protocol);
+        newMessageIndicationPtr->protocol,
+        newMessageIndicationPtr->storage);
 
-    if (pa_sms_RdPDUMsgFromMem(newMessageIndicationPtr->msgIndex,
-                    newMessageIndicationPtr->protocol,
-                    newMessageIndicationPtr->storage,
-                    &messagePdu) != LE_OK)
+    if (newMessageIndicationPtr->storage != PA_SMS_STORAGE_NONE)
+    {
+        le_sem_Wait(SmsSem);
+        res = pa_sms_RdPDUMsgFromMem(newMessageIndicationPtr->msgIndex,
+                        newMessageIndicationPtr->protocol,
+                        newMessageIndicationPtr->storage,
+                        &messagePdu);
+        le_sem_Post(SmsSem);
+    }
+    else
+    {
+        LE_DEBUG("SMS Cell Broadcast GW '%c', CDMA Format '%c'",
+                        (newMessageIndicationPtr->protocol == PA_SMS_PROTOCOL_GW_CB ? 'Y' : 'N'),
+                        (newMessageIndicationPtr->protocol == PA_SMS_PROTOCOL_CDMA ? 'Y' : 'N'));
+
+        memcpy(messagePdu.data, newMessageIndicationPtr->pduCB, LE_SMS_PDU_MAX_BYTES);
+        messagePdu.dataLen = newMessageIndicationPtr->pduLen;
+        messagePdu.protocol = newMessageIndicationPtr->protocol;
+    }
+
+    if (res != LE_OK)
     {
         LE_ERROR("pa_sms_RdPDUMsgFromMem failed");
     }
@@ -842,7 +927,8 @@ static void NewSmsHandler
                         messagePdu.dataLen,
                         &messageConverted) == LE_OK )
         {
-            if (messageConverted.type == PA_SMS_SMS_DELIVER)
+            if ((messageConverted.type == PA_SMS_SMS_DELIVER)
+                 || (messageConverted.type == PA_SMS_SMS_CELL_BROADCAST))
             {
                 le_sms_Msg_t* newSmsMsgObjPtr = CreateAndPopulateMessage(
                                 newMessageIndicationPtr->msgIndex,
@@ -862,7 +948,7 @@ static void NewSmsHandler
             }
             else
             {
-                LE_DEBUG("this messagePdu type %d is not supported yet", messageConverted.type);
+                LE_DEBUG("This messagePdu type %d is not supported yet", messageConverted.type);
             }
         }
         else
@@ -983,64 +1069,6 @@ static le_result_t CheckAndEncodeMessage
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function send a message in asynchrone mode
- *
- * It verifies first if the parameters are valid, then it checks that the modem state can support
- * message sending.
- *
- * @return
- *  - LE_NOT_POSSIBLE  The current modem state does not support message sending.
- *  - LE_FORMAT_ERROR  The message content is invalid.
- *  - LE_FAULT         The function failed to send the message.
- *  - LE_OK            The function succeeded.
- *
- */
-//--------------------------------------------------------------------------------------------------
-static le_result_t SendAsyncSMS
-(
-    le_sms_MsgRef_t    msgRef,         ///< [IN] The message(s) to send.
-    void * callBack,
-    void * context
-)
-{
-    le_result_t   result = LE_FAULT;
-    le_sms_Msg_t* msgPtr = le_ref_Lookup(MsgRefMap, msgRef);
-
-    if (msgPtr == NULL)
-    {
-        LE_KILL_CLIENT("Invalid reference (%p) provided!", msgRef);
-        return LE_NOT_FOUND;
-    }
-
-    result = CheckAndEncodeMessage(msgPtr);
-
-    /* Send */
-    if (result == LE_OK)
-    {
-        CmdRequest_t msgCommand;
-
-        LE_DEBUG("Try to POOL PDU Msg %p, pdu.%p, pduLen.%u with protocol %d",
-            msgPtr, msgPtr->pdu.data, msgPtr->pdu.dataLen, msgPtr->protocol);
-
-        msgPtr->pdu.status = LE_SMS_SENDING;
-
-        // Sending Message
-        msgCommand.command = LE_SMS_CMD_TYPE_SEND;
-        msgCommand.msgRef = msgRef;
-        msgCommand.callBackPtr = callBack;
-        msgCommand.Context = context;
-        msgCommand.msgPtr = msgPtr;
-
-        LE_INFO("Send Send command for message (%p)", msgRef);
-        le_event_Report(CommandSmsEventId, &msgCommand, sizeof(msgCommand));
-    }
-
-    return result;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Send connection state event
  */
 //--------------------------------------------------------------------------------------------------
@@ -1069,6 +1097,155 @@ static void SendSmsSendingStateEvent
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Timer handler for asynchronous SMS message sending function.
+ */
+//--------------------------------------------------------------------------------------------------
+static void AsynSmsTimerHandler
+(
+    le_timer_Ref_t timerRef
+)
+{
+    le_sms_MsgRef_t msgRef = le_timer_GetContextPtr(timerRef);
+    LE_DEBUG("TimerRef %p, msgRef %p", timerRef, msgRef);
+
+    if (msgRef == NULL)
+    {
+        LE_ERROR("Invalid timer Reference (%p) provided!", timerRef);
+        return;
+    }
+
+    le_sms_Msg_t* msgPtr = le_ref_Lookup(MsgRefMap, msgRef);
+    if (msgPtr == NULL)
+    {
+        LE_DEBUG("No more message reference (%p) valid", msgRef);
+        return;
+    }
+
+    le_sem_Wait(SmsSem);
+
+    msgPtr->timeoutExpires = true;
+    le_timer_Delete(timerRef);
+    if(msgPtr->timerRef)
+    {
+        msgPtr->timerRef = NULL;
+        msgPtr->pdu.status = LE_SMS_SENDING_TIMEOUT;
+        le_sem_Post(SmsSem);
+        SendSmsSendingStateEvent(msgRef, msgPtr->pdu.status, msgPtr->callBack, msgPtr->ctx);
+    }
+    else
+    {
+        le_sem_Post(SmsSem);
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function send a message in asynchrone mode
+ *
+ * It verifies first if the parameters are valid, then it checks that the modem state can support
+ * message sending.
+ *
+ * @return
+ *  - LE_FAULT         The function failed to send the message.
+ *  - LE_OK            The function succeeded.
+ *  - LE_FORMAT_ERROR  The message content is invalid.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t SendAsyncSMS
+(
+    le_sms_MsgRef_t    msgRef,         ///< [IN] The message(s) to send.
+    void * callBack,
+    void * context
+)
+{
+    le_result_t   result = LE_FAULT;
+    le_sms_Msg_t* msgPtr = le_ref_Lookup(MsgRefMap, msgRef);
+
+    result = CheckAndEncodeMessage(msgPtr);
+
+    /* Send */
+    if (result == LE_OK)
+    {
+        CmdRequest_t msgCommand;
+        char timerName[20];
+
+        snprintf(timerName, sizeof(timerName), "SMS%p",msgRef);
+        le_timer_Ref_t timerRef = le_timer_Create(timerName);
+
+        if(timerRef)
+        {
+            result =  le_timer_SetHandler(timerRef, AsynSmsTimerHandler);
+            LE_ERROR_IF(result != LE_OK, "error here");
+            if (result == LE_OK )
+            {
+                result = le_timer_SetContextPtr(timerRef, msgRef);
+                LE_ERROR_IF(result != LE_OK, "error here");
+            }
+
+            if (result == LE_OK )
+            {
+                le_clk_Time_t interval;
+                interval.usec = 0;
+                interval.sec = msgPtr->timeoutValue;
+                LE_DEBUG("Set timer for sms %p, %d sec", msgRef, msgPtr->timeoutValue);
+                result = le_timer_SetInterval(timerRef, interval);
+                LE_ERROR_IF((result != LE_OK), "Failed to set timeout!");
+            }
+
+            if (result == LE_OK )
+            {
+                if (clock_gettime(CLOCK_REALTIME, &msgPtr->timeSendingLimit) == -1)
+                {
+                    LE_WARN("Cannot get current time");
+                    return LE_FAULT;
+                }
+                msgPtr->timeSendingLimit.tv_sec += msgPtr->timeoutValue;
+                result = le_timer_Start(timerRef);
+                LE_ERROR_IF(result != LE_OK, "Failed to start Timer");
+            }
+
+            if (result == LE_OK)
+            {
+                LE_DEBUG("Try to POOL PDU Msg %p, pdu.%p, pduLen.%u with protocol %d",
+                                msgPtr, msgPtr->pdu.data, msgPtr->pdu.dataLen, msgPtr->protocol);
+
+                msgPtr->timerRef = timerRef;
+                msgPtr->pdu.status = LE_SMS_SENDING;
+
+                // Sending Message
+                msgCommand.command = LE_SMS_CMD_TYPE_SEND;
+                msgCommand.msgRef = msgRef;
+                msgCommand.callBackPtr = callBack;
+                msgCommand.Context = context;
+                msgCommand.msgPtr = msgPtr;
+
+                msgPtr->callBack = callBack;
+                msgPtr->ctx = context;
+
+                LE_INFO("Send Send command for message (%p)", msgRef);
+                le_event_Report(SmsCommandEventId, &msgCommand, sizeof(msgCommand));
+            }
+
+            if (result != LE_OK)
+            {
+                result = LE_FAULT;
+            }
+        }
+        else
+        {
+            LE_ERROR("Cannot encode Message Object %p", msgPtr);
+            result = LE_FORMAT_ERROR;
+        }
+    }
+
+    return result;
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Handler to process a command
  */
 //--------------------------------------------------------------------------------------------------
@@ -1089,18 +1266,59 @@ static void ProcessSmsSendingCommandHandler
         {
             LE_DEBUG("LE_SMS_CMD_TYPE_SEND message (%p) ", messageRef);
 
-            le_result_t res = pa_sms_SendPduMsg(msgPtr->protocol,
-                            msgPtr->pdu.dataLen, msgPtr->pdu.data, &msgPtr->pdu.errorCode);
-
-            if ( res == LE_OK)
+            if (!msgPtr->timeoutExpires)
             {
-                msgPtr->pdu.status = LE_SMS_SENT;
+                int32_t remainingTime = PA_SMS_SENDING_TIMEOUT;
+                le_result_t res = LE_TIMEOUT;
+
+                le_sem_Wait(SmsSem);
+                LE_DEBUG("timer ref %p, ", msgPtr->timerRef);
+                if (msgPtr->timerRef)
+                {
+                    msgPtr->timerRef = NULL;
+                    struct timespec currentTime = { 0 };
+                    if (clock_gettime(CLOCK_REALTIME, &currentTime) == -1)
+                    {
+                        LE_ERROR("Cannot get current time");
+                        msgPtr->pdu.status = LE_SMS_SENDING_FAILED;
+                        le_sem_Post(SmsSem);
+                        SendSmsSendingStateEvent(messageRef, msgPtr->pdu.status, cb, Ctx);
+                        return;
+                    }
+                    remainingTime = msgPtr->timeSendingLimit.tv_sec - currentTime.tv_sec;
+                }
+
+                if(remainingTime <= 0)
+                {
+                    LE_ERROR("Bad remainingTime value %d", remainingTime);
+                    msgPtr->pdu.status = LE_SMS_SENDING_TIMEOUT;
+                }
+                else
+                {
+                    res = pa_sms_SendPduMsg(msgPtr->protocol,
+                                    msgPtr->pdu.dataLen, msgPtr->pdu.data,
+                                    remainingTime, &msgPtr->pdu.errorCode);
+                    if ( res == LE_OK)
+                    {
+                        msgPtr->pdu.status = LE_SMS_SENT;
+                    }
+                    else if (res == LE_TIMEOUT)
+                    {
+                        msgPtr->pdu.status = LE_SMS_SENDING_TIMEOUT;
+                    }
+                    else
+                    {
+                        msgPtr->pdu.status = LE_SMS_SENDING_FAILED;
+                    }
+                }
+                le_sem_Post(SmsSem);
+
+                SendSmsSendingStateEvent(messageRef, msgPtr->pdu.status, cb, Ctx);
             }
             else
             {
-                msgPtr->pdu.status = LE_SMS_SENDING_FAILED;
+                LE_DEBUG("Message (%p) already Expired", messageRef);
             }
-            SendSmsSendingStateEvent(messageRef, msgPtr->pdu.status, cb, Ctx);
 
         }
         break;
@@ -1127,7 +1345,7 @@ static void* SmsSenderThread
     LE_INFO("Sms command Thread started");
 
     // Register for SMS command events
-    le_event_AddHandler("ProcessSmsSendingCommandHandler", CommandSmsEventId,
+    le_event_AddHandler("ProcessSmsSendingCommandHandler", SmsCommandEventId,
         ProcessSmsSendingCommandHandler);
 
     // Run the event loop
@@ -1183,8 +1401,10 @@ le_result_t le_sms_Init
         return LE_FAULT;
     }
 
+    SmsSem = le_sem_Create("SmsSem", 1);
+
     // Init the SMS command Event Id
-    CommandSmsEventId = le_event_CreateId("SMS Send Command", sizeof(CmdRequest_t));
+    SmsCommandEventId = le_event_CreateId("SmsSendCmd", sizeof(CmdRequest_t));
     le_thread_Start(le_thread_Create("SmsSenderThread", SmsSenderThread, NULL));
 
     return LE_OK;
@@ -1226,10 +1446,72 @@ le_sms_MsgRef_t le_sms_Create
     msgPtr->inAList = false;
     msgPtr->smsUserCount = 1;
     msgPtr->delAsked = false;
+    msgPtr->type = LE_SMS_TYPE_TX;
+    msgPtr->messageId = 0;
+    msgPtr->messageSerialNumber = 0;
+    msgPtr->timeoutExpires = false;
+    msgPtr->timerRef = NULL;
+    msgPtr->timeSendingLimit.tv_sec = 0;
+    msgPtr->timeoutValue = PA_SMS_SENDING_TIMEOUT;
 
     // Create and return a Safe Reference for this Message object.
     return le_ref_CreateRef(MsgRefMap, msgPtr);
 }
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the timeout to send a SMS Message.
+ *
+ * @return
+ * - LE_FAULT         Message is not in UNSENT state or is Read-Only.
+ * - LE_OK            Function succeeded.
+ *
+ * @note
+ *      On failure, the process exits, so you don't have to worry about checking the returned
+ *      reference for validity.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_sms_SetTimeout
+(
+    le_sms_MsgRef_t msgRef,
+        ///< [IN]
+        ///< Reference to the message object.
+
+    uint32_t timeout
+        ///< [IN]
+        ///< Timeout in seconds.
+)
+{
+    le_sms_Msg_t* msgPtr = le_ref_Lookup(MsgRefMap, msgRef);
+
+    if (msgPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", msgRef);
+        return LE_NOT_FOUND;
+    }
+
+    if(msgPtr->readonly)
+    {
+        return LE_FAULT;
+    }
+
+    if(msgPtr->pdu.status != LE_SMS_UNSENT)
+    {
+        return LE_FAULT;
+    }
+
+    if (timeout == 0)
+    {
+        LE_ERROR("Timeout is equal to zero");
+        return LE_FAULT;
+    }
+
+    msgPtr->timeoutValue = timeout;
+
+    return LE_OK;
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1277,6 +1559,12 @@ void le_sms_Delete
 
     if (msgPtr->smsUserCount == 0)
     {
+        if(msgPtr->timerRef)
+        {
+            le_timer_Stop(msgPtr->timerRef);
+            le_timer_Delete(msgPtr->timerRef);
+            msgPtr->timerRef = NULL;
+        }
         // release the message object
         le_mem_Release(msgPtr);
     }
@@ -1307,6 +1595,132 @@ le_sms_Format_t le_sms_GetFormat
 
     return (msgPtr->format);
 }
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the message type.
+ *
+ * @return Message type.
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+le_sms_Type_t le_sms_GetType
+(
+    le_sms_MsgRef_t msgRef
+        ///< [IN]
+        ///< Reference to the message object.
+)
+{
+    le_sms_Msg_t* msgPtr = le_ref_Lookup(MsgRefMap, msgRef);
+
+    if (msgPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", msgRef);
+    }
+
+    return (msgPtr->type);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Cell Broadcast Message Identifier.
+ *
+ * @return
+ * - LE_FAULT       Message is not a cell broadcast type.
+ * - LE_OK          Function succeeded.
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_sms_GetCellBroadcastId
+(
+    le_sms_MsgRef_t msgRef,
+        ///< [IN]
+        ///< Reference to the message object.
+
+    uint16_t* messageIdPtr
+        ///< [OUT]
+        ///< Cell Broadcast Message Identifier.
+)
+{
+    le_sms_Msg_t* msgPtr = le_ref_Lookup(MsgRefMap, msgRef);
+
+    if (msgPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", msgRef);
+        return LE_FAULT;
+    }
+
+    if (messageIdPtr == NULL)
+    {
+        LE_KILL_CLIENT("messageIdPtr is NULL");
+        return LE_FAULT;
+    }
+
+    if (msgPtr->type != LE_SMS_TYPE_BROADCAST_RX)
+    {
+        LE_ERROR("It is not a Cell Broadcast Message");
+        return LE_FAULT;
+    }
+
+    *messageIdPtr = msgPtr->messageId;
+
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Cell Broadcast Message Serial Number.
+ *
+ * @return
+ * - LE_FAULT       Message is not a cell broadcast type.
+ * - LE_OK          Function succeeded.
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_sms_GetCellBroadcastSerialNumber
+(
+    le_sms_MsgRef_t msgRef,
+        ///< [IN]
+        ///< Reference to the message object.
+
+    uint16_t* serialNumberPtr
+        ///< [OUT]
+        ///< Cell Broadcast Serial Number.
+)
+{
+    le_sms_Msg_t* msgPtr = le_ref_Lookup(MsgRefMap, msgRef);
+
+    if (msgPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", msgRef);
+        return LE_FAULT;
+    }
+
+    if (serialNumberPtr == NULL)
+    {
+        LE_KILL_CLIENT("serialNumberPtr is NULL");
+        return LE_FAULT;
+    }
+
+    if (msgPtr->type != LE_SMS_TYPE_BROADCAST_RX)
+    {
+        LE_ERROR("It is not a Cell Broadcast Message");
+        return LE_FAULT;
+    }
+
+    *serialNumberPtr = msgPtr->messageSerialNumber;
+
+    return LE_OK;
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1439,6 +1853,8 @@ le_result_t le_sms_GetTimeStamp
     char*            timestampPtr, ///< [OUT] The message time stamp (in text mode).
     ///        string format: "yy/MM/dd,hh:mm:ss+/-zz"
     ///        (Year/Month/Day,Hour:Min:Seconds+/-TimeZone)
+    /// The time zone indicates the difference, expressed in quarters of an hours between the
+    ///  local time and GMT.
     size_t           len           ///< [IN] The length of timestamp string.
 )
 {
@@ -1455,6 +1871,12 @@ le_result_t le_sms_GetTimeStamp
         return LE_FAULT;
     }
 
+    // Not available for Cell Broadcast
+    if(msgPtr->protocol == PA_SMS_PROTOCOL_GW_CB)
+    {
+        return LE_NOT_PERMITTED;
+    }
+
     // Only received messages are read only
     if(!msgPtr->readonly)
     {
@@ -1464,6 +1886,7 @@ le_result_t le_sms_GetTimeStamp
 
     return (le_utf8_Copy(timestampPtr, msgPtr->timestamp, len, NULL));
 }
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1580,7 +2003,7 @@ le_sms_MsgRef_t le_sms_SendText
     }
 
     messageRef = le_sms_Create();
-    LE_INFO("New message ref (%p) created",messageRef);
+    LE_DEBUG("New message ref (%p) created",messageRef);
 
     res = le_sms_SetDestination(messageRef, destStr);
     if (res != LE_OK)
@@ -1606,7 +2029,7 @@ le_sms_MsgRef_t le_sms_SendText
         return NULL;
     }
 
-    LE_INFO("New message ref (%p) pooled",messageRef);
+    LE_DEBUG("New message ref (%p) pooled",messageRef);
     return messageRef;
 }
 
@@ -1656,9 +2079,7 @@ le_sms_MsgRef_t le_sms_SendPdu
         return NULL;
     }
 
-    // TODO: To uncomment when ticket:555 will be fixed
     res = SendAsyncSMS(messageRef, handlerPtr, contextPtr);
-    //res = SendAsyncSMS(messageRef, NULL, NULL);
     if (res != LE_OK)
     {
         le_sms_Delete(messageRef);
@@ -1668,7 +2089,6 @@ le_sms_MsgRef_t le_sms_SendPdu
 
     return messageRef;
 }
-
 
 
 //--------------------------------------------------------------------------------------------------
@@ -2013,30 +2433,34 @@ le_result_t le_sms_GetPDU
         LE_KILL_CLIENT("pduPtr is NULL !");
         return LE_FAULT;
     }
+
     if (lenPtr == NULL)
     {
         LE_KILL_CLIENT("lenPtr is NULL !");
         return LE_FAULT;
     }
 
-    /* Get transport layer protocol */
-    le_mrc_Rat_t rat;
-    if ( le_mrc_GetRadioAccessTechInUse(&rat) != LE_OK)
+    if (msgPtr->protocol != PA_SMS_PROTOCOL_GW_CB)
     {
-        LE_ERROR("Could not retreive the Radio Access Technology");
-        return LE_FAULT;
-    }
+        /* Get transport layer protocol */
+        le_mrc_Rat_t rat;
+        if ( le_mrc_GetRadioAccessTechInUse(&rat) != LE_OK)
+        {
+            LE_ERROR("Could not retreive the Radio Access Technology");
+            return LE_FAULT;
+        }
 
-    msgPtr->protocol = PA_SMS_PROTOCOL_GSM;
+        msgPtr->protocol = PA_SMS_PROTOCOL_GSM;
 
-    if (rat&LE_MRC_RAT_CDMA)
-    {
-        msgPtr->protocol = PA_SMS_PROTOCOL_CDMA;
-    }
+        if (rat&LE_MRC_RAT_CDMA)
+        {
+            msgPtr->protocol = PA_SMS_PROTOCOL_CDMA;
+        }
 
-    if (!msgPtr->pduReady)
-    {
-        EncodeMessageToPdu(msgPtr);
+        if (!msgPtr->pduReady)
+        {
+            EncodeMessageToPdu(msgPtr);
+        }
     }
 
     if (!msgPtr->pduReady)
@@ -2121,6 +2545,7 @@ void le_sms_RemoveRxMessageHandler
  * @return LE_FORMAT_ERROR  The message content is invalid.
  * @return LE_FAULT         The function failed to send the message.
  * @return LE_OK            The function succeeded.
+ * @return LE_TIMEOUT       Timeout before the complete sending.
  *
  * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
  *       function will not return.
@@ -2146,13 +2571,18 @@ le_result_t le_sms_Send
         LE_DEBUG("Try to send PDU Msg %p, pdu.%p, pduLen.%u with protocol %d",
                         msgPtr, msgPtr->pdu.data, msgPtr->pdu.dataLen, msgPtr->protocol);
 
+        le_sem_Wait(SmsSem);
         result = pa_sms_SendPduMsg(msgPtr->protocol, msgPtr->pdu.dataLen,
-                        msgPtr->pdu.data, &msgPtr->pdu.errorCode);
+                        msgPtr->pdu.data, PA_SMS_SENDING_TIMEOUT, &msgPtr->pdu.errorCode);
+        le_sem_Post(SmsSem);
 
         if (result < 0)
         {
             LE_ERROR("Error.%d : Failed to send Message Object %p", result, msgPtr);
-            result = LE_FAULT;
+            if (result != LE_TIMEOUT)
+            {
+                result = LE_FAULT;
+            }
         }
         else
         {
@@ -2168,6 +2598,61 @@ le_result_t le_sms_Send
     }
 
     return result;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Send an asynchronous SMS message.
+ *
+ * Verifies first if the parameters are valid, then it checks the modem state can support
+ * message sending.
+ *
+ * @return LE_FORMAT_ERROR  Message content is invalid.
+ * @return LE_FAULT         Function failed to send the message.
+ * @return LE_OK            Function succeeded.
+ * @return LE_TIMEOUT       Timeout before the complete sending.
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_sms_SendAsync
+(
+    le_sms_MsgRef_t msgRef,
+        ///< [IN]
+        ///< Reference to the message object.
+
+    le_sms_CallbackResultFunc_t handlerPtr,
+        ///< [IN]
+
+    void* contextPtr
+        ///< [IN]
+)
+{
+    le_result_t res;
+    le_sms_Msg_t* msgPtr = le_ref_Lookup(MsgRefMap, msgRef);
+
+    if (msgPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", msgRef);
+        return LE_NOT_FOUND;
+    }
+
+    if(msgPtr->readonly)
+    {
+        return LE_FAULT;
+    }
+
+    if(msgPtr->pdu.status != LE_SMS_UNSENT)
+    {
+        return LE_FAULT;
+    }
+
+    res = SendAsyncSMS(msgRef, handlerPtr, contextPtr);
+    LE_ERROR_IF(res != LE_OK, "Failed to pool sms for sending (%p)", msgRef);
+
+    return res;
 }
 
 
@@ -2305,12 +2790,21 @@ le_result_t le_sms_DeleteFromStorage
         return LE_NOT_FOUND;
     }
 
+    /* Not available for Cell Broadcast */
+    if(msgPtr->protocol == PA_SMS_PROTOCOL_GW_CB)
+    {
+        LE_DEBUG("SMS Cell  Broadcast not stored");
+        return LE_NO_MEMORY;
+    }
+
     LE_DEBUG("le_sms_DeleteFromStorage obj[%p], ref[%p], cpt = %d", msgPtr, msgRef,
         msgPtr->smsUserCount);
 
     if (msgPtr->smsUserCount == 1 )
     {
+        le_sem_Wait(SmsSem);
         resp = pa_sms_DelMsgFromMem(msgPtr->storageIdx, msgPtr->protocol, msgPtr->storage);
+        le_sem_Post(SmsSem);
 
         if ((resp == LE_COMM_ERROR) || (resp == LE_TIMEOUT))
         {
@@ -2529,11 +3023,14 @@ void le_sms_MarkRead
         LE_KILL_CLIENT("Invalid reference (%p) provided!", msgRef);
         return;
     }
+
+    le_sem_Wait(SmsSem);
     if (pa_sms_ChangeMessageStatus(msgPtr->storageIdx, msgPtr->protocol, LE_SMS_RX_READ,
                     msgPtr->storage) == LE_OK)
     {
         msgPtr->pdu.status = LE_SMS_RX_READ;
     }
+    le_sem_Post(SmsSem);
 
 }
 
@@ -2557,11 +3054,14 @@ void le_sms_MarkUnread
         LE_KILL_CLIENT("Invalid reference (%p) provided!", msgRef);
         return;
     }
+
+    le_sem_Wait(SmsSem);
     if (pa_sms_ChangeMessageStatus(msgPtr->storageIdx, msgPtr->protocol, LE_SMS_RX_UNREAD,
                     msgPtr->storage) == LE_OK)
     {
         msgPtr->pdu.status = LE_SMS_RX_UNREAD;
     }
+    le_sem_Post(SmsSem);
 }
 
 
@@ -2587,13 +3087,18 @@ le_result_t le_sms_GetSmsCenterAddress
 )
 {
     char smscMdmStr[LE_MDMDEFS_PHONE_NUM_MAX_BYTES] = {0};
+    le_result_t res = LE_FAULT;
 
-    if (pa_sms_GetSmsc(smscMdmStr, LE_MDMDEFS_PHONE_NUM_MAX_BYTES) == LE_OK)
+    le_sem_Wait(SmsSem);
+    res = pa_sms_GetSmsc(smscMdmStr, LE_MDMDEFS_PHONE_NUM_MAX_BYTES);
+    le_sem_Post(SmsSem);
+
+    if (res == LE_OK)
     {
-        return le_utf8_Copy(telPtr, smscMdmStr, len, NULL);
+        res = le_utf8_Copy(telPtr, smscMdmStr, len, NULL);
     }
 
-    return LE_FAULT;
+    return res;
 }
 
 
@@ -2615,21 +3120,302 @@ le_result_t le_sms_SetSmsCenterAddress
     const char*            telPtr  ///< [IN] SMS center address number string.
 )
 {
+    le_result_t res = LE_FAULT;
+
     if (telPtr == NULL)
     {
-        return LE_FAULT;
+        return res;
     }
 
     if(strlen(telPtr) > (LE_MDMDEFS_PHONE_NUM_MAX_BYTES-1))
     {
         LE_KILL_CLIENT( "strlen(telPtr) > %d", (LE_MDMDEFS_PHONE_NUM_MAX_BYTES-1));
-        return LE_FAULT;
+        return res;
     }
 
-    if (pa_sms_SetSmsc(telPtr) == LE_OK)
+    le_sem_Wait(SmsSem);
+    res = pa_sms_SetSmsc(telPtr);
+    le_sem_Post(SmsSem);
+
+    return res;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Activate Cell Broadcast message notification
+ *
+ * @return
+ *  - LE_FAULT         Function failed.
+ *  - LE_OK            Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_sms_ActivateCellBroadcast
+(
+    void
+)
+{
+    le_result_t res;
+
+    le_sem_Wait(SmsSem);
+    res = pa_sms_ActivateCellBroadcast(PA_SMS_PROTOCOL_GSM);
+    le_sem_Post(SmsSem);
+
+    return res;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Deactivate Cell Broadcast message notification
+ *
+ * @return
+ *  - LE_FAULT         Function failed.
+ *  - LE_OK            Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_sms_DeactivateCellBroadcast
+(
+    void
+)
+{
+    le_result_t res;
+
+    le_sem_Wait(SmsSem);
+    res = pa_sms_DeactivateCellBroadcast(PA_SMS_PROTOCOL_GSM);
+    le_sem_Post(SmsSem);
+
+    return res;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Activate CDMA Cell Broadcast message notification
+ *
+ * @return
+ *  - LE_FAULT         Function failed.
+ *  - LE_OK            Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_sms_ActivateCdmaCellBroadcast
+(
+    void
+)
+{
+    le_result_t res;
+
+    le_sem_Wait(SmsSem);
+    res = pa_sms_ActivateCellBroadcast(PA_SMS_PROTOCOL_CDMA);
+    le_sem_Post(SmsSem);
+
+    return res;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Deactivate CDMA Cell Broadcast message notification
+ *
+ * @return
+ *  - LE_FAULT         Function failed.
+ *  - LE_OK            Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_sms_DeactivateCdmaCellBroadcast
+(
+    void
+)
+{
+    le_result_t res;
+
+    le_sem_Wait(SmsSem);
+    res = pa_sms_DeactivateCellBroadcast(PA_SMS_PROTOCOL_CDMA);
+    le_sem_Post(SmsSem);
+
+    return res;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add Cell Broadcast message Identifiers range.
+ *
+ * @return
+ *  - LE_FAULT         Function failed.
+ *  - LE_OK            Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_sms_AddCellBroadcastIds
+(
+    uint16_t fromId,
+        ///< [IN]
+        ///< Starting point of the range of cell broadcast message identifier.
+
+    uint16_t toId
+        ///< [IN]
+        ///< Ending point of the range of cell broadcast message identifier.
+)
+{
+    le_result_t res;
+
+    le_sem_Wait(SmsSem);
+    res = pa_sms_AddCellBroadcastIds(fromId, toId);
+    le_sem_Post(SmsSem);
+
+    return res;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Remove Cell Broadcast message Identifiers range.
+ *
+ * @return
+ *  - LE_FAULT         Function failed.
+ *  - LE_OK            Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_sms_RemoveCellBroadcastIds
+(
+    uint16_t fromId,
+        ///< [IN]
+        ///< Starting point of the range of cell broadcast message identifier.
+
+    uint16_t toId
+        ///< [IN]
+        ///< Ending point of the range of cell broadcast message identifier.
+)
+{
+    le_result_t res;
+
+    le_sem_Wait(SmsSem);
+    res = pa_sms_RemoveCellBroadcastIds(fromId, toId);
+    le_sem_Post(SmsSem);
+
+    return res;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Clear Cell Broadcast message Identifiers range.
+ *
+ * @return
+ *  - LE_FAULT         Function failed.
+ *  - LE_OK            Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_sms_ClearCellBroadcastIds
+(
+    void
+)
+{
+    le_result_t res;
+
+    le_sem_Wait(SmsSem);
+    res = pa_sms_ClearCellBroadcastIds();
+    le_sem_Post(SmsSem);
+
+    return res;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add CDMA Cell Broadcast category services.
+ *
+ * @return
+ *  - LE_FAULT         Function failed.
+ *  - LE_BAD_PARAMETER Parameter is invalid.
+ *  - LE_OK            Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_sms_AddCdmaCellBroadcastServices
+(
+    le_sms_CdmaServiceCat_t serviceCat,
+        ///< [IN]
+        ///< Service category assignment. Reference to 3GPP2 C.R1001-D
+        ///< v1.0 Section 9.3.1 Standard Service Category Assignments.
+
+    le_sms_Languages_t language
+        ///< [IN]
+        ///< Language Indicator. Reference to
+        ///< 3GPP2 C.R1001-D v1.0 Section 9.2.1 Language Indicator
+        ///< Value Assignments
+)
+{
+    le_result_t res;
+
+    if ((serviceCat >= LE_SMS_CDMA_SVC_CAT_MAX) || (language >= LE_SMS_LANGUAGE_MAX))
     {
-        return LE_OK;
+        return LE_BAD_PARAMETER;
     }
 
-    return LE_FAULT;
+    le_sem_Wait(SmsSem);
+    res = pa_sms_AddCdmaCellBroadcastServices(serviceCat, language);
+    le_sem_Post(SmsSem);
+
+    return res;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Remove CDMA Cell Broadcast category services.
+ *
+ * @return
+ *  - LE_FAULT         Function failed.
+ *  - LE_BAD_PARAMETER Parameter is invalid.
+ *  - LE_OK            Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_sms_RemoveCdmaCellBroadcastServices
+(
+    le_sms_CdmaServiceCat_t serviceCat,
+        ///< [IN]
+        ///< Service category assignment. Reference to 3GPP2 C.R1001-D
+        ///< v1.0 Section 9.3.1 Standard Service Category Assignments.
+
+    le_sms_Languages_t language
+        ///< [IN]
+        ///< Language Indicator. Reference to
+        ///< 3GPP2 C.R1001-D v1.0 Section 9.2.1 Language Indicator
+        ///< Value Assignments
+)
+{
+    le_result_t res;
+
+    if ((serviceCat >= LE_SMS_CDMA_SVC_CAT_MAX) || (language >= LE_SMS_LANGUAGE_MAX))
+    {
+        return LE_BAD_PARAMETER;
+    }
+
+    le_sem_Wait(SmsSem);
+    res = pa_sms_RemoveCdmaCellBroadcastServices(serviceCat, language);
+    le_sem_Post(SmsSem);
+
+    return res;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Clear CDMA Cell Broadcast category services.
+ *
+ * @return
+ *  - LE_FAULT         Function failed.
+ *  - LE_OK            Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_sms_ClearCdmaCellBroadcastServices
+(
+    void
+)
+{
+    le_result_t res;
+
+    le_sem_Wait(SmsSem);
+    res = pa_sms_ClearCdmaCellBroadcastServices();
+    le_sem_Post(SmsSem);
+
+    return res;
 }

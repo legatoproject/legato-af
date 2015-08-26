@@ -738,16 +738,16 @@ static le_result_t PrintIsConnected
 )
 {
     le_result_t res = LE_OK;
-    bool isConnected;
+    le_mdc_ConState_t state;
 
-    res = le_mdc_GetSessionState(profileRef, &isConnected);
+    res = le_mdc_GetSessionState(profileRef, &state);
 
     if (res != LE_OK)
     {
         return res;
     }
 
-    cm_cmn_FormatPrint("Connected", (isConnected) ? "yes" : "no");
+    cm_cmn_FormatPrint("Connected", (state == LE_MDC_CONNECTED) ? "yes" : "no");
 
     return res;
 }

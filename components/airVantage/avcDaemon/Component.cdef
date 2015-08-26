@@ -4,6 +4,7 @@ provides:
     api:
     {
         le_avc.api
+        le_avdata.api
     }
 }
 
@@ -11,6 +12,7 @@ sources:
 {
     assetData.c
     lwm2m.c
+    avData.c
     avcServer.c
 }
 
@@ -19,6 +21,7 @@ requires:
     api:
     {
         le_cfg.api
+        le_appInfo.api
     }
 
     component:

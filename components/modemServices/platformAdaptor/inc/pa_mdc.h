@@ -134,13 +134,6 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Abstract structure to reference the data session
- */
-//--------------------------------------------------------------------------------------------------
-typedef void* pa_mdc_CallRef_t;
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Authentication structure that contains modem specific profile authentication data
  */
 //--------------------------------------------------------------------------------------------------
@@ -175,20 +168,6 @@ typedef struct {
 }
 pa_mdc_ProfileData_t;
 
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Enumerates the possible values for the data session state
- */
-//--------------------------------------------------------------------------------------------------
-typedef enum
-{
-    PA_MDC_CONNECTED,       ///< Data session is connected
-    PA_MDC_DISCONNECTED,    ///< Data session is disconnected
-}
-pa_mdc_SessionState_t;
-
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Structure provided to session state handler
@@ -196,7 +175,9 @@ pa_mdc_SessionState_t;
 //--------------------------------------------------------------------------------------------------
 typedef struct {
     uint32_t profileIndex;              ///< Profile that had the state change
-    pa_mdc_SessionState_t newState;     ///< New data session state
+    le_mdc_ConState_t newState;         ///< Data session connection status.
+    le_mdc_DisconnectionReason_t disc;  ///< Disconnection reason
+    int32_t  discCode;                  ///< Platform specific disconnection code
 }
 pa_mdc_SessionStateData_t;
 
@@ -235,7 +216,7 @@ typedef void (*pa_mdc_SessionStateHandler_t)
  *      - LE_FAULT on failure
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mdc_GetDefaultProfileIndex
+LE_SHARED le_result_t pa_mdc_GetDefaultProfileIndex
 (
     uint32_t* profileIndexPtr
 );
@@ -249,7 +230,7 @@ le_result_t pa_mdc_GetDefaultProfileIndex
  *      - LE_FAULT on failure
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mdc_ReadProfile
+LE_SHARED le_result_t pa_mdc_ReadProfile
 (
     uint32_t profileIndex,                  ///< [IN] The profile to read
     pa_mdc_ProfileData_t* profileDataPtr    ///< [OUT] The profile data
@@ -265,7 +246,7 @@ le_result_t pa_mdc_ReadProfile
  *      - LE_FAULT on failure
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mdc_InitializeProfile
+LE_SHARED le_result_t pa_mdc_InitializeProfile
 (
     uint32_t   profileIndex     ///< [IN] The profile to write
 );
@@ -279,7 +260,7 @@ le_result_t pa_mdc_InitializeProfile
  *      - LE_FAULT on failure
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mdc_WriteProfile
+LE_SHARED le_result_t pa_mdc_WriteProfile
 (
     uint32_t profileIndex,                  ///< [IN] The profile to write
     pa_mdc_ProfileData_t* profileDataPtr    ///< [IN] The profile data
@@ -296,10 +277,9 @@ le_result_t pa_mdc_WriteProfile
  *      - LE_FAULT for other failures
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mdc_StartSessionIPV4
+LE_SHARED le_result_t pa_mdc_StartSessionIPV4
 (
-    uint32_t profileIndex,          ///< [IN] The profile to use
-    pa_mdc_CallRef_t* callRefPtr    ///< [OUT] Reference used for stopping the data session
+    uint32_t profileIndex          ///< [IN] The profile to use
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -312,10 +292,9 @@ le_result_t pa_mdc_StartSessionIPV4
  *      - LE_FAULT for other failures
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mdc_StartSessionIPV6
+LE_SHARED le_result_t pa_mdc_StartSessionIPV6
 (
-    uint32_t profileIndex,        ///< [IN] The profile to use
-    pa_mdc_CallRef_t* callRefPtr  ///< [OUT] Reference used for stopping the data session
+    uint32_t profileIndex        ///< [IN] The profile to use
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -328,10 +307,9 @@ le_result_t pa_mdc_StartSessionIPV6
  *      - LE_FAULT for other failures
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mdc_StartSessionIPV4V6
+LE_SHARED LE_SHARED le_result_t pa_mdc_StartSessionIPV4V6
 (
-    uint32_t profileIndex,        ///< [IN] The profile to use
-    pa_mdc_CallRef_t* callRefPtr  ///< [OUT] Reference used for stopping the data session
+    uint32_t profileIndex        ///< [IN] The profile to use
 );
 
 
@@ -344,7 +322,7 @@ le_result_t pa_mdc_StartSessionIPV4V6
  *      - LE_FAULT for other failures
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mdc_GetSessionType
+LE_SHARED le_result_t pa_mdc_GetSessionType
 (
     uint32_t profileIndex,              ///< [IN] The profile to use
     pa_mdc_SessionType_t* sessionIpPtr  ///< [OUT] IP family session
@@ -360,9 +338,9 @@ le_result_t pa_mdc_GetSessionType
  *      - LE_FAULT for other failures
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mdc_StopSession
+LE_SHARED le_result_t pa_mdc_StopSession
 (
-    pa_mdc_CallRef_t callRef         ///< [IN] The call reference returned when starting the sessions
+    uint32_t profileIndex              ///< [IN] The profile to use
 );
 
 
@@ -375,10 +353,10 @@ le_result_t pa_mdc_StopSession
  *      - LE_FAULT on error
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mdc_GetSessionState
+LE_SHARED le_result_t pa_mdc_GetSessionState
 (
     uint32_t profileIndex,                  ///< [IN] The profile to use
-    pa_mdc_SessionState_t* sessionStatePtr  ///< [OUT] The data session state
+    le_mdc_ConState_t* sessionStatePtr      ///< [OUT] The data session state
 );
 
 
@@ -392,7 +370,7 @@ le_result_t pa_mdc_GetSessionState
  *      The process exits on failure
  */
 //--------------------------------------------------------------------------------------------------
-le_event_HandlerRef_t pa_mdc_AddSessionStateHandler
+LE_SHARED le_event_HandlerRef_t pa_mdc_AddSessionStateHandler
 (
     pa_mdc_SessionStateHandler_t handlerRef, ///< [IN] The session state handler function.
     void*                        contextPtr  ///< [IN] The context to be given to the handler.
@@ -410,7 +388,7 @@ le_event_HandlerRef_t pa_mdc_AddSessionStateHandler
  *      - LE_FAULT for all other errors
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mdc_GetInterfaceName
+LE_SHARED le_result_t pa_mdc_GetInterfaceName
 (
     uint32_t profileIndex,                  ///< [IN] The profile to use
     char*  interfaceNameStr,                ///< [OUT] The name of the network interface
@@ -429,7 +407,7 @@ le_result_t pa_mdc_GetInterfaceName
  *      - LE_FAULT for all other errors
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mdc_GetIPAddress
+LE_SHARED le_result_t pa_mdc_GetIPAddress
 (
     uint32_t profileIndex,             ///< [IN] The profile to use
     le_mdmDefs_IpVersion_t ipVersion,          ///< [IN] IP Version
@@ -448,7 +426,7 @@ le_result_t pa_mdc_GetIPAddress
  *      - LE_FAULT for all other errors
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mdc_GetGatewayAddress
+LE_SHARED le_result_t pa_mdc_GetGatewayAddress
 (
     uint32_t profileIndex,                  ///< [IN] The profile to use
     le_mdmDefs_IpVersion_t ipVersion,               ///< [IN] IP Version
@@ -471,7 +449,7 @@ le_result_t pa_mdc_GetGatewayAddress
  *      be returned for the unavailable address
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mdc_GetDNSAddresses
+LE_SHARED le_result_t pa_mdc_GetDNSAddresses
 (
     uint32_t profileIndex,                  ///< [IN] The profile to use
     le_mdmDefs_IpVersion_t ipVersion,               ///< [IN] IP Version
@@ -507,7 +485,7 @@ le_result_t pa_mdc_GetAccessPointName
  *      - LE_FAULT for all other errors
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mdc_GetDataBearerTechnology
+LE_SHARED le_result_t pa_mdc_GetDataBearerTechnology
 (
     uint32_t                       profileIndex,              ///< [IN] The profile to use
     le_mdc_DataBearerTechnology_t* downlinkDataBearerTechPtr, ///< [OUT] downlink data bearer technology
@@ -524,7 +502,7 @@ le_result_t pa_mdc_GetDataBearerTechnology
  *
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mdc_GetDataFlowStatistics
+LE_SHARED le_result_t pa_mdc_GetDataFlowStatistics
 (
     pa_mdc_PktStatistics_t *dataStatisticsPtr ///< [OUT] Statistics data
 );
@@ -539,7 +517,7 @@ le_result_t pa_mdc_GetDataFlowStatistics
  *
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mdc_ResetDataFlowStatistics
+LE_SHARED le_result_t pa_mdc_ResetDataFlowStatistics
 (
     void
 );

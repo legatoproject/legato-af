@@ -48,7 +48,7 @@ typedef void (*avcServer_InstallHandlerFunc_t)
  *      - LE_FAULT on error
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t avcServer_QueryInstall
+LE_SHARED le_result_t avcServer_QueryInstall
 (
     avcServer_InstallHandlerFunc_t handlerRef  ///< [IN] Handler to receive install response.
 );

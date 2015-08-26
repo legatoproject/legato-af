@@ -19,11 +19,6 @@ typedef void (*pa_antenna_StatusIndHandlerFunc_t)
     pa_antenna_StatusInd_t* msgRef
 );
 
-le_event_HandlerRef_t* pa_antenna_AddStatusHandler
-(
-    pa_antenna_StatusIndHandlerFunc_t   msgHandler
-);
-
 //--------------------------------------------------------------------------------------------------
 /**
  *
@@ -35,7 +30,7 @@ le_event_HandlerRef_t* pa_antenna_AddStatusHandler
  *
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_antenna_SetShortLimit
+LE_SHARED le_result_t pa_antenna_SetShortLimit
 (
     le_antenna_Type_t    antennaType,
     uint32_t                shortLimit
@@ -52,7 +47,7 @@ le_result_t pa_antenna_SetShortLimit
  *
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_antenna_GetShortLimit
+LE_SHARED le_result_t pa_antenna_GetShortLimit
 (
     le_antenna_Type_t    antennaType,
     uint32_t*               shortLimitPtr
@@ -69,7 +64,7 @@ le_result_t pa_antenna_GetShortLimit
  *
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_antenna_SetOpenLimit
+LE_SHARED le_result_t pa_antenna_SetOpenLimit
 (
     le_antenna_Type_t    antennaType,
     uint32_t                openLimit
@@ -86,7 +81,7 @@ le_result_t pa_antenna_SetOpenLimit
  *
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_antenna_GetOpenLimit
+LE_SHARED le_result_t pa_antenna_GetOpenLimit
 (
     le_antenna_Type_t    antennaType,
     uint32_t*               openLimitPtr
@@ -103,10 +98,42 @@ le_result_t pa_antenna_GetOpenLimit
  *
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_antenna_GetStatus
+LE_SHARED le_result_t pa_antenna_GetStatus
 (
     le_antenna_Type_t    antennaType,
     le_antenna_Status_t* statusPtr
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the external ADC used to monitor the requested antenna.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_UNSUPPORTED request not supported
+ *      - LE_FAULT on other failure
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_antenna_SetExternalAdc
+(
+    le_antenna_Type_t    antennaType,   ///< Antenna type
+    int8_t               adcId          ///< The external ADC used to monitor the requested antenna
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the external ADC used to monitor the requested antenna.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_UNSUPPORTED request not supported
+ *      - LE_FAULT on other failure
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_antenna_GetExternalAdc
+(
+    le_antenna_Type_t    antennaType,  ///< Antenna type
+    int8_t*              adcIdPtr      ///< The external ADC used to monitor the requested antenna
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -121,7 +148,7 @@ le_result_t pa_antenna_GetStatus
  *
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_antenna_SetStatusIndication
+LE_SHARED le_result_t pa_antenna_SetStatusIndication
 (
     le_antenna_Type_t antennaType
 );
@@ -137,7 +164,7 @@ le_result_t pa_antenna_SetStatusIndication
  *
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_antenna_RemoveStatusIndication
+LE_SHARED le_result_t pa_antenna_RemoveStatusIndication
 (
     le_antenna_Type_t antennaType
 );
@@ -150,7 +177,7 @@ le_result_t pa_antenna_RemoveStatusIndication
  * @return A handler reference, which is only needed for later removal of the handler.
  */
 //--------------------------------------------------------------------------------------------------
-le_event_HandlerRef_t* pa_antenna_AddStatusHandler
+LE_SHARED le_event_HandlerRef_t* pa_antenna_AddStatusHandler
 (
     pa_antenna_StatusIndHandlerFunc_t   msgHandler
 );
@@ -162,6 +189,10 @@ le_event_HandlerRef_t* pa_antenna_AddStatusHandler
  * @return
  * - LE_OK on success
  * - LE_FAULT on failure
+ *
+ * @note This function should not be called from outside the platform adapter.
+ *
+ * @todo Move this prototype to another (internal) header.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_antenna_Init

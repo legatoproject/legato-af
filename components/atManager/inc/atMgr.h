@@ -265,7 +265,7 @@ typedef struct {
  * This function init the ATManager.
  */
 //--------------------------------------------------------------------------------------------------
-void atmgr_Start();
+LE_SHARED void atmgr_Start();
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -274,7 +274,7 @@ void atmgr_Start();
  * @return true if the ATManager is started, false otherwise.
  */
 //--------------------------------------------------------------------------------------------------
-bool atmgr_IsStarted();
+LE_SHARED bool atmgr_IsStarted();
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -283,7 +283,7 @@ bool atmgr_IsStarted();
  * @return a reference on the ATManager of this device
  */
 //--------------------------------------------------------------------------------------------------
-atmgr_Ref_t atmgr_CreateInterface
+LE_SHARED atmgr_Ref_t atmgr_CreateInterface
 (
     atdevice_Ref_t deviceRef    ///< Device
 );
@@ -298,7 +298,7 @@ atmgr_Ref_t atmgr_CreateInterface
  *
  */
 //--------------------------------------------------------------------------------------------------
-void atmgr_StartInterface
+LE_SHARED void atmgr_StartInterface
 (
     atmgr_Ref_t atmanageritfPtr    ///< Device
 );
@@ -309,7 +309,7 @@ void atmgr_StartInterface
  *
  */
 //--------------------------------------------------------------------------------------------------
-void atmgr_StopInterface
+LE_SHARED void atmgr_StopInterface
 (
     atmgr_Ref_t atmanageritfPtr
 );
@@ -320,7 +320,7 @@ void atmgr_StopInterface
  *
  */
 //--------------------------------------------------------------------------------------------------
-void atmgr_SubscribeUnsolReq
+LE_SHARED void atmgr_SubscribeUnsolReq
 (
     atmgr_Ref_t     atmanageritfPtr,     ///< one ATManager interface
     le_event_Id_t   unsolicitedReportId, ///< Event Id to report to
@@ -334,7 +334,7 @@ void atmgr_SubscribeUnsolReq
  *
  */
 //--------------------------------------------------------------------------------------------------
-void atmgr_UnSubscribeUnsolReq
+LE_SHARED void atmgr_UnSubscribeUnsolReq
 (
     atmgr_Ref_t          atmanageritfPtr,        ///< one ATManager interface
     le_event_Id_t        unsolicitedReportId,    ///< Event Id to report to
@@ -347,7 +347,7 @@ void atmgr_UnSubscribeUnsolReq
  *
  */
 //--------------------------------------------------------------------------------------------------
-void atmgr_SendCommandRequest
+LE_SHARED void atmgr_SendCommandRequest
 (
     atmgr_Ref_t          atmanageritfPtr,     ///< one ATManager interface
     atcmd_Ref_t       atcommandToSendRef   ///< AT Command Reference
@@ -359,7 +359,7 @@ void atmgr_SendCommandRequest
  *
  */
 //--------------------------------------------------------------------------------------------------
-void atmgr_CancelCommandRequest
+LE_SHARED void atmgr_CancelCommandRequest
 (
     atmgr_Ref_t          atmanageritfPtr,     ///< one ATManager interface
     atcmd_Ref_t       atcommandToCancelRef ///< AT Command Reference

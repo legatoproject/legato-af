@@ -79,7 +79,7 @@ le_result_t atports_Init
  * @return a reference on the ATManager of this device
  */
 //--------------------------------------------------------------------------------------------------
-atmgr_Ref_t atports_GetInterface
+LE_SHARED atmgr_Ref_t atports_GetInterface
 (
     atports_t name
 );

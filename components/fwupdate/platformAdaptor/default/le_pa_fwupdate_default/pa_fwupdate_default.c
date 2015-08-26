@@ -44,8 +44,7 @@ le_result_t pa_fwupdate_Download
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_fwupdate_Read
 (
-    int* fdPtr,         ///< [OUT] File descriptor for the image, ready for reading.
-    size_t numBytes     ///< [IN] Size of image in bytes
+    int* fdPtr         ///< [OUT] File descriptor for the image, ready for reading.
 )
 {
     return LE_FAULT;

@@ -6,6 +6,22 @@
 #ifndef LEGATO_LEMEDIALOCAL_INCLUDE_GUARD
 #define LEGATO_LEMEDIALOCAL_INCLUDE_GUARD
 
+#include "le_audio_local.h"
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Audio format.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef enum
+{
+    LE_MEDIA_WAVE,
+    LE_MEDIA_AMR_NB,
+    LE_MEDIA_AMR_WB,
+    LE_MEDIA_FORMAT_MAX
+}
+le_media_Format_t;
+
 //--------------------------------------------------------------------------------------------------
 /**
  * This function must be called to play a DTMF on a specific audio stream.
