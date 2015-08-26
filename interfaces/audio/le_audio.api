@@ -86,8 +86,6 @@
  * le_audio_GetDefaultI2sMode() can be called to get the default I2s channel mode slot used on
  * the current platform.
  *
- * le_audio_GetFormat() can be called to get the audio format of an input or output stream.
- *
  * Call le_audio_Close() to release it. If
  * several users own the same, corresponding stream reference, the interface will
  * close only after the last user releases the audio stream.
@@ -111,6 +109,12 @@
  * - le_audio_Mute(): allows the user to mute an audio stream.
  * - le_audio_Unmute(): allows the user to unmute an audio stream.
  *
+ * @note Multimedia (playback and recording) must be controled separatly from the main audio path
+ * (Microphone/Speaker, I2S, PCM, USB).  Muting/Unmuting a multimedia is done by
+ * muting/unmuting the multimedia stream, and not the other connected stream. For example, in case
+ * of playback + voice on the speaker, if the user wants to mute all the audio outcoming to the
+ * speaker, it must mute both the Speaker stream and the playback stream.
+ *
  * @note The hardware may or may not support the full 0-100 resolution, and if you want to see what
  * was actually set call le_audio_GetGain() after le_audio_SetGain() to get the real value.
  *
@@ -131,39 +135,7 @@
  *
  * When finished with it, delete it using the le_audio_DeleteConnector() function.
  *
- * @section le_audio_formats Specifying audio formats
- *
- * The encoding audio format can be specified to (or retrieved from) the audio interfaces that
- * support this option. The format parameter is a string containing the IANA specified encoding
- * format name for Real-Time protocol (RTP).
- *
- * The complete list of the audio encoding format names can be found on the IANA organization web
- * site (http://www.iana.org).
- *
- * Function that gets the current audio format for an open interface is:
- * - le_audio_GetFormat()
- *
- * @warning Ensure to check the list of supported audio formats for your specific
- * platform.
- *
- * Some examples of audio formats:
- * - "L16-8K": Linear PCM 16-bit audio @ 8KHz
- * - "L16-16K": Linear PCM 16-bit audio @ 16KHz
- * - "GSM": European GSM Full Rate @ 8KHz (GSM 06.10)
- * - "GSM-EFR": ITU-T GSM Enhanced Full Rate @ 8KHz (GSM 06.60)
- * - "GSM-HR-08": ITU-T GSM Half Rate @ 8KHz (GSM 06.20)
- * - "AMR": Adaptive Multi-Rate - Full Rate @ 8KHz
- * - "AMR-HR": Adaptive Multi-Rate - Half Rate @ 8KHz
- * - "AMR-WB": Adaptive Multi-Rate Wideband @ 16KHz
- *
- * @note The string is not case sensitive.
- *
- * @subsection le_audio_media_profile Set / Get media configuration
- * A PCM sample configuration can be set to a play /record file (otherwise, a default
- * configuration is used: PCM 16-bit audio @ 8KHz one channel).
- *
- * @subsection le_audio_pb_rec Play / Record a file
- *
+ * @section le_audio_pb_rec Playback and Recording
  *
  * An audio file can be played to any active output interfaces.
  *
@@ -184,9 +156,29 @@
  *                            remote audio interface is recorded into an audio file,
  *                            depending the kind of connector (input or output) is tied to.
  *
- * - le_audio_PlayFile(): must be called to play a specified file.
+ * - le_audio_PlayFile(): must be called to play a specified file. WAVE (Waveform audio file) and
+ * AMR (Adaptive Multi Rate) are supported.
+ * AMR is an audio compression format optimized for speech coding. Two codecs are supported:
+ * - AMR_NB (AMR Narrowband) codec that encodes narrowband (200–3400 Hz) signals at variable bit
+ * rates ranging from 4.75 to 12.2 kbit/s. It was adopted as the standard speech codec by 3GPP.
+ * - AMR-WB (AMR Wideband) is an ITU-T standard speech codec which improved speech quality due to a
+ * wider speech bandwidth of 50–7000 Hz.
+ *
  * - le_audio_PlaySamples(): must be called to initiate a playback using an audio flow. A pipe has
- * to be opened first, thenthe audio data are sent throught the opened pipe.
+ * to be opened first, then the PCM samples are sent throught the opened pipe.
+ *
+ * A play can be done only on a connected stream. For instance, the
+ * "I2S Tx", "Modem Voice Rx" and "Player" must be previously connected before playing a file.
+ *
+ * - le_audio_RecordFile(): must be called to record in a specified file.
+ * - le_audio_SetEncodingFormat(): can be called to set the encoding format. The same formats as the
+ * player are supported.
+ * - le_audio_GetEncodingFormat(): can be called to get the encoding format.
+ * - le_audio_GetSamples(): must be called to get the audio PCM samples.  A pipe has
+ * to be opened first, then the PCM samples are sent throught the opened pipe.
+ *
+ * A record can be done only on a connected stream. For instance, the
+ * "I2S Rx", "Modem Voice Tx" and "Recorder" must be previously connected before recording a file.
  *
  * A PCM configuration must be set with:
  *      - le_audio_SetSamplePcmChannelNumber(): can be called to set the channel number of a PCM
@@ -204,14 +196,14 @@
  * (in bits per sample) of a PCM sample.
  * The default configuration is PCM 16-bit audio @ 8KHz one channel.
  *
- * A play can be done only on a connected stream. For instance, the
- * "I2S Tx", "Modem Voice Rx" and "Player" must be previously connected before playing a file.
- *
- * - le_audio_RecordFile(): must be called to record in a specified file.
- * - le_audio_GetSamples(): must be called to get the audio samples.
- *
- * A record can be done only on a connected stream. For instance, the
- * "I2S Rx", "Modem Voice Tx" and "Recorder" must be previously connected before recording a file.
+ * An AMR configuration must be set with:
+ *      - le_audio_SetSampleAmrMode(): can be called to set the AMR mode (NB/WB, bitrate).
+ *      - le_audio_SetSampleAmrDtx(): can be called to activate/deactivate the Discontinuous
+ * Transmission (DTX) to reduce bandwidth usage during silence periods.
+ * The AMR configuration can be retrieved with:
+ *      - le_audio_GetSampleAmrMode(): can be called to get the AMR mode.
+ *      - le_audio_GetSampleAmrDtx(): can be called to get the Discontinuous
+ * Transmission (DTX).
  *
  * - le_audio_Stop(): can be called to stop a play/record. The playback/record is stopped
  * playing/recording, the read/write position indicator associated with the file stream is rewound
@@ -222,8 +214,6 @@
  * - le_audio_Resume(): can be called to resume a paused play/record. The file playing/recording
  * continue at the file's position indicator held after the pause.
  *
- *
- * @note Only .wav file format is currently supported.
  *
  * The function below is an example of how a file can be played to the Modem Voice Tx output
  * interface. The audio of the voice call is redirected to the I2S interfaces. This function simply
@@ -334,7 +324,7 @@
  *
  * @endcode
  *
- @section le_audio_dtmf DTMF
+ * @section le_audio_dtmf DTMF
  *
  * The le_audio_PlayDtmf() function allows the application to play one or several DTMF on a playback
  * stream. The duration and the pause of the DTMFs must also be specified with the input parameters.
@@ -639,6 +629,45 @@ ENUM I2SChannel
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Audio format.
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM Format
+{
+    WAVE,        ///< Waveform audio file
+    AMR,         ///< Adaptive Multi Rate
+    FORMAT_MAX
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * AMR mode.
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM AmrMode
+{
+    AMR_NONE,          ///< Not set
+    AMR_NB_4_75_KBPS,  ///< AMR Narrowband in 4.75kbps
+    AMR_NB_5_15_KBPS,  ///< AMR Narrowband in 5.15kbps
+    AMR_NB_5_9_KBPS,   ///< AMR Narrowband in 5.9kbps
+    AMR_NB_6_7_KBPS,   ///< AMR Narrowband in 6.7kbps
+    AMR_NB_7_4_KBPS,   ///< AMR Narrowband in 7.4kbps (default value)
+    AMR_NB_7_95_KBPS,  ///< AMR Narrowband in 7.95kbps
+    AMR_NB_10_2_KBPS,  ///< AMR Narrowband in 10.3kbps
+    AMR_NB_12_2_KBPS,  ///< AMR Narrowband in 12.2kbps
+    AMR_WB_6_6_KBPS,   ///< AMR Wideband in 6.6kbps
+    AMR_WB_8_85_KBPS,  ///< AMR Wideband in 8.85kbps
+    AMR_WB_12_65_KBPS, ///< AMR Wideband in 12.65kbps
+    AMR_WB_14_25_KBPS, ///< AMR Wideband in 14.25kbps
+    AMR_WB_15_85_KBPS, ///< AMR Wideband in 15.85kbps
+    AMR_WB_18_25_KBPS, ///< AMR Wideband in 18.25kbps
+    AMR_WB_19_85_KBPS, ///< AMR Wideband in 19.85kbps
+    AMR_WB_23_05_KBPS, ///< AMR Wideband in 23.05kbps
+    AMR_WB_23_85_KBPS  ///< AMR Wideband in 23.85kbps
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Maximum DTMF string length.
  */
 //--------------------------------------------------------------------------------------------------
@@ -831,25 +860,6 @@ EVENT Media
 (
     Stream               streamRef IN,        ///< The audio stream reference.
     handler              MediaHandler
-);
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Get the audio format of an input or output stream.
- *
- * @return LE_FAULT         Function failed.
- * @return LE_OVERFLOW      The format buffer wasn't big enough to accept the audio format string
- * @return LE_OK            The function succeeded.
- *
- * @note The process exits, if an invalid audio stream reference is given or if the formatPtr
- *       pointer is NULL.
- */
-//--------------------------------------------------------------------------------------------------
-FUNCTION le_result_t GetFormat
-(
-    Stream streamRef IN,        ///< The audio stream reference.
-    string formatPtr[30] OUT    ///< The name of the audio encoding as used by the Real-Time
-                                ///< Protocol (RTP), specified by the IANA organisation.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -1315,8 +1325,10 @@ FUNCTION I2SChannel GetDefaultI2sMode
  * @return LE_BUSY          The player interface is already active.
  * @return LE_OK            Function succeeded.
  *
- * Note: if the fd parameter is set to LE_AUDIO_NO_FD, the previous file descriptor is used to play
- * again the file.
+ * @note the fd is closed by the IPC API. To play again the same file, the fd parameter can be set
+ * to LE_AUDIO_NO_FD: in this case, the previous file descriptor is re-used.
+ * If the fd as to be kept on its side, the application should duplicate the fd (e.g., using dup() )
+ * before calling the API.
  *
  */
 //--------------------------------------------------------------------------------------------------
@@ -1334,6 +1346,11 @@ FUNCTION le_result_t PlayFile
  * @return LE_BUSY          The player interface is already active.
  * @return LE_OK            Function succeeded.
  *
+ * @note the fd is closed by the IPC API. To use again the same pipe, the fd parameter can be set
+ * to LE_AUDIO_NO_FD: in this case, the previous file descriptor is re-used.
+ * If the fd as to be kept on its side, the application should duplicate the fd (e.g., using dup() )
+ * before calling the API.
+ *
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t PlaySamples
@@ -1344,15 +1361,17 @@ FUNCTION le_result_t PlaySamples
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Record a file on a recording stream.
+ * Record a file on a recorder stream.
  *
  * @return LE_FAULT         Function failed.
  * @return LE_BAD_PARAMETER The audio stream reference is invalid.
  * @return LE_BUSY          The recorder interface is already active.
  * @return LE_OK            Function succeeded.
  *
- * Note: if the fd parameter is set to LE_AUDIO_NO_FD, the previous file descriptor is used to record
- * again the file.
+ * @note the fd is closed by the API. To record again the same file, the fd parameter can be set to
+ * LE_AUDIO_NO_FD: in this case, the previous file descriptor is re-used.
+ * If the fd as to be kept on its side, the application should duplicate the fd (e.g., using dup() )
+ * before calling the API.
  *
  */
 //--------------------------------------------------------------------------------------------------
@@ -1364,13 +1383,16 @@ FUNCTION le_result_t RecordFile
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Get samples from a recording stream.
+ * Get samples from a recorder stream.
  *
  * @return LE_FAULT         Function failed.
  * @return LE_BUSY          The recorder interface is already active.
  * @return LE_OK            Function succeeded.
  *
- *
+ * @note the fd is closed by the API. To use again the same pipe, the fd parameter can be set to
+ * LE_AUDIO_NO_FD: in this case, the previous file descriptor is re-used.
+ * If the fd as to be kept on its side, the application should duplicate the fd (e.g., using dup() )
+ * before calling the API.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetSamples
@@ -1386,7 +1408,7 @@ FUNCTION le_result_t GetSamples
  * @return LE_FAULT         Function failed.
  * @return LE_OK            Function succeeded.
  *
- * Note: the used file descriptor is not deallocated, but is is rewound to the beginning.
+ * @note the used file descriptor is not deallocated, but is is rewound to the beginning.
  *
  */
 //--------------------------------------------------------------------------------------------------
@@ -1552,4 +1574,94 @@ FUNCTION le_result_t PlaySignallingDtmf
     string  dtmf[DTMF_MAX_LEN]  IN, ///< DTMFs to play.
     uint32  duration            IN, ///< DTMF duration in milliseconds.
     uint32  pause               IN  ///< Pause duration between tones in milliseconds.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the encoding format of a recorder stream.
+ *
+ * @return LE_FAULT         Function failed.
+ * @return LE_OK            Function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetEncodingFormat
+(
+    Stream          streamRef   IN,     ///< Audio stream reference.
+    Format          format      IN      ///< Encoding format.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the encoding format of a recorder stream.
+ *
+ * @return LE_FAULT         Function failed.
+ * @return LE_OK            Function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetEncodingFormat
+(
+    Stream          streamRef   IN,     ///< Audio stream reference.
+    Format          format      OUT      ///< Encoding format.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the AMR mode for AMR encoder.
+ *
+ * @return LE_FAULT         Function failed.
+ * @return LE_OK            Function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetSampleAmrMode
+(
+    Stream          streamRef   IN,     ///< Audio stream reference.
+    AmrMode         mode        IN      ///< AMR mode.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the AMR mode for AMR encoder.
+ *
+ * @return LE_FAULT         Function failed.
+ * @return LE_OK            Function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetSampleAmrMode
+(
+    Stream          streamRef   IN,     ///< Audio stream reference.
+    AmrMode         mode        OUT      ///< AMR mode.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the AMR discontinuous transmission (DTX). The DTX is activated by default.
+ *
+ * @return LE_FAULT         Function failed.
+ * @return LE_OK            Function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetSampleAmrDtx
+(
+    Stream      streamRef   IN,     ///< Audio stream reference.
+    bool        dtx         IN      ///< DTX.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the AMR discontinuous transmission (DTX) value.
+ *
+ * @return LE_FAULT         Function failed.
+ * @return LE_OK            Function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetSampleAmrDtx
+(
+    Stream      streamRef   IN,     ///< Audio stream reference.
+    bool        dtx         OUT     ///< DTX.
 );

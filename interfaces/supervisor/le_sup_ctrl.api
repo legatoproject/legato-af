@@ -4,8 +4,48 @@
  *
  * @ref le_sup_ctrl_interface.h "API Reference"
  *
- * Supervisor API for controlling the framework and applications.  This API is only available to
+ * Supervisor API for controlling the framework and applications. This API is only available to
  * privileged users.
+ *
+ * @section legatoServicesSupervisor_binding Binding
+ *
+You can use a definition @c .adef file to bind your client-side app and component to the
+server-side Supervisor Control service. 
+ *
+This code sample shows how to bind an app to this service:
+@code 
+bindings
+{
+myExe.myComp.le_sup_ctrl -> <root>.le_sup_ctrl
+}
+ * @endcode
+ *
+ * See @ref defFilesAdef for details.
+ *
+ * @section legatoServicesSupervisor_start Start App
+ *
+ * Use le_sup_ctrl_StartApp() (const char * appName) to automatically start an app.
+  *
+ * The code sample shows how to use the Supervisor Control service to start an app:
+ *
+ * @code
+ *  le_result_t result = le_sup_ctrl_StartApp("myApp");
+ * @endcode
+ *
+ * where @c myApp is the name of the app.
+ 
+ * @section legatoServicesSupervisor_stop Stop App
+ *
+ * Use le_sup_ctrl_StopApp() to automatically stop an app.
+  *
+ * This code sample shows how to use the Supervisor Control service to stop an app, where
+ * appAplication.app is your app's actual name:
+ *
+ * @code
+ * le_result_t result = le_sup_ctrl_StopApp("myApp");
+ * @endcode
+ *
+ * where @c myApp is the name of the app.
  *
  * <HR>
  *
@@ -24,35 +64,38 @@
 //--------------------------------------------------------------------------------------------------
 
 
+USETYPES le_limit.api;
+
+
 //--------------------------------------------------------------------------------------------------
 /**
- * Starts an application.
+ * Starts an app.
  *
  * @return
- *      LE_OK if the application is successfully started.
- *      LE_DUPLICATE if the application is already running.
- *      LE_NOT_FOUND if the application is not installed.
- *      LE_FAULT if there was an error and the application could not be launched.
+ *      LE_OK if the app is successfully started.
+ *      LE_DUPLICATE if the app is already running.
+ *      LE_NOT_FOUND if the app isn't installed.
+ *      LE_FAULT if there was an error and the app could not be launched.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t StartApp
 (
-    string appName[32] IN           ///< The name of the application to start.
+    string appName[le_limit.APP_NAME_LEN] IN        ///< Name of the app to start.
 );
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Stops an application.
+ * Stops an app.
  *
  * @return
  *      LE_OK if successful.
- *      LE_NOT_FOUND if the application could not be found.
+ *      LE_NOT_FOUND if the app could not be found.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t StopApp
 (
-    string appName[32] IN           ///< The name of the application to stop.
+    string appName[le_limit.APP_NAME_LEN] IN        ///< Name of the app to stop.
 );
 
 
@@ -63,7 +106,7 @@ FUNCTION le_result_t StopApp
  * @return
  *      LE_OK if successful.
  *      LE_DUPLICATE if the framework is in the process of shutting down because someone else has
-                     already requested that the framework be stopped.
+                     already requested the framework be stopped.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t StopLegato

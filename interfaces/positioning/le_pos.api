@@ -41,9 +41,19 @@
  * - altitude is in metres, above Mean Sea Level, with 3 decimal places (3047 = 3.047 metres).
  * - horizontal and vertical accuracies are in metres.
  *
+ * The @c le_pos_GetTime() function gets the time of last updated position:
+ * - Hours into the day [range 0..23].
+ * - Minutes into the hour [range 0..59].
+ * - Seconds into the minute [range 0..59].
+ * - Milliseconds into the second [range 0..999].
+ *
+ * The @c le_pos_GetDate() function gets the date of last updated position:
+ * - Year A.D. [e.g. 2014].
+ * - Month into the year [range 1...12].
+ * - Days into the month [range 1...31].
+ *
  * The @c le_pos_GetMotion() function gets the last updated horizontal and vertical
  * speed values and the associated accuracy values:
- *
  * - horizontal speed is in m/sec.
  * - vertical speed is in m/sec, positive up.
  *
@@ -67,6 +77,8 @@
  *
  * The accessor functions are:
  * - le_pos_sample_Get2DLocation()
+ * - le_pos_sample_GetDate()
+ * - le_pos_sample_GetTime()
  * - le_pos_sample_GetAltitude()
  * - le_pos_sample_GetHorizontalSpeed()
  * - le_pos_sample_GetVerticalSpeed()
@@ -254,6 +266,41 @@ FUNCTION le_result_t Get3DLocation
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Get the time of the last updated location
+ *
+ * @return LE_FAULT         Function failed to get the time.
+ * @return LE_OUT_OF_RANGE  The retrieved time is invalid (all fields are set to 0).
+ * @return LE_OK            Function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetTime
+(
+    uint16 hours OUT,            ///< UTC Hours into the day [range 0..23].
+    uint16 minutes OUT,          ///< UTC Minutes into the hour [range 0..59].
+    uint16 seconds OUT,          ///< UTC Seconds into the minute [range 0..59].
+    uint16 milliseconds OUT      ///< UTC Milliseconds into the second [range 0..999].
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the date of the last updated location
+ *
+ * @return LE_FAULT         Function failed to get the date.
+ * @return LE_OUT_OF_RANGE  The retrieved date is invalid (all fields are set to 0).
+ * @return LE_OK            Function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetDate
+(
+    uint16 year OUT,             ///< UTC Year A.D. [e.g. 2014].
+    uint16 month OUT,            ///< UTC Month into the year [range 1...12].
+    uint16 day OUT               ///< UTC Days into the month [range 1...31].
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Get the motion's data (Horizontal Speed, Horizontal Speed's
  * accuracy, Vertical Speed, Vertical Speed's accuracy).
  *
@@ -329,6 +376,43 @@ FUNCTION le_result_t sample_Get2DLocation
     int32 latitude OUT,                 ///< Latitude in degrees.
     int32 longitude OUT,                ///< Longitude in degrees.
     int32 horizontalAccuracy OUT        ///< Horizontal's accuracy estimate in metres.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the position sample's time.
+ *
+ * @return LE_FAULT         Function failed to get the time.
+ * @return LE_OUT_OF_RANGE  The retrieved time is invalid (all fields are set to 0).
+ * @return LE_OK            Function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t sample_GetTime
+(
+    Sample positionSampleRef,    ///< Position sample's reference.
+    uint16 hours OUT,            ///< UTC Hours into the day [range 0..23].
+    uint16 minutes OUT,          ///< UTC Minutes into the hour [range 0..59].
+    uint16 seconds OUT,          ///< UTC Seconds into the minute [range 0..59].
+    uint16 milliseconds OUT      ///< UTC Milliseconds into the second [range 0..999].
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the position sample's date.
+ *
+ * @return LE_FAULT         Function failed to get the date.
+ * @return LE_OUT_OF_RANGE  The retrieved date is invalid (all fields are set to 0).
+ * @return LE_OK            Function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t sample_GetDate
+(
+    Sample positionSampleRef,    ///< Position sample's reference.
+    uint16 year OUT,             ///< UTC Year A.D. [e.g. 2014].
+    uint16 month OUT,            ///< UTC Month into the year [range 1...12].
+    uint16 day OUT               ///< UTC Days into the month [range 1...31].
 );
 
 //--------------------------------------------------------------------------------------------------

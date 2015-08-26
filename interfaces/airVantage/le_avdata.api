@@ -1,0 +1,328 @@
+//--------------------------------------------------------------------------------------------------
+/**
+ * @page c_le_avdata AirVantage Data
+ *
+ * @ref le_avdata_interface.h "API Reference"
+ *
+ * <HR>
+ *
+ * This API provides a data service to allow apps to manage app-specific
+ * data on the AirVantage server.
+ *
+ * Data is setup as @b assets &mdash;  a collection of fields that can be managed by the AirVantage
+ * server.
+ * 
+ * An asset field is a single piece of information that can be managed by the Air Vantage server.
+ * There can be multiple fields in an asset. 
+ *
+ * A field can be:
+ * - @c variable allows an app to set the value, and can be read from the AV server.
+ * - @c setting allows the AV server to set the value, and can be read by an app.
+ * - @c command allows the AV server to invoke a command or function in the app.
+ *
+ * Currently, only variable and setting fields are supported; command fields will
+ * be supported in the future. 
+ *
+ * All fields have names. Variable and setting fields also have a type. The possible field types,
+ * along with the default value are: 
+ * - string (empty string)
+ * - integer (0)
+ * - float (0.0)
+ * - boolean (false)
+ * - binary (zero-length block). 
+ *
+ * Default values can be overwritten in the asset definition. Currently, only string, integer
+ * and boolean fields are supported; float and binary fields will be supported in the future.
+ *
+ *
+ * @section le_avdata_instance Asset Data Instances
+ *
+ * An app that needs to send data to the AirVantage server must first create an asset instance
+ * using le_avc_Create() with the name of the asset definition.
+ * Once an asset instance is created, the app can begin accessing the instance's fields.
+ *
+ * Multiple instances of the same asset can be created, as well as multiple instances of different
+ * assets.
+ *
+ * Asset definitions are specified in the @ref defFilesCdef_assets section of the app's @c cdef file.
+ *
+ * @section le_avdata_field Field Values and Activity
+ *
+ * Set functions are available to set variable field values. Get functions are
+ * available to get settings fields' values.  
+ *
+ * An app can register a handler so that it can be called when activity occurs on a field.
+ * This is optional for variable and setting fields, but is required for command fields.  
+ * - @c variable called when the field is read by the AV server. The
+ * app can then call the appropriate set function to provide a new value for the field.
+ * - @c setting called when the field has been updated by the AV server
+ * with a new value. The app can use the appropriate get function to retrieve the new value.
+ * - @c command called when the AV server wants to invoke a command. The
+ * app should perform an appropriate action or call a function to execute this command. Currently,
+ * registering a handler is only supported for setting fields; variable and command fields will be
+ * added in the future.
+ *
+ * Leaving it optional to register handlers for variable and setting fields allows an
+ * app to decide how it wants to access variable and setting fields. It can decide to
+ * only do something in response to the AV server, or it can work independently of the AV server
+ * updating variables when it has a new value, and reading settings only when it needs the value.
+ * 
+ * <HR>
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ */
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * @file le_avdata_interface.h
+ *
+ * Legato @ref c_le_avdata include file.
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ */
+//--------------------------------------------------------------------------------------------------
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * An asset data instance reference
+ */
+//--------------------------------------------------------------------------------------------------
+REFERENCE AssetInstance;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Define the maximum length of an asset name (TODO: verify value)
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE ASSET_NAME_LEN = 47;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Define the maximum length of a field name (TODO: verify value)
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE FIELD_NAME_LEN = 47;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Define the maximum length of a string field (TODO: verify value)
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE STRING_VALUE_LEN = 255;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Define the maximum length of a binary data field (TODO: verify value)
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE BINARY_VALUE_LEN = 255;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler for field activity
+ */
+//--------------------------------------------------------------------------------------------------
+HANDLER FieldHandler
+(
+    AssetInstance instRef IN,
+    string fieldName[FIELD_NAME_LEN] IN
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This event provides information on field activity
+ */
+//--------------------------------------------------------------------------------------------------
+EVENT FieldEvent
+(
+    AssetInstance instRef IN,
+    string fieldName[FIELD_NAME_LEN] IN,
+    handler FieldHandler
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Create an instance of AirVantage asset
+ *
+ * @return Reference to the asset instance
+ *
+ * @note It is a fatal error if the asset isn't defined.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION AssetInstance Create
+(
+    string assetName[ASSET_NAME_LEN] IN
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Delete an instance of AirVantage asset
+ *
+ * @note It's a fatal error if the instRef isn't valid
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION Delete
+(
+    AssetInstance instRef IN
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the value of an integer setting field
+ *
+ * @note It's a fatal error if the instRef isn't valid, or the field doesn't exist
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION GetInt
+(
+    AssetInstance instRef IN,
+    string fieldName[FIELD_NAME_LEN] IN,
+    int32 value OUT
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the value of an integer variable field
+ *
+ * @note It's a fatal error if the instRef isn't valid, or the field doesn't exist
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION SetInt
+(
+    AssetInstance instRef IN,
+    string fieldName[FIELD_NAME_LEN] IN,
+    int32 value IN
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the value of a float setting field
+ *
+ * @note It's a fatal error if the instRef isn't valid, or the field doesn't exist
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION GetFloat
+(
+    AssetInstance instRef IN,
+    string fieldName[FIELD_NAME_LEN] IN,
+    float value OUT
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the value of a float variable field
+ *
+ * @note It's a fatal error if the instRef isn't valid, or the field doesn't exist
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION SetFloat
+(
+    AssetInstance instRef IN,
+    string fieldName[FIELD_NAME_LEN] IN,
+    float value IN
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the value of a boolean setting field
+ *
+ * @note It's a fatal error if the instRef isn't valid, or the field doesn't exist
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION GetBool
+(
+    AssetInstance instRef IN,
+    string fieldName[FIELD_NAME_LEN] IN,
+    bool value OUT
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the value of a boolean variable field
+ *
+ * @note It's a fatal error if the instRef isn't valid, or the field doesn't exist
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION SetBool
+(
+    AssetInstance instRef IN,
+    string fieldName[FIELD_NAME_LEN] IN,
+    bool value IN
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the value of a string setting field
+ *
+ * @note It's a fatal error if the instRef isn't valid, or the field doesn't exist
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION GetString
+(
+    AssetInstance instRef IN,
+    string fieldName[FIELD_NAME_LEN] IN,
+    string value[STRING_VALUE_LEN] OUT
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the value of a string variable field
+ *
+ * @note It's a fatal error if the instRef isn't valid, or the field doesn't exist
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION SetString
+(
+    AssetInstance instRef IN,
+    string fieldName[FIELD_NAME_LEN] IN,
+    string value[STRING_VALUE_LEN] IN
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the value of a binary data setting field
+ *
+ * @note It's a fatal error if the instRef isn't valid, or the field doesn't exist
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION GetBinary
+(
+    AssetInstance instRef IN,
+    string fieldName[FIELD_NAME_LEN] IN,
+    uint8 value[BINARY_VALUE_LEN] OUT
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the value of a binary data variable field
+ *
+ * @note It's a fatal error if the instRef isn't valid, or the field doesn't exist
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION SetBinary
+(
+    AssetInstance instRef IN,
+    string fieldName[FIELD_NAME_LEN] IN,
+    uint8 value[BINARY_VALUE_LEN] IN
+);
+
+

@@ -2,7 +2,9 @@
 /**
  * @page c_ecall eCall
  *
- * @ref le_ecall_interface.h "API Reference"
+ * @ref le_ecall_interface.h "API Reference" <br>
+ * @ref howToEcall <br>
+ * @ref sampleApps_eCall
  *
  * <HR>
  *
@@ -27,7 +29,7 @@
  *
  * @section le_ecall_binding IPC interfaces binding
  *
- * All the functions of this API are provided by the @b modemService foundation service.
+ * All the functions of this API are provided by the @b modemService service.
  *
  * Here's a code sample binding to modem services:
  * @verbatim
@@ -41,13 +43,13 @@
  *
  * The modem can be configured to operate in three different operation modes:
  * - le_ecall_ForceOnlyMode(): this function configures the eCall operation mode to eCall only, only
- *   emergency number can be used to start an eCall session. The modem does not try to register on
+ *   emergency number can be used to start an eCall session. The modem doesn't try to register on
  *   the Cellular network. This function forces the modem to behave as eCall only mode whatever
- *   U/SIM operation mode. The change does not persist over power cycles.
+ *   U/SIM operation mode. The change doesn't persist over power cycles.
  *   This function can be called before making an eCall.
  *
-  * - le_ecall_ForcePersistentOnlyMode(): Same as le_ecall_ForceOnlyMode(), but the change persists
-  *   over power cycles.
+ * - le_ecall_ForcePersistentOnlyMode(): Same as le_ecall_ForceOnlyMode(), but the change persists
+ *   over power cycles.
  *
  * - le_ecall_ExitOnlyMode(): this function exits from eCall Only mode. It configures the eCall
  *   operation mode to Normal mode, the modem uses the default operation mode at power up (or after
@@ -69,10 +71,9 @@
  *
  * The type of eCall and the kind of activation are specified using different functions to start the
  * eCall session:
- * - le_ecall_StartManual(): initiate a manual eCall session (triggered by a passenger, can be
- * aborted by the passengers)
+ * - le_ecall_StartManual(): initiate a manual eCall session (triggered by a passenger)
  * - le_ecall_StartAutomatic(): initiate an automatic eCall session (automatically triggered by
- * the IVS in case of accident, cannot be interrupted by the passengers)
+ * the IVS in case of accident)
  * - le_ecall_StartTest(): initiate a test eCall session (to test the communication between the
  * IVS and the PSAP)
  *
@@ -84,12 +85,22 @@
  * changes. The handler can be managed using le_ecall_AddStateChangeHandler() and
  * le_ecall_RemoveStateChangeHandler().
  *
+ * An application can call le_ecall_GetTerminationReason() to know the reason of the call
+ * termination when call state is LE_ECALL_STATE_DISCONNECTED, and also
+ * le_ecall_GetPlatformSpecificTerminationCode() to get platform specific termination code (refer
+ * to your platform documentation for further details).
  *
  * @section le_ecall_msd Minimum Set of Data (MSD)
  *
  * The dynamic values of the MSD can be set with:
  * - le_ecall_SetMsdPosition() sets the position of the vehicle.
  * - le_ecall_SetMsdPassengersCount() sets the number of passengers.
+ *
+ * The MSD is automatically encoded with the dynamic values and the static values retrieved from
+ * the configuration tree each time those functions are called.
+ *
+ * @warning Those functions return a LE_DUPLICATE error when the MSD has been already imported with
+ * le_ecall_ImportMsd() function.
  *
  * The MSD transmission mode can be set or get with:
  *  - le_ecall_SetMsdTxMode()
@@ -99,19 +110,24 @@
  * - @c LE_ECALL_TX_MODE_PUSH : the MSD is pushed by the IVS
  * - @c LE_ECALL_TX_MODE_PULL : the MSD is sent when requested by the PSAP
  *
- * The static values are retrieved from the configuration tree.
- *
  * It's possible to import a prepared MSD using the le_ecall_ImportMsd() function.
  * The prepared MSD must answer the requirements described in the "EN 15722:2013" publication (this
  * publication has been prepared by Technical Committee CEN/TC 278 “Intelligent Transport Systems").
  *
- * @note The imported MSD does not take into account the values provided by the
- * le_ecall_SetMsdXxx() functions and the configuration tree.
+ * @warning The imported MSD doesn't take into account the values provided by the
+ * le_ecall_SetMsdXxx() functions and the configuration tree. It overwrites any previous imported
+ * MSD or encoded MSD.
+ *
+ * @warning The imported MSD overwrites the control flags (automaticActivation and testCall) set by
+ * le_ecall_StartXxx() functions (Manual, Automatic, Test). The User App is in charge of their
+ * correct settings.
  *
  * The encoded MSD can be retrieved with le_ecall_ExportMsd() function.
  *
- * @note The MSD transmission is performed automatically after the emergency call is established with
- * the PSAP.
+ * @note The User app must perform the MSD transmission by calling le_ecall_SendMsd() when the
+ * LE_ECALL_STATE_PSAP_START_IND_RECEIVED event is received.
+ * The MSD can be updated before calling le_ecall_SendMsd(), using the e_ecall_ImportMsd() function
+ * or the le_ecall_SetMsdXxx() functions.
  *
  * @section le_ecall_concurrency Concurrency
  *
@@ -137,6 +153,7 @@
  *   The default value is 10.
  *   Redial attempts stop once the call has been cleared down correctly, or if counter / timer
  *   reached their limits.
+ *   Available for both manual and test modes.
  * - le_ecall_SetEraGlonassAutoDialAttempts(): set the AUTO_DIAL_ATTEMPTS value. If a dial attempt
  *   under automatic emergency call initiation failed, it should be repeated maximally
  *   ECALL_AUTO_DIAL_ATTEMPTS-1 times within the maximal time limit of ECALL_DIAL_DURATION.
@@ -228,6 +245,17 @@
  * END
  * @endcode
  *
+ * @section le_ecall_redial Redial management
+ *
+ * In the case of PAN-EUROPEAN, the redial can be performed as many times as desired but should be
+ * performed within 2 minutes. (EN 16062:2014 -7.14.3).
+ *
+ * In the case of ERA-GLONASS, the redial can be performed ECALL_MANUAL_DIAL_ATTEMPTS times within
+ * the maximal time limit of ECALL_DIAL_DURATION (GOST 54620 2013 – Appendix A).
+ *
+ * The \b LE_ECALL_STATE_END_OF_REDIAL_PERIOD state event notifies the User of the redial period
+ * end.
+ *
  * @section le_ecall_samples Code sample
  *
  * The following code sample shows how an eCall session is used:
@@ -309,6 +337,8 @@
  *
  * In the case the call was connected, the redial will be immediate.
  *
+ *  le_ecall_SetIntervalBetweenDialAttempts() is available for both manual and test modes.
+
  * @section le_ecall_configdb Configuration tree
  * @copydoc le_ecall_configdbPage_Hide
  *
@@ -389,6 +419,7 @@
 //--------------------------------------------------------------------------------------------------
 
 USETYPES le_mdmDefs.api;
+USETYPES le_mcc.api;
 
 //--------------------------------------------------------------------------------------------------
 // Objects references.
@@ -450,7 +481,8 @@ ENUM State
     STATE_COMPLETED,                  ///< eCall session completed. The modem successfully completed
                                       ///< the MSD transmission and received two AL-ACKs (positive).
                                       ///< Can now switch to voice path.
-    STATE_FAILED                      ///< Unsuccessful eCall session.
+    STATE_FAILED,                     ///< Unsuccessful eCall session.
+    STATE_END_OF_REDIAL_PERIOD        ///< End of the redial period.
 };
 
 //--------------------------------------------------------------------------------------------------
@@ -545,9 +577,9 @@ BITMASK CrashInfoBitMask
 //--------------------------------------------------------------------------------------------------
 /**
  * This function configures the eCall operation mode to eCall only, only emergency number can be
- * used to start an eCall session. The modem does not try to register on the Cellular network.
+ * used to start an eCall session. The modem doesn't try to register on the Cellular network.
  * This function forces the modem to behave as eCall only mode whatever U/SIM operation mode.
- * The change does not persist over power cycles.
+ * The change doesn't persist over power cycles.
  * This function can be called before making an eCall.
  *
  * @return
@@ -610,7 +642,8 @@ FUNCTION le_result_t GetConfiguredOperationMode
 //--------------------------------------------------------------------------------------------------
 HANDLER StateChangeHandler
 (
-    State state  IN  ///< eCall state
+    Call   ecallRef   IN, ///< eCall reference
+    State  state      IN  ///< eCall state
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -628,13 +661,13 @@ EVENT StateChange
 /**
  * Create a new eCall object
  *
- * The eCall is not actually established at this point. It is still up to the caller to call
+ * The eCall is not actually established at this point. It's still up to the caller to call
  * le_ecall_Start() when ready.
  *
  * @return
  *      - A reference to the new Call object.
  *
- * @note On failure, the process exits, so you don't have to worry about checking the returned
+ * @note On failure, the process exits; you don't have to worry about checking the returned
  *       reference for validity.
  */
 //--------------------------------------------------------------------------------------------------
@@ -647,7 +680,7 @@ FUNCTION Call Create
  * Call to free up a call reference.
  *
  * @note This will free the reference, but not necessarily stop an active eCall. If there are
- *       other holders of this reference then the eCall will remain active.
+ *       other holders of this reference the eCall will remain active.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION Delete
@@ -687,9 +720,6 @@ FUNCTION le_result_t GetMsdTxMode
 /**
  * Set the position transmitted by the MSD.
  *
- *
- * MSD is transmitted only after an emergency call has been established.
- *
  * @return
  *      - LE_OK on success
  *      - LE_DUPLICATE an MSD has been already imported
@@ -710,8 +740,6 @@ FUNCTION le_result_t SetMsdPosition
 //--------------------------------------------------------------------------------------------------
 /**
  * Set the number of passengers transmitted by the MSD.
- *
- * MSD is transmitted only after an emergency call has been established.
  *
  * @return
  *      - LE_OK on success
@@ -736,11 +764,10 @@ FUNCTION le_result_t SetMsdPassengersCount
  * @return
  *      - LE_OK on success
  *      - LE_OVERFLOW The imported MSD length exceeds the MSD_MAX_LEN maximum length.
- *      - LE_DUPLICATE an MSD has been already imported
  *      - LE_BAD_PARAMETER bad eCall reference
  *      - LE_FAULT for other failures
  *
- * @note On failure, the process exits, so you don't have to worry about checking the returned
+ * @note On failure, the process exits; you don't have to worry about checking the returned
  *       reference for validity.
  */
 //--------------------------------------------------------------------------------------------------
@@ -771,6 +798,23 @@ FUNCTION le_result_t ExportMsd
     uint8      msd[MSD_MAX_LEN] OUT ///< the encoded MSD
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Send the MSD.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_BAD_PARAMETER bad eCall reference
+ *      - LE_FAULT for other failures
+ *
+ * @note On failure, the process exits, so you don't have to worry about checking the returned
+ *       reference for validity.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SendMsd
+(
+    Call   ecallRef   IN ///< eCall reference
+);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -999,7 +1043,7 @@ FUNCTION le_result_t SetEraGlonassAutoDialAttempts
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Set the ECALL_DIAL_DURATION time. It is the maximum time the IVS have to connect the emergency
+ * Set the ECALL_DIAL_DURATION time. It's the maximum time the IVS have to connect the emergency
  * call to the PSAP, including all redial attempts.
  * If the call is not connected within this time (or ManualDialAttempts/AutoDialAttempts dial
  * attempts), it will stop.
@@ -1106,7 +1150,7 @@ FUNCTION le_result_t SetMsdEraGlonassDiagnosticResult
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Reset the ERA-GLONASS diagnostic result bit mask. Therefore that optional parameter is not
+ * Reset the ERA-GLONASS diagnostic result bit mask. Optional parameter is not
  * included in the MSD message.
  *
  * @return
@@ -1138,7 +1182,7 @@ FUNCTION le_result_t SetMsdEraGlonassCrashInfo
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Reset the ERA-GLONASS crash type bit mask. Therefore that optional parameter is not included
+ * Reset the ERA-GLONASS crash type bit mask. Optional parameter is not included
  * in the MSD message.
  *
  * @return
@@ -1150,4 +1194,35 @@ FUNCTION le_result_t SetMsdEraGlonassCrashInfo
 FUNCTION le_result_t ResetMsdEraGlonassCrashInfo
 (
     Call        ecallRef        IN   ///< eCall reference
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Called to get the termination reason.
+ *
+ * @return The termination reason.
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_mcc.TerminationReason GetTerminationReason
+(
+    Call        ecallRef        IN   ///< eCall reference.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Called to get the platform specific termination code.
+ *
+ * @return The platform specific termination code.
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION int32 GetPlatformSpecificTerminationCode
+(
+    Call        ecallRef        IN   ///< eCall reference.
 );

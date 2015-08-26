@@ -1,0 +1,67 @@
+//--------------------------------------------------------------------------------------------------
+/**
+ * @page c_logFd File Descriptor Logging API
+ *
+ * @ref logFd_interface.h "API Reference"
+ *
+ * This API provides a method for logging messages coming from a file descriptor such as a pipe or
+ * socket.  This API MUST only be used by the Supervisor.
+ *
+ * <HR>
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ */
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * @file logFd_interface.h
+ *
+ * Legato @ref c_logFd include file.
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ */
+//--------------------------------------------------------------------------------------------------
+
+
+USETYPES le_limit.api;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Registers an application process' standard error for logging.  Messages from this file descriptor
+ * will be logged at LE_LOG_ERR level.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_FAULT if there was an error.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION StdErr
+(
+    file fd IN,                                     ///< stderr file descriptor.
+    string appName[le_limit.APP_NAME_LEN] IN,       ///< Name of the application.
+    string procName[le_limit.PROC_NAME_LEN] IN,     ///< Name of the process.
+    int pid IN                                      ///< PID of the process.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Registers an application process' standard out for logging.  Messages from this file descriptor
+ * will be logged at LE_LOG_INFO level.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_FAULT if there was an error.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION StdOut
+(
+    file fd IN,                                     ///< stdout file descriptor.
+    string appName[le_limit.APP_NAME_LEN] IN,       ///< Name of the application.
+    string procName[le_limit.PROC_NAME_LEN] IN,     ///< Name of the process.
+    int pid IN                                      ///< PID of the process.
+);
+
+

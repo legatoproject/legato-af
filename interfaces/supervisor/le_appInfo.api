@@ -6,6 +6,16 @@
  *
  * This API provides information about applications.
  *
+ * All the functions in this API are provided by the @b Supervisor.
+ *
+ * Here's a code sample binding to this service:
+ * @verbatim
+   bindings:
+   {
+      clientExe.clientComponent.le_appInfo -> <root>.le_appInfo
+   }
+   @endverbatim
+ *
  * <HR>
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
@@ -22,20 +32,8 @@
  */
 //--------------------------------------------------------------------------------------------------
 
-//--------------------------------------------------------------------------------------------------
-/**
- * Maximum length of application names.
- */
-//--------------------------------------------------------------------------------------------------
-DEFINE APP_NAME_LEN = 47;
 
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Maximum length of process names.
- */
-//--------------------------------------------------------------------------------------------------
-DEFINE PROC_NAME_LEN = 47;
+USETYPES le_limit.api;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -73,7 +71,7 @@ ENUM ProcState
 //--------------------------------------------------------------------------------------------------
 FUNCTION State GetState
 (
-    string appName[APP_NAME_LEN] IN         ///< Name of the application.
+    string appName[le_limit.APP_NAME_LEN] IN        ///< Name of the application.
 );
 
 
@@ -88,8 +86,8 @@ FUNCTION State GetState
 // -------------------------------------------------------------------------------------------------
 FUNCTION ProcState GetProcState
 (
-    string appName[APP_NAME_LEN] IN,        ///< Name of the application.
-    string procName[PROC_NAME_LEN] IN       ///< Name of the process.
+    string appName[le_limit.APP_NAME_LEN] IN,       ///< Name of the application.
+    string procName[le_limit.PROC_NAME_LEN] IN      ///< Name of the process.
 );
 
 
@@ -106,7 +104,7 @@ FUNCTION ProcState GetProcState
 //-------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetName
 (
-    int32 pid IN,                       ///< PID of the process.
-    string appName[APP_NAME_LEN] OUT    ///< Application name
+    int32 pid IN,                               ///< PID of the process.
+    string appName[le_limit.APP_NAME_LEN] OUT   ///< Application name
 );
 

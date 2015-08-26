@@ -24,7 +24,7 @@
 //--------------------------------------------------------------------------------------------------
 
 
-USETYPES le_appInfo.api;
+USETYPES le_limit.api;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -58,7 +58,7 @@ BITMASK AccessFlags
 //-------------------------------------------------------------------------------------------------
 FUNCTION GetLabel
 (
-    string appName[le_appInfo.APP_NAME_LEN] IN,     ///< Application name
+    string appName[le_limit.APP_NAME_LEN] IN,       ///< Application name
     string label[LABEL_LEN] OUT                     ///< SMACK label for the application
 );
 
@@ -76,7 +76,7 @@ FUNCTION GetLabel
 //--------------------------------------------------------------------------------------------------
 FUNCTION GetAccessLabel
 (
-    string appName[le_appInfo.APP_NAME_LEN] IN,     ///< Application name
+    string appName[le_limit.APP_NAME_LEN] IN,       ///< Application name
     AccessFlags accessMode IN,                      ///< Access mode flags
     string label[LABEL_LEN] OUT                     ///< SMACK label for the application
 );

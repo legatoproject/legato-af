@@ -7,7 +7,7 @@
  * <HR>
  *
  * Firmware update allows the various firmware images to be updated from the application processor.
- * This includes the modem bootloader, modem firmware, and linux image, where the linux image
+ * This may include the modem bootloader, modem firmware, and linux image, where the linux image
  * consists of the linux bootloader, linux kernel, and linux rootfs.
  *
  * Firmware update is useful when the image comes from an alternative source, rather than as an
@@ -20,9 +20,9 @@
  *
  * @section le_fwupdate_binding IPC interfaces binding
  *
- * All the functions of this API are provided by the @b modemService foundation service.
+ * All the functions of this API are provided by the @b le_fwupdate service.
  *
- * Here's a code sample binding to modem services:
+ * Here's a code sample binding to the le_fwupdate service:
  * @verbatim
    bindings:
    {
@@ -37,8 +37,8 @@
  * particular, this can be used to stream the image, rather than having to save it on the file
  * system before doing the update.
  *
- * If the image is successfully downloaded to the modem, the modem will reset in order to apply
- * the update. This will reset both the modem and application processors.  After the application
+ * If the image is successfully downloaded, a reset will occur in order to apply
+ * the update. This will reset all processors.  After the application
  * processor has restarted, the @ref le_info_version APIs can be used to determine whether
  * the firmware has been updated to the new version.
  *
@@ -61,7 +61,7 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Download the firmware image file to the modem.
+ * Download the firmware image file.
  *
  * @return
  *      - LE_OK on success

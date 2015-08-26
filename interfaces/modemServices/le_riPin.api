@@ -26,11 +26,13 @@
  * The RING pin can be configured to notify a host device with different timing of pulse signals for
  * different module activities.
  *
+ * - le_riPin_AmIOwnerOfRingSignal() function checks whether the application core is the current
+ *   owner of the Ring Indicator signal.
  * - le_riPin_TakeRingSignal() function takes control of the Ring Indicator signal.
  * - le_riPin_ReleaseRingSignal() function releases control of the Ring Indicator signal.
  *
- * @warning Your platform may require a reboot to take into account this change. Please refer to your
- * platform documentation for further details.
+ * @warning Your platform may require a reboot to take into account this change. Please refer to
+ * your platform documentation for further details.
  *
  * - le_riPin_PulseRingSignal() function sets the ring signal high for configurable duration of time
  *   before lowering it.
@@ -51,6 +53,20 @@
  */
 //--------------------------------------------------------------------------------------------------
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Check whether the application core is the current owner of the Ring Indicator signal.
+ *
+ * @return
+ *      - LE_OK     The function succeeded.
+ *      - LE_FAULT  The function failed.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t AmIOwnerOfRingSignal
+(
+    bool amIOwner OUT ///< true when application core is the owner of the Ring Indicator signal,
+                      ///  false when modem core is the owner of the Ring Indicator signal.
+);
 
 //--------------------------------------------------------------------------------------------------
 /**

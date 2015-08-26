@@ -23,7 +23,7 @@
  *
  * A control app can start a session with an AirVantage server to determine if there 
  * is a pending update. This is done with le_avc_StartSession(). The current session can be 
- * stopped using le_avc_StopSession().  This cancels any query for pending update, or a
+ * stopped using le_avc_StopSession().  This cancels any query for pending update, or suspends a
  * download in progress; however, it <b>won't stop</b> an install in progress.
  *
  * The status of a pending update is sent to the control app using a notification.
@@ -38,7 +38,7 @@
  * the app.
  *
  * If a download is pending, then le_avc_AcceptDownload() can be used to allow the update to be 
- * downloaded, or le_avc_RejectDownload() can be used to reject the download. To defer the
+ * downloaded. To defer the 
  * decision, le_avc_DeferDownload() can be used to defer the download for the specified number
  * of minutes.  After the defer time has elapsed, the pending download notification will be 
  * re-sent, to allow the control app to make a new decision, or again defer. 
@@ -50,16 +50,14 @@
  * functions. To defer the decision, the control app can use le_avc_DeferInstall() to
  * defer the install for the specified number of minutes. After the defer time has elapsed, the
  * pending install notification will be re-sent to allow the control app to make a new
- * decision, or again defer. There's no way to reject an install of a downloaded update; either
- * the download should be rejected, or the install decision can be continuously deferred.
+ * decision, or again defer.
  *
- * If a control app does not register for notifications using le_avc_AddStatusEventHandler(),
+ * If a control app doesn't register for notifications using le_avc_AddStatusEventHandler(),
  * then any pending downloads and installs will happen automatically, subject to any restrictions
  * imposed by app using the @ref c_le_avc_update_app functions.  Only one control
  * app will be allowed to register for notifications.  Any subsequent attempts will be 
- * rejected. In addition, only the control application registered for notifications will be 
+ * rejected. Also, only the control app registered for notifications will be 
  * allowed to use the other update control API functions.
- *
  *
  * @subsection c_le_avc_update_app Application Blocking
  *
@@ -74,12 +72,6 @@
  *
  * If an install can't be applied because it's blocked, another attempt to apply the install
  * will be made at a later time.
- *
- *
- * @subsection c_le_avc_partial_download Partial Downloads
- *
- * Support for resuming a partial download is not currently available, but will be made 
- * available in a future version of this service.
  *
  * <HR>
  *
@@ -105,9 +97,12 @@
 //--------------------------------------------------------------------------------------------------
 
 
+USETYPES le_limit.api;
+
+
 //--------------------------------------------------------------------------------------------------
 /**
- * Status of pending update
+ * Status of session or update
  * 
  * If an update is pending, it must first be downloaded and then installed.
  */
@@ -122,7 +117,9 @@ ENUM Status
     INSTALL_PENDING,      ///< There is a pending install (implies download complete)
     INSTALL_IN_PROGRESS,  ///< There is an install in progress
     INSTALL_COMPLETE,     ///< The update has been successfully installed
-    INSTALL_FAILED        ///< The was an error in installing the update
+    INSTALL_FAILED,       ///< The was an error in installing the update
+    SESSION_STARTED,      ///< Session with AV server started
+    SESSION_STOPPED       ///< Session with AV server stopped
 };
 
 
@@ -142,20 +139,20 @@ ENUM UpdateType
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Define the maximum length of the name for an app update
- */
-//--------------------------------------------------------------------------------------------------
-DEFINE APP_NAME_LEN = 47;
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Handler for update availability status
  */
 //--------------------------------------------------------------------------------------------------
 HANDLER StatusHandler
 (
-    Status updateStatus IN     ///< status of pending update, if available
+    Status updateStatus IN,         ///< status of pending update, if available
+    int32 totalNumBytes IN,         ///< Total number of bytes to be downloaded
+                                    ///< only valid when updateStatus is one of 
+                                    ///< DOWNLOAD_PENDING, DOWNLOAD_IN_PROGRESS or DOWNLOAD_COMPLETE.
+                                    ///< returns -1 if value is unknown
+    int32 dloadProgress IN          ///< download completion in percentage
+                                    ///< only valid when updateStatus is one of 
+                                    ///< DOWNLOAD_PENDING, DOWNLOAD_IN_PROGRESS or DOWNLOAD_COMPLETE.
+                                    ///< returns -1 if value is unknown 
 );
 
 
@@ -174,7 +171,8 @@ EVENT StatusEvent
 /**
  * Start a session with the AirVantage server
  *
- * This will also cause a query to be sent to the server, for pending updates.
+ * This will cause a query to be sent to the server, for pending updates. If a download was
+ * previously suspended, then this resumes the download.
  *
  * @return
  *      - LE_OK on success
@@ -189,6 +187,8 @@ FUNCTION le_result_t StartSession
 //--------------------------------------------------------------------------------------------------
 /**
  * Stop a session with the AirVantage server
+ *
+ * If a download is in progress, then this suspends the download. 
  *
  * @return
  *      - LE_OK on success
@@ -226,21 +226,6 @@ FUNCTION le_result_t AcceptDownload
 FUNCTION le_result_t DeferDownload
 (
     uint32 deferMinutes IN
-);
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Reject the currently pending download
- *
- * @return
- *      - LE_OK on success
- *      - LE_FAULT on failure
- */
-//--------------------------------------------------------------------------------------------------
-FUNCTION le_result_t RejectDownload
-
-(
 );
 
 
@@ -294,12 +279,12 @@ FUNCTION le_result_t GetUpdateType
  *
  * @return
  *      - LE_OK on success
- *      - LE_FAULT if not available, or is not APPL_UPDATE type
+ *      - LE_FAULT if not available, or isn't APPL_UPDATE type
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetAppUpdateName
 (
-    string updateName[APP_NAME_LEN] OUT
+    string updateName[le_limit.APP_NAME_LEN] OUT
 );
 
 

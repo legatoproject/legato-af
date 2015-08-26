@@ -9,14 +9,28 @@
  * API for accessing secure storage.
  *
  * Secure storage can be used to store sensitive information like passwords, keys, certificates,
- * etc.  All data in the secure storage is stored in an encrypted format. Each app
+ * etc. All data in the secure storage is in an encrypted format. Each app
  * using this API only has access to its own secure data.
  *
- * An app's items in secure storage have a name and a value.  The name of the item is used
- * to access the item's value.  For example, to create or update an item use the le_secStore_Write()
- * function, specify the item's name and value.  If the item doesn't exist, it will be created.
- * To read an item use the le_secStore_Read() function, specify the item's name.  An
- * item can be deleted using the le_secStore_Delete() function.
+ * App's items in secure storage have a name and a value. The item name is used
+ * to access the item's value and can be maximum 255 characters.
+ * 
+ * To create or update an item, use le_secStore_Write() to specify the item's name
+ * and value. If the item doesn't exist, it'll be created. Each item can be maximum 8192 bytes.
+ * If it's larger, le_secStore_Write() will fail.
+ *
+ * To read an item, use le_secStore_Read(), and specify the item's name. To
+ * delete and item, use le_secStore_Delete().
+ *
+ * All the functions in this API are provided by the @b secStore service.
+ *
+ * Here's a code sample binding to this service:
+ * @verbatim
+   bindings:
+   {
+      clientExe.clientComponent.le_secStore -> secStore.le_secStore
+   }
+   @endverbatim
  *
  * <HR>
  *
@@ -28,7 +42,7 @@
 /**
  * @file le_secStore_interface.h
  *
- * Legato @ref c_le_instStat include file.
+ * Legato @ref c_secStore API
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
@@ -36,7 +50,7 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Maximum number of characters that a secure storage item name can be.
+ * Maximum number of characters permited for a secure storage item name.
  */
 //--------------------------------------------------------------------------------------------------
 DEFINE MAX_NAME_SIZE = 255;
@@ -52,8 +66,8 @@ DEFINE MAX_ITEM_SIZE = 8192;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Writes an item to secure storage.  If the item already exists, it will be overwritten with
- * the new value.  If the item does not already exist then it will be created.
+ * Writes an item to secure storage. If the item already exists, it'll be overwritten with
+ * the new value. If the item doesn't already exist, it'll be created.
  *
  * @return
  *      LE_OK if successful.
@@ -74,9 +88,9 @@ FUNCTION le_result_t Write
  *
  * @return
  *      LE_OK if successful.
- *      LE_OVERFLOW if the buffer is too small to hold the entire item.  No data will be written to
+ *      LE_OVERFLOW if the buffer is too small to hold the entire item. No data will be written to
  *                  the buffer in this case.
- *      LE_NOT_FOUND if the item does not exist.
+ *      LE_NOT_FOUND if the item doesn't exist.
  *      LE_UNAVAILABLE if the secure storage is currently unavailable.
  */
 //--------------------------------------------------------------------------------------------------
@@ -93,7 +107,7 @@ FUNCTION le_result_t Read
  *
  * @return
  *      LE_OK if successful.
- *      LE_NOT_FOUND if the item does not exist.
+ *      LE_NOT_FOUND if the item doesn't exist.
  *      LE_UNAVAILABLE if the secure storage is currently unavailable.
  */
 //--------------------------------------------------------------------------------------------------

@@ -4,7 +4,7 @@
  *
  * @ref le_instStat_interface.h "API Reference"
  *
- * This API provides notifications of when applications are installed and uninstalled.
+ * This API provides notifications when apps are installed and uninstalled.
  *
  * <HR>
  *
@@ -22,12 +22,8 @@
  */
 //--------------------------------------------------------------------------------------------------
 
-//--------------------------------------------------------------------------------------------------
-/**
- * Define the maximum length of the name for an app update
- */
-//--------------------------------------------------------------------------------------------------
-DEFINE APP_NAME_LEN = 47;
+
+USETYPES le_limit.api;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -37,7 +33,7 @@ DEFINE APP_NAME_LEN = 47;
 //--------------------------------------------------------------------------------------------------
 HANDLER AppInstallHandler
 (
-    string appName[APP_NAME_LEN] IN         ///< Name of the application installed.
+    string appName[le_limit.APP_NAME_LEN] IN         ///< Name of the application installed.
 );
 
 
@@ -59,7 +55,7 @@ EVENT AppInstallEvent
 //--------------------------------------------------------------------------------------------------
 HANDLER AppUninstallHandler
 (
-    string appName[APP_NAME_LEN] IN         ///< Name of the application uninstalled.
+    string appName[le_limit.APP_NAME_LEN] IN         ///< Name of the application uninstalled.
 );
 
 

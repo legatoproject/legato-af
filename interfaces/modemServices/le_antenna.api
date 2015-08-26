@@ -91,6 +91,20 @@
  *
  * @note The open threshold is always LOWER than the short threshold.
  *
+ * @section le_antenna_gnss_diag_adc_selection Antenna diagnostic ADC selection
+ *
+ * @warning Ensure to check the supported antenna diagnosis for your specific platform.
+ *
+ * By default, the antenna diagnostics use an internal ADC for reading the voltage from the
+ * integrated antenna diagnosis circuit if any.
+ *
+ * An antenna design that makes use of an external antenna diagnosis circuit can still take
+ * advantage of the antenna monitoring service. Using the function le_antenna_SetExternalAdc(),
+ * the module can be instructed to monitor one of the external ADC’s to read the voltage from an
+ * external antenna diagnosis circuit rather than the internal ADC.
+ * Moreover, the le_antenna_GetExternalAdc() function reads the external ADC used to monitor
+ * the requested antenna.
+ *
  * @section API_desc API description
  *
  * le_antenna_Request() API allows the application to monitor the requested antenna.
@@ -111,6 +125,10 @@
  * le_antenna_RemoveStatusEventHandler() removes the antenna status handler.
  *
  * le_antenna_GetStatus() API gets the current antenna status.
+ *
+ * le_antenna_SetExternalAdc() API sets the external ADC used to monitor the requested antenna.
+ *
+ * le_antenna_GetExternalAdc() API gets the external ADC used to monitor the requested antenna.
  *
  * <HR>
  *
@@ -160,6 +178,7 @@ ENUM Status
     OPEN_CIRCUIT,      ///< antenna in open circuit: there is no antenna.
     OVER_CURRENT,      ///< antenna in short circuit and current HW protection circuitry has
                        ///< tripped. Only applicable for GNSS antenna.
+    INACTIVE,          ///< Antenna diagnosis feature is inactive.
     LAST_STATUS        ///< last status value.
 };
 
@@ -295,4 +314,43 @@ FUNCTION le_result_t GetStatus
 (
     Obj           antennaRef  IN,        ///< antenna reference
     Status        status      OUT        ///< antenna status
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the external ADC index used to monitor the requested antenna.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_NOT_FOUND if the antenna reference is unknown
+ *      - LE_UNSUPPORTED request not supported
+ *      - LE_FAULT on other failure
+ *
+ * @note The same external ADC may not be selected for both antennas at the same time.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetExternalAdc
+(
+    Obj           antennaRef  IN,      ///< antenna reference
+    int8          adcId       IN       ///< The ADC index used to monitor the requested antenna
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the external ADC index used to monitor the requested antenna.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_NOT_FOUND if the antenna reference is unknown
+ *      - LE_UNSUPPORTED request not supported
+ *      - LE_FAULT on other failure
+ *
+ * @note If the returned ADC index is "-1", it means that no external ADC are used to monitor
+ * the requested antenna.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetExternalAdc
+(
+    Obj           antennaRef  IN,      ///< antenna reference
+    int8          adcId       OUT      ///< The ADC index used to monitor the requested antenna
 );

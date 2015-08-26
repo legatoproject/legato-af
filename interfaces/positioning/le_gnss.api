@@ -3,6 +3,7 @@
  * @page c_gnss GNSS
  *
  * @ref le_gnss_interface.h "API Reference" <br>
+ * @ref howToGNSS
  *
  * <HR>
  *
@@ -24,11 +25,25 @@
    }
    @endverbatim
  *
+ * @section le_gnss_EnableDisable Enable/Disable GNSS device
+ *
+ * The application can enable/disable the GNSS device with the le_gnss_Enable()
+ * / le_gnss_Disable() functions.
+ * By default the GNSS device is enabled for the positioningService application service.
+ * Also see @ref howToGNSS.
+ *
+ * @section le_gnss_StartStop Start/Stop GNSS device
+ *
+ * The application can start/stop the GNSS device with the le_gnss_Start() / le_gnss_Stop()
+ * functions.
+ * The default "HOT" start condition is applied and all assistance data are used.
+ * Also see @ref howToGNSS.
+ *
  * @section le_gnss_ForceColdRestart Force cold restart
  *
  * The le_gnss_ForceColdRestart() function performs a "cold" restart of the GNSS device. The current
  * GNSS session is stopped, the specified assistance data are cleared then the GNSS session is
- * restarted.
+ * restarted. Also see @ref howToGNSS.
  *
  * For the cold start condition, the following assistance data are cleared:
  *   - Ephemerises
@@ -51,8 +66,21 @@
  * The le_gnss_GetConstellation() function gets the GNSS constellation(s) enabled to be used
  * in solution.
  *
+ * | Function / GNSS state  | UNINITIALIZED  | READY  | ACTIVE  | DISABLED |
+ *| ----------------------------- | --------------------------- | ----------------------------- | --------------------------- | --------------------------- |
+ *| le_gnss_Start() | LE_NOT_PERMITTED | LE_OK/LE_FAULT | LE_DUPLICATE | LE_NOT_PERMITTED |
+ *| le_gnss_Stop() | LE_NOT_PERMITTED | LE_DUPLICATE | LE_OK/LE_FAULT | LE_NOT_PERMITTED |
+ *| le_gnss_ForceColdRestart() | LE_NOT_PERMITTED | LE_NOT_PERMITTED | LE_OK/LE_FAULT | LE_NOT_PERMITTED |
+ *| le_gnss_Disable() | LE_NOT_PERMITTED | LE_OK/LE_FAULT | LE_NOT_PERMITTED | LE_DUPLICATE |
+ *| le_gnss_Enable() | LE_NOT_PERMITTED | LE_DUPLICATE | LE_DUPLICATE | LE_OK/LE_FAULT |
+ *| le_gnss_SetConstellation() | LE_NOT_PERMITTED |  LE_OK/LE_FAULT | LE_NOT_PERMITTED | LE_NOT_PERMITTED |
+ *
+ * Also see @ref howToGNSS.
  *
  * @section le_gnss_Assisted_GNSS Assisted GNSS
+ *
+ * @ref le_gnss_Assisted_GNSS_EE <br>
+ * @ref le_gnss_Assisted_GNSS_UP
  *
  * @subsection le_gnss_Assisted_GNSS_EE Server based Extended Ephemeris
  *
@@ -64,6 +92,9 @@
  *
  * With le_gnss_GetExtendedEphemerisValidity(), you will to get the validity of the last injected
  * Extended Ephemeris.
+ *
+ * You can enable/disable the use of the 'Extended Ephemeris' file into the GNSS device with
+ * le_gnss_EnableExtendedEphemerisFile()/le_gnss_DisableExtendedEphemerisFile() functions.
  *
  * Example:
  *
@@ -216,10 +247,10 @@ BITMASK ConstellationBitMask
 /**
  * Set the GNSS constellation bit mask
  *
- * @return
- *  - LE_OK on success
- *  - LE_FAULT on failure
- *  - LE_UNSUPPORTED request not supported
+ * @return LE_FAULT         The function failed.
+ * @return LE_UNSUPPORTED   If the request is not supported.
+ * @return LE_NOT_PERMITTED If the GNSS device is not initialized, disabled or active.
+ * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetConstellation
@@ -239,6 +270,32 @@ FUNCTION le_result_t SetConstellation
 FUNCTION le_result_t GetConstellation
 (
     ConstellationBitMask constellationMask      OUT  ///< GNSS constellation used in solution.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function enables the use of the 'Extended Ephemeris' file into the GNSS device.
+ *
+ * @return LE_FAULT         The function failed.
+ * @return LE_OK            The function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t EnableExtendedEphemerisFile
+(
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function disables the use of the 'Extended Ephemeris' file into the GNSS device.
+ *
+ * @return LE_FAULT         The function failed.
+ * @return LE_OK            The function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t DisableExtendedEphemerisFile
+(
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -270,6 +327,35 @@ FUNCTION le_result_t GetExtendedEphemerisValidity
     le_clk_Time_t stopTimePtr OUT       ///< Stop time
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function starts the GNSS device.
+ *
+ * @return LE_FAULT         The function failed.
+ * @return LE_DUPLICATE     If the GNSS device is already started.
+ * @return LE_NOT_PERMITTED If the GNSS device is not initialized or disabled.
+ * @return LE_OK            The function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Start
+(
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function stops the GNSS device.
+ *
+ * @return LE_FAULT         The function failed.
+ * @return LE_DUPLICATE     If the GNSS device is already stopped.
+ * @return LE_NOT_PERMITTED If the GNSS device is not initialized or disabled.
+ * @return LE_OK            The function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Stop
+(
+);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -281,6 +367,36 @@ FUNCTION le_result_t GetExtendedEphemerisValidity
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t ForceColdRestart
+(
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function enables the GNSS device.
+ *
+ * @return LE_FAULT         The function failed.
+ * @return LE_DUPLICATE     If the GNSS device is already enabled.
+ * @return LE_NOT_PERMITTED If the GNSS device is not initialized.
+ * @return LE_OK            The function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Enable
+(
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function disables the GNSS device.
+ *
+ * @return LE_FAULT         The function failed.
+ * @return LE_DUPLICATE     If the GNSS device is already disabled.
+ * @return LE_NOT_PERMITTED If the GNSS device is not initialized or started.
+ * @return LE_OK            The function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Disable
 (
 );
 

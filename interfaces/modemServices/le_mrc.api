@@ -157,6 +157,18 @@
  *
  * le_mrc_GetCdmaSignalMetrics() returns the signal metrics measured on CDMA network.
  *
+ * The application can register a handler function to get notifications when the signal strength
+ * changes of a certain threshold value.
+ *
+ * le_mrc_AddSignalStrengthChangeHandler() API installs a signal strength change handler.
+ * The RAT, the lower-range and the upper-range thresholds must be passed as input parameters. These
+ * parameters are updated each time the function is called, the previous thresholds are replaced by
+ * the new ones if the function is called with the same RAT.
+ *
+ * The event is notified when we cross the range limits in both direction.
+ *
+ * le_mrc_RemoveSignalStrengthChangeHandler() API uninstalls the handler function.
+ *
  * @section le_mrc_network_information Current Network Information
  * le_mrc_GetCurrentNetworkName() retrieves the Current Network Name.
  * le_mrc_GetCurrentNetworkMccMnc() retrieves the Current Network PLMN information.
@@ -525,7 +537,8 @@ BITMASK RatBitMask
     BITMASK_RAT_UMTS,   ///< UMTS RAT Bit Mask
     BITMASK_RAT_LTE,    ///< LTE RAT Bit Mask
     BITMASK_RAT_CDMA,   ///< CDMA RAT Bit Mask
-    BITMASK_RAT_ALL     ///< To Set all RAT preference Bit Mask
+    BITMASK_RAT_ALL,    ///< To Set all RAT preference Bit Mask
+    BITMASK_RAT_MAX
 };
 
 
@@ -571,6 +584,31 @@ HANDLER RatChangeHandler
 EVENT RatChange
 (
     handler RatChangeHandler
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler for Signal Strength value changes.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+HANDLER SignalStrengthChangeHandler
+(
+    int32   ss    ///< Signal strength in dBm
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This event provides information on Signal Strength value changes.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+EVENT SignalStrengthChange
+(
+    Rat     rat IN,                       ///< Radio Access Technology
+    int32_t lowerRangeThreshold IN,       ///<  lower-range Signal strength threshold in dBm
+    int32_t upperRangeThreshold IN,       ///<  upper-range Signal strength threshold in dBm
+    handler SignalStrengthChangeHandler
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -736,8 +774,9 @@ FUNCTION le_result_t GetTdScdmaBandPreferences
  * Add a preferred operator by specifying the MCC/MNC and the Radio Access Technology.
  *
  * @return
- *  - LE_FAULT  Function failed.
- *  - LE_OK     Function succeeded.
+ *  - LE_FAULT         Function failed.
+ *  - LE_OUT_OF_RANGE  RAT mask is out of range.
+ *  - LE_OK            Function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t AddPreferredOperator
@@ -1478,7 +1517,7 @@ FUNCTION le_result_t GetCdmaSignalMetrics
     int32   ss         OUT, ///< Signal strength in dBm
     uint32  er         OUT, ///< Frame/Packet error rate
     int32   ecio       OUT, ///< ECIO value in dB with 1 decimal place (15 = 1.5 dB)
-    int32   sinr       OUT, ///< SINR level in dB with 1 decimal place, (only applicable for 1xEV-DO). 
+    int32   sinr       OUT, ///< SINR level in dB with 1 decimal place, (only applicable for 1xEV-DO).
     int32   io         OUT  ///< Received IO in dBm (only applicable for 1xEV-DO)
 );
 

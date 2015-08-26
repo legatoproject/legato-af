@@ -1,55 +1,50 @@
 //--------------------------------------------------------------------------------------------------
 /**
- * @page c_mcc_call Modem Call Control
+ * @page c_mcc Modem Call Control
  *
- * @ref le_mcc_call_interface.h "API Reference"
+ * @ref le_mcc_interface.h "API Reference"
  *
  * <HR>
  *
  * The Modem Call Control (mcc) API functions of this API are provided by the @b modemService
  * service.
  *
- * @section le_mcc_call_binding IPC interfaces binding
+ * @section le_mcc_binding IPC interfaces binding
  *
  * Here's a code sample binding to modem services:
  * @verbatim
    bindings:
    {
-      clientExe.clientComponent.le_mcc_call -> modemService.le_mcc_call
+      clientExe.clientComponent.le_mcc -> modemService.le_mcc
    }
    @endverbatim
  *
- * @section le_mcc_call_starting_a_call Starting a Call
+ * @section le_mcc_starting_a_call Starting a Call
  *
  * To initiate a call, create a new call object with a destination telephone
- * number calling the le_mcc_profile_CreateCall() function.
+ * number calling the le_mcc_Create() function.
  *
- * le_mcc_call_Start() must still initiate the call when ready.
+ * le_mcc_Start() must still initiate the call when ready.
  *
- * The le_mcc_call_Start() function initiates a call attempt (it's asynchronous because it can take
+ * The le_mcc_Start() function initiates a call attempt (it's asynchronous because it can take
  * time for a call to connect).
  *
  * It's essential to register a handler function to get the call events. Use
- * le_mcc_profile_AddCallEventHandler() API to install that handler function.
- * As the call attempt proceeds, the profile's registered call event handler will receive events.
+ * le_mcc_AddCallEventHandler() API to install that handler function. The handler will be
+ * called for all calls' events (incoming and outgoing).
  *
- * The le_mcc_profile_RemoveCallEventHandler() API uninstalls the handler function.
+ * The le_mcc_RemoveCallEventHandler() API uninstalls the handler function.
  *
  * The following APIs can be used to manage incoming or outgoing calls:
- * - le_mcc_call_GetTerminationReason() - termination reason.
- * - le_mcc_call_GetPlatformSpecificTerminationCode() - the platform specific termination code (refer
+ * - le_mcc_GetTerminationReason() - termination reason.
+ * - le_mcc_GetPlatformSpecificTerminationCode() - the platform specific termination code (refer
  * to your platform documentation for further details).
- * - le_mcc_call_IsConnected() - connection status.
- * - le_mcc_call_GetRemoteTel() - displays remote party telephone number associated with the call.
- * - le_mcc_call_GetRxAudioStream() must be called to receive audio stream for this call.
- *  Audio received from the other end of the call uses this stream.
- * - le_mcc_call_GetTxAudioStream() must be called to transmit audio stream this call.
- *   Audio generated on this end is sent on this stream.
- * - le_mcc_call_HangUp() will disconnect this call.
+ * - le_mcc_IsConnected() - connection status.
+ * - le_mcc_GetRemoteTel() - displays remote party telephone number associated with the call.
+ * - le_mcc_HangUp() will disconnect this call.
  *
- * When finished with the call object, call le_mcc_call_Delete() to free all the allocated resources
- * associated with the object. This will frees the reference, but remains active if other holders
- * are using it.
+ * When finished with the call object, call le_mcc_Delete() to free all the allocated resources
+ * associated with the object.
  *
  * This code example uses @c CallAndPlay() to dial a phone number, and if successful, play
  * a sound file. Once the file has played, the call hangs up.
@@ -58,9 +53,9 @@
  *
  * typedef struct
  * {
- *     le_mcc_profile_ObjRef_t profileRef;
- *     le_mcc_call_ObjRef_t    callRef;
- *     char                    filePath[MAX_FILE_PATH_BYTES];
+ *     le_mcc_CallRef_t             callRef;
+ *     char                         filePath[MAX_FILE_PATH_BYTES];
+ *     le_mcc_CallEventHandlerRef_t eventHandlerRef;
  * }
  * PlayContext_t;
  *
@@ -74,45 +69,39 @@
  *
  *     le_str_Copy(contextPtr->filePath, filePathPtr, sizeof(contextPtr->filePath), NULL);
  *
- *     contextPtr->profileRef = le_mcc_profile_GetByName("Modem-Sim1");
+ *     contextPtr->callRef = le_mcc_Create(destinationTelPtr);
  *
- *     le_mcc_profile_AddCallEventHandler(contextPtr->profileRef,
- *                                        MyCallEventHandler,
- *                                        contextPtr);
+ *     contextPtr->eventHandlerRef = le_mcc_AddCallEventHandler(MyCallEventHandler,
+ *                                                                   contextPtr);
  *
- *     contextPtr->callRef = le_mcc_profile_CreateCall(contextPtr->profileRef, destinationTelPtr);
- *
- *     le_mcc_call_Start(contextPtr->callRef);
+ *     le_mcc_Start(contextPtr->callRef);
  * }
  *
  *
  * static void MyCallEventHandler
  * (
- *     le_mcc_call_ObjRef_t callRef,
- *     le_mcc_call_Event_t  event,
- *     void*                contextPtr
+ *     le_mcc_CallRef_t callRef,
+ *     le_mcc_Event_t   event,
+ *     void*            contextPtr
  * )
  * {
  *     PlayContext_t*      myContextPtr = (PlayContext_t*)contextPtr;
  *
  *     switch (event)
  *     {
- *         case LE_MCC_CALL_EVENT_CONNECTED:
+ *         case LE_MCC_EVENT_CONNECTED:
  *             {
- *                 le_audio_StreamRef_t callAudioTxRef = le_mcc_call_GetTxAudioStream(callRef);
- *
- *                 le_audio_PlaySoundFromFile(callAudioTxRef,
- *                                            myContextPtr->filePath,
- *                                            MyAudioFinishedHandler,
- *                                            myContextPtr);
+ *                  [...]
+                    le_audio_PlayFile(FileAudioRef, AudioFileFd);
+                    [...]
  *             }
  *             break;
  *
- *         case LE_MCC_CALL_EVENT_TERMINATED:
- *             le_mcc_call_Delete(callRef);
+ *         case LE_MCC_EVENT_TERMINATED:
+ *             le_mcc_Delete(callRef);
  *             // I don't release the Profile for further use
  *
- *             le_mcc_profile_RemoveCallEventHandler(myContextPtr->profileRef);
+ *             le_mcc_RemoveCallEventHandler(contextPtr->eventHandlerRef);
  *
  *             le_mem_Release(myContextPtr);
  *             break;
@@ -128,146 +117,108 @@
  * {
  *     PlayContext_t* myContextPtr = (PlayContext_t*)contextPtr;
  *
- *     le_mcc_call_HangUp(myContextPtr->callRef);  // This will trigger a TERMINATED event.
+ *     le_mcc_HangUp(myContextPtr->callRef);  // This will trigger a TERMINATED event.
  * }
  *
  *
  * @endcode
  *
  *
- * @section le_mcc_call_answering_a_call Answering a call
+ * @section le_mcc_answering_a_call Answering a call
  *
- * Receiving calls is similar sending calls. Add a handler through
- * le_mcc_profile_AddCallEventHandler() to be notified of incoming calls.
+ * Receiving calls is similar sending calls. Add a handler through le_mcc_AddCallEventHandler()
+ * to be notified of incoming calls.
  *
- * To answer, call le_mcc_call_Answer(). To reject it, call le_mcc_call_Delete().
+ * To answer, call le_mcc_Answer(). To reject it, call le_mcc_HangUp().
  *
  * This code example uses InstallAutomaticAnswer() to install a call event handler
  * that  automatically answers incoming calls. The handler function verifies the incoming
- * call is permitted (through a predefined list), and then decides whether to answer or terminate it.
- * If a call is already active, it can add the new incoming call creating a conference call.
+ * call is permitted (through a predefined list), and then decides whether to answer or terminate
+ * it.
  *
  * @code
  *
- * typedef struct
- * {
- *     le_mcc_profile_ObjRef_t profileRef;
- *     le_mcc_call_ObjRef_t    callRef;
- *     uint32_t                calledPartyCount;
- * }
- * VoiceContext_t;
- *
  * static le_audio_ConnectorRef_t AudioRxConnectorRef = NULL;
  * static le_audio_ConnectorRef_t AudioTxConnectorRef = NULL;
- *
+ * static le_audio_StreamRef_t MicRef = NULL;
+ * static le_audio_StreamRef_t SpeakerRef = NULL;
+ * static le_audio_StreamRef_t CallRxAudioRef = NULL;
+ * static le_audio_StreamRef_t CallTxAudioRef = NULL;
  *
  * void InstallAutomaticAnswer
  * (
  *     void
  * )
  * {
- *     VoiceContext_t* contextPtr = (VoiceContext_t*)le_mem_ForceAlloc(VoiceContextPoolRef);
- *
- *     contextPtr->profileRef = le_mcc_profile_GetByName("Modem-Sim1");
- *
- *     le_mcc_profile_AddCallEventHandler(contextPtr->profileRef,
- *                                        MyVoiceCallEventHandler,
+ *     le_mcc_AddCallEventHandler(   MyVoiceCallEventHandler,
  *                                        contextPtr);
  * }
  *
  *
  * static void MyVoiceCallEventHandler
  * (
- *     le_mcc_call_ObjRef_t callRef,
- *     le_mcc_call_Event_t  event,
- *     void*                contextPtr
+ *     le_mcc_CallRef_t callRef,
+ *     le_mcc_Event_t   event,
+ *     void*            contextPtr
  * )
  * {
  *     char                tel[TEL_NMBR_MAX_BYTES];
- *     VoiceContext_t*     myContextPtr = (VoiceContext_t*)contextPtr;
  *
  *     switch (event)
  *     {
- *         case LE_MCC_CALL_EVENT_INCOMING:
+ *         case LE_MCC_EVENT_INCOMING:
  *             {
- *                 le_mcc_profile_State_t myProfileState = LE_MCC_PROFILE_NOT_AVAILABLE;
- *
- *                 le_mcc_call_GetRemoteTel(callRef, &tel, sizeof(tel));
+ *                 le_mcc_GetRemoteTel(callRef, &tel, sizeof(tel));
  *                 if (IsAnAuthorizedIncomingCall(tel) == TRUE)
  *                 {
- *                     le_mcc_profile_GetState(myProfile, &myProfileState);
- *                     if(myProfileState == LE_MCC_PROFILE_IN_USE)
- *                     {
- *                         // Another incoming call, turn this into a x-way conference, mixed locally:
- *                         myContextPtr->calledPartyCount++;
+ *                     SpeakerRef = le_audio_OpenSpeaker();
+ *                     CallRxAudioRef = le_audio_OpenModemVoiceRx();
+ *                     MicRef = le_audio_OpenMic();
+ *                     CallTxAudioRef = le_audio_OpenModemVoiceTx();
  *
- *                         le_audio_StreamRef_t otherCallRxAudioRef = le_mcc_call_GetRxAudioStream(callRef);
- *                         le_audio_StreamRef_t otherCallTxAudioRef = le_mcc_call_GetTxAudioStream(callRef);
+ *                     AudioRxConnectorRef = le_audio_CreateConnector();
+ *                     AudioTxConnectorRef = le_audio_CreateConnector();
  *
- *                         le_audio_connector_AddStream(AudioRxConnectorRef, otherCallRxAudioRef);
- *                         le_audio_connector_AddStream (AudioTxConnectorRef, otherCallTxAudioRef);
- *                     }
- *                     else if(myProfileState == LE_MCC_PROFILE_IDLE)
- *                     {
- *                         // First incoming call
- *                         myContextPtr->calledPartyCount = 1;
+ *                     le_audio_Connect(AudioRxConnectorRef, speakerRef);
+ *                     le_audio_Connect (AudioRxConnectorRef, callRxAudioRef);
  *
- *                         le_audio_StreamRef_t speakerphoneRef = le_audio_OpenSpeakerphone();
- *                         le_audio_StreamRef_t callRxAudioRef = le_mcc_call_GetRxAudioStream(callRef);
- *                         le_audio_StreamRef_t micphoneRef = le_audio_OpenMicphone();
- *                         le_audio_StreamRef_t callTxAudioRef = le_mcc_call_GetTxAudioStream(callRef);
+ *                     le_audio_Connect(AudioTxConnectorRef, micRef);
+ *                     le_audio_Connect (AudioTxConnectorRef, callTxAudioRef);
  *
- *                         AudioRxConnectorRef = le_audio_CreateConnector();
- *                         AudioTxConnectorRef = le_audio_CreateConnector();
- *
- *                         le_audio_connector_AddStream(AudioRxConnectorRef, speakerphoneRef);
- *                         le_audio_connector_AddStream (AudioRxConnectorRef, callRxAudioRef);
- *
- *                         le_audio_connector_AddStream(AudioTxConnectorRef, micphoneRef);
- *                         le_audio_connector_AddStream (AudioTxConnectorRef, callTxAudioRef);
- *                     }
- *
- *                     le_mcc_call_Answer(callRef);
+ *                     le_mcc_Answer(callRef);
  *                 }
  *                 else
  *                 {
  *                     // Reject the incoming call
- *                     le_mcc_call_Delete(callRef);
+ *                     le_mcc_HangUp(callRef);
  *                 }
  *              }
- *              break;
+ *          break;
  *
- *          case LE_MCC_CALL_EVENT_TERMINATED:
- *              le_mcc_call_Delete(callRef);
- *
- *              // I delete the Audio connector references if it remains only one called party.
- *              if (myContextPtr->calledPartyCount == 1)
- *              {
- *                  le_audio_DeleteConnector(AudioRxConnectorRef);
- *                  le_audio_DeleteConnector(AudioTxConnectorRef);
- *              }
- *              else
- *              {
- *                  myContextPtr->calledPartyCount--;
- *              }
- *              break;
+ *          case LE_MCC_EVENT_TERMINATED:
+ *              le_audio_Disconnect(micRef);
+ *              le_audio_Disconnect(speakerRef);
+ *              le_audio_Disconnect(AudioRxConnectorRef);
+ *              le_audio_Disconnect(AudioTxConnectorRef);
+ *              le_mcc_Delete(callRef);
+ *          break;
  *      }
  *  }
  *
  * @endcode
  *
  *
- * @section le_mcc_call_ending_all_call Ending all calls
+ * @section le_mcc_ending_all_call Ending all calls
  *
- * A special function can be used to hang-up all the ongoing calls: le_mcc_call_HangUpAll().
+ * A special function can be used to hang-up all the ongoing calls: le_mcc_HangUpAll().
  * This function can be used to hang-up any calls that have been initiated through another client
  * like AT commands.
  *
  * @section le_mcc_ss Supplementary service.
  *
  * Calling Line Identification Restriction (CLIR) can be activated or deactivated by
- *  le_mcc_call_SetCallerIdRestrict API. The status is independent for each call object reference.
- *  Status can be read with the le_mcc_call_GetCallerIdRestrict() API.
+ *  le_mcc_SetCallerIdRestrict API. The status is independent for each call object reference.
+ *  Status can be read with the le_mcc_GetCallerIdRestrict() API.
  * Default value is LE_OFF (Enable presentation of own phone number to remote).
  *
  * @todo Other Supplementary services will be available in a future release. Create simpler examples.
@@ -280,16 +231,15 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * @file le_mcc_call_interface.h
+ * @file le_mcc_interface.h
  *
- * Legato @ref c_mcc_call include file.
+ * Legato @ref c_mcc include file.
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 //--------------------------------------------------------------------------------------------------
 
 USETYPES le_mdmDefs.api;
-USETYPES le_audio.api;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -369,7 +319,7 @@ ENUM TerminationReason
     TERM_PROTOCOL_ERROR_UNSPECIFIED,                        ///< cf. 3GPP 24.008 Annex H
     TERM_INTERWORKING_UNSPECIFIED,                          ///< cf. 3GPP 24.008 Annex H
     TERM_PLATFORM_SPECIFIC,                                 ///< Platform specific code.
-    TERM_UNDEFINED    ///< Undefined reason.
+    TERM_UNDEFINED                                          ///< Undefined reason.
 };
 
 
@@ -378,23 +328,40 @@ ENUM TerminationReason
  *  Reference type for managing active calls.
  */
 //--------------------------------------------------------------------------------------------------
-REFERENCE Obj;
+REFERENCE Call;
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Create a call reference.
+ *
+ * @note Return NULL if call reference can't be created
+ *
+ * @note If destination number is too long (max LE_MDMDEFS_PHONE_NUM_MAX_LEN digits),
+ * it is a fatal error, the function will not return.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION Call Create
+(
+    string   phoneNumPtr[le_mdmDefs.PHONE_NUM_MAX_LEN]   IN ///< The target number we are going to
+                                                            ///< call.
+);
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Call to free up a call reference.
  *
- * @note This frees up the reference, but remains active if other holders
- *  reference it.
+ * @return
+ *     - LE_OK        The function succeed.
+ *     - LE_NOT_FOUND The call reference was not found.
+ *     - LE_FAULT      The function failed.
  *
- * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
- *       function will not return.
+ *
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION Delete
+FUNCTION le_result_t Delete
 (
-    Obj callRef IN  ///< The call object to free.
+    Call callRef IN  ///< The call object to free.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -416,7 +383,7 @@ FUNCTION Delete
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t Start
 (
-    Obj callRef IN  ///< Reference to the call object.
+    Call callRef IN  ///< Reference to the call object.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -431,16 +398,18 @@ FUNCTION le_result_t Start
 //--------------------------------------------------------------------------------------------------
 FUNCTION bool IsConnected
 (
-    Obj callRef IN ///< The call reference to read.
+    Call callRef IN ///< The call reference to read.
 );
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Display the remote party telephone number associated with the call.
+ * Read out the remote party telephone number associated with the call.
  *
  * Output parameter is updated with the telephone number. If the Telephone number string length exceeds
  * the value of 'len' parameter, the LE_OVERFLOW error code is returned and 'telPtr' is used until
  * 'len-1' characters and a null-character is implicitly appended at the end of 'telPtr'.
+ * Note that 'len' sould be at least equal to LE_MDMDEFS_PHONE_NUM_MAX_BYTES, otherwise LE_OVERFLOW
+ * error code will be common.
  *
  * @return LE_OVERFLOW      The Telephone number length exceed the maximum length.
  * @return LE_OK            The function succeeded.
@@ -451,7 +420,7 @@ FUNCTION bool IsConnected
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetRemoteTel
 (
-    Obj     callRef IN,                                 ///<  The call reference to read from.
+    Call     callRef IN,                                 ///<  The call reference to read from.
     string  telPtr[le_mdmDefs.PHONE_NUM_MAX_LEN] OUT    ///< The telephone number string.
 );
 
@@ -467,7 +436,7 @@ FUNCTION le_result_t GetRemoteTel
 //--------------------------------------------------------------------------------------------------
 FUNCTION TerminationReason GetTerminationReason
 (
-    Obj callRef IN ///< The call reference to read from.
+    Call callRef IN ///< The call reference to read from.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -482,39 +451,7 @@ FUNCTION TerminationReason GetTerminationReason
 //--------------------------------------------------------------------------------------------------
 FUNCTION int32 GetPlatformSpecificTerminationCode
 (
-    Obj callRef IN ///< The call reference to read from.
-);
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Called to get the transmitted audio stream. All audio generated on this
- * end of the call is sent on this stream.
- *
- * @return Transmitted audio stream reference.
- *
- * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
- *       function will not return.
- */
-//--------------------------------------------------------------------------------------------------
-FUNCTION le_audio.Stream GetTxAudioStream
-(
-    Obj callRef IN ///< The call reference to read from.
-);
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Called to get the received audio stream. All audio received from the
- * other end of the call is received on this stream.
- *
- * @return Received audio stream reference.
- *
- * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
- *       function will not return.
- */
-//--------------------------------------------------------------------------------------------------
-FUNCTION le_audio.Stream GetRxAudioStream
-(
-    Obj callRef IN ///< The call reference to read from.
+    Call callRef IN ///< The call reference to read from.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -530,7 +467,7 @@ FUNCTION le_audio.Stream GetRxAudioStream
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t Answer
 (
-    Obj callRef IN ///< The call reference.
+    Call callRef IN ///< The call reference.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -547,7 +484,7 @@ FUNCTION le_result_t Answer
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t HangUp
 (
-    Obj callRef IN ///< The call to end.
+    Call callRef IN ///< The call to end.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -580,7 +517,7 @@ FUNCTION le_result_t HangUpAll
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetCallerIdRestrict
 (
-    Obj callRef IN, ///< The call reference.
+    Call callRef IN, ///< The call reference.
     le_onoff_t clirStatusPtr OUT        ///< the Calling Line Identification Restriction (CLIR) status
 );
 
@@ -597,6 +534,42 @@ FUNCTION le_result_t GetCallerIdRestrict
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetCallerIdRestrict
 (
-    Obj callRef IN, ///< The call reference.
+    Call callRef IN, ///< The call reference.
     le_onoff_t clirStatus IN         ///< The Calling Line Identification Restriction (CLIR) status.
 );
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler for call state changes.
+ *
+ * @note The callRef has to be deleted using le_mcc_Delete() when LE_MCC_TERMINATED event
+ * is received, except if is has to be used for a future usage (with le_mcc_profile handler for
+ * instance, or dialing again the same number).
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+HANDLER CallEventHandler
+(
+    Call callRef IN, ///< The call reference.
+    Event  event    ///< Call event.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Register an event handler that will be notified when an call's event occurs.
+ *
+ * @return A reference to the new event handler object.
+ *
+ * @note It is a fatal error if this function does succeed.  If this function fails, it will not
+ *       return.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+EVENT CallEvent
+(
+    handler CallEventHandler
+);
+
+

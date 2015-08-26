@@ -68,6 +68,9 @@
  * @ref le_mdc_GetIPv6GatewayAddress, @ref le_mdc_GetIPv6DNSAddresses.
  * The Access Point Name can be retrieved by @ref le_mdc_GetAPN. The Data bearer
  * Technology can be retreived by @ref le_mdc_GetDataBearerTechnology.
+ * When the data session is stopped, the disconnection reason can be known using
+ * le_mdc_GetDisconnectionReason() or le_mdc_GetPlatformSpecificDisconnectionCode() (refer
+ * to your platform documentation for further details).
  *
  * @section le_mdc_dataStatistics Data Statistics
  *
@@ -218,6 +221,73 @@ ENUM Auth
     AUTH_CHAP     ///< CHAP protocol
 };
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Enumeration of connection state.
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM ConState
+{
+    DISCONNECTED,
+    AUTHENTICATING,
+    CONNECTED,
+    SUSPENDING
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Enumeration of the possible reasons for the disconnection.
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM DisconnectionReason
+{
+    DISC_NO_SERVICE,                                        ///< Modem has no service
+    DISC_OPERATOR_DETERMINED_BARRING,                       ///< cf. 3GPP 24.008 Annex I1
+    DISC_INSUFFICIENT_MBMS_CAPABILITIES,                    ///< cf. 3GPP 24.008 Annex I1
+    DISC_LLC_SNDCP_FAILURE,                                 ///< cf. 3GPP 24.008 Annex I1
+    DISC_INSUFFICIENT_RESOURCES,                            ///< cf. 3GPP 24.008 Annex I1
+    DISC_MISSING_OR_UNKNOWN_APN,                            ///< cf. 3GPP 24.008 Annex I1
+    DISC_UNKNOWN_PDP_ADDR_OR_TYPE,                          ///< cf. 3GPP 24.008 Annex I1
+    DISC_USER_AUTHENTIFICATION_FAILURE,                     ///< cf. 3GPP 24.008 Annex I1
+    DISC_ACTIVATION_REJECTED_BY_GGSN_OR_GW,                 ///< cf. 3GPP 24.008 Annex I1
+    DISC_ACTIVATION_REJECTED_UNSPECIFIED,                   ///< cf. 3GPP 24.008 Annex I1
+    DISC_SERVICE_OPTION_NOT_SUPPORTED,                      ///< cf. 3GPP 24.008 Annex I1
+    DISC_REQUESTED_SERVICE_OPTION_UNSUBSCRIBED,             ///< cf. 3GPP 24.008 Annex I1
+    DISC_REQUESTED_SERVICE_OPTION_OUT_OF_ORDER,             ///< cf. 3GPP 24.008 Annex I1
+    DISC_NSAPI_ALREADY_USED,                                ///< cf. 3GPP 24.008 Annex I1
+    DISC_REGULAR_DEACTIVATION,                              ///< cf. 3GPP 24.008 Annex I1
+    DISC_QOS_NOT_ACCEPTED,                                  ///< cf. 3GPP 24.008 Annex I1
+    DISC_NETWORK_FAILURE,                                   ///< cf. 3GPP 24.008 Annex I1
+    DISC_REACTIVATION_REQUESTED,                            ///< cf. 3GPP 24.008 Annex I1
+    DISC_FEATURE_NOT_SUPPORTED,                             ///< cf. 3GPP 24.008 Annex I1
+    DISC_TFT_SEMANTIC_ERROR,                                ///< cf. 3GPP 24.008 Annex I1
+    DISC_TFT_SYNTACTICAL_ERROR,                             ///< cf. 3GPP 24.008 Annex I1
+    DISC_UNKNOWN_PDP_CONTEXT,                               ///< cf. 3GPP 24.008 Annex I1
+    DISC_PACKET_FILTER_SEMANTIC_ERROR,                      ///< cf. 3GPP 24.008 Annex I1
+    DISC_PACKET_FILTER_SYNTACTICAL_ERROR,                   ///< cf. 3GPP 24.008 Annex I1
+    DISC_PDP_CONTEXT_WITHOUT_ACTIVE_TFT,                    ///< cf. 3GPP 24.008 Annex I1
+    DISC_MULTICAST_TIME_OUT,                                ///< cf. 3GPP 24.008 Annex I1
+    DISC_BEARER_CONTROL_MODE_VIOLATION,                     ///< cf. 3GPP 24.008 Annex I1
+    DISC_IPV4_ONLY_ALLOWED,                                 ///< cf. 3GPP 24.008 Annex I1
+    DISC_IPV6_ONLY_ALLOWED,                                 ///< cf. 3GPP 24.008 Annex I1
+    DISC_SINGLE_ADDR_ONLY_ALLOWED,                          ///< cf. 3GPP 24.008 Annex I1
+    DISC_COLLISION_WITH_NETWORK_INITIATED_REQ,              ///< cf. 3GPP 24.008 Annex I1
+    DISC_BEARER_HANDLING_UNSUPPORTED,                       ///< cf. 3GPP 24.008 Annex I1
+    DISC_MAX_PDP_CONTEXTS,                                  ///< cf. 3GPP 24.008 Annex I1
+    DISC_APN_UNSUPPORTED_FOR_RAT_AND_PLMN,                  ///< cf. 3GPP 24.008 Annex I1
+    DISC_INCOMPATIBLE_APN,                                  ///< cf. 3GPP 24.008 Annex I1
+    DISC_INVALID_TRANSACTION_ID,                            ///< cf. 3GPP 24.008 Annex I2
+    DISC_MESSAGE_INCORRECT_SEMANTIC,                        ///< cf. 3GPP 24.008 Annex I2
+    DISC_INVALID_MANDATORY_INFORMATION,                     ///< cf. 3GPP 24.008 Annex I2
+    DISC_UNSUPPORTED_MESSAGE_TYPE,                          ///< cf. 3GPP 24.008 Annex I2
+    DISC_MESSAGE_AND_PROTOCOL_STATE_UNCOMPATIBLE,           ///< cf. 3GPP 24.008 Annex I2
+    DISC_UNKNOWN_INFORMATION_ELEMENT,                       ///< cf. 3GPP 24.008 Annex I2
+    DISC_CONDITIONAL_IE_ERROR,                              ///< cf. 3GPP 24.008 Annex I2
+    DISC_MESSAGE_AND_STATE_UNCOMPATIBLE,                    ///< cf. 3GPP 24.008 Annex I2
+    DISC_PROTOCOL_ERROR_UNSPECIFIED,                        ///< cf. 3GPP 24.008 Annex I2
+    DISC_PLATFORM_SPECIFIC,                                 ///< Platform specific code.
+    DISC_UNDEFINED                                          ///< Undefined reason.
+};
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -226,7 +296,8 @@ ENUM Auth
 //--------------------------------------------------------------------------------------------------
 HANDLER SessionStateHandler
 (
-    bool   isConnected      ///< Data session connection status.
+    Profile  profileRef,         ///< Profile reference
+    ConState ConnectionState     ///< Data session connection state.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -325,8 +396,8 @@ FUNCTION le_result_t StopSession
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetSessionState
 (
-    Profile profileRef,     ///< Query this profile object
-    bool    isConnected OUT ///< The data session state
+    Profile    profileRef,         ///< Query this profile object
+    ConState   connectionState OUT ///< The data session state
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -616,6 +687,25 @@ FUNCTION le_result_t SetAPN
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Set the Access Point Name (APN) for the given profile according to the home network mcc/mnc.
+ *
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_BAD_PARAMETER if an input parameter is not valid
+ *      - LE_FAULT for all other errors
+ *
+ * @note
+ *      The process exits, if an invalid profile object is given
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetDefaultAPN
+(
+    Profile profileRef                ///< Query this profile object
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Get the Access Point Name (APN) for the given profile.
  *
  * @return
@@ -706,4 +796,34 @@ FUNCTION le_result_t GetProfileFromApn
 (
     string  apnStr[APN_NAME_MAX_LEN] IN,    ///< The Access Point Name
     Profile profileRef  OUT                 ///< profile reference
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Called to get the disconnection reason.
+ *
+ * @return The disconnection reason.
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION DisconnectionReason GetDisconnectionReason
+(
+    Profile profileRef  IN                 ///< profile reference
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Called to get the platform specific disconnection code.
+ *
+ * @return The platform specific disconnection code.
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION int32 GetPlatformSpecificDisconnectionCode
+(
+    Profile profileRef  IN                 ///< profile reference
 );

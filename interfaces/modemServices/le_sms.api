@@ -52,6 +52,7 @@
  * - Binary content with le_sms_SetBinary(), total length is set with this API, maximum 140 bytes.
  * - PDU content with le_sms_SetPDU(), total length is set with this API, max 36 (header) + 140
  *  (payload) bytes long.
+ * - A specific timeout value can be used with le_sms_SetTimeout() API.
  *
  * After the Msg object is ready, call @c le_sms_Send().
  *
@@ -59,28 +60,30 @@
  * positive or negative answer to the sending operation. The return of @c le_sms_Send() API
  * provides definitive status of the sending operation.
  *
- * When a message sending has failed, call le_sms_GetErrorCode() to retrieve the 3GPP message error
- * code or le_sms_Get3GPP2ErrorCode() to retrieve the 3GPP2 message error code.
- * If LE_SMS_ERROR_3GPP_PLATFORM_SPECIFIC or LE_SMS_ERROR_3GPP2_PLATFORM_SPECIFIC values is
+ * When a message sending has failed and returned LE_FAULT, call le_sms_GetErrorCode() to retrieve
+ * the 3GPP message error code or le_sms_Get3GPP2ErrorCode() to retrieve the 3GPP2 message error
+ * code. If LE_SMS_ERROR_3GPP_PLATFORM_SPECIFIC or LE_SMS_ERROR_3GPP2_PLATFORM_SPECIFIC values is
  * returned, call le_sms_GetPlatformSpecificErrorCode() to retrieve the platform specific error
  * code.
  *
  * @section le_sms_ops_async_sending Sending asynchronously a message.
+
+ * To send an asynchronous message, le_sms_SendAsync() API can be called instead of le_sms_Send()
+ *  and a specific timeout value can be used with le_sms_SetTimeout() API.
  *
  * A text message can be sent with one simple function: le_sms_SendText(). You only have to pass
  *  the three following parameters:
- *
  * - the destination telephone number.
  * - the text message, the total length are set as well with this function, maximum 160
  * characters as only the 7-bit alphabet is supported.
- * - the callback function to get a notification indicating the sending result: LE_SMS_SENT or
- *  LE_SMS_SENDING_FAILED..
+ * - the callback function to get a notification indicating the sending result: LE_SMS_SENT,
+ *  LE_SMS_SENDING_FAILED or LE_SMS_SENDING_TIMEOUT.
  *
  * A PDU message can be sent using the le_sms_SendPdu() functions. The parameters to give are:
  * - the PDU content, total length is set with this API, maximum 176 bytes long = 36 (header) +
  *  140 (payload).
- * - the callback function to get a notification indicating the sending result: LE_SMS_SENT or
- *  LE_SMS_SENDING_FAILED.
+ * - the callback function to get a notification indicating the sending result: LE_SMS_SENT,
+ *  LE_SMS_SENDING_FAILED or LE_SMS_SENDING_TIMEOUT.
  *
  * When a message sending has failed, call le_sms_GetErrorCode() to retrieve the 3GPP message error
  * code or le_sms_Get3GPP2ErrorCode() to retrieve the 3GPP2 message error code.
@@ -135,11 +138,12 @@
  * - le_sms_GetText() - get the message text.
  * - le_sms_GetBinary() - get the message binary content.
  * - le_sms_GetPDU() - get the message PDU data.
+ * - le_sms_GetType() - get the message type.
  *
  * @note  - If two (or more) registered handler functions exist, they are
  * all called and get a different message object reference.
  *
- * @note  - For incoming SMS, format returned by le_sms_GetFormat is never LE_SMS_FORMAT_PDU.
+ * @note - For incoming SMS, format returned by le_sms_GetFormat is never LE_SMS_FORMAT_PDU.
  *
  * @note - 16 bit UCS2 format is not supported.
  *
@@ -165,17 +169,20 @@
  *     char   tel[LE_SMS_TEL_NMBR_MAX_BYTES];
  *     char   text[LE_SMS_TEXT_MAX_BYTES];
  *
- *     if (le_sms_GetFormat(msgRef) == LE_SMS_FORMAT_TEXT)
+ *     if (le_sms_GetType(msgRef) == LE_SMS_TYPE_RX)
  *     {
- *         le_sms_GetSenderTel(msgRef, tel, sizeof(tel));
- *         le_sms_GetText(msgRef, text, sizeof(text));
+ *         if (le_sms_GetFormat(msgRef) == LE_SMS_FORMAT_TEXT)
+ *         {
+ *             le_sms_GetSenderTel(msgRef, tel, sizeof(tel));
+ *             le_sms_GetText(msgRef, text, sizeof(text));
  *
- *         LE_INFO(" A new text message has been received !");
- *         LE_INFO(" From tel.%s, text: \"%s\"", tel, text);
- *     }
- *     else
- *     {
- *         LE_INFO(" I support only text messages !");
+ *             LE_INFO(" A new text message has been received !");
+ *             LE_INFO(" From tel.%s, text: \"%s\"", tel, text);
+ *         }
+ *         else
+ *         {
+ *             LE_INFO(" I support only text messages !");
+ *         }
  *     }
  * }
  *
@@ -232,6 +239,132 @@
  *  stored If they have not created a sms list too. Sms List creation locks and
  *   delays sms deletion from storage until all references have been deleted.
  *
+ * @section le_sms_ops_broadcast SMS Cell Broadcast
+ *
+ * The Cell Broadcast service permits a number of unacknowledged general messages to be broadcast
+ * to all receivers within a particular region. Cell Broadcast messages are broadcast to defined
+ * geographical areas known as cell broadcast areas. These areas may comprise of one or more cells,
+ * or may comprise the entire PLMN.
+ *
+ * GSM or UMTS SMS cell broadcast service can be activated or deactivated with
+ * le_sms_ActivateCellBroadcast() and le_sms_DeactivateCellBroadcast() APIs.
+ *
+ * CDMA cell broadcast service can be activated or deactivated with
+ * le_sms_ActivateCdmaCellBroadcast() and le_sms_DeactivateCdmaCellBroadcast() APIs.
+ *
+ * Cell broadcast message receptions are notify by the SMS handler like a SMS message reception,
+ * but there are neither stored in SIM nor in the modem. So le_sms_DeleteFromStorage()
+ * can't be used but the message reference shall be delete with le_sms_Delete().
+ *
+ * - le_sms_GetFormat() - determine if it is a binary or a text message.
+ * - le_sms_GetUserdataLen() - get the message content (text or binary) length.
+ * - le_sms_GetPDULen() - get the PDU message received.
+ * - le_sms_GetText() - get the message text.
+ * - le_sms_GetBinary() - get the message binary content.
+ * - le_sms_GetPDU() - get the message PDU data received length.
+ * - le_sms_GetCellBroadcastId() - get the message identifier received (3GPP 23.41).
+ * - le_sms_GetCellBroadcastSerialNumber() get the message Serial Number received (3GPP 23.41).
+ *
+ * @note - Format returned by le_sms_GetFormat is never LE_SMS_FORMAT_PDU.
+ * @note - 16 bit UCS2 format is not supported
+ *
+ * @b Serial @b Number
+ *
+ * Cell Broadcast Serial Number parameter is a 16-bit integer which identifies a particular
+ * CBS message from the source and type indicated by the Message Identifier and is altered every
+ * time the CBS message with a given Message Identifier is changed.
+ *
+ * The two bytes of the Serial Number field are divided into a 2-bit Geographical Scope (GS)
+ * indicator, a 10-bit Message Code and a 4-bit Update Number as shown below:
+ *
+ * - GS code (bit 14 and 15): The Geographical Scope (GS) indicates the geographical area over
+ * which the Message Code is unique, and the display mode.
+ *
+ * - Message Code (bit 4 to 13) : The Message Code differentiates between CBS messages from
+ * the same source and type (i.e. with the same Message Identifier). Message Codes are for
+ * allocation by PLMN operators. The Message Code identifies different message themes.
+ * For example, let the value for the Message Identifier be "Automotive Association" (= source),
+ * "Traffic Reports" (= type). Then "Crash on A1 J5" could be one value for the message code,
+ * "Cow on A32 J4" could be another, and "Slow vehicle on M3 J3" yet another.
+ *
+ * - Update Number (bit 0 to 3) : The Update Number indicates a change of the message content of
+ * the same CBS message, i.e. the CBS message with the same Message Identifier, Geographical
+ * Scope, and Message Code.
+ *
+ * Serial Number fields meaning are defined in the 3GPP 23.041 (9.4.1.2.1 Serial Number).
+ *
+ * @b Message @b Identifier
+ *
+ * Message Identifier parameter identifies the source and type of the CBS message. For example,
+ * "Automotive Association" (= source), "Traffic Reports" (= type) could correspond to one value.
+ * A number of CBS messages may originate from the same source and/or be of the same type.
+ * These will be distinguished by the Serial Number.
+ *
+ * Message identifier meaning ranges are defined in the 3GPP 23.041 (9.4.1.2.2 Message Identifier).
+ *
+ * @code
+ *
+ * [...]
+ *
+ * static void myMsgHandler
+ * (
+ *     le_sms_MsgRef_t msgRef,
+ *     void* contextPtr
+ * )
+ * {
+ *     char text[LE_SMS_TEXT_MAX_BYTES];
+ *     uin8_t binary[LE_SMS_BINARY_MAX_BYTES];
+ *     uint16_t messageId;
+ *
+ *     if (le_sms_GetType(msgRef) == LE_SMS_TYPE_BROADCAST_RX)
+ *     {
+ *         if (le_sms_GetFormat(msgRef) == LE_SMS_FORMAT_TEXT)
+ *         {
+ *             // Get the message text
+ *             le_sms_GetText(msgRef, text, LE_SMS_TEXT_MAX_BYTES);
+ *         }
+ *         else if (le_sms_GetFormat(msgRef) == LE_SMS_FORMAT_BINARY)
+ *         {
+ *             // Get the message binary
+ *             le_sms_GetBinary(msgRef, binary, LE_SMS_BINARY_MAX_BYTES);
+ *         }
+ *
+ *         // Get the message identifier to identify the message origin
+ *         le_sms_GetCellBroadcastId(msgRef,&messageId);
+ *
+ *         // Delete the message
+ *         le_sms_Delete(msgRef);
+ *     }
+ *     [...]
+ * }
+ *
+ *
+ * [...]
+ * // In the main function:
+ *
+ * le_sms_RxMessageHandlerRef_t HdlrRef;
+ *
+ * // Add an handler function to handle message reception
+ * HdlrRef=le_sms_AddRxMessageHandler(myMsgHandler);
+ *
+ * [...]
+ *
+ * // Remove Handler entry
+ * le_sms_RemoveRxMessageHandler(HdlrRef);
+ *
+ * [...]
+ *
+ * @endcode
+ *
+ * @section le_sms_ops_broadcast_configuration SMS Cell Broadcast configuration
+ *
+ * GSM or UMTS Cell broadcast Message identifiers range can be added or removed with
+ *  le_sms_AddCellBroadcastIds() and le_sms_RemoveCellBroadcastIds() APIs. All Message identifiers
+ *  can be removed with le_sms_ClearCellBroadcastIds() API.
+ *
+ * CDMA Cell broadcast Service categories can be added or removed with
+ *  le_sms_AddCdmaCellBroadcastServices() and le_sms_RemoveCdmaCellBroadcastServices() APIs. All
+ * Service categories can be removed with le_sms_ClearCdmaCellBroadcastServices() API.
  *
  * @section le_sms_ops_configuration SMS configuration
  *
@@ -363,20 +496,96 @@ ENUM Format
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Message Type.
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM Type
+{
+    TYPE_RX,                ///< SMS mobile terminated message.
+    TYPE_TX,                ///< SMS mobile originated message.
+    TYPE_BROADCAST_RX       ///< SMS Cell Broadcast message.
+};
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Message Status.
  */
 //--------------------------------------------------------------------------------------------------
 ENUM Status
 {
-    RX_READ,        ///< Message present in the message storage has been read.
-    RX_UNREAD,      ///< Message present in the message storage has not been read.
-    STORED_SENT,    ///< Message saved in the message storage has been sent.
-    STORED_UNSENT,  ///< Message saved in the message storage has not been sent.
-    SENT,           ///< Message has been sent.
-    SENDING,        ///< Message has been in the sending pool.
-    UNSENT,         ///< Message has not been sent.
-    SENDING_FAILED, ///< Message sending has Failed.
-    STATUS_UNKNOWN  ///< Unknown message status.
+    RX_READ,         ///< Message present in the message storage has been read.
+    RX_UNREAD,       ///< Message present in the message storage has not been read.
+    STORED_SENT,     ///< Message saved in the message storage has been sent.
+    STORED_UNSENT,   ///< Message saved in the message storage has not been sent.
+    SENT,            ///< Message has been sent.
+    SENDING,         ///< Message has been in the sending pool.
+    UNSENT,          ///< Message has not been sent.
+    SENDING_FAILED,  ///< Message sending has Failed.
+    SENDING_TIMEOUT, ///< Message sending has Failed due to timeout.
+    STATUS_UNKNOWN   ///< Unknown message status.
+};
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * CDMA Cell broadcast message languages.
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM Languages
+{
+    LANGUAGE_UNKNOWN,    ///< Unknow or Unspecified language.
+    LANGUAGE_ENGLISH,    ///< English language.
+    LANGUAGE_FRENCH,     ///< French language.
+    LANGUAGE_SPANISH,    ///< Spanish language.
+    LANGUAGE_JAPANESE,   ///< Japanese language.
+    LANGUAGE_KOREAN,     ///< Korean language.
+    LANGUAGE_CHINESE,    ///< Chinese language.
+    LANGUAGE_HEBREW,     ///< Hebrew language.
+    LANGUAGE_MAX
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * CDMA Cell broadcast Service Categories.
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM CdmaServiceCat
+{
+    CDMA_SVC_CAT_UNKNOWN,                    ///< Unknown or Unspecified.
+    CDMA_SVC_CAT_EMERGENCY_BROADCAST,        ///< Emergency Broadcast.
+    CDMA_SVC_CAT_ADMINISTRATIVE,             ///< Administrative.
+    CDMA_SVC_CAT_MAINTENANCE,                ///< Maintenance.
+    CDMA_SVC_CAT_GENERAL_NEWS_LOCAL,         ///< General News Local.
+    CDMA_SVC_CAT_GENERAL_NEWS_REGIONAL,      ///< General News Regional.
+    CDMA_SVC_CAT_GENERAL_NEWS_NATIONAL,      ///< General News National.
+    CDMA_SVC_CAT_GENERAL_NEWS_INTERNATIONAL, ///< General News International.
+    CDMA_SVC_CAT_BUSINESS_NEWS_LOCAL,        ///< Business News Local.
+    CDMA_SVC_CAT_BUSINESS_NEWS_REGIONAL,     ///< Business News Regional.
+    CDMA_SVC_CAT_BUSINESS_NEWS_NATIONAL,     ///< Business News National.
+    CDMA_SVC_CAT_BUSINESS_NEWS_INTERNATIONAL,///< Business News International.
+    CDMA_SVC_CAT_SPORTS_NEWS_LOCAL,          ///< Sports News Local.
+    CDMA_SVC_CAT_SPORTS_NEWS_REGIONAL,       ///< Sports News Regional.
+    CDMA_SVC_CAT_SPORTS_NEWS_NATIONAL,       ///< Sports News National.
+    CDMA_SVC_CAT_SPORTS_NEWS_INTERNATIONAL,  ///< Sports News International.
+    CDMA_SVC_CAT_ENTERTAINMENT_NEWS_LOCAL,   ///< Entertainment News Local.
+    CDMA_SVC_CAT_ENTERTAINMENT_NEWS_REGIONAL,     ///< Entertainment News Regional.
+    CDMA_SVC_CAT_ENTERTAINMENT_NEWS_NATIONAL,     ///< Entertainment News National.
+    CDMA_SVC_CAT_ENTERTAINMENT_NEWS_INTERNATIONAL,///< Entertainment News International.
+    CDMA_SVC_CAT_LOCAL_WEATHER,              ///< Local weather.
+    CDMA_SVC_CAT_TRAFFIC_REPORTS,            ///< Area Traffic Reports.
+    CDMA_SVC_CAT_LOCAL_FLIGHT_SCHEDULES,     ///< Local Airplane Flight Schedules.
+    CDMA_SVC_CAT_RESTAURANTS,                ///< Restaurants.
+    CDMA_SVC_CAT_LODGINGS,                   ///< Lodgings.
+    CDMA_SVC_CAT_RETAIL_DIRECTORY,           ///< Retail Directory.
+    CDMA_SVC_CAT_ADVERTISEMENTS,             ///< Advertisements.
+    CDMA_SVC_CAT_STOCK_QUOTES,               ///< Stock Quotes.
+    CDMA_SVC_CAT_EMPLOYMENT_OPPORTUNITIES,   ///< Employment Opportunities.
+    CDMA_SVC_CAT_MEDICAL,                    ///< Medical/Health/Hospitals.
+    CDMA_SVC_CAT_TECHNOLOGY_NEWS,            ///< Technology News.
+    CDMA_SVC_CAT_MULTI_CAT,                  ///< Multicategory.
+    CDMA_SVC_CAT_CATPT,                      ///< Card Application Toolkit Protocol Teleservice.
+    CDMA_SVC_CAT_MAX
 };
 
 //--------------------------------------------------------------------------------------------------
@@ -588,6 +797,27 @@ FUNCTION Msg Create
 (
 );
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the timeout to send a SMS Message.
+ *
+ * @return
+ * - LE_FAULT         Message is not in UNSENT state or is Read-Only.
+ * - LE_OK            Function succeeded.
+ *
+ * @note
+ *      On failure, the process exits, so you don't have to worry about checking the returned
+ *      reference for validity.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetTimeout
+(
+    Msg     msgRef,      ///< Reference to the message object.
+    uint32  timeout IN   ///< Timeout in seconds.
+);
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Set the Telephone destination number.
@@ -685,6 +915,7 @@ FUNCTION le_result_t SetPDU
  * @return LE_FORMAT_ERROR  Message content is invalid.
  * @return LE_FAULT         Function failed to send the message.
  * @return LE_OK            Function succeeded.
+ * @return LE_TIMEOUT       Timeout before the complete sending.
  *
  * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
  *       function will not return.
@@ -693,6 +924,28 @@ FUNCTION le_result_t SetPDU
 FUNCTION le_result_t Send
 (
     Msg msgRef ///< Reference to the message object.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Send an asynchronous SMS message.
+ *
+ * Verifies first if the parameters are valid, then it checks the modem state can support
+ * message sending.
+ *
+ * @return LE_FORMAT_ERROR  Message content is invalid.
+ * @return LE_FAULT         Function failed to send the message.
+ * @return LE_OK            Function succeeded.
+ * @return LE_TIMEOUT       Timeout before the complete sending.
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SendAsync
+(
+    Msg msgRef IN,                         ///< Reference to the message object.
+    handler  CallbackResult                ///< CallBack for sending result.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -776,8 +1029,8 @@ FUNCTION Msg SendText
 //--------------------------------------------------------------------------------------------------
 FUNCTION Msg SendPdu
 (
-    uint8    pdu[PDU_MAX_BYTES] IN,                    ///< PDU message.
-    handler  CallbackResult                            ///< CallBack for sending result.
+    uint8    pdu[PDU_MAX_BYTES] IN,                   ///< PDU message.
+    handler  CallbackResult                           ///< CallBack for sending result.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -814,6 +1067,59 @@ FUNCTION le_sms_Format_t GetFormat
 (
     Msg msgRef ///< Reference to the message object.
 );
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the message type.
+ *
+ * @return Message type.
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION Type GetType
+(
+    Msg msgRef ///< Reference to the message object.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Cell Broadcast Message Identifier.
+ *
+ * @return
+ * - LE_FAULT       Message is not a cell broadcast type.
+ * - LE_OK          Function succeeded.
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetCellBroadcastId
+(
+    Msg msgRef IN,          ///< Reference to the message object.
+    uint16_t messageId OUT  ///< Cell Broadcast Message Identifier.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Cell Broadcast Message Serial Number.
+ *
+ * @return
+ * - LE_FAULT       Message is not a cell broadcast type.
+ * - LE_OK          Function succeeded.
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetCellBroadcastSerialNumber
+(
+    Msg msgRef IN,             ///< Reference to the message object.
+    uint16_t serialNumber OUT  ///< Cell Broadcast Serial Number.
+);
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -859,6 +1165,9 @@ FUNCTION le_result_t GetTimeStamp
     string  timestamp[TIMESTAMP_MAX_LEN] OUT ///< Message time stamp (in text mode).
                                              ///<      string format: "yy/MM/dd,hh:mm:ss+/-zz"
                                              ///<      (Year/Month/Day,Hour:Min:Seconds+/-TimeZone)
+                                             /// The time zone indicates the difference, expressed
+                                             /// in quarters of an hours between the local time
+                                             ///  and GMT.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -938,7 +1247,7 @@ FUNCTION le_result_t GetBinary
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetPDU
 (
-    Msg   msgRef,               ///< Reference to the message object.
+    Msg   msgRef,                 ///< Reference to the message object.
     uint8 pdu[PDU_MAX_BYTES] OUT  ///< PDU message.
 );
 
@@ -1117,4 +1426,149 @@ FUNCTION le_result_t GetSmsCenterAddress
 FUNCTION le_result_t SetSmsCenterAddress
 (
     string          tel[le_mdmDefs.PHONE_NUM_MAX_LEN] IN    ///< SMS center address number string.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Activate Cell Broadcast message notification
+ *
+ * @return
+ *  - LE_FAULT         Function failed.
+ *  - LE_OK            Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t ActivateCellBroadcast
+(
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Deactivate Cell Broadcast message notification
+ *
+ * @return
+ *  - LE_FAULT         Function failed.
+ *  - LE_OK            Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t DeactivateCellBroadcast
+(
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Activate CDMA Cell Broadcast message notification
+ *
+ * @return
+ *  - LE_FAULT         Function failed.
+ *  - LE_OK            Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t ActivateCdmaCellBroadcast
+(
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Deactivate CDMA Cell Broadcast message notification
+ *
+ * @return
+ *  - LE_FAULT         Function failed.
+ *  - LE_OK            Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t DeactivateCdmaCellBroadcast
+(
+);
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add Cell Broadcast message Identifiers range.
+ *
+ * @return
+ *  - LE_FAULT         Function failed.
+ *  - LE_OK            Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t AddCellBroadcastIds
+(
+   uint16 fromId IN,   ///< Starting point of the range of cell broadcast message identifier.
+   uint16 toId IN      ///< Ending point of the range of cell broadcast message identifier.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Remove Cell Broadcast message Identifiers range.
+ *
+ * @return
+ *  - LE_FAULT         Function failed.
+ *  - LE_OK            Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t RemoveCellBroadcastIds
+(
+   uint16 fromId IN,   ///< Starting point of the range of cell broadcast message identifier.
+   uint16 toId IN      ///< Ending point of the range of cell broadcast message identifier.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Clear Cell Broadcast message Identifiers.
+ *
+ * @return
+ *  - LE_FAULT         Function failed.
+ *  - LE_OK            Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t ClearCellBroadcastIds
+(
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add CDMA Cell Broadcast category services.
+ *
+ * @return
+ *  - LE_FAULT         Function failed.
+ *  - LE_BAD_PARAMETER Parameter is invalid.
+ *  - LE_OK            Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t AddCdmaCellBroadcastServices
+(
+   CdmaServiceCat serviceCat IN,    ///< Service category assignment. Reference to 3GPP2 C.R1001-D
+                                    ///< v1.0 Section 9.3.1 Standard Service Category Assignments.
+   Languages language IN            ///< Language Indicator. Reference to
+                                    ///< 3GPP2 C.R1001-D v1.0 Section 9.2.1 Language Indicator
+                                    ///< Value Assignments
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Remove CDMA Cell Broadcast category services.
+ *
+ * @return
+ *  - LE_FAULT         Function failed.
+ *  - LE_BAD_PARAMETER Parameter is invalid.
+ *  - LE_OK            Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t RemoveCdmaCellBroadcastServices
+(
+   CdmaServiceCat serviceCat IN,    ///< Service category assignment. Reference to 3GPP2 C.R1001-D 
+                                    ///< v1.0 Section 9.3.1 Standard Service Category Assignments.
+   Languages language IN            ///< Language Indicator. Reference to
+                                    ///< 3GPP2 C.R1001-D v1.0 Section 9.2.1 Language Indicator
+                                    ///< Value Assignments
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Clear CDMA Cell Broadcast category services.
+ *
+ * @return
+ *  - LE_FAULT         Function failed.
+ *  - LE_OK            Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t ClearCdmaCellBroadcastServices
+(
 );

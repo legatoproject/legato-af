@@ -30,7 +30,8 @@
  * This process is the same when the SMS message storage is the device's storage area (ME - Mobile
  * Equipment).
  *
- * The message box is a persistent storage area.
+ * The message box is a persistent storage area. All files are saved into the file system in the
+ * directory /mnt/flash/smsInbox.
  *
  * The creation of SMS inboxes is done based on the message box configuration settings
  * (cf. @subpage le_smsInbox_configdb section). This way, the message box contents will be kept up
@@ -52,6 +53,9 @@
       clientExe.clientComponent.le_smsInbox1 -> smsInboxService.le_smsInbox1
    }
    @endverbatim
+ *
+ * @note By default, smsInboxService starts manually. To start it automatically, the user can remove
+ * the option from the smsInboxService.adef file.
  *
  * A second message box (named le_smsInbox2) can be used by another application. These 2 message
  * boxes are used independently. All functions of this second message box are prefixed by
@@ -82,7 +86,6 @@
  * @note le_smsInbox1_RemoveRxMessageHandler() function does not delete the Message Object.
  *       The caller has to delete it with le_smsInbox1_DeleteMsg().
  *
- *
  * Use the following APIs to retrieve message information and data from the message object:
  * - le_smsInbox1_GetImsi() - get the IMSI of the message receiver SIM if it applies.
  * - le_smsInbox1_GetFormat() - determine if it is a binary or a text message.
@@ -93,13 +96,17 @@
  * - le_smsInbox1_GetBinary() - get the message binary content.
  * - le_smsInbox1_GetPdu() - get the PDU message content.
  *
+ * @note For incoming SMS Inbox, format returned by le_smsInbox1_GetFormat() is never LE_SMSINBOX1_FORMAT_PDU.
  *
  * @section le_smsInbox_listing Getting received messages
  *
  * Call le_smsInbox1_GetFirst() to get the first message from the inbox folder, and then call
  * le_smsInbox1_GetNext() to get the next message.
  *
- * Call le_smsInbox1_IsUnread() to know whether the message has been read or not.
+ * Call le_smsInbox1_IsUnread() to know whether the message has been read or not. The message is
+ * marked as "read" when one of those APIs is called: le_smsInbox1_GetImsi(),
+ * le_smsInbox1_GetFormat(), le_smsInbox1_GetSenderTel(), le_smsInbox1_GetTimeStamp(),
+ * le_smsInbox1_GetMsgLen(), le_smsInbox1_GetText(), le_smsInbox1_GetBinary(), le_smsInbox1_GetPdu().
  *
  * To finish, you can also modify the received status of a message with le_smsInbox1_MarkRead() and
  * le_smsInbox1_MarkUnread().
@@ -134,12 +141,12 @@
            apps/
                appA<uint> = <# of messages>
                appB<uint> = <# of messages>
-           users/
-               root<uint> = <# of messages>
    @endverbatim
  *
- * Each app/user have its own inbox, containing its own list of messages. The maximum number of
- * messages is specified for each inbox.
+ * Each app have its own inbox, containing its own list of messages. The maximum number of
+ * messages is specified for each inbox. If the message box is not configured, a default number
+ * of 10 messages is applied (only for message boxes configured in le_smsInbox_mboxName[]
+ * area).
  *
  * The application name is given by the API name provided into the Components.cdef, both must be the
  * same.
