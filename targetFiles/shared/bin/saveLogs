@@ -13,10 +13,10 @@ PROC_NAME=$3     # The name of the process we're backing up logs for.
 # Location of the application's home directory.  Either sandboxed or not.
 if [ "$IS_SANDBOXED" = "SANDBOXED" ]
 then
-    APP_HOME="/tmp/legato/sandboxes/$APP_NAME/home/app$APP_NAME"
+    APP_HOME="/tmp/legato/sandboxes/$APP_NAME"
 elif [ "$IS_SANDBOXED" = "NOTSANDBOXED" ]
 then
-    APP_HOME="/home/app$APP_NAME"
+    APP_HOME="/opt/legato/apps/$APP_NAME"
 else
     echo "Bad sandbox flag." 1>&2
     exit 1
@@ -34,8 +34,14 @@ then
     LOG_HOME=$FLASH_LOC
     mkdir -p "$LOG_HOME"
 
-    rm -rf "$LOG_HOME"
-    cp -r "$RAM_LOC" "$LOG_HOME"
+    # Remove the old logs in the flash-based location.
+    rm -rf "$LOG_HOME/*"
+
+    # Backup RAM-based logs to the flash-based location, only if they exist.
+    if [ -d "$RAM_LOC" ]
+    then
+        cp -r "$RAM_LOC" "$LOG_HOME"
+    fi
 else
     LOG_HOME=$RAM_LOC
     mkdir -p "$LOG_HOME"

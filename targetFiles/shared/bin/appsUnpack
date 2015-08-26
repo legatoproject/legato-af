@@ -20,15 +20,15 @@ PrintUsage()
 # Check if they are asking for help.
 if [ "$1" = "-h" -o "$1" = "help" -o "$1" = "--help" ]
 then
-    PrintUsage
+    PrintUsage 1>&2
     exit 0
 fi
 
 # Check the parameters.
 if [ "$APP_NAME" = "" ]
 then
-    echo "****Error: Must provide an app name"
-    PrintUsage
+    echo "****Error: Must provide an app name" 1>&2
+    PrintUsage 1>&2
     exit 1
 fi
 
@@ -45,7 +45,7 @@ then
 fi
 
 
-echo "Unpacking app '$1'..."
+echo "Unpacking app '$1'..." 1>&2
 
 (
     # Create the directory to unpack.
@@ -65,7 +65,7 @@ echo "Unpacking app '$1'..."
 if [ $? -ne 0 ]
 then
     rm -rf "$APP_UNPACK_DIR"
-    echo "Failed to unpack the application."
+    echo "***ERROR: Failed to unpack the application." 1>&2
     exit 1
 fi
 
@@ -79,15 +79,20 @@ fi
     ) &&
     ( find "$APP_UNPACK_DIR" -type d | xargs chmod a+x-ws ) &&
     ( find "$APP_UNPACK_DIR" ! -type d | xargs chmod a-xws ) &&
-    ( chmod -R a+x "$APP_UNPACK_DIR/bin" )
+    (
+        if [ -d "$APP_UNPACK_DIR/bin" ]
+        then
+            chmod -R a+x "$APP_UNPACK_DIR/bin"
+        fi
+    )
 )
 
 if [ $? -ne 0 ]
 then
     rm -rf "$APP_UNPACK_DIR"
-    echo "Failed to fix up the permission"
+    echo "***ERROR: Failed to fix up the permission" 1>&2
     exit 1
 else
-    echo "DONE"
+    echo "DONE" 1>&2
     exit 0
 fi

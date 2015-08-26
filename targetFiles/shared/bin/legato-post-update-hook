@@ -1,0 +1,8 @@
+#!/bin/sh
+
+# This script will be called after a framework update
+# If you have any specific housekeeping you need to do after a new legato framework
+# is installed do it here.
+# The new Legato is running at this time so you can make use of Legato tools.
+
+echo "`basename $0` called."

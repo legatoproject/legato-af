@@ -195,7 +195,12 @@ InstallApp()
         ) &&
         ( find "$APPS_ROOT/$1" -type d | xargs chmod a+x-ws ) &&
         ( find "$APPS_ROOT/$1" ! -type d | xargs chmod a-xws ) &&
-        ( chmod -R a+x "$APPS_ROOT/$1/bin" ) &&
+        (
+            if [ -d "$APPS_ROOT/$1/bin" ]
+            then
+                chmod -R a+x "$APPS_ROOT/$1/bin"
+            fi
+        ) &&
 
         # Install the application's configuration into the root user's configuration tree.
         ( appCfgInstall "$1" ) &&

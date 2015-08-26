@@ -83,7 +83,7 @@ StartApp()
 {
     while [ $# -ge 1 ]
     do
-        echo "Starting app '$1'..."
+        echo "Starting app '$1'..." 1>&2
 
         appCtrl "start" "$1"
 
@@ -91,7 +91,7 @@ StartApp()
         then
             exitCode=1
         else
-            echo "DONE"
+            echo "DONE" 1>&2
         fi
 
         shift
@@ -104,7 +104,7 @@ StopApp()
 {
     while [ $# -ge 1 ]
     do
-        echo "Stopping app '$1'..."
+        echo "Stopping app '$1'..." 1>&2
 
         appCtrl "stop" "$1"
 
@@ -112,7 +112,7 @@ StopApp()
         then
             exitCode=1
         else
-            echo "DONE"
+            echo "DONE" 1>&2
         fi
 
         shift
@@ -130,13 +130,13 @@ InstallApp()
     # Check whether any pre-install script exists. If yes pass it to install-hook.
     if [ -f "$preInstallScriptPath" ]
     then
-        echo "Running pre-install script"
+        echo "Running pre-install script" 1>&2
 
         install-hook "$preInstallScriptPath"
 
         if [ $? -ne 0 ]
         then
-            echo "***Error: PreInstall script failed"
+            echo "***Error: PreInstall script failed" 1>&2
             return 1
         fi
     fi
@@ -160,7 +160,7 @@ InstallApp()
     if [ $? -ne 0 ]
     then
         rm -rf "$APPS_ROOT/$appName"
-        echo "FAILED"
+        echo "FAILED" 1>&2
         return 1
     else
         # Check whether any post-install script exists. If yes pass it to install-hook.
@@ -168,18 +168,18 @@ InstallApp()
 
         if [ -f "$postInstallScriptPath" ]
         then
-            echo "Running post-install script"
+            echo "Running post-install script" 1>&2
 
             install-hook "$postInstallScriptPath"
 
             if [ $? -ne 0 ]
             then
                 rm -rf "$APPS_ROOT/$appName"
-                echo "***Error: PostInstall script failed"
+                echo "***Error: PostInstall script failed" 1>&2
                 return 1
             fi
         fi
-        echo "DONE"
+        echo "DONE" 1>&2
     fi
 }
 
@@ -189,14 +189,14 @@ RemoveApp()
 {
     while [ $# -ge 1 ]
     do
-        echo "Removing app '$1'..."
+        echo "Removing app '$1'..." 1>&2
 
         rm -rf "$APPS_ROOT/$1"
 
         if [ $? -ne 0 ]
         then
             exitCode=1
-            echo "Couldn't remove installation directory."
+            echo "***Error: Couldn't remove installation directory." 1>&2
         fi
 
         # In case an earlier removal process was interrupted or someone manually deleted
@@ -206,14 +206,14 @@ RemoveApp()
         if [ $? -ne 0 ]
         then
             exitCode=1
-            echo "Couldn't remove configuration data."
+            echo "***Error: Couldn't remove configuration data." 1>&2
         fi
 
         appUserRemove "$1"
         if [ $? -ne 0 ]
         then
             exitCode=1
-            echo "Couldn't remove user account."
+            echo "***Error: Couldn't remove user account." 1>&2
         fi
 
 
@@ -222,7 +222,7 @@ RemoveApp()
         if [ $? -ne 0 ]
         then
             exitCode=1
-            echo "Couldn't update Service Directory's IPC bindings."
+            echo "***Error: Couldn't update Service Directory's IPC bindings." 1>&2
         fi
 
         shift
@@ -233,7 +233,7 @@ RemoveApp()
 $PS | grep supervisor | grep -v grep > /dev/null
 if [ $? -ne 0 ]
 then
-    echo "The legato framework is not running. Please start it before proceeding."
+    echo "***Error: The legato framework is not running. Please start it before proceeding." 1>&2
     exit 1
 fi
 
@@ -263,7 +263,7 @@ CheckAppNameAvail()
 {
     if [ "$APP_NAME" = "" ]
     then
-        echo "Missing application name."
+        echo "***Error: Missing application name." 1>&2
         exit 1
     fi
 }
@@ -287,7 +287,7 @@ BackupApp()
 
     if [ $? -ne 0 ]
     then
-        echo "FAILED to create back-up of app $appName"
+        echo "***Error: FAILED to create back-up of app $appName" 1>&2
     fi
 }
 
@@ -308,7 +308,7 @@ RestoreBackupApp()
 
     if [ -d "$APPS_BACKUP_ROOT/$appName" ]
     then
-        echo "Restoring original version of app."
+        echo "Restoring original version of app." 1>&2
 
         # Delete what's in the app directory first.
         ( rm -rf $APPS_ROOT/$appName > /dev/null 2>&1 ) &&
@@ -335,18 +335,33 @@ RestoreBackupApp()
 
     if [ $? -ne 0 ]
     then
-        echo "FAILED to restore original version of app $appName"
+        echo "***Error: FAILED to restore original version of app $appName" 1>&2
         return 1
     else
-        echo "DONE"
+        echo "DONE" 1>&2
     fi
+}
+
+# Check to see if the given application is marked as manual start or auto start.
+# Return 1 if manual, 0 if auto start.
+IsAppAutoStart()
+{
+    appName=$1
+    isManualStart=`config get "apps/$appName/startManual"`
+
+    if [ "$isManualStart" = "true" ]
+    then
+        return 1
+    fi
+
+    return 0
 }
 
 
 # Check if they are asking for help.
 if [ "$1" = "-h" -o "$1" = "help" -o "$1" = "--help" ]
 then
-    PrintUsage
+    PrintUsage 1>&2
     exit 0
 fi
 
@@ -369,7 +384,7 @@ then
     APP_LIST=`appCtrl list`
     if [ "$APP_LIST" = "" ]
     then
-        echo "There are no applications currently installed."
+        echo "There are no applications currently installed." 1>&2
         exit 0
     fi
 else
@@ -389,21 +404,21 @@ install)
     # Only one, specific application name allowed.
     if [ "$APP_NAME" = "*" ]
     then
-        echo "***ERROR: One specific application name must be provided for install."
-        PrintUsage
+        echo "***ERROR: One specific application name must be provided for install." 1>&2
+        PrintUsage 1>&2
         exit 1
     fi
 
     if [ "$UNPACKED_APP_DIR_PATH" = "" ]
     then
-        echo "***ERROR: Missing app package path."
-        PrintUsage
+        echo "***ERROR: Missing app package path." 1>&2
+        PrintUsage 1>&2
         exit 1
     fi
 
     if ! [ -d "$UNPACKED_APP_DIR_PATH" ]
     then
-        echo "***ERROR: Provided wrong app package path: $UNPACKED_APP_DIR_PATH."
+        echo "***ERROR: Provided wrong app package path: $UNPACKED_APP_DIR_PATH." 1>&2
         exit 1
     fi
 
@@ -431,14 +446,24 @@ install)
 
         if [ $installStatus -eq 0 ]
         then
+
+            IsAppAutoStart $APP_NAME
+            isAuto=$?
+
+            if [ $isAuto -eq 0 ]
+            then
+                StartApp $APP_NAME
+            fi
+
             RemoveBackupApp $APP_NAME
+
         else
             RestoreBackupApp $APP_NAME
         fi
 
         exit $installStatus
     else
-        echo "Install $APP_NAME failed. Unknown error."
+        echo "***Error: Install $APP_NAME failed. Unknown error." 1>&2
         # in the future we may use different return codes for different errors
         exitCode=1
     fi
@@ -454,6 +479,8 @@ remove)
     do
         GetAppStatus $APP_NAME
 
+        echo "App '$APP_NAME' is $appStatus" 1>&2
+
         if [[ $appStatus == "running" ]]
         then
             StopApp $APP_NAME
@@ -465,10 +492,10 @@ remove)
             RemoveApp $APP_NAME
         elif [[ $appStatus == "not_installed" ]]
         then
-            echo "$APP_NAME is not installed. Cannot remove"
+            echo "***Error: $APP_NAME is not installed. Cannot remove" 1>&2
             exitCode=1
         else
-            echo "Remove $APP_NAME failed. Unknown error."
+            echo "***Error: Remove $APP_NAME failed. Unknown error." 1>&2
             # in the future we may use different return codes for different errors
             exitCode=1
         fi
@@ -481,24 +508,22 @@ restore)
     # Only one, specific application name allowed.
     if [ "$APP_NAME" = "*" ]
     then
-        echo "***ERROR: One specific application name must be provided for install."
-        PrintUsage
+        echo "***ERROR: One specific application name must be provided for restoring." 1>&2
+        PrintUsage 1>&2
         exit 1
     fi
 
-    echo "Restoring APP: $APP_NAME"
+    echo "Restoring APP: $APP_NAME" 1>&2
     # Now call the restoring the app from backup
     RestoreBackupApp $APP_NAME
     exitCode=$?
     ;;
 
 *)
-    PrintUsage
+    PrintUsage 1>&2
     exit 1
     ;;
 
 esac
 
 exit $exitCode
-
-

@@ -1,8 +1,57 @@
 #!/bin/sh
 
-# Starts/stops/restarts the Legato framework.
+# Starts/stops/restarts and installs the Legato framework.
 
-SUPERVISOR_CONFIG_ROOT=/tmp/LegatoConfigTree
+# There are three potential copies of this script that may exist.
+# If we are starting from init.d/startlegato.sh we are a copy found on mtd3
+# If we are running because of instlegato we are a copy named /tmp/legatoInstall
+# In either of these cases we can copy over or delete the mtd4 version because we are not that one.
+# The version on mtd4 is called only when starting legato via fg_10_StartLegato and all
+# updating will be complete by that time.
+
+# The cases we need to handle are:
+# a) There is built in but no installed (mtd3 & !mtd4)
+# b) Built in is "newer" than installed (mtd3 > mtd4)
+# c) Built in is "older" than or same as installed (mtd3 <= mtd4)
+# d) Instlegato is being used and there is no installed (instlegato & !mtd4)
+# e) Instlegato is being used and is replacing installed (instlegato & mtd4)
+
+# a, b & c are handled in BootCheck/PostBootCheck
+# d & e are handled under the instlegato case, obviously.
+
+# The terms "newer" and "older" above don't compare the actual date or version of the legato
+# installs but refers to which was last written to the installed partition.
+
+# If INSTALLED_BUILTIN_VERSION exists and INSTALLED_BUILTIN_VERSION differs from BUILTIN_VERSION
+#   then mtd3 > mtd4
+# If INSTALLED_VERSION exists and INSTALLED_BUILTIN_VERSION is same as BUILTIN_VERSION
+#   then mtd3 <= mtd4
+
+# For clarity the (simplified) work required in each case is as follows but is split up in the code because
+# it has to fit into the bootcheck and postbootcheck calls in startlegato.sh and work with instlegato.
+
+# ||      a       |      b       |      c       |      d       |      e       ||
+# ||              |  uninstall   |              |              |  uninstall   ||
+# ||              | stop legato  |              |              | stop legato  ||
+# ||  copy mtd3   |  copy mtd3   |              | untar stdin  | untar stdin  ||
+# || start legato | start legato | start legato | start legato | start legato ||
+# ||   install    |   install    |              |   install    |   install    ||
+#
+
+BUILTIN_VERSION=/mnt/legato/opt/legato/version
+INSTALLED_BUILTIN_VERSION=/mnt/flash/opt/legato/builtInVersion
+INSTALLED_VERSION=/mnt/flash/opt/legato/version
+
+CACHED_LIB_SOURCE=/etc/ld.so.cache.source
+
+# !!!!!!!!! The whitelist and pre and post update hooks have to come from different places
+# depending on how we have been called. The supporting files will be found in the same place
+# as this script (whether that is on mtd3 at boot or in /tmp when called from instlegato).
+SCRIPTS_DIR=$(dirname $0)
+
+POSTBOOTCHECK=/mnt/flash/startup/postcheck
+APPINSTALLCOMPLETE=/mnt/flash/appscomplete
+
 CONFIG_DIR=/opt/legato/configTree
 APPS_ROOT=/opt/legato/apps
 SYS_PROCS_ROOT=/opt/legato
@@ -24,19 +73,17 @@ then
     PS=ps
 fi
 
-# Detect the PCONFIG file. This will disable the positioning service
+# Detect the PCONFIG file. This will disable the positioning and AVC services
 if [ -f /mnt/userrw/PCONFIG ]
 then
-    ENABLE_POS=false
-    ENABLE_OLDAV=false
+    ENABLE_PCON=true
 else
-    ENABLE_POS=true
-    ENABLE_OLDAV=true
+    ENABLE_PCON=false
 fi
 
 PrintUsage()
 {
-    echo "USAGE: `basename $0` [start|stop|restart|version|install|help|bootcheck]"
+    echo "USAGE: `basename $0` [start|stop|restart|version|help]"
 }
 
 
@@ -60,6 +107,25 @@ LegatoStatus()
     fi
 }
 
+CheckSoCache()
+{
+    # if /usr/local/lib is not found in the cache or config then
+    # ld.so.cache needs to be fixed. Delete the mark that says it's OK and call
+    # the code that rebuilds it.
+    if ! grep "/usr/local/lib" /etc/ld.so.cache >/dev/null ||
+       ! grep "/usr/local/lib" /etc/ld.so.conf >/dev/null
+    then
+        echo "WARNING: ld.so.cache out of date - updating"
+        rm -f $CACHED_LIB_SOURCE
+        if [ -f /mnt/flash/startup/fg_00_BindMount ]
+        then
+            /mnt/flash/startup/fg_00_BindMount
+        else
+            echo "Start up script missing. System in inconsistent state."
+            echo "Attempt to start legato may fail"
+        fi
+    fi
+}
 
 StartLegato()
 {
@@ -76,42 +142,31 @@ StartLegato()
         exit 0
     fi
 
-    echo "Starting Legato... "
+    # Set the supervisor start option if we are in the middle of an upgrade
+    # This will mean that all the apps will not start the first time we are run
+    # which will allow the framework and apps to be upgraded quicker
+    APPS_OPTION=""
+    if [ -f $POSTBOOTCHECK ]
+    then
+        postbootAction=$(cat $POSTBOOTCHECK)
+        if  [ $postbootAction = "update" ] 
+        then
+            APPS_OPTION="--start-apps=none"
+        fi
+    fi
+
+    echo "Starting Legato with option $APPS_OPTION"
 
     # Make sure the configTree's configuration directory exists.
     mkdir -p $CONFIG_DIR &&
 
-    # Configure the Supervisor to start the sysProcs.
-    mkdir -p $SUPERVISOR_CONFIG_ROOT &&
-    > $SUPERVISOR_CONFIG_ROOT/sysProcs
-    for procName in serviceDirectory logCtrlDaemon configTree watchdog updateDaemon
-    do
-        if [ ! -f "/usr/local/bin/$procName" ]
-        then
-            continue
-        fi
-        echo "/usr/local/bin/$procName" >> $SUPERVISOR_CONFIG_ROOT/sysProcs
-        if ! [ $? ]
-        then
-            echo "***ERROR: Failed to configure $SUPERVISOR_CONFIG_ROOT/sysProcs."
-            exit 1
-        fi
-
-        # Configure the Supervisor to use the sysProcs environment variables.
-        if [ -f "$SYS_PROCS_ROOT/$procName/envVars" ]
-        then
-            # Copy the sysProc's environment variable file into the main configuration directory.
-            mkdir "$SUPERVISOR_CONFIG_ROOT/$procName/"
-            cp "$SYS_PROCS_ROOT/$procName/envVars" "$SUPERVISOR_CONFIG_ROOT/$procName/envVars"
-        fi
-    done
-
+    CheckSoCache &&
     # Start the Supervisor (it will Daemonize itself).
     echo "Starting the supervisor..."
-    /usr/local/bin/supervisor
+    /usr/local/bin/supervisor $APPS_OPTION
 
     # NOTE: The Supervisor will automatically start all the applications after it starts
-    #       the "sysProcs".
+    #       the framework daemons.
 }
 
 
@@ -204,6 +259,7 @@ AddBindings()
     AddUserToAppBinding root le_sms modemService &&
     AddUserToAppBinding root le_temp modemService &&
     AddUserToAppBinding root le_adc modemService &&
+    AddUserToAppBinding root le_ips modemService &&
     AddUserToAppBinding root le_data dataConnectionService
 
     # fwupdate tool
@@ -273,11 +329,12 @@ UpdateStartupScripts()
 # be blank but we will try to delete anyway.
 RemoveAppUsers()
 {
+    local app
+    local appName
     for app in $(ls /mnt/flash/opt/legato/apps)
     do
         appName="app$app"
         /usr/sbin/deluser "$appName"
-        rm -rf "/home/$appName"
     done
 }
 
@@ -289,22 +346,41 @@ RemoveLegato()
     rm -rf /mnt/flash/opt/*
 }
 
+RunApps()
+{
+    # Start the bundled apps.
+    for appName in $(app list)
+    do
+        local manualStartValue=$(config get apps/$appName/startManual)
+        if ! [ "$manualStartValue" = "true" ]
+        then
+            app start $appName
+        else
+            echo app $appName is manual start. Not auto starting.
+            echo DONE
+        fi
+    done
+}
+
+
 UpdateAndRunApps()
 {
     # Get the new app list
     APP_LIST=`ls /usr/local/bin/apps`
 
-    if [ $ENABLE_POS = "false" ]
+    if [ $ENABLE_PCON = "true" ]
     then
         APP_LIST=$(echo $APP_LIST | sed 's/positioningService\.[^ ]*//')
         echo "Skipping installation of positioningService due to configuration"
+        APP_LIST=$(echo $APP_LIST | sed 's/avcService\.[^ ]*//')
+        echo "Skipping installation of avcService due to configuration"
     fi
 
-    if [ $ENABLE_OLDAV = "false" ]
-    then
-        APP_LIST=$(echo $APP_LIST | sed 's/airvantage\.[^ ]*//')
-        echo "Skipping installation of M3DA airvantage app due to configuration"
-    fi
+    # Do not install the AVC apps by default if they are not already installed
+    APP_LIST=$(echo $APP_LIST | sed 's/avappinfo\.[^ ]*//')
+    echo "Skipping installation of appinfo service - should be installed via AirVantage"
+    APP_LIST=$(echo $APP_LIST | sed 's/avsysinfo\.[^ ]*//')
+    echo "Skipping installation of sysinfo service - should be installed via AirVantage"
 
     # Install new versions of the bundled apps.
     for appFile in $APP_LIST
@@ -313,82 +389,263 @@ UpdateAndRunApps()
         cat /usr/local/bin/apps/$appFile | /usr/local/bin/app install ""$APP_NAME""
     done
 
-    # Start the bundled apps.
-    for appFile in $APP_LIST
-    do
-        APP_NAME=$(basename "$appFile" | sed "s/\.[^.]*$//") &&
-        /usr/local/bin/app start $APP_NAME
-    done
+    # Touch a file to mark that installation is complete
+    touch $APPINSTALLCOMPLETE
+
+    RunApps
 }
 
 InstallApps()
 {
     AddBindings &&
-
     UpdateAndRunApps
+
+    if [ -x $SCRIPTS_DIR/legato-post-update-hook ]
+    then
+        $SCRIPTS_DIR/legato-post-update-hook
+    fi
+}
+
+NameFoundIn()
+{
+    local needle=$1
+    local haystack="$2"
+    local name
+
+    for name in $haystack
+    do
+        if [ "$name" = "$needle" ]
+        then
+            echo "$name is whitelisted"
+            return 0
+       fi
+    done
+    return 1
+}
+
+DoFilteredUninstall()
+{
+    local installedApps=$1
+    local whitelist=$2
+    local appName
+
+    # for all apps in legato/apps not in whitelist call app remove appname
+    # This is a simple O(n^2) algo but the uninstall part will swamp this for the
+    # size of lists we will be dealing with.
+    # It would probably be a nice thing to report whitelisted apps that were not found.
+    # It would be sloppy practice to whitelist apps that aren't there but not necessarily illegal.
+    for appName in $installedApps
+    do
+        if ! NameFoundIn "$appName" "$whitelist"
+        then
+            app remove "$appName"
+        fi
+        echo $appName
+    done
+}
+
+UninstallApps()
+{
+    local whitelist=""
+
+    # By post bootcheck or regular boot legato should be running at this point.
+    # However, an instlegato may have manually shut down the supervisor.
+    if ! IsRunning supervisor
+    then
+        # If we are here then there is a currently installed framework.
+        # Furthermore we have passed through the startup scripts.
+        # When making changes to this script check that those preconditions still apply
+        StartLegato
+    fi
+    if [ -x $SCRIPTS_DIR/legato-pre-update-hook ]
+    then
+        $SCRIPTS_DIR/legato-pre-update-hook
+    fi
+
+    if [ -f $SCRIPTS_DIR/whitelist ]
+    then
+        # list of whitelisted files with comments and empty lines removed
+        whitelist=$(sed "s/#.*$//;s/^[[:space:]]*//;/^$/d" $SCRIPTS_DIR/whitelist)
+    fi
+    installedApps=$(app list)
+    DoFilteredUninstall "$installedApps" "$whitelist"
+}
+
+WriteLegatoFromFlash()
+{
+    # ld.so.cache will be invalid. Remove the mark indicating validity.
+    rm -f CACHED_LIB_SOURCE
+
+    echo "*** Initializing new Legato version ***"
+    # Copy over built in legato to /mnt/flash/
+    cp -a /mnt/legato/opt /mnt/flash/
+
+    echo -n "Installing new startup defaults..."
+    if [ -d /mnt/flash/startupDefaults ]
+    then
+        rm -fr /mnt/flash/startupDefaults
+    fi
+    cp -a /mnt/legato/mnt/flash/startupDefaults /mnt/flash/
+}
+
+WriteLegatoFromTar()
+{
+    # ld.so.cache will be invalid. Remove the mark indicating validity.
+    rm -f CACHED_LIB_SOURCE
+
+    echo "Unpacking..."
+
+    # Change to the root directory.  The tarball containing the new framework is rooted there.
+    cd / &&
+
+    # Un-tar the framework into place.
+    (
+    if ! which bsdtar > /dev/null 2>&1
+    then
+        tar x &&
+        # Old versions of firmware may have r/w rootfs and busybox tar.
+        echo "The firmware appears to be very old"
+        echo "Probably there will be features that won't work on such old firmware."
+        chmod -R go-w /usr/local &&
+        chown -R root:root /usr &&
+        chown -R root:root /opt &&
+        chown root:root /
+    else
+        bsdtar xpom -f -
+        #df /opt
+        #df /usr/local
+        #bsdtar -t -f -
+    fi
+    )
+}
+
+CheckStartupScripts()
+{
+    # This is not local and should be visible everywhere below here
+    reboot_advised=""
+
+    # Make sure the startup scripts are executable and owned by root.
+    chown -R root:root /mnt/flash/startupDefaults &&
+    chmod -R u+x /mnt/flash/startupDefaults || exit 1 # This is a very uninformative failure
+
+    if StartupScriptMissing
+    then
+        InstallStartupScripts
+        reboot_advised="yes"
+    fi
+
+    if StartupScriptOld
+    then
+        UpdateStartupScripts
+        reboot_advised="yes"
+    fi
+}
+
+# This is taken from startlegato.sh which we can't call again because we
+# may be in postbootcheck stage and we haven't marked any builtin as installed
+# if we are in case a or b. We could move the marking code to happen prior to
+# restarting legato but install isn't finished yet so it would be improperly marked
+# if we somehow got interrupted here.
+RunStartupScripts()
+{
+    # run the installed startup scripts to make sure the environment is correct for
+    # this new version of legato. Ideally a reboot would be best but some users can't
+    # handle lost connectivity (e.g. ssh). There should be an option to reboot though as
+    # there is no way to "unrun" old startup scripts to make sure we have a clean starting point.
+    STARTUP_DIR=/mnt/flash/startup
+
+    # Check our directory to see if there is anything to run
+    files=`ls $STARTUP_DIR`
+    cd $STARTUP_DIR
+
+    fgfiles=`echo $files | grep fg_`
+    bgfiles=`echo $files | grep -v fg_`
+
+    for file in $fgfiles
+    do
+      # Execute these files in the foreground
+      if [ -x $file -a -f $file -a -O $file ]
+      then
+        echo "Executing $file"
+        ./${file}
+      fi
+    done
+
+    # Now handle the background ones
+    for file in $bgfiles
+    do
+      # Execute these files in the foreground
+      if [ -x $file -a -f $file -a -O $file ]
+      then
+        echo "Executing $file in the background"
+        ./${file} &
+      fi
+    done
+    # The new Legato is now running
 }
 
 # This function is run during the boot sequence to see if a new Legato
 # version has been installed in /mnt/legato. It will then set it up
 BootCheck()
 {
-    if [ ! -f /mnt/legato/usr/local/bin/legato ]
+
+    if ! [ -f $INSTALLED_VERSION ] # no (good) version of legato is installed
     then
-        echo "No legato installed in /mnt/legato"
-    fi
-
-    if ! diff /mnt/legato/opt/legato/version /mnt/flash/opt/legato/builtInVersion >/dev/null 2>&1
-    then
-        echo "*** Initializing new Legato version ***"
-
-        echo -n "Installing new startup defaults..."
-        if [ -d /mnt/flash/startupDefaults ]
-        then
-            rm -fr /mnt/flash/startupDefaults
-        fi
-        cp -a /mnt/legato/mnt/flash/startupDefaults /mnt/flash/
-        echo "DONE"
-
 
         # remove any possible left-over or corrupted legato files in /mnt/flash
-        RemoveLegato
-        # Copy over built in legato to /mnt/flash/
-        cp -a /mnt/legato/opt /mnt/flash/
+        RemoveLegato &&
+        WriteLegatoFromFlash &&
+        CheckStartupScripts
 
-        # Make sure the startup scripts are executable and owned by root.
-        chown -R root:root /mnt/flash/startupDefaults &&
-        chmod -R u+x /mnt/flash/startupDefaults || exit 1
-
-        if StartupScriptMissing
-        then
-            InstallStartupScripts
-        fi
-
-        if StartupScriptOld
-        then
-            UpdateStartupScripts
-        fi
-
-        # Finally, touch a file to show that we need to run the post boot sequence
-        touch /mnt/flash/startup/postcheck
+        # Set post boot action to complete install.
+        echo install >$POSTBOOTCHECK
+    elif ! cmp $BUILTIN_VERSION $INSTALLED_BUILTIN_VERSION >/dev/null 2>&1
+    then
+        # means builtin version has changed or there never was a built in installed
+        # Set post boot action to perform an update.
+        echo update >$POSTBOOTCHECK
     fi
+
 }
 
 # This is the second stage of the boot check sequence which will be
-# run if the first stage had to do an install
+# run if the first stage had to do an install. Legato is running by here.
 PostBootCheck()
 {
-    if [ ! -f /mnt/flash/startup/postcheck ]
+    if ! [ -f $POSTBOOTCHECK ]
     then
         return 0
     fi
 
+    postbootAction=$(cat $POSTBOOTCHECK)
+    if ! [ $postbootAction = "update" ] && ! [ $postbootAction = "install" ]
+    then
+        echo "'$postbootAction' is unknown post boot check action"
+        # Not sure if it's best to exit and leave things half done and in a possibly bad state
+        # or to carry on and maybe make things worse but possibly do the better thing?
+        exit 1
+    fi
+
+    if [ $postbootAction = "update" ]
+    then
+        UninstallApps &&
+        StopLegato &&
+        WriteLegatoFromFlash &&
+        CheckStartupScripts &&
+        RunStartupScripts
+        # Legato is running again if all went well
+    fi
+    # This part is done for both update or install cases
     InstallApps &&
 
-    rm /mnt/flash/startup/postcheck
+    rm $POSTBOOTCHECK
 
-    # Setup the installed version file
-    cp /mnt/legato/opt/legato/version /mnt/flash/opt/legato/builtInVersion
+    # Setup the installed version file if the apps were installed
+    if [ -f $APPINSTALLCOMPLETE ]
+    then
+        rm $APPINSTALLCOMPLETE
+        cp $BUILTIN_VERSION $INSTALLED_BUILTIN_VERSION
+    fi
 }
 
 # To see if it is already bind mounted
@@ -435,26 +692,35 @@ BindMount()
     fi
 }
 
-
 InstallLegato()
 {
-    reboot_advised=""
+    if [ -f $INSTALLED_VERSION ]
+    then
+        UninstallApps
+    fi
 
     # Make sure the old version of the framework is shut down.
     StopLegato
 
-    echo "Cleaning..."
-
-    # RemoveLegato really removes what was installed and the next reboot would cause the
-    # built in to be installed but we are installing a new legato so we should recopy the
-    # builtInVersion file which marks this install as superceding the built in.
-    if diff /mnt/legato/opt/legato/version /mnt/flash/opt/legato/builtInVersion >/dev/null 2>&1
+    # If the version file is missing then nothing was installed or the version file has
+    # been deleted. Treat the latter as though there is nothing installed but do a cleanup
+    # just in case there was a legato version there before.
+    if ! [ -f $INSTALLED_VERSION ]
     then
-        RemoveLegato
-        mkdir -p /mnt/flash/opt/legato
-        cp -a /mnt/legato/opt/legato/version /mnt/flash/opt/legato/builtInVersion
-    else
-        RemoveLegato
+        echo "Cleaning..."
+
+        # RemoveLegato erases any old Legato related data.
+        # However, if a built in version was installed at some time this information should
+        # be preserved else the next reboot would copy the builtin version over the one we
+        # are installing now.
+        if diff $BUILTIN_VERSION $INSTALLED_BUILTIN_VERSION >/dev/null 2>&1
+        then
+            RemoveLegato
+            mkdir -p /mnt/flash/opt/legato
+            cp -a $BUILTIN_VERSION $INSTALLED_BUILTIN_VERSION
+        else
+            RemoveLegato
+        fi
     fi
 
     # Remove the old default startup scripts.
@@ -462,56 +728,18 @@ InstallLegato()
 
     echo "Checking target environment..."
     # make sure all our bind mounts are pointing to the right places
+    # for install
     BindMount /opt on /mnt/flash/opt
     BindMount /usr/local on /mnt/flash/usr/local
     BindMount /home on /mnt/flash/home
 
     mkdir -p /home/root
 
-    echo "Unpacking..."
+    WriteLegatoFromTar &&
 
-    # Change to the root directory.  The tarball containing the new framework is rooted there.
-    cd / &&
+    CheckStartupScripts &&
 
-    # Un-tar the framework into place.
-    (
-    if ! which bsdtar > /dev/null 2>&1
-    then
-        tar x &&
-        # Old versions of firmware may have r/w rootfs and busybox tar.
-        echo "The firmware appears to be very old"
-        echo "Probably there will be features that won't work on such old firmware."
-        chmod -R go-w /usr/local &&
-        chown -R root:root /usr &&
-        chown -R root:root /opt &&
-        chown root:root /
-    else
-        bsdtar xpom -f -
-    fi
-    ) &&
-
-    # Make sure the startup scripts are executable and owned by root.
-    chown -R root:root /mnt/flash/startupDefaults &&
-    chmod -R u+x /mnt/flash/startupDefaults || exit 1 # This is a very uninformative failure
-
-    if StartupScriptMissing
-    then
-        InstallStartupScripts
-        reboot_advised="yes"
-    fi
-
-    if StartupScriptOld
-    then
-        UpdateStartupScripts
-        reboot_advised="yes"
-    fi
-
-    # make sure we are really up to date on our bind mounts
-    /mnt/flash/startup/fg_00_BindMount
-
-    # Start up the new version of the framework.
-    # This script makes sure the supervisor and installer runs with the "admin" SMACK label.
-    /mnt/flash/startup/fg_10_StartLegato &&
+    RunStartupScripts &&
 
     InstallApps &&
 
@@ -532,7 +760,6 @@ InstallLegato()
         exit 1
     fi
 }
-
 
 case "$ACTION" in
 start)

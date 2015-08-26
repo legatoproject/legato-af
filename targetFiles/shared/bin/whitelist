@@ -1,0 +1,6 @@
+# By default all apps are removed on framework update.
+# Normally all apps should be rebuilt against the new framework and build tools and
+# installed afresh after a framework update.
+# If there are currently installed apps on the target that have been demonstrated
+# to function reliably under the new framework you can chose to vouch for their
+# compatibility and have them left on the system through the update by listing them here.
