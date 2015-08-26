@@ -1,0 +1,20 @@
+/** @page howToGNSS Manage GNSS
+
+This topic summarizes how to manage a GNSS target device.
+
+See @ref c_gnss for API details.
+
+@section howToGNSS_initialize Initialize 
+
+This diagram shows how to initialize a GNSS device. The COMPONENT_INIT initializes an event handler
+resulting in a ready state. Use le_gnss_Enable() and le_gnss_Start() to move to active state.
+
+@image html GNSS_stateMachine.png
+
+Also see @ref le_gnss_EnableDisable
+
+<HR>
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+ **/

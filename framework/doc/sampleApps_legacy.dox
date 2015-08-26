@@ -2,11 +2,11 @@
 
 This sample app demonstrates the steps to port a legacy C language app to Legato.
 
-The @c apps/sample/legacy folder contains:
-- sample legacy C Language app.
-- sample app using @c .adef file with bundles and processes sections. 
-- sample apps using @c .adef bundles, processes and provides sections and @c .cdef requires sections. 
-- sample apps with Legato handlers.
+The @c apps/sample/legacy folder contains sample apps that demonstrate:
+- cross-building a legacy C program.
+- bundling a legacy app into a Legato app bundle.
+- using Legato APIs from a legacy C program bundled as a Legato app.
+- receiving callbacks from Legato APIs in a legacy C program.
 
 See <br>
 @ref howToPortLegacyC <br>

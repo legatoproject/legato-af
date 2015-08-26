@@ -1,0 +1,16 @@
+/** @page aboutDocsVersion Versions
+
+Previously released versions of the Legato online help are stored on GitHub in the related
+directory.
+
+The default version accessed from Legato.io is the most recent Legato docs.
+
+To access previous versions:
+- you can search Google (e.g., "Legato 14.10")
+- you can enter the version number in the URL (e.g., change
+http://www.legato.io/legato-docs/<b>15_05</b>/ to http://www.legato.io/legato-docs/<b>14_10</b>/).
+
+<HR>
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/

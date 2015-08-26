@@ -99,11 +99,11 @@ $ gedit helloComp/Component.cdef
 @endverbatim
 
 @verbatim
+ sources:
  {
      hello.c
  }
-
-@endverbatim
+ @endverbatim
 
 See @ref defFiles for complete info.
 

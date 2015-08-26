@@ -1,9 +1,12 @@
 /** @page howToConfigTree Manage Config Tree
 
-These topics provide some how to information for managing the target config tree:
+These topics provide some how to details on managing the target config tree:
 
 @subpage howToConfigTreeImportExport <br>
-@subpage howToConfigTreeTransactions
+@subpage howToConfigTreeTransactions <br>
+@subpage howToConfigTreeSchema
+
+There's also some @ref basicConfig "background" info.
 
  <HR>
 

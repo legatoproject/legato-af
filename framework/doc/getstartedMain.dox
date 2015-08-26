@@ -1,5 +1,10 @@
 /** @page getstartedMain Get Started
 
+This section contains info to setup the target hardware including host/target PC communications, 
+and info to install Legato on the host PC including making and deploying your first target app.
+
+<HR>
+
 If you're new to Legato, checkout our
 <a href="http://www.sierrawireless.com/productsandservices/airprime_wireless_modules/smart_modules/legato/">product info</a>.
 

@@ -1,6 +1,6 @@
 /** @page toolsTarget_log log
 
-Use the Log tool tool to set logging variables for components.
+Use the Log tool tool to set logging variables for components. Also see @ref howToLogs.
 
 Here's more detailed info on the @ref c_logging.
 
@@ -20,7 +20,7 @@ Here's more detailed info on the @ref c_logging.
 
 @verbatim log level FILTER_STR [DESTINATION] @endverbatim
 > Sets the log filter level. Log messages that are less severe than the filter are ignored. <br>
-> Must be one of EMERGENCY  |  CRITICAL  | ERROR  |  WARNING  |  DEBUG.
+> Must be one of EMERGENCY  |  CRITICAL  | ERROR  |  WARNING  |  INFO  |  DEBUG
 
 @verbatim log trace KEYWORD_STR [DESTINATION] @endverbatim
 > Enables a trace by keyword.  Any traces with a matching keyword are logged.

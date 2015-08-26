@@ -10,6 +10,7 @@
 @subpage basicIPC <br>
 @subpage basicInternationalization <br>
 @subpage basicLog <br>
+@subpage basicLWM2MData
 
 @ref aboutDocsGlossary <br>
 

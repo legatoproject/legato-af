@@ -16,14 +16,11 @@ Legato Packages are available at
 
 The following packages are available:
 
-
-<a href="http://source.sierrawireless.com/resources/legato/wp7prebuiltyocto/">WP710x series pre-built Yocto image</a> <br>
 <a href="http://source.sierrawireless.com/resources/legato/legatolinuxdist/">Legato Linux source distribution</a> <br>
 <a href="http://source.sierrawireless.com/resources/legato/linuxtoolchain32bit/">Linux Toolchain - Linux PC i686 32-bit</a> <br>
 <a href="http://source.sierrawireless.com/resources/legato/linuxtoolchain64bit/">Linux Toolchain - Linux PC x86 64-bit</a> <br>
-<a href="http://source.sierrawireless.com/resources/legato/wp7drivers/">WP710x Windows drivers</a> <br>
 <a href="http://source.sierrawireless.com/resources/legato/wp7firmware/">WP710x firmware package</a> <br>
-<a href="http://source.sierrawireless.com/resources/legato/fwupdatepkg/">firmware update package</a>
+<a href="http://source.sierrawireless.com/resources/legato/wp7withoutLegato/">WP710x package (without Legato)</a>
 
 <HR>
 

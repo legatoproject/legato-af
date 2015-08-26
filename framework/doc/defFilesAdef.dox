@@ -520,9 +520,13 @@ maxFileBytes: 200K
 Exceeding this limit results in a @c SIGXFSZ signal sent to the process. By default, this
  kills the process, but it can be blocked or caught to receive an error
  with @c errno set to @c EFBIG.
+  
+Although apps aren't limited to running inside a sandbox (called @e unsandboxed apps), the Supervisor still
+enforces limits. Ensure @c maxFileBytes values are set high enough for unsanboxed apps.
 
-@note   If the file is in the sandbox's temporary runtime file system, the file size will also
-        be limited by @ref defFilesAdef_maxFileSystemBytes and @ref defFilesAdef_maxMemoryBytes.
+@note If the file is in the sandbox's temporary runtime file system, the file size will also
+        be limited by @ref defFilesAdef_maxFileSystemBytes and
+        @ref defFilesAdef_maxMemoryBytes. <br>
 
 @subsection defFilesAdef_processMaxFileDescriptors Max File Descriptors
 
@@ -698,10 +702,11 @@ tree. Don't give apps direct access to the <code>system tree</code>.
 
 @subsection defFilesAdef_requiresDir Dir
 
-Used to declare that certain directories that reside on the target device outside of the
-app are to be made accessible to the app.
+Used to declare directories located on the target outside of the
+app that are to be made accessible to the app.
 
-The location inside the app's sandbox at which the directory will appear is also specified.
+The location inside the app's sandbox where the directory will appear is also specified.
+
 
 Things listed here are expected to be found on the target at runtime.
 They are not copied into the app at build time; they are made accessible to the app inside of
@@ -710,7 +715,7 @@ its sandbox at runtime.
 Each entry consists of two file system paths:
 
  - The @b first path is the path to the directory @b outside of the app.
-   This must be an absolute path (beginning with ‘/’) and can never end in a '/'.
+   This must be an absolute path (beginning with "/") and can never end in a "/".
 
  - The @b second path is the absolute path @b inside the app’s sandbox where the directory
    will appear at runtime.
@@ -718,8 +723,9 @@ Each entry consists of two file system paths:
 Paths can be enclosed in quotation marks (either single ' or double "). This is required when
 it contains spaces or character sequences that would start comments.
 
-If the second path ends in a '/', then it's specifying the directory into which the object will
-appear, and the object will have the same name inside the sandbox as it has outside the sandbox.
+If the destination path ends in a "/", the name from the source is appended to it. Otherwise, only
+the destination path is used. That means @c /foo/bar /baz will appear as @c /baz inside the sandbox,
+and @c /foo/bar /baz/ will appear as @c /baz/bar inside the sandbox.
 
 @verbatim
 requires:
@@ -761,7 +767,7 @@ requires:
 @subsection defFilesAdef_requiresFile File
 
 Declares:
-- specific files that reside on the target outside of the app,
+- specific files located on the target outside of the app,
 but made accessible to the app.
 -  location inside the app's sandbox where the file will appear.
 
@@ -793,9 +799,6 @@ requires:
         // I get character stream input from outside via a named pipe (read-only)
         /var/run/someNamedPipe  /var/run/
 
-        // I need read and write access to UART2.
-        /dev/ttyS1  /dev/
-
         // I need to be able to play back audio files installed in /usr/local/share/audio.
         "/usr/local/share/audio/error message.wav" /usr/share/audio/
         '/usr/local/share/audio/success message.wav' /usr/share/audio/
@@ -816,6 +819,76 @@ requires:
 {
     file:
     {
+        // Program uses /var/run/someNamedPipe which it calls /var/run/externalPipe.
+        /var/run/someNamedPipe  /var/run/externalPipe
+    }
+}
+@endverbatim
+
+@warning  When something is accessible from inside an app sandbox, there are potential security
+            risks  (e.g., access to the object could be exploited by the app, or hacker, to access sensitive
+            information or launch a denial-of-service attack on other apps within the target
+            device or other devices connected to the target device).
+
+@subsection defFilesAdef_requiresDevice Device
+
+Declares:
+- device files that reside on the target outside of the app, but made accessible to the app.
+- location inside the app's sandbox where the file will appear.
+- access permissions the app is given to the device file.
+
+Things listed in @c requires are expected to be found on the target at runtime.
+They're not copied into the app at build time; they are made accessible to the app inside of
+its sandbox at runtime.
+
+Each entry consists of two file system paths and a set of optional access permissions:
+
+ - access permissions, readable ([r]) and/or writeable ([w]).  Executable is not allowed on device
+   files.  If permission values are not specified, then read-only ([r]) is the default.
+
+ - path to the object in the file system outside of the app, which
+   must be an absolute path (beginning with ‘/’).  This must be a path to a valid character or
+   block device file.
+
+ - absolute file system path inside the app’s sandbox where the object will
+   appear at runtime.
+
+A file path can be enclosed in quotation marks (either single ' or double "). This is required when
+it contains spaces or character sequences that would start comments.
+
+The first path can't end in a '/'.
+
+If the second path ends in a '/', then it's specifying the directory where the object
+appears, and the object has the same name inside the sandbox as it has outside the sandbox.
+
+@verbatim
+requires:
+{
+    device:
+    {
+        // I get read-only access to the SPI port.
+        [r]     /dev/sierra_spi   /dev/sierra_spi
+
+        // I get read-only access to the NMEA port.
+                /dev/nmea         /dev/nmea
+
+        // I get read and write access to the I2C port.
+        [rw]    /dev/sierra_i2c   /dev/
+    }
+}
+@endverbatim
+
+Note that if a hot-plug device is unplugged and plugged back in, the app must be restarted before it
+can access the device.
+
+It's also possible to give the object a different names inside and outside of the sandbox by
+ adding a name to the end of the second path.
+
+@verbatim
+requires:
+{
+    device:
+    {
         /dev/ttyS0  /dev/port1     // Program uses /dev/port1, but UART0 is called /dev/ttyS0.
     }
 }
@@ -825,6 +898,9 @@ requires:
             risks  (e.g., access to the object could be exploited by the app, or hacker, to access sensitive
             information or launch a denial-of-service attack on other apps within the target
             device or other devices connected to the target device).
+
+@warning  This section is experimental.  Future releases of may not support this section.
+
 
 @section defFilesAdef_sandboxed Sandboxed
 

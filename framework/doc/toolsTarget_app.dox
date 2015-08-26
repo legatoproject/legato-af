@@ -4,17 +4,16 @@ Use the Application tool for an easy method to run the most commonly needed targ
 
 <h1>Usage</h1>
 
-<b><c>app [start|stop|restart|remove|status|version] APP_NAME [ APP_NAME ... ] <br>
-app [start|stop|restart|remove|status|version] '*' <br>
-app [list|status] <br>
+<b><c>app [start|stop|restart|remove|status|version|info] APP_NAME [ APP_NAME ... ] <br>
+app [start|stop|restart|remove|status|version|info] '*' <br>
+app [list|status|info] <br>
 app install APP_NAME <br>
-app info [ APP_NAME ... ]  <br>
 </c></b>
 
-@verbatim app [start|stop|restart|remove|status|version] APP_NAME [ APP_NAME ... ]@endverbatim
+@verbatim app [start|stop|restart|remove|status|version|info] APP_NAME [ APP_NAME ... ]@endverbatim
 > Multiple app names can be specified.
 
-@verbatim app [start|stop|restart|remove|status|version] '*'@endverbatim
+@verbatim app [start|stop|restart|remove|status|version|info] '*'@endverbatim
 > A wildcard '*' can be used to apply action to all apps.
 
 @warning
@@ -27,11 +26,11 @@ app).
 @verbatim app status@endverbatim
 > List apps and their current status.
 
+@verbatim app info @endverbatim
+> Provides info on one or more apps' running state and processes' state (stopped or never started, running, paused).
+
 @verbatim app install APP_NAME @endverbatim
 > Install app. Specify one app name; must be provided on @c stdin.
-
-@verbatim app info [ APP_NAME ... ] @endverbatim
-> Provides info on one or more apps' running state and processes' state (stopped or never started, running, paused).
 
 <HR>
 

@@ -41,10 +41,12 @@ AGC = Automatic Gain Control
  
 <b>Playback and recording</b>
 
-File playback and file recording support these file types:
+File playback supports these file types:
 - .wav
 - .amr
 - .awb
+
+File recording is only supported for @b .wav file types.
 
 One single file playback and one single file recording can be activated simultaneously.
 

@@ -17,8 +17,11 @@ enitre tree sections.
 @verbatim config set <tree path> <new value> [<type>] @endverbatim
 > Write a value.
 
-@verbatim config rename <node path> <new name> @endverbatim
-> Rename a node:
+@verbatim config move <node path> <new name> @endverbatim
+> Move a node.
+
+@verbatim config copy <node path> <new name> @endverbatim
+> Copy a node.
 
 @verbatim config delete <tree path> @endverbatim
 > Delete a node.
@@ -147,8 +150,8 @@ $ config get /helloWorld/ignored
 true
 @endverbatim
 
-If the config tool is listing a tree it will display the node name and a / if the current node
-has children.  (Except for the root node, as the root node does not have a name.)
+If the config tool is listing a tree, it will display the node name and a / if the current node
+has children (except for the root node, as the root node does not have a name.)
 
 For leaf nodes, the config tool will display the value type in angle brackets, <>, as well as its
 name and actual value:

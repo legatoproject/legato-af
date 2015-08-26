@@ -1,8 +1,13 @@
 /** @page tools Tools
 
- @subpage toolsTarget <br>
- @subpage toolsHost <br>
- @subpage buildTools <br>
+This section contains info about tools available for the target and host, as well as info on tools
+to build your  Legato apps.
+
+<HR>
+
+@subpage toolsTarget <br>
+@subpage toolsHost <br>
+@subpage buildTools <br>
 
 <HR>
 

@@ -1,19 +1,28 @@
 /** @page howToPortLegacyC Port Legacy C App
 
-This topic describes how to port a legacy C code app running on POSIX/Linux.
-Instructions describe how to get an app running on Legato and use pre-built APIs to access services
-like SMS, SIM, voice calling, and data connections.
+This topic describes how to get a POSIX/Linux legacy app written in C running on a Legato device
+and using Legato APIs to access services like SMS, SIM, voice calling, and data connections.
 
-With this method you don't have to rewrite the app to use Legato event loops, auto-generated
-main() functions, etc.
+@note The examples in this topic all use the command-line tools, so you will need to have your shell
+configured correctly by running <c> bin/legs </c> in the directory in which your framework is
+installed.
+@code
+$ path/to/LegatoFramework/bin/legs
+@endcode
 
-@section howtoPortingLegacyC_convertApp Convert App to Legato
+@note These examples assume you are using a Sierra Wireless WP85xx device.  If you are using
+another device, substitute that device wherever you see "WP85" or "wp85".
 
-@c 1. Build a legacy app executable for a target
-using the cross toolchain provided:
+@section howtoPortingLegacyC_CrossBuild Cross-Build
+
+The most basic way to get your legacy app running on a Legato target device is to recompile
+it using the provided cross-build tool chain and copy it onto the device using a tool like
+@c scp.
+
+@c 1. Build a legacy app executable for your target device using the cross tool chain provided.
 
 @code
-$ /opt/swi/y16-ext/sysroots/x86_64-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi/arm-poky-linux-gnueabi-gcc -o legacyProgram main.c $
+$ $WP85_TOOLCHAIN_DIR/arm-poky-linux-gnueabi-gcc -o legacyProgram main.c
 @endcode
 
 @c 2. Copy the legacy app executable onto the target using a tool like @c scp:
@@ -22,7 +31,6 @@ $ /opt/swi/y16-ext/sysroots/x86_64-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi/
 $ scp legacyProgram 192.168.1.2:
 
 legacyProgram                100% 9366     9.2KB/s   00:00
-$
 @endcode
 
 @c 3. Run the legacy app from the target command-line:
@@ -30,15 +38,20 @@ $
 @code
 root@swi-mdm9x15:~# ./legacyProgram
 Hello world.
-root@swi-mdm9x15:~#
 @endcode
 
-@section howtoPortingLegacyC_createDefFiles Create Definition Files
+@section howtoPortingLegacyC_UseLegatoAppManagementTools Use Legato App Management Tools
 
-@c 1. Use Legato's application life cycle management features by creating an @c .adef file that bundles
-the cross-compiled executable into an application:
+By bundling your program as a Legato app, you gain access to a wealth of valuable features:
+ - Tools for installing and removing apps and checking app status on the target and on the development host.
+ - Remote (over-the-air) installation, upgrade, removal, start, stop.
+ - Autonomous fault recovery (automatic restart of process, whole app, or whole device) in the field.
+ - Automatic mandatory access control (MAC) configuration.
+ - Optional application sandboxing.
+ - Optional application signing and/or encryption.
 
-@c legacyProgram.adef
+@c 1. Create a <c> .adef </c> file (e.g., @c legacyProgram.adef) that bundles the cross-compiled
+executable into an application:
 
 @code
 // Disable the sandbox security to make things a little easier.
@@ -67,8 +80,8 @@ processes:
 @c 2. Run @c mkapp to generate an application bundle for your target:
 
 @code
-$ mkapp -t wp7 legacyProgram.adef
-$ @endcode
+$ mkapp -t wp85 legacyProgram.adef
+@endcode
 
 @c 3. Install the app bundle on the target using @c instapp:
 
@@ -78,71 +91,109 @@ Installing application 'legacyProgram' from file 'legacyProgram.wp7'.
 Installing app 'legacyProgram'...
 Created user 'applegacyProgram' (uid 1011, gid 1011).
 DONE
-$
 @endcode
 
 @c 4. From the target's command line, use <code>app start</code> to run the program:
 
 @code
-root@swi-mdm9x15:~# app start legacyProgram Starting app 'legacyProgram'...
-Hello world.
+$ ssh root@192.168.1.2
+Linux swi-mdm9x15 3.4.91-8fcd3d08ac_7e84772e18 #1 PREEMPT Wed Jun 3 23:59:46 PDT 2015 armv7l GNU/Linux
+root@swi-mdm9x15:~# app start legacyProgram
+Starting app 'legacyProgram'...
 DONE
-root@swi-mdm9x15:~#
 @endcode
 
-@section howtoPortingLegacyC_useModemSvcs Use Modem Services
+@c 5. Look for the program output in the target device's log using @c logread.
 
-Here is how to use a Legato modem service API (e.g., le_info):
-
-@c 1. \#include legato.h and interfaces.h.
-
-@c 2. Connect to the service by calling le_info_ConnectService(). At runtime,
-if the le_info service isn't up, this will block until it comes up. In the meantime,
-you'll see your app in the WAITING CLIENTS list if you run @ref toolsTarget_sdir list.
-
-@c 3. Add a call to one of the le_info API functions (e.g., le_info_GetDeviceModel() ).
-
-@c 4. Create a @e stand-alone Legato component that requires the le_info API:
-
-@c api_client/Component.cdef
+@note You can filter the log to show just your program's output by piping the output from
+@c logread into @c grep.
 
 @code
-requires:
+root@swi-mdm9x15:~# logread | grep legacyProgram
+Jan 16 04:00:53 swi-mdm9x15 user.info Legato:  INFO | legacyProgram[27271] | Hello world.
+@endcode
+
+@section howtoPortingLegacyC_useLegatoSvcs Use Legato Services
+
+Many Legato services are provided through IPC-based APIs.  The @c ifgen tool can generate the
+IPC code for you, along with a header (.h) file that you can @c #include to gain access to the
+service.
+
+Here is how to use a Legato modem service API (e.g., le_info).  The source code for this example
+can be found in <c> apps/sample/legacy/useLegatoApi/ </c>.
+
+@c 1. Run @c ifgen to generate the .c and .h files you need to access the interface.
+
+- Use the @c --gen-interface option to generate the interface header (@c le_info_interface.h).
+- Use the @c --gen-client option to generate the client-side IPC implementation (@c le_info_client.c).
+- Use the @c --gen-local option to generate definitions that are shared by both the client side
+and server side IPC code (@c le_info_local.h).
+
+@verbatim
+ifgen --gen-interface --gen-client --gen-local $LEGATO_ROOT/interfaces/modemServices/le_info.api
+@endverbatim
+
+@c 2. Include @c legato.h in your program.
+
+@code
+#include "legato.h"
+@endcode
+
+@c 3. Include the API's generated "interface" header file.
+
+@code
+#include "le_info_interface.h"
+@endcode
+
+@c 4. Connect to the service by calling le_info_ConnectService().
+
+@code
+int main(int argc, char** argv)
 {
-    api:
-    {
-        le_info.api
-    }
+    le_info_ConnectService();
+
+    return EXIT_SUCCESS;
 }
 @endcode
 
-@c 5.  Build the component using the mkcomp @e stand-alone option:
+@note At runtime, if the @c le_info service isn't available, this will block until it becomes
+available. In the meantime, you'll see your app in the WAITING CLIENTS list if you run
+@ref toolsTarget_sdir "sdir list".
+
+@c 5. Add a call to one of the @c le_info API functions (e.g., le_info_GetDeviceModel() ).
 
 @code
-$ mkcomp --stand-alone -t wp7 -i $LEGATO_ROOT/interfaces/modemServices api_client
-
-@c 6. Compile and link your executable with the header files and library generated by mkcomp:
-@code
-$ export WP7_CC=/opt/swi/y16-ext/sysroots/x86_64-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi/arm-poky-linux-gnueabi-gcc
-$ $WP7_CC -c main.c -I_build -I$LEGATO_ROOT/framework/c/inc
-$ $WP7_CC -o legacyProgram main.o libIF_le_info_client.so -L$LEGATO_ROOT/build/wp7/bin/lib -llegato
-@endcode
-
-@c 7. Bundle the additional library generated by mkcomp into your @c .adef file:
-
-@code
-bundles:
+int main(int argc, char** argv)
 {
-    file:
+    le_info_ConnectService();
+
+    char deviceModelStr[256];
+
+    le_result_t result = le_info_GetDeviceModel(deviceModelStr, sizeof(deviceModelStr));
+
+    if (result == LE_OK)
     {
-        [x] legacyProgram /bin/
-        [r] libIF_le_info_client.so /lib/
+        printf("Hello world from %s.\n", deviceModelStr);
     }
+    else
+    {
+        printf("Failed to get device model. Error = '%s'.\n", LE_RESULT_TXT(result));
+    }
+
+    return EXIT_SUCCESS;
 }
 @endcode
 
-@c 8. Specify which instance of the @c le_info service your app should use by creating
-a binding in the @c .adef file:
+@c 6. Compile and link your executable with the code generated by @c ifgen:
+@code
+$ export CC=$WP85_TOOLCHAIN_DIR/arm-poky-linux-gnueabi-gcc
+$ $CC -c main.c -I$LEGATO_ROOT/framework/c/inc
+$ $CC -c le_info_client.c -I$LEGATO_ROOT/framework/c/inc
+$ $CC -o legacyProgram main.o le_info_client.o -L$(LEGATO_ROOT)/build/$(TARGET)/bin/lib -llegato -lpthread -lrt
+@endcode
+
+@c 7. Specify which instance of the @c le_info service your app should use by creating
+a binding in the <c> .adef </c> file:
 
 @code
 bindings:
@@ -151,7 +202,11 @@ bindings:
 }
 @endcode
 
-@c 9. Re-generate your application bundle and install it on target:
+@note Actually, there's only one instance of @c le_info today, but if there were multiple, this
+would specify which one to use; and even when there's only one instance, we create a binding anyway
+to explicitly grant access permission so access is never unknowingly granted.
+
+@c 9. Re-generate your application bundle, install it, and run it on target:
 
 @code
 $ mkapp -t wp7 legacyProgram.adef
@@ -162,87 +217,19 @@ Deleted user 'applegacyProgram'.
 Installing app 'legacyProgram'...
 Created user 'applegacyProgram' (uid 1011, gid 1011).
 DONE
-$
+$ startapp legacyProgram 192.168.1.2
 @endcode
 
-@section howtoPortingLegacyC_addMoreAPIs Add more APIs
+@section howtoPortingLegacyC_handlers Callbacks from Legato APIs
 
-Adding subsequent APIs is even simpler.
+If you need asynchronous callbacks (i.e., handlers), you'll need to service the Legato event loop
+for your thread.  To do this, use le_event_GetFd() and le_event_ServiceLoop().
+See @ref c_event_integratingLegacyPosix for more details.
 
-@c 1. Add the API to the list required by your stand-alone component:
+The sample app for this is found in @c apps/sample/legacy/useLegatoHandler.
 
-@c api_client/Component.cdef
+Here's some sample code:
 
-@code
-requires:
-{
-    api:
-    {
-        le_info.api
-        le_data.api
-    }
-}
-@endcode
-
-@c 2. Build the component using <code>mkcomp --stand-alone</code>:
-
-@code
-$ mkcomp --stand-alone -t wp7 -i $LEGATO_ROOT/interfaces/modemServices -i $LEGATO_ROOT/interfaces/dataConnectionService api_client
-@endcode
-
-@c 3. Compile and link your executable with the header files and library generated by mkcomp:
-
-@code
-$ export WP7_CC=/opt/swi/y16-ext/sysroots/x86_64-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi/arm-poky-linux-gnueabi-gcc
-$ $WP7_CC -c main.c -I_build -I$LEGATO_ROOT/framework/c/inc
-$ $WP7_CC -o legacyProgram main.o libIF_le_info_client.so libIF_le_data_client.so -L$LEGATO_ROOT/build/wp7/bin/lib -llegato
-@endcode
-
-@c 4. Bundle the additional library generated by mkcomp into your @c .adef file:
-
-@code
-bundles:
-{
-    file:
-    {
-        [x] legacyProgram /bin/
-        [r] libIF_le_info_client.so /lib/
-        [r] libIF_le_data_client.so /lib/
-    }
-}
-@endcode
-
-@c 5. Specify which instance of the service your app should use by creating
-a binding in the @c .adef file:
-
-@code
-bindings:
-{
-    *.le_info -> modemService.le_info
-    *.le_data -> dataConnectionService.le_data }
-@endcode
-
-@c 6. Re-generate your app bundle and install it on the target:
-
-@code
-$ mkapp -t wp7 legacyProgram.adef
-$ instapp legacyProgram.wp7 192.168.1.2
-Installing application 'legacyProgram' from file 'legacyProgram.wp7'.
-Removing app 'legacyProgram'...
-Deleted user 'applegacyProgram'.
-Installing app 'legacyProgram'...
-Created user 'applegacyProgram' (uid 1011, gid 1011).
-DONE
-$
-@endcode
-
-@section howtoPortingLegacyC_handlers Handlers
-
-If you need asynchronous callbacks (i.e., handlers), use le_event_GetFd() and le_event_ServiceLoop().
-
-See @ref c_event_integratingLegacyPosix for details.
-
-Here's some sample  code:
 @code
 struct pollfd pollControl;
 pollControl.fd = le_event_GetFd();
@@ -261,13 +248,38 @@ while (true)
     }
     else
     {
-        // Poll failed.  Could check for zero if you're ultra paranoid, but poll should never return zero when timeout is -1.
+        // Poll failed.  You could check for zero if you're ultra paranoid,
+        // but poll should never return zero when timeout is -1.
         LE_FATAL("poll() failed with errno %m.");
     }
 }
 @endcode
 
-@section  howtoPortingLegacyC_sampleApps Sample legacy app
+@section  howtoPortingLegacyC_sandboxing Sandboxing Your App
+
+To tell the Supervisor to run your app inside a sandbox, remove the following line
+from your app's <c> .adef </c> file:
+
+@code
+sandboxed: false
+@endcode
+
+Or, you can change @c false to @c true:
+
+@code
+sandboxed: true
+@endcode
+
+Then re-bundle your app using @c mkapp.
+
+The most commonly-used system libraries, such as @c libc and @c libpthread, will be visible inside
+your app's sandbox by default, but you may now find that your app won't run because some
+other files are missing from its sandbox.
+
+Use the @ref defFilesAdef_requires "requires: section in the app's .adef file" to add
+things to the sandbox.
+
+@section  howtoPortingLegacyC_sampleApps Sample Legacy Apps
 
 Sample @ref sampleApps_legacy apps are available in the @c Legato/apps/sample/legacy directory.
 

@@ -8,10 +8,10 @@ Legato is compatible with Yocto 1.6.1
 
 @section getstartedYoctoLinux_yoctoDirectories Yocto Linux Directories
 
-Untar the file @b Legato-Dist-Source-mdm9x15-15.01.tar.bz2 to a directory:
+Untar the file @b Legato-Dist-Source-mdm9x15-15.05.tar.bz2 to a directory:
 @code
 $ cd <some directory>
-$ tar xvjf Legato-Linux-Dist-mdm9x15-15.01.tar.bz2
+$ tar xvjf Legato-Linux-Dist-mdm9x15-15.05.tar.bz2
 @endcode
 
 These file/directories will be extracted:
@@ -51,41 +51,6 @@ Once the build is complete, you'll find new images in the directory:
 
 Links are created at the end of the build to point to the latest kernel (kernel) and root file system (rootfs)
 @warning You can’t rebuild Yocto images on Ubuntu 13.10.
-
-@section getstartedYoctoLinux_flashYoctoImagesWin Windows Flash Yocto
-The easiest way to flash a Yocto image is through Windows. The steps are the same as upgrading
-to the latest firmware that includes flashing the Yocto image:</p>
-
-- Download @c SWI9X15W_06.03.39.00-wp_yocto-cwe.exe to your host. <br>
- See <a href="http://source.sierrawireless.com/resources/resources/legato/downloads/">Legato Downloads</a>
-
-- Turn the board BOOT switch to 'OFF' (Recovery mode). Depending on your dev kit, 'LOW' is
-the same as 'OFF'.
-
-- Connect the target: displays in Device Manager list as 'Sierra DM Port' under Ports.
-
-- Run @c SWI9X15W_06.03.39.00-wp_yocto-cwe.exe by double-clicking the file.
-After the image flash process completes, it will advise it's resetting the target.
-
-- Disconnect power from your target and turn your BOOT switch to 'ON' (or 'HIGH').
-
-- Reconnect power to your target; it should enumerate (with other targets) under
-Ports in Window Device Manager.
-
-Connect to the target's AT Port (through HyperTerminal or Tera Term), and run @c ati to verify
-the flash update was successful. Output will look like this:
-
-@verbatim
-Manufacturer: Sierra Wireless, Incorporated
-Model: WP7102
-Revision: SWI9X15W_06.03.39.00 r23799 CNSHZ-AR-BUILD 2014/xx/xx 13:02:24
-IMEI: (Your imei)
-IMEI SV: 0
-+GCAP: +CGSM,+FCLASS,+DS
-@endverbatim
-
-@note Flashing a new image will override existing settings. To easily keep your ecm on Linux, just temporarily rename your
-usbmode file; or you can always create a new one.  @ref getstartedInstallNotes_yoctoCDC and @ref getstartedConfigIPusb
 
 @section getstartedYoctoLinux_flashYoctoImagesLin Linux Flash Yocto
 

@@ -6,12 +6,69 @@ Use the Cellular Modem tool to control modem functions.
 
 <b><c> cm [SERVICES] [COMMANDS] </c></b>
 
-Available services are @ref toolsTarget_cm_radio "radio", @ref toolsTarget_cm_sim "sim" and
-@ref toolsTarget_cm_data "data".
+@section toolsTarget_cm_adc ADC
 
-@section toolsTarget_cm_radio CM Radio
+@verbatim cm adc list @endverbatim
+> Print known @c adc channels.
 
-@verbatim cm radio @endverbatim
+@verbatim cm adc read channel @endverbatim
+> Read and print the value from an adc channel (where @c channel is one of the names returned).
+
+@section toolsTarget_cm_data Data
+
+@verbatim cm data
+cm data info @endverbatim
+> Get info on profile in use.
+
+@verbatim cm data profile <index> @endverbatim
+> Set profile in use.
+
+@verbatim cm data apn <apn> @endverbatim
+> Set apn for profile in use.
+
+@verbatim cm data pdp <pdp> @endverbatim
+> Set pdp type for profile in use.
+
+@verbatim cm data auth <none/pap/chap> <username> <password> @endverbatim
+> Set authentication for profile in use.
+
+@verbatim cm data connect <optional timeout (secs)> @endverbatim
+> Start a data connection.
+
+@verbatim cm data watch @endverbatim
+> Monitor the data connection.
+
+To start a data connection, ensure that your profile is configured correctly.
+Also ensure your modem is registered to the network. To verify, use <c>cm radio</c> and check @c Status.
+
+If you specify a time-out timer when starting a data connection, it will try to start a data
+connection until the timer expires.
+
+When starting a data connection, currently it only uses profile 1. Any configuration set for other
+profiles can't be used to start a data connection through the cm tool.
+
+@section toolsTarget_cm_info Info
+
+@verbatim cm info
+cm info all @endverbatim
+> Print all known info.
+
+@verbatim cm info device @endverbatim
+> Print the device model.
+
+@verbatim cm info imei @endverbatim
+> Print the IMEI.
+
+@verbatim cm info firmware @endverbatim
+> Print the firmware version.
+
+@verbatim cm info bootloader @endverbatim
+> Print the bootloader version.
+
+@section toolsTarget_cm_radio Radio
+
+@verbatim cm radio
+cm radio status @endverbatim
 > Get modem status.
 
 @verbatim cm radio <on/off> @endverbatim
@@ -20,15 +77,31 @@ Available services are @ref toolsTarget_cm_radio "radio", @ref toolsTarget_cm_si
 @verbatim cm radio rat <CDMA | GSM/UMTS | LTE> @endverbatim
 > Set radio access technology.
 
+@verbatim cm radio rat AUTO @endverbatim
+> Resume automatic RAT selection.
+
 After setting the radio access technology, you'll need to do a <c>legato restart</c> before it's effective.
 
-@section toolsTarget_cm_sim CM SIM
+@section toolsTarget_cm_sim SIM
 
-@verbatim cm sim @endverbatim
+Regardless if security is enabled or not, the SIM card PIN code  must be entered for every operation.
+The only ways to change the PIN code are through @c changepin and @c unblock.
+ 
+@verbatim cm sim
+cm sim status @endverbatim
 > Get sim status
 
-@verbatim cm sim select <EMBEDDED | EXTERNAL_SLOT_1 | EXTERNAL_SLOT_2 | REMOTE> @endverbatim
-> Select the SIM type.
+@verbatim cm sim info @endverbatim
+> Get sim information.
+
+@verbatim cm sim imsi @endverbatim
+> Get the sim imsi.
+
+@verbatim cm sim iccid @endverbatim
+> Get the sim iccid.
+
+@verbatim cm sim number @endverbatim
+> Get the sim phone number. Often M2M SIM cards don't know their number (will return nothing).
 
 @verbatim cm sim enterpin <pin> @endverbatim
 > Enter pin code that's required before any mobile equipment functionality can be used.
@@ -49,50 +122,55 @@ After setting the radio access technology, you'll need to do a <c>legato restart
 > Stores PIN. Whether security is enabled or not, the SIM card has a PIN code that must be
 > entered for every operation. You can change the PIN code through @c changepin and @c unblock.
 
-@section toolsTarget_cm_data CM Data
+@verbatim cm sim select <EMBEDDED | EXTERNAL_SLOT_1 | EXTERNAL_SLOT_2 | REMOTE> @endverbatim
+> Select the SIM type.
 
-@verbatim cm data @endverbatim
-> Get info on profile in use.
+Whether security is enabled or not, the SIM card has a PIN code that must be entered for every operations.
+Only ways to change this PIN code are through 'changepin' and 'unblock' operations.
 
-@verbatim cm data profile <index> @endverbatim
-> Set profile in use.
+@section toolsTarget_cm_sms SMS
 
-@verbatim cm data apn <apn> @endverbatim
-> Set apn for profile in use.
+@verbatim cm sms monitor @endverbatim
+> Monitor incoming SMS.
 
-@verbatim cm data pdp <pdp> @endverbatim
-> Set pdp type for profile in use.
+@verbatim cm sms send <number> <content> @endverbatim
+> Send a text SMS.
 
-@verbatim cm data auth <none/pap/chap> <username> <password> @endverbatim
-> Set authentication for profile in use.
+@verbatim cm sms sendbin <number> <file> <optional max sms> @endverbatim
+> Send a binary SMS
 
-@verbatim cm data connect <optional timeout (secs)> @endverbatim
-> Start a data connection.
+Options:
+- <number>: Destination number
+- <content>: Content as text supported by GSM 03.38 alphabet
+- <file>: File path OR - for standard input (stdin)
+- <optional max sms>: (Optional) Limit for the number of SMS the file is split in
 
-@verbatim cm data list @endverbatim
-> List all the profiles.
+@verbatim cm sms list @endverbatim
+> List all stored SMS
 
-@verbatim cm data watch @endverbatim
-> Monitor the data connection.
+@verbatim cm sms get <idx> @endverbatim
+> Get specific stored SMS.
 
-To start a data connection, ensure that your profile is configured correctly.
-Also ensure your modem is registered to the network. To verify, use <c>cm radio</c> and check @c Status.
+@verbatim cm sms clear @endverbatim
+> Clear stored SMS.
 
-If you specify a time-out timer when starting a data connection, it will try to start a data
-connection until the timer expires.
+@verbatim cm sms count @endverbatim
+> Count stored SMS.
 
-When starting a data connection, currently it only uses profile 1. Any configuration set for other
-profiles can't be used to start a data connection through the cm tool.
+@section toolsTarget_cm_temp Temperature
 
-@subsection toolsTarget_cmDataUsage_14_04 14.04 Users
+@verbatim cm temp
+cm temp all @endverbatim
+> Print all known temperatures.
 
-If you're upgrading from Legato Beta 14.04, data connection operation will be slightly different.
-Once you have a data connection started successfully, the process will continue running.
+@verbatim cm temp thresholds @endverbatim
+> Print all thresholds.
 
-To stop the session, do one of these:
-- Run <c>cm data connect</c> as usual and if you want to release the data connection, simply press CTRL+C.
-- Run <c>cm data connect &</c>  (background) and if you want to release the data connection, kill the process (<c>kill \<pid\></c>).
+@verbatim cm temp radio @endverbatim
+> Print the radio temperature.
 
+@verbatim cm temp platform @endverbatim
+> Print the platform temperature.
 
 <HR>
 

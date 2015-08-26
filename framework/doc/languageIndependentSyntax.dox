@@ -1,13 +1,18 @@
 /** @page languageIndependentSyntax API Definition Syntax
 
-The API file supports defining functions, events, handlers and user defined types.
-Functions are similar to C functions.  They can take input and output parameters, and
-can return a result.
-An event is similar to a function and is used for registering handlers/callbacks, which
-are called when the corresponding event occurs.
-A handler defines a handler/callback function, which can be used with functions and events.
+The API file supports defining functions, events, handlers (callback functions) and user-defined
+types.
+
+@ref languageIndependentSyntax_function "Functions" are similar to C functions.
+They can take input and output parameters, and can return a result.
+
+A @ref languageIndependentSyntax_handler "handler" is a callback function, which can be passed
+as a parameter to a function and can be registered to be called when
+@ref languageIndependentSyntax_event "events" occur.
+
 The API file currently supports a limited number of pre-defined types.  There is
 also support for a number of different user-defined types.
+
 
 @section languageIndependentSyntax_types Type Support
 
@@ -138,45 +143,44 @@ FUNCTION [<returnType>] <name>
 @endverbatim
 
 The @c parameterList can contain one or more parameters separated by commas, or can be empty
-if there are no parameters.  The scalar type refers to anything that's not an array or string
-(i.e. scalar types do not have a length). These parameters types are supported:
+if there are no parameters.  These parameters types are supported:
 
-@code
-<tt> \<type\> \<name\> [ ( "IN" | "OUT" ) ]</tt>@endcode
+@code <type> <name> [ ( "IN" | "OUT" ) ] @endcode
      - scalar type
      - defaults to IN if a direction is not specified
 
-@code
-<tt> \<type\> \<name\> "[" [ \<minSize\> ".." ] \<maxSize\> "]" "IN" </tt>@endcode
+
+@code <type> <name> "[" [ <minSize> ".." ] <maxSize> "]" "IN" @endcode
      - an IN array
      - @c maxSize specifies the maximum number of elements allowed for the array
      - optional @c minSize specifies the minimum number of elements required for the array
 
 
-@code<tt> \<type\> \<name\> "[" \<minSize\> "]" "OUT" </tt>@endcode
+@code <type> <name> "[" <minSize> "]" "OUT" @endcode
      - an OUT array
      - array should be large enough to store @c minSize elements;  if supported by the
        function implemention, a shorter OUT array can be used.
 
 
-@code<tt> "string" \<name\> "[" [ \<minSize\> ".." ] \<maxSize\> "]" "IN" </tt>@endcode
+@code "string" <name> "[" [ <minSize> ".." ] <maxSize> "]" "IN" @endcode
      - an IN string
      - @c maxSize specifies the maximum string length allowed,
      - optional @c minSize specifies the minimum string length required
      - string length is given as number of characters, excluding any terminating characters
 
 
-@code<tt> "string" \<name\> "[" \<minSize\> "]" "OUT" </tt>@endcode
+@code "string" <name> "[" <minSize> "]" "OUT" @endcode
      - an OUT string
      - string should be large enough to store @c minSize characters; if supported by the
        function implemention, a shorter OUT string can be used.
      - string length is given as number of characters, excluding any terminating characters
 
-The @c returnType is optional, and if specified, must be a scalar type as described above.
+- <tt> "handler" \<name\> "</tt>
+     - a handler (callback) function.
+     - see @ref languageIndependentSyntax_handler for information on how to declare a handler.
 
-The @c handler type is treated a little differently than other scalar types.  In this case,
-the @c name is that of an already defined handler.  See @ref languageIndependentSyntax_handler
-for details.
+The @c returnType is optional, and if specified, can be any type that's not an array, string,
+or handler.
 
 
 @section languageIndependentSyntax_event Specifying an Event

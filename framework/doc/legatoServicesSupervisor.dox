@@ -1,17 +1,13 @@
 /** @page legatoServicesSupervisor Supervisor
 
+Supervisor APIs provide services to monitor and/or control apps. These APIs are available:
+
 @subpage c_sup_ctrl <br>
+@ref c_appInfo <br>
 
-@section legatoServicesSupervisor_overview Overview
-
-If you have multiple apps, you can use Supervisor services to monitor the status of other apps.
-Legato automatically creates bindings for Supervisor and Config Tree services (@c .cdef
-binding requires entry isn't needed). Use the Supervisor's user account name @c \<root>:
-
-@code
-    appAplication.appComponent.le_sup_ctrl -> <root>.le_sup_ctrl
-    appAplication.appComponent.le_sup_state -> <root>.le_sup_state
-@endcode
+@warning Beware of the security risks associated with granting an app access to these services.
+Apps that can control the state of other apps can seriously interfere with system operation.
+Sometimes, even knowledge about which apps are running can reveal a vulnerability.
 
 <HR>
 

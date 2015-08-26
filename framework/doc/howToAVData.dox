@@ -1,0 +1,25 @@
+/** @page howToAVData Manage AirVantage Data
+
+This topic describes how to manage data (read/write/execute) for cloud sevices like AirVantage.
+
+Legato provides easy LWM2M connectivity to AirVantage through a .cdef  file @ref defFilesCdef_assets section
+ using pre-built APIs.
+
+@section howToAVData_APIs AirVantage APIs
+
+Use the @ref c_le_avc API to configure your AirVantage connectivity to handle app updates. 
+
+Use the @ref c_le_avdata API to setup your AirVantage data including read (variable), write (settings), and
+commands (executables).
+
+@section howToAVData_assets .cdef Assets
+
+You add an @ref defFilesCdef_assets' section to your app's component definition file (@c .cdef) customizing
+AirVantage data including associating data types, setting default values, and executing commands using the
+pre-built @ref c_le_avdata APIs.
+
+<HR>
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+ **/ 

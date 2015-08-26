@@ -1,9 +1,14 @@
 /** @page howToLogs Use Logs
 
-This topic summarizes how to use Legato logging. Legato creates log messages
-in LE_INFO() by default, but only minimal information is reported, and only
-for the current app: essentially logs if the app is communicating. You need
-to modify default settings to enable monitoring for other services, etc.
+This topic summarizes how to use Legato logging. 
+
+There's also some @ref basicLog "background" info.
+
+<HR>
+
+Legato creates log messages in LE_INFO() by default
+Only minimal info is reported, and only for the current app: essentially logs if the app is
+communicating. You need to modify default settings to enable monitoring for anything else.
 
 There are two built-in features to control logging using the @ref
 howToLogs_tool or @ref howToLogs_api. There are also @ref c_log_debugFiles.
@@ -15,7 +20,7 @@ Run <code>logread -f </code> to start monitoring the logs and display
 messages as they are logged.
 
 The installed app's output LE_INFO() log message will appear in the target's
-system log (syslog).
+system log (syslog).	
 
 @section howToLogs_tool Logging Tool
 
@@ -30,6 +35,14 @@ Run <code>log trace "keyword" "processName/componentName"</code> to use a
 keyword trace.
 
 See @ref toolsTarget_log for details.
+
+@section howToLogs_syslogDefault  Default syslog
+
+By default, app processes will have their @c stdout and @c stderr redirected to the @c syslog.  Each
+process’s stdout will be logged at INFO severity level; it’s stderr will be logged at
+“ERR” severity level.  
+
+See @ref c_log_basic_defaultSyslog for more info.
 
 @section howToLogs_api Logging API
 

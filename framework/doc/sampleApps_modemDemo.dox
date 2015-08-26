@@ -15,9 +15,9 @@ $ make wp7
 $ instapp modemDemo <ip address>
 @endverbatim
 
-where @c <ip address> is the address of your target device.
+where <i>ip address</i> is the address of your target device.
 
-If you're using an AR7 module in your device, substitute @c ar7 for @c wp7.
+If you're using an AR7 module in your target, substitute @c ar7 for @c wp7.
 
 @ref sampleApps_startApp
 

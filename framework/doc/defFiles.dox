@@ -1,10 +1,15 @@
 /** @page defFiles Definition Files
 
-@subpage defFilesOverview
+This section contains detailed info about Legato's Definition Files. The @c def files define reusable external interfaces and internal content for
+system, application, and component files that are used as input to build tools.
 
-@subpage defFilesAdef  <br>
-@subpage defFilesCdef  <br>
-@subpage defFilesSdef  <br>
+The Definition Files' @subpage defFilesOverview has high-level info.
+
+<HR>
+
+@subpage defFilesAdef <br>
+@subpage defFilesCdef <br>
+@subpage defFilesSdef
 
 <HR>
 

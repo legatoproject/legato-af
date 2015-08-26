@@ -1,8 +1,8 @@
-/** @page frameworkDB Config Tree Schema
+/** @page howToConfigTreeSchema Config Tree Schema
 
 This is Legato's config tree schema:
 
-@subpage bindingConfig  <br>
+@subpage howToConfigTreeSchema_bindingConfig
 
 @verbatim
 system:

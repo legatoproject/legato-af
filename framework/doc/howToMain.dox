@@ -1,13 +1,18 @@
 /** @page howToMain How To
 
+This section contains info about how to complete frequently needed tasks.
+
 @subpage howToCustomizeUSB <br>
 @subpage howToDebug <br>
 @subpage howToConfigTree <br>
+@subpage howToEcall <br>
+@subpage howToGNSS <br>
 @subpage howToPowerMgmt <br>
 @subpage howToNMEA <br>
 @subpage howToPortLegacyGen <br>
 @subpage howToPortLegacyC <br>
-@subpage howToLogs <br>
+@subpage howToAV <br>
+@subpage howToLogs
 
 <HR>
 

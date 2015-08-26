@@ -52,7 +52,7 @@ PROJECT_LOGO           = "@CMAKE_CURRENT_SOURCE_DIR@/img/legatoLogo.png"
 # If a relative path is entered, it will be relative to the location
 # where doxygen was started. If left blank the current directory will be used.
 
-OUTPUT_DIRECTORY       = "@DOCUMENTATION_OUTPUT_PATH@/user"
+OUTPUT_DIRECTORY       = "@DOCUMENTATION_OUTPUT_PATH@/@USER_PATH@"
 
 # If the CREATE_SUBDIRS tag is set to YES, then doxygen will create
 # 4096 sub-directories (in 2 levels) under the output directory of each output
@@ -648,7 +648,8 @@ WARN_LOGFILE           =
 # directories like "/usr/src/myproject". Separate the files or directories
 # with spaces.
 
-INPUT                  = "@LEGATO_SOURCE_DIR@/framework/doc" \
+INPUT                  = "@LEGATO_SOURCE_DIR@/framework/le_build_config.h" \
+                         "@LEGATO_SOURCE_DIR@/framework/doc" \
                          "@LEGATO_SOURCE_DIR@/framework/c/inc" \
                          "@LEGATO_SOURCE_DIR@/apps/sample/eCallDemo/doc" \
                          "@LEGATO_BINARY_DIR@/interfaces" \
@@ -906,7 +907,7 @@ HTML_STYLESHEET        = "@CMAKE_CURRENT_SOURCE_DIR@/static/legato.css"
 # files. In the HTML_STYLESHEET file, use the file name only. Also note that
 # the files will be copied as-is; there are no commands or markers available.
 
-HTML_EXTRA_FILES       = ""
+HTML_EXTRA_FILES       = "@LEGATO_SOURCE_DIR@/framework/doc/Legato_15_07_eCallAPI.pdf"
 
 # The HTML_COLORSTYLE_HUE tag controls the color of the HTML output.
 # Doxygen will adjust the colors in the style sheet and background images
@@ -1122,7 +1123,7 @@ DISABLE_INDEX          = YES
 # Since the tree basically has the same information as the tab index you
 # could consider to set DISABLE_INDEX to NO when enabling this option.
 
-GENERATE_TREEVIEW      = YES
+GENERATE_TREEVIEW      = @GENERATE_TREEVIEW@
 
 # The ENUM_VALUES_PER_LINE tag can be used to set the number of enum values
 # (range [0,1..20]) that doxygen will group on one line in the generated HTML

@@ -9,9 +9,21 @@
 find_package(Doxygen)
 
 if(DOXYGEN_FOUND)
+
+    set(GENERATE_TREEVIEW "YES")
+    set(USER_PATH "user")
+
     # End-user framework documentation.
     configure_file(${CMAKE_CURRENT_SOURCE_DIR}/doxygen.user.cfg.in
                    ${CMAKE_CURRENT_BINARY_DIR}/doxygen.user.cfg
+                   @ONLY
+    )
+
+    set(GENERATE_TREEVIEW "NO")
+    set(USER_PATH "user_embed")
+
+    configure_file(${CMAKE_CURRENT_SOURCE_DIR}/doxygen.user.cfg.in
+                   ${CMAKE_CURRENT_BINARY_DIR}/doxygen.user.embed.cfg
                    @ONLY
     )
 
@@ -67,7 +79,7 @@ if(DOXYGEN_FOUND)
             COMMENT "Generating HTML for ${DOC_TITLE}" VERBATIM
             DEPENDS api_headers mkdoc_gen
         )
-        
+
         # PDF
         add_custom_target("${DOC_TARGET}_pdf"
             COMMAND make > ${CMAKE_CURRENT_BINARY_DIR}/doxygen-${DOC_TARGET}.pdf.log && cp refman.pdf ${DOXYGEN_OUTPUT}/legato-${DOC_TARGET}.pdf
@@ -81,14 +93,20 @@ if(DOXYGEN_FOUND)
     # Doc Generation
     generate_doc(user
         "API documentation"
-        ${DOCUMENTATION_OUTPUT_PATH}/user
-        ${CMAKE_CURRENT_BINARY_DIR}/doxygen.user.cfg
+        "${DOCUMENTATION_OUTPUT_PATH}/user"
+        "${CMAKE_CURRENT_BINARY_DIR}/doxygen.user.cfg"
+    )
+
+    generate_doc(user_embed
+        "Embedded API documentation"
+        "${DOCUMENTATION_OUTPUT_PATH}/user_embed"
+        "${CMAKE_CURRENT_BINARY_DIR}/doxygen.user.embed.cfg"
     )
 
     generate_doc(implementation
         "framework implementation documentation"
-        ${DOCUMENTATION_OUTPUT_PATH}/implementation
-        ${CMAKE_CURRENT_BINARY_DIR}/doxygen.implementation.cfg
+        "${DOCUMENTATION_OUTPUT_PATH}/implementation"
+        "${CMAKE_CURRENT_BINARY_DIR}/doxygen.implementation.cfg"
     )
 
 

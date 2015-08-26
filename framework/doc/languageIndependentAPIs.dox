@@ -1,5 +1,10 @@
 /** @page languageIndependentAPIs Language-independent APIs
 
+This section contains detailed info about APIs using an interface definition language (IDL) similar to C that
+helps apps to be used in multiple, different programming languages.
+
+<HR>
+
 @subpage languageIndependentSyntax <br>
 @subpage languageIndependentC <br>
 

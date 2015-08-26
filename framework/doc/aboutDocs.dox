@@ -1,5 +1,9 @@
 /** @page aboutDocs Docs
 
+@subpage aboutDocsSearch <br>
+@subpage aboutDocsGlossary <br>
+@subpage aboutDocsVersion
+
 Legato's goal is to simplify IoT development. We're hoping you'll find the dev environment
 and app framework so easy to use, you won't need the docs too much. But when you do need to refer
 to the docs, this info might be useful:
@@ -13,6 +17,8 @@ We use Doxygen for our reference documentation. Some features, like searching, a
 as robust as we'd like.
 
 Here are some @ref aboutDocsSearch tips.
+
+Here's how to find @ref aboutDocsVersion "old versions" of the docs.
 
 <HR>
 

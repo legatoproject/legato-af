@@ -5,6 +5,8 @@ apps in different ways:
 - OEM's can create Legato apps to run on their specific hardware.
 - 3rd party software providers can create apps for different hardware.
 
+@image html AF_architecture.png
+
 Many Services APIs provided are @a multi-app @a safe:
 
 - APIs can be used by several apps.

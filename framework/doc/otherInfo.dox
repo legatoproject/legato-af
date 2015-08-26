@@ -1,13 +1,15 @@
 /** @page otherInfo Other Info
 
-Other Info
+This section contains details about known platform constraints
+and advanced info about Yocto and Legato.
 
-@subpage connectingAirVantage <br>
-@subpage frameworkDB <br>
+<HR>
+
 @subpage platformConstraints <br>
 @subpage yoctoMain <br>
 
 <HR>
+
 Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 
 **/

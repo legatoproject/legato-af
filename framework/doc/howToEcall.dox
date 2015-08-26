@@ -1,0 +1,12 @@
+/** @page howToEcall Manage eCall
+
+This <a href="Legato_15_07_eCallAPI.pdf">PDF doc</a> contains general info about Legato's eCall functionality 
+with consolidated details on how to setup the eCall Service API for different regions.
+
+There's also @ref sampleApps_eCall sample app info that includes config setting details.
+
+<HR>
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+ **/

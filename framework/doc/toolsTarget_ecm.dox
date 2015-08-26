@@ -14,7 +14,7 @@ Use the @c configEcm tool to setup an ECM interface.
 
 > Deconfigures and turns off ECM.
 
-@verbatim configEcm on [target <ipV4_addr>] host <ipV4_addr> netmask <ipV4_netmansk>] @endverbatim
+@verbatim configEcm on [target <ipV4_addr>] host <ipV4_addr> netmask <ipV4_netmask>] @endverbatim
 
 > Configures ECM: <br>
 > enter target ipV4 address <br>

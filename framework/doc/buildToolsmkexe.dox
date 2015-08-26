@@ -12,7 +12,7 @@ run outside of any app.  This sometimes comes in handy to build:
  (e.g., scripts to run when a DHCP client is granted or loses a DHCP lease).
 
 To display usage, run
-@verbatim mksys --help@endverbatim
+@verbatim mkexe --help@endverbatim
 
 <HR>
 

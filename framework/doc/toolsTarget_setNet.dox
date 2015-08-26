@@ -14,7 +14,7 @@ won't merge well). You can restore your @c /etc/network/interfaces
 file after running @c setNet: @c /etc/network/interfaces is renamed with a date and time suffix.
 
 <h1>Usage</h1>
-<b><c> setNet [macrandom|macfixed] [dhcp|static] [address \<address\>] [netmask \<netmask\>] [gateway \<gateway\>] </c></b>
+<b><c> setNet [macrandom|macfixed] [dhcp|static] [address \<address\>] [netmask \<netmask\>] </c></b>
 
 Use @c macfixed to set the dev board to use
 the MAC provided at boot time, and continue to use DHCP for the IP address.

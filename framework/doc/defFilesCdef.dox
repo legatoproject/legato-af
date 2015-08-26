@@ -2,6 +2,55 @@
 
 <c>Component.cdef</c> files can contain these sections:
 
+@section defFilesCdef_assets Assets
+
+Used to describe collections of information (fields) that can be exchanged with cloud
+services like AirVantage.
+
+The assets section can hold multiple assets, each asset is given a name. 
+
+An asset can be:
+
+- @c variables values that are readable by the server; writable by the client.
+- @c settings values that are writable by the server; readable by the client.
+- @c commands that are custom commands sent from the server and executable by the client.
+
+The variable and setting fields can have an associated data type and optionally a default value.
+The current data types supported are <code> bool, int, float, and string</code>.
+
+In this code sample, @c helloWorld app has one setting (the message to be logged), one variable
+(records how many times a message has been logged).  The app also exposes two commands:  one to
+log the currently configured message and one to log the default message.
+
+The @c assets definition looks like this:
+
+@verbatim
+assets:
+{
+    message =
+    {
+        settings:
+        {
+            string greeterMessage = "Hello world."   // When requested log this message.
+        }
+
+        variables:
+        {
+            int greetCount     // How many times has a greeting been logged?
+        }
+
+        commands:
+        {
+            greetNow           // Log the message recorded in greeterMessage.
+            standardGreeting   // Use "Hello world," instead of what is set in greeterMessage.
+        }
+    }
+}
+@endverbatim
+
+Once you've defined your assets, it's up to the app to instantiate instances of them at
+run-time using the @subpage c_le_avdata API. Also see @ref howToAVData.
+
 @section defFilesCdef_bundles Bundles
 
 Lists additional files or directories to be copied from the build host into the app
@@ -365,9 +414,10 @@ requires:
 
 @subsection defFilesCdef_requiresFile File
 
-Specifies:
-- files residing on target, outside of app, but made accessible to app.
-- locations inside app's sandbox where files will appear.
+Declares:
+- specific files that reside on the target outside of the app,
+but made accessible to the app.
+-  location inside the app's sandbox where the file will appear.
 
 Things listed in @c requires are expected to be found on the target at runtime.
 They're not copied into the app at build time; they are made accessible to the app inside of
@@ -397,9 +447,6 @@ requires:
         // I get character stream input from outside via a named pipe (read-only)
         /var/run/someNamedPipe  /var/run/
 
-        // I need read and write access to UART2.
-        /dev/ttyS1  /dev/
-
         // I need to be able to play back audio files installed in /usr/local/share/audio.
         "/usr/local/share/audio/error message.wav" /usr/share/audio/
         '/usr/local/share/audio/success message.wav' /usr/share/audio/
@@ -420,6 +467,76 @@ requires:
 {
     file:
     {
+        // Program uses /var/run/someNamedPipe which it calls /var/run/externalPipe.
+        /var/run/someNamedPipe  /var/run/externalPipe
+    }
+}
+@endverbatim
+
+@warning  When something is accessible from inside an app sandbox, there are potential security
+            risks  (e.g., access to the object could be exploited by the app, or hacker, to access sensitive
+            information or launch a denial-of-service attack on other apps within the target
+            device or other devices connected to the target device).
+
+@subsection defFilesCdef_requiresDevice Device
+
+Declares:
+- device files that reside on the target outside of the app, but made accessible to the app.
+- location inside the app's sandbox where the file will appear.
+- access permissions the app is given to the device file.
+
+Things listed in @c requires are expected to be found on the target at runtime.
+They're not copied into the app at build time; they are made accessible to the app inside of
+its sandbox at runtime.
+
+Each entry consists of two file system paths and a set of optional access permissions:
+
+ - access permissions, readable ([r]) and/or writeable ([w]).  Executable is not allowed on device
+   files.  If permission values are not specified, then read-only ([r]) is the default.
+
+ - path to the object in the file system outside of the app, which
+   must be an absolute path (beginning with ‘/’).  This must be a path to a valid character or
+   block device file.
+
+ - absolute file system path inside the app’s sandbox where the object will
+   appear at runtime.
+
+A file path can be enclosed in quotation marks (either single ' or double "). This is required when
+it contains spaces or character sequences that would start comments.
+
+The first path can't end in a '/'.
+
+If the second path ends in a '/', then it's specifying the directory where the object
+appears, and the object has the same name inside the sandbox as it has outside the sandbox.
+
+@verbatim
+requires:
+{
+    device:
+    {
+        // I get read-only access to the SPI port.
+        [r]     /dev/sierra_spi   /dev/sierra_spi
+
+        // I get read-only access to the NMEA port.
+                /dev/nmea         /dev/nmea
+
+        // I get read and write access to the I2C port.
+        [rw]    /dev/sierra_i2c   /dev/
+    }
+}
+@endverbatim
+
+Note that if a hot-plug device is unplugged and plugged back in, the app must be restarted before it
+can access the device.
+
+It's also possible to give the object a different names inside and outside of the sandbox by
+ adding a name to the end of the second path.
+
+@verbatim
+requires:
+{
+    device:
+    {
         /dev/ttyS0  /dev/port1     // Program uses /dev/port1, but UART0 is called /dev/ttyS0.
     }
 }
@@ -429,6 +546,8 @@ requires:
             risks  (e.g., access to the object could be exploited by the app, or hacker, to access sensitive
             information or launch a denial-of-service attack on other apps within the target
             device or other devices connected to the target device).
+
+@warning  This section is experimental.  Future releases of may not support this section.
 
 
 @subsection defFilesCdef_requiresDir Dir
@@ -474,13 +593,13 @@ requires:
 }
 @endverbatim
 
-@note   Even though the directory appears in the app's sandbox
+@note   Although the directory appears in the app's sandbox, it
         doesn't mean the app can access it. The directory permissions settings
-        must also allow it.  File permissions (both DAC and MAC) and ownership
+        must also allow it. File permissions (both DAC and MAC) and ownership
         (group and user) on the original files in the target system remain in effect inside
         the sandbox.
 
-@warning    Any time anything is made accessible from inside an app sandbox, the security
+@warning    Any time anything is accessible from inside an app sandbox, the security
             risks must be considered carefully.  Ask yourself if access to the object can be
             exploited by the app (or a hacker who has broken into the app) to access sensitive
             information or launch a denial-of-service attack on other apps within the target
@@ -514,12 +633,12 @@ requires:
 @endcode
 
 This will result in `-lfoo` being passed to the linker when linking any executables that include
-this component.   You will therefore need to have a copy of this library where the linker can find
+this component. You will need a copy of this library where the linker can find
 it on the build host.
 
-Furthermore, on the target device at runtime the dynamic linker will look for this library, so
-the library must be made available inside the application sandbox somewhere in the dynamic linker's
-library search path.  This can be done using the <c>files:</c> or <c>dirs:</c> subsection of the
+Also, on the target device at runtime, the dynamic linker will look for the library so
+it must be made available inside the app sandbox, somewhere in the dynamic linker's
+library search path. This can be done using the <c>files:</c> or <c>dirs:</c> subsection of the
 <c>requires:</c> section of either the <c>.cdef</c> or <c>.adef</c> file.
 
 @code

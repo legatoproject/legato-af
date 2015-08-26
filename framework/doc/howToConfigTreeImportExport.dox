@@ -1,8 +1,11 @@
 /** @page howToConfigTreeImportExport Import/Export Config Trees
 
-This topic summarizes how to create a script to automate importing and exporting config tree settings.
-Import/export functions are useful to create a copy you can use to reinstate your config trees after installing a new
-Legato version (which currently overwrites private config trees).
+This topic summarizes how to create a script to automate importing and exporting config tree 
+settings.
+
+Legato currently overwrites private config trees during upgrading. The import/export script is an
+easy way to create a copy of your config trees so you can reinstate them after installing a new
+Legato version without rebuilding them.
  
 This code sample shows how you can wrap @c instapp in a shell script that will automate the
 import/export functions:

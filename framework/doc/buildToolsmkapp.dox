@@ -21,7 +21,7 @@ on-target configuration data needed, and add everything to an app bundle ready
 for installation on the target.
 
 To display usage, run
-@verbatim mksys --help@endverbatim
+@verbatim mkapp --help@endverbatim
 
 @note @c mkapp only knows about the app it's building. Typos in binding values won't be detected,
 but your app will hang. The note in @ref buildToolsmksys has details how to troubleshoot.

@@ -16,7 +16,7 @@ This is how the docs are organized:
 | @subpage languageIndependentAPIs  | APIs for other components |
 | @subpage legatoServices            |   pre-built services                                |
 | @subpage c_APIs                          | C Language library                              |
-| @subpage otherInfo                       | AirVantage, db schema, platform constraints, Yocto |
+| @subpage otherInfo                       | platform constraints & Yocto dist info |
 | @subpage aboutMain                  | version info, docs tips, glossary                    |
 
 <h2>Overview</h2>

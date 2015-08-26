@@ -139,7 +139,7 @@ Pointer type return values must be declared @c const if the object being returne
 
 @section cstdsCyclomatic Cyclomatic Complexity
 
-http://en.wikipedia.org/wiki/Cyclomatic_complexity/Cyclomatic complexity is a measurement of the complexity of code within a function.
+<a href="http://en.wikipedia.org/wiki/Cyclomatic_complexity">Cylcomatic Complexity</a> is a measurement of the complexity of code within a function.
 It's measured by counting branches within a function.
 
 Each function gets a starting value of 1, and 1 is added for every "if" (or "?"), every loop (for, do, or while), and every "case".
@@ -249,7 +249,7 @@ NOTE: file-scope static variables are fine.
 
 @section cstdsGotos Gotos
 
-@c goto statements should not be used. It it's absolutely essential, use them sparingly only as a jump-to-exception-handling mechanism:
+@c goto statements should not be used. If it's absolutely essential, use them sparingly only as a jump-to-exception-handling mechanism:
 
 @verbatim
 {

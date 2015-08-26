@@ -1,5 +1,11 @@
 /** @page basicConfig Configuration
 
+This topic describes how target device configuration works in Legato. 
+
+Also see @ref howToConfigTree
+
+<HR>
+
 Device configuration data is vital for most applications. Seldom are all devices
 in an application identical.  Usually, there's some kind of customization on each
 device: it may be a complex set of user preferences, or it may be just a simple node name.

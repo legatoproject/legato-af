@@ -1,7 +1,7 @@
 /** @page legatoServices Services APIs
 
-Legato comes with ready-built services for commonly needed features. The Services
-@subpage legatoServicesOverview page has some high-level info. 
+This section contains detailed info about Legato's ready-built services available for commonly needed
+features. The Services @subpage legatoServicesOverview page has high-level info. 
 
 This table lists Legato's Services &mdash; multi-app safe means arbitration is fully managed among apps so
 multiple apps can share the same resources.
@@ -9,6 +9,7 @@ multiple apps can share the same resources.
 | Service                            | Description                                        | multi-app safe            |
 | ---------------------------------- | -------------------------------------------------- | :-----------------------: |
 | @subpage c_le_avc                  | AirVantage server communication                    | @image html green_dot.png |
+| @subpage c_le_avdata               | AirVantage server data                             | @image html green_dot.png |
 | @subpage c_adc                     | Analog to digital converter                        |                           |
 | @subpage c_appInfo                 | Application information retrieval                  |                           |
 | @subpage c_antenna                 | Antenna diagnostics                                |                           |
@@ -19,6 +20,7 @@ multiple apps can share the same resources.
 | @subpage c_ecall                   | EU auto accident assistance program                |                           |
 | @subpage c_gnss                    | GNSS device control                                |                           |
 | @subpage c_ips                     | Input voltage data                                 | @image html green_dot.png |
+| @subpage c_le_instStat        | App install/uninstall notification         | @image html green_dot.png |
 | @subpage c_mcc                     | Control voice calls                                |                           |
 | @subpage c_mdc                     | Control modem data connections                     |                           |
 | @subpage c_fwupdate                | Firmware image updates                             |                           |
@@ -27,7 +29,7 @@ multiple apps can share the same resources.
 | @subpage c_pos                     | Device physical position/movement                  | @image html green_dot.png |
 | @subpage c_pm                      | Device power management                            |                           |
 | @subpage c_riPin                   | Ring indicator for host wakeup                     |                           |
-| @subpage c_secStore          | Secure storage for sensitive data                 | @image html green_dot.png |
+| @subpage c_secStore                | Secure storage for sensitive data                  | @image html green_dot.png |
 | @subpage c_sim                     | SIM access                                         |                           |
 | @subpage c_sms                     | SMS messaging                                      |                           |
 | @subpage c_smsInbox                | SMS Inbox Service                                  | @image html green_dot.png |

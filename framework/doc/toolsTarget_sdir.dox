@@ -9,7 +9,7 @@ Use the Service Directory tool to interact with the Service Directory to
 
 @verbatim sdir list @endverbatim
 
-> The @c list command generates a list of all the IPC services known by
+> @c list command generates a list of all the IPC services known by
 > the Service Directory including servers advertising, users waiting for
 > servers to advertise, and IPC bindings in effect.
 

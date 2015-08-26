@@ -2,13 +2,13 @@
 
 Legato has these sample apps:
 
-@subpage sampleApps_airVantage <br>
 @subpage sampleApps_eCall <br>
 @subpage sampleApps_helloIpc <br>
 @subpage sampleApps_helloWorld <br>
 @subpage sampleApps_legacy <br>
 @subpage sampleApps_modemDemo <br>
-@subpage sampleApps_sms
+@subpage sampleApps_sms <br>
+@subpage sampleApps_syslog
 
 All sample apps are located in @c apps/sample/. The built apps are located in
 <code>build/\<target\>/bin/samples</code>.

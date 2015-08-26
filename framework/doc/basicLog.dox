@@ -8,7 +8,9 @@ Displaying messages on a screen doesn't support
 remote troubleshooting; especially when the device is hidden from view inside
 a piece of equipment or located in remote geographic regions.
 
-Command line @ref toolsTarget_log tool. <br>
+
+@ref howToLogs <br>
+Command line @ref toolsTarget_log tool <br>
 @ref c_logging
 
 <HR>

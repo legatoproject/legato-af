@@ -1,6 +1,9 @@
 /** @page basicMain Basics
 
-These topics will help you get acquainted with Legato and ready to develop apps:
+This section contains the essential basics to understand how Legato works including key development
+info and details on Legato's sample apps.
+
+<HR>
 
 @subpage basicConcepts <br>
 @subpage basicApps <br>

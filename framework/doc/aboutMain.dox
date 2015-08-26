@@ -1,11 +1,10 @@
 /** @page aboutMain About 
 
-@subpage aboutLegato <br>
- <br>
-@subpage aboutDocs <br>
-@subpage aboutDocsSearch <br>
-@subpage aboutDocsGlossary <br>
+This section contains info about this Legato release and build number, and info on how to use the
+Legato docs.
 
+@subpage aboutLegato <br>
+@subpage aboutDocs
 
 <HR>
 
