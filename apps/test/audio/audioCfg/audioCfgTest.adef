@@ -1,0 +1,25 @@
+executables:
+{
+    audioCfgTest = ( audioCfgComp )
+}
+
+maxFileSystemBytes: 256K
+
+
+processes:
+{
+    envVars:
+    {
+        LE_LOG_LEVEL = DEBUG
+    }
+
+    maxFileBytes: 5000K
+}
+
+start: auto
+
+bindings:
+{
+    audioCfgTest.audioCfgComp.le_audio -> audioService.le_audio
+}
+

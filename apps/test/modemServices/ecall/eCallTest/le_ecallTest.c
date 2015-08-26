@@ -13,6 +13,7 @@
 
 #include "legato.h"
 #include "interfaces.h"
+#include "mdmCfgEntries.h"
 
 #if 0
 // VIN: WM9VDSVDSYA123456
@@ -43,8 +44,14 @@ static uint8_t ImportedMsd[] ={0x01, 0x4C, 0x07, 0x80, 0xA6, 0x4D, 0x29, 0x25, 0
 
 
 static const char *         PsapNumber = NULL;
-static le_ecall_CallRef_t    LastTestECallRef;
+static le_ecall_CallRef_t   LastTestECallRef;
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Flag indicating whether a MSD has already been sent during a current session.
+ */
+//--------------------------------------------------------------------------------------------------
+static bool IsMsdSentOnce = false;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -54,16 +61,18 @@ static le_ecall_CallRef_t    LastTestECallRef;
 //--------------------------------------------------------------------------------------------------
 static void MyECallEventHandler
 (
+    le_ecall_CallRef_t  eCallRef,
     le_ecall_State_t    state,
     void*               contextPtr
 )
 {
-    LE_INFO("eCall TEST: New eCall state: %d", state);
+    LE_INFO("eCall TEST: New eCall state: %d for eCall ref.%p", state, eCallRef);
 
     switch(state)
     {
         case LE_ECALL_STATE_STARTED:
         {
+            IsMsdSentOnce = false;
             LE_INFO("Check MyECallEventHandler passed, state is LE_ECALL_STATE_STARTED.");
             break;
         }
@@ -75,6 +84,7 @@ static void MyECallEventHandler
         case LE_ECALL_STATE_DISCONNECTED:
         {
             LE_INFO("Check MyECallEventHandler passed, state is LE_ECALL_STATE_DISCONNECTED.");
+            LE_INFO("Termination reason: %d", le_ecall_GetTerminationReason(eCallRef) );
             break;
         }
         case LE_ECALL_STATE_WAITING_PSAP_START_IND:
@@ -85,6 +95,29 @@ static void MyECallEventHandler
         case LE_ECALL_STATE_PSAP_START_IND_RECEIVED:
         {
             LE_INFO("Check MyECallEventHandler passed, state is LE_ECALL_STATE_PSAP_START_IND_RECEIVED.");
+            if (IsMsdSentOnce)
+            {
+                // The MSD has been already sent once, I update the MSD when I receive again the
+                // LE_ECALL_STATE_PSAP_START_IND_RECEIVED event.
+                LE_INFO("UpdateMSD");
+                LE_ASSERT(le_ecall_ImportMsd(eCallRef, ImportedMsd, sizeof(ImportedMsd)) == LE_OK);
+                if (le_ecall_SendMsd(eCallRef) != LE_OK)
+                {
+                    LE_ERROR("Could not send the MSD");
+                }
+            }
+            else
+            {
+                LE_INFO("1st MSD sending...");
+                if (le_ecall_SendMsd(eCallRef) == LE_OK)
+                {
+                    IsMsdSentOnce = true;
+                }
+                else
+                {
+                    LE_ERROR("Could not send the MSD");
+                }
+            }
             break;
         }
         case LE_ECALL_STATE_MSD_TX_STARTED:
@@ -140,6 +173,11 @@ static void MyECallEventHandler
         case LE_ECALL_STATE_FAILED:
         {
             LE_INFO("Check MyECallEventHandler passed, state is LE_ECALL_STATE_FAILED.");
+            break;
+        }
+        case LE_ECALL_STATE_END_OF_REDIAL_PERIOD:
+        {
+            LE_INFO("Check MyECallEventHandler passed, state is LE_ECALL_STATE_END_OF_REDIAL_PERIOD.");
             break;
         }
         case LE_ECALL_STATE_UNKNOWN:
@@ -283,49 +321,32 @@ void Testle_ecall_LoadMsd
     void
 )
 {
-    le_result_t         res = LE_FAULT;
     le_ecall_CallRef_t   testECallRef = 0x00;
 
     LE_INFO("Start Testle_ecall_LoadMsd");
 
-    // Check LE_DUPLICATE on le_ecall_ImportMsd
     LE_ASSERT((testECallRef=le_ecall_Create()) != NULL);
 
     LE_ASSERT(le_ecall_SetMsdPosition(testECallRef, true, +48898064, +2218092, 0) == LE_OK);
-
     LE_ASSERT(le_ecall_SetMsdPassengersCount(testECallRef, 3) == LE_OK);
 
-    LE_ASSERT(le_ecall_ImportMsd(testECallRef, ImportedMsd, sizeof(ImportedMsd)) == LE_DUPLICATE);
-
-    LE_ASSERT((res=le_ecall_StartTest(testECallRef)) == LE_OK);
-
-    if (res == LE_OK)
-    {
-        LE_ASSERT(le_ecall_End(testECallRef) == LE_OK);
-
-        le_ecall_Delete(testECallRef);
-
-        sleep (3);
-
-        // Check LE_DUPLICATE on le_ecall_SetMsdPosition and le_ecall_SetMsdPassengersCount
-        LE_ASSERT((testECallRef=le_ecall_Create()) != NULL);
-
-        LE_ASSERT(le_ecall_ImportMsd(testECallRef, ImportedMsd, sizeof(ImportedMsd)) == LE_OK);
-
-        LE_ASSERT(le_ecall_SetMsdPosition(testECallRef, true, +48070380, -11310000, 45) == LE_DUPLICATE);
-
-        LE_ASSERT(le_ecall_SetMsdPassengersCount(testECallRef, 3) == LE_DUPLICATE);
-
-        LE_ASSERT((res=le_ecall_StartTest(testECallRef)) == LE_OK);
-
-        if (res == LE_OK)
-        {
-            LE_ASSERT(le_ecall_End(testECallRef) == LE_OK);
-        }
-    }
+    // Check LE_DUPLICATE on le_ecall_SetMsdPosition and le_ecall_SetMsdPassengersCount
+    LE_ASSERT(le_ecall_ImportMsd(testECallRef, ImportedMsd, sizeof(ImportedMsd)) == LE_OK);
+    LE_ASSERT(le_ecall_SetMsdPosition(testECallRef, true, +48070380, -11310000, 45) == LE_DUPLICATE);
+    LE_ASSERT(le_ecall_SetMsdPassengersCount(testECallRef, 3) == LE_DUPLICATE);
+    LE_ASSERT(le_ecall_ResetMsdEraGlonassCrashSeverity(testECallRef) == LE_DUPLICATE);
+    LE_ASSERT(le_ecall_SetMsdEraGlonassCrashSeverity(testECallRef, 0) == LE_DUPLICATE);
+    LE_ASSERT(le_ecall_ResetMsdEraGlonassDiagnosticResult(testECallRef) == LE_DUPLICATE);
+    LE_ASSERT(le_ecall_SetMsdEraGlonassDiagnosticResult(testECallRef,
+              LE_ECALL_DIAG_RESULT_PRESENT_MIC_CONNECTION_FAILURE)
+              == LE_DUPLICATE);
+    LE_ASSERT(le_ecall_ResetMsdEraGlonassCrashInfo(testECallRef) == LE_DUPLICATE);
+    LE_ASSERT(le_ecall_SetMsdEraGlonassCrashInfo(testECallRef,
+              LE_ECALL_CRASH_INFO_PRESENT_CRASH_FRONT_OR_SIDE
+              | LE_ECALL_CRASH_INFO_CRASH_FRONT_OR_SIDE)
+              == LE_DUPLICATE);
 
     le_ecall_Delete(testECallRef);
-    sleep(5);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -461,6 +482,11 @@ COMPONENT_INIT
 {
     if (le_arg_NumArgs() == 1)
     {
+        char configPath[LIMIT_MAX_PATH_BYTES];
+        char  sysStr[] = "PAN-EUROPEAN";
+        bool isEraGlonass = false;
+        snprintf(configPath, sizeof(configPath), "%s", CFG_MODEMSERVICE_ECALL_PATH);
+
         // Register a signal event handler for SIGINT when user interrupts/terminates process
         signal(SIGINT, SigHandler);
 
@@ -468,12 +494,55 @@ COMPONENT_INIT
         LE_INFO("======== Start eCall Modem Services implementation Test with PSAP.%s========",
                 PsapNumber);
 
+        // Get system standard
+        le_cfg_IteratorRef_t eCallCfg = le_cfg_CreateReadTxn(configPath);
+        if (le_cfg_NodeExists(eCallCfg, CFG_NODE_SYSTEM_STD))
+        {
+            if ( le_cfg_GetString(eCallCfg,
+                                    CFG_NODE_SYSTEM_STD,
+                                    sysStr,
+                                    sizeof(sysStr),
+                                    "PAN-EUROPEAN") != LE_OK )
+            {
+                LE_WARN("No node value set for '%s' ! Use the default one (%s)",
+                        CFG_NODE_SYSTEM_STD,
+                        sysStr);
+            }
+            else if ((strncmp(sysStr, "PAN-EUROPEAN", strlen("PAN-EUROPEAN")) != 0) &&
+                        (strncmp(sysStr, "ERA-GLONASS", strlen("ERA-GLONASS")) != 0))
+            {
+                LE_WARN("Bad value set for '%s' ! Use the default one (%s)",
+                        CFG_NODE_SYSTEM_STD,
+                        sysStr);
+            }
+            if (strncmp(sysStr, "ERA-GLONASS", strlen("ERA-GLONASS")) == 0)
+            {
+                isEraGlonass = true;
+            }
+        }
+        else
+        {
+            LE_WARN("No node value set for '%s' ! Use the default one (%s)",
+                    CFG_NODE_SYSTEM_STD,
+                    sysStr);
+        }
+        le_cfg_CancelTxn(eCallCfg);
+
+        // Start Test
         LE_INFO("======== OperationMode Test  ========");
         Testle_ecall_OperationMode();
         LE_INFO("======== ConfigSettings Test  ========");
         Testle_ecall_ConfigSettings();
-        LE_INFO("======== EraGlonassSettings Test  ========");
-        Testle_ecall_EraGlonassSettings();
+        if (isEraGlonass)
+        {
+            LE_INFO("Selected standard is %s", sysStr);
+            LE_INFO("======== EraGlonassSettings Test  ========");
+            Testle_ecall_EraGlonassSettings();
+        }
+        else
+        {
+            LE_INFO("Selected standard is %s, EraGlonassSettings test is not ran.", sysStr);
+        }
         LE_INFO("======== LoadMsd Test  ========");
         Testle_ecall_LoadMsd();
         LE_INFO("======== StartManual Test  ========");

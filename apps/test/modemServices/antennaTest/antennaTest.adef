@@ -16,4 +16,5 @@ start: manual
 bindings:
 {
     monAntennaTest.monAntennaTestComp.le_antenna -> modemService.le_antenna
+    monAntennaTest.monAntennaTestComp.le_info -> modemService.le_info
 }

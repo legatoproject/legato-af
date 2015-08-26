@@ -85,7 +85,7 @@ static void ConnectAudioToMicAndSpeaker
 
 static void DisconnectAllAudio
 (
-    le_mcc_call_ObjRef_t callRef
+    le_mcc_CallRef_t callRef
 )
 {
     if (audioInputConnectorRef)
@@ -158,15 +158,15 @@ static void DisconnectAllAudio
  *
  */
 //--------------------------------------------------------------------------------------------------
-static void MyCallEventHandler(le_mcc_call_ObjRef_t  callRef, le_mcc_call_Event_t callEvent, void* contextPtr)
+static void MyCallEventHandler(le_mcc_CallRef_t callRef, le_mcc_Event_t callEvent, void* contextPtr)
 {
     le_result_t         res;
 
-    if (callEvent == LE_MCC_CALL_EVENT_ALERTING)
+    if (callEvent == LE_MCC_EVENT_ALERTING)
     {
-        LE_INFO("Call event is LE_MCC_CALL_EVENT_ALERTING.");
+        LE_INFO("Call event is LE_MCC_EVENT_ALERTING.");
     }
-    else if (callEvent == LE_MCC_CALL_EVENT_CONNECTED)
+    else if (callEvent == LE_MCC_EVENT_CONNECTED)
     {
         // Outgoing call case
         if (!isAudioAlreadyConnected)
@@ -175,53 +175,53 @@ static void MyCallEventHandler(le_mcc_call_ObjRef_t  callRef, le_mcc_call_Event_
         }
         isAudioAlreadyConnected = false;
 
-        LE_INFO("Call event is LE_MCC_CALL_EVENT_CONNECTED.");
+        LE_INFO("Call event is LE_MCC_EVENT_CONNECTED.");
     }
-    else if (callEvent == LE_MCC_CALL_EVENT_TERMINATED)
+    else if (callEvent == LE_MCC_EVENT_TERMINATED)
     {
         DisconnectAllAudio(callRef);
 
-        LE_INFO("Call event is LE_MCC_CALL_EVENT_TERMINATED.");
-        le_mcc_call_TerminationReason_t term = le_mcc_call_GetTerminationReason(callRef);
+        LE_INFO("Call event is LE_MCC_EVENT_TERMINATED.");
+        le_mcc_TerminationReason_t term = le_mcc_GetTerminationReason(callRef);
         switch(term)
         {
-            case LE_MCC_CALL_TERM_NETWORK_FAIL:
-                LE_INFO("Termination reason is LE_MCC_CALL_TERM_NETWORK_FAIL");
+            case LE_MCC_TERM_NETWORK_FAIL:
+                LE_INFO("Termination reason is LE_MCC_TERM_NETWORK_FAIL");
                 break;
 
-            case LE_MCC_CALL_TERM_UNASSIGNED_NUMBER:
-                LE_INFO("Termination reason is LE_MCC_CALL_TERM_UNASSIGNED_NUMBER");
+            case LE_MCC_TERM_UNASSIGNED_NUMBER:
+                LE_INFO("Termination reason is LE_MCC_TERM_UNASSIGNED_NUMBER");
                 break;
 
-            case LE_MCC_CALL_TERM_USER_BUSY:
-                LE_INFO("Termination reason is LE_MCC_CALL_TERM_USER_BUSY");
+            case LE_MCC_TERM_USER_BUSY:
+                LE_INFO("Termination reason is LE_MCC_TERM_USER_BUSY");
                 break;
 
-            case LE_MCC_CALL_TERM_LOCAL_ENDED:
-                LE_INFO("Termination reason is LE_MCC_CALL_TERM_LOCAL_ENDED");
+            case LE_MCC_TERM_LOCAL_ENDED:
+                LE_INFO("Termination reason is LE_MCC_TERM_LOCAL_ENDED");
                 break;
 
-            case LE_MCC_CALL_TERM_REMOTE_ENDED:
-                LE_INFO("Termination reason is LE_MCC_CALL_TERM_REMOTE_ENDED");
+            case LE_MCC_TERM_REMOTE_ENDED:
+                LE_INFO("Termination reason is LE_MCC_TERM_REMOTE_ENDED");
                 break;
 
-            case LE_MCC_CALL_TERM_UNDEFINED:
-                LE_INFO("Termination reason is LE_MCC_CALL_TERM_UNDEFINED");
+            case LE_MCC_TERM_UNDEFINED:
+                LE_INFO("Termination reason is LE_MCC_TERM_UNDEFINED");
                 break;
 
             default:
                 LE_INFO("Termination reason is %d", term);
                 break;
         }
-        le_mcc_call_Delete(callRef);
+        le_mcc_Delete(callRef);
     }
-    else if (callEvent == LE_MCC_CALL_EVENT_INCOMING)
+    else if (callEvent == LE_MCC_EVENT_INCOMING)
     {
         ConnectAudioToMicAndSpeaker();
         isAudioAlreadyConnected = true;
 
-        LE_INFO("Call event is LE_MCC_CALL_EVENT_INCOMING.");
-        res = le_mcc_call_Answer(callRef);
+        LE_INFO("Call event is LE_MCC_EVENT_INCOMING.");
+        res = le_mcc_Answer(callRef);
         if (res == LE_OK)
         {
             LE_INFO("Call I answered the call");
@@ -268,8 +268,7 @@ static void PrintUsage()
 
 COMPONENT_INIT
 {
-    le_mcc_profile_ObjRef_t profileRef;
-    static le_mcc_call_ObjRef_t testCallRef;
+    static le_mcc_CallRef_t testCallRef;
 
     if (le_arg_NumArgs() == 1)
     {
@@ -281,16 +280,9 @@ COMPONENT_INIT
         exit(EXIT_FAILURE);
     }
 
-    profileRef=le_mcc_profile_GetByName("Modem-Sim1");
-    if ( profileRef == NULL )
-    {
-        LE_INFO("Unable to get the Call profile reference");
-        exit(1);
-    }
+    le_mcc_AddCallEventHandler(MyCallEventHandler, NULL);
 
-    le_mcc_profile_AddCallEventHandler(profileRef, MyCallEventHandler, NULL);
-
-    testCallRef=le_mcc_profile_CreateCall(profileRef, DestinationNumber);
-    le_mcc_call_Start(testCallRef);
+    testCallRef=le_mcc_Create(DestinationNumber);
+    le_mcc_Start(testCallRef);
 }
 

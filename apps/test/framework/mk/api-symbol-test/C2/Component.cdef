@@ -1,0 +1,12 @@
+requires:
+{
+    api:
+    {
+        foo = bar.api
+    }
+}
+
+sources:
+{
+    C2.c
+}

@@ -14,7 +14,8 @@
 static char TestRootDir[LE_CFG_STR_LEN_BYTES] = "";
 
 
-
+#define TEST_PATTERN_LARGE_STRING   "1234567890123456789012345678901234"  // 35 bytes (4 more than the segment size + null)
+#define TEST_PATTERN_SMALL_STRING   "12"                                  // 2 bytes + null ; small string 
 
 static const char* NodeTypeStr
 (
@@ -748,7 +749,81 @@ static void IncTestCount
 }
 
 
+static void TestStringOverwrite
+(
+    void
+)
+{   
+    // the objective of this test case is to make sure the 
+    // segmented dynamic string can grow and shrink as intented
+    static char pathBuffer[LE_CFG_STR_LEN_BYTES] = "";
+    static char strBuffer[LE_CFG_STR_LEN_BYTES];
+    le_result_t result = LE_OK;
 
+    snprintf(pathBuffer, LE_CFG_STR_LEN_BYTES, "%s/test_string", TestRootDir);
+
+    LE_INFO("pathBuffer = %s\n", pathBuffer);
+
+    // write a large string read it back and verify
+    le_cfg_IteratorRef_t iterRefWrite = le_cfg_CreateWriteTxn(pathBuffer);
+    le_cfg_SetString(iterRefWrite, pathBuffer, TEST_PATTERN_LARGE_STRING);
+    le_cfg_CommitTxn(iterRefWrite);
+    
+    // read string
+    le_cfg_IteratorRef_t iterRefRead = le_cfg_CreateReadTxn(pathBuffer);
+    result = le_cfg_GetString(iterRefRead, pathBuffer, strBuffer, LE_CFG_STR_LEN_BYTES, "");
+    le_cfg_CancelTxn(iterRefRead);
+
+    LE_FATAL_IF(result != LE_OK,
+                "Test: Failed = %s",
+                LE_RESULT_TXT(result));
+
+    LE_FATAL_IF(strncmp(strBuffer, TEST_PATTERN_LARGE_STRING, LE_CFG_STR_LEN_BYTES) != 0,
+                "Test: %s - Expected '%s' but got '%s' instead.",
+                pathBuffer,
+                TEST_PATTERN_LARGE_STRING,
+                strBuffer);
+    
+    // overwrite with a small string and verify that works
+    iterRefWrite = le_cfg_CreateWriteTxn(pathBuffer);
+    le_cfg_SetString(iterRefWrite, pathBuffer, TEST_PATTERN_SMALL_STRING);
+    le_cfg_CommitTxn(iterRefWrite);
+    
+    // read string
+    iterRefRead = le_cfg_CreateReadTxn(pathBuffer);
+    result = le_cfg_GetString(iterRefRead, pathBuffer, strBuffer, LE_CFG_STR_LEN_BYTES, "");
+    le_cfg_CancelTxn(iterRefRead);
+
+    LE_FATAL_IF(result != LE_OK,
+                "Test: Failed = %s",
+                LE_RESULT_TXT(result));
+
+    LE_FATAL_IF(strncmp(strBuffer, TEST_PATTERN_SMALL_STRING, LE_CFG_STR_LEN_BYTES) != 0,
+                "Test: %s - Expected '%s' but got '%s' instead.",
+                pathBuffer,
+                TEST_PATTERN_SMALL_STRING,
+                strBuffer);
+
+    // overwrite the small string with the large one again and make sure it works
+    iterRefWrite = le_cfg_CreateWriteTxn(pathBuffer);
+    le_cfg_SetString(iterRefWrite, pathBuffer, TEST_PATTERN_LARGE_STRING);
+    le_cfg_CommitTxn(iterRefWrite);
+        
+    // read string
+    iterRefRead = le_cfg_CreateReadTxn(pathBuffer);
+    result = le_cfg_GetString(iterRefRead, pathBuffer, strBuffer, LE_CFG_STR_LEN_BYTES, "");
+    le_cfg_CancelTxn(iterRefRead);
+
+    LE_FATAL_IF(result != LE_OK,
+                "Test: Failed = %s",
+                LE_RESULT_TXT(result));
+
+    LE_FATAL_IF(strncmp(strBuffer, TEST_PATTERN_LARGE_STRING, LE_CFG_STR_LEN_BYTES) != 0,
+                "Test: %s - Expected '%s' but got '%s' instead.",
+                pathBuffer,
+                TEST_PATTERN_LARGE_STRING,
+                strBuffer);
+}
 
 COMPONENT_INIT
 {
@@ -776,6 +851,9 @@ COMPONENT_INIT
     ExistAndEmptyTest();
     ListTreeTest();
     CallbackTest();
+
+    // overwrite a large string with a small string and vice-versa
+    TestStringOverwrite();
 
     if (le_arg_NumArgs() == 1)
     {

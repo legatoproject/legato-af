@@ -30,7 +30,6 @@ start:
 bindings:
 {
     audioTest.audioTestComp.le_audio -> audioService.le_audio
-    audioTest.audioTestComp.le_mcc_call -> modemService.le_mcc_call
-    audioTest.audioTestComp.le_mcc_profile -> modemService.le_mcc_profile
+    audioTest.audioTestComp.le_mcc -> modemService.le_mcc
 }
 

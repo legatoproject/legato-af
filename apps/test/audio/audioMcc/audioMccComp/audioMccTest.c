@@ -13,7 +13,7 @@
 #include "interfaces.h"
 
 
-static le_mcc_call_ObjRef_t TestCallRef;
+static le_mcc_CallRef_t TestCallRef;
 
 static le_audio_StreamRef_t MdmRxAudioRef = NULL;
 static le_audio_StreamRef_t MdmTxAudioRef = NULL;
@@ -67,7 +67,7 @@ static void MyMediaEventHandler
 //--------------------------------------------------------------------------------------------------
 static void ConnectAudioToFileRemotePlay
 (
-    le_mcc_call_ObjRef_t callRef
+    void
 )
 {
     le_result_t res;
@@ -118,7 +118,7 @@ static void ConnectAudioToFileRemotePlay
 //--------------------------------------------------------------------------------------------------
 static void ConnectAudioToFileRemoteRec
 (
-    le_mcc_call_ObjRef_t callRef
+    void
 )
 {
     le_result_t res;
@@ -166,7 +166,7 @@ static void ConnectAudioToFileRemoteRec
 //--------------------------------------------------------------------------------------------------
 static void ConnectAudioToFileLocalPlay
 (
-    le_mcc_call_ObjRef_t callRef
+    void
 )
 {
     le_result_t res;
@@ -217,7 +217,7 @@ static void ConnectAudioToFileLocalPlay
 //--------------------------------------------------------------------------------------------------
 static void ConnectAudioToFileLocalRec
 (
-    le_mcc_call_ObjRef_t callRef
+    void
 )
 {
     le_result_t res;
@@ -266,14 +266,14 @@ static void ConnectAudioToFileLocalRec
 //--------------------------------------------------------------------------------------------------
 static void ConnectAudioToCodec
 (
-    le_mcc_call_ObjRef_t callRef
+    void
 )
 {
     le_result_t res;
 
-    MdmRxAudioRef = le_mcc_call_GetRxAudioStream(callRef);
+    MdmRxAudioRef = le_audio_OpenModemVoiceRx();
     LE_ERROR_IF((MdmRxAudioRef==NULL), "GetRxAudioStream returns NULL!");
-    MdmTxAudioRef = le_mcc_call_GetTxAudioStream(callRef);
+    MdmTxAudioRef = le_audio_OpenModemVoiceTx();
     LE_ERROR_IF((MdmTxAudioRef==NULL), "GetTxAudioStream returns NULL!");
 
     // Redirect audio to the in-built Microphone and Speaker.
@@ -310,14 +310,14 @@ static void ConnectAudioToCodec
 //--------------------------------------------------------------------------------------------------
 static void ConnectAudioToPcm
 (
-    le_mcc_call_ObjRef_t callRef
+    void
 )
 {
     le_result_t res;
 
-    MdmRxAudioRef = le_mcc_call_GetRxAudioStream(callRef);
+    MdmRxAudioRef = le_audio_OpenModemVoiceRx();
     LE_ERROR_IF((MdmRxAudioRef==NULL), "GetRxAudioStream returns NULL!");
-    MdmTxAudioRef = le_mcc_call_GetTxAudioStream(callRef);
+    MdmTxAudioRef = le_audio_OpenModemVoiceTx();
     LE_ERROR_IF((MdmTxAudioRef==NULL), "GetTxAudioStream returns NULL!");
 
     // Redirect audio to the PCM interface.
@@ -353,14 +353,14 @@ static void ConnectAudioToPcm
 //--------------------------------------------------------------------------------------------------
 static void ConnectAudioToI2s
 (
-    le_mcc_call_ObjRef_t callRef
+    void
 )
 {
     le_result_t res;
 
-    MdmRxAudioRef = le_mcc_call_GetRxAudioStream(callRef);
+    MdmRxAudioRef = le_audio_OpenModemVoiceRx();
     LE_ERROR_IF((MdmRxAudioRef==NULL), "GetRxAudioStream returns NULL!");
-    MdmTxAudioRef = le_mcc_call_GetTxAudioStream(callRef);
+    MdmTxAudioRef = le_audio_OpenModemVoiceTx();
     LE_ERROR_IF((MdmTxAudioRef==NULL), "GetTxAudioStream returns NULL!");
 
     // Redirect audio to the I2S interface.
@@ -399,14 +399,14 @@ static void ConnectAudioToI2s
 //--------------------------------------------------------------------------------------------------
 static void ConnectAudioToUsb
 (
-    le_mcc_call_ObjRef_t callRef
+    void
 )
 {
     le_result_t res;
 
-    MdmRxAudioRef = le_mcc_call_GetRxAudioStream(callRef);
+    MdmRxAudioRef = le_audio_OpenModemVoiceRx();
     LE_ERROR_IF((MdmRxAudioRef==NULL), "GetRxAudioStream returns NULL!");
-    MdmTxAudioRef = le_mcc_call_GetTxAudioStream(callRef);
+    MdmTxAudioRef = le_audio_OpenModemVoiceTx();
     LE_ERROR_IF((MdmTxAudioRef==NULL), "GetTxAudioStream returns NULL!");
 
     // Redirect audio to the USB.
@@ -442,7 +442,7 @@ static void ConnectAudioToUsb
 //--------------------------------------------------------------------------------------------------
 static void ConnectAudio
 (
-    le_mcc_call_ObjRef_t callRef
+    void
 )
 {
 
@@ -450,24 +450,24 @@ static void ConnectAudio
     if (strcmp(AudioTestCase,"MIC")==0)
     {
         LE_INFO("Connect MIC and SPEAKER ");
-        ConnectAudioToCodec(callRef);
+        ConnectAudioToCodec();
     }
     else
 #endif
     if (strcmp(AudioTestCase,"PCM")==0)
     {
         LE_INFO("Connect PCM ");
-        ConnectAudioToPcm(callRef);
+        ConnectAudioToPcm();
     }
     else if (strcmp(AudioTestCase,"I2S")==0)
     {
         LE_INFO("Connect I2S");
-        ConnectAudioToI2s(callRef);
+        ConnectAudioToI2s();
     }
     else if (strcmp(AudioTestCase,"USB")==0)
     {
         LE_INFO("Connect USB ");
-        ConnectAudioToUsb(callRef);
+        ConnectAudioToUsb();
     }
     else if ((strncmp(AudioTestCase,"R-",2)==0) || (strncmp(AudioTestCase,"L-",2)==0))
     {
@@ -475,24 +475,24 @@ static void ConnectAudio
         if (strcmp(MainAudioSoundPath,"MIC")==0)
         {
             LE_INFO("Connect MIC and SPEAKER ");
-            ConnectAudioToCodec(callRef);
+            ConnectAudioToCodec();
         }
         else
 #endif
         if (strcmp(MainAudioSoundPath,"PCM")==0)
         {
             LE_INFO("Connect PCM ");
-            ConnectAudioToPcm(callRef);
+            ConnectAudioToPcm();
         }
         else if (strcmp(MainAudioSoundPath,"I2S")==0)
         {
             LE_INFO("Connect I2S");
-            ConnectAudioToI2s(callRef);
+            ConnectAudioToI2s();
         }
         else if (strcmp(MainAudioSoundPath,"USB")==0)
         {
             LE_INFO("Connect USB ");
-            ConnectAudioToUsb(callRef);
+            ConnectAudioToUsb();
         }
         else
         {
@@ -503,23 +503,23 @@ static void ConnectAudio
         if (strcmp(AudioTestCase,"R-PB")==0)
         {
             LE_INFO("Connect Remote Play");
-            ConnectAudioToFileRemotePlay(callRef);
+            ConnectAudioToFileRemotePlay();
         }
         else
         if (strcmp(AudioTestCase,"R-REC")==0)
         {
             LE_INFO("Connect Remote Rec ");
-            ConnectAudioToFileRemoteRec(callRef);
+            ConnectAudioToFileRemoteRec();
         }
         else if (strcmp(AudioTestCase,"L-PB")==0)
         {
             LE_INFO("Connect Local Play");
-            ConnectAudioToFileLocalPlay(callRef);
+            ConnectAudioToFileLocalPlay();
         }
         else if (strcmp(AudioTestCase,"L-REC")==0)
         {
             LE_INFO("Connect Local Rec ");
-            ConnectAudioToFileLocalRec(callRef);
+            ConnectAudioToFileLocalRec();
         }
         else
         {
@@ -540,7 +540,7 @@ static void ConnectAudio
 //--------------------------------------------------------------------------------------------------
 static void DisconnectAllAudio
 (
-    le_mcc_call_ObjRef_t callRef
+    void
 )
 {
     if (AudioInputConnectorRef)
@@ -634,50 +634,50 @@ static void DisconnectAllAudio
 //--------------------------------------------------------------------------------------------------
 static void MyCallEventHandler
 (
-    le_mcc_call_ObjRef_t   callRef,
-    le_mcc_call_Event_t callEvent,
+    le_mcc_CallRef_t   callRef,
+    le_mcc_Event_t callEvent,
     void*               contextPtr
 )
 {
     le_result_t         res;
 
-    if (callEvent == LE_MCC_CALL_EVENT_ALERTING)
+    if (callEvent == LE_MCC_EVENT_ALERTING)
     {
-        LE_INFO("Call event is LE_MCC_CALL_EVENT_ALERTING.");
+        LE_INFO("Call event is LE_MCC_EVENT_ALERTING.");
     }
-    else if (callEvent == LE_MCC_CALL_EVENT_CONNECTED)
+    else if (callEvent == LE_MCC_EVENT_CONNECTED)
     {
-        LE_INFO("Call event is LE_MCC_CALL_EVENT_CONNECTED.");
-        ConnectAudio(callRef);
+        LE_INFO("Call event is LE_MCC_EVENT_CONNECTED.");
+        ConnectAudio();
     }
-    else if (callEvent == LE_MCC_CALL_EVENT_TERMINATED)
+    else if (callEvent == LE_MCC_EVENT_TERMINATED)
     {
-        LE_INFO("Call event is LE_MCC_CALL_EVENT_TERMINATED.");
-        le_mcc_call_TerminationReason_t term = le_mcc_call_GetTerminationReason(callRef);
+        LE_INFO("Call event is LE_MCC_EVENT_TERMINATED.");
+        le_mcc_TerminationReason_t term = le_mcc_GetTerminationReason(callRef);
         switch(term)
         {
-            case LE_MCC_CALL_TERM_NETWORK_FAIL:
-                LE_INFO("Termination reason is LE_MCC_CALL_TERM_NETWORK_FAIL");
+            case LE_MCC_TERM_NETWORK_FAIL:
+                LE_INFO("Termination reason is LE_MCC_TERM_NETWORK_FAIL");
                 break;
 
-            case LE_MCC_CALL_TERM_UNASSIGNED_NUMBER:
-                LE_INFO("Termination reason is LE_MCC_CALL_TERM_UNASSIGNED_NUMBER");
+            case LE_MCC_TERM_UNASSIGNED_NUMBER:
+                LE_INFO("Termination reason is LE_MCC_TERM_UNASSIGNED_NUMBER");
                 break;
 
-            case LE_MCC_CALL_TERM_USER_BUSY:
-                LE_INFO("Termination reason is LE_MCC_CALL_TERM_USER_BUSY");
+            case LE_MCC_TERM_USER_BUSY:
+                LE_INFO("Termination reason is LE_MCC_TERM_USER_BUSY");
                 break;
 
-            case LE_MCC_CALL_TERM_LOCAL_ENDED:
-                LE_INFO("Termination reason is LE_MCC_CALL_TERM_LOCAL_ENDED");
+            case LE_MCC_TERM_LOCAL_ENDED:
+                LE_INFO("Termination reason is LE_MCC_TERM_LOCAL_ENDED");
                 break;
 
-            case LE_MCC_CALL_TERM_REMOTE_ENDED:
-                LE_INFO("Termination reason is LE_MCC_CALL_TERM_REMOTE_ENDED");
+            case LE_MCC_TERM_REMOTE_ENDED:
+                LE_INFO("Termination reason is LE_MCC_TERM_REMOTE_ENDED");
                 break;
 
-            case LE_MCC_CALL_TERM_UNDEFINED:
-                LE_INFO("Termination reason is LE_MCC_CALL_TERM_UNDEFINED");
+            case LE_MCC_TERM_UNDEFINED:
+                LE_INFO("Termination reason is LE_MCC_TERM_UNDEFINED");
                 break;
 
             default:
@@ -685,17 +685,17 @@ static void MyCallEventHandler
                 break;
         }
 
-        DisconnectAllAudio(callRef);
+        DisconnectAllAudio();
 
-        le_mcc_call_Delete(callRef);
+        le_mcc_Delete(callRef);
     }
-    else if (callEvent == LE_MCC_CALL_EVENT_INCOMING)
+    else if (callEvent == LE_MCC_EVENT_INCOMING)
     {
-        LE_INFO("Call event is LE_MCC_CALL_EVENT_INCOMING.");
-        res = le_mcc_call_Answer(callRef);
+        LE_INFO("Call event is LE_MCC_EVENT_INCOMING.");
+        res = le_mcc_Answer(callRef);
         if (res == LE_OK)
         {
-            ConnectAudio(callRef);
+            ConnectAudio();
         }
         else
         {
@@ -784,18 +784,10 @@ COMPONENT_INIT
             LE_INFO("   Audio file [%s]", AudioFilePath);
         }
 
-        le_mcc_profile_ObjRef_t profileRef=le_mcc_profile_GetByName("Modem-Sim1");
-        if ( profileRef == NULL )
-        {
-            LE_INFO("Unable to get the Call profile reference");
-            LE_INFO("EXIT audioMccTest");
-            exit(EXIT_FAILURE);
-        }
+        le_mcc_AddCallEventHandler( MyCallEventHandler, NULL);
 
-        le_mcc_profile_AddCallEventHandler(profileRef, MyCallEventHandler, NULL);
-
-        TestCallRef = le_mcc_profile_CreateCall(profileRef, DestinationNumber);
-        le_mcc_call_Start(TestCallRef);
+        TestCallRef = le_mcc_Create(DestinationNumber);
+        le_mcc_Start(TestCallRef);
 
         LE_INFO("======== Audio implementation Test (audioMccTest) started successfully ========");
     }

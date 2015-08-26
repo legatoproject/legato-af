@@ -157,11 +157,12 @@ static void DisconnectAudio
 //--------------------------------------------------------------------------------------------------
 static void MyECallEventHandler
 (
+    le_ecall_CallRef_t  eCallRef,
     le_ecall_State_t    state,
     void*               contextPtr
 )
 {
-    LE_INFO("eCall TEST: New eCall state: %d", state);
+    LE_INFO("eCall TEST: New eCall state: %d for eCall ref.%p", state, eCallRef);
 
     switch(state)
     {
@@ -194,6 +195,10 @@ static void MyECallEventHandler
         case LE_ECALL_STATE_PSAP_START_IND_RECEIVED:
         {
             LE_INFO("eCall state is LE_ECALL_STATE_PSAP_START_IND_RECEIVED.");
+            if (le_ecall_SendMsd(eCallRef) != LE_OK)
+            {
+                LE_ERROR("Could not send the MSD");
+            }
             break;
         }
         case LE_ECALL_STATE_MSD_TX_STARTED:
@@ -268,6 +273,11 @@ static void MyECallEventHandler
             LE_INFO("Unmute PCM Tx interface.");
 #endif
             le_audio_Unmute(FeOutRef);
+            break;
+        }
+        case LE_ECALL_STATE_END_OF_REDIAL_PERIOD:
+        {
+            LE_INFO("eCall state is LE_ECALL_STATE_END_OF_REDIAL_PERIOD.");
             break;
         }
         case LE_ECALL_STATE_UNKNOWN:

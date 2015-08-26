@@ -427,6 +427,49 @@ static void PriIdTest
     }
 }
 
+/*
+ * This test le_info_GetPlatformSerialNumber API.
+ *
+ * API Tested:
+ *  - le_info_GetPlatformSerialNumber().
+ */
+static void PlatformSerialNumberTest
+(
+    void
+)
+{
+    le_result_t result = LE_OK;
+    char platformSerialNumberStr[LE_INFO_MAX_PSN_BYTES];
+
+    LE_INFO("======== PlatformSerialNumberTest ========");
+
+    result = le_info_GetPlatformSerialNumber(platformSerialNumberStr, LE_INFO_MAX_PSN_BYTES);
+    if (result == LE_OK)
+    {
+        LE_INFO("le_info_GetPlatformSerialNumber get => %s", platformSerialNumberStr);
+    }
+    else
+    {
+        /* Other return values possibilities */
+        LE_ERROR("le_info_GetPlatformSerialNumber return code %d",result);
+        LE_ERROR("======== PlatformSerialNumberTest FAILED ========");
+        return;
+    }
+
+    result = le_info_GetPlatformSerialNumber(platformSerialNumberStr, LE_INFO_MAX_PSN_BYTES - 1);
+    if (result == LE_OVERFLOW)
+    {
+        LE_INFO("le_info_GetPlatformSerialNumber return LE_OVERFLOW");
+    }
+    else
+    {
+        /* Other return values possibilities */
+        LE_ERROR("le_info_GetPlatformSerialNumber return code %d",result);
+        LE_ERROR("======== PlatformSerialNumberTest FAILED ========");
+        return;
+    }
+}
+
 
 /*
  * Each Test called once.
@@ -455,6 +498,8 @@ COMPONENT_INIT
     ManufacturerNameTest();
 
     PriIdTest();
+
+    PlatformSerialNumberTest();
 
     // TODO add other le_info test.
     LE_INFO("======== Test LE_INFO implementation Tests SUCCESS ========");

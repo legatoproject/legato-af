@@ -1,0 +1,13 @@
+provides:
+{
+    api:
+    {
+        foo.api
+        bar.api
+    }
+}
+
+sources:
+{
+    server.c
+}

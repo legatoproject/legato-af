@@ -20,6 +20,15 @@ mkapp(  avcCtrlApp.adef
      )
 
 
+mkapp(  avcDataApp.adef
+            -i ${LEGATO_ROOT}/interfaces/airVantage
+        DEPENDS
+            ## TODO: Remove all this when the mk tools do dependency checking.
+            ${LEGATO_ROOT}/interfaces/airVantage/*
+            componentDataApp/* 
+     )
+
+
 #
 # Test individual parts
 #

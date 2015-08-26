@@ -1,0 +1,901 @@
+/**
+ * This module implements the unit tests for SIM API.
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ *
+ */
+
+#include "legato.h"
+#include "interfaces.h"
+#include "log.h"
+#include "le_sim_local.h"
+#include "pa_sim_simu.h"
+#include "args.h"
+
+#define NB_CLIENT 2
+
+// Task context
+typedef struct
+{
+    uint32_t appId;
+    le_thread_Ref_t appThreadRef;
+    le_sim_NewStateHandlerRef_t statHandler;
+    le_sim_Id_t simId;
+    le_sim_States_t simState;
+    le_sim_SimToolkitEventHandlerRef_t stkHandler;
+    le_sim_StkEvent_t  stkEvent;
+} AppContext_t;
+
+static AppContext_t AppCtx[NB_CLIENT];
+static le_sem_Ref_t    ThreadSemaphore;
+static le_sem_Ref_t    StkHandlerSem;
+static le_sim_States_t CurrentSimState = LE_SIM_ABSENT;
+static le_sim_Id_t CurrentSimId = LE_SIM_EXTERNAL_SLOT_2;
+static le_clk_Time_t TimeToWait ={ 0, 1000000 };
+static char Iccid[]="89330123164011144830";
+static char PhoneNum[]="+33643537818";
+static char Imsi[]="208011700352758";
+static char Mcc[]="208";
+static char Mnc[]="01";
+static char Operator[]="orange";
+static char Pin[]="0000";
+static char BadPin[]="1234";
+static char ShortPin[]="000";
+static char Puk[]="12345678";
+static char ShortPuk[]="1234567";
+static char LongPuk[]="123456789";
+static char NewPin[]="6789";
+static le_sim_StkEvent_t  StkEvent;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the pa_simu
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void SetSimCardInfo
+(
+    void
+)
+{
+    pa_simSimu_SetPin(Pin);
+    pa_simSimu_SetPuk(Puk);
+    pa_simSimu_SetIMSI(Imsi);
+    pa_simSimu_SetCardIdentification(Iccid);
+    pa_simSimu_SetSubscriberPhoneNumber(PhoneNum);
+    pa_simSimu_SetHomeNetworkMccMnc(Mcc, Mnc);
+    pa_simSimu_SetHomeNetworkOperator(Operator);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Synchronize test thread (i.e. main) and tasks
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void SynchTest( void )
+{
+    int i=0;
+
+    for (;i<NB_CLIENT;i++)
+    {
+        LE_ASSERT(le_sem_WaitWithTimeOut(ThreadSemaphore, TimeToWait) == LE_OK);
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Check the result of the state handlers
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void CheckStateHandlerResult
+(
+    void
+)
+{
+    int i;
+
+    // Check that contexts are correctly updated
+    for (i=0; i < NB_CLIENT; i++)
+    {
+        LE_ASSERT(AppCtx[i].appId == i);
+        LE_ASSERT(AppCtx[i].simState == CurrentSimState);
+        LE_ASSERT(AppCtx[i].simId == CurrentSimId);
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * SIM state handler: this handler is subcribes by test tasks and it is called on SIM state
+ * modification
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void SimStateHandler
+(
+    le_sim_Id_t simId,
+    le_sim_States_t simState,
+    void* contextPtr
+)
+{
+    AppContext_t * appCtxPtr = (AppContext_t*) contextPtr;
+
+    LE_DEBUG("App id: %d", appCtxPtr->appId);
+
+    LE_ASSERT(CurrentSimState == simState);
+    LE_ASSERT(CurrentSimId == simId);
+
+    appCtxPtr->simState = simState;
+    appCtxPtr->simId = simId;
+
+    // Semaphore is used to synchronize the task execution with the core test
+    le_sem_Post(ThreadSemaphore);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test tasks: this function handles the task and run an eventLoop
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void* AppHandler
+(
+    void* ctxPtr
+)
+{
+    AppContext_t * appCtxPtr = (AppContext_t*) ctxPtr;
+
+    LE_DEBUG("App id: %d", appCtxPtr->appId);
+
+    // Subscribe to SIM state handler
+    appCtxPtr->statHandler = le_sim_AddNewStateHandler(SimStateHandler, ctxPtr);
+    LE_ASSERT(appCtxPtr->statHandler != NULL);
+
+    // Semaphore is used to synchronize the task execution with the core test
+    le_sem_Post(ThreadSemaphore);
+
+    le_event_RunLoop();
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stk handler: this handler is called on stk event
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void StkHandler
+(
+    le_sim_Id_t simId,
+    le_sim_StkEvent_t stkEvent,
+    void* contextPtr
+)
+{
+    AppContext_t * appCtxPtr = (AppContext_t*) contextPtr;
+    LE_ASSERT(CurrentSimId == simId);
+    LE_ASSERT(StkEvent == stkEvent);
+
+    appCtxPtr->stkEvent = stkEvent;
+
+    // Semaphore is used to synchronize the task execution with the core test
+    le_sem_Post(ThreadSemaphore);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add stk handler: this function is used to add a stk event handler
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void AddStkHandler
+(
+    void* param1Ptr,
+    void* param2Ptr
+)
+{
+    AppContext_t * appCtxPtr = (AppContext_t*) param1Ptr;
+
+    // internal semaphore: le_sim internal variable SimToolkitHandlerCount must be correctly updated
+    // before calling le_sim_AddSimToolkitEventHandler again
+    le_sem_Wait(StkHandlerSem);
+
+    appCtxPtr->stkHandler = le_sim_AddSimToolkitEventHandler(StkHandler, appCtxPtr);
+    LE_ASSERT(appCtxPtr->stkHandler != NULL);
+
+    le_sem_Post(StkHandlerSem);
+
+    // Semaphore is used to synchronize the task execution with the core test
+    le_sem_Post(ThreadSemaphore);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Remove states and stk event handlers
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void RemoveHandler
+(
+    void* param1Ptr,
+    void* param2Ptr
+)
+{
+    AppContext_t * appCtxPtr = (AppContext_t*) param1Ptr;
+
+    le_sim_RemoveNewStateHandler( appCtxPtr->statHandler );
+
+    le_sim_RemoveSimToolkitEventHandler( appCtxPtr->stkHandler );
+
+    // Semaphore is used to synchronize the task execution with the core test
+    le_sem_Post(ThreadSemaphore);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * swap SIM profile
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void LocalSwap
+(
+    void* param1Ptr,
+    void* param2Ptr
+)
+{
+    static bool firstCall = true;
+
+    // The core test is alling this funcrtion rwice to test both functions
+    if (firstCall)
+    {
+        LE_ASSERT(le_sim_LocalSwapToCommercialSubscription(CurrentSimId, LE_SIM_OBERTHUR) == LE_OK);
+    }
+    else
+    {
+        LE_ASSERT(le_sim_LocalSwapToEmergencyCallSubscription(CurrentSimId, LE_SIM_MORPHO) == LE_OK);
+    }
+
+    // we have no semaphore here as these functions are blocking (waiting for a SIM refresh done by
+    // the core test
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test sim states
+ *
+ * API tested:
+ * - le_sim_IsPresent
+ * - le_sim_IsReady
+ * - le_sim_GetState
+ *
+ * Exit if failed
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void CheckSimStates
+(
+    void
+)
+{
+    bool isPresent;
+    bool isReady;
+
+    switch (CurrentSimState)
+    {
+        case LE_SIM_INSERTED:
+            isPresent = true;
+            isReady = false;
+        break;
+        case LE_SIM_READY:
+            isPresent = true;
+            isReady = true;
+        break;
+        case LE_SIM_BLOCKED:
+        case LE_SIM_BUSY:
+            isPresent = true;
+            isReady = false;
+        break;
+        case LE_SIM_ABSENT:
+        case LE_SIM_STATE_UNKNOWN:
+        default:
+            isPresent = false;
+            isReady = false;
+
+    }
+
+    LE_ASSERT( le_sim_IsPresent(CurrentSimId)==isPresent );
+    LE_ASSERT( le_sim_IsReady(CurrentSimId)==isReady );
+    LE_ASSERT( le_sim_GetState(CurrentSimId)==CurrentSimState );
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Initialize the test environmeent:
+ * - create some tasks (simulate multi app)
+ * - create semaphore (to make checkpoints and synchronize test and tasks)
+ * - simulate an empty rack
+ * - check that state handlers are correctly called
+ *
+ * API tested:
+ * - le_sim_AddNewStateHandler
+ *
+ * Exit if failed
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void TestSim_Initialisation
+(
+    void
+)
+{
+    int i;
+
+    // Create a semaphore to coordinate the test
+    ThreadSemaphore = le_sem_Create("HandlerSem",0);
+
+    // int app context
+    memset(AppCtx, 0, NB_CLIENT*sizeof(AppContext_t));
+
+    // Start tasks: simulate multi-user of le_sim
+    // each thread subcribes to state handler using le_sim_AddNewStateHandler
+    for (i=0; i < NB_CLIENT; i++)
+    {
+        char string[20]={0};
+        snprintf(string,20,"app%dhandler", i);
+        AppCtx[i].appId = i;
+        AppCtx[i].appThreadRef = le_thread_Create(string, AppHandler, &AppCtx[i]);
+        le_thread_Start(AppCtx[i].appThreadRef);
+    }
+
+    // Wait that the tasks have started before following the test
+    SynchTest();
+
+    // Sim is absent in this test
+    CurrentSimState = LE_SIM_ABSENT;
+
+    pa_simSimu_SetSelectCard(CurrentSimId);
+    le_sim_SelectCard(CurrentSimId);
+    pa_simSimu_ReportSimState(CurrentSimState);
+
+    // The tasks have subscribe to state event handler:
+    // wait the handlers' calls
+    SynchTest();
+
+    // Check state handler result
+    CheckStateHandlerResult();
+
+    // Check that we are in the expected states (sim absent)
+    CheckSimStates();
+
+    // Check that no more call of the semaphore
+    LE_ASSERT(le_sem_GetValue(ThreadSemaphore) == 0);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test PIN and PUK
+ *
+ * API tested:
+ * - le_sim_EnterPIN
+ * - le_sim_Unblock
+ * - le_sim_GetRemainingPINTries
+ *
+ * Exit if failed
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void TestSim_PinPuk
+(
+    void
+)
+{
+    // Check the states
+    CheckSimStates();
+
+    // The test is started with no sim inserted (end of the previous test)
+
+    // Sim absent, test Pin and Puk (error expected as no sim inserted)
+    LE_ASSERT(le_sim_EnterPIN(CurrentSimId, BadPin) == LE_NOT_FOUND);
+    LE_ASSERT(le_sim_Unblock(CurrentSimId, Puk, BadPin) == LE_NOT_FOUND);
+    LE_ASSERT(le_sim_GetRemainingPINTries(CurrentSimId) == LE_NOT_FOUND);
+
+    // Insert SIM (busy state)
+    CurrentSimState = LE_SIM_BUSY;
+    pa_simSimu_ReportSimState(CurrentSimState);
+
+    // Note that in LE_SIM_BUSY state, no handlers are called
+
+    // Check that we are in the expected states (sim busy)
+    CheckSimStates();
+
+    // test pin and puk: error is expected as sim in BUSY state
+    LE_ASSERT(le_sim_EnterPIN(CurrentSimId, BadPin) == LE_FAULT);
+    LE_ASSERT(le_sim_Unblock(CurrentSimId, Puk, BadPin) == LE_FAULT);
+    LE_ASSERT(le_sim_GetRemainingPINTries(CurrentSimId) == LE_FAULT);
+
+    // SIM is inserted
+    CurrentSimState = LE_SIM_INSERTED;
+    pa_simSimu_ReportSimState(CurrentSimState);
+
+    // Wait the handlers' calls
+    SynchTest();
+
+    // Check state handler result
+    CheckStateHandlerResult();
+
+    // Check that we are in the expected states (sim busy)
+    CheckSimStates();
+
+    // block the pin
+    int i=3;
+    for (;i!=0;i--)
+    {
+        // Test the remaining PIN tries
+        LE_ASSERT(le_sim_GetRemainingPINTries(CurrentSimId) == i);
+        if (i==1)
+        {
+            // Update CurrentSimState for handlers' checks
+            CurrentSimState = LE_SIM_BLOCKED;
+        }
+
+        // Try to enter the PIN: the PIN is wrong, an error is expected
+        LE_ASSERT(le_sim_EnterPIN(CurrentSimId, BadPin) == LE_FAULT);
+
+        // Don't try to unlock the SIM in the last failed PIN, PUK tests are done behind
+        if (i != 1)
+        {
+            // Try to unblock the SIM whereas the sim is not in PUK state (error expected)
+            LE_ASSERT(le_sim_Unblock(CurrentSimId, Puk, BadPin) == LE_FAULT);
+        }
+        else
+        {
+            // The last time, check that handlers have been called (the SIM is in BLOCKED state,
+            // handers have been called to warn the state modification)
+            SynchTest();
+        }
+
+        // Get the remaining PIN tries
+        LE_ASSERT(le_sim_GetRemainingPINTries(CurrentSimId) == i-1);
+
+        // Check that we are in the expected states
+        CheckSimStates();
+    }
+
+    // Try the puk (bad puk or bad pin, errors are expected)
+    LE_ASSERT(le_sim_Unblock(CurrentSimId, ShortPuk, BadPin) == LE_OUT_OF_RANGE);
+    LE_ASSERT(le_sim_Unblock(CurrentSimId, LongPuk, BadPin) == LE_OUT_OF_RANGE);
+    LE_ASSERT(le_sim_Unblock(CurrentSimId, Puk, ShortPin) == LE_UNDERFLOW);
+
+    // The next operation unblocks the pin: we change the gloabal variable here to be ready when the
+    // handlers will be called
+    CurrentSimState = LE_SIM_READY;
+    // Unblock the SIM (OK expected)
+    LE_ASSERT(le_sim_Unblock(CurrentSimId, Puk,Pin) == LE_OK);
+    // Get the remaining PIN tries
+    LE_ASSERT(le_sim_GetRemainingPINTries(CurrentSimId) == 3);
+
+    // Wait the handlers' calls (SIM is supposed to be in READY state now)
+    SynchTest();
+
+    // Return into INSERTED state: check PIN
+    CurrentSimState = LE_SIM_INSERTED;
+    pa_simSimu_ReportSimState(CurrentSimState);
+
+    // Wait the handlers' calls
+    SynchTest();
+
+    // Check state handler result
+    CheckStateHandlerResult();
+
+    // Now, try to enter the PIN (bad pin code, error expected)
+    LE_ASSERT(le_sim_EnterPIN(CurrentSimId, ShortPin) == LE_UNDERFLOW);
+
+    // Enter the correct PIN (OK expected)
+    CurrentSimState = LE_SIM_READY;
+    LE_ASSERT(le_sim_EnterPIN(CurrentSimId, Pin) == LE_OK);
+
+    // Wait the handlers' calls
+    SynchTest();
+
+    // Check that we are in the expected states
+    CheckSimStates();
+
+    LE_ASSERT(le_sem_GetValue(ThreadSemaphore) == 0);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test lock, unlock and change PIN
+ *
+ * API tested:
+ * - le_sim_Lock
+ * - le_sim_Unlock
+ * - le_sim_ChangePIN
+ *
+ * Exit if failed
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void TestSim_LockUnlockChange
+(
+    void
+)
+{
+    // Go into ABSENT state
+    CurrentSimState = LE_SIM_ABSENT;
+    pa_simSimu_ReportSimState(CurrentSimState);
+
+    // Wait the handlers' calls
+    SynchTest();
+
+    // Check state handler result
+    CheckStateHandlerResult();
+
+    // Check the states
+    CheckSimStates();
+
+    // Try to lock/unlock/change PIN w/o SIN inserted: errors are expected
+    LE_ASSERT(le_sim_Unlock(CurrentSimId,Pin) == LE_NOT_FOUND);
+    LE_ASSERT(le_sim_Lock(CurrentSimId,Pin) == LE_NOT_FOUND);
+    LE_ASSERT(le_sim_ChangePIN(CurrentSimId,Pin,NewPin) == LE_NOT_FOUND);
+
+    // Go in READY state
+    CurrentSimState = LE_SIM_READY;
+    pa_simSimu_ReportSimState(CurrentSimState);
+
+    // Wait the handlers' calls
+    SynchTest();
+
+    // Check state handler result
+    CheckStateHandlerResult();
+
+    // Try to lock/unclock/Change PIN with bad PIN: errors are expected
+    LE_ASSERT(le_sim_Lock(CurrentSimId, BadPin) == LE_FAULT);
+    LE_ASSERT(le_sim_Unlock(CurrentSimId, BadPin) == LE_FAULT);
+    LE_ASSERT(le_sim_ChangePIN(CurrentSimId,ShortPin,NewPin) == LE_UNDERFLOW);
+    LE_ASSERT(le_sim_ChangePIN(CurrentSimId,Pin,ShortPin) == LE_UNDERFLOW);
+    LE_ASSERT(le_sim_ChangePIN(CurrentSimId,ShortPin,ShortPin) == LE_UNDERFLOW);
+    LE_ASSERT(le_sim_ChangePIN(CurrentSimId,BadPin,NewPin) == LE_FAULT);
+
+    // Lock/unlock/change PIN with correct values: OK is expected
+    LE_ASSERT(le_sim_Lock(CurrentSimId,Pin) == LE_OK);
+    LE_ASSERT(le_sim_Unlock(CurrentSimId,Pin) == LE_OK);
+    LE_ASSERT(le_sim_ChangePIN(CurrentSimId,Pin,NewPin) == LE_OK);
+
+    // Check that all handlers have been called as expected
+    LE_ASSERT(le_sem_GetValue(ThreadSemaphore) == 0);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test SIM card information
+ *
+ * API tested:
+ * - le_sim_GetICCID
+ * - le_sim_GetIMSI
+ * - le_sim_GetSubscriberPhoneNumber
+ *
+ * Exit if failed
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void TestSim_SimCardInformation
+(
+    void
+)
+{
+    char iccid[PA_SIM_CARDID_MAX_LEN+1];
+    char imsi[PA_SIM_IMSI_MAX_LEN+1];
+    char phoneNumber[LE_MDMDEFS_PHONE_NUM_MAX_BYTES];
+
+    // Start in ABSENT state
+    CurrentSimState = LE_SIM_ABSENT;
+    pa_simSimu_ReportSimState(CurrentSimState);
+
+    // Wait the handlers' calls
+    SynchTest();
+
+    // Check state handler result
+    CheckStateHandlerResult();
+
+    // Try to get information: error are expected as there's no SIM
+    LE_ASSERT( le_sim_GetICCID(CurrentSimId, iccid, PA_SIM_CARDID_MAX_LEN) == LE_FAULT );
+    LE_ASSERT( le_sim_GetIMSI(CurrentSimId, imsi, PA_SIM_IMSI_MAX_LEN) == LE_FAULT );
+    LE_ASSERT( le_sim_GetSubscriberPhoneNumber( CurrentSimId,
+                                                phoneNumber,
+                                                LE_MDMDEFS_PHONE_NUM_MAX_BYTES ) == LE_FAULT );
+
+    // SIM is now ready
+    CurrentSimState = LE_SIM_READY;
+    pa_simSimu_ReportSimState(CurrentSimState);
+
+    // Wait the handlers' calls
+    SynchTest();
+
+    // Check state handler result
+    CheckStateHandlerResult();
+
+    // Try to get informations, check values (OK expected)
+    LE_ASSERT( le_sim_GetICCID(CurrentSimId, iccid, PA_SIM_CARDID_MAX_LEN+1) == LE_OK );
+    LE_ASSERT( strncmp(iccid,Iccid,PA_SIM_CARDID_MAX_LEN) == 0 );
+    LE_ASSERT( le_sim_GetIMSI(CurrentSimId, imsi, PA_SIM_IMSI_MAX_LEN+1) == LE_OK );
+    LE_ASSERT( strncmp(imsi,Imsi,PA_SIM_IMSI_MAX_LEN) == 0 );
+    LE_ASSERT( le_sim_GetSubscriberPhoneNumber( CurrentSimId,
+                                                phoneNumber,
+                                                LE_MDMDEFS_PHONE_NUM_MAX_BYTES ) == LE_OK );
+    LE_ASSERT( strncmp(phoneNumber,PhoneNum,LE_MDMDEFS_PHONE_NUM_MAX_BYTES) == 0 );
+
+    // Try to get infomartions with a too small buffer (error expected)
+    LE_ASSERT( le_sim_GetICCID(CurrentSimId, iccid, PA_SIM_CARDID_MAX_LEN) == LE_OVERFLOW );
+    LE_ASSERT( le_sim_GetIMSI(CurrentSimId, imsi, PA_SIM_IMSI_MAX_LEN) == LE_OVERFLOW );
+
+    // Check that all handlers have been called as expected
+    LE_ASSERT(le_sem_GetValue(ThreadSemaphore) == 0);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test home network API
+ *
+ * API tested:
+ * - le_sim_GetHomeNetworkMccMnc
+ * - le_sim_GetHomeNetworkOperator
+ *
+ * Exit if failed
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void TestSim_HomeNetwork
+(
+    void
+)
+{
+    char mcc[LE_MRC_MCC_BYTES];
+    char mnc[LE_MRC_MNC_BYTES];
+    char homeNetwork[20];
+
+
+    // Start in ABSENT state
+    CurrentSimState = LE_SIM_ABSENT;
+    pa_simSimu_ReportSimState(CurrentSimState);
+
+    // Wait the handlers' calls
+    SynchTest();
+
+    // Check state handler result
+    CheckStateHandlerResult();
+
+    // Try to get home network: error are expected as there's no SIM
+    LE_ASSERT(le_sim_GetHomeNetworkMccMnc(CurrentSimId,mcc,LE_MRC_MCC_BYTES,mnc,LE_MRC_MNC_BYTES)
+                                                                                    == LE_FAULT);
+    LE_ASSERT(le_sim_GetHomeNetworkOperator(CurrentSimId,homeNetwork,20) == LE_FAULT);
+
+    // SIM is now ready
+    CurrentSimState = LE_SIM_READY;
+    pa_simSimu_ReportSimState(CurrentSimState);
+
+    // Wait the handlers' calls
+    SynchTest();
+
+    // Check state handler result
+    CheckStateHandlerResult();
+
+    // Try to get home network, check values (OK expected)
+    LE_ASSERT(le_sim_GetHomeNetworkMccMnc(CurrentSimId,mcc,LE_MRC_MCC_BYTES,mnc,LE_MRC_MNC_BYTES)
+                                                                                    == LE_OK);
+    LE_ASSERT(strcmp(mcc,Mcc)==0);
+    LE_ASSERT(strcmp(mnc,Mnc)==0);
+    LE_ASSERT(le_sim_GetHomeNetworkOperator(CurrentSimId,homeNetwork,20) == LE_OK);
+    LE_ASSERT(strcmp(homeNetwork,Operator)==0);
+
+    // Check that all handlers have been called as expected
+    LE_ASSERT(le_sem_GetValue(ThreadSemaphore) == 0);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test sim toolkit
+ *
+ * API tested:
+ * - le_sim_AddSimToolkitEventHandler
+ * - le_sim_AcceptSimToolkitCommand
+ * - le_sim_RejectSimToolkitCommand
+ *
+ * Exit if failed
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void TestSim_Stk
+(
+    void
+)
+{
+    // Stk handler semaphore
+    StkHandlerSem = (le_sem_Ref_t) le_sem_Create("StkHandlerSem",1);
+
+    // each thread subscribes to state handler using le_sim_AddSimToolkitEventHandler
+    // This API has to be called by threads
+    int i=0;
+    for (; i<NB_CLIENT; i++)
+    {
+        le_event_QueueFunctionToThread( AppCtx[i].appThreadRef,
+                                        AddStkHandler,
+                                        &AppCtx[i],
+                                        NULL );
+    }
+
+    // Wait for the tasks
+    SynchTest();
+
+    StkEvent = LE_SIM_REFRESH;
+
+    // Invoke Stk event
+    pa_simSimu_ReportStkEvent(StkEvent);
+
+    // Wait for the call of the handlers
+    SynchTest();
+
+    // Check the result
+    for (i=0; i<NB_CLIENT; i++)
+    {
+        LE_ASSERT(AppCtx[i].stkEvent == StkEvent);
+        AppCtx[i].stkEvent = 0;
+    }
+
+    // Test le_sim_AcceptSimToolkitCommand and le_sim_RejectSimToolkitCommand
+    pa_simSimu_SetExpectedStkConfirmationCommand(true);
+    LE_ASSERT( le_sim_AcceptSimToolkitCommand(CurrentSimId) == LE_OK );
+    pa_simSimu_SetExpectedStkConfirmationCommand(false);
+    LE_ASSERT( le_sim_RejectSimToolkitCommand(CurrentSimId) == LE_OK );
+
+    // Check that all handlers have been called as expected
+    LE_ASSERT( le_sem_GetValue(ThreadSemaphore) == 0 );
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test the multi-profile eUICC swap
+ *
+ * API tested:
+ * - le_sim_LocalSwapToCommercialSubscription
+ * - le_sim_LocalSwapToEmergencyCallSubscription
+ *
+ * Exit if failed
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void TestSim_LocalSwap
+(
+    void
+)
+{
+    int i;
+    int doItAgain = 2;
+
+    while (doItAgain)
+    {
+        doItAgain--;
+
+        // The thread is calling le_sim_LocalSwapToCommercialSubscription and
+        // le_sim_LocalSwapToEmergencyCallSubscription (that's why we do this operation twice)
+        le_event_QueueFunctionToThread( AppCtx[0].appThreadRef,
+                                        LocalSwap,
+                                        &AppCtx[0],
+                                        NULL );
+
+        // Wait a while for le_sim treatment
+        sleep(1);
+
+        // There's a semaphore in the le_sim to wait for the refresh => report refresh event
+        StkEvent = LE_SIM_REFRESH;
+        // Invoke Stk event
+        pa_simSimu_ReportStkEvent(StkEvent);
+
+        // Wait for the call of the handlers
+        SynchTest();
+
+        // Check the result
+        for (i=0; i<NB_CLIENT; i++)
+        {
+            LE_ASSERT(AppCtx[i].stkEvent == StkEvent);
+            AppCtx[i].stkEvent = 0;
+        }
+
+        // Check that all handlers have been called as expected
+        LE_ASSERT( le_sem_GetValue(ThreadSemaphore) == 0 );
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test remove handlers
+ *
+ * API tested:
+ * - le_sim_RemoveNewStateHandler
+ * - le_sim_RemoveSimToolkitEventHandler
+ *
+ * Exit if failed
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void TestSim_RemoveHandlers
+(
+    void
+)
+{
+    int i;
+
+    // Remove handlers: add le_sim_RemoveNewStateHandler and le_sim_RemoveSimToolkitEventHandler
+    // to the eventLoop of tasks
+    for (i=0; i<NB_CLIENT; i++)
+    {
+        le_event_QueueFunctionToThread( AppCtx[i].appThreadRef,
+                                        RemoveHandler,
+                                        &AppCtx[i],
+                                        NULL );
+    }
+
+    // Wait for the tasks
+    SynchTest();
+
+    // Provoke events which called the handlers (sim state event, and stk event)
+
+    // Go into ABSENT state
+    CurrentSimState = LE_SIM_ABSENT;
+    pa_simSimu_ReportSimState(CurrentSimState);
+
+    // Invoke Stk event, and check that no handler is called
+    pa_simSimu_ReportStkEvent(StkEvent);
+
+    // Wait for the semaphore timeout to check that handlers are not called
+    LE_ASSERT( le_sem_WaitWithTimeOut(ThreadSemaphore, TimeToWait) == LE_TIMEOUT );
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * main of the test
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+int main(int argc, char *argv[])
+{
+    arg_SetArgs(argc,argv);
+
+    // Init pa simu
+    pa_simSimu_Init();
+
+    // Set Sim card info in the pa_simu
+    SetSimCardInfo();
+
+    // Init le_sim
+    le_sim_Init();
+
+    // Test initialisation
+    TestSim_Initialisation();
+
+    // Test PIN/PUK
+    TestSim_PinPuk();
+
+    // Test lock/unlock/change pin
+    TestSim_LockUnlockChange();
+
+    // Sim card information test
+    TestSim_SimCardInformation();
+
+    // Test home network API
+    TestSim_HomeNetwork();
+
+    // Sim toolkit test
+    TestSim_Stk();
+
+    // multi-profile test
+    TestSim_LocalSwap();
+
+    // Handlers removal test
+    TestSim_RemoveHandlers();
+
+    LE_INFO("Tests SIM passed");
+
+    return 0;
+}
+
+

@@ -1,0 +1,12 @@
+requires:
+{
+    api:
+    {
+        foo.api
+    }
+}
+
+sources:
+{
+    C1.c
+}

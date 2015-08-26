@@ -14,22 +14,92 @@
 //--------------------------------------------------------------------------------------------------
 
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test: GNSS device.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void Testle_gnss_DeviceTest
+(
+    void
+)
+{
+    LE_INFO("Start Test Testle_gnss_DeviceTest");
+    // GNSS device enabled by default
+    LE_ASSERT((le_gnss_Enable()) == LE_DUPLICATE);
+    // Disable GNSS device (DISABLED state)
+    LE_ASSERT((le_gnss_Disable()) == LE_OK);
+    LE_ASSERT((le_gnss_Disable()) == LE_DUPLICATE);
+    // Check Disabled state
+    LE_ASSERT((le_gnss_Start()) == LE_NOT_PERMITTED);
+    LE_ASSERT((le_gnss_ForceColdRestart()) == LE_NOT_PERMITTED);
+    LE_ASSERT((le_gnss_Stop()) == LE_NOT_PERMITTED);
+    LE_ASSERT((le_gnss_SetConstellation(LE_GNSS_CONSTELLATION_GPS)) == LE_NOT_PERMITTED);
+    // Enable GNSS device (READY state)
+    LE_ASSERT((le_gnss_Enable()) == LE_OK);
+    LE_ASSERT((le_gnss_Disable()) == LE_OK);
+    LE_ASSERT((le_gnss_Enable()) == LE_OK);
+    LE_ASSERT((le_gnss_SetConstellation(LE_GNSS_CONSTELLATION_GPS)) == LE_OK);
+    LE_ASSERT((le_gnss_Stop()) == LE_DUPLICATE);
+    LE_ASSERT((le_gnss_ForceColdRestart()) == LE_NOT_PERMITTED);
+    // Start GNSS device (ACTIVE state)
+    LE_ASSERT((le_gnss_Start()) == LE_OK);
+    LE_ASSERT((le_gnss_ForceColdRestart()) == LE_OK);
+    LE_ASSERT((le_gnss_Start()) == LE_DUPLICATE);
+    LE_ASSERT((le_gnss_Enable()) == LE_DUPLICATE);
+    LE_ASSERT((le_gnss_Disable()) == LE_NOT_PERMITTED);
+    LE_ASSERT((le_gnss_SetConstellation(LE_GNSS_CONSTELLATION_GPS)) == LE_NOT_PERMITTED);
+    // Stop GNSS device (READY state)
+    LE_ASSERT((le_gnss_Stop()) == LE_OK);
+    LE_ASSERT((le_gnss_Enable()) == LE_DUPLICATE);
+    LE_ASSERT((le_gnss_Disable()) == LE_OK);
+    LE_ASSERT((le_gnss_Enable()) == LE_OK);
+    LE_ASSERT((le_gnss_SetConstellation(LE_GNSS_CONSTELLATION_GPS)) == LE_OK);
+    LE_ASSERT((le_gnss_Stop()) == LE_DUPLICATE);
+    LE_ASSERT((le_gnss_ForceColdRestart()) == LE_NOT_PERMITTED);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test: GNSS Position request.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void Testle_gnss_StartTest
+(
+    void
+)
+{
+    LE_INFO("Start Test Testle_gnss_StartTest");
+
+    LE_ASSERT((le_gnss_Start()) == LE_OK);
+
+    /* Wait for a 3D fix */
+    LE_INFO("Wait 120 seconds for a 3D fix");
+    sleep(120);
+
+    LE_ASSERT((le_gnss_Stop()) == LE_OK);
+}
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Test: Restart to Cold start.
  *
  */
 //--------------------------------------------------------------------------------------------------
-void Testle_pos_RestartTest
+void Testle_gnss_RestartTest
 (
     void
 )
 {
-    le_posCtrl_ActivationRef_t      activationRef;
-
     LE_INFO("Start Test le_pos_RestartTest");
 
-    LE_ASSERT((activationRef = le_posCtrl_Request()) != NULL);
+
+    LE_ASSERT((le_gnss_Start()) == LE_OK);
 
     /* Wait for a 3D fix */
     LE_INFO("Wait 60 seconds for a 3D fix");
@@ -44,7 +114,7 @@ void Testle_pos_RestartTest
     sleep(60);
 
     sleep(1);
-    le_posCtrl_Release(activationRef);
+    LE_ASSERT((le_gnss_Stop()) == LE_OK);
 
 }
 
@@ -57,7 +127,13 @@ void Testle_pos_RestartTest
 //--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
+        // GNSS Init
+//        gnss_Init();
+        LE_INFO("======== GNSS device Test  ========");
+        Testle_gnss_DeviceTest();
         LE_INFO("======== GNSS device Start Test  ========");
-        Testle_pos_RestartTest();
+        Testle_gnss_StartTest();
+        LE_INFO("======== GNSS device Restart Test  ========");
+        Testle_gnss_RestartTest();
         LE_INFO("======== GNSS device Start Test SUCCESS ========");
 }

@@ -43,6 +43,8 @@ static void PrintUsage()
 //--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
+    bool amIOwner;
+
     LE_INFO("Init");
 
     if (le_arg_NumArgs() >= 1)
@@ -51,6 +53,16 @@ COMPONENT_INIT
 
         const char* testCase = le_arg_GetArg(0);
         LE_INFO("   Test case.%s", testCase);
+
+        LE_ASSERT(le_riPin_AmIOwnerOfRingSignal(&amIOwner) == LE_OK);
+        if (amIOwner)
+        {
+            LE_INFO("Legato is the owner of the Ring Indicator signal");
+        }
+        else
+        {
+            LE_INFO("Legato is NOT the owner of the Ring Indicator signal");
+        }
 
         if (strncmp(testCase, "take", strlen("take")) == 0)
         {

@@ -1,3 +1,5 @@
+sandboxed: true
+
 executables:
 {
     audioPlaybackRecTest = ( audioPlaybackRecComp )

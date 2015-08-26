@@ -64,6 +64,5 @@ RunTest framework/secStore/secStoreTest.sh
 
 # Clear out the any test apps, and clean up after any non-sandboxed ones.
 rmapp \* "$TARGET_ADDR"
-ssh root@$TARGET_ADDR "rm -rf \`find /mnt/flash/home/* -type d | grep app\`"
 
 cd $ORIG_DIR

@@ -1,0 +1,27 @@
+start: manual
+
+
+executables:
+{
+    ThreadFlux = ( ThreadFlux )
+}
+
+maxThreads: 2000 // any number large enough to not be a limit.
+
+processes:
+{
+    maxFileDescriptors: 1024 // largest allowed
+
+    run:
+    {
+        // This delete interval can easily reproduce the interrupted state given the current target
+        // unit overall performance (2015 Apr).
+        // "379 threads" seems to be the max number of threads that can be created before memory 
+        // allocation issue is encountered. 
+        // Since pthread_create in le_thread_Start returns error 12 (ENOMEM), this might be due to a
+        // bug that fails to map ENOMEM to EAGAIN:
+        // https://sourceware.org/bugzilla/show_bug.cgi?id=386
+        ( ThreadFlux 1toN   50000000 350 )
+    }
+}
+

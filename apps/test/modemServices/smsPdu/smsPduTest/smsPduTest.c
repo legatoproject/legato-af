@@ -106,7 +106,8 @@ const PduAssoc_t PduAssocDb[] =
     /* 1 */
     {
         .dest = "+33617190547",
-        .text = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Morbi in commodo lectus, quis volutpat erat.",
+        .text = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Morbi in commodo lectus,"
+                        " quis volutpat erat.",
         .type = PA_SMS_SMS_SUBMIT,
         .gsm_7bits =
         {
@@ -193,7 +194,8 @@ const PduAssoc_t PduAssocDb[] =
     /* 2 */
     {
         .dest = "0617190547",
-        .text = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Morbi in commodo lectus, quis volutpat erat.",
+        .text = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Morbi in commodo lectus"
+                        ", quis volutpat erat.",
         .type = PA_SMS_SMS_SUBMIT,
         .gsm_7bits =
         {
@@ -420,7 +422,9 @@ const PduAssoc_t PduAssocDb[] =
     /* 5 */
     {
         .dest = "+33661651866",
-        .text = "[123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789",
+        .text = "[123456789012345678901234567890123456789012345678901234567890123456789012"
+                "3456789012345678901234567890123456789012345678901234567890123456789012345"
+                "67890123456789",
         .type = PA_SMS_SMS_SUBMIT,
         .gsm_7bits =
         {
@@ -471,7 +475,8 @@ const PduAssoc_t PduAssocDb[] =
         {
             .conversionResult = LE_OVERFLOW,
             .length = 0,
-            .data = {
+            .data =
+            {
                 0x00,
             },
             .timestampIndex = 0,
@@ -551,6 +556,8 @@ const PduAssoc_t PduAssocDb[] =
 
 typedef struct
 {
+        const bool checkLength;
+        const bool checkData;
         const size_t length;
         const uint8_t data[256];
         pa_sms_Protocol_t proto;
@@ -568,90 +575,578 @@ typedef struct
  */
 const PduReceived_t PduReceivedDb[] =
 {
-        /* 0 */ {
-                .proto = PA_SMS_PROTOCOL_GSM,
-                .length = 116,
-                .data = { 0x07, 0x91, 0x33, 0x86, 0x09, 0x40, 0x00, 0xF0, 0x04, 0x0B,
-                        0x91, 0x33, 0x46, 0x53, 0x73, 0x19, 0xF9, 0x00, 0x00, 0x41,
-                        0x70, 0x13, 0x02, 0x55, 0x71, 0x80, 0x65, 0xCC, 0xB7, 0xBC,
-                        0xDC, 0x06, 0xA5, 0xE1, 0xF3, 0x7A, 0x1B, 0x44, 0x7E, 0xB3,
-                        0xDF, 0x72, 0xD0, 0x3C, 0x4D, 0x07, 0x85, 0xDB, 0x65, 0x3A,
-                        0x0B, 0x34, 0x7E, 0xBB, 0xE7, 0xE5, 0x31, 0xBD, 0x4C, 0xAF,
-                        0xCB, 0x41, 0x61, 0x72, 0x1A, 0x9E, 0x9E, 0x8F, 0xD3, 0xEE,
-                        0x33, 0xA8, 0xCC, 0x4E, 0xD3, 0x5D, 0xA0, 0xE6, 0x5B, 0x2E,
-                        0x4E, 0x83, 0xD2, 0x6E, 0xD0, 0xF8, 0xDD, 0x6E, 0xBF, 0xC9,
-                        0x6F, 0x10, 0xBB, 0x3C, 0xA6, 0xD7, 0xE7, 0x2C, 0x50, 0xBC,
-                        0x9E, 0x9E, 0x83, 0xEC, 0x6F, 0x76, 0x9D, 0x0E, 0x0F, 0xD3,
-                        0x41, 0x65, 0x79, 0x98, 0xEE, 0x02,
-                },
-                .expected =
-                {
-                        .result = LE_OK,
-                        .encoding = SMSPDU_7_BITS,
-                        .message =
-                        {
-                                .type = PA_SMS_SMS_DELIVER,
-                                .smsDeliver =
-                                {
-                                        .oa = "+33643537919",
-                                        .format = LE_SMS_FORMAT_TEXT,
-                                        .scts = "14/07/31,20:55:17-00",
-                                        .data = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Morbi in commodo lectus, quis volutpat erat.",
-                                        .dataLen = 101,
-                                },
-                        },
-                },
+    {
+        /* 0 */
+        /*
+         * 07913386094000F0040B913346537319F900004170130255718065CCB7BCDC06A5E1F37A1B
+         * 447EB3DF72D03C4D0785DB653A0B347EBBE7E531BD4CAFCB4161721A9E9E8FD3EE33A8CC4E
+         * D35DA0E65B2E4E83D26ED0F8DD6EBFC96F10BB3CA6D7E72C50BC9E9E83EC6F769D0E0FD341
+         * 657998EE02
+         * SMS DELIVER (receive)
+         * Receipt requested: no
+         * SMSC: 33689004000
+         * Sender: 33643537919
+         * TOA: 91 international, Numbering Plan: unknown
+         * TimeStamp: 31/07/14 20:55:17 GMT +02:00
+         * TP-PID: 00
+         * TP-DCS: 00
+         * TP-DCS-desc: Uncompressed Text, No class
+         * Alphabet: Default (7bit)
+         *
+         * Lorem ipsum dolor sit amet, consectetur adipiscing elit. Morbi in commodo lectus"
+         * , quis volutpat erat.
+         * Length: 101
+         */
+        .checkLength = true,
+        .checkData = true,
+        .proto = PA_SMS_PROTOCOL_GSM,
+        .length = 116,
+        .data = {
+            0x07, 0x91, 0x33, 0x86, 0x09, 0x40, 0x00, 0xF0, 0x04, 0x0B,
+            0x91, 0x33, 0x46, 0x53, 0x73, 0x19, 0xF9, 0x00, 0x00, 0x41,
+            0x70, 0x13, 0x02, 0x55, 0x71, 0x80, 0x65, 0xCC, 0xB7, 0xBC,
+            0xDC, 0x06, 0xA5, 0xE1, 0xF3, 0x7A, 0x1B, 0x44, 0x7E, 0xB3,
+            0xDF, 0x72, 0xD0, 0x3C, 0x4D, 0x07, 0x85, 0xDB, 0x65, 0x3A,
+            0x0B, 0x34, 0x7E, 0xBB, 0xE7, 0xE5, 0x31, 0xBD, 0x4C, 0xAF,
+            0xCB, 0x41, 0x61, 0x72, 0x1A, 0x9E, 0x9E, 0x8F, 0xD3, 0xEE,
+            0x33, 0xA8, 0xCC, 0x4E, 0xD3, 0x5D, 0xA0, 0xE6, 0x5B, 0x2E,
+            0x4E, 0x83, 0xD2, 0x6E, 0xD0, 0xF8, 0xDD, 0x6E, 0xBF, 0xC9,
+            0x6F, 0x10, 0xBB, 0x3C, 0xA6, 0xD7, 0xE7, 0x2C, 0x50, 0xBC,
+            0x9E, 0x9E, 0x83, 0xEC, 0x6F, 0x76, 0x9D, 0x0E, 0x0F, 0xD3,
+            0x41, 0x65, 0x79, 0x98, 0xEE, 0x02,
         },
-        /* 1 */ {
-                .proto = PA_SMS_PROTOCOL_GSM,
-                .length = 33,
-                .data =
-                {
-                        0x07, 0x91, 0x33, 0x86, 0x09, 0x40, 0x00, 0xF0, 0x04, 0x0B,
-                        0x91, 0x33, 0x76, 0x63, 0x47, 0x53, 0xF9, 0x00, 0x00, 0x41,
-                        0x70, 0x13, 0x22, 0x30, 0x61, 0x80, 0x06, 0x53, 0x7A, 0x98,
-                        0x5E, 0x9F, 0x03,
+        .expected =
+        {
+            .result = LE_OK,
+            .encoding = SMSPDU_7_BITS,
+            .message =
+            {
+    .type = PA_SMS_SMS_DELIVER,
+    .smsDeliver =
+    {
+        .oa = "+33643537919",
+        .format = LE_SMS_FORMAT_TEXT,
+        .scts = "14/07/31,20:55:17+08",
+                    .data = "Lorem ipsum dolor sit amet, consectetur adipiscing"
+                        " elit. Morbi in commodo lectus, quis volutpat erat.",
+                        .dataLen = 101,
                 },
-                .expected =
-                {
-                        .result = LE_OK,
-                        .message =
-                        {
-                                .type = PA_SMS_SMS_DELIVER,
-                                .smsDeliver =
-                                {
-                                        .oa = "+33673674359",
-                                        .format = LE_SMS_FORMAT_TEXT,
-                                        .scts = "14/07/31,22:03:16-00",
-                                        .data = "Status",
-                                        .dataLen = 6,
-                                },
-                        },
-                },
+            },
         },
+    },
+    /* 1 */
+    /*
+     * 07913386094000F0040B913376634753F900004170132230618006537A985E9F03
+     *
+     * SMS DELIVER (receive)
+     * Receipt requested: no
+     * SMSC: 33689004000
+     * Sender: 33673674359
+     * TOA: 91 international, Numbering Plan: unknown
+     * TimeStamp: 31/07/14 22:03:16 GMT +02:00
+     * TP-PID: 00
+     * TP-DCS: 00
+     * TP-DCS-desc: Uncompressed Text, No class
+     * Alphabet: Default (7bit)
+     *
+     * Status
+     * Length: 6
+     */
+    {
+        .checkLength = true,
+        .checkData = true,
+        .proto = PA_SMS_PROTOCOL_GSM,
+        .length = 33,
+        .data =
+        {
+            0x07, 0x91, 0x33, 0x86, 0x09, 0x40, 0x00, 0xF0, 0x04, 0x0B,
+            0x91, 0x33, 0x76, 0x63, 0x47, 0x53, 0xF9, 0x00, 0x00, 0x41,
+            0x70, 0x13, 0x22, 0x30, 0x61, 0x80, 0x06, 0x53, 0x7A, 0x98,
+            0x5E, 0x9F, 0x03,
+        },
+        .expected =
+        {
+            .result = LE_OK,
+            .message =
+            {
+                .type = PA_SMS_SMS_DELIVER,
+                .smsDeliver =
+                {
+                    .oa = "+33673674359",
+                    .format = LE_SMS_FORMAT_TEXT,
+                    .scts = "14/07/31,22:03:16+08",
+                    .data = "Status",
+                    .dataLen = 6,
+                },
+            },
+        },
+    },
+    /* 2 */
+    /*
+     * 07913386094000F00414D04F79D87D2E83926EF31B00F1511050812563409CD4779D5E06B14
+     * F85783D0D2F839EF2B0FB5C0609EBF3B4BB3C9F83A665B93D3D2ECF41F6777D0E82CB0BF3B2
+     * 9B5E06CDCB7350BB9C66B3CB75F91C647F97EB7810FC5D978364B0580D140241D9F539887C4
+     * ABBCDEF39685E9783D0743A5CF77A89EBF3B4BB3C9FB305
+     *
+     * SMS DELIVER (receive)
+     * Receipt requested: no
+     * SMSC: 33689004000
+     * Sender: Orange Info
+     * TOA: D0 alphanumeric, Numbering Plan: unknown
+     * TimeStamp: 05/01/15 18:52:36 GMT +01:00
+     * TP-PID: 00
+     * TP-DCS: F1
+     * TP-DCS-desc: Class: 1 ME specific
+     * Alphabet: Default (7bit)
+     *
+     * Toute l'équipe Orange Business Services vous présente ses meilleurs voeux pour 2015 !
+     *  Plus d'infos sur http://businessl$
+     * Length: 156
+     */
+    {
+        .checkLength = true,
+        .checkData = false, /* Due to special char in the string */
+        .proto = PA_SMS_PROTOCOL_GSM,
+        .length = 136,
+        .data =
+        {
+            0x07, 0x91, 0x33, 0x86, 0x09, 0x40, 0x00, 0xF0, 0x04, 0x14,
+            0xD0, 0x4F, 0x79, 0xD8, 0x7D, 0x2E, 0x83, 0x92, 0x6E, 0xF3,
+            0x1B, 0x00, 0xF1, 0x51, 0x10, 0x50, 0x81, 0x25, 0x63, 0x40,
+            0x9C, 0xD4, 0x77, 0x9D, 0x5E, 0x06, 0xB1, 0x4F, 0x85, 0x78,
+            0x3D, 0x0D, 0x2F, 0x83, 0x9E, 0xF2, 0xB0, 0xFB, 0x5C, 0x06,
+
+            0x09, 0xEB, 0xF3, 0xB4, 0xBB, 0x3C, 0x9F, 0x83, 0xA6, 0x65,
+            0xB9, 0x3D, 0x3D, 0x2E, 0xCF, 0x41, 0xF6, 0x77, 0x7D, 0x0E,
+            0x82, 0xCB, 0x0B, 0xF3, 0xB2, 0x9B, 0x5E, 0x06, 0xCD, 0xCB,
+            0x73, 0x50, 0xBB, 0x9C, 0x66, 0xB3, 0xCB, 0x75, 0xF9, 0x1C,
+            0x64, 0x7F, 0x97, 0xEB, 0x78, 0x10, 0xFC, 0x5D, 0x97, 0x83,
+
+            0x64, 0xB0, 0x58, 0x0D, 0x14, 0x02, 0x41, 0xD9, 0xF5, 0x39,
+            0x88, 0x7C, 0x4A, 0xBB, 0xCD, 0xEF, 0x39, 0x68, 0x5E, 0x97,
+            0x83, 0xD0, 0x74, 0x3A, 0x5C, 0xF7, 0x7A, 0x89, 0xEB, 0xF3,
+            0xB4, 0xBB, 0x3C, 0x9F, 0xB3, 0x05,
+        },
+        .expected =
+        {
+            .result = LE_OK,
+            .encoding = SMSPDU_7_BITS,
+            .message =
+            {
+                .type = PA_SMS_SMS_DELIVER,
+                .smsDeliver =
+                {
+                    .oa = "Orange Info",
+                    .format = LE_SMS_FORMAT_TEXT,
+                    .scts = "15/01/05,18:52:36+04",
+                    .data = "Toute l'équipe Orange Business Services vous présente ses"
+                        " meilleurs voeux pour 2015 ! Plus d'infos sur http://business,(",
+                        .dataLen = 156,
+                },
+            },
+        },
+    },
+    /* 3 */
+    /*
+     * 07913386094000F00412D04276BD0C3ACACB653700F1513013017562807C4FB3595E064DE1857
+     * 13ACC2E2B8661B9BB4C0791CBA0D80C749497CBEE96B95C9E2B822078584E4FCB41E4324886C3
+     * 813665C5F0ED26A7E9E9B77B0E3A17DC0579985D9E83C86590BDECA697E7A0701D747CB3CD20E
+     * 111340DA7DD7450B45E76D3D36EC594FA848266F0
+     *
+     * SMS DELIVER (receive)
+     * Receipt requested: no
+     * SMSC: 33689004000
+     * Sender: Blue Green
+     * TOA: D0 alphanumeric, Numbering Plan: unknown
+     * TimeStamp: 31/03/15 10:57:26 GMT +02:00
+     * TP-PID: 00
+     * TP-DCS: F1
+     * TP-DCS-desc: Class: 1 ME specific
+     * Alphabet: Default (7bit)
+     *
+     * Offre Spéciale
+     * Carnet de 13 Green-fees
+     * A partir de 288 €
+     * Conditions générales de ventes au Golf BG Saint Quentin
+     * STOP 3
+     * Length: 124
+     * */
+    {
+        .checkLength = true,
+        .checkData = false, /* Due to special char in the string */
+        .proto = PA_SMS_PROTOCOL_GSM,
+        .length = 136,
+        .data =
+        {
+            0x07, 0x91, 0x33, 0x86, 0x09, 0x40, 0x00, 0xF0, 0x04, 0x12,
+            0xD0, 0x42, 0x76, 0xBD, 0x0C, 0x3A, 0xCA, 0xCB, 0x65, 0x37,
+            0x00, 0xF1, 0x51, 0x30, 0x13, 0x01, 0x75, 0x62, 0x80, 0x7C,
+            0x4F, 0xB3, 0x59, 0x5E, 0x06, 0x4D, 0xE1, 0x85, 0x71, 0x3A,
+            0xCC, 0x2E, 0x2B, 0x86, 0x61, 0xB9, 0xBB, 0x4C, 0x07, 0x91,
+            0xCB, 0xA0, 0xD8, 0x0C, 0x74, 0x94, 0x97, 0xCB, 0xEE, 0x96,
+            0xB9, 0x5C, 0x9E, 0x2B, 0x82, 0x20, 0x78, 0x58, 0x4E, 0x4F,
+            0xCB, 0x41, 0xE4, 0x32, 0x48, 0x86, 0xC3, 0x81, 0x36, 0x65,
+            0xC5, 0xF0, 0xED, 0x26, 0xA7, 0xE9, 0xE9, 0xB7, 0x7B, 0x0E,
+            0x3A, 0x17, 0xDC, 0x05, 0x79, 0x98, 0x5D, 0x9E, 0x83, 0xC8,
+            0x65, 0x90, 0xBD, 0xEC, 0xA6, 0x97, 0xE7, 0xA0, 0x70, 0x1D,
+            0x74, 0x7C, 0xB3, 0xCD, 0x20, 0xE1, 0x11, 0x34, 0x0D, 0xA7,
+            0xDD, 0x74, 0x50, 0xB4, 0x5E, 0x76, 0xD3, 0xD3, 0x6E, 0xC5,
+            0x94, 0xFA, 0x84, 0x82, 0x66, 0xF0,
+        },
+        .expected =
+        {
+            .result = LE_OK,
+            .encoding = SMSPDU_7_BITS,
+            .message =
+            {
+                .type = PA_SMS_SMS_DELIVER,
+                .smsDeliver =
+                {
+                    .oa = "Blue Green",
+                    .format = LE_SMS_FORMAT_TEXT,
+                    .scts = "15/03/31,10:57:26+08",
+                    .data = "Conditions générales de ventes au Golf BG Saint QuentinSTOP 3¿@",
+                    .dataLen = 124,
+                },
+            },
+        },
+    },
+    /* 4 */
+    /*
+     * 07913386094000F0400DD04F79D87D2E830039F131705090139180A00500030D0201
+     * 9EF2B0FB5CD641E56F739A5ED683C88439285C57BFEB72F2095D4F83C865103B0CA2
+     * 1D41E4B07B0E8AC166207B9ACD2ECF5DC4C2F85DB7CBCB7A90FB3D07BDCD6679790E
+     * 2AD341EDB738CD2ECF41B423685E97EB40683A1DAE7BBDDEF2B0DB752EBF62B072F
+     *
+     * SMS DELIVER (receive)
+     * Receipt requested: no
+     * SMSC: 33689004000
+     * Sender: Orange
+     * TOA: D0 alphanumeric, Numbering Plan: unknown
+     * TimeStamp: 05/07/13 09:31:19 GMT +02:00
+     * TP-PID: 39
+     * TP-DCS: F1
+     * TP-DCS-desc: Class: 1 ME specific
+     * Alphabet: Default (7bit)
+     * User Data Header: 05 00 03 0D 02 01
+     *
+     * Orange:Profitez dès aujourd'hui de la 4G dans 103 villes.Découvrez nos offres et
+     *  mobiles 4G sur: http://oran.ge/10e£
+     * Length: 160
+     */
+    {
+        .checkLength = true,
+        .checkData = false, /* Due to special char in the string */
+        .proto = PA_SMS_PROTOCOL_GSM,
+        .length = 136,
+        .data =
+        {
+            0x07, 0x91, 0x33, 0x86, 0x09, 0x40, 0x00, 0xF0, 0x40, 0x0D,
+            0xD0, 0x4F, 0x79, 0xD8, 0x7D, 0x2E, 0x83, 0x00, 0x39, 0xF1,
+            0x31, 0x70, 0x50, 0x90, 0x13, 0x91, 0x80, 0xA0, 0x05, 0x00,
+            0x03, 0x0D, 0x02, 0x01, 0x9E, 0xF2, 0xB0, 0xFB, 0x5C, 0xD6,
+            0x41, 0xE5, 0x6F, 0x73, 0x9A, 0x5E, 0xD6, 0x83, 0xC8, 0x84,
+            0x39, 0x28, 0x5C, 0x57, 0xBF, 0xEB, 0x72, 0xF2, 0x09, 0x5D,
+            0x4F, 0x83, 0xC8, 0x65, 0x10, 0x3B, 0x0C, 0xA2, 0x1D, 0x41,
+            0xE4, 0xB0, 0x7B, 0x0E, 0x8A, 0xC1, 0x66, 0x20, 0x7B, 0x9A,
+            0xCD, 0x2E, 0xCF, 0x5D, 0xC4, 0xC2, 0xF8, 0x5D, 0xB7, 0xCB,
+            0xCB, 0x7A, 0x90, 0xFB, 0x3D, 0x07, 0xBD, 0xCD, 0x66, 0x79,
+            0x79, 0x0E, 0x2A, 0xD3, 0x41, 0xED, 0xB7, 0x38, 0xCD, 0x2E,
+            0xCF, 0x41, 0xB4, 0x23, 0x68, 0x5E, 0x97, 0xEB, 0x40, 0x68,
+            0x3A, 0x1D, 0xAE, 0x7B, 0xBD, 0xDE, 0xF2, 0xB0, 0xDB, 0x75,
+            0x2E, 0xBF, 0x62, 0xB0, 0x72, 0xF0,
+        },
+        .expected =
+        {
+            .result = LE_UNSUPPORTED,
+            .encoding = SMSPDU_7_BITS,
+            .message =
+            {
+                .type = PA_SMS_SMS_DELIVER,
+                .smsDeliver =
+                {
+                    .oa = "Orange",
+                    .format = LE_SMS_FORMAT_TEXT,
+                    .scts = "13/07/05,09:31:19+08",
+                    .data = "Toute l'équipe Orange Business Services vous présente ses"
+                        " meilleurs voeux pour 2015 ! Plus d'infos sur http://business,(",
+                        .dataLen = 160,
+                },
+            },
+        },
+    },
+    /* 5 */
+    /*
+     * 07913386094000F0440DD04F79D87D2E830039F1317050901302800F0500030D0202EAF3B13C4D2F8300
+     *
+     * SMS DELIVER (receive)
+     * Receipt requested: no
+     * SMSC: 33689004000
+     * Sender: Orange
+     * TOA: D0 alphanumeric, Numbering Plan: unknown
+     * TimeStamp: 05/07/13 09:31:20 GMT +02:00
+     * TP-PID: 39
+     * TP-DCS: F1
+     * TP-DCS-desc: Class: 1 ME specific
+     * Alphabet: Default (7bit)
+     * User Data Header: 05 00 03 0D 02 02
+     *
+     * uscrite
+     * Length: 15
+     */
+    {
+        .checkLength = false, /* SMS not supported */
+        .checkData = false, /* SMS not supported */
+        .proto = PA_SMS_PROTOCOL_GSM,
+        .length = 42,
+        .data =
+        {
+            0x07, 0x91, 0x33, 0x86, 0x09, 0x40, 0x00, 0xF0, 0x44, 0x0D,
+            0xD0, 0x4F, 0x79, 0xD8, 0x7D, 0x2E, 0x83, 0x00, 0x39, 0xF1,
+            0x31, 0x70, 0x50, 0x90, 0x13, 0x02, 0x80, 0x0F, 0x05, 0x00,
+            0x03, 0x0D, 0x02, 0x02, 0xEA, 0xF3, 0xB1, 0x3C, 0x4D, 0x2F,
+            0x83, 0x00,
+        },
+        .expected =
+        {
+            .result = LE_UNSUPPORTED,
+            .encoding = SMSPDU_7_BITS,
+            .message =
+            {
+                .type = PA_SMS_SMS_DELIVER,
+                .smsDeliver =
+                {
+                    .oa = "Orange Info",
+                    .format = LE_SMS_FORMAT_TEXT,
+                    .scts = "13/07/05,09:31:20+08",
+                    .data = "uscrite",
+                    .dataLen = 15,
+                },
+            },
+        },
+    },
+    /* 6 */
+    /*
+     * 07913306091093F0440B913386286620F30008515070018213807205000
+     * 31304040032006F0066006A00720067007000350035006C00390065002E
+     * 00200031002000770062003100360036003700310064006800310037003
+     * 1003100680066003200660038003200200069006C002E00200032002000
+     * 32006600660040D83DDE04D83DDE04D83D8
+     *
+     * SMS DELIVER (receive)
+     * Receipt requested: no
+     * SMSC: 33609001390
+     * Sender: 33688266023
+     * TOA: 91 international, Numbering Plan: unknown
+     * TimeStamp: 07/05/15 10:28:31 GMT +02:00
+     * TP-PID: 00
+     * TP-DCS: 08
+     * TP-DCS-desc: Uncompressed Text, No class
+     * Alphabet: UCS2 (16bit)
+     * User Data Header: 05 00 03 13 04 04
+     *
+     * <not decoded>
+     * Length: 57
+     */
+    {
+        .checkLength = false, /* SMS not supported */
+        .checkData = false, /* SMS not supported */
+        .proto = PA_SMS_PROTOCOL_GSM,
+        .length = 136,
+        .data =
+        {
+            0x07, 0x91, 0x33, 0x06, 0x09, 0x10, 0x93, 0xF0, 0x44, 0x0B,
+            0x91, 0x33, 0x86, 0x28, 0x66, 0x20, 0xF3, 0x00, 0x08, 0x51,
+            0x50, 0x70, 0x01, 0x82, 0x13, 0x80, 0x72, 0x05, 0x00, 0x03,
+            0x13, 0x04, 0x04, 0x00, 0x32, 0x00, 0x6F, 0x00, 0x66, 0x00,
+            0x6A, 0x00, 0x72, 0x00, 0x67, 0x00, 0x70, 0x00, 0x35, 0x00,
+            0x35, 0x00, 0x6C, 0x00, 0x39, 0x00, 0x65, 0x00, 0x2E, 0x00,
+            0x20, 0x00, 0x31, 0x00, 0x20, 0x00, 0x77, 0x00, 0x62, 0x00,
+            0x31, 0x00, 0x36, 0x00, 0x36, 0x00, 0x37, 0x00, 0x31, 0x00,
+            0x64, 0x00, 0x68, 0x00, 0x31, 0x00, 0x37, 0x00, 0x31, 0x00,
+            0x31, 0x00, 0x68, 0x00, 0x66, 0x00, 0x32, 0x00, 0x66, 0x00,
+            0x38, 0x00, 0x32, 0x00, 0x20, 0x00, 0x69, 0x00, 0x6C, 0x00,
+            0x2E, 0x00, 0x20, 0x00, 0x32, 0x00, 0x20, 0x00, 0x32, 0x00,
+            0x66, 0x00, 0x66, 0x00, 0x40, 0xD8, 0x3D, 0xDE, 0x04, 0xD8,
+            0x3D, 0xDE, 0x04, 0xD8, 0x3D, 0x80,
+        },
+        .expected =
+        {
+            .result = LE_UNSUPPORTED,
+            .encoding = SMSPDU_7_BITS,
+            .message =
+            {
+                .type = PA_SMS_SMS_DELIVER,
+                .smsDeliver =
+                {
+                    .oa = "33688266023",
+                    .format = LE_SMS_FORMAT_TEXT,
+                    .scts = "15/05/07,10:28:31+08",
+                    .data = "",
+                    .dataLen = 57,
+                },
+            },
+        },
+    },
+    /* 7 */
+    /*
+     * 07913396050046F2040B913356417922F600085160802150618004D83DDC7F
+     *
+     * SMS DELIVER (receive)
+     * Receipt requested: no
+     * SMSC: 33695000642
+     * Sender: 33651497226
+     * TOA: 91 international, Numbering Plan: unknown
+     * TimeStamp: 08/06/15 12:05:16 GMT +02:00
+     * TP-PID: 00
+     * TP-DCS: 08
+     * TP-DCS-desc: Uncompressed Text, No class
+     * Alphabet: UCS2 (16bit)
+     *
+     * <not decoded>
+     * Length: 2
+     */
+    {
+        .checkLength = false, /* SMS not supported */
+        .checkData = false, /* SMS not supported */
+        .proto = PA_SMS_PROTOCOL_GSM,
+        .length = 31,
+        .data =
+        {
+            0x07, 0x91, 0x33, 0x96, 0x05, 0x00, 0x46, 0xF2, 0x04, 0x0B,
+            0x91, 0x33, 0x56, 0x41, 0x79, 0x22, 0xF6, 0x00, 0x08, 0x51,
+            0x60, 0x80, 0x21, 0x50, 0x61, 0x80, 0x04, 0xD8, 0x3D, 0xDC,
+            0x7F,
+        },
+        .expected =
+        {
+            .result = LE_UNSUPPORTED,
+            .encoding = SMSPDU_7_BITS,
+            .message =
+            {
+                .type = PA_SMS_SMS_DELIVER,
+                .smsDeliver =
+                {
+                    .oa = "33651497226",
+                    .format = LE_SMS_FORMAT_TEXT,
+                    .scts = "15/06/08,12:05:16+08",
+                    .data = "",
+                    .dataLen = 2,
+                },
+            },
+        },
+    },
+    /* 8 */
+    /*
+     * 000100900111C576597E2EBBC7F95008442DCFE920D0B0199C8272B0
+     *
+     * USSD/User Data without length information
+     * Alphabet: GSM 7bit
+     * Serial number: 0001
+     * Message identifier: 00
+     * Data Coding Scheme: 01 Default Alphabet (7bit)
+     * Page Parameter: 11
+     *
+     * Emergency!! Test CMAS 90
+     * Length: 25
+     */
+    {
+        .checkLength = true, /* SMS not supported */
+        .checkData = true, /* SMS not supported */
+        .proto = PA_SMS_PROTOCOL_GW_CB,
+        .length = 28,
+        .data =
+        {
+            0x00, 0x01, 0x00, 0x90, 0x01, 0x11, 0xC5, 0x76, 0x59, 0x7E,
+            0x2E, 0xBB, 0xC7, 0xF9, 0x50, 0x08, 0x44, 0x2D, 0xCF, 0xE9,
+            0x20, 0xD0, 0xB0, 0x19, 0x9C, 0x82, 0x72, 0xB0,
+        },
+        .expected =
+        {
+            .result = LE_OK,
+            .encoding = SMSPDU_7_BITS,
+            .message =
+            {
+                .type = PA_SMS_SMS_CELL_BROADCAST,
+                .smsDeliver =
+                {
+                    .oa = "",
+                    .format = LE_SMS_FORMAT_TEXT,
+                    .scts = "",
+                    .data = "Emergency!! Test  CMAS 90",
+                    .dataLen = 25,
+                },
+            },
+        },
+    },
+    {
+        /* 9 */
+        /*
+         * 07910386094000F0040BA13376634753F900004170132230618006537A985E9F03
+         * SMS DELIVER (receive)
+         * Receipt requested: no
+         * SMSC: 30689004000
+         * Sender: 33673674359
+         * TOA: A1 national, Numbering Plan: unknown
+         * TimeStamp: 31/07/14 22:03:16 GMT +02:00
+         * TP-PID: 00
+         * TP-DCS: 00
+         * TP-DCS-desc: Uncompressed Text, No class
+         * Alphabet: Default (7bit)
+         *
+         * Status
+         * Length: 6
+         */
+        .checkLength = true,
+        .checkData = true,
+        .proto = PA_SMS_PROTOCOL_GSM,
+        .data =
+        {
+            0x07, 0x91, 0x03, 0x86, 0x09, 0x40, 0x00, 0xF0, 0x04, 0x0B,
+            0xA1, 0x21, 0x76, 0x63, 0x47, 0x53, 0xF9, 0x00, 0x00, 0x41,
+            0x70, 0x13, 0x22, 0x30, 0x61, 0x80, 0x06, 0x53, 0x7A, 0x98,
+            0x5E, 0x9F, 0x03,
+        },
+        .expected =
+        {
+            .result = LE_OK,
+            .encoding = SMSPDU_7_BITS,
+            .message =
+            {
+                .type = PA_SMS_SMS_DELIVER,
+                .smsDeliver =
+                {
+                    .oa = "12673674359",
+                    .format = LE_SMS_FORMAT_TEXT,
+                    .scts = "14/07/31,22:03:16+08",
+                    .data = "Status",
+                    .dataLen = 6,
+                },
+            },
+        },
+    }
 };
 
 
-static void DumpPDU
+static void Dump
 (
     const uint8_t * dataPtr,
     size_t length
 )
 {
+#define DUMPSIZE 255
     int i;
     const int columns = 32;
-    char logDump[255] = { 0 };
+    char logDump[DUMPSIZE] = { 0 };
     char dump[5] = { 0 };
-
-    logDump[0] = 0;
 
     for( i = 0; i < length+1; i++)
     {
         snprintf(dump,  5, "%02X ", dataPtr[i]);
-        strncat(logDump, dump, 255);
+        strncat(logDump, dump, DUMPSIZE);
         if(i % columns == (columns-1) )
         {
-            strncat(logDump, " ", 255);
+            strncat(logDump, " ", DUMPSIZE);
         }
     }
     LE_INFO("%s", logDump);
@@ -666,8 +1161,6 @@ static le_result_t TestDecodePdu
     le_result_t res;
     int i;
 
-    le_log_SetFilterLevel(LE_LOG_DEBUG);
-
     for ( i = 0; i < sizeof(PduReceivedDb)/sizeof(PduReceived_t); i++)
     {
         const PduReceived_t * receivedPtr = &PduReceivedDb[i];
@@ -681,61 +1174,119 @@ static le_result_t TestDecodePdu
 
         if (res != receivedPtr->expected.result)
         {
+            LE_ERROR("smsPdu_Decode() returns %d", res);
             return LE_FAULT;
         }
 
-        if(res != LE_OK)
+        if (res == LE_OK)
         {
-            return LE_FAULT;
-        }
-
-        if (message.type != receivedPtr->expected.message.type)
-        {
-            return LE_FAULT;
-        }
-
-        switch(message.type)
-        {
-            case PA_SMS_SMS_DELIVER:
+            if (message.type != receivedPtr->expected.message.type)
             {
-                LE_INFO("Format: %u", message.smsDeliver.format);
-                LE_INFO("Data (%u): %s", message.smsDeliver.dataLen, message.smsDeliver.data);
-                if(message.smsDeliver.format != receivedPtr->expected.message.smsDeliver.format)
-                {
-                    return LE_FAULT;
-                }
-
-                if(strcmp(message.smsDeliver.oa, receivedPtr->expected.message.smsDeliver.oa) != 0)
-                {
-                    return LE_FAULT;
-                }
-
-                if(strcmp(message.smsDeliver.scts, receivedPtr->expected.message.smsDeliver.scts) != 0)
-                {
-                    return LE_FAULT;
-                }
-
-                if(message.smsDeliver.dataLen != receivedPtr->expected.message.smsDeliver.dataLen )
-                {
-                    return LE_FAULT;
-                }
-                if(memcmp(message.smsDeliver.data, receivedPtr->expected.message.smsDeliver.data, message.smsDeliver.dataLen) != 0)
-                {
-                    return LE_FAULT;
-                }
-            }
-            break;
-
-            case PA_SMS_SMS_SUBMIT:
-            {
-                LE_ERROR("Unexpected submit");
+                LE_ERROR("type %d , expected %d", message.type, receivedPtr->expected.message.type);
                 return LE_FAULT;
             }
 
-            default:
+            switch(message.type)
             {
-                LE_ERROR("Unexpected type");
-                return LE_FAULT;
+                case PA_SMS_SMS_DELIVER:
+                {
+                    LE_INFO("Format: %u", message.smsDeliver.format);
+                    LE_INFO("Data (%u): %s", message.smsDeliver.dataLen, message.smsDeliver.data);
+                    if(message.smsDeliver.format != receivedPtr->expected.message.smsDeliver.format)
+                    {
+                        LE_ERROR("format %d != %d",
+                                        message.smsDeliver.format,
+                                        receivedPtr->expected.message.smsDeliver.format);
+                        return LE_FAULT;
+                    }
+
+                    if(strcmp(message.smsDeliver.oa,
+                                    receivedPtr->expected.message.smsDeliver.oa) != 0)
+                    {
+                        LE_ERROR(" oa %s != %s",
+                                        message.smsDeliver.oa,
+                                        receivedPtr->expected.message.smsDeliver.oa);
+                        return LE_FAULT;
+                    }
+
+                    if(strcmp(message.smsDeliver.scts,
+                                    receivedPtr->expected.message.smsDeliver.scts) != 0)
+                    {
+                        LE_ERROR("scts %s != %s", message.smsDeliver.scts,
+                                        receivedPtr->expected.message.smsDeliver.scts);
+                        return LE_FAULT;
+                    }
+
+                    if(message.smsDeliver.dataLen !=
+                                    receivedPtr->expected.message.smsDeliver.dataLen)
+                    {
+                        LE_ERROR("dataLen %d != %d",
+                                        message.smsDeliver.dataLen,
+                                        receivedPtr->expected.message.smsDeliver.dataLen);
+                        if (receivedPtr->checkData)
+                        {
+                            return LE_FAULT;
+                        }
+                    }
+
+                    if(memcmp(message.smsDeliver.data,
+                                    receivedPtr->expected.message.smsDeliver.data,
+                                    message.smsDeliver.dataLen) != 0)
+                    {
+                        LE_ERROR("Data doesn't match (%d)", message.smsDeliver.dataLen);
+                        Dump(message.smsDeliver.data, message.smsDeliver.dataLen);
+                        Dump(receivedPtr->expected.message.smsDeliver.data,
+                            message.smsDeliver.dataLen);
+                        if(receivedPtr->checkData)
+                        {
+                            return LE_FAULT;
+                        }
+                    }
+                }
+                break;
+
+                case PA_SMS_SMS_SUBMIT:
+                {
+                    LE_ERROR("Unexpected submit");
+                    return LE_FAULT;
+                }
+
+                case PA_SMS_SMS_CELL_BROADCAST:
+                {
+                    LE_INFO("Format: %u", message.cellBroadcast.format);
+                    if(message.cellBroadcast.dataLen !=
+                                    receivedPtr->expected.message.smsDeliver.dataLen)
+                    {
+                        LE_ERROR("dataLen %d != %d",
+                                        message.cellBroadcast.dataLen,
+                                        receivedPtr->expected.message.smsDeliver.dataLen);
+                        if (receivedPtr->checkData)
+                        {
+                            return LE_FAULT;
+                        }
+                    }
+
+                    if(memcmp(message.cellBroadcast.data,
+                                    receivedPtr->expected.message.smsDeliver.data,
+                                    message.cellBroadcast.dataLen) != 0)
+                    {
+                        LE_ERROR("Data doesn't match (%d)", message.cellBroadcast.dataLen);
+                        Dump(message.cellBroadcast.data, message.cellBroadcast.dataLen);
+                        Dump(receivedPtr->expected.message.smsDeliver.data,
+                            receivedPtr->expected.message.smsDeliver.dataLen);
+                        if(receivedPtr->checkData)
+                        {
+                            return LE_FAULT;
+                        }
+                    }
+                }
+                break;
+
+                default:
+                {
+                    LE_ERROR("Unexpected type");
+                    return LE_FAULT;
+                }
             }
         }
     }
@@ -780,10 +1331,10 @@ static le_result_t TestEncodePdu
         if ( res == LE_OK )
         {
             LE_INFO("Source: (%zu)", assoc->gsm_8bits.length);
-            DumpPDU(assoc->gsm_8bits.data, assoc->gsm_8bits.length);
+            Dump(assoc->gsm_8bits.data, assoc->gsm_8bits.length);
 
             LE_INFO("Encoded: (%u)", pdu.dataLen);
-            DumpPDU(pdu.data, pdu.dataLen);
+            Dump(pdu.data, pdu.dataLen);
 
             /* Check */
             if (pdu.dataLen != assoc->gsm_8bits.length)
@@ -864,10 +1415,10 @@ static le_result_t TestEncodePdu
         if ( res == LE_OK )
         {
             LE_INFO("Source: (%zu)", assoc->gsm_7bits.length);
-            DumpPDU(assoc->gsm_7bits.data, assoc->gsm_7bits.length);
+            Dump(assoc->gsm_7bits.data, assoc->gsm_7bits.length);
 
             LE_INFO("Encoded: (%u)", pdu.dataLen);
-            DumpPDU(pdu.data, pdu.dataLen);
+            Dump(pdu.data, pdu.dataLen);
 
             /* Check */
             if (pdu.dataLen != assoc->gsm_7bits.length )
@@ -954,10 +1505,10 @@ static le_result_t TestEncodePdu
             uint32_t indexAfterTimestamp = assoc->cdma_8bits.timestampIndex+timestampSize;
 
             LE_INFO("Source: (%zu)", assoc->cdma_8bits.length);
-            DumpPDU(assoc->cdma_8bits.data, assoc->cdma_8bits.length);
+            Dump(assoc->cdma_8bits.data, assoc->cdma_8bits.length);
 
             LE_INFO("Encoded: (%u)", pdu.dataLen);
-            DumpPDU(pdu.data, pdu.dataLen);
+            Dump(pdu.data, pdu.dataLen);
 
             /* Check, exclude timestamp*/
             if (pdu.dataLen != assoc->cdma_8bits.length)
@@ -1047,10 +1598,10 @@ static le_result_t TestEncodePdu
             uint32_t indexAfterTimestamp = assoc->cdma_7bits.timestampIndex+timestampSize;
 
             LE_INFO("Source: (%zu)", assoc->cdma_7bits.length);
-            DumpPDU(assoc->cdma_7bits.data, assoc->cdma_7bits.length);
+            Dump(assoc->cdma_7bits.data, assoc->cdma_7bits.length);
 
             LE_INFO("Encoded: (%u)", pdu.dataLen);
-            DumpPDU(pdu.data, pdu.dataLen);
+            Dump(pdu.data, pdu.dataLen);
 
             /* Check, exclude timestamp*/
             if (pdu.dataLen != assoc->cdma_7bits.length)
@@ -1126,6 +1677,9 @@ static le_result_t TestEncodePdu
 
 //--------------------------------------------------------------------------------------------------
 /*
+ * "log level DEBUG"
+ * "log trace sms"
+ * "log trace smsPdu"
  * Check "logread -f | grep sms" log
  * Start app : app start smsPduTest
  */
@@ -1134,6 +1688,10 @@ COMPONENT_INIT
 {
     int i;
     le_result_t res;
+    le_log_TraceRef_t traceRef = le_log_GetTraceRef( "smsPdu" );
+
+    le_log_SetFilterLevel(LE_LOG_DEBUG);
+    le_log_EnableTrace(traceRef);
 
     // Init the test case / test suite data structures
     smsPdu_Initialize();

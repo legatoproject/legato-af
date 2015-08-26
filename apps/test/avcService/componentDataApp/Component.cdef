@@ -1,0 +1,44 @@
+
+requires:
+{
+    api:
+    {
+        le_avdata.api
+    }
+}
+
+sources:
+{
+    dataAppMain.c
+}
+
+assets:
+{
+    myData =
+    {
+        settings:
+        {
+            string settingStringOne = "One"
+            string settingStringTwo = "Two"
+            int settingIntOne = 1
+            int settingIntTwo = 2
+            bool settingBoolOne = true
+        }
+
+        variables:
+        {
+            string variableStringOne = "Var One"
+            string variableStringTwo = "Var Two"
+            int variableIntOne = 100
+            int variableIntTwo = 200
+            bool variableBoolOne = false
+        }
+
+        commands:
+        {
+            commandOne
+            commandTwo
+        }
+    }
+}
+

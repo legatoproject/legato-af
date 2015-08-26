@@ -22,3 +22,8 @@ sources:
     $LEGATO_ROOT/components/atManager/src/atPorts.c
     $LEGATO_ROOT/components/modemServices/platformAdaptor/at/le_pa/pa_common.c
 }
+
+ldflags:
+{
+    $LEGATO_BUILD/3rdParty/CUnit/lib/libcunit.a
+}

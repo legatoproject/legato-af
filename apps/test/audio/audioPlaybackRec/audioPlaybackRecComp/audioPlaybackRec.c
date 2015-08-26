@@ -104,6 +104,10 @@ static uint32_t BitsPerSample;
 
 static void DisconnectAllAudio(void);
 static void PlaySamples(void* param1Ptr,void* param2Ptr);
+static uint8_t NextOptionArg;
+static le_audio_Format_t AudioFormat;
+static bool DtxActivation;
+static le_audio_AmrMode_t AmrMode;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -422,15 +426,14 @@ static void ExecuteNextOption
     void
 )
 {
-    static uint8_t numArgs = 3; // test case, audio sound path and audio file already treated;
     bool nextOption = false;
 
-    if ( numArgs < le_arg_NumArgs() )
+    if ( NextOptionArg < le_arg_NumArgs() )
     {
-        if ( strncmp(le_arg_GetArg(numArgs), "STOP", 4) == 0 )
+        if ( strncmp(le_arg_GetArg(NextOptionArg), "STOP", 4) == 0 )
         {
             le_clk_Time_t interval={0};
-            const char* stop = le_arg_GetArg(numArgs);
+            const char* stop = le_arg_GetArg(NextOptionArg);
 
             if (strlen(stop) > 5) // higher than "STOP="
             {
@@ -441,10 +444,10 @@ static void ExecuteNextOption
                 le_timer_Start(OptionTimerRef);
             }
         }
-        else if ( strncmp(le_arg_GetArg(numArgs), "PLAY", 4) == 0 )
+        else if ( strncmp(le_arg_GetArg(NextOptionArg), "PLAY", 4) == 0 )
         {
             le_clk_Time_t interval={0};
-            const char* play = le_arg_GetArg(numArgs);
+            const char* play = le_arg_GetArg(NextOptionArg);
             if (strlen(play) > 5) // higher than "PLAY="
             {
                 LE_INFO("PLAY will be done in %d seconds", atoi(play+5));
@@ -454,10 +457,10 @@ static void ExecuteNextOption
                 le_timer_Start(OptionTimerRef);
             }
         }
-        else if ( strncmp(le_arg_GetArg(numArgs), "RECORD", 6) == 0 )
+        else if ( strncmp(le_arg_GetArg(NextOptionArg), "RECORD", 6) == 0 )
         {
             le_clk_Time_t interval={0};
-            const char* play = le_arg_GetArg(numArgs);
+            const char* play = le_arg_GetArg(NextOptionArg);
             if (strlen(play) > 7) // higher than "RECORD="
             {
                 LE_INFO("RECORD will be done in %d seconds", atoi(play+7));
@@ -467,10 +470,10 @@ static void ExecuteNextOption
                 le_timer_Start(OptionTimerRef);
             }
         }
-        else if ( strncmp(le_arg_GetArg(numArgs), "PAUSE", 5) == 0 )
+        else if ( strncmp(le_arg_GetArg(NextOptionArg), "PAUSE", 5) == 0 )
         {
             le_clk_Time_t interval={0};
-            const char* pause = le_arg_GetArg(numArgs);
+            const char* pause = le_arg_GetArg(NextOptionArg);
 
             if (strlen(pause) > 6) // higher than "PAUSE="
             {
@@ -481,10 +484,10 @@ static void ExecuteNextOption
                 le_timer_Start(OptionTimerRef);
             }
         }
-        else if ( strncmp(le_arg_GetArg(numArgs), "RESUME", 6) == 0 )
+        else if ( strncmp(le_arg_GetArg(NextOptionArg), "RESUME", 6) == 0 )
         {
             le_clk_Time_t interval={0};
-            const char* resume = le_arg_GetArg(numArgs);
+            const char* resume = le_arg_GetArg(NextOptionArg);
 
             if (strlen(resume) > 7) // higher than "RESUME="
             {
@@ -495,10 +498,10 @@ static void ExecuteNextOption
                 le_timer_Start(OptionTimerRef);
             }
         }
-        else if ( strncmp(le_arg_GetArg(numArgs), "DISCONNECT", 10) == 0 )
+        else if ( strncmp(le_arg_GetArg(NextOptionArg), "DISCONNECT", 10) == 0 )
         {
             le_clk_Time_t interval={0};
-            const char* resume = le_arg_GetArg(numArgs);
+            const char* resume = le_arg_GetArg(NextOptionArg);
 
             if (strlen(resume) > 11) // higher than "DISCONNECT="
             {
@@ -509,12 +512,12 @@ static void ExecuteNextOption
                 le_timer_Start(OptionTimerRef);
             }
         }
-        else if ( strncmp(le_arg_GetArg(numArgs), "LOOP", 4) == 0 )
+        else if ( strncmp(le_arg_GetArg(NextOptionArg), "LOOP", 4) == 0 )
         {
             PlayInLoop = true;
             nextOption = true;
         }
-        else if ( strncmp(le_arg_GetArg(numArgs), "MUTE", 4) == 0 )
+        else if ( strncmp(le_arg_GetArg(NextOptionArg), "MUTE", 4) == 0 )
         {
 
             le_clk_Time_t interval;
@@ -530,7 +533,7 @@ static void ExecuteNextOption
             le_timer_SetRepeat(MuteTimerRef,0);
             le_timer_Start(MuteTimerRef);
         }
-        else if ( strncmp(le_arg_GetArg(numArgs),"GAIN",4) == 0 )
+        else if ( strncmp(le_arg_GetArg(NextOptionArg),"GAIN",4) == 0 )
         {
             le_clk_Time_t interval;
             interval.sec = 0;
@@ -547,7 +550,7 @@ static void ExecuteNextOption
             le_timer_Start(GainTimerRef);
         }
 
-        numArgs++;
+        NextOptionArg++;
     }
 
     if (nextOption)
@@ -833,6 +836,35 @@ static void ConnectAudioToFileLocalRec
         }
         else
         {
+            res = le_audio_SetEncodingFormat(FileAudioRef, AudioFormat);
+
+            if(res!=LE_OK)
+            {
+                LE_ERROR("Failed to set audio format");
+                return;
+            }
+
+            if (AudioFormat == LE_AUDIO_AMR)
+            {
+                LE_INFO("Set AMR mode %d", AmrMode);
+                res = le_audio_SetSampleAmrMode(FileAudioRef, AmrMode);
+
+                if(res!=LE_OK)
+                {
+                    LE_ERROR("Failed to set AMR bitrate");
+                    return;
+                }
+
+                LE_INFO("Set AMR DTX %d", DtxActivation);
+                res = le_audio_SetSampleAmrDtx(FileAudioRef, DtxActivation);
+
+                if(res!=LE_OK)
+                {
+                    LE_ERROR("Failed to set DTX");
+                    return;
+                }
+            }
+
             res = le_audio_RecordFile(FileAudioRef, AudioFileFd);
 
             if(res!=LE_OK)
@@ -1133,7 +1165,10 @@ static void PrintUsage()
             " - USB (for USB)",
             "",
             "Options are:",
-            " - GAIN (for playback gain testing)"
+            " - ChannelNmbr SampleRate BitsPerSample (for REC_SAMPLES)",
+            " - AMR AmrMode DTX (for REC in AMR Narrowband format)",
+            " - WAV (for REC in WAV format)",
+            " - GAIN (for playback gain testing)",
             " - LOOP (to replay a file in loop) (optional)",
             " - PLAY=<timer value> (to replay a file after a delay) (optional)",
             " - RECORD=<timer value> (to record a file after a delay) (optional)",
@@ -1143,7 +1178,6 @@ static void PrintUsage()
             " - DISCONNECT=<timer value> (to disconnect connectors and streams"
               " after a delay) (optional)",
             " - MUTE (for playback MUTE testing)",
-            " - ChannelNmbr SampleRate BitsPerSample (for REC_SAMPLES)",
             "",
             "File's name can be the complete file's path.",
     };
@@ -1224,6 +1258,41 @@ COMPONENT_INIT
             BitsPerSample = atoi(le_arg_GetArg(5));
             LE_INFO("   Get/Play PCM samples with ChannelsCount.%d SampleRate.%d BitsPerSample.%d",
                     ChannelsCount, SampleRate, BitsPerSample);
+            NextOptionArg = 6;
+        }
+        else if (strncmp(AudioTestCase,"REC", 3)==0)
+        {
+            const char* recFormat = le_arg_GetArg(3);
+
+            if (strncmp(recFormat,"WAV", 3)==0)
+            {
+                AudioFormat = LE_AUDIO_WAVE;
+            }
+            else if (strncmp(recFormat,"AMR", 3)==0)
+            {
+                AudioFormat = LE_AUDIO_AMR;
+            }
+            else
+            {
+                PrintUsage();
+                LE_INFO("EXIT audioPlaybackRec");
+                exit(EXIT_FAILURE);
+            }
+
+            if (AudioFormat == LE_AUDIO_WAVE)
+            {
+                NextOptionArg = 4;
+            }
+            else
+            {
+                AmrMode = atoi(le_arg_GetArg(4));
+                DtxActivation = atoi(le_arg_GetArg(5));
+                NextOptionArg = 6;
+            }
+        }
+        else
+        {
+            NextOptionArg = 3;
         }
 
 

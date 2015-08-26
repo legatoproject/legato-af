@@ -5,12 +5,27 @@ LoadTestLib
 targetAddr=$1
 targetType=${2:-ar7}
 
-OnFail() {
-    echo "Inspect Test Failed"
+printBanner()
+{
+    echo "---------------------------------------------------------------------------"
+    echo "---------------------------------- $1"
+    echo "---------------------------------------------------------------------------"
+}
+
+OnFail()
+{
+    printBanner "Inspect Test Failed"
 }
 
 appDir="$LEGATO_ROOT/build/$targetType/bin/tests"
-appName="SubpoolFlux"
+
+targetTestApps=(
+    SubpoolFlux
+    ThreadFlux
+    TimerFlux
+    MutexFlux
+    SemaphoreFlux
+)
 
 ashScriptPath=targetAshScripts
 
@@ -19,20 +34,35 @@ targetTestScripts=(
     v
     inspectTestTarget.sh
     testInspectInterval.sh
+    testInspectInterrupted.sh
     testInspectComplete.sh
     testInspectRace.sh
+    testInspectDeleteThread.sh
+    testInspectMutexWaitingList.sh
+    testInspectMutexColumns.sh
+    testInspectSemaWaitingList.sh
+    testInspectSemaColumns.sh
 )
 
 targetFileDir=__InspectTargetTestsDir_deleteme
 
-# Install the SubpoolFlux test app
-echo "Installing the test app [$appName]"
-instapp $appDir/$appName.$targetType $targetAddr
-CheckRet
+
+
+printBanner "Begin All Inspector Tests"
+
+# Install the test apps
+printBanner "Installing All Test Apps"
+for app in ${targetTestApps[@]}
+do
+#    echo "Installing the test app [$app]"
+    instapp $appDir/$app.$targetType $targetAddr
+    CheckRet
+done
 
 
 # Copy over the on-target test script files
-echo "Creating a dir on target [$targetAddr] to store the on target scripts [<home dir>/$targetFileDir]"
+printBanner "Copying Over On-Target Test Script Files"
+echo "Creating a dir on target [$targetAddr] to store the on-target scripts [<home dir>/$targetFileDir]"
 ssh root@$targetAddr "mkdir -p $targetFileDir"
 CheckRet
 
@@ -51,15 +81,24 @@ done
 
 
 # Run the tests
-echo "Running the Inspect tests"
+printBanner "Running the Inspector Tests"
 ssh root@$targetAddr "cd $targetFileDir && ./inspectTestTarget.sh"
 CheckRet
 
 
 # Clean up
-echo "Cleaning up after the Inspect tests"
-rmapp $appName $targetAddr
-CheckRet
+printBanner "Cleaning up after the Inspector Tests"
+for app in ${targetTestApps[@]}
+do
+    rmapp $app $targetAddr
+    CheckRet
+done
+
 ssh root@$targetAddr "rm -rf $targetFileDir"
 CheckRet
+
+
+printBanner "All Inspector Tests Are Successfully Finished"
+
+
 

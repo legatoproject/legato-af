@@ -7,6 +7,7 @@ requires:
 {
     api:
     {
+        le_cfg.api
         le_ecall.api
     }
 }

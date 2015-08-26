@@ -40,6 +40,7 @@ COMPONENT_INIT
     // Perform fault.
     if (strcmp(faultTypeStr, SIG_FAULT) == 0)
     {
+        // Dereference a pointer with value 0 to generate a SIGSEGV signal.
         int i = *(volatile int*)0;
         LE_DEBUG("i is: %d", i);
     }

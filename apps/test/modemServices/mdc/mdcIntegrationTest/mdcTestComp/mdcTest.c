@@ -13,6 +13,13 @@
 #include "interfaces.h"
 #include "le_print.h"
 
+uint8_t NbConnection = 1;
+#define NB_CONNECTION_MAX 4
+
+le_mdc_ProfileRef_t ProfileRef[NB_CONNECTION_MAX];
+bool TaskStarted[NB_CONNECTION_MAX];
+
+
 static pthread_mutex_t Mutex = PTHREAD_MUTEX_INITIALIZER;   // POSIX "Fast" mutex.
 
 /// Locks the mutex.
@@ -20,8 +27,6 @@ static pthread_mutex_t Mutex = PTHREAD_MUTEX_INITIALIZER;   // POSIX "Fast" mute
 
 /// Unlocks the mutex.
 #define UNLOCK  LE_ASSERT(pthread_mutex_unlock(&Mutex) == 0);
-
-
 
 
 static le_result_t UpdateResolvConf
@@ -70,24 +75,6 @@ static le_result_t UpdateResolvConf
     LE_INFO("fclose called");
 
     return LE_OK;
-}
-
-static void StateChangeHandler
-(
-    bool  isConnected,
-    void* contextPtr
-)
-{
-    le_mdc_ProfileRef_t ProfileRef = contextPtr;
-    char name[LE_MDC_INTERFACE_NAME_MAX_BYTES];
-
-    le_mdc_GetInterfaceName(ProfileRef, name, sizeof(name));
-
-    LE_DEBUG("\n================================================");
-    LE_PRINT_VALUE("%s", name);
-    LE_PRINT_VALUE("%u", isConnected);
-    LE_PRINT_VALUE("%d", le_mdc_GetProfileIndex(ProfileRef));
-    LE_DEBUG("\n================================================");
 }
 
 
@@ -293,15 +280,6 @@ static bool TestIpv6Connectivity
     return true;
 }
 
-static void* HandlerThread(void* contextPtr)
-{
-    le_mdc_ConnectService();
-
-    le_mdc_ProfileRef_t profileRef = (le_mdc_ProfileRef_t) contextPtr;
-    le_mdc_AddSessionStateHandler(profileRef, StateChangeHandler, profileRef);
-
-    le_event_RunLoop();
-}
 
 
 static void* TestThread(void* contextPtr)
@@ -310,40 +288,52 @@ static void* TestThread(void* contextPtr)
 
     le_mdc_ConnectService();
 
-    bool isConnected;
+    le_mdc_ConState_t state;
 
-    if ((le_mdc_GetSessionState(profileRef, &isConnected) != LE_OK) || (isConnected != false))
+    LOCK
+
+    if ((le_mdc_GetSessionState(profileRef, &state) != LE_OK) || (state != LE_MDC_DISCONNECTED))
     {
         LE_INFO("le_mdc_GetSessionState failed");
+        UNLOCK
         return NULL;
     }
 
     if ( le_mdc_StartSession(profileRef) != LE_OK )
     {
         LE_INFO("Start failed");
+        UNLOCK
         return NULL;
     }
+
+    UNLOCK
 
     LE_INFO("Start called");
 
     LE_INFO("waiting a few seconds");
-    sleep(10);
+    sleep(20*NbConnection);
 
+    LOCK
     // Check returned error code if Data session is already started
     LE_ASSERT(le_mdc_StartSession(profileRef)== LE_DUPLICATE);
 
     if ( le_mdc_StopSession(profileRef) != LE_OK )
     {
         LE_INFO("Stop failed");
+        UNLOCK
         return NULL;
     }
+
+    UNLOCK
 
     LE_INFO("Stop called");
 
     // Wait a bit and then restart the data session and configure the network interface.
 
     LE_INFO("waiting a few more seconds");
-    sleep(10);
+    sleep(10*NbConnection);
+
+    LOCK
 
     if ( le_mdc_StartSession(profileRef) != LE_OK )
     {
@@ -352,6 +342,10 @@ static void* TestThread(void* contextPtr)
     }
 
     LE_INFO("Start called");
+
+    UNLOCK
+
+    sleep(10*NbConnection);
 
     TestIpv4Connectivity(profileRef);
 
@@ -370,35 +364,102 @@ static void* TestThread(void* contextPtr)
     return NULL;
 }
 
+static void StateChangeHandler
+(
+    le_mdc_ProfileRef_t profileRef,
+    le_mdc_ConState_t ConnectionStatus,
+    void* contextPtr
+)
+{
+    intptr_t profileIndex = (intptr_t) contextPtr;
+
+    char name[LE_MDC_INTERFACE_NAME_MAX_BYTES];
+
+    le_mdc_GetInterfaceName(profileRef, name, sizeof(name));
+
+    LE_DEBUG("\n================================================");
+    LE_PRINT_VALUE("%d", (int) le_mdc_GetProfileIndex(profileRef));
+    LE_PRINT_VALUE("%s", name);
+    LE_PRINT_VALUE("%u", ConnectionStatus);
+
+    if (ConnectionStatus == LE_MDC_DISCONNECTED)
+    {
+        LE_PRINT_VALUE("%d", le_mdc_GetDisconnectionReason(profileRef));
+        LE_PRINT_VALUE("%d", le_mdc_GetPlatformSpecificDisconnectionCode(profileRef));
+    }
+    LE_DEBUG("\n================================================");
+
+    if ((ConnectionStatus == LE_MDC_CONNECTED) &&
+        !(TaskStarted[profileIndex+1]) && (profileIndex < (NbConnection-1)))
+    {
+        char string[50]="\0";
+        snprintf(string,50,"MDC%d_Test", (int) profileIndex+2);
+
+        LE_INFO("Start %s", string);
+
+        le_thread_Start(le_thread_Create(string, TestThread, ProfileRef[profileIndex+1]));
+        TaskStarted[profileIndex+1] = true;
+    }
+}
+
+static void* HandlerThread(void* contextPtr)
+{
+    le_mdc_ConnectService();
+
+    le_mdc_ProfileRef_t profileRef = ProfileRef[(intptr_t) contextPtr];
+    le_mdc_AddSessionStateHandler(profileRef, StateChangeHandler, contextPtr);
+
+    le_event_RunLoop();
+}
 
 COMPONENT_INIT
 {
-    // Hard coded, second profile.
-    le_mdc_ProfileRef_t defaultProfileRef = le_mdc_GetProfile(LE_MDC_DEFAULT_PROFILE);
 
-    if ( defaultProfileRef == NULL )
+    uint32_t defaultIndex;
+    intptr_t i;
+
+    if (le_arg_NumArgs() > 0)
     {
-        LE_INFO("load failed");
-        exit(1);
-        return;
+        NbConnection = atoi(le_arg_GetArg(0));
     }
-    LE_INFO("Load called");
 
-    uint32_t defaultIndex = le_mdc_GetProfileIndex(defaultProfileRef);
-    uint32_t secondaryIndex = defaultIndex + 1 % le_mdc_NumProfiles();
-    char apn[50];
-    memset(apn, 0, 50);
+    LE_INFO("Nb connection %d", NbConnection);
 
-    le_mdc_ProfileRef_t secondaryProfileRef = le_mdc_GetProfile(secondaryIndex);
+    LE_ASSERT(NbConnection <= NB_CONNECTION_MAX);
 
-    // Start handler threads
-    le_thread_Start(le_thread_Create("MDC1_handler", HandlerThread, defaultProfileRef));
-    le_thread_Start(le_thread_Create("MDC2_handler", HandlerThread, secondaryProfileRef));
+    for (i=0; i < NbConnection; i++)
+    {
+        TaskStarted[i] = false;
+
+        if (i==0)
+        {
+            ProfileRef[0]  = le_mdc_GetProfile(LE_MDC_DEFAULT_PROFILE);
+            defaultIndex = le_mdc_GetProfileIndex(ProfileRef[0]);
+        }
+        else
+        {
+            ProfileRef[i] = le_mdc_GetProfile(defaultIndex + i % le_mdc_NumProfiles());
+        }
+
+        if ( ProfileRef[i] == NULL )
+        {
+            LE_INFO("load failed");
+            exit(1);
+            return;
+        }
+
+        char string[50]="\0";
+
+        snprintf(string,50,"MDC%d_handler", (int) (i+1));
+
+        le_thread_Start(le_thread_Create(string, HandlerThread, (void*) i));
+    }
+
     sleep(1);
 
-    // Start the test threads.
-    le_thread_Start(le_thread_Create("MDC1_Test", TestThread, defaultProfileRef));
-    le_thread_Start(le_thread_Create("MDC2_Test", TestThread, secondaryProfileRef));
+    // Start the first test thread.
+    le_thread_Start(le_thread_Create("MDC1_Test", TestThread, ProfileRef[0]));
+    TaskStarted[0] = true;
 
 }
 

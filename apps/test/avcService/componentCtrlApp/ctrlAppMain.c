@@ -32,7 +32,9 @@ static int TestCase=0;
 //--------------------------------------------------------------------------------------------------
 static void DownloadAndInstall
 (
-    le_avc_Status_t updateStatus
+    le_avc_Status_t updateStatus,
+    int32_t totalNumBytes,
+    int32_t progress
 )
 {
     le_avc_UpdateType_t updateType;
@@ -48,6 +50,9 @@ static void DownloadAndInstall
             break;
 
         case LE_AVC_DOWNLOAD_PENDING:
+            LE_INFO("Total number of bytes to download = %d", totalNumBytes);
+            LE_INFO("Download progress = %d%%", progress);
+
             // In the wrong state, so this should be an error
             LE_ASSERT( le_avc_AcceptInstall() == LE_FAULT );
 
@@ -59,10 +64,20 @@ static void DownloadAndInstall
             //LE_ASSERT( updateType == LE_AVC_FIRMWARE_UPDATE );
 
             // In the wrong state, so this should be an error
-            LE_ASSERT( le_avc_RejectDownload() == LE_FAULT );
-
-            // In the wrong state, so this should be an error
             LE_ASSERT( le_avc_DeferDownload(3) == LE_FAULT );
+            break;
+
+
+        case LE_AVC_DOWNLOAD_IN_PROGRESS:
+            LE_INFO("Download in Progress");
+            LE_INFO("Total number of bytes to download = %d", totalNumBytes);
+            LE_INFO("Download progress = %d%%", progress);
+            break;
+
+        case LE_AVC_DOWNLOAD_COMPLETE:
+            LE_INFO("Download completed");
+            LE_INFO("Total number of bytes to download = %d", totalNumBytes);
+            LE_INFO("Download progress = %d%%", progress);
             break;
 
         case LE_AVC_INSTALL_PENDING:
@@ -85,10 +100,10 @@ static void DownloadAndInstall
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Test case 2: Reject download
+ * Test case 2: Continually defer the download for a minute at a time
  */
 //--------------------------------------------------------------------------------------------------
-static void RejectDownload
+static void DeferDownload
 (
     le_avc_Status_t updateStatus
 )
@@ -96,8 +111,8 @@ static void RejectDownload
     switch ( updateStatus )
     {
         case LE_AVC_DOWNLOAD_PENDING:
-            LE_WARN("Reject download");
-            LE_ASSERT( le_avc_RejectDownload() == LE_OK );
+            LE_WARN("Defer download");
+            LE_ASSERT( le_avc_DeferDownload(1) == LE_OK );
 
             // In the wrong state, so this should be an error
             LE_ASSERT( le_avc_AcceptDownload() == LE_FAULT );
@@ -106,7 +121,6 @@ static void RejectDownload
         default:
             LE_WARN("Update status %i not handled", updateStatus);
     }
-
 }
 
 
@@ -259,7 +273,6 @@ static void SimpleDownloadAndDeferInstall
 }
 
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Status handler
@@ -270,6 +283,8 @@ static void SimpleDownloadAndDeferInstall
 static void StatusHandler
 (
     le_avc_Status_t updateStatus,
+    int32_t totalNumBytes,
+    int32_t downloadProgress,
     void* contextPtr
 )
 {
@@ -278,11 +293,11 @@ static void StatusHandler
     switch ( TestCase )
     {
         case 1:
-            DownloadAndInstall(updateStatus);
+            DownloadAndInstall(updateStatus, totalNumBytes, downloadProgress);
             break;
 
         case 2:
-            RejectDownload(updateStatus);
+            DeferDownload(updateStatus);
             break;
 
         case 3:

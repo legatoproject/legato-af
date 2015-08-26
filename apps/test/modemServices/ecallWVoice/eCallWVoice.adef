@@ -17,4 +17,5 @@ bindings:
 {
     eCallWVoice.eCallWVoice.le_ecall -> modemService.le_ecall
     eCallWVoice.eCallWVoice.le_audio -> audioService.le_audio
+    eCallWVoice.eCallWVoice.le_mcc -> audioService.le_mcc
 }

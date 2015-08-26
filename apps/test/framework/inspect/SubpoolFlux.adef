@@ -2,7 +2,7 @@ start: manual
 
 executables:
 {
-    SubpoolFlux = ( program )
+    SubpoolFlux = ( SubpoolFlux )
 }
 
 processes:

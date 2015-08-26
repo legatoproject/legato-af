@@ -18,7 +18,6 @@ if(${LEGATO_TARGET} STREQUAL "localhost")
 
         mkexe(${APP_TARGET}
                     .
-                    ${CUNIT_LIBRARIES}
                     -i ${CUNIT_INSTALL}/include
                     -i ${CUNIT_INSTALL}/include/CUnit
                     -i ${LEGATO_ROOT}/components/modemServices/platformAdaptor/inc

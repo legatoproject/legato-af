@@ -897,6 +897,105 @@ static void Testle_mrc_GetNeighboringCellsInfo()
     }
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler function for GSM Signal Strength change Notifications.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void TestGsmSsHandler
+(
+    int32_t     ss,
+    void*       contextPtr
+)
+{
+    LE_INFO("New GSM Signal Strength change: %ddBm", ss);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler function for UMTS Signal Strength change Notifications.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void TestUmtsSsHandler
+(
+    int32_t     ss,
+    void*       contextPtr
+)
+{
+    LE_INFO("New UMTS Signal Strength change: %ddBm", ss);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler function for LTE Signal Strength change Notifications.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void TestLteSsHandler
+(
+    int32_t     ss,
+    void*       contextPtr
+)
+{
+    LE_INFO("New LTE Signal Strength change: %ddBm", ss);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler function for CDMA Signal Strength change Notifications.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void TestCdmaSsHandler
+(
+    int32_t     ss,
+    void*       contextPtr
+)
+{
+    LE_INFO("New CDMA Signal Strength change: %ddBm", ss);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test: Signal Strength change handling.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void Testle_mrc_SsHdlr()
+{
+    le_mrc_SignalStrengthChangeHandlerRef_t testHdlrRef=NULL;
+
+    testHdlrRef = le_mrc_AddSignalStrengthChangeHandler(LE_MRC_RAT_GSM,
+                                                        -80,
+                                                        -70,
+                                                        TestGsmSsHandler,
+                                                        NULL);
+    LE_ASSERT(testHdlrRef);
+
+    testHdlrRef = le_mrc_AddSignalStrengthChangeHandler(LE_MRC_RAT_UMTS,
+                                                        -80,
+                                                        -70,
+                                                        TestUmtsSsHandler,
+                                                        NULL);
+    LE_ASSERT(testHdlrRef);
+
+    testHdlrRef = le_mrc_AddSignalStrengthChangeHandler(LE_MRC_RAT_LTE,
+                                                        -80,
+                                                        -70,
+                                                        TestLteSsHandler,
+                                                        NULL);
+    LE_ASSERT(testHdlrRef);
+
+    testHdlrRef = le_mrc_AddSignalStrengthChangeHandler(LE_MRC_RAT_CDMA,
+                                                        -80,
+                                                        -70,
+                                                        TestCdmaSsHandler,
+                                                        NULL);
+    LE_ASSERT(testHdlrRef);
+}
+
 COMPONENT_INIT
 {
     LE_INFO("======== Start MRC Modem Services implementation Test========");
@@ -961,6 +1060,10 @@ COMPONENT_INIT
     Testle_mrc_TdScdmaBandPreferences();
     LE_INFO("======== BandTdScdmaPreferences Test PASSED ========");
 
+    LE_INFO("======== Signal Strength Handler Test ========");
+    Testle_mrc_SsHdlr();
+    LE_INFO("======== Signal Strength Handler Test PASSED ========");
+
 #if TEST_MRC_POWER
     LE_INFO("======== Power Test ========");
     Testle_mrc_Power();
@@ -968,7 +1071,7 @@ COMPONENT_INIT
 #endif
 
     LE_INFO("======== Test MRC Modem Services implementation Test SUCCESS ========");
-    exit(EXIT_SUCCESS);
+//     exit(EXIT_SUCCESS);
 }
 
 

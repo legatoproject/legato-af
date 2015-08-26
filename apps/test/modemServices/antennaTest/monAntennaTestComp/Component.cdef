@@ -8,5 +8,6 @@ requires:
     api:
     {
         le_antenna.api
+        le_info.api
     }
 }

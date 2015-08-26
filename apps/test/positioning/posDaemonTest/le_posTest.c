@@ -38,6 +38,16 @@ static void TenMeterNavigationHandler(le_pos_SampleRef_t positionSampleRef, void
 {
     int32_t  val, val1, accuracy;
     uint32_t uval;
+    // Date parameters
+    uint16_t year;
+    uint16_t month;
+    uint16_t day;
+    // Time parameters
+    uint16_t hours;
+    uint16_t minutes;
+    uint16_t seconds;
+    uint16_t milliseconds;
+
 
     if(positionSampleRef == NULL)
     {
@@ -54,6 +64,12 @@ static void TenMeterNavigationHandler(le_pos_SampleRef_t positionSampleRef, void
 
     le_pos_sample_Get2DLocation(positionSampleRef, &val, &val1, &accuracy);
     LE_INFO("Check le_pos_sample_Get2DLocation passed, lat.%d, long.%d, accuracy.%d", val, val1, accuracy);
+
+    le_pos_sample_GetDate(positionSampleRef, &year, &month, &day);
+    LE_INFO("Check le_pos_sample_GetDate passed, year.%d, month.%d, day.%d", year, month, day);
+
+    le_pos_sample_GetTime(positionSampleRef, &hours, &minutes, &seconds, &milliseconds);
+    LE_INFO("Check le_pos_sample_GetTime passed, hours.%d, minutes.%d, seconds.%d, milliseconds.%d", hours, minutes, seconds, milliseconds);
 
     le_pos_sample_GetAltitude(positionSampleRef, &val, &accuracy);
     LE_INFO("Check le_pos_sample_GetAltitude passed, alt.%d, accuracy.%d", val, accuracy);

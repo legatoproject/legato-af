@@ -22,3 +22,11 @@ mkapp(smsDeletion.adef
         smsDeletion/Component.cdef
         smsDeletion/smsDeletion.c
 )
+
+mkapp(smsCBTest.adef
+    -i ${LEGATO_ROOT}/interfaces/modemServices
+    DEPENDS
+        legato
+        smsCBTest/Component.cdef
+        smsCBTest/smsCBTest.c
+)

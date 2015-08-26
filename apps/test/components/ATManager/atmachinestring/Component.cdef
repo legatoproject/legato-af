@@ -4,3 +4,8 @@ sources:
 
     $LEGATO_ROOT/components/atManager/src/atMachineString.c
 }
+
+ldflags:
+{
+    $LEGATO_BUILD/3rdParty/CUnit/lib/libcunit.a
+}

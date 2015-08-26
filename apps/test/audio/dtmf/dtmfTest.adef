@@ -21,7 +21,6 @@ start: manual
 bindings:
 {
     dtmfTest.dtmfTestComp.le_audio -> audioService.le_audio
-    dtmfTest.dtmfTestComp.le_mcc_call -> modemService.le_mcc_call
-    dtmfTest.dtmfTestComp.le_mcc_profile -> modemService.le_mcc_profile
+    dtmfTest.dtmfTestComp.le_mcc -> modemService.le_mcc
 }
 

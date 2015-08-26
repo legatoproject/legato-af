@@ -1,7 +1,7 @@
-executables:    
-{   
+executables:
+{
     audioMccTest = ( audioMccComp )
-}   
+}
 
 maxFileSystemBytes: 256K
 
@@ -25,12 +25,11 @@ processes:
     maxFileBytes: 5000K
 }
 
-start: manual   
+start: manual
 
-bindings:   
-{   
-    audioMccTest.audioMccComp.le_mcc_call -> modemService.le_mcc_call
-    audioMccTest.audioMccComp.le_mcc_profile -> modemService.le_mcc_profile
+bindings:
+{
+    audioMccTest.audioMccComp.le_mcc -> modemService.le_mcc
     audioMccTest.audioMccComp.le_audio -> audioService.le_audio
 }
 

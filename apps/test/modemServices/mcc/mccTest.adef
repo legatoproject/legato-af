@@ -15,6 +15,5 @@ start: manual
 
 bindings:
 {
-    mccTest.mccTest.le_mcc_call -> modemService.le_mcc_call
-    mccTest.mccTest.le_mcc_profile -> modemService.le_mcc_profile
+    mccTest.mccTest.le_mcc -> modemService.le_mcc
 }

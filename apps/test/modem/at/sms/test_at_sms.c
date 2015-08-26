@@ -248,7 +248,7 @@ void test_pa_sms_SendPduMsg()
 {
     uint32_t  msgref;
     pa_sms_SendingErrCode_t  errorCode;
-    msgref = pa_sms_SendPduMsg(PA_SMS_PROTOCOL_GSM,29,message, &errorCode);
+    msgref = pa_sms_SendPduMsg(PA_SMS_PROTOCOL_GSM,29,message, PA_SMS_SENDING_TIMEOUT, &errorCode);
     CU_ASSERT_EQUAL(msgref,15);
 }
 
@@ -329,7 +329,7 @@ int clean_suite(void)
     return 0;
 }
 
-static void* simtest(void* context)
+static void* smstest(void* context)
 {
     // Init the test case / test suite data structures
 
@@ -436,7 +436,7 @@ static void init()
     LE_INFO("PA is started");
     le_sem_Delete(pSem);
 
-    le_thread_Start(le_thread_Create("ATSimTest",simtest,NULL));
+    le_thread_Start(le_thread_Create("ATSmsTest",smstest,NULL));
 }
 
 COMPONENT_INIT

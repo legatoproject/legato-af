@@ -140,7 +140,6 @@ static void TestRxHandler(le_sms_MsgRef_t msg, void* contextPtr)
             LE_ERROR("-TEST 2/13- Check le_sms_GetSenderTel failure (LE_OK expected) !");
             LE_ERROR("FAILED !!");
             return;
-
         }
         else
         {
@@ -318,6 +317,80 @@ static void* MyRxThread
     return NULL;
 }
 
+
+static void CallbackTestHandlerTimeout
+(
+    le_sms_MsgRef_t msgRef,
+    le_sms_Status_t status,
+    void* contextPtr
+)
+{
+    LE_INFO("Message %p, status %d, ctx %p, wait %d", msgRef, status, contextPtr, NbSmsTx);
+
+    switch(NbSmsTx)
+    {
+        case 3:
+        {
+            if (status != LE_SMS_SENDING_TIMEOUT)
+            {
+                LE_ERROR("Test 2/4 FAILED");
+                NbSmsTx = 5;
+            }
+            else
+            {
+                LE_INFO("First result LE_SMS_SENDING_TIMEOUT received");
+                LE_INFO("Test 2/4 PASSED");
+                NbSmsTx--;
+            }
+        }
+        break;
+        case 2:
+        {
+            if (status != LE_SMS_SENT)
+            {
+                LE_ERROR("Test 3/4 FAILED");
+                NbSmsTx = 5;
+            }
+            else
+            {
+                LE_INFO("Second result LE_SMS_SENT received");
+                LE_INFO("Test 3/4 PASSED");
+                NbSmsTx--;
+            }
+        }
+        break;
+
+        case 1:
+        {
+            if (status != LE_SMS_SENDING_TIMEOUT)
+            {
+                LE_ERROR("Test 4/4 FAILED");
+                NbSmsTx = 5;
+            }
+            else
+            {
+                LE_INFO("Second result LE_SMS_SENDING_TIMEOUT received");
+                LE_INFO("Test 4/4 PASSED");
+                NbSmsTx--;
+            }
+        }
+        break;
+
+        default:
+        {
+            LE_ERROR("Unexpected NbSmsTx value %d", NbSmsTx);
+        }
+        break;
+    }
+
+    le_sms_Delete(msgRef);
+    if (NbSmsTx == 0)
+    {
+        sem_post(&SmsTxSynchronization);
+    }
+}
+
+
 static void CallbackTestHandler
 (
     le_sms_MsgRef_t msgRef,
@@ -358,8 +431,25 @@ static void* MyTxThread
         else
         {
             myMsg = le_sms_SendText(DEST_TEST_PATTERN, TEXT_TEST_PATTERN,
-                            CallbackTestHandler, NULL );
+                            CallbackTestHandler, NULL);
         }
+        LE_INFO("-TEST- Create Async text Msg %p", myMsg);
+
+        myMsg = le_sms_Create();
+
+        if (pdu_type)
+        {
+            le_sms_SetPDU(myMsg, PDU_TEST_PATTERN_7BITS,
+                            sizeof(PDU_TEST_PATTERN_7BITS)/sizeof(PDU_TEST_PATTERN_7BITS[0]));
+            le_sms_SendAsync(myMsg, CallbackTestHandler,  (void*) 1);
+        }
+        else
+        {
+            le_sms_SetDestination(myMsg, DEST_TEST_PATTERN);
+            le_sms_SetText(myMsg, TEXT_TEST_PATTERN);
+            le_sms_SendAsync(myMsg, CallbackTestHandler, NULL);
+        }
+
         LE_INFO("-TEST- Create Async text Msg %p", myMsg);
     }
 
@@ -367,6 +457,210 @@ static void* MyTxThread
     return NULL;
 }
 
+static le_result_t LeSmsSendPduTime
+(
+    const uint8_t* pduPtr,
+    ///< [IN]
+    ///< PDU message.
+
+    size_t pduNumElements,
+    ///< [IN]
+
+    le_sms_CallbackResultFunc_t handlerPtr,
+    ///< [IN]
+
+    void* contextPtr,
+
+    uint32_t timeout
+    ///< [IN]
+)
+{
+    le_result_t res = LE_FAULT;
+    le_sms_MsgRef_t myMsg = le_sms_Create();
+
+    if(myMsg == NULL)
+    {
+        return res;
+    }
+
+    res = le_sms_SetPDU(myMsg, pduPtr, pduNumElements);
+    if(res != LE_OK)
+    {
+        le_sms_Delete(myMsg);
+        return res;
+    }
+
+    res = le_sms_SetTimeout(myMsg, timeout);
+    if(res != LE_OK)
+    {
+        le_sms_Delete(myMsg);
+        return res;
+    }
+
+    res = le_sms_SendAsync(myMsg, handlerPtr, contextPtr);
+    if(res != LE_OK)
+    {
+        le_sms_Delete(myMsg);
+        return res;
+    }
+
+    return res;
+}
+
+static le_result_t LeSmsSendtextTime
+(
+      const char* destStr,
+          ///< [IN]
+          ///< Telephone number string.
+
+      const char* textStr,
+          ///< [IN]
+          ///< SMS text.
+
+      le_sms_CallbackResultFunc_t handlerPtr,
+          ///< [IN]
+
+      void* contextPtr,
+          ///< [IN]
+
+      uint32_t timeout
+      ///< [IN]
+)
+{
+    le_result_t res = LE_FAULT;
+    le_sms_MsgRef_t myMsg = le_sms_Create();
+
+    if(myMsg == NULL)
+    {
+        return res;
+    }
+
+    res = le_sms_SetDestination(myMsg, destStr);
+    if(res != LE_OK)
+    {
+        le_sms_Delete(myMsg);
+        return res;
+    }
+
+    res = le_sms_SetText(myMsg, textStr);
+    if(res != LE_OK)
+    {
+        le_sms_Delete(myMsg);
+        return res;
+    }
+
+    res = le_sms_SetTimeout(myMsg, timeout);
+    if(res != LE_OK)
+    {
+        le_sms_Delete(myMsg);
+        return res;
+    }
+
+    res = le_sms_SendAsync(myMsg, handlerPtr, contextPtr);
+    if(res != LE_OK)
+    {
+        le_sms_Delete(myMsg);
+        return res;
+    }
+
+    return res;
+}
+
+static void* MyTxThreadTimeout
+(
+    void* context   ///< See parameter documentation above.
+)
+{
+    le_sms_ConnectService();
+    bool pdu_type = *((bool *) context);
+
+    le_result_t res = LE_FAULT;
+
+    if (pdu_type)
+    {
+        res = LeSmsSendPduTime(PDU_TEST_PATTERN_7BITS,
+                        sizeof(PDU_TEST_PATTERN_7BITS)/sizeof(PDU_TEST_PATTERN_7BITS[0]),
+                        CallbackTestHandlerTimeout, (void*) 1, 0);
+        if (res == LE_OK)
+        {
+            LE_ERROR("Test 1/4 FAILED");
+            return NULL;
+        }
+        LE_INFO("Test 1/4 PASSED");
+
+        res = LeSmsSendPduTime(PDU_TEST_PATTERN_7BITS,
+                        sizeof(PDU_TEST_PATTERN_7BITS)/sizeof(PDU_TEST_PATTERN_7BITS[0]),
+                        CallbackTestHandlerTimeout, (void*) 1, 1);
+        if (res != LE_OK)
+        {
+            LE_ERROR("Test 2/4 FAILED");
+            return NULL;
+        }
+        LE_INFO("Test 2/4 STARTED");
+
+
+        res = LeSmsSendPduTime(PDU_TEST_PATTERN_7BITS,
+                        sizeof(PDU_TEST_PATTERN_7BITS)/sizeof(PDU_TEST_PATTERN_7BITS[0]),
+                        CallbackTestHandlerTimeout, (void*) 1, 20);
+        if (res == LE_OK)
+        {
+            LE_ERROR("Test 3/4 FAILED");
+            return NULL;
+        }
+        LE_INFO("Test 3/4 STARTED");
+
+        res = LeSmsSendPduTime(PDU_TEST_PATTERN_7BITS,
+                        sizeof(PDU_TEST_PATTERN_7BITS)/sizeof(PDU_TEST_PATTERN_7BITS[0]),
+                        CallbackTestHandlerTimeout, (void*) 1, 1);
+        if (res != LE_OK)
+        {
+            LE_ERROR("Test 4/4 FAILED");
+            return NULL;
+        }
+        LE_INFO("Test 4/4 STARTED");
+    }
+    else
+    {
+        res = LeSmsSendtextTime(DEST_TEST_PATTERN, TEXT_TEST_PATTERN,
+                        CallbackTestHandlerTimeout, NULL, 0);
+        if (res == LE_OK)
+        {
+            LE_ERROR("Test 1/4 FAILED");
+            return NULL;
+        }
+        LE_INFO("Test 1/4 PASSED");
+
+        res = LeSmsSendtextTime(DEST_TEST_PATTERN, TEXT_TEST_PATTERN,
+                        CallbackTestHandlerTimeout, NULL, 1);
+        if (res != LE_OK)
+        {
+            LE_ERROR("Test 2/4 FAILED");
+            return NULL;
+        }
+        LE_INFO("Test 2/4 STARTED");
+
+        res = LeSmsSendtextTime(DEST_TEST_PATTERN, TEXT_TEST_PATTERN,
+                        CallbackTestHandlerTimeout, NULL, 20 );
+        if (res != LE_OK)
+        {
+            LE_ERROR("Test 3/4 FAILED");
+            return NULL;
+        }
+        LE_INFO("Test 3/4 STARTED");
+
+        res = LeSmsSendtextTime(DEST_TEST_PATTERN, TEXT_TEST_PATTERN,
+                        CallbackTestHandlerTimeout, NULL, 1 );
+        if (res != LE_OK)
+        {
+            LE_ERROR("Test 4/4 FAILED");
+            return NULL;
+        }
+        LE_INFO("Test 4/3 STARTED");
+    }
+
+    le_event_RunLoop();
+    return NULL;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -818,9 +1112,9 @@ static le_result_t Testle_sms_Send_Text
             return LE_FAULT;
         }
 
-        le_sms_Delete(myMsg);
-
         res = WaitFunction(&SmsRxSynchronization, 10000);
+
+        le_sms_Delete(myMsg);
     }
 
     le_sms_RemoveRxMessageHandler(RxHdlrRef);
@@ -829,6 +1123,35 @@ static le_result_t Testle_sms_Send_Text
     return res;
 }
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test: Send a simple Text message with le_sms_SendText API().
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t Testle_sms_AsyncSendTextTimeout
+(
+    void
+)
+{
+    le_result_t res;
+    bool pdu_type = false;
+
+    NbSmsTx = 3;
+
+    // Init the semaphore for asynchronous callback
+    sem_init(&SmsTxSynchronization,0,0);
+
+    TxCallBack = le_thread_Create("Tx CallBack", MyTxThreadTimeout, &pdu_type);
+    le_thread_Start(TxCallBack);
+
+    res = WaitFunction(&SmsTxSynchronization, 120000);
+
+    le_thread_Cancel(TxCallBack);
+
+    return res;
+}
 
 
 //--------------------------------------------------------------------------------------------------
@@ -845,7 +1168,7 @@ static le_result_t Testle_sms_AsyncSendText
     le_result_t res;
     bool pdu_type = false;
 
-    NbSmsTx = NB_SMS_ASYNC_TO_SEND;
+    NbSmsTx = NB_SMS_ASYNC_TO_SEND * 2 ;
 
     // Init the semaphore for asynchronous callback
     sem_init(&SmsTxSynchronization,0,0);
@@ -853,7 +1176,7 @@ static le_result_t Testle_sms_AsyncSendText
     TxCallBack = le_thread_Create("Tx CallBack", MyTxThread, &pdu_type);
     le_thread_Start(TxCallBack);
 
-    res = WaitFunction(&SmsTxSynchronization, 10000);
+    res = WaitFunction(&SmsTxSynchronization, 120000);
     le_thread_Cancel(TxCallBack);
 
     return res;
@@ -1161,10 +1484,11 @@ static le_result_t Testle_sms_ReceivedList()
     return LE_OK;
 }
 
+
 //--------------------------------------------------------------------------------------------------
 /*
  * ME must be registered on Network with the SIM in ready state.
- * Test application deletete all Rx SM
+ * Test application delete all Rx SM
  * Check "logread -f | grep sms" log
  * Start app : app start smsTest
  * Execute app : execInApp smsTest smsTest <Phone number>
@@ -1177,6 +1501,7 @@ COMPONENT_INIT
 
     my_struct smstest[] =
     {
+          { "le_sms_SendTextTimeout()", Testle_sms_AsyncSendTextTimeout },
           { "le_sms_SetGetSmsCenterAddress()", Testle_sms_SetGetSmsCenterAddress },
           { "le_sms_SetGetText()", Testle_sms_SetGetText },
           { "le_sms_SetGetBinary()", Testle_sms_SetGetBinary },

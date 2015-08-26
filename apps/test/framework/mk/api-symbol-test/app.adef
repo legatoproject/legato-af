@@ -1,0 +1,11 @@
+executables:
+{
+    client = (C1 C2)
+    server = (S)
+}
+
+bindings:
+{
+    client.C1.foo -> server.S.foo
+    client.C2.foo -> server.S.bar
+}

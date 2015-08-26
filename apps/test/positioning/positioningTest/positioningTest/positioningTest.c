@@ -31,6 +31,14 @@ void Testle_pos_GetInfo()
     int32_t     headingAccuracy=0;
     int32_t     direction;
     int32_t     directionAccuracy=0;
+    uint16_t    year = 0;
+    uint16_t    month = 0;
+    uint16_t    day = 0;
+    uint16_t    hours = 0;
+    uint16_t    minutes = 0;
+    uint16_t    seconds = 0;
+    uint16_t    milliseconds = 0;
+
     le_result_t res;
 
     res= le_pos_Get2DLocation(&latitude, &longitude, &hAccuracy);
@@ -47,6 +55,20 @@ void Testle_pos_GetInfo()
     LE_INFO("Check le_pos_Get3DLocation latitude.%d, longitude.%d, hAccuracy.%d, altitude.%d"
             ", vAccuracy.%d"
             , latitude, longitude, hAccuracy, altitude, vAccuracy);
+
+    res= le_pos_GetDate(&year, &month, &day);
+    LE_INFO("le_pos_GetDate %s"
+            , (res==LE_OK)?"OK":(res==LE_OUT_OF_RANGE)?"parameter(s) out of range":"ERROR");
+    LE_ASSERT((res ==LE_OK)||(res == LE_OUT_OF_RANGE));
+    LE_INFO("Check le_pos_GetDate year.%d, month.%d, day.%d"
+            , year, month, day);
+
+    res= le_pos_GetTime(&hours, &minutes, &seconds, &milliseconds);
+    LE_INFO("le_pos_GetTime %s"
+            , (res==LE_OK)?"OK":(res==LE_OUT_OF_RANGE)?"parameter(s) out of range":"ERROR");
+    LE_ASSERT((res ==LE_OK)||(res == LE_OUT_OF_RANGE));
+    LE_INFO("Check le_pos_GetTime hours.%d, minutes.%d, seconds.%d, milliseconds.%d"
+            , hours, minutes, seconds, milliseconds);
 
     res= le_pos_GetMotion(&hSpeed, &hSpeedAccuracy, &vSpeed, &vSpeedAccuracy);
     LE_INFO("le_pos_GetMotion %s"

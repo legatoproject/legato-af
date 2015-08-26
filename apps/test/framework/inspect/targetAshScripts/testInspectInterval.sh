@@ -13,8 +13,8 @@ defaultRefreshInterval=3
 defaultRetryInterval=0.5
 #####################################
 
+logFileName=__InspectMemoryPool_testInterval_log_deleteme
 appName=SubpoolFlux
-
 intervalUnderTest=$1
 
 if [ "$intervalUnderTest" == "f" ]
@@ -48,11 +48,9 @@ fi
 
 testDuration=`echo "$intervalUnderTest" | awk '{ print $1 * 10 }'`
 
-inspectionEndKeyPhrase=">>>"
-
-logFileName=__InspectMemoryPool_testInterval_log_deleteme
-
-
+# This is the key phrase to look for to determine a refresh has occured.
+# --- NOTE --- that this does not verify the content validity or completeness of each refresh.
+inspectionEndKeyPhrase="Legato Memory Pools Inspector"
 
 
 # start inspection in the background and save its pid
@@ -83,24 +81,27 @@ kill $pid
 
 actualOccurances=`grep "$inspectionEndKeyPhrase" $logFileName | wc -l`
 
+if [ $actualOccurances -eq 0 ]
+then
+    echo "[FAILED] Either Inspect is not refreshing _at all_ or the key phrase to look for is wrong."
+    exit 1
+fi
+
+# Note again that the first sample is abandoned (hence subtracting 1 from actual occurances)
 aveInterval=`echo "$testDuration $actualOccurances" | awk '{ print( $1 / ($2 - 1) ) }'`
 
 echo "actual occurances is [$actualOccurances] times for [$testDuration] secs; actual ave interval is [$aveInterval] secs"
 
-
-# clean up
-rm $logFileName
-
-# report pass/fail status
-if echo "$aveInterval $intervalUnderTest" | awk '{ if ($1 < $2) exit 1; else exit 0 }'
+if echo "$aveInterval $intervalUnderTest" | awk '{ if ($1 < $2) exit 0; else exit 1 }'
 then
-    echo "[PASSED]. Actual ave interval is [$aveInterval], interval under test is [$intervalUnderTest]"
-    exit 0
-else
     echo "[FAILED]. Actual ave interval is [$aveInterval], interval under test is [$intervalUnderTest]"
     exit 1
 fi
 
+# clean up
+rm $logFileName
 
+echo "[PASSED]. Inspect successfully refreshed with interval [$intervalUnderTest]"
+exit 0
 
 

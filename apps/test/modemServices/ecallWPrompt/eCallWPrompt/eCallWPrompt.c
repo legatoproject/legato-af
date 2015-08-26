@@ -15,7 +15,7 @@
 #include "interfaces.h"
 
 static const char *                     PsapNumber = NULL;
-static le_ecall_CallRef_t                LastTestECallRef = NULL;
+static le_ecall_CallRef_t               LastTestECallRef = NULL;
 static le_audio_StreamRef_t             FeOutRef = NULL;
 static le_audio_StreamRef_t             FileAudioRef = NULL;
 static le_audio_ConnectorRef_t          AudioOutputConnectorRef = NULL;
@@ -176,11 +176,12 @@ static void ConnectAudio
 //--------------------------------------------------------------------------------------------------
 static void MyECallEventHandler
 (
+    le_ecall_CallRef_t  eCallRef,
     le_ecall_State_t    state,
     void*               contextPtr
 )
 {
-    LE_INFO("eCall TEST: New eCall state: %d", state);
+    LE_INFO("eCall TEST: New eCall state: %d for eCall ref.%p", state, eCallRef);
 
     switch(state)
     {
@@ -191,6 +192,13 @@ static void MyECallEventHandler
         }
         case LE_ECALL_STATE_CONNECTED:
         {
+#if (ENABLE_CODEC == 1)
+            LE_INFO("Mute Speaker and voice prompt.");
+#else
+            LE_INFO("Mute I2S Tx interface and voice prompt.");
+#endif
+            le_audio_Mute(FeOutRef);
+            le_audio_Mute(FileAudioRef);
             LE_INFO("eCall state is LE_ECALL_STATE_CONNECTED.");
             break;
         }
@@ -207,6 +215,11 @@ static void MyECallEventHandler
         case LE_ECALL_STATE_PSAP_START_IND_RECEIVED:
         {
             LE_INFO("eCall state is LE_ECALL_STATE_PSAP_START_IND_RECEIVED.");
+            if (le_ecall_SendMsd(eCallRef) != LE_OK)
+            {
+                LE_ERROR("Could not send the MSD");
+            }
+
             break;
         }
         case LE_ECALL_STATE_MSD_TX_STARTED:
@@ -247,11 +260,25 @@ static void MyECallEventHandler
         case LE_ECALL_STATE_STOPPED:
         {
             LE_INFO("eCall state is LE_ECALL_STATE_STOPPED.");
+#if (ENABLE_CODEC == 1)
+            LE_INFO("Unmute Speaker and voice prompt.");
+#else
+            LE_INFO("Unmute I2S Tx interface and voice prompt.");
+#endif
+            le_audio_Unmute(FeOutRef);
+            le_audio_Unmute(FileAudioRef);
             break;
         }
         case LE_ECALL_STATE_RESET:
         {
             LE_INFO("eCall state is LE_ECALL_STATE_RESET.");
+#if (ENABLE_CODEC == 1)
+            LE_INFO("Unmute Speaker and voice prompt.");
+#else
+            LE_INFO("Unmute I2S Tx interface and voice prompt.");
+#endif
+            le_audio_Unmute(FeOutRef);
+            le_audio_Unmute(FileAudioRef);
             break;
         }
         case LE_ECALL_STATE_COMPLETED:
@@ -262,6 +289,18 @@ static void MyECallEventHandler
         case LE_ECALL_STATE_FAILED:
         {
             LE_INFO("eCall state is LE_ECALL_STATE_FAILED.");
+#if (ENABLE_CODEC == 1)
+            LE_INFO("Unmute Speaker and voice prompt.");
+#else
+            LE_INFO("Unmute I2S Tx interface and voice prompt.");
+#endif
+            le_audio_Unmute(FeOutRef);
+            le_audio_Unmute(FileAudioRef);
+            break;
+        }
+        case LE_ECALL_STATE_END_OF_REDIAL_PERIOD:
+        {
+            LE_INFO("eCall state is LE_ECALL_STATE_END_OF_REDIAL_PERIOD.");
             break;
         }
         case LE_ECALL_STATE_UNKNOWN:

@@ -1,6 +1,10 @@
 /**
  * This module is for unit testing of the DTMF Audio service.
  *
+ * On the target, you must issue the following commands:
+ * $ app start dtmfTest
+ * $ execInApp dtmfTest dtmfTest <loc/rem> <dtmfs> <duration in ms> <pause in ms>
+ *   [<tel number> <inband/outband>]
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  *
@@ -14,7 +18,7 @@
 #include "interfaces.h"
 
 static bool isIncoming=false;
-static le_mcc_call_ObjRef_t TestCallRef;
+static le_mcc_CallRef_t TestCallRef;
 
 static le_audio_StreamRef_t MdmRxAudioRef = NULL;
 static le_audio_StreamRef_t MdmTxAudioRef = NULL;
@@ -43,14 +47,14 @@ static le_audio_DtmfDetectorHandlerRef_t DtmfHandlerRef2 = NULL;
 //--------------------------------------------------------------------------------------------------
 static void ConnectAudioToPcm
 (
-    le_mcc_call_ObjRef_t callRef
+    void
 )
 {
     le_result_t res;
 
-    MdmRxAudioRef = le_mcc_call_GetRxAudioStream(callRef);
+    MdmRxAudioRef = le_audio_OpenModemVoiceRx();
     LE_ERROR_IF((MdmRxAudioRef==NULL), "GetRxAudioStream returns NULL!");
-    MdmTxAudioRef = le_mcc_call_GetTxAudioStream(callRef);
+    MdmTxAudioRef = le_audio_OpenModemVoiceTx();
     LE_ERROR_IF((MdmTxAudioRef==NULL), "GetTxAudioStream returns NULL!");
 
     // Redirect audio to the PCM interface.
@@ -213,21 +217,21 @@ static void MyDtmfDetectorHandler2
 //--------------------------------------------------------------------------------------------------
 static void MyCallEventHandler
 (
-    le_mcc_call_ObjRef_t   callRef,
-    le_mcc_call_Event_t    callEvent,
+    le_mcc_CallRef_t   callRef,
+    le_mcc_Event_t    callEvent,
     void*                  contextPtr
 )
 {
     le_result_t         res;
 
-    if (callEvent == LE_MCC_CALL_EVENT_ALERTING)
+    if (callEvent == LE_MCC_EVENT_ALERTING)
     {
-        LE_INFO("Call event is LE_MCC_CALL_EVENT_ALERTING.");
+        LE_INFO("Call event is LE_MCC_EVENT_ALERTING.");
     }
-    else if (callEvent == LE_MCC_CALL_EVENT_CONNECTED)
+    else if (callEvent == LE_MCC_EVENT_CONNECTED)
     {
-        LE_INFO("Call event is LE_MCC_CALL_EVENT_CONNECTED.");
-        ConnectAudioToPcm(callRef);
+        LE_INFO("Call event is LE_MCC_EVENT_CONNECTED.");
+        ConnectAudioToPcm();
         DtmfHandlerRef1 = le_audio_AddDtmfDetectorHandler(MdmRxAudioRef, MyDtmfDetectorHandler1, NULL);
         DtmfHandlerRef2 = le_audio_AddDtmfDetectorHandler(MdmRxAudioRef, MyDtmfDetectorHandler2, NULL);
 
@@ -263,34 +267,34 @@ static void MyCallEventHandler
             }
         }
     }
-    else if (callEvent == LE_MCC_CALL_EVENT_TERMINATED)
+    else if (callEvent == LE_MCC_EVENT_TERMINATED)
     {
-        LE_INFO("Call event is LE_MCC_CALL_EVENT_TERMINATED.");
-        le_mcc_call_TerminationReason_t term = le_mcc_call_GetTerminationReason(callRef);
+        LE_INFO("Call event is LE_MCC_EVENT_TERMINATED.");
+        le_mcc_TerminationReason_t term = le_mcc_GetTerminationReason(callRef);
         switch(term)
         {
-            case LE_MCC_CALL_TERM_NETWORK_FAIL:
-                LE_INFO("Termination reason is LE_MCC_CALL_TERM_NETWORK_FAIL");
+            case LE_MCC_TERM_NETWORK_FAIL:
+                LE_INFO("Termination reason is LE_MCC_TERM_NETWORK_FAIL");
                 break;
 
-            case LE_MCC_CALL_TERM_UNASSIGNED_NUMBER:
-                LE_INFO("Termination reason is LE_MCC_CALL_TERM_UNASSIGNED_NUMBER");
+            case LE_MCC_TERM_UNASSIGNED_NUMBER:
+                LE_INFO("Termination reason is LE_MCC_TERM_UNASSIGNED_NUMBER");
                 break;
 
-            case LE_MCC_CALL_TERM_USER_BUSY:
-                LE_INFO("Termination reason is LE_MCC_CALL_TERM_USER_BUSY");
+            case LE_MCC_TERM_USER_BUSY:
+                LE_INFO("Termination reason is LE_MCC_TERM_USER_BUSY");
                 break;
 
-            case LE_MCC_CALL_TERM_LOCAL_ENDED:
-                LE_INFO("Termination reason is LE_MCC_CALL_TERM_LOCAL_ENDED");
+            case LE_MCC_TERM_LOCAL_ENDED:
+                LE_INFO("Termination reason is LE_MCC_TERM_LOCAL_ENDED");
                 break;
 
-            case LE_MCC_CALL_TERM_REMOTE_ENDED:
-                LE_INFO("Termination reason is LE_MCC_CALL_TERM_REMOTE_ENDED");
+            case LE_MCC_TERM_REMOTE_ENDED:
+                LE_INFO("Termination reason is LE_MCC_TERM_REMOTE_ENDED");
                 break;
 
-            case LE_MCC_CALL_TERM_UNDEFINED:
-                LE_INFO("Termination reason is LE_MCC_CALL_TERM_UNDEFINED");
+            case LE_MCC_TERM_UNDEFINED:
+                LE_INFO("Termination reason is LE_MCC_TERM_UNDEFINED");
                 break;
 
             default:
@@ -298,14 +302,14 @@ static void MyCallEventHandler
                 break;
         }
         DisconnectAllAudio();
-        le_mcc_call_Delete(callRef);
+        le_mcc_Delete(callRef);
         exit(0);
     }
-    else if (callEvent == LE_MCC_CALL_EVENT_INCOMING)
+    else if (callEvent == LE_MCC_EVENT_INCOMING)
     {
-        LE_INFO("Call event is LE_MCC_CALL_EVENT_INCOMING.");
+        LE_INFO("Call event is LE_MCC_EVENT_INCOMING.");
         isIncoming=true;
-        res = le_mcc_call_Answer(callRef);
+        res = le_mcc_Answer(callRef);
         if (res != LE_OK)
         {
             LE_INFO("Failed to answer the call.");
@@ -414,8 +418,10 @@ static void SigHandler
     DisconnectAllAudio();
     if(TestCallRef)
     {
-        le_mcc_call_HangUp(TestCallRef);
+        le_mcc_HangUp(TestCallRef);
+        le_mcc_Delete(TestCallRef);
     }
+
     exit(EXIT_SUCCESS);
 }
 
@@ -427,7 +433,6 @@ static void SigHandler
 //--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
-    le_mcc_profile_ObjRef_t profileRef;
     bool isLocalTest = false;
 
     // Register a signal event handler for SIGINT when user interrupts/terminates process
@@ -473,16 +478,9 @@ COMPONENT_INIT
 
     if (!isLocalTest)
     {
-        profileRef=le_mcc_profile_GetByName("Modem-Sim1");
-        if ( profileRef == NULL )
-        {
-            LE_INFO("Unable to get the Call profile reference");
-            exit(1);
-        }
-
-        le_mcc_profile_AddCallEventHandler(profileRef, MyCallEventHandler, NULL);
-        TestCallRef=le_mcc_profile_CreateCall(profileRef, DestinationNumber);
-        le_mcc_call_Start(TestCallRef);
+        le_mcc_AddCallEventHandler(MyCallEventHandler, NULL);
+        TestCallRef=le_mcc_Create(DestinationNumber);
+        le_mcc_Start(TestCallRef);
     }
     else
     {
