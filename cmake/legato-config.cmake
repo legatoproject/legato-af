@@ -256,6 +256,7 @@ function(generate_header API_FILE)
                         COMMAND ${LEGATO_TOOL_IFGEN} --gen-interface ${API_PATH}
                         --import-dir ${CMAKE_CURRENT_SOURCE_DIR}/audio
                         --import-dir ${CMAKE_CURRENT_SOURCE_DIR}/modemServices
+                        --import-dir ${CMAKE_CURRENT_SOURCE_DIR}
                         ${ARGN}
                         COMMENT "ifgen '${API_FILE}': ${HEADER_PATH}"
                         DEPENDS ${API_FILE} legato
