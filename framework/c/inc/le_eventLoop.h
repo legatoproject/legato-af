@@ -548,7 +548,7 @@ typedef struct le_event_Id* le_event_Id_t;
     /**
      * Initialization event handler function.
      */
-    #define COMPONENT_INIT LE_CI_LINKAGE void _le_event_InitializeComponent(void)
+    #define COMPONENT_INIT LE_CI_LINKAGE LE_SHARED void _le_event_InitializeComponent(void)
 #endif
 
 /// Deprecated name for @ref COMPONENT_INIT.

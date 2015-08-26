@@ -110,7 +110,7 @@ static void ExtractAncillaryData
                 *fdPtr = fd;
             }
         }
-        else if (cmsgHeaderPtr->cmsg_type == SCM_RIGHTS)
+        else if (cmsgHeaderPtr->cmsg_type == SCM_CREDENTIALS)
         {
             // We received credentials.
             if (credPtr == NULL)

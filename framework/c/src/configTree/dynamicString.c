@@ -296,7 +296,7 @@ void dstr_Init
     le_mem_SetNumObjsToForce(DynamicStringPoolRef, 100);    // Grow in chunks of 100 blocks.
 
     // For now (until pool config is added to the framework), set a minimum size.
-    if (le_mem_GetTotalNumObjs(DynamicStringPoolRef) != 0)
+    if (le_mem_GetObjectCount(DynamicStringPoolRef) != 0)
     {
         LE_WARN("TODO: Remove this code.");
     }

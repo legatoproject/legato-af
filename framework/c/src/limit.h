@@ -79,7 +79,7 @@
  * Maximum string length and byte storage size of log trace keyword strings.
  */
 //--------------------------------------------------------------------------------------------------
-#define LIMIT_MAX_LOG_KEYWORD_LEN               31
+#define LIMIT_MAX_LOG_KEYWORD_LEN               63
 #define LIMIT_MAX_LOG_KEYWORD_BYTES             (LIMIT_MAX_LOG_KEYWORD_LEN + 1)
 
 

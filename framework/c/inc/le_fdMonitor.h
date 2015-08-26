@@ -85,7 +85,7 @@
  * | READING from a pipe | POLLHUP | No DATA in the pipe and the WRITE-END is closed |
  * |                                         | POLLIN     | DATA in the pipe and the WRITE_END is open |
  * |                                         | POLLIN or POLLHUP| DATA in the pipe BUT the WRITE-END is closed |
- * | WRITING to the pipe   | POLLERR | No SPACE in the pipe and the READ-END is not open |
+ * | WRITING to the pipe   | POLLERR | No SPACE in the pipe and the READ-END is closed |
  * |                                         | POLLOUT |SPACE in the pipe and the READ-END is open |
  * |                                         | POLLOUT or POLLERR | SPACE in the pipe BUT the READ-END is closed |
  * 

@@ -1719,8 +1719,10 @@ static void UpdateRevision
         {
             newRevision = 3;
         }
-
-        newRevision = 1;
+        else
+        {
+            newRevision = 1;
+        }
     }
     else if (TreeFileExists(treeRef->name, 3))
     {
@@ -1728,8 +1730,10 @@ static void UpdateRevision
         {
             newRevision = 2;
         }
-
-        newRevision = 3;
+        else
+        {
+            newRevision = 3;
+        }
     }
     else if (TreeFileExists(treeRef->name, 2))
     {
@@ -2059,10 +2063,94 @@ static le_result_t ReadToken
 
 // -------------------------------------------------------------------------------------------------
 /**
+ *  Write data to the output stream.  This function will record any faults to the system log.
+ *
+ *  @return LE_OK if the write succeeded, LE_IO_ERROR if the write failed.
+ */
+// -------------------------------------------------------------------------------------------------
+static le_result_t WriteFile
+(
+    FILE* filePtr,        ///< [IN] The file being written to.
+    const void* dataPtr,  ///< [IN] The data being written to the file.
+    size_t dataSize       ///< [IN] The amount of data being written.
+)
+// -------------------------------------------------------------------------------------------------
+{
+    ssize_t written = fwrite(dataPtr, 1, dataSize, filePtr);
+
+    if (ferror(filePtr) != 0)
+    {
+        LE_EMERG("Failed to write to config tree file.");
+        return LE_IO_ERROR;
+    }
+
+    if (written < dataSize)
+    {
+        LE_EMERG("Data truncated while writing to configuration file.");
+        return LE_IO_ERROR;
+    }
+
+    return LE_OK;
+}
+
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Write a string token to the output stream.  This function will write the string and escape all
+ *  control characters as it does so.
+ *
+ *  @return LE_OK if the write succeeded, LE_IO_ERROR if the write failed.
+ */
+// -------------------------------------------------------------------------------------------------
+static le_result_t WriteStringValue
+(
+    FILE* filePtr,         ///< [IN] The file to write to.
+    char startChar,        ///< [IN] The delimiter to use.
+    char endChar,          ///< [IN] The closing delimiter to use.
+    const char* stringPtr  ///< [IN] The actual string to write.
+)
+// -------------------------------------------------------------------------------------------------
+{
+    le_result_t result = LE_OK;
+
+    result = WriteFile(filePtr, &startChar, 1);
+
+    while (   (*stringPtr != 0)
+           && (result == LE_OK))
+    {
+        if (   (*stringPtr == '\"')
+            || (*stringPtr == '\\'))
+        {
+            result = WriteFile(filePtr, "\\", 1);
+        }
+
+        if (result == LE_OK)
+        {
+            result = WriteFile(filePtr, stringPtr, 1);
+        }
+
+        stringPtr++;
+    }
+
+    if (result == LE_OK)
+    {
+        char strBuffer[2] = { endChar, ' ' };
+        result = WriteFile(filePtr, strBuffer, sizeof(strBuffer));
+    }
+
+    return result;
+}
+
+
+
+
+// -------------------------------------------------------------------------------------------------
+/**
  *  Read a node value from the given file.  If the value is a collection, then read in those nodes
  *  too.
  *
- *  @return LE_OK if the read is scuccessful.
+ *  @return LE_OK if the read is successful.
  *          LE_FORMAT_ERROR if parse errors are encountered.
  *          LE_NOT_FOUND if the end of file is reached.
  */
@@ -2199,6 +2287,95 @@ static le_result_t InternalReadNode
 
 // -------------------------------------------------------------------------------------------------
 /**
+ *  Serialize a tree node and it's children to a file in the filesystem.
+ *
+ *  @return LE_OK if the write succeeded, LE_IO_ERROR if the write failed.
+ */
+// -------------------------------------------------------------------------------------------------
+static le_result_t InternalWriteNode
+(
+    tdb_NodeRef_t nodeRef,  ///< [IN] The node being written.
+    FILE* filePtr           ///< [IN] The file being written to.
+)
+// -------------------------------------------------------------------------------------------------
+{
+    // If there is no node to write, or if the node is marked as having been deleted...  Then write
+    // a blank node.
+    if (   (nodeRef == NULL)
+        || (IsDeleted(nodeRef) == true))
+    {
+        return WriteFile(filePtr, "~ ", 2);
+    }
+
+    // Get the node's value as a string.
+    static char stringBuffer[LE_CFG_STR_LEN_BYTES] = "";
+    le_result_t result = LE_OK;
+
+    tdb_GetValueAsString(nodeRef, stringBuffer, sizeof(stringBuffer), "");
+
+    // Now, depending on the type of node, write out any required format information.
+    switch (nodeRef->type)
+    {
+        case LE_CFG_TYPE_EMPTY:
+        case LE_CFG_TYPE_DOESNT_EXIST:
+            result = WriteFile(filePtr, "~ ", 2);
+            break;
+
+        case LE_CFG_TYPE_BOOL:
+            {
+                const char boolBuffer[3] = { '!', stringBuffer[0], ' ' };
+                result = WriteFile(filePtr, boolBuffer, sizeof(boolBuffer));
+            }
+            break;
+
+        case LE_CFG_TYPE_STRING:
+            result = WriteStringValue(filePtr, '\"', '\"', stringBuffer);
+            break;
+
+        case LE_CFG_TYPE_INT:
+            result = WriteStringValue(filePtr, '[', ']', stringBuffer);
+            break;
+
+        case LE_CFG_TYPE_FLOAT:
+            result = WriteStringValue(filePtr, '(', ')', stringBuffer);
+            break;
+
+        // Looks like this node is a collection, so write out it's child nodes now.
+        case LE_CFG_TYPE_STEM:
+            if ((result = WriteFile(filePtr, "{ ", 2)) == LE_OK)
+            {
+                tdb_NodeRef_t childRef = tdb_GetFirstActiveChildNode(nodeRef);
+
+                while (   (childRef != NULL)
+                       && (result == LE_OK))
+                {
+                    tdb_GetNodeName(childRef, stringBuffer, sizeof(stringBuffer));
+                    result = WriteStringValue(filePtr, '\"', '\"', stringBuffer);
+
+                    if (result == LE_OK)
+                    {
+                        result = InternalWriteNode(childRef, filePtr);
+                    }
+
+                    childRef = tdb_GetNextActiveSiblingNode(childRef);
+                }
+
+                if (result == LE_OK)
+                {
+                    result = WriteFile(filePtr, "} ", 2);
+                }
+            }
+            break;
+    }
+
+    return result;
+}
+
+
+
+
+// -------------------------------------------------------------------------------------------------
+/**
  *  Calculate the number of bytes required to store a node path, including seperators and a trailing
  *  NULL.
  *
@@ -2226,41 +2403,6 @@ static size_t ComputePathLength
 
     // Don't forget to include a spot for the trailing NULL.
     return pathLen + 1;
-}
-
-
-
-// -------------------------------------------------------------------------------------------------
-/**
- *  Write a string token to the output stream.  This function will write the string and escape all
- *  control characters as it does so.
- */
-// -------------------------------------------------------------------------------------------------
-static void WriteStringValue
-(
-    int descriptor,        ///< [IN] The file to write to.
-    char startChar,        ///< [IN] The delimiter to use.
-    char endChar,          ///< [IN] The closing delimiter to use.
-    const char* stringPtr  ///< [IN] The actual string to write.
-)
-// -------------------------------------------------------------------------------------------------
-{
-    write(descriptor, &startChar, 1);
-
-    while (*stringPtr != 0)
-    {
-        if (   (*stringPtr == '\"')
-            || (*stringPtr == '\\'))
-        {
-            write(descriptor, "\\", 1);
-        }
-
-        write(descriptor, stringPtr, 1);
-        stringPtr++;
-    }
-
-    write(descriptor, &endChar, 1);
-    write(descriptor, " ", 1);
 }
 
 
@@ -2318,7 +2460,7 @@ static void LoadTree
         char pathPtr[LE_CFG_STR_LEN_BYTES] = "";
         GetTreePath(treeRef->name, treeRef->revisionId, pathPtr, sizeof(pathPtr));
 
-        LE_DEBUG("** Loading configuration tree from <%s>.", pathPtr);
+        LE_DEBUG("** Loading configuration tree from '%s'.", pathPtr);
 
         int fileRef = -1;
 
@@ -2503,6 +2645,94 @@ static tdb_NodeRef_t GetPathBaseNodeRef
 
 // -------------------------------------------------------------------------------------------------
 /**
+ *  Create a new C style file pointer from the POSIX file descriptor.
+ *
+ *  @return A file pointer that may be read or written if successful.  A null pointer otherwise.
+ */
+// -------------------------------------------------------------------------------------------------
+static FILE* OpenFilePtr
+(
+    int descriptor,   ///< [IN] The POSIX file descriptor to create a file pointer from.
+    const char* mode  ///< [IN] The mode to open the file pointer in.
+)
+// -------------------------------------------------------------------------------------------------
+{
+    // Duplicate the file descriptor, this is because we later use a C library file pointer for the
+    // parsing routines.  When the file pointer is closed it also closes the underlying descriptor,
+    // which may not be what the caller wants or expects.
+    int newDescriptor = -1;
+
+    do
+    {
+        newDescriptor = dup(descriptor);
+    }
+    while (   (newDescriptor == -1)
+           && (errno == EINTR));
+
+    if (newDescriptor == -1)
+    {
+        LE_ERROR("Could not duplicate file descriptor, reason: %s", strerror(errno));
+        return NULL;
+    }
+
+    // Attempt to open the file pointer from the descriptor.
+    FILE* filePtr = fdopen(newDescriptor, mode);
+
+    if (filePtr == NULL)
+    {
+        // The open failed, so clean up the dangling descriptor.
+        int oldErrno = errno;
+        int closeResult;
+
+        do
+        {
+            closeResult = close(newDescriptor);
+        }
+        while (   (closeResult == -1)
+               && (errno == EINTR));
+
+        LE_ERROR("Could not access the input stream for tree import, reason: %s",
+                 strerror(oldErrno));
+    }
+
+    // Return the file pointer we have now.  Note, it may be NULL at this point.
+    return filePtr;
+}
+
+
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Close the file pointer and flush any data left unwritten.
+ */
+// -------------------------------------------------------------------------------------------------
+static void CloseFilePtr
+(
+    FILE* filePtr  ///< The file pointer to close.
+)
+// -------------------------------------------------------------------------------------------------
+{
+    int closeResult = EOF;
+
+    do
+    {
+        closeResult = fclose(filePtr);
+    }
+    while (   (closeResult == EOF)
+           && (errno == EINTR));
+
+    if (closeResult == EOF)
+    {
+        LE_ERROR("Could not properly close file, reason: %s", strerror(errno));
+    }
+}
+
+
+
+
+// -------------------------------------------------------------------------------------------------
+/**
  *  Initialize the tree DB subsystem, and automaticly load the system tree from the filesystem.
  */
 // -------------------------------------------------------------------------------------------------
@@ -2520,7 +2750,7 @@ void tdb_Init
     le_mem_SetNumObjsToForce(NodePoolRef, 50);    // Grow in chunks of 50 blocks.
 
     // For now (until pool config is added to the framework), set a minimum size.
-    if (le_mem_GetTotalNumObjs(NodePoolRef) != 0)
+    if (le_mem_GetObjectCount(NodePoolRef) != 0)
     {
         LE_WARN("TODO: Remove this code.");
     }
@@ -2887,7 +3117,7 @@ le_sls_List_t* tdb_GetRequestQueue
 // -------------------------------------------------------------------------------------------------
 void tdb_MergeTree
 (
-    tdb_TreeRef_t shadowTreeRef  ///< [IN] Merge the ndoes from this tree into their base tree.
+    tdb_TreeRef_t shadowTreeRef  ///< [IN] Merge the nodes from this tree into their base tree.
 )
 // -------------------------------------------------------------------------------------------------
 {
@@ -2911,7 +3141,7 @@ void tdb_MergeTree
     char filePath[LE_CFG_STR_LEN_BYTES] = "";
     GetTreePath(originalTreeRef->name, originalTreeRef->revisionId, filePath, sizeof(filePath));
 
-    LE_DEBUG("Changes mearged, now attempting to serialize the tree to <%s>.", filePath);
+    LE_DEBUG("Changes merged, now attempting to serialize the tree to '%s'.", filePath);
 
     int fileRef = -1;
 
@@ -2930,8 +3160,7 @@ void tdb_MergeTree
     }
 
     // We have a tree file to write to, so stream the new tree to it then close the output file.
-    tdb_WriteTreeNode(originalTreeRef->rootNodeRef, fileRef);
-
+    le_result_t writeResult = tdb_WriteTreeNode(originalTreeRef->rootNodeRef, fileRef);
     int retVal = -1;
 
     do
@@ -2940,14 +3169,23 @@ void tdb_MergeTree
     }
     while ((retVal == -1) && (errno == EINTR));
 
-    LE_EMERG_IF(retVal == -1, "An error occured while closing the tree file: %s", strerror(errno));
+    LE_EMERG_IF(retVal == -1, "An error occurred while closing the tree file: %s", strerror(errno));
 
 
     // Finally remove the old version of the tree file, if there is one.
-    if (   (oldId != 0)
-        && (TreeFileExists(originalTreeRef->name, oldId)))
+    if (writeResult == LE_OK)
     {
-        GetTreePath(originalTreeRef->name, oldId, filePath, sizeof(filePath));
+        if (   (oldId != 0)
+            && (TreeFileExists(originalTreeRef->name, oldId)))
+        {
+            GetTreePath(originalTreeRef->name, oldId, filePath, sizeof(filePath));
+            DeleteTreeFile(filePath);
+        }
+    }
+    else
+    {
+        // The write failed, delete the new file we attempted to create.
+        LE_EMERG("The attempt to write to the config tree file, '%s,' failed.", filePath);
         DeleteTreeFile(filePath);
     }
 }
@@ -3004,42 +3242,11 @@ bool tdb_ReadTreeNode
     tdb_SetEmpty(nodeRef);
     tdb_EnsureExists(nodeRef);
 
-
-    // Duplicate the file descriptor, this is because we later use a C library file pointer for the
-    // parsing routines.  When the file pointer is closed it also closes the underlying descriptor,
-    // which may not be what the caller wants or expects.
-    int newDescriptor = -1;
-
-    do
-    {
-        newDescriptor = dup(descriptor);
-    }
-    while (   (newDescriptor == -1)
-           && (errno == EINTR));
-
-    if (newDescriptor == -1)
-    {
-        LE_ERROR("Could not duplicate file descriptor, reason: %s", strerror(errno));
-        return false;
-    }
-
-
-    FILE* filePtr = fdopen(newDescriptor, "r");
+    // Convert to a C style file pointer.
+    FILE* filePtr = OpenFilePtr(descriptor, "r");
 
     if (filePtr == NULL)
     {
-        int oldErrno = errno;
-        int closeResult;
-
-        do
-        {
-            closeResult = close(newDescriptor);
-        }
-        while (   (closeResult == -1)
-               && (errno == EINTR));
-
-        LE_ERROR("Could not access the input stream for tree import, reason: %s",
-                 strerror(oldErrno));
         return false;
     }
 
@@ -3072,20 +3279,7 @@ bool tdb_ReadTreeNode
     }
 
     // Finally close our file object and return the result.
-    int closeResult = EOF;
-
-    do
-    {
-        closeResult = fclose(filePtr);
-    }
-    while (   (closeResult == EOF)
-           && (errno == EINTR));
-
-    if (closeResult == EOF)
-    {
-        LE_ERROR("Could not properly close file, reason: %s", strerror(errno));
-    }
-
+    CloseFilePtr(filePtr);
 
     return result;
 }
@@ -3096,76 +3290,30 @@ bool tdb_ReadTreeNode
 // -------------------------------------------------------------------------------------------------
 /**
  *  Serialize a tree node and it's children to a file in the filesystem.
+ *
+ *  @return LE_OK if the write succeeded, LE_IO_ERROR if the write failed.
  */
 // -------------------------------------------------------------------------------------------------
-void tdb_WriteTreeNode
+le_result_t tdb_WriteTreeNode
 (
     tdb_NodeRef_t nodeRef,  ///< [IN] Write the contents of this node to a file descriptor.
     int descriptor          ///< [IN] The file descriptor to write to.
 )
 // -------------------------------------------------------------------------------------------------
 {
-    // If the node is marked as having been deleted, don't save it.
-    if (IsDeleted(nodeRef))
+    // Go from a file descriptor to a C style file pointer.
+    FILE* filePtr = OpenFilePtr(descriptor, "w");
+
+    if (filePtr == NULL)
     {
-        return;
+        return LE_IO_ERROR;
     }
 
-    // Get the node's value as a string.
-    static char stringBuffer[LE_CFG_STR_LEN_BYTES];
+    // Write the data, then close up the file.
+    le_result_t result = InternalWriteNode(nodeRef, filePtr);
+    CloseFilePtr(filePtr);
 
-    tdb_GetValueAsString(nodeRef, stringBuffer, sizeof(stringBuffer), "");
-
-    // Now, depending on the type of node, write out any required format information.
-    switch (nodeRef->type)
-    {
-        case LE_CFG_TYPE_EMPTY:
-            write(descriptor, "~ ", 2);
-            break;
-
-        case LE_CFG_TYPE_BOOL:
-            write(descriptor, "!", 1);
-            write(descriptor, stringBuffer, 1);
-            write(descriptor, " ", 1);
-            break;
-
-        case LE_CFG_TYPE_STRING:
-            WriteStringValue(descriptor, '\"', '\"', stringBuffer);
-            break;
-
-        case LE_CFG_TYPE_INT:
-            WriteStringValue(descriptor, '[', ']', stringBuffer);
-            break;
-
-        case LE_CFG_TYPE_FLOAT:
-            WriteStringValue(descriptor, '(', ')', stringBuffer);
-            break;
-
-        // Looks like this node is a collection, so write out it's child nodes now.
-        case LE_CFG_TYPE_STEM:
-            {
-                write(descriptor, "{ ", 2);
-
-                tdb_NodeRef_t childRef = tdb_GetFirstActiveChildNode(nodeRef);
-
-                while (childRef != NULL)
-                {
-                    tdb_GetNodeName(childRef, stringBuffer, sizeof(stringBuffer));
-                    WriteStringValue(descriptor, '\"', '\"', stringBuffer);
-
-                    tdb_WriteTreeNode(childRef, descriptor);
-
-                    childRef = tdb_GetNextActiveSiblingNode(childRef);
-                }
-
-                write(descriptor, "} ", 2);
-            }
-            break;
-
-        // Not much to do here.
-        case LE_CFG_TYPE_DOESNT_EXIST:
-            break;
-    }
+    return result;
 }
 
 
@@ -4038,10 +4186,10 @@ double tdb_GetValueAsFloat
 
         case LE_CFG_TYPE_FLOAT:
             {
-                char buffer[SMALL_STR] = { 0 };
+                char buffer[LE_CFG_STR_LEN_BYTES] = { 0 };
 
-                tdb_GetValueAsString(nodeRef, buffer, SMALL_STR, "");
-                result = (float)atof(buffer);
+                tdb_GetValueAsString(nodeRef, buffer, LE_CFG_STR_LEN_BYTES, "");
+                result = atof(buffer);
             }
             break;
 
@@ -4070,9 +4218,9 @@ void tdb_SetValueAsFloat
 {
     LE_ASSERT(nodeRef != NULL);
 
-    char buffer[SMALL_STR] = { 0 };
+    char buffer[LE_CFG_STR_LEN_BYTES] = { 0 };
 
-    snprintf(buffer, SMALL_STR, "%f", value);
+    snprintf(buffer, LE_CFG_STR_LEN_BYTES, "%f", value);
     tdb_SetValueAsString(nodeRef, buffer);
     nodeRef->type = LE_CFG_TYPE_FLOAT;
 }

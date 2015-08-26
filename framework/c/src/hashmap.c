@@ -253,6 +253,7 @@ le_hashmap_Ref_t le_hashmap_Create
     mapRef->equalsFuncPtr = equalsFunc;
     mapRef->nameStr = nameStr;
 
+    memset(mapRef->iteratorPtr, 0, sizeof(HashmapIt_t));
     mapRef->iteratorPtr->theMapPtr = mapRef;
     mapRef->iteratorPtr->isValueValid = true;
 
@@ -420,6 +421,68 @@ void* le_hashmap_Get
                 mapRef->nameStr
             );
             return (void*)(currentEntryPtr->valuePtr);
+        }
+        theLinkPtr = le_dls_PeekNext(listHeadPtr, theLinkPtr);
+    }
+
+    HASHMAP_TRACE(
+        mapRef,
+        "Hashmap %s: Key not found",
+        mapRef->nameStr
+    );
+    return NULL;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Retrieve a stored key from a HashMap.
+ *
+ * @return  Returns a pointer to the key that was stored in the HashMap by le_hashmap_Put() or
+ *          NULL if the key is not found.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void* le_hashmap_GetStoredKey
+(
+    le_hashmap_Ref_t mapRef,   ///< [in] Reference to the map.
+    const void* keyPtr         ///< [in] Pointer to the key to be retrieved.
+)
+{
+    size_t hash = HashKey(mapRef, keyPtr);
+    size_t index = CalculateIndex(mapRef->bucketCount, hash);
+    HASHMAP_TRACE(
+        mapRef,
+        "Hashmap %s: Generated index of %zu for hash %zu",
+        mapRef->nameStr,
+        index,
+        hash
+    );
+
+    le_dls_List_t* listHeadPtr = &(mapRef->bucketsPtr[index]);
+    HASHMAP_TRACE(
+        mapRef,
+        "Hashmap %s: Looked up list contains %zu links",
+        mapRef->nameStr,
+        le_dls_NumLinks(listHeadPtr)
+    );
+
+    le_dls_Link_t* theLinkPtr = le_dls_Peek(listHeadPtr);
+
+    while (theLinkPtr != NULL) {
+        Entry_t* currentEntryPtr = CONTAINER_OF(theLinkPtr, Entry_t, entryListLink);
+        if (EqualKeys(currentEntryPtr->keyPtr,
+                          currentEntryPtr->hash,
+                          keyPtr,
+                          hash,
+                          mapRef->equalsFuncPtr)
+                          )
+        {
+            HASHMAP_TRACE(
+                mapRef,
+                "Hashmap %s: Returning original key",
+                mapRef->nameStr
+            );
+            return (void*)(currentEntryPtr->keyPtr);
         }
         theLinkPtr = le_dls_PeekNext(listHeadPtr, theLinkPtr);
     }

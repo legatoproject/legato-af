@@ -290,6 +290,21 @@ void* le_hashmap_Get
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Retrieve a stored key from a HashMap.
+ *
+ * @return  Returns a pointer to the key that was stored in the HashMap by le_hashmap_Put() or
+ *          NULL if the key is not found.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void* le_hashmap_GetStoredKey
+(
+    le_hashmap_Ref_t mapRef,   ///< [in] Reference to the map.
+    const void* keyPtr         ///< [in] Pointer to the key to be retrieved.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Remove a value from a HashMap.
  *
  * @return  Returns a pointer to the value or NULL if the key is not found.

@@ -216,7 +216,7 @@ static void ConfigChangeHandler
  *      Only one change handler can be registered per process.
  */
 //--------------------------------------------------------------------------------------------------
-void appCfg_SetChangeHandler
+LE_SHARED void appCfg_SetChangeHandler
 (
     appCfg_ChangeHandler_t handler          ///< [IN] Change handler.
 )
@@ -235,7 +235,7 @@ void appCfg_SetChangeHandler
  * Deletes the change handler.
  */
 //--------------------------------------------------------------------------------------------------
-void appCfg_DeleteChangeHandler
+LE_SHARED void appCfg_DeleteChangeHandler
 (
     void
 )
@@ -258,7 +258,7 @@ void appCfg_DeleteChangeHandler
  *      Reference to the iterator.
  */
 //--------------------------------------------------------------------------------------------------
-appCfg_Iter_t appCfg_CreateAppsIter
+LE_SHARED appCfg_Iter_t appCfg_CreateAppsIter
 (
     void
 )
@@ -285,7 +285,7 @@ appCfg_Iter_t appCfg_CreateAppsIter
  *      Reference to the iterator, or NULL if the app was not found.
  */
 //--------------------------------------------------------------------------------------------------
-appCfg_Iter_t appCfg_FindApp
+LE_SHARED appCfg_Iter_t appCfg_FindApp
 (
     const char* appName         ///< [IN] Name of the app to find.
 )
@@ -314,7 +314,7 @@ appCfg_Iter_t appCfg_FindApp
  *      LE_NOT_FOUND if the iterator is not pointing at an application.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t appCfg_GetAppName
+LE_SHARED le_result_t appCfg_GetAppName
 (
     appCfg_Iter_t appIterRef,   ///< [IN] Apps iterator
     char* bufPtr,               ///< [OUT] Buffer to store the app name.
@@ -340,7 +340,7 @@ le_result_t appCfg_GetAppName
  *      The size in bytes if available.  The default size if unavailable.
  */
 //--------------------------------------------------------------------------------------------------
-size_t appCfg_GetSecStoreLimit
+LE_SHARED size_t appCfg_GetSecStoreLimit
 (
     appCfg_Iter_t appIterRef    ///< [IN] Apps iterator
 )
@@ -361,7 +361,7 @@ size_t appCfg_GetSecStoreLimit
  *      LE_NOT_FOUND if the iterator is not pointing at an application.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t appCfg_GetVersion
+LE_SHARED le_result_t appCfg_GetVersion
 (
     appCfg_Iter_t appIterRef,   ///< [IN] Apps iterator
     char* bufPtr,               ///< [OUT] Buffer to store the app version.
@@ -387,7 +387,7 @@ le_result_t appCfg_GetVersion
  *      The configured start mode for the application.
  */
 //--------------------------------------------------------------------------------------------------
-appCfg_StartMode_t appCfg_GetStartMode
+LE_SHARED appCfg_StartMode_t appCfg_GetStartMode
 (
     appCfg_Iter_t appIterRef    ///< [IN] Apps iterator
 )
@@ -413,7 +413,7 @@ appCfg_StartMode_t appCfg_GetStartMode
  *      A new proc iterator, or NULL if the app iterator
  */
 //--------------------------------------------------------------------------------------------------
-appCfg_Iter_t appCfg_CreateAppProcIter
+LE_SHARED appCfg_Iter_t appCfg_CreateAppProcIter
 (
     appCfg_Iter_t appIterRef    ///< [IN] Apps iterator
 )
@@ -444,7 +444,7 @@ appCfg_Iter_t appCfg_CreateAppProcIter
  *      LE_NOT_FOUND if the iterator is not pointing at an application.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t appCfg_GetProcName
+LE_SHARED le_result_t appCfg_GetProcName
 (
     appCfg_Iter_t procIterRef,  ///< [IN] Apps iterator
     char* bufPtr,               ///< [OUT] Buffer to store the app name.
@@ -472,7 +472,7 @@ le_result_t appCfg_GetProcName
  *      LE_NOT_FOUND if the iterator is not pointing at an application.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t appCfg_GetProcExecName
+LE_SHARED le_result_t appCfg_GetProcExecName
 (
     appCfg_Iter_t procIterRef,  ///< [IN] Apps iterator
     char* bufPtr,               ///< [OUT] Buffer to store the app name.
@@ -486,7 +486,7 @@ le_result_t appCfg_GetProcExecName
         return LE_NOT_FOUND;
     }
 
-    return le_cfg_GetNodeName(procIterRef->cfgIter, CFG_PROC_EXEC_NAME, bufPtr, bufSize);
+    return le_cfg_GetString(procIterRef->cfgIter, CFG_PROC_EXEC_NAME, bufPtr, bufSize, "");
 }
 
 
@@ -498,7 +498,7 @@ le_result_t appCfg_GetProcExecName
  *      Value of the configured fault action for the process.
  */
 //--------------------------------------------------------------------------------------------------
-appCfg_FaultAction_t appCfg_GetProcFaultAction
+LE_SHARED appCfg_FaultAction_t appCfg_GetProcFaultAction
 (
     appCfg_Iter_t procIterRef   ///< [IN] Apps iterator
 )
@@ -559,7 +559,7 @@ appCfg_FaultAction_t appCfg_GetProcFaultAction
  *      LE_NOT_FOUND if there are no more apps.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t appCfg_GetNextItem
+LE_SHARED le_result_t appCfg_GetNextItem
 (
     appCfg_Iter_t iter          ///< [IN] Apps iterator
 )
@@ -590,7 +590,7 @@ le_result_t appCfg_GetNextItem
  * Resets the iterator to the first node.
  */
 //--------------------------------------------------------------------------------------------------
-void appCfg_ResetIter
+LE_SHARED void appCfg_ResetIter
 (
     appCfg_Iter_t iter          ///< [IN] Iterator
 )
@@ -604,7 +604,7 @@ void appCfg_ResetIter
  * Deletes the iterator.
  */
 //--------------------------------------------------------------------------------------------------
-void appCfg_DeleteIter
+LE_SHARED void appCfg_DeleteIter
 (
     appCfg_Iter_t iter          ///< [IN] Iterator
 )

@@ -207,6 +207,23 @@ ssize_t cgrp_GetThreadList
     size_t maxTids                  ///< [IN] The maximum number of tids tidListPtr can hold.
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets a list of threads that are in a cgroup.  The number of threads in the cgroup may be
+ * larger than maxTids, in which case tidListPtr will be filled with the first maxTids TIDs.
+ *
+ * @return
+ *      The number of threads that are in the cgroup if successful.
+ *      LE_FAULT if there was some other error.
+ */
+//--------------------------------------------------------------------------------------------------
+ssize_t cgrp_GetProcessesList
+(
+    cgrp_SubSys_t subsystem,        ///< [IN] Sub-system of the cgroup.
+    const char* cgroupNamePtr,      ///< [IN] Name of the cgroup.
+    pid_t* idListPtr,               ///< [OUT] Buffer that will contain the list of TIDs.
+    size_t maxIds                   ///< [IN] The maximum number of tids tidListPtr can hold.
+);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -391,5 +408,31 @@ cgrp_FreezeState_t cgrp_frz_GetState
     const char* cgroupNamePtr       ///< [IN] Name of the cgroup.
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets the amount of memory used in bytes by a cgroup
+ *
+ * @return
+ *      Number of bytes in use by the cgroup.
+ *      LE_FAULT if there was an error.
+ */
+//--------------------------------------------------------------------------------------------------
+ssize_t cgrp_GetMemUsed
+(
+    const char* cgroupNamePtr       ///< [IN] Name of the cgroup.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets the imum amount of memory used in bytes by a cgroup.
+ * @return
+ *      Maximum number of bytes used at any time up to now by this cgroup.
+ *      LE_FAULT if there was an error.
+ */
+//--------------------------------------------------------------------------------------------------
+ssize_t cgrp_GetMaxMemUsed
+(
+    const char* cgroupNamePtr       ///< [IN] Name of the cgroup.
+);
 
 #endif // LEGATO_SRC_CGROUPS_INCLUDE_GUARD

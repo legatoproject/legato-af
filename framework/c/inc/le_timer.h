@@ -50,12 +50,13 @@
  * The number of times that a timer has expired can be retrieved by @ref le_timer_GetExpiryCount. This
  * count is independent of whether there is an expiry handler for the timer.
  * 
- * @section le_timer_thread Timer Threads
+ * @section le_timer_thread Thread Support
+ *
  * A timer should only be used by the thread that created it. It's not safe for a thread to use
  * or manipulate a timer that belongs to another thread. The timer expiry handler is called by the
- * event loop of the thread that starts the timer. 
+ * event loop of the thread that starts the timer.
  * 
- * See @ref c_event_integratingLegacyPosix for details.
+ * See @ref c_eventLoop for details on running the event loop of a thread.
  * 
  * @section timer_errors Fatal Errors
  * 

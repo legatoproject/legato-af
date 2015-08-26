@@ -12,6 +12,7 @@ find_package(Legato REQUIRED)
 mkexe(  supervisor
             ../supervisor
             -i ${LEGATO_ROOT}/interfaces/supervisor
+            -i ${LEGATO_ROOT}/interfaces/logDaemon
             -i appSmack
             -i ..
             -i ../serviceDirectory

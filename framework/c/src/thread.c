@@ -33,14 +33,8 @@
 
 #include "legato.h"
 #include "thread.h"
+#include "spy.h"
 
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Maximum thread name size in bytes.
- */
-//--------------------------------------------------------------------------------------------------
-#define MAX_THREAD_NAME_SIZE        24
 
 /// Expected number of threads in the process.
 /// @todo Make this configurable.
@@ -57,30 +51,20 @@ static le_ref_MapRef_t ThreadRefMap;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * The legato thread structure containing all of the thread's attributes.
- *
- * @note    A Thread object created using le_thread_InitLegatoThreadData() will have its mainFunc
- *          set to NULL, and will not be joinable using le_thread_Join(), regardless of the thread's
- *          actual detach state.
+ * List of thread objects for the purpose of the Inspect tool ONLY. For accessing thread objects in
+ * this module, the safe reference map should be used.
  */
 //--------------------------------------------------------------------------------------------------
-typedef struct
-{
-    char    name[MAX_THREAD_NAME_SIZE];     ///< The name of the thread.
-    pthread_attr_t          attr;           ///< The thread's attributes.
-    bool                    isJoinable;     ///< true = the thread is joinable, false = detached.
-    bool                    isStarted;      ///< true = the thread has been started.
-    le_thread_MainFunc_t    mainFunc;       ///< The main function for the thread.
-    void*                   context;        ///< Context value to be passed to mainFunc.
-    le_sls_List_t           destructorList; ///< The destructor list for this thread.
-    mutex_ThreadRec_t       mutexRec;       ///< The thread's mutex record.
-    sem_ThreadRec_t         semaphoreRec;   ///< the thread's semaphore record.
-    event_PerThreadRec_t    eventRec;       ///< The thread's event record.
-    pthread_t               threadHandle;   ///< The pthreads thread handle.
-    le_thread_Ref_t         safeRef;        ///< Safe reference for this object.
-    timer_ThreadRec_t       timerRec;       ///< The thread's timer record.
-}
-ThreadObj_t;
+static le_dls_List_t ListOfThreadObjs = LE_DLS_LIST_INIT;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * A counter that increments every time a change is made to ListOfThreadObjs.
+ */
+//--------------------------------------------------------------------------------------------------
+static size_t ListOfThreadObjsChgCnt = 0;
+static size_t* ListOfThreadObjsChgCntRef = &ListOfThreadObjsChgCnt;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -98,7 +82,6 @@ static pthread_key_t ThreadLocalDataKey;
  */
 //--------------------------------------------------------------------------------------------------
 static le_mem_PoolRef_t ThreadPool;
-
 
 
 //--------------------------------------------------------------------------------------------------
@@ -243,14 +226,15 @@ static void CleanupThread
     // Destruct the event loop.
     event_DestructThread();
 
-    // If this thread is NOT joinable, then immediately invalidate its safe reference and free
-    // the thread object.  Otherwise, wait until someone joins with it.
+    // If this thread is NOT joinable, then immediately invalidate its safe reference, remove it 
+    // from the thread object list, and free the thread object.  Otherwise, wait until someone 
+    // joins with it.
     if (! threadObjPtr->isJoinable)
     {
         Lock();
-
         le_ref_DeleteRef(ThreadRefMap, threadObjPtr->safeRef);
-
+        ListOfThreadObjsChgCnt++;
+        le_dls_Remove(&ListOfThreadObjs, &(threadObjPtr->link));
         Unlock();
 
         DeleteThread(threadObjPtr);
@@ -383,9 +367,12 @@ static ThreadObj_t* CreateThread
     memset(&threadPtr->eventRec, 0, sizeof(threadPtr->eventRec));
     memset(&threadPtr->timerRec, 0, sizeof(threadPtr->timerRec));
 
-    // Create a safe reference for this object.
+    // Create a safe reference for this object and put this object on the thread object list (for 
+    // the Inpsect tool).
     Lock();
     threadPtr->safeRef = le_ref_CreateRef(ThreadRefMap, threadPtr);
+    ListOfThreadObjsChgCnt++;
+    le_dls_Queue(&ListOfThreadObjs, &(threadPtr->link));
     Unlock();
 
     return threadPtr;
@@ -438,6 +425,12 @@ void thread_Init
     Lock();
     ThreadRefMap = le_ref_CreateMap("ThreadRef", THREAD_POOL_SIZE);
     Unlock();
+
+    // Pass the list of thread objects to the Inspect tool.
+    spy_SetListOfThreadObj(&ListOfThreadObjs);
+
+    // Pass the change counter of list of thread objects to the Inspect tool.
+    spy_SetListOfThreadObjsChgCntRef(&ListOfThreadObjsChgCntRef);
 
     // Create the destructor object pool.
     DestructorObjPool = le_mem_CreatePool("DestructorObjs", sizeof(DestructorObj_t));
@@ -805,10 +798,12 @@ le_result_t le_thread_Join
             switch (error)
             {
                 case 0:
-                    // If the join was successful, it's time to delete the safe reference and
-                    // release the Thread Object.
+                    // If the join was successful, it's time to delete the safe reference, remove
+                    // it from the list of thread objects, and release the Thread Object.
                     Lock();
                     le_ref_DeleteRef(ThreadRefMap, threadPtr->safeRef);
+                    ListOfThreadObjsChgCnt++;
+                    le_dls_Remove(&ListOfThreadObjs, &(threadPtr->link));
                     Unlock();
                     DeleteThread(threadPtr);
 

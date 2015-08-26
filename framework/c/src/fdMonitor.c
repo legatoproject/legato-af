@@ -485,7 +485,7 @@ static void UpdateEpollFd
     }
 
     struct epoll_event ev;
-
+    memset(&ev, 0, sizeof(ev));
     ev.events = monitorPtr->epollEvents;
     ev.data.ptr = monitorPtr->safeRef;
 
@@ -682,6 +682,7 @@ le_fdMonitor_Ref_t le_fdMonitor_Create
 
     // Tell epoll(7) to start monitoring this fd.
     struct epoll_event ev;
+    memset(&ev, 0, sizeof(ev));
     ev.events = fdMonitorPtr->epollEvents;
     ev.data.ptr = fdMonitorPtr->safeRef;
     if (epoll_ctl(perThreadRecPtr->epollFd, EPOLL_CTL_ADD, fd, &ev) == -1)

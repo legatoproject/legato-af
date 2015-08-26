@@ -212,4 +212,31 @@ le_onoff_t;
 #define STRINGIZE_EXPAND(x)     #x   // Needed to expand macros.
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Macro used to declare that a symbol should be shared outside the dynamic shared object in
+ * which it is defined.
+ *
+ * This can be used with either a declaration or a definition.
+ *
+ * E.g., with a declaration (perhaps in a header file):
+ *
+ * @code
+ * LE_SHARED void my_Function();
+ * @endcode
+ *
+ * E.g., with a definition (in a .c file):
+ *
+ * @code
+ * LE_SHARED void my_OtherFunction()
+ * {
+ *     LE_INFO("Hello world.");
+ * }
+ * @endcode
+ *
+ **/
+//--------------------------------------------------------------------------------------------------
+#define LE_SHARED __attribute__((visibility ("default")))
+
+
 #endif // LEGATO_BASICS_INCLUDE_GUARD

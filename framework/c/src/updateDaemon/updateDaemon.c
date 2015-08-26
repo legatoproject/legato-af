@@ -37,6 +37,7 @@
 #include "manifest.h"
 #include "fileDescriptor.h"
 #include "user.h"
+#include "killProc.h"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -708,20 +709,12 @@ static void KillValidTask
     pid_t pid      ///<[IN] Process id of the task to be killed.
 )
 {
-    int result;
-
     if (pid > 0)
     {
         LE_DEBUG("Killing child, pid: %d", pid);
+
         // Kill the child, we no longer need it. SigChld handler will take care of resource release.
-        result = kill(pid, SIGKILL);
-        // Following check is kept to avoid race condition. Suppose, client's cancellation request and
-        // SigChildHandler(called due to termination of child process) are in event-queue where
-        // cancellation request is ahead of queue. In this case, kill will return -1 with errno ESRCH.
-        if ((result == -1) && (errno != ESRCH))
-        {
-            LE_FATAL("Parent can't kill child process, errno: %d (%m)", errno);
-        }
+        kill_Hard(pid);
     }
 }
 

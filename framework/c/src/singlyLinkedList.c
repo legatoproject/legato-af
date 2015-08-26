@@ -103,7 +103,9 @@ le_sls_Link_t* le_sls_RemoveAfter
 {
     // Are there any items in the list after the current one?
     le_sls_Link_t* nextPtr = currentLinkPtr->nextPtr;
-    if (nextPtr == currentLinkPtr)
+
+    // if the next item in the list is pointing to the head, let's not remove it
+    if (nextPtr == listPtr->tailLinkPtr->nextPtr)
     {
         // Nope, so there isn't anything to remove.
         return NULL;
@@ -112,6 +114,14 @@ le_sls_Link_t* le_sls_RemoveAfter
     // Bump out the link in the middle and return a pointer to it so that the caller can decide what
     // to do with it.
     currentLinkPtr->nextPtr = nextPtr->nextPtr;
+
+    // if the item getting removed is the last one in the list, update the tail pointer
+    if (nextPtr == listPtr->tailLinkPtr)
+    {
+        listPtr->tailLinkPtr = currentLinkPtr;
+    }
+
+    // remove the item from the list; this item can be freed after this step
     nextPtr->nextPtr = NULL;
 
     return nextPtr;

@@ -36,12 +36,9 @@
  */
 
 #include "legato.h"
-#include "limit.h"
 #include "semaphores.h"
 #include "thread.h"
-
-#include <pthread.h>
-#include <semaphore.h>
+#include "spy.h"
 
 // ==============================
 //  PRIVATE DATA
@@ -54,19 +51,12 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Semaphore object.
+ * A counter that increments every time a change is made to the semaphore.
  */
 //--------------------------------------------------------------------------------------------------
-typedef struct le_sem_t
-{
-    le_dls_Link_t       semaphoreListLink;   ///< Used to link onto the process's Semaphore List.
-    le_dls_List_t       waitingList;         ///< List of threads waiting for this semaphore.
-    pthread_mutex_t     waitingListMutex;    ///< Pthreads mutex used to protect the waiting list.
-    bool                isTraceable;         ///< true if traceable, false otherwise.
-    sem_t               semaphore;           ///< Pthreads semaphore that does the real work. :)
-    char                nameStr[LIMIT_MAX_SEMAPHORE_NAME_BYTES]; ///< The name of the semaphore (UTF8 string).
-}
-Semaphore_t;
+static size_t ListOfSemaphoresChgCnt = 0;
+static size_t* ListOfSemaphoresChgCntRef = &ListOfSemaphoresChgCnt;
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -140,6 +130,10 @@ le_sem_Ref_t CreateSemaphore
     semaphorePtr->waitingList = LE_DLS_LIST_INIT;
     pthread_mutex_init(&semaphorePtr->waitingListMutex, NULL);  // Default attributes = Fast mutex.
     semaphorePtr->isTraceable = isTraceable;
+    if (le_utf8_Copy(semaphorePtr->nameStr, nameStr, sizeof(semaphorePtr->nameStr), NULL) == LE_OVERFLOW)
+    {
+        LE_WARN("Semaphore name '%s' truncated to '%s'.", nameStr, semaphorePtr->nameStr);
+    }
 
     // Initialize the underlying POSIX semaphore shared between thread.
     int result = sem_init(&semaphorePtr->semaphore,0, initialCount);
@@ -216,6 +210,9 @@ void sem_Init
 {
     SemaphorePoolRef = le_mem_CreatePool("semaphore", sizeof(Semaphore_t));
     le_mem_ExpandPool(SemaphorePoolRef, DEFAULT_POOL_SIZE);
+
+    // Pass the change counter of list of semaphores to the Inspect tool.
+    spy_SetListOfSemaphoresChgCntRef(&ListOfSemaphoresChgCntRef);
 }
 
 
@@ -366,12 +363,14 @@ void le_sem_Wait
 
         sem_ThreadRec_t* perThreadRecPtr = thread_GetSemaphoreRecPtr();
 
+        ListOfSemaphoresChgCnt++;
         perThreadRecPtr->waitingOnSemaphore = semaphorePtr;
         AddToWaitingList(semaphorePtr, perThreadRecPtr);
 
         result = sem_wait(&semaphorePtr->semaphore);
 
         RemoveFromWaitingList(semaphorePtr, perThreadRecPtr);
+        ListOfSemaphoresChgCnt++;
         perThreadRecPtr->waitingOnSemaphore = NULL;
 
         LE_FATAL_IF( (result!=0), "Thread '%s' failed to wait on semaphore '%s'. Error code %d (%m).",
@@ -459,6 +458,7 @@ le_result_t le_sem_WaitWithTimeOut
         // Retrieve reference thread
         sem_ThreadRec_t* perThreadRecPtr = thread_GetSemaphoreRecPtr();
         // Save into waiting list
+        ListOfSemaphoresChgCnt++;
         perThreadRecPtr->waitingOnSemaphore = semaphorePtr;
         AddToWaitingList(semaphorePtr, perThreadRecPtr);
 
@@ -466,6 +466,7 @@ le_result_t le_sem_WaitWithTimeOut
 
         // Remove from waiting list
         RemoveFromWaitingList(semaphorePtr, perThreadRecPtr);
+        ListOfSemaphoresChgCnt++;
         perThreadRecPtr->waitingOnSemaphore = NULL;
 
         if (result != 0)

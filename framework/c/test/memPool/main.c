@@ -1,7 +1,7 @@
  /**
   * This module is for unit testing the le_mem module in the legato
   * runtime library (liblegato.so).
-  * 
+  *
   * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
   */
 
@@ -53,18 +53,18 @@ int main(int argc, char *argv[])
     colourObj_t* coloursPtr[COLOUR_POOL_SIZE] = {NULL};
     unsigned int i = 0;
     unsigned int numRelease = 0;
-    
-    
+
+
     printf("\n");
     printf("*** Unit Test for le_mem module. ***\n");
-    
+
 
     //
     // Create multiple pools.
     //
     idPool = le_mem_CreatePool("ID Pool", sizeof(idObj_t));
     colourPool = le_mem_CreatePool("Colour Pool", sizeof(colourObj_t));
-    
+
     printf("Created two memory pools.\n");
 
 
@@ -75,14 +75,14 @@ int main(int argc, char *argv[])
     colourPool = le_mem_ExpandPool(colourPool, COLOUR_POOL_SIZE);
 
     printf("Expanded all pools.\n");
-    
+
 
     //
     // Set destructors.
     //
     le_mem_SetDestructor(idPool, IdDestructor);
-    
-    
+
+
     //
     // Spawn child process and perform Assert allocation until failure.
     //
@@ -90,22 +90,22 @@ int main(int argc, char *argv[])
     if (pID == 0)
     {
         // This is the child.
-        
+
         // Allocate more than the available objects so the assert will kill the process.
         for (i = 0; i < ID_POOL_SIZE + 1; i++)
         {
             idsPtr[i] = le_mem_AssertAlloc(idPool);
         }
-        
+
         return LE_OK;
     }
     else
     {
         int status;
-        
+
         // wait for the child to terminate.
         wait(&status);
-        
+
         if ( WEXITSTATUS(status) == EXIT_FAILURE ) // Child terminated with an error.
         {
             printf("Assert allocation performed correctly.\n");
@@ -116,38 +116,38 @@ int main(int argc, char *argv[])
             return LE_FAULT;
         }
     }
-    
+
     //
     // Allocate all objects.
     //
     for (i = 0; i < ID_POOL_SIZE; i++)
     {
         idsPtr[i] = le_mem_TryAlloc(idPool);
-        
+
         if (idsPtr[i] == NULL)
         {
             printf("Allocation error: %d", __LINE__);
             return LE_FAULT;
         }
-        
+
         idsPtr[i]->id = i;
     }
-    
+
     for (i = 0; i < COLOUR_POOL_SIZE; i++)
     {
         coloursPtr[i] = le_mem_TryAlloc(colourPool);
-        
+
         if (coloursPtr[i] == NULL)
         {
             printf("Allocation error: %d", __LINE__);
             return LE_FAULT;
         }
-        
+
         coloursPtr[i]->r = i;
         coloursPtr[i]->g = i + 1;
         coloursPtr[i]->b = i + 2;
     }
-    
+
     printf("Allocated all objects from all pools.\n");
 
 
@@ -162,7 +162,7 @@ int main(int argc, char *argv[])
             return LE_FAULT;
         }
     }
-    
+
     for (i = 0; i < COLOUR_POOL_SIZE; i++)
     {
         if ( (coloursPtr[i]->r != i) ||
@@ -173,7 +173,7 @@ int main(int argc, char *argv[])
             return LE_FAULT;
         }
     }
-    
+
     printf("Checked all objects in pools.\n");
 
 
@@ -190,7 +190,7 @@ int main(int argc, char *argv[])
         for (i = 0; i < ID_POOL_SIZE; i++)
         {
             objPtr = idsPtr[i];
-            
+
             if (rand() < REMOVE_THRESHOLD)
             {
                 // Increase the ref number for these objects.
@@ -238,19 +238,19 @@ int main(int argc, char *argv[])
         pid_t pID = fork();
         if (pID == 0)
         {
-            // This is the child.            
+            // This is the child.
             // This allocation should fail and kill the process.
             le_mem_Release(objPtr);
-            
+
             return LE_OK;
         }
         else
         {
             int status;
-            
+
             // wait for the child to terminate.
             wait(&status);
-            
+
             if ( WEXITSTATUS(status) == EXIT_FAILURE ) // Child terminated with an error.
             {
                 printf("Ref count correct.\n");
@@ -274,7 +274,7 @@ int main(int argc, char *argv[])
         if (idsPtr[i] == NULL)
         {
             idsPtr[i] = le_mem_TryAlloc(idPool);
-            
+
             if (idsPtr[i] == NULL)
             {
                 printf("Allocation error: %d.", __LINE__);
@@ -282,16 +282,16 @@ int main(int argc, char *argv[])
             }
         }
     }
-    
+
     // The pool should now be empty.
     if (le_mem_TryAlloc(idPool) != NULL)
     {
         printf("Allocation error: %d.", __LINE__);
         return LE_FAULT;
     }
-    
+
     printf("Tried allocating from empty pool.\n");
-    
+
     //
     // Force allocate.
     //
@@ -299,7 +299,7 @@ int main(int argc, char *argv[])
     for (i = ID_POOL_SIZE; i < ID_POOL_SIZE + NUM_EXTRA_ID; i++)
     {
         idsPtr[i] = le_mem_ForceAlloc(idPool);
-        
+
         if (idsPtr[i] == NULL)
         {
             printf("Allocation error: %d.", __LINE__);
@@ -307,14 +307,14 @@ int main(int argc, char *argv[])
         }
     }
     printf("Forced allocated objects.\n");
-    
-    
+
+
     //
     // Get stats.
     //
     le_mem_PoolStats_t stats;
     le_mem_GetStats(idPool, &stats);
-    
+
     if ( (stats.numAllocs != ID_POOL_SIZE + NUM_EXTRA_ID + NumRelease) ||
          (stats.numOverflows != (unsigned int)ceil(((1.0*NUM_EXTRA_ID / FORCE_SIZE)))) ||
          (stats.numFree != (stats.numOverflows*FORCE_SIZE) % NUM_EXTRA_ID) )
@@ -323,19 +323,19 @@ int main(int argc, char *argv[])
         return LE_FAULT;
     }
     printf("Stats are correct.\n");
-    
-    
+
+
     //
     // Get pool size.
     //
-    if (le_mem_GetTotalNumObjs(idPool) != ID_POOL_SIZE + (stats.numOverflows * FORCE_SIZE))
+    if (le_mem_GetObjectCount(idPool) != ID_POOL_SIZE + (stats.numOverflows * FORCE_SIZE))
     {
         printf("Pool size incorrect: %d", __LINE__);
         return LE_FAULT;
     }
     printf("Checked pool size.\n");
-    
-    
+
+
     //
     // Get object size.
     //
@@ -345,17 +345,17 @@ int main(int argc, char *argv[])
         return LE_FAULT;
     }
     printf("Checked object size.\n");
-    
-    
+
+
     //
     // Reset stats.
     //
     {
         size_t numFree = stats.numFree;
-        
+
         le_mem_ResetStats(idPool);
         le_mem_GetStats(idPool, &stats);
-        
+
         if ( (stats.numAllocs != 0) ||
              (stats.numOverflows != 0) ||
              (stats.numFree != numFree) )
@@ -366,11 +366,11 @@ int main(int argc, char *argv[])
     }
     printf("Reset stats correctly.\n");
 
-    
+
     //
     // Create sub-pool.
     //
-    
+
     // Release some objs from the super-pool in a random manner.
     numRelease = 0;
     for (i = 0; i < COLOUR_POOL_SIZE; i++)
@@ -378,7 +378,7 @@ int main(int argc, char *argv[])
         if (rand() < REMOVE_THRESHOLD)
         {
             le_mem_Release(coloursPtr[i]);
-            coloursPtr[i] = NULL;            
+            coloursPtr[i] = NULL;
             numRelease++;
         }
     }
@@ -391,19 +391,19 @@ int main(int argc, char *argv[])
     //
     // Check sub-pools and super-pool.
     //
-    if ( (le_mem_GetTotalNumObjs(colourSubPool1) != numRelease) ||
-         (le_mem_GetTotalNumObjs(colourPool) != COLOUR_POOL_SIZE) )
+    if ( (le_mem_GetObjectCount(colourSubPool1) != numRelease) ||
+         (le_mem_GetObjectCount(colourPool) != COLOUR_POOL_SIZE) )
     {
         printf("Sub-pool incorrect: %d", __LINE__);
         return LE_FAULT;
     }
     printf("Sub-pool created correctly.\n");
-    
-    
+
+
     //
     // Create second sub-pool.
     //
-    
+
     // Release the rest of the objects from the super-pool.
     for (i = 0; i < COLOUR_POOL_SIZE; i++)
     {
@@ -413,7 +413,7 @@ int main(int argc, char *argv[])
             coloursPtr[i] = NULL;
         }
     }
-    
+
     // Create another sub-pool.
     le_mem_PoolRef_t colourSubPool2 = le_mem_CreateSubPool(colourPool, "Second sub-pool", COLOUR_POOL_SIZE - numRelease);
     printf("Created second sub-pool.\n");
@@ -423,50 +423,50 @@ int main(int argc, char *argv[])
     // Expand the sub-pool causing the super-pool to expand.
     //
     le_mem_ExpandPool(colourSubPool2, NUM_EXPAND_SUB_POOL);
-    
-    
+
+
     //
     // Allocate from sub-pool.
     //
     for (i = 0; i < COLOUR_POOL_SIZE - numRelease; i++)
     {
         coloursPtr[i] = le_mem_TryAlloc(colourSubPool2);
-        
+
         if (coloursPtr[i] == NULL)
         {
             printf("Error allocating from sub-pool: %d", __LINE__);
             return LE_FAULT;
         }
     }
-    
-    
+
+
     //
     // Check pools.
     //
-    le_mem_GetStats(colourPool, &stats);    
-    if ( (le_mem_GetTotalNumObjs(colourPool) != COLOUR_POOL_SIZE + NUM_EXPAND_SUB_POOL) || (stats.numFree != 0) )
+    le_mem_GetStats(colourPool, &stats);
+    if ( (le_mem_GetObjectCount(colourPool) != COLOUR_POOL_SIZE + NUM_EXPAND_SUB_POOL) || (stats.numFree != 0) )
     {
         printf("Error in super-pool: %d", __LINE__);
         return LE_FAULT;
     }
-    
-    le_mem_GetStats(colourSubPool1, &stats);    
-    if ( (le_mem_GetTotalNumObjs(colourSubPool1) != numRelease) || (stats.numFree != numRelease) )
+
+    le_mem_GetStats(colourSubPool1, &stats);
+    if ( (le_mem_GetObjectCount(colourSubPool1) != numRelease) || (stats.numFree != numRelease) )
     {
         printf("Error in sub-pool: %d", __LINE__);
         return LE_FAULT;
     }
-    
+
     le_mem_GetStats(colourSubPool2, &stats);
-    if ( (le_mem_GetTotalNumObjs(colourSubPool2) != COLOUR_POOL_SIZE - numRelease + NUM_EXPAND_SUB_POOL) || (stats.numFree != NUM_EXPAND_SUB_POOL) )
+    if ( (le_mem_GetObjectCount(colourSubPool2) != COLOUR_POOL_SIZE - numRelease + NUM_EXPAND_SUB_POOL) || (stats.numFree != NUM_EXPAND_SUB_POOL) )
     {
         printf("Error in sub-pool: %d", __LINE__);
         return LE_FAULT;
     }
     printf("Expanded sub-pool correctly.\n");
     printf("Allocated from sub-pools correctly.\n");
-    
-    
+
+
     // Try Allocating from empty super-pool.
     if (le_mem_TryAlloc(colourPool) != NULL)
     {
@@ -478,7 +478,7 @@ int main(int argc, char *argv[])
     // Delete sub-pool.
     //
     le_mem_DeleteSubPool(colourSubPool1);
-    
+
     // Allocate from the super-pool.
     for (i = 0; i < NUM_ALLOC_SUPER_POOL; i++)
     {
@@ -489,15 +489,15 @@ int main(int argc, char *argv[])
     //
     // Check pools.
     //
-    le_mem_GetStats(colourPool, &stats);    
+    le_mem_GetStats(colourPool, &stats);
     if ( (stats.numFree != numRelease - NUM_ALLOC_SUPER_POOL) )
     {
         printf("Error in super-pool: %d", __LINE__);
         return LE_FAULT;
     }
-    
+
     le_mem_GetStats(colourSubPool2, &stats);
-    if ( (le_mem_GetTotalNumObjs(colourSubPool2) != COLOUR_POOL_SIZE - numRelease + NUM_EXPAND_SUB_POOL) || (stats.numFree != NUM_EXPAND_SUB_POOL) )
+    if ( (le_mem_GetObjectCount(colourSubPool2) != COLOUR_POOL_SIZE - numRelease + NUM_EXPAND_SUB_POOL) || (stats.numFree != NUM_EXPAND_SUB_POOL) )
     {
         printf("Error in sub-pool: %d", __LINE__);
         return LE_FAULT;
@@ -509,9 +509,9 @@ int main(int argc, char *argv[])
     // Re-create sub-pool causing super pool to expand.
     //
     colourSubPool1 = le_mem_CreateSubPool(colourPool, "First sub-pool", numRelease + NUM_EXPAND_SUB_POOL);
-    
-    if ( (le_mem_GetTotalNumObjs(colourSubPool1) != numRelease + NUM_EXPAND_SUB_POOL) ||
-         (le_mem_GetTotalNumObjs(colourPool) != COLOUR_POOL_SIZE + 2*NUM_EXPAND_SUB_POOL + NUM_ALLOC_SUPER_POOL) )
+
+    if ( (le_mem_GetObjectCount(colourSubPool1) != numRelease + NUM_EXPAND_SUB_POOL) ||
+         (le_mem_GetObjectCount(colourPool) != COLOUR_POOL_SIZE + 2*NUM_EXPAND_SUB_POOL + NUM_ALLOC_SUPER_POOL) )
     {
         printf("Error re-creating sub-pool: %d", __LINE__);
         return LE_FAULT;
@@ -529,8 +529,8 @@ int main(int argc, char *argv[])
         return LE_FAULT;
     }
     printf("Successfully searched for pools by name.\n");
-    
-    
+
+
     printf("*** Unit Test for le_mem module passed. ***\n");
     printf("\n");
     return LE_OK;

@@ -234,7 +234,7 @@
  *
  * Statistics (and other pool properties) can be checked using functions:
  *  - @c le_mem_GetStats()
- *  - @c le_mem_GetPoolSize()
+ *  - @c le_mem_GetObjectCount()
  *  - @c le_mem_GetObjectSize()
  *
  * Statistics are fetched together atomically using a single function call.
@@ -247,6 +247,25 @@
  * "poolstat" console command (unless your process's main thread is blocked).
  *
  * To reset the pool statistics, use @c le_mem_ResetStats().
+ *
+ * @section mem_diagnostics Diagnostics
+ *
+ * The memory system also supports two different forms of diagnostics.  Both are enabled by defining
+ * special preprocessor macros when building the framework.
+ *
+ * The first of which is @c LE_MEM_TRACE.  When you define @c LE_MEM_TRACE every pool is given a
+ * tracepoint with the name of the pool on creation.
+ *
+ * For instance, the configTree node pool is called, "configTree.nodePool".  So to enable a trace of
+ * all config tree node creation and deletion one would use the log tool as follows:
+ *
+ * @code
+ * $ log trace configTree.nodePool
+ * @endcode
+ *
+ * The second diagnostic build flag is @c LE_MEM_VALGRIND.  When @c LE_MEM_VALGRIND is enabled, the
+ * pools are disabled and instead malloc and free are directly used.  Thus enabling the use of tools
+ * like Valgrind.
  *
  * @section mem_threading Multi-Threading
  *
@@ -385,6 +404,7 @@
 #define LEGATO_COMPONENT
 #endif
 
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Objects of this type are used to refer to a memory pool created using either
@@ -427,6 +447,53 @@ typedef struct
     size_t      numFree;            ///< Number of free objects currently available in this pool.
 }
 le_mem_PoolStats_t;
+
+
+#ifdef LE_MEM_TRACE
+    //----------------------------------------------------------------------------------------------
+    /**
+     * Internal function used to retrieve a pool handle for a given pool block.
+     */
+    //----------------------------------------------------------------------------------------------
+    le_mem_PoolRef_t _le_mem_GetBlockPool
+    (
+        void*   objPtr  ///< [IN] Pointer to the object we're finding a pool for.
+    );
+
+    typedef void* (*_le_mem_AllocFunc_t)(le_mem_PoolRef_t pool);
+
+    //----------------------------------------------------------------------------------------------
+    /**
+     * Internal function used to call a memory allocation function and trace its call site.
+     */
+    //----------------------------------------------------------------------------------------------
+    void* _le_mem_AllocTracer
+    (
+        le_mem_PoolRef_t     pool,             ///< [IN] The pool activity we're tracing.
+        _le_mem_AllocFunc_t  funcPtr,          ///< [IN] Pointer to the mem function in question.
+        const char*          poolFunction,     ///< [IN] The pool function being called.
+        const char*          file,             ///< [IN] The file the call came from.
+        const char*          callingfunction,  ///< [IN] The function calling into the pool.
+        size_t               line              ///< [IN] The line in the function where the call
+                                               ///       occurred.
+    );
+
+    //----------------------------------------------------------------------------------------------
+    /**
+     * Internal function used to trace memory pool activity.
+     */
+    //----------------------------------------------------------------------------------------------
+    void _le_mem_Trace
+    (
+        le_mem_PoolRef_t    pool,             ///< [IN] The pool activity we're tracing.
+        const char*         file,             ///< [IN] The file the call came from.
+        const char*         callingfunction,  ///< [IN] The function calling into the pool.
+        size_t              line,             ///< [IN] The line in the function where the call
+                                              ///       occurred.
+        const char*         poolFunction,     ///< [IN] The pool function being called.
+        void*               blockPtr          ///< [IN] Block allocated/freed.
+    );
+#endif
 
 
 //--------------------------------------------------------------------------------------------------
@@ -486,53 +553,97 @@ le_mem_PoolRef_t le_mem_ExpandPool
 );
 
 
-//--------------------------------------------------------------------------------------------------
-/**
- * Attempts to allocate an object from a pool.
- *
- * @return
- *      Pointer to the allocated object, or NULL if the pool doesn't have any free objects
- *      to allocate.
- */
-//--------------------------------------------------------------------------------------------------
-void* le_mem_TryAlloc
-(
-    le_mem_PoolRef_t    pool    ///< [IN] Pool from which the object is to be allocated.
-);
+
+#ifndef LE_MEM_TRACE
+    //----------------------------------------------------------------------------------------------
+    /**
+     * Attempts to allocate an object from a pool.
+     *
+     * @return
+     *      Pointer to the allocated object, or NULL if the pool doesn't have any free objects
+     *      to allocate.
+     */
+    //----------------------------------------------------------------------------------------------
+    void* le_mem_TryAlloc
+    (
+        le_mem_PoolRef_t    pool    ///< [IN] Pool from which the object is to be allocated.
+    );
+#else
+    /// @cond HIDDEN_IN_USER_DOCS
+    void* _le_mem_TryAlloc(le_mem_PoolRef_t pool);
+    /// @endcond
+
+    #define le_mem_TryAlloc(pool)                                                                   \
+        _le_mem_AllocTracer(pool,                                                                   \
+                            _le_mem_TryAlloc,                                                       \
+                            "le_mem_TryAlloc",                                                      \
+                            __FILE__,                                                               \
+                            __FUNCTION__,                                                           \
+                            __LINE__)
+
+#endif
 
 
-//--------------------------------------------------------------------------------------------------
-/**
- * Allocates an object from a pool or logs a fatal error and terminates the process if the pool
- * doesn't have any free objects to allocate.
- *
- * @return Pointer to the allocated object.
- *
- * @note    On failure, the process exits, so you don't have to worry about checking the returned
- *          pointer for validity.
- */
-//--------------------------------------------------------------------------------------------------
-void* le_mem_AssertAlloc
-(
-    le_mem_PoolRef_t    pool    ///< [IN] Pool from which the object is to be allocated.
-);
+#ifndef LE_MEM_TRACE
+    //----------------------------------------------------------------------------------------------
+    /**
+     * Allocates an object from a pool or logs a fatal error and terminates the process if the pool
+     * doesn't have any free objects to allocate.
+     *
+     * @return Pointer to the allocated object.
+     *
+     * @note    On failure, the process exits, so you don't have to worry about checking the
+     *          returned pointer for validity.
+     */
+    //----------------------------------------------------------------------------------------------
+    void* le_mem_AssertAlloc
+    (
+        le_mem_PoolRef_t    pool    ///< [IN] Pool from which the object is to be allocated.
+    );
+#else
+    /// @cond HIDDEN_IN_USER_DOCS
+    void* _le_mem_AssertAlloc(le_mem_PoolRef_t pool);
+    /// @endcond
+
+    #define le_mem_AssertAlloc(pool)                                                                \
+        _le_mem_AllocTracer(pool,                                                                   \
+                            _le_mem_AssertAlloc,                                                    \
+                            "le_mem_AssertAlloc",                                                   \
+                            __FILE__,                                                               \
+                            __FUNCTION__,                                                           \
+                            __LINE__)
+#endif
 
 
-//--------------------------------------------------------------------------------------------------
-/**
- * Allocates an object from a pool or logs a warning and expands the pool if the pool
- * doesn't have any free objects to allocate.
- *
- * @return  Pointer to the allocated object.
- *
- * @note    On failure, the process exits, so you don't have to worry about checking the returned
- *          pointer for validity.
- */
-//--------------------------------------------------------------------------------------------------
-void* le_mem_ForceAlloc
-(
-    le_mem_PoolRef_t    pool    ///< [IN] Pool from which the object is to be allocated.
-);
+#ifndef LE_MEM_TRACE
+    //----------------------------------------------------------------------------------------------
+    /**
+     * Allocates an object from a pool or logs a warning and expands the pool if the pool
+     * doesn't have any free objects to allocate.
+     *
+     * @return  Pointer to the allocated object.
+     *
+     * @note    On failure, the process exits, so you don't have to worry about checking the
+     *          returned pointer for validity.
+     */
+    //----------------------------------------------------------------------------------------------
+    void* le_mem_ForceAlloc
+    (
+        le_mem_PoolRef_t    pool    ///< [IN] Pool from which the object is to be allocated.
+    );
+#else
+    /// @cond HIDDEN_IN_USER_DOCS
+    void* _le_mem_ForceAlloc(le_mem_PoolRef_t pool);
+    /// @endcond
+
+    #define le_mem_ForceAlloc(pool)                                                                 \
+        _le_mem_AllocTracer(pool,                                                                   \
+                            _le_mem_ForceAlloc,                                                     \
+                            "le_mem_ForceAlloc",                                                    \
+                            __FILE__,                                                               \
+                            __FUNCTION__,                                                           \
+                            __LINE__)
+#endif
 
 
 //--------------------------------------------------------------------------------------------------
@@ -554,41 +665,71 @@ void le_mem_SetNumObjsToForce
 );
 
 
-//--------------------------------------------------------------------------------------------------
-/**
- * Releases an object.  If the object's reference count has reached zero, it will be destructed
- * and its memory will be put back into the pool for later reuse.
- *
- * @return
- *      Nothing.
- *
- * @warning
- *      - <b>Don't EVER access an object after releasing it.</b>  It might not exist anymore.
- *      - If the object has a destructor accessing a data structure shared by multiple
- *        threads, ensure you hold the mutex (or take other measures to prevent races) before
- *        releasing the object.
- */
-//--------------------------------------------------------------------------------------------------
-void le_mem_Release
-(
-    void*   objPtr  ///< [IN] Pointer to the object to be released.
-);
+#ifndef LE_MEM_TRACE
+    //----------------------------------------------------------------------------------------------
+    /**
+     * Releases an object.  If the object's reference count has reached zero, it will be destructed
+     * and its memory will be put back into the pool for later reuse.
+     *
+     * @return
+     *      Nothing.
+     *
+     * @warning
+     *      - <b>Don't EVER access an object after releasing it.</b>  It might not exist anymore.
+     *      - If the object has a destructor accessing a data structure shared by multiple
+     *        threads, ensure you hold the mutex (or take other measures to prevent races) before
+     *        releasing the object.
+     */
+    //----------------------------------------------------------------------------------------------
+    void le_mem_Release
+    (
+        void*   objPtr  ///< [IN] Pointer to the object to be released.
+    );
+#else
+    /// @cond HIDDEN_IN_USER_DOCS
+    void _le_mem_Release(void* objPtr);
+    /// @endcond
+
+    #define le_mem_Release(objPtr)                                                                  \
+            _le_mem_Trace(_le_mem_GetBlockPool(objPtr),                                             \
+                          __FILE__,                                                                 \
+                          __FUNCTION__,                                                             \
+                          __LINE__,                                                                 \
+                          "le_mem_Release",                                                         \
+                          (objPtr));                                                                \
+            _le_mem_Release(objPtr);
+#endif
 
 
-//--------------------------------------------------------------------------------------------------
-/**
- * Increments the reference count on an object by 1.
- *
- * See @ref mem_ref_counting for more information.
- *
- * @return
- *      Nothing.
- */
-//--------------------------------------------------------------------------------------------------
-void le_mem_AddRef
-(
-    void*   objPtr  ///< [IN] Pointer to the object.
-);
+#ifndef LE_MEM_TRACE
+    //----------------------------------------------------------------------------------------------
+    /**
+     * Increments the reference count on an object by 1.
+     *
+     * See @ref mem_ref_counting for more information.
+     *
+     * @return
+     *      Nothing.
+     */
+    //----------------------------------------------------------------------------------------------
+    void le_mem_AddRef
+    (
+        void*   objPtr  ///< [IN] Pointer to the object.
+    );
+#else
+    /// @cond HIDDEN_IN_USER_DOCS
+    void _le_mem_AddRef(void* objPtr);
+    /// @endcond
+
+    #define le_mem_AddRef(objPtr)                                                                   \
+        _le_mem_Trace(_le_mem_GetBlockPool(objPtr),                                                 \
+                      __FILE__,                                                                     \
+                      __FUNCTION__,                                                                 \
+                      __LINE__,                                                                     \
+                      "le_mem_AddRef",                                                              \
+                      (objPtr));                                                                    \
+        _le_mem_AddRef(objPtr);
+#endif
 
 
 //--------------------------------------------------------------------------------------------------
@@ -681,7 +822,7 @@ const bool le_mem_IsSubPool
  *      Total number of objects.
  */
 //--------------------------------------------------------------------------------------------------
-size_t le_mem_GetTotalNumObjs
+size_t le_mem_GetObjectCount
 (
     le_mem_PoolRef_t    pool        ///< [IN] Pool where number of objects is to be fetched.
 );

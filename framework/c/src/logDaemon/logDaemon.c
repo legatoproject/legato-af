@@ -301,6 +301,41 @@ static le_mem_PoolRef_t TracePoolRef;
                                 - LIMIT_MAX_COMPONENT_NAME_LEN )
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * File descriptor logging object.
+ *
+ * Stores info about a file descriptor to be logged.
+ **/
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    char            appName[LIMIT_MAX_APP_NAME_BYTES];      ///< App name.
+    char            procName[LIMIT_MAX_PROCESS_NAME_BYTES]; ///< Process name.
+    int             pid;                                    ///< PID of the process.
+    le_log_Level_t  level;                                  ///< Log level.
+    le_fdMonitor_Ref_t monitorRef;                          ///< Monitor object.
+}
+FdLog_t;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Pool for file descriptor logging objects.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mem_PoolRef_t FdLogPoolRef;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum length of log messages.
+ */
+//--------------------------------------------------------------------------------------------------
+#define MAX_MSG_SIZE            256
+
+
+
 // ========================================
 //  FUNCTIONS
 // ========================================
@@ -2563,6 +2598,194 @@ static void ControlToolMsgReceiveHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Deletes the fd log object and monitor.  Closes the associated fd.
+ */
+//--------------------------------------------------------------------------------------------------
+static void DeleteFdLog
+(
+    int fd,                     ///< [IN] Fd to close.
+    FdLog_t* fdLogPtr           ///< [IN] Fd log object to delete.
+)
+{
+    // Delete the fd monitor.
+    le_fdMonitor_Delete(fdLogPtr->monitorRef);
+
+    // Close the fd.
+    fd_Close(fd);
+
+    // Delete the fd log object.
+    le_mem_Release(fdLogPtr);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Logs message received from the fd.
+ */
+//--------------------------------------------------------------------------------------------------
+static void LogFdMessages
+(
+    int   fd,
+    short events
+)
+{
+    FdLog_t* fdLogPtr = le_fdMonitor_GetContextPtr();
+
+    if (events & POLLIN)
+    {
+        // Read the data from the fd.
+        char msg[MAX_MSG_SIZE] = {'\0'};
+
+        int c;
+
+        do
+        {
+            c = read(fd, msg, sizeof(msg));
+        }
+        while ( (c == -1) && (errno == EINTR) );
+
+        if (c == -1)
+        {
+            LE_ERROR("Could not read fd log message for app/process '%s/%s[%d]'.  %m.",
+                     fdLogPtr->appName, fdLogPtr->procName, fdLogPtr->pid);
+
+            DeleteFdLog(fd, fdLogPtr);
+        }
+
+        // Log the data.
+        // TODO: Don't log the app name for now so that it matches all the other log formats.  Add
+        //       the app name to all log messages at the same time.
+        log_LogGenericMsg(fdLogPtr->level, fdLogPtr->procName, fdLogPtr->pid, msg);
+    }
+
+    if ( (events & POLLRDHUP) || (events & POLLERR) || (events & POLLHUP) )
+    {
+        LE_DEBUG("Error on app/proc '%s/%s' log fd, events=%d.  Cannot log from this fd.",
+                fdLogPtr->appName, fdLogPtr->procName, events);
+
+        DeleteFdLog(fd, fdLogPtr);
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Creates a monitor for an application process' file descriptor for logging.
+ */
+//--------------------------------------------------------------------------------------------------
+static void CreateFdLogMonitor
+(
+    int fd,                     ///< [IN] File descriptor to log.
+    const char* appNamePtr,     ///< [IN] Name of the application.
+    const char* procNamePtr,    ///< [IN] Name of the process.
+    pid_t pid,                  ///< [IN] PID of the process.
+    le_log_Level_t logLevel,    ///< [IN] Level to log messages from this fd at.
+    const char* monitorNamePtr  ///< [IN] Name of monitor.
+)
+{
+    // Create fd log object.
+    FdLog_t* fdLogPtr = le_mem_ForceAlloc(FdLogPoolRef);
+
+    if (le_utf8_Copy(fdLogPtr->appName, appNamePtr, LIMIT_MAX_APP_NAME_BYTES, NULL) != LE_OK)
+    {
+        LE_KILL_CLIENT("App name '%s' too long.", appNamePtr);
+    }
+
+    if (le_utf8_Copy(fdLogPtr->procName, procNamePtr, LIMIT_MAX_PROCESS_NAME_BYTES, NULL) != LE_OK)
+    {
+        LE_KILL_CLIENT("Proc name '%s' too long.", procNamePtr);
+    }
+
+    fdLogPtr->level = logLevel;
+    fdLogPtr->pid = pid;
+
+    // Create the fd monitor.
+    fdLogPtr->monitorRef = le_fdMonitor_Create(monitorNamePtr, fd, LogFdMessages, 0);
+
+    // Set the fd monitor context.
+    le_fdMonitor_SetContextPtr(fdLogPtr->monitorRef, fdLogPtr);
+
+    // Enable the monitoring.
+    le_fdMonitor_Enable(fdLogPtr->monitorRef, POLLIN);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Registers an application process' standard error for logging.  Messages from this file descriptor
+ * will be logged at LE_LOG_ERR level.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_FAULT if there was an error.
+ */
+//--------------------------------------------------------------------------------------------------
+void logFd_StdErr
+(
+    int fd,
+        ///< [IN]
+        ///< stderr file descriptor.
+
+    const char* appName,
+        ///< [IN]
+        ///< Name of the application.
+
+    const char* procName,
+        ///< [IN]
+        ///< Name of the process.
+
+    int pid
+        ///< [IN]
+        ///< PID of the process.
+)
+{
+    // Create the fd monitor.
+    char monitorName[LIMIT_MAX_PROCESS_NAME_BYTES + 6];
+    LE_ASSERT(snprintf(monitorName, sizeof(monitorName), "%s%s", procName, "Stderr") < sizeof(monitorName));
+
+    CreateFdLogMonitor(fd, appName, procName, pid, LE_LOG_ERR, monitorName);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Registers an application process' standard out for logging.  Messages from this file descriptor
+ * will be logged at LE_LOG_INFO level.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_FAULT if there was an error.
+ */
+//--------------------------------------------------------------------------------------------------
+void logFd_StdOut
+(
+    int fd,
+        ///< [IN]
+        ///< stdout file descriptor.
+
+    const char* appName,
+        ///< [IN]
+        ///< Name of the application.
+
+    const char* procName,
+        ///< [IN]
+        ///< Name of the process.
+
+    int pid
+        ///< [IN]
+        ///< PID of the process.
+)
+{
+        // Create the fd monitor.
+    char monitorName[LIMIT_MAX_PROCESS_NAME_BYTES + 6];
+    LE_ASSERT(snprintf(monitorName, sizeof(monitorName), "%s%s", procName, "Stdout") < sizeof(monitorName));
+
+    CreateFdLogMonitor(fd, appName, procName, pid, LE_LOG_INFO, monitorName);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * The main function for the log daemon.  Listens for commands from process/components and log tools
  * and processes the commands.
  */
@@ -2576,6 +2799,7 @@ COMPONENT_INIT
     RunningProcessPoolRef = le_mem_CreatePool("RunningProcess", sizeof(RunningProcess_t));
     LogSessionPoolRef = le_mem_CreatePool("LogSession", sizeof(LogSession_t));
     TracePoolRef = le_mem_CreatePool("Traces", sizeof(Trace_t));
+    FdLogPoolRef = le_mem_CreatePool("FdLogs", sizeof(FdLog_t));
 
     // Tune the pools' initial sizes to reduce warnings in the log at start-up.
     // TODO: Make this configurable.
@@ -2585,6 +2809,7 @@ COMPONENT_INIT
     le_mem_ExpandPool(RunningProcessPoolRef, MAX_EXPECTED_PROCESSES);
     le_mem_ExpandPool(LogSessionPoolRef, MAX_EXPECTED_COMPONENTS);
     le_mem_ExpandPool(TracePoolRef, MAX_EXPECTED_TRACES);
+    le_mem_ExpandPool(FdLogPoolRef, MAX_EXPECTED_PROCESSES * 2); // Generally 2 fds per process (stderr, stdout).
 
     // Create the hash maps.
     ProcessNameMapRef = le_hashmap_Create("ProcessName",

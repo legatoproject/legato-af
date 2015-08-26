@@ -105,9 +105,9 @@ static Session_t DefaultLogSession =    {
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
-    le_sls_Link_t link;                     // The link in the keyword list.
-    char keyword[LIMIT_MAX_LOG_KEYWORD_LEN];// The keyword.
-    bool isEnabled;                         // true if the keyword is enabled.  false otherwise.
+    le_sls_Link_t link;                        // The link in the keyword list.
+    char keyword[LIMIT_MAX_LOG_KEYWORD_BYTES]; // The keyword.
+    bool isEnabled;                            // true if the keyword is enabled.  false otherwise.
 }
 KeywordObj_t;
 
@@ -1245,4 +1245,45 @@ void log_TestFrameworkMsgs
 
     LE_TRACE(trace1, "Trace msg in %s", STRINGIZE(LE_COMPONENT_NAME));
     LE_TRACE(trace2, "Trace msg in %s", STRINGIZE(LE_COMPONENT_NAME));
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Logs a generic message with the given information.
+ */
+//--------------------------------------------------------------------------------------------------
+void log_LogGenericMsg
+(
+    le_log_Level_t level,       ///< [IN] Severity level.
+    const char* procNamePtr,    ///< [IN] Process name.
+    pid_t pid,                  ///< [IN] PID of the process.
+    const char* msgPtr          ///< [IN] Message.
+)
+{
+    // Write the message out to the log.
+#ifdef LEGATO_EMBEDDED
+
+    syslog(ConvertToSyslogLevel(level), "%s | %s[%d] | %s\n",
+           SeverityStr[level], procNamePtr, pid, msgPtr);
+
+#else
+
+    time_t now;
+    char timeStamp[26] = "";
+    char* timeStampPtr = timeStamp;
+
+    if ( (time(&now) != ((time_t)-1)) && (ctime_r(&now, timeStamp) != NULL) )
+    {
+        // Tue Jan 14 18:01:56 2014
+        // 0123456789012345678901234
+        timeStampPtr = timeStamp + 4; // Skip day of week.
+        timeStamp[19] = '\0';  // Exclude the year.
+    }
+
+    fprintf(stderr, "%s : %s | %s[%d] | %s\n",
+            timeStampPtr, SeverityStr[level], procNamePtr, pid, msgPtr);
+
+#endif
+
 }

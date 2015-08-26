@@ -10,6 +10,8 @@ mkexe(  logCtrlDaemon
             ../logDaemon
             --cflags=-DNO_LOG_CONTROL
             -i ..
+            -i ${LEGATO_ROOT}/interfaces/supervisor
+            -i ${LEGATO_ROOT}/interfaces/logDaemon
             -v
         DEPENDS
             Component.cdef

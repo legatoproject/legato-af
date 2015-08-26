@@ -1,8 +1,8 @@
 /**
  * @page c_logging Logging API
  *
- * @ref le_log.h "API Reference"
- *
+ * @ref le_log.h "API Reference" <br>
+ * @ref howToLogs
  * <HR>
  *
  * The Legato Logging API provides a toolkit allowing code to be instrumented with error, warning,
@@ -13,7 +13,7 @@
  *
  * Legato's logging can be configured through this API, and there's also a command-line target
  * @ref toolsTarget_log tool available.
- * 
+ *
  * @subsection c_log_levels Levels
  *
  * Log messages are categorized according to the severity of the information being logged.
@@ -35,6 +35,27 @@
  *  - @ref LE_LOG_EMERG "EMERGENCY":
  *    Definite system failure.
  *
+ * @subsection c_log_basic_defaultSyslog Standard Out and Standard Error in Syslog
+ * 
+ * By default, app processes will have their @c stdout and @c stderr redirected to the @c syslog. Each
+ * process’s stdout will be logged at INFO severity level; it’s stderr will be logged at
+ * “ERR” severity level.  
+
+ * There are two limitations with this feature:
+ * - the PID reported in the logs generally refer to the PID of the process that
+ * generates the stdout/stderr message. If a process forks, then both the parent and
+ * child processes’ stdout/stderr will share the same connection to the syslog, and the parent’s 
+ * PID will be reported in the logs for both processes.
+ * - stdout is line buffered when connected to a terminal, which means
+ * <code>printf(“hello\n”)</code> will be printed to the terminal immediately. If stdout is
+ * connected to something like a pipe it's bulk buffered, which means a flush doesn't occur until the buffer is full.
+ * 
+ * To make your process line buffer stdout so that printf will show up in the logs as expected,
+ * the @c setlinebuf(stdout) system call can be used.  Alternatively, @c fflush(stdout) can be called \
+ * to force a flush of the stdout buffer. 
+ * 
+ * This issue doesn't exist with stderr as stderr is never buffered.
+ * 
  * @subsection c_log_basic_logging Basic Logging
  *
  * A series of macros are available to make logging easy.
@@ -410,7 +431,7 @@ void _le_log_SetFilterLevel
 #ifdef __cplusplus
 extern
 #endif
-le_log_SessionRef_t LE_LOG_SESSION;
+LE_SHARED le_log_SessionRef_t LE_LOG_SESSION;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -423,7 +444,7 @@ le_log_SessionRef_t LE_LOG_SESSION;
 #ifdef __cplusplus
 extern
 #endif
-le_log_Level_t* LE_LOG_LEVEL_FILTER_PTR;
+LE_SHARED le_log_Level_t* LE_LOG_LEVEL_FILTER_PTR;
 
 
 /// @endcond
@@ -573,8 +594,14 @@ const char* _le_log_GetResultCodeString
 #define LE_TRACE(traceRef, string, ...)                                                             \
         if (le_log_IsTraceEnabled(traceRef))                                                        \
         {                                                                                           \
-            _le_log_Send(-1, traceRef, LE_LOG_SESSION, __FILE__, __func__, __LINE__,                \
-                    string, ##__VA_ARGS__);                                                         \
+            _le_log_Send((le_log_Level_t)-1,                                                        \
+                    traceRef,                                                                       \
+                    LE_LOG_SESSION,                                                                 \
+                    __FILE__,                                                                       \
+                    __func__,                                                                       \
+                    __LINE__,                                                                       \
+                    string,                                                                         \
+                    ##__VA_ARGS__);                                                                 \
         }
 
 

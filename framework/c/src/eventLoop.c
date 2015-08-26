@@ -816,6 +816,7 @@ void event_InitThread
 
     // Add the eventfd to the list of file descriptors to wait for using epoll_wait().
     struct epoll_event ev;
+    memset(&ev, 0, sizeof(ev));
     ev.events = EPOLLIN | EPOLLWAKEUP;
     ev.data.ptr = NULL;     // This being set to NULL is what tells the main event loop that this
                             // is the Event Queue FD, rather than another FD that is being

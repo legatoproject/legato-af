@@ -7,9 +7,9 @@
  */
 
 #include "legato.h"
-#include "limit.h"
 #include "timer.h"
 #include "thread.h"
+#include "spy.h"
 #include <sys/timerfd.h>
 
 // Include macros for printing out values
@@ -19,27 +19,14 @@
 #define DEFAULT_POOL_NAME "Default Timer Pool"
 #define DEFAULT_POOL_INITIAL_SIZE 1
 
+
 //--------------------------------------------------------------------------------------------------
 /**
- * Timer object.  Created by le_timer_Create().
+ * A counter that increments every time a change is made to the timer list.
  */
 //--------------------------------------------------------------------------------------------------
-typedef struct le_timer
-{
-    // Settable attributes
-    char name[LIMIT_MAX_TIMER_NAME_BYTES];   ///< The timer name
-    le_timer_ExpiryHandler_t handlerRef;     ///< Expiry handler function
-    le_clk_Time_t interval;                  ///< Interval
-    uint32_t repeatCount;                    ///< Number of times the timer will repeat
-    void* contextPtr;                        ///< Context for timer expiry
-
-    // Internal State
-    le_dls_Link_t link;                      ///< For adding to the timer list
-    bool isActive;                           ///< Is the timer active/running?
-    le_clk_Time_t expiryTime;                ///< Time at which the timer should expire
-    uint32_t expiryCount;                    ///< Number of times the counter has expired
-}
-Timer_t;
+static size_t ListOfTimersChgCnt = 0;
+static size_t* ListOfTimersChgCntRef = &ListOfTimersChgCnt;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -156,6 +143,7 @@ static void AddToTimerList
         linkPtr = le_dls_PeekNext(listPtr, linkPtr);
     }
 
+    ListOfTimersChgCnt++;
     if (linkPtr == NULL)
     {
         // The list is either empty, or the new timer has the largest expiry time.
@@ -218,6 +206,7 @@ static Timer_t* PopFromTimerList
     linkPtr = le_dls_Pop(listPtr);
     if (linkPtr != NULL)
     {
+        ListOfTimersChgCnt++;
         timerPtr = CONTAINER_OF(linkPtr, Timer_t, link);
 
         // The timer is no longer on the active list
@@ -251,6 +240,7 @@ static le_result_t RemoveFromTimerList
 
     // Remove the timer from the active list
     timerPtr->isActive = false;
+    ListOfTimersChgCnt++;
     le_dls_Remove(listPtr, &timerPtr->link);
 
     return LE_OK;
@@ -560,6 +550,9 @@ void timer_Init
 
     // Get a reference to the trace keyword that is used to control tracing in this module.
     TraceRef = le_log_GetTraceRef("timers");
+
+    // Pass the change counter of list of timers to the Inspect tool.
+    spy_SetListOfTimersChgCntRef(&ListOfTimersChgCntRef);
 }
 
 

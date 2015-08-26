@@ -12,6 +12,44 @@
 #ifndef MEM_INCLUDE_GUARD
 #define MEM_INCLUDE_GUARD
 
+#include "limit.h"
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Definition of a memory pool.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct le_mem_Pool
+{
+    le_dls_Link_t poolLink;             ///< This pool's link in the list of memory pools.
+    struct le_mem_Pool* superPoolPtr;   ///< A pointer to our super pool if we are a sub-pool. NULL
+                                        ///  if we are not a sub-pool.
+    #ifndef LE_MEM_VALGRIND
+        le_sls_List_t freeList;         ///< List of free memory blocks.
+    #endif
+
+    size_t userDataSize;                ///< Size of the object requested by the client in bytes.
+    size_t blockSize;                   ///< Number of bytes in a block, including all overhead.
+    uint64_t numAllocations;            ///< Total number of times an object has been allocated
+                                        ///  from this pool.
+    size_t numOverflows;                ///< Number of times le_mem_ForceAlloc() had to expand pool.
+    size_t totalBlocks;                 ///< Total number of blocks in this pool including free
+                                        ///  and allocated blocks.
+    size_t numBlocksInUse;              ///< Number of currently allocated blocks.
+    size_t maxNumBlocksUsed;            ///< Maximum number of allocated blocks at any one time.
+    size_t numBlocksToForce;            ///< Number of blocks that is added when Force Alloc
+                                        ///  expands the pool.
+    #ifdef LE_MEM_TRACE
+        le_log_TraceRef_t memTrace;     ///< If tracing is enabled, keeps track of a trace object
+                                        ///  for this pool.
+    #endif
+
+    le_mem_Destructor_t destructor;     ///< The destructor for objects in this pool.
+    char name[LIMIT_MAX_MEM_POOL_NAME_BYTES]; ///< Name of the pool.
+}
+MemPool_t;
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -25,98 +63,6 @@
 void mem_Init
 (
     void
-);
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Objects of this type are used to refer to a list of memory pools and can be used to iterate over
- * the list of available memory pools in a remote process.
- */
-//--------------------------------------------------------------------------------------------------
-typedef struct mem_iter_t* mem_Iter_Ref_t;
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Creates an iterator that can be used to iterate over the list of available memory pools for a
- * specific process.
- *
- * @note
- *      The specified pid must be greater than zero.
- *
- *      The calling process must be root or have appropriate capabilities for this function and all
- *      subsequent operations on the iterator to succeed.
- *
- *      If NULL is returned the errorPtr will be set appropriately.  Possible values are:
- *      LE_NOT_POSSIBLE if the specified process is not a Legato process.
- *      LE_FAULT if there was some other error.
- * @deprecated the result code LE_NOT_POSSIBLE is scheduled to be removed before 15.04
- *
- *      errorPtr can be NULL if the error code is not needed.
- *
- * @return
- *      An iterator to the list of memory pools for the specified process.
- *      NULL if there was an error.
- */
-//--------------------------------------------------------------------------------------------------
-mem_Iter_Ref_t mem_iter_Create
-(
-    pid_t pid,                  ///< [IN] The process to get the iterator for.
-    le_result_t *errorPtr       ///< [OUT] Error code.  See comment block for more details.
-);
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Gets the memory pool list change counter from the specified iterator. 
- *
- * @return
- *      LE_OK if successful; the poolListChgCntRef out param points to the current instance of the
- *      memory pool list change counter
- *      LE_FAULT if there was an error.
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t mem_iter_GetPoolsListChgCnt
-(
-    mem_Iter_Ref_t iterator,        ///< [IN] The iterator to get the pool list change counter from.
-    uint32_t* poolListChgCntRef     ///< [OUT] Memory pool list change counter.
-);
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Gets the next memory pool from the specified iterator.  The first time this function is called
- * after mem_iter_Create() is called the first memory pool in the list is returned.  The second
- * time this function is called the second memory pool is returned and so on.
- *
- * @warning
- *      The memory pool returned by this function belongs to the remote process.  Do not attempt to
- *      expand the pool or allocate objects from the pool, doing so will lead to memory leaks in
- *      the calling process.
- *
- * @return
- *      LE_OK if successful; the memPool out parameter would point to either a memory pool from the 
- *      iterator's list of memory pools, or NULL if there are no more memory pools in the list.
- *      LE_FAULT if there was an error.
- */
-//--------------------------------------------------------------------------------------------------
-
-le_result_t mem_iter_GetNextPool
-(
-    mem_Iter_Ref_t iterator,    ///< [IN] The iterator to get the next mem pool from.
-    le_mem_PoolRef_t* memPool   ///< [OUT] A memory pool from the iterator's list of memory pools.
-);
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Deletes the iterator.
- */
-//--------------------------------------------------------------------------------------------------
-void mem_iter_Delete
-(
-    mem_Iter_Ref_t iterator     ///< [IN] The iterator to delete.
 );
 
 

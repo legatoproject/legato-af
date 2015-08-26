@@ -83,7 +83,7 @@ void le_cfgAdmin_ImportTree
 )
 // -------------------------------------------------------------------------------------------------
 {
-    LE_DEBUG("** Importing a tree from <%s> onto node <%s>, using iterator, <%p>.",
+    LE_DEBUG("** Importing a tree from '%s' onto node '%s', using iterator, '%p'.",
              filePathPtr, nodePathPtr, externalRef);
 
     ni_IteratorRef_t iteratorRef = GetIteratorFromRef(externalRef);
@@ -103,7 +103,7 @@ void le_cfgAdmin_ImportTree
     else
     {
         // Open the requested file.
-        LE_DEBUG("Opening file <%s>.", filePathPtr);
+        LE_DEBUG("Opening file '%s'.", filePathPtr);
 
         int fid = -1;
 
@@ -115,7 +115,7 @@ void le_cfgAdmin_ImportTree
 
         if (fid == -1)
         {
-            LE_ERROR("File <%s> could not be opened.", filePathPtr);
+            LE_ERROR("File '%s' could not be opened.", filePathPtr);
             le_cfgAdmin_ImportTreeRespond(commandRef, LE_FAULT);
 
             return;
@@ -180,7 +180,7 @@ void le_cfgAdmin_ExportTree
 )
 // -------------------------------------------------------------------------------------------------
 {
-    LE_DEBUG("** Exporting a tree from node <%s> into file <%s>, using iterator, <%p>.",
+    LE_DEBUG("** Exporting a tree from node '%s' into file '%s', using iterator, '%p'.",
              nodePathPtr, filePathPtr, externalRef);
 
     ni_IteratorRef_t iteratorRef = GetIteratorFromRef(externalRef);
@@ -191,47 +191,45 @@ void le_cfgAdmin_ExportTree
         return;
     }
 
-    tdb_NodeRef_t nodeRef = ni_GetNode(iteratorRef, nodePathPtr);
+    LE_DEBUG("Opening file '%s'.", filePathPtr);
 
-    if (nodeRef == NULL)
+    int fid = -1;
+
+    do
     {
-        le_cfgAdmin_ExportTreeRespond(commandRef, LE_NOT_FOUND);
+        fid = open(filePathPtr, O_RDWR | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
     }
-    else
+    while ((fid == -1) && (errno == EINTR));
+
+    if (fid == -1)
     {
-        LE_DEBUG("Opening file <%s>.", filePathPtr);
+        LE_ERROR("File '%s' could not be opened.", filePathPtr);
+        le_cfgAdmin_ExportTreeRespond(commandRef, LE_IO_ERROR);
 
-        int fid = -1;
-
-        do
-        {
-            fid = open(filePathPtr, O_RDWR | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
-        }
-        while ((fid == -1) && (errno == EINTR));
-
-
-        if (fid == -1)
-        {
-            LE_ERROR("File <%s> could not be opened.", filePathPtr);
-            le_cfgAdmin_ExportTreeRespond(commandRef, LE_FAULT);
-
-            return;
-        }
-
-
-        LE_DEBUG("Importing config data.");
-
-        tdb_WriteTreeNode(nodeRef, fid);
-        le_cfgAdmin_ExportTreeRespond(commandRef, LE_OK);
-
-        int retVal = -1;
-
-        do
-        {
-            retVal = close(fid);
-        }
-        while ((retVal == -1) && (errno == EINTR));
+        return;
     }
+
+
+    LE_DEBUG("Exporting config data.");
+
+    le_result_t result = LE_OK;
+
+    if (tdb_WriteTreeNode(ni_GetNode(iteratorRef, nodePathPtr), fid) != LE_OK)
+    {
+        result = LE_FAULT;
+    }
+
+
+    int retVal = -1;
+
+    do
+    {
+        retVal = close(fid);
+    }
+    while ((retVal == -1) && (errno == EINTR));
+
+
+    le_cfgAdmin_ExportTreeRespond(commandRef, result);
 }
 
 

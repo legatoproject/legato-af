@@ -280,9 +280,11 @@ bool tdb_ReadTreeNode
 // -------------------------------------------------------------------------------------------------
 /**
  *  Serialize a tree node and it's children to a file in the filesystem.
+ *
+ *  @return LE_OK if the write succeeded, LE_IO_ERROR if the write failed.
  */
 // -------------------------------------------------------------------------------------------------
-void tdb_WriteTreeNode
+le_result_t tdb_WriteTreeNode
 (
     tdb_NodeRef_t nodeRef,  ///< [IN] Write the contents of this node to a file descriptor.
     int descriptor          ///< [IN] The file descriptor to write to.

@@ -150,4 +150,18 @@ void log_TestFrameworkMsgs
     void
 );
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Logs a generic message with the given information.
+ */
+//--------------------------------------------------------------------------------------------------
+void log_LogGenericMsg
+(
+    le_log_Level_t level,       ///< [IN] Severity level.
+    const char* procNamePtr,    ///< [IN] Process name.
+    pid_t pid,                  ///< [IN] PID of the process.
+    const char* msgPtr          ///< [IN] Message.
+);
+
 #endif // LOG_INCLUDE_GUARD

@@ -21,6 +21,7 @@
 #include "user.h"
 #include "log.h"
 #include "smack.h"
+#include "killProc.h"
 #include "interfaces.h"
 
 
@@ -171,6 +172,15 @@ typedef struct
     char            value[LIMIT_MAX_PATH_BYTES];            // The variable value.
 }
 EnvVar_t;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Definitions for the read and write ends of a pipe.
+ */
+//--------------------------------------------------------------------------------------------------
+#define READ_PIPE       0
+#define WRITE_PIPE      1
 
 
 //--------------------------------------------------------------------------------------------------
@@ -354,9 +364,7 @@ static void SetSchedulingPriority
 
     if (proc_SetPriority(priorStr, procRef->pid) != LE_OK)
     {
-        LE_FATAL_IF((kill(procRef->pid, SIGKILL) == -1) && (errno != ESRCH),
-                    "Failed to send signal to process '%s' (PID: %d).  %m.",
-                    procRef->name, procRef->pid);
+        kill_Hard(procRef->pid);
     }
 }
 
@@ -574,6 +582,99 @@ static void ConfigNonSandboxedProcess
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Send the read end of the pipe to the log daemon for logging.  Closes both ends of the local pipe
+ * afterwards.
+ */
+//--------------------------------------------------------------------------------------------------
+static void SendStdPipeToLogDaemon
+(
+    proc_Ref_t procRef, ///< [IN] Process that owns the write end of the pipe.
+    int pipefd[2],      ///< [IN] Pipe fds.
+    int streamNum       ///< [IN] Either STDOUT_FILENO or STDERR_FILENO.
+)
+{
+    if (pipefd[READ_PIPE] != -1)
+    {
+        // Send the read end to the log daemon.  The fd is closed once it is sent.
+        if (streamNum == STDOUT_FILENO)
+        {
+            logFd_StdOut(pipefd[READ_PIPE],
+                         app_GetName(procRef->appRef),
+                         procRef->name,
+                         procRef->pid);
+        }
+        else
+        {
+            logFd_StdErr(pipefd[READ_PIPE],
+                         app_GetName(procRef->appRef),
+                         procRef->name,
+                         procRef->pid);
+        }
+
+        // Close the write end of the pipe because we don't need it.
+        fd_Close(pipefd[WRITE_PIPE]);
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Redirects the specified standard stream to the write end of the provided pipe if the pipe is
+ * available.  The pipe is then closed afterwards.
+ */
+//--------------------------------------------------------------------------------------------------
+static void RedirectStdStream
+(
+    int pipefd[2],      ///< [IN] Pipe fds.
+    int streamNum       ///< [IN] Either STDOUT_FILENO or STDERR_FILENO.
+)
+{
+    if (pipefd[READ_PIPE] != -1)
+    {
+        // Duplicate the write end of the pipe onto the process' standard stream.
+        LE_FATAL_IF(dup2(pipefd[WRITE_PIPE], streamNum) == -1,
+                    "Could not duplicate fd.  %m.");
+
+        // Close the two ends of the pipe because we don't need them.
+        fd_Close(pipefd[READ_PIPE]);
+        fd_Close(pipefd[WRITE_PIPE]);
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Creates a pipe.  On failure the fd values are set to -1.
+ */
+//--------------------------------------------------------------------------------------------------
+static void CreatePipe
+(
+    proc_Ref_t procRef, ///< [IN] Process to create the pipe for.
+    int pipefd[2],      ///< [OUT] Pipe fds.
+    int streamNum       ///< [IN] Either STDOUT_FILENO or STDERR_FILENO.
+)
+{
+    if (pipe(pipefd) != 0)
+    {
+        pipefd[0] = -1;
+        pipefd[1] = -1;
+
+        if (streamNum == STDERR_FILENO)
+        {
+            LE_ERROR("Could not create pipe. %s process' stderr will not be available.  %m.",
+                     procRef->name);
+        }
+        else
+        {
+            LE_ERROR("Could not create pipe. %s process' stdout will not be available.  %m.",
+                     procRef->name);
+        }
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Start the process.
  *
  * If the sandboxDirPtr is not Null then the process will chroot to the sandboxDirPtr and
@@ -600,9 +701,6 @@ static inline le_result_t StartProc
                                     ///       run in.  If NULL then process will be unsandboxed.
 )
 {
-#define READ_PIPE   0
-#define WRITE_PIPE  1
-
     if (procRef->pid != -1)
     {
         LE_ERROR("Process '%s' (PID: %d) cannot be started because it is already running.",
@@ -645,6 +743,12 @@ static inline le_result_t StartProc
     char smackLabel[LIMIT_MAX_SMACK_LABEL_BYTES];
     appSmack_GetLabel(app_GetName(procRef->appRef), smackLabel, sizeof(smackLabel));
 
+    // Create pipes for the process's standard error and standard out streams.
+    int stderrPipe[2];
+    int stdoutPipe[2];
+    CreatePipe(procRef, stderrPipe, STDERR_FILENO);
+    CreatePipe(procRef, stdoutPipe, STDOUT_FILENO);
+
     // Create the child process
     pid_t pID = fork();
 
@@ -656,19 +760,6 @@ static inline le_result_t StartProc
 
     if (pID == 0)
     {
-        freopen("/dev/console", "a", stdout);
-        freopen("/dev/console", "a", stderr);
-
-        // Set the umask so that files are not accidentally created with global permissions.
-        umask(S_IRWXG | S_IRWXO);
-
-        // Unblock all signals that might have been blocked.
-        sigset_t sigSet;
-        LE_ASSERT(sigfillset(&sigSet) == 0);
-        LE_ASSERT(pthread_sigmask(SIG_UNBLOCK, &sigSet, NULL) == 0);
-
-        SetEnvironmentVariables(envVars, numEnvVars);
-
         // Wait for the parent to allow us to continue by blocking on the read pipe until it
         // is closed.
         fd_Close(syncPipeFd[WRITE_PIPE]);
@@ -685,8 +776,22 @@ static inline le_result_t StartProc
 
         // The parent has allowed us to continue.
 
+        // Redirect the process's standard streams.
+        RedirectStdStream(stderrPipe, STDERR_FILENO);
+        RedirectStdStream(stdoutPipe, STDOUT_FILENO);
+
         // Set the process's SMACK label.
         smack_SetMyLabel(smackLabel);
+
+        // Set the umask so that files are not accidentally created with global permissions.
+        umask(S_IRWXG | S_IRWXO);
+
+        // Unblock all signals that might have been blocked.
+        sigset_t sigSet;
+        LE_ASSERT(sigfillset(&sigSet) == 0);
+        LE_ASSERT(pthread_sigmask(SIG_UNBLOCK, &sigSet, NULL) == 0);
+
+        SetEnvironmentVariables(envVars, numEnvVars);
 
         // Setup the process environment.
         if (sandboxDirPtr != NULL)
@@ -721,13 +826,16 @@ static inline le_result_t StartProc
     // Set the scheduling priority for the child process while the child process is blocked.
     SetSchedulingPriority(procRef);
 
+    // Send standard pipes to the log daemon so they will show up in the logs.
+    SendStdPipeToLogDaemon(procRef, stderrPipe, STDERR_FILENO);
+    SendStdPipeToLogDaemon(procRef, stdoutPipe, STDOUT_FILENO);
+
     // Set the resource limits for the child process while the child process is blocked.
     if (resLim_SetProcLimits(procRef) != LE_OK)
     {
         LE_ERROR("Could not set the resource limits.  %m.");
-        LE_FATAL_IF((kill(procRef->pid, SIGKILL) == -1) && (errno != ESRCH),
-                    "Failed to send signal to process '%s' (PID: %d).  %m.",
-                    procRef->name, procRef->pid);
+
+        kill_Hard(procRef->pid);
     }
 
     LE_INFO("Starting process %s with pid %d", procRef->name, procRef->pid);
@@ -816,46 +924,6 @@ void proc_Stopping
     // Set this flag to indicate that the process was intentionally killed and its fault action
     // should not be respected.
     procRef->cmdKill = true;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Pause the running process.  This is an asynchronous function call that returns immediately but
- * the process state may not be updated right away.  Set a state change handler using
- * proc_SetStateChangeHandler to get notified when the process actually pauses.
- */
-//--------------------------------------------------------------------------------------------------
-void proc_Pause
-(
-    proc_Ref_t procRef              ///< [IN] The process to pause.
-)
-{
-    LE_ASSERT(procRef->pid != -1);
-
-    LE_FATAL_IF((kill(procRef->pid, SIGSTOP) == -1) && (errno != ESRCH),
-                "Failed to send signal to process '%s' (PID: %d).  %m.",
-                procRef->name, procRef->pid);
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Resume the running process.  This is an asynchronous function call that returns immediately but
- * the process state may not be updated right away.  Set a state change handler using
- * proc_SetStateChangeHandler to get notified when the process actually resumes.
- */
-//--------------------------------------------------------------------------------------------------
-void proc_Resume
-(
-    proc_Ref_t procRef              ///< [IN] The process to resume.
-)
-{
-    LE_ASSERT(procRef->pid != -1);
-
-    LE_FATAL_IF((kill(procRef->pid, SIGCONT) == -1) && (errno != ESRCH),
-                "Failed to send signal to process '%s' (PID: %d).  %m.",
-                procRef->name, procRef->pid);
 }
 
 

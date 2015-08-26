@@ -1,0 +1,18 @@
+start: manual
+
+executables:
+{
+    faultTest = ( faultTest )
+}
+
+processes:
+{
+    faultAction: restartApp
+
+    // This needs to be "processName (executable appName faultType)
+    run:
+    {
+        noExit = (faultTest RestartApp noExit)
+        restartApp = (faultTest RestartApp progFault)
+    }
+}

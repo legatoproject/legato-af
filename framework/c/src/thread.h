@@ -18,6 +18,43 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Maximum thread name size in bytes.
+ */
+//--------------------------------------------------------------------------------------------------
+#define MAX_THREAD_NAME_SIZE        24
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The legato thread structure containing all of the thread's attributes.
+ *
+ * @note    A Thread object created using le_thread_InitLegatoThreadData() will have its mainFunc
+ *          set to NULL, and will not be joinable using le_thread_Join(), regardless of the thread's
+ *          actual detach state.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    char    name[MAX_THREAD_NAME_SIZE];     ///< The name of the thread.
+    pthread_attr_t          attr;           ///< The thread's attributes.
+    bool                    isJoinable;     ///< true = the thread is joinable, false = detached.
+    bool                    isStarted;      ///< true = the thread has been started.
+    le_thread_MainFunc_t    mainFunc;       ///< The main function for the thread.
+    void*                   context;        ///< Context value to be passed to mainFunc.
+    le_sls_List_t           destructorList; ///< The destructor list for this thread.
+    mutex_ThreadRec_t       mutexRec;       ///< The thread's mutex record.
+    sem_ThreadRec_t         semaphoreRec;   ///< the thread's semaphore record.
+    event_PerThreadRec_t    eventRec;       ///< The thread's event record.
+    pthread_t               threadHandle;   ///< The pthreads thread handle.
+    le_thread_Ref_t         safeRef;        ///< Safe reference for this object.
+    timer_ThreadRec_t       timerRec;       ///< The thread's timer record.
+    le_dls_Link_t           link;           ///< Link for exposure to the Inpsect tool. 
+}
+ThreadObj_t;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Initializes the thread system.  This function must be called before any other thread functions
  * are called.
  *

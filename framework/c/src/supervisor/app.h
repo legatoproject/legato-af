@@ -248,21 +248,6 @@ const char* app_GetSandboxPath
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Gets an application's home directory path.
- *
- * If the app is sandboxed, this is relative to the sandbox's root directory.
- *
- * @return A pointer to the path.
- */
-//--------------------------------------------------------------------------------------------------
-const char* app_GetHomeDirPath
-(
-    app_Ref_t appRef
-);
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Gets an application's configuration path.
  *
  * @return

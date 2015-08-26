@@ -1,10 +1,16 @@
 /**
  * @page c_APIs C Runtime Library
  *
- * @ref cApiOverview
+ * This section contains detailed info about Legato's C Language library used for low-level routines like
+ * commonly used data structures and OS services APIs.
  *
  * <HR>
  *
+ * The C APIs' @ref cApiOverview has high-level info.
+ *
+ * <HR>
+ *
+ * @subpage c_le_build_cfg  <br>
  * @subpage c_basics  <br>
  * @subpage c_args  <br>
  * @subpage c_dir  <br>
@@ -33,7 +39,7 @@
  *
  * @section cApiOverview Overview
  * Here is some background info on Legato's C Language APIs.
- * 
+ *
  * @subsection Object-Oriented Design
  *
  * The Legato framework is constructed in an object-oriented manner.
@@ -143,18 +149,22 @@
 #include <poll.h>
 #include <sys/epoll.h>
 #include <sys/prctl.h>
+#include <sched.h>
+#include <semaphore.h>
+#include <math.h>
 
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+#include "../../le_build_config.h"
 #include "le_basics.h"
 #include "le_doublyLinkedList.h"
 #include "le_singlyLinkedList.h"
 #include "le_utf8.h"
-#include "le_mem.h"
 #include "le_log.h"
+#include "le_mem.h"
 #include "le_mutex.h"
 #include "le_clock.h"
 #include "le_semaphore.h"

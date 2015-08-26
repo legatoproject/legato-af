@@ -3,8 +3,8 @@
  * The Legato Supervisor is a daemonized process that has root privileges. It's the first Legato
  * process to start, and is responsible for starting and monitoring the rest of the Legato runtime
  * system.
-
- *  - @ref c_sup_sysProcs
+ *
+ *  - @ref c_sup_frameworkDaemons
  *  - @ref c_sup_appStarts
  *  - @ref c_sup_sandboxedApps
  *  - @ref c_sup_nonSandboxedApps
@@ -15,39 +15,27 @@
  *  - @ref c_sup_configLayout
  *  - @ref c_sup_smack
  *
- * @section c_sup_sysProcs System Processes
+ * @section c_sup_frameworkDaemons Framework Daemons
  *
- * Besides the Supervisor, the Legato runtime system consists of a number of system processes that
+ * Besides the Supervisor, the Legato runtime system consists of a number of framework daemons that
  * must be started before any apps are started.
  *
- * The system processes must be started in a specific order and must be given time to initialize
+ * The framework daemons must be started in a specific order and must be given time to initialize
  * properly.
  *
- * After starting each system process, the Supervisor waits for the system process to signal that
- * it's ready before continuing to the next system process. Only after all system processes have
- * been started and initialized, will apps be started.  The assumption is made that system
- * processes are trusted and reliable.
- *
- * The system processes must be started in this order:
- * - Service Director
- * - Log Control Daemon
- * - Configuration Database.
- *
- * @todo Currently the list of system processes is stored in the file SYS_PROCS_CONFIG.  This list
- *       contains other system processes in addition to the Service Directory, Log Control Daemon
- *       and Configuration Database.  The additional system processes should probably be removed
- *       from this list and made into pre-installed unsandboxed apps.
- *
+ * After starting each framework daemon, the Supervisor waits for the daemon to signal that it's
+ * ready before continuing to the next daemon. Only after all framework daemons have been started
+ * and initialized, will apps be started.  The assumption is made that framework daemons are trusted
+ * and reliable.
  *
  * @section c_sup_appStarts Starting Applications
  *
- * Installed apps may be configured to start automatically or manually. If
- * configured to start automatically, the Supervisor starts the app on
- * start-up, after all system processes have been started.
+ * Installed apps may be configured to start automatically or manually. If configured to start
+ * automatically, the Supervisor starts the app on start-up, after all framework daemons have been
+ * started.
  *
- * All apps can be stopped and started manually by sending a request to the
- * Supervisor.  Only one instance of the app may be running at a time.
- *
+ * All apps can be stopped and started manually by sending a request to the Supervisor.  Only one
+ * instance of the app may be running at a time.
  *
  * @section c_sup_sandboxedApps Sandboxed Applications
  *
@@ -58,12 +46,11 @@
  *
  *      - Create the directory /tmp/Legato/sandboxes/appName. This is the root of the sandbox.
  *      - Mount a ramfs with a fixed size at the root of the sandbox.
- *      - Create standard directories in the sandbox, like /tmp, /home/appName, /dev, etc.
+ *      - Create standard directories in the sandbox, /tmp, /dev, etc.
  *      - Bind mount in standard files and devices into the sandbox, like /dev/null, the Service
  *         Directory sockets, etc.
  *      - Bind mount in all other required files into the sandbox specific to the app.
- *      - Start all the app processes chrooted to the sandbox root and chdir to
- *         /tmp/Legato/sandboxes/appName/home/appName.
+ *      - Start all the app processes chrooted to the sandbox root and chdir to the sandbox root.
  *
  * @Note All sandboxes are created in /tmp so that nothing is persistent.
  *
@@ -78,18 +65,13 @@
  *
  * @section c_sup_nonSandboxedApps Non-Sandboxed Applications
  *
- * A non-sandboxed app is one that runs in the main file system.  The Supervisor
- * uses this procedure to start a non-sandboxed app:
- *
- *      - Create the directory /home/appName.
- *      - Run app processes chdir to /home/appName.
+ * A non-sandboxed app is one that runs in the main file system.  The current working directory will
+ * be "/".
  *
  * When a non-sandboxed app is stopped:
  *
  *      - All app processes are killed.
- *
- * @Note The /home/appName directory is not cleaned up because there may be persistent files left in
- *       this directory that the app will need next time it starts.
+
  *
  * @todo Add capabilities to non-sandboxed apps.
  *
@@ -251,7 +233,7 @@
 #include "user.h"
 #include "app.h"
 #include "fileDescriptor.h"
-#include "config.h"
+#include "frameworkDaemons.h"
 #include "cgroups.h"
 #include "smack.h"
 #include "appSmack.h"
@@ -285,15 +267,6 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * The name of the configuration file that stores all system processes that the Supervisor must
- * start before any user apps.
- */
-//--------------------------------------------------------------------------------------------------
-#define SYS_PROCS_CONFIG                    "/tmp/LegatoConfigTree/sysProcs"
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * The file the Supervisor uses to ensure that only a single instance of the Supervisor is running.
  */
 //--------------------------------------------------------------------------------------------------
@@ -307,6 +280,19 @@
  */
 //--------------------------------------------------------------------------------------------------
 typedef struct _appObjRef* AppObjRef_t;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Enumerates the different application start options that can be provided on the command-line.
+ */
+//--------------------------------------------------------------------------------------------------
+static enum
+{
+    APP_START_AUTO,     ///< Start all apps that are marked for automatic start.
+    APP_START_NONE      ///< Don't start any apps until told to do so through the App Control API.
+}
+AppStartMode = APP_START_AUTO;   // Default is to start apps.
 
 
 //--------------------------------------------------------------------------------------------------
@@ -339,53 +325,10 @@ AppObj_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * System process object reference.  Incomplete type so that we can have the system process object
- * reference the SysProcStopHandler_t.
- */
-//--------------------------------------------------------------------------------------------------
-typedef struct _sysProcObjRef* SysProcObjRef_t;
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Prototype for system process stopped handler.
- */
-//--------------------------------------------------------------------------------------------------
-typedef void (*SysProcStopHandler_t)
-(
-    SysProcObjRef_t sysProcObjRef       // The system process that stopped.
-);
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * System process object.
- */
-//--------------------------------------------------------------------------------------------------
-typedef struct _sysProcObjRef
-{
-    char            name[LIMIT_MAX_PROCESS_NAME_BYTES];  // The name of the process.
-    pid_t           pid;                // The pid of the process.
-    SysProcStopHandler_t stopHandler;   // The handler to call when this system process stops.
-    le_dls_Link_t   link;               // The link in the system process list.
-}
-SysProcObj_t;
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Memory pool for app objects.
  */
 //--------------------------------------------------------------------------------------------------
 static le_mem_PoolRef_t AppObjPool;
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Memory pool for system process objects.
- */
-//--------------------------------------------------------------------------------------------------
-static le_mem_PoolRef_t SysProcObjPool;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -398,14 +341,6 @@ static le_dls_List_t AppsList = LE_DLS_LIST_INIT;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * List of all system processes.
- */
-//--------------------------------------------------------------------------------------------------
-static le_dls_List_t SysProcsList = LE_DLS_LIST_INIT;
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Command reference for the Stop Legato command.
  */
 //--------------------------------------------------------------------------------------------------
@@ -414,58 +349,92 @@ static le_sup_ctrl_ServerCmdRef_t StopLegatoCmdRef = NULL;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Timeout value used to send a SIGKILL
- */
-//--------------------------------------------------------------------------------------------------
-static const le_clk_Time_t KillTimeout = {
-        .sec = 0,
-        .usec = 300000,
-};
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Timer used to stop system processes.
- */
-//--------------------------------------------------------------------------------------------------
-static le_timer_Ref_t KillTimerRef;
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Local function Prototypes.
  */
 //--------------------------------------------------------------------------------------------------
 static void StopFramework(void);
-static void StopSysProcs(void);
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Checks if a string is empty.
+ * Prints man page style usage help to stdout.
  */
 //--------------------------------------------------------------------------------------------------
-static bool IsEmptyString
+static void PrintHelp
 (
-    const char* strPtr
+    void
 )
 {
-    if (strPtr == NULL)
-    {
-        return true;
-    }
+    fprintf(stderr, "Printing help...\n");
 
-    int i = 0;
-    for (; strPtr[i] != '\0'; i++)
-    {
-        if (isspace(strPtr[i]) == 0)
-        {
-            return false;
-        }
-    }
+    const char* programName = le_arg_GetProgramName();
 
-    return true;
+    printf( "NAME\n"
+            "        %s - Starts the Legato framework.\n"
+            "\n"
+            "SYNOPSIS\n"
+            "        %s [OPTION]\n"
+            "\n"
+            "DESCRIPTION\n"
+            "        Start up the Legato application framework daemon processes.\n"
+            "\n"
+            "        Options:\n"
+            "\n"
+            "        -a, --start-apps=MODE\n"
+            "                If MODE is 'auto', start all apps marked for auto start\n"
+            "                (this is the default).  If MODE is 'none', don't start\n"
+            "                any apps until told to do so through the App Control API.\n"
+            "\n"
+            "        -h --help\n"
+            "                Print this help text to standard output stream and exit.\n",
+            programName,
+            programName);
 }
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Parse the command-line arguments for options.
+ */
+//--------------------------------------------------------------------------------------------------
+static void ParseCommandLine
+(
+    void
+)
+//--------------------------------------------------------------------------------------------------
+{
+    bool printHelp = false;
+    const char* appStartModeArgPtr = NULL;
+
+    le_arg_SetStringVar(&appStartModeArgPtr, "a", "start-apps");
+    le_arg_SetFlagVar(&printHelp, "h", "help");
+
+    // Run the argument scanner.
+    le_arg_Scan();
+
+    // Check for the help flag first.  It overrides everything else.
+    if (printHelp)
+    {
+        PrintHelp();
+        exit(EXIT_SUCCESS);
+    }
+
+    // If the -a (--start-apps) option was provided,
+    if (appStartModeArgPtr != NULL)
+    {
+        if (strcmp(appStartModeArgPtr, "none") == 0)
+        {
+            AppStartMode = APP_START_NONE;
+        }
+        else if (strcmp(appStartModeArgPtr, "auto") != 0)
+        {
+            fprintf(stderr,
+                    "Invalid --start-apps (-a) option '%s'.  Must be 'auto' or 'none'.\n",
+                    appStartModeArgPtr);
+            exit(EXIT_FAILURE);
+        }
+    }
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -643,62 +612,6 @@ static void StopNextApp
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Deletes the system process object and logs an error message.
- */
-//--------------------------------------------------------------------------------------------------
-void DeleteSysProc
-(
-    SysProcObjRef_t sysProcObjRef           // System process that stopped.
-)
-{
-    // @todo Restart the framework instead of just giving a warning.
-    LE_EMERG("System process '%s' has died.  Some services may not function correctly.",
-             sysProcObjRef->name);
-
-    // Delete the sys proc object.
-    le_dls_Remove(&SysProcsList, &(sysProcObjRef->link));
-    le_mem_Release(sysProcObjRef);
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Stops the next system process.
- *
- * Deletes the system process object that just stopped.
- */
-//--------------------------------------------------------------------------------------------------
-static void StopNextSysProc
-(
-    SysProcObjRef_t sysProcObjRef           // System process that just stopped.
-)
-{
-    // Delete the sys proc object.
-    le_dls_Remove(&SysProcsList, &(sysProcObjRef->link));
-    le_mem_Release(sysProcObjRef);
-
-    // Continue to stop all other system processes.
-    StopSysProcs();
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Handle termination of the last system process.
- */
-//--------------------------------------------------------------------------------------------------
-static void HandleLastSysProcStopped
-(
-    SysProcObjRef_t sysProcObjRef           // System process that just stopped.
-)
-{
-    LE_INFO("Legato framework shut down.");
-
-    // Exit the Supervisor.
-    exit(EXIT_SUCCESS);
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Gets an app object by name.
  *
  * @return
@@ -863,240 +776,7 @@ static void LaunchAllStartupApps
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Sets the environment variable for a process from the list of environment variables in the
- * sysproc config.
- *
- * @todo This uses the old config tree but maybe this won't be needed at all in the future when the
- *       agent is no longer a sysproc
- */
-//--------------------------------------------------------------------------------------------------
-static void SetEnvironmentVariables
-(
-    const char* processName,        /// [IN] The name of the process to start.
-    const char* procCfgPath         /// [IN] The processes path in the config tree.
-)
-{
-    // Setup the user defined environment variables.
-    char** envListPtr = cfg_GetRelative(procCfgPath, "envVars");
-
-    if (envListPtr == NULL)
-    {
-        LE_WARN("Could not read environment variables for process '%s'.", processName);
-    }
-    else
-    {
-        size_t i = 0;
-        for (i = 0; envListPtr[i] != NULL; i++)
-        {
-            // Get the enviroment variable's name and value from the environment list's name=value
-            // pair string.
-            char* varNamePtr = envListPtr[i];
-            char* varValuePtr = strchr(envListPtr[i], '=');
-
-            if (varValuePtr != NULL)
-            {
-                // Split the string into separate name and value strings.
-                *varValuePtr = '\0';
-                varValuePtr++;
-
-                // Set the environment variable, overwriting anything that was previously there.
-                LE_ASSERT(setenv(varNamePtr, varValuePtr, 1) == 0);
-            }
-            else
-            {
-                LE_WARN("Environment variable string '%s' is malformed.  It should be a name=value pair.",
-                        envListPtr[i]);
-            }
-        }
-
-        cfg_Free(envListPtr);
-    }
-}
-
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Launches all system processes in the order they appear in the SYS_PROCS_CONFIG file.  The
- * Supervisor waits for each system process to signal that it has successfully initialized before
- * going on to start the next process.
- *
- * @note System processes run as root and outside of sandboxes.
- */
-//--------------------------------------------------------------------------------------------------
-static void LaunchAllSystemProcs
-(
-    void
-)
-{
-    // Open the config file.
-    FILE* sysProcFilePtr = fopen(SYS_PROCS_CONFIG, "r");
-
-    LE_FATAL_IF(sysProcFilePtr == NULL,
-                "Could not read system configuration file '%s'.  %m.", SYS_PROCS_CONFIG);
-
-    // Read each line in the file.
-    char programPath[LIMIT_MAX_PATH_BYTES];
-
-    while (fgets(programPath, LIMIT_MAX_PATH_BYTES, sysProcFilePtr) != NULL)
-    {
-        // Strip the line feed.
-        programPath[le_utf8_NumBytes(programPath) - 1] = '\0';
-
-        if (IsEmptyString(programPath))
-        {
-            LE_ERROR("Empty value for system process.");
-            continue;
-        }
-
-        char* processNamePtr = le_path_GetBasenamePtr(programPath, "/");
-
-        // Kill all other instances of this process just in case.
-        char killCmd[LIMIT_MAX_PATH_BYTES];
-        int s = snprintf(killCmd, sizeof(killCmd), "killall -q %s", processNamePtr);
-
-        if (s >= sizeof(killCmd))
-        {
-            LE_FATAL("Could not create 'killall' cmd, buffer is too small.  Buffer is %zd bytes but \
-needs to be %d bytes.", sizeof(killCmd), s);
-        }
-
-        int r = system(killCmd);
-
-        if (!WIFEXITED(r))
-        {
-            LE_ERROR("Could not send killall cmd.");
-        }
-
-        // Create the process object.
-        SysProcObj_t* procPtr = le_mem_ForceAlloc(SysProcObjPool);
-        LE_ASSERT(le_utf8_Copy(procPtr->name, processNamePtr, sizeof(procPtr->name), NULL) == LE_OK);
-
-        // Initialize the sys proc object.
-        procPtr->link = LE_DLS_LINK_INIT;
-        procPtr->stopHandler = DeleteSysProc;
-
-        // Create a synchronization pipe.
-        int syncPipeFd[2];
-        LE_FATAL_IF(pipe(syncPipeFd) != 0, "Could not create synchronization pipe.  %m.");
-
-        // Fork a process.
-        pid_t pID = fork();
-        LE_FATAL_IF(pID < 0, "Failed to fork child process.  %m.");
-
-        if (pID == 0)
-        {
-            // Clear the signal mask so the child does not inherit our signal mask.
-            sigset_t sigSet;
-            LE_ASSERT(sigfillset(&sigSet) == 0);
-            LE_ASSERT(pthread_sigmask(SIG_UNBLOCK, &sigSet, NULL) == 0);
-
-            // The child does not need the read end of the pipe so close it.
-            fd_Close(syncPipeFd[0]);
-
-            // Duplicate the write end of the pipe on standard in so the execed program will know
-            // where it is.
-            if (syncPipeFd[1] != STDIN_FILENO)
-            {
-                int r;
-                do
-                {
-                    r = dup2(syncPipeFd[1], STDIN_FILENO);
-                }
-                while ( (r == -1)  && (errno == EINTR) );
-                LE_FATAL_IF(r == -1, "Failed to duplicate fd.  %m.");
-
-                // Close the duplicate fd.
-                fd_Close(syncPipeFd[1]);
-            }
-
-            // Close all non-standard fds.
-            fd_CloseAllNonStd();
-
-            // @todo:  Run all sysprocs as non-root.  Nobody really needs to be root except the
-            //         Supervisor and the Installer (because it needs to create the user).  Also,
-            //         the config path for the sysProcs should not be here (maybe it should just be
-            //         hardcoded instead).  This is done this way for now so that the Air Vantage
-            //         connector can set environment variables for itself but this all needs to be
-            //         cleaned up later.
-            SetEnvironmentVariables(processNamePtr, processNamePtr);
-
-            smack_SetMyLabel("framework");
-
-            // Launch the child program.  This should not return unless there was an error.
-            execl(programPath, programPath, (char*)NULL);
-
-            // The program could not be started.
-            LE_FATAL("'%s' could not be started: %m", programPath);
-        }
-
-        // Close the write end of the pipe because the parent does not need it.
-        fd_Close(syncPipeFd[1]);
-
-        // Wait for the child process to close the read end of the pipe.
-        // @todo: Add a timeout here.
-        ssize_t numBytesRead;
-        int dummyBuf;
-        do
-        {
-            numBytesRead = read(syncPipeFd[0], &dummyBuf, 1);
-        }
-        while ( ((numBytesRead == -1)  && (errno == EINTR)) || (numBytesRead != 0) );
-
-        LE_FATAL_IF(numBytesRead == -1, "Could not read synchronization pipe.  %m.");
-
-        // Close the read end of the pipe because it is no longer used.
-        fd_Close(syncPipeFd[0]);
-
-        // Add the process to the list of system processes.
-        procPtr->pid = pID;
-        le_dls_Queue(&SysProcsList, &(procPtr->link));
-
-        LE_INFO("Started system process '%s' with PID: %d.",
-                processNamePtr, pID);
-    }
-
-    LE_ASSERT(fclose(sysProcFilePtr) == 0);
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Load the current IPC binding configuration into the Service Directory.
- **/
-//--------------------------------------------------------------------------------------------------
-static void LoadIpcBindingConfig
-(
-    void
-)
-{
-    int result = system("sdir load");
-
-    if (result == -1)
-    {
-        LE_FATAL("Failed to fork child process. (%m)");
-    }
-    else if (WIFEXITED(result))
-    {
-        int exitCode = WEXITSTATUS(result);
-
-        if (exitCode != 0)
-        {
-            LE_FATAL("Couldn't load IPC binding config. `sdir load` exit code: %d.", exitCode);
-        }
-    }
-    else if (WIFSIGNALED(result))
-    {
-        int sigNum = WTERMSIG(result);
-
-        LE_FATAL("Couldn't load IPC binding config. `sdir load` received signal: %d.", sigNum);
-    }
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Starts all system processes and user apps.
+ * Starts all framework daemons and user apps.
  */
 //--------------------------------------------------------------------------------------------------
 static void StartFramework
@@ -1104,12 +784,8 @@ static void StartFramework
     int syncFd ///< File descriptor for pipe to be closed when the framework is ready to use.
 )
 {
-    // Launch all system processes.
-    LaunchAllSystemProcs();
-    LE_INFO("All sys procs ready.");
-
-    // Load the current IPC binding configuration into the Service Directory.
-    LoadIpcBindingConfig();
+    // Start all framework daemons.
+    fwDaemons_Start();
 
     // Close the synchronization pipe that is connected to the parent process.
     // This signals to the parent process that it is now safe to start using the framework.
@@ -1117,6 +793,7 @@ static void StartFramework
 
     LE_DEBUG("---- Initializing the configuration API ----");
     le_cfg_ConnectService();
+    logFd_ConnectService();
 
     LE_DEBUG("---- Initializing the Supervisor's APIs ----");
     le_sup_ctrl_AdvertiseService();
@@ -1126,87 +803,70 @@ static void StartFramework
     // Initial sub-components that require other services.
     appSmack_AdvertiseService();
 
-    // Launch all user apps in the config tree that should be launched on system startup.
-    LaunchAllStartupApps();
+    if (AppStartMode == APP_START_AUTO)
+    {
+        // Launch all user apps in the config tree that should be launched on system startup.
+        LE_INFO("Auto-starting apps.");
+        LaunchAllStartupApps();
+    }
+    else
+    {
+        LE_INFO("Skipping app auto-start.");
+    }
 }
+
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Try to kill a system processes.
+ * Stops the Supervisor.  This should only be called after all user apps and framework daemons are
+ * shutdown.
  */
 //--------------------------------------------------------------------------------------------------
-static void KillSysProc
-(
-    SysProcObj_t* sysProcPtr
-)
-{
-    LE_INFO("Killing system process '%s' (PID: %d)", sysProcPtr->name, sysProcPtr->pid);
-
-    // Soft Kill the system process.
-    LE_ASSERT(kill(sysProcPtr->pid, SIGTERM) == 0);
-
-    // Start a timer in case process does not comply
-    le_timer_SetContextPtr(KillTimerRef, sysProcPtr);
-    le_timer_Start(KillTimerRef);
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Stops all system processes. This function kicks off the chain of handlers that will stop all
- * system processes.
- */
-//--------------------------------------------------------------------------------------------------
-static void StopSysProcs
+static void StopSupervisor
 (
     void
 )
 {
-    // Stop the system processes in the reverse order they were created.
-    le_dls_Link_t* sysProcLinkPtr = le_dls_PeekTail(&SysProcsList);
+    LE_INFO("Legato framework shut down.");
 
-    if (sysProcLinkPtr != NULL)
-    {
-        SysProcObj_t* sysProcPtr = CONTAINER_OF(sysProcLinkPtr, SysProcObj_t, link);
-
-        // Do not shutdown the service directory yet.
-        if (strcmp(sysProcPtr->name, "serviceDirectory") != 0)
-        {
-            // Set the stop handler that will stop the next system process.
-            sysProcPtr->stopHandler = StopNextSysProc;
-
-            KillSysProc(sysProcPtr);
-
-            return;
-        }
-    }
-
-    // The only system process that should be running at this point is the service directory which
-    // we need to send back the response.
-    // @NOTE We assume the serviceDirectory was the first system process started.
-    sysProcLinkPtr = le_dls_Peek(&SysProcsList);
-
-    if (sysProcLinkPtr != NULL)
-    {
-        if (StopLegatoCmdRef != NULL)
-        {
-            // Respond to the requesting process to tell it that the Legato framework has stopped.
-            le_sup_ctrl_StopLegatoRespond(StopLegatoCmdRef, LE_OK);
-        }
-
-        SysProcObj_t* sysProcPtr = CONTAINER_OF(sysProcLinkPtr, SysProcObj_t, link);
-
-        // Set a handler
-        sysProcPtr->stopHandler = HandleLastSysProcStopped;
-
-        KillSysProc(sysProcPtr);
-    }
+    // Exit the Supervisor.
+    exit(EXIT_SUCCESS);
 }
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Stops all system processes and user apps.  This function kicks off the chain of handlers that
- * will stop all user apps and system processes.
+ * Prepares for a full shutdown of the framework by responding to the Stop Legato command telling
+ * the requesting process the framework has shutdown and closing all services that the Supervisor
+ * has advertised.
+ *
+ * This should be called only when all user apps and all framework daemons, except the Service
+ * Directory, are shutdown but before the Service Directory and Supervisor are shutdown.
+ */
+//--------------------------------------------------------------------------------------------------
+static void PrepareFullShutdown
+(
+    void
+)
+{
+    if (StopLegatoCmdRef != NULL)
+    {
+        // Respond to the requesting process to tell it that the Legato framework has stopped.
+        le_sup_ctrl_StopLegatoRespond(StopLegatoCmdRef, LE_OK);
+    }
+
+    // Close services that we've advertised before the Service Directory dies.
+    le_msg_HideService(le_sup_ctrl_GetServiceRef());
+    le_msg_HideService(le_sup_wdog_GetServiceRef());
+    le_msg_HideService(le_appInfo_GetServiceRef());
+    le_msg_HideService(appSmack_GetServiceRef());
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stops all user apps and all framework daemons.  This function kicks off the chain of handlers
+ * that will stop all user apps and framework daemons.
  */
 //--------------------------------------------------------------------------------------------------
 static void StopFramework
@@ -1221,11 +881,11 @@ static void StopFramework
     {
         AppObj_t* appPtr = CONTAINER_OF(appLinkPtr, AppObj_t, link);
 
-        // Set the stop handler that will continue to stop all apps and then stop the system processes.
+        // Set the stop handler that will continue to stop all apps and the framework.
         appPtr->stopHandler = StopNextApp;
 
         // Stop the first app.  This will kick off the chain of callback handlers that will stop
-        // all processes and then stop all system processes.
+        // all apps and then the framework.
         app_Stop(appPtr->appRef);
 
         // If the application has already stopped then call its stop handler here.  Otherwise the
@@ -1239,12 +899,17 @@ static void StopFramework
     {
         // There are no apps running.
 
-        // Disconnect ourselves from the config db so that when we kill the config it does cause us
+        // Disconnect ourselves from services we use so when we kill the servers it does cause us
         // to die too.
         le_cfg_DisconnectService();
+        logFd_DisconnectService();
 
-        // Stop the systems processes.
-        StopSysProcs();
+        // Set the framework daemon shutdown handlers.
+        fwDaemons_SetIntermediateShutdownHandler(PrepareFullShutdown);
+        fwDaemons_SetShutdownHandler(StopSupervisor);
+
+        // Stop the framework daemons.
+        fwDaemons_Shutdown();
     }
 }
 
@@ -1260,8 +925,6 @@ static void Reboot
 )
 {
 #ifdef LEGATO_EMBEDDED
-
-    // @todo Copy syslog to persistent file.
 
     sync();
 
@@ -1280,38 +943,6 @@ static void Reboot
     LE_FATAL("Should reboot the system now but since this is not an embedded system just exit.");
 
 #endif
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Gets a system process object by pid.
- *
- * @return
- *      A pointer to the system process if successful.
- *      NULL if the system process is not found.
- */
-//--------------------------------------------------------------------------------------------------
-static SysProcObj_t* GetSysProcObj
-(
-    pid_t pid           // The pid of the system process.
-)
-{
-    le_dls_Link_t* procLinkPtr = le_dls_Peek(&SysProcsList);
-
-    while (procLinkPtr != NULL)
-    {
-        SysProcObj_t* procPtr = CONTAINER_OF(procLinkPtr, SysProcObj_t, link);
-
-        if (procPtr->pid == pid)
-        {
-            return procPtr;
-        }
-
-        procLinkPtr = le_dls_PeekNext(&SysProcsList, procLinkPtr);
-    }
-
-    return NULL;
 }
 
 
@@ -1461,100 +1092,61 @@ static void SigChildHandler
             break;
         }
 
-        // Search the list of System processes.
-        SysProcObj_t* sysProcPtr = GetSysProcObj(pid);
+        // Get the name of the application this process belongs to from the dead process's SMACK
+        // label.  Must do this before we reap the process, or the SMACK label will be unavailable.
+        char appName[LIMIT_MAX_APP_NAME_BYTES];
+        le_result_t result = appSmack_GetName(pid, appName, sizeof(appName));
 
-        if (sysProcPtr != NULL)
+        // Reap the child now.
+        int status = WaitReapChild(pid);
+
+        // Branch based on the result of fetching the app name from the SMACK label.
+        switch (result)
         {
-            // This process is a system process. Reap the child now.
-            WaitReapChild(pid);
-
-            if ( le_timer_IsRunning(KillTimerRef) &&
-                 (le_timer_GetContextPtr(KillTimerRef) == sysProcPtr) )
+            case LE_OK:
             {
-                le_timer_Stop(KillTimerRef);
-            }
+                // Got the app name for the process.  Now get the app object by name.
+                AppObj_t* appObjPtr = GetApp(appName);
 
-            if (sysProcPtr->stopHandler != NULL)
-            {
-                sysProcPtr->stopHandler(sysProcPtr);
-            }
-        }
-        else
-        {
-            // Find the application this process belongs to.
-            char appName[LIMIT_MAX_APP_NAME_BYTES];
-            le_result_t result = appSmack_GetName(pid, appName, sizeof(appName));
-
-            // Regardless of whether this process is an application process or not we must reap the
-            // child process now.
-            int status = WaitReapChild(pid);
-
-            switch (result)
-            {
-                case LE_OK:
+                if (appObjPtr != NULL)
                 {
-                    // Got the app name for the process.  Now get the app object by name.
-                    AppObj_t* appObjPtr = GetApp(appName);
-
-                    if (appObjPtr != NULL)
-                    {
-                        // Handle any faults that the child process state change my have caused.
-                        HandleAppFault(appObjPtr, pid, status);
-                    }
-                    else
-                    {
-                        LE_CRIT("Could not find running app %s.", appName);
-                    }
-                    break;
+                    // Handle any faults that the child process state change my have caused.
+                    HandleAppFault(appObjPtr, pid, status);
+                }
+                else
+                {
+                    LE_CRIT("Could not find running app %s.", appName);
                 }
 
-                case LE_OVERFLOW:
-                    LE_FATAL("App name '%s...' is too long.", appName);
-
-                case LE_NOT_FOUND:
-                    LE_ERROR("Unknown child process %d.", pid);
-                    break;
-
-                default:
-                    LE_CRIT("Could not get app name for child process %d.", pid);
+                break;
             }
+
+            case LE_NOT_FOUND:
+            {
+                // Not an app process.  See if it is a framework daemon.
+                le_result_t r = fwDaemons_SigChildHandler(pid, status);
+
+                if (r == LE_FAULT)
+                {
+                    // TODO: Should probably restart the framework.
+                }
+                else if (r == LE_NOT_FOUND)
+                {
+                    LE_ERROR("Unknown child process %d.", pid);
+                }
+
+                break;
+            }
+
+            case LE_OVERFLOW:
+                LE_FATAL("App name '%s...' is too long.", appName);
+
+            default:
+                LE_CRIT("Could not get app name for child process %d.", pid);
         }
     }
 }
 
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Called when a process has not died due to a soft kill signal within the timeout period.
- * Handles soft kill timeout by performing a hard kill.
- */
-//--------------------------------------------------------------------------------------------------
-static void SysProcsSoftKillExpiryHandler
-(
-    le_timer_Ref_t timerRef
-)
-{
-    SysProcObj_t* sysProcPtr = le_timer_GetContextPtr(timerRef);
-
-    if (sysProcPtr->pid == -1)
-    {
-        LE_WARN("Process has already exited");
-        return;
-    }
-
-    LE_WARN("Hard killing %d", sysProcPtr->pid);
-
-    if (kill(sysProcPtr->pid, SIGKILL) == -1)
-    {
-        // Process could have exited while we haven't received the SIGCHLD yet
-        // Determine if it's still alive
-        LE_FATAL_IF( (kill(sysProcPtr->pid, 0) == 0),
-                    "Could not send SIGKILL to process '%s' (PID: %d).  %m.",
-                    sysProcPtr->name,
-                    sysProcPtr->pid);
-    }
-}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1880,7 +1472,7 @@ le_result_t le_appInfo_GetName
         ///< [IN]
 )
 {
-    return appSmack_GetName (pid, appName, appNameNumElements);
+    return appSmack_GetName(pid, appName, appNameNumElements);
 }
 
 
@@ -1891,6 +1483,8 @@ le_result_t le_appInfo_GetName
 //--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
+    ParseCommandLine();
+
     // Block Signals that we are going to use.
     le_sig_Block(SIGCHLD);
     le_sig_Block(SIGPIPE);
@@ -1902,12 +1496,6 @@ COMPONENT_INIT
 
     // Daemonize ourself.
     int syncFd = Daemonize();
-
-    // Create timer to handle graceful shutdown
-    KillTimerRef = le_timer_Create("SupervisorKill");
-    le_timer_SetInterval(KillTimerRef, KillTimeout);
-
-    le_timer_SetHandler(KillTimerRef, SysProcsSoftKillExpiryHandler);
 
     // Create the Legato runtime directory if it doesn't already exist.
     LE_ASSERT(le_dir_Make(STRINGIZE(LE_RUNTIME_DIR), S_IRWXU | S_IXOTH) != LE_FAULT);
@@ -1931,7 +1519,6 @@ COMPONENT_INIT
 
 
     // Initialize sub systems.
-    cfg_Init();
     user_Init();
     user_RestoreBackup();
     app_Init();
@@ -1940,7 +1527,6 @@ COMPONENT_INIT
 
     // Create memory pools.
     AppObjPool = le_mem_CreatePool("apps", sizeof(AppObj_t));
-    SysProcObjPool = le_mem_CreatePool("sysProcs", sizeof(SysProcObj_t));
 
     // Register a signal event handler for SIGCHLD so we know when processes die.
     le_sig_SetEventHandler(SIGCHLD, SigChildHandler);

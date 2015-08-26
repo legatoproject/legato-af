@@ -9,6 +9,30 @@
 #ifndef LEGATO_SRC_MUTEX_H_INCLUDE_GUARD
 #define LEGATO_SRC_MUTEX_H_INCLUDE_GUARD
 
+/// Maximum number of bytes in a mutex name (including null terminator).
+#define MAX_NAME_BYTES 24
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Mutex object.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct le_mutex
+{
+    le_dls_Link_t       mutexListLink;      ///< Used to link onto the process's Mutex List.
+    le_thread_Ref_t     lockingThreadRef;   ///< Reference to the thread that holds the lock.
+    le_dls_Link_t       lockedByThreadLink; ///< Used to link onto the thread's locked mutexes list.
+    le_dls_List_t       waitingList;        ///< List of threads waiting for this mutex.
+    pthread_mutex_t     waitingListMutex;   ///< Pthreads mutex used to protect the waiting list.
+    bool                isTraceable;        ///< true if traceable, false otherwise.
+    bool                isRecursive;        ///< true if recursive, false otherwise.
+    int                 lockCount;      ///< Number of lock calls not yet matched by unlock calls.
+    pthread_mutex_t     mutex;          ///< Pthreads mutex that does the real work. :)
+    char                name[MAX_NAME_BYTES]; ///< The name of the mutex (UTF8 string).
+}
+Mutex_t;
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Mutex Thread Record.

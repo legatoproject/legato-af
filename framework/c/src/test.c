@@ -128,7 +128,7 @@ static void InitChildTracking
         ChildPool = le_mem_CreatePool("unitTestChildren", sizeof(Child_t));
 
         // Check how many blocks the Child Pool can hold.
-        size_t poolSize = le_mem_GetTotalNumObjs(ChildPool);
+        size_t poolSize = le_mem_GetObjectCount(ChildPool);
 
         // Make sure the Child Pool can hold at least DEFAULT_NUM_CHILDREN children.
         if (poolSize < DEFAULT_NUM_CHILDREN)

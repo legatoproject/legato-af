@@ -7,6 +7,7 @@
 
 #include "legato.h"
 
+#include "args.h"
 #include "mem.h"
 #include "hashmap.h"
 #include "safeRef.h"
@@ -17,6 +18,7 @@
 #include "eventLoop.h"
 #include "timer.h"
 #include "pathIter.h"
+#include "killProc.h"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -34,9 +36,13 @@
 //--------------------------------------------------------------------------------------------------
 __attribute__((constructor)) void _legato_InitFramework
 (
-    void
+    int argc,       ///< Number of command-line arguments (including command name)
+    char* argv[]    ///< List of command-line arguments (argv[0] is the name of the command).
 )
 {
+    // Gather the program arguments for later processing.
+    arg_SetArgs((size_t)argc, (char**)argv);
+
     // The order of initialization is important.  Ideally, logging would be initialized first,
     // because before that, any logging calls will report the wrong component.  However, the
     // logging uses memory pools, so memory pools must be initialized before logging.
@@ -52,9 +58,9 @@ __attribute__((constructor)) void _legato_InitFramework
     event_Init();      // Uses thread API.
     timer_Init();      // Uses event loop.
     msg_Init();        // Uses event loop.
+    kill_Init();       // Uses memory pools and timers.
 
     // This must be called last, because it calls several subsystems to perform the
     // thread-specific initialization for the main thread.
     thread_InitThread();
 }
-

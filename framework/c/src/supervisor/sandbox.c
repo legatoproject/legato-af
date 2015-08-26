@@ -50,7 +50,7 @@
  *         does not grow.  This gives control over how much ram the application can use for files.
  *         This is essentially the maximum size of the application's root file system.
  *
- *      3) Create standard directories in the sandbox, such as /tmp, /home/appName, /dev, etc.
+ *      3) Create standard directories in the sandbox, such as /tmp, /dev, etc.
  *
  *      4) Bind mount in standard files and devices into the sandbox, such as /dev/null, the Service
  *         Directory sockets, etc.
@@ -146,6 +146,7 @@
 #include "fileDescriptor.h"
 #include "smack.h"
 #include "interfaces.h"
+#include "devSmack.h"
 
 
 #if ! defined LE_RUNTIME_DIR
@@ -214,6 +215,15 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * The name of the node in the config tree that contains the list of import directives for
+ * devices that an application needs.
+ */
+//--------------------------------------------------------------------------------------------------
+#define CFG_NODE_DEVICES                                "devices"
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * The name of the node in the config tree that contains the source file to import to the sandbox.
  */
 //--------------------------------------------------------------------------------------------------
@@ -227,6 +237,14 @@
  */
 //--------------------------------------------------------------------------------------------------
 #define CFG_NODE_DEST_PATH                              "dest"
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum number of bytes in a permission string for devices.
+ */
+//--------------------------------------------------------------------------------------------------
+#define MAX_DEVICE_PERM_STR_BYTES                       3
 
 
 //--------------------------------------------------------------------------------------------------
@@ -273,6 +291,7 @@ const ImportObj_t DefaultSystemImportObjs[] = {
                                           {.src = "/lib/libc.so.6", .dest = "/lib/"},
                                           {.src = "/lib/libpthread.so.0", .dest = "/lib/"},
                                           {.src = "/lib/librt.so.1", .dest = "/lib/"},
+                                          {.src = "/lib/libdl.so.2", .dest = "/lib/"},
                                           {.src = "/lib/libgcc_s.so.1", .dest = "/lib/"},
                                           {.src = "/lib/libm.so.6", .dest = "/lib/"},
                                           {.src = "/usr/lib/libstdc++.so.6", .dest = "/lib/"} };
@@ -289,6 +308,7 @@ const ImportObj_t DefaultSystemImportObjs[] = {
                                           {.src = "/lib/libc.so.6", .dest = "/lib/"},
                                           {.src = "/lib/libpthread.so.0", .dest = "/lib/"},
                                           {.src = "/lib/librt.so.1", .dest = "/lib/"},
+                                          {.src = "/lib/libdl.so.2", .dest = "/lib/"},
                                           {.src = "/lib/libgcc_s.so.1", .dest = "/lib/"},
                                           {.src = "/lib/libm.so.6", .dest = "/lib/"},
                                           {.src = "/usr/lib/libstdc++.so.6", .dest = "/lib/"} };
@@ -305,6 +325,7 @@ const ImportObj_t DefaultSystemImportObjs[] = {
                                           {.src = "/lib/libc.so.6", .dest = "/lib/"},
                                           {.src = "/lib/libpthread.so.0", .dest = "/lib/"},
                                           {.src = "/lib/librt.so.1", .dest = "/lib/"},
+                                          {.src = "/lib/libdl.so.2", .dest = "/lib/"},
                                           {.src = "/lib/libgcc_s.so.1", .dest = "/lib/"},
                                           {.src = "/lib/libm.so.6", .dest = "/lib/"},
                                           {.src = "/usr/lib/libstdc++.so.6", .dest = "/lib/"} };
@@ -485,10 +506,10 @@ static le_result_t AddToImportList
     if (ImportObjListEntryPool == NULL)
     {
         ImportObjListEntryPool = le_mem_CreatePool("FilePaths", sizeof(ImportObjListEntry_t));
-        if (le_mem_GetTotalNumObjs(ImportObjListEntryPool) < 50) // NOTE: 50 is arbitrary.
+        if (le_mem_GetObjectCount(ImportObjListEntryPool) < 50) // NOTE: 50 is arbitrary.
         {
             le_mem_ExpandPool(ImportObjListEntryPool,
-                              50 - le_mem_GetTotalNumObjs(ImportObjListEntryPool));
+                              50 - le_mem_GetObjectCount(ImportObjListEntryPool));
         }
     }
 
@@ -1006,36 +1027,44 @@ static le_result_t ImportAllFiles
     // Also import system specfic common imports.
     GetDefaultImportObjs(appRef, &importList, DefaultSystemImportObjs, NUM_ARRAY_MEMBERS(DefaultSystemImportObjs));
 
-    // Add the app's bin directory.
+    // Add the app's bin directory, if it exists.
     char pathBuff[LIMIT_MAX_PATH_BYTES] = "";
     if (le_path_Concat("/", pathBuff, sizeof(pathBuff), app_GetInstallDirPath(appRef), "bin", NULL)
         != LE_OK)
     {
         LE_FATAL("App's install dir path too long!");
     }
-    if (AddToImportList(&importList,
-                        appRef,
-                        pathBuff,
-                        "/")
-        != LE_OK)
+
+    if (le_dir_IsDir(pathBuff))
     {
-        LE_FATAL("Failed to import app's own bin directory!");
+        if (AddToImportList(&importList,
+                            appRef,
+                            pathBuff,
+                            "/")
+            != LE_OK)
+        {
+            LE_FATAL("Failed to import app's own bin directory!");
+        }
     }
 
-    // Add the app's lib directory.
+    // Add the app's lib directory, if it exists.
     pathBuff[0] = '\0';
     if (le_path_Concat("/", pathBuff, sizeof(pathBuff), app_GetInstallDirPath(appRef), "lib", NULL)
         != LE_OK)
     {
         LE_FATAL("App's install dir path too long!");
     }
-    if (AddToImportList(&importList,
-                        appRef,
-                        pathBuff,
-                        "/")
-        != LE_OK)
+
+    if (le_dir_IsDir(pathBuff))
     {
-        LE_FATAL("Failed to import app's own lib directory!");
+        if (AddToImportList(&importList,
+                            appRef,
+                            pathBuff,
+                            "/")
+            != LE_OK)
+        {
+            LE_FATAL("Failed to import app's own lib directory!");
+        }
     }
 
     // Create an iterator for our app.
@@ -1073,6 +1102,15 @@ static le_result_t ImportAllFiles
     // Add the required files.
     le_cfg_GoToParent(appCfg);
     le_cfg_GoToNode(appCfg, CFG_NODE_FILES);
+
+    if (AddCfgToImportList(appRef, appCfg, &importList) != LE_OK)
+    {
+        goto done;
+    }
+
+    // Add the devices.
+    le_cfg_GoToParent(appCfg);
+    le_cfg_GoToNode(appCfg, CFG_NODE_DEVICES);
 
     if (AddCfgToImportList(appRef, appCfg, &importList) != LE_OK)
     {
@@ -1142,7 +1180,8 @@ static le_result_t SetupFileSystem
 //--------------------------------------------------------------------------------------------------
 static le_result_t MakeAppSandboxDir
 (
-    app_Ref_t appRef                ///< [IN] The application.
+    app_Ref_t appRef,               ///< [IN] The application.
+    const char* smackLabelPtr       ///< [IN] SMACK label to use for the created directory.
 )
 {
     const char* appName = app_GetName(appRef);
@@ -1171,7 +1210,8 @@ static le_result_t MakeAppSandboxDir
         }
     }
 
-    return LE_OK;
+    // Set the directory's SMACK label.
+    return smack_SetLabel(sandboxPath, smackLabelPtr);
 }
 
 
@@ -1213,55 +1253,155 @@ static le_result_t MakeAppTmpDir
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Make the app's home directory.
+ * Gets the device ID of a device file.
  *
  * @return
  *      LE_OK if successful.
  *      LE_FAULT if there was an error.
  */
 //--------------------------------------------------------------------------------------------------
-static le_result_t MakeAppHomeDir
+static le_result_t GetDevID
 (
-    app_Ref_t appRef,               ///< [IN] The application.
-    const char* smackLabelPtr       ///< [IN] SMACK label to use for the created directory.
+    const char* fileNamePtr,        ///< [IN] Absolute path of the file.
+    dev_t* idPtr                    ///< [OUT] Device ID.
 )
 {
-    const char* sandboxPath = app_GetSandboxPath(appRef);
+    struct stat fileStat;
 
-    // Create /home folder in the sandbox.
-    char homeDir[LIMIT_MAX_PATH_BYTES];
-
-    if (snprintf(homeDir, sizeof(homeDir), "%s/home", sandboxPath) >= sizeof(homeDir))
+    if (stat(fileNamePtr, &fileStat) != 0)
     {
-        LE_ERROR("Path '%s' is too long.", homeDir);
+        LE_ERROR("Could not get file info for '%s'.  %m.", fileNamePtr);
         return LE_FAULT;
     }
 
-    if (le_dir_Make(homeDir, S_IRWXO) != LE_OK)
+    if (!S_ISCHR(fileStat.st_mode) && !S_ISBLK(fileStat.st_mode))
     {
+        LE_ERROR("'%s' is not a device file.  %m.", fileNamePtr);
         return LE_FAULT;
     }
 
-    // Set the directory's SMACK label.
-    if (smack_SetLabel(homeDir, smackLabelPtr) != LE_OK)
+    *idPtr = fileStat.st_rdev;
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the configured permissions for a device.  The permissions will be returned in the provided
+ * buffer as a string (either "r", "w" or "rw").  The provided buffer must be greater than or equal
+ * to MAX_DEVICE_PERM_STR_BYTES bytes long.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void GetCfgPermissions
+(
+    le_cfg_IteratorRef_t cfgIter,       ///< [IN] Config iterator pointing to the device file.
+    char* bufPtr,                       ///< [OUT] Buffer to hold the permission string.
+    size_t bufSize                      ///< [IN] Size of the buffer.
+)
+{
+    LE_FATAL_IF(bufSize < MAX_DEVICE_PERM_STR_BYTES,
+                "Buffer size for permission string too small.");
+
+    int i = 0;
+
+    if (le_cfg_GetBool(cfgIter, "isReadable", false))
     {
-        return LE_FAULT;
+        bufPtr[i++] = 'r';
     }
 
-    // Create the user's home folder.
-    if (   snprintf(homeDir, sizeof(homeDir), "%s%s", sandboxPath, app_GetHomeDirPath(appRef))
-        >= sizeof(homeDir) )
+    if (le_cfg_GetBool(cfgIter, "isWritable", false))
     {
-        LE_ERROR("Path '%s' is too long.", homeDir);
-        return LE_FAULT;
+        bufPtr[i++] = 'w';
     }
 
-    if (le_dir_Make(homeDir, S_IRWXO) != LE_OK)
+    bufPtr[i] = '\0';
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets DAC and SMACK permissions for device files needed by this app.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_FAULT if there was an error.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t SetDevicePermissions
+(
+    app_Ref_t appRef                ///< [IN] The application.
+)
+{
+    // Create an iterator for the app.
+    le_cfg_IteratorRef_t appCfg = le_cfg_CreateReadTxn(app_GetConfigPath(appRef));
+
+    // Get the list of device files.
+    le_cfg_GoToNode(appCfg, CFG_NODE_REQUIRES);
+    le_cfg_GoToNode(appCfg, CFG_NODE_DEVICES);
+
+    if (le_cfg_GoToFirstChild(appCfg) == LE_OK)
     {
-        return LE_FAULT;
+        do
+        {
+            // Get source path.
+            char srcPath[LIMIT_MAX_PATH_BYTES];
+            if (GetImportSrcPath(appRef, appCfg, srcPath, sizeof(srcPath)) != LE_OK)
+            {
+                le_cfg_CancelTxn(appCfg);
+                return LE_FAULT;
+            }
+
+            // Check that the source is a device file.
+            dev_t devId;
+
+            if (GetDevID(srcPath, &devId) != LE_OK)
+            {
+                le_cfg_CancelTxn(appCfg);
+                return LE_FAULT;
+            }
+
+            // TODO: Disallow device files that are security risks, such as block flash devices.
+
+            // Assign a SMACK label to the device file.
+            char devLabel[LIMIT_MAX_SMACK_LABEL_BYTES];
+            le_result_t result = devSmack_GetLabel(devId, devLabel, sizeof(devLabel));
+
+            LE_FATAL_IF(result == LE_OVERFLOW, "Smack label '%s...' too long.", devLabel);
+
+            if (result != LE_OK)
+            {
+                le_cfg_CancelTxn(appCfg);
+                return LE_FAULT;
+            }
+
+            if (smack_SetLabel(srcPath, devLabel) != LE_OK)
+            {
+                le_cfg_CancelTxn(appCfg);
+                return LE_FAULT;
+            }
+
+            // Get the app's SMACK label.
+            char appLabel[LIMIT_MAX_SMACK_LABEL_BYTES];
+            appSmack_GetLabel(app_GetName(appRef), appLabel, sizeof(appLabel));
+
+            // Get the required permissions for the device.
+            char permStr[MAX_DEVICE_PERM_STR_BYTES];
+            GetCfgPermissions(appCfg, permStr, sizeof(permStr));
+
+            // Set the SMACK rule to allow the app to access the device.
+            smack_SetRule(appLabel, permStr, devLabel);
+
+            // Set the DAC permissions to be permissive.
+            LE_FATAL_IF(chmod(srcPath, S_IROTH | S_IWOTH) == -1,
+                        "Could not set permissions for file '%s'.  %m.", srcPath);
+        }
+        while (le_cfg_GoToNextSibling(appCfg) == LE_OK);
+
+        le_cfg_GoToParent(appCfg);
     }
 
-    return smack_SetLabel(homeDir, smackLabelPtr);
+    le_cfg_CancelTxn(appCfg);
+    return LE_OK;
 }
 
 
@@ -1290,6 +1430,12 @@ le_result_t sandbox_Setup
         return LE_FAULT;
     }
 
+    // Set permissions for device files required by this app.
+    if (SetDevicePermissions(appRef) != LE_OK)
+    {
+        return LE_FAULT;
+    }
+
     // Get the SMACK label for the folders we create.
     char appDirLabel[LIMIT_MAX_SMACK_LABEL_BYTES];
     appSmack_GetAccessLabel(app_GetName(appRef),
@@ -1300,10 +1446,9 @@ le_result_t sandbox_Setup
                             sizeof(appDirLabel));
 
     // Make the app's sandbox directories and file system.
-    if ( (MakeAppSandboxDir(appRef) != LE_OK) ||
+    if ( (MakeAppSandboxDir(appRef, appDirLabel) != LE_OK) ||
          (SetupFileSystem(appRef, appDirLabel) != LE_OK)  ||
          (MakeAppTmpDir(appRef, appDirLabel) != LE_OK) ||
-         (MakeAppHomeDir(appRef, appDirLabel) != LE_OK) ||
          (ImportAllFiles(appRef) != LE_OK) )
     {
         // Clean up the sandbox if there was an error creating it.

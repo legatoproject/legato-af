@@ -1,0 +1,404 @@
+//--------------------------------------------------------------------------------------------------
+/** @file frameworkDaemons.c
+ *
+ * API for managing Legato framework daemons.  The framework daemons include the Service Directory,
+ * Log Control, Configuration Tree and Watchdog.
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ */
+#include "legato.h"
+#include "frameworkDaemons.h"
+#include "limit.h"
+#include "fileDescriptor.h"
+#include "killProc.h"
+#include "smack.h"
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The framework daemon object.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    char            path[LIMIT_MAX_PATH_BYTES];     // Path to the daemon's executable.
+    pid_t           pid;                            // The daemon's pid.
+}
+DaemonObj_t;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Time interval (milliseconds) between when a soft kill and a hard kill happens when shutting down
+ * framework daemons.
+ */
+//--------------------------------------------------------------------------------------------------
+#define KILL_TIMEOUT            3000
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * List of all framework daemons in the order that they must start.
+ *
+ * @note The Service Directory must be the first framework daemon in this list.  In fact the order
+ *       of the entire list is important and should not be changed without careful consideration.
+ */
+//--------------------------------------------------------------------------------------------------
+static DaemonObj_t FrameworkDaemons[] = { {"/usr/local/bin/serviceDirectory", -1},
+                                          {"/usr/local/bin/logCtrlDaemon", -1},
+                                          {"/usr/local/bin/configTree", -1},
+                                          {"/usr/local/bin/watchdog", -1},
+                                          {"/usr/local/bin/updateDaemon", -1} };
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Index in the list of FrameworkDaemons to shutdown.
+ */
+//--------------------------------------------------------------------------------------------------
+static int ShutdownIndex = -1;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The intermediate shutdown notification handler.  This will be called when all framework daemons,
+ * except the Service Directory, have shutdown.
+ */
+//--------------------------------------------------------------------------------------------------
+static fwDaemons_ShutdownHandler_t IntermediateShutdownHandler = NULL;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The shutdown notification handler.  This will be called when all framework daemons have shutdown.
+ */
+//--------------------------------------------------------------------------------------------------
+static fwDaemons_ShutdownHandler_t ShutdownHandler = NULL;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Load the current IPC binding configuration into the Service Directory.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void LoadIpcBindingConfig
+(
+    void
+)
+{
+    int result = system("sdir load");
+
+    if (result == -1)
+    {
+        LE_FATAL("Failed to fork child process. (%m)");
+    }
+    else if (WIFEXITED(result))
+    {
+        int exitCode = WEXITSTATUS(result);
+
+        if (exitCode != 0)
+        {
+            LE_FATAL("Couldn't load IPC binding config. `sdir load` exit code: %d.", exitCode);
+        }
+    }
+    else if (WIFSIGNALED(result))
+    {
+        int sigNum = WTERMSIG(result);
+
+        LE_FATAL("Couldn't load IPC binding config. `sdir load` received signal: %d.", sigNum);
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Start a framework daemon.
+ */
+//--------------------------------------------------------------------------------------------------
+static void StartDaemon
+(
+    DaemonObj_t* daemonPtr      ///< [IN] The daemon to start.
+)
+{
+    const char* daemonNamePtr = le_path_GetBasenamePtr(daemonPtr->path, "/");
+
+    // Kill all other instances of this process just in case.
+    kill_ByName(daemonNamePtr);
+
+    // Create a synchronization pipe.
+    int syncPipeFd[2];
+    LE_FATAL_IF(pipe(syncPipeFd) != 0, "Could not create synchronization pipe.  %m.");
+
+    // Fork a process.
+    pid_t pid = fork();
+    LE_FATAL_IF(pid < 0, "Failed to fork child process.  %m.");
+
+    if (pid == 0)
+    {
+        // Clear the signal mask so the child does not inherit our signal mask.
+        sigset_t sigSet;
+        LE_ASSERT(sigfillset(&sigSet) == 0);
+        LE_ASSERT(pthread_sigmask(SIG_UNBLOCK, &sigSet, NULL) == 0);
+
+        // The child does not need the read end of the pipe so close it.
+        fd_Close(syncPipeFd[0]);
+
+        // Duplicate the write end of the pipe on standard in so the execed program will know
+        // where it is.
+        if (syncPipeFd[1] != STDIN_FILENO)
+        {
+            int r;
+            do
+            {
+                r = dup2(syncPipeFd[1], STDIN_FILENO);
+            }
+            while ( (r == -1)  && (errno == EINTR) );
+
+            LE_FATAL_IF(r == -1, "Failed to duplicate fd.  %m.");
+
+            // Close the duplicate fd.
+            fd_Close(syncPipeFd[1]);
+        }
+
+        // Close all non-standard fds.
+        fd_CloseAllNonStd();
+
+        smack_SetMyLabel("framework");
+
+        // Launch the child program.  This should not return unless there was an error.
+        execl(daemonPtr->path, daemonNamePtr, (char*)NULL);
+
+        // The program could not be started.
+        LE_FATAL("'%s' could not be started: %m", daemonPtr->path);
+    }
+
+    // Store the pid of the running daemon process.
+    daemonPtr->pid = pid;
+
+    // Close the write end of the pipe because the parent does not need it.
+    fd_Close(syncPipeFd[1]);
+
+    // Wait for the child process to close the read end of the pipe.  This ensures that the
+    // framework daemons start in the proper order.
+    // TODO: Add a timeout here.
+    ssize_t numBytesRead;
+    int dummyBuf;
+    do
+    {
+        numBytesRead = read(syncPipeFd[0], &dummyBuf, 1);
+    }
+    while ( ((numBytesRead == -1)  && (errno == EINTR)) || (numBytesRead != 0) );
+
+    LE_FATAL_IF(numBytesRead == -1, "Could not read synchronization pipe.  %m.");
+
+    // Close the read end of the pipe because it is no longer used.
+    fd_Close(syncPipeFd[0]);
+
+    LE_INFO("Started system process '%s' with PID: %d.", daemonNamePtr, pid);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Start all the framework daemons.
+ */
+//--------------------------------------------------------------------------------------------------
+void fwDaemons_Start
+(
+    void
+)
+{
+    int i;
+    for (i = 0; i < NUM_ARRAY_MEMBERS(FrameworkDaemons); i++)
+    {
+        StartDaemon(&(FrameworkDaemons[i]));
+    }
+
+    LE_INFO("All framework daemons ready.");
+
+    // Load the current IPC binding configuration into the Service Directory.
+    LoadIpcBindingConfig();
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Shuts down the next running framework daemon starting from the daemonIndex.  This function
+ * searches backwards through the list of framework daemons, starting at daemonIndex, for the next
+ * running daemon and shuts it down.
+ *
+ * @note
+ *      The shutdown is asynchronous.  When the process actually dies a SIGCHILD will be received.
+ *
+ * @return
+ *      The index of the daemon that we are shutting down.
+ *      -1 if all daemons have already died.
+ */
+//--------------------------------------------------------------------------------------------------
+static int ShutdownNextDaemon
+(
+    int daemonIndex         ///< [IN] Index of the daemon to start with.
+)
+{
+    // Search backwards through the list of daemons to find the last system process that needs to
+    // be killed.
+    while (daemonIndex >= 0)
+    {
+        if (FrameworkDaemons[daemonIndex].pid != -1)
+        {
+            break;
+        }
+
+        daemonIndex--;
+    }
+
+    if (daemonIndex < 0)
+    {
+        // All framework daemons already shutdown.
+        // Call registered shutdown handler.
+        if (ShutdownHandler != NULL)
+        {
+            ShutdownHandler();
+        }
+    }
+    else
+    {
+        if (daemonIndex == 0)
+        {
+            // All framework daemons except the Service Directory has shutdown.  Call the
+            // intermediate shutdown handler.
+            if (IntermediateShutdownHandler != NULL)
+            {
+                IntermediateShutdownHandler();
+            }
+        }
+
+        // Kill the current daemon.
+        LE_WARN("Killing framework daemon '%s'.",
+                le_path_GetBasenamePtr(FrameworkDaemons[daemonIndex].path, "/"));
+        kill_Soft(FrameworkDaemons[daemonIndex].pid, KILL_TIMEOUT);
+    }
+
+    return daemonIndex;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Initiates the shut down of all the framework daemons.  The shut down sequence happens
+ * asynchronously.  A shut down handler should be set using fwDaemons_SetShutdownHandler() to be
+ * notified when all framework daemons actually shut down.
+ */
+//--------------------------------------------------------------------------------------------------
+void fwDaemons_Shutdown
+(
+    void
+)
+{
+    // Set the Shutdown index to the last daemon in the list.
+    ShutdownIndex = NUM_ARRAY_MEMBERS(FrameworkDaemons) - 1;
+
+    // Start the shutdown sequence.  After the first framework daemon is shutdown the shutdown
+    // sequence will be continued by the fwDaemons_SigChildHandler().
+    ShutdownIndex = ShutdownNextDaemon(ShutdownIndex);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets the shutdown handler to be called when all the framework daemons shutdown.
+ */
+//--------------------------------------------------------------------------------------------------
+void fwDaemons_SetShutdownHandler
+(
+    fwDaemons_ShutdownHandler_t shutdownHandler
+)
+{
+    ShutdownHandler = shutdownHandler;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets the intermediate shutdown handler to be called when all the framework daemons shutdown
+ * except for the Service Directory.  This gives the caller a chance to do some message handling
+ * before the Service Directory is shutdown as well.
+ *
+ * @note The Service Directory is the last framework daemon to shutdown.
+ */
+//--------------------------------------------------------------------------------------------------
+void fwDaemons_SetIntermediateShutdownHandler
+(
+    fwDaemons_ShutdownHandler_t shutdownHandler
+)
+{
+    IntermediateShutdownHandler = shutdownHandler;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The SIGCHLD handler for the framework daemons.
+ *
+ * @return
+ *      LE_OK if the signal was handled without incident.
+ *      LE_NOT_FOUND if the pid is not a framework daemon.
+ *      LE_FAULT if the signal indicates the failure of one of the framework daemons.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t fwDaemons_SigChildHandler
+(
+    pid_t pid,              ///< [IN] Pid of the process that produced the SIGCHLD.
+    int status              ///< [IN] Status of the process.
+)
+{
+    // See which daemon produced this signal.
+    DaemonObj_t* daemonObjPtr = NULL;
+
+    int i;
+    for (i = 0; i < NUM_ARRAY_MEMBERS(FrameworkDaemons); i++)
+    {
+        if (FrameworkDaemons[i].pid == pid)
+        {
+            daemonObjPtr = &(FrameworkDaemons[i]);
+
+            // Check status of process and handle SIGCONT and SIGSTOP signals.
+            if ( WIFSTOPPED(status) || WIFCONTINUED(status) )
+            {
+                // The framework dameon was either stopped or continued which should not happen kill
+                // the process now.
+                kill_Hard(pid);
+
+                // Return LE_OK here, when the process actually dies we'll get another SIGCHLD.
+                return LE_OK;
+            }
+
+            // Mark this daemon as dead.
+            daemonObjPtr->pid = -1;
+            kill_Died(pid);
+
+            break;
+        }
+    }
+
+    if (daemonObjPtr == NULL)
+    {
+        return LE_NOT_FOUND;
+    }
+
+    if (ShutdownIndex >= 0)
+    {
+        // We are in the midst of a shutdown sequence, continue the shutdown sequence.
+        ShutdownIndex = ShutdownNextDaemon(ShutdownIndex);
+
+        return LE_OK;
+    }
+    else
+    {
+        // This was an unexpected error from one of the framework daemons.
+        LE_EMERG("The framework daemon '%s' has experienced a problem.",
+                le_path_GetBasenamePtr(daemonObjPtr->path, "/"));
+
+        return LE_FAULT;
+    }
+}

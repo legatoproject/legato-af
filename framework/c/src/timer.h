@@ -10,6 +10,30 @@
 #ifndef LEGATO_SRC_TIMER_H_INCLUDE_GUARD
 #define LEGATO_SRC_TIMER_H_INCLUDE_GUARD
 
+#include "limit.h"
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Timer object.  Created by le_timer_Create().
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct le_timer
+{
+    // Settable attributes
+    char name[LIMIT_MAX_TIMER_NAME_BYTES];   ///< The timer name
+    le_timer_ExpiryHandler_t handlerRef;     ///< Expiry handler function
+    le_clk_Time_t interval;                  ///< Interval
+    uint32_t repeatCount;                    ///< Number of times the timer will repeat
+    void* contextPtr;                        ///< Context for timer expiry
+
+    // Internal State
+    le_dls_Link_t link;                      ///< For adding to the timer list
+    bool isActive;                           ///< Is the timer active/running?
+    le_clk_Time_t expiryTime;                ///< Time at which the timer should expire
+    uint32_t expiryCount;                    ///< Number of times the counter has expired
+}
+Timer_t;
+
 
 //--------------------------------------------------------------------------------------------------
 /**

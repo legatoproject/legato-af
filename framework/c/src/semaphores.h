@@ -10,6 +10,25 @@
 #ifndef LEGATO_SRC_SEMAPHORE_H_INCLUDE_GUARD
 #define LEGATO_SRC_SEMAPHORE_H_INCLUDE_GUARD
 
+#include "limit.h"
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Semaphore object.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct le_sem_t
+{
+    le_dls_Link_t       semaphoreListLink;   ///< Used to link onto the process's Semaphore List.
+    le_dls_List_t       waitingList;         ///< List of threads waiting for this semaphore.
+    pthread_mutex_t     waitingListMutex;    ///< Pthreads mutex used to protect the waiting list.
+    bool                isTraceable;         ///< true if traceable, false otherwise.
+    sem_t               semaphore;           ///< Pthreads semaphore that does the real work. :)
+    char                nameStr[LIMIT_MAX_SEMAPHORE_NAME_BYTES]; ///< The name of the semaphore (UTF8 string).
+}
+Semaphore_t;
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Semaphore Thread Record.

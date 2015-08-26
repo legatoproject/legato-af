@@ -153,32 +153,6 @@ void proc_Stopping
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Pause the running process.  This is an asynchronous function call that returns immediately but
- * the process state may not be updated right away.  Set a state change handler using
- * proc_SetStateChangeHandler to get notified when the process actually pauses.
- */
-//--------------------------------------------------------------------------------------------------
-void proc_Pause
-(
-    proc_Ref_t procRef              ///< [IN] The process to pause.
-);
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Resume the running process.  This is an asynchronous function call that returns immediately but
- * the process state may not be updated right away.  Set a state change handler using
- * proc_SetStateChangeHandler to get notified when the process actually resumes.
- */
-//--------------------------------------------------------------------------------------------------
-void proc_Resume
-(
-    proc_Ref_t procRef              ///< [IN] The process to resume.
-);
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Gets the process state.
  *
  * @return

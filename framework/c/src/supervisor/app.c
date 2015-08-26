@@ -18,6 +18,7 @@
 #include "resourceLimits.h"
 #include "smack.h"
 #include "cgroups.h"
+#include "killProc.h"
 #include "interfaces.h"
 
 
@@ -69,14 +70,6 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Temporary: The name of the airvantage application.
- */
-//--------------------------------------------------------------------------------------------------
-#define APP_AIRVANTAGE                                  "airvantage"
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Timeout value for killing processes in an app.
  */
 //--------------------------------------------------------------------------------------------------
@@ -98,7 +91,6 @@ typedef struct app_Ref
     bool            sandboxed;                          // true if this is a sandboxed app.
     char            installPath[LIMIT_MAX_PATH_BYTES];  // The app's install directory path.
     char            sandboxPath[LIMIT_MAX_PATH_BYTES];  // The app's sandbox path.
-    char            homeDirPath[LIMIT_MAX_PATH_BYTES];  // Home directory path to start procs in.
     uid_t           uid;                // The user ID for this application.
     gid_t           gid;                // The group ID for this application.
     gid_t           supplementGids[LIMIT_MAX_NUM_SUPPLEMENTARY_GROUPS];  // List of supplementary
@@ -245,49 +237,6 @@ being reached incorrectly when a process faults and resets the system.");
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Creates a home directory for a specific user/app.
- *
- * @return
- *      LE_OK if successful.
- *      LE_FAULT if there was an error.
- */
-//--------------------------------------------------------------------------------------------------
-static le_result_t CreateHomeDir
-(
-    app_Ref_t appRef        // The app to create the directory for.
-)
-{
-    // Create the "/home" directory if it doesn't exist yet.
-    if (le_dir_Make("/home", S_IRWXU | S_IRGRP|S_IXGRP | S_IROTH|S_IXOTH) == LE_FAULT)
-    {
-        LE_ERROR("Could not create '/home' directory.");
-        return LE_FAULT;
-    }
-
-    // Create the app's home directory.
-    if (le_dir_Make(appRef->homeDirPath, S_IRWXU | S_IRGRP|S_IXGRP | S_IROTH|S_IXOTH) == LE_FAULT)
-    {
-        LE_ERROR("Could not create home directory '%s'.  Application '%s' cannot be started.",
-                 appRef->homeDirPath,
-                 appRef->name);
-        return LE_FAULT;
-    }
-
-    // Set the owner of this folder to the application's user.
-    if (chown(appRef->homeDirPath, appRef->uid, appRef->gid) != 0)
-    {
-        LE_ERROR("Could not set ownership of folder '%s' to uid %d.",
-                 appRef->homeDirPath,
-                 appRef->uid);
-        return LE_FAULT;
-    }
-
-    return LE_OK;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Create the supplementary groups for an application.
  *
  * @todo Move creation of the groups to the installer.  Make this function just read the groups
@@ -374,21 +323,6 @@ static le_result_t CreateUserAndGroups
     app_Ref_t appRef        // The app to create user and groups for.
 )
 {
-    // Generate a unique home directory path for the application.
-    if ( snprintf(appRef->homeDirPath,
-                  sizeof(appRef->homeDirPath),
-                  "/home/app%s",
-                  appRef->name)
-        >= sizeof(appRef->homeDirPath))
-    {
-        LE_ERROR("Home directory path too long (would be truncated to '%s'). "
-                 "Application '%s' cannot be started.",
-                 appRef->homeDirPath,
-                 appRef->name);
-
-        return LE_FAULT;
-    }
-
     // For sandboxed apps,
     if (appRef->sandboxed)
     {
@@ -729,17 +663,43 @@ static le_result_t SetSmackRules
         return LE_FAULT;
     }
 
-    // Temporary: Setting rules for every app to have access to the airvantage app
-    if (strcmp(appRef->name, APP_AIRVANTAGE) != 0)
-    {
-        char airvantageLabel[LIMIT_MAX_SMACK_LABEL_BYTES];
-        appSmack_GetLabel(APP_AIRVANTAGE, airvantageLabel, sizeof(airvantageLabel));
+    return SetSmackRulesForBindings(appRef, appLabel);
+}
 
-        smack_SetRule(airvantageLabel, "rw", appLabel);
-        smack_SetRule(appLabel, "rw", airvantageLabel);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Starts a process in an application.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_FAULT if there was an error.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t StartProc
+(
+    app_Ref_t appRef,                   ///< [IN] The application reference.
+    proc_Ref_t procRef                  ///< [IN] The process to start.
+)
+{
+    le_result_t result;
+
+    if (appRef->sandboxed)
+    {
+        result = proc_StartInSandbox(procRef,
+                                     "/",
+                                     appRef->uid,
+                                     appRef->gid,
+                                     appRef->supplementGids,
+                                     appRef->numSupplementGids,
+                                     appRef->sandboxPath);
+    }
+    else
+    {
+        result = proc_Start(procRef, appRef->installPath);
     }
 
-    return SetSmackRulesForBindings(appRef, appLabel);
+    return result;
 }
 
 
@@ -776,14 +736,6 @@ le_result_t app_Start
             return LE_FAULT;
         }
     }
-    else
-    {
-        // Create the app's home directory.
-        if (CreateHomeDir(appRef) != LE_OK)
-        {
-            return LE_FAULT;
-        }
-    }
 
     // Set the resource limit for this application.
     if (resLim_SetAppLimits(appRef) != LE_OK)
@@ -806,22 +758,7 @@ le_result_t app_Start
     {
         ProcObj_t* procPtr = CONTAINER_OF(procLinkPtr, ProcObj_t, link);
 
-        le_result_t result;
-
-        if (appRef->sandboxed)
-        {
-            result = proc_StartInSandbox(procPtr->procRef,
-                                         appRef->homeDirPath,
-                                         appRef->uid,
-                                         appRef->gid,
-                                         appRef->supplementGids,
-                                         appRef->numSupplementGids,
-                                         appRef->sandboxPath);
-        }
-        else
-        {
-            result = proc_Start(procPtr->procRef, appRef->homeDirPath);
-        }
+        le_result_t result = StartProc(appRef, procPtr->procRef);
 
         if (result != LE_OK)
         {
@@ -1195,24 +1132,6 @@ const char* app_GetSandboxPath
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Gets an application's home directory path.
- *
- * If the app is sandboxed, this is relative to the sandbox's root directory.
- *
- * @return A pointer to the path.
- */
-//--------------------------------------------------------------------------------------------------
-const char* app_GetHomeDirPath
-(
-    app_Ref_t appRef
-)
-{
-    return appRef->homeDirPath;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Gets an application's configuration path.
  *
  * @return
@@ -1432,42 +1351,6 @@ static bool ReachedFaultLimit
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Starts a process in an application.
- *
- * @return
- *      LE_OK if successful.
- *      LE_FAULT if there was an error.
- */
-//--------------------------------------------------------------------------------------------------
-static le_result_t StartProc
-(
-    app_Ref_t appRef,                   ///< [IN] The application reference.
-    proc_Ref_t procRef                  ///< [IN] The process to start.
-)
-{
-    le_result_t result;
-
-    if (appRef->sandboxed)
-    {
-        result = proc_StartInSandbox(procRef,
-                                     appRef->homeDirPath,
-                                     appRef->uid,
-                                     appRef->gid,
-                                     appRef->supplementGids,
-                                     appRef->numSupplementGids,
-                                     appRef->sandboxPath);
-    }
-    else
-    {
-        result = proc_Start(procRef, appRef->homeDirPath);
-    }
-
-    return result;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Checks if the application has any processes running.
  *
  * @note This only applies to child processes.  Forked processes in the application are not
@@ -1483,7 +1366,7 @@ static bool HasRunningProc
     app_Ref_t appRef                    ///< [IN] The application reference.
 )
 {
-    return !cgrp_IsEmpty(CGRP_SUBSYS_CPU, appRef->name);
+    return !cgrp_IsEmpty(CGRP_SUBSYS_FREEZE, appRef->name);
 }
 
 
@@ -1501,8 +1384,7 @@ static void StopProc
 
     pid_t pid = proc_GetPID(procRef);
 
-    LE_FATAL_IF((kill(pid, SIGKILL) == -1) && (errno != ESRCH),
-                     "Failed to send SIGKILL to process (PID: %d).  %m.", pid);
+    kill_Hard(pid);
 }
 
 

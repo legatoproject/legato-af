@@ -1,12 +1,13 @@
 sources:
 {
     supervisor.c
-    config.c
     resourceLimits.c
     sandbox.c
     app.c
     proc.c
     watchdogAction.c
+    frameworkDaemons.c
+    devSmack.c
 }
 
 provides:
@@ -24,7 +25,8 @@ requires:
 {
     api:
     {
-        le_cfg.api [manual-start]
+        le_cfg.api              [manual-start]
+        logFd.api               [manual-start]
     }
 }
 

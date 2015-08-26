@@ -43,16 +43,12 @@
 #include "limit.h"
 #include "mutex.h"
 #include "thread.h"
-
-#include <pthread.h>
+#include "spy.h"
 
 
 // ==============================
 //  PRIVATE DATA
 // ==============================
-
-/// Maximum number of bytes in a mutex name (including null terminator).
-#define MAX_NAME_BYTES 24
 
 /// Number of objects in the Mutex Pool to start with.
 /// TODO: Change this to be configurable per-process.
@@ -61,23 +57,12 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Mutex object.
+ * A counter that increments every time a change is made to the mutex list.
  */
 //--------------------------------------------------------------------------------------------------
-typedef struct le_mutex
-{
-    le_dls_Link_t       mutexListLink;      ///< Used to link onto the process's Mutex List.
-    le_thread_Ref_t     lockingThreadRef;   ///< Reference to the thread that holds the lock.
-    le_dls_Link_t       lockedByThreadLink; ///< Used to link onto the thread's locked mutexes list.
-    le_dls_List_t       waitingList;        ///< List of threads waiting for this mutex.
-    pthread_mutex_t     waitingListMutex;   ///< Pthreads mutex used to protect the waiting list.
-    bool                isTraceable;        ///< true if traceable, false otherwise.
-    bool                isRecursive;        ///< true if recursive, false otherwise.
-    int                 lockCount;      ///< Number of lock calls not yet matched by unlock calls.
-    pthread_mutex_t     mutex;          ///< Pthreads mutex that does the real work. :)
-    char                name[MAX_NAME_BYTES]; ///< The name of the mutex (UTF8 string).
-}
-Mutex_t;
+static size_t ListOfMutexesChgCnt = 0;
+static size_t* ListOfMutexesChgCntRef = &ListOfMutexesChgCnt;
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -249,6 +234,7 @@ static void MarkLocked
 )
 //--------------------------------------------------------------------------------------------------
 {
+    ListOfMutexesChgCnt++;
     // Push it onto the calling thread's list of locked mutexes.
     // NOTE: Mutexes tend to be locked and unlocked in a nested manner, so treat this like a stack.
     le_dls_Stack(&perThreadRecPtr->lockedMutexList, &mutexPtr->lockedByThreadLink);
@@ -278,6 +264,7 @@ static void MarkUnlocked
 {
     mutex_ThreadRec_t* perThreadRecPtr = thread_GetMutexRecPtr();
 
+    ListOfMutexesChgCnt++;
     // Remove it the calling thread's list of locked mutexes.
     // TODO: Should we warn if mutexes are not unlocked in the reverse order of being locked?
     le_dls_Remove(&perThreadRecPtr->lockedMutexList, &mutexPtr->lockedByThreadLink);
@@ -307,6 +294,9 @@ void mutex_Init
 {
     MutexPoolRef = le_mem_CreatePool("mutex", sizeof(Mutex_t));
     le_mem_ExpandPool(MutexPoolRef, DEFAULT_POOL_SIZE);
+
+    // Pass the change counter of list of mutexes to the Inspect tool.
+    spy_SetListOfMutexesChgCntRef(&ListOfMutexesChgCntRef);
 }
 
 

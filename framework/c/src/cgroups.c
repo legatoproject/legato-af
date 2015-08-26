@@ -11,6 +11,7 @@
 #include "limit.h"
 #include "fileDescriptor.h"
 #include "fileSystem.h"
+#include "killProc.h"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -443,6 +444,52 @@ le_result_t cgrp_AddProc
     return WriteToFile(subsystem, cgroupNamePtr, PROCS_FILENAME, pidStr);
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Reads a list of tids/pids from an open file descriptor.  The number of pids in the file may be
+ * larger than maxIds, in which case idListPtr will be filled with the first maxIds PIDs. We can 
+ * re-use this code for tids or pids because, in linux, all tids are pids and vice versa.
+ *
+ * @return
+ *      The number of ids that are read if successful.
+ *      LE_FAULT if there was some other error.
+ */
+//--------------------------------------------------------------------------------------------------
+static ssize_t BuildTidList
+(
+    int fd,
+    pid_t* idListPtr,               ///< [OUT] Buffer that will contain the list of PIDs.
+    size_t maxIds                   ///< [IN] The maximum number of pids pidListPtr can hold.
+)
+{
+    // Read the pids from the file.
+    size_t numTids = 0;
+
+    while (1)
+    {
+        pid_t tid = GetTasksId(fd);
+
+        if (tid >= 0)
+        {
+            numTids++;
+
+            if (numTids <= maxIds)
+            {
+                idListPtr[numTids-1] = tid;
+            }
+        }
+        else if (tid == LE_OUT_OF_RANGE)
+        {
+            // No more PIDs.
+            break;
+        }
+        else
+        {
+            return LE_FAULT;
+        }
+    }
+    return numTids;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -470,39 +517,55 @@ ssize_t cgrp_GetThreadList
         return LE_FAULT;
     }
 
-    // Read the tids from the file.
-    size_t numTids = 0;
-
-    while (1)
-    {
-        pid_t tid = GetTasksId(fd);
-
-        if (tid >= 0)
-        {
-            numTids++;
-
-            if (numTids <= maxTids)
-            {
-                tidListPtr[numTids-1] = tid;
-            }
-        }
-        else if (tid == LE_OUT_OF_RANGE)
-        {
-            // No more PIDs.
-            break;
-        }
-        else
-        {
-            LE_ERROR("Error reading the '%s' cgroup's tasks.", cgroupNamePtr);
-            fd_Close(fd);
-            return LE_FAULT;
-        }
-    }
+    size_t numTids = BuildTidList(fd, tidListPtr, maxTids);
 
     fd_Close(fd);
+
+    if (numTids == LE_FAULT)
+    {
+        LE_ERROR("Error reading the '%s' cgroup's tasks.", cgroupNamePtr);
+    }
+
     return numTids;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets a list of processes that are in a cgroup.  The number of processes in the cgroup may be
+ * larger than maxPids, in which case pidListPtr will be filled with the first maxPids PIDs.
+ *
+ * @return
+ *      The number of threads that are in the cgroup if successful.
+ *      LE_FAULT if there was some other error.
+ */
+//--------------------------------------------------------------------------------------------------
+ssize_t cgrp_GetProcessesList
+(
+    cgrp_SubSys_t subsystem,        ///< [IN] Sub-system of the cgroup.
+    const char* cgroupNamePtr,      ///< [IN] Name of the cgroup.
+    pid_t* pidListPtr,              ///< [OUT] Buffer that will contain the list of PIDs.
+    size_t maxPids                  ///< [IN] The maximum number of pids pidListPtr can hold.
+)
+{
+    // Open the cgroup's processes file for reading.
+    int fd = OpenCgrpFile(subsystem, cgroupNamePtr, PROCS_FILENAME, O_RDONLY);
+
+    if (fd < 0)
+    {
+        return LE_FAULT;
+    }
+
+    size_t numPids = BuildTidList(fd, pidListPtr, maxPids);
+
+    if (numPids == LE_FAULT)
+    {
+        LE_ERROR("Error reading the '%s' cgroup's tasks.", cgroupNamePtr);
+    }
+
+    fd_Close(fd);
+
+    return numPids;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -539,11 +602,7 @@ ssize_t cgrp_SendSig
         {
             numPids++;
 
-            // WARNING: strsignal() is non-reentrant.  We use it here because the Supervisor is
-            //          single threaded.
-            LE_FATAL_IF((kill(pid, sig) == -1) && (errno != ESRCH),
-                        "Failed to send signal, %d (%s), to process (PID: %d).  %m.",
-                        sig, strsignal(sig), pid);
+            kill_SendSig(pid, sig);
         }
         else if (pid == LE_OUT_OF_RANGE)
         {
@@ -876,4 +935,70 @@ cgrp_FreezeState_t cgrp_frz_GetState
 
     LE_FATAL("Unrecognized freeze state '%s'.", stateStr);
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets the amount of memory used in bytes by a cgroup
+ *
+ * @return
+ *      Number of bytes in use by the cgroup.
+ *      LE_FAULT if there was an error.
+ */
+//--------------------------------------------------------------------------------------------------
+ssize_t cgrp_GetMemUsed
+(
+    const char* cgroupNamePtr       ///< [IN] Name of the cgroup.
+)
+{
+    char buffer[32];
+    ssize_t result;
+    if (GetValue(CGRP_SUBSYS_MEM,
+                 cgroupNamePtr,
+                 "memory.memsw.usage_in_bytes",
+                 buffer,
+                 sizeof(buffer)) == LE_OK)
+    {
+        result = strtol(buffer, NULL, 10);
+        if ((errno == ERANGE) || (errno == EINVAL))
+        {
+            result = LE_FAULT;
+        }
+    }else{
+        result = LE_FAULT;
+    }
+    return result;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets the maximum amount of memory used in bytes by a cgroup.
+ * @return
+ *      Maximum number of bytes used at any time up to now by this cgroup.
+ *      LE_FAULT if there was an error.
+ */
+//--------------------------------------------------------------------------------------------------
+ssize_t cgrp_GetMaxMemUsed
+(
+    const char* cgroupNamePtr       ///< [IN] Name of the cgroup.
+)
+{
+    char buffer[32];
+    ssize_t result;
+    if (GetValue(CGRP_SUBSYS_MEM,
+                 cgroupNamePtr,
+                 "memory.memsw.max_usage_in_bytes",
+                 buffer,
+                 sizeof(buffer)) == LE_OK)
+    {
+        result = strtol(buffer, NULL, 10);
+        if ((errno == ERANGE) || (errno == EINVAL))
+        {
+            result = LE_FAULT;
+        }
+    }else{
+        result = LE_FAULT;
+    }
+    return result;
+}
+
 

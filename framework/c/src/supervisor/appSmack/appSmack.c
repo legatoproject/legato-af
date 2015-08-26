@@ -298,7 +298,7 @@ static void ExportMapping
  *      LE_FAULT if there was an error.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t appSmack_GetName
+LE_SHARED le_result_t appSmack_GetName
 (
     int pid,                ///< [IN] PID of the process.
     char* bufPtr,           ///< [OUT] Buffer to hold the name of the app.
@@ -336,7 +336,7 @@ le_result_t appSmack_GetName
  *      The application need not be installed for this function to succeed.
  */
 //--------------------------------------------------------------------------------------------------
-void appSmack_GetLabel
+LE_SHARED void appSmack_GetLabel
 (
     const char* appName,
         ///< [IN]
@@ -421,7 +421,7 @@ void appSmack_GetLabel
  *      The application need not be installed for this function to succeed.
  */
 //--------------------------------------------------------------------------------------------------
-void appSmack_GetAccessLabel
+LE_SHARED void appSmack_GetAccessLabel
 (
     const char* appName,
         ///< [IN]
