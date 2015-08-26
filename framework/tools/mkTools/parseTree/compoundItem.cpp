@@ -141,6 +141,9 @@ TokenList_t* CreateTokenList
         case Content_t::REQUIRED_DIR:
             return new RequiredDir_t(firstTokenPtr);
 
+        case Content_t::REQUIRED_DEVICE:
+            return new RequiredDevice_t(firstTokenPtr);
+
         case Content_t::PROVIDED_API:
             return new ProvidedApi_t(firstTokenPtr);
 
@@ -173,6 +176,19 @@ TokenList_t* CreateTokenList
 
         case Content_t::APP:
             throw mk::Exception_t("Internal error: APP is not a TokenList_t type.");
+
+        case Content_t::ASSET:
+            throw mk::Exception_t("Internal error: ASSET is not a TokenList_t type.");
+
+        case Content_t::ASSET_SETTING:
+            return new AssetSetting_t(firstTokenPtr);
+
+        case Content_t::ASSET_VARIABLE:
+            return new AssetVariable_t(firstTokenPtr);
+
+        case Content_t::ASSET_COMMAND:
+            return new AssetCommand_t(firstTokenPtr);
+
     }
 
     std::stringstream msg;
@@ -299,6 +315,7 @@ const TokenList_t* ToTokenListPtr
         case Content_t::BUNDLED_DIR:
         case Content_t::REQUIRED_FILE:
         case Content_t::REQUIRED_DIR:
+        case Content_t::REQUIRED_DEVICE:
         case Content_t::PROVIDED_API:
         case Content_t::REQUIRED_API:
         case Content_t::REQUIRED_CONFIG_TREE:
@@ -309,13 +326,17 @@ const TokenList_t* ToTokenListPtr
         case Content_t::RUN_PROCESS:
         case Content_t::ENV_VAR:
         case Content_t::POOL:
+        case Content_t::ASSET_SETTING:
+        case Content_t::ASSET_VARIABLE:
+        case Content_t::ASSET_COMMAND:
             return static_cast<const TokenList_t*>(contentItemPtr);
 
         case Content_t::TOKEN:
         case Content_t::COMPLEX_SECTION:
         case Content_t::APP:
+        case Content_t::ASSET:
             throw mk::Exception_t("Internal error: " + contentItemPtr->TypeName()
-                                       + " is not a TokenList_t.");
+                                  + " is not a TokenList_t.");
     }
 
     std::stringstream msg;
@@ -348,6 +369,7 @@ const CompoundItemList_t* ToCompoundItemListPtr
     {
         case Content_t::COMPLEX_SECTION:
         case Content_t::APP:
+        case Content_t::ASSET:
             return static_cast<const CompoundItemList_t*>(contentItemPtr);
 
         case Content_t::TOKEN:
@@ -362,6 +384,7 @@ const CompoundItemList_t* ToCompoundItemListPtr
         case Content_t::BUNDLED_DIR:
         case Content_t::REQUIRED_FILE:
         case Content_t::REQUIRED_DIR:
+        case Content_t::REQUIRED_DEVICE:
         case Content_t::PROVIDED_API:
         case Content_t::REQUIRED_API:
         case Content_t::REQUIRED_CONFIG_TREE:
@@ -372,6 +395,9 @@ const CompoundItemList_t* ToCompoundItemListPtr
         case Content_t::RUN_PROCESS:
         case Content_t::ENV_VAR:
         case Content_t::POOL:
+        case Content_t::ASSET_SETTING:
+        case Content_t::ASSET_VARIABLE:
+        case Content_t::ASSET_COMMAND:
         {
             auto tokenListPtr = static_cast<const TokenList_t*>(contentItemPtr);
             tokenListPtr->ThrowException("Internal error: " + contentItemPtr->TypeName()

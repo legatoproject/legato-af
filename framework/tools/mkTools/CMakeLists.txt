@@ -23,6 +23,18 @@ add_definitions(-DLEGATO_VERSION=\"${LEGATO_VERSION}\")
 add_definitions(-Wall -Werror)
 set(CMAKE_CXX_FLAGS -std=c++0x)
 
+message(STATUS "Build Host arch: ${HOST_ARCH}")
+message(STATUS "Tools arch: ${TOOLS_ARCH}")
+
+if(NOT ${HOST_ARCH} STREQUAL ${TOOLS_ARCH})
+    if(${TOOLS_ARCH} STREQUAL "i686")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m32")
+        set(TOOLS_ARCH_FLAGS "-m32")
+    else()
+        message(FATAL_ERROR "Unable to build tools for ${TOOLS_ARCH} from host ${HOST_ARCH}")
+    endif()
+endif()
+
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../c/src)
 
@@ -32,8 +44,9 @@ set(LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin)
 # Generate Precompiled header including parse tree and conceptual model headers to speed up compilation.
 set(PRECOMPILED_HEADER ${CMAKE_BINARY_DIR}/mkTools.h.gch)
 add_custom_command( OUTPUT ${PRECOMPILED_HEADER}
-                    COMMAND ${CMAKE_CXX_COMPILER} ${CMAKE_CXX_FLAGS}
+                    COMMAND ${CMAKE_CXX_COMPILER}
                             -std=c++0x
+                            ${TOOLS_ARCH_FLAGS}
                             -g
                             -o ${PRECOMPILED_HEADER}
                             ${CMAKE_CURRENT_SOURCE_DIR}/mkTools.h

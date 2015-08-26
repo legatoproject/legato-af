@@ -8,7 +8,7 @@ Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 "
 
 if ! [ $LEGATO_ROOT ]; then echo "Run bin/legs first" >&2; exit 1; fi
-. "${LEGATO_ROOT}/framework/tools/scripts/shlib"
+. "$(dirname "${BASH_SOURCE[0]}")/shlib"
 
 help_short_desc="Create an update package for a target device."
 
@@ -203,11 +203,6 @@ MakeFirmwareItemStr()
     echo   "   $JSON_FIELD_SIZE: $Size"
     printf "  }"
 }
-
-if [ "$LEGATO_ROOT" = "" ]
-then
-    ExitWithError "LEGATO_ROOT environment variable is empty"
-fi
 
 if ! [ -f "$VERSION_PATH" ]
 then

@@ -162,6 +162,7 @@ void GenerateBuildRules
               " -Wall" // Enable all warnings.
               " -fPIC" // Compile to position-independent code for linking into a shared library.
               " -Werror" // Treat all warnings as errors.
+              " -fvisibility=hidden " // Prevent exporting of symbols by default.
               " -DMK_TOOLS_BUILD"
               "\n\n";
 
@@ -172,6 +173,7 @@ void GenerateBuildRules
               " -Wall" // Enable all warnings.
               " -fPIC" // Compile to position-independent code for linking into a shared library.
               " -Werror" // Treat all warnings as errors.
+              " -fvisibility=hidden " // Prevent exporting of symbols by default.
               " -DMK_TOOLS_BUILD"
               "\n\n";
 
@@ -362,31 +364,6 @@ static void GenerateBuildStatement
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Add to a given set the paths for all the client-side interface .h files generated for all
- * .api files that a given .api file includes through USETYPES statements.
- *
- * @note These paths are all relative to the root of the working directory tree.
- **/
-//--------------------------------------------------------------------------------------------------
-static void GetClientUsetypesApiHeaders
-(
-    std::set<std::string>& apiHeaders,
-    const model::ApiFile_t* apiFilePtr
-)
-//--------------------------------------------------------------------------------------------------
-{
-    for (auto includedApiPtr : apiFilePtr->includes)
-    {
-        apiHeaders.insert(includedApiPtr->GetClientInterfaceFile(includedApiPtr->defaultPrefix) );
-
-        // Recurse.
-        GetClientUsetypesApiHeaders(apiHeaders, includedApiPtr);
-    }
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Print to a given build script a rule for building the object file for a given client-side API
  * interface.
  **/
@@ -400,7 +377,8 @@ static void GenerateBuildStatement
 )
 //--------------------------------------------------------------------------------------------------
 {
-    if (generatedSet.find(ifPtr->objectFile) == generatedSet.end())
+    if (   (!buildParams.codeGenOnly)
+        && (generatedSet.find(ifPtr->objectFile) == generatedSet.end())  )
     {
         generatedSet.insert(ifPtr->objectFile);
 
@@ -415,7 +393,7 @@ static void GenerateBuildStatement
         // Build a set containing all the .h files that will be included by the .h file generated
         // for this .api file.
         std::set<std::string> apiHeaders;
-        GetClientUsetypesApiHeaders(apiHeaders, ifPtr->apiFilePtr);
+        ifPtr->apiFilePtr->GetClientUsetypesApiHeaders(apiHeaders);
 
         // If there are some, add them as order-only dependencies.
         for (auto hFilePath : apiHeaders)
@@ -477,30 +455,6 @@ static void GenerateBuildStatement
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Add to a given set the paths for all the server-side interface .h files generated for all
- * .api files that a given .api file includes through USETYPES statements.
- *
- * @note These paths are all relative to the root of the working directory tree.
- **/
-//--------------------------------------------------------------------------------------------------
-static void GetServerUsetypesApiHeaders
-(
-    std::set<std::string>& apiHeaders,
-    const model::ApiFile_t* apiFilePtr
-)
-//--------------------------------------------------------------------------------------------------
-{
-    for (auto includedApiPtr : apiFilePtr->includes)
-    {
-        apiHeaders.insert(includedApiPtr->GetServerInterfaceFile(includedApiPtr->defaultPrefix) );
-
-        GetServerUsetypesApiHeaders(apiHeaders, includedApiPtr);
-    }
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Print to a given build script a rule for building the object file for a given server-side API
  * interface.
  **/
@@ -514,7 +468,8 @@ static void GenerateBuildStatement
 )
 //--------------------------------------------------------------------------------------------------
 {
-    if (generatedSet.find(ifPtr->objectFile) == generatedSet.end())
+    if (   (!buildParams.codeGenOnly)
+        && (generatedSet.find(ifPtr->objectFile) == generatedSet.end())  )
     {
         generatedSet.insert(ifPtr->objectFile);
 
@@ -529,7 +484,7 @@ static void GenerateBuildStatement
         // Build a set containing all the .h files that will be included (via USETYPES statements)
         // by the .h file generated for this .api file.
         std::set<std::string> apiHeaders;
-        GetServerUsetypesApiHeaders(apiHeaders, ifPtr->apiFilePtr);
+        ifPtr->apiFilePtr->GetServerUsetypesApiHeaders(apiHeaders);
 
         // If there are some, add them as order-only dependencies.
         for (auto hFilePath : apiHeaders)

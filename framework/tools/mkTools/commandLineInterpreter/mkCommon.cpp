@@ -21,7 +21,9 @@ namespace cli
  * tree, if it exists.
  *
  * If the build.ninja file exists, this function will never return.  If the build.ninja file doesn't
- * exist, then this function WILL return.
+ * exist, then this function WILL (quietly) return.
+ *
+ * @throw mk::Exception if the build.ninja file exists but ninja can't be run.
  */
 //--------------------------------------------------------------------------------------------------
 void RunNinja

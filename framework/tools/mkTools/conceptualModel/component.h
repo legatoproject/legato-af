@@ -43,6 +43,7 @@ struct Component_t
 
     std::list<FileSystemObject_t*> requiredFiles; ///< List of files to be imported into the app.
     std::list<FileSystemObject_t*> requiredDirs;  ///< List of dirs to be imported into the app.
+    std::list<FileSystemObject_t*> requiredDevices;///< List of devices to be imported into the app.
 
     std::list<ApiTypesOnlyInterface_t*> typesOnlyApis;///< List of API files to import types from.
     std::list<ApiServerInterface_t*> serverApis;  ///< List of server-side interfaces implemented.
@@ -51,7 +52,7 @@ struct Component_t
     std::set<const ApiFile_t*> clientUsetypesApis; ///< .api files imported by client-side APIs.
     std::set<const ApiFile_t*> serverUsetypesApis; ///< .api files imported by server-side APIs.
 
-    std::list<std::string> requiredLibs;    ///< List of libraries to be linked with.
+    std::list<Asset_t*> assets;  ///< Asset data that this component can sync with AirVantage.
 
     // Get a pre-existing Component object for the component found at a given directory path.
     // @return Pointer to the object or NULL if not found.

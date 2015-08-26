@@ -21,7 +21,7 @@ COMPONENT_INIT
  * Add an application's configuration to the root configuration tree.
  **/
 //--------------------------------------------------------------------------------------------------
-void cfgInstall_Add
+LE_SHARED void cfgInstall_Add
 (
     const char* appName
 )
@@ -58,7 +58,7 @@ void cfgInstall_Add
  * Removes an application's configuration from the root configuration tree.
  **/
 //--------------------------------------------------------------------------------------------------
-void cfgInstall_Remove
+LE_SHARED void cfgInstall_Remove
 (
     const char* appName
 )

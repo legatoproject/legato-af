@@ -44,7 +44,16 @@ struct ApiFile_t
     /// @throw model::Exception_t if already exists.
     static ApiFile_t* CreateApiFile(const std::string& path);
 
+    // Get a reference to the master map containing all the API files that have been referenced.
     static const std::map<std::string, ApiFile_t*>& GetApiFileMap() { return ApiFileMap; }
+
+    // Get paths for all client-side interface .h files generated for all
+    // .api files included by this one.  Results are added to the set provided.
+    void GetClientUsetypesApiHeaders(std::set<std::string>& results);
+
+    // Get paths for all server-side interface .h files generated for all
+    // .api files included by this one.  Results are added to the set provided.
+    void GetServerUsetypesApiHeaders(std::set<std::string>& results);
 
 protected:
 
@@ -130,21 +139,36 @@ struct Binding_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Represents an instantiation of a client-side IPC API interface within an executable.
- **/
+ * Represents an instantiation of an IPC API interface within an executable.
+ *
+ * This is a base class that cannot be instantiated on its own.
+ */
 //--------------------------------------------------------------------------------------------------
-struct ApiClientInterfaceInstance_t
+struct ApiInterfaceInstance_t
 {
     /// Component instance this interface instance belongs to.
     ComponentInstance_t* componentInstancePtr;
 
-    ApiClientInterface_t* ifPtr;    ///< Interface this is an instance of.
-
     std::string name;   ///< Name used to identify this interface to the service directory.
 
-    Binding_t* bindingPtr;  ///< Ptr to the binding, or NULL if not bound.
-
     bool isExternal;    ///< true if the interface is one of the app's external interfaces.
+
+protected:
+
+    ApiInterfaceInstance_t(ComponentInstance_t* cInstPtr, const std::string& internalName);
+};
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Represents an instantiation of a client-side IPC API interface within an executable.
+ **/
+//--------------------------------------------------------------------------------------------------
+struct ApiClientInterfaceInstance_t : public ApiInterfaceInstance_t
+{
+    ApiClientInterface_t* ifPtr;    ///< Interface this is an instance of.
+
+    Binding_t* bindingPtr;  ///< Ptr to the binding, or NULL if not bound.
 
     ApiClientInterfaceInstance_t(ComponentInstance_t* cInstPtr, ApiClientInterface_t* p);
 };
@@ -155,16 +179,9 @@ struct ApiClientInterfaceInstance_t
  * Represents an instantiation of a server-side IPC API interface within an executable.
  **/
 //--------------------------------------------------------------------------------------------------
-struct ApiServerInterfaceInstance_t
+struct ApiServerInterfaceInstance_t : public ApiInterfaceInstance_t
 {
-    /// Component instance this interface instance belongs to.
-    ComponentInstance_t* componentInstancePtr;
-
     ApiServerInterface_t* ifPtr;    ///< Interface this is an instance of.
-
-    std::string name;   ///< Name used to identify this interface to the service directory.
-
-    bool isExternal;    ///< true if the interface is one of the app's external interfaces.
 
     ApiServerInterfaceInstance_t(ComponentInstance_t* cInstPtr, ApiServerInterface_t* p);
 };

@@ -36,8 +36,9 @@ static void GenerateCommentHeader
 //--------------------------------------------------------------------------------------------------
 {
     script  << "# Build script for application '" << appPtr->name << "'\n"
-            << "\n"
-            << "# == Auto-generated file.  Do not edit. ==\n";
+            "\n"
+            "# == Auto-generated file.  Do not edit. ==\n"
+            "\n";
 }
 
 
@@ -463,23 +464,26 @@ void Generate
     script << "rule PackApp\n"
               "  command = mkinfo $stagingDir && tar cjf $out -C $stagingDir .\n\n";
 
-    // For each executable built by the mk tools for this application,
-    for (auto exePtr : appPtr->executables)
+    if (!buildParams.codeGenOnly)
     {
-        GenerateBuildStatements(script, exePtr, buildParams);
-    }
+        // For each executable built by the mk tools for this application,
+        for (auto exePtr : appPtr->executables)
+        {
+            GenerateBuildStatements(script, exePtr, buildParams);
+        }
 
-    // For each component included in executables in this application.
-    for (auto componentPtr : appPtr->components)
-    {
-        GenerateBuildStatements(script, componentPtr, buildParams);
+        // For each component included in executables in this application.
+        for (auto componentPtr : appPtr->components)
+        {
+            GenerateBuildStatements(script, componentPtr, buildParams);
+        }
+
+        // Generate build statement for packing everything into an application bundle.
+        GenerateAppBundleBuildStatement(script, appPtr, buildParams, outputDir);
     }
 
     // Add build statements for all the IPC interfaces' generated files.
     GenerateIpcBuildStatements(script, appPtr, buildParams);
-
-    // Generate build statement for packing everything into an application bundle.
-    GenerateAppBundleBuildStatement(script, appPtr, buildParams, outputDir);
 
     // Add a build statement for the build.ninja file itself.
     GenerateNinjaScriptBuildStatement(script, appPtr, filePath);

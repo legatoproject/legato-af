@@ -27,6 +27,8 @@ struct CompoundItem_t : public Content_t
         firstTokenPtr->ThrowException(msg);
     }
 
+    virtual ~CompoundItem_t() {}
+
 protected:
 
     /// Constructor.
@@ -48,6 +50,8 @@ struct TokenList_t : public CompoundItem_t
     // Content accessors.
     void AddContent(Token_t* contentPtr);
     const std::vector<Token_t*>& Contents() const { return contents; }
+
+    virtual ~TokenList_t() {}
 
 private:
 
@@ -126,6 +130,17 @@ struct RequiredFile_t : TokenList_t
 struct RequiredDir_t : TokenList_t
 {
     RequiredDir_t(Token_t* firstTokenPtr): TokenList_t(REQUIRED_DIR, firstTokenPtr) {}
+};
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Represents a single entry in a "device:" subsection of a "requires:" section.
+ */
+//--------------------------------------------------------------------------------------------------
+struct RequiredDevice_t : TokenList_t
+{
+    RequiredDevice_t(Token_t* firstTokenPtr): TokenList_t(REQUIRED_DEVICE, firstTokenPtr) {}
 };
 
 
@@ -241,6 +256,39 @@ struct Pool_t : TokenList_t
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Asset settings are writable values from AirVantage.
+ */
+//--------------------------------------------------------------------------------------------------
+struct AssetSetting_t : TokenList_t
+{
+    AssetSetting_t(Token_t* firstTokenPtr): TokenList_t(ASSET_SETTING, firstTokenPtr) {}
+};
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Asset variables are readable values from AirVantage.
+ */
+//--------------------------------------------------------------------------------------------------
+struct AssetVariable_t : TokenList_t
+{
+    AssetVariable_t(Token_t* firstTokenPtr): TokenList_t(ASSET_VARIABLE, firstTokenPtr) {}
+};
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Asset commands are executable from AirVantage.
+ */
+//--------------------------------------------------------------------------------------------------
+struct AssetCommand_t : TokenList_t
+{
+    AssetCommand_t(Token_t* firstTokenPtr): TokenList_t(ASSET_COMMAND, firstTokenPtr) {}
+};
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Section or named item that contains a list of compound items as content.
  * An example is the "processes:" section of the .adef file.
  */
@@ -284,6 +332,17 @@ struct ComplexSection_t : CompoundItemList_t
 struct App_t : CompoundItemList_t
 {
     App_t(Token_t* firstTokenPtr): CompoundItemList_t(APP, firstTokenPtr) {}
+};
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Assets represent collections of data that can be exchanged with AirVantage.
+ */
+//--------------------------------------------------------------------------------------------------
+struct Asset_t : CompoundItemList_t
+{
+    Asset_t(Token_t* firstTokenPtr): CompoundItemList_t(ASSET, firstTokenPtr) {}
 };
 
 

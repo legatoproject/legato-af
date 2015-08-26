@@ -244,8 +244,19 @@ bool Lexer_t::IsMatch
         case parseTree::Token_t::INTEGER:
             return (isdigit(nextChar));
 
+        case parseTree::Token_t::SIGNED_INTEGER:
+            return (   (nextChar == '+')
+                    || (nextChar == '-')
+                    || isdigit(nextChar));
+
         case parseTree::Token_t::BOOLEAN:
             throw mk::Exception_t("Internal bug: BOOLEAN lookahead not implemented.");
+
+        case parseTree::Token_t::FLOAT:
+            throw mk::Exception_t("Internal bug: FLOAT lookahead not implemented.");
+
+        case parseTree::Token_t::STRING:
+            throw mk::Exception_t("Internal bug: STRING lookahead not implemented.");
     }
 
     throw mk::Exception_t("Internal bug: IsMatch(): Invalid token type requested.");
@@ -381,9 +392,24 @@ parseTree::Token_t* Lexer_t::Pull
             PullInteger(tokenPtr);
             break;
 
+        case parseTree::Token_t::SIGNED_INTEGER:
+
+            PullSignedInteger(tokenPtr);
+            break;
+
         case parseTree::Token_t::BOOLEAN:
 
             PullBoolean(tokenPtr);
+            break;
+
+        case parseTree::Token_t::FLOAT:
+
+            PullFloat(tokenPtr);
+            break;
+
+        case parseTree::Token_t::STRING:
+
+            PullString(tokenPtr);
             break;
     }
 
@@ -544,6 +570,27 @@ void Lexer_t::PullInteger
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Pull an integer (possibly ending in a K suffix) from the input file and store it in the token.
+ */
+//--------------------------------------------------------------------------------------------------
+void Lexer_t::PullSignedInteger
+(
+    parseTree::Token_t* tokenPtr
+)
+//--------------------------------------------------------------------------------------------------
+{
+    if (   (nextChar == '-')
+        || (nextChar == '+'))
+    {
+        AdvanceOneCharacter(tokenPtr);
+    }
+
+    PullInteger(tokenPtr);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Pull a boolean value from the input file and store it in the token.
  */
 //--------------------------------------------------------------------------------------------------
@@ -561,14 +608,111 @@ void Lexer_t::PullBoolean
     {
         PullConstString(tokenPtr, "false");
     }
+    else if (nextChar == 'o')
+    {
+        AdvanceOneCharacter(tokenPtr);
+
+        if (nextChar == 'n')
+        {
+            AdvanceOneCharacter(tokenPtr);
+        }
+        else if (nextChar == 'f')
+        {
+            AdvanceOneCharacter(tokenPtr);
+
+            if (nextChar != 'f')
+            {
+                ThrowException("Unexpected boolean value.  Only 'true', 'false', "
+                               "'on', or 'off' allowed.");
+            }
+
+            AdvanceOneCharacter(tokenPtr);
+        }
+    }
     else
     {
-        UnexpectedChar("at beginning of boolean value.  Only 'true' or 'false' allowed.");
+        UnexpectedChar("at beginning of boolean value.  "
+                       "Only 'true', 'false', 'on', or 'off' allowed.");
     }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Pull a floating point value from the input file and store it in the token.
+ */
+//--------------------------------------------------------------------------------------------------
+void Lexer_t::PullFloat
+(
+    parseTree::Token_t* tokenPtr
+)
+//--------------------------------------------------------------------------------------------------
+{
+    if (   (isdigit(nextChar) == false)
+        && (nextChar != '+')
+        && (nextChar != '-'))
+    {
+        UnexpectedChar("at beginning of floating point value.");
+    }
+
+    AdvanceOneCharacter(tokenPtr);
 
     while (isdigit(nextChar))
     {
         AdvanceOneCharacter(tokenPtr);
+    }
+
+    if (nextChar == '.')
+    {
+        AdvanceOneCharacter(tokenPtr);
+
+        while (isdigit(nextChar))
+        {
+            AdvanceOneCharacter(tokenPtr);
+        }
+    }
+
+    if (   (nextChar == 'e')
+        || (nextChar == 'E'))
+    {
+        AdvanceOneCharacter(tokenPtr);
+
+        if (   (isdigit(nextChar) == false)
+            && (nextChar != '+')
+            && (nextChar != '-'))
+        {
+            UnexpectedChar("in exponent part of floating point value.");
+        }
+
+        AdvanceOneCharacter(tokenPtr);
+
+        while (isdigit(nextChar))
+        {
+            AdvanceOneCharacter(tokenPtr);
+        }
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Pull a string literal from the input file and store it in the token.
+ */
+//--------------------------------------------------------------------------------------------------
+void Lexer_t::PullString
+(
+    parseTree::Token_t* tokenPtr
+)
+//--------------------------------------------------------------------------------------------------
+{
+    if (   (nextChar == '"')
+        || (nextChar == '\''))
+    {
+        PullQuoted(tokenPtr, nextChar);
+    }
+    else
+    {
+        ThrowException("Expected string literal.");
     }
 }
 

@@ -3,8 +3,7 @@ copyright="
 Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 "
 
-if ! [ $LEGATO_ROOT ]; then echo "Run bin/legs first" >&2; exit 1; fi
-. "${LEGATO_ROOT}/framework/tools/scripts/shlib"
+. "$(dirname "${BASH_SOURCE[0]}")/shlib"
 
 # It outputs "Wasn't running." if they were not running.  It outputs "Stopped." if they were
 # stopped.  It outputs "***ERROR: ", followed by an error message (to standard error) if it fails.

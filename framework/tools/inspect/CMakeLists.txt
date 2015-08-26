@@ -11,6 +11,4 @@ mkexe(  inspect
             -i ${PROJECT_SOURCE_DIR}/framework/c/src
         DEPENDS
             inspect.c
-            ${PROJECT_SOURCE_DIR}/framework/c/src/mem.h
-            ${PROJECT_SOURCE_DIR}/framework/c/src/mem.c
             )

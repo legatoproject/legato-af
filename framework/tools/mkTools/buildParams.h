@@ -29,6 +29,7 @@ struct BuildParams_t
     std::string             cFlags;             ///< Flags to be passed to the C compiler.
     std::string             cxxFlags;           ///< Flags to be passed to the C++ compiler.
     std::string             ldFlags;            ///< Flags to be passed to the linker.
+    bool                    codeGenOnly;        ///< true = only generate code, don't compile, etc.
 
     /// Constructor
     BuildParams_t();

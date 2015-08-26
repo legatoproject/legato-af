@@ -43,6 +43,7 @@ struct App_t
 
     std::list<FileSystemObject_t*> requiredFiles; ///< List of files to be imported into the app.
     std::list<FileSystemObject_t*> requiredDirs;  ///< List of dirs to be imported into the app.
+    std::list<FileSystemObject_t*> requiredDevices;///< List of devices to be imported into the app.
 
     std::list<ProcessEnv_t*> processEnvs;   ///< Process environments defined in the app.
 
@@ -54,7 +55,7 @@ struct App_t
     NonNegativeIntLimit_t   maxFileSystemBytes; ///< Total bytes in sandbox tmpfs file system.
     PositiveIntLimit_t      maxMemoryBytes;     ///< Total bytes of RAM.
     NonNegativeIntLimit_t   maxMQueueBytes;     ///< Total bytes in all POSIX MQueues.
-    PositiveIntLimit_t      maxQueuedSignals;   ///< Total number of queued signals.
+    NonNegativeIntLimit_t   maxQueuedSignals;   ///< Total number of queued signals.
     PositiveIntLimit_t      maxThreads;         ///< Number of threads.
 
     // Watchdog

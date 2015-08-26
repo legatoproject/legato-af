@@ -101,7 +101,7 @@ static void GenerateCandCxxFlags
     script << " -DLE_LOG_LEVEL_FILTER_PTR=" << componentPtr->name << "_LogLevelFilterPtr ";
 
     // Define the COMPONENT_INIT.
-    script << " \"-DCOMPONENT_INIT=LE_CI_LINKAGE void " << componentPtr->initFuncName << "()\"";
+    script << " \"-DCOMPONENT_INIT=LE_CI_LINKAGE LE_SHARED void " << componentPtr->initFuncName << "()\"";
 }
 
 
@@ -645,11 +645,14 @@ void Generate
     GenerateIfgenFlagsDef(script, buildParams.interfaceDirs);
     GenerateBuildRules(script, buildParams.target, argc, argv);
 
-    // Add a build statement for the component library and its source files.
-    GenerateBuildStatements(script, componentPtr, buildParams);
+    if (!buildParams.codeGenOnly)
+    {
+        // Add a build statement for the component library and its source files.
+        GenerateBuildStatements(script, componentPtr, buildParams);
 
-    // Add build statements for all the component's sub-components.
-    GenerateSubComponentBuildStatements(script, componentPtr, buildParams);
+        // Add build statements for all the component's sub-components.
+        GenerateSubComponentBuildStatements(script, componentPtr, buildParams);
+    }
 
     // Add build statements for all the IPC interfaces' generated files.
     GenerateIpcBuildStatements(script, componentPtr, buildParams);

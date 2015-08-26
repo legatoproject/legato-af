@@ -13,13 +13,15 @@
 
 struct Process_t
 {
-    Process_t() {}
+    Process_t(const parseTree::RunProcess_t* p): parseTreePtr(p) {}
 
     std::string exePath;
     std::list<std::string> commandLineArgs;
 
     void SetName(const std::string& name);
     const std::string& GetName() const { return name; }
+
+    const parseTree::RunProcess_t* parseTreePtr;
 
 private:
 

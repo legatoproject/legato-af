@@ -64,14 +64,6 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Temporary: The name of the airvantage application.
- */
-//--------------------------------------------------------------------------------------------------
-#define APP_AIRVANTAGE                                  "airvantage"
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * The application object.
  */
 //--------------------------------------------------------------------------------------------------
@@ -301,21 +293,6 @@ static le_result_t CreateUserAndGroups
     app_Ref_t appRef        // The app to create user and groups for.
 )
 {
-    // Generate a unique home directory path for the application.
-    if ( snprintf(appRef->homeDirPath,
-                  sizeof(appRef->homeDirPath),
-                  "/home/app%s",
-                  appRef->name)
-        >= sizeof(appRef->homeDirPath))
-    {
-        LE_ERROR("Home directory path too long (would be truncated to '%s'). "
-                 "Application '%s' cannot be started.",
-                 appRef->homeDirPath,
-                 appRef->name);
-
-        return LE_FAULT;
-    }
-
     // For sandboxed apps,
     if (appRef->sandboxed)
     {
@@ -587,23 +564,5 @@ const char* app_GetSandboxPath
 )
 {
     return (const char*)appRef->sandboxPath;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Gets an application's home directory path.
- *
- * If the app is sandboxed, this is relative to the sandbox's root directory.
- *
- * @return A pointer to the path.
- */
-//--------------------------------------------------------------------------------------------------
-const char* app_GetHomeDirPath
-(
-    app_Ref_t appRef
-)
-{
-    return appRef->homeDirPath;
 }
 

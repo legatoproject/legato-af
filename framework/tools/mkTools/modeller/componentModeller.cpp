@@ -356,7 +356,7 @@ static void GetProvidedApi
                                      buildParams.interfaceDirs);
         if (apiFilePath == "")
         {
-            contentList[0]->ThrowException("Couldn't find file '" + contentList[1]->text + "'.");
+            contentList[0]->ThrowException("Couldn't find file '" + contentList[0]->text + "'.");
         }
     }
 
@@ -582,6 +582,17 @@ static void AddRequiredItems
                 componentPtr->requiredDirs.push_back(GetRequiredFileOrDir(dirSpecPtr));
             }
         }
+        else if (subsectionName == "device")
+        {
+            auto subsectionPtr = parseTree::ToCompoundItemListPtr(memberPtr);
+
+            for (auto itemPtr : subsectionPtr->Contents())
+            {
+                auto deviceSpecPtr = parseTree::ToTokenListPtr(itemPtr);
+
+                componentPtr->requiredDevices.push_back(GetRequiredDevice(deviceSpecPtr));
+            }
+        }
         else if (subsectionName == "component")
         {
             auto subsectionPtr = parseTree::ToTokenListPtr(memberPtr);
@@ -624,6 +635,119 @@ static void AddRequiredItems
         {
             memberPtr->ThrowException("Internal error: Unexpected required item: " + subsectionName);
         }
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Pull an asset setting or a variable field from the token stream.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void AddAssetDataFields
+(
+    model::AssetField_t::ActionType_t actionType,
+    model::Asset_t* modelAssetPtr,
+    parseTree::CompoundItemList_t* sectionPtr
+)
+//--------------------------------------------------------------------------------------------------
+{
+    for (auto subItemPtr : sectionPtr->Contents())
+    {
+        auto tokenListPtr = static_cast<parseTree::TokenList_t*>(subItemPtr);
+        auto& contents = tokenListPtr->Contents();
+
+        // Get the name, type, (setting or variable,) and data type from the token stream.
+        auto fieldPtr = new model::AssetField_t(actionType,
+                                                tokenListPtr->firstTokenPtr->text,
+                                                contents[0]->text);
+
+        // If there is a default value, add that as well.
+        if (contents.size() == 2)
+        {
+            fieldPtr->SetDefaultValue(contents[1]->text);
+        }
+
+        modelAssetPtr->fields.push_back(fieldPtr);
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Pull an asset command field from the token stream.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void AddAssetCommand
+(
+    model::Asset_t* modelAssetPtr,
+    parseTree::CompoundItemList_t* sectionPtr
+)
+//--------------------------------------------------------------------------------------------------
+{
+    for (auto subItemPtr : sectionPtr->Contents())
+    {
+        auto tokenListPtr = static_cast<parseTree::TokenList_t*>(subItemPtr);
+        auto fieldPtr = new model::AssetField_t(model::AssetField_t::TYPE_COMMAND,
+                                                "",
+                                                tokenListPtr->firstTokenPtr->text);
+
+        modelAssetPtr->fields.push_back(fieldPtr);
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add user defined assets to the component model.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void AddUserAssets
+(
+    model::Component_t* componentPtr,
+    const parseTree::CompoundItem_t* sectionPtr,
+    const mk::BuildParams_t& buildParams
+)
+//--------------------------------------------------------------------------------------------------
+{
+    auto assetSectionPtr = static_cast<const parseTree::ComplexSection_t*>(sectionPtr);
+
+    for (auto subsectionPtr : assetSectionPtr->Contents())
+    {
+        auto parsedAssetPtr = static_cast<const parseTree::Asset_t*>(subsectionPtr);
+        auto modelAssetPtr = new model::Asset_t();
+
+        modelAssetPtr->SetName(parsedAssetPtr->Name());
+
+        for (auto assetSubsectionPtr : parsedAssetPtr->Contents())
+        {
+            const auto& assetSubsectionName = assetSubsectionPtr->firstTokenPtr->text;
+
+            if (assetSubsectionName == "settings")
+            {
+                AddAssetDataFields(model::AssetField_t::TYPE_SETTING,
+                                   modelAssetPtr,
+                                   static_cast<parseTree::CompoundItemList_t*>(assetSubsectionPtr));
+            }
+            else if (assetSubsectionName == "variables")
+            {
+                AddAssetDataFields(model::AssetField_t::TYPE_VARIABLE,
+                                   modelAssetPtr,
+                                   static_cast<parseTree::CompoundItemList_t*>(assetSubsectionPtr));
+            }
+            else if (assetSubsectionName == "commands")
+            {
+                AddAssetCommand(modelAssetPtr,
+                                static_cast<parseTree::CompoundItemList_t*>(assetSubsectionPtr));
+            }
+            else
+            {
+                assetSubsectionPtr->ThrowException("Unexpected asset subsection, '" +
+                                                   assetSubsectionName + "'.");
+            }
+        }
+
+        componentPtr->assets.push_back(modelAssetPtr);
     }
 }
 
@@ -673,16 +797,6 @@ static void PrintSummary
         for (auto subComponentPtr : componentPtr->subComponents)
         {
             std::cout << "    '" << subComponentPtr->name << "'" << std::endl;
-        }
-    }
-
-    if (!componentPtr->requiredLibs.empty())
-    {
-        std::cout << "  Depends on libraries:" << std::endl;
-
-        for (const auto& libName : componentPtr->requiredLibs)
-        {
-            std::cout << "    '" << libName << "'" << std::endl;
         }
     }
 
@@ -788,6 +902,49 @@ static void PrintSummary
             }
         }
     }
+
+    if (!componentPtr->assets.empty())
+    {
+        std::cout << "  AirVantage Cloud Interface:" << std::endl;
+
+        for (const auto asset : componentPtr->assets)
+        {
+            std::cout << "    '" << asset->GetName() << "'" << std::endl;
+
+            for (auto field : asset->fields)
+            {
+                auto& dataType = field->GetDataType();
+                auto& name = field->GetName();
+
+                std::cout << "      ";
+
+                switch (field->GetActionType())
+                {
+                    case model::AssetField_t::TYPE_SETTING:
+                        std::cout << "setting ";
+                        break;
+
+                    case model::AssetField_t::TYPE_VARIABLE:
+                        std::cout << "variable ";
+                        break;
+
+                    case model::AssetField_t::TYPE_COMMAND:
+                        std::cout << "command ";
+                        break;
+
+                    case model::AssetField_t::TYPE_UNSET:
+                        throw mk::Exception_t("Internal error: Unset AssetField_t action type.");
+                }
+
+                if (!dataType.empty())
+                {
+                    std::cout << dataType << " ";
+                }
+
+                std::cout << name << std::endl;
+            }
+        }
+    }
 }
 
 
@@ -859,6 +1016,10 @@ model::Component_t* GetComponent
         else if (sectionName == "requires")
         {
             AddRequiredItems(componentPtr, sectionPtr, buildParams);
+        }
+        else if (sectionName == "assets")
+        {
+            AddUserAssets(componentPtr, sectionPtr, buildParams);
         }
         else
         {

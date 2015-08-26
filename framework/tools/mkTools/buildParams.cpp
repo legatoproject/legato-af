@@ -25,7 +25,8 @@ BuildParams_t::BuildParams_t
 :   beVerbose(false),
     target("localhost"),
     libOutputDir("."),
-    workingDir("")
+    workingDir(""),
+    codeGenOnly(false)
 //--------------------------------------------------------------------------------------------------
 {
     std::string frameworkRootPath = envVars::Get("LEGATO_ROOT");

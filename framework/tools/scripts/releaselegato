@@ -4,7 +4,7 @@ Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 "
 
 if ! [ $LEGATO_ROOT ]; then echo "Run bin/legs first" >&2; exit 1; fi
-. "${LEGATO_ROOT}/framework/tools/scripts/shlib"
+. "$(dirname "${BASH_SOURCE[0]}")/shlib"
 
 help_short_desc="release legato project"
 
@@ -19,7 +19,7 @@ help_long_description=(
 
 CheckForHelp $@
 
-EXCLUDE_PATTERN='proprietary|qmi/le_pa|mdm9x15/le_pa|test/.*/qmi|jenkins-build|.gitreview|.gitmodules|^airvantage$$'
+EXCLUDE_PATTERN='proprietary|qmi/le_pa|mdm9x15/le_pa|test/.*/qmi|jenkins-build|.gitreview|.gitmodules|sonar.sh'
 
 RELEASE_DIR=$LEGATO_ROOT/releases
 VERSION=$(cat $LEGATO_ROOT/version)
@@ -96,7 +96,6 @@ stage_pa_component airVantage     avcService          airVantage      le_pa_avc 
 stage_pa_component secureStorage  secStore            secStore        le_pa_secStore  ar7 ar86 wp7 wp85
 stage_pa_component fwupdate       fwupdateService     fwupdate        le_pa_fwupdate  ar7 ar86 wp7 wp85
 
-cp -R airvantage $STAGE_DIR
 cp version $STAGE_DIR
 cp package.properties $STAGE_DIR
 
@@ -118,7 +117,7 @@ ln -s $PKG_NAME $RELEASE_DIR/$PKG_NAME_LINK
 copy_images() {
     local target=$1
 
-    for file in $(find build/$target -maxdepth 1 -regextype sed -regex '.*legato.*\.\(cwe\|yaffs2\)'); do
+    for file in $(find build/$target -maxdepth 1 -regextype sed -regex '.*legato.*\.\(cwe\|yaffs2\|ubi\)'); do
         IMG_FULLNAME=$(basename $file)
         IMG_NAME="${IMG_FULLNAME%.*}"
         IMG_EXT="${IMG_FULLNAME##*.}"

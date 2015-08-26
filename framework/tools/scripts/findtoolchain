@@ -23,10 +23,15 @@ HOST_ARCH=$(uname -m)
 # Select the appropriate list of toolchain directories to search, in order of preference
 # (most preferred first) based on the target name given.
 case "$1" in
-ar7 | wp7 | ar86 | wp85 | virt_arm)
+ar7 | wp7 | ar86)
     TOOLCHAIN_DIRS=(
         /opt/swi/y16-ext/sysroots/$HOST_ARCH-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi
         /opt/swi/y14-ext/tmp/sysroots/$HOST_ARCH-linux/usr/bin/armv7a-vfp-neon-poky-linux-gnueabi
+        )
+    ;;
+wp85)
+    TOOLCHAIN_DIRS=(
+        /opt/swi/y17-ext/sysroots/$HOST_ARCH-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi
         )
     ;;
 ar6)
@@ -34,9 +39,19 @@ ar6)
         /opt/poky/1.4.1/sdk/sysroots/$HOST_ARCH-pokysdk-linux/usr/bin/armv5te-poky-linux-gnueabi
         )
     ;;
+virt_arm)
+    TOOLCHAIN_DIRS=(
+        /opt/swi/y17/sysroots/$HOST_ARCH-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi
+        /opt/swi/y17-ext/sysroots/$HOST_ARCH-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi
+        /opt/swi/y16/sysroots/$HOST_ARCH-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi
+        /opt/swi/y16-ext/sysroots/$HOST_ARCH-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi
+        )
+    ;;
 virt_x86)
     TOOLCHAIN_DIRS=(
         /opt/poky/1.6.1/sysroots/$HOST_ARCH-pokysdk-linux/usr/bin/i586-poky-linux
+        /opt/poky/y16/sysroots/$HOST_ARCH-pokysdk-linux/usr/bin/i586-poky-linux
+        /opt/poky/y17/sysroots/$HOST_ARCH-pokysdk-linux/usr/bin/i586-poky-linux
         )
     ;;
 help | --help | -h)
@@ -62,3 +77,4 @@ done
 
 echo "No toolchain found for target '$1'." >&2
 exit 1
+

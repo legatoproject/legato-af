@@ -4,7 +4,7 @@ Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 "
 
 if ! [ $LEGATO_ROOT ]; then echo "Run bin/legs first" >&2; exit 1; fi
-. "${LEGATO_ROOT}/framework/tools/scripts/shlib"
+. "$(dirname "${BASH_SOURCE[0]}")/shlib"
 
 # This script installs the Legato framework in /usr/local on a target device using SSH.
 # It will also install the startup scripts if they are not present or they are different
@@ -14,6 +14,8 @@ if ! [ $LEGATO_ROOT ]; then echo "Run bin/legs first" >&2; exit 1; fi
 # 0 - Success
 # 1 - General error
 # 42 - Startup files were updated and the target must be rebooted before trying to run this script again.
+
+LEGATO_BIN=$LEGATO_ROOT/targetFiles/shared/bin
 
 help_short_desc="install legato on target"
 
@@ -72,7 +74,19 @@ fi
 echo "Installing Legato framework from: $BUILD_DIR"
 
 # Copy the legato script onto the target.
-ScpToTarget -o ConnectTimeout=1 $LEGATO_ROOT/targetFiles/shared/bin/legato /tmp/legatoInstaller &&
+ScpToTarget -o ConnectTimeout=1 $LEGATO_BIN/legato /tmp/legatoInstaller &&
+if [ -f $LEGATO_BIN/whitelist ]
+then
+    ScpToTarget -o ConnectTimeout=1 $LEGATO_BIN/whitelist /tmp/whitelist
+fi
+if [ -f $LEGATO_BIN/legato-pre-update-hook ]
+then
+    ScpToTarget -o ConnectTimeout=1 $LEGATO_BIN/legato-pre-update-hook /tmp/legato-pre-update-hook
+fi
+if [ -f $LEGATO_BIN/legato-post-update-hook ]
+then
+    ScpToTarget -o ConnectTimeout=1 $LEGATO_BIN/legato-post-update-hook /tmp/legato-post-update-hook
+fi
 
 # Start the legato script on target and stream the tarball of the target device's staging to it.
 cat "$TAR_FILE" |

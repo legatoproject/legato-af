@@ -147,6 +147,11 @@ static void GenerateBuildStatement
     // shared libraries to the linker command line.
     script << "  ldFlags ="
 
+    // Make the executable able to export symbols to dynamic shared libraries that get loaded.
+    // This is needed so the executable can define executable-specific interface name variables
+    // for component libraries to use.
+              " -rdynamic"
+
     // Add the library output directory to the list of places to search for libraries to link with.
               " -L" << buildParams.libOutputDir;
 
@@ -158,7 +163,7 @@ static void GenerateBuildStatement
     GetDependentLibLdFlags(script, exePtr);
 
     // Link with the standard runtime libs.
-    script << " \"-L$$LEGATO_BUILD/bin/lib\" -llegato -lpthread -lrt -lm";
+    script << " \"-L$$LEGATO_BUILD/bin/lib\" -llegato -lpthread -lrt -ldl -lm";
 
     // Add ldFlags from earlier definition.
     script << " $ldFlags\n"
@@ -215,7 +220,7 @@ static void GenerateCandCxxFlags
     script << " -DLE_LOG_LEVEL_FILTER_PTR=" << componentName << "_LogLevelFilterPtr ";
 
     // Define the COMPONENT_INIT.
-    script << " \"-DCOMPONENT_INIT=LE_CI_LINKAGE void _" << componentName << "_COMPONENT_INIT()\"";
+    script << " \"-DCOMPONENT_INIT=LE_CI_LINKAGE LE_SHARED void _" << componentName << "_COMPONENT_INIT()\"";
 }
 
 
@@ -366,13 +371,16 @@ void Generate
     GenerateIfgenFlagsDef(script, buildParams.interfaceDirs);
     GenerateBuildRules(script, buildParams.target, argc, argv);
 
-    // Add build statements for the executable and .o files included in it.
-    GenerateBuildStatements(script, exePtr, buildParams);
-
-    // Add build statements for all the components included in this executable.
-    for (auto componentInstancePtr : exePtr->componentInstances)
+    if (!buildParams.codeGenOnly)
     {
-        GenerateBuildStatements(script, componentInstancePtr->componentPtr, buildParams);
+        // Add build statements for the executable and .o files included in it.
+        GenerateBuildStatements(script, exePtr, buildParams);
+
+        // Add build statements for all the components included in this executable.
+        for (auto componentInstancePtr : exePtr->componentInstances)
+        {
+            GenerateBuildStatements(script, componentInstancePtr->componentPtr, buildParams);
+        }
     }
 
     // Add build statements for all the IPC interfaces' generated files.

@@ -54,6 +54,19 @@ model::FileSystemObject_t* GetRequiredFileOrDir
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Creates a FileSystemObject_t instance for a given device in the parse tree.
+ *
+ * @return A pointer to the new object.
+ */
+//--------------------------------------------------------------------------------------------------
+model::FileSystemObject_t* GetRequiredDevice
+(
+    const parseTree::TokenList_t* itemPtr
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Extracts the signed integer value from a simple (name: value) section.
  *
  * @return the value.

@@ -3,8 +3,7 @@ copyright="
 Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 "
 
-if ! [ $LEGATO_ROOT ]; then echo "Run bin/legs first" >&2; exit 1; fi
-. "${LEGATO_ROOT}/framework/tools/scripts/shlib"
+. "$(dirname "${BASH_SOURCE[0]}")/shlib"
 
 help_short_desc="create Legato image partition"
 
@@ -28,28 +27,6 @@ help_long_description=(
 
 CheckForHelp $@
 
-while getopts ":t:o:d:" arg
-do
-    case $arg in
-    t)
-        TARGET=$OPTARG
-        echo "Target: $TARGET"
-        ;;
-    d)
-        STAGING_DIR=$(readlink -f $OPTARG)
-        echo "Input: $STAGING_DIR"
-        ;;
-    o)
-        OUTPUT_DIR=$(readlink -f $OPTARG)
-        echo "Output: $OUTPUT_DIR"
-        ;;
-    ?)
-        echo "$0: invalid option -$OPTARG"
-        usage_and_exit 1
-        ;;
-    esac
-done
-
 CheckRet() {
     RETVAL=$?
     if [ $RETVAL -ne 0 ]; then
@@ -58,8 +35,6 @@ CheckRet() {
     fi
 }
 
-VERSION=$(cat $LEGATO_ROOT/version)
-
 FindToolchain() {
     toolchain_dir_env_name=${TARGET^^}_TOOLCHAIN_DIR
 
@@ -67,37 +42,139 @@ FindToolchain() {
     if [ -z "$TOOLCHAIN_DIR" ]; then
         TOOLCHAIN_DIR=$(findtoolchain $TARGET)
     fi
+
+    TOOLCHAIN_ROOT=$(readlink -f "$TOOLCHAIN_DIR/../../..")
+
+    export PATH=$TOOLCHAIN_ROOT/usr/bin:$TOOLCHAIN_ROOT/usr/sbin:$PATH
 }
 
 FindTool() {
     TOOL_NAME=$1
     TOOL_VAR_DEST=$2
 
-    TOOL_PATH=$(find $TOOLCHAIN_ROOT/usr/bin $TOOLCHAIN_ROOT/usr/sbin -name $TOOL_NAME | head -1 2> /dev/null)
+    TOOL_PATH=$(which $TOOL_NAME 2> /dev/null)
     if [ -z "$TOOL_PATH" ]; then
-        echo "Unable to find $TOOL_NAME within toolchain, please update your toolchain."
-        exit 1
+        echo "Warning: Unable to find $TOOL_NAME within toolchain, please update your toolchain."
+        return 1
     fi
 
     export ${TOOL_VAR_DEST}=${TOOL_PATH}
 }
 
-CreateImg_mdm9x15() {
+while getopts ":t:o:d:v:" arg
+do
+    echo "$OPTARG == $(readlink -f $OPTARG)"
 
-    FindToolchain
+    case $arg in
+    t)
+        TARGET=$OPTARG
+        ;;
+    d)
+        STAGING_DIR=$(readlink -f $OPTARG)
+        ;;
+    o)
+        OUTPUT_DIR=$(readlink -f $OPTARG)
+        ;;
+    v)
+        VERSION=$OPTARG
+        ;;
+    ?)
+        echo "$0: invalid option -$OPTARG"
+        usage_and_exit 1
+        ;;
+    esac
+done
+
+if [ -z "$VERSION" ]; then
+    if [ -z "$LEGATO_ROOT" ]; then
+        echo "Unable to determine version"
+        exit 1
+    fi
+
+    VERSION="$(cat $LEGATO_ROOT/version)"
+    if [ -e "$LEGATO_ROOT/.git" ]; then
+        VERSION="$VERSION $(git rev-parse --short HEAD)"
+    fi
+    VERSION="$VERSION $(hostname) $(date +'%Y/%m/%d %H:%M:%S')"
+fi
+
+if [ -z "$TARGET" ]; then
+    echo "Target (-t) not set"
+    exit 1
+fi
+
+FindToolchain
+
+CheckFakerootVersion() {
+    FAKEROOT_BIN=$1
+    FAKEROOT_VERSION=$($FAKEROOT_BIN --version | awk '{print $3}')
+    REQUIRED_VERSION="1.20.2"
+    [ "$REQUIRED_VERSION" = "$(echo -e "$REQUIRED_VERSION\n$FAKEROOT_VERSION" | sort -V | head -1)" ]
+}
+
+# Need to appear as root to prepare images
+if [ $(id -u) -ne 0 ]; then
+    FindTool "fakeroot" FAKEROOT
+    if [ $? -eq 0 ]; then
+        CheckFakerootVersion $FAKEROOT
+        if [ $? -eq 0 ]; then
+            echo "Using fakeroot $FAKEROOT ..."
+            $FAKEROOT $0 $*
+            exit $?
+        fi
+    fi
+else
+    echo $*
+fi
+
+echo "Target: $TARGET"
+
+if [ -z "$STAGING_DIR" ]; then
+    echo "Staging dir (-d) not set"
+    exit 1
+fi
+echo "Input: $STAGING_DIR"
+
+if [ -z "$OUTPUT_DIR" ]; then
+    echo "Output dir (-o) not set"
+    exit 1
+fi
+echo "Output: $OUTPUT_DIR"
+
+echo "Version: $VERSION"
+
+GenerateUbinizeCfg() {
+    IMAGE_PATH=$1
+    UBINIZE_CFG_PATH=$2
+
+    rm -f $UBINIZE_CFG_PATH
+    touch $UBINIZE_CFG_PATH
+    echo "[legato-volume]" >> $UBINIZE_CFG_PATH
+    echo "mode=ubi" >> $UBINIZE_CFG_PATH
+    echo "image=$IMAGE_PATH" >> $UBINIZE_CFG_PATH
+    echo "vol_id=0" >> $UBINIZE_CFG_PATH
+    echo "vol_size=10MiB" >> $UBINIZE_CFG_PATH
+    echo "vol_type=dynamic" >> $UBINIZE_CFG_PATH
+    echo "vol_name=legato" >> $UBINIZE_CFG_PATH
+}
+
+CreateImg_mdm9x15() {
+    IMG_TYPE=${1:-yaffs2}
+
     if [ -z "$TOOLCHAIN_DIR" ]; then
         echo "Unable to find toolchain"
         exit 1
     fi
 
-    TOOLCHAIN_ROOT=$(readlink -f "$TOOLCHAIN_DIR/../../..")
-
-    FindTool "mkyaffs2image" MKYAFFS2
     FindTool "hdrcnv" HDRCNV
+    CheckRet
+
     FindTool "cwezip" CWEZIP
+    CheckRet
 
     PAGE_SIZE=4096
     OOB_SIZE=160
+    PEB_SIZE=256KiB
     COMPAT_BYTE=00000001
 
     case $TARGET in
@@ -106,21 +183,74 @@ CreateImg_mdm9x15() {
         wp7)    PID='9X15' ;;
         wp85)   PID='Y912'
                 PAGE_SIZE=2048
-                OOB_SIZE=64 ;;
+                OOB_SIZE=64
+                PEB_SIZE=128KiB ;;
         *)
             echo "Unknown product '$TARGET'"
             exit 1
         ;;
     esac
 
-    IMG_TYPE=yaffs2
-
     echo "$TARGET: Generating the framework image ($IMG_TYPE)"
     LEGATO_IMG="$OUTPUT_DIR/legato.$IMG_TYPE"
 
+    TEMP_DIR="$OUTPUT_DIR/legatoimg/$IMG_TYPE"
+    mkdir -p $TEMP_DIR
+
+    if [ $(id -u) -eq 0 ] && [[ "$IMG_TYPE" == "ubi" ]]; then
+        FindTool "setfattr" SETFATTR
+        if [ $? -ne 0 ]; then
+            echo "Warning: Unable to produce ubi image: setfattr needed"
+            return 1
+        fi
+
+        $SETFATTR --name security.SMACK64EXEC --value admin $STAGING_DIR/usr/local/bin/supervisor
+        CheckRet
+
+        $SETFATTR --name security.SMACK64EXEC --value admin $STAGING_DIR/usr/local/bin/appSetFilePermissions
+        CheckRet
+    elif [[ "$IMG_TYPE" == "ubi" ]]; then
+        echo "Warning: Unable to produce ubi image: fakeroot version >= 1.20.2 needed"
+        if grep "ID=ubuntu" /etc/os-release > /dev/null 2>&1; then
+            echo "         You can install fakeroot from ppa:cor-fr/fakeroot-backports"
+            echo "         $ sudo -E add-apt-repository ppa:cor-fr/fakeroot-backports && sudo apt-get update && sudo apt-get install fakeroot"
+            echo "         or"
+        fi
+        echo "         You can build fakeroot using sources from http://http.debian.net/debian/pool/main/f/fakeroot/fakeroot_1.20.2.orig.tar.bz2 ."
+        return 1
+    fi
+
+    cd $TEMP_DIR
+
     case $IMG_TYPE in
         yaffs2)
-            $MKYAFFS2 -c $PAGE_SIZE -s $OOB_SIZE "$STAGING_DIR" "$LEGATO_IMG"
+            FindTool "mkyaffs2image" MKYAFFS2
+            CheckRet
+
+            $MKYAFFS2 -c $PAGE_SIZE -s $OOB_SIZE "$STAGING_DIR" "$LEGATO_IMG" > yaffs2.log
+            CheckRet
+            ;;
+        ubi)
+            FindTool "mksquashfs" MKSQUASHFS
+            if [ $? -ne 0 ]; then
+                echo "Warning: Unable to produce squashfs image: mksquashfs needed"
+                return 1
+            fi
+
+            SQUASHFS_IMG="$OUTPUT_DIR/legato.squashfs"
+
+            $MKSQUASHFS "$STAGING_DIR" "$SQUASHFS_IMG" -noappend > squashfs.log
+            CheckRet
+
+            FindTool "ubinize" UBINIZE
+            if [ $? -ne 0 ]; then
+                echo "Warning: Unable to produce ubi image: ubinize needed"
+                return 1
+            fi
+
+            GenerateUbinizeCfg $SQUASHFS_IMG ${TEMP_DIR}/ubinize.cfg
+
+            $UBINIZE -o $LEGATO_IMG -m $PAGE_SIZE -p $PEB_SIZE -s $PAGE_SIZE ${TEMP_DIR}/ubinize.cfg > ubinize.log
             CheckRet
             ;;
         *)
@@ -130,9 +260,8 @@ CreateImg_mdm9x15() {
     esac
 
     echo "$TARGET: Generating the framework cwe"
-    cd $OUTPUT_DIR
 
-    TMPMBN=$OUTPUT_DIR/temp.mbn
+    TMPMBN=$TEMP_DIR/temp.mbn
     if [ -f ${TMPMBN}.hdr ] ; then rm -f ${TMPMBN}.hdr; fi
     if [ -f ${TMPMBN}.cwe ] ; then rm -f ${TMPMBN}.cwe; fi
     if [ -f ${TMPMBN}.cwe.z ] ; then rm -f ${TMPMBN}.cwe.z; fi
@@ -141,24 +270,58 @@ CreateImg_mdm9x15() {
     if [ -f legatoz.cwe ] ; then rm -f legatoz.cwe; fi
     if [ -f legatoz.hdr ] ; then rm -f legatoz.hdr; fi
 
-    $HDRCNV ${LEGATO_IMG} -OH ${TMPMBN}.hdr -IT USER -PT 9X15 -V $VERSION -B $COMPAT_BYTE
+    $HDRCNV ${LEGATO_IMG} -OH ${TMPMBN}.hdr -IT USER -PT 9X15 -V "$VERSION" -B $COMPAT_BYTE > hdrcnv-tmp.log
+    CheckRet
+
     cat ${TMPMBN}.hdr ${LEGATO_IMG} > ${TMPMBN}.cwe
+    CheckRet
 
     # legato.cwe
-    $HDRCNV ${TMPMBN}.cwe -OH legato.hdr -IT APPL -PT $PID -V $VERSION -B $COMPAT_BYTE
-    cat legato.hdr ${TMPMBN}.cwe > legato.cwe
+    $HDRCNV ${TMPMBN}.cwe -OH legato.hdr -IT APPL -PT $PID -V "$VERSION" -B $COMPAT_BYTE > hdrcnv-legato.log
+    CheckRet
+
+    cat legato.hdr ${TMPMBN}.cwe > $OUTPUT_DIR/legato-${IMG_TYPE}.cwe
+    CheckRet
 
     # legatoz.cwe
-    $CWEZIP ${TMPMBN}.cwe -c -o ${TMPMBN}.cwe.z
-    $HDRCNV ${TMPMBN}.cwe.z -OH legatoz.hdr -IT APPL -PT $PID -V $VERSION -B $COMPAT_BYTE
-    cat legatoz.hdr ${TMPMBN}.cwe.z > legatoz.cwe
+    $CWEZIP ${TMPMBN}.cwe -c -o ${TMPMBN}.cwe.z > cwezip.log
+    CheckRet
+
+    $HDRCNV ${TMPMBN}.cwe.z -OH legatoz.hdr -IT APPL -PT $PID -V "$VERSION" -B $COMPAT_BYTE > hdrcnv-legatoz.log
+    CheckRet
+
+    cat legatoz.hdr ${TMPMBN}.cwe.z > $OUTPUT_DIR/legatoz-${IMG_TYPE}.cwe
+    CheckRet
+}
+
+DefaultImg_mdm9x15() {
+    IMG_TYPE=yaffs2
+
+    # Only use ubi for WP85 for now
+    if [[ "$TARGET" == "wp85" ]]; then
+        IMG_TYPE=ubi
+
+        if ! [ -e "$OUTPUT_DIR/legato-ubi.cwe" ]; then
+            echo "Warning: Unable to provide valid CWE image for WP85"
+            return 1
+        fi
+    fi
+
+    ln -sf legato.${IMG_TYPE} $OUTPUT_DIR/legato.default
+
+    ln -sf legato-${IMG_TYPE}.cwe $OUTPUT_DIR/legato.cwe
+    ln -sf legatoz-${IMG_TYPE}.cwe $OUTPUT_DIR/legatoz.cwe
 }
 
 case $TARGET in
     ar7 | wp7 | wp85 | ar86)
-        CreateImg_mdm9x15
+        CreateImg_mdm9x15 yaffs2
+        CreateImg_mdm9x15 ubi
+        DefaultImg_mdm9x15
         ;;
     ?)
         echo "$0: nothing to do for target $TARGET"
         ;;
 esac
+
+exit 0

@@ -18,6 +18,8 @@
  **/
 //--------------------------------------------------------------------------------------------------
 #define MAX_NUM_PROCS 256
+#define DEFAULT_LIMIT_MAX_FILE_SYSTEM_BYTES     131072
+#define ADD_FILE_SYSTEM_BYTES                   (512 * 1024)  //512 KBytes
 
 
 //--------------------------------------------------------------------------------------------------
@@ -236,6 +238,14 @@ static void ConfigureGdb
 
     // Write into the config's debug tool node to indicate that this configuration has been modified.
     le_cfg_SetString(cfgIter, CFG_DEBUG_TOOL, "gdb");
+
+    // Add 512K to the maxFileSytemBytes so that we can debug this app in sandboxed mode
+    uint32_t maxBytes;
+
+    maxBytes = le_cfg_GetInt(cfgIter, "maxFileSystemBytes", DEFAULT_LIMIT_MAX_FILE_SYSTEM_BYTES);
+    maxBytes += ADD_FILE_SYSTEM_BYTES;  // add an additional 512KBytes
+    LE_INFO("Resetting maxFileSystemBytes to %d bytes", maxBytes);
+    le_cfg_SetInt(cfgIter, "maxFileSystemBytes", maxBytes);
 
     // Add gdbserver and libs to the app's 'requires/files' section.
     le_cfg_GoToNode(cfgIter, "requires/files");

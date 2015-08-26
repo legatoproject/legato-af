@@ -336,6 +336,15 @@ static void AddRequiredItems
                 appPtr->requiredDirs.push_back(GetRequiredFileOrDir(dirSpecPtr));
             }
         }
+        else if (subsectionName == "device")
+        {
+            for (auto itemPtr : parseTree::ToCompoundItemListPtr(subsectionPtr)->Contents())
+            {
+                auto deviceSpecPtr = parseTree::ToTokenListPtr(itemPtr);
+
+                appPtr->requiredDevices.push_back(GetRequiredDevice(deviceSpecPtr));
+            }
+        }
         else if (subsectionName == "configTree")
         {
             for (auto itemPtr : parseTree::ToCompoundItemListPtr(subsectionPtr)->Contents())
@@ -420,22 +429,27 @@ static void AddProcesses
     // Each item in this section is a process specification in the form of a TokenList_t.
     for (auto itemPtr : sectionPtr->Contents())
     {
-        auto procPtr = new model::Process_t();
-        procEnvPtr->processes.push_back(procPtr);
+        auto processSpecPtr = dynamic_cast<const parseTree::RunProcess_t*>(itemPtr);
+        if (processSpecPtr == NULL)
+        {
+            itemPtr->ThrowException("Internal error: '" + itemPtr->TypeName()
+                                    + "'' is not a RunProcess_t.");
+        }
 
-        auto processSpecPtr = parseTree::ToTokenListPtr(itemPtr);
-        auto tokens = processSpecPtr->Contents();
+        auto procPtr = new model::Process_t(processSpecPtr);
+        procEnvPtr->processes.push_back(procPtr);
 
         // If the first token is an open parenthesis, then no process name was specified and
         // the first content token is the executable path, which also is used as the process name.
         // Otherwise, the first content token is the process name, followed by the exe path.
+        auto tokens = processSpecPtr->Contents();
         auto i = tokens.begin();
         procPtr->SetName((*i)->text);
         if (processSpecPtr->firstTokenPtr->type != parseTree::Token_t::OPEN_PARENTHESIS)
         {
             i++;
         }
-        procPtr->exePath = (*i)->text;
+        procPtr->exePath = path::Unquote((*i)->text);
 
         for (i++ ; i != tokens.end() ; i++)
         {
@@ -451,7 +465,7 @@ static void AddProcesses
  * processes section in the parse tree.
  */
 //--------------------------------------------------------------------------------------------------
-static void AddProcesses
+static void AddProcessesSection
 (
     model::App_t* appPtr,
     const parseTree::CompoundItemList_t* sectionPtr ///< processes section.
@@ -538,7 +552,7 @@ static void AddProcesses
  * processes sections in the parse tree.
  */
 //--------------------------------------------------------------------------------------------------
-static void AddProcesses
+static void AddProcessesSections
 (
     model::App_t* appPtr,
     std::list<const parseTree::CompoundItem_t*> processesSections ///< List of processes sections.
@@ -547,7 +561,7 @@ static void AddProcesses
 {
     for (auto sectionPtr : processesSections)
     {
-        AddProcesses(appPtr, ToCompoundItemListPtr(sectionPtr));
+        AddProcessesSection(appPtr, ToCompoundItemListPtr(sectionPtr));
     }
 }
 
@@ -1381,7 +1395,7 @@ model::App_t* GetApp
         }
         else if (sectionName == "maxQueuedSignals")
         {
-            appPtr->maxQueuedSignals = GetPositiveInt(ToSimpleSectionPtr(sectionPtr));
+            appPtr->maxQueuedSignals = GetNonNegativeInt(ToSimpleSectionPtr(sectionPtr));
         }
         else if (sectionName == "maxThreads")
         {
@@ -1427,7 +1441,7 @@ model::App_t* GetApp
     }
 
     // Model all process environments and processes.
-    AddProcesses(appPtr, processesSections);
+    AddProcessesSections(appPtr, processesSections);
 
     // Process IPC API exports and imports.
     ExportInterfaces(appPtr, providedApiSections);

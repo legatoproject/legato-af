@@ -429,6 +429,10 @@ static parseTree::CompoundItem_t* ParseRequiresSubsection
     {
         return ParseComplexSection(lexer, subsectionNameTokenPtr, ParseRequiredFile);
     }
+    else if (subsectionName == "device")
+    {
+        return ParseComplexSection(lexer, subsectionNameTokenPtr, ParseRequiredDevice);
+    }
     else
     {
         lexer.ThrowException("Unexpected subsection name '" + subsectionName

@@ -21,20 +21,36 @@ namespace model
 //--------------------------------------------------------------------------------------------------
 static void CheckName
 (
-    const std::string& name
+    const std::string& name,
+    const parseTree::RunProcess_t* parseTreePtr ///< Parse tree object to use to throw exceptions.
 )
 //--------------------------------------------------------------------------------------------------
 {
     if (name.length() > LIMIT_MAX_PROCESS_NAME_LEN)
     {
-        throw mk::Exception_t("Process name '" + name + "' is too long."
-                                   "  Must be a maximum of " +
-                                   std::to_string(LIMIT_MAX_PROCESS_NAME_LEN) + " bytes.");
+        parseTreePtr->ThrowException("Process name '" + name + "' is too long."
+                                     "  Must be a maximum of " +
+                                     std::to_string(LIMIT_MAX_PROCESS_NAME_LEN) + " bytes.");
     }
 
     if (name.empty())
     {
-        throw mk::Exception_t("Empty process name.");
+        parseTreePtr->ThrowException("Empty process name.");
+    }
+
+    if ((name == ".") || (name == ".."))
+    {
+        parseTreePtr->ThrowException("Process name cannot be '.' or '..'.");
+    }
+
+    if (name.find(':') != std::string::npos)
+    {
+        parseTreePtr->ThrowException("Process name cannot contain a colon (':').");
+    }
+
+    if (name.find('/') != std::string::npos)
+    {
+        parseTreePtr->ThrowException("Process name cannot contain a slash ('/').");
     }
 }
 
@@ -50,9 +66,13 @@ void Process_t::SetName
 )
 //--------------------------------------------------------------------------------------------------
 {
-    CheckName(name);
+    // Note: The process name will become a config tree node name, so it can't contain
+    // slashes or quotes or it will mess with the config tree.
+    auto procName = path::GetLastNode(path::Unquote(name));
 
-    this->name = name;
+    CheckName(procName, parseTreePtr);
+
+    this->name = procName;
 }
 
 

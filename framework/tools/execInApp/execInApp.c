@@ -31,55 +31,15 @@
  * itself).
  **/
 //--------------------------------------------------------------------------------------------------
-#define MAX_NUM_PROC_ARGS 255
+#define MAX_NUM_PROC_ARGS           255
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * The name of the application specified on the command line.
+ * Default priority level.
  **/
 //--------------------------------------------------------------------------------------------------
-static const char* AppName = NULL;
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * The path to the executable specified on the command line.
- **/
-//--------------------------------------------------------------------------------------------------
-static const char* ExecPath = NULL;
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * The name of the process specified on the command line.
- **/
-//--------------------------------------------------------------------------------------------------
-static const char* ProcName = NULL;
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Array of pointers to arguments to be passed to the process when it is started.
- **/
-//--------------------------------------------------------------------------------------------------
-static const char* ProcArgs[MAX_NUM_PROC_ARGS + 1]; // Add space for the NULL pointer at the end.
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * The number of arguments in the ProcArgs array.
- **/
-//--------------------------------------------------------------------------------------------------
-static size_t NumProcArgs = 1;  // The first entry is reserved for the process name.
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Priority level to use.
- **/
-//--------------------------------------------------------------------------------------------------
-static const char* Priority = "medium"; // Default to medium.
+#define DEFAULT_PRIORITY            "medium"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -157,22 +117,26 @@ static void PrintHelp
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Sets the priority level for the calling process based on the priority specified on the command
- * line.
+ * Sets the priority level for the calling process.
  *
  * @note This function kills the calling process if there is an error.
  */
 //--------------------------------------------------------------------------------------------------
 static void SetPriority
 (
-    void
+    const char* priorityPtr         ///< [IN] Priority to set the process to.  If this is NULL the
+                                    ///       default priority will be used.
 )
 {
-    if (proc_SetPriority(Priority, 0) != LE_OK)
+    const char* priorityStr = DEFAULT_PRIORITY;
+
+    if (priorityPtr != NULL)
     {
-        fprintf(stderr, "Could not set the priority level to '%s'.\n", Priority);
-        exit(EXIT_FAILURE);
+        priorityStr = priorityPtr;
     }
+
+    INTERNAL_ERR_IF(proc_SetPriority(priorityStr, 0) != LE_OK,
+                    "Could not set the priority level to '%s'.\n", priorityStr);
 }
 
 
@@ -286,94 +250,231 @@ static app_Ref_t GetAppRef
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Called when the app name is found on the command line.
- **/
+ * Gets the application name from the command-line.
+ *
+ * @note Does not return on error.
+ *
+ * @return
+ *      The app name.
+ */
 //--------------------------------------------------------------------------------------------------
-static void AppNameHandler
+static const char* GetAppName
 (
-    const char* appName
+    void
 )
 {
-    AppName = appName;
-}
+    // The app name should be the first argument on the command-line.
+    const char* appNamePtr = le_arg_GetArg(0);
 
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Called when the executable path is found on the command line.
- **/
-//--------------------------------------------------------------------------------------------------
-static void ExecPathHandler
-(
-    const char* execPath
-)
-{
-    ExecPath = execPath;
-
-    // Now that we have all the mandatory positional arguments, we can allow less args than
-    // callbacks.
-    le_arg_AllowLessPositionalArgsThanCallbacks();
-}
-
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Called when a argument for the process to be started is found on the command line.
- **/
-//--------------------------------------------------------------------------------------------------
-static void ProcArgHandler
-(
-    const char* arg
-)
-{
-    if (NumProcArgs >= MAX_NUM_PROC_ARGS)
+    if (appNamePtr == NULL)
     {
-        fprintf(stderr, "Too many command line arguments.\n");
+        fprintf(stderr, "Please specify an application.\n");
         exit(EXIT_FAILURE);
     }
 
-    ProcArgs[NumProcArgs++] = arg;
+    if ( (strcmp(appNamePtr, "--help") == 0) || (strcmp(appNamePtr, "-h") == 0) )
+    {
+        PrintHelp();
+    }
+
+    if (appNamePtr[0] == '-')
+    {
+        fprintf(stderr, "Please specify an application.  Application name cannot start with '-'.\n");
+        exit(EXIT_FAILURE);
+    }
+
+    return appNamePtr;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets the executable path from the command-line.
+ *
+ * @note Does not return on error.
+ *
+ * @return
+ *      The executable path.
+ */
+//--------------------------------------------------------------------------------------------------
+static const char* GetExecPath
+(
+    size_t* indexPtr            ///< [OUT] Index of the exec path argument on the command line.
+)
+{
+    // The executable path is the first argument after the list of options.  Search for the exec
+    // path starting from the second argument.
+    size_t i = 1;
+
+    while (1)
+    {
+        const char* argPtr = le_arg_GetArg(i);
+
+        if (argPtr == NULL)
+        {
+            fprintf(stderr, "Please specify an executable.\n");
+            exit(EXIT_FAILURE);
+        }
+
+        if (argPtr[0] != '-')
+        {
+            // This is the executable path.
+            *indexPtr = i;
+            return argPtr;
+        }
+
+        i++;
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Returns the string value of a command-line option.  The command-line option must take the form:
+ *
+ * option=value
+ *
+ * The portion before the '=' is considered the option.  The portion after the '=' is considered the
+ * value.
+ *
+ * For example with,
+ *
+ * --priority=low
+ *
+ * the option would be the string "--priority" and the value would be the string "low".
+ *
+ * @return
+ *      The string value if successful.
+ *      Null if the option was not found on the command line.
+ */
+//--------------------------------------------------------------------------------------------------
+static const char* GetOptionValue
+(
+    const char* option,     ///< [IN] The option.
+    size_t startIndex,      ///< [IN] Index of the first argument to search from.
+    size_t endIndex         ///< [IN] Index of the last argument to search to.
+)
+{
+    // Make the string to search for.
+    char searchStr[LIMIT_MAX_ARGS_STR_BYTES];
+
+    int n = snprintf(searchStr, sizeof(searchStr), "%s=", option);
+
+    if ( (n < 0) || (n >= sizeof(searchStr)) )
+    {
+        INTERNAL_ERR("Option string is too long.");
+    }
+
+    // Search the list of command line arguments for the specified option.
+    size_t i = startIndex;
+
+    for (; i <= endIndex; i++)
+    {
+        const char* argPtr = le_arg_GetArg(i);
+
+        INTERNAL_ERR_IF(argPtr == NULL, "Wrong number of arguments.");
+
+        char* subStr = strstr(argPtr, searchStr);
+
+        if ( (subStr != NULL) && (subStr == argPtr) )
+        {
+            // The argPtr begins with the searchStr.  The remainder of the argBuf is the value string.
+            const char* valueStr = argPtr + strlen(searchStr);
+
+            return valueStr;
+        }
+    }
+
+    return NULL;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Returns true if the specified flag is found on the command line.
+ *
+ * @return
+ *      true if the flag is on the command line.
+ *      false if the flag was not found on the command line.
+ */
+//--------------------------------------------------------------------------------------------------
+static bool GetFlagArg
+(
+    const char* flag,       ///< [IN] The flag to find
+    size_t startIndex,      ///< [IN] Index of the first argument to search from.
+    size_t endIndex         ///< [IN] Index of the last argument to search to.
+)
+{
+    // Search the list of command line arguments for the specified option.
+    size_t i = startIndex;
+
+    for (; i <= endIndex; i++)
+    {
+        const char* argPtr = le_arg_GetArg(i);
+
+        INTERNAL_ERR_IF(argPtr == NULL, "Wrong number of arguments.");
+
+        if (strcmp(argPtr, flag) == 0)
+        {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 
 //--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
-    // SYNOPSIS: execInApp appName [OPTIONS] execPath [ARGS]
-    le_arg_AddPositionalCallback(AppNameHandler);
-    le_arg_AddPositionalCallback(ExecPathHandler);
-    le_arg_AddPositionalCallback(ProcArgHandler);
-    le_arg_AllowMorePositionalArgsThanCallbacks();
+    // Need to parse the command line args in order because the argument order have specific meanings.
+    const char* appNamePtr = GetAppName();
 
-    // OPTIONS:
-    //     --procName=NAME
-    //         Starts the process with NAME as its name.  If this option is not used the
-    //         executable name is used as the process name.
-    le_arg_SetStringVar(&ProcName, NULL, "procName");
+    // Get the executable path.
+    size_t execIndex;
+    const char* execPathPtr = GetExecPath(&execIndex);
 
-    //     --priority=PRIORITY
-    //         Sets the priority of the process to PRIORITY.  PRIORITY must be either 'idle',
-    //         'low', 'medium', 'high', 'rt1', 'rt2'...'rt32'.
-    le_arg_SetStringVar(&Priority, NULL, "priority");
-
-    //     --help
-    //         Display this help and exit.
-    le_arg_SetFlagCallback(PrintHelp, NULL, "help");
-
-    le_arg_Scan();
-
-    // If the process name wasn't specified, use the executable name as the process name.
-    if (ProcName == NULL)
+    // Check options.
+    size_t lastOptionIndex = execIndex - 1;
+    size_t firstOptionIndex = 1;
+    if ( GetFlagArg("--help", firstOptionIndex, lastOptionIndex) ||
+         GetFlagArg("-h", firstOptionIndex, lastOptionIndex) )
     {
-        ProcName = le_path_GetBasenamePtr(ExecPath, "/");
+        PrintHelp();
     }
 
+    const char* procNamePtr = GetOptionValue("--procName", firstOptionIndex, lastOptionIndex);
+    const char* priorityPtr = GetOptionValue("--priority", firstOptionIndex, lastOptionIndex);
+
+    // Get all of the arguments for the process.  The first element in this list stores the process
+    // name.  The last element must be NULL to indicate the end of the list.
+    const char* procArgs[MAX_NUM_PROC_ARGS + 2] = {NULL};
+
+    int i = 1;  // The first element is for the process name.
+    while (i < MAX_NUM_PROC_ARGS)
+    {
+        // Only include command line arguments after the executable.
+        procArgs[i] = le_arg_GetArg(i + execIndex);
+
+        if (procArgs[i] == NULL)
+        {
+            break;
+        }
+
+        i++;
+    }
+
+    // If the process name wasn't specified, use the executable name as the process name.
+    if (procNamePtr == NULL)
+    {
+        procArgs[0] = le_path_GetBasenamePtr(execPathPtr, "/");
+    }
+
+    // Make sure the app is running.
     le_appInfo_ConnectService();
 
     le_appInfo_State_t appState;
-    appState = le_appInfo_GetState(AppName);
+    appState = le_appInfo_GetState(appNamePtr);
 
     switch(appState)
     {
@@ -381,23 +482,19 @@ COMPONENT_INIT
             break;
 
         default:
-            fprintf(stderr, "Application '%s' is not running.\n", AppName);
+            fprintf(stderr, "Application '%s' is not running.\n", appNamePtr);
             exit(EXIT_FAILURE);
             break;
     }
 
-    app_Ref_t appRef = GetAppRef(AppName);
-
-    // The process's argument list must begin with the process name and end with a NULL.
-    ProcArgs[0] = ProcName;
-    ProcArgs[NumProcArgs] = NULL;
+    app_Ref_t appRef = GetAppRef(appNamePtr);
 
     // Get the applications info.
     uid_t uid;
     gid_t gid;
     char userName[LIMIT_MAX_USER_NAME_BYTES];
-    GetAppIds(appRef, AppName, &uid, &gid, userName, sizeof(userName));
-    LE_DEBUG("App: %s uid[%u] gid[%u] user[%s]\n", AppName, uid, gid, userName);
+    GetAppIds(appRef, appNamePtr, &uid, &gid, userName, sizeof(userName));
+    LE_DEBUG("App: %s uid[%u] gid[%u] user[%s]\n", appNamePtr, uid, gid, userName);
 
     const char * sandboxDirPtr;
     sandboxDirPtr = app_GetSandboxPath(appRef);
@@ -405,10 +502,7 @@ COMPONENT_INIT
     // Is application sandboxed ?
     if(sandboxDirPtr[0] != '\0')
     {
-        LE_DEBUG("Application '%s' is sandboxed in %s", AppName, sandboxDirPtr);
-
-        const char * homeDirPtr = app_GetHomeDirPath(appRef);
-        INTERNAL_ERR_IF(homeDirPtr == NULL, "Unable to get home directory.");
+        LE_DEBUG("Application '%s' is sandboxed in %s", appNamePtr, sandboxDirPtr);
 
         // Set the umask so that files are not accidentally created with global permissions.
         umask(S_IRWXG | S_IRWXO);
@@ -418,21 +512,21 @@ COMPONENT_INIT
         INTERNAL_ERR_IF(sigfillset(&sigSet) != 0, "Could not set signal set.");
         INTERNAL_ERR_IF(pthread_sigmask(SIG_UNBLOCK, &sigSet, NULL) != 0, "Could not set signal mask.");
 
-        SetPriority();
+        SetPriority(priorityPtr);
 
         // Get the smack label for the process.
         char smackLabel[LIMIT_MAX_SMACK_LABEL_BYTES];
-        appSmack_GetLabel(AppName, smackLabel, sizeof(smackLabel));
+        appSmack_GetLabel(appNamePtr, smackLabel, sizeof(smackLabel));
 
         // Set the process's SMACK label.
         smack_SetMyLabel(smackLabel);
 
         // Sandbox the process.
-        sandbox_ConfineProc(sandboxDirPtr, uid, gid, NULL, 0, homeDirPtr);
+        sandbox_ConfineProc(sandboxDirPtr, uid, gid, NULL, 0, "/");
     }
     else
     {
-        LE_WARN("Application '%s' is unsandboxed", AppName);
+        LE_WARN("Application '%s' is unsandboxed", appNamePtr);
 
         const char * installDirPtr = app_GetInstallDirPath(appRef);
         INTERNAL_ERR_IF(installDirPtr == NULL, "Unable to get install directory.");
@@ -451,9 +545,9 @@ COMPONENT_INIT
     }
 
     // Launch the executable program.  This should not return unless there is an error.
-    LE_DEBUG("Execing '%s' in application '%s'.\n", ExecPath, AppName);
-    execvp(ExecPath, (char* const *)ProcArgs);
+    LE_DEBUG("Execing '%s' in application '%s'.\n", execPathPtr, appNamePtr);
+    execvp(execPathPtr, (char* const *)procArgs);
 
-    fprintf(stderr, "Could not exec '%s'.  %m.\n", ExecPath);
+    fprintf(stderr, "Could not exec '%s'.  %m.\n", execPathPtr);
     exit(EXIT_FAILURE);
 }

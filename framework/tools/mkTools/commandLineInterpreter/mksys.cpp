@@ -141,6 +141,15 @@ static void GetCommandLineArgs
                             "executables.",
                             ldFlagsPush);
 
+    args::AddOptionalFlag(&BuildParams.codeGenOnly,
+                          'g',
+                          "generate-code",
+                          "Only generate code, but don't compile, link, or bundle anything."
+                          " The interface definition (include) files will be generated, along"
+                          " with component and executable main files and configuration files."
+                          " This is useful for supporting context-sensitive auto-complete and"
+                          " related features in source code editors, for example.");
+
     // Any remaining parameters on the command-line are treated as the .sdef file path.
     // Note: there should only be one parameter not prefixed by an argument identifier.
     args::SetLooseArgHandler(sdefFileNameSet);

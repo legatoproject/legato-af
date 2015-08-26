@@ -4,7 +4,7 @@ Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 "
 
 if ! [ $LEGATO_ROOT ]; then echo "Run bin/legs first" >&2; exit 1; fi
-. "${LEGATO_ROOT}/framework/tools/scripts/shlib"
+. "$(dirname "${BASH_SOURCE[0]}")/shlib"
 
 # This script starts the Legato Service Directory and Log Control Daemon, if they aren't
 # already running.  It outputs "Already running." and exits with code 1 if they were already
@@ -48,15 +48,6 @@ if [ $# -gt 1 ]
 then
     echo "***ERROR: Too many parameters." 1>&2
     exit 2
-fi
-
-
-if ! [ $LEGATO_ROOT ]
-then
-    echo "WARNING: LEGATO_ROOT environment variable not set." 1>&2
-    echo "         Should be set to the root directory of your Legato framework." 1>&2
-    echo "         Assuming '$(pwd)'" 1>&2
-    LEGATO_ROOT=$(pwd)
 fi
 
 if ! [ $TARGET ]

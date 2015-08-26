@@ -125,8 +125,17 @@ std::string Token_t::TypeName
         case INTEGER:
             return "integer";
 
+        case SIGNED_INTEGER:
+            return "signed integer";
+
         case BOOLEAN:
             return "Boolean value";
+
+        case FLOAT:
+            return "floating point number";
+
+        case STRING:
+            return "string";
 
         default:
         {

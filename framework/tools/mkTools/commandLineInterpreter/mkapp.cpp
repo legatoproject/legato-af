@@ -189,11 +189,20 @@ static void GetCommandLineArgs
     args::AddOptionalFlag(&DontRunNinja,
                            'n',
                            "dont-run-ninja",
-                           "Even if a build.ninja file exists, ignore it, parse all inputs, and"
-                           " generate all output files, including a new copy of the build.ninja,"
-                           " then exit without running ninja.  This is used by the build.ninja to"
-                           " to regenerate itself and any other files that need to be regenerated"
-                           " when the build.ninja finds itself out of date.");
+                           "Even if a build.ninja file exists, ignore it, delete the staging area,"
+                           " parse all inputs, and generate all output files, including a new copy"
+                           " of the build.ninja, then exit without running ninja.  This is used by"
+                           " the build.ninja to to regenerate itself and any other files that need"
+                           " to be regenerated when the build.ninja finds itself out of date.");
+
+    args::AddOptionalFlag(&BuildParams.codeGenOnly,
+                          'g',
+                          "generate-code",
+                          "Only generate code, but don't compile, link, or bundle anything."
+                          " The interface definition (include) files will be generated, along"
+                          " with component and executable main files and configuration files."
+                          " This is useful for supporting context-sensitive auto-complete and"
+                          " related features in source code editors, for example.");
 
     // Any remaining parameters on the command-line are treated as the .adef file path.
     // Note: there should only be one parameter not prefixed by an argument identifier.
@@ -249,15 +258,18 @@ void MakeApp
     // Set the target-specific environment variables (e.g., LEGATO_TARGET).
     envVars::SetTargetSpecific(BuildParams.target);
 
+    // If we have been asked not to run Ninja, then delete the staging area because it probably
+    // will contain some of the wrong files now that .Xdef file have changed.
+    if (DontRunNinja)
+    {
+        file::DeleteDir(path::Combine(BuildParams.workingDir, "staging"));
+    }
     // If we have not been asked to ignore any already existing build.ninja, and the command-line
     // arguments and environment variables we were given are the same as last time, just run ninja.
-    if (!DontRunNinja)
+    else if (args::MatchesSaved(BuildParams, argc, argv) && envVars::MatchesSaved(BuildParams))
     {
-        if (args::MatchesSaved(BuildParams, argc, argv) && envVars::MatchesSaved(BuildParams))
-        {
-            RunNinja(BuildParams);
-            // NOTE: If build.ninja exists, RunNinja() will not return.  If it doesn't it will.
-        }
+        RunNinja(BuildParams);
+        // NOTE: If build.ninja exists, RunNinja() will not return.  If it doesn't it will.
     }
 
     // Construct a model of the application.
@@ -266,7 +278,10 @@ void MakeApp
     {
         AppPtr->version = VersionSuffix;
     }
-    else
+
+    // Append a "." and the VersionSuffix if the user provides a
+    // "--append or -a" argument in the command line
+    else if (VersionSuffix.empty() == false)
     {
         AppPtr->version += '.' + VersionSuffix;
     }

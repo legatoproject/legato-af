@@ -34,7 +34,7 @@ if [[ "$1" == "--help" ]]; then
     echo -e "\t\tOPT_PERSIST: Make changes to the image persistant or not"
     echo -e "\t\tOPT_KMESG: Kernel messages to console"
     echo -e "\t\tOPT_GDB: Launch GDB server to qemu"
-    echo -e "\t\tOPT_SERIAL: Bearer for serial port" 
+    echo -e "\t\tOPT_SERIAL: Bearer for serial port"
     echo -e "\t\t            - (blank, default) = Serial to console"
     echo -e "\t\t            - telnet = Serial to telnet"
     echo -e "\t\tOPT_NET: Networking interface"

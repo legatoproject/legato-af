@@ -53,6 +53,9 @@ std::string Content_t::TypeName
         case REQUIRED_DIR:
             return "required dir";
 
+        case REQUIRED_DEVICE:
+            return "required device";
+
         case PROVIDED_API:
             return "provided API";
 
@@ -85,6 +88,18 @@ std::string Content_t::TypeName
 
         case APP:
             return "app";
+
+        case ASSET:
+            return "asset";
+
+        case ASSET_SETTING:
+            return "asset setting";
+
+        case ASSET_VARIABLE:
+            return "asset variable";
+
+        case ASSET_COMMAND:
+            return "asset command";
 
         default:
         {

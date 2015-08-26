@@ -1,10 +1,9 @@
-#! /bin/sh
+#!/bin/bash
 copyright="
 Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 "
 
-if ! [ $LEGATO_ROOT ]; then echo "Run bin/legs first" >&2; exit 1; fi
-. "${LEGATO_ROOT}/framework/tools/scripts/shlib"
+. "$(dirname "${BASH_SOURCE[0]}")/shlib"
 
 help_short_desc="set the time on target"
 

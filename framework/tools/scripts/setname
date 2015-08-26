@@ -3,8 +3,7 @@ copyright="
 Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 "
 
-if ! [ $LEGATO_ROOT ]; then echo "Run bin/legs first" >&2; exit 1; fi
-. "${LEGATO_ROOT}/framework/tools/scripts/shlib"
+. "$(dirname "${BASH_SOURCE[0]}")/shlib"
 
 help_short_desc="change the hostname of the target"
 
@@ -17,7 +16,7 @@ help_long_description=(
 "the commandline prompt will be root@swi-mdm9x15. If you are logged into"
 "multiple targets or you have multiple targets on your network, it can"
 "be helpful to give each its own hostname so its easy to tell which device"
-"you have connected to." 
+"you have connected to."
 "After running this command, the hostname of the target will be changed to"
 "the name given in NAME."
 )

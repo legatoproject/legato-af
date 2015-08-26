@@ -328,7 +328,7 @@ static void SetBundledFilePermissions
  * the configuration tree.
  **/
 //--------------------------------------------------------------------------------------------------
-void filePermissions_Set
+LE_SHARED void filePermissions_Set
 (
     const char* appNamePtr
 )

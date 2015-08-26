@@ -3,7 +3,9 @@
 # --------------------------------------------------------------------------------------------------
 
 add_library(codeGenerator
-                codeGenerator.cpp
+                exeMainGenerator.cpp
+                interfacesHeaderGenerator.cpp
+                componentMainGenerator.cpp
            )
 
 add_dependencies(codeGenerator

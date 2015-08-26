@@ -123,12 +123,13 @@ void GetPermissions
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Creates a FileSystemObject_t instance for a given bundled file or directory in the parse tree.
+ * Creates a FileSystemObject_t instance for a given file or directory, that may optionally contain
+ * permissions, in the parse tree.
  *
  * @return A pointer to the new object.
  */
 //--------------------------------------------------------------------------------------------------
-model::FileSystemObject_t* GetBundledItem
+static model::FileSystemObject_t* GetPermissionItem
 (
     const parseTree::TokenList_t* itemPtr
 )
@@ -172,6 +173,23 @@ model::FileSystemObject_t* GetBundledItem
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Creates a FileSystemObject_t instance for a given bundled file or directory in the parse tree.
+ *
+ * @return A pointer to the new object.
+ */
+//--------------------------------------------------------------------------------------------------
+model::FileSystemObject_t* GetBundledItem
+(
+    const parseTree::TokenList_t* itemPtr
+)
+//--------------------------------------------------------------------------------------------------
+{
+    return GetPermissionItem(itemPtr);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Creates a FileSystemObject_t instance for a given required file or directory in the parse tree.
  *
  * @return A pointer to the new object.
@@ -209,6 +227,32 @@ model::FileSystemObject_t* GetRequiredFileOrDir
     //       have inside the target filesystem.  This cannot be changed by the app.
 
     return fileSystemObjPtr;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Creates a FileSystemObject_t instance for a given device in the parse tree.
+ *
+ * @return A pointer to the new object.
+ */
+//--------------------------------------------------------------------------------------------------
+model::FileSystemObject_t* GetRequiredDevice
+(
+    const parseTree::TokenList_t* itemPtr
+)
+//--------------------------------------------------------------------------------------------------
+{
+    auto permPtr = GetPermissionItem(itemPtr);
+
+    // Execute permissions are not allowed on devices.
+    if (permPtr->permissions.IsExecutable())
+    {
+        throw std::invalid_argument("Execute permission is not allowed on devices: '"
+                                                + permPtr->srcPath + "'");
+    }
+
+    return permPtr;
 }
 
 

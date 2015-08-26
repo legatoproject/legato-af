@@ -55,7 +55,10 @@ class Lexer_t
         void PullWhitespace(parseTree::Token_t* tokenPtr);
         void PullComment(parseTree::Token_t* tokenPtr);
         void PullInteger(parseTree::Token_t* tokenPtr);
+        void PullSignedInteger(parseTree::Token_t* tokenPtr);
         void PullBoolean(parseTree::Token_t* tokenPtr);
+        void PullFloat(parseTree::Token_t* tokenPtr);
+        void PullString(parseTree::Token_t* tokenPtr);
         void PullFilePermissions(parseTree::Token_t* tokenPtr);
         void PullServerIpcOption(parseTree::Token_t* tokenPtr);
         void PullClientIpcOption(parseTree::Token_t* tokenPtr);

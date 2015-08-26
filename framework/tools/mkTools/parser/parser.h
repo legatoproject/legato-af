@@ -149,6 +149,25 @@ parseTree::CompoundItemList_t* ParseComplexSection
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Parse a named complex section.  That is a named section that contains compound items.
+ *
+ * Takes a pointer to a function that gets called to parse each item found in the section.
+ * This item parser function returns a pointer to a parsed item to be added to the section's
+ * content list, or throws an exception on error.
+ *
+ * @return a pointer to the parse tree object created for this section.
+ */
+//--------------------------------------------------------------------------------------------------
+parseTree::CompoundItemList_t* ParseNamedComplexSection
+(
+    Lexer_t& lexer,
+    parseTree::CompoundItemList_t* sectionPtr,  ///< The token containing the section name.
+    std::function<parseTree::CompoundItem_t* (Lexer_t& lexer)> contentParserFunc
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Parse a compound section containing a list of simple named items whose content are all the same
  * type of token.
  *
@@ -218,6 +237,19 @@ parseTree::TokenList_t* ParseRequiredFile
  */
 //--------------------------------------------------------------------------------------------------
 parseTree::TokenList_t* ParseRequiredDir
+(
+    Lexer_t& lexer
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Parses a single item from inside a "device:" subsection inside a "requires:" subsection.
+ *
+ * @return Pointer to the item.
+ */
+//--------------------------------------------------------------------------------------------------
+parseTree::TokenList_t* ParseRequiredDevice
 (
     Lexer_t& lexer
 );

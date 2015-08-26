@@ -163,6 +163,54 @@ ApiFile_t::ApiFile_t
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Add to a given set the paths for all the client-side interface .h files generated for all
+ * .api files that a given .api file includes through USETYPES statements.
+ *
+ * @note These paths are all relative to the root of the working directory tree.
+ **/
+//--------------------------------------------------------------------------------------------------
+void ApiFile_t::GetClientUsetypesApiHeaders
+(
+    std::set<std::string>& results  ///< [OUT] Set to add results to.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    for (const auto includedApiPtr : includes)
+    {
+        results.insert(includedApiPtr->GetClientInterfaceFile(includedApiPtr->defaultPrefix) );
+
+        // Recurse.
+        includedApiPtr->GetClientUsetypesApiHeaders(results);
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add to a given set the paths for all the server-side interface .h files generated for all
+ * .api files that a given .api file includes through USETYPES statements.
+ *
+ * @note These paths are all relative to the root of the working directory tree.
+ **/
+//--------------------------------------------------------------------------------------------------
+void ApiFile_t::GetServerUsetypesApiHeaders
+(
+    std::set<std::string>& results  ///< [OUT] Set to add results to.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    for (const auto includedApiPtr : includes)
+    {
+        results.insert(includedApiPtr->GetServerInterfaceFile(includedApiPtr->defaultPrefix) );
+
+        // Recurse.
+        includedApiPtr->GetServerUsetypesApiHeaders(results);
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Constructor for the .api reference objects' base class.
  */
 //--------------------------------------------------------------------------------------------------
@@ -263,6 +311,26 @@ ApiServerInterface_t::ApiServerInterface_t
 }
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Constructor for client-side interface instances.
+ **/
+//--------------------------------------------------------------------------------------------------
+ApiInterfaceInstance_t::ApiInterfaceInstance_t
+(
+    ComponentInstance_t* cInstPtr,
+    const std::string& internalName ///< Component's internal name for this interface.
+)
+//--------------------------------------------------------------------------------------------------
+:   componentInstancePtr(cInstPtr),
+    isExternal(false)
+//--------------------------------------------------------------------------------------------------
+{
+    name = componentInstancePtr->exePtr->name
+         + '.' + componentInstancePtr->componentPtr->name
+         + '.' + internalName;
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -275,15 +343,11 @@ ApiClientInterfaceInstance_t::ApiClientInterfaceInstance_t
     ApiClientInterface_t* p
 )
 //--------------------------------------------------------------------------------------------------
-:   componentInstancePtr(cInstPtr),
+:   ApiInterfaceInstance_t(cInstPtr, p->internalName),
     ifPtr(p),
-    bindingPtr(NULL),
-    isExternal(false)
+    bindingPtr(NULL)
 //--------------------------------------------------------------------------------------------------
 {
-    name = componentInstancePtr->exePtr->name
-         + '.' + componentInstancePtr->componentPtr->name
-         + '.' + ifPtr->internalName;
 }
 
 
@@ -298,14 +362,10 @@ ApiServerInterfaceInstance_t::ApiServerInterfaceInstance_t
     ApiServerInterface_t* p
 )
 //--------------------------------------------------------------------------------------------------
-:   componentInstancePtr(cInstPtr),
-    ifPtr(p),
-    isExternal(false)
+:   ApiInterfaceInstance_t(cInstPtr, p->internalName),
+    ifPtr(p)
 //--------------------------------------------------------------------------------------------------
 {
-    name = componentInstancePtr->exePtr->name
-         + '.' + componentInstancePtr->componentPtr->name
-         + '.' + ifPtr->internalName;
 }
 
 

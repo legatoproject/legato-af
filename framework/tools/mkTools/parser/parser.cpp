@@ -293,6 +293,65 @@ parseTree::CompoundItemList_t* ParseComplexSection
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Parse a named complex section.  That is a named section that contains compound items.
+ *
+ * Takes a pointer to a function that gets called to parse each item found in the section.
+ * This item parser function returns a pointer to a parsed item to be added to the section's
+ * content list, or throws an exception on error.
+ *
+ * @return a pointer to the parse tree object created for this section.
+ */
+//--------------------------------------------------------------------------------------------------
+parseTree::CompoundItemList_t* ParseNamedComplexSection
+(
+    Lexer_t& lexer,
+    parseTree::CompoundItemList_t* sectionPtr,  ///< The item containing the section name.
+    std::function<parseTree::CompoundItem_t* (Lexer_t& lexer)> contentParserFunc
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // Skip over any whitespace or comments.
+    SkipWhitespaceAndComments(lexer);
+
+    // Expect a '=' next.
+    (void)lexer.Pull(parseTree::Token_t::EQUALS);
+
+    // Skip over any whitespace or comments.
+    SkipWhitespaceAndComments(lexer);
+
+    // Expect a '{' next.
+    (void)lexer.Pull(parseTree::Token_t::OPEN_CURLY);
+
+    // Skip over any whitespace or comments.
+    SkipWhitespaceAndComments(lexer);
+
+    // Until we find a closing '}', keep calling the provided content parser function to parse
+    // the next content item.
+    while (!lexer.IsMatch(parseTree::Token_t::CLOSE_CURLY))
+    {
+        if (lexer.IsMatch(parseTree::Token_t::END_OF_FILE))
+        {
+            std::stringstream msg;
+            msg << "Unexpected end-of-file before end of " << sectionPtr->firstTokenPtr->text
+                << " section starting at line " << sectionPtr->firstTokenPtr->line
+                << " character " << sectionPtr->firstTokenPtr->column << ".";
+            lexer.ThrowException(msg.str());
+        }
+
+        sectionPtr->AddContent(contentParserFunc(lexer));
+
+        SkipWhitespaceAndComments(lexer);
+    }
+
+    // Pull out the '}' and make that the last token in the section.
+    sectionPtr->lastTokenPtr = lexer.Pull(parseTree::Token_t::CLOSE_CURLY);
+
+    return sectionPtr;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Parse a compound section containing a list of simple named items whose content are all the same
  * type of token.
  *
@@ -522,6 +581,49 @@ parseTree::TokenList_t* ParseRequiredDir
 //--------------------------------------------------------------------------------------------------
 {
     return ParseRequiredFileOrDir(lexer, parseTree::Content_t::REQUIRED_DIR);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Parses a single item from inside a "device:" subsection inside a "requires:" subsection.
+ *
+ * @return Pointer to the item.
+ */
+//--------------------------------------------------------------------------------------------------
+parseTree::TokenList_t* ParseRequiredDevice
+(
+    Lexer_t& lexer
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // Accept an optional set of permissions.
+    parseTree::Token_t* permissionsPtr = NULL;
+    if (lexer.IsMatch(parseTree::Token_t::FILE_PERMISSIONS))
+    {
+        permissionsPtr = lexer.Pull(parseTree::Token_t::FILE_PERMISSIONS);
+        SkipWhitespaceAndComments(lexer);
+    }
+
+    // Expect a source file system path followed by a destination file system path.
+    parseTree::Token_t* srcPathPtr = lexer.Pull(parseTree::Token_t::FILE_PATH);
+    SkipWhitespaceAndComments(lexer);
+    parseTree::Token_t* destPathPtr = lexer.Pull(parseTree::Token_t::FILE_PATH);
+    SkipWhitespaceAndComments(lexer);
+
+    // Create a new item.
+    parseTree::Token_t* firstPtr = (permissionsPtr != NULL ? permissionsPtr : srcPathPtr);
+    auto deviceItemPtr = parseTree::CreateTokenList(parseTree::Content_t::REQUIRED_DEVICE, firstPtr);
+
+    // Add its contents.
+    if (permissionsPtr != NULL)
+    {
+        deviceItemPtr->AddContent(permissionsPtr);
+    }
+    deviceItemPtr->AddContent(srcPathPtr);
+    deviceItemPtr->AddContent(destPathPtr);
+
+    return deviceItemPtr;
 }
 
 

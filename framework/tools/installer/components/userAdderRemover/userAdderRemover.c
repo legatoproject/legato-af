@@ -23,7 +23,7 @@ COMPONENT_INIT
  * Add an application's user to the system.
  **/
 //--------------------------------------------------------------------------------------------------
-void userAddRemove_Add
+LE_SHARED void userAddRemove_Add
 (
     const char* appName
 )
@@ -90,7 +90,7 @@ void userAddRemove_Add
  * Removes an application's user from the system.
  **/
 //--------------------------------------------------------------------------------------------------
-void userAddRemove_Remove
+LE_SHARED void userAddRemove_Remove
 (
     const char* appName
 )

@@ -168,6 +168,15 @@ static void GetCommandLineArgs
                            " to regenerate itself and any other files that need to be regenerated"
                            " when the build.ninja finds itself out of date.");
 
+    args::AddOptionalFlag(&BuildParams.codeGenOnly,
+                          'g',
+                          "generate-code",
+                          "Only generate code, but don't compile or link anything."
+                          " The interface definition (include) files will be generated, along"
+                          " with component and executable main files."
+                          " This is useful for supporting context-sensitive auto-complete and"
+                          " related features in source code editors, for example.");
+
     // Any remaining parameters on the command-line are treated as content items to be included
     // in the executable.
     args::SetLooseArgHandler(contentPush);

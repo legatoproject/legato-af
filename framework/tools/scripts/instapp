@@ -3,8 +3,7 @@ copyright="
 Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 "
 
-if ! [ $LEGATO_ROOT ]; then echo "Run bin/legs first" >&2; exit 1; fi
-. "${LEGATO_ROOT}/framework/tools/scripts/shlib"
+. "$(dirname "${BASH_SOURCE[0]}")/shlib"
 
 help_short_desc="install app on target"
 
@@ -34,3 +33,4 @@ SetTargetIP $2
 APP_NAME=$(basename "$APP_FILE" | sed 's/\.[^.]*$//')
 echo "Installing application '$APP_NAME' from file '$APP_FILE'."
 cat $APP_FILE | SshToTarget "/usr/local/bin/app install '$APP_NAME'"
+

@@ -30,6 +30,7 @@ struct Content_t
         BUNDLED_DIR,    ///< Bundled dir (TokenList_t), "[rw] local/path /target/path"
         REQUIRED_FILE,  ///< Required file (TokenList_t), "src/path /dest/path"
         REQUIRED_DIR,   ///< Required dir (TokenList_t), "src/path /dest/path"
+        REQUIRED_DEVICE,///< Required device (TokenList_t), "[rw] src/path /dest/path"
         PROVIDED_API,   ///< .cdef (TokenList_t), "powerLed = gpioOut.api [async]"
         REQUIRED_API,   ///< .cdef (TokenList_t), "powerLed = gpioOut.api [types-only]"
         REQUIRED_CONFIG_TREE,   ///< .adef (TokenList_t), "[w] treeName" or just "treeName"
@@ -42,6 +43,10 @@ struct Content_t
         POOL,           ///< Pool (TokenList_t), "poolName = 123"
         APP,            ///< Named item in .sdef 'apps:' section (CompoundItemList_t),
                         ///  "appPath", "appPath { }" or "appPath { overrides }".
+        ASSET,          ///< AirVantage asset definition.
+        ASSET_SETTING,  ///< AirVantage writable value.
+        ASSET_VARIABLE, ///< AirVantage readable value.
+        ASSET_COMMAND   ///< AirVantage executable value.
     };
 
     Type_t type;        ///< The type of content item.
@@ -49,6 +54,8 @@ struct Content_t
 
     std::string TypeName() const { return TypeName(type); }
     static std::string TypeName(Content_t::Type_t type);
+
+    virtual ~Content_t() {}
 
 protected:
 

@@ -269,6 +269,30 @@ static void GenerateFileMappingConfig
 
     cfgStream << "    }" << std::endl;
 
+    // Create nodes under "devices", where each node is named with an index, starting at 0,
+    // and contains a "src" node, a "dest" node, and optional permission nodes.
+    cfgStream << "    \"devices\"" << std::endl;
+    cfgStream << "    {" << std::endl;
+
+    index = 0;
+
+    // .cdef
+    for (auto componentPtr : appPtr->components)
+    {
+        for (auto mappingPtr : componentPtr->requiredDevices)
+        {
+            GenerateSingleFileMappingConfig(cfgStream, index++, mappingPtr);
+        }
+    }
+
+    // .adef
+    for (auto mappingPtr : appPtr->requiredDevices)
+    {
+        GenerateSingleFileMappingConfig(cfgStream, index++, mappingPtr);
+    }
+
+    cfgStream << "    }" << std::endl;
+
     cfgStream << "  }" << std::endl << std::endl;
 
     // Create the "bundles" section.
@@ -626,12 +650,97 @@ static void GenerateAppWatchdogConfig
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Convert an asset action type into a permission string suitable for the config data.
+ *
+ * @return The converted string.
+ **/
+//--------------------------------------------------------------------------------------------------
+static std::string AssetActionTypeToStr
+(
+    model::AssetField_t::ActionType_t actionType
+)
+//--------------------------------------------------------------------------------------------------
+{
+    switch (actionType)
+    {
+        case model::AssetField_t::ActionType_t::TYPE_SETTING:
+            return "r";
+
+        case model::AssetField_t::ActionType_t::TYPE_VARIABLE:
+            return "rw";
+
+        case model::AssetField_t::ActionType_t::TYPE_COMMAND:
+            return "x";
+
+        case model::AssetField_t::ActionType_t::TYPE_UNSET:
+            throw mk::Exception_t("Internal error, asset actionType has been left unset.");
+    }
+
+    throw mk::Exception_t("Internal error, unexpected value for asset actionType.");
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Convert the given default value string into something appropriate for the config file format.
+ *
+ * @return The filtered default value.
+ **/
+//--------------------------------------------------------------------------------------------------
+static std::string FilterDefaultValue
+(
+    const std::string& dataType,
+    const std::string& defaultValue
+)
+//--------------------------------------------------------------------------------------------------
+{
+    std::string newDefaultValue;
+
+    if (dataType == "bool")
+    {
+        // If the value is on or off, convert to true or false.
+        if (   (defaultValue == "true")
+            || (defaultValue == "on"))
+        {
+            newDefaultValue = "!t";
+        }
+        else if (   (defaultValue == "false")
+                 || (defaultValue == "off"))
+        {
+            newDefaultValue = "!f";
+        }
+    }
+    else if (dataType == "int")
+    {
+        newDefaultValue = "[" + defaultValue + "]";
+    }
+    else if (dataType == "float")
+    {
+        newDefaultValue = "(" + defaultValue + ")";
+    }
+    else if (dataType == "string")
+    {
+        newDefaultValue = '"' + path::Unquote(defaultValue) + '"';
+    }
+    else
+    {
+        throw mk::Exception_t("Internal error, could not filter default value for unexpected data "
+                              "type, '" + dataType + ".'");
+    }
+
+    return newDefaultValue;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Create Legato configuration data for LWM2M objects.
  **/
 //--------------------------------------------------------------------------------------------------
 static void GenerateAssetConfig
 (
-    std::ofstream& cfgStream    ///< The configuration file being written to.
+    std::ofstream& cfgStream,    ///< The configuration file being written to.
+    model::App_t* appPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -644,10 +753,10 @@ static void GenerateAssetConfig
               << "      \"name\" \"Application Object\"" << std::endl
               << "      \"fields\"" << std::endl
               << "      {" << std::endl
-              << "        \"0\" { \"name\" \"Version\" \"type\" \"string\" \"access\" \"r\" }" << std::endl
-              << "        \"1\" { \"name\" \"Name\" \"type\" \"string\" \"access\" \"r\" }" << std::endl
-              << "        \"2\" { \"name\" \"State\" \"type\" \"int\" \"access\" \"r\" }" << std::endl
-              << "        \"3\" { \"name\" \"StartMode\" \"type\" \"int\" \"access\" \"r\" }" << std::endl
+              << "        \"0\" { \"name\" \"Version\" \"type\" \"string\" \"access\" \"w\" }" << std::endl
+              << "        \"1\" { \"name\" \"Name\" \"type\" \"string\" \"access\" \"w\" }" << std::endl
+              << "        \"2\" { \"name\" \"State\" \"type\" \"int\" \"access\" \"w\" }" << std::endl
+              << "        \"3\" { \"name\" \"StartMode\" \"type\" \"int\" \"access\" \"w\" }" << std::endl
               << "      }" << std::endl
               << "    }" << std::endl
               << "    \"1\"" << std::endl
@@ -655,15 +764,59 @@ static void GenerateAssetConfig
               << "      \"name\" \"Process Object\"" << std::endl
               << "      \"fields\"" << std::endl
               << "      {" << std::endl
-              << "        \"0\" { \"name\" \"Name\" \"type\" \"string\" \"access\" \"r\" }" << std::endl
-              << "        \"1\" { \"name\" \"ExecName\" \"type\" \"string\"  \"access\" \"r\" }" << std::endl
-              << "        \"2\" { \"name\" \"State\" \"type\" \"int\" \"access\" \"r\" }" << std::endl
-              << "        \"3\" { \"name\" \"FaultAction\" \"type\" \"int\" \"access\" \"r\" }" << std::endl
-              << "        \"4\" { \"name\" \"FaultCount\" \"type\" \"int\" \"access\" \"r\" }" << std::endl
-              << "        \"5\" { \"name\" \"FaultLogs\" \"type\" \"string\" \"access\" \"r\" }" << std::endl
+              << "        \"0\" { \"name\" \"Name\" \"type\" \"string\" \"access\" \"w\" }" << std::endl
+              << "        \"1\" { \"name\" \"ExecName\" \"type\" \"string\"  \"access\" \"w\" }" << std::endl
+              << "        \"2\" { \"name\" \"State\" \"type\" \"int\" \"access\" \"w\" }" << std::endl
+              << "        \"3\" { \"name\" \"FaultAction\" \"type\" \"int\" \"access\" \"w\" }" << std::endl
+              << "        \"4\" { \"name\" \"FaultCount\" \"type\" \"int\" \"access\" \"w\" }" << std::endl
+              << "        \"5\" { \"name\" \"FaultLogs\" \"type\" \"string\" \"access\" \"w\" }" << std::endl
               << "      }" << std::endl
-              << "    }" << std::endl
-              << "  }" << std::endl;
+              << "    }" << std::endl;
+
+    // Now, include any user defined assets.
+    unsigned int assetId = 1000;
+    for (const auto& componentPtr : appPtr->components)
+    {
+        for (const auto& asset : componentPtr->assets)
+        {
+            unsigned int fieldId = 0;
+
+            cfgStream << "    \"" << assetId << "\"" << std::endl
+                      << "    {" << std::endl
+                      << "      \"name\" \"" << asset->GetName() << "\"" << std::endl
+                      << "      \"fields\"" << std::endl
+                      << "      {" << std::endl;
+
+            for (const auto& fieldPtr : asset->fields)
+            {
+                cfgStream << "        \"" << fieldId
+                          << "\" { \"name\" \"" << fieldPtr->GetName()
+                          << "\" \"access\" \"" << AssetActionTypeToStr(fieldPtr->GetActionType())
+                          << "\"";
+
+                if (fieldPtr->GetDataType().size() != 0)
+                {
+                    cfgStream << " \"type\" \"" << fieldPtr->GetDataType() << "\"";
+                }
+
+                const auto& defaultValue = fieldPtr->GetDefaultValue();
+                if (defaultValue.size() > 0)
+                {
+                    cfgStream << " \"default\" "
+                              << FilterDefaultValue(fieldPtr->GetDataType(), defaultValue);
+                }
+
+                cfgStream << " }" << std::endl;
+                ++fieldId;
+            }
+
+            cfgStream << "      }" << std::endl
+                      << "    }" << std::endl;
+            ++assetId;
+        }
+    }
+
+    cfgStream << "  }" << std::endl;
 }
 
 
@@ -719,7 +872,7 @@ void Generate
 
     GenerateAppWatchdogConfig(cfgStream, appPtr);
 
-    GenerateAssetConfig(cfgStream);
+    GenerateAssetConfig(cfgStream, appPtr);
 
     cfgStream << "}" << std::endl;
 }

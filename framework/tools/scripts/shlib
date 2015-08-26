@@ -90,7 +90,7 @@ PrintNotesSection() {
 
 PrintEnvironmentSection() {
 #   currently we only use DEST_IP and we only care to tell the user
-#    about it if TARGET_IP is optional 
+#    about it if TARGET_IP is optional
     if UsageHasOptionalTargetIp; then
         cat << ENVIRONMENT_SECTION
 ${bh}ENVIRONMENT${eh}
@@ -151,7 +151,7 @@ AddSshOpts()
 SetTargetIP()
 {
     TARGET_IP=$1
-    
+
     # Check if the argument is provided and can be pinged.
     if ! [ $TARGET_IP ]
     then

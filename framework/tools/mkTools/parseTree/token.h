@@ -47,7 +47,10 @@ struct Token_t: public Content_t
         GROUP_NAME,         ///< Name safe to use as a user group name in Unix.
         IPC_AGENT,          ///< App or user name in a binding (e.g., "appName" or "<userName>").
         INTEGER,            ///< Integer number, possibly with a 'K' suffix.
+        SIGNED_INTEGER,     ///< Like Integer, but supports both positive and negative values.
         BOOLEAN,            ///< Either "true" or "false".
+        FLOAT,              ///< Standard  C style floating point number.
+        STRING              ///< String value quoted with a ' or a ".
     };
 
     Type_t type;        ///< The type of token.
