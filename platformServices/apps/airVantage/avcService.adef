@@ -37,6 +37,7 @@ provides:
     api:
     {
         avcDaemon.avcDaemon.le_avc
+        avcDaemon.avcDaemon.le_avdata
     }
 }
 
@@ -54,4 +55,5 @@ bindings:
     avcDaemon.avcAppUpdate.le_instStat -> <root>.le_instStat
     avcDaemon.avcAppUpdate.le_sup_ctrl -> <root>.le_sup_ctrl
     avcDaemon.avcAppUpdate.le_appInfo -> <root>.le_appInfo
+    avcDaemon.avcDaemon.le_appInfo -> <root>.le_appInfo
 }

@@ -15,13 +15,7 @@ processes:
     faultAction: restart
 }
 
-bundles:
-{
-    file:
-    {
-        [r] $LEGATO_ROOT/components/dataConnectionService/apns-full-conf.json     /usr/local/share/apns.json
-    }
-}
+
 
 bindings:
 {

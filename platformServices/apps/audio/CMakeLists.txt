@@ -17,7 +17,6 @@ if (LEGATO_AUDIO_PA MATCHES ".*/pre-built/.*")
     set(LINK_DIRECTIVES     --ldflags=-lqmi_cci
                             --ldflags=-lqmiservices
                             --ldflags=${TARGET_SYSROOT}/usr/lib/libsierra_qcsi.a
-                            --cflags=-DPRE_BUILT_PA
                             )
 
 elseif (NOT DEFINED LEGATO_COMPONENTS_AUDIO)
@@ -34,6 +33,7 @@ elseif ((LEGATO_COMPONENTS_AUDIO MATCHES "ar7") OR
     ## TODO: Remove this when the mk tools do dependency checking.
     set (AUDIO_PA_SOURCES
             ${LEGATO_AUDIO_PA}/pa_audio.c
+            ${LEGATO_AUDIO_PA}/pa_media.c
             ${LEGATO_AUDIO_PA}/swiQmi.c
             ${LEGATO_AUDIO_PA}/swiQmi.h
         )
@@ -75,10 +75,10 @@ endif()
 mkapp(  audioService.adef
             -i ${LEGATO_ROOT}/interfaces/modemServices
             -i ${LEGATO_ROOT}/interfaces/audio
+            -i ${AUDIO_COMPONENT_DIR}
             -i ${AUDIO_COMPONENT_DIR}/platformAdaptor
             ${AUDIO_PA_PROPRIETARY_INCLUDES}
             -v
-            --cflags="-g"
             ${LINK_DIRECTIVES}
         DEPENDS
             ## TODO: Remove all this when the mk tools do dependency checking.

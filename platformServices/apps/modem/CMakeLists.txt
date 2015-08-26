@@ -17,6 +17,8 @@ set(LEGATO_MODEM_DAEMON_FILES
         ${MODEM_COMPONENTS_DIR}/modemDaemon/*
     )
 
+set(JANSSON_INC_DIR "${CMAKE_BINARY_DIR}/3rdParty/jansson-2.6/include/")
+
 if (LEGATO_MODEM_PA MATCHES ".*/pre-built/.*")
 
     message(STATUS "Using pre-built modem PA.")
@@ -97,12 +99,13 @@ mkapp(  modemService.adef
             -c ${LEGATO_ROOT}/components/atManager
             -i ${CMAKE_CURRENT_BINARY_DIR}
             -i ${LEGATO_ROOT}/interfaces/modemServices
-            -i ${LEGATO_ROOT}/interfaces/audio
             -i ${LEGATO_ROOT}/interfaces/powerMgr
             -i ${MODEM_COMPONENTS_DIR}/platformAdaptor/inc
             -i ${LEGATO_MODEM_PA}
             -i ${LEGATO_ROOT}/components/cfgEntries
             -i ${LEGATO_ROOT}/interfaces
+            -i ${JANSSON_INC_DIR}
+            --ldflags=-ljansson
             ${PA_FLAGS}
             ${C_FLAGS}
             -v
@@ -111,3 +114,5 @@ mkapp(  modemService.adef
             ${LEGATO_MODEM_PA_FILES}
             legato
         )
+
+add_dependencies(modemService jansson)

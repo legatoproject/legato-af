@@ -9,15 +9,13 @@ find_package(Legato REQUIRED)
 # Build the Data Connection Service app
 #
 
-set(JANSSON_INC_DIR "${CMAKE_BINARY_DIR}/3rdParty/jansson-2.6/include/")
+
 
 mkapp(  dataConnectionService.adef
             -i ${LEGATO_ROOT}/interfaces/dataConnectionService
             -i ${LEGATO_ROOT}/interfaces/modemServices
             -i ${LEGATO_ROOT}/interfaces/cellNetService
             -i ${LEGATO_ROOT}/components/cfgEntries
-            -i ${JANSSON_INC_DIR}
-            --ldflags=-ljansson
         DEPENDS
             ${LEGATO_ROOT}/components/dataConnectionService/Component.cdef
             ${LEGATO_ROOT}/components/dataConnectionService/dcsServer.c
@@ -28,4 +26,4 @@ mkapp(  dataConnectionService.adef
             ${LEGATO_ROOT}/interfaces/modemServices/le_sim.api
         )
 
-add_dependencies(dataConnectionService jansson)
+

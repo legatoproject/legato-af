@@ -5,6 +5,8 @@ executables:
     voiceCallService = ( $LEGATO_ROOT/components/voiceCallService )
 }
 
+start: manual
+
 processes:
 {
     run:
@@ -17,8 +19,8 @@ processes:
 
 bindings:
 {
-    voiceCallService.voiceCallService.le_mcc_call -> modemService.le_mcc_call
-    voiceCallService.voiceCallService.le_mcc_profile -> modemService.le_mcc_profile
+    voiceCallService.voiceCallService.le_mcc -> modemService.le_mcc
+    voiceCallService.voiceCallService.le_audio -> audioService.le_audio
 }
 
 provides:

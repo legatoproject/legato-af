@@ -12,7 +12,6 @@ if (LEGATO_AVC_PA MATCHES ".*/pre-built/.*")
                             --ldflags=-lqmiservices
                             --ldflags=-lloc_api
                             --ldflags=${TARGET_SYSROOT}/usr/lib/libsierra_qapi.a
-                            --cflags=-DPRE_BUILT_PA
                             )
 
     file(COPY ${LEGATO_AVC_PA}/libComponent_le_pa_avc.so DESTINATION ${LIBRARY_OUTPUT_PATH})

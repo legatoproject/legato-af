@@ -5,6 +5,8 @@ executables:
     smsInboxService = ( $LEGATO_ROOT/components/smsInboxService )
 }
 
+start: manual
+
 processes:
 {
     run:
