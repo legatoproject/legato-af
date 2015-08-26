@@ -4,8 +4,7 @@ bundles:
 {
     file:
     {
-        [x] legacy /bin/
-        [r] libIF_le_sms_client.so /lib/
+        [x] _build/$TARGET/legacy /bin/
     }
 }
 

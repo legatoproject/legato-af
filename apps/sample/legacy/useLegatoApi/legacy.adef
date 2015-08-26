@@ -4,8 +4,7 @@ bundles:
 {
     file:
     {
-        [x] legacy /bin/
-        [r] libIF_le_info_client.so /lib/
+        [x] _build/$TARGET/legacy /bin/
     }
 }
 

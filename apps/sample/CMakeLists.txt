@@ -31,11 +31,9 @@ if((INCLUDE_ECALL EQUAL 1) AND ((LEGATO_TARGET MATCHES "ar7") OR (LEGATO_TARGET 
     add_subdirectory(eCallDemo)
 endif()
 
-# Application using AirVantage services
-if(INCLUDE_AIRVANTAGE)
-    add_subdirectory(airvantageDemo)
-endif()
-
 # SMS Sample application using Modem Services
 add_subdirectory(sms)
+
+# Simple shell piping application
+add_subdirectory(shellPiping)
 

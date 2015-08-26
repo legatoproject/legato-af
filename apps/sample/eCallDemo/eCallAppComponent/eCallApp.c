@@ -148,13 +148,12 @@ static void LoadECallSettings
 //--------------------------------------------------------------------------------------------------
 static void ECallStateHandler
 (
+    le_ecall_CallRef_t  eCallRef,
     le_ecall_State_t    state,
     void*               contextPtr
 )
 {
-    le_ecall_CallRef_t*  eCallRefPtr = (le_ecall_CallRef_t*)contextPtr;
-
-    LE_INFO("New eCall state for eCallRef.%p",  *eCallRefPtr);
+    LE_INFO("New eCall state for eCallRef.%p",  eCallRef);
 
     switch(state)
     {
@@ -181,6 +180,10 @@ static void ECallStateHandler
         case LE_ECALL_STATE_PSAP_START_IND_RECEIVED:
         {
             LE_INFO("New eCall state is LE_ECALL_STATE_PSAP_START_IND_RECEIVED.");
+            if (le_ecall_SendMsd(eCallRef) != LE_OK)
+            {
+                LE_ERROR("Could not send the MSD");
+            }
             break;
         }
         case LE_ECALL_STATE_MSD_TX_STARTED:
@@ -231,13 +234,18 @@ static void ECallStateHandler
         case LE_ECALL_STATE_COMPLETED:
         {
             LE_INFO("New eCall state is LE_ECALL_STATE_COMPLETED.");
-            le_ecall_End(*eCallRefPtr);
-            le_ecall_Delete(*eCallRefPtr);
+            le_ecall_End(eCallRef);
+            le_ecall_Delete(eCallRef);
             break;
         }
         case LE_ECALL_STATE_FAILED:
         {
             LE_INFO("New eCall state is LE_ECALL_STATE_FAILED.");
+            break;
+        }
+        case LE_ECALL_STATE_END_OF_REDIAL_PERIOD:
+        {
+            LE_INFO("New eCall state is LE_ECALL_STATE_END_OF_REDIAL_PERIOD.");
             break;
         }
         case LE_ECALL_STATE_UNKNOWN:
@@ -278,7 +286,7 @@ static void StartSession
     LE_FATAL_IF((!ECallRef), "Unable to create an eCall object, restart the app!");
 
     LE_DEBUG("Create eCallRef.%p",  ECallRef);
-    stateChangeHandlerRef = le_ecall_AddStateChangeHandler(ECallStateHandler, (void*)&ECallRef);
+    stateChangeHandlerRef = le_ecall_AddStateChangeHandler(ECallStateHandler, NULL);
     LE_ERROR_IF((!stateChangeHandlerRef), " Unable to add an eCall state change handler!");
 
     if ((le_pos_Get2DLocation(&latitude, &longitude, &hAccuracy) == LE_OK) &&

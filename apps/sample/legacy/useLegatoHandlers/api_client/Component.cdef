@@ -1,7 +1,0 @@
-requires:
-{
-    api:
-    {
-        le_sms.api
-    }
-}

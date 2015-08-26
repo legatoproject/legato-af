@@ -7,7 +7,7 @@ bundles:
 {
     file:
     {
-        [x] legacy /bin/
+        [x] _build/$TARGET/legacy /bin/
     }
 }
 

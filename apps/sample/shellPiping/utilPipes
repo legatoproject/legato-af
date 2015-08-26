@@ -1,0 +1,8 @@
+#!/bin/sh
+
+# Simple script that shows piping between utilities.
+echo "Starting script"
+
+ls | grep "usr"
+
+echo "Done script"

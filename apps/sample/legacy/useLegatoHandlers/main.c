@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <poll.h>
 #include "legato.h"
-#include "interfaces.h"
+#include "le_sms_interface.h"
 
 static void SmsRxHandler
 (

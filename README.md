@@ -74,8 +74,6 @@ Target |  Description                    | Environment variable
 
  The top level directory structure is as follows:
 
-   ```./airvantage``` - contains the Sierra Wireless Air Vantage(tm) M2M cloud connector agent.
-
    ```./bin``` - created by build system and populated with executable files that run on the development
            host (the host that ran the build).
 
@@ -88,9 +86,6 @@ Target |  Description                    | Environment variable
 
    ```./build/<target>/staging``` - things in here get copied to the target system when instlegato
                               is run.
-
-   ```./buildTools``` - contains the source code for build tools (when built, the appear in
-                  ./build/tools).
 
    ```./cmake``` - contains CMake scripts used by the build system.
 

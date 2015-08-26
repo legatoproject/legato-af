@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include "legato.h"
-#include "interfaces.h"
+#include "le_info_interface.h"
 
 int main(int argc, char** argv)
 {
@@ -18,6 +18,8 @@ int main(int argc, char** argv)
     {
         printf("Failed to get device model. Error = '%s'.\n", LE_RESULT_TXT(result));
     }
+
+    return EXIT_SUCCESS;
 }
 
 
