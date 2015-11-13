@@ -1,1 +1,3 @@
 sources: { Hello.cpp }
+
+cxxflags: { -std=c++0x }

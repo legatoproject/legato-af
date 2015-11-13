@@ -1151,8 +1151,8 @@ static le_result_t GetField
 //--------------------------------------------------------------------------------------------------
 static le_result_t CallFieldActionHandlers
 (
-	InstanceData_t* instanceDataPtr,    	///< [IN] Asset instance that action occurred on.
-	int fieldId,                            ///< [IN] Field that action occurred on
+    InstanceData_t* instanceDataPtr,        ///< [IN] Asset instance that action occurred on.
+    int fieldId,                            ///< [IN] Field that action occurred on
     assetData_ActionTypes_t action,         ///< [IN] The action that occurred
     bool isClient                           ///< [IN] Is action from client or server
 )
@@ -3642,7 +3642,7 @@ le_result_t assetData_ReadFieldListFromTLV
         }
         else
         {
-            LE_ERROR("Got unexpected TLV type = %i", type);
+            LE_DEBUG("Got unexpected TLV type = %i", type);
             result = LE_FAULT;
             break;
         }

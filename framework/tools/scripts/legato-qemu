@@ -117,7 +117,7 @@ function img_url_for_target {
     # Determine QEmu Image source
     if [ -z "$IMG_MIRROR" ]; then
         if cat /etc/resolv.conf | grep "sierrawireless.local" > /dev/null; then
-            IMG_MIRROR="http://qa-legato.sierrawireless.local/deliveries/$TARGET/get"
+            IMG_MIRROR="http://get-legato/yocto/latest/latest/${TARGET}/images"
         else
             IMG_MIRROR="http://downloads.sierrawireless.com/legato/virt"
         fi

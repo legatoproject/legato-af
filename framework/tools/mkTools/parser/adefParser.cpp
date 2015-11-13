@@ -247,15 +247,14 @@ static parseTree::CompoundItem_t* ParseProcessesSubsection
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Parse an API item from inside a "required:" or "provided:" section's "api:" subsection.
+ * Parse an API interface item from inside an "extern:" section.
  *
  * @return Pointer to the item.
  */
 //--------------------------------------------------------------------------------------------------
-static parseTree::TokenList_t* ParseApi
+static parseTree::TokenList_t* ParseExternApiInterface
 (
-    Lexer_t& lexer,
-    parseTree::Content_t::Type_t type ///< Either EXPORTED_API or IMPORTED_API.
+    Lexer_t& lexer
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -263,8 +262,9 @@ static parseTree::TokenList_t* ParseApi
     // or "exe.component.interface" (without the alias).
 
     auto firstTokenPtr = lexer.Pull(parseTree::Token_t::NAME);
-    auto apiPtr = parseTree::CreateTokenList(type, firstTokenPtr);
-    apiPtr->AddContent(firstTokenPtr);
+    auto ifPtr = parseTree::CreateTokenList(parseTree::CompoundItem_t::EXTERN_API_INTERFACE,
+                                            firstTokenPtr);
+    ifPtr->AddContent(firstTokenPtr);
 
     if (lexer.IsMatch(parseTree::Token_t::EQUALS) || lexer.IsMatch(parseTree::Token_t::WHITESPACE))
     {
@@ -272,50 +272,16 @@ static parseTree::TokenList_t* ParseApi
         SkipWhitespaceAndComments(lexer);
         (void)lexer.Pull(parseTree::Token_t::EQUALS);
         SkipWhitespaceAndComments(lexer);
-        apiPtr->AddContent(lexer.Pull(parseTree::Token_t::NAME));
+        ifPtr->AddContent(lexer.Pull(parseTree::Token_t::NAME));
     }
 
     // Rest is ".component.interface".
     (void)lexer.Pull(parseTree::Token_t::DOT);
-    apiPtr->AddContent(lexer.Pull(parseTree::Token_t::NAME));
+    ifPtr->AddContent(lexer.Pull(parseTree::Token_t::NAME));
     (void)lexer.Pull(parseTree::Token_t::DOT);
-    apiPtr->AddContent(lexer.Pull(parseTree::Token_t::NAME));
+    ifPtr->AddContent(lexer.Pull(parseTree::Token_t::NAME));
 
-    return apiPtr;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Parse an API item from inside a "provided:" section's "api:" subsection.
- *
- * @return Pointer to the item.
- */
-//--------------------------------------------------------------------------------------------------
-static parseTree::TokenList_t* ParseImportedApi
-(
-    Lexer_t& lexer
-)
-//--------------------------------------------------------------------------------------------------
-{
-    return ParseApi(lexer, parseTree::CompoundItem_t::IMPORTED_API);
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Parse an API item from inside a "provided:" section's "api:" subsection.
- *
- * @return Pointer to the item.
- */
-//--------------------------------------------------------------------------------------------------
-static parseTree::TokenList_t* ParseExportedApi
-(
-    Lexer_t& lexer
-)
-//--------------------------------------------------------------------------------------------------
-{
-    return ParseApi(lexer, parseTree::CompoundItem_t::EXPORTED_API);
+    return ifPtr;
 }
 
 
@@ -338,7 +304,7 @@ static parseTree::CompoundItem_t* ParseProvidesSubsection
 
     if (subsectionName == "api")
     {
-        return ParseComplexSection(lexer, subsectionNameTokenPtr, ParseExportedApi);
+        return ParseComplexSection(lexer, subsectionNameTokenPtr, ParseExternApiInterface);
     }
     else
     {
@@ -362,7 +328,8 @@ static parseTree::RequiredConfigTree_t* ParseRequiredConfigTree
 )
 //--------------------------------------------------------------------------------------------------
 {
-    parseTree::RequiredConfigTree_t* itemPtr;
+    parseTree::RequiredConfigTree_t* itemPtr = NULL;
+    parseTree::Token_t* treeNamePtr = NULL;
 
     // Accept an optional set of read and/or write permissions.
     if (lexer.IsMatch(parseTree::Token_t::FILE_PERMISSIONS))
@@ -374,23 +341,43 @@ static parseTree::RequiredConfigTree_t* ParseRequiredConfigTree
             && (permissionsPtr->text != "[rw]")
             && (permissionsPtr->text != "[wr]") )
         {
-            permissionsPtr->ThrowException("Invalid access permissions for configuration tree.");
+            permissionsPtr->ThrowException("Invalid access permissions "
+                                           "for configuration tree.");
         }
 
         itemPtr = new parseTree::RequiredConfigTree_t(permissionsPtr);
         itemPtr->AddContent(permissionsPtr);
-
         SkipWhitespaceAndComments(lexer);
+    }
 
-        itemPtr->AddContent(lexer.Pull(parseTree::Token_t::NAME));
+    // If just a "DOT" is found, provide read access
+    // to the current application, if a name is found provide
+    // read access to the application mentioned.
+    if (lexer.IsMatch(parseTree::Token_t::DOT))
+    {
+        // Create a new item if first token, else add the "DOT"
+        // to file permission
+        treeNamePtr = lexer.Pull(parseTree::Token_t::DOT);
+    }
+    else if (lexer.IsMatch(parseTree::Token_t::NAME))
+    {
+        // Create a new item if first one, else add the file name
+        // to file permission
+        treeNamePtr = lexer.Pull(parseTree::Token_t::NAME);
     }
     else
     {
-        auto treeNamePtr = lexer.Pull(parseTree::Token_t::NAME);
-
-        itemPtr = new parseTree::RequiredConfigTree_t(treeNamePtr);
-        itemPtr->AddContent(treeNamePtr);
+        lexer.ThrowException("Unexpected token in configTree Subsection. "
+                             "File permissions (e.g., '[rw]') or "
+                             "config tree name or '.' expected.");
     }
+
+    if (itemPtr == NULL)
+    {
+        itemPtr = new parseTree::RequiredConfigTree_t(treeNamePtr);
+    }
+
+    itemPtr->AddContent(treeNamePtr);
 
     return itemPtr;
 }
@@ -415,7 +402,10 @@ static parseTree::CompoundItem_t* ParseRequiresSubsection
 
     if (subsectionName == "api")
     {
-        return ParseComplexSection(lexer, subsectionNameTokenPtr, ParseImportedApi);
+        subsectionNameTokenPtr->PrintWarning("'api' subsection in 'requires' section is deprecated"
+                                             " in .adef files.  Use the extern section instead.");
+
+        return ParseComplexSection(lexer, subsectionNameTokenPtr, ParseExternApiInterface);
     }
     else if (subsectionName == "configTree")
     {
@@ -466,7 +456,8 @@ static parseTree::CompoundItem_t* ParseSection
         || (sectionName == "maxMemoryBytes")
         || (sectionName == "maxMQueueBytes")
         || (sectionName == "maxQueuedSignals")
-        || (sectionName == "maxThreads") )
+        || (sectionName == "maxThreads")
+        || (sectionName == "maxSecureStorageBytes") )
     {
         return ParseSimpleSection(lexer, sectionNameTokenPtr, parseTree::Token_t::INTEGER);
     }
@@ -482,6 +473,10 @@ static parseTree::CompoundItem_t* ParseSection
     {
         return ParseComplexSection(lexer, sectionNameTokenPtr, internal::ParseExecutable);
     }
+    else if (sectionName == "extern")
+    {
+        return ParseComplexSection(lexer, sectionNameTokenPtr, internal::ParseExternApiInterface);
+    }
     else if (sectionName == "groups")
     {
         return ParseTokenListSection(lexer, sectionNameTokenPtr, parseTree::Token_t::GROUP_NAME);
@@ -492,6 +487,9 @@ static parseTree::CompoundItem_t* ParseSection
     }
     else if (sectionName == "provides")
     {
+        sectionNameTokenPtr->PrintWarning("'provides' section is deprecated in .adef files."
+                                          " Use the extern section instead.");
+
         return ParseComplexSection(lexer, sectionNameTokenPtr, internal::ParseProvidesSubsection);
     }
     else if (sectionName == "requires")

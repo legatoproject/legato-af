@@ -79,7 +79,7 @@ config set /modemServices/eCall/propulsionType/0 Diesel
 @endverbatim
 
 @section sampleApps_eCallTrig trig utility
- 
+
 This utility triggers the eCallDemo application.
 
 Run @c trig like this:

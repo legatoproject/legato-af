@@ -201,6 +201,8 @@ le_result_t le_gnss_DisableExtendedEphemerisFile
  * This function must be called to load an 'Extended Ephemeris' file into the GNSS device.
  *
  * @return LE_FAULT         The function failed to inject the 'Extended Ephemeris' file.
+ * @return LE_TIMEOUT       A time-out occurred.
+ * @return LE_FORMAT_ERROR  'Extended Ephemeris' file format error.
  * @return LE_OK            The function succeeded.
  *
  */
@@ -278,15 +280,13 @@ le_result_t le_gnss_Start
         case LE_GNSS_STATE_UNINITIALIZED:
         case LE_GNSS_STATE_DISABLED:
         {
-                        LE_ERROR("Bad state for that request [%d]", GnssState);
-
+            LE_ERROR("Bad state for that request [%d]", GnssState);
             result = LE_NOT_PERMITTED;
         }
         break;
         case LE_GNSS_STATE_ACTIVE:
         {
-                        LE_ERROR("Bad state for that request [%d]", GnssState);
-
+            LE_ERROR("Bad state for that request [%d]", GnssState);
             result = LE_DUPLICATE;
         }
         break;
@@ -362,7 +362,109 @@ le_result_t le_gnss_Stop
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function clears ephemeris, position and time data before performing a restart.
+ * This function performs a "HOT" restart of the GNSS device.
+ *
+ * @return LE_FAULT         The function failed.
+ * @return LE_NOT_PERMITTED If the GNSS device is not enabled or not started.
+ * @return LE_OK            The function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_gnss_ForceHotRestart
+(
+    void
+)
+{
+    le_result_t result = LE_FAULT;
+
+    // Check the GNSS device state
+    switch (GnssState)
+    {
+        case LE_GNSS_STATE_ACTIVE:
+        {
+            // Restart GNSS
+            result = pa_gnss_ForceRestart(PA_GNSS_HOT_RESTART);
+            // GNSS device state is updated ONLY if the restart is failed
+            if(result == LE_FAULT)
+            {
+                GnssState = LE_GNSS_STATE_READY;
+            }
+        }
+        break;
+        case LE_GNSS_STATE_UNINITIALIZED:
+        case LE_GNSS_STATE_DISABLED:
+        case LE_GNSS_STATE_READY:
+        {
+                        LE_ERROR("Bad state for that request [%d]", GnssState);
+
+            result = LE_NOT_PERMITTED;
+        }
+        break;
+        default:
+        {
+            LE_ERROR("Unknown GNSS state %d", GnssState);
+            result = LE_FAULT;
+        }
+        break;
+    }
+
+    return result;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function performs a "WARM" restart of the GNSS device.
+ *
+ * @return LE_FAULT         The function failed.
+ * @return LE_NOT_PERMITTED If the GNSS device is not enabled or not started.
+ * @return LE_OK            The function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_gnss_ForceWarmRestart
+(
+    void
+)
+{
+    le_result_t result = LE_FAULT;
+
+    // Check the GNSS device state
+    switch (GnssState)
+    {
+        case LE_GNSS_STATE_ACTIVE:
+        {
+            // Restart GNSS
+            result = pa_gnss_ForceRestart(PA_GNSS_WARM_RESTART);
+            // GNSS device state is updated ONLY if the restart is failed
+            if(result == LE_FAULT)
+            {
+                GnssState = LE_GNSS_STATE_READY;
+            }
+        }
+        break;
+        case LE_GNSS_STATE_UNINITIALIZED:
+        case LE_GNSS_STATE_DISABLED:
+        case LE_GNSS_STATE_READY:
+        {
+                        LE_ERROR("Bad state for that request [%d]", GnssState);
+
+            result = LE_NOT_PERMITTED;
+        }
+        break;
+        default:
+        {
+            LE_ERROR("Unknown GNSS state %d", GnssState);
+            result = LE_FAULT;
+        }
+        break;
+    }
+
+    return result;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function performs a "COLD" restart of the GNSS device.
  *
  * @return LE_FAULT         The function failed.
  * @return LE_NOT_PERMITTED If the GNSS device is not enabled or not started.
@@ -413,6 +515,101 @@ le_result_t le_gnss_ForceColdRestart
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * This function performs a "FACTORY" restart of the GNSS device.
+ *
+ * @return LE_FAULT         The function failed.
+ * @return LE_NOT_PERMITTED If the GNSS device is not enabled or not started.
+ * @return LE_OK            The function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_gnss_ForceFactoryRestart
+(
+    void
+)
+{
+    le_result_t result = LE_FAULT;
+
+    // Check the GNSS device state
+    switch (GnssState)
+    {
+        case LE_GNSS_STATE_ACTIVE:
+        {
+            // Restart GNSS
+            result = pa_gnss_ForceRestart(PA_GNSS_FACTORY_RESTART);
+            // GNSS device state is updated ONLY if the restart is failed
+            if(result == LE_FAULT)
+            {
+                GnssState = LE_GNSS_STATE_READY;
+            }
+        }
+        break;
+        case LE_GNSS_STATE_UNINITIALIZED:
+        case LE_GNSS_STATE_DISABLED:
+        case LE_GNSS_STATE_READY:
+        {
+                        LE_ERROR("Bad state for that request [%d]", GnssState);
+
+            result = LE_NOT_PERMITTED;
+        }
+        break;
+        default:
+        {
+            LE_ERROR("Unknown GNSS state %d", GnssState);
+            result = LE_FAULT;
+        }
+        break;
+    }
+
+    return result;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the TTFF in milliseconds
+ *
+ * @return LE_BUSY          The position is not fixed and TTFF can't be measured.
+ * @return LE_NOT_PERMITTED If the GNSS device is not enabled or not started.
+ * @return LE_OK            Function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_gnss_GetTtff
+(
+    uint32_t* ttffPtr     ///< [OUT] TTFF in milliseconds
+)
+{
+    le_result_t result = LE_FAULT;
+
+    // Check the GNSS device state
+    switch (GnssState)
+    {
+        case LE_GNSS_STATE_DISABLED:
+        case LE_GNSS_STATE_UNINITIALIZED:
+        {
+            LE_ERROR("Bad state for that request [%d]", GnssState);
+            result = LE_NOT_PERMITTED;
+        }
+        break;
+        case LE_GNSS_STATE_READY:
+        case LE_GNSS_STATE_ACTIVE:
+        {
+            result = pa_gnss_GetTtff(ttffPtr);
+        }
+        break;
+        default:
+        {
+            LE_ERROR("Unknown GNSS state %d", GnssState);
+            result = LE_FAULT;
+        }
+        break;
+    }
+
+    return result;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This function enables the GNSS device.
  *
  * @return LE_FAULT         The function failed.
@@ -427,7 +624,7 @@ le_result_t le_gnss_Enable
     void
 )
 {
-        le_result_t result = LE_FAULT;
+    le_result_t result = LE_FAULT;
 
     // Check the GNSS device state
     switch (GnssState)

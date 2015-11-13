@@ -44,7 +44,7 @@ static void GenerateCommentHeader
  * definitions for a given Component.
  **/
 //--------------------------------------------------------------------------------------------------
-static void GenerateCandCxxFlags
+static void GenerateCommonCAndCxxFlags
 (
     std::ofstream& script,  ///< Build script to write the variable definition to.
     const model::Component_t* componentPtr,
@@ -52,12 +52,6 @@ static void GenerateCandCxxFlags
 )
 //--------------------------------------------------------------------------------------------------
 {
-    // Add all the component's cFlags.
-    for (auto& arg : componentPtr->cFlags)
-    {
-        script << " " << arg;
-    }
-
     // Include the component's generated sources directory (where interfaces.h is put).
     script << " -I$builddir/" << componentPtr->workingDir << "/src";
 
@@ -356,7 +350,11 @@ static void GenerateCSourceBuildStatement
 
     // Define the cFlags variable.
     script << "  cFlags = $cFlags";
-    GenerateCandCxxFlags(script, componentPtr, buildParams);
+    GenerateCommonCAndCxxFlags(script, componentPtr, buildParams);
+    for (auto& arg : componentPtr->cFlags)
+    {
+        script << " " << arg;
+    }
     script << "\n\n";
 }
 
@@ -394,7 +392,11 @@ static void GenerateCxxSourceBuildStatement
 
     // Define the cxxFlags variable.
     script << "  cxxFlags = $cxxFlags";
-    GenerateCandCxxFlags(script, componentPtr, buildParams);
+    GenerateCommonCAndCxxFlags(script, componentPtr, buildParams);
+    for (auto& arg : componentPtr->cxxFlags)
+    {
+        script << " " << arg;
+    }
     script << "\n\n";
 }
 
@@ -442,7 +444,7 @@ void GenerateBuildStatements
     script << "build $builddir/" << componentPtr->workingDir + "/obj/_componentMain.c.o" << ":"
               " CompileC $builddir/" << componentPtr->workingDir + "/src/_componentMain.c" << "\n";
     script << "  cFlags = $cFlags";
-    GenerateCandCxxFlags(script, componentPtr, buildParams);
+    GenerateCommonCAndCxxFlags(script, componentPtr, buildParams);
     script << "\n\n";
 }
 

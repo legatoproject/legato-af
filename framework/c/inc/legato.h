@@ -158,7 +158,7 @@
 extern "C" {
 #endif
 
-#include "../../le_build_config.h"
+#include "le_build_config.h"
 #include "le_basics.h"
 #include "le_doublyLinkedList.h"
 #include "le_singlyLinkedList.h"

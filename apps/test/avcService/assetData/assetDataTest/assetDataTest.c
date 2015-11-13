@@ -91,7 +91,7 @@ void AssetCreateHandler
 
 void FieldWriteIntHandler
 (
-	assetData_InstanceDataRef_t instanceRef,
+    assetData_InstanceDataRef_t instanceRef,
     int fieldId,
     assetData_ActionTypes_t action,
     void* contextPtr
@@ -149,7 +149,7 @@ void FieldWriteIntHandler
 
 void FieldExecHandler
 (
-	assetData_InstanceDataRef_t instanceRef,
+    assetData_InstanceDataRef_t instanceRef,
     int fieldId,
     assetData_ActionTypes_t action,
     void* contextPtr

@@ -140,7 +140,7 @@
  *
  * le_mrc_GetSignalQual() retrieves the received signal strength details.
  *
- * You must call le_mrc_MeasureSignalMetrics() to measure the signal metrics of the main cell (aka
+ * You must call le_mrc_MeasureSignalMetrics() to measure the signal metrics of the serving cell (aka
  * the 'serving' cell). It returns a reference of le_mrc_MetricsRef_t type.
  *
  * When the signal metrics are no longer needed, you must call le_mrc_DeleteSignalMetrics() to free
@@ -168,6 +168,12 @@
  * The event is notified when we cross the range limits in both direction.
  *
  * le_mrc_RemoveSignalStrengthChangeHandler() API uninstalls the handler function.
+ *
+ * @section le_mrc_location Serving cell's location information
+ *
+ * le_mrc_GetServingCellId() retrieves the the serving Cell Identifier.
+ *
+ * le_mrc_GetServingCellLocAreaCode() retrieves the Location Area Code of the serving cell.
  *
  * @section le_mrc_network_information Current Network Information
  * le_mrc_GetCurrentNetworkName() retrieves the Current Network Name.
@@ -632,6 +638,8 @@ FUNCTION le_result_t SetAutomaticRegisterMode
  *  - LE_FAULT  Function failed.
  *  - LE_OK     Function succeeded.
  *
+ * @note If one code is too long (max LE_MRC_MCC_LEN/LE_MRC_MNC_LEN digits), it's a fatal error,
+ *       the function won't return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetManualRegisterMode
@@ -774,9 +782,13 @@ FUNCTION le_result_t GetTdScdmaBandPreferences
  * Add a preferred operator by specifying the MCC/MNC and the Radio Access Technology.
  *
  * @return
+ *  - LE_NOT_FOUND     User Preferred operator list is not available.
  *  - LE_FAULT         Function failed.
- *  - LE_OUT_OF_RANGE  RAT mask is out of range.
+ *  - LE_BAD_PARAMETER RAT mask is invalid.
  *  - LE_OK            Function succeeded.
+ *
+ * @note If one code is too long (max LE_MRC_MCC_LEN/LE_MRC_MNC_LEN digits), it's a fatal error,
+ *       the function won't return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t AddPreferredOperator
@@ -791,11 +803,12 @@ FUNCTION le_result_t AddPreferredOperator
  * Remove a preferred operator by specifying the MCC/MNC.
  *
  * @return
- *  - LE_FAULT  Function failed.
- *  - LE_OK     Function succeeded.
+ *  - LE_NOT_FOUND     User Preferred operator list is not available.
+ *  - LE_FAULT         Function failed.
+ *  - LE_OK            Function succeeded.
  *
- * @note If one code is too long (max 3 digits), it's a fatal error, the
- *       function won't return.
+ * @note If one code is too long (max LE_MRC_MCC_LEN/LE_MRC_MNC_LEN digits), it's a fatal error,
+ *       the function won't return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t RemovePreferredOperator
@@ -810,7 +823,7 @@ FUNCTION le_result_t RemovePreferredOperator
  *
  * @return
  * - Reference to the List object.
- * - Null pointer if there is no preferences.
+ * - Null pointer if there is no preferences list.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION PreferredOperatorList GetPreferredOperatorsList
@@ -959,8 +972,8 @@ FUNCTION le_result_t GetRadioPower
  * @return LE_BAD_PARAMETER A bad parameter was passed.
  * @return LE_OK            The function succeeded.
  *
- * @note If one code is too long (max 3 digits), it's a fatal error, the
- *       function won't return.
+ * @note If one code is too long (max LE_MRC_MCC_LEN/LE_MRC_MNC_LEN digits), it's a fatal error,
+ *       the function won't return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t RegisterCellularNetwork
@@ -1521,4 +1534,24 @@ FUNCTION le_result_t GetCdmaSignalMetrics
     int32   io         OUT  ///< Received IO in dBm (only applicable for 1xEV-DO)
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the serving Cell Identifier.
+ *
+ * @return The Cell Identifier. 0xFFFFFFFF value is returned if the value is not available.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION uint32 GetServingCellId
+(
+);
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the Location Area Code of the serving cell.
+ *
+ * @return The Location Area Code. 0xFFFFFFFF value is returned if the value is not available.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION uint32 GetServingCellLocAreaCode
+(
+);

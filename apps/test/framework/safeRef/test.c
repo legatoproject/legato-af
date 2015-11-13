@@ -25,7 +25,7 @@ COMPONENT_INIT
     LE_INFO("  Successfully created reference %p mapping to %p.", safeRef4, le_ref_Lookup(mapRef1, safeRef4));
 
     LE_INFO("Deleting references...");
-    
+
     le_ref_DeleteRef(mapRef1, safeRef1);
     LE_ASSERT(le_ref_Lookup(mapRef1, safeRef1) == NULL);
     LE_ASSERT(le_ref_Lookup(mapRef1, safeRef2) == ((void*)0x1002));
@@ -41,7 +41,7 @@ COMPONENT_INIT
     le_ref_DeleteRef(mapRef1, safeRef4);
     LE_ASSERT(le_ref_Lookup(mapRef1, safeRef4) == NULL);
     LE_INFO("  Successfully deleted reference %p.", safeRef4);
-    
+
     LE_INFO("Creating references in map %p.", mapRef1);
 
     safeRef1 = le_ref_CreateRef(mapRef1, (void*)0x1001);
@@ -63,7 +63,7 @@ COMPONENT_INIT
     le_ref_DeleteRef(mapRef1, NULL);
     LE_ASSERT(le_ref_Lookup(mapRef1, &mapRef1) == NULL);
     LE_INFO("Looking up a pointer value failed, as expected");
-    
+
 
     LE_INFO("======== SAFE REFERENCES TEST COMPLETE (PASSED) ========");
     exit(EXIT_SUCCESS);

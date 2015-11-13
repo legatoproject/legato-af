@@ -11,9 +11,9 @@
  *
  * Data is setup as @b assets &mdash;  a collection of fields that can be managed by the AirVantage
  * server.
- * 
+ *
  * An asset field is a single piece of information that can be managed by the Air Vantage server.
- * There can be multiple fields in an asset. 
+ * There can be multiple fields in an asset.
  *
  * A field can be:
  * - @c variable allows an app to set the value, and can be read from the AV server.
@@ -21,15 +21,15 @@
  * - @c command allows the AV server to invoke a command or function in the app.
  *
  * Currently, only variable and setting fields are supported; command fields will
- * be supported in the future. 
+ * be supported in the future.
  *
  * All fields have names. Variable and setting fields also have a type. The possible field types,
- * along with the default value are: 
+ * along with the default value are:
  * - string (empty string)
  * - integer (0)
  * - float (0.0)
  * - boolean (false)
- * - binary (zero-length block). 
+ * - binary (zero-length block).
  *
  * Default values can be overwritten in the asset definition. Currently, only string, integer
  * and boolean fields are supported; float and binary fields will be supported in the future.
@@ -49,10 +49,10 @@
  * @section le_avdata_field Field Values and Activity
  *
  * Set functions are available to set variable field values. Get functions are
- * available to get settings fields' values.  
+ * available to get settings fields' values.
  *
  * An app can register a handler so that it can be called when activity occurs on a field.
- * This is optional for variable and setting fields, but is required for command fields.  
+ * This is optional for variable and setting fields, but is required for command fields.
  * - @c variable called when the field is read by the AV server. The
  * app can then call the appropriate set function to provide a new value for the field.
  * - @c setting called when the field has been updated by the AV server
@@ -66,7 +66,7 @@
  * app to decide how it wants to access variable and setting fields. It can decide to
  * only do something in response to the AV server, or it can work independently of the AV server
  * updating variables when it has a new value, and reading settings only when it needs the value.
- * 
+ *
  * <HR>
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.

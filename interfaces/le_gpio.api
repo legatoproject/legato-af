@@ -1,0 +1,243 @@
+//--------------------------------------------------------------------------------------------------
+/**
+ * @page c_gpio GPIO API
+ *
+ * @ref le_gpio_interface.h "API Reference"
+ *
+ * <HR>
+ *
+ * Used by apps to control general-purpose digital input/output pins.
+ *
+ * A GPIO pin typically has one or more of the following features:
+ * - Can be configured as an input pin or an output pin.
+ * - Can have an internal pull-up resistor or pull-down resistor enabled, or neither.
+ * - If an output, can be push-pull or open-drain.
+ * - If an input, can trigger an "interrupt" (asynchronous notification of state change).
+ *
+ * Output pins can be driven in three different modes:
+ * - Push-pull: A transistor connects to the supply and another transistor connects to ground
+ *   (only one is operated at a time)
+ * - Tri-state: Same as push-pull, with an added high-impedance (high Z) state, in which the pin
+ *              is essentially disconnected from both ground and supply.
+ * - Open drain: A transistor connects to ground and nothing else.  Can only be used to pull low.
+ *
+ * In addition, pins have a "polarity".
+ * - An <b> active-high </b> polarity pin is read/written as a digital 1 (true) when its voltage is
+ *  "high" and 0 (false) when its voltage is "low" (grounded).
+ * - An <b> active-low </b> pin is read/written as a digital 1 (true) when its voltage is
+ *  "low" (grounded) and 0 (false) when its voltage is "high".
+ *
+ * The following functions are used to configure the GPIO pin:
+ * - SetInput() - Configure as an input pin.
+ * - SetPushPullOutput() - Configure as push-pull output pin (can drive high or low).
+ * - SetTriStateOutput() - Configure as tri-state output pin (can drive high or low or neither).
+ * - SetOpenDrainOutput() - Configure as open-drain output pin (only pulls low).
+ * - EnablePullUp() - Enables the internal pull-up resistor (and disables the pull-down).
+ * - EnablePullDown() - Enables the internal pull-down resistor (and disables the pull-up).
+ * - DisableResistors() - Disables the internal pull-up/down resistors.
+ *
+ * To set the level of an output pin, call Activate(), Deactivate(), or SetHighZ().
+ *
+ * To poll the value of an input pin, call Read().
+ *
+ * Use SetChangeCallback() to register a notification callback function to be called when the
+ * state of an input pin changes.
+ *
+ * Each GPIO pin is accessed through a single IPC service.  This makes it possible to use bindings
+ * to control which GPIO pins each app is allowed to access.  It also simplifies the API by removing
+ * the need to specify which pin is desired and allows the pins to be named differently in the
+ * client and the server, so the client can be more portable.
+ *
+ * Binding example:
+ *
+ * @verbatim
+bindings:
+{
+    ui.frontPanel.powerLed -> cf3.pin22
+}
+@endverbatim
+ *
+ * <HR>
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ */
+//--------------------------------------------------------------------------------------------------
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * @file le_gpio_interface.h
+ *
+ * Legato @ref c_gpio include file.
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ */
+//-------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Pin polarities.
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM Polarity
+{
+    ACTIVE_HIGH,   ///< GPIO active-high, output is 1
+    ACTIVE_LOW     ///< GPIO active-low, output is 0
+
+};
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Configure the pin as an input pin.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetInput
+(
+    Polarity polarity   IN  ///< Active-high or active-low.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Configure the pin as a push-pull output pin.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetPushPullOutput
+(
+    Polarity polarity   IN, ///< Active-high or active-low.
+    bool value          IN  ///< Initial value to drive (true = active, false = inactive)
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Configure the pin as a tri-state output pin.
+ *
+ * @note The initial state will be high-impedance.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetTriStateOutput
+(
+    Polarity polarity   IN  ///< Active-high or active-low.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Configure the pin as an open-drain output pin.  "High" is a high-impedance state, while "Low"
+ * pulls the pin to ground.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetOpenDrainOutput
+(
+    Polarity polarity   IN, ///< Active-high or active-low.
+    bool value          IN  ///< Initial value to drive (true = active, false = inactive)
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Enable the pull-up resistor (disables pull-down if previously enabled).
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t EnablePullUp();
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Enable the pull-down resistor (disables pull-up if previously enabled).
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t EnablePullDown();
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Disable the pull-up and pull-down resistors.  Does nothing if both are already disabled.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t DisableResistors();
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set output pin to active state.
+ *
+ * @warning Only valid for output pins.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Activate();
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set output pin to inactive state.
+ *
+ * @warning Only valid for output pins.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Deactivate();
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set output pin to high impedance state.
+ *
+ * @warning Only valid for tri-state or open-drain output pins.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetHighZ();
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Read value of GPIO input pin.
+ *
+ * @return true = active, false = inactive.
+ *
+ * @note It is invalid to read an output pin.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION bool Read();
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * State change event handler (callback).
+ */
+//--------------------------------------------------------------------------------------------------
+HANDLER ChangeCallback
+(
+    bool state  IN  ///< New state of pin (true = active, false = inactive).
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Edge transitions.
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM Edge
+{
+    EDGE_NONE,      ///< No edge detection
+    EDGE_RISING,    ///< Notify when voltage goes from low to high.
+    EDGE_FALLING,   ///< Notify when voltage goes from high to low.
+    EDGE_BOTH       ///< Notify when pin voltage changes state in either direction.
+};
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Register a callback function to be called when an input pin changes state.
+ *
+ * If the pin is not capable of interrupt-driven operation, then it will be sampled every
+ * sampleMs milliseconds.  Otherwise, sampleMs will be ignored.
+ */
+//--------------------------------------------------------------------------------------------------
+EVENT ChangeEvent
+(
+    Edge trigger IN,        ///< Change(s) that should trigger the callback to be called.
+    handler ChangeCallback, ///< The callback function.
+    int32 sampleMs          ///< If not interrupt capable, sample the input this often (ms).
+);
+

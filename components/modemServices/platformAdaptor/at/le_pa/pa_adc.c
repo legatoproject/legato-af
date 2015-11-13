@@ -14,17 +14,17 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function is a stub
+ * Read the value of a given ADC channel in units appropriate to that channel.
  *
  * @return
- * - LE_FAULT         The function failed to get the value.
- * - LE_OK            The function succeeded.
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_adc_ReadValue
+LE_SHARED le_result_t pa_adc_ReadValue
 (
-    uint8_t adcChannel,    ///< [IN] Channel to read
-    int32_t* adcValuePtr   ///< [OUT] value returned by adc read
+    le_adc_AdcChannelInput_t  adcChannel,  ///< [IN] Channel to read
+    int32_t*                  adcValuePtr  ///< [OUT] value returned by adc read
 )
 {
     return LE_FAULT;
@@ -34,7 +34,7 @@ le_result_t pa_adc_ReadValue
 //--------------------------------------------------------------------------------------------------
 /**
  * Stub init function
- * 
+ *
  **/
 //--------------------------------------------------------------------------------------------------
 

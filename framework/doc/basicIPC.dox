@@ -9,7 +9,7 @@ they read and write the same data inside their shared address space.
 Threads running inside two different processes can't access each
 other's data; they need IPC to communicate.
 
-Legato's @ref c_messaging and @ref languageIndependentAPIs provide IPC services without
+Legato's @ref c_messaging and @ref interfaceDefLang provide IPC services without
 all the coding, packing/unpacking, and security headaches that come
 with using other methods directly (e.g., network sockets or named pipes).
 
@@ -30,7 +30,7 @@ This let's you custom build IPC to suit your needs.
 
 Related info
 
-@ref languageIndependentAPIs <br>
+@ref interfaceDefLang <br>
 @ref basicAppsIPC <br>
 @ref defFiles <br>
 @ref legatoServices

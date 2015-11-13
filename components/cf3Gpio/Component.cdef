@@ -1,0 +1,24 @@
+sources:
+{
+    gpioCf3.c
+}
+
+provides:
+{
+    api:
+    {
+        le_gpioPin2 = ${LEGATO_ROOT}/interfaces/le_gpio.api
+        le_gpioPin7 = ${LEGATO_ROOT}/interfaces/le_gpio.api
+        le_gpioPin8 = ${LEGATO_ROOT}/interfaces/le_gpio.api
+        le_gpioPin13 = ${LEGATO_ROOT}/interfaces/le_gpio.api
+        le_gpioPin21 = ${LEGATO_ROOT}/interfaces/le_gpio.api
+        le_gpioPin22 = ${LEGATO_ROOT}/interfaces/le_gpio.api
+        le_gpioPin23 = ${LEGATO_ROOT}/interfaces/le_gpio.api
+        le_gpioPin24 = ${LEGATO_ROOT}/interfaces/le_gpio.api
+        le_gpioPin25 = ${LEGATO_ROOT}/interfaces/le_gpio.api
+        le_gpioPin32 = ${LEGATO_ROOT}/interfaces/le_gpio.api
+        le_gpioPin33 = ${LEGATO_ROOT}/interfaces/le_gpio.api
+        le_gpioPin42 = ${LEGATO_ROOT}/interfaces/le_gpio.api
+    }
+}
+

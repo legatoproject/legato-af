@@ -447,7 +447,7 @@ le_result_t cgrp_AddProc
 //--------------------------------------------------------------------------------------------------
 /**
  * Reads a list of tids/pids from an open file descriptor.  The number of pids in the file may be
- * larger than maxIds, in which case idListPtr will be filled with the first maxIds PIDs. We can 
+ * larger than maxIds, in which case idListPtr will be filled with the first maxIds PIDs. We can
  * re-use this code for tids or pids because, in linux, all tids are pids and vice versa.
  *
  * @return
@@ -906,7 +906,7 @@ cgrp_FreezeState_t cgrp_frz_GetState
     const char* cgroupNamePtr       ///< [IN] Name of the cgroup.
 )
 {
-    char stateStr[MAX_FREEZE_STATE_BYTES];
+    char stateStr[MAX_FREEZE_STATE_BYTES] = {0};
 
     le_result_t result = GetValue(CGRP_SUBSYS_FREEZE,
                                   cgroupNamePtr,
@@ -914,14 +914,14 @@ cgrp_FreezeState_t cgrp_frz_GetState
                                   stateStr,
                                   sizeof(stateStr));
 
-    RemoveTrailingWhiteSpace(stateStr);
-
     LE_FATAL_IF(result == LE_OVERFLOW, "Freeze state string '%s...' is too long.", stateStr);
 
     if (result == LE_FAULT)
     {
         return LE_FAULT;
     }
+
+    RemoveTrailingWhiteSpace(stateStr);
 
     if ( (strcmp(stateStr, "THAWED") == 0) ||
          (strcmp(stateStr, "FREEZING") == 0) )

@@ -405,7 +405,7 @@ static void _Handle_AddTestAHandler
     _msgBufPtr = UnpackData( _msgBufPtr, &_clientContextPtr, sizeof(void*) );
 
     // The client data pointer is passed in as a parameter, since the lookup in the safe ref map
-	// and check for NULL has already been done when this function is queued.
+    // and check for NULL has already been done when this function is queued.
     _ClientData_t* _clientDataPtr = _dataPtr;
 
     // Pull out additional data from the client data pointer
@@ -803,7 +803,7 @@ static void _Handle_AddBugTestHandler
     _msgBufPtr = UnpackData( _msgBufPtr, &_clientContextPtr, sizeof(void*) );
 
     // The client data pointer is passed in as a parameter, since the lookup in the safe ref map
-	// and check for NULL has already been done when this function is queued.
+    // and check for NULL has already been done when this function is queued.
     _ClientData_t* _clientDataPtr = _dataPtr;
 
     // Pull out additional data from the client data pointer
@@ -997,7 +997,7 @@ static void _Handle_TestCallback
     _msgBufPtr = UnpackData( _msgBufPtr, &_clientContextPtr, sizeof(void*) );
 
     // The client data pointer is passed in as a parameter, since the lookup in the safe ref map
-	// and check for NULL has already been done when this function is queued.
+    // and check for NULL has already been done when this function is queued.
     _ClientData_t* _clientDataPtr = _dataPtr;
 
     // Pull out additional data from the client data pointer

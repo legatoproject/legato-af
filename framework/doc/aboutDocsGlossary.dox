@@ -72,7 +72,7 @@ These are some common terms we use in Legato.
 | thread | thread of execution - sequence of prgrammed instructions |
 | Tools | Target, Host, and Build tools |
 | Toolchain | development toolset linked (or chained) together |
-| xdef | all definition files: adef, cdef, sdef | 
+| xdef | all definition files: adef, cdef, sdef |
 | Yocto | Yocto open source project for BSPs |
 
 <HR>

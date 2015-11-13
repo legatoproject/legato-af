@@ -1,0 +1,16 @@
+/** @page legatoServicesSupervisorMonitoring Supervisor Monitoring
+
+Supervisor APIs provide services to monitor and/or control apps. These APIs are available:
+
+@subpage c_sup_ctrl <br>
+@ref c_appInfo <br>
+
+@warning Beware of the security risks associated with granting an app access to these services.
+Apps that can control the state of other apps can seriously interfere with system operation.
+Sometimes, even knowledge about which apps are running can reveal a vulnerability.
+
+<HR>
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/

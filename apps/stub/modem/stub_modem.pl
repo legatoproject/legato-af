@@ -12,29 +12,29 @@ my $RequestCpt=0;
 sub createConfig
 {
     my $file=$_[0];
-    
+
     my $parser = XML::LibXML->new();
     my $tree = $parser->parse_file($file);
-    
+
     print Dumper $tree;
 
     for my $Tests ( $tree->findnodes('/tests') )
     {
         print $Tests->nodeName(),"\n";
-        
+
         for my $childtest ($Tests->getChildnodes) {
             print $childtest->nodeName()," is ",$childtest->nodeType(),"\n";
             if ( $childtest->nodeType() == XML_ELEMENT_NODE ) {
                 print "\t",$childtest->nodeName()," : ",$childtest->textContent(),"\n";
-                
-                my $command = $childtest->findvalue('./ask');                
+
+                my $command = $childtest->findvalue('./ask');
                 print "\t\t cmd: $command \n";
-                
+
                 my @resp = $childtest->findnodes($childtest->nodePath."/resp/ack");
                 for my $ack (@resp) {
                     print "\t\t\t ack : ",$ack->textContent," \n";
                 }
-                
+
                 push(@{${config{$command}}},\@resp);
                 $RequestCpt++
             } else {
@@ -47,7 +47,7 @@ sub createConfig
 #         print "test $Test\n";
 #         print "\t ask -> $idx\n";
 #         print "\t ack -> $val\n";
-#         
+#
 #         push(@{${config{$idx}}},$doc->{$Test}->{resp}->{ack});
 #         $RequestCpt++;
     }
@@ -72,7 +72,7 @@ sub printConfig
 sub launchDaemon
 {
     my $file=$_[0];
-    
+
     socket(SERV, PF_UNIX, SOCK_STREAM,0);
     if (-e $file)
     {
@@ -88,7 +88,7 @@ sub launchDaemon
         CLIENT->autoflush(1);
         while (<CLIENT>) {
             my $line = $_;
-            
+
             chomp($line);
             print "Received >$line<\n";
             foreach $cle(sort keys %config)
@@ -110,7 +110,7 @@ sub launchDaemon
 
                                 $/ = "\x1A";
                                 $_ = <CLIENT>;
-                                
+
                                 print "\t -",$_,"- received\n";
 #                                 print CLIENT "\r\n",$l->textContent;
 
@@ -132,7 +132,7 @@ sub launchDaemon
             print "$RequestCpt End of $line<\n";
 
 #                 print Dumper %config;
-            
+
             if ($RequestCpt == 0) {
                 sleep(1);
                 close CLIENT;

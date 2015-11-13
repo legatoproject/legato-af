@@ -71,6 +71,9 @@ struct Token_t: public Content_t
 
     // Throw an exception with the file, line and column at the front.
     void ThrowException(const std::string& message) const __attribute__ ((noreturn));
+
+    // Print warning to (std::cerr) with the file, line, and column at the front.
+    void PrintWarning(const std::string& message) const;
 };
 
 

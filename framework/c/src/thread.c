@@ -226,8 +226,12 @@ static void CleanupThread
     // Destruct the event loop.
     event_DestructThread();
 
-    // If this thread is NOT joinable, then immediately invalidate its safe reference, remove it 
-    // from the thread object list, and free the thread object.  Otherwise, wait until someone 
+    // Destruct timer resources: this function has to be called after event_DestructThread(), the
+    // timerFd is used when its fdMonitor is deleted
+    timer_DestructThread();
+
+    // If this thread is NOT joinable, then immediately invalidate its safe reference, remove it
+    // from the thread object list, and free the thread object.  Otherwise, wait until someone
     // joins with it.
     if (! threadObjPtr->isJoinable)
     {
@@ -367,7 +371,7 @@ static ThreadObj_t* CreateThread
     memset(&threadPtr->eventRec, 0, sizeof(threadPtr->eventRec));
     memset(&threadPtr->timerRec, 0, sizeof(threadPtr->timerRec));
 
-    // Create a safe reference for this object and put this object on the thread object list (for 
+    // Create a safe reference for this object and put this object on the thread object list (for
     // the Inpsect tool).
     Lock();
     threadPtr->safeRef = le_ref_CreateRef(ThreadRefMap, threadPtr);

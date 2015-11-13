@@ -51,7 +51,7 @@
  * @section c_mutex_create Creating a Mutex
  *
  * In Legato, mutexes are dynamically allocated objects.  Functions that create them
- * return references to them (of type le_mutex_Ref_t). 
+ * return references to them (of type le_mutex_Ref_t).
  *
  * These are the functions to create mutexes:
  *  - @c le_mutex_CreateRecursive() - creates a @b normal, @b recursive mutex.
@@ -93,9 +93,9 @@
  * static void SetParam(int param)
  * {
  *     Lock();
- *    
+ *
  *     MyObjPtr->param = param;
- *    
+ *
  *     Unlock();
  * }
  * @endcode

@@ -636,6 +636,9 @@ static le_result_t SetDefaultSmackRules
     smack_SetRule("framework", "w", appLabelPtr);
     smack_SetRule(appLabelPtr, "rw", "framework");
 
+    // Set default permissions to allow the app to access the syslog.
+    smack_SetRule(appLabelPtr, "w", "syslog");
+
     return LE_OK;
 }
 

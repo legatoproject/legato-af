@@ -18,6 +18,10 @@ Configuration for the @ref c_ecall Service.
 Configuration for the @ref c_pos Service.
 @copydoc le_pos_configdbPage_Hide <br>
 
+@section avcServiceConfigTree AirVantage Service
+Configuration for the @ref c_le_avc Service.
+@copydoc le_avcService_configdbPage_Hide <br>
+
 <HR>
 
 Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.

@@ -293,7 +293,7 @@ static le_clk_Time_t MakeTimerInterval
  *
  *      @return LE_NOT_FOUND if no info could be retrieved for the pid
  *              LE_FAULT if the buffer pointer is NULL or if the reading of the pid info fails
- *              LE_OVERFLOW if the pid info doesn't fit in the buffer
+ *              LE_OVERFLOW if the process info doesn't fit in the buffer
  *              LE_OK if the process name copied to the buffer is valid and can be safely used.
  */
 //--------------------------------------------------------------------------------------------------
@@ -304,11 +304,12 @@ static le_result_t GetProcessNameFromPid
     size_t length   ///< [IN] The size of the buffer that receives the name
 )
 {
-    char pathStr[LIMIT_MAX_PATH_BYTES];
+    char pathStr[LIMIT_MAX_PATH_BYTES] = "";
+    char procPathStr[LIMIT_MAX_PATH_BYTES] = "";
 
     if (name != NULL)
     {
-        name[0] = '\0';
+
         // on linux, /proc/[pid]/cmdline contains the command and arguments separated by '\0's
         int result = snprintf(pathStr, sizeof(pathStr), "/proc/%d/cmdline", pId);
         if (result < 0 || result >= LIMIT_MAX_PATH_BYTES)
@@ -319,21 +320,22 @@ static le_result_t GetProcessNameFromPid
         int fd = open(pathStr, O_RDONLY);
         if (fd)
         {
-            result = read (fd, name, length);
+            result = read (fd, procPathStr, LIMIT_MAX_PATH_BYTES);
             fd_Close(fd);
             if (result == 0)
             {
                 return LE_FAULT;
             }
-            else if (result == LIMIT_MAX_PATH_BYTES)
+            else if (strnlen(procPathStr, LIMIT_MAX_PATH_BYTES) ==  LIMIT_MAX_PATH_BYTES)
             {
-                name[length - 1] = '\0';
+                // We need the first parameter of the command line, which is path to a process.
+                // This shouldn't be longer than LIMIT_MAX_PATH_BYTES.
                 return LE_OVERFLOW;
             }
             // strip the path
-            char* procNamePtr = le_path_GetBasenamePtr(name, "/");
-            // memmove is safe for overlapping memory!!
-            memmove(name, procNamePtr, strlen(procNamePtr) + 1);
+            char* procNamePtr = le_path_GetBasenamePtr(procPathStr, "/");
+
+            return le_utf8_Copy(name, procNamePtr, length, NULL);
         }
     }
     else

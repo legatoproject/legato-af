@@ -131,6 +131,11 @@ void GenerateExeMain
                   "int main(int argc, char* argv[])\n"
                   "{\n"
 
+    // Make stdout line buffered.
+                  "    // Make stdout line buffered so printf shows up in logs without flushing.\n"
+                  "    setlinebuf(stdout);\n"
+                  "\n"
+
     // Register the component with the Log Control Daemon.
                   "    " << defaultCompName << "_LogSession = log_RegComponent(\"" <<
                   defaultCompName << "\", &" << defaultCompName << "_LogLevelFilterPtr);\n"

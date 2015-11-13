@@ -8,7 +8,7 @@
 # clean up (delete log files)
 
 logDir=__InspectMemoryPool_testRace_log_deleteme
-summaryFile=__InspectMemoryPool_testRace_summary_deleteme 
+summaryFile=__InspectMemoryPool_testRace_summary_deleteme
 
 ./sampleMemPools
 
@@ -16,7 +16,7 @@ mkdir -p $logDir
 
 mv sampleMemPools_log_* $logDir
 
-./v 100000 $logDir > $summaryFile 
+./v 100000 $logDir > $summaryFile
 
 
 if grep -q "Race Condition: declared false complete list" $summaryFile
@@ -41,7 +41,7 @@ fi
 
 
 # clean up
-rm -rf $logDir 
+rm -rf $logDir
 rm $summaryFile
 
 exit 0

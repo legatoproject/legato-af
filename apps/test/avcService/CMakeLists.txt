@@ -7,7 +7,7 @@ mkapp(  avcUserApp.adef
         DEPENDS
             ## TODO: Remove all this when the mk tools do dependency checking.
             ${LEGATO_ROOT}/interfaces/airVantage/*
-            componentUserApp/* 
+            componentUserApp/*
      )
 
 
@@ -16,7 +16,7 @@ mkapp(  avcCtrlApp.adef
         DEPENDS
             ## TODO: Remove all this when the mk tools do dependency checking.
             ${LEGATO_ROOT}/interfaces/airVantage/*
-            componentCtrlApp/* 
+            componentCtrlApp/*
      )
 
 
@@ -25,7 +25,7 @@ mkapp(  avcDataApp.adef
         DEPENDS
             ## TODO: Remove all this when the mk tools do dependency checking.
             ${LEGATO_ROOT}/interfaces/airVantage/*
-            componentDataApp/* 
+            componentDataApp/*
      )
 
 

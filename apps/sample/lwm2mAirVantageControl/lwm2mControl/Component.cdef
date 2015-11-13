@@ -1,0 +1,13 @@
+requires:
+{
+    api:
+    {
+        le_avc.api
+    }
+}
+
+sources:
+{
+    lwm2mControl.c
+}
+

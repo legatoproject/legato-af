@@ -982,11 +982,11 @@ static le_result_t DecodeGsmPdu
     switch(firstByte & 0x03)
     {
         case 0x00:
-            smsPtr->type = PA_SMS_SMS_DELIVER;
+            smsPtr->type = PA_SMS_DELIVER;
             smsPtr->smsDeliver.option = PA_SMS_OPTIONMASK_NO_OPTION;
             break;
         case 0x01:
-            smsPtr->type = PA_SMS_SMS_SUBMIT;
+            smsPtr->type = PA_SMS_SUBMIT;
             smsPtr->smsSubmit.option = PA_SMS_OPTIONMASK_NO_OPTION;
             break;
         default:
@@ -994,7 +994,7 @@ static le_result_t DecodeGsmPdu
             return LE_UNSUPPORTED;
     }
 
-    if(smsPtr->type == PA_SMS_SMS_SUBMIT)
+    if(smsPtr->type == PA_SMS_SUBMIT)
     {
         /* TP-MR: Message Reference */
         pos++; // skip TP-MR
@@ -1066,7 +1066,7 @@ static le_result_t DecodeGsmPdu
      */
     encoding = DetermineEncoding(tpDcs);
 
-    if(smsPtr->type == PA_SMS_SMS_DELIVER)
+    if(smsPtr->type == PA_SMS_DELIVER)
     {
         /* TP-SCTS: Service Center Time Stamp (7 bytes) */
         pos += ConvertBinaryIntoTimestamp(
@@ -1097,7 +1097,7 @@ static le_result_t DecodeGsmPdu
             return LE_UNSUPPORTED;
     }
 
-    if(smsPtr->type == PA_SMS_SMS_SUBMIT)
+    if(smsPtr->type == PA_SMS_SUBMIT)
     {
         /* TP-VP: Validity Period (0, 1 or 7 bytes) */
         pos++;
@@ -1134,10 +1134,10 @@ static le_result_t DecodeGsmPdu
 
     switch(smsPtr->type)
     {
-        case PA_SMS_SMS_DELIVER:
-            le_utf8_Copy(smsPtr->smsDeliver.oa, address, sizeof(smsPtr->smsDeliver.oa), NULL);
+        case PA_SMS_DELIVER:
+            strncpy(smsPtr->smsDeliver.oa, address, sizeof(smsPtr->smsDeliver.oa));
             smsPtr->smsDeliver.option |= PA_SMS_OPTIONMASK_OA;
-            le_utf8_Copy(smsPtr->smsDeliver.scts, timeStamp, sizeof(smsPtr->smsDeliver.scts), NULL);
+            strncpy(smsPtr->smsDeliver.scts, timeStamp, sizeof(smsPtr->smsDeliver.scts));
             smsPtr->smsDeliver.option |= PA_SMS_OPTIONMASK_SCTS;
 
             destDataPtr = smsPtr->smsDeliver.data;
@@ -1146,8 +1146,8 @@ static le_result_t DecodeGsmPdu
             formatPtr = &(smsPtr->smsDeliver.format);
             break;
 
-        case PA_SMS_SMS_SUBMIT:
-            le_utf8_Copy(smsPtr->smsSubmit.da, address, sizeof(smsPtr->smsSubmit.da), NULL);
+        case PA_SMS_SUBMIT:
+            strncpy(smsPtr->smsSubmit.da, address, sizeof(smsPtr->smsSubmit.da));
             smsPtr->smsDeliver.option |= PA_SMS_OPTIONMASK_DA;
 
             destDataPtr = smsPtr->smsSubmit.data;
@@ -1249,12 +1249,12 @@ static le_result_t EncodeGsmPdu
      */
     switch(messageType)
     {
-        case PA_SMS_SMS_DELIVER:
+        case PA_SMS_DELIVER:
             firstByte = 0x00; // MTI (00)
             firstByte |= tpUdhi << 6;
             break;
 
-        case PA_SMS_SMS_SUBMIT:
+        case PA_SMS_SUBMIT:
             firstByte = 0x11; // MTI (01) | VPF (10)
             firstByte |= tpUdhi << 6;
             break;
@@ -1316,7 +1316,7 @@ static le_result_t EncodeGsmPdu
         /* First Byte */
         WriteByte(pduPtr->data, pos++, firstByte);
 
-        if(messageType == PA_SMS_SMS_SUBMIT)
+        if(messageType == PA_SMS_SUBMIT)
         {
             /* TP-MR: Message Reference */
             /* Default value */
@@ -1337,7 +1337,7 @@ static le_result_t EncodeGsmPdu
                      +1) / 2;
         }
 
-        if(messageType == PA_SMS_SMS_DELIVER)
+        if(messageType == PA_SMS_DELIVER)
         {
             int idx;
 
@@ -1354,7 +1354,7 @@ static le_result_t EncodeGsmPdu
         /* TP-DCS: Data Coding Scheme (1 byte) */
         WriteByte(pduPtr->data, pos++, tpDcs);
 
-        if(messageType == PA_SMS_SMS_SUBMIT)
+        if(messageType == PA_SMS_SUBMIT)
         {
             /* TP-VP: Validity Period (0, 1 or 7 bytes) */
             /* Set to 7 days */
@@ -1464,7 +1464,7 @@ static le_result_t DecodeMessageGWCB
     smsPdu_Encoding_t encoding;
 
     /* SMS Cell Broad cast message type */
-    smsPtr->type =  PA_SMS_SMS_CELL_BROADCAST;
+    smsPtr->type =  PA_SMS_CELL_BROADCAST;
     /* SMS CB Data Coding Scheme */
     smsPtr->cellBroadcast.dcs = dataPtr[4];
     /* SMS CB Serial number 3GPP 03.41 */
@@ -2353,7 +2353,7 @@ static le_result_t DecodeMessageCdma
                 return result;
             }
 
-            smsPtr->type = PA_SMS_SMS_DELIVER;
+            smsPtr->type = PA_SMS_DELIVER;
             break;
         }
         case CDMAPDU_MESSAGETYPE_SUBMIT:
@@ -2375,7 +2375,7 @@ static le_result_t DecodeMessageCdma
                 return result;
             }
 
-            smsPtr->type = PA_SMS_SMS_SUBMIT;
+            smsPtr->type = PA_SMS_SUBMIT;
             break;
         }
         default:
@@ -2533,6 +2533,11 @@ le_result_t smsPdu_Decode
     {
         LE_WARN("Protocol %d not supported", protocol);
         result = LE_UNSUPPORTED;
+    }
+
+    if (result != LE_OK)
+    {
+        smsPtr->type = PA_SMS_UNSUPPORTED;
     }
 
     return result;

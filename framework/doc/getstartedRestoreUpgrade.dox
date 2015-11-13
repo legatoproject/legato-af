@@ -1,7 +1,7 @@
 /** @page getstartedRestoreUpgrade Upgrade or Restore
 
-See <a href="http://www.legato.io/legato-docs/15_01/legatoUpgrade15_01.html">Upgrade Notes</a>
-for specifics on upgrading from Legato Beta 14.10 to 15.01.
+See <a href="http://www.legato.io/legato-docs/15_10/legatoUpgrade15_10.html">Upgrade Notes</a>
+for specifics on upgrading to the current Legato version.
 
 Update or restore target:
 

@@ -183,7 +183,7 @@ static void OnClientDisconnect
     void *contextPtr
 )
 {
-    Client_t *c; 
+    Client_t *c;
     WakeupSource_t *ws;
     le_hashmap_It_Ref_t iter;
 
@@ -329,7 +329,7 @@ le_pm_WakeupSourceRef_t le_pm_NewWakeupSource(uint32_t opts, const char *tag)
     ws->wsref = le_ref_CreateRef(PowerManager.refs, ws);
 
     // Store record in table of wakeup sources
-    if (le_hashmap_Put(PowerManager.locks, ws->name, ws)) 
+    if (le_hashmap_Put(PowerManager.locks, ws->name, ws))
         LE_FATAL("Error adding wakeup source '%s'.", ws->name);
 
     LE_INFO("Created new wakeup source '%s' for pid %d.", ws->name, ws->pid);
@@ -352,7 +352,7 @@ void le_pm_StayAwake(le_pm_WakeupSourceRef_t w)
     ws = ToWakeupSource(w);
     // If the wakeup source is NULL then the client will have
     // been killed and we can just return
-    if (NULL == ws) 
+    if (NULL == ws)
         return;
 
     entry = (WakeupSource_t*)le_hashmap_Get(PowerManager.locks, ws->name);

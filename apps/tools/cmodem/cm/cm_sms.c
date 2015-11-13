@@ -242,6 +242,34 @@ void cm_sms_SendText
 {
     le_sms_MsgRef_t msgRef;
     le_result_t result;
+    uint32_t numLen = strlen(numberPtr);
+    uint32_t smsLen = strlen(contentPtr);
+
+    if (numLen == 0)
+    {
+        fprintf(stderr, "ERROR: Phone number can't be empty\n");
+        exit(EXIT_FAILURE);
+    }
+    else if (numLen > (LE_MDMDEFS_PHONE_NUM_MAX_BYTES-1))
+    {
+        fprintf(stderr, "ERROR: Too large phone number. Max allowed: %d digits, Provided: %d digits\n",
+                LE_MDMDEFS_PHONE_NUM_MAX_BYTES-1,
+                numLen);
+        exit(EXIT_FAILURE);
+    }
+
+    if (smsLen == 0)
+    {
+        fprintf(stderr, "ERROR: SMS can't be empty\n");
+        exit(EXIT_FAILURE);
+    }
+    else if (smsLen > (LE_SMS_TEXT_MAX_BYTES-1))
+    {
+        fprintf(stderr, "ERROR: Too large sms. Max allowed: %d characters, Provided: %d characters\n",
+                LE_SMS_TEXT_MAX_BYTES-1,
+                smsLen);
+        exit(EXIT_FAILURE);
+    }
 
     msgRef = le_sms_Create();
 
@@ -254,7 +282,7 @@ void cm_sms_SendText
     result = le_sms_Send(msgRef);
     if (result != LE_OK)
     {
-        fprintf(stderr, "Error while sending SMS\n");
+        fprintf(stderr, "ERROR: Failed to send SMS. Please see log for details\n");
         exit(EXIT_FAILURE);
     }
 

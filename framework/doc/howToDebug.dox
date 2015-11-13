@@ -1,6 +1,6 @@
 /** @page howToDebug Debug Apps
 
-This topic summarizes different ways to debug apps running on Legato. 
+This topic summarizes different ways to debug apps running on Legato.
 
 There are various tools available to determine why your app is failing or blocking:
 
@@ -36,10 +36,10 @@ See @ref toolsTarget_inspect
 @section howToDebug_openTools Use Open Source Tools
 
 You can also try some standard, open source debugging tools like:
-- @c strace - a system call tracer good for low level code examination. 
+- @c strace - a system call tracer good for low level code examination.
 - @c GDB - the GNU project debugger good for setting breakpoints.
 
-Run the -help option for documentation. 
+Run the -help option for documentation.
 
 <HR>
 

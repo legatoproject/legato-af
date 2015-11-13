@@ -1,6 +1,6 @@
 /** @page howToLogs Use Logs
 
-This topic summarizes how to use Legato logging. 
+This topic summarizes how to use Legato logging.
 
 There's also some @ref basicLog "background" info.
 
@@ -20,7 +20,7 @@ Run <code>logread -f </code> to start monitoring the logs and display
 messages as they are logged.
 
 The installed app's output LE_INFO() log message will appear in the target's
-system log (syslog).	
+system log (syslog).
 
 @section howToLogs_tool Logging Tool
 
@@ -40,7 +40,7 @@ See @ref toolsTarget_log for details.
 
 By default, app processes will have their @c stdout and @c stderr redirected to the @c syslog.  Each
 process’s stdout will be logged at INFO severity level; it’s stderr will be logged at
-“ERR” severity level.  
+“ERR” severity level.
 
 See @ref c_log_basic_defaultSyslog for more info.
 
@@ -48,7 +48,7 @@ See @ref c_log_basic_defaultSyslog for more info.
 
 The Logging API provides a toolkit to set error, warning, info, and
 debugging messages with macros and condition support including default environment variable
-controls that can be output to different devices and formats. 
+controls that can be output to different devices and formats.
 
 See @ref c_logging for details.
 

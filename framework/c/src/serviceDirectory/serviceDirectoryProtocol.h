@@ -44,7 +44,7 @@
  * send a welcome message (LE_OK) to the client over that connection and switch to using the
  * protocol that it advertised for that service.
  *
- * @note This implies another pair of connected sockets per session.
+ * @note This implies a pair of connected sockets per session.
  *
  * When a server wants to stop offering a service, it simply closes its connection to the Service
  * Directory.
@@ -54,25 +54,33 @@
  *
  * @section serviceDirectoryProtocol_Clients Client-to-Directory Communication
  *
- * When a client wants to open a session with a service, they open a socket and connect it to
+ * When a client wants to open a session with a service, it opens a socket and connects it to
  * the Service Directory's client connection socket.  The client then sends in the name of the
- * service that it wants to use and information about the protocol it intends to use to
+ * interface that it wants to connect and information about the protocol it intends to use to
  * communicate with that service.
  *
- * If the service exists and the client is authorized to use that service, then the
- * Service Directory sends the file descriptor for the client connection over to the server
+ * If the client's interface is bound to a service and that service is advertised by its server,
+ * then the Service Directory sends the file descriptor for the client connection over to the server
  * using the server connection (see @ref serviceDirectoryProtocol_Servers) and closes its
  * file descriptor for the client connection, thereby taking the Service Directory out of the
  * loop for IPC between that client and that server.  The client should then receive a welcome
  * message (LE_OK) from the server over that connection and switch to using the protocol that
  * it requested for that service.
  *
- * If the client is authorized to use the service, but the service does not yet exist, the
- * Service Directory holds onto the client connection until a server connects and advertizes
- * a matching service.
+ * If the client interface is bound to a service, but the service does not yet exist, the
+ * client can (and usually does) request that the Service Directory hold onto the client connection
+ * until the server connects and advertises the service.  If the client does not ask to wait
+ * for the server, then the Service Directory will immediately respond with an LE_UNAVAILABLE
+ * result code message and close the connection to the client.
  *
- * If the client is not authorized to use the service, then the Service Directory sends back
- * an LE_NOT_PERMITTED result code to the client and closes the connection.
+ * If the client interface is not bound to a service, then the client can (and usually does)
+ * request that the Service Directory hold onto the client connection until a binding is created
+ * for that client interface.  If the client does not ask to wait then the Service Directory will
+ * immediately respond with an LE_NOT_PERMITTED result code message and close the connection to
+ * the client.
+ *
+ * If the client misbehaves according to the protocol rules, the Service Directory will send
+ * LE_FAULT to the client and drop its connection.
  *
  * @note The client socket is a named socket, rather than an abstract socket because this allows
  *       file system permissions to be used to prevent DoS attacks on this socket.
@@ -121,17 +129,40 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Service identity.  This structure contains everything that is required to uniquely identify
- * a Legato IPC service.
+ * Interface details.  Both client and server need to send this information to the
+ * Service Directory when they connect.
  */
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
     size_t              maxProtocolMsgSize; ///< Max size of protocol's messages, in bytes.
-    char                protocolId[LIMIT_MAX_PROTOCOL_ID_BYTES];    ///< Protocol identifier.
-    char                serviceName[LIMIT_MAX_SERVICE_NAME_BYTES];  ///< Service instance name.
+    char                protocolId[LIMIT_MAX_PROTOCOL_ID_BYTES];      ///< Protocol identifier.
+    char                interfaceName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES];///< Interface name.
 }
-svcdir_ServiceId_t;
+svcdir_InterfaceDetails_t;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Open Session request.
+ *
+ * Messages sent from the client to the Service Directory to request that a session with a server
+ * be opened have this structure.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    svcdir_InterfaceDetails_t  interface;   ///< Details of the client-side interface that
+                                            ///  the client wants to connect to a service.
+
+    bool shouldWait;        ///< true = ask the Service Directory to hold onto the request until
+                            ///         the binding or advertisement happens if the client
+                            ///         interface is not bound or the server is not advertising
+                            ///         the service at this time.
+                            ///  false = fail immediately if either a binding or advertisement is
+                            ///         missing at this time.
+}
+svcdir_OpenRequest_t;
 
 
 #endif // LEGATO_SERVICE_DIRECTORY_PROTOCOL_INCLUDE_GUARD

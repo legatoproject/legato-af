@@ -188,9 +188,9 @@ def MakeImportList(data, importDirs):
         importPathList = MakeImportList(data, importDirs) + importPathList
 
     # Ensure there are no duplicates in the list.  Any duplicates that appear later
-    # in the list should be removed.  We must maintain the order of the elements in 
+    # in the list should be removed.  We must maintain the order of the elements in
     # the list, since this determines the processing order.  For an OrderedDict:
-    #     "If a new entry overwrites an existing entry, the original insertion 
+    #     "If a new entry overwrites an existing entry, the original insertion
     #      position is left unchanged"
     d = collections.OrderedDict()
     for p in importPathList:

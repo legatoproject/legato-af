@@ -15,16 +15,16 @@
 
 #include "../inc/le_uart.h"
 
-//#define MY_PORT		"/dev/ttyUSB0"
+//#define MY_PORT        "/dev/ttyUSB0"
 
 #define MODULE_NAME "SERIAL_PORT"
 #define READ_BUFFER_SIZE 512 // define how much it can read data at a time
 
-#define MY_BAUDRATE	19200
-#define MY_FLOWCONTROL	"none"
-#define MY_DATA		8
-#define MY_PARITY	"odd"
-#define MY_TIMEOUT	2
+#define MY_BAUDRATE    19200
+#define MY_FLOWCONTROL    "none"
+#define MY_DATA        8
+#define MY_PARITY    "odd"
+#define MY_TIMEOUT    2
 
 static const char* PAR_NONE  = "none";
 static const char* PAR_ODD   = "odd";

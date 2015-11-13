@@ -1,0 +1,25 @@
+/** @page legatoServicesModem Modem
+
+| Service                            | Description                                        | multi-app safe            |
+| ---------------------------------- | -------------------------------------------------- | :-----------------------: |
+| @subpage c_adc                     | Analog to digital converter                        |                           |
+| @subpage c_antenna                 | Antenna diagnostics                                |                           |
+| @subpage c_ecall                   | EU auto accident assistance program                |                           |
+| @subpage c_ips                     | Input voltage data                                 | @image html green_dot.png |
+| @subpage c_mcc                     | Control voice calls                                |                           |
+| @subpage c_mdc                     | Control modem data connections                     |                           |
+| @subpage c_info                    | Retrieve modem data information                    |                           |
+| @subpage c_mrc                     | Modem radio controls                               |                           |
+| @subpage c_riPin                   | Ring indicator for host wakeup                     |                           |
+| @subpage c_rtc                   | Set user timebase for RTC                     |                           |
+| @subpage c_sim                     | SIM access                                         |                           |
+| @subpage c_temp                    | Platform/radio temperature data                    |                           |
+
+ <br>
+
+<HR>
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/
+

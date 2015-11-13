@@ -96,7 +96,8 @@
  * - le_smsInbox1_GetBinary() - get the message binary content.
  * - le_smsInbox1_GetPdu() - get the PDU message content.
  *
- * @note For incoming SMS Inbox, format returned by le_smsInbox1_GetFormat() is never LE_SMSINBOX1_FORMAT_PDU.
+ * @note For incoming SMS Inbox, format returned by le_smsInbox1_GetFormat() is never
+ * LE_SMSINBOX1_FORMAT_PDU.
  *
  * @section le_smsInbox_listing Getting received messages
  *
@@ -277,6 +278,8 @@ FUNCTION le_result_t GetImsi
  *  - Message format.
  *  - FORMAT_UNKNOWN when the message format cannot be identified or the message reference is
  *    invalid.
+ * @note For incoming SMS Inbox, format returned by le_smsInbox1_GetFormat() is never
+ * LE_SMSINBOX1_FORMAT_PDU.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_sms.Format GetFormat

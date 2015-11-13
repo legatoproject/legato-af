@@ -2,6 +2,7 @@
 
 This section contains info about how to complete frequently needed tasks.
 
+@subpage howToCustomizeUART <br>
 @subpage howToCustomizeUSB <br>
 @subpage howToDebug <br>
 @subpage howToConfigTree <br>
@@ -10,7 +11,7 @@ This section contains info about how to complete frequently needed tasks.
 @subpage howToPowerMgmt <br>
 @subpage howToNMEA <br>
 @subpage howToPortLegacyGen <br>
-@subpage howToPortLegacyC <br>
+@subpage howToSetUserTimebase <br>
 @subpage howToAV <br>
 @subpage howToLogs
 

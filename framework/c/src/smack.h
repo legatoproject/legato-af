@@ -44,7 +44,7 @@
  * @ref c_smack_setRules section for details.  Only privileged processes can set rules.
  *
  * @section c_smack_privProcess Privileged Processess
- * 
+ *
  * Privileged processes use the CAP_MAC_OVERRIDE capability. It's also possible to configure
  * the system so the CAP_MAC_OVERRIDE is honoured only for processes with a specific label. This
  * configuration allows the system to restrict root processes (have CAP_MAC_OVERRIDE) that don't

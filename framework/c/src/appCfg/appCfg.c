@@ -35,7 +35,7 @@
  * Node in the config that contains the secure storage limit in bytes.
  */
 //--------------------------------------------------------------------------------------------------
-#define CFG_LIMIT_SEC_STORE                         "maxSecStoreBytes"
+#define CFG_LIMIT_SEC_STORE                         "maxSecureStorageBytes"
 
 
 //--------------------------------------------------------------------------------------------------

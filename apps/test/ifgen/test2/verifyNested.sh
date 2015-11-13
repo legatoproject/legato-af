@@ -1,8 +1,8 @@
 #
-# Simple script to verify the generated nested interface files.  
+# Simple script to verify the generated nested interface files.
 #
 # Usage: verifyNested.sh <dir>
-#    
+#
 # where <dir> is the output directory that is then compared against generated_nested
 #
 

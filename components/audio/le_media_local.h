@@ -59,6 +59,20 @@ le_result_t le_media_Open
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Close media service.
+ *
+ * @return LE_FAULT         Function failed.
+ * @return LE_OK            Function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_media_Close
+(
+    le_audio_Stream_t*          streamPtr          ///< [IN] Stream object
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Initialize the media service.
  *
  */

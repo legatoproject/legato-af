@@ -287,6 +287,45 @@ static void ReInitializeList
     }
 }
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Create and Populate a new message object from an unknown PDU encoding.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static le_sms_Msg_t* CreateMessage
+(
+    uint32_t            storageIdx,     ///< [IN] Storage index
+    pa_sms_Pdu_t*       pduMsgPtr       ///< [IN] PDU message
+)
+{
+    // Create and populate the SMS message object (it is Read Only).
+    le_sms_Msg_t  *newSmsMsgObjPtr;
+
+    // Create the message node.
+    newSmsMsgObjPtr = (le_sms_Msg_t*)le_mem_ForceAlloc(MsgPool);
+    memset(newSmsMsgObjPtr, 0, sizeof(le_sms_Msg_t));
+
+    newSmsMsgObjPtr->pdu.status = LE_SMS_STATUS_UNKNOWN;
+    newSmsMsgObjPtr->pdu.errorCode.code3GPP2 = LE_SMS_ERROR_3GPP2_MAX;
+    newSmsMsgObjPtr->pdu.errorCode.rp = LE_SMS_ERROR_3GPP_MAX;
+    newSmsMsgObjPtr->pdu.errorCode.tp = LE_SMS_ERROR_3GPP_MAX;
+    newSmsMsgObjPtr->readonly = true;
+    newSmsMsgObjPtr->storageIdx = storageIdx;
+    newSmsMsgObjPtr->type = LE_SMS_TYPE_RX;
+    newSmsMsgObjPtr->format = LE_SMS_FORMAT_UNKNOWN;
+
+    /* Save the protocol */
+    newSmsMsgObjPtr->protocol = pduMsgPtr->protocol;
+
+    /* Copy PDU */
+    memcpy(&(newSmsMsgObjPtr->pdu), pduMsgPtr, sizeof(pa_sms_Pdu_t));
+    newSmsMsgObjPtr->pduReady = true;
+
+    return (newSmsMsgObjPtr);
+}
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Create and Populate a new message object from a PDU.
@@ -295,89 +334,59 @@ static void ReInitializeList
 //--------------------------------------------------------------------------------------------------
 static le_sms_Msg_t* CreateAndPopulateMessage
 (
-    uint32_t            storageIdx,
-    pa_sms_Pdu_t*       messagePduPtr,
-    pa_sms_Message_t*   messageConvertedPtr
+    uint32_t            storageIdx,     ///< [IN] Storage index
+    pa_sms_Pdu_t*       pduMsgPtr,      ///< [IN] PDU message
+    pa_sms_Message_t*   decodedMsgPtr   ///< [IN] Decoded Message
 )
 {
     // Create and populate the SMS message object (it is Read Only).
     le_sms_Msg_t  *newSmsMsgObjPtr;
 
     // Create the message node.
-    newSmsMsgObjPtr = (le_sms_Msg_t*)le_mem_ForceAlloc(MsgPool);
-    newSmsMsgObjPtr->timestamp[0] = '\0';
-    newSmsMsgObjPtr->tel[0] = '\0';
-    newSmsMsgObjPtr->text[0] = '\0';
-    newSmsMsgObjPtr->userdataLen = 0;
-    newSmsMsgObjPtr->pduReady = false;
-    newSmsMsgObjPtr->pdu.status = LE_SMS_UNSENT;
-    newSmsMsgObjPtr->pdu.dataLen = 0;
-    newSmsMsgObjPtr->pdu.errorCode.code3GPP2 = LE_SMS_ERROR_3GPP2_MAX;
-    newSmsMsgObjPtr->pdu.errorCode.rp = LE_SMS_ERROR_3GPP_MAX;
-    newSmsMsgObjPtr->pdu.errorCode.tp = LE_SMS_ERROR_3GPP_MAX;
-    newSmsMsgObjPtr->pdu.errorCode.platformSpecific = 0;
-    newSmsMsgObjPtr->inAList = false;
-    newSmsMsgObjPtr->readonly = true;
-    newSmsMsgObjPtr->storageIdx = storageIdx;
-    newSmsMsgObjPtr->smsUserCount = 0;
-    newSmsMsgObjPtr->delAsked = false;
-    newSmsMsgObjPtr->messageId = 0;
-    newSmsMsgObjPtr->messageSerialNumber = 0;
-    newSmsMsgObjPtr->timeoutExpires = false;
-    newSmsMsgObjPtr->timerRef = NULL;
-    newSmsMsgObjPtr->timeSendingLimit.tv_sec = 0;
-    newSmsMsgObjPtr->timeoutValue = 0;
+    newSmsMsgObjPtr = CreateMessage(storageIdx, pduMsgPtr);
 
-    switch (messageConvertedPtr->type)
+    switch (decodedMsgPtr->type)
     {
-        case PA_SMS_SMS_DELIVER:
+        case PA_SMS_DELIVER:
             newSmsMsgObjPtr->type = LE_SMS_TYPE_RX;
-            newSmsMsgObjPtr->format = messageConvertedPtr->smsDeliver.format;
+            newSmsMsgObjPtr->format = decodedMsgPtr->smsDeliver.format;
             break;
         case PA_SMS_PDU:
             newSmsMsgObjPtr->type = LE_SMS_TYPE_RX;
             newSmsMsgObjPtr->format = LE_SMS_FORMAT_PDU;
             break;
-        case PA_SMS_SMS_CELL_BROADCAST:
+        case PA_SMS_CELL_BROADCAST:
             newSmsMsgObjPtr->type = LE_SMS_TYPE_BROADCAST_RX;
-            newSmsMsgObjPtr->format = messageConvertedPtr->cellBroadcast.format;
-            memcpy(newSmsMsgObjPtr->pdu.data, messagePduPtr->data, messagePduPtr->dataLen);
-            newSmsMsgObjPtr->messageId = messageConvertedPtr->cellBroadcast.mId;
-            newSmsMsgObjPtr->messageSerialNumber = messageConvertedPtr->cellBroadcast.serialNum;
+            newSmsMsgObjPtr->format = decodedMsgPtr->cellBroadcast.format;
+            memcpy(newSmsMsgObjPtr->pdu.data, pduMsgPtr->data, pduMsgPtr->dataLen);
+            newSmsMsgObjPtr->messageId = decodedMsgPtr->cellBroadcast.mId;
+            newSmsMsgObjPtr->messageSerialNumber = decodedMsgPtr->cellBroadcast.serialNum;
             newSmsMsgObjPtr->pduReady = true;
             break;
-
         default:
-            LE_CRIT("Unknown or not supported SMS format %d", newSmsMsgObjPtr->format);
+            LE_CRIT("Unknown or not supported SMS type %d", decodedMsgPtr->type);
             le_mem_Release(newSmsMsgObjPtr);
             return NULL;
-            break;
     }
-
-    /* Copy PDU */
-    memcpy(&(newSmsMsgObjPtr->pdu), messagePduPtr, sizeof(pa_sms_Pdu_t));
-
-    /* Save the protocol */
-    newSmsMsgObjPtr->protocol = messagePduPtr->protocol;
 
     switch (newSmsMsgObjPtr->format)
     {
         case LE_SMS_FORMAT_PDU:
-            LE_CRIT_IF((messagePduPtr->dataLen > LE_SMS_PDU_MAX_BYTES),
-                            "messagePduPtr->dataLen.%d > LE_SMS_PDU_MAX_BYTES.%d !",
-                            messagePduPtr->dataLen,
+            LE_CRIT_IF((pduMsgPtr->dataLen > LE_SMS_PDU_MAX_BYTES),
+                            "pduMsgPtr->dataLen.%d > LE_SMS_PDU_MAX_BYTES.%d !",
+                            pduMsgPtr->dataLen,
                             LE_SMS_PDU_MAX_BYTES);
             break;
         case LE_SMS_FORMAT_BINARY:
-            if (messageConvertedPtr->type == PA_SMS_SMS_CELL_BROADCAST)
+            if (decodedMsgPtr->type == PA_SMS_CELL_BROADCAST)
             {
-                LE_CRIT_IF((messageConvertedPtr->cellBroadcast.dataLen > LE_SMS_BINARY_MAX_BYTES),
+                LE_CRIT_IF((decodedMsgPtr->cellBroadcast.dataLen > LE_SMS_BINARY_MAX_BYTES),
                                 "cellBroadcast.dataLen.%d > LE_SMS_BINARY_MAX_BYTES.%d !",
-                                messageConvertedPtr->cellBroadcast.dataLen,
+                                decodedMsgPtr->cellBroadcast.dataLen,
                                 LE_SMS_BINARY_MAX_BYTES);
-                newSmsMsgObjPtr->userdataLen = messageConvertedPtr->cellBroadcast.dataLen;
+                newSmsMsgObjPtr->userdataLen = decodedMsgPtr->cellBroadcast.dataLen;
                 memcpy(newSmsMsgObjPtr->binary,
-                    messageConvertedPtr->cellBroadcast.data,
+                    decodedMsgPtr->cellBroadcast.data,
                     LE_SMS_BINARY_MAX_BYTES);
                 LE_DEBUG("CB Bin data len (%d), %s",
                                     (int) newSmsMsgObjPtr->userdataLen,
@@ -385,41 +394,50 @@ static le_sms_Msg_t* CreateAndPopulateMessage
             }
             else
             {
-                LE_CRIT_IF((messageConvertedPtr->smsDeliver.dataLen > LE_SMS_BINARY_MAX_BYTES),
+                LE_CRIT_IF((decodedMsgPtr->smsDeliver.dataLen > LE_SMS_BINARY_MAX_BYTES),
                                 "smsDeliver.dataLen.%d > LE_SMS_BINARY_MAX_BYTES.%d !",
-                                messageConvertedPtr->smsDeliver.dataLen,
+                                decodedMsgPtr->smsDeliver.dataLen,
                                 LE_SMS_BINARY_MAX_BYTES);
-                newSmsMsgObjPtr->userdataLen = messageConvertedPtr->smsDeliver.dataLen;
+                newSmsMsgObjPtr->userdataLen = decodedMsgPtr->smsDeliver.dataLen;
                 memcpy(newSmsMsgObjPtr->binary,
-                    messageConvertedPtr->smsDeliver.data,
+                    decodedMsgPtr->smsDeliver.data,
                     LE_SMS_BINARY_MAX_BYTES);
             }
             break;
         case LE_SMS_FORMAT_TEXT:
-            if (messageConvertedPtr->type == PA_SMS_SMS_CELL_BROADCAST)
+            if (decodedMsgPtr->type == PA_SMS_CELL_BROADCAST)
             {
-                LE_CRIT_IF((messageConvertedPtr->cellBroadcast.dataLen >= LE_SMS_TEXT_MAX_BYTES),
+                LE_CRIT_IF((decodedMsgPtr->cellBroadcast.dataLen >= LE_SMS_TEXT_MAX_BYTES),
                                 "cellBroadcast.dataLen.%d >= LE_SMS_TEXT_MAX_BYTES.%d !",
-                                messageConvertedPtr->cellBroadcast.dataLen,
+                                decodedMsgPtr->cellBroadcast.dataLen,
                                 LE_SMS_TEXT_MAX_BYTES);
-                newSmsMsgObjPtr->userdataLen = messageConvertedPtr->cellBroadcast.dataLen;
-                le_utf8_Copy(newSmsMsgObjPtr->text,
-                    (char *) messageConvertedPtr->cellBroadcast.data,
-                    messageConvertedPtr->cellBroadcast.dataLen,
-                    &newSmsMsgObjPtr->userdataLen);
+
+                if( decodedMsgPtr->cellBroadcast.dataLen >= LE_SMS_TEXT_MAX_BYTES)
+                {
+                    newSmsMsgObjPtr->userdataLen = LE_SMS_TEXT_MAX_BYTES - 1;
+                }
+                else
+                {
+                    newSmsMsgObjPtr->userdataLen = decodedMsgPtr->cellBroadcast.dataLen;
+                }
+
+                //  newSmsMsgObjPtr->text is already set to 0 by CreateMessage() API
+                strncpy(newSmsMsgObjPtr->text,
+                    (char *) decodedMsgPtr->cellBroadcast.data,
+                    LE_SMS_TEXT_MAX_BYTES - 1);
                 LE_DEBUG("CB TEXT data len (%d), %s",
                     (int) newSmsMsgObjPtr->userdataLen,
                     newSmsMsgObjPtr->text);
             }
             else
             {
-                LE_CRIT_IF((messageConvertedPtr->smsDeliver.dataLen >= LE_SMS_TEXT_MAX_BYTES),
+                LE_CRIT_IF((decodedMsgPtr->smsDeliver.dataLen >= LE_SMS_TEXT_MAX_BYTES),
                                 "smsDeliver.dataLen.%d >= LE_SMS_TEXT_MAX_BYTES.%d !",
-                                messageConvertedPtr->smsDeliver.dataLen,
+                                decodedMsgPtr->smsDeliver.dataLen,
                                 LE_SMS_TEXT_MAX_BYTES);
-                newSmsMsgObjPtr->userdataLen = messageConvertedPtr->smsDeliver.dataLen;
+                newSmsMsgObjPtr->userdataLen = decodedMsgPtr->smsDeliver.dataLen;
                 memcpy(newSmsMsgObjPtr->text,
-                    messageConvertedPtr->smsDeliver.data,
+                    decodedMsgPtr->smsDeliver.data,
                     LE_SMS_TEXT_MAX_BYTES);
             }
             break;
@@ -432,10 +450,10 @@ static le_sms_Msg_t* CreateAndPopulateMessage
 
     if (newSmsMsgObjPtr->format != LE_SMS_FORMAT_PDU)
     {
-        if (messageConvertedPtr->smsDeliver.option & PA_SMS_OPTIONMASK_OA)
+        if (decodedMsgPtr->smsDeliver.option & PA_SMS_OPTIONMASK_OA)
         {
             memcpy(newSmsMsgObjPtr->tel,
-                   messageConvertedPtr->smsDeliver.oa,
+                   decodedMsgPtr->smsDeliver.oa,
                    LE_MDMDEFS_PHONE_NUM_MAX_BYTES);
         }
         else
@@ -443,10 +461,10 @@ static le_sms_Msg_t* CreateAndPopulateMessage
             newSmsMsgObjPtr->tel[0] = '\0';
         }
 
-        if (messageConvertedPtr->smsDeliver.option & PA_SMS_OPTIONMASK_SCTS)
+        if (decodedMsgPtr->smsDeliver.option & PA_SMS_OPTIONMASK_SCTS)
         {
             memcpy(newSmsMsgObjPtr->timestamp,
-                   messageConvertedPtr->smsDeliver.scts,
+                   decodedMsgPtr->smsDeliver.scts,
                    LE_SMS_TIMESTAMP_MAX_BYTES);
         }
         else
@@ -521,7 +539,7 @@ static int32_t GetMessagesFromMem
                         messagePdu.dataLen,
                         &messageConverted) == LE_OK)
         {
-            if (messageConverted.type != PA_SMS_SMS_SUBMIT)
+            if (messageConverted.type != PA_SMS_SUBMIT)
             {
                 le_sms_Msg_t* newSmsMsgObjPtr = CreateAndPopulateMessage(arrayPtr[i],
                                 &messagePdu,
@@ -561,6 +579,31 @@ static int32_t GetMessagesFromMem
         else
         {
             LE_WARN("Could not decode the message (idx.%d)", arrayPtr[i]);
+            le_sms_Msg_t* newSmsMsgObjPtr = CreateMessage(arrayPtr[i], &messagePdu);
+            if (newSmsMsgObjPtr == NULL)
+            {
+                LE_ERROR("Cannot create a new message object! Jump to next one...");
+                continue;
+            }
+            // Store sms area stockage information
+            newSmsMsgObjPtr->storage = storage;
+            newSmsMsgObjPtr->inAList = true;
+
+            // Allocate a new node message for the List SMS Message node.
+            le_sms_MsgReference_t* newReferencePtr =
+                            (le_sms_MsgReference_t*)le_mem_ForceAlloc(ReferencePool);
+            // Create a Safe Reference for this Message object.
+            newReferencePtr->msgRef = le_ref_CreateRef(MsgRefMap, newSmsMsgObjPtr);
+            (newSmsMsgObjPtr->smsUserCount)++;
+
+            LE_DEBUG("create reference node[%p], obj[%p], ref[%p], cpt (%d)",
+                newReferencePtr, newSmsMsgObjPtr,
+                newReferencePtr->msgRef, newSmsMsgObjPtr->smsUserCount );
+
+            newReferencePtr->listLink = LE_DLS_LINK_INIT;
+            // Insert the message in the List SMS Message node.
+            le_dls_Queue(&(msgListObjPtr->list), &(newReferencePtr->listLink));
+            numOfQueuedMsg++;
         }
     }
 
@@ -802,7 +845,7 @@ static le_result_t EncodeMessageToPdu
                             msgPtr->userdataLen,
                             msgPtr->tel,
                             SMSPDU_7_BITS,
-                            PA_SMS_SMS_SUBMIT,
+                            PA_SMS_SUBMIT,
                             &(msgPtr->pdu));
 
             break;
@@ -817,7 +860,7 @@ static le_result_t EncodeMessageToPdu
                             msgPtr->userdataLen,
                             msgPtr->tel,
                             SMSPDU_8_BITS,
-                            PA_SMS_SMS_SUBMIT,
+                            PA_SMS_SUBMIT,
                             &(msgPtr->pdu));
 
             break;
@@ -927,8 +970,8 @@ static void NewSmsHandler
                         messagePdu.dataLen,
                         &messageConverted) == LE_OK )
         {
-            if ((messageConverted.type == PA_SMS_SMS_DELIVER)
-                 || (messageConverted.type == PA_SMS_SMS_CELL_BROADCAST))
+            if ((messageConverted.type == PA_SMS_DELIVER)
+                 || (messageConverted.type == PA_SMS_CELL_BROADCAST))
             {
                 le_sms_Msg_t* newSmsMsgObjPtr = CreateAndPopulateMessage(
                                 newMessageIndicationPtr->msgIndex,
@@ -1208,7 +1251,7 @@ static le_result_t SendAsyncSMS
             if (result == LE_OK)
             {
                 LE_DEBUG("Try to POOL PDU Msg %p, pdu.%p, pduLen.%u with protocol %d",
-                                msgPtr, msgPtr->pdu.data, msgPtr->pdu.dataLen, msgPtr->protocol);
+                                msgRef, msgPtr->pdu.data, msgPtr->pdu.dataLen, msgPtr->protocol);
 
                 msgPtr->timerRef = timerRef;
                 msgPtr->pdu.status = LE_SMS_SENDING;
@@ -1733,8 +1776,8 @@ le_result_t le_sms_GetCellBroadcastSerialNumber
  * @return LE_BAD_PARAMETER The Telephone destination number length is equal to zero.
  * @return LE_OK            The function succeeded.
  *
- * @note If telephone destination number is too long is too long (max 17 digits), it is a fatal
- *       error, the function will not return.
+ * @note If telephone destination number is too long is too long (max LE_MDMDEFS_PHONE_NUM_MAX_LEN
+ *       digits), it is a fatal error, the function will not return.
  *
  * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
  *       function will not return.
@@ -1776,7 +1819,10 @@ le_result_t le_sms_SetDestination
     }
 
     msgPtr->pduReady = false; // PDU must be regenerated
-    return (le_utf8_Copy(msgPtr->tel, destPtr, sizeof(msgPtr->tel), NULL));
+
+    strncpy(msgPtr->tel, destPtr, LE_MDMDEFS_PHONE_NUM_MAX_BYTES);
+
+    return LE_OK;
 }
 
 
@@ -1827,7 +1873,16 @@ le_result_t le_sms_GetSenderTel
             return LE_NOT_PERMITTED;
     }
 
-    return (le_utf8_Copy(telPtr, msgPtr->tel, len, NULL));
+    if (strlen(msgPtr->tel) > (len - 1))
+    {
+        return LE_OVERFLOW;
+    }
+    else
+    {
+        strncpy(telPtr, msgPtr->tel, len);
+    }
+
+    return LE_OK;
 }
 
 
@@ -1884,7 +1939,16 @@ le_result_t le_sms_GetTimeStamp
         return LE_NOT_PERMITTED;
     }
 
-    return (le_utf8_Copy(timestampPtr, msgPtr->timestamp, len, NULL));
+    if (strlen(msgPtr->timestamp) > (len - 1))
+    {
+        return LE_OVERFLOW;
+    }
+    else
+    {
+        strncpy(timestampPtr, msgPtr->timestamp, len);
+    }
+
+    return LE_OK;
 }
 
 
@@ -1946,7 +2010,7 @@ size_t le_sms_GetPDULen
         return 0;
     }
 
-    if (!msgPtr->pduReady)
+    if ((msgPtr->readonly == false) && (!msgPtr->pduReady))
     {
         EncodeMessageToPdu(msgPtr);
     }
@@ -1968,6 +2032,10 @@ size_t le_sms_GetPDULen
  *  - le_sms_Msg Reference to the new Message object pooled.
  *  - NULL Not possible to pool a new message.
  *
+ * @note If telephone destination number is too long is too long (max LE_MDMDEFS_PHONE_NUM_MAX_LEN
+ *       digits), it is a fatal error, the function will not return.
+ * @note If message is too long (max LE_SMS_TEXT_MAX_LEN digits), it is a fatal error, the
+ *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 le_sms_MsgRef_t le_sms_SendText
@@ -2099,7 +2167,7 @@ le_sms_MsgRef_t le_sms_SendPdu
  * @return LE_BAD_PARAMETER The text message length is equal to zero.
  * @return LE_OK            The function succeeded.
  *
- * @note If message is too long (max 160 digits), it is a fatal error, the
+ * @note If message is too long (max LE_SMS_TEXT_MAX_LEN digits), it is a fatal error, the
  *       function will not return.
  *
  * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
@@ -2120,6 +2188,7 @@ le_result_t le_sms_SetText
         LE_KILL_CLIENT("Invalid reference (%p) provided!", msgRef);
         return LE_NOT_FOUND;
     }
+
     if (textPtr == NULL)
     {
         LE_KILL_CLIENT("textPtr is NULL !");
@@ -2159,7 +2228,9 @@ le_result_t le_sms_SetText
     LE_DEBUG("try to copy data %s, len.%zd @ msgPtr->text.%p for msgPtr.%p",
         textPtr, length, msgPtr->text, msgPtr);
 
-    return (le_utf8_Copy(msgPtr->text, textPtr, sizeof(msgPtr->text), NULL));
+    strncpy(msgPtr->text, textPtr, LE_SMS_TEXT_MAX_BYTES);
+
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -2170,8 +2241,8 @@ le_result_t le_sms_SetText
  * @return LE_BAD_PARAMETER The length of the data is equal to zero.
  * @return LE_OK            The function succeeded.
  *
- * @note If length of the data is too long (max 140 bytes), it is a fatal error, the
- *       function will not return.
+ * @note If length of the data is too long (max LE_SMS_BINARY_MAX_BYTES bytes), it is a fatal
+ *       error, the function will not return.
 
  * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
  *       function will not return.
@@ -2233,8 +2304,8 @@ le_result_t le_sms_SetBinary
  * @return LE_BAD_PARAMETER The length of the data is equal to zero.
  * @return LE_OK            The function succeeded.
  *
- * @note If length of the data is too long (max 176 bytes), it is a fatal error, the
- *       function will not return.
+ * @note If length of the data is too long (max LE_SMS_PDU_MAX_BYTES bytes), it is a fatal error,
+ *       the function will not return.
  *
  * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
  *       function will not return.
@@ -2330,7 +2401,15 @@ le_result_t le_sms_GetText
         return LE_FORMAT_ERROR;
     }
 
-    return (le_utf8_Copy(textPtr, msgPtr->text, len, NULL));
+    if (strlen(msgPtr->text) > (len - 1))
+    {
+        return LE_OVERFLOW;
+    }
+    else
+    {
+        strncpy(textPtr, msgPtr->text, len);
+    }
+    return LE_OK;
 }
 
 
@@ -2405,7 +2484,7 @@ le_result_t le_sms_GetBinary
  * in bytes. If the PDU data exceed the value of 'len' input parameter, a LE_OVERFLOW error code is
  * returned and 'pdu' is filled until 'len' bytes.
  *
- * @return LE_FORMAT_ERROR  Unable to encode the message in PDU.
+ * @return LE_FORMAT_ERROR  Unable to encode the message in PDU (only for outgoing messages).
  * @return LE_OVERFLOW      The message length exceed the maximum length.
  * @return LE_OK            The function succeeded.
  *
@@ -2440,7 +2519,9 @@ le_result_t le_sms_GetPDU
         return LE_FAULT;
     }
 
-    if (msgPtr->protocol != PA_SMS_PROTOCOL_GW_CB)
+    if ((msgPtr->readonly == false)
+                    && (msgPtr->protocol != PA_SMS_PROTOCOL_GW_CB)
+                    && (!msgPtr->pduReady))
     {
         /* Get transport layer protocol */
         le_mrc_Rat_t rat;
@@ -2456,11 +2537,7 @@ le_result_t le_sms_GetPDU
         {
             msgPtr->protocol = PA_SMS_PROTOCOL_CDMA;
         }
-
-        if (!msgPtr->pduReady)
-        {
-            EncodeMessageToPdu(msgPtr);
-        }
+        EncodeMessageToPdu(msgPtr);
     }
 
     if (!msgPtr->pduReady)
@@ -3095,7 +3172,14 @@ le_result_t le_sms_GetSmsCenterAddress
 
     if (res == LE_OK)
     {
-        res = le_utf8_Copy(telPtr, smscMdmStr, len, NULL);
+        if (strlen(smscMdmStr) > (len - 1))
+        {
+            res = LE_OVERFLOW;
+        }
+        else
+        {
+            strncpy(telPtr, smscMdmStr, len);
+        }
     }
 
     return res;
@@ -3113,6 +3197,8 @@ le_result_t le_sms_GetSmsCenterAddress
  *  - LE_FAULT         Service is not available..
  *  - LE_OK            Function succeeded.
  *
+ * @note If the SMS center address number is too long (max LE_MDMDEFS_PHONE_NUM_MAX_LEN digits), it
+ *       is a fatal error, the function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_sms_SetSmsCenterAddress

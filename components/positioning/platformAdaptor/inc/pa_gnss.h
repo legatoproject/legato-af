@@ -34,9 +34,10 @@
 //--------------------------------------------------------------------------------------------------
 typedef enum {
     PA_GNSS_UNKNOWN_RESTART = 0,    ///< Unknown case.
-    PA_GNSS_FACTORY_RESTART,        ///< Factory restart.
+    PA_GNSS_HOT_RESTART,            ///< Hot restart.
+    PA_GNSS_WARM_RESTART,           ///< Warm restart.
     PA_GNSS_COLD_RESTART,           ///< Cold restart.
-    PA_GNSS_WARM_RESTART            ///< Warm restart.
+    PA_GNSS_FACTORY_RESTART         ///< Factory restart.
 }pa_gnss_Restart_t;
 
 //--------------------------------------------------------------------------------------------------
@@ -292,9 +293,11 @@ LE_SHARED le_result_t pa_gnss_GetLastPositionData
 /**
  * This function must be called to load an 'Extended Ephemeris' file into the GNSS device.
  *
- * @return LE_FAULT         The function failed to load the 'Extended Ephemeris' file.
- * @return LE_NOT_FOUND     The file path does not exist
+ * @return LE_FAULT         The function failed to inject the 'Extended Ephemeris' file.
+ * @return LE_TIMEOUT       A time-out occurred.
+ * @return LE_FORMAT_ERROR  'Extended Ephemeris' file format error.
  * @return LE_OK            The function succeeded.
+ *
  */
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t pa_gnss_LoadExtendedEphemerisFile
@@ -355,6 +358,19 @@ LE_SHARED le_result_t pa_gnss_DisableExtendedEphemerisFile
 LE_SHARED le_result_t pa_gnss_ForceRestart
 (
     pa_gnss_Restart_t  restartType ///< [IN] type of restart
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the TTFF in milliseconds.
+ *
+ * @return LE_BUSY          The position is not fixed and TTFF can't be measured.
+ * @return LE_OK            The function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_gnss_GetTtff
+(
+    uint32_t* ttffPtr     ///< [OUT] TTFF in milliseconds
 );
 
 //--------------------------------------------------------------------------------------------------

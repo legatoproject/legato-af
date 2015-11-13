@@ -147,10 +147,11 @@ __attribute__((unused)) static void* UnpackString(void* msgBufPtr, const char** 
 __attribute__((unused)) static void* UnpackDataString(void* msgBufPtr, void* dataPtr, size_t dataSize)
 {
     // Number of bytes copied from msg buffer, not including null terminator
-    size_t numBytes;
+    size_t numBytes = strlen(msgBufPtr);
 
     // todo: For now, assume the string will always fit in the buffer. This may not always be true.
-    le_utf8_Copy( dataPtr, msgBufPtr, dataSize, &numBytes );
+    memcpy(dataPtr, msgBufPtr, dataSize);
+    ((char*)dataPtr)[dataSize-1] = 0;
     return ( msgBufPtr + (numBytes + 1) );
 }
 """
@@ -532,7 +533,7 @@ static void _Handle_{{func.name}}
     _msgBufPtr = UnpackData( _msgBufPtr, &_clientContextPtr, sizeof(void*) );
 
     // The client data pointer is passed in as a parameter, since the lookup in the safe ref map
-	// and check for NULL has already been done when this function is queued.
+    // and check for NULL has already been done when this function is queued.
     _ClientData_t* _clientDataPtr = _dataPtr;
 
     // Pull out additional data from the client data pointer

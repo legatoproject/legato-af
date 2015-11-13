@@ -11,6 +11,7 @@
 #include "thread.h"
 #include "spy.h"
 #include <sys/timerfd.h>
+#include "fileDescriptor.h"
 
 // Include macros for printing out values
 #include "le_print.h"
@@ -489,8 +490,6 @@ static void TimerFdHandler
     }
 }
 
-
-
 // =============================================
 //  MODULE/COMPONENT FUNCTIONS
 // =============================================
@@ -525,7 +524,7 @@ void timer_Init
         {
             // Success, use CLOCK_BOOTTIME_ALARM for timerfd and
             // CLOCK_BOOTTIME for clock routines.
-            close(timerFd);
+            fd_Close(timerFd);
             TimerClockType = CLOCK_BOOTTIME_ALARM;
             ClockClockType = CLOCK_BOOTTIME;
         }
@@ -536,7 +535,7 @@ void timer_Init
             if (0 <= timerFd)
             {
                 // Success, use CLOCK_BOOTTIME for both and warn.
-                close(timerFd);
+                fd_Close(timerFd);
                 LE_WARN("Using CLOCK_BOOTTIME: alarm wakeups not supported.");
                 TimerClockType = ClockClockType = CLOCK_BOOTTIME;
             }
@@ -589,7 +588,44 @@ int timer_GetClockType(void)
     return ClockClockType;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Destruct timer resources for a given thread.
+ *
+ * This function must be called exactly once at thread shutdown, and before the Thread object is
+ * deleted.
+ */
+//--------------------------------------------------------------------------------------------------
+void timer_DestructThread
+(
+    void
+)
+{
+    timer_ThreadRec_t* threadRecPtr = thread_GetTimerRecPtr();
 
+    // Close the file descriptor
+    if (threadRecPtr->timerFD != -1)
+    {
+        fd_Close(threadRecPtr->timerFD);
+    }
+
+    le_dls_Link_t* linkPtr;
+
+    // Get the start of the list
+    linkPtr = le_dls_Peek(&threadRecPtr->activeTimerList);
+
+    // Release the timer list
+    while ( linkPtr != NULL )
+    {
+        Timer_t* timerPtr = CONTAINER_OF(linkPtr, Timer_t, link);
+
+        linkPtr = le_dls_PeekNext(&threadRecPtr->activeTimerList, linkPtr);
+
+        le_dls_Remove(&threadRecPtr->activeTimerList, &timerPtr->link);
+
+        le_mem_Release(timerPtr);
+    }
+}
 
 // =============================================
 //  PUBLIC API FUNCTIONS
@@ -1009,5 +1045,4 @@ bool le_timer_IsRunning
 
     return timerRef->isActive;
 }
-
 

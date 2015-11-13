@@ -17,7 +17,7 @@
  *
  * @section le_sms_binding IPC interfaces binding
  *
- * All the functions of this API are provided by the @b modemService foundation service.
+ * All the functions of this API are provided by the @b modemService.
  *
  * Here's a code sample binding to modem services:
  * @verbatim
@@ -829,8 +829,8 @@ FUNCTION le_result_t SetTimeout
  * @return LE_BAD_PARAMETER Telephone destination number length is equal to zero.
  * @return LE_OK            Function succeeded.
  *
- * @note If telephone destination number is too long (max 17 digits), it is a fatal
- *       error, the function will not return.
+ * @note If telephone destination number is too long is too long (max LE_MDMDEFS_PHONE_NUM_MAX_LEN
+ *       digits), it is a fatal error, the function will not return.
  *
  * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
  *       function will not return.
@@ -850,7 +850,7 @@ FUNCTION le_result_t SetDestination
  * @return LE_BAD_PARAMETER Text message length is equal to zero.
  * @return LE_OK            Function succeeded.
  *
- * @note If message is too long (max 160 digits), it is a fatal error, the
+ * @note If message is too long (max LE_SMS_TEXT_MAX_LEN digits), it is a fatal error, the
  *       function will not return.
  *
  * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
@@ -871,8 +871,8 @@ FUNCTION le_result_t SetText
  * @return LE_BAD_PARAMETER Length of the data is equal to zero.
  * @return LE_OK            Function succeeded.
  *
- * @note If len is too long (max 140 bytes), it is a fatal error, the
- *       function will not return.
+ * @note If length of the data is too long (max LE_SMS_BINARY_MAX_BYTES bytes), it is a fatal
+ *       error, the function will not return.
  *
  * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
  *       function will not return.
@@ -892,8 +892,8 @@ FUNCTION le_result_t SetBinary
  * @return LE_BAD_PARAMETER Length of the data is equal to zero.
  * @return LE_OK            Function succeeded.
  *
- * @note If len is too long (max 176 bytes), it is a fatal error, the
- *       function will not return.
+ * @note If length of the data is too long (max LE_SMS_PDU_MAX_BYTES bytes), it is a fatal error,
+ *       the function will not return.
  *
  * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
  *       function will not return.
@@ -1008,6 +1008,10 @@ FUNCTION int32 GetPlatformSpecificErrorCode
  *  - le_sms_Msg Reference to the new Message object pooled.
  *  - NULL Not possible to pool a new message.
  *
+ * @note If telephone destination number is too long is too long (max LE_MDMDEFS_PHONE_NUM_MAX_LEN
+ *       digits), it is a fatal error, the function will not return.
+ * @note If message is too long (max LE_SMS_TEXT_MAX_LEN digits), it is a fatal error, the
+ *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION Msg SendText
@@ -1237,7 +1241,7 @@ FUNCTION le_result_t GetBinary
  * in bytes. If the PDU data exceed the value of 'len' input parameter, a LE_OVERFLOW error code is
  * returned and 'pdu' is filled until 'len' bytes.
  *
- * @return LE_FORMAT_ERROR  Unable to encode the message in PDU.
+ * @return LE_FORMAT_ERROR  Unable to encode the message in PDU (only for outgoing messages).
  * @return LE_OVERFLOW      Message length exceed the maximum length.
  * @return LE_OK            Function succeeded.
  *
@@ -1421,6 +1425,8 @@ FUNCTION le_result_t GetSmsCenterAddress
  *  - LE_FAULT         Service is not available..
  *  - LE_OK            Function succeeded.
  *
+ * @note If the SMS center address number is too long (max LE_MDMDEFS_PHONE_NUM_MAX_LEN digits), it
+ *       is a fatal error, the function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetSmsCenterAddress
@@ -1553,7 +1559,7 @@ FUNCTION le_result_t AddCdmaCellBroadcastServices
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t RemoveCdmaCellBroadcastServices
 (
-   CdmaServiceCat serviceCat IN,    ///< Service category assignment. Reference to 3GPP2 C.R1001-D 
+   CdmaServiceCat serviceCat IN,    ///< Service category assignment. Reference to 3GPP2 C.R1001-D
                                     ///< v1.0 Section 9.3.1 Standard Service Category Assignments.
    Languages language IN            ///< Language Indicator. Reference to
                                     ///< 3GPP2 C.R1001-D v1.0 Section 9.2.1 Language Indicator

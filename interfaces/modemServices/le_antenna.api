@@ -10,7 +10,7 @@
  *
  * @section le_antenna_binding IPC interfaces binding
  *
- * All the functions of this API are provided by the @b modemService foundation service.
+ * All the functions of this API are provided by the @b modemService.
  *
  * Here's a code sample binding to modem services:
  * @verbatim
@@ -318,7 +318,7 @@ FUNCTION le_result_t GetStatus
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Set the external ADC index used to monitor the requested antenna.
+ * Set the external ADC used to monitor the requested antenna.
  *
  * @return
  *      - LE_OK on success
@@ -337,7 +337,7 @@ FUNCTION le_result_t SetExternalAdc
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Get the external ADC index used to monitor the requested antenna.
+ * Get the external ADC used to monitor the requested antenna.
  *
  * @return
  *      - LE_OK on success

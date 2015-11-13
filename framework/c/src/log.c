@@ -802,7 +802,7 @@ void log_ConnectToControlDaemon
 {
     // NOTE: This is called when there is only one thread running, so no need to lock the mutex.
 
-    // Open an IPC session with the Log Control Daemon.
+    // Attempt to open an IPC session with the Log Control Daemon.
 
     le_msg_ProtocolRef_t protocolRef;
     protocolRef = le_msg_GetProtocolRef(LOG_CONTROL_PROTOCOL_ID, LOG_MAX_CMD_PACKET_BYTES);
@@ -811,12 +811,41 @@ void log_ConnectToControlDaemon
     // Note: the process's main thread will always run the log command message receive handler.
     le_msg_SetSessionRecvHandler(IpcSessionRef, ProcessLogCmd, NULL);
 
-    le_result_t result = msgSession_TryOpenSessionSync(IpcSessionRef);
+    le_result_t result = le_msg_TryOpenSessionSync(IpcSessionRef);
     if (result != LE_OK)
     {
+        // If the Log Control Daemon isn't running, we just log a debug message and keep running
+        // anyway. This allows the use of liblegato for programs that need to start when the
+        // Log Control Daemon isn't running or isn't accessible.  For example, it allows tools
+        // like the "config" tool or "sdir" tool to still provide useful output to their user
+        // when they are run while the Legato framework is stopped.
+
         LE_DEBUG("Could not connect to log control daemon.");
+
         le_msg_DeleteSession(IpcSessionRef);
         IpcSessionRef = NULL;
+
+        switch (result)
+        {
+            case LE_UNAVAILABLE:
+                LE_DEBUG("Service not offered by Log Control Daemon."
+                         " Is the Log Control Daemon is not running?");
+                break;
+
+            case LE_NOT_PERMITTED:
+                LE_DEBUG("Missing binding to log client service.");
+                break;
+
+            case LE_COMM_ERROR:
+                // A debug message will have already been logged, so don't need to do anything.
+                break;
+
+            default:
+                LE_CRIT("le_msg_TryOpenSessionSync() returned unexpected result code %d (%s)\n",
+                        result,
+                        LE_RESULT_TXT(result));
+                break;
+        }
     }
     else
     {

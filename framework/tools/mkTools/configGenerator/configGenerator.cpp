@@ -53,6 +53,8 @@ static void GenerateAppLimitsConfig
         cfgStream << "  \"startManual\" !t" << std::endl;
     }
 
+    cfgStream << "  \"maxSecureStorageBytes\" [" << appPtr->maxSecureStorageBytes.Get() << "]" << std::endl;
+
     cfgStream << "  \"maxThreads\" [" << appPtr->maxThreads.Get() << "]" << std::endl;
 
     cfgStream << "  \"maxMQueueBytes\" [" << appPtr->maxMQueueBytes.Get() << "]"

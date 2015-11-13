@@ -158,23 +158,25 @@ void GenerateBuildRules
     // Generate rule for compiling a C source code file.
     script << "rule CompileC\n"
               "  depfile = $out.d\n" // Tell ninja where gcc will put the dependencies.
-              "  command = " << cCompilerPath << " -MMD -MF $out.d $cFlags -c $in -o $out"
+              "  command = " << cCompilerPath << " -MMD -MF $out.d -c $in -o $out"
               " -Wall" // Enable all warnings.
               " -fPIC" // Compile to position-independent code for linking into a shared library.
               " -Werror" // Treat all warnings as errors.
-              " -fvisibility=hidden " // Prevent exporting of symbols by default.
-              " -DMK_TOOLS_BUILD"
+              " -fvisibility=hidden" // Prevent exporting of symbols by default.
+              " -DMK_TOOLS_BUILD" // Indicate build is being done by the mk tools.
+              " $cFlags" // Include user-provided CFLAGS last so other settings can be overridden.
               "\n\n";
 
     // Generate rule for compiling a C++ source code file.
     script << "rule CompileCxx\n"
               "  depfile = $out.d\n" // Tell ninja where gcc will put the dependencies.
-              "  command = " << cxxCompilerPath << " -MMD -MF $out.d $cxxFlags -c $in -o $out"
+              "  command = " << cxxCompilerPath << " -MMD -MF $out.d -c $in -o $out"
               " -Wall" // Enable all warnings.
               " -fPIC" // Compile to position-independent code for linking into a shared library.
               " -Werror" // Treat all warnings as errors.
               " -fvisibility=hidden " // Prevent exporting of symbols by default.
-              " -DMK_TOOLS_BUILD"
+              " -DMK_TOOLS_BUILD" // Indicate build is being done by the mk tools.
+              " $cxxFlags" // Include user-provided CXXFLAGS last so other settings can be overridden.
               "\n\n";
 
     // Generate rules for linking C and C++ object code files into shared libraries.

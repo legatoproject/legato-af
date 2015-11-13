@@ -10,6 +10,7 @@
 
 #include "legato.h"
 #include "interfaces.h"
+#include "le_print.h"
 #include "appCfg.h"
 #include "../avcDaemon/assetData.h"
 #include "../avcDaemon/avcServer.h"
@@ -27,6 +28,13 @@
 #define LWM2M_NAME "lwm2m"
 
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Config tree path where the state of the update process is backed up
+ */
+//--------------------------------------------------------------------------------------------------
+#define UPDATE_STATE_BKP "/apps/avcService/backup"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -92,7 +100,6 @@
 
 
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  *  Base path for an Object 9 application binding inside of the configTree.
@@ -109,8 +116,6 @@
  */
 //--------------------------------------------------------------------------------------------------
 #define LEGATO_VERSION_FILE "/opt/legato/version"
-
-
 
 
 //--------------------------------------------------------------------------------------------------
@@ -242,6 +247,13 @@ AppObj1Fids;
 static assetData_InstanceDataRef_t CurrentObj9 = NULL;
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Whether the install is initated from AVMS server or locally using 'app remove'
+ */
+//--------------------------------------------------------------------------------------------------
+static bool AvmsInstall = false;
+
 
 
 //--------------------------------------------------------------------------------------------------
@@ -250,6 +262,37 @@ static assetData_InstanceDataRef_t CurrentObj9 = NULL;
  */
 //--------------------------------------------------------------------------------------------------
 static bool IsLocalUninstall = false;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Store the state of the avc update process in config tree
+ */
+//--------------------------------------------------------------------------------------------------
+static void StoreAvcAppUpdateState
+(
+      int instanceId,
+      bool storeId,
+      char *uri,
+      bool storeUri,
+      int state,
+      bool storeState,
+      int result,
+      bool storeResult
+)
+{
+    le_cfg_IteratorRef_t iterRef;
+
+    // Restore the state of any pending downloads or installs from non-volatile memory.
+    iterRef = le_cfg_CreateWriteTxn(UPDATE_STATE_BKP);
+
+    if (storeId)        le_cfg_SetInt(iterRef, "ObjectInstanceId", instanceId);
+    if (storeState)     le_cfg_SetInt(iterRef, "RestoreState", state);
+    if (storeResult)    le_cfg_SetInt(iterRef, "RestoreResult", result);
+
+    if (storeUri)       le_cfg_SetString(iterRef, "uri", uri);
+
+    le_cfg_CommitTxn(iterRef);
+}
 
 
 
@@ -972,6 +1015,7 @@ static void SetObj9State_
     assetData_InstanceDataRef_t instanceRef,  ///< THe instance to update.
     UpdateState state,                        ///< The new state.
     UpdateResult result,                      ///< The new result.
+    bool isSaveState,                         ///< Save state to configtree?
     const char* functionNamePtr,              ///< Name of the function that called this one.
     size_t line                               ///< The line of this file this function was called
                                               ///<   from.
@@ -997,9 +1041,18 @@ static void SetObj9State_
 
     LE_ASSERT(assetData_client_SetInt(instanceRef, O9F_UPDATE_STATE, state) == LE_OK);
     LE_ASSERT(assetData_client_SetInt(instanceRef, O9F_UPDATE_RESULT, result) == LE_OK);
+
+    // Backup the state and result of the update process to config tree.
+    if (isSaveState)
+    {
+        StoreAvcAppUpdateState(0, false,
+                               NULL, false,
+                               state, true,
+                               result, true);
+    }
 }
 
-#define SetObj9State(insref, state, result) SetObj9State_(insref, state, result, __FUNCTION__, __LINE__)
+#define SetObj9State(insref, state, result, isSaveState) SetObj9State_(insref, state, result, isSaveState, __FUNCTION__, __LINE__)
 
 
 
@@ -1026,23 +1079,36 @@ static void AppInstallHandler
 
     assetData_InstanceDataRef_t instanceRef = NULL;
 
-    // If an object 9 instance initiated this install, update it now.
-    if (CurrentObj9 != NULL)
+    // If the install was initiated from AVMS use the existing object9 instance.
+    if (AvmsInstall == true)
     {
-        instanceRef = CurrentObj9;
-        CurrentObj9 = NULL;
+        AvmsInstall = false;
 
-        LE_ASSERT(assetData_client_SetString(instanceRef, O9F_PKG_NAME, appName) == LE_OK);
-        SetObject9InstanceForApp(appName, instanceRef);
+        if (CurrentObj9 != NULL)
+        {
+            instanceRef = CurrentObj9;
+            CurrentObj9 = NULL;
+
+            // Use the current instance and check if the object instance exist
+            // If the object instance doesn't exist create one
+            LE_DEBUG("AVMS install, use existing object9 instance.");
+            LE_ASSERT(assetData_client_SetString(instanceRef, O9F_PKG_NAME, appName) == LE_OK);
+            SetObject9InstanceForApp(appName, instanceRef);
+        }
+        else
+        {
+            LE_ASSERT("Valid Object9 instance expected for AVMS install.");
+        }
     }
     else
     {
         // Otherwise, create one for this application that was installed outside of LWM2M.
+        LE_DEBUG("Local install, create new object9 instance.");
         instanceRef = GetObject9InstanceForApp(appName, true);
     }
 
     // Mark the application as being installed.
-    SetObj9State(instanceRef, US_INSTALLED, UR_INSTALLED);
+    SetObj9State(instanceRef, US_INSTALLED, UR_INSTALLED, true);
 
     // Update the application's version string.
     appCfg_Iter_t appIterRef = appCfg_FindApp(appName);
@@ -1091,14 +1157,17 @@ static void AppUninstallHandler
         return;
     }
 
-    // If this uninstall was requested by AirVantage, then move the object into it's initial state.
-    // Otherwise this is a local uninstall, so check for an instance of object 9 for this
+    // For local uninstall, check for an instance of object 9 for this
     // application and delete that instance if found.
-    if (CurrentObj9 != NULL)
+    if (AvmsInstall == true)
+    {
+        LE_DEBUG("Reuse object9 instance for upgrades.");
+    }
+    else if (CurrentObj9 != NULL)
     {
         LE_DEBUG("LWM2M Uninstall of application.");
 
-        SetObj9State(CurrentObj9, US_INITIAL, UR_INITIAL_VALUE);
+        // State already set to initial in PrepareUninstall
         CurrentObj9 = NULL;
     }
     else
@@ -1121,7 +1190,6 @@ static void AppUninstallHandler
 
 
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  *  Callback for when the uninstall script has completed.
@@ -1136,15 +1204,17 @@ static void OnUninstallCompleted
 {
     LE_DEBUG("OnUninstallCompleted");
 
-    assetData_InstanceDataRef_t instanceRef = (assetData_InstanceDataRef_t)contextPtr;
-
-    char appName[MAX_APP_NAME_BYTES] = "";
-    assetData_client_GetString(instanceRef, O9F_PKG_NAME, appName, sizeof(appName));
-
-    LE_ERROR_IF(result != 0, "Uninstall of application '%s' failed.", appName);
-    LE_DEBUG_IF(result == 0, "Uninstall of application '%s' completed.", appName);
+    if (result == 0)
+    {
+        LE_DEBUG("Uninstall of application completed.");
+        avcServer_ReportInstallProgress(LE_AVC_UNINSTALL_COMPLETE, -1);
+    }
+    else
+    {
+        LE_DEBUG("Uninstall of application failed.");
+        avcServer_ReportInstallProgress(LE_AVC_UNINSTALL_FAILED, -1);
+    }
 }
-
 
 
 
@@ -1171,6 +1241,10 @@ static void UpdateProgressHandler
 
         case LE_UPDATE_STATE_UNPACKING:
             LE_DEBUG("Unpacking package.");
+
+            // Notify registered control app.
+            // Consider Unpacking/ Reading from FOTA partition as a part of install process.
+            avcServer_ReportInstallProgress(LE_AVC_INSTALL_IN_PROGRESS, percentDone);
             break;
 
         case LE_UPDATE_STATE_APPLYING:
@@ -1178,12 +1252,21 @@ static void UpdateProgressHandler
             break;
 
         case LE_UPDATE_STATE_SUCCESS:
+
             LE_DEBUG("Install completed.");
+
+            // Notify registered control app
+            avcServer_ReportInstallProgress(LE_AVC_INSTALL_COMPLETE, percentDone);
             break;
 
         case LE_UPDATE_STATE_FAILED:
+
             LE_DEBUG("Install/uninstall failed.");
-            SetObj9State(CurrentObj9, US_INITIAL, UR_INSTALLATION_FAILURE);
+
+            // Notify registered control app
+            avcServer_ReportInstallProgress(LE_AVC_INSTALL_FAILED, percentDone);
+
+            SetObj9State(CurrentObj9, US_INITIAL, UR_INSTALLATION_FAILURE, true);
             CurrentObj9 = NULL;
             break;
 
@@ -1203,30 +1286,58 @@ static void UpdateProgressHandler
 //--------------------------------------------------------------------------------------------------
 void OnUriDownloadUpdate
 (
-    le_avc_Status_t updateStatus  ///< Status of the download in question.
+    le_avc_Status_t updateStatus   ///< Status of the download in question.
 )
 //--------------------------------------------------------------------------------------------------
 {
+    le_cfg_IteratorRef_t iterRef;
 
     switch (updateStatus)
     {
         case LE_AVC_DOWNLOAD_COMPLETE:
             LE_DEBUG("Download complete.");
-            SetObj9State(CurrentObj9, US_DELIVERED, UR_INITIAL_VALUE);
+            SetObj9State(CurrentObj9, US_DELIVERED, UR_INITIAL_VALUE, true);
             CurrentObj9 = NULL;
+
+            // Clear download requested flag.
+            iterRef = le_cfg_CreateWriteTxn(UPDATE_STATE_BKP);
+            le_cfg_SetBool(iterRef, "DownloadRequested", false);
+            le_cfg_CommitTxn(iterRef);
+
             break;
 
         case LE_AVC_DOWNLOAD_FAILED:
             LE_DEBUG("Download failed.");
             // TODO: Find out the real reason this failed.
-            SetObj9State(CurrentObj9, US_INITIAL, UR_INSTALLATION_FAILURE);
+            SetObj9State(CurrentObj9, US_INITIAL, UR_INSTALLATION_FAILURE, true);
             CurrentObj9 = NULL;
+
+            // Clear download requested flag.
+            iterRef = le_cfg_CreateWriteTxn(UPDATE_STATE_BKP);
+            le_cfg_SetBool(iterRef, "DownloadRequested", false);
+            le_cfg_CommitTxn(iterRef);
+
             break;
 
-        // We don't care as much about these states as they are to deal with FOTA.
         case LE_AVC_DOWNLOAD_PENDING:
+            LE_DEBUG("Download pending.");
+            break;
+        
+        // Update the state when the first QMI message is received from the firmware indicating
+        // download progress.
         case LE_AVC_DOWNLOAD_IN_PROGRESS:
-            LE_DEBUG("Download pending/in progress.");
+            if (GetOb9State(CurrentObj9) == US_INITIAL)
+            {
+                LE_DEBUG("Download started.");
+                SetObj9State(CurrentObj9, US_DOWNLOAD_STARTED, UR_DOWNLOADING, true);
+                
+                // Do a registration update and sync object 9 status with firmware.
+                avcServer_RegistrationUpdate();
+            }
+            else
+            {
+                LE_DEBUG("Download in progress.");
+            }
             break;
 
         case LE_AVC_NO_UPDATE:
@@ -1247,6 +1358,22 @@ void OnUriDownloadUpdate
 
         case LE_AVC_INSTALL_PENDING:
             LE_DEBUG("Install pending.");
+            break;
+
+        case LE_AVC_UNINSTALL_FAILED:
+            LE_DEBUG("Uninstall failed.");
+            break;
+
+        case LE_AVC_UNINSTALL_COMPLETE:
+            LE_DEBUG("Uninstall complete.");
+            break;
+
+        case LE_AVC_UNINSTALL_IN_PROGRESS:
+            LE_DEBUG("Uninstall in progress.");
+            break;
+
+        case LE_AVC_UNINSTALL_PENDING:
+            LE_DEBUG("Uninstall pending.");
             break;
 
         // Should never get these values, so ignore them.
@@ -1283,7 +1410,7 @@ static void StartInstall
         if ((updateHandle = le_update_Create(firmwareFd)) == NULL)
         {
             LE_ERROR("Could not init connection to update daemon.");
-            SetObj9State(CurrentObj9, US_INITIAL, UR_INSTALLATION_FAILURE);
+            SetObj9State(CurrentObj9, US_INITIAL, UR_INSTALLATION_FAILURE, true);
             CurrentObj9 = NULL;
             return;
         }
@@ -1293,7 +1420,7 @@ static void StartInstall
                                          NULL) == NULL)
         {
             LE_ERROR("Could not register update handler.");
-            SetObj9State(CurrentObj9, US_INITIAL, UR_INSTALLATION_FAILURE);
+            SetObj9State(CurrentObj9, US_INITIAL, UR_INSTALLATION_FAILURE, true);
             CurrentObj9 = NULL;
             return;
         }
@@ -1308,7 +1435,21 @@ static void StartInstall
 }
 
 
-
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Function called to prepare for an application uninstall.
+ */
+//--------------------------------------------------------------------------------------------------
+static void PrepareUninstall
+(
+    void
+)
+{
+    // Just set the state of this object 9 to initial.
+    // The server queries for this state and sends us object9 delete, which will kick an uninstall.
+    SetObj9State(CurrentObj9, US_INITIAL, UR_INITIAL_VALUE, true);
+    CurrentObj9 = NULL;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1327,6 +1468,9 @@ static void StartUninstall
     LE_DEBUG("Application '%s' uninstall requested.", appName);
     LE_DEBUG("Send uninstall request.");
 
+    // report the status to registerd control app
+    avcServer_ReportInstallProgress(LE_AVC_UNINSTALL_IN_PROGRESS, -1);
+
     const char* command[] = { "/usr/local/bin/app", "remove", appName, NULL };
     exec_RunProcess("/usr/local/bin/app",
                     command,
@@ -1336,7 +1480,6 @@ static void StartUninstall
                     OnUninstallCompleted,
                     CurrentObj9);
 }
-
 
 
 
@@ -1484,14 +1627,29 @@ static void Object9FieldActivityHandler
                     return;
                 }
 
-                SetObj9State(instanceRef, US_DOWNLOAD_STARTED, UR_DOWNLOADING);
+                SetObj9State(instanceRef, US_INITIAL, UR_INITIAL_VALUE, true);
 
-                if (pa_avc_StartURIDownload(uri, OnUriDownloadUpdate) != LE_OK)
+                if (pa_avc_StartURIDownload(uri, OnUriDownloadUpdate) == LE_OK)
                 {
-                    SetObj9State(instanceRef, US_INITIAL, UR_INVALID_URI);
+                    LE_DEBUG("Download request successful.");
+
+                    // Store a flag to indicate that we have successfully placed a download request.
+                    le_cfg_IteratorRef_t iterRef;
+                    iterRef = le_cfg_CreateWriteTxn(UPDATE_STATE_BKP);
+                    le_cfg_SetBool(iterRef, "DownloadRequested", true);
+                    le_cfg_CommitTxn(iterRef);
+                }
+                else
+                {
+                    LE_ERROR("Download request failed.");
+                    SetObj9State(instanceRef, US_INITIAL, UR_INVALID_URI, true);
                 }
 
                 CurrentObj9 = instanceRef;
+                StoreAvcAppUpdateState(instanceId, true,
+                                       uri, true,
+                                       0, false,
+                                       0, false);
             }
             break;
 
@@ -1500,6 +1658,8 @@ static void Object9FieldActivityHandler
 
             if (action == ASSET_DATA_ACTION_EXEC)
             {
+                AvmsInstall = true;
+
                 if (isAvcService)
                 {
                     LE_ERROR("Installing %s over the air is not supported.", AVC_SERVICE_NAME);
@@ -1513,6 +1673,13 @@ static void Object9FieldActivityHandler
                 }
 
                 CurrentObj9 = instanceRef;
+
+                // Store a flag to indicate that we received a install command
+                le_cfg_IteratorRef_t iterRef;
+                iterRef = le_cfg_CreateWriteTxn(UPDATE_STATE_BKP);
+                le_cfg_SetBool(iterRef, "InstallStarted", true);
+                le_cfg_CommitTxn(iterRef);
+
                 le_result_t result = avcServer_QueryInstall(StartInstall);
 
                 LE_FATAL_IF(result == LE_FAULT,
@@ -1545,15 +1712,18 @@ static void Object9FieldActivityHandler
 
                 CurrentObj9 = instanceRef;
                 IsLocalUninstall = false;
+                StoreAvcAppUpdateState(instanceId, true,
+                       NULL, false,
+                       0, false,
+                       0, false);
 
                 LE_DEBUG("Ignoring Uninstall.");
-                // StartUninstall();
+                le_result_t result = avcServer_QueryUninstall(PrepareUninstall);
 
-                // signal the server that the app is removed, though it is actually running
-                LE_DEBUG("LWM2M Uninstall - Reset State to initial.");
-
-                SetObj9State(CurrentObj9, US_INITIAL, UR_INITIAL_VALUE);
-                CurrentObj9 = NULL;
+                if (result != LE_BUSY)
+                {
+                    PrepareUninstall();
+                }
             }
             break;
 
@@ -1648,15 +1818,14 @@ static void Object9ActivityHandler
                 int state;
                 LE_ASSERT(assetData_client_GetInt(instanceRef, O9F_UPDATE_STATE, &state) == LE_OK);
 
-                // remove the application regardless of the state of the application
-                if ( strlen(appName) > 0)
+                if (strlen(appName) > 0)
                 {
-                    if ( IsLocalUninstall == false )
+                    if ((IsLocalUninstall == false)
+                       && (AvmsInstall == false))
                     {
                         CurrentObj9 = instanceRef;
                         StartUninstall();
                     }
-                    CurrentObj9 = NULL;
                 }
             }
             break;
@@ -1717,7 +1886,9 @@ static void PopulateAppInfoObjects
             assetData_client_SetString(instanceRef, O9F_PKG_VERSION, versionBuffer);
 
             assetData_client_SetBool(instanceRef,   O9F_UPDATE_SUPPORTED_OBJECTS, false);
-            SetObj9State(instanceRef, US_INSTALLED, UR_INSTALLED);
+
+            // No need to save the status in config tree, while populating object9
+            SetObj9State(instanceRef, US_INSTALLED, UR_INSTALLED, false);
 
             CreateLegatoObjectsForApp(appName);
             foundAppCount++;
@@ -1761,6 +1932,147 @@ static void PopulateAppInfoObjects
     }
 }
 
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Restore the state of the avc update process after a reboot or power cycle
+ */
+//--------------------------------------------------------------------------------------------------
+static void RestoreAvcAppUpdateState
+(
+    void
+)
+{
+    int instanceId;
+    char uri[256];
+    UpdateState restoreState;
+    UpdateResult restoreResult;
+    bool installStarted;
+    bool downloadRequested;
+    le_cfg_IteratorRef_t iterRef;
+    assetData_InstanceDataRef_t instanceRef;
+    le_result_t result;
+
+    // Restore the state of any pending downloads or installs from non-volatile memory.
+    iterRef = le_cfg_CreateReadTxn(UPDATE_STATE_BKP);
+
+    instanceId = le_cfg_GetInt(iterRef, "ObjectInstanceId", -1);
+    restoreState = le_cfg_GetInt(iterRef, "RestoreState", US_INITIAL);
+    restoreResult = le_cfg_GetInt(iterRef, "RestoreResult", UR_INITIAL_VALUE);
+    installStarted = le_cfg_GetBool(iterRef, "InstallStarted", false);
+    downloadRequested = le_cfg_GetBool(iterRef, "DownloadRequested", false);
+    le_cfg_GetString(iterRef, "uri", uri, sizeof(uri), "default");
+
+    le_cfg_CancelTxn(iterRef);
+
+    LE_PRINT_VALUE("%i", instanceId);
+    LE_PRINT_VALUE("%i", restoreState);
+    LE_PRINT_VALUE("%i", restoreResult);
+    LE_PRINT_VALUE("%p", uri);
+
+    // Check if we have all the required states backed up in memory.
+    if ((instanceId != -1)
+     && (strcmp(uri, "default") != 0))
+    {
+        if (restoreState == US_INSTALLED)
+        {
+            return;
+        }
+        
+        // Do not restore an operation which is completed (or) failed.
+        if (restoreResult != UR_INITIAL_VALUE &&
+           restoreResult != UR_DOWNLOADING)
+        {
+            return;
+        }
+
+        LE_INFO("Restoring application update process.");
+        if (assetData_GetInstanceRefById(LWM2M_NAME, 9, instanceId, &instanceRef) == LE_OK)
+        {
+            LE_DEBUG("Object 9 instance exists.");
+        }
+        else
+        {
+            LE_DEBUG("Create a new object 9 instance.");
+            LE_ASSERT(assetData_CreateInstanceById(LWM2M_NAME, 9, instanceId, &instanceRef) == LE_OK);
+        }
+
+        // Restore the state of Object9
+        SetObj9State(instanceRef, restoreState, restoreResult, true);
+
+        // Force the type of the install to application install.
+        avcServer_SetUpdateType(LE_AVC_APPLICATION_UPDATE);
+
+        switch (restoreState)
+        {
+            case US_INITIAL:
+                if (downloadRequested)
+                {
+                    // This is a case where we placed the download request to firmware, but
+                    // interrupted before the firmware started a download.
+                    // So, we wake up and place the download request again.
+
+                    pa_avc_StartSession();
+
+                    if (pa_avc_StartURIDownload(uri, OnUriDownloadUpdate) == LE_OK)
+                    {
+                        LE_DEBUG("Download request successful.");
+                    }
+                    else
+                    {
+                        LE_ERROR("Download request failed.");
+                        SetObj9State(instanceRef, US_INITIAL, UR_INVALID_URI, true);
+                    }
+
+                    CurrentObj9 = instanceRef;
+                    StoreAvcAppUpdateState(instanceId, true,
+                                           uri, true,
+                                           0, false,
+                                           0, false);
+                }
+                break;
+
+            case US_DOWNLOAD_STARTED:
+                // We were interrupted when download was in progress.
+                // Firmware will restart the download, we just have to add our
+                // handler.
+
+                CurrentObj9 = instanceRef;
+                pa_avc_AddURIDownloadStatusHandler(OnUriDownloadUpdate);
+                break;
+
+            case US_DELIVERED:
+            case US_DOWNLOADED:
+
+                pa_avc_StartSession();
+
+                // If we got interrupted after receiving the install command from the server,
+                // we will restart the install process, else we will wait for the server to
+                // send O9F_INSTALL
+                if (installStarted)
+                {
+                    // Query control app for permission to install.
+                    CurrentObj9 = instanceRef;
+                    AvmsInstall = true;
+                    result = avcServer_QueryInstall(StartInstall);
+
+                    LE_FATAL_IF(result == LE_FAULT,
+                              "Unexpected error in query install: %s",
+                              LE_RESULT_TXT(result));
+
+                    if (result != LE_BUSY)
+                    {
+                      StartInstall();
+                    }
+                }
+                break;
+
+            case US_INSTALLED:
+                break;
+        }
+    }
+}
 
 
 
@@ -1820,4 +2132,8 @@ COMPONENT_INIT
 
     PopulateAppInfoObjects();
     CreateLegatoObject();
+
+    // Restore the state of the update process, if avcService was rebooted or interrupted
+    // by a power failure while in the middle of a download process.
+    RestoreAvcAppUpdateState();
 }

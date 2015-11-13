@@ -10,6 +10,9 @@
 #ifndef LE_MESSAGING_SESSION_H_INCLUDE_GUARD
 #define LE_MESSAGING_SESSION_H_INCLUDE_GUARD
 
+#include "messagingInterface.h"
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Initializes the messagingSession module.  This must be called only once at start-up, before
@@ -24,12 +27,12 @@ void msgSession_Init
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Checks whether a given Session reference is for the client side or the server side of a session.
+ * Checks the interface type of a given Session reference.
  *
- * @return  true if client-side, false if server-side.
+ * @return  interface object type.
  */
 //--------------------------------------------------------------------------------------------------
-bool msgSession_IsClient
+msgInterface_Type_t msgSession_GetInterfaceType
 (
     le_msg_SessionRef_t sessionRef
 );
@@ -86,12 +89,12 @@ le_msg_MessageRef_t msgSession_DoSyncRequestResponse
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Fetches the service reference for a given Session object.
+ * Fetches the interface reference for a given Session object.
  *
- * @return  The service reference.
+ * @return  The interface reference.
  */
 //--------------------------------------------------------------------------------------------------
-le_msg_ServiceRef_t msgSession_GetServiceRef
+le_msg_InterfaceRef_t msgSession_GetInterfaceRef
 (
     le_msg_SessionRef_t sessionRef
 );
@@ -137,31 +140,6 @@ le_msg_SessionRef_t msgSession_CreateServerSideSession
 (
     le_msg_ServiceRef_t serviceRef,
     int                 fd          ///< [IN] File descriptor of socket connected to client.
-);
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Attempt to synchronously open a session with a service, but just quietly return an error
- * code if the Service Directory is not running or is unreachable for some other reason.
- *
- * This is needed by the Log API, since logging should work even if the Service Directory isn't
- * running.
- *
- * @return  LE_OK if successful.
- *          LE_COMM_ERROR if the Service Directory cannot be reached.
- *
- * @note    Only clients open sessions.  Servers' must patiently wait for clients to open sessions
- *          with them.
- *
- * @warning If the client and server do not agree on the maximum message size for the protocol,
- *          then an attempt to open a session between that client and server will result in a fatal
- *          error being logged and the client process being killed.
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t msgSession_TryOpenSessionSync
-(
-    le_msg_SessionRef_t             sessionRef      ///< [in] Reference to the session.
 );
 
 

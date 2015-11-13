@@ -1,17 +1,14 @@
-/** @page getstartedSetupTarget Setup Target Device
+/** @page getstartedTargetMain Setup Target Device
 
-The Legato development kit target device needs hardware and communications to be setup before you can
-install Legato:
+Legato comes ready to develop on the @subpage getstartedMangOH dev kit.
 
-@subpage getstartedTargetPrep <br>
-@ref getstartedTargetHostCom
+
+There is also info available on how to assemble and setup the
+<a href="http://source.sierrawireless.com/resources/legato/wp7xdevkit/">WP7</a> dev kit.
 
 <HR>
 
-These advanced topics are available on how to rebuild or customize your Legato target: <br>
-@subpage getstartedRestoreUpgrade <br>
-@ref yoctoMain <br>
-@ref getstartedTargetSW
+These @subpage getstartedAdvanced topics about rebuilding your target are also available.
 
 <HR>
 

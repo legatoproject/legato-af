@@ -1,5 +1,5 @@
 /** @file le_uart.h
- * 
+ *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 #ifndef LEGATO_UART_INCLUDE_GUARD

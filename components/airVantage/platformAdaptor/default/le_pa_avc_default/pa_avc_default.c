@@ -197,9 +197,10 @@ le_result_t pa_avc_RegistrationUpdate
  * Start a download from the specified URI
  *
  * The status of the download will passed to handlerRef:
+ *  - LE_AVC_DOWNLOAD_IN_PROGRESS, if the download is in progress
  *  - LE_AVC_DOWNLOAD_COMPLETE, if the download completed successfully
  *  - LE_AVC_DOWNLOAD_FAILED, if there was an error, and the download was stopped
- * Note that handlerRef will only be called once.
+ * Note that handlerRef will be cleared after download complete or failed.
  *
  * @return
  *      - LE_OK on success
@@ -209,6 +210,31 @@ le_result_t pa_avc_RegistrationUpdate
 le_result_t pa_avc_StartURIDownload
 (
     const char* uriPtr,                         ///< [IN] URI giving location of file to download
+    pa_avc_URIDownloadHandlerFunc_t handlerRef  ///< [IN] Handler to receive download status,
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_FAULT;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add the URIDownload Handler Ref
+ *
+ * The status of the download will passed to handlerRef:
+ *  - LE_AVC_DOWNLOAD_IN_PROGRESS, if the download is in progress
+ *  - LE_AVC_DOWNLOAD_COMPLETE, if the download completed successfully
+ *  - LE_AVC_DOWNLOAD_FAILED, if there was an error, and the download was stopped
+ * Note that handlerRef will be cleared after download complete or failed.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT on error
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_avc_AddURIDownloadStatusHandler
+(
     pa_avc_URIDownloadHandlerFunc_t handlerRef  ///< [IN] Handler to receive download status,
 )
 {
@@ -281,6 +307,22 @@ void pa_avc_SetLWM2MUpdateRequiredHandler
 )
 {
     LE_ERROR("Unsupported function called with %p", handlerRef);
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function sets up the modem activity timer. The timeout will default to 20 seconds if
+ * user defined value doesn't exist or if the defined value is less than 0.
+ */
+//--------------------------------------------------------------------------------------------------
+void pa_avc_SetModemActivityTimeout
+(
+    int timeout     ///< [IN] Timeout
+)
+{
+    LE_ERROR("Unsupported function called.");
 }
 
 

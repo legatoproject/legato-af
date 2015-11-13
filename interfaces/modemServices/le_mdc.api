@@ -49,6 +49,7 @@
  *
  * @section le_mdc_session Data Sessions
  *
+ * @subsection le_mdc_session_MO Mobile Originated (MO-PDP context activation)
  * A data session can be started using @ref le_mdc_StartSession. To start a data session, a
  * data profile must be created and written to the modem, or  an existing data profile
  * can be used. A data session can be stopped using @ref le_mdc_StopSession. The number of
@@ -59,13 +60,33 @@
  * can also a register handler to be notified when the session state changes. The handler
  * can be managed using @ref le_mdc_AddSessionStateHandler and @ref le_mdc_RemoveSessionStateHandler.
  *
- * Once a data session starts, a Linux network interface is created.  It's the application's responsibility
- * to configure the network interface, usually through a DHCP client. Query the
+ * @subsection le_mdc_session_MT Mobile Terminated (MT-PDP context activation)
+ * To be notified by the MT-PDP context request, the application has to subscribe to the state
+ * handler using @ref le_mdc_AddMtPdpSessionStateHandler.
+ * When the incoming MT-PDP context request is notified,
+ * the application takes responsibility to trigger the data session for that MT PDP request using
+ * @ref le_mdc_StartSession. That data session can be stopped using @ref le_mdc_StopSession.
+ *
+ * The network interface settings of that MT-PDP context can be retrieved using the provided
+ * Data Profile.
+ * Please refer to @ref le_mdc_session_networkItf.
+ *
+ * A data session can be rejected using @ref le_mdc_RejectMtPdpSession.
+ * The number of simultaneous data sessions supported is dependent on the modem,
+ * but cannot be more than the maximum number of supported profiles.
+ *
+ * The handler can be released using @ref le_mdc_RemoveMtPdpSessionStateHandler.
+ *
+ * @subsection le_mdc_session_networkItf Network interface settings
+ * Once a data session starts, a Linux network interface is created.  It's the application's
+ * responsibility to configure the network interface, usually through a DHCP client. Query the
  * interface name using @ref le_mdc_GetInterfaceName. The IP Preference can be checked with
- * @ref le_mdc_IsIPv4 or @ref le_mdc_IsIPv6 when the profile is connected. The IP address for the current data session
- * can be retreived by  @ref le_mdc_GetIPv4Address or @ref le_mdc_GetIPv6Address. The Gateway and DNS
- * addresses can be retrieved using @ref le_mdc_GetIPv4GatewayAddress, @ref le_mdc_GetIPv4DNSAddresses or
- * @ref le_mdc_GetIPv6GatewayAddress, @ref le_mdc_GetIPv6DNSAddresses.
+ * @ref le_mdc_IsIPv4 or @ref le_mdc_IsIPv6 when the profile is connected. The IP address for the
+ * current data session
+ * can be retreived by  @ref le_mdc_GetIPv4Address or @ref le_mdc_GetIPv6Address. The Gateway and
+ * DNS
+ * addresses can be retrieved using @ref le_mdc_GetIPv4GatewayAddress, @ref
+ * le_mdc_GetIPv4DNSAddresses or @ref le_mdc_GetIPv6GatewayAddress, @ref le_mdc_GetIPv6DNSAddresses.
  * The Access Point Name can be retrieved by @ref le_mdc_GetAPN. The Data bearer
  * Technology can be retreived by @ref le_mdc_GetDataBearerTechnology.
  * When the data session is stopped, the disconnection reason can be known using
@@ -121,7 +142,7 @@ DEFINE  IPV4_ADDR_MAX_BYTES = (IPV4_ADDR_MAX_LEN + 1);
 /**
  * Maximum number of bytes in an IPv6 address (not including the null-terminator).
  */
-DEFINE  IPV6_ADDR_MAX_LEN = 39;
+DEFINE  IPV6_ADDR_MAX_LEN = 45;
 
 /**
  * Maximum number of bytes in an IPv6 address (including the null-terminator).
@@ -228,10 +249,11 @@ ENUM Auth
 //--------------------------------------------------------------------------------------------------
 ENUM ConState
 {
-    DISCONNECTED,
-    AUTHENTICATING,
-    CONNECTED,
-    SUSPENDING
+    DISCONNECTED,      ///< Data session is disconnected
+    AUTHENTICATING,    ///< Authenticating data session
+    CONNECTED,         ///< Data session is connected
+    SUSPENDING,        ///< Suspending data session
+    INCOMING           ///< Incoming data session (MT-PDP context request)
 };
 
 //--------------------------------------------------------------------------------------------------
@@ -302,6 +324,16 @@ HANDLER SessionStateHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Handler for MT-PDP Data session connection state changes.
+ */
+//--------------------------------------------------------------------------------------------------
+HANDLER MtPdpSessionStateHandler
+(
+    ConState ConnectionState     ///< MT-PDP Data session connection state.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This event provides information on data session connection state changes for the given profileRef.
  *
  */
@@ -309,6 +341,17 @@ HANDLER SessionStateHandler
 EVENT SessionState
 (
     Profile profileRef, ///< The profile object of interest
+    handler SessionStateHandler
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This event provides information on data session connection state changes for the given profileRef.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+EVENT MtPdpSessionState
+(
     handler SessionStateHandler
 );
 
@@ -379,6 +422,24 @@ FUNCTION le_result_t StartSession
 FUNCTION le_result_t StopSession
 (
     Profile profileRef ///< Stop data session for this profile object
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Reject MT-PDP profile data session.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_BAD_PARAMETER if the input parameter is not valid
+ *      - LE_FAULT for other failures
+ *
+ * @note
+ *      The process exits, if an invalid profile object is given
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t RejectMtPdpSession
+(
+    Profile profileRef ///< Reject MT-PDP data session for this profile object
 );
 
 //--------------------------------------------------------------------------------------------------

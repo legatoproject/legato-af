@@ -11,7 +11,7 @@
 #define SubpoolNameBufferSize 50 // 50 characters for a subpool name should be plenty
 
 long SubpoolNum;
-char SubpoolNameBuffer[SubpoolNameBufferSize] = {0}; 
+char SubpoolNameBuffer[SubpoolNameBufferSize] = {0};
 le_mem_PoolRef_t* SubpoolRefArray; // array storing references to the subpools
 void** BlockRefArray; // array storing refs to the blocks that each subpool TryAllocs
 le_mem_PoolRef_t SuperPoolRef = NULL;
@@ -26,13 +26,13 @@ void createSubPools
     SuperPoolRef = le_mem_CreatePool("SuperPool", 10);
 
     // Create N sub-pools
-    long subpoolCnt = 0; 
+    long subpoolCnt = 0;
     while (subpoolCnt < SubpoolNum)
     {
         snprintf(SubpoolNameBuffer, SubpoolNameBufferSize, "Subpool%ld", subpoolCnt);
 
         // need to store the subpool references in an array
-        SubpoolRefArray[subpoolCnt] = le_mem_CreateSubPool(SuperPoolRef, SubpoolNameBuffer, 1);  
+        SubpoolRefArray[subpoolCnt] = le_mem_CreateSubPool(SuperPoolRef, SubpoolNameBuffer, 1);
 
         // Alloc the subpool's free block, just to increase the stat count
         BlockRefArray[subpoolCnt] = le_mem_TryAlloc(SubpoolRefArray[subpoolCnt]);
@@ -52,12 +52,12 @@ void deleteSubPool
 {
     LE_INFO("==== Deleting subpool %d ====", subPoolIndex);
 
-    // some delay between subpool deletions 
+    // some delay between subpool deletions
     nanosleep(sleepTimeRef, NULL);
 
     // Reset the stat of the subpool, in order to "taint" this subpool. If this subpool is reported
-    // by Inspect, then race condition has occured. However note that some reports could be legit, if 
-    // they are happening between "ResetStats" and "DeleteSubPool". 
+    // by Inspect, then race condition has occured. However note that some reports could be legit, if
+    // they are happening between "ResetStats" and "DeleteSubPool".
     le_mem_ResetStats(SubpoolRefArray[subPoolIndex]);
 
     // Release the block that the subpool TryAlloc'ed, before deleting the sub-pool
@@ -76,8 +76,8 @@ void deleteSubPoolsFrom1ToN
     LE_INFO("==== Deleting subpools from 1 to N ====");
 
     // Delete sub-pools from the first to the Nth
-    long subpoolCnt = 0; 
-    struct timespec sleepTime = {0, timeIntervalNano}; 
+    long subpoolCnt = 0;
+    struct timespec sleepTime = {0, timeIntervalNano};
     while (subpoolCnt < (SubpoolNum - 1))
     {
         deleteSubPool(&sleepTime, subpoolCnt);
@@ -165,4 +165,4 @@ COMPONENT_INIT
 
     LE_INFO("========== FINISHED ===========");
 }
-  
+

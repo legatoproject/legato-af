@@ -47,6 +47,7 @@ processes:
     {
         proc1 = ( "fromComponents" 'foo' "'bar'" - '"jam"' "--crazy=12" "-c 9")
         proc2 = ( /bin/fromComponents "foo /* bar - jam --crazy=12 -c 9" )
+        proc3 = ( fromComponents --crazy=12 )
         (/bin/fromComponents)
         ( fromComponents foo
      bar /* some random

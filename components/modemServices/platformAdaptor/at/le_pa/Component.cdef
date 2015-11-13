@@ -37,5 +37,5 @@ sources:
 
 requires:
 {
-    component: { atManager }
+    component: { ${LEGATO_ROOT}/components/atManager }
 }

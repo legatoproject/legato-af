@@ -1,0 +1,28 @@
+/** @page sampleApps_gpioCf3 GPIO for CF3
+
+This prototype sample demonstrates a CF3 GPIO app using the @ref c_gpio Service.
+It uses @c adef executables, bindings, and processes sections, and @c cdef requires, cflag, and
+sources sections.
+
+Run this to install the sample app:
+
+@verbatim
+$ cd apps/sample/gpioCf3Demo
+$ make wp85
+$ instapp gpioCf3Demo.wp85 <ip address>
+@endverbatim
+
+If you're using an AR7 or WP7 module in your target, substitute @c ar7 or @c wp7 for @c wp85.
+
+@ref sampleApps_startApp
+
+<HR>
+
+See <br>
+@ref basicAppsCreate
+
+<HR>
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/

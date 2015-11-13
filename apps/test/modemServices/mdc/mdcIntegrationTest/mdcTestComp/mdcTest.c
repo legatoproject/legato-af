@@ -19,6 +19,8 @@ uint8_t NbConnection = 1;
 le_mdc_ProfileRef_t ProfileRef[NB_CONNECTION_MAX];
 bool TaskStarted[NB_CONNECTION_MAX];
 
+static le_mdc_MtPdpSessionStateHandlerRef_t MtPdpSessionStateHandlerRef;
+
 
 static pthread_mutex_t Mutex = PTHREAD_MUTEX_INITIALIZER;   // POSIX "Fast" mutex.
 
@@ -294,7 +296,7 @@ static void* TestThread(void* contextPtr)
 
     if ((le_mdc_GetSessionState(profileRef, &state) != LE_OK) || (state != LE_MDC_DISCONNECTED))
     {
-        LE_INFO("le_mdc_GetSessionState failed");
+        LE_INFO("le_mdc_GetSessionState failed (%d)", state);
         UNLOCK
         return NULL;
     }
@@ -315,6 +317,7 @@ static void* TestThread(void* contextPtr)
 
     LOCK
     // Check returned error code if Data session is already started
+    LE_INFO("Restart tested as duplicated");
     LE_ASSERT(le_mdc_StartSession(profileRef)== LE_DUPLICATE);
 
     if ( le_mdc_StopSession(profileRef) != LE_OK )
@@ -364,6 +367,84 @@ static void* TestThread(void* contextPtr)
     return NULL;
 }
 
+
+static void* TestThreadMtPdp(void* contextPtr)
+{
+    le_mdc_ProfileRef_t profileRef = (le_mdc_ProfileRef_t) contextPtr;
+    le_mdc_ConState_t state;
+    le_result_t res;
+
+    le_mdc_ConnectService();
+
+    LOCK
+
+    if ((le_mdc_GetSessionState(profileRef, &state) != LE_OK) || (state != LE_MDC_DISCONNECTED))
+    {
+        LE_ERROR("le_mdc_GetSessionState failed (%d)", state);
+        UNLOCK
+        return NULL;
+    }
+
+    if ( le_mdc_StartSession(profileRef) != LE_OK )
+    {
+        LE_INFO("Start failed");
+        UNLOCK
+        return NULL;
+    }
+
+    UNLOCK
+
+    LE_INFO("Start called");
+
+    /* Get Context information */
+    char apn[10];
+    le_mdc_Auth_t auth;
+    char userName[10]={0};
+    char password[10]={0};
+    le_mdc_Pdp_t pdp;
+
+    res = le_mdc_GetAPN(profileRef, apn, sizeof(apn));
+    LE_INFO("le_mdc_GetAPN %d", res);
+    res = le_mdc_GetAuthentication(profileRef,&auth, userName, sizeof(userName), password,
+                                                                                sizeof(password));
+    LE_INFO("le_mdc_GetAuthentication %d", res);
+    pdp = le_mdc_GetPDP(profileRef);
+
+    LE_INFO("MT-PDP APN: %s", apn);
+    LE_INFO("MT-PDP PDP type: %d", pdp);
+    LE_INFO("MT-PDP Authentification: %d", auth);
+    LE_INFO("MT-PDP userName: %s", userName);
+    LE_INFO("MT-PDP password: %s", password);
+
+
+    LE_INFO("waiting a few seconds");
+    sleep(20);
+
+    LOCK
+
+    LE_INFO("Restart tested as duplicated");
+    // Check returned error code if Data session is already started
+    LE_ASSERT(le_mdc_StartSession(profileRef) == LE_DUPLICATE);
+
+    LE_INFO("waiting a few seconds");
+    sleep(10);
+
+    if ( le_mdc_StopSession(profileRef) != LE_OK )
+    {
+        LE_INFO("Stop failed");
+        UNLOCK
+        return NULL;
+    }
+
+    UNLOCK
+    LE_INFO("Stop called");
+
+    LE_INFO("TESTS PASS FOR MT-PDP PROFILE %d", le_mdc_GetProfileIndex(profileRef));
+
+    return NULL;
+}
+
+
 static void StateChangeHandler
 (
     le_mdc_ProfileRef_t profileRef,
@@ -402,12 +483,64 @@ static void StateChangeHandler
     }
 }
 
+static void StateChangeHandlerMtPdp
+(
+    le_mdc_ProfileRef_t profileRef,
+    le_mdc_ConState_t ConnectionStatus,
+    void* contextPtr
+)
+{
+    char name[LE_MDC_INTERFACE_NAME_MAX_BYTES];
+
+    le_mdc_GetInterfaceName(profileRef, name, sizeof(name));
+
+    LE_DEBUG("\n====================MT-PDP============================");
+    LE_PRINT_VALUE("%d", (int) le_mdc_GetProfileIndex(profileRef));
+    LE_PRINT_VALUE("%s", name);
+    LE_PRINT_VALUE("%u", ConnectionStatus);
+
+    if (ConnectionStatus == LE_MDC_INCOMING)
+    {
+        LE_INFO("MT-PDP request received for Profile %d", le_mdc_GetProfileIndex(profileRef));
+        // Start test thread for MT-PDP request
+        le_thread_Start(le_thread_Create("MDC_MT-PDP_Test", TestThreadMtPdp, profileRef));
+        // LE_ASSERT( le_mdc_StartSession(profileRef) == LE_OK )
+    }
+
+    if (ConnectionStatus == LE_MDC_CONNECTED)
+    {
+        LE_INFO("MT-PDP connected for Profile %d", le_mdc_GetProfileIndex(profileRef));
+    }
+
+    if (ConnectionStatus == LE_MDC_DISCONNECTED)
+    {
+        LE_PRINT_VALUE("%d", le_mdc_GetDisconnectionReason(profileRef));
+        LE_PRINT_VALUE("%d", le_mdc_GetPlatformSpecificDisconnectionCode(profileRef));
+        // Remove handler
+        le_mdc_RemoveMtPdpSessionStateHandler(MtPdpSessionStateHandlerRef);
+    }
+
+    LE_DEBUG("\n================================================");
+}
+
 static void* HandlerThread(void* contextPtr)
 {
     le_mdc_ConnectService();
 
     le_mdc_ProfileRef_t profileRef = ProfileRef[(intptr_t) contextPtr];
     le_mdc_AddSessionStateHandler(profileRef, StateChangeHandler, contextPtr);
+
+    le_event_RunLoop();
+}
+
+static void* HandlerThreadMtPdP(void* contextPtr)
+{
+    le_mdc_ConnectService();
+
+    LE_INFO("AddMtPdpSessionStateHandler");
+
+    MtPdpSessionStateHandlerRef = le_mdc_AddMtPdpSessionStateHandler(StateChangeHandlerMtPdp
+                                                                    , contextPtr);
 
     le_event_RunLoop();
 }
@@ -449,10 +582,12 @@ COMPONENT_INIT
         }
 
         char string[50]="\0";
-
         snprintf(string,50,"MDC%d_handler", (int) (i+1));
-
         le_thread_Start(le_thread_Create(string, HandlerThread, (void*) i));
+
+        snprintf(string,50,"MDC%d_handlerMtPdP", (int) (i+1));
+        le_thread_Start(le_thread_Create(string, HandlerThreadMtPdP, (void*) i));
+
     }
 
     sleep(1);

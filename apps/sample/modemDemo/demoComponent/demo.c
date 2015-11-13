@@ -890,7 +890,8 @@ static void SmsReceivedHandler
 
     // We are now reporting to this person
     DestNumValid = true;
-    le_utf8_Copy(DestNum, tel, sizeof(DestNum), NULL);
+    strncpy(DestNum, tel, LE_MDMDEFS_PHONE_NUM_MAX_LEN);
+    DestNum[LE_MDMDEFS_PHONE_NUM_MAX_LEN] = '\0';
 
     LE_INFO("Message: %s: %s", tel, text);
 

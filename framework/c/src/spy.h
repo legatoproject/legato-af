@@ -104,7 +104,7 @@ size_t** spy_GetListOfThreadObjsChgCntRef
 //--------------------------------------------------------------------------------------------------
 void spy_SetListOfTimersChgCntRef
 (
-    size_t** listOfTimersChgCntRefRef     ///< [IN] Ref to the list change counter for timers. 
+    size_t** listOfTimersChgCntRefRef     ///< [IN] Ref to the list change counter for timers.
 );
 
 

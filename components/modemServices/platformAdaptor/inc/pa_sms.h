@@ -84,13 +84,14 @@ pa_sms_OptionMask_t;
 //--------------------------------------------------------------------------------------------------
 typedef enum
 {
-    PA_SMS_SMS_DELIVER        = 0, ///< SMS-DELIVER (in the direction Service Center
-                                   ///< to Mobile station).
-    PA_SMS_SMS_SUBMIT         = 1, ///< SMS-SUBMIT (in the direction Mobile station to Service
-                                   ///< Center).
-    PA_SMS_SMS_STATUS_REPORT  = 2, ///< SMS-STATUS-REPORT.
-    PA_SMS_PDU                = 3, ///< PDU message.
-    PA_SMS_SMS_CELL_BROADCAST = 4  ///< SMS Cell Broadcast.
+    PA_SMS_DELIVER        = 0, ///< SMS-DELIVER (in the direction Service Center
+                               ///< to Mobile station).
+    PA_SMS_SUBMIT         = 1, ///< SMS-SUBMIT (in the direction Mobile station to Service
+                               ///< Center).
+    PA_SMS_STATUS_REPORT  = 2, ///< SMS-STATUS-REPORT.
+    PA_SMS_PDU            = 3, ///< PDU message.
+    PA_SMS_CELL_BROADCAST = 4, ///< SMS Cell Broadcast.
+    PA_SMS_UNSUPPORTED    = 5  ///< SMS with unsupported format or encoding.
 }
 pa_sms_MsgType_t;
 
@@ -250,7 +251,6 @@ typedef void (*pa_sms_NewMsgHdlrFunc_t)
     pa_sms_NewMessageIndication_t* msgRef
 );
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  * This function must be called to register a handler for a new message reception handling.
@@ -390,7 +390,6 @@ LE_SHARED le_result_t pa_sms_ChangeMessageStatus
  *
  * @return
  *   - LE_FAULT        The function failed.
- *   - LE_TIMEOUT      No response was received from the Modem.
  *   - LE_OK           The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------

@@ -199,6 +199,22 @@ le_result_t pa_gnss_ForceRestart
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Get the TTFF in milliseconds.
+ *
+ * @return LE_BUSY          The position is not fixed and TTFF can't be measured.
+ * @return LE_OK            The function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_gnss_GetTtff
+(
+    uint32_t* ttffPtr     ///< [OUT] TTFF in milliseconds
+)
+{
+    return LE_FAULT;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This function enables the GNSS device.
  *
  * @return LE_FAULT         The function failed.

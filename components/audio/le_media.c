@@ -307,7 +307,7 @@ static void DestroyPlayDtmfThread
 
     if(threadCtxPtr)
     {
-        LE_DEBUG("Close pipe Tx");
+        LE_DEBUG("close threadCtxPtr->pipefd[1].%d", threadCtxPtr->pipefd[1]);
         close(threadCtxPtr->pipefd[1]);
         le_mem_Release(threadCtxPtr);
     }
@@ -334,15 +334,16 @@ static void MyMediaAmrHandler
 
     if (amrCtxtPtr)
     {
-        close(amrCtxtPtr->fd_pipe_output);
+        LE_DEBUG("close amrCtxtPtr->fd_pipe_input.%d, amrCtxtPtr->fd_pipe_output.%d",
+                 amrCtxtPtr->fd_pipe_input,
+                 amrCtxtPtr->fd_pipe_output);
         close(amrCtxtPtr->fd_pipe_input);
+        close(amrCtxtPtr->fd_pipe_output);
 
         le_audio_RemoveMediaHandler(amrCtxtPtr->mediaHandler);
 
         // set the initial fd in the stream context
         amrCtxtPtr->streamPtr->fd = amrCtxtPtr->fd_in;
-
-        le_mem_Release(amrCtxtPtr);
     }
 }
 
@@ -378,20 +379,45 @@ static void* PlayAmrThread
         }
     }
 
-    // close can be interrupted by a signal, retry if it is the case
-    int result;
-    do
-    {
-        result = close(amrCtxtPtr->fd_pipe_input);
-    }
-    while ((result == -1) && (errno == EINTR));
-    LE_CRIT_IF(result == -1, "Failed to close audio input pipe (%m).");
-
     pa_media_ReleaseAmrDecoder(amrCtxtPtr->paAmrDecoderCtxPtr);
-
+    amrCtxtPtr->paAmrDecoderCtxPtr = NULL;
     LE_DEBUG("PlayAmrThread end");
 
     return NULL;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  AMR threads destructor.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void DestroyAmrThread
+(
+    void *contextPtr
+)
+{
+    MediaAmrContext_t * amrCtxtPtr = (MediaAmrContext_t *) contextPtr;
+    LE_DEBUG("DestroyAmrThread");
+
+    if(amrCtxtPtr)
+    {
+        if(amrCtxtPtr->paAmrDecoderCtxPtr)
+        {
+            pa_media_ReleaseAmrDecoder(amrCtxtPtr->paAmrDecoderCtxPtr);
+        }
+        if(amrCtxtPtr->paAmrEncoderCtxPtr)
+        {
+            pa_media_ReleaseAmrEncoder(amrCtxtPtr->paAmrEncoderCtxPtr);
+        }
+
+        LE_DEBUG("close amrCtxtPtr->fd_pipe_input.%d", amrCtxtPtr->fd_pipe_input);
+        close(amrCtxtPtr->fd_pipe_input);
+        // fd_pipe_output will be closed by MyMediaAmrHandler
+        le_mem_Release(amrCtxtPtr);
+    }
+
+    amrCtxtPtr->streamPtr->amrThreadRef = NULL;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -459,6 +485,7 @@ static void* RecordAmrThread
     }
 
     pa_media_ReleaseAmrEncoder(amrCtxtPtr->paAmrEncoderCtxPtr);
+    amrCtxtPtr->paAmrEncoderCtxPtr = NULL;
 
     LE_DEBUG("RecordAmrThread end");
 
@@ -590,17 +617,25 @@ static le_result_t PlayAmrFile
             return LE_FAULT;
         }
 
+
         amrCtxtPtr->fd_in = streamPtr->fd;
         amrCtxtPtr->fd_pipe_input = pipefd[1];
         streamPtr->fd = pipefd[0];
         amrCtxtPtr->fd_pipe_output = pipefd[0];
         amrCtxtPtr->streamPtr = streamPtr;
+        LE_DEBUG("Pipe created, fd_pipe_input.%d fd_pipe_output.%d streamPtr->fd.%d",
+                 amrCtxtPtr->fd_pipe_input,
+                 amrCtxtPtr->fd_pipe_output,
+                 streamPtr->fd);
 
-        amrCtxtPtr->mediaHandler = le_audio_AddMediaHandler(streamPtr->streamRef,
+         amrCtxtPtr->mediaHandler = le_audio_AddMediaHandler(streamPtr->streamRef,
                                        MyMediaAmrHandler, amrCtxtPtr);
 
-
-        le_thread_Start(le_thread_Create("PlaySamples", PlayAmrThread, amrCtxtPtr));
+        streamPtr->amrThreadRef = le_thread_Create("PlayAmrSamples", PlayAmrThread, amrCtxtPtr);
+        le_thread_AddChildDestructor(streamPtr->amrThreadRef,
+                                     DestroyAmrThread,
+                                     amrCtxtPtr);
+        le_thread_Start(streamPtr->amrThreadRef);
     }
 
     return LE_OK;
@@ -699,8 +734,6 @@ static le_result_t RecordAmrFile
         return LE_FAULT;
     }
 
-
-
     if (pipe(pipefd) == -1)
     {
         LE_ERROR("Failed to create the pipe");
@@ -735,6 +768,7 @@ static le_result_t RecordAmrFile
     {
         LE_ERROR("Failed to write in given fd");
         le_mem_Release(amrCtxtPtr);
+        LE_DEBUG("close pipefd[0].%d pipefd[1].%d", pipefd[0], pipefd[1]);
         close(pipefd[0]);
         close(pipefd[1]);
         return LE_FAULT;
@@ -744,7 +778,11 @@ static le_result_t RecordAmrFile
                                        MyMediaAmrHandler, amrCtxtPtr);
 
 
-    le_thread_Start(le_thread_Create("PlaySamples", RecordAmrThread, amrCtxtPtr));
+    streamPtr->amrThreadRef = le_thread_Create("RecAmrSamples", RecordAmrThread, amrCtxtPtr);
+    le_thread_AddChildDestructor(streamPtr->amrThreadRef,
+                                 DestroyAmrThread,
+                                 amrCtxtPtr);
+    le_thread_Start(streamPtr->amrThreadRef);
 
     return LE_OK;
 }
@@ -883,6 +921,34 @@ le_result_t le_media_Open
     }
 
     return LE_FAULT;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Close media service.
+ *
+ * @return LE_FAULT         Function failed.
+ * @return LE_OK            Function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_media_Close
+(
+    le_audio_Stream_t*          streamPtr          ///< [IN] Stream object
+)
+{
+    LE_INFO("le_media_Close audioInterface.%d encodingFormat.%d",
+            streamPtr->audioInterface,
+            streamPtr->encodingFormat);
+
+    if (streamPtr->amrThreadRef)
+    {
+        le_thread_Cancel(streamPtr->amrThreadRef);
+        le_thread_Join(streamPtr->amrThreadRef,NULL);
+        streamPtr->amrThreadRef = NULL;
+    }
+
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------

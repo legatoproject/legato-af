@@ -5,9 +5,8 @@ to use an IP address.
 
 There are a few ways to configure a target IP address:
 
-@subpage getstartedConfigIPeth  <br>
-@subpage getstartedConfigIPusb
-
+@subpage getstartedConfigIPusb <br>
+@subpage getstartedConfigIPeth
 <HR>
 
 Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.

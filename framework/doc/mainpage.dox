@@ -7,13 +7,12 @@ is an open source embedded platform built on Linux designed to simplify embedded
 
 This is how the docs are organized:
 | Section                            | Description                                        |
-| ---------------------------------- | -------------------------------------------------- | 
+| ---------------------------------- | -------------------------------------------------- |
 | @subpage getstartedMain                     | installation and setup info                        |
 | @subpage basicMain                     | essentials to get developing                        |
 | @subpage tools                            | target, host, & build tools
 | @subpage howToMain                     | frequently needed tasks                        |
 | @subpage defFiles                             | reusable external interfaces & internal content |
-| @subpage languageIndependentAPIs  | APIs for other components |
 | @subpage legatoServices            |   pre-built services                                |
 | @subpage c_APIs                          | C Language library                              |
 | @subpage otherInfo                       | platform constraints & Yocto dist info |
@@ -33,7 +32,8 @@ Development and build tools &mdash; target, host, and build tools to create apps
 to your devices.
 
 Documentation and automated tests &mdash; a raft of @ref aboutDocs "docs" and automated tests
-ready to use.
+ready to use. The Legato online docs are also available in a
+<a href= "http://source.sierrawireless.com/Resources/Resources/Legato/referencemanual.aspx">PDF doc</a>.
 
 <HR>
 

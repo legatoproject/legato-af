@@ -9,21 +9,9 @@
 find_package(Doxygen)
 
 if(DOXYGEN_FOUND)
-
-    set(GENERATE_TREEVIEW "YES")
-    set(USER_PATH "user")
-
     # End-user framework documentation.
     configure_file(${CMAKE_CURRENT_SOURCE_DIR}/doxygen.user.cfg.in
                    ${CMAKE_CURRENT_BINARY_DIR}/doxygen.user.cfg
-                   @ONLY
-    )
-
-    set(GENERATE_TREEVIEW "NO")
-    set(USER_PATH "user_embed")
-
-    configure_file(${CMAKE_CURRENT_SOURCE_DIR}/doxygen.user.cfg.in
-                   ${CMAKE_CURRENT_BINARY_DIR}/doxygen.user.embed.cfg
                    @ONLY
     )
 
@@ -93,20 +81,14 @@ if(DOXYGEN_FOUND)
     # Doc Generation
     generate_doc(user
         "API documentation"
-        "${DOCUMENTATION_OUTPUT_PATH}/user"
-        "${CMAKE_CURRENT_BINARY_DIR}/doxygen.user.cfg"
-    )
-
-    generate_doc(user_embed
-        "Embedded API documentation"
-        "${DOCUMENTATION_OUTPUT_PATH}/user_embed"
-        "${CMAKE_CURRENT_BINARY_DIR}/doxygen.user.embed.cfg"
+        ${DOCUMENTATION_OUTPUT_PATH}/user
+        ${CMAKE_CURRENT_BINARY_DIR}/doxygen.user.cfg
     )
 
     generate_doc(implementation
-        "framework implementation documentation"
-        "${DOCUMENTATION_OUTPUT_PATH}/implementation"
-        "${CMAKE_CURRENT_BINARY_DIR}/doxygen.implementation.cfg"
+        "Framework implementation documentation"
+        ${DOCUMENTATION_OUTPUT_PATH}/implementation
+        ${CMAKE_CURRENT_BINARY_DIR}/doxygen.implementation.cfg
     )
 
 

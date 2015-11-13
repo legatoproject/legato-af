@@ -29,7 +29,6 @@
 #define TEST_MRC_POWER 1
 #endif
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Handler function for RAT change Notifications.
@@ -131,7 +130,7 @@ static void Testle_mrc_Power()
     res = le_mrc_SetRadioPower(LE_OFF);
     LE_ASSERT(res == LE_OK);
 
-    sleep(3);
+    sleep(5);
 
     res = le_mrc_GetRadioPower(&onoff);
     LE_ASSERT(res == LE_OK);
@@ -140,11 +139,13 @@ static void Testle_mrc_Power()
     res = le_mrc_SetRadioPower(LE_ON);
     LE_ASSERT(res == LE_OK);
 
-    sleep(3);
+    sleep(5);
 
     res = le_mrc_GetRadioPower(&onoff);
     LE_ASSERT(res == LE_OK);
     LE_ASSERT(onoff == LE_ON);
+
+    sleep(5);
 }
 #endif
 
@@ -165,7 +166,7 @@ static void Testle_mrc_GetRat()
     {
         LE_ASSERT((rat>=LE_MRC_RAT_UNKNOWN) && (rat<=LE_MRC_RAT_LTE));
     }
-    LE_INFO("le_mrc_GetRadioAccessTechInUse return rat %d",rat);
+    LE_INFO("le_mrc_GetRadioAccessTechInUse return rat 0x%02X",rat);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -234,20 +235,32 @@ static void Testle_mrc_GetCurrentNetworkMccMnc()
 {
 
     le_result_t res;
-    char mcc[LE_MRC_MCC_BYTES] = {0}, mnc[LE_MRC_MNC_BYTES] = {0};
+    int i;
+    char mccRef[LE_MRC_MCC_BYTES] = {0};
+    char mncRef[LE_MRC_MNC_BYTES] = {0};
+    char mcc[LE_MRC_MCC_BYTES] = {0};
+    char mnc[LE_MRC_MNC_BYTES] = {0};
 
     /* Test mccStrNumElements limit */
     res = le_mrc_GetCurrentNetworkMccMnc(mcc, LE_MRC_MCC_BYTES-1, mnc, LE_MRC_MNC_BYTES);
     LE_ASSERT(res == LE_FAULT);
 
     /* Test mncStrNumElements limit */
-    res = le_mrc_GetCurrentNetworkMccMnc(mcc, LE_MRC_MCC_BYTES, mnc, LE_MRC_MCC_BYTES-1);
+    res = le_mrc_GetCurrentNetworkMccMnc(mcc, LE_MRC_MCC_BYTES, mnc, LE_MRC_MNC_BYTES-1);
     LE_ASSERT(res == LE_FAULT);
 
-    res = le_mrc_GetCurrentNetworkMccMnc(mcc, LE_MRC_MCC_BYTES, mnc, LE_MRC_MCC_BYTES);
+    res = le_mrc_GetCurrentNetworkMccMnc(mccRef, LE_MRC_MCC_BYTES, mncRef, LE_MRC_MNC_BYTES);
     LE_ASSERT(res == LE_OK);
+    LE_INFO("Plmn MCC.%s MNC.%s",mccRef,mncRef);
 
-    LE_INFO("Plmn MCC.%s MNC.%s",mcc,mnc);
+    for (i=0; i<10; i++)
+    {
+        res = le_mrc_GetCurrentNetworkMccMnc(mcc, LE_MRC_MCC_BYTES, mnc, LE_MRC_MNC_BYTES);
+        LE_ASSERT(res == LE_OK);
+        LE_ASSERT(strcmp(mnc, mncRef) == 0);
+        LE_ASSERT(strcmp(mcc, mccRef) == 0);
+        LE_INFO("Plmn MCC.%s MNC.%s",mcc,mnc);
+    }
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -272,107 +285,6 @@ static void Testle_mrc_GetCurrentNetworkName()
     LE_INFO("Plmn name.%s",nameStr);
 }
 
-//--------------------------------------------------------------------------------------------------
-/**
- * Test: Current preeferred network operators.
- * Sim used must support preferred PLMNs storage
- *
- * le_mrc_GetPreferredOperatorsList() API test
- * le_mrc_GetFirstPreferredOperator() API test
- * le_mrc_GetPreferredOperatorDetails() API test
- * le_mrc_GetNextPreferredOperator() API test
- * le_mrc_DeletePreferredOperatorsList() API test
- * le_mrc_AddPreferredOperator() API test
- * le_mrc_RemovePreferredOperator() API test
- */
-//--------------------------------------------------------------------------------------------------
-static void Testle_mrc_PreferredPLMN()
-{
-    le_result_t res;
-    char mccStr[LE_MRC_MCC_BYTES] = {0};
-    char mncStr[LE_MRC_MNC_BYTES] = {0};
-    le_mrc_PreferredOperatorRef_t optRef = NULL;
-    int first = 0;
-    int i = 0;
-    le_mrc_RatBitMask_t ratMask;
-
-    le_mrc_PreferredOperatorListRef_t prefPlmnList = le_mrc_GetPreferredOperatorsList();
-
-    if (prefPlmnList)
-    {
-        optRef = le_mrc_GetFirstPreferredOperator(prefPlmnList);
-        while (optRef)
-        {
-            res = le_mrc_GetPreferredOperatorDetails(optRef,
-                            mccStr, LE_MRC_MCC_BYTES,
-                            mncStr, LE_MRC_MNC_BYTES,
-                            &ratMask);
-
-            LE_ASSERT(res == LE_OK);
-            LE_INFO("Get_detail Loop(%d) mcc.%s mnc %s, rat.%08X,  GSM %c, LTE %c, UMTS %c",
-                first++, mccStr, mncStr, ratMask,
-                (ratMask & LE_MRC_BITMASK_RAT_GSM ? 'Y':'N'),
-                (ratMask & LE_MRC_BITMASK_RAT_LTE ? 'Y':'N'),
-                (ratMask & LE_MRC_BITMASK_RAT_UMTS ? 'Y':'N')
-            );
-            optRef = le_mrc_GetNextPreferredOperator(prefPlmnList);
-        }
-        LE_INFO("No more preferred PLMN operator present in the modem List %d Displayed",i);
-        le_mrc_DeletePreferredOperatorsList(prefPlmnList);
-    }
-    else
-    {
-        LE_ERROR("=== PreferredPLMN Test No Preferred PLMN list present in teh SIM => NA ====");
-        return;
-    }
-
-    res = le_mrc_AddPreferredOperator("208", "01", 0);
-    LE_ASSERT(res == LE_OK);
-    res = le_mrc_AddPreferredOperator("208", "10", LE_MRC_BITMASK_RAT_UMTS);
-    LE_ASSERT(res == LE_OK);
-    res = le_mrc_AddPreferredOperator("311", "070", 0);
-    LE_ASSERT(res == LE_OK);
-    res = le_mrc_AddPreferredOperator("311", "70", 0);
-    LE_ASSERT(res == LE_OK);
-
-    res = le_mrc_RemovePreferredOperator("311", "70");
-    LE_ASSERT(res == LE_OK);
-    res = le_mrc_RemovePreferredOperator("311", "070");
-    LE_ASSERT(res == LE_OK);
-    res = le_mrc_RemovePreferredOperator("208", "10");
-    LE_ASSERT(res == LE_OK);
-
-    res = le_mrc_RemovePreferredOperator("311", "70");
-    LE_ASSERT(res == LE_FAULT);
-
-    prefPlmnList = le_mrc_GetPreferredOperatorsList();
-    LE_ASSERT(prefPlmnList != NULL);
-
-    if (prefPlmnList)
-    {
-        optRef = le_mrc_GetFirstPreferredOperator(prefPlmnList);
-        while (optRef)
-        {
-            res = le_mrc_GetPreferredOperatorDetails(optRef,
-                            mccStr, LE_MRC_MCC_BYTES,
-                            mncStr, LE_MRC_MNC_BYTES,
-                            &ratMask);
-
-            LE_ASSERT(res == LE_OK);
-            LE_INFO("Get_detail Loop(%d) mcc.%s mnc %s, rat.%08X,  GSM %c, LTE %c, UMTS %c",
-                i++, mccStr, mncStr, ratMask,
-                (ratMask & LE_MRC_BITMASK_RAT_GSM ? 'Y':'N'),
-                (ratMask & LE_MRC_BITMASK_RAT_LTE ? 'Y':'N'),
-                (ratMask & LE_MRC_BITMASK_RAT_UMTS ? 'Y':'N')
-            );
-
-            optRef = le_mrc_GetNextPreferredOperator(prefPlmnList);
-        }
-        LE_INFO("No more preferred PLMN operator present in the modem List %d Displayed, first %d",
-            i, first);
-        le_mrc_DeletePreferredOperatorsList(prefPlmnList);
-    }
-}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -446,7 +358,7 @@ static void Testle_mrc_RegisterMode()
     res = le_mrc_SetAutomaticRegisterMode();
     LE_ASSERT(res == LE_OK);
 
-    sleep(2);
+    sleep(5);
 
     res = le_mrc_GetRegisterMode(&isManual, mccStr, LE_MRC_MCC_BYTES, mncStr, LE_MRC_MNC_BYTES);
     LE_ASSERT(res == LE_OK);
@@ -456,7 +368,7 @@ static void Testle_mrc_RegisterMode()
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Test: rat preferences mode.
+ * Test: rat preferences mode. Module must supported GSM and LTEs
  *
  * le_mrc_GetRatPreferences() API test
  * le_mrc_SetRatPreferences() API test
@@ -468,43 +380,65 @@ static void Testle_mrc_RatPreferences()
     le_mrc_RatBitMask_t bitMask = 0;
     le_mrc_RatBitMask_t bitMaskOrigin = 0;
 
-#define  PRINT_RAT(x)   LE_INFO("Rat preferences %04X=> CDMA.%c GSM.%c LTE.%c UMTS.%c", x,\
-    ( (x & LE_MRC_BITMASK_RAT_CDMA) ? 'Y' : 'N'),\
-    ( (x & LE_MRC_BITMASK_RAT_GSM) ? 'Y' : 'N'),\
-    ( (x & LE_MRC_BITMASK_RAT_LTE) ? 'Y' : 'N'),\
-    ( (x & LE_MRC_BITMASK_RAT_UMTS) ? 'Y' : 'N') );
+#define  PRINT_RAT(x)   LE_INFO("Rat preferences %02X=> CDMA.%c GSM.%c LTE.%c UMTS.%c", x,\
+                ( (x & LE_MRC_BITMASK_RAT_CDMA) ? 'Y' : 'N'),\
+                ( (x & LE_MRC_BITMASK_RAT_GSM) ? 'Y' : 'N'),\
+                ( (x & LE_MRC_BITMASK_RAT_LTE) ? 'Y' : 'N'),\
+                ( (x & LE_MRC_BITMASK_RAT_UMTS) ? 'Y' : 'N') );
 
     // Get the current rat preference.
     res = le_mrc_GetRatPreferences(&bitMaskOrigin);
     LE_ASSERT(res == LE_OK);
-    PRINT_RAT(bitMaskOrigin);
-
-    if (bitMaskOrigin & LE_MRC_BITMASK_RAT_LTE)
+    if (LE_MRC_BITMASK_RAT_ALL == bitMaskOrigin)
     {
-        res = le_mrc_SetRatPreferences(LE_MRC_BITMASK_RAT_LTE);
-        LE_ASSERT(res == LE_OK);
-        res = le_mrc_GetRatPreferences(&bitMask);
-        PRINT_RAT(bitMask);
-        LE_ASSERT(res == LE_OK);
-        LE_ASSERT(bitMask == LE_MRC_BITMASK_RAT_LTE);
+        LE_INFO("Rat preferences %02X=> LE_MRC_BITMASK_RAT_ALL", bitMaskOrigin);
+    }
+    else
+    {
+        PRINT_RAT(bitMaskOrigin);
     }
 
-    if (bitMaskOrigin & LE_MRC_BITMASK_RAT_GSM)
+    res = le_mrc_SetRatPreferences(LE_MRC_BITMASK_RAT_LTE);
+    LE_ASSERT(res == LE_OK);
+    res = le_mrc_GetRatPreferences(&bitMask);
+    if (LE_MRC_BITMASK_RAT_ALL == bitMaskOrigin)
     {
-        res = le_mrc_SetRatPreferences(LE_MRC_BITMASK_RAT_GSM);
-        LE_ASSERT(res == LE_OK);
-        res = le_mrc_GetRatPreferences(&bitMask);
-        PRINT_RAT(bitMask);
-        LE_ASSERT(res == LE_OK);
-        LE_ASSERT(bitMask == LE_MRC_BITMASK_RAT_GSM);
+        LE_INFO("Rat preferences %02X=> LE_MRC_BITMASK_RAT_ALL", bitMaskOrigin);
     }
+    else
+    {
+        PRINT_RAT(bitMaskOrigin);
+    }
+    LE_ASSERT(res == LE_OK);
+    LE_ASSERT(bitMask == LE_MRC_BITMASK_RAT_LTE);
+
+    res = le_mrc_SetRatPreferences(LE_MRC_BITMASK_RAT_GSM);
+    LE_ASSERT(res == LE_OK);
+    res = le_mrc_GetRatPreferences(&bitMask);
+    if (LE_MRC_BITMASK_RAT_ALL == bitMaskOrigin)
+    {
+        LE_INFO("Rat preferences %02X=> LE_MRC_BITMASK_RAT_ALL", bitMaskOrigin);
+    }
+    else
+    {
+        PRINT_RAT(bitMaskOrigin);
+    }
+    LE_ASSERT(res == LE_OK);
+    LE_ASSERT(bitMask == LE_MRC_BITMASK_RAT_GSM);
 
     if (bitMaskOrigin & LE_MRC_BITMASK_RAT_UMTS)
     {
         res = le_mrc_SetRatPreferences(LE_MRC_BITMASK_RAT_UMTS);
         LE_ASSERT(res == LE_OK);
         res = le_mrc_GetRatPreferences(&bitMask);
-        PRINT_RAT(bitMask);
+        if (LE_MRC_BITMASK_RAT_ALL == bitMaskOrigin)
+        {
+            LE_INFO("Rat preferences %02X=> LE_MRC_BITMASK_RAT_ALL", bitMaskOrigin);
+        }
+        else
+        {
+            PRINT_RAT(bitMaskOrigin);
+        }
         LE_ASSERT(res == LE_OK);
         LE_ASSERT(bitMask == LE_MRC_BITMASK_RAT_UMTS);
     }
@@ -512,7 +446,14 @@ static void Testle_mrc_RatPreferences()
     res = le_mrc_SetRatPreferences(LE_MRC_BITMASK_RAT_ALL);
     LE_ASSERT(res == LE_OK);
     res = le_mrc_GetRatPreferences(&bitMask);
-    PRINT_RAT(bitMask);
+    if (LE_MRC_BITMASK_RAT_ALL == bitMaskOrigin)
+    {
+        LE_INFO("Rat preferences %02X=> LE_MRC_BITMASK_RAT_ALL", bitMaskOrigin);
+    }
+    else
+    {
+        PRINT_RAT(bitMaskOrigin);
+    }
     LE_ASSERT(res == LE_OK);
 
     if (bitMaskOrigin & LE_MRC_BITMASK_RAT_CDMA)
@@ -520,7 +461,14 @@ static void Testle_mrc_RatPreferences()
         res = le_mrc_SetRatPreferences(LE_MRC_BITMASK_RAT_CDMA);
         LE_ASSERT(res == LE_OK);
         res = le_mrc_GetRatPreferences(&bitMask);
-        PRINT_RAT(bitMask);
+        if (LE_MRC_BITMASK_RAT_ALL == bitMaskOrigin)
+        {
+            LE_INFO("Rat preferences %02X=> LE_MRC_BITMASK_RAT_ALL", bitMaskOrigin);
+        }
+        else
+        {
+            PRINT_RAT(bitMaskOrigin);
+        }
         LE_ASSERT(res == LE_OK);
         LE_ASSERT(bitMask == LE_MRC_BITMASK_RAT_CDMA);
     }
@@ -528,7 +476,14 @@ static void Testle_mrc_RatPreferences()
     res = le_mrc_SetRatPreferences(bitMaskOrigin);
     LE_ASSERT(res == LE_OK);
     res = le_mrc_GetRatPreferences(&bitMask);
-    PRINT_RAT(bitMask);
+    if (LE_MRC_BITMASK_RAT_ALL == bitMaskOrigin)
+    {
+        LE_INFO("Rat preferences %02X=> LE_MRC_BITMASK_RAT_ALL", bitMaskOrigin);
+    }
+    else
+    {
+        PRINT_RAT(bitMaskOrigin);
+    }
     LE_ASSERT(res == LE_OK);
     LE_ASSERT(bitMask == bitMaskOrigin);
 }
@@ -595,7 +550,7 @@ static void Testle_mrc_PerformCellularNetworkScan()
     res = le_mrc_GetRatPreferences(&bitMaskOrigin);
     LE_ASSERT(res == LE_OK);
 
-    if (bitMaskOrigin & LE_MRC_BITMASK_RAT_GSM)
+    if ((bitMaskOrigin & LE_MRC_BITMASK_RAT_GSM) || (bitMaskOrigin == LE_MRC_BITMASK_RAT_ALL))
     {
         LE_INFO("Perform scan on GSM");
         scanInfoListRef = le_mrc_PerformCellularNetworkScan(LE_MRC_BITMASK_RAT_GSM);
@@ -996,9 +951,191 @@ static void Testle_mrc_SsHdlr()
     LE_ASSERT(testHdlrRef);
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test: Location information.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void Testle_mrc_GetLocInfo()
+{
+    uint32_t  cellId;
+    uint32_t  lac;
+
+    cellId = le_mrc_GetServingCellId();
+    LE_INFO("le_mrc_GetServingCellId returns cellId.%d", cellId);
+    lac = le_mrc_GetServingCellLocAreaCode();
+    LE_INFO("le_mrc_GetServingCellLocAreaCode returns lac.%d",lac);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test: Current preferred network operators.
+ * SIM used must support preferred PLMNs storage (File EF 6f20)
+ *
+ * le_mrc_GetPreferredOperatorsList() API test
+ * le_mrc_GetFirstPreferredOperator() API test
+ * le_mrc_GetPreferredOperatorDetails() API test
+ * le_mrc_GetNextPreferredOperator() API test
+ * le_mrc_DeletePreferredOperatorsList() API test
+ * le_mrc_AddPreferredOperator() API test
+ * le_mrc_RemovePreferredOperator() API test
+ */
+//--------------------------------------------------------------------------------------------------
+static void Testle_mrc_PreferredPLMN()
+{
+    le_result_t res;
+    char mccStr[LE_MRC_MCC_BYTES] = {0};
+    char mncStr[LE_MRC_MNC_BYTES] = {0};
+    char saveMccStr[3][5];
+    char saveMncStr[3][5];
+    le_mrc_RatBitMask_t saveRat[3];
+
+    le_mrc_PreferredOperatorRef_t optRef = NULL;
+    le_mrc_RatBitMask_t ratMask;
+    int beforeIndex = 0;
+    int afterIndex = 0;
+
+    le_mrc_PreferredOperatorListRef_t prefPlmnList = le_mrc_GetPreferredOperatorsList();
+
+    LE_INFO("======== PreferredPLMN Test ========");
+
+    LE_INFO("le_mrc_GetPreferredOperatorsList() started %p", prefPlmnList);
+    if (prefPlmnList)
+    {
+        optRef = le_mrc_GetFirstPreferredOperator(prefPlmnList);
+        while (optRef)
+        {
+            res = le_mrc_GetPreferredOperatorDetails(optRef,
+                mccStr, LE_MRC_MCC_BYTES,
+                mncStr, LE_MRC_MNC_BYTES,
+                &ratMask);
+            LE_ASSERT(res == LE_OK);
+
+            if(beforeIndex < 3)
+            {
+                strcpy(saveMccStr[beforeIndex], mccStr);
+                strcpy(saveMncStr[beforeIndex], mncStr);
+                saveRat[beforeIndex] = ratMask;
+                LE_INFO("Save (%d) mcc=%s mnc=%s rat=%d", beforeIndex,
+                    saveMccStr[beforeIndex],
+                    saveMncStr[beforeIndex],
+                    saveRat[beforeIndex] );
+            }
+
+            LE_INFO("Get_detail Loop(%d) mcc.%s mnc %s, rat.%08X, GSM %c, LTE %c, UMTS %c",
+                beforeIndex, mccStr, mncStr, ratMask,
+                (ratMask & LE_MRC_BITMASK_RAT_GSM ? 'Y':'N'),
+                (ratMask & LE_MRC_BITMASK_RAT_LTE ? 'Y':'N'),
+                (ratMask & LE_MRC_BITMASK_RAT_UMTS ? 'Y':'N')
+            );
+
+            optRef = le_mrc_GetNextPreferredOperator(prefPlmnList);
+
+            beforeIndex++;
+        }
+        LE_INFO("No more preferred PLMN operator present in the modem List %d Displayed",
+            beforeIndex);
+        le_mrc_DeletePreferredOperatorsList(prefPlmnList);
+    }
+    else
+    {
+        LE_WARN("=== PreferredPLMN Test No Preferred PLMN list present in the SIM ====");
+        LE_INFO("======== PreferredPLMN Test  N/A ========");
+        return;
+    }
+    LE_INFO("le_mrc_GetPreferredOperatorsList() end");
+
+    if (beforeIndex >= 3)
+    {
+        LE_INFO("Remove 3 entries in the network opreator list");
+        LE_INFO("Remove third entries for the test and restore them after");
+        res = le_mrc_RemovePreferredOperator(saveMccStr[0], saveMncStr[0]);
+        LE_ASSERT(res == LE_OK);
+        res = le_mrc_RemovePreferredOperator(saveMccStr[1], saveMncStr[1]);
+        LE_ASSERT(res == LE_OK);
+        res = le_mrc_RemovePreferredOperator(saveMccStr[2], saveMncStr[2]);
+        LE_ASSERT(res == LE_OK);
+    }
+    else
+    {
+        LE_WARN("=== Less than 3 entries present in the SIM ====");
+    }
+
+    LE_INFO("le_mrc_AddPreferredOperator() started");
+    res = le_mrc_AddPreferredOperator("208", "10", LE_MRC_BITMASK_RAT_ALL);
+    LE_ASSERT(res == LE_OK);
+    res = le_mrc_AddPreferredOperator("208", "10", LE_MRC_BITMASK_RAT_UMTS);
+    LE_ASSERT(res == LE_OK);
+
+    res = le_mrc_AddPreferredOperator("311", "070", LE_MRC_BITMASK_RAT_ALL);
+    LE_ASSERT(res == LE_OK);
+    res = le_mrc_AddPreferredOperator("311", "70", LE_MRC_BITMASK_RAT_ALL);
+    LE_ASSERT(res == LE_OK);
+    LE_INFO("le_mrc_AddPreferredOperator() end");
+
+    LE_INFO("le_mrc_RemovePreferredOperator() started");
+    res = le_mrc_RemovePreferredOperator("208", "10");
+    LE_ASSERT(res == LE_OK);
+    res = le_mrc_RemovePreferredOperator("311", "070");
+    LE_ASSERT(res == LE_OK);
+    res = le_mrc_RemovePreferredOperator("311", "70");
+    LE_ASSERT(res == LE_OK);
+
+    res = le_mrc_RemovePreferredOperator("311", "70");
+    LE_ASSERT(res == LE_FAULT);
+    LE_INFO("le_mrc_RemovePreferredOperator() end");
+
+    prefPlmnList = le_mrc_GetPreferredOperatorsList();
+    LE_ASSERT(prefPlmnList != NULL);
+
+    optRef = le_mrc_GetFirstPreferredOperator(prefPlmnList);
+    while (optRef)
+    {
+        res = le_mrc_GetPreferredOperatorDetails(optRef,
+            mccStr, LE_MRC_MCC_BYTES,
+            mncStr, LE_MRC_MNC_BYTES,
+            &ratMask);
+
+        LE_ASSERT(res == LE_OK);
+        LE_INFO("Get_detail Loop(%d) mcc.%s mnc %s, rat.%08X,  GSM %c, LTE %c, UMTS %c",
+            ++afterIndex, mccStr, mncStr, ratMask,
+            (ratMask & LE_MRC_BITMASK_RAT_GSM ? 'Y':'N'),
+            (ratMask & LE_MRC_BITMASK_RAT_LTE ? 'Y':'N'),
+            (ratMask & LE_MRC_BITMASK_RAT_UMTS ? 'Y':'N')
+        );
+
+        optRef = le_mrc_GetNextPreferredOperator(prefPlmnList);
+    }
+
+    if (beforeIndex >= 3)
+    {
+        LE_INFO("Restore third entries for the test and restore them after");
+        res = le_mrc_AddPreferredOperator(saveMccStr[0], saveMncStr[0], saveRat[0]);
+        LE_ASSERT(res == LE_OK);
+        res = le_mrc_AddPreferredOperator(saveMccStr[1], saveMncStr[1], saveRat[1]);
+        LE_ASSERT(res == LE_OK);
+        res = le_mrc_AddPreferredOperator(saveMccStr[1], saveMncStr[1], saveRat[2]);
+        LE_ASSERT(res == LE_OK);
+    }
+
+    LE_INFO("No more preferred PLMN operator present in the modem List after %d, before %d",
+        afterIndex, beforeIndex);
+    le_mrc_DeletePreferredOperatorsList(prefPlmnList);
+
+    LE_INFO("======== PreferredPLMN Test PASSED ========");
+}
+
 COMPONENT_INIT
 {
     LE_INFO("======== Start MRC Modem Services implementation Test========");
+
+#if TEST_MRC_POWER
+    LE_INFO("======== Power Test ========");
+    Testle_mrc_Power();
+    LE_INFO("======== Power Test PASSED ========");
+#endif
 
     LE_INFO("======== GetStateAndQual Test ========");
     Testle_mrc_GetStateAndQual();
@@ -1007,6 +1144,10 @@ COMPONENT_INIT
     LE_INFO("======== GetRat Test ========");
     Testle_mrc_GetRat();
     LE_INFO("======== GetRat Test PASSED ========");
+
+    LE_INFO("======== Location information Test ========");
+    Testle_mrc_GetLocInfo();
+    LE_INFO("======== Location information Test PASSED ========");
 
     LE_INFO("======== GetSignalMetrics Test ========");
     Testle_mrc_GetSignalMetrics();
@@ -1032,9 +1173,7 @@ COMPONENT_INIT
     Testle_mrc_GetCurrentNetworkName();
     LE_INFO("======== GetCurrentNetworkName Test PASSED ========");
 
-    LE_INFO("======== PreferredPLMN Test ========");
     Testle_mrc_PreferredPLMN();
-    LE_INFO("======== PreferredPLMN Test PASSED ========");
 
     LE_INFO("======== RegisterMode Test ========");
     Testle_mrc_RegisterMode();
@@ -1064,14 +1203,7 @@ COMPONENT_INIT
     Testle_mrc_SsHdlr();
     LE_INFO("======== Signal Strength Handler Test PASSED ========");
 
-#if TEST_MRC_POWER
-    LE_INFO("======== Power Test ========");
-    Testle_mrc_Power();
-    LE_INFO("======== Power Test PASSED ========");
-#endif
-
     LE_INFO("======== Test MRC Modem Services implementation Test SUCCESS ========");
-//     exit(EXIT_SUCCESS);
 }
 
 

@@ -16,13 +16,13 @@
  *    <br>
  *  - Allow an app to block an update from being installed. An app may need this
  *    if it's performing a critical operation that can't be interrupted (e.g., eCall). This is necessary
- *    as installing an update will cause the app to restart (either the app itself needs to restart 
- *   or a firmware change causes the modem to reset). 
+ *    as installing an update will cause the app to restart (either the app itself needs to restart
+ *   or a firmware change causes the modem to reset).
  *
  * @subsection c_le_avc_update_control Update Control
  *
- * A control app can start a session with an AirVantage server to determine if there 
- * is a pending update. This is done with le_avc_StartSession(). The current session can be 
+ * A control app can start a session with an AirVantage server to determine if there
+ * is a pending update. This is done with le_avc_StartSession(). The current session can be
  * stopped using le_avc_StopSession().  This cancels any query for pending update, or suspends a
  * download in progress; however, it <b>won't stop</b> an install in progress.
  *
@@ -37,15 +37,23 @@
  * If it's an app update, then le_avc_GetAppUpdateName() can be used to get the name of
  * the app.
  *
- * If a download is pending, then le_avc_AcceptDownload() can be used to allow the update to be 
- * downloaded. To defer the 
+ * If a download is pending, then le_avc_AcceptDownload() can be used to allow the update to be
+ * downloaded. To defer the
  * decision, le_avc_DeferDownload() can be used to defer the download for the specified number
- * of minutes.  After the defer time has elapsed, the pending download notification will be 
- * re-sent, to allow the control app to make a new decision, or again defer. 
- * 
+ * of minutes.  After the defer time has elapsed, the pending download notification will be
+ * re-sent, to allow the control app to make a new decision, or again defer.
+ *
+ * If an uninstall is pending, then le_avc_AcceptUninstall() can be used to allow the uninstall to
+ * proceed. To defer the decision, le_avc_DeferUninstall() can be used to defer the uninstall for
+ * the specified number of minutes. In case of an upgrade, the existing application will not be
+ * uninstalled after le_avc_AcceptUninstall() is called. le_avc_AcceptUninstall() is only used to
+ * signal the server to start downloading the new application. During an upgrade process the
+ * control app has to accept the uninstall of the existing version followed by accepting the
+ * download and install of the new version.
+ *
  * Once an update has been downloaded, a new notification will be received to indicate that an
  * install is pending. The control app can then use le_avc_AcceptInstall() to allow the
- * install to proceed. Note that even if the control app calls le_avc_AcceptInstall(), 
+ * install to proceed. Note that even if the control app calls le_avc_AcceptInstall(),
  * the install may still be blocked by an app using the @ref c_le_avc_update_app
  * functions. To defer the decision, the control app can use le_avc_DeferInstall() to
  * defer the install for the specified number of minutes. After the defer time has elapsed, the
@@ -55,14 +63,14 @@
  * If a control app doesn't register for notifications using le_avc_AddStatusEventHandler(),
  * then any pending downloads and installs will happen automatically, subject to any restrictions
  * imposed by app using the @ref c_le_avc_update_app functions.  Only one control
- * app will be allowed to register for notifications.  Any subsequent attempts will be 
- * rejected. Also, only the control app registered for notifications will be 
+ * app will be allowed to register for notifications.  Any subsequent attempts will be
+ * rejected. Also, only the control app registered for notifications will be
  * allowed to use the other update control API functions.
  *
  * @subsection c_le_avc_update_app Application Blocking
  *
  * When an app is about to perform a critical operation, it can block the installation of
- * an update with le_avc_BlockInstall(), and after it's finished with the critical operation, it 
+ * an update with le_avc_BlockInstall(), and after it's finished with the critical operation, it
  * can unblock the install with le_avc_UnblockInstall().
  *
  * What constitutes a critical operation depends on the app.  An eCall app might
@@ -73,9 +81,41 @@
  * If an install can't be applied because it's blocked, another attempt to apply the install
  * will be made at a later time.
  *
+ * @section le_avcService_configdb AirVantage service configuration tree
+ * @copydoc le_avcService_configdbPage_Hide
+ *
  * <HR>
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ */
+
+ /**
+ * @interface le_avcService_configdbPage_Hide
+ *
+ * The configuration database path for the modemActivityTimeout is:
+ * @verbatim
+   /
+       apps/
+           avcService/
+                    modemActivityTimeout
+   @endverbatim
+ *
+ * After an AirVantage session is started, if there's no activity from the modem within the timer interval,
+ * then LE_AVC_NO_UPDATE state will be returned to the app. However, this modem activity timeout can
+ * be overridden by setting an integer value at /apps/avcService/modemActivityTimeout. The modem
+ * activity timer is initialized only when the avcService starts. If a valid entry >0 is found,
+ * then it will be used instead of the default value of 20 seconds. The following steps should be
+ * used to set the modemActivtyTimeout.
+ *
+ * @verbatim
+   config set /apps/avcService/modemActivityTimeout xx
+   app restart avcService
+   @endverbatim
+ *
+ * @note
+ * Everytime a new value is written to modemActivityTimeout, the avcService needs to be
+ * restarted to read the new value.
+ *
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -103,23 +143,27 @@ USETYPES le_limit.api;
 //--------------------------------------------------------------------------------------------------
 /**
  * Status of session or update
- * 
+ *
  * If an update is pending, it must first be downloaded and then installed.
  */
 //--------------------------------------------------------------------------------------------------
 ENUM Status
 {
-    NO_UPDATE,            ///< There are no pending updates
-    DOWNLOAD_PENDING,     ///< There is a pending download
-    DOWNLOAD_IN_PROGRESS, ///< There is a download in progress
-    DOWNLOAD_COMPLETE,    ///< The download has completed
-    DOWNLOAD_FAILED,      ///< There was an error in downloading the update
-    INSTALL_PENDING,      ///< There is a pending install (implies download complete)
-    INSTALL_IN_PROGRESS,  ///< There is an install in progress
-    INSTALL_COMPLETE,     ///< The update has been successfully installed
-    INSTALL_FAILED,       ///< The was an error in installing the update
-    SESSION_STARTED,      ///< Session with AV server started
-    SESSION_STOPPED       ///< Session with AV server stopped
+    NO_UPDATE,              ///< No updates pending
+    DOWNLOAD_PENDING,       ///< Update pending download
+    DOWNLOAD_IN_PROGRESS,   ///< Download in progress
+    DOWNLOAD_COMPLETE,      ///< Download has completed
+    DOWNLOAD_FAILED,        ///< An error occurred downloading the update
+    INSTALL_PENDING,        ///< Install is pending (implies download complete)
+    INSTALL_IN_PROGRESS,    ///< Install in progress
+    INSTALL_COMPLETE,       ///< Update has been successfully installed
+    INSTALL_FAILED,         ///< An error occurred installing the update
+    UNINSTALL_PENDING,      ///< Uninstall is pending
+    UNINSTALL_IN_PROGRESS,  ///< Uninstall in progress
+    UNINSTALL_COMPLETE,     ///< App has been successfully uninstalled
+    UNINSTALL_FAILED,       ///< An error occurred uninstalling the update
+    SESSION_STARTED,        ///< Session with AV server started
+    SESSION_STOPPED         ///< Session with AV server stopped
 };
 
 
@@ -146,13 +190,13 @@ HANDLER StatusHandler
 (
     Status updateStatus IN,         ///< status of pending update, if available
     int32 totalNumBytes IN,         ///< Total number of bytes to be downloaded
-                                    ///< only valid when updateStatus is one of 
+                                    ///< only valid when updateStatus is one of
                                     ///< DOWNLOAD_PENDING, DOWNLOAD_IN_PROGRESS or DOWNLOAD_COMPLETE.
                                     ///< returns -1 if value is unknown
     int32 dloadProgress IN          ///< download completion in percentage
-                                    ///< only valid when updateStatus is one of 
+                                    ///< only valid when updateStatus is one of
                                     ///< DOWNLOAD_PENDING, DOWNLOAD_IN_PROGRESS or DOWNLOAD_COMPLETE.
-                                    ///< returns -1 if value is unknown 
+                                    ///< returns -1 if value is unknown
 );
 
 
@@ -188,7 +232,7 @@ FUNCTION le_result_t StartSession
 /**
  * Stop a session with the AirVantage server
  *
- * If a download is in progress, then this suspends the download. 
+ * If a download is in progress, then this suspends the download.
  *
  * @return
  *      - LE_OK on success
@@ -253,6 +297,34 @@ FUNCTION le_result_t AcceptInstall
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t DeferInstall
+(
+    uint32 deferMinutes IN
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Accept the currently pending uninstall
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT on failure
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t AcceptUninstall
+(
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Defer the currently pending uninstall
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT on failure
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t DeferUninstall
 (
     uint32 deferMinutes IN
 );

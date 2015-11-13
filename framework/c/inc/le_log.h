@@ -36,26 +36,26 @@
  *    Definite system failure.
  *
  * @subsection c_log_basic_defaultSyslog Standard Out and Standard Error in Syslog
- * 
+ *
  * By default, app processes will have their @c stdout and @c stderr redirected to the @c syslog. Each
  * process’s stdout will be logged at INFO severity level; it’s stderr will be logged at
- * “ERR” severity level.  
+ * “ERR” severity level.
 
  * There are two limitations with this feature:
  * - the PID reported in the logs generally refer to the PID of the process that
  * generates the stdout/stderr message. If a process forks, then both the parent and
- * child processes’ stdout/stderr will share the same connection to the syslog, and the parent’s 
+ * child processes’ stdout/stderr will share the same connection to the syslog, and the parent’s
  * PID will be reported in the logs for both processes.
  * - stdout is line buffered when connected to a terminal, which means
  * <code>printf(“hello\n”)</code> will be printed to the terminal immediately. If stdout is
  * connected to something like a pipe it's bulk buffered, which means a flush doesn't occur until the buffer is full.
- * 
+ *
  * To make your process line buffer stdout so that printf will show up in the logs as expected,
  * the @c setlinebuf(stdout) system call can be used.  Alternatively, @c fflush(stdout) can be called \
- * to force a flush of the stdout buffer. 
- * 
+ * to force a flush of the stdout buffer.
+ *
  * This issue doesn't exist with stderr as stderr is never buffered.
- * 
+ *
  * @subsection c_log_basic_logging Basic Logging
  *
  * A series of macros are available to make logging easy.

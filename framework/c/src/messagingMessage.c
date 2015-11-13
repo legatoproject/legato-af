@@ -11,7 +11,7 @@
 #include "messagingMessage.h"
 #include "messagingProtocol.h"
 #include "messagingSession.h"
-#include "messagingService.h"
+#include "messagingInterface.h"
 #include "fileDescriptor.h"
 #include "unixSocket.h"
 
@@ -46,12 +46,14 @@ static void MessageDestructor
 
         // Because the session is closing without the server asking for it to be closed,
         // notify the server of the closure (if the server has a close handler registered).
-        msgService_CallCloseHandler(msgSession_GetServiceRef(msgPtr->sessionRef),
-                                    msgPtr->sessionRef);
+        msgInterface_CallCloseHandler(
+            (le_msg_ServiceRef_t)msgSession_GetInterfaceRef(msgPtr->sessionRef),
+            msgPtr->sessionRef);
     }
 
     // Release any open fds in the message.
-    if (!msgSession_IsClient(msgPtr->sessionRef) && (msgPtr->clientServer.server.responseFd >= 0))
+    if ((msgSession_GetInterfaceType(msgPtr->sessionRef) == LE_MSG_INTERFACE_SERVER)
+        && (msgPtr->clientServer.server.responseFd >= 0))
     {
         fd_Close(msgPtr->clientServer.server.responseFd);
     }
@@ -192,7 +194,7 @@ le_result_t msgMessage_Receive
                                                 &byteCount,
                                                 &msgRef->fd,
                                                 NULL    );  // Don't receive credentials.
-    if (!msgSession_IsClient(msgRef->sessionRef))
+    if (msgSession_GetInterfaceType(msgRef->sessionRef) == LE_MSG_INTERFACE_SERVER)
     {
         msgRef->clientServer.server.responseFd = -1;
     }
@@ -252,15 +254,23 @@ le_msg_MessageRef_t le_msg_CreateMsg
     msgPtr->link = LE_DLS_LINK_INIT;
     msgPtr->sessionRef = sessionRef;
     le_mem_AddRef(sessionRef);  // Message object holds a reference to the Session object.
-    if (msgSession_IsClient(sessionRef))
+
+    msgInterface_Type_t interfaceType = msgSession_GetInterfaceType(sessionRef);
+    switch (interfaceType)
     {
-        msgPtr->clientServer.client.completionCallback = NULL;
-        msgPtr->clientServer.client.contextPtr = NULL;
+        case LE_MSG_INTERFACE_CLIENT:
+            msgPtr->clientServer.client.completionCallback = NULL;
+            msgPtr->clientServer.client.contextPtr = NULL;
+            break;
+
+        case LE_MSG_INTERFACE_SERVER:
+            msgPtr->clientServer.server.responseFd = -1;
+            break;
+
+        default:
+            LE_FATAL("Unhandled interface type (%d).", interfaceType);
     }
-    else
-    {
-        msgPtr->clientServer.server.responseFd = -1;
-    }
+
     msgPtr->fd = -1;
     msgPtr->txnId = 0;
     memset(msgPtr->payload, 0, le_msg_GetProtocolMaxMsgSize(protocolRef));
@@ -320,7 +330,8 @@ bool le_msg_NeedsResponse
 )
 //--------------------------------------------------------------------------------------------------
 {
-    return ((msgRef->txnId != 0) && (!msgSession_IsClient(msgRef->sessionRef)));
+    return ((msgRef->txnId != 0) && (msgSession_GetInterfaceType(msgRef->sessionRef)
+                                     == LE_MSG_INTERFACE_SERVER));
 }
 
 

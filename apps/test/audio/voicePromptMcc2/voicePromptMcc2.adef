@@ -1,0 +1,42 @@
+sandboxed: true
+
+executables:
+{
+    voicePromptMcc2 = ( voicePromptMcc2Comp )
+}
+
+maxFileSystemBytes: 256K
+
+bundles:
+{
+    file:
+    {
+        [r]     audio/SwiDialingMono.wav         /usr/share/sounds/
+        [r]     audio/SwiECallCanceledMono.wav   /usr/share/sounds/
+        [r]     audio/SwiECallStartMono.wav      /usr/share/sounds/
+        [r]     audio/SwiRingBackToneFrMono.wav  /usr/share/sounds/
+        [r]     audio/SwiDialingMono.amr         /usr/share/sounds/
+        [r]     audio/SwiECallCanceledMono.amr   /usr/share/sounds/
+        [r]     audio/SwiECallStartMono.amr      /usr/share/sounds/
+        [r]     audio/SwiRingBackToneFrMono.amr  /usr/share/sounds/
+    }
+}
+
+processes:
+{
+    envVars:
+    {
+        LE_LOG_LEVEL = DEBUG
+    }
+
+    maxFileBytes: 5000K
+}
+
+start: manual
+
+bindings:
+{
+    voicePromptMcc2.voicePromptMcc2Comp.le_audio -> audioService.le_audio
+    voicePromptMcc2.voicePromptMcc2Comp.le_mcc -> modemService.le_mcc
+}
+

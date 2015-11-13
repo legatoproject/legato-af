@@ -49,7 +49,7 @@ static le_result_t cm_ips_ReadAndPrintVoltage
     {
         printf("%u\n", value);
     }
-    
+
     return result;
 }
 

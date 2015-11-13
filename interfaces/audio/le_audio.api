@@ -6,10 +6,10 @@
  *
  * <HR>
  *
- * The Audio API handles audio interfaces including play or listen supported formats.
+ * The Audio API handles audio interfaces including play and record supported formats.
  *
  * A Legato device can use several audio interfaces. You choose the input and output
- * interfaces to tie together. The Audio stream-related to a particular interface is
+ * interfaces to tie together. The Audio stream related to a particular interface is
  * represented with an 'Audio Stream Reference'.
  *
  * You can create your own audio path by connecting several audio streams together using
@@ -22,7 +22,7 @@
  *
  * @section le_audio_binding IPC interfaces binding
  *
- * All the functions of this API are provided by the @b audioService foundation service.
+ * All the functions of this API are provided by the @b audioService.
  *
  * Here's a code sample binding to audio services:
  * @verbatim
@@ -39,7 +39,7 @@
  *
  * @warning Ensure to check the list of supported audio profiles for your specific platform.
  *
- * The audio profile in use can be retrieved with the le_audio_GetProfile() function.
+ * An audio profile can be retrieved with le_audio_GetProfile() and set with le_audio_SetProfile().
  *
  * Then, the following functions let you enable or disable the audio settings on the selected audio
  * interface:
@@ -50,11 +50,21 @@
  * - le_audio_EnableIirFilter()/ le_audio_DisableIirFilter(): downlink IIR Filter (Infinite Impulse
  *   Response).
  * - le_audio_EnableAutomaticGainControl()/ le_audio_DisableAutomaticGainControl(): automatic
- *   gain on the selected audio stream.
+ * gain on the selected audio stream.
+ *
+ * To configure the encoding format, use le_audio_GetEncodingFormat() and le_audio_SetEncodingFormat().
+ *
+ * To configure gain settings, use le_audio_GetGain() and le_audio_SetGain().
+ *
+ * PCM has the following configuration get/set functions:
+ * - le_audio_GetPcmSamplingRate() and le_audio_SetPcmSamplingRate() for Hz rate.
+ * - le_audio_GetPcmSamplingResolution() and le_audio_SetPcmSamplingResolution() for bit/sample settings.
+ * - le_audio_GetPcmCompanding() and le_audio_SetPcmCompanding() for signal settings.
+ * - le_audio_GetSamplePcmChannelNumber() and le_audio_SetSamplePcmChannelNumber() for channel numbers.
  *
  * @section le_audio_interfaces Open/Close an Audio Interface
  *
- * The following functions let you select the desired interface:
+ * The following functions let you select the desired interface attributes:
  * - le_audio_OpenMic(): returns an Audio Stream Reference of the analog audio signal coming from
  *                       the microphone input.
  * - le_audio_OpenSpeaker(): returns an Audio Stream Reference of the analog audio signal routed
@@ -102,12 +112,12 @@
  *
  * Once the users get an Audio Stream reference, they can control it with the following functions:
  *
- * - le_audio_SetGain(): allows the user to adjust the gain of an audio stream (0 means 'muted',
- *                          100 is the maximum gain value).
- * - le_audio_GetGain(): allows the User to retrieve the gain of an audio stream (0 means
- *                          'muted', 100 is the maximum gain value).
- * - le_audio_Mute(): allows the user to mute an audio stream.
- * - le_audio_Unmute(): allows the user to unmute an audio stream.
+ * - le_audio_SetGain(): adjust the gain of an audio stream (0 means 'muted', 100 is the maximum
+ *                       gain value).
+ * - le_audio_GetGain(): retrieve the gain of an audio stream (0 means 'muted', 100 is the maximum
+ *                       gain value).
+ * - le_audio_Mute(): mute an audio stream.
+ * - le_audio_Unmute(): unmute an audio stream.
  *
  * @note Multimedia (playback and recording) must be controled separatly from the main audio path
  * (Microphone/Speaker, I2S, PCM, USB).  Muting/Unmuting a multimedia is done by
@@ -120,6 +130,18 @@
  *
  * @warning Ensure to check the list of supported audio streams for these functions on your
  * specific platform.
+ *
+ * In the case your platform can support other gains in your audio subsystem, you can set or get
+ * the value of them with the following functions:
+ *
+ * - le_audio_SetPlatformSpecificGain(): adjust the value of a platform specific gain in the audio
+ *                                       subsystem. (0 means 'muted', 100 is the maximum gain
+ *                                       value).
+ * - le_audio_GetPlatformSpecificGain(): retrieve the value of a platform specific gain in the
+ *                                       audio subsystem. (0 means 'muted', 100 is the maximum gain
+ *                                       value).
+ *
+ * @warning Ensure to check the names of supported gains for your specific platform.
  *
  * @section le_audio_connectors Create Audio connectors
  *
@@ -135,87 +157,87 @@
  *
  * When finished with it, delete it using the le_audio_DeleteConnector() function.
  *
- * @section le_audio_pb_rec Playback and Recording
+ * @section le_audio_pb_playback Playback
  *
  * An audio file can be played to any active output interfaces.
  *
- * You must open a player interface by calling:
+ * Open a player interface by calling:
  * - le_audio_OpenPlayer(): returns an Audio Stream Reference for file playback.
  *                          An audio file can be played on the local audio interface like
  *                          Speaker, USB Tx, PCM Tx, I2S Tx or on the remote audio
  *                          interface Modem Voice Tx depending the kind of connector
  *                          (input or output) is tied to.
  *
+ * - le_audio_PlayFile(): plays a specified file. WAVE (Waveform audio file) and
+ * AMR (Adaptive Multi Rate) are supported.
+ * AMR is an audio compression format optimized for speech coding. Two codecs are supported:
+ *     - AMR_NB (AMR Narrowband) codec that encodes narrowband (200–3400 Hz) signals at variable bit
+ * rates ranging from 4.75 to 12.2 kbit/s. It was adopted as the standard speech codec by 3GPP.
+ *     - AMR-WB (AMR Wideband) is an ITU-T standard speech codec which improved speech quality due to a
+ * wider speech bandwidth of 50–7000 Hz.
  *
- * Audio file recording can be done from any active input interfaces.
+ * - le_audio_PlaySamples(): initiates a playback using an audio flow. A pipe has
+ * to be opened first, then the PCM samples are sent throught the opened pipe.
+ * A play can be done only on a connected stream. For instance, the
+ * "I2S Tx", "Modem Voice Rx" and "Player" must be previously connected before playing a file.
  *
- * You must open a "File Recording" interface by calling:
+ * @section le_audio_pb_rec Record
+ *
+  * Audio file recording can be done from any active input interface.
+ *
+ * Open a "File Recording" interface by calling:
  * - le_audio_OpenRecorder(): returns an Audio Stream Reference for file recording.
  *                            The local audio interface like Microphone, USB Rx, PCM Rx,
  *                            I2S Rx is recorded into an audio file; or the Modem Voice Rx
  *                            remote audio interface is recorded into an audio file,
  *                            depending the kind of connector (input or output) is tied to.
- *
- * - le_audio_PlayFile(): must be called to play a specified file. WAVE (Waveform audio file) and
- * AMR (Adaptive Multi Rate) are supported.
- * AMR is an audio compression format optimized for speech coding. Two codecs are supported:
- * - AMR_NB (AMR Narrowband) codec that encodes narrowband (200–3400 Hz) signals at variable bit
- * rates ranging from 4.75 to 12.2 kbit/s. It was adopted as the standard speech codec by 3GPP.
- * - AMR-WB (AMR Wideband) is an ITU-T standard speech codec which improved speech quality due to a
- * wider speech bandwidth of 50–7000 Hz.
- *
- * - le_audio_PlaySamples(): must be called to initiate a playback using an audio flow. A pipe has
- * to be opened first, then the PCM samples are sent throught the opened pipe.
- *
- * A play can be done only on a connected stream. For instance, the
- * "I2S Tx", "Modem Voice Rx" and "Player" must be previously connected before playing a file.
- *
- * - le_audio_RecordFile(): must be called to record in a specified file.
- * - le_audio_SetEncodingFormat(): can be called to set the encoding format. The same formats as the
+ * - le_audio_RecordFile(): records in a specified file.
+ * - le_audio_SetEncodingFormat(): sets the encoding format. The same formats as the
  * player are supported.
- * - le_audio_GetEncodingFormat(): can be called to get the encoding format.
- * - le_audio_GetSamples(): must be called to get the audio PCM samples.  A pipe has
+ * - le_audio_GetEncodingFormat(): gets the encoding format.
+ * - le_audio_GetSamples(): gets the audio PCM samples.  A pipe has
  * to be opened first, then the PCM samples are sent throught the opened pipe.
- *
- * A record can be done only on a connected stream. For instance, the
+ * Recording can only be done on a connected stream. For example, the
  * "I2S Rx", "Modem Voice Tx" and "Recorder" must be previously connected before recording a file.
  *
  * A PCM configuration must be set with:
- *      - le_audio_SetSamplePcmChannelNumber(): can be called to set the channel number of a PCM
+ * - le_audio_SetSamplePcmChannelNumber(): sets the channel number of a PCM
  * sample.
- *      - le_audio_SetSamplePcmSamplingRate(): can be called to set the sampling rate of a PCM
+ * - le_audio_SetSamplePcmSamplingRate(): sets the sampling rate of a PCM
  * sample.
- *      - le_audio_SetSamplePcmSamplingResolution(): can be called to set the sampling resolution
+ * - le_audio_SetSamplePcmSamplingResolution(): sets the sampling resolution
  * (in bits per sample) of a PCM sample.
+ *
  * The PCM samples configuration can be retrieved with:
- *      - le_audio_GetSamplePcmChannelNumber(): can be called to get the channel number of a PCM
+ *      - le_audio_GetSamplePcmChannelNumber(): gets the channel number of a PCM
  * sample.
- *      - le_audio_GetSamplePcmSamplingRate(): can be called to get the sampling rate of a PCM
+ *      - le_audio_GetSamplePcmSamplingRate(): gets the sampling rate of a PCM
  * sample.
  *      - le_audio_GetSamplePcmSamplingResolution(): can be called to get the sampling resolution
  * (in bits per sample) of a PCM sample.
  * The default configuration is PCM 16-bit audio @ 8KHz one channel.
  *
  * An AMR configuration must be set with:
- *      - le_audio_SetSampleAmrMode(): can be called to set the AMR mode (NB/WB, bitrate).
+ *      - le_audio_SetSampleAmrMode(): sets the AMR mode (NB/WB, bitrate).
  *      - le_audio_SetSampleAmrDtx(): can be called to activate/deactivate the Discontinuous
  * Transmission (DTX) to reduce bandwidth usage during silence periods.
  * The AMR configuration can be retrieved with:
- *      - le_audio_GetSampleAmrMode(): can be called to get the AMR mode.
- *      - le_audio_GetSampleAmrDtx(): can be called to get the Discontinuous
+ *      - le_audio_GetSampleAmrMode(): gets the AMR mode.
+ *      - le_audio_GetSampleAmrDtx(): gets the Discontinuous
  * Transmission (DTX).
  *
- * - le_audio_Stop(): can be called to stop a play/record. The playback/record is stopped
- * playing/recording, the read/write position indicator associated with the file stream is rewound
- * to the beginning of the file. A new file can be played/recorded using
- * le_audio_PlayFile()/le_audio_PlaySamples()/le_audio_RecordFile()/le_audio_GetSamples().
- * - le_audio_Pause(): can be called to pause a play/record. The file playing/recording is put in
+ * To stop a play/record call le_audio_Stop():
+ * - The playback/record stops playing/recording, and the read/write position indicator associated
+ * with the file stream is rewound to the beginning of the file. A new file can be played/recorded
+ * using le_audio_PlayFile()/le_audio_PlaySamples()/le_audio_RecordFile()/le_audio_GetSamples().
+ * - le_audio_Pause(): can be called to pause a play/record. The file playing/recording is put on
  * hold, the read/write position indicator of the file is not moved.
  * - le_audio_Resume(): can be called to resume a paused play/record. The file playing/recording
- * continue at the file's position indicator held after the pause.
+ * continues at the file's position indicator held after the pause.
+ * - le_audio_Flush(): can be called to flush the remaining audio samples before sending
+ * them to the audio driver.
  *
- *
- * The function below is an example of how a file can be played to the Modem Voice Tx output
+ * Here's a code sample showing how to play a file to the Modem Voice Tx output
  * interface. The audio of the voice call is redirected to the I2S interfaces. This function simply
  * plays a voice prompt to the remote party when the voice call is established.
  *
@@ -263,15 +285,18 @@
  *
  * @endcode
  *
- * The users have also the possibility to register a handler function to catch some media-related
- * notifications such as errors or audio events.
+ * You can also register a handler function for media-related notifications like errors or audio
+ * events.
  *
  * le_audio_AddMediaHandler() function installs a handler for player/recorder stream
  * notifications.
  *
  * le_audio_RemoveMediaHandler() function removes the player/recorder handler function.
  *
- * The code sample below shows how the User can install a file's event handler.
+ * @note The @c LE_AUDIO_MEDIA_NO_MORE_SAMPLES event indicates when all samples put into the pipe
+ * by the user's app have been sent to the audio driver (see le_audio_PlaySamples()).
+ *
+ * Here's a code sample on how to install a file's event handler:
  * @code
  *
  * // Handler function for Stream Event Notifications.
@@ -578,13 +603,15 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Audio file recording/playback events.
+ * Audio recording/playback events.
  */
 //--------------------------------------------------------------------------------------------------
 ENUM MediaEvent
 {
-    MEDIA_ENDED,         ///< File playback has reached the end of file.
-    MEDIA_ERROR          ///< File recording/playback has encountered an error.
+    MEDIA_ENDED,           ///< Playback has reached the end of file.
+    MEDIA_NO_MORE_SAMPLES, ///< No more audio samples to play.
+    MEDIA_ERROR,           ///< Recording/playback has encountered an error.
+    MEDIA_MAX              ///< Enumerate max value.
 };
 
 //--------------------------------------------------------------------------------------------------
@@ -687,6 +714,21 @@ DEFINE DTMF_MAX_BYTES = (DTMF_MAX_LEN+1);
  */
 //--------------------------------------------------------------------------------------------------
 DEFINE NO_FD = (-1);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum gain's name string length.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE GAIN_NAME_MAX_LEN   = (100);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum gain's name string length.
+ * One extra byte is added for the null character.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE GAIN_NAME_MAX_BYTES = (GAIN_NAME_MAX_LEN+1);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -846,7 +888,7 @@ FUNCTION Stream OpenModemVoiceTx
 //--------------------------------------------------------------------------------------------------
 HANDLER MediaHandler
 (
-    Stream               streamRef  IN,       ///< The audio stream reference.
+    Stream               streamRef  IN,       ///< Audio stream reference.
     MediaEvent           event                ///< Event value.
 );
 
@@ -936,7 +978,7 @@ FUNCTION le_result_t GetGain
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t Mute
 (
-    Stream streamRef IN ///< The audio stream reference.
+    Stream streamRef IN ///< Audio stream reference.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -1021,7 +1063,7 @@ FUNCTION Disconnect
 //--------------------------------------------------------------------------------------------------
 HANDLER DtmfDetectorHandler
 (
-    Stream      streamRef  IN,    ///< The audio stream reference.
+    Stream      streamRef  IN,    ///< Audio stream reference.
     char        dtmf       IN     ///< Detected DTMF.
 );
 
@@ -1033,7 +1075,7 @@ HANDLER DtmfDetectorHandler
 //--------------------------------------------------------------------------------------------------
 EVENT DtmfDetector
 (
-    Stream      streamRef IN,     ///< The audio stream reference.
+    Stream      streamRef IN,     ///< Audio stream reference.
     handler DtmfDetectorHandler
 );
 
@@ -1198,7 +1240,7 @@ FUNCTION le_result_t DisableAutomaticGainControl
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetProfile
 (
-    le_audio_Profile_t profile  IN ///< The audio profile.
+    le_audio_Profile_t profile  IN ///< Audio profile.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -1212,7 +1254,7 @@ FUNCTION le_result_t SetProfile
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetProfile
 (
-    le_audio_Profile_t profile  OUT ///< The audio profile.
+    le_audio_Profile_t profile  OUT ///< Audio profile.
 );
 
 
@@ -1222,7 +1264,7 @@ FUNCTION le_result_t GetProfile
  *
  * @return LE_FAULT         Function failed.
  * @return LE_OUT_OF_RANGE  Your platform does not support the setting's value.
- * @return LE_BUSY          The PCM interface is already active.
+ * @return LE_BUSY          PCM interface is already active.
  * @return LE_OK            Function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
@@ -1237,7 +1279,7 @@ FUNCTION le_result_t SetPcmSamplingRate
  *
  * @return LE_FAULT         Function failed.
  * @return LE_OUT_OF_RANGE  Your platform does not support the setting's value.
- * @return LE_BUSY          The PCM interface is already active.
+ * @return LE_BUSY          PCM interface is already active.
  * @return LE_OK            Function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
@@ -1252,7 +1294,7 @@ FUNCTION le_result_t SetPcmSamplingResolution
  *
  * @return LE_FAULT         Function failed.
  * @return LE_OUT_OF_RANGE  Your platform does not support the setting's value.
- * @return LE_BUSY          The PCM interface is already active.
+ * @return LE_BUSY          PCM interface is already active.
  * @return LE_OK            Function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
@@ -1321,21 +1363,26 @@ FUNCTION I2SChannel GetDefaultI2sMode
  * Play a file on a playback stream.
  *
  * @return LE_FAULT         Function failed.
- * @return LE_BAD_PARAMETER The audio stream reference is invalid.
- * @return LE_BUSY          The player interface is already active.
+ * @return LE_BAD_PARAMETER Audio stream reference is invalid.
+ * @return LE_BUSY          Player interface is already active.
  * @return LE_OK            Function succeeded.
  *
- * @note the fd is closed by the IPC API. To play again the same file, the fd parameter can be set
- * to LE_AUDIO_NO_FD: in this case, the previous file descriptor is re-used.
- * If the fd as to be kept on its side, the application should duplicate the fd (e.g., using dup() )
- * before calling the API.
+ * @note
+ *  - The fd is closed by the IPC API. To play again the same file, the fd parameter can be set
+ *    to LE_AUDIO_NO_FD: in this case, the previous file descriptor is re-used.
+ *    If the fd as to be kept on its side, the application should duplicate the fd (e.g., using
+ *    dup() ) before calling the API.
+ *
+ * @note
+ * -  Calling le_audio_PlayFile(<..>, LE_AUDIO_NO_FD) will rewind the audio file to the
+ *    beginning when a playback is already in progress.
  *
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t PlayFile
 (
     Stream streamRef IN, ///< Audio stream reference.
-    file fd          IN  ///< The file descriptor.
+    file fd          IN  ///< File descriptor.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -1343,7 +1390,7 @@ FUNCTION le_result_t PlayFile
  * Initiate a playback sending samples over a pipe.
  *
  * @return LE_FAULT         Function failed.
- * @return LE_BUSY          The player interface is already active.
+ * @return LE_BUSY          Player interface is already active.
  * @return LE_OK            Function succeeded.
  *
  * @note the fd is closed by the IPC API. To use again the same pipe, the fd parameter can be set
@@ -1356,7 +1403,7 @@ FUNCTION le_result_t PlayFile
 FUNCTION le_result_t PlaySamples
 (
     Stream streamRef IN, ///< Audio stream reference.
-    file fd          IN  ///< The file descriptor.
+    file fd          IN  ///< File descriptor.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -1365,7 +1412,7 @@ FUNCTION le_result_t PlaySamples
  *
  * @return LE_FAULT         Function failed.
  * @return LE_BAD_PARAMETER The audio stream reference is invalid.
- * @return LE_BUSY          The recorder interface is already active.
+ * @return LE_BUSY          Recorder interface is already active.
  * @return LE_OK            Function succeeded.
  *
  * @note the fd is closed by the API. To record again the same file, the fd parameter can be set to
@@ -1378,7 +1425,7 @@ FUNCTION le_result_t PlaySamples
 FUNCTION le_result_t RecordFile
 (
     Stream streamRef IN, ///< Audio stream reference.
-    file fd          IN  ///< The file descriptor.
+    file fd          IN  ///< File descriptor.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -1386,7 +1433,7 @@ FUNCTION le_result_t RecordFile
  * Get samples from a recorder stream.
  *
  * @return LE_FAULT         Function failed.
- * @return LE_BUSY          The recorder interface is already active.
+ * @return LE_BUSY          Recorder interface is already active.
  * @return LE_OK            Function succeeded.
  *
  * @note the fd is closed by the API. To use again the same pipe, the fd parameter can be set to
@@ -1398,7 +1445,7 @@ FUNCTION le_result_t RecordFile
 FUNCTION le_result_t GetSamples
 (
     Stream streamRef IN, ///< Audio stream reference.
-    file   fd        IN  ///< The file descriptor.
+    file   fd        IN  ///< File descriptor.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -1408,7 +1455,7 @@ FUNCTION le_result_t GetSamples
  * @return LE_FAULT         Function failed.
  * @return LE_OK            Function succeeded.
  *
- * @note the used file descriptor is not deallocated, but is is rewound to the beginning.
+ * @note The used file descriptor is not deallocated, but is is rewound to the beginning.
  *
  */
 //--------------------------------------------------------------------------------------------------
@@ -1427,6 +1474,20 @@ FUNCTION le_result_t Stop
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t Pause
+(
+    Stream streamRef IN ///< Audio stream reference.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Flush the remaining audio samples.
+ *
+ * @return LE_FAULT         Function failed.
+ * @return LE_OK            Function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Flush
 (
     Stream streamRef IN ///< Audio stream reference.
 );
@@ -1543,9 +1604,11 @@ FUNCTION le_result_t GetSamplePcmSamplingResolution
  *
  * @return LE_FORMAT_ERROR  The DTMF characters are invalid.
  * @return LE_BUSY          A DTMF playback is already in progress on the playback stream.
- * @return LE_FAULT         The function failed to play the DTMFs.
- * @return LE_OK            The funtion succeeded.
+ * @return LE_FAULT         Function failed to play the DTMFs.
+ * @return LE_OK            Funtion succeeded.
  *
+ * @note If the DTMF string is too long (max DTMF_MAX_LEN characters), it is a fatal
+ *       error, the function will not return.
  * @note The process exits, if an invalid audio stream reference is given.
  */
 //--------------------------------------------------------------------------------------------------
@@ -1564,9 +1627,11 @@ FUNCTION le_result_t PlayDtmf
  *
  * @return LE_FORMAT_ERROR  The DTMF characters are invalid.
  * @return LE_BUSY          A DTMF playback is in progress.
- * @return LE_FAULT         The function failed.
- * @return LE_OK            The funtion succeeded.
+ * @return LE_FAULT         Function failed.
+ * @return LE_OK            Funtion succeeded.
  *
+ * @note If the DTMF string is too long (max DTMF_MAX_LEN characters), it is a fatal
+ *       error, the function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t PlaySignallingDtmf
@@ -1664,4 +1729,39 @@ FUNCTION le_result_t GetSampleAmrDtx
 (
     Stream      streamRef   IN,     ///< Audio stream reference.
     bool        dtx         OUT     ///< DTX.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the value of a platform specific gain in the audio subsystem.
+ *
+ * @return LE_FAULT         The function failed.
+ * @return LE_NOT_FOUND     The specified gain's name is not recognized in your audio subsystem.
+ * @return LE_OUT_OF_RANGE  The gain parameter is out of range
+ * @return LE_OK            The function succeeded.
+ *
+ * @warning Ensure to check the names of supported gains for your specific platform.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetPlatformSpecificGain
+(
+    string  gainName[GAIN_NAME_MAX_LEN]  IN, ///< Name of the platform specific gain.
+    uint32  gain                         IN  ///< The gain value (specific to the platform)
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the value of a platform specific gain in the audio subsystem.
+ *
+ * @return LE_FAULT         The function failed.
+ * @return LE_NOT_FOUND     The specified gain's name is not recognized in your audio subsystem.
+ * @return LE_OK            The function succeeded.
+ *
+ * @warning Ensure to check the names of supported gains for your specific platform.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetPlatformSpecificGain
+(
+    string  gainName[GAIN_NAME_MAX_LEN] IN,  ///< Name of the platform specific gain.
+    uint32  gain                        OUT  ///< The gain value (specific to the platform)
 );

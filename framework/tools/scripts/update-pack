@@ -1,5 +1,4 @@
 #!/bin/bash
-# Create and append manifest with application/firmware/script items.
 
 SUPPORTED_TARGETS="ar7 ar86 wp7 wp85"
 
@@ -16,6 +15,7 @@ help_usage=(
 "TARGET OPTIONS"
 "-d UPDATE_FILE"
 "-h"
+"--help"
 "-v"
 )
 
@@ -41,6 +41,7 @@ help_long_description=(
 ""
 "-o FILE_NAME"
 "    Specify output update file name. If not specified, default.update is used."
+"    If \"-\" is specified, then output will be sent to the standard output stream."
 ""
 "Other options:"
 ""
@@ -51,6 +52,7 @@ help_long_description=(
 "    Prints an update file's manifest to the standard output stream."
 ""
 "-h"
+"--help"
 "    Print this help text."
 ""
 "Examples:"
@@ -94,7 +96,6 @@ readonly MANIFESTSIZE_FIELD_WIDTH=8
 
 UpdateFile="default.update"
 ItemStr=""
-CompleteItemStr=""
 ManifestStr=""
 AllInputFileList=""
 PayLoadSize=0
@@ -137,21 +138,14 @@ GetLegatoVersion()
 MakeManifestStr()
 {
     echo
-    echo  "{"
-    echo  " $JSON_LE_VERSION_ID: \"$(GetLegatoVersion)\","
-    echo  " $JSON_DEVICE_ID: \"$TARGET_ID\","
-    echo  " $JSON_PAYLOAD_SIZE: $PayLoadSize,"
-    echo  "$CompleteItemStr"
-    printf  "}"
-}
-
-
-# Makes complete item string. ItemStr value should be enumerated before calling this function.
-MakeCompleteItemStr()
-{
-    printf " $JSON_FIELD_ITEMS: ["
+    echo   "{"
+    echo   " $JSON_LE_VERSION_ID: \"$(GetLegatoVersion)\","
+    echo   " $JSON_DEVICE_ID: \"$TARGET_ID\","
+    echo   " $JSON_PAYLOAD_SIZE: $PayLoadSize,"
+    echo   " $JSON_FIELD_ITEMS: ["
     echo   "$ItemStr"
-    printf " ]"
+    echo   " ]"
+    printf "}"
 }
 
 
@@ -335,8 +329,6 @@ fi
 # Delete the last Comma
 ItemStr=${ItemStr%?}
 
-CompleteItemStr=$(MakeCompleteItemStr)
-
 # Now obtain the manifest string size and prepend it with manifest string
 ManifestStr=$(MakeManifestStr)
 ManifestStr=$(GetManifestSize "$ManifestStr")$ManifestStr
@@ -344,16 +336,25 @@ ManifestStr=$(GetManifestSize "$ManifestStr")$ManifestStr
 if [ "$AllInputFileList" = "" ]
 then
     # Only remove instructions are given.
-    (printf "$ManifestStr")>"$UpdateFile"
+    if [ "$UpdateFile" = "-" ]
+    then
+        (printf "$ManifestStr")
+    else
+        (printf "$ManifestStr") > "$UpdateFile"
+    fi
 else
     # Now merge manifest string and all input file, and create final update file.
-    (printf "$ManifestStr"; cat $AllInputFileList)>"$UpdateFile"
+    if [ "$UpdateFile" = "-" ]
+    then
+        (printf "$ManifestStr" && cat $AllInputFileList)
+    else
+        (printf "$ManifestStr" && cat $AllInputFileList) > "$UpdateFile"
+    fi
 fi
 
 if [ $? -ne 0 ]
 then
-    ExitWithError "Failed to create update file: $UpdateFile">&2
+    ExitWithError "Failed to create update file.">&2
 else
-    echo "Successfully created update file: $UpdateFile">&2
     exit 0
 fi

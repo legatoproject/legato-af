@@ -1,0 +1,15 @@
+/** @page getstartedMangOH MangOH
+
+It's easy to get ready to develop on the MangOH board with a WP85 module:
+
+@subpage getstartedMangOHAssemble <br>
+@subpage getstartedMangOHInstallSoftware
+
+Complete information about MangOH is available from <a href="https://mangoh.io/">mangoh.io</a> and
+the Sierra Wireless Source <a href="http://source.sierrawireless.com/mangoh/">mangOH</a> page.
+
+<HR>
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/

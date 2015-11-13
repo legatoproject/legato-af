@@ -41,7 +41,7 @@ HANDLER TestAHandler
     int32 x   ///< First parameter for the handler
               ///< Second comment line
 );
-    
+
 
 /**
  * This event is used for testing EVENTS and Add/Remove handler functions
@@ -85,7 +85,7 @@ FUNCTION FileTest
 
 
 /**
- * This function fakes an event, so that the handler will be called.  
+ * This function fakes an event, so that the handler will be called.
  * Only needed for testing.  Would never exist on a real system.
  */
 FUNCTION TriggerTestA
@@ -101,9 +101,9 @@ HANDLER BugTestHandler
 
 
 /**
- * This event 
- *is used for 
- *     testing 
+ * This event
+ *is used for
+ *     testing
  * a specific bug, as well as event comment strings.
  */
 EVENT BugTest

@@ -8,10 +8,19 @@ logs <c>Hello World.</c> when the process it's in starts up:
  - @ref basicAppsCreate_buildApp
  - @ref basicAppsCreate_instTarget
  - @ref basicAppsCreate_usage "Use App"
- 
+
 Then you're ready for the next level: @ref basicAppsAddThings, @ref basicAppsIPC, and
 @ref basicAppsCompMulti.
+@section basicAppsCreate_sampleDir Sample Directories and Files
 
+Typical apps have directories and files that look this:
+@code
+helloWorld/
+├── helloComp
+│   ├── Component.cdef
+│   └── hello.c
+└── helloWorld.adef
+@endcode
 
 @section basicAppsCreate_component Create Component
 Complete these steps to create a component: @ref basicAppsCreate_componentCreateDir,
@@ -107,7 +116,7 @@ $ gedit helloComp/Component.cdef
 
 See @ref defFiles for complete info.
 
-@section basicAppsCreate_adef Create App 
+@section basicAppsCreate_adef Create App
 
 You need to create an @c adef file before you can build you app.
 
@@ -142,20 +151,20 @@ Use the @c -t option to build for a target other than the default "localhost"
 target.
 
 This is how to build the helloWorld app to install on the
-Sierra Wireless WP7 module:
+Sierra Wireless WP85 module:
 
 @verbatim
-$ mkapp -t wp7 helloWorld.adef
+$ mkapp -t wp85 helloWorld.adef
 @endverbatim
 
-@note If you're building an AR7 app, substitute @c ar7 for @c wp7 in the mkapp run command.
+@note If you're building an AR7 or WP7 app, substitute @c ar7 or @c wp7 in the mkapp run command.
 
 @section basicAppsCreate_instTarget Install App to Target
 
 @c 6. Use @c instapp to install the app on your target:
 
 @verbatim
-$ instapp helloWorld.wp7 <ip addr>
+$ instapp helloWorld.wp85 <ip addr>
 @endverbatim
 
 The second argument is the target device's IP address where to install the app.
@@ -164,7 +173,7 @@ This will connect to the target and install the app.
 @section basicAppsCreate_usage Usage
 
 These usage tips are based on running a secure shell (SSH) to interface with
-the target. See @ref getstartedTargetPrep if you need to setup your target device and
+the target. See @ref getstartedTargetMain if you need to setup your target device and
 communications.
 
 @subsection basicAppsCreate_usageLogin Target Login
@@ -174,7 +183,7 @@ Login to your target using a secure shell connection:
 @verbatim
 ssh root@192.168.1.2
 @endverbatim
- 
+
 @subsection basicAppsCreate_usageStartApp Target Start App
 
 Start your application using the <code>app start</code> command:
@@ -210,7 +219,7 @@ ssh root@192.168.1.2 '/sbin/logread -f'
 From the host PC, run @c rmapp to uninstall the app:
 
 @verbatim
-$ rmapp helloWorld.wp7 <ip addr>
+$ rmapp helloWorld.wp85 <ip addr>
 @endverbatim
 
 From the target run:

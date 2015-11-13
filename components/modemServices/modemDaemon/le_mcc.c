@@ -16,12 +16,6 @@
 //--------------------------------------------------------------------------------------------------
 // Symbol and Enum definitions.
 //--------------------------------------------------------------------------------------------------
-//--------------------------------------------------------------------------------------------------
-/**
- * Define the maximum number of Call profiles.
- */
-//--------------------------------------------------------------------------------------------------
-#define MCC_MAX_PROFILE 15
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -29,6 +23,13 @@
  */
 //--------------------------------------------------------------------------------------------------
 #define MCC_MAX_CALL    20
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum number of session objects we expect to have at one time.
+ */
+//--------------------------------------------------------------------------------------------------
+#define MCC_MAX_SESSION 5
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -57,25 +58,69 @@ typedef struct le_mcc_Call
     le_mcc_TerminationReason_t      termination;       ///< Call termination reason
     int32_t                         terminationCode;   ///< Platform specific termination code
     pa_mcc_clir_t                   clirStatus;        ///< Call CLIR status
-    le_mcc_CallRef_t                callRef;           ///< The call reference.
     bool                            inProgress;        ///< call in progress
     int16_t                         refCount;          ///< ref count
-    le_dls_List_t                   sessionRefList;    ///< Clients sessionRef list
+    le_dls_List_t                   creatorList;       ///< Clients sessionRef list
+    le_dls_Link_t                   link;              ///< link for CallList
 }
 le_mcc_Call_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * SessionRef node structure used for the sessionRef list.
+ * SessionRef node structure used for the creatorList list.
  *
  */
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
     le_msg_SessionRef_t sessionRef;           ///< client sessionRef
-    le_dls_Link_t       link;                 ///< link for SessionRefList
+    le_dls_Link_t       link;                 ///< link for creatorList
 }
 SessionRefNode_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * session context node structure used for the SessionCtxList list.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    le_msg_SessionRef_t sessionRef;           ///< client sessionRef
+    le_dls_List_t       callRefList;          /// Call reference list
+    le_dls_List_t       handlerList;          /// handler list
+    le_dls_Link_t       link;                 ///< link for SessionCtxList
+}
+SessionCtxNode_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * callRef node structure used for the callRefList list.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    le_mcc_CallRef_t callRef;           ///< The call reference.
+    le_dls_Link_t    link;              ///< link for callRefList
+}
+CallRefNode_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * HandlerCtx node structure used for the handlerList list.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    le_mcc_CallEventHandlerRef_t  handlerRef;      ///< handler reference
+    le_mcc_CallEventHandlerFunc_t handlerFuncPtr;  ///< handler function
+    void*                         userContext;     ///< user context
+    SessionCtxNode_t*             sessionCtxPtr;   ///< session context relative to this handler ctx
+    le_dls_Link_t                 link;            ///< link for handlerList
+}
+HandlerCtxNode_t;
 
 //--------------------------------------------------------------------------------------------------
 //                                       Static declarations
@@ -91,13 +136,34 @@ static le_mem_PoolRef_t SessionRefPool;
 //--------------------------------------------------------------------------------------------------
 /**
  * Memory Pool for Calls.
- * Safe Reference Map for Calls objects.
  *
  */
 //--------------------------------------------------------------------------------------------------
 static le_mem_PoolRef_t   MccCallPool;
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Memory Pool for handlers context.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mem_PoolRef_t   HandlerPool;
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Memory Pool for sessions context.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mem_PoolRef_t   SessionCtxPool;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Memory Pool for callRef context.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mem_PoolRef_t   CallRefPool;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -109,19 +175,27 @@ static le_ref_MapRef_t MccCallRefMap;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Call handlers counters.
+ * Safe Reference Map for handlers objects.
  *
  */
 //--------------------------------------------------------------------------------------------------
-static uint32_t   CallHandlerCount;
+static le_ref_MapRef_t HandlerRefMap;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Call state event handler.
+ * list of session context.
  *
  */
 //--------------------------------------------------------------------------------------------------
-static le_event_Id_t CallStateEventId;
+le_dls_List_t  SessionCtxList;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * list of call context.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_dls_List_t  CallList;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -145,26 +219,10 @@ static void CallDestructor
 {
     le_mcc_Call_t *callPtr = (le_mcc_Call_t*)objPtr;
 
-    // Invalidate the Safe Reference.
-    le_ref_DeleteRef(MccCallRefMap, callPtr->callRef);
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Update the reference count of a callRef.
- * The goal is to have enough callRef to provide each handler.
- *
- */
-//--------------------------------------------------------------------------------------------------
-static void UpdateReferenceCount
-(
-    le_mcc_Call_t* callPtr
-)
-{
-    while (callPtr->refCount < CallHandlerCount)
+    // Remove from the list
+    if (callPtr)
     {
-        callPtr->refCount++;
-        le_mem_AddRef(callPtr);
+        le_dls_Remove(&CallList, &callPtr->link);
     }
 }
 
@@ -181,13 +239,15 @@ static le_mcc_Call_t* GetCallObject
     bool                            getInProgess
 )
 {
-    le_mcc_Call_t* callPtr = NULL;
+    le_dls_Link_t* linkPtr = le_dls_Peek(&CallList);
 
-    le_ref_IterRef_t iterRef = le_ref_GetIterator(MccCallRefMap);
-
-    while (le_ref_NextNode(iterRef) == LE_OK)
+    while ( linkPtr )
     {
-        callPtr = (le_mcc_Call_t*) le_ref_GetValue(iterRef);
+        le_mcc_Call_t* callPtr = CONTAINER_OF( linkPtr,
+                                               le_mcc_Call_t,
+                                               link);
+
+        linkPtr = le_dls_PeekNext(&CallList, linkPtr);
 
         // Check callId
         if ( (id != (-1)) && (callPtr->callId == id) &&
@@ -217,8 +277,8 @@ static le_mcc_Call_t* CreateCallObject
 (
     const char*                     destinationPtr,
     int16_t                         id,
-    le_mcc_Event_t             event,
-    le_mcc_TerminationReason_t termination,
+    le_mcc_Event_t                  event,
+    le_mcc_TerminationReason_t      termination,
     int32_t                         terminationCode
 )
 {
@@ -241,45 +301,337 @@ static le_mcc_Call_t* CreateCallObject
     callPtr->clirStatus = PA_MCC_DEACTIVATE_CLIR;
     callPtr->inProgress = false;
     callPtr->refCount = 1;
-    callPtr->sessionRefList=LE_DLS_LIST_INIT;
+    callPtr->creatorList=LE_DLS_LIST_INIT;
+    callPtr->link = LE_DLS_LINK_INIT;
 
-    // Create a Safe Reference for this Call object.
-    callPtr->callRef = le_ref_CreateRef(MccCallRefMap, callPtr);
-
-    // Update reference count
-    UpdateReferenceCount(callPtr);
+    le_dls_Queue(&CallList, &callPtr->link);
 
     return callPtr;
 }
 
-
 //--------------------------------------------------------------------------------------------------
 /**
- * The first-layer Call Event Handler.
+ * Create a session context.
  *
  */
 //--------------------------------------------------------------------------------------------------
-static void FirstLayerCallEventHandler
+static SessionCtxNode_t* CreateSessionCtx
 (
-    void* reportPtr,
-    void* secondLayerHandlerFunc
+    void
 )
 {
-    le_mcc_CallRef_t *callRef = reportPtr;
-    le_mcc_CallEventHandlerFunc_t clientHandlerFunc = secondLayerHandlerFunc;
+    // Create the session context
+    SessionCtxNode_t* sessionCtxPtr = le_mem_ForceAlloc(SessionCtxPool);
+    sessionCtxPtr->sessionRef = le_mcc_GetClientSessionRef();
+    sessionCtxPtr->link = LE_DLS_LINK_INIT;
+    sessionCtxPtr->callRefList = LE_DLS_LIST_INIT;
+    sessionCtxPtr->handlerList = LE_DLS_LIST_INIT;
 
-    le_mcc_Call_t* callPtr = le_ref_Lookup(MccCallRefMap, *callRef);
+    le_dls_Queue(&SessionCtxList, &(sessionCtxPtr->link));
 
-    if (callPtr == NULL)
-    {
-        LE_CRIT("Invalid reference (%p) provided!", *callRef);
-        return;
-    }
+    LE_DEBUG("Context for sessionRef %p created", sessionCtxPtr->sessionRef);
 
-    LE_DEBUG("Send Call Event for [%p] with [%d]",*callRef,callPtr->event);
-    clientHandlerFunc(*callRef, callPtr->event, le_event_GetContextPtr());
+    return sessionCtxPtr;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get a session context.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static SessionCtxNode_t* GetSessionCtx
+(
+    le_msg_SessionRef_t sessionRef
+)
+{
+    SessionCtxNode_t* sessionCtxPtr = NULL;
+    le_dls_Link_t* linkPtr = le_dls_Peek(&SessionCtxList);
+
+    while ( linkPtr )
+    {
+        SessionCtxNode_t* sessionCtxTmpPtr = CONTAINER_OF(linkPtr,
+                                                        SessionCtxNode_t,
+                                                        link);
+
+        linkPtr = le_dls_PeekNext(&SessionCtxList, linkPtr);
+
+        if ( sessionCtxTmpPtr->sessionRef == sessionRef )
+        {
+            sessionCtxPtr = sessionCtxTmpPtr;
+        }
+    }
+
+    LE_DEBUG("sessionCtx %p found for the sessionRef %p", sessionCtxPtr, sessionRef);
+
+    return sessionCtxPtr;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Check if the call was created by the required client.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static bool IsCallCreatedByClient
+(
+    le_mcc_Call_t* callPtr,
+    le_msg_SessionRef_t sessionRef
+)
+{
+    le_dls_Link_t* linkPtr = NULL;
+
+    if ( callPtr )
+    {
+        linkPtr = le_dls_Peek(&(callPtr->creatorList));
+    }
+
+    while ( linkPtr )
+    {
+        SessionRefNode_t* sessionRefNodePtr = CONTAINER_OF(linkPtr, SessionRefNode_t, link);
+        linkPtr = le_dls_PeekNext(&(callPtr->creatorList), linkPtr);
+
+        if (sessionRefNodePtr->sessionRef == sessionRef)
+        {
+            LE_DEBUG("callPtr %p created by sessionRef %p", callPtr, sessionRef);
+            return true;
+        }
+    }
+
+    LE_DEBUG("callPtr %p didn't create by sessionRef %p", callPtr, sessionRef);
+    return false;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the call's reference for a specific client.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mcc_CallRef_t GetCallRefFromSessionCtx
+(
+    le_mcc_Call_t* callPtr,
+    SessionCtxNode_t* sessionCtxPtr
+)
+{
+    le_dls_Link_t* linkPtr = NULL;
+
+    if (sessionCtxPtr)
+    {
+        linkPtr = le_dls_Peek(&sessionCtxPtr->callRefList);
+    }
+
+    while( linkPtr )
+    {
+        CallRefNode_t* callRefPtr = CONTAINER_OF(   linkPtr,
+                                                    CallRefNode_t,
+                                                    link );
+
+        linkPtr = le_dls_PeekNext(&sessionCtxPtr->callRefList, linkPtr);
+
+        le_mcc_Call_t* callTmpPtr = le_ref_Lookup(MccCallRefMap, callRefPtr->callRef);
+
+        // Call found
+        if ( callPtr == callTmpPtr )
+        {
+            LE_DEBUG("Call ref found: %p for callPtr %p and session %p",
+                                                    callRefPtr->callRef, callPtr, sessionCtxPtr );
+            return callRefPtr->callRef;
+        }
+    }
+
+    LE_DEBUG("Call ref found for callPtr %p and session %p", callPtr, sessionCtxPtr );
+    return NULL;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the call reference for a client.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mcc_CallRef_t SetCallRefForSessionCtx
+(
+    le_mcc_Call_t* callPtr,
+    SessionCtxNode_t* sessionCtxPtr
+)
+{
+    CallRefNode_t* callNodePtr = le_mem_ForceAlloc(CallRefPool);
+
+    if ( !callNodePtr || !sessionCtxPtr )
+    {
+        return NULL;
+    }
+
+    callNodePtr->callRef = le_ref_CreateRef(MccCallRefMap, callPtr);
+    callNodePtr->link = LE_DLS_LINK_INIT;
+    le_dls_Queue(&sessionCtxPtr->callRefList, &callNodePtr->link);
+
+    LE_DEBUG("Set %p for call %p and session %p", callNodePtr->callRef, callPtr, sessionCtxPtr);
+
+    return callNodePtr->callRef;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Call all subscribed handlers.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void CallHandlers
+(
+    le_mcc_Call_t* callPtr
+)
+{
+    le_dls_Link_t* linkPtr = le_dls_PeekTail(&SessionCtxList);
+    bool firstCallRefLinkedDone = false;
+
+    // For all sessions, call all handlers
+    while ( linkPtr )
+    {
+        SessionCtxNode_t* sessionCtxPtr = CONTAINER_OF(linkPtr,
+                                                        SessionCtxNode_t,
+                                                        link);
+
+        linkPtr = le_dls_PeekPrev(&SessionCtxList, linkPtr);
+
+        LE_DEBUG("loop for sessionRef %p", sessionCtxPtr->sessionRef);
+
+        // Peek the tail of the handlers list: this is important for handlers subscribed by
+        // modemDaemon: MyCallEventHandler must be called the last one as this handler delete the
+        // reference for modemDaemon
+        le_dls_Link_t* linkHandlerPtr = le_dls_PeekTail(&sessionCtxPtr->handlerList);
+
+        // Nothing to do if no handler
+        if (linkHandlerPtr)
+        {
+            // Search the callRef for this session
+            le_mcc_CallRef_t callRef = GetCallRefFromSessionCtx(callPtr, sessionCtxPtr);
+
+            if (callRef == NULL)
+            {
+                // callRef doesn't exist for this session => create it
+                callRef = SetCallRefForSessionCtx(callPtr, sessionCtxPtr);
+                bool addRef = true;
+
+                // for incoming call (i.e. creator list is empty), the first callRef is not
+                // associated to any session. so we can use it directly.
+                // for other callRef created, we need to add a reference on the call context
+                if ((le_dls_NumLinks(&callPtr->creatorList) == 0 ) && (!firstCallRefLinkedDone))
+                {
+                    addRef = false;
+                    firstCallRefLinkedDone = true;
+                }
+
+                if (addRef)
+                {
+                    callPtr->refCount++;
+                    le_mem_AddRef(callPtr);
+                    LE_DEBUG("callRef created %p for call %p, count = %d",
+                                                               callRef, callPtr, callPtr->refCount);
+                }
+            }
+            else
+            {
+                LE_DEBUG("callRef found %p for call %p, count = %d",
+                                                               callRef, callPtr, callPtr->refCount);
+            }
+
+            // if callRef exists, call the handler
+            if (callRef != NULL)
+            {
+                // Itinerate on the handler list of the session
+                while ( linkHandlerPtr )
+                {
+                    HandlerCtxNode_t * handlerCtxPtr = CONTAINER_OF(linkHandlerPtr,
+                                                                    HandlerCtxNode_t,
+                                                                    link);
+
+                    linkHandlerPtr = le_dls_PeekPrev(&sessionCtxPtr->handlerList, linkHandlerPtr);
+
+                    // Call the handler
+                    LE_DEBUG("call handler for sessionRef %p, callRef %p event.%d",
+                             sessionCtxPtr->sessionRef,
+                             callRef,
+                             callPtr->event);
+
+                    handlerCtxPtr->handlerFuncPtr(callRef,
+                                                  callPtr->event,
+                                                  handlerCtxPtr->userContext);
+                }
+            }
+            else
+            {
+                LE_ERROR("Null callRef !!!");
+            }
+        }
+        else
+        {
+            LE_DEBUG("sessionCtxPtr %p has no handler", sessionCtxPtr);
+        }
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Remove a creator from a call
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void RemoveCreatorFromCall
+(
+    le_mcc_Call_t* callPtr,
+    le_msg_SessionRef_t sessionRef
+)
+{
+    le_dls_Link_t* linkPtr = le_dls_Peek(&(callPtr->creatorList));
+
+    while ( linkPtr )
+    {
+        SessionRefNode_t* sessionRefNodePtr = CONTAINER_OF(linkPtr, SessionRefNode_t, link);
+        linkPtr = le_dls_PeekNext(&(callPtr->creatorList), linkPtr);
+
+        if (sessionRefNodePtr->sessionRef == sessionRef)
+        {
+            LE_DEBUG("Remove sessionRef %p from callPtr %p", sessionRef, callPtr);
+            le_dls_Remove(&(callPtr->creatorList), &(sessionRefNodePtr->link));
+            le_mem_Release(sessionRefNodePtr);
+        }
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Remove a call reference from a session context
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void RemoveCallRefFromSessionCtx
+(
+    SessionCtxNode_t* sessionCtxPtr,
+    le_mcc_CallRef_t    callRef
+)
+{
+    le_dls_Link_t* linkPtr = le_dls_Peek(&sessionCtxPtr->callRefList);
+
+    while ( linkPtr )
+    {
+        CallRefNode_t* CallRefPtr = CONTAINER_OF( linkPtr,
+                                                  CallRefNode_t,
+                                                  link);
+
+        linkPtr = le_dls_PeekNext(&sessionCtxPtr->callRefList, linkPtr);
+
+        if ( CallRefPtr->callRef == callRef )
+        {
+            // Remove this node
+            LE_DEBUG("Remove callRef %p from sessionCtxPtr %p", callRef, sessionCtxPtr);
+            le_ref_DeleteRef(MccCallRefMap, CallRefPtr->callRef);
+            le_dls_Remove(&sessionCtxPtr->callRefList, &(CallRefPtr->link));
+            le_mem_Release(CallRefPtr);
+        }
+    }
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -329,9 +681,6 @@ static void NewCallEventHandler
         callPtr->event = dataPtr->event;
         callPtr->termination = dataPtr->terminationEvent;
         callPtr->terminationCode = dataPtr->terminationCode;
-
-        // Update reference count
-        UpdateReferenceCount(callPtr);
     }
 
     // Handle call state transition
@@ -346,10 +695,28 @@ static void NewCallEventHandler
         break;
     }
 
-    // Call the client's handler
-    le_event_Report(CallStateEventId,
-                    &callPtr->callRef,
-                    sizeof(callPtr->callRef));
+    // Call the clients' handlers
+    CallHandlers(callPtr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler function for Call Event Notifications. Useful to remove the callRef of an incoming call
+ * when no client subscribed to the service
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void MyCallEventHandler
+(
+    le_mcc_CallRef_t  callRef,
+    le_mcc_Event_t callEvent,
+    void* contextPtr
+)
+{
+    if (callEvent == LE_MCC_EVENT_TERMINATED)
+    {
+        le_mcc_Delete(callRef);
+    }
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -364,37 +731,40 @@ static void CloseSessionEventHandler
     void*               contextPtr
 )
 {
-    le_mcc_Call_t* callPtr = NULL;
-    SessionRefNode_t* sessionRefNodePtr;
-    le_dls_Link_t* linkPtr;
+    // clean session context
+    SessionCtxNode_t* sessionCtxPtr = GetSessionCtx(sessionRef);
 
-    le_ref_IterRef_t iterRef = le_ref_GetIterator(MccCallRefMap);
-
-    while (le_ref_NextNode(iterRef) == LE_OK)
+    if (sessionCtxPtr)
     {
-        callPtr = (le_mcc_Call_t*) le_ref_GetValue(iterRef);
+        le_dls_Link_t* linkPtr = le_dls_Pop(&sessionCtxPtr->callRefList);
 
-        // Remove corresponding node from the sessionRefList
-        linkPtr = le_dls_Peek(&(callPtr->sessionRefList));
-
-        while (linkPtr != NULL)
+        while ( linkPtr )
         {
-            sessionRefNodePtr = CONTAINER_OF(linkPtr, SessionRefNode_t, link);
+            CallRefNode_t* CallRefPtr = CONTAINER_OF( linkPtr,
+                                                      CallRefNode_t,
+                                                      link);
 
-            linkPtr = le_dls_PeekNext(&(callPtr->sessionRefList), linkPtr);
+            le_mcc_Call_t* callPtr = le_ref_Lookup(MccCallRefMap, CallRefPtr->callRef);
 
-            // Remove corresponding node from the sessionRefList
-            if ( sessionRefNodePtr->sessionRef == sessionRef )
-            {
-                le_dls_Remove(&(callPtr->sessionRefList),
-                    &(sessionRefNodePtr->link));
+            le_ref_DeleteRef(MccCallRefMap, CallRefPtr->callRef);
+            le_mem_Release(CallRefPtr);
 
-                le_mem_Release(sessionRefNodePtr);
+            // Remove the sessionRef from the call context
+            RemoveCreatorFromCall(callPtr, sessionRef);
 
-                callPtr->refCount--;
-                le_mem_Release(callPtr);
-            }
+            callPtr->refCount--;
+            LE_DEBUG("Release call %p countRef %d", callPtr, callPtr->refCount);
+            le_mem_Release(callPtr);
+
+            linkPtr = le_dls_Pop(&sessionCtxPtr->callRefList);
         }
+
+        if (le_dls_NumLinks(&sessionCtxPtr->handlerList) == 0 )
+        {
+            le_dls_Remove(&SessionCtxList, &(sessionCtxPtr->link));
+            le_mem_Release(sessionCtxPtr);
+        }
+    // Otherwise, the clean will be done during the handlers removal
     }
 }
 
@@ -423,13 +793,25 @@ le_result_t le_mcc_Init
     SessionRefPool = le_mem_CreatePool("SessionRefPool", sizeof(SessionRefNode_t));
     le_mem_ExpandPool(SessionRefPool, MCC_MAX_CALL);
 
+    HandlerPool = le_mem_CreatePool("HandlerPool", sizeof(HandlerCtxNode_t));
+    le_mem_ExpandPool(HandlerPool, MCC_MAX_SESSION);
+
+    CallRefPool = le_mem_CreatePool("CallRefPool", sizeof(CallRefNode_t));
+    le_mem_ExpandPool(CallRefPool, MCC_MAX_SESSION*MCC_MAX_CALL);
+
+    SessionCtxPool = le_mem_CreatePool("SessionCtxPool", sizeof(SessionCtxNode_t));
+    le_mem_ExpandPool(SessionCtxPool, MCC_MAX_SESSION);
+
+    HandlerRefMap = le_ref_CreateMap("HandlerRefMap", MCC_MAX_SESSION);
+
     // Create the Safe Reference Map to use for Call object Safe References.
     MccCallRefMap = le_ref_CreateMap("MccCallMap", MCC_MAX_CALL);
 
     // Initialize call wakeup source - succeeds or terminates caller
     WakeupSource = le_pm_NewWakeupSource(0, CALL_WAKEUP_SOURCE_NAME);
 
-    CallStateEventId = le_event_CreateId("CallStateEventId", sizeof(le_mcc_CallRef_t));
+    SessionCtxList = LE_DLS_LIST_INIT;
+    CallList = LE_DLS_LIST_INIT;
 
     // Register a handler function for Call Event indications
     if(pa_mcc_SetCallEventHandler(NewCallEventHandler) != LE_OK)
@@ -437,6 +819,9 @@ le_result_t le_mcc_Init
         LE_CRIT("Add pa_mcc_SetCallEventHandler failed");
         return LE_FAULT;
     }
+
+    // Subscribe to its own service to
+    le_mcc_AddCallEventHandler( MyCallEventHandler, NULL );
 
     // Add a handler to the close session service
     le_msg_AddServiceCloseHandler( le_mcc_GetServiceRef(),
@@ -477,13 +862,40 @@ le_mcc_CallRef_t le_mcc_Create
         return NULL;
     }
 
-    // Create the Call object.
+    // Get the Call object.
     le_mcc_Call_t* mccCallPtr = GetCallObject(phoneNumPtr, -1, false);
+    SessionCtxNode_t* sessionCtxPtr = GetSessionCtx(le_mcc_GetClientSessionRef());
 
+    if (!sessionCtxPtr)
+    {
+        // Create the session context
+        sessionCtxPtr = CreateSessionCtx();
+
+        if (!sessionCtxPtr)
+        {
+            LE_ERROR("Impossible to create the session context");
+            return NULL;
+        }
+    }
+
+    // Call object already exists => do not allocate a new one
     if (mccCallPtr != NULL)
     {
-        le_mem_AddRef(mccCallPtr);
-        mccCallPtr->refCount++;
+        // Check if the client has already create this callRef
+        // If yes, search the call reference into its session context
+        if ( !IsCallCreatedByClient(mccCallPtr, le_mcc_GetClientSessionRef()) )
+        {
+            // same call created by a different client
+            le_mem_AddRef(mccCallPtr);
+            mccCallPtr->refCount++;
+        }
+        else
+        {
+            // already allocated by the current client
+
+            // Return the callRef
+            return GetCallRefFromSessionCtx(mccCallPtr, sessionCtxPtr);
+        }
     }
     else
     {
@@ -499,20 +911,16 @@ le_mcc_CallRef_t le_mcc_Create
     newSessionRefPtr->sessionRef = le_mcc_GetClientSessionRef();
     newSessionRefPtr->link = LE_DLS_LINK_INIT;
 
-    // Add the new sessionRef into the the sessionRef list
-    le_dls_Queue(&mccCallPtr->sessionRefList,
+    LE_DEBUG("Add a link in mccCallPtr %p for sessionRef %p",
+                                                mccCallPtr, newSessionRefPtr->sessionRef);
+
+    // Add the new sessionRef into the creator list
+    le_dls_Queue(&mccCallPtr->creatorList,
                     &(newSessionRefPtr->link));
 
-    if (mccCallPtr==NULL)
-    {
-        LE_ERROR("mccCallPtr null!!!!");
-        return NULL;
-    }
-
-    LE_DEBUG("Create Call ref.%p", mccCallPtr->callRef);
-
+    // Add the call in the session context
     // Return a Safe Reference for this Call object.
-    return (mccCallPtr->callRef);
+    return SetCallRefForSessionCtx(mccCallPtr, sessionCtxPtr);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -540,36 +948,42 @@ le_result_t le_mcc_Delete
         return LE_NOT_FOUND;
     }
 
+    LE_DEBUG("Delete callRef %p callPtr %p", callRef, callPtr);
+
     if (callPtr->inProgress)
     {
         return LE_FAULT;
     }
     else
     {
-        SessionRefNode_t* sessionRefNodePtr;
-        le_dls_Link_t* linkPtr;
+        // Remove corresponding node from the creatorList
+        RemoveCreatorFromCall(callPtr, le_mcc_GetClientSessionRef());
 
-        callPtr->refCount--;
-        LE_DEBUG("refcount %d", callPtr->refCount);
+        // Find the callRef in the session context
+        SessionCtxNode_t* sessionCtxPtr = GetSessionCtx(le_mcc_GetClientSessionRef());
 
-        // Remove corresponding node from the sessionRefList
-        linkPtr = le_dls_Peek(&(callPtr->sessionRefList));
-
-        while (linkPtr != NULL)
+        if (sessionCtxPtr)
         {
-            sessionRefNodePtr = CONTAINER_OF(linkPtr, SessionRefNode_t, link);
-            linkPtr = le_dls_PeekNext(&(callPtr->sessionRefList), linkPtr);
+            RemoveCallRefFromSessionCtx(sessionCtxPtr, callRef);
 
-            if ( sessionRefNodePtr->sessionRef == le_mcc_GetClientSessionRef() )
+            if ( ( le_dls_NumLinks(&sessionCtxPtr->handlerList) == 0 ) &&
+                 ( le_dls_NumLinks(&sessionCtxPtr->callRefList) == 0 ) )
             {
-                le_dls_Remove(  &(callPtr->sessionRefList),
-                                &(sessionRefNodePtr->link));
-
-                le_mem_Release(sessionRefNodePtr);
+                LE_DEBUG("Remove sessionCtxPtr %p", sessionCtxPtr);
+                // delete the session context as it is not used anymore
+                le_dls_Remove(&SessionCtxList, &(sessionCtxPtr->link));
+                le_mem_Release(sessionCtxPtr);
             }
         }
+        else
+        {
+            LE_ERROR("No sessionCtx found !!!");
+        }
 
+        callPtr->refCount--;
+        LE_DEBUG("refCount %d", callPtr->refCount);
         le_mem_Release(callPtr);
+
         return LE_OK;
     }
 }
@@ -765,7 +1179,6 @@ le_result_t le_mcc_Answer
     le_mcc_CallRef_t callRef   ///< [IN] The call reference.
 )
 {
-    le_result_t result;
     le_mcc_Call_t* callPtr = le_ref_Lookup(MccCallRefMap, callRef);
 
     if (callPtr == NULL)
@@ -774,12 +1187,7 @@ le_result_t le_mcc_Answer
         return LE_NOT_FOUND;
     }
 
-    result = pa_mcc_Answer();
-    if (result == LE_OK )
-    {
-        callPtr->event = LE_MCC_EVENT_CONNECTED;
-    }
-    return result;
+    return pa_mcc_Answer();
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -787,6 +1195,7 @@ le_result_t le_mcc_Answer
  * Disconnect, or hang up, the specifed call. Any active call handlers
  * will be notified.
  *
+ * @return LE_FAULT         The function failed.
  * @return LE_TIMEOUT       No response was received from the Modem.
  * @return LE_OK            Function succeeded.
  *
@@ -938,24 +1347,32 @@ le_mcc_CallEventHandlerRef_t le_mcc_AddCallEventHandler
     void*                                   contextPtr      ///< [IN] The handlers context.
 )
 {
-    le_event_HandlerRef_t  handlerRef;
-
     if (handlerFuncPtr == NULL)
     {
         LE_KILL_CLIENT("Handler function is NULL !");
         return NULL;
     }
 
-    handlerRef = le_event_AddLayeredHandler("ProfileStateChangeHandler",
-                                            CallStateEventId,
-                                            FirstLayerCallEventHandler,
-                                            (le_event_HandlerFunc_t)handlerFuncPtr);
+    // search the sessionCtx; create it if doesn't exist
+    SessionCtxNode_t* sessionCtxPtr = GetSessionCtx(le_mcc_GetClientSessionRef());
 
-    le_event_SetContextPtr(handlerRef, contextPtr);
+    if (!sessionCtxPtr)
+    {
+        // Create the session context
+        sessionCtxPtr = CreateSessionCtx();
+    }
 
-    CallHandlerCount++;
+    // Add the handler in the list
+    HandlerCtxNode_t * handlerCtxPtr = le_mem_ForceAlloc(HandlerPool);
+    handlerCtxPtr->handlerFuncPtr = handlerFuncPtr;
+    handlerCtxPtr->userContext = contextPtr;
+    handlerCtxPtr->handlerRef = le_ref_CreateRef(HandlerRefMap, handlerCtxPtr);
+    handlerCtxPtr->sessionCtxPtr = sessionCtxPtr;
+    handlerCtxPtr->link = LE_DLS_LINK_INIT;
 
-    return (le_mcc_CallEventHandlerRef_t)(handlerRef);
+    le_dls_Queue(&sessionCtxPtr->handlerList, &handlerCtxPtr->link);
+
+    return handlerCtxPtr->handlerRef;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -971,9 +1388,80 @@ void le_mcc_RemoveCallEventHandler
     le_mcc_CallEventHandlerRef_t handlerRef   ///< [IN] The handler object to remove.
 )
 {
-    CallHandlerCount--;
+    // Get the hander context
+    HandlerCtxNode_t* handlerCtxPtr = le_ref_Lookup(HandlerRefMap, handlerRef);
 
-    le_event_RemoveHandler((le_event_HandlerRef_t)handlerRef);
+    if (handlerCtxPtr == NULL)
+    {
+        LE_ERROR("Invalid reference (%p) provided!", handlerRef);
+        return;
+    }
+
+    // Invalidate the Safe Reference.
+    le_ref_DeleteRef(HandlerRefMap, handlerRef);
+
+    SessionCtxNode_t* sessionCtxPtr = handlerCtxPtr->sessionCtxPtr;
+
+    if (!sessionCtxPtr)
+    {
+        LE_ERROR("No sessionCtxPtr !!!");
+        return;
+    }
+
+    // Remove the handler node from the session context
+    le_dls_Remove(&(sessionCtxPtr->handlerList), &(handlerCtxPtr->link));
+    le_mem_Release(handlerCtxPtr);
+
+    // if no more handler, clean the session context
+    if (le_dls_NumLinks(&sessionCtxPtr->handlerList) == 0 )
+    {
+        le_dls_Link_t* linkPtr = le_dls_Peek(&sessionCtxPtr->callRefList);
+        bool deleteSessionCtx = true;
+
+        // Iterate on all call associated with this session
+        while( linkPtr )
+        {
+            CallRefNode_t* CallRefPtr = CONTAINER_OF( linkPtr,
+                                                      CallRefNode_t,
+                                                      link);
+            linkPtr = le_dls_PeekNext(&sessionCtxPtr->callRefList, linkPtr);
+
+            le_mcc_Call_t* callPtr = le_ref_Lookup(MccCallRefMap, CallRefPtr->callRef);
+
+            if (callPtr)
+            {
+                // If the callRef was created by another client, we need to remove a reference on this
+                // callRef
+                if ( !IsCallCreatedByClient(callPtr, sessionCtxPtr->sessionRef) )
+                {
+                    le_ref_DeleteRef(MccCallRefMap, CallRefPtr->callRef);
+                    le_dls_Remove(&sessionCtxPtr->callRefList, &(CallRefPtr->link));
+                    le_mem_Release(CallRefPtr);
+
+                    callPtr->refCount--;
+                    LE_DEBUG("Release call %p countRef %d", callPtr, callPtr->refCount);
+                    le_mem_Release(callPtr);
+                }
+                else
+                {
+                    // a call was created by this client, do not delete its session context
+                    LE_DEBUG("Delete the session context");
+                     deleteSessionCtx = false;
+                }
+            }
+            else
+            {
+                LE_ERROR("No valid callPtr !!!");
+            }
+        }
+
+        if (deleteSessionCtx)
+        {
+            le_dls_Remove(&SessionCtxList, &(sessionCtxPtr->link));
+            le_mem_Release(sessionCtxPtr);
+        }
+    }
+
 }
 
 //--------------------------------------------------------------------------------------------------

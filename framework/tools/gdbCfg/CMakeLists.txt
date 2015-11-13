@@ -19,3 +19,17 @@ mkexe(  gdbCfg
             ../installer/components/appConfig/inc/configInstaller.h
             ../installer/components/appConfig/src/configInstaller.c
             )
+
+add_custom_command(OUTPUT ${EXECUTABLE_OUTPUT_PATH}/straceCfg
+                   COMMAND ln -sf gdbCfg straceCfg
+                   WORKING_DIRECTORY ${EXECUTABLE_OUTPUT_PATH}
+                   DEPENDS gdbCfg
+                   )
+
+add_custom_target(straceCfg
+                  ALL
+                  DEPENDS ${EXECUTABLE_OUTPUT_PATH}/straceCfg
+                  )
+
+add_dependencies(straceCfg ${LEGATO_FRAMEWORK_TARGET})
+

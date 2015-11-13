@@ -188,8 +188,6 @@ le_msg_MessageRef_t msgProto_AllocMessage
 /**
  * Gets a reference that can be used to refer to a particular version of a particular protocol.
  *
- * This is used to help match up clients with services that are talking the same protocol.
- *
  * @return  The protocol reference.
  */
 //--------------------------------------------------------------------------------------------------

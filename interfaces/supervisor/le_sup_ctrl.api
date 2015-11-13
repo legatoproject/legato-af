@@ -10,10 +10,10 @@
  * @section legatoServicesSupervisor_binding Binding
  *
 You can use a definition @c .adef file to bind your client-side app and component to the
-server-side Supervisor Control service. 
+server-side Supervisor Control service.
  *
 This code sample shows how to bind an app to this service:
-@code 
+@code
 bindings
 {
 myExe.myComp.le_sup_ctrl -> <root>.le_sup_ctrl
@@ -33,7 +33,7 @@ myExe.myComp.le_sup_ctrl -> <root>.le_sup_ctrl
  * @endcode
  *
  * where @c myApp is the name of the app.
- 
+
  * @section legatoServicesSupervisor_stop Stop App
  *
  * Use le_sup_ctrl_StopApp() to automatically stop an app.

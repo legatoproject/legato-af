@@ -1,16 +1,18 @@
 /** @page getstartedTargetHostCom Target/Host Communications
 
-You need to @subpage getstartedConfigIP before you can install Legato on a target.
-
 We use a serial communication program like Minicom to access the target through the UART port to
-for console communications. Ethernet and Micro-USB ports are used for development. 
-See @ref getstartedDevKitCables for more info. 
+for console communications.
 
-If you're using Minicom, you access the config and initialize menus through @c CTRL+A Z.
+The micro-USB or Ethernet ports are used for development.
+See @ref getstartedMangOHAssemble mangOH for Legato.
 
-Run as <b>root</b> user, so no password is required.
+If you're using Minicom, you access the config and initialize menus through the @c CTRL+A Z command.
 
-Once the host and target are communicating, you can complete the target setup.
+You'll need to @subpage getstartedConfigIP.
+
+Always remember to run the target as <b>root</b> user, so no password will be required.
+
+Once the host and target are communicating, you can @ref getstartedMangOHInstallSoftware.
 
 @note Use the @ref toolsTarget_setNet tool to set your MAC address so you don't have to go through @c ifconfig every time
 you reboot the target.

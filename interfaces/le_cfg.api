@@ -20,7 +20,7 @@
  *
  * @code secondTree:/path/to/my/value @endcode
  *
- * In this case, a value named @c value is read from the tree named @c secondTree 
+ * In this case, a value named @c value is read from the tree named @c secondTree
  *
  * The tree is broken down into stems and leaves.
  *
@@ -62,8 +62,9 @@
  * A write transaction in progress will also block creating another write transaction.
  * If a write transaction is in progress when the request for another write transaction comes in,
  * the secondary request will be blocked. This secondary request will remain blocked until the
- * first transaction has been comitted or has timed out.
- *
+ * first transaction has been comitted or has timed out. The transaction timeout default is 30
+ * seconds. You can extend the timeout by setting a value (in seconds) in
+ * @c configTree/transactionTimeout.
  *
  * @section cfg_iteration Iterating the Tree
  *

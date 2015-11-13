@@ -14,6 +14,7 @@ system:
               maxMQueueBytes (integer)
               maxThreads (integer)
               maxQueuedSignals (integer)
+              maxSecureStorageBytes (integer)
               groups
                   groupName0
                   groupName1

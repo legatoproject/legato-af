@@ -15,7 +15,7 @@ and @c mkexe.
 
 <b>build</b> -
 results of a framework build. Includes @c build/tools (tools used by the build system)
-and @c build/target (output of a build for a specific target e.g., /build/wp7).
+and @c build/target (output of a build for a specific target e.g., /build/wp85).
 
 <b>cmake </b> -
 CMake scripts used by the build system.

@@ -1,7 +1,7 @@
 //--------------------------------------------------------------------------------------------------
 /** @file spy.c
  *
- * Legato Inspection tool's spy, whose functions are called by the modules under inspection in 
+ * Legato Inspection tool's spy, whose functions are called by the modules under inspection in
  * order to help the Inspection tool do its jobs.
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
@@ -190,7 +190,7 @@ size_t** spy_GetListOfThreadObjsChgCntRef
 //--------------------------------------------------------------------------------------------------
 void spy_SetListOfTimersChgCntRef
 (
-    size_t** listOfTimersChgCntRefRef     ///< [IN] Ref to the list change counter for timers. 
+    size_t** listOfTimersChgCntRefRef     ///< [IN] Ref to the list change counter for timers.
 )
 {
     ListOfTimersChgCntRefRef = listOfTimersChgCntRefRef;

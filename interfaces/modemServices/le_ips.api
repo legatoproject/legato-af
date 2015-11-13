@@ -10,7 +10,7 @@
  *
  * @section le_ips_binding IPC interfaces binding
  *
- * All the functions of this API are provided by the @b modemService foundation service.
+ * All the functions of this API are provided by the @b modemService.
  *
  * Here's a code sample binding to modem services:
  * @verbatim

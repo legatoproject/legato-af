@@ -16,9 +16,9 @@
 
 
 //--------------------------------------------------------------------------------------------------
-/// Name of the 'sdir' tool protocol service instance.
+/// Name used for both client and server interfaces of the 'sdir' tool protocol.
 //--------------------------------------------------------------------------------------------------
-#define LE_SDTP_SERVICE_NAME    "sdirTool"
+#define LE_SDTP_INTERFACE_NAME  "sdirTool"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -37,6 +37,8 @@ typedef enum
     LE_SDTP_MSGID_LIST,             ///< List all contents of the Service Directory.
                                     ///  Payload is a file descriptor to which output
                                     ///  should be written.
+
+    LE_SDTP_MSGID_LIST_JSON,        ///< Same as LE_SDTP_MSGID_LIST, but the output in json format.
 
     LE_SDTP_MSGID_UNBIND_ALL,       ///< Delete all bindings (This message has no payload).
 
@@ -57,8 +59,8 @@ typedef struct
     le_sdtp_MsgType_t msgType;  ///< Indicates what type of message this is.
     uid_t client;               ///< Unix user ID of the client.
     uid_t server;               ///< Unix user ID of the server.
-    char clientServiceName[LIMIT_MAX_SERVICE_NAME_BYTES];   ///< Client's service name.
-    char serverServiceName[LIMIT_MAX_SERVICE_NAME_BYTES];   ///< Server's service name.
+    char clientInterfaceName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES]; ///< Client's interface name.
+    char serverInterfaceName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES]; ///< Server's interface name.
 }
 le_sdtp_Msg_t;
 

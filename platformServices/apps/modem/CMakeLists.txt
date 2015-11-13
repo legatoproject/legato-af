@@ -94,9 +94,6 @@ else()
 endif()
 
 mkapp(  modemService.adef
-            -c ${MODEM_COMPONENTS_DIR}/platformAdaptor/qmi
-            -c ${LEGATO_ROOT}/components
-            -c ${LEGATO_ROOT}/components/atManager
             -i ${CMAKE_CURRENT_BINARY_DIR}
             -i ${LEGATO_ROOT}/interfaces/modemServices
             -i ${LEGATO_ROOT}/interfaces/powerMgr

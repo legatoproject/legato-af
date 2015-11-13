@@ -67,12 +67,12 @@ COMPONENT_INIT
         if (strncmp(testCase, "take", strlen("take")) == 0)
         {
             LE_ASSERT(le_riPin_TakeRingSignal() == LE_OK);
-            LE_INFO("Legato is the owner of the Ring Indicator signal, please reboot");
+            LE_INFO("Legato is the owner of the Ring Indicator signal");
         }
         else if (strncmp(testCase, "release", strlen("release")) == 0)
         {
             LE_ASSERT(le_riPin_ReleaseRingSignal() == LE_OK);
-            LE_INFO("Legato is no more the owner of the Ring Indicator signal, please reboot");
+            LE_INFO("Legato is no more the owner of the Ring Indicator signal");
         }
         else if (strncmp(testCase, "pulse", strlen("pulse")) == 0)
         {

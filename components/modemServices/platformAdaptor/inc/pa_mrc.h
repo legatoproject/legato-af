@@ -456,7 +456,9 @@ LE_SHARED le_result_t pa_mrc_GetScanInformationName
 /**
  * This function must be called to get the current preferred operators list.
  *
- * @return Number of Preferred operator found.
+ * @return
+ *   - A positive value on success (number of Preferred operator found).
+ *   - LE_NOT_FOUND if preferred operator list is not available.
  */
 //--------------------------------------------------------------------------------------------------
 LE_SHARED int32_t pa_mrc_GetPreferredOperatorsList
@@ -471,8 +473,8 @@ LE_SHARED int32_t pa_mrc_GetPreferredOperatorsList
  * This function must be called to add a new mobile country/network code in the list
  *
  * @return
- *      - LE_OK             On success
- *      - LE_FAULT          For all other errors
+ *  - LE_FAULT         Function failed.
+ *  - LE_OK            Function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t pa_mrc_AddPreferredOperators
@@ -797,6 +799,35 @@ LE_SHARED le_result_t pa_mrc_SetSignalStrengthIndThresholds
     le_mrc_Rat_t rat,                 ///< Radio Access Technology
     int32_t      lowerRangeThreshold, ///< [IN] lower-range threshold in dBm
     int32_t      upperRangeThreshold  ///< [IN] upper-range strength threshold in dBm
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the serving cell Identifier.
+ *
+ * @return
+ *  - LE_FAULT  Function failed.
+ *  - LE_OK     Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_mrc_GetServingCellId
+(
+    uint32_t* cellIdPtr ///< [OUT] main Cell Identifier.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the Location Area Code of the serving cell.
+ *
+ * @return
+ *  - LE_FAULT  Function failed.
+ *  - LE_OK     Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_mrc_GetServingCellLocAreaCode
+(
+    uint32_t* lacPtr ///< [OUT] Location Area Code of the serving cell.
 );
 
 #endif // LEGATO_PARC_INCLUDE_GUARD

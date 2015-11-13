@@ -24,6 +24,8 @@
 // Definitions
 //--------------------------------------------------------------------------------------------------
 
+#define AVC_SERVICE_CFG "/apps/avcService"
+
 //--------------------------------------------------------------------------------------------------
 /**
  * This ref is returned when a status handler is added/registered.  It is used when the handler is
@@ -57,7 +59,9 @@ typedef enum
     AVC_DOWNLOAD_PENDING,        ///< Received pending download; no response sent yet
     AVC_DOWNLOAD_IN_PROGRESS,    ///< Accepted download, and in progress
     AVC_INSTALL_PENDING,         ///< Received pending install; no response sent yet
-    AVC_INSTALL_IN_PROGRESS      ///< Accepted install, and in progress
+    AVC_INSTALL_IN_PROGRESS,     ///< Accepted install, and in progress
+    AVC_UNINSTALL_PENDING,         ///< Received pending uninstall; no response sent yet
+    AVC_UNINSTALL_IN_PROGRESS      ///< Accepted uninstall, and in progress
 }
 AvcState_t;
 
@@ -147,10 +151,25 @@ static avcServer_InstallHandlerFunc_t QueryInstallHandlerRef = NULL;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Handler registered from avcServer_QueryUninstall() to receive notification when app uninstall is
+ * allowed. Only one registered handler is allowed, and will be set to NULL after being called.
+ */
+//--------------------------------------------------------------------------------------------------
+static avcServer_UninstallHandlerFunc_t QueryUninstallHandlerRef = NULL;
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Timer used for deferring app install.
  */
 //--------------------------------------------------------------------------------------------------
-static le_timer_Ref_t DeferTimer;
+static le_timer_Ref_t installDeferTimer;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Timer used for deferring app uninstall.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_timer_Ref_t uninstallDeferTimer;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -263,7 +282,15 @@ static void UpdateHandler
 
         case LE_AVC_DOWNLOAD_IN_PROGRESS:
         case LE_AVC_DOWNLOAD_COMPLETE:
-            // These events do not cause a state transition
+            LE_DEBUG("Update type for DOWNLOAD is %d", updateType);
+            CurrentUpdateType = updateType;
+            break;
+
+        case LE_AVC_UNINSTALL_PENDING:
+        case LE_AVC_UNINSTALL_IN_PROGRESS:
+        case LE_AVC_UNINSTALL_FAILED:
+        case LE_AVC_UNINSTALL_COMPLETE:
+            LE_ERROR("Received unexpected update status.");
             break;
 
         case LE_AVC_INSTALL_IN_PROGRESS:
@@ -441,10 +468,10 @@ static le_result_t QueryInstall
         // Notify registered control app.
         LE_DEBUG("Reporting status LE_AVC_INSTALL_PENDING");
         CurrentState = AVC_INSTALL_PENDING;
-        StatusHandlerRef( LE_AVC_INSTALL_PENDING,
-                          0,
-                          0,
-                          StatusHandlerContextPtr);
+        StatusHandlerRef(LE_AVC_INSTALL_PENDING,
+                         -1,
+                         -1,
+                         StatusHandlerContextPtr);
     }
 
     else if ( IsControlAppInstalled )
@@ -459,8 +486,8 @@ static le_result_t QueryInstall
         // Try the install later
         le_clk_Time_t interval = { .sec = BLOCKED_DEFER_TIME*60 };
 
-        le_timer_SetInterval(DeferTimer, interval);
-        le_timer_Start(DeferTimer);
+        le_timer_SetInterval(installDeferTimer, interval);
+        le_timer_Start(installDeferTimer);
     }
 
     else
@@ -483,8 +510,79 @@ static le_result_t QueryInstall
             // Try the install later
             le_clk_Time_t interval = { .sec = BLOCKED_DEFER_TIME*60 };
 
-            le_timer_SetInterval(DeferTimer, interval);
-            le_timer_Start(DeferTimer);
+            le_timer_SetInterval(installDeferTimer, interval);
+            le_timer_Start(installDeferTimer);
+        }
+    }
+
+    return result;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Query if it's okay to proceed with an application uninstall
+ *
+ * @return
+ *      - LE_OK if uninstall can proceed right away
+ *      - LE_BUSY if uninstall is deferred
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t QueryUninstall
+(
+    void
+)
+{
+    le_result_t result = LE_BUSY;
+
+    if ( StatusHandlerRef != NULL )
+    {
+        // Notify registered control app.
+        LE_DEBUG("Reporting status LE_AVC_UNINSTALL_PENDING");
+        CurrentState = AVC_UNINSTALL_PENDING;
+        StatusHandlerRef( LE_AVC_UNINSTALL_PENDING,
+                          0,
+                          0,
+                          StatusHandlerContextPtr);
+    }
+
+    else if ( IsControlAppInstalled )
+    {
+        // There is a control app installed, but the handler is not yet registered.  Defer
+        // the decision to allow the control app time to register.
+        LE_INFO("Automatically deferring uninstall, while waiting for control app to register");
+
+        // Since the decision is not to uninstall at this time, go back to idle
+        CurrentState = AVC_IDLE;
+
+        // Try the uninstall later
+        le_clk_Time_t interval = { .sec = BLOCKED_DEFER_TIME*60 };
+
+        le_timer_SetInterval(uninstallDeferTimer, interval);
+        le_timer_Start(uninstallDeferTimer);
+    }
+
+    else
+    {
+        // There is no control app; automatically accept any pending uninstalls,
+        // if there are no blocking apps, otherwise, defer the uninstall.
+        if ( BlockRefCount == 0 )
+        {
+            LE_INFO("Automatically accepting uninstall");
+            CurrentState = AVC_UNINSTALL_IN_PROGRESS;
+            result = LE_OK;
+        }
+        else
+        {
+            LE_INFO("Automatically deferring uninstall");
+
+            // Since the decision is not to uninstall at this time, go back to idle
+            CurrentState = AVC_IDLE;
+
+            // Try the uninstall later
+            le_clk_Time_t interval = { .sec = BLOCKED_DEFER_TIME*60 };
+
+            le_timer_SetInterval(uninstallDeferTimer, interval);
+            le_timer_Start(uninstallDeferTimer);
         }
     }
 
@@ -494,10 +592,10 @@ static le_result_t QueryInstall
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Called when the defer timer expires.
+ * Called when the install defer timer expires.
  */
 //--------------------------------------------------------------------------------------------------
-void TimerExpiryHandler
+void InstallTimerExpiryHandler
 (
     le_timer_Ref_t timerRef    ///< Timer that expired
 )
@@ -507,6 +605,24 @@ void TimerExpiryHandler
         // Notify the registered handler to proceed with the install; only called once.
         QueryInstallHandlerRef();
         QueryInstallHandlerRef = NULL;
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Called when the uninstall defer timer expires.
+ */
+//--------------------------------------------------------------------------------------------------
+void UninstallTimerExpiryHandler
+(
+        le_timer_Ref_t timerRef    ///< Timer that expired
+)
+{
+    if ( QueryUninstall() == LE_OK )
+    {
+        // Notify the registered handler to proceed with the uninstall; only called once.
+        QueryUninstallHandlerRef();
+        QueryUninstallHandlerRef = NULL;
     }
 }
 
@@ -556,6 +672,82 @@ le_result_t avcServer_QueryInstall
     }
 
     return result;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Query the AVC Server if it's okay to proceed with an application uninstall
+ *
+ * If an uninstall can't proceed right away, then the handlerRef function will be called when it is
+ * okay to proceed with an uninstall. Note that handlerRef will be called at most once.
+ *
+ * @return
+ *      - LE_OK if uninstall can proceed right away (handlerRef will not be called)
+ *      - LE_BUSY if handlerRef will be called later to notify when uninstall can proceed
+ *      - LE_FAULT on error
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t avcServer_QueryUninstall
+(
+    avcServer_UninstallHandlerFunc_t handlerRef  ///< [IN] Handler to receive install response.
+)
+{
+    le_result_t result;
+
+    // Return busy, if user tries to uninstall multiple apps together
+    // As the query is already in progress, both the apps will be removed after we get permission
+    // for a single uninstall
+    if ( QueryUninstallHandlerRef != NULL )
+    {
+        LE_ERROR("Duplicate uninstall attempt");
+        return LE_BUSY;
+    }
+
+    result = QueryUninstall();
+
+    // Store the handler to call later, once uninstall is allowed.
+    if ( result == LE_BUSY )
+    {
+        QueryUninstallHandlerRef = handlerRef;
+    }
+    else
+    {
+        QueryUninstallHandlerRef = NULL;
+    }
+
+    return result;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Receive the report from avcAppUpdate and pass it to the control APP
+ *
+ *
+ * @return
+ *      - void
+ */
+//--------------------------------------------------------------------------------------------------
+void avcServer_ReportInstallProgress
+(
+    le_avc_Status_t updateStatus,
+    uint installProgress
+)
+{
+    if (StatusHandlerRef != NULL)
+    {
+        LE_DEBUG("Report install progress to registered handler.");
+
+        // Notify registered control app
+        StatusHandlerRef(updateStatus,
+                         -1,
+                         installProgress,
+                         StatusHandlerContextPtr);
+    }
+    else
+    {
+        LE_DEBUG("No handler registered to receive install progress.");
+    }
 }
 
 
@@ -836,8 +1028,8 @@ static le_result_t AcceptInstallApplication
         // Try the install later
         le_clk_Time_t interval = { .sec = BLOCKED_DEFER_TIME*60 };
 
-        le_timer_SetInterval(DeferTimer, interval);
-        le_timer_Start(DeferTimer);
+        le_timer_SetInterval(installDeferTimer, interval);
+        le_timer_Start(installDeferTimer);
     }
     else
     {
@@ -845,6 +1037,44 @@ static le_result_t AcceptInstallApplication
         CurrentState = AVC_INSTALL_IN_PROGRESS;
         QueryInstallHandlerRef();
         QueryInstallHandlerRef = NULL;
+    }
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Accept the currently pending application uninstall
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT on failure
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t AcceptUninstallApplication
+(
+    void
+)
+{
+    // If a user app is blocking the install, then just defer for some time.  Hopefully, the
+    // next time this function is called, the user app will no longer be blocking the install.
+    if ( BlockRefCount > 0 )
+    {
+        // Since the decision is not to install at this time, go back to idle
+        CurrentState = AVC_IDLE;
+
+        // Try the install later
+        le_clk_Time_t interval = { .sec = BLOCKED_DEFER_TIME*60 };
+
+        le_timer_SetInterval(uninstallDeferTimer, interval);
+        le_timer_Start(uninstallDeferTimer);
+    }
+    else
+    {
+        // Notify the registered handler to proceed with the install; only called once.
+        CurrentState = AVC_UNINSTALL_IN_PROGRESS;
+        QueryUninstallHandlerRef();
+        QueryUninstallHandlerRef = NULL;
     }
 
     return LE_OK;
@@ -886,7 +1116,7 @@ le_result_t le_avc_AcceptInstall
     }
     else
     {
-        LE_ERROR("Unknown update type");
+        LE_ERROR("Unknown update type %d", CurrentUpdateType);
         return LE_FAULT;
     }
 }
@@ -930,8 +1160,8 @@ le_result_t le_avc_DeferInstall
         // Try the install later
         le_clk_Time_t interval = { .sec = (deferMinutes*60) };
 
-        le_timer_SetInterval(DeferTimer, interval);
-        le_timer_Start(DeferTimer);
+        le_timer_SetInterval(installDeferTimer, interval);
+        le_timer_Start(installDeferTimer);
 
         return LE_OK;
     }
@@ -942,6 +1172,74 @@ le_result_t le_avc_DeferInstall
     }
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Accept the currently pending uninstall
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT on failure
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_avc_AcceptUninstall
+(
+    void
+)
+{
+    if ( ! IsValidControlAppClient() )
+    {
+        return LE_FAULT;
+    }
+
+    if ( CurrentState != AVC_UNINSTALL_PENDING )
+    {
+        LE_ERROR("Expected AVC_UNINSTALL_PENDING state; current state is %i", CurrentState);
+        return LE_FAULT;
+    }
+
+    return AcceptUninstallApplication();
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Defer the currently pending uninstall
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT on failure
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_avc_DeferUninstall
+(
+    uint32_t deferMinutes
+        ///< [IN]
+)
+{
+    if ( ! IsValidControlAppClient() )
+    {
+        return LE_FAULT;
+    }
+
+    if ( CurrentState != AVC_UNINSTALL_PENDING )
+    {
+        LE_ERROR("Expected AVC_UNINSTALL_PENDING state; current state is %i", CurrentState);
+        return LE_FAULT;
+    }
+
+    // Since the decision is not to install at this time, go back to idle
+    CurrentState = AVC_IDLE;
+
+    LE_DEBUG("Deferring Uninstall for %d minute.", deferMinutes);
+
+    // Try the uninstall later
+    le_clk_Time_t interval = { .sec = (deferMinutes*60) };
+
+    le_timer_SetInterval(uninstallDeferTimer, interval);
+    le_timer_Start(uninstallDeferTimer);
+
+    return LE_OK;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -971,6 +1269,19 @@ le_result_t le_avc_GetUpdateType
     return LE_OK;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the update type of the currently pending update
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void avcServer_SetUpdateType
+(
+    le_avc_UpdateType_t updateType  ///< [IN]
+)
+{
+    CurrentUpdateType = updateType;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1053,6 +1364,30 @@ void le_avc_UnblockInstall
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Sends a registration update to the server.
+ *
+ * ToDo: Remove this function after block transfer is implemented. This function is a temporary
+ * solution to force a registration update and sync object 9 contents with firmware. If block
+ * transfer is implemented, there is no need for firmware to have its own copy of obj9.
+ */
+//--------------------------------------------------------------------------------------------------
+void avcServer_RegistrationUpdate
+(
+    void
+)
+{
+    // This size must be the same as OBJ_PATH_MAX_LEN_V01 in qapi_lwm2m_v01.h
+    char assetList[4032];
+    int listSize;
+    int numAssets;
+
+    assetData_GetAssetList(assetList, sizeof(assetList), &listSize, &numAssets);
+    pa_avc_RegistrationUpdate(assetList, listSize, numAssets);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Initialization function for AVC Daemon
  */
 //--------------------------------------------------------------------------------------------------
@@ -1070,13 +1405,23 @@ COMPONENT_INIT
     le_msg_AddServiceCloseHandler( le_avc_GetServiceRef(), ClientCloseSessionHandler, NULL );
 
     // Init shared timer for deferring app install
-    DeferTimer = le_timer_Create("install defer timer");
-    le_timer_SetHandler(DeferTimer, TimerExpiryHandler);
+    installDeferTimer = le_timer_Create("install defer timer");
+    le_timer_SetHandler(installDeferTimer, InstallTimerExpiryHandler);
+
+    uninstallDeferTimer = le_timer_Create("uninstall defer timer");
+    le_timer_SetHandler(uninstallDeferTimer, UninstallTimerExpiryHandler);
 
     // Initialize the sub-components
     assetData_Init();
     lwm2m_Init();
     avData_Init();
+
+    // Read the user defined timeout from config tree @ /apps/avcService/modemActivityTimeout
+    le_cfg_IteratorRef_t iterRef = le_cfg_CreateReadTxn(AVC_SERVICE_CFG);
+    int timeout = le_cfg_GetInt(iterRef, "modemActivityTimeout", 20);
+    le_cfg_CancelTxn(iterRef);
+
+    pa_avc_SetModemActivityTimeout(timeout);
 
     // Check to see if le_avc is bound, which means there is an installed control app.
     IsControlAppInstalled = IsAvcBound();

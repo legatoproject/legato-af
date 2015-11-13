@@ -57,6 +57,7 @@ struct App_t
     NonNegativeIntLimit_t   maxMQueueBytes;     ///< Total bytes in all POSIX MQueues.
     NonNegativeIntLimit_t   maxQueuedSignals;   ///< Total number of queued signals.
     PositiveIntLimit_t      maxThreads;         ///< Number of threads.
+    NonNegativeIntLimit_t   maxSecureStorageBytes;   ///< Total bytes in Secure Storage.
 
     // Watchdog
     WatchdogAction_t  watchdogAction;
@@ -78,6 +79,9 @@ struct App_t
     ApiClientInterfaceInstance_t* FindClientInterface(const parseTree::Token_t* exeTokenPtr,
                                                       const parseTree::Token_t* componentTokenPtr,
                                                       const parseTree::Token_t* interfaceTokenPtr);
+    ApiInterfaceInstance_t* FindInterface(const parseTree::Token_t* exeTokenPtr,
+                                          const parseTree::Token_t* componentTokenPtr,
+                                          const parseTree::Token_t* interfaceTokenPtr);
 };
 
 

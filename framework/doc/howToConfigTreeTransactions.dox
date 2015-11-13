@@ -31,7 +31,7 @@ Otherwise, the default value @e false is returned.
 
 @section howToConfigTree_write Write to Tree
 
-Before you can write to a tree, you need to run as a user with the correct permissions. 
+Before you can write to a tree, you need to run as a user with the correct permissions.
 Permission settings are handled slightly differently, instead of writing under apps in the system
 tree, you write permission settings under the user's branch.
 

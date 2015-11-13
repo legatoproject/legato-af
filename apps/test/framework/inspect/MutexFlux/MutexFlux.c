@@ -1,6 +1,6 @@
 /*
  * This app creates and deletes mutexes...
- * 
+ *
  */
 
 // TODO: use usleep instead of nanosleep for delete interval
@@ -26,7 +26,7 @@ le_mutex_Ref_t MutexIndexMutexRef; // for accessing "MutexCreateIdx"
 le_sem_Ref_t SemaRef;
 
 /*
- * Thread-specific data key, used to store mutex refs. Note that a Legato thread already stores 
+ * Thread-specific data key, used to store mutex refs. Note that a Legato thread already stores
  * mutex refs for each thread, but there's no public API to access them.
  */
 static pthread_key_t TsdMutexRefKey;
@@ -63,9 +63,9 @@ static void* LockMutex
 
 
 // This is testing if Mutex_t.waitingList is displayed correctly.
-// Thread1 successfully locks mutexes 1, 2, and 3, and then Thread 2 and 3 tries to lock mutex 1, and 
+// Thread1 successfully locks mutexes 1, 2, and 3, and then Thread 2 and 3 tries to lock mutex 1, and
 // Thread 4 and 5 tries to lock mutex 3.
-// Therefore the expected result is that Mutex1's waiting list has Thread2 and 3, Mutex2's waiting 
+// Therefore the expected result is that Mutex1's waiting list has Thread2 and 3, Mutex2's waiting
 // list is empty, and Mutex3's waiting list has Thread4 and 5.
 void testWaitingList
 (
@@ -102,7 +102,7 @@ void testWaitingList
     le_thread_Start(thread4Ref);
     le_thread_Start(thread5Ref);
 
-    // Threads 2, 3, 4, and 5 are mutex-locked and therefore can't get to Post. The function needs 
+    // Threads 2, 3, 4, and 5 are mutex-locked and therefore can't get to Post. The function needs
     // to hang around for a bit for the mutex refs to be available for the threads.
     le_sem_Wait(SemaRef);
 
@@ -167,7 +167,7 @@ void testTraceableRecursive
 
 /////////////////////////////////////////////
 /*
- * Functions relevant to create and delete mutexes 
+ * Functions relevant to create and delete mutexes
  */
 /////////////////////////////////////////////
 
@@ -217,7 +217,7 @@ void createAllMutexes
     void
 )
 {
-    char threadNameBuffer[MAX_THREAD_NAME_SIZE] = {0}; 
+    char threadNameBuffer[MAX_THREAD_NAME_SIZE] = {0};
 
     long quotient = MutexNum / ThreadNum;
     long remainder = MutexNum % ThreadNum;
@@ -259,7 +259,7 @@ void createAllMutexes
 // The offsets are distances from Min and Max, therefore they must be greater than 0.
 // If they result in a range such that the lower bound is greater than the upper bound, no mutex is
 // deleted.
-static void DelMutexes 
+static void DelMutexes
 (
     long offsetFromMin,
     long offsetFromMax
@@ -268,7 +268,7 @@ static void DelMutexes
     if ((offsetFromMin < 0) || (offsetFromMax < 0))
     {
         LE_WARN("DelMutexes bad params - negative offset(s).");
-        return; 
+        return;
     }
 
     struct timespec sleepTime = {0, DelInv};
@@ -281,7 +281,7 @@ static void DelMutexes
         nanosleep(&sleepTime, NULL);
         le_mutex_Unlock(mraRef->mutexRefArray[idx]);
         idx++;
-    } 
+    }
 }
 
 
@@ -335,7 +335,7 @@ static void DelAllMutexesForMidThread
 }
 
 
-// wait for all threads to finish creating their mutexes, then ask them to do something. 
+// wait for all threads to finish creating their mutexes, then ask them to do something.
 void queueFuncToAllThreads
 (
     le_event_DeferredFunc_t func
@@ -347,7 +347,7 @@ void queueFuncToAllThreads
         le_event_QueueFunctionToThread(ThreadRefArray[cnt], func, NULL, NULL);
         cnt++;
     }
-} 
+}
 
 
 /////////////////////////////////////////////

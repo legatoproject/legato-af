@@ -86,7 +86,7 @@ After setting the radio access technology, you'll need to do a <c>legato restart
 
 Regardless if security is enabled or not, the SIM card PIN code  must be entered for every operation.
 The only ways to change the PIN code are through @c changepin and @c unblock.
- 
+
 @verbatim cm sim
 cm sim status @endverbatim
 > Get sim status

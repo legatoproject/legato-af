@@ -87,7 +87,7 @@ const cm_Service_t Services[] = {
         .defaultCommandPtr = "read",
         .helpHandler = cm_ips_PrintIpsHelp,
         .commandHandler = cm_ips_ProcessIpsCommand
-    },    
+    },
 };
 
 //--------------------------------------------------------------------------------------------------

@@ -659,11 +659,11 @@ static void FirstLayerStreamEventHandler
     void* secondLayerHandlerFunc
 )
 {
-    pa_audio_StreamEvent_t* streamEventPtr = reportPtr;
+    pa_audio_StreamEvent_t*      streamEventPtr = reportPtr;
     StreamEventHandlerRefNode_t* streamRefNodePtr = le_event_GetContextPtr();
 
 
-    if ((AudioStream[streamEventPtr->interface]->streamRef == NULL)||
+    if ((AudioStream[streamEventPtr->interface]->streamRef == NULL) ||
         (streamRefNodePtr == NULL))
     {
         LE_KILL_CLIENT("Invalid reference provided!");
@@ -674,19 +674,34 @@ static void FirstLayerStreamEventHandler
     {
         case PA_AUDIO_BITMASK_MEDIA_EVENT:
         {
+            le_audio_Stream_t* streamPtr = le_ref_Lookup(
+                                                AudioStreamRefMap,
+                                                AudioStream[streamEventPtr->interface]->streamRef);
+            if (streamPtr != NULL)
+            {
+                // In case of AMR the MEDIA_NO_MORE_SAMPLES corresponds to MEDIA_ENDED event
+                if (streamPtr->encodingFormat == LE_AUDIO_AMR)
+                {
+                    if (streamEventPtr->event.mediaEvent == LE_AUDIO_MEDIA_NO_MORE_SAMPLES)
+                    {
+                        streamEventPtr->event.mediaEvent = LE_AUDIO_MEDIA_ENDED;
+                    }
+                }
+            }
+
             le_audio_MediaHandlerFunc_t clientHandlerFunc = secondLayerHandlerFunc;
-                clientHandlerFunc(AudioStream[streamEventPtr->interface]->streamRef,
-                      streamEventPtr->event.mediaEvent,
-                      streamRefNodePtr->userCtx);
+            clientHandlerFunc(AudioStream[streamEventPtr->interface]->streamRef,
+                              streamEventPtr->event.mediaEvent,
+                              streamRefNodePtr->userCtx);
         }
         break;
 
         case PA_AUDIO_BITMASK_DTMF_DETECTION:
         {
             le_audio_DtmfDetectorHandlerFunc_t clientHandlerFunc = secondLayerHandlerFunc;
-                clientHandlerFunc(AudioStream[streamEventPtr->interface]->streamRef,
-                      streamEventPtr->event.dtmf,
-                      streamRefNodePtr->userCtx);
+            clientHandlerFunc(AudioStream[streamEventPtr->interface]->streamRef,
+                              streamEventPtr->event.dtmf,
+                              streamRefNodePtr->userCtx);
         }
         break;
     }
@@ -766,7 +781,7 @@ static void RemoveStreamEventHandler
 
     if (streamRefNodePtr == NULL)
     {
-        LE_WARN("Invalid reference (%p) provided!", streamRefNodePtr);
+        LE_DEBUG("Cannot find stream reference (%p)", streamRefNodePtr);
         return;
     }
 
@@ -831,6 +846,9 @@ static void DestructStream
 
     le_audio_Stream_t* streamPtr = objPtr;
 
+    RemoveAllHandlersFromHdlrLists(streamPtr);
+
+    le_media_Close(streamPtr);
     pa_audio_Stop(streamPtr->audioInterface);
 
     if (streamPtr->fd != LE_AUDIO_NO_FD)
@@ -839,8 +857,6 @@ static void DestructStream
     }
 
     DeleteAllConnectorPathsFromStream (streamPtr);
-
-    RemoveAllHandlersFromHdlrLists(streamPtr);
 
     le_hashmap_RemoveAll(streamPtr->connectorList);
     ReleaseHashMapElement(streamPtr->connectorList);
@@ -860,7 +876,7 @@ static void DestructStream
 static void StreamEventHandler
 (
     pa_audio_StreamEvent_t* streamEventPtr,
-    void*                 contextPtr
+    void*                   contextPtr
 )
 {
     LE_DEBUG("Event detected, interface %d, streamEvent %d", streamEventPtr->interface,
@@ -869,13 +885,14 @@ static void StreamEventHandler
     if (!AudioStream[streamEventPtr->interface] ||
         !AudioStream[streamEventPtr->interface]->streamEventId)
     {
-        LE_ERROR("Stream not opened %d !!!!!", streamEventPtr->interface);
-        return;
+        LE_DEBUG("Stream not opened (interface.%d)", streamEventPtr->interface);
     }
-
-    le_event_Report(AudioStream[streamEventPtr->interface]->streamEventId,
-                    streamEventPtr,
-                    sizeof(pa_audio_StreamEvent_t));
+    else
+    {
+        le_event_Report(AudioStream[streamEventPtr->interface]->streamEventId,
+                        streamEventPtr,
+                        sizeof(pa_audio_StreamEvent_t));
+    }
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1491,6 +1508,47 @@ le_result_t le_audio_GetGain
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Set the value of a platform specific gain in the audio subsystem.
+ *
+ * @return LE_FAULT         The function failed.
+ * @return LE_NOT_FOUND     The specified gain's name is not recognized in your audio subsystem.
+ * @return LE_OUT_OF_RANGE  The gain parameter is out of range
+ * @return LE_OK            The function succeeded.
+ *
+ * @warning Ensure to check the names of supported gains for your specific platform.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_audio_SetPlatformSpecificGain
+(
+    const char*    gainNamePtr, ///< [IN] Name of the platform specific gain.
+    uint32_t       gain         ///< [IN] The gain value (specific to the platform)
+)
+{
+    return pa_audio_SetPlatformSpecificGain(gainNamePtr, gain);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the value of a platform specific gain in the audio subsystem.
+ *
+ * @return LE_FAULT         The function failed.
+ * @return LE_NOT_FOUND     The specified gain's name is not recognized in your audio subsystem.
+ * @return LE_OK            The function succeeded.
+ *
+ * @warning Ensure to check the names of supported gains for your specific platform.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_audio_GetPlatformSpecificGain
+(
+    const char*    gainNamePtr, ///< [IN] Name of the platform specific gain.
+    uint32_t*      gainPtr      ///< [OUT] The gain value (specific to the platform)
+)
+{
+    return pa_audio_GetPlatformSpecificGain(gainNamePtr, gainPtr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Mute an audio stream.
  *
  * @return LE_FAULT         The function failed.
@@ -1768,7 +1826,7 @@ le_audio_DtmfDetectorHandlerRef_t le_audio_AddDtmfDetectorHandler
 
     if (pa_audio_StartDtmfDecoder(streamPtr->audioInterface) != LE_OK)
     {
-        LE_ERROR("Bad Interface!");
+        LE_ERROR("Cannot start DTMF detection!");
         return NULL;
     }
 
@@ -2308,7 +2366,15 @@ le_result_t le_audio_Stop
         return LE_FAULT;
     }
 
-    return pa_audio_Stop(streamPtr->audioInterface);
+    if ((le_media_Close(streamPtr) == LE_OK) &&
+        (pa_audio_Stop(streamPtr->audioInterface) == LE_OK))
+    {
+        return LE_OK;
+    }
+    else
+    {
+        return LE_FAULT;
+    }
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -2364,6 +2430,31 @@ le_result_t le_audio_Resume
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Flush the remaining audio samples.
+ *
+ * @return LE_FAULT         Function failed.
+ * @return LE_OK            Function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_audio_Flush
+(
+    le_audio_StreamRef_t  streamRef
+)
+{
+    le_audio_Stream_t* streamPtr = le_ref_Lookup(AudioStreamRefMap, streamRef);
+
+    if (streamPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", streamRef);
+        return LE_FAULT;
+    }
+
+    return pa_audio_Flush(streamPtr->audioInterface);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Play a file on a playback stream.
  *
  * @return LE_FAULT         Function failed.
@@ -2371,11 +2462,15 @@ le_result_t le_audio_Resume
  * @return LE_BUSY          The player interface is already active.
  * @return LE_OK            Function succeeded.
  *
- * @note the fd is closed by the IPC API. To play again the same file, the fd parameter can be set
- * to LE_AUDIO_NO_FD: in this case, the previous file descriptor is re-used.
- * If the fd as to be kept on its side, the application should duplicate the fd (e.g., using dup() )
- * before calling the API.
+ * @note
+ *  - The fd is closed by the IPC API. To play again the same file, the fd parameter can be set
+ *    to LE_AUDIO_NO_FD: in this case, the previous file descriptor is re-used.
+ *    If the fd as to be kept on its side, the application should duplicate the fd (e.g., using
+ *    dup() ) before calling the API.
  *
+ * @note
+ *  - Calling le_audio_PlayFile(<..>, LE_AUDIO_NO_FD) will rewind the audio file to the
+ *    beginning when a playback is already in progress.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_audio_PlayFile
@@ -2786,6 +2881,8 @@ le_result_t le_audio_GetSamplePcmSamplingResolution
  * @return LE_FAULT         The function failed to play the DTMFs.
  * @return LE_OK            The funtion succeeded.
  *
+ * @note If the DTMF string is too long (max DTMF_MAX_LEN characters), it is a fatal
+ *       error, the function will not return.
  * @note The process exits, if an invalid audio stream reference is given.
  */
 //--------------------------------------------------------------------------------------------------
@@ -2833,7 +2930,8 @@ le_result_t le_audio_PlayDtmf
  * @return LE_FAULT         The function failed.
  * @return LE_OK            The funtion succeeded.
  *
- * @note The process exits, if an invalid audio stream reference is given.
+ * @note If the DTMF string is too long (max DTMF_MAX_LEN characters), it is a fatal
+ *       error, the function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_audio_PlaySignallingDtmf

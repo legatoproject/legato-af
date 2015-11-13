@@ -229,15 +229,19 @@ static void* LocalSwapThread
     if (!ctxPtr->handlerRef)
     {
         LE_ERROR("Add PA SIM Toolkit handler failed");
-        return NULL;
+        // Unlock the semaphore to stop LocalSwapThread
+        le_sem_Post(ctxPtr->semRef);
     }
-
-    if (pa_sim_SendApdu(ctxPtr->swapApduReqPtr,
-                        ctxPtr->swapApduLen,
-                        NULL, NULL) != LE_OK)
+    else
     {
-        LE_ERROR("Cannot swap subscription!");
-        return NULL;
+        if (pa_sim_SendApdu(ctxPtr->swapApduReqPtr,
+                            ctxPtr->swapApduLen,
+                            NULL, NULL) != LE_OK)
+        {
+            LE_ERROR("Cannot swap subscription!");
+            // Unlock the semaphore to stop LocalSwapThread
+            le_sem_Post(ctxPtr->semRef);
+        }
     }
 
     // Run the event loop
@@ -265,15 +269,12 @@ static void DestroyLocalSwapThread
         if (pa_sim_RemoveSimToolkitEventHandler(ctxPtr->handlerRef) != LE_OK)
         {
             LE_ERROR("Cannot Remove SimToolkit Event Handler!");
-            return ;
         }
 
         le_sem_Delete(ctxPtr->semRef);
 
         le_mem_Release(ctxPtr);
     }
-
-    ctxPtr = NULL;
 }
 
 //--------------------------------------------------------------------------------------------------

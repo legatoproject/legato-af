@@ -10,36 +10,6 @@
  */
 #include "legato.h"
 
-static const int8_t hextable[] =
-{
-    [0 ... '0'-1] = -1,
-    ['0'] = 0 , 1, 2, 3, 4, 5, 6, 7, 8, 9,
-    ['0'+10 ... 'A'-1] = -1,
-    ['A'] = 10, 11, 12, 13, 14, 15,
-    ['A'+6 ... 'a'-1] = -1,
-    ['a'] = 10, 11, 12, 13, 14, 15,
-    ['a'+6 ... 255] = -1,
-};
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This function convert "0-F" char into uint8_t value
- *
- * @return
- *      \return return the value or -1 if not possible.
- */
-//--------------------------------------------------------------------------------------------------
-static int8_t HexToDec(unsigned const char* hex)
-{
-    int8_t ret = 0;
-
-    while(*hex && ret>=0)
-    {
-        ret = ((ret<<4) | hextable[*hex++]);
-    }
-
-    return ret;
-}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -79,25 +49,33 @@ int32_t le_hex_StringToBinary
     uint32_t    binarySize     ///< [IN] size of the binary table
 )
 {
-    uint32_t idxString,idxBinary;
+    uint32_t idxString;
+    uint32_t idxBinary;
+    char*    refStrPtr = "0123456789ABCDEF";
 
     if (2*binarySize+1 < stringLength)
     {
-        LE_DEBUG("binary array (%u) is too small (%u)",binarySize, stringLength);
+        LE_DEBUG("binary array (%u) is too small (%u)", binarySize, stringLength);
         return -1;
     }
 
-    for(idxString=0,idxBinary=0;
-        idxString<stringLength;
-        idxString=idxString+2,idxBinary++)
+    for (idxString=0,idxBinary=0 ; idxString<stringLength ; idxString+=2,idxBinary++)
     {
-        char tmp[3];
+        char* ch1Ptr;
+        char* ch2Ptr;
 
-        tmp[0] = stringPtr[idxString];
-        tmp[1] = stringPtr[idxString+1];
-        tmp[2] = '\0';
 
-        binaryPtr[idxBinary] = HexToDec((unsigned const char*)tmp);
+        if ( ((ch1Ptr = strchr(refStrPtr, toupper(stringPtr[idxString]))) && *ch1Ptr) &&
+             ((ch2Ptr = strchr(refStrPtr, toupper(stringPtr[idxString+1]))) && *ch2Ptr) )
+        {
+            binaryPtr[idxBinary] = ((ch2Ptr - refStrPtr) & 0x0F) |
+                                   (((ch1Ptr - refStrPtr)<<4) & 0xF0);
+        }
+        else
+        {
+            LE_DEBUG("Invalid string to convert (%s)", stringPtr);
+            return -1;
+        }
     }
 
     return idxBinary;

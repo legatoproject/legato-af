@@ -704,6 +704,8 @@ static le_result_t GetProcName
 
     INTERNAL_ERR_IF(result == LE_FAULT, "Error reading the %s", procFile);
 
+    fd_Close(fd);
+
     return LE_OK;
 }
 

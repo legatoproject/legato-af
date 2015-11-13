@@ -33,7 +33,8 @@ App_t::App_t
     maxMemoryBytes(40000 * 1024), // 40 MB
     maxMQueueBytes(512),
     maxQueuedSignals(100),
-    maxThreads(20)
+    maxThreads(20),
+    maxSecureStorageBytes(8192)
 //--------------------------------------------------------------------------------------------------
 {
 
@@ -123,6 +124,63 @@ ApiClientInterfaceInstance_t* App_t::FindClientInterface
                         }
                     }
                     interfaceTokenPtr->ThrowException("Client interface '" + interfaceTokenPtr->text
+                                                      + "' not found in component '"
+                                                      + componentInstancePtr->componentPtr->name
+                                                      + "' in executable '" + exePtr->name + "'.");
+                }
+            }
+            componentTokenPtr->ThrowException("Component '" + componentTokenPtr->text + "'"
+                                              " not found in executable '" + exePtr->name + "'.");
+        }
+    }
+    exeTokenPtr->ThrowException("Executable '" + exeTokenPtr->text
+                                + "' not defined in application.");
+    return NULL;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Find the interface instance object associated with a given internal interface specification.
+ *
+ * @return Pointer to the object.
+ *
+ * @throw mk::Exception_t if not found.
+ */
+//--------------------------------------------------------------------------------------------------
+ApiInterfaceInstance_t* App_t::FindInterface
+(
+    const parseTree::Token_t* exeTokenPtr,
+    const parseTree::Token_t* componentTokenPtr,
+    const parseTree::Token_t* interfaceTokenPtr
+)
+//--------------------------------------------------------------------------------------------------
+{
+    for (auto exePtr : executables)
+    {
+        if (exePtr->name == exeTokenPtr->text)
+        {
+            for (auto componentInstancePtr : exePtr->componentInstances)
+            {
+                if (componentInstancePtr->componentPtr->name == componentTokenPtr->text)
+                {
+                    for (auto ifInstancePtr : componentInstancePtr->clientApis)
+                    {
+                        if (ifInstancePtr->ifPtr->internalName == interfaceTokenPtr->text)
+                        {
+                            return ifInstancePtr;
+                        }
+                    }
+
+                    for (auto ifInstancePtr : componentInstancePtr->serverApis)
+                    {
+                        if (ifInstancePtr->ifPtr->internalName == interfaceTokenPtr->text)
+                        {
+                            return ifInstancePtr;
+                        }
+                    }
+
+                    interfaceTokenPtr->ThrowException("Interface '" + interfaceTokenPtr->text
                                                       + "' not found in component '"
                                                       + componentInstancePtr->componentPtr->name
                                                       + "' in executable '" + exePtr->name + "'.");

@@ -519,9 +519,10 @@ LE_SHARED le_result_t pa_sim_Refresh
 /**
  * This function must be called to register a handler for SIM Toolkit event notification handling.
  *
- * @return A handler reference, which is only needed for later removal of the handler.
+ * @return
+ *      - A handler reference on success, which is only needed for later removal of the handler.
+ *      - NULL on failure
  *
- * @note Doesn't return on failure, so there's no need to check the return value for errors.
  */
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_event_HandlerRef_t pa_sim_AddSimToolkitEventHandler
@@ -535,7 +536,9 @@ LE_SHARED le_event_HandlerRef_t pa_sim_AddSimToolkitEventHandler
  * This function must be called to unregister the handler for SIM Toolkit event notification
  * handling.
  *
- * @note Doesn't return on failure, so there's no need to check the return value for errors.
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT on failure
  */
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t pa_sim_RemoveSimToolkitEventHandler

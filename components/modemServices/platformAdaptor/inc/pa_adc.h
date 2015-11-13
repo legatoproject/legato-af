@@ -5,7 +5,7 @@
  *
  * <HR>
  *
- * These APIs are independent of platform. The implementation is in a platform specific adaptor 
+ * These APIs are independent of platform. The implementation is in a platform specific adaptor
  * and applications that use these APIs can be trivially ported between platforms that implement
  * the APIs.
  *
@@ -32,18 +32,17 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Reads the value of a given ADC channel in units appropriate to that channel.
+ * Read the value of a given ADC channel in units appropriate to that channel.
  *
  * @return
  *      - LE_OK            The function succeeded.
- *      - LE_FAULT         The function failed to get the thresholds.
+ *      - LE_FAULT         The function failed.
  */
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t pa_adc_ReadValue
 (
-    uint8_t  adcChannel,
-    int32_t* adcValuePtr
-        ///< [OUT]
+    le_adc_AdcChannelInput_t  adcChannel,  ///< [IN] Channel to read
+    int32_t*                  adcValuePtr  ///< [OUT] value returned by adc read
 );
 
 #endif // LEGATO_PAADC_INCLUDE_GUARD

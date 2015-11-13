@@ -1,3 +1,5 @@
+start: manual
+
 watchdogTimeout: 5000
 watchdogAction: stop
 

@@ -8,7 +8,7 @@ the @c mktools.
 
 @c ifgen usage details are displayed using the @c -h or @c --help options:
 
-Related info about ifgen: @ref languageIndependentAPIs.
+Related info about ifgen: @ref interfaceDefLang.
 
 <HR>
 

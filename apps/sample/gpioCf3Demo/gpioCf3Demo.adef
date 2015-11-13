@@ -1,0 +1,19 @@
+executables:
+{
+    gpioCf3Demo = ( gpioCf3PinComponent )
+}
+
+bindings:
+{
+    gpioCf3Demo.gpioCf3PinComponent.le_gpioPin21 -> gpioService.le_gpioPin21
+    gpioCf3Demo.gpioCf3PinComponent.le_gpioPin22 -> gpioService.le_gpioPin22
+}
+
+processes:
+{
+    run:
+    {
+        ( gpioCf3Demo )
+    }
+}
+

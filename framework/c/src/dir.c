@@ -72,6 +72,8 @@ le_result_t le_dir_MakePath
 
     if (le_utf8_Copy(dirStr, pathNamePtr, LIMIT_MAX_PATH_BYTES, &len) != LE_OK)
     {
+        LE_DEBUG("Directory path overflowed. Path size exceeds %s.",
+                  STRINGIZE(LIMIT_MAX_PATH_BYTES));
         return LE_FAULT;
     }
 
@@ -93,6 +95,7 @@ le_result_t le_dir_MakePath
             // Make the directory.  If the directory already exists just move on to the next dir.
             if (le_dir_Make(dirStr, mode) == LE_FAULT)
             {
+                LE_DEBUG("Make directory %s failed.", dirStr);
                 return LE_FAULT;
             }
 
@@ -104,6 +107,7 @@ le_result_t le_dir_MakePath
     // Make the last directory.
     if (le_dir_Make(dirStr, mode) == LE_FAULT)
     {
+        LE_DEBUG("Make directory %s failed.", dirStr);
         return LE_FAULT;
     }
     else

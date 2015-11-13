@@ -8,7 +8,7 @@ command-line:
 If you’re installing the development environment and application framework on a development host,
  recommended system requirements for the Ubuntu desktop is at least 768 MB of RAM and 5 GB of disk space.
 
-Ubuntu version 12.04 is officially supported, although you can try others (e.g., 14.04).
+Ubuntu version 15.04 is officially supported.
 
 If you’re downloading Legato source and toolchain files, you’ll need a minimum Internet connection speed of 4 Mpbs.
 
@@ -26,7 +26,7 @@ Windows Host is used to flash Linux images, flash new modem firmware, recover de
 
 @section getstartedCLrequirements_target Target Device
 
-Legato uses the AirPrime – AR and WP Series-Development Kit.
+Legato is comes preloaded on the MangOH dev kit. You can also use the AirPrime – AR and WP Series dev kit.
 <br>
 
 <HR>

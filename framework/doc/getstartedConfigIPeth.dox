@@ -1,7 +1,9 @@
 /** @page getstartedConfigIPeth Ethernet
 
-Using an Ethernet connection to a local area network is the easiest way to configure
-IP addresses. Connect the serial, Ethernet, and power cables to the dev kit.
+The WP85 module on a MangOH board can use an Ethernet connection to a local area network to configure
+the IP addresses.
+
+Connect the serial, Ethernet, and power cables
 
 In a terminal, run:
 

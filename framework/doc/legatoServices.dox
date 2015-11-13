@@ -1,43 +1,28 @@
 /** @page legatoServices Services APIs
 
 This section contains detailed info about Legato's ready-built services available for commonly needed
-features. The Services @subpage legatoServicesOverview page has high-level info. 
+features. The Services @subpage legatoServicesOverview page has high-level info.
 
 This table lists Legato's Services &mdash; multi-app safe means arbitration is fully managed among apps so
 multiple apps can share the same resources.
 
 | Service                            | Description                                        | multi-app safe            |
 | ---------------------------------- | -------------------------------------------------- | :-----------------------: |
-| @subpage c_le_avc                  | AirVantage server communication                    | @image html green_dot.png |
-| @subpage c_le_avdata               | AirVantage server data                             | @image html green_dot.png |
-| @subpage c_adc                     | Analog to digital converter                        |                           |
-| @subpage c_appInfo                 | Application information retrieval                  |                           |
-| @subpage c_antenna                 | Antenna diagnostics                                |                           |
+| @subpage legatoServicesAirVantage  | AirVantage server for communication and data       | @image html green_dot.png |
 | @subpage c_audio                   | Control audio features                             |                           |
 | @subpage c_le_cellnet              | Register and manage modems                         | @image html green_dot.png |
 | @subpage legatoServicesConfigTree  | Target configuration database                      | @image html green_dot.png |
 | @subpage c_le_data                 | Request data connection                            | @image html green_dot.png |
-| @subpage c_ecall                   | EU auto accident assistance program                |                           |
-| @subpage c_gnss                    | GNSS device control                                |                           |
-| @subpage c_ips                     | Input voltage data                                 | @image html green_dot.png |
-| @subpage c_le_instStat        | App install/uninstall notification         | @image html green_dot.png |
-| @subpage c_mcc                     | Control voice calls                                |                           |
-| @subpage c_mdc                     | Control modem data connections                     |                           |
-| @subpage c_fwupdate                | Firmware image updates                             |                           |
-| @subpage c_info                    | Retrieve modem data information                    |                           |
-| @subpage c_mrc                     | Modem radio controls                               |                           |
-| @subpage c_pos                     | Device physical position/movement                  | @image html green_dot.png |
+| @subpage c_gpio                    | Configure general purpose input/output             |                           |
+| @subpage c_limit                   | Limits for APIs                                    |                           |
+| @subpage legatoServicesModem       | modem services                                     | @image html yellow_dot.png|
+| @subpage legatoServicesPositioning | posititioning services                             | @image html yellow_dot.png|
 | @subpage c_pm                      | Device power management                            |                           |
-| @subpage c_riPin                   | Ring indicator for host wakeup                     |                           |
 | @subpage c_secStore                | Secure storage for sensitive data                  | @image html green_dot.png |
-| @subpage c_sim                     | SIM access                                         |                           |
-| @subpage c_sms                     | SMS messaging                                      |                           |
-| @subpage c_smsInbox                | SMS Inbox Service                                  | @image html green_dot.png |
-| @subpage c_update                  | Control app and firmware updates                   |                           |
-| @subpage legatoServicesSupervisor  | Control framework and apps                         | @image html green_dot.png |
-| @subpage c_temp                    | Platform/radio temperature data                    |                           |
+| @subpage legatoServicesSMS         | SMS and SMS Inbox                                  | @image html green_dot.png |
+| @subpage legatoServicesSupervisor  | Control framework and apps                         | @image html yellow_dot.png|
+| @subpage legatoServicesUpdate      | update modem firmware and apps                     | @image html yellow_dot.png|
 | @subpage c_le_voicecall            | Voice communications                               | @image html green_dot.png |
-| @subpage c_wdog                    | Kickable timeout                                   | @image html green_dot.png |
 
  <br>
 

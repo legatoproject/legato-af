@@ -1,4 +1,4 @@
-/** @page sampleApps_helloWorld hello World 
+/** @page sampleApps_helloWorld hello World
 
 This sample app demonstrates target and host are communicating using a helloWorld app.
 It has an @c .adef with executables and processes sections.
@@ -7,11 +7,11 @@ Run this to install the sample app:
 
 @verbatim
 $ cd apps/sample/helloWorld
-$ make wp7
-$ instapp helloWorld <ip address>
+$ make wp85
+$ instapp helloWorld.wp85 <ip address>
 @endverbatim
 
-If you're using an AR7 module in your device, substitute @c ar7 for @c wp7.
+If you're using an AR7 or WP7 module in your target, substitute @c ar7 or @c wp7 for @c wp85.
 
 @ref sampleApps_startApp
 

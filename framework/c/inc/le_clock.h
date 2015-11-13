@@ -1,27 +1,27 @@
 /**
  * @page c_clock System Clock API
- * 
+ *
  * @ref le_clock.h "API Reference"
- * 
+ *
  * <HR>
- * 
+ *
  * This module provides an API for getting/setting date and/or time values, and
  * performing conversions between these values.
- * 
+ *
  * @todo This API is currently incomplete, as it only provides a subset of functions that will
  * eventually be supported.
- * 
- * 
+ *
+ *
  * @section clk_time Getting/Setting Time
- * 
+ *
  * Time values can either be absolute or relative.  Time is expressed in seconds
  * plus microseconds, and does not stop when the system is suspended (i.e., the clock continues to
  * run even when the system is suspended).
- * 
+ *
  * Absolute time is given as time since the Epoch, 1970-01-01 00:00:00 +0000 (UTC) and is provided
  * by @ref le_clk_GetAbsoluteTime().  By definition, it is UTC time. The absolute time may jump
  * forward or backward if a new value is set for the absolute time.
- * 
+ *
  * Relative time is a monotonic time from a fixed but unspecified starting point and is provided
  * by @ref le_clk_GetRelativeTime(). The relative time is independent of the absolute time.  The
  * starting point is fixed during system boot, and cannot be changed, but is reset on each system
@@ -30,46 +30,46 @@
  * For example, at event 1, relative time A is stored, and at some later event 2, relative time B
  * is stored.  The relative time between these two events can always be calculated as B-A, and will
  * always be an accurate measure of the relative time between these two events.
- * 
+ *
  * @todo
  *  - Add API for setting absolute time.
- * 
- * 
+ *
+ *
  * @section clk_values Operations on Time Values
- * 
+ *
  * These operations can be performed on time values:
  *  - @ref le_clk_Add
  *  - @ref le_clk_GreaterThan
  *  - @ref le_clk_Sub
  *  - @ref le_clk_Multiply
- * 
+ *
  * The functions use these assumptions:
  *  - All input time values are normalized (i.e., the usec value is less than 1 sec). All time values
  *    returned are normalized.
  *  - All input time values or scale factors are positive; a negative time value will not be returned.
  *  - All input time values or scale factors are expected to have reasonable values (i.e., they will not
  *    be so large as to cause an overflow of the time value structure).
- * 
- * 
+ *
+ *
  * @section clk_convert Converting Time to Other Formats
- * 
+ *
  * The current absolute time can be converted to a formatted string in either UTC time or local time,
  * using @ref le_clk_GetUTCDateTimeString() or @ref le_clk_GetLocalDateTimeString() respectively.
  * These functions use the format specification defined for strftime(), with the following
  * additional conversion specifications:
  *  - %%J : milliseconds, as a 3 digit zero-padded string, e.g. "015"
  *  - %%K : microseconds, as a 6 digit zero-padded string, e.g. "001015"
- * 
+ *
  * @todo
  *  - Add new formatting object to allow arbitrary time to be converted to a string, potentially with
  *    additional formatting options.
  *  - Add new objects and/or APIs to allow converting time to other formats, e.g. Linux broken down
  *    time in "struct tm" format.
- * 
+ *
  * <HR>
- * 
+ *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
- * 
+ *
  */
 
 //--------------------------------------------------------------------------------------------------

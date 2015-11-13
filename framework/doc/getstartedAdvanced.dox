@@ -1,0 +1,11 @@
+/** @page getstartedAdvanced Advanced
+
+These topics have info on how to rebuild or customize your Legato target: <br>
+@subpage getstartedRestoreUpgrade <br>
+@ref yoctoMain
+
+<HR>
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/

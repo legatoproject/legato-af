@@ -1,8 +1,14 @@
 
 #include <legato.h>
 #include <thread>
+#include <string>
+#include <list>
+#include <iostream>
 
 
+#ifndef MUST_BE_DEFINED
+#error MUST_BE_DEFINED was not defined.
+#endif
 
 
 COMPONENT_INIT
@@ -25,6 +31,14 @@ COMPONENT_INIT
     newThread.join();
 
     LE_INFO("Thead 2 ended, all done with init.");
+
+    std::list<std::string> stuff;
+
+    // C++ 11
+    for (auto s : stuff)
+    {
+        std::cout << "stuff: " << s << std::endl;
+    }
 
     exit(EXIT_SUCCESS);
 }

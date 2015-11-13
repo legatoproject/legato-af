@@ -207,18 +207,18 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Maximum size of an IPC service protocol identity string, including the null terminator byte.
+ * Maximum size of an IPC protocol identity string, including the null terminator byte.
  */
 //--------------------------------------------------------------------------------------------------
-#define LIMIT_MAX_PROTOCOL_ID_BYTES     128
+#define LIMIT_MAX_PROTOCOL_ID_BYTES             128
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Maximum size of an IPC service instance name string, including the null terminator byte.
+ * Maximum size of an IPC interface name string, including the null terminator byte.
  */
 //--------------------------------------------------------------------------------------------------
-#define LIMIT_MAX_SERVICE_NAME_BYTES    128
+#define LIMIT_MAX_IPC_INTERFACE_NAME_BYTES      128
 
 
 //--------------------------------------------------------------------------------------------------
@@ -226,7 +226,7 @@
  * Maximum size of an event handler name.
  **/
 //--------------------------------------------------------------------------------------------------
-#define LIMIT_MAX_EVENT_HANDLER_NAME_BYTES 32
+#define LIMIT_MAX_EVENT_HANDLER_NAME_BYTES      32
 
 
 //--------------------------------------------------------------------------------------------------
@@ -234,9 +234,7 @@
  * Maximum size of an event name.
  **/
 //--------------------------------------------------------------------------------------------------
-#define LIMIT_MAX_EVENT_NAME_BYTES   32   ///< Should be at least 15 longer than the handler name.
-
-
+#define LIMIT_MAX_EVENT_NAME_BYTES              LIMIT_MAX_EVENT_HANDLER_NAME_BYTES + 15
 
 
 #endif // LE_SRC_LIMITS_INCLUDE_GUARD

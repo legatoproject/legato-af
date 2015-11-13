@@ -56,7 +56,7 @@ have the proper SMACK label.
 
 Use smack_SetMyLabel() to set the SMACK label for the calling process. The calling process must
 be a privileged process. Setting SMACK labels for other processes isn't possible.
- 
+
 To set the SMACK label for file system objects use smack_SetLabel(), again the calling process
 must be privileged.
 

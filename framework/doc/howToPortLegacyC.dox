@@ -10,7 +10,7 @@ installed.
 $ path/to/LegatoFramework/bin/legs
 @endcode
 
-@note These examples assume you are using a Sierra Wireless WP85xx device.  If you are using
+@note These examples assume you are using a Sierra Wireless WP85xx device.  If you're using
 another device, substitute that device wherever you see "WP85" or "wp85".
 
 @section howtoPortingLegacyC_CrossBuild Cross-Build
@@ -86,8 +86,8 @@ $ mkapp -t wp85 legacyProgram.adef
 @c 3. Install the app bundle on the target using @c instapp:
 
 @code
-$ instapp legacyProgram.wp7
-Installing application 'legacyProgram' from file 'legacyProgram.wp7'.
+$ instapp legacyProgram.wp85
+Installing application 'legacyProgram' from file 'legacyProgram.wp85'.
 Installing app 'legacyProgram'...
 Created user 'applegacyProgram' (uid 1011, gid 1011).
 DONE
@@ -145,7 +145,7 @@ ifgen --gen-interface --gen-client --gen-local $LEGATO_ROOT/interfaces/modemServ
 #include "le_info_interface.h"
 @endcode
 
-@c 4. Connect to the service by calling le_info_ConnectService().
+@c 4. Connect to the service by calling le_info_ConnectService() (using legacy main function).
 
 @code
 int main(int argc, char** argv)
@@ -189,7 +189,7 @@ int main(int argc, char** argv)
 $ export CC=$WP85_TOOLCHAIN_DIR/arm-poky-linux-gnueabi-gcc
 $ $CC -c main.c -I$LEGATO_ROOT/framework/c/inc
 $ $CC -c le_info_client.c -I$LEGATO_ROOT/framework/c/inc
-$ $CC -o legacyProgram main.o le_info_client.o -L$(LEGATO_ROOT)/build/$(TARGET)/bin/lib -llegato -lpthread -lrt
+$ $CC -o legacyProgram main.o le_info_client.o -L${LEGATO_ROOT}/build/${TARGET}/bin/lib -llegato -lpthread -lrt
 @endcode
 
 @c 7. Specify which instance of the @c le_info service your app should use by creating
@@ -209,9 +209,9 @@ to explicitly grant access permission so access is never unknowingly granted.
 @c 9. Re-generate your application bundle, install it, and run it on target:
 
 @code
-$ mkapp -t wp7 legacyProgram.adef
-$ instapp legacyProgram.wp7 192.168.1.2
-Installing application 'legacyProgram' from file 'legacyProgram.wp7'.
+$ mkapp -t wp85 legacyProgram.adef
+$ instapp legacyProgram.wp85 192.168.1.2
+Installing application 'legacyProgram' from file 'legacyProgram.wp85'.
 Removing app 'legacyProgram'...
 Deleted user 'applegacyProgram'.
 Installing app 'legacyProgram'...

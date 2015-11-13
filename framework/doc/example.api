@@ -20,7 +20,7 @@ HANDLER TestAHandler
     int32 x   ///< First parameter for the handler
               ///< Second comment line
 );
-    
+
 
 /**
  * This event provides an example of an EVENT definition

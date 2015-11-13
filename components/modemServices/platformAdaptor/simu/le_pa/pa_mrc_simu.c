@@ -473,17 +473,19 @@ le_result_t pa_mrc_GetScanInformationName
 /**
  * This function must be called to get the current preferred operators list.
  *
- * @return Number of Preferred operator found.
+ * @return
+ *   - A positive value on success (number of Preferred operator found).
+ *   - LE_NOT_FOUND if preferred operator list is not available.
  */
 //--------------------------------------------------------------------------------------------------
 int32_t pa_mrc_GetPreferredOperatorsList
 (
-    le_dls_List_t*   preferredOperatorsListPtr,    ///< [IN/OUT] The preferred operators list.
+    le_dls_List_t*   preferredOperatorListPtr,    ///< [IN/OUT] The preferred operators list.
     bool  plmnStatic,   ///< [IN] Include Static preferred Operators.
     bool  plmnUser      ///< [IN] Include Users preferred Operators.
 )
 {
-    return 0;
+    return LE_NOT_FOUND;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -491,8 +493,8 @@ int32_t pa_mrc_GetPreferredOperatorsList
  * This function must be called to add a new mobile country/network code in the list
  *
  * @return
- *      - LE_OK             On success
- *      - LE_FAULT          For all other errors
+ *  - LE_FAULT         Function failed.
+ *  - LE_OK            Function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_mrc_AddPreferredOperators
@@ -503,6 +505,7 @@ le_result_t pa_mrc_AddPreferredOperators
     le_mrc_RatBitMask_t ratMask                      ///< [IN] Radio Access Technology mask
 )
 {
+    LE_DEBUG("Adding [%s,%s] = 0x%.04"PRIX16, mccPtr, mncPtr, ratMask);
     return LE_FAULT;
 }
 
@@ -701,7 +704,7 @@ le_result_t pa_mrc_SetBandPreferences
  * Get the Band Preferences
  *
  * @return
- * - LE_FAULT           on success
+ * - LE_OK              on success
  * - LE_FAULT           on failure
  */
 //--------------------------------------------------------------------------------------------------
@@ -719,7 +722,7 @@ le_result_t pa_mrc_GetBandPreferences
  * Set the LTE Band Preferences
  *
  * @return
- * - LE_FAULT           on success
+ * - LE_OK              on success
  * - LE_FAULT           on failure
  */
 //--------------------------------------------------------------------------------------------------
@@ -729,7 +732,6 @@ le_result_t pa_mrc_SetLteBandPreferences
 )
 {
     // TODO: implement this function
-
     return LE_FAULT;
 }
 
@@ -738,7 +740,7 @@ le_result_t pa_mrc_SetLteBandPreferences
  * Get the LTE Band Preferences
  *
  * @return
- * - LE_FAULT           on success
+ * - LE_OK              on success
  * - LE_FAULT           on failure
  */
 //--------------------------------------------------------------------------------------------------
@@ -757,7 +759,7 @@ le_result_t pa_mrc_GetLteBandPreferences
  * Set the TD-SCDMA Band Preferences
  *
  * @return
- * - LE_FAULT           on success
+ * - LE_OK              on success
  * - LE_FAULT           on failure
  */
 //--------------------------------------------------------------------------------------------------
@@ -776,7 +778,7 @@ le_result_t pa_mrc_SetTdScdmaBandPreferences
  * Get the TD-SCDMA Band Preferences
  *
  * @return
- * - LE_FAULT           on success
+ * - LE_OK              on success
  * - LE_FAULT           on failure
  */
 //--------------------------------------------------------------------------------------------------
@@ -918,6 +920,42 @@ le_result_t pa_mrc_SetSignalStrengthIndThresholds
     return LE_FAULT;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the serving cell Identifier.
+ *
+ * @return
+ *  - LE_FAULT  Function failed.
+ *  - LE_OK     Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_mrc_GetServingCellId
+(
+    uint32_t* cellIdPtr ///< [OUT] main Cell Identifier.
+)
+{
+    // TODO: implement this function
+    return LE_FAULT;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the Location Area Code of the serving cell.
+ *
+ * @return
+ *  - LE_FAULT  Function failed.
+ *  - LE_OK     Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_mrc_GetServingCellLocAreaCode
+(
+    uint32_t* lacPtr ///< [OUT] Location Area Code of the serving cell.
+)
+{
+    // TODO: implement this function
+    return LE_FAULT;
+}
+
 /**
  * MRC Stub initialization.
  *
@@ -954,3 +992,4 @@ bool mrc_simu_IsOnline
 
     return ( (state == LE_MRC_REG_HOME) || (state == LE_MRC_REG_ROAMING) );
 }
+

@@ -9,26 +9,60 @@ cmd_name=$(basename $0)
 usage () {
     echo ""
     echo "Purpose:"
-    echo "$cmd_name allows the user to set up eth0 to re-use the same MAC hardware address"
-    echo "across reboots and to allow simple configuration of a static IPv4 address on eth0"
-    echo "If you have a fancy 'interfaces' setup then you probably shouldn't use this script"
-    echo "as it makes changes to the /etc/network/interfaces file but your original file will"
-    echo "be backed up with a timestamp added to the name so you can restore it by hand if"
-    echo "necessary."
+    echo "$cmd_name allows the user to configure eth0 including setting the hardware MAC address,"
+    echo "and whether dhcp is used to get an ip address or if the address is static."
+    echo "$cmd_name makes changes to the /etc/network/interfaces file so if you have edited this"
+    echo "file by hand you probably shouldn't use $cmd_name."
+    echo "When you run $cmd_name, the original /etc/network/interfaces file is backed up (with a"
+    echo "timestamp appended to the file name) so you can easily restore it if you accidentally"
+    echo "break custom edits you have made."
     echo ""
     echo "Usage:"
     echo "$cmd_name [macrandom|macfixed] [dhcp|static] [address <address>] [netmask <netmask>] [gateway <gateway>] [nameserver <nameserver>[,<nameserver>...] [mac <mac>]"
+    echo ""
     echo "If called without arguments or with -h or --help this message will be printed"
-    echo "Arguments are optional and where they are missing current values will be used where it"
+    echo "Arguments are optional and where they are missing, current values will be used where it"
     echo "makes sense to do so."
-    echo "e.g. if only an address is given 'static' is assumed and the current netmask, gateway and"
-    echo "nameservers are reused."
+    echo ""
+    echo "By default, developer boards have no fixed MAC address and acquire their ip address by"
+    echo "dhcp. This means that the board will likely have a different ip address on each reboot."
+    echo "When communicating with the target over ethernet is it usually more convenient to have"
+    echo "a static ip address."
+    echo ""
+    echo "e.g. if you want to make it likely that dhcp will assign the same ip address each time"
+    echo "you should have a fixed MAC address."
+    echo ""
+    echo "    $cmd_name macfixed"
+    echo ""
+    echo "will cause the current random MAC address to become the permanent MAC address."
+    echo ""
+    echo "If you wish to set a specific MAC address:"
+    echo ""
+    echo "    $cmd_name mac <mac>   (where <mac> represents a valid MAC address)"
+    echo ""
+    echo "You can set a specific static ip address by:"
+    echo ""
+    echo "    $cmd_name address <address> (where <address> is a valid ipV4 address)"
+    echo ""
+    echo "which will also cause dhcp to be turned off, the MAC address to be fixed, and if"
+    echo "provisioned, the current netmask, gateway and nameserver settings will be made permanent."
+    echo ""
+    echo "If you call"
+    echo ""
+    echo "    $cmd_name static"
+    echo ""
+    echo "the result will be the same as above except that the currently assigned ip address will"
+    echo "be used as the permanent ip address."
+    echo ""
     echo "Some combinations are invalid and will be flagged as errors."
-    echo "e.g. 'static' and 'macrandom' cannot coextist."
+    echo "e.g. 'static' and 'macrandom' cannot coextist, nor does it make sense to give an"
+    echo "ip address and also specify dhcp."
     echo ""
     echo "$cmd_name 'macrandom' as the sole argument restores the factory default where a different"
-    echo "MAC address will be used on each reboot"
-    echo "Note: nameserver addresses should be separated with commas and without spaces."
+    echo "MAC address will be used on each reboot."
+    echo ""
+    echo "Note: If specifying nameservers, their ip addresses should be separated with commas"
+    echo "and without spaces."
     exit 1
 }
 
@@ -98,7 +132,7 @@ get_current_settings () {
         mactype="random"
     fi
 
-    # get nameservers, obviously 
+    # get nameservers, obviously
     nameserver=$(get_nameservers)
 
     # get the mac and ipV4 network params we are currently using
@@ -230,7 +264,7 @@ awk 'function writeStatic (mac, addr, mask, gway) {
         print "\tnetmask " mask
         print "\tgateway " gway
 # write nameserver entries
-        print "\tnameserver " nameserver 
+        print "\tnameserver " nameserver
     }
     function writeDhcp (mac) {
         print "iface eth0 inet dhcp"
@@ -263,7 +297,7 @@ else
     remove_ifup_script
 fi
 
-# if this is being run from an ssh connection ssh would hang if we didn't 
+# if this is being run from an ssh connection ssh would hang if we didn't
 # disconnect before the network went down
 nohup sh -c "sleep 1; ifdown eth0; ifup eth0" 2>/dev/null &
 

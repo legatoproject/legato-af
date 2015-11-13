@@ -15,7 +15,7 @@ static char TestRootDir[LE_CFG_STR_LEN_BYTES] = "";
 
 
 #define TEST_PATTERN_LARGE_STRING   "1234567890123456789012345678901234"  // 35 bytes (4 more than the segment size + null)
-#define TEST_PATTERN_SMALL_STRING   "12"                                  // 2 bytes + null ; small string 
+#define TEST_PATTERN_SMALL_STRING   "12"                                  // 2 bytes + null ; small string
 
 static const char* NodeTypeStr
 (
@@ -753,8 +753,8 @@ static void TestStringOverwrite
 (
     void
 )
-{   
-    // the objective of this test case is to make sure the 
+{
+    // the objective of this test case is to make sure the
     // segmented dynamic string can grow and shrink as intented
     static char pathBuffer[LE_CFG_STR_LEN_BYTES] = "";
     static char strBuffer[LE_CFG_STR_LEN_BYTES];
@@ -768,7 +768,7 @@ static void TestStringOverwrite
     le_cfg_IteratorRef_t iterRefWrite = le_cfg_CreateWriteTxn(pathBuffer);
     le_cfg_SetString(iterRefWrite, pathBuffer, TEST_PATTERN_LARGE_STRING);
     le_cfg_CommitTxn(iterRefWrite);
-    
+
     // read string
     le_cfg_IteratorRef_t iterRefRead = le_cfg_CreateReadTxn(pathBuffer);
     result = le_cfg_GetString(iterRefRead, pathBuffer, strBuffer, LE_CFG_STR_LEN_BYTES, "");
@@ -783,12 +783,12 @@ static void TestStringOverwrite
                 pathBuffer,
                 TEST_PATTERN_LARGE_STRING,
                 strBuffer);
-    
+
     // overwrite with a small string and verify that works
     iterRefWrite = le_cfg_CreateWriteTxn(pathBuffer);
     le_cfg_SetString(iterRefWrite, pathBuffer, TEST_PATTERN_SMALL_STRING);
     le_cfg_CommitTxn(iterRefWrite);
-    
+
     // read string
     iterRefRead = le_cfg_CreateReadTxn(pathBuffer);
     result = le_cfg_GetString(iterRefRead, pathBuffer, strBuffer, LE_CFG_STR_LEN_BYTES, "");
@@ -808,7 +808,7 @@ static void TestStringOverwrite
     iterRefWrite = le_cfg_CreateWriteTxn(pathBuffer);
     le_cfg_SetString(iterRefWrite, pathBuffer, TEST_PATTERN_LARGE_STRING);
     le_cfg_CommitTxn(iterRefWrite);
-        
+
     // read string
     iterRefRead = le_cfg_CreateReadTxn(pathBuffer);
     result = le_cfg_GetString(iterRefRead, pathBuffer, strBuffer, LE_CFG_STR_LEN_BYTES, "");

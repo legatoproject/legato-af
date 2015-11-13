@@ -12,7 +12,7 @@
 #include "sdirToolProtocol.h"
 #include "limit.h"
 #include "user.h"
-#include "messagingSession.h"
+
 
 //--------------------------------------------------------------------------------------------------
 /// Reference to IPC session with the Service Directory
@@ -33,6 +33,12 @@ static const char* CommandPtr = NULL;
 
 
 //--------------------------------------------------------------------------------------------------
+/// Format option string.
+//--------------------------------------------------------------------------------------------------
+static const char* FormatPtr = NULL;
+
+
+//--------------------------------------------------------------------------------------------------
 /**
  * Prints help to stdout and exits with EXIT_SUCCESS.
  */
@@ -48,11 +54,15 @@ static void PrintHelpAndExit
         "\n"
         "SYNOPSIS:\n"
         "    sdir list\n"
+        "    sdir list --format=json\n"
         "    sdir load\n"
         "\n"
         "DESCRIPTION:\n"
         "    sdir list\n"
         "            Lists bindings, services, and waiting clients.\n"
+        "\n"
+        "    sdir list --format=json\n"
+        "            Lists bindings, services, and waiting clients in json format.\n"
         "\n"
         "    sdir load\n"
         "            Updates the Service Directory's bindings with the current state.\n"
@@ -105,17 +115,36 @@ static void ConnectToServiceDirectory
 {
     le_msg_ProtocolRef_t protocolRef = le_msg_GetProtocolRef(LE_SDTP_PROTOCOL_ID,
                                                              sizeof(le_sdtp_Msg_t));
-    SessionRef = le_msg_CreateSession(protocolRef, LE_SDTP_SERVICE_NAME);
+    SessionRef = le_msg_CreateSession(protocolRef, LE_SDTP_INTERFACE_NAME);
 
     le_msg_SetSessionCloseHandler(SessionRef, SessionCloseHandler, NULL);
 
-    le_result_t result = msgSession_TryOpenSessionSync(SessionRef);
+    le_result_t result = le_msg_TryOpenSessionSync(SessionRef);
     if (result != LE_OK)
     {
-        fprintf(stderr, "***ERROR: Can't communicate with the Sevice Directory.\n");
-        fprintf(stderr,
-                "Service Directory is unreachable.\n"
-                "Perhaps the Service Directory is not running?\n");
+        printf("***ERROR: Can't communicate with the Service Directory.\n");
+
+        switch (result)
+        {
+            case LE_UNAVAILABLE:
+                printf("Service not offered by Service Directory.\n"
+                       "Bug in the Service Directory?\n");
+                break;
+
+            case LE_NOT_PERMITTED:
+                printf("Missing binding to service.\n"
+                       "System misconfiguration detected.\n");
+                break;
+
+            case LE_COMM_ERROR:
+                printf("Service Directory is unreachable.\n"
+                       "Perhaps the Service Directory is not running?\n");
+                break;
+
+            default:
+                printf("Unexpected result code %d (%s)\n", result, LE_RESULT_TXT(result));
+                break;
+        }
         exit(EXIT_FAILURE);
     }
 }
@@ -158,7 +187,15 @@ static void List
 
     le_sdtp_Msg_t* msgPtr = le_msg_GetPayloadPtr(msgRef);
 
-    msgPtr->msgType = LE_SDTP_MSGID_LIST;
+    if (FormatPtr == NULL)
+    {
+        msgPtr->msgType = LE_SDTP_MSGID_LIST;
+    }
+    else
+    {
+        // Currently only json format is accepted.
+        msgPtr->msgType = LE_SDTP_MSGID_LIST_JSON;
+    }
 
     msgRef = le_msg_RequestSyncResponse(msgRef);
 
@@ -349,8 +386,8 @@ static void SendBindRequest
     // Fetch the client's service name.
     result = le_cfg_GetNodeName(i,
                                 "",
-                                msgPtr->clientServiceName,
-                                sizeof(msgPtr->clientServiceName));
+                                msgPtr->clientInterfaceName,
+                                sizeof(msgPtr->clientInterfaceName));
     if (result != LE_OK)
     {
         char path[LIMIT_MAX_PATH_BYTES];
@@ -369,8 +406,8 @@ static void SendBindRequest
     // Fetch the server's service name.
     result = le_cfg_GetString(i,
                               "interface",
-                              msgPtr->serverServiceName,
-                              sizeof(msgPtr->serverServiceName),
+                              msgPtr->serverInterfaceName,
+                              sizeof(msgPtr->serverInterfaceName),
                               "");
     if (result != LE_OK)
     {
@@ -379,7 +416,7 @@ static void SendBindRequest
         LE_CRIT("Server interface name too big (@ %s)", path);
         return;
     }
-    if (msgPtr->serverServiceName[0] == '\0')
+    if (msgPtr->serverInterfaceName[0] == '\0')
     {
         char path[LIMIT_MAX_PATH_BYTES];
         le_cfg_GetPath(i, "interface", path, sizeof(path));
@@ -591,6 +628,39 @@ static void CommandArgHandler
 //--------------------------------------------------------------------------------------------------
 {
     CommandPtr = commandPtr;
+
+    if ((strcmp(CommandPtr, "list") != 0) && (strcmp(CommandPtr, "load") != 0))
+    {
+       char errorMessage[255];
+
+       snprintf(errorMessage, sizeof(errorMessage), "Unrecognized command '%s'.", CommandPtr);
+
+       ExitWithErrorMsg(errorMessage);
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function called by command line argument scanner when the --format= option is given.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void FormatArgHandler
+(
+    const char* formatPtr  ///< Pointer to the format string.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    FormatPtr = formatPtr;
+
+    if (strcmp(FormatPtr, "json") != 0)
+    {
+      char errorMessage[255];
+
+      snprintf(errorMessage, sizeof(errorMessage), "Unrecognized command '%s'.", FormatPtr);
+
+      ExitWithErrorMsg(errorMessage);
+    }
 }
 
 
@@ -604,6 +674,9 @@ COMPONENT_INIT
     // Print help and exit if the "-h" or "--help" options are given.
     le_arg_SetFlagCallback(PrintHelpAndExit, "h", "help");
 
+    // --format=json option specifies to dump sdir list in json format.
+    le_arg_SetStringCallback(FormatArgHandler, NULL, "format");
+
     // Scan the command-line argument list.
     le_arg_Scan();
 
@@ -615,21 +688,14 @@ COMPONENT_INIT
 
     ConnectToServiceDirectory();
 
-    // Act on the command.
+    // Act on the command. Right now only two command(load and list) is allowed.
     if (strcmp(CommandPtr, "list") == 0)
     {
         List();
     }
-    else if (strcmp(CommandPtr, "load") == 0)
+    else
     {
         Load();
     }
-    else
-    {
-        char errorMessage[255];
 
-        snprintf(errorMessage, sizeof(errorMessage), "Unrecognized command '%s'.", CommandPtr);
-
-        ExitWithErrorMsg(errorMessage);
-    }
 }

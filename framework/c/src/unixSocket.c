@@ -187,15 +187,23 @@ int unixSocket_CreateSeqPacketNamed
         switch (errno)
         {
             case EACCES:
-                return LE_NOT_PERMITTED;
+                result = LE_NOT_PERMITTED;
+                break;
             case EADDRINUSE:
-                return LE_DUPLICATE;
+                result = LE_DUPLICATE;
+                break;
             default:
                 LE_ERROR("bind failed on address '%s'. Errno = %d (%m). See 'man 7 unix'.",
                          pathStr,
                          errno);
-                return LE_FAULT;
+                result = LE_FAULT;
+                break;
         }
+
+        //Close the fd
+        fd_Close(fd);
+
+        return result;
     }
 
     return fd;

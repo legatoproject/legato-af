@@ -1,5 +1,5 @@
 /*
- * This app creates and deletes Legato threads according to the specified strategy and time 
+ * This app creates and deletes Legato threads according to the specified strategy and time
  * interval.
  */
 
@@ -7,10 +7,10 @@
 
 #include "legato.h"
 
-#define ThreadNameBufferSize 50 
+#define ThreadNameBufferSize 50
 
 static long ThreadNum;
-static char ThreadNameBuffer[ThreadNameBufferSize] = {0}; 
+static char ThreadNameBuffer[ThreadNameBufferSize] = {0};
 static le_thread_Ref_t* ThreadRefArray; // array storing references to the threads
 
 
@@ -59,7 +59,7 @@ void deleteThread
 {
     LE_INFO("==== Deleting thread %d ====", threadIndex);
 
-    // some delay between thread deletions 
+    // some delay between thread deletions
     nanosleep(sleepTimeRef, NULL);
 
     le_thread_Cancel(ThreadRefArray[threadIndex]);
@@ -75,8 +75,8 @@ void deleteThreadsFrom1ToN
     LE_INFO("==== Deleting threads from 1 to N ====");
 
     // Delete threads from the first to the Nth
-    long threadCnt = 0; 
-    struct timespec sleepTime = {0, timeIntervalNano}; 
+    long threadCnt = 0;
+    struct timespec sleepTime = {0, timeIntervalNano};
     while (threadCnt < (ThreadNum - 1))
     {
         deleteThread(&sleepTime, threadCnt);

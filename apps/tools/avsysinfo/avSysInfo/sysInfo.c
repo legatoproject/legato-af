@@ -486,7 +486,7 @@ static void CheckForMountedFileSystems
 )
 {
     FILE *mount_table;
-	struct mntent *mount_entry;
+    struct mntent *mount_entry;
     mount_table = setmntent("/etc/mtab", "r");
     if (!mount_table)
     {
@@ -697,7 +697,7 @@ COMPONENT_INIT
 
     /* Test code */
 #ifdef TEST
-    CallEventHandlers();  	
+    CallEventHandlers();
     DiagOutput();
 #endif
     LE_INFO("====== All set up and running =========");

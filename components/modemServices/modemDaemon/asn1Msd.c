@@ -27,6 +27,43 @@ static const uint8_t PrintableAsciiCodes[33] =
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * This function checks the validity of the Vehicle Identification Number.
+ *
+ * @return true if the VIN is valid, false otherwise.
+ */
+//--------------------------------------------------------------------------------------------------
+static bool IsVinValid
+(
+    msd_Vin_t vin
+)
+{
+    char vinstr[sizeof(vin) + 1] = {'0'};
+    int  i=0;
+
+    memcpy(vinstr, (void*)&vin, sizeof(vin));
+
+    for(i=0 ; (i<sizeof(vin)) &&
+              (vinstr[i]) &&
+              (NULL!=strchr("0123456789ABCDEFGHJKLMNPRSTUVWXYZ", vinstr[i])) ; i++)
+    {
+    }
+
+    if (i != sizeof(vin))
+    {
+        LE_ERROR("Invalid Vehicle Identification Number (%s), it must be a %zd-character string, "
+                 "upper-case and it can't contain 'I', 'O' or 'Q' letters",
+                 vinstr,
+                 sizeof(vin));
+        return false;
+    }
+    else
+    {
+        return true;
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This function returns tha ASCII code of a character.
  * The supported characters are 0-9 and A-Z.
  *
@@ -306,6 +343,12 @@ int32_t msd_EncodeMsdMessage
     }
 
     /* Vehicle identification Number */
+    if (!IsVinValid(msdDataPtr->msdMsg.msdStruct.vehIdentificationNumber))
+    {
+        LE_ERROR("Cannot encode Vehicle Identification Number!");
+        return LE_FAULT;
+    }
+
     /* Each character is coded within 6 bits according to translation table */
     /* isowmi */
     for (i=0;i<3;i++)

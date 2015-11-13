@@ -29,8 +29,12 @@ fi
 # Check that the second argument is provided and can be pinged.
 SetTargetIP $2
 
-# Feed the application file into tar xf running in the application install directory.
-APP_NAME=$(basename "$APP_FILE" | sed 's/\.[^.]*$//')
-echo "Installing application '$APP_NAME' from file '$APP_FILE'."
-cat $APP_FILE | SshToTarget "/usr/local/bin/app install '$APP_NAME'"
+# Compute the APP_NAME and TARGET.
+APP_BUNDLE_FILE_NAME=$(basename "$APP_FILE")
+APP_NAME=$(echo "$APP_BUNDLE_FILE_NAME" | sed 's/\.[^.]*$//')
+TARGET=$(echo "$APP_BUNDLE_FILE_NAME" | sed "s/^$APP_NAME\.//")
 
+# Pack the app bundle file into an update pack and pipe that to the on-target "update" program
+# through ssh.
+echo "Installing app '$APP_NAME' from file '$APP_FILE' onto device at address '$TARGET_IP'."
+update-pack $TARGET -ai $APP_FILE -o - | SshToTarget "/usr/local/bin/update"

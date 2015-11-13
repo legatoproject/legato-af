@@ -17,14 +17,18 @@
 #
 # To enable coverage testing, run make with "TEST_COVERAGE=1" on the command-line.
 #
+# Targets to be built for release can be selected with RELEASE_TARGETS.
+#
 # Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 # --------------------------------------------------------------------------------------------------
 
 # List of target devices needed by the release process:
-RELEASE_TARGETS := localhost ar7 wp7 ar86 wp85
+ifndef RELEASE_TARGETS
+  RELEASE_TARGETS := ar7 ar86 wp7 wp85
+endif
 
 # List of target devices supported:
-TARGETS := $(RELEASE_TARGETS) ar6 raspi virt
+TARGETS := localhost $(RELEASE_TARGETS) ar6 raspi virt
 
 # By default, build for the localhost and build the documentation.
 .PHONY: default
@@ -311,21 +315,17 @@ package.properties: version
 	@echo "version=`cat version`" > package.properties
 
 # Goal for building all documentation.
-.PHONY: docs user_docs user_embed_docs implementation_docs
-docs: user_docs user_embed_docs implementation_docs
+.PHONY: docs user_docs implementation_docs
+docs: user_docs implementation_docs
 
 # When building the docs, use the "localhost" target device type.
 user_docs: TARGET := localhost
-user_embed_docs: TARGET := localhost
 implementation_docs: TARGET := localhost
 
 # Docs for people who don't want to be distracted by the internal implementation details.
 user_docs: localhost
 	$(MAKE) -C build/localhost user_docs
 	ln -sf build/localhost/bin/doc/user/html Documentation
-
-user_embed_docs: localhost
-	$(MAKE) -C build/localhost user_embed_docs
 
 user_pdf: localhost
 	$(MAKE) -C build/localhost user_pdf
@@ -358,7 +358,8 @@ tools: version
 	ln -sf mk bin/mksys
 	ln -sf $(CURDIR)/framework/tools/scripts/* bin/
 	ln -sf $(CURDIR)/framework/tools/ifgen/ifgen bin/
-	# ninja is called ninja-build on some distros (e.g., Fedora).
+    # ninja is called ninja-build on some distros (e.g., Fedora).
+	@echo -n "Using ninja installed at: " ;\
 	if ! which ninja ;\
 	then \
 		if which ninja-build ;\
@@ -448,7 +449,11 @@ stage_embedded:
 	install targetFiles/shared/bin/* -t build/$(TARGET)/staging/usr/local/bin
 	for executable in $(BIN_INSTALL_LIST) ; \
 	do \
-	    install build/$(TARGET)/bin/$$executable -D build/$(TARGET)/staging/usr/local/bin ; \
+	    if [ -L "build/$(TARGET)/bin/$$executable" ]; then \
+	        cp -P build/$(TARGET)/bin/$$executable build/$(TARGET)/staging/usr/local/bin ; \
+	    else \
+	        install -p build/$(TARGET)/bin/$$executable -D build/$(TARGET)/staging/usr/local/bin ; \
+	    fi \
 	done
 	# Install libraries in /usr/local/lib.
 	mkdir -p build/$(TARGET)/staging/usr/local/lib
@@ -535,6 +540,6 @@ package_virt: package_embedded
 # Partition images for relevant devices are provided as well in the releases/ folder.
 .PHONY: release
 release: clean
-	for target in $(RELEASE_TARGETS) docs; do set -e; make $$target; done
-	releaselegato
+	for target in localhost $(RELEASE_TARGETS) docs; do set -e; make $$target; done
+	releaselegato -t "$(shell echo ${RELEASE_TARGETS} | tr ' ' ',')"
 

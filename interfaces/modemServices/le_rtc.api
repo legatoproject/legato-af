@@ -1,51 +1,37 @@
 //--------------------------------------------------------------------------------------------------
 /**
- * @page c_rtc Set and Read the User Time timebase of the Real Time Clock (RTC)
+ * @page c_rtc User Timebase
  *
- * @ref le_rtc_interface.h "API Reference"
- *
+ * @ref le_rtc_interface.h "API Reference" <br>
+ * @ref howToSetUserTimebase
  * <HR>
  *
- * This API provides definitions for reading and setting the "user" timebase of the RTC.
+ * This API provides definitions to read and set the @e user timebase for a target's real time clock (RTC).
  *
- * The modem manages a real time clock (battery backed clock VCOIN) which keeps time when the
- * power is removed from the legato module (provided that a clock battery is provided). This clock
- * is used by the modem to maintain several time bases which are variously derived from cellular
- * networks or from GPS. Applications should not directly change the value of the real time clock
- * as it may have undesirable effects on modem function. However, a user time base is provided
- * which is synchronized with the RTC so an arbitrary time stored here will increment on a
- * millisecond basis and can be retrieved later even after power down provided that a battery
- * (VCOIN) is provided to keep the RTC running.
+ * Usually, the time daemon automatically updates the system time (i.e., gets time value
+ * when calling le_clk_GetAbsoluteTime() or using Linux @c date command). In some cases, the RTC
+ * time value may require a user timebase value based on other domains (e.g., GPS) to offset
+ * differences between the battery-powered RTC and the system time.
  *
- * The RTC counts milliseconds since the GPS Epoch which is Jan 6, 1980, and increments on each
- * count so that each second in GPS time has a unique number. This is different from Unix time
- * which starts Jan 1, 1970 and has a fixed number of seconds per day so for days that have an
- * extra second in them (leap second) Unix uses the same second twice. This means that over the
- * years an ever increasing number of leap seconds have to be accounted for when converting time
- * between these domains. Leap seconds are introduced periodically because the earths rotation is
- * not constant and is slowing over time such that astronomically measured time and clock time
- * would drift apart but for these adjustments. Unfortunately it also means that Unix time,
- * GPS time and clock time are all drifting apart as well. Fortunately the rate of drift is low
- * with only 26 leap seconds having been added since leap seconds were introduced in 1972.
- * Unfortunately, due to the vagaries of planetary dynamics, it is impossible to predict
- * in which years leap seconds will be added as that calculation must be done retroactively based
- * on observation.
+ * If you're synchronizng with cellular network time only, the time daemon will update the
+ * system time (the time you get when calling le_clk_GetAbsoluteTime() or using linux 'date'
+ * command) automatically.
  *
- * For practical purposes it is not necessary to convert the time you wish to maintain into 
- * real GPS time and it will suffice to use Unix epoch time. The amount of drift caused by leap
- * seconds over a year is orders of less than the inherent drift in the RTC and we can expect that
- * most users won't notice a second here or there and that under normal conditions the time will
- * be corrected from an external source such as network time or GPS. If you are synchronising
- * with cellular network time only, then this facility is already provided by the time-service
- * daemon which will update the system time (the time you get when calling le_clk_GetAbsoluteTime()
- * or using linux 'date' command) automatically, but if you are setting the system time yourself
- * from a saved user time value you should probably disable the time service by commenting out the
- * TIME_SERVICES="qcom_time" line in /etc/time_service.conf to prevent the system time from being
+ * @section c_rtc_disableDaemon Disable Time Daemon
+
+ * If you need to set the system time from a saved user timebase value, you should disable the time
+ * daemon by commenting out the
+ * @c TIME_SERVICES="qcom_time" line in @c /etc/time_service.conf to prevent the system time from being
  * updated if the modem receives a new time from a cellular network.
  *
- * Note also that the time stored in the user timebase is incremented on a millisecond basis and
- * unix time is incremented by the second so when storing unix time in the user time base it
- * must be multiplied by 1000 and, conversely, must be divided by 1000 when retrieved.
+ * @note The time stored in the user timebase is incremented on a millisecond basis;
+ * Unix time is incremented by the second. When storing Unix time in the user timebase, it
+ * must be multiplied by 1000, and, conversely, must be divided by 1000 when retrieved.
+ *
+ * @section c_rtc_getSet Get/Set Time Value
+ *
+ * Use le_rtc_GetUserTime() to read the current RTC time, and le_rtc_SetUserTime()
+ * to set the user timebase adjustment (plus/minus in milliseconds).
  *
  * <HR>
  *
@@ -69,8 +55,8 @@
  * Get the current time from the RTC
  *
  * @return
- *      - LE_OK            The function succeeded.
- *      - LE_FAULT         The function failed.
+ *      - LE_OK            Function succeeded.
+ *      - LE_FAULT         Function failed.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetUserTime
@@ -83,8 +69,8 @@ FUNCTION le_result_t GetUserTime
  * Set the RTC with the given time string
  *
  * @return
- *      - LE_OK            The function succeeded.
- *      - LE_FAULT         The function failed.
+ *      - LE_OK            Function succeeded.
+ *      - LE_FAULT         Function failed.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetUserTime

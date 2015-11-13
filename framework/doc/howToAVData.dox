@@ -7,7 +7,7 @@ Legato provides easy LWM2M connectivity to AirVantage through a .cdef  file @ref
 
 @section howToAVData_APIs AirVantage APIs
 
-Use the @ref c_le_avc API to configure your AirVantage connectivity to handle app updates. 
+Use the @ref c_le_avc API to configure your AirVantage connectivity to handle app updates.
 
 Use the @ref c_le_avdata API to setup your AirVantage data including read (variable), write (settings), and
 commands (executables).
@@ -22,4 +22,4 @@ pre-built @ref c_le_avdata APIs.
 
 Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 
- **/ 
+ **/

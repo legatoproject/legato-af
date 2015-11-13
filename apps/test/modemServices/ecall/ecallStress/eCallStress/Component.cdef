@@ -1,0 +1,12 @@
+sources:
+{
+    eCallStress.c
+}
+
+requires:
+{
+    api:
+    {
+        le_ecall.api
+    }
+}

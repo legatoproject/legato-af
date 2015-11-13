@@ -1,5 +1,5 @@
 /*
- * This app creates and deletes timers according to the specified strategy and time interval.  
+ * This app creates and deletes timers according to the specified strategy and time interval.
  * The timers created are spreaded evenly across the specified number of threads.
  *
  * Note that since the "main" thread is always the "first thread" on the thread list, the options
@@ -18,19 +18,19 @@ static long ThreadNum;
 static long TimerNum;
 static le_thread_Ref_t* ThreadRefArray; // array storing references to the threads
 /*
- * *** NOTE *** It's probably not really necessary to keep a global list of timer refs, since each 
+ * *** NOTE *** It's probably not really necessary to keep a global list of timer refs, since each
  * thread is keeping its timer refs in its thread local data storage.
  * This might be useful for a certain timer deletion patterm?  Feel free to remove this (and its
  * associates) if it's really useless.
- */ 
-static le_timer_Ref_t* TimerRefArray; // array storing references to the timers. 
+ */
+static le_timer_Ref_t* TimerRefArray; // array storing references to the timers.
 static long TimerCreateIdx = 0; // the index of the TimerRefArray at which the last timer creation has ended at.
 
 LE_MUTEX_DECLARE_REF(MutexRef); // The mutex for accessing TimerRefArray.
 le_sem_Ref_t SemaRef; // The semaphore for syncing timer creation and deletion between threads.
 
 /*
- * Thread-specific data key, used to store timer refs. Note that a Legato thread already stores 
+ * Thread-specific data key, used to store timer refs. Note that a Legato thread already stores
  * timer refs for each thread, but there's no public API to access them.
  */
 static pthread_key_t TsdKey;
@@ -69,7 +69,7 @@ static void TimerExpHandler
 }
 
 
-// The timer table stores different kinds of timers. 
+// The timer table stores different kinds of timers.
 static TimerAttr_t TimerTable[] =
 {
     // expires every 1000 secs, repeat infinitely
@@ -190,7 +190,7 @@ void createAllTimers
     void
 )
 {
-    char threadNameBuffer[MAX_THREAD_NAME_SIZE] = {0}; 
+    char threadNameBuffer[MAX_THREAD_NAME_SIZE] = {0};
 
     long quotient = TimerNum / ThreadNum;
     long remainder = TimerNum % ThreadNum;
@@ -232,7 +232,7 @@ void createAllTimers
 // The offsets are distances from Min and Max, therefore they must be greater than 0.
 // If they result in a range such that the lower bound is greater than the upper bound, no timer is
 // deleted.
-static void DelTimers 
+static void DelTimers
 (
     long offsetFromMin,
     long offsetFromMax
@@ -241,7 +241,7 @@ static void DelTimers
     if ((offsetFromMin < 0) || (offsetFromMax < 0))
     {
         LE_WARN("DelTimers bad params - negative offset(s).");
-        return; 
+        return;
     }
 
     struct timespec sleepTime = {0, SleepIntervalNano};
@@ -254,7 +254,7 @@ static void DelTimers
         nanosleep(&sleepTime, NULL);
         le_timer_Delete(traRef->timerRefArray[idx]);
         idx++;
-    } 
+    }
 }
 
 // Delete from 1 to n-1 for all threads
@@ -307,7 +307,7 @@ static void DelAllTimersForMidThread
 }
 
 
-// wait for all threads to finish creating their timers, then ask them to do something. 
+// wait for all threads to finish creating their timers, then ask them to do something.
 void queueFuncToAllThreads
 (
     le_event_DeferredFunc_t func
@@ -319,7 +319,7 @@ void queueFuncToAllThreads
         le_event_QueueFunctionToThread(ThreadRefArray[cnt], func, NULL, NULL);
         cnt++;
     }
-} 
+}
 
 
 COMPONENT_INIT

@@ -13,8 +13,9 @@
  * using this API only has access to its own secure data.
  *
  * App's items in secure storage have a name and a value. The item name is used
- * to access the item's value and can be maximum 255 characters.
- * 
+ * to access the item's value and can be maximum 255 characters. The overall maximum
+ * storage available is platform dependent (see @ref platformConstraintsSecStorage).
+ *
  * To create or update an item, use le_secStore_Write() to specify the item's name
  * and value. If the item doesn't exist, it'll be created. Each item can be maximum 8192 bytes.
  * If it's larger, le_secStore_Write() will fail.

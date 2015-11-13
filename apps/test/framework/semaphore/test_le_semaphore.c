@@ -17,7 +17,7 @@
  */
 int init_suite(void)
 {
-	return 0;
+    return 0;
 }
 
 /* The suite cleanup function.
@@ -27,7 +27,7 @@ int init_suite(void)
 int clean_suite(void)
 {
 
-	return 0;
+    return 0;
 }
 
 void testCreateDestroy(void)
@@ -185,7 +185,7 @@ void * fonction_thread ()
 {
     cpt=100;
 
-   	while (cpt--) {
+       while (cpt--) {
             le_sem_Wait(GSemPtr);
             fprintf(stdout, "\n%d : thread '%s' has %s %d\n",
                     cpt,le_thread_GetMyName(),SEM_NAME_1,le_sem_GetValue(GSemPtr));
@@ -205,7 +205,7 @@ void * fonction_thread ()
             CU_PASS("thread GSemPtr UnLocked");
     }
 
-	return NULL;
+    return NULL;
 }
 
 void launch_thread()
@@ -242,7 +242,7 @@ void launch_thread()
 //
 //     usleep(500);
 //
-//    	while (cpt--) {
+//        while (cpt--) {
 //         if ( cpt==80) {
 //             Sem2Ptr    = le_sem_Create( SEM_NAME_2, 10);
 //         }
@@ -270,11 +270,11 @@ void launch_thread()
 //         if ( cpt == 20 ) {
 //             le_sem_Delete(Sem2Ptr);
 //         }
-// 	}
+//     }
 //
 //     le_sem_Delete(SemPtr);
 //
-// 	return NULL;
+//     return NULL;
 // }
 //
 // void launch_Process()
@@ -296,12 +296,12 @@ void launch_thread()
 
 void testScenario1(void)
 {
-	launch_thread(); // thread shared
+    launch_thread(); // thread shared
 }
 
 // void testScenario2(void)
 // {
-// 	launch_Process(); // process shared
+//     launch_Process(); // process shared
 // }
 
 COMPONENT_INIT
@@ -339,8 +339,8 @@ COMPONENT_INIT
     CU_SUITE_INFO_NULL,
     };
 
-	/* initialize the CUnit test registry */
-	if (CUE_SUCCESS != CU_initialize_registry())
+    /* initialize the CUnit test registry */
+    if (CUE_SUCCESS != CU_initialize_registry())
         exit(CU_get_error());
 //         return CU_get_error();
 
@@ -351,7 +351,7 @@ COMPONENT_INIT
 //         return CU_get_error();
     }
 
-	/* Run all tests using the CUnit Basic interface */
+    /* Run all tests using the CUnit Basic interface */
     CU_basic_set_mode(CU_BRM_VERBOSE);
     CU_basic_run_tests();
 
@@ -363,7 +363,7 @@ COMPONENT_INIT
         fprintf(stdout,"\n [STOP]List of Failure\n");
     }
 
-	CU_cleanup_registry();
+    CU_cleanup_registry();
     exit(CU_get_error());
-// 	return CU_get_error();
+//     return CU_get_error();
 }

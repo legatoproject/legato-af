@@ -165,7 +165,6 @@ If a directory is bundled by a component's .cdef file and another directory is b
 same target path by the .adef, then the two directories will be merged into the bundle, where
 conflicts are resolved by omitting the file from the directory specified by the .cdef.
 
-
 @section defFilesAdef_cpuShare CPU Share
 
 Specifies the relative cpu share for an app.
@@ -199,6 +198,10 @@ The system process will get 1024/4608 = 22% of the cpu.
 @verbatim
 cpuShare: 512
 @endverbatim
+
+Although apps aren't limited to running inside a sandbox (i.e., unsandboxed apps), the
+Supervisor still enforces limits. Ensure @c cpuShare values are set high enough for unsanboxed apps.
+Also see @ref defFilesAdef_processMaxFileBytes.
 
 @section defFilesAdef_executables Executables
 
@@ -303,6 +306,16 @@ Default is @b 20.
 
 @verbatim
 maxThreads: 4
+@endverbatim
+
+@section defFilesAdef_maxSecureStorageBytes Max Secure Storage Bytes
+
+Specifies the maximum number of bytes that can be stored in Secure Storage.
+
+Default is @b 8K.
+
+@verbatim
+maxSecureStorageBytes: 4K
 @endverbatim
 
 
@@ -520,9 +533,10 @@ maxFileBytes: 200K
 Exceeding this limit results in a @c SIGXFSZ signal sent to the process. By default, this
  kills the process, but it can be blocked or caught to receive an error
  with @c errno set to @c EFBIG.
-  
-Although apps aren't limited to running inside a sandbox (called @e unsandboxed apps), the Supervisor still
-enforces limits. Ensure @c maxFileBytes values are set high enough for unsanboxed apps.
+
+Although apps aren't limited to running inside a sandbox (i.e., unsandboxed apps), the Supervisor still
+enforces limits. Ensure @c maxFileBytes values are set high enough for unsanboxed apps. Also see
+@ref defFilesAdef_cpuShare.
 
 @note If the file is in the sandbox's temporary runtime file system, the file size will also
         be limited by @ref defFilesAdef_maxFileSystemBytes and
@@ -582,38 +596,69 @@ A special value "never" is permitted for this section.  If used, the watchdog wi
 watchdogTimeout: never  // Disable watchdog for these processes.
 @endverbatim
 
-@section defFilesAdef_provides Provides
+@section defFilesAdef_extern Extern
 
-The @c provides: section is used to specify things the app provides to other apps
-(or non-app processes) in its runtime environment.
-
-For now, only @c api: subsections are supported.
-
-@subsection defFilesAdef_providesApi API
-
-Declares that a server-side IPC API interface is available for other
-apps (or non-app users) to use via @ref defFilesAdef_bindings.
-
-This code sample declares the @c temperature interface on the @c thermistor
-component in the @c sensor executable should be made into a bindable external interface
-called @c spaceTemp:
+Declares that an IPC API interface is available for binding via
+@ref defFilesSdef_bindings ".sdef file's bindings section"
+or @ref defFilesAdef_bindings ".adef file's bindings section".
 
 @verbatim
-provides:
+extern:
 {
-    api:
-    {
-        spaceTemp = sensor.thermistor.temperature
-    }
+    exeName.componentName.interfaceName
+}
+@endverbatim
+
+Internal interface instances are identified by the executable, component, and
+interface names.  The different interface instance identifier parts are
+separated by a period (‘.’).
+
+Outside the app, the interface will be identified using the app name and the interface name
+(<c>appName.interfaceName</c>), thereby hiding from other apps the details of what executable
+and component within the app implements the interface.
+
+To have other apps see an interface with a different name,
+add <c> differentName = </c> in front of the interface specification:
+
+@verbatim
+extern:
+{
+    differentName = exeName.componentName.interfaceName
+}
+@endverbatim
+
+The interface will then appear outside the app as <c>appName.differentName</c>.
+
+@subsection defFilesAdef_externServer Server-Side Example
+
+This code sample declares the @c temperature interface on the @c thermistor
+component in the @c sensor executable should be made into a bindable external server-side interface
+(service) called @c spaceTemp:
+
+@verbatim
+extern:
+{
+    spaceTemp = sensor.thermistor.temperature
 }
 @endverbatim
 
 If the app was called @a thermometer, then other apps could bind their client-side
-interfaces to @c thermometer.spaceTemp to receive temperature readings from this sensor app.
+interfaces to <c>thermometer.spaceTemp</c> to receive temperature readings from this sensor app.
 
-Internal interface instances are identified by the executable, component, and
-component's interface names. The different interface instance identifier parts are
-separated by a period (‘.’).
+@subsection defFilesAdef_externClient Client-Side Example
+
+This code sample declares that the @c temperature interface on the @c tempInput
+component in the @c controller executable should be made into a bindable external interface:
+
+@verbatim
+extern:
+{
+    controller.tempInput.temperature
+}
+@endverbatim
+
+If this app were called thermostat, then to outsiders (e.g., in a @c .sdef file or another app's
+@c .adef file), the interface would be called <c>thermostat.temperature</c>.
 
 @section defFilesAdef_requires Requires
 
@@ -621,46 +666,6 @@ The @c requires: section specifies things the app needs from its runtime
 environment.
 
 It can contain various subsections.
-
-@subsection defFilesAdef_requiresApi API
-
-Declares a client-side IPC API interface on an executable inside the app needs to be bound
-to a service provided by something outside the app.
-
-Interfaces inside the app are identified by the executable, component, and
-component's interface names (separated by a period ‘.’).
-
-This code sample declares that the @c temperature interface on the @c tempInput
-component in the @c controller executable should be made into a bindable external interface:
-
-@verbatim
-requires:
-{
-    api:
-    {
-        controller.tempInput.temperature
-    }
-}
-@endverbatim
-
-Outside the app, this client-side interface will be called @c temperature (hiding
-from other apps the details of what executable and component implements the interface).
-
-To have other apps to see an interface with a different name,
-add @c alias = differentname in front of the interface specification:
-
-@verbatim
-requires:
-{
-    api:
-    {
-        airTemp = controller.tempInput.temperature
-    }
-}
-@endverbatim
-
-If this app were called thermostat, then in a @c .sdef file, the interface would be called
-thermostat.airTemp.
 
 @subsection defFilesAdef_requiresConfigTree Config Tree
 

@@ -4,7 +4,7 @@
  *
  * @ref le_ecall_interface.h "API Reference" <br>
  * @ref howToEcall <br>
- * @ref sampleApps_eCall
+ * @ref sampleApps_eCall sample app
  *
  * <HR>
  *
@@ -60,8 +60,10 @@
  * - le_ecall_GetConfiguredOperationMode(): this function allows the user to retrieve the configured
  *   Operation mode.
  *   The configured operation mode can be:
- *   - @c LE_ECALL_NORMAL_MODE : eCall only mode.
- *   - @c LE_ECALL_FORCED_ONLY_MODE : eCall only mode.
+ *   - @c LE_ECALL_NORMAL_MODE : normal mode. The modem behaves following the U/SIM eCall operation
+ *                               mode.
+ *   - @c LE_ECALL_ONLY_MODE : eCall only mode according to U/SIM operation mode or forced by
+ *                             application through the le_ecall_ForceOnlyMode() function.
  *   - @c LE_ECALL_FORCED_PERSISTENT_ONLY_MODE : persistent eCall only mode.
  *
  * @section le_ecall_session eCall Session
@@ -76,6 +78,9 @@
  * the IVS in case of accident)
  * - le_ecall_StartTest(): initiate a test eCall session (to test the communication between the
  * IVS and the PSAP)
+ *
+ * @warning An application must wait for @c LE_ECALL_STATE_DISCONNECTED event before calling again
+ * the @c le_ecall_StartXxx() functions.
  *
  * When the eCall object is no longer needed, call le_ecall_Delete() to free all allocated
  * resources associated with the object.
@@ -181,7 +186,7 @@
  * - The diagnostic result
  * - The crash information
  *
- * ERA-GLONASS MSD additional data can be specified thru the following functions:
+ * ERA-GLONASS MSD additional data can be specified through the following functions:
  * - le_ecall_SetMsdEraGlonassCrashSeverity().
  * - le_ecall_ResetMsdEraGlonassCrashSeverity().
  * - le_ecall_SetMsdEraGlonassDiagnosticResult().
@@ -451,9 +456,10 @@ DEFINE  MSD_MAX_LEN = (140);
 //--------------------------------------------------------------------------------------------------
 ENUM OpMode
 {
-    NORMAL_MODE,                   ///< Normal mode.
-    FORCED_ONLY_MODE,              ///< eCall only mode.
-    FORCED_PERSISTENT_ONLY_MODE    ///< Persistent eCall only mode.
+    NORMAL_MODE,                  ///< Normal mode.
+    ONLY_MODE,                    ///< eCall only mode according to U/SIM operation mode or forced
+                                  ///< by application through the le_ecall_ForceOnlyMode() function.
+    FORCED_PERSISTENT_ONLY_MODE   ///< Persistent eCall only mode.
 };
 
 //--------------------------------------------------------------------------------------------------
@@ -476,7 +482,8 @@ ENUM State
     STATE_MSD_TX_FAILED,              ///< MSD transmission has failed.
     STATE_ALACK_RECEIVED_POSITIVE,    ///< AL-ACK received.
     STATE_ALACK_RECEIVED_CLEAR_DOWN,  ///< AL-ACK clear-down received.
-    STATE_STOPPED,                    ///< eCall session has been stopped by the PSAP.
+    STATE_STOPPED,                    ///< eCall session has been stopped by PSAP
+                                      ///< or IVS le_ecall_End().
     STATE_RESET,                      ///< eCall session has lost synchronization and starts over.
     STATE_COMPLETED,                  ///< eCall session completed. The modem successfully completed
                                       ///< the MSD transmission and received two AL-ACKs (positive).
@@ -909,6 +916,9 @@ FUNCTION State GetState
  * @return
  *  - LE_OK on success
  *  - LE_FAULT for other failures
+ *
+ * @note If PSAP number is too long (max LE_MDMDEFS_PHONE_NUM_MAX_LEN digits), it is a fatal error,
+ *       the function will not return.
  */
 //--------------------------------------------------------------------------------------------------
  FUNCTION le_result_t SetPsapNumber

@@ -1,4 +1,4 @@
-/** @page getstartedCLbuild Build Legato 
+/** @page getstartedCLbuild Build Legato
 
 After you've installed the source files, you build the Legato framework for your host and target.
 
@@ -18,11 +18,11 @@ To set the your Legato environment, you must run @c bin/legs @a every time you o
 
 @section getstartedCLbuild_makeTarget Make for Target
 
-@b Run @c make to build the framework and AirVantage agent for the target (substitute @c ar7 for @c wp7 if building an AR7 target):
-@code $ make wp7 @endcode
+@b Run @c make to build the framework and AirVantage agent for the target (substitute @c ar7 or @c wp7 if building those targets):
+@code $ make wp85 @endcode
 
 Or run this to build the framework for the target without the AirVantage agent:
-@code $ make wp7 INCLUDE_AIRVANTAGE=0 @endcode
+@code $ make wp85 INCLUDE_AIRVANTAGE=0 @endcode
 
 <HR>
 

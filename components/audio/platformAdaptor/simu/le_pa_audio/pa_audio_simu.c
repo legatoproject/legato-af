@@ -289,6 +289,22 @@ le_result_t pa_audio_Stop
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * This function must be called to flush the remaining audio samples.
+ *
+ * @return LE_OK            The function is succeeded
+ * @return LE_FAULT         The function is failed
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_audio_Flush
+(
+    pa_audio_If_t interface    ///< [IN] audio interface
+)
+{
+    return LE_FAULT;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This function is used to capture an audio stream.
  *
  * @return LE_OK            The thread is started
@@ -707,6 +723,47 @@ le_result_t pa_audio_Mute
 (
     pa_audio_If_t interface, ///< [IN] audio interface
     bool          mute       ///< [IN] true to mute the interface, false to unmute
+)
+{
+    // TODO: implement this one
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the value of a platform specific gain in the audio subsystem.
+ *
+ * @return LE_FAULT         The function failed.
+ * @return LE_NOT_FOUND     The specified gain's name is not recognized in your audio subsystem.
+ * @return LE_OUT_OF_RANGE  The gain parameter is not between 0 and 100
+ * @return LE_OK            The function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_audio_SetPlatformSpecificGain
+(
+    const char*    gainNamePtr, ///< [IN] Name of the platform specific gain.
+    uint32_t       gain         ///< [IN] The gain value [0..100] (0 means 'muted', 100 is the
+                                ///       maximum gain value)
+)
+{
+    // TODO: implement this one
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the value of a platform specific gain in the audio subsystem.
+ *
+ * @return LE_FAULT         The function failed.
+ * @return LE_NOT_FOUND     The specified gain's name is not recognized in your audio subsystem.
+ * @return LE_OK            The function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_audio_GetPlatformSpecificGain
+(
+    const char* gainNamePtr, ///< [IN] Name of the platform specific gain.
+    uint32_t*   gainPtr      ///< [OUT] gain value [0..100] (0 means 'muted', 100 is the
+                             ///        maximum gain value)
 )
 {
     // TODO: implement this one

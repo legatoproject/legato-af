@@ -36,10 +36,10 @@ done
 count=0
 
 #while [ $count -le $numSamples ]
-while ! logread | grep -q "FINISHED" 
+while ! logread | grep -q "FINISHED"
 do
     logFile="${logFileTemplate}_Sample${count}"
-    inspect pools `ps -ef | grep SubpoolFlux | grep -v grep | awk '{print $2}'` >> $logFile 
+    inspect pools `ps -ef | grep SubpoolFlux | grep -v grep | awk '{print $2}'` >> $logFile
     sleep $interval
     count=$((count+1))
 done

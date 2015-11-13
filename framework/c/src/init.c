@@ -19,6 +19,7 @@
 #include "timer.h"
 #include "pathIter.h"
 #include "killProc.h"
+#include "properties.h"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -59,6 +60,7 @@ __attribute__((constructor)) void _legato_InitFramework
     timer_Init();      // Uses event loop.
     msg_Init();        // Uses event loop.
     kill_Init();       // Uses memory pools and timers.
+    properties_Init(); // Uses memory pools and safe references.
 
     // This must be called last, because it calls several subsystems to perform the
     // thread-specific initialization for the main thread.

@@ -62,24 +62,24 @@
  * Monitor is created regardless of the set of events given to le_fdMonitor_Create().
  *
  * @section c_fdTypes FD Types
- * 
+ *
  * The fd type affects how events are monitored:
- * 
+ *
  * - @ref c_fdTypes_files
  * - @ref c_fdTypes_pipes
  * - @ref c_fdTypes_sockets
  * - @ref c_fdTypes_terminals
- * 
+ *
  * @subsection c_fdTypes_files Files
- * 
- * - POLLIN and POLLOUT are always SET 
+ *
+ * - POLLIN and POLLOUT are always SET
  * - NONE of the other EVENTS are ever set
- * 
+ *
  * @subsection c_fdTypes_pipes Pipes
- * 
+ *
  * Pipe fd events indicate two conditions for reading from a pipe and two conditions for writing to
  * a pipe.
- * 
+ *
  * |                                            |  Event      |   Condition      |
  * | ---------------------------------- | -------------------------------------------------- | ----------------------- |
  * | READING from a pipe | POLLHUP | No DATA in the pipe and the WRITE-END is closed |
@@ -88,9 +88,9 @@
  * | WRITING to the pipe   | POLLERR | No SPACE in the pipe and the READ-END is closed |
  * |                                         | POLLOUT |SPACE in the pipe and the READ-END is open |
  * |                                         | POLLOUT or POLLERR | SPACE in the pipe BUT the READ-END is closed |
- * 
+ *
  * @subsection c_fdTypes_sockets Sockets
- * 
+ *
  * Socket activity (establishing/closing) is monitored for connection-orientated sockets including
  * SOCK_STREAM and SOCK_SEQPACKET. Input and output data availability for all socket types is
  * monitored.
@@ -102,13 +102,13 @@
  * | POLLPRI | Out of band data received only on TCP |
  * | POLLIN or POLLOUT or POLLRDHUP | Peer closed the connection in a connection-orientated socket |
  *
- * 
+ *
  * @subsection c_fdTypes_terminals Terminals and Pseud-terminals
- * 
+ *
  * Terminals and pseudo-terminals operate in pairs. When one terminal pair closes, an event is
  * generated to indicate the closure. POLLIN, POLLOUT and POLLPRI are the event indicators related
  * to terminal status.
- * 
+ *
  * | Event | Condition |
  * |                |                   |
  * | POLLIN | Ready to receive data |
@@ -116,7 +116,7 @@
  * | POLLPRI | Master/pseudo terminal detects slave state has changed (in packet mode only). |
  * | POLLHUP | Either half of the terminal pair has closed. |
 
- * 
+ *
  * @section c_fdMonitorHandlers Handler Functions
  *
  * Parameters to the fd event handler functions are the fd and the events active for the

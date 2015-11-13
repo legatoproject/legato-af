@@ -3,34 +3,6 @@
  *
  * This module implements an eCallDemo application
  *
- * This demo app provides an @c ecallApp_StartSession() API to start a test eCall session.
- * You can call @c ecallApp_StartSession() with the number of passengers as a parameter to start the
- * session.
- *
- * This App uses the configuration tree to retrieve the following data:
- *
- * @verbatim
-  $ config get eCallDemo:/
-
-  /
-      settings/
-           psap<string> == <PSAP number>
-           hMinAccuracy<int> == <minimum horizontal accuracy value>
-           dirMinAccuracy<int> == <minimum direction accuracy value>
-   @endverbatim
- *
- * - 'psap' is the PSAP telephone number.
- * - 'hAccuracy' is the minimum expected horizontal accuracy to trust the position (in meters).
- * - 'dirAccuracy' is the minimum expected direction accuracy to trust the position (in degrees).
- *
- * You can set them by issuing the commands:
- * @verbatim
-   $ config set eCallDemo:/settings/psap <PSAP number>
-   $ config set eCallDemo:/settings/hMinAccuracy <minimum horizontal accuracy value> int
-   $ config set eCallDemo:/settings/dirMinAccuracy <minimum direction accuracy value> int
-   @endverbatim
- *
- *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  *
  */
@@ -101,12 +73,12 @@ static void LoadECallSettings
     {
         if ( le_cfg_GetString(eCallCfgRef, CFG_NODE_PSAP, psapStr, sizeof(psapStr), "") != LE_OK )
         {
-            LE_FATAL("No node value set for '%s', restart the app!", CFG_NODE_PSAP);
+            LE_FATAL("No node value set for '%s', exit the app!", CFG_NODE_PSAP);
         }
         LE_DEBUG("eCall settings, PSAP number is %s", psapStr);
         if (le_ecall_SetPsapNumber(psapStr) != LE_OK)
         {
-            LE_FATAL("Cannot set PSAP number, restart the app!");
+            LE_FATAL("Cannot set PSAP number, exit the app!");
         }
     }
     else
@@ -272,36 +244,51 @@ static void StartSession
     int32_t  dirMinAccuracy ///< [IN] minimum direction accuracy to trust the position (in degrees)
 )
 {
-    le_ecall_StateChangeHandlerRef_t  stateChangeHandlerRef;
     bool                              isPosTrusted = false;
-    int32_t                           latitude = 0;
-    int32_t                           longitude = 0;
+    int32_t                           latitude = 0x7FFFFFFF;
+    int32_t                           longitude = 0x7FFFFFFF;
     int32_t                           hAccuracy = 0;
-    int32_t                           direction = 0;
+    int32_t                           direction = 0x7FFFFFFF;
     int32_t                           dirAccuracy = 0;
 
     LE_DEBUG("StartSession called");
 
+    if (ECallRef)
+    {
+        LE_WARN("End and Delete previous eCall session.");
+        le_ecall_End(ECallRef);
+        le_ecall_Delete(ECallRef);
+        ECallRef = NULL;
+    }
+
     ECallRef=le_ecall_Create();
-    LE_FATAL_IF((!ECallRef), "Unable to create an eCall object, restart the app!");
-
+    LE_FATAL_IF((!ECallRef), "Unable to create an eCall object, exit the app!");
     LE_DEBUG("Create eCallRef.%p",  ECallRef);
-    stateChangeHandlerRef = le_ecall_AddStateChangeHandler(ECallStateHandler, NULL);
-    LE_ERROR_IF((!stateChangeHandlerRef), " Unable to add an eCall state change handler!");
 
+    // Get the position data
     if ((le_pos_Get2DLocation(&latitude, &longitude, &hAccuracy) == LE_OK) &&
         (le_pos_GetDirection(&direction, &dirAccuracy) == LE_OK))
     {
         if ((hAccuracy < hMinAccuracy) && (dirAccuracy < dirMinAccuracy))
         {
             isPosTrusted = true;
+            LE_INFO("Position can be trusted.");
+        }
+        else
+        {
+            LE_WARN("Position can't be trusted!");
         }
     }
+    else
+    {
+        LE_WARN("Position can't be trusted!");
+    }
 
-    LE_ERROR_IF((le_ecall_SetMsdTxMode(LE_ECALL_TX_MODE_PUSH) != LE_OK),
-                "Unable to set the MSD Push mode!");
-
-    LE_ERROR_IF((le_ecall_SetMsdPosition(ECallRef, isPosTrusted, latitude, longitude, direction) != LE_OK),
+    LE_ERROR_IF((le_ecall_SetMsdPosition(ECallRef,
+                                         isPosTrusted,
+                                         latitude,
+                                         longitude,
+                                         direction) != LE_OK),
                 "Unable to set the position!");
 
     if (paxCount > 0)
@@ -310,10 +297,30 @@ static void StartSession
                     "Unable to set the number of passengers!");
     }
 
-    LE_FATAL_IF((le_ecall_StartTest(ECallRef) != LE_OK),
-                "Unable to start an eCall, restart the app!");
+    LE_ERROR_IF((le_ecall_StartTest(ECallRef) != LE_OK),
+                "Unable to start an eCall, try again!");
 
     LE_INFO("Test eCall has been successfully triggered.");
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The signal event handler function for SIGINT/SIGTERM when process dies.
+ */
+//--------------------------------------------------------------------------------------------------
+static void SigHandler
+(
+    int sigNum
+)
+{
+    LE_INFO("Exit eCallDemo app");
+    if (ECallRef)
+    {
+        le_ecall_End(ECallRef);
+        le_ecall_Delete(ECallRef);
+        ECallRef = NULL;
+    }
+    exit(EXIT_SUCCESS);
 }
 
 
@@ -357,7 +364,18 @@ COMPONENT_INIT
 {
     LE_INFO("start eCallDemo app");
 
+    ECallRef = NULL;
+
+    signal(SIGINT, SigHandler);
+    signal(SIGTERM, SigHandler);
+
     le_posCtrl_Request();
+
+    LE_ERROR_IF((!le_ecall_AddStateChangeHandler(ECallStateHandler, NULL)),
+                " Unable to add an eCall state change handler!");
+
+    LE_WARN_IF((le_ecall_SetMsdTxMode(LE_ECALL_TX_MODE_PUSH) != LE_OK),
+                "Unable to set the MSD Push mode! Use default settings.");
 
     LE_INFO("eCallDemo app is started.");
 }

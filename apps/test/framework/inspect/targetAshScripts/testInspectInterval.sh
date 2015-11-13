@@ -64,7 +64,7 @@ do
     usleep 10000
 
     # This is to catch the case when inspect immediately exits due to for example bad params.
-    if ! ps -ef | grep $pid | grep -vq grep 
+    if ! ps -ef | grep $pid | grep -vq grep
     then
         echo "inspect failed to run"
         exit 1
@@ -75,7 +75,7 @@ done
 # TODO: convert testDuration to microsecs and use usleep since testDuration might not be integer
 sleep $testDuration
 
-# stop the inspection 
+# stop the inspection
 kill $pid
 
 

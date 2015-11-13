@@ -11,13 +11,13 @@ Run this to install the sample app:
 
 @verbatim
 $ cd apps/sample/modemDemo
-$ make wp7
-$ instapp modemDemo <ip address>
+$ make wp85
+$ instapp modemDemo.wp85 <ip address>
 @endverbatim
 
 where <i>ip address</i> is the address of your target device.
 
-If you're using an AR7 module in your target, substitute @c ar7 for @c wp7.
+If you're using an AR7 or WP7 module in your target, substitute @c ar7 or @c wp7 for @c wp85.
 
 @ref sampleApps_startApp
 
@@ -56,7 +56,7 @@ processes:
 In @c modemDemo/demo.c, it's also possible to extend the list of processed commands.
 
 See <br>
-@ref c_mdc 
+@ref c_mdc
 
 <HR>
 

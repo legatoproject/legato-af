@@ -9,11 +9,6 @@
 # of the boot system.  Another option is for Legato to build a log forwarding daemon that has the
 # proper permissions.  In that case this code is not needed at all.
 
-# Set the our syslogd restart script to run as label "*" so that when it starts syslogd, syslogd
-# will run with the "*" label as well.  Can't just set the security.SMACK64EXEC label of syslogd
-# because busybox syslogd part of one large busybox utils file.
-/usr/local/bin/xattr set security.SMACK64EXEC "*" /mnt/flash/startup/fg_02_RestartSyslogd
-
 # Only allow the "framework" labeel to access the Legato directory.
 mkdir -p /opt/legato
 /usr/local/bin/xattr set security.SMACK64 "framework" /opt/legato
@@ -22,3 +17,12 @@ mkdir -p /opt/legato
 # supervisor and installer.
 /usr/local/bin/xattr set security.SMACK64EXEC "admin" /mnt/flash/startup/fg_10_StartLegato
 
+# Set the syslogd restart script to run as label "syslog" so that when it starts syslogd, syslogd
+# will run with the "syslog" label as well.  Can't just set the security.SMACK64EXEC label of syslogd
+# because busybox syslogd is part of one large busybox utils file.
+/usr/local/bin/xattr set security.SMACK64EXEC "syslog" /mnt/flash/startup/fg_02_RestartSyslogd
+
+# Give subjects with "_", "admin" and "framework" rw access to "syslog".
+echo "_ syslog rw---" > /opt/legato/smack/load
+echo "admin syslog rw---" >/opt/legato/smack/load
+echo "framework syslog rw---" > /opt/legato/smack/load

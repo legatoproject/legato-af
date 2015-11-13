@@ -21,16 +21,16 @@ Create a new System in AirVantage Server:
 - In the `Gateway` tab, click Create a New Gateway (+ symbol), a new windows will appear:
 enter your device's IMEI  and Serial Number.
 - Click `Create`.
- 
+
 - After you return to the system creation window, click the Application field and select
 the ‘Legato_LWM2M’ (firmware and application update over the air) application model. An application
-model is an XML file defining the communication contract between AirVantage and the embedded app. 
+model is an XML file defining the communication contract between AirVantage and the embedded app.
 - Select "I want to activate my system after creating it".
 - Click `Create`.
 
 @section connectingAirVantage_lwm2m LWM2M
 
-Legato provides LWM2M support to connect to AirVantage. 
+Legato provides LWM2M support to connect to AirVantage.
 
 See @ref c_le_avc, @ref c_le_avdata and @ref defFilesCdef_assets for details.
 

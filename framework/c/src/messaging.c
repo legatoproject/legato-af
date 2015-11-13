@@ -3,12 +3,11 @@
  * Legato @ref c_messaging implementation.
  *
  * Following is the basic data model for the part of the low-level messaging subsystem
- * that runs in the client and the server.
+ * that runs in the interface instances such as the client and the server.
  *
- * The client and the server share much of the same code and data structures.  Protocols, Services,
- * Sessions, and Messages are all the same object types on both the server side and the client
- * side.  But, the way they are used and some of of their contents differ between client and
- * server.
+ * The interface instances share much of the same code and data structures.  Protocols, Interfaces,
+ * Sessions, and Messages are all the same object types on all interface instances.  But, the way
+ * they are used and some of of their contents differ among interface instances.
  *
  * IPC is done using unix domain, sequenced-packet sockets.  See the ref c_unixSockets for more
  * information.
@@ -18,11 +17,11 @@
  *   Protocol List --+--> Protocol ---> Message Pool
  *                           ^
  *                           |
- *   Service Map ----+--> Service ---+--> socket (server-side only, connected to Service Directory)
- *   (hashmap)               ^       |
- *                           |       +--> Session List
- *                           |                |
- *                           | +--------------+
+ *   Interface ------+--> Interface --+--> socket (server-side only, connected to Service Directory)
+ *   Instances Map           ^        |
+ *   (hashmap)               |        +--> Session List
+ *                           |                 |
+ *                           | +---------------+
  *                           | |
  *                           | v
  *                        Session ---+--> socket
@@ -98,7 +97,7 @@
 #include "messagingMessage.h"
 #include "messagingProtocol.h"
 #include "messagingSession.h"
-#include "messagingService.h"
+#include "messagingInterface.h"
 
 // =======================================
 //  PROTECTED (INTER-MODULE) FUNCTIONS
@@ -118,6 +117,6 @@ void msg_Init
 {
     msgProto_Init();
     msgMessage_Init();
-    msgService_Init();
+    msgInterface_Init();
     msgSession_Init();
 }

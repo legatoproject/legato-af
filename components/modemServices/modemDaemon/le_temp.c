@@ -233,9 +233,9 @@ le_result_t le_temp_GetRadioThresholds
         ///<  in degree celsius.
 )
 {
-    if ( (hiWarningTempPtr == NULL) || (hiWarningTempPtr == NULL))
+    if ( (hiWarningTempPtr == NULL) || (hiCriticalTempPtr == NULL))
     {
-        LE_KILL_CLIENT("hiWarningTempPtr or/and hiWarningTempPtr are NULL!!");
+        LE_KILL_CLIENT("hiWarningTempPtr or/and hiCriticalTempPtr are NULL!!");
         return LE_FAULT;
     }
     return pa_temp_GetRadioThresholds(hiWarningTempPtr, hiCriticalTempPtr);

@@ -156,8 +156,7 @@ COMPONENT_INIT
 
         result = le_antenna_GetExternalAdc(AntennaCtxtText[LE_ANTENNA_PRIMARY_CELLULAR].antennaRef
                                   , &antennaAdc);
-        //LE_ASSERT((result == LE_OK)&&(antennaAdc == 0));
-        LE_ASSERT(result == LE_UNSUPPORTED);
+        LE_ASSERT((result == LE_OK)&&(antennaAdc == 0));
 
         // // Test external ADC index 1
         result = le_antenna_SetExternalAdc(AntennaCtxtText[LE_ANTENNA_PRIMARY_CELLULAR].antennaRef
@@ -166,16 +165,14 @@ COMPONENT_INIT
 
         result = le_antenna_GetExternalAdc(AntennaCtxtText[LE_ANTENNA_PRIMARY_CELLULAR].antennaRef
                                   , &antennaAdc);
-        //LE_ASSERT((result == LE_OK)&&(antennaAdc == 1));
-        LE_ASSERT(result == LE_UNSUPPORTED);
+        LE_ASSERT((result == LE_OK)&&(antennaAdc == 1));
     }
     else
     {
         LE_INFO("Internal ADC selected by default");
         result = le_antenna_GetExternalAdc(AntennaCtxtText[LE_ANTENNA_PRIMARY_CELLULAR].antennaRef
                                   , &antennaAdc);
-        //LE_ASSERT((result == LE_OK)&&(antennaAdc == -1));
-        LE_ASSERT(result == LE_UNSUPPORTED);
+        LE_ASSERT((result == LE_OK)&&(antennaAdc == -1));
     }
 
     /*
@@ -306,25 +303,26 @@ COMPONENT_INIT
         result = le_antenna_SetExternalAdc(AntennaCtxtText[LE_ANTENNA_GNSS].antennaRef
                                   , 0);
         LE_ASSERT((result == LE_OK)||(result == LE_UNSUPPORTED));
+        result = le_antenna_GetExternalAdc(AntennaCtxtText[LE_ANTENNA_GNSS].antennaRef
+                                  , &antennaAdc);
+        LE_ASSERT((result == LE_OK)&&(antennaAdc == 0));
 
         // Test external ADC index 1 (already used for cellular diagnostic antenna)
         result = le_antenna_SetExternalAdc(AntennaCtxtText[LE_ANTENNA_GNSS].antennaRef
                                   , 1);
         LE_ASSERT(result == LE_FAULT);
+        // External ADC index not changed
         result = le_antenna_GetExternalAdc(AntennaCtxtText[LE_ANTENNA_GNSS].antennaRef
                                   , &antennaAdc);
-        //LE_ASSERT((result == LE_OK)&&(antennaAdc == LE_ANTENNA_DIAG_NO_ADC));
-        LE_ASSERT(result == LE_UNSUPPORTED);
+        LE_ASSERT((result == LE_OK)&&(antennaAdc == 0));
 
         // Test external ADC index 2
         result = le_antenna_SetExternalAdc(AntennaCtxtText[LE_ANTENNA_GNSS].antennaRef
                                   , 2);
         LE_ASSERT(result == LE_OK);
-
         result = le_antenna_GetExternalAdc(AntennaCtxtText[LE_ANTENNA_GNSS].antennaRef
                                   , &antennaAdc);
-        //LE_ASSERT((result == LE_OK)&&(antennaAdc == 2));
-        LE_ASSERT(result == LE_UNSUPPORTED);
+        LE_ASSERT((result == LE_OK)&&(antennaAdc == 2));
     }
     else
     {

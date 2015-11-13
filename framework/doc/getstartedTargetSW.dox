@@ -31,12 +31,12 @@ You can add more scripts to customize your target. @c fg_ scripts must have exec
 Wait for the target to fully reboot. The target IP address may have changed. Check it using
 @c ifconfig through the serial console before proceeding.
 
-@section getstartedTargetSetup_copyLibExe instlegato Copy Libs & Exes 
+@section getstartedTargetSetup_copyLibExe instlegato Copy Libs & Exes
 
 To copy libraries and executables to the target, run:
 
 @code
-$ instlegato build/wp7 <target ip address>
+$ instlegato build/wp85 <target ip address>
 @endcode
 
 It will automatically start the Legato runtime components.

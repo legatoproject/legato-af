@@ -72,9 +72,9 @@ CompositeAdbInterface       = "Android Composite ADB Interface"
 SingleBootLoaderInterface   = "Android Bootloader Interface"
 
 Edit the ini file from android:
-•	A device VID must be added to be recognized by ADB.
-•	Create a %USERPROFILE%\.android directory, if it does not exist.
-•	Navigate to the %USERPROFILE%\.android directory.
+•    A device VID must be added to be recognized by ADB.
+•    Create a %USERPROFILE%\.android directory, if it does not exist.
+•    Navigate to the %USERPROFILE%\.android directory.
 In the %USERPROFILE%\.android directory, create or edit the file adb_usb.ini. If the file already exists, it will contain a DO NOT EDIT message.
 Disregard this message and edit the file anyway. To edit, add a line containing 0x05C6 and a line containing 0x1199 to the end of the file.
 Note: Don’t run android update adb or it will reset the contents of this file and overwrite the line just added.

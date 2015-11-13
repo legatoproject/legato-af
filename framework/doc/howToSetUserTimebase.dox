@@ -1,0 +1,57 @@
+/** @page howToSetUserTimebase Set User Timebase
+
+This topic provides details on setting the user timebase. Usually, the automated time daemon
+handles time synchronization, but that may not always be desirable.
+
+See @ref c_rtc API
+
+<HR>
+
+You never directly modify the RTC. Instead, a user timebase parses the time values needed
+to adjust the RTC (plus/minus) so it's synchronized with the system clock.
+
+This is how time synchronization works in Legato:
+
+@image html le_rtc.png
+
+@section howToSetUserTimebase_overview Overview
+
+The modem manages a real time clock (battery backed clock VCOIN) that keeps time when the
+power is removed from the Legato module (if clock battery available). This clock
+is used by the modem to maintain several timebases derived from different domains (e.g., cellular
+or GPS). Apps shouldn't directly change the value of the real time clock
+as it may have undesirable effects on modem function.
+
+The user timebase is provided to synchronize with the RTC. An arbitrary stored time will increment on a
+millisecond basis and can be retrieved later assuming a battery (VCOIN) is available to keep the
+RTC running.
+
+@section howToSetUserTimebase_getandset Get/Set User Timebase
+
+If you need to set the user timebase, you need to @ref c_rtc_disableDaemon and then @ref c_rtc_getSet.
+
+See @ref c_rtc  and @ref c_clock.
+
+@section howToSetUserTimebase_background Background
+
+The RTC counts milliseconds since the GPS Epoch (January 6, 1980) and increments on each
+count so that each second in GPS time has a unique number. Unix time starts January 1, 1970,
+and has a fixed number of seconds per day.  In Unix, days that have an extra second in them
+(i.e., leap second) use the same second twice. This means that over time an ever increasing number
+of leap seconds have to be accounted for when converting time between domains.
+
+Leap seconds are introduced periodically because astronomically measured time and clock time
+would drift apart unless adjustments are made. It also means that Unix time,
+GPS time, and clock time are all drifting apart as well. The rate of drift is low (only 26 leap
+seconds have been added since leap seconds were introduced in 1972).
+It's impossible to predict in which years leap seconds will be added so that calculation must be done
+retroactively, based on observation.
+
+For practical purposes, it's not necessary to convert the time you wish to maintain into
+real GPS time; it will suffice to use Unix epoch time. The amount of drift caused by leap
+seconds over a year is less than the inherent drift in the RTC. Under normal conditions,
+the time will be corrected from an external source like network time or GPS.
+
+<HR>
+
+**/

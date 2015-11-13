@@ -31,6 +31,13 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * System standard type string length. One extra byte is added for the null character.
+ */
+//--------------------------------------------------------------------------------------------------
+#define SYS_STD_MAX_LEN      (12+1)
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Propulsion type string length. One extra byte is added for the null character.
  */
 //--------------------------------------------------------------------------------------------------
@@ -107,6 +114,9 @@ typedef struct
     int8_t          dialAttemptsCount;      ///< counter of dial attempts
     uint16_t        dialDuration;           ///< Dial duration value
     uint16_t        nadDeregistrationTime;  ///< NAD deregistration time
+    bool            pullModeSwitch;         ///< AL ack received positive has been reported or T7
+                                            ///< timer has expired, Pull mode must be selected on
+                                            ///< next redials
     le_timer_Ref_t  dialDurationTimer;      ///< Dial duration timer
 }
 EraGlonassContext_t;
@@ -342,6 +352,19 @@ static void IntervalTimerHandler
         // ERA-GLONASS
         if(ECallObj.eraGlonass.dialAttemptsCount)
         {
+            // Cf. ERA-GLONASS GOST R 54620-2011, 7.5.1.2
+            if ((ECallObj.eraGlonass.pullModeSwitch) && (ECallObj.isPushed))
+            {
+                if (pa_ecall_SetMsdTxMode(LE_ECALL_TX_MODE_PULL) != LE_OK)
+                {
+                    LE_WARN("Unable to set the Pull mode!");
+                }
+                else
+                {
+                    ECallObj.isPushed = false;
+                }
+            }
+
             LE_INFO("[ERA-GLONASS] Interval duration expires! Start attempts #%d of %d",
                     (ECallObj.eraGlonass.dialAttempts - ECallObj.eraGlonass.dialAttemptsCount + 1),
                     ECallObj.eraGlonass.dialAttempts);
@@ -366,6 +389,17 @@ static void IntervalTimerHandler
         if(!ECallObj.panEur.stopDialing)
         {
             LE_INFO("[PAN-EUROPEAN] Interval duration expires! Start again...");
+            if (!ECallObj.isPushed)
+            {
+                if (pa_ecall_SetMsdTxMode(LE_ECALL_TX_MODE_PUSH) != LE_OK)
+                {
+                    LE_WARN("Unable to set the Push mode!");
+                }
+                else
+                {
+                    ECallObj.isPushed = true;
+                }
+            }
             pa_ecall_Start(ECallObj.startType, &ECallObj.callId);
         }
     }
@@ -382,7 +416,6 @@ static void StopTimers
     void
 )
 {
-    LE_DEBUG("Stop redial management timers");
     if(ECallObj.intervalTimer)
     {
         LE_DEBUG("Stop the Interval timer");
@@ -562,7 +595,7 @@ static le_result_t GetPropulsionType
     char cfgNodeLoc[8] = {0};
     char configPath[LIMIT_MAX_PATH_BYTES];
     char propStr[PROPULSION_MAX_LEN] = {0};
-    le_result_t res = LE_OK;
+    le_result_t res;
 
     snprintf(configPath, sizeof(configPath), "%s/%s", CFG_MODEMSERVICE_ECALL_PATH, CFG_NODE_PROP);
     le_cfg_IteratorRef_t propCfg = le_cfg_CreateReadTxn(configPath);
@@ -588,6 +621,10 @@ static le_result_t GetPropulsionType
             LE_ERROR("Bad propulsion type!");
             res = LE_FAULT;
             break;
+        }
+        else
+        {
+            res = LE_OK;
         }
 
         i++;
@@ -687,7 +724,7 @@ static le_result_t LoadECallSettings
 
         // Get system standard
         {
-            char  sysStr[] = "PAN-EUROPEAN";
+            char  sysStr[SYS_STD_MAX_LEN] = {0};
             bool isEraGlonass = false;
             if (le_cfg_NodeExists(eCallCfg, CFG_NODE_SYSTEM_STD))
             {
@@ -810,14 +847,14 @@ static le_result_t EncodeMsd
             eCallPtr->msd.msdMsg.optionalData.data = outOptionalDataForEraGlonass;
 
             LE_DEBUG("eCall optional Data: Length %d",
-                    eCallPtr->msd.msdMsg.optionalData.dataLen);
+                     eCallPtr->msd.msdMsg.optionalData.dataLen);
         }
 
         // Encode MSD message
         if ((eCallPtr->builtMsdSize = msd_EncodeMsdMessage(&eCallPtr->msd, eCallPtr->builtMsd))
             == LE_FAULT)
         {
-            LE_ERROR("Unable to encode the MSD!");
+            LE_ERROR("Unable to encode the MSD! Please verify your settings in the config tree.");
             return LE_FAULT;
         }
     }
@@ -864,6 +901,8 @@ static void ECallStateHandler
 {
     LE_DEBUG("Handler Function called with state %d", *statePtr);
 
+    ECallObj.state = *statePtr;
+
     switch (*statePtr)
     {
         case LE_ECALL_STATE_STARTED: /* eCall session started */
@@ -890,6 +929,19 @@ static void ECallStateHandler
                         // ERA-GLONASS
                         if(ECallObj.eraGlonass.dialAttemptsCount)
                         {
+                            // Cf. ERA-GLONASS GOST R 54620-2011, 7.5.1.2
+                            if ((ECallObj.eraGlonass.pullModeSwitch) && (ECallObj.isPushed))
+                            {
+                                if (pa_ecall_SetMsdTxMode(LE_ECALL_TX_MODE_PULL) != LE_OK)
+                                {
+                                    LE_WARN("Unable to set the Pull mode!");
+                                }
+                                else
+                                {
+                                    ECallObj.isPushed = false;
+                                }
+                            }
+
                             LE_INFO(
                             "[ERA-GLONASS] Interval duration expires! Start attempts #%d of %d",
                             (ECallObj.eraGlonass.dialAttempts
@@ -907,6 +959,18 @@ static void ECallStateHandler
                         LE_WARN("[PAN-EUROPEAN] Got 120 seconds to reconnect with PSAP");
 
                         le_clk_Time_t interval = {120,0};
+
+                        if (!ECallObj.isPushed)
+                        {
+                            if (pa_ecall_SetMsdTxMode(LE_ECALL_TX_MODE_PUSH) != LE_OK)
+                            {
+                                LE_WARN("Unable to set the Push mode!");
+                            }
+                            else
+                            {
+                                ECallObj.isPushed = true;
+                            }
+                        }
 
                         LE_ERROR_IF( ((le_timer_SetInterval(
                                     ECallObj.panEur.remainingDialDurationTimer, interval)
@@ -926,8 +990,8 @@ static void ECallStateHandler
                     le_clk_Time_t interval;
                     interval.usec = 0;
 
-                    if ((time.sec-ECallObj.startTentativeTime.sec)
-                    >= ECallObj.intervalBetweenAttempts)
+                    if ((time.sec-ECallObj.startTentativeTime.sec) >=
+                         ECallObj.intervalBetweenAttempts)
                     {
                         interval.sec = 1;
                     }
@@ -980,17 +1044,39 @@ static void ECallStateHandler
             break;
         }
 
+        case LE_ECALL_STATE_ALACK_RECEIVED_POSITIVE: /* eCall session completed */
+        {
+            if (SystemStandard == PA_ECALL_PAN_EUROPEAN)
+            {
+                StopTimers();
+            }
+            else
+            {
+                // Cf. ERA-GLONASS GOST R 54620-2011, 7.5.1.2
+                ECallObj.eraGlonass.pullModeSwitch = true;
+            }
+            break;
+        }
+
+        case LE_ECALL_STATE_FAILED: /* Unsuccessful eCall session */
+        {
+            if (SystemStandard == PA_ECALL_ERA_GLONASS)
+            {
+                // Cf. ERA-GLONASS GOST R 54620-2011, 7.5.1.2, event triggered on T7 timeout
+                ECallObj.eraGlonass.pullModeSwitch = true;
+            }
+            break;
+        }
+
         case LE_ECALL_STATE_MSD_TX_STARTED: /* MSD transmission is started */
         case LE_ECALL_STATE_WAITING_PSAP_START_IND: /* Waiting for PSAP start indication */
         case LE_ECALL_STATE_PSAP_START_IND_RECEIVED: /* PSAP start indication received */
         case LE_ECALL_STATE_LLNACK_RECEIVED: /* LL-NACK received */
         case LE_ECALL_STATE_LLACK_RECEIVED: /* LL-ACK received */
-        case LE_ECALL_STATE_ALACK_RECEIVED_POSITIVE: /* AL-ACK received */
         case LE_ECALL_STATE_ALACK_RECEIVED_CLEAR_DOWN: /* AL-ACK clear-down received */
         case LE_ECALL_STATE_MSD_TX_COMPLETED: /* MSD transmission is complete */
         case LE_ECALL_STATE_RESET: /* eCall session has lost synchronization and starts over */
-        case LE_ECALL_STATE_FAILED: /* Unsuccessful eCall session */
-        case LE_ECALL_STATE_STOPPED: /* eCall session has been stopped by the PSAP */
+        case LE_ECALL_STATE_STOPPED: /* eCall session has been stopped by PSAP or IVS le_ecall_End() */
         case LE_ECALL_STATE_MSD_TX_FAILED: /* MSD transmission has failed */
         {
             // Nothing to do, just report the event
@@ -1060,11 +1146,6 @@ static void CallEventHandler
 
             eCallPtr->isStarted = false;
         }
-    }
-
-    if (event == LE_MCC_EVENT_TERMINATED)
-    {
-        le_mcc_Delete(callRef);
     }
 }
 
@@ -1145,6 +1226,7 @@ le_result_t le_ecall_Init
     ECallObj.eraGlonass.dialAttemptsCount = 10;
     ECallObj.eraGlonass.dialDuration = 300;
     ECallObj.eraGlonass.dialDurationTimer = le_timer_Create("DialDuration");
+    ECallObj.eraGlonass.pullModeSwitch = false;
 
     // Add a config tree handler for eCall settings update.
     le_cfg_AddChangeHandler(CFG_MODEMSERVICE_ECALL_PATH, SettingsUpdate, NULL);
@@ -1175,6 +1257,11 @@ le_result_t le_ecall_Init
     EraGlonassDataObj.presentCrashSeverity = false;
     EraGlonassDataObj.presentDiagnosticResult = false;
     EraGlonassDataObj.presentCrashInfo = false;
+
+    if (pa_ecall_SetMsdTxMode(LE_ECALL_TX_MODE_PUSH) != LE_OK)
+    {
+        LE_WARN("Unable to set the Push mode!");
+    }
 
     if (pa_ecall_GetMsdTxMode(&msdTxMode) != LE_OK)
     {
@@ -1236,7 +1323,7 @@ le_result_t le_ecall_ForceOnlyMode
     void
 )
 {
-    return (pa_ecall_SetOperationMode(LE_ECALL_FORCED_ONLY_MODE));
+    return (pa_ecall_SetOperationMode(LE_ECALL_ONLY_MODE));
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1432,8 +1519,8 @@ le_result_t le_ecall_SetMsdPassengersCount
 le_result_t le_ecall_ImportMsd
 (
     le_ecall_CallRef_t  ecallRef,      ///< [IN] eCall reference
-    const uint8_t*      msdPtr,        ///< [IN] the prepared MSD
-    size_t              msdNumElements ///< [IN] the prepared MSD size in bytes
+    const uint8_t*      msdPtr,        ///< [IN] Prepared MSD
+    size_t              msdNumElements ///< [IN] Prepared MSD size in bytes
 )
 {
     ECall_t*   eCallPtr = le_ref_Lookup(ECallRefMap, ecallRef);
@@ -1513,8 +1600,8 @@ le_result_t le_ecall_SendMsd
 le_result_t le_ecall_ExportMsd
 (
     le_ecall_CallRef_t  ecallRef,           ///< [IN] eCall reference
-    uint8_t*            msdPtr,             ///< [OUT] encoded MSD message.
-    size_t*             msdNumElementsPtr   ///< [IN,OUT] The encoded MSD size in bytes
+    uint8_t*            msdPtr,             ///< [OUT] Encoded MSD message.
+    size_t*             msdNumElementsPtr   ///< [IN,OUT] Ecoded MSD size in bytes
 )
 {
     ECall_t*   eCallPtr = le_ref_Lookup(ECallRefMap, ecallRef);
@@ -1603,10 +1690,23 @@ le_result_t le_ecall_StartAutomatic
     if (SystemStandard == PA_ECALL_ERA_GLONASS)
     {
         ECallObj.eraGlonass.dialAttemptsCount = ECallObj.eraGlonass.autoDialAttempts;
+        ECallObj.eraGlonass.pullModeSwitch = false;
     }
 
     // Update eCall start type
     ECallObj.startType = PA_ECALL_START_AUTO;
+
+    if (!ECallObj.isPushed)
+    {
+        if (pa_ecall_SetMsdTxMode(LE_ECALL_TX_MODE_PUSH) != LE_OK)
+        {
+            LE_WARN("Unable to set the Push mode!");
+        }
+        else
+        {
+            ECallObj.isPushed = true;
+        }
+    }
 
     if (pa_ecall_Start(PA_ECALL_START_AUTO, &ECallObj.callId) == LE_OK)
     {
@@ -1696,10 +1796,23 @@ le_result_t le_ecall_StartManual
     if (SystemStandard == PA_ECALL_ERA_GLONASS)
     {
         ECallObj.eraGlonass.dialAttemptsCount = ECallObj.eraGlonass.manualDialAttempts;
+        ECallObj.eraGlonass.pullModeSwitch = false;
     }
 
     // Update eCall start type
     ECallObj.startType = PA_ECALL_START_MANUAL;
+
+    if (!ECallObj.isPushed)
+    {
+        if (pa_ecall_SetMsdTxMode(LE_ECALL_TX_MODE_PUSH) != LE_OK)
+        {
+            LE_WARN("Unable to set the Push mode!");
+        }
+        else
+        {
+            ECallObj.isPushed = true;
+        }
+    }
 
     if (pa_ecall_Start(PA_ECALL_START_MANUAL, &ECallObj.callId) == LE_OK)
     {
@@ -1789,10 +1902,23 @@ le_result_t le_ecall_StartTest
     if (SystemStandard == PA_ECALL_ERA_GLONASS)
     {
         ECallObj.eraGlonass.dialAttemptsCount = ECallObj.eraGlonass.manualDialAttempts;
+        ECallObj.eraGlonass.pullModeSwitch = false;
     }
 
     // Update eCall start type
     ECallObj.startType = PA_ECALL_START_TEST;
+
+    if (!ECallObj.isPushed)
+    {
+        if (pa_ecall_SetMsdTxMode(LE_ECALL_TX_MODE_PUSH) != LE_OK)
+        {
+            LE_WARN("Unable to set the Push mode!");
+        }
+        else
+        {
+            ECallObj.isPushed = true;
+        }
+    }
 
     if (pa_ecall_Start(PA_ECALL_START_TEST, &ECallObj.callId) == LE_OK)
     {
@@ -1940,6 +2066,9 @@ void le_ecall_RemoveStateChangeHandler
  * @return
  *  - LE_OK on success
  *  - LE_FAULT for other failures
+ *
+ * @note If PSAP number is too long (max LE_MDMDEFS_PHONE_NUM_MAX_LEN digits), it is a fatal error,
+ *       the function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_ecall_SetPsapNumber
@@ -1990,7 +2119,7 @@ le_result_t le_ecall_SetPsapNumber
  * Get the Public Safely Answering Point telephone number set with le_ecall_SetPsapNumber()
  * function.
  *
- * @note Important! This function doesn't read the U/SIM content.
+ * @warning Important! This function doesn't read the U/SIM content.
  *
  * @return
  *  - LE_OK on success

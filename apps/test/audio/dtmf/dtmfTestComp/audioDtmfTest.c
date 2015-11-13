@@ -41,6 +41,32 @@ static le_audio_DtmfDetectorHandlerRef_t DtmfHandlerRef2 = NULL;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Handler functions for DTMF Notifications.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void MyDtmfDetectorHandler1
+(
+    le_audio_StreamRef_t streamRef,
+    char  dtmf,
+    void* contextPtr
+)
+{
+    LE_INFO("MyDtmfDetectorHandler1 detects %c", dtmf);
+}
+
+static void MyDtmfDetectorHandler2
+(
+    le_audio_StreamRef_t streamRef,
+    char  dtmf,
+    void* contextPtr
+)
+{
+    LE_INFO("MyDtmfDetectorHandler2 detects %c", dtmf);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Connect audio to PCM.
  *
  */
@@ -182,33 +208,6 @@ static void DisconnectAllAudio
     }
 }
 
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Handler functions for DTMF Notifications.
- *
- */
-//--------------------------------------------------------------------------------------------------
-static void MyDtmfDetectorHandler1
-(
-    le_audio_StreamRef_t streamRef,
-    char  dtmf,
-    void* contextPtr
-)
-{
-    LE_INFO("MyDtmfDetectorHandler1 detects %c", dtmf);
-}
-
-static void MyDtmfDetectorHandler2
-(
-    le_audio_StreamRef_t streamRef,
-    char  dtmf,
-    void* contextPtr
-)
-{
-    LE_INFO("MyDtmfDetectorHandler2 detects %c", dtmf);
-}
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Handler function for Call Event Notifications.
@@ -231,11 +230,7 @@ static void MyCallEventHandler
     else if (callEvent == LE_MCC_EVENT_CONNECTED)
     {
         LE_INFO("Call event is LE_MCC_EVENT_CONNECTED.");
-        ConnectAudioToPcm();
-        DtmfHandlerRef1 = le_audio_AddDtmfDetectorHandler(MdmRxAudioRef, MyDtmfDetectorHandler1, NULL);
-        DtmfHandlerRef2 = le_audio_AddDtmfDetectorHandler(MdmRxAudioRef, MyDtmfDetectorHandler2, NULL);
 
-        sleep(4);
         if (strcmp(DtmfSendingCase,"inband")==0)
         {
             PlayerAudioRef = le_audio_OpenPlayer();
@@ -478,6 +473,14 @@ COMPONENT_INIT
 
     if (!isLocalTest)
     {
+        ConnectAudioToPcm();
+        DtmfHandlerRef1 = le_audio_AddDtmfDetectorHandler(MdmRxAudioRef,
+                                                          MyDtmfDetectorHandler1,
+                                                          NULL);
+        DtmfHandlerRef2 = le_audio_AddDtmfDetectorHandler(MdmRxAudioRef,
+                                                          MyDtmfDetectorHandler2,
+                                                          NULL);
+
         le_mcc_AddCallEventHandler(MyCallEventHandler, NULL);
         TestCallRef=le_mcc_Create(DestinationNumber);
         le_mcc_Start(TestCallRef);

@@ -39,16 +39,57 @@
  * The default "HOT" start condition is applied and all assistance data are used.
  * Also see @ref howToGNSS.
  *
- * @section le_gnss_ForceColdRestart Force cold restart
+ * @section le_gnss_StartingMode Starting mode
  *
- * The le_gnss_ForceColdRestart() function performs a "cold" restart of the GNSS device. The current
- * GNSS session is stopped, the specified assistance data are cleared then the GNSS session is
- * restarted. Also see @ref howToGNSS.
+ * Starting modes are used only for test purposes and allow start performance measurement.
+ * @note For more information about start performances, please refer to your specific
+ * platform documentation.
  *
- * For the cold start condition, the following assistance data are cleared:
- *   - Ephemerises
- *   - Time
- *   - Position
+ * @subsection le_gnss_Data GNSS data
+ * The following table describes the <b>minimum</b> required data for those starting modes:
+ *
+ * | GNSS Data / Starting mode  | HOT  | WARM  | COLD  | FACTORY |
+ *| -----------------------| -----| ------| ----- | ------- |
+ *| Broadcasted Ephemeris  | Used |  |  |  |
+ *| Extended Ephemeris     | Used(1) | Used(2) | Used(2) | Removed (3) |
+ *| Approximate Time and Position  | Used | Used |  |  |
+ *| Almanac   | Used | Used | Used | Used (Factory) |
+ *
+ * For example, a requested HOT start without valid broadcasted ephemeris will be treated
+ * as a WARM start.
+ *
+ * @note (1) Extended Ephemeris can be used if Broadcasted Ephemeris are not valid.
+ * The Extended Ephemeris could be loaded using the le_gnss_LoadExtendedEphemerisFile()
+ * function.
+ * @note (2) Extended Ephemeris is used if the Extended Ephemeris file is loaded and valid.
+ * @note (3) Extended Ephemeris are removed when a FACTORY start is requested.
+ * The Extended Ephemeris could be loaded again using the le_gnss_LoadExtendedEphemerisFile()
+ * function.
+ *
+ * @subsection le_gnss_TTFF Time To First Fix (TTFF)
+ * The le_gnss_GetTtff() function provides the TTFF (first between 2-Dimensional or 3-Dimensional
+ * Position Fix) of the last position fix.
+ * Please refer to @ref le_gnss_APIcallsRequirements. Also see @ref howToGNSS.
+ *
+ * @subsection le_gnss_ForceHotRestart Force HOT restart
+ * The le_gnss_ForceHotRestart() function performs a "HOT" restart of the GNSS device. The current
+ * GNSS session is stopped, then started using the available @ref le_gnss_Data.
+ * Please refer to @ref le_gnss_APIcallsRequirements. Also see @ref howToGNSS.
+ *
+ * @subsection le_gnss_ForceWarmRestart Force WARM restart
+ * The le_gnss_ForceWarmRestart() function performs a "WARM" restart of the GNSS device. The current
+ * GNSS session is stopped, then started using the available @ref le_gnss_Data.
+ * Please refer to @ref le_gnss_APIcallsRequirements. Also see @ref howToGNSS.
+ *
+ * @subsection le_gnss_ForceColdRestart Force COLD restart
+ * The le_gnss_ForceColdRestart() function performs a "COLD" restart of the GNSS device. The current
+ * GNSS session is stopped, then started using the available @ref le_gnss_Data.
+ * Please refer to @ref le_gnss_APIcallsRequirements. Also see @ref howToGNSS.
+ *
+ * @subsection le_gnss_ForceFactoryRestart Force FACTORY restart
+ * The le_gnss_ForceFactoryRestart() function performs a "FACTORY" restart of the GNSS device.
+ * The current GNSS session is stopped, then started using the available @ref le_gnss_Data.
+ * Please refer to @ref le_gnss_APIcallsRequirements. Also see @ref howToGNSS.
  *
  * @section le_gnss_SetGetConstellation GNSS constellation selection
  *
@@ -66,17 +107,6 @@
  * The le_gnss_GetConstellation() function gets the GNSS constellation(s) enabled to be used
  * in solution.
  *
- * | Function / GNSS state  | UNINITIALIZED  | READY  | ACTIVE  | DISABLED |
- *| ----------------------------- | --------------------------- | ----------------------------- | --------------------------- | --------------------------- |
- *| le_gnss_Start() | LE_NOT_PERMITTED | LE_OK/LE_FAULT | LE_DUPLICATE | LE_NOT_PERMITTED |
- *| le_gnss_Stop() | LE_NOT_PERMITTED | LE_DUPLICATE | LE_OK/LE_FAULT | LE_NOT_PERMITTED |
- *| le_gnss_ForceColdRestart() | LE_NOT_PERMITTED | LE_NOT_PERMITTED | LE_OK/LE_FAULT | LE_NOT_PERMITTED |
- *| le_gnss_Disable() | LE_NOT_PERMITTED | LE_OK/LE_FAULT | LE_NOT_PERMITTED | LE_DUPLICATE |
- *| le_gnss_Enable() | LE_NOT_PERMITTED | LE_DUPLICATE | LE_DUPLICATE | LE_OK/LE_FAULT |
- *| le_gnss_SetConstellation() | LE_NOT_PERMITTED |  LE_OK/LE_FAULT | LE_NOT_PERMITTED | LE_NOT_PERMITTED |
- *
- * Also see @ref howToGNSS.
- *
  * @section le_gnss_Assisted_GNSS Assisted GNSS
  *
  * @ref le_gnss_Assisted_GNSS_EE <br>
@@ -89,6 +119,7 @@
  * With le_gnss_LoadExtendedEphemerisFile() , you can load an 'Extended Ephemeris' file into
  * the GNSS device from the filesystem.
  * You have to download the file before loading it.
+ * @warning Ensure to check that the downloaded file is supported for your specific platform.
  *
  * With le_gnss_GetExtendedEphemerisValidity(), you will to get the validity of the last injected
  * Extended Ephemeris.
@@ -107,7 +138,7 @@
  *   char StopTime[100] = {0};
  *   int32_t fd;
  *
- *   // download file into EXT_EPH_PATH
+ *   // Download file into EXT_EPH_PATH using for example the "wget" system command
  *   DownloadExtendedEphemerisFile(EXT_EPH_PATH);
  *
  *   if ((fd=open(EXT_EPH_PATH, O_RDONLY)) == -1)
@@ -184,6 +215,26 @@
  * The SUPL certificate to be used in A-GNSS sessions is injected through the
  * le_gnss_InjectSuplCertificate() function and deleted through the le_gnss_DeleteSuplCertificate()
  * function.
+ *
+ * @section le_gnss_APIcallsRequirements API calls Requirements
+ * The following table shows the pre-requisites when using the GNSS service API function set.
+ * ''LE_OK or error code'' means the function is authorized in the corresponding state, the request
+ * is performed and the result is returned; otherwise the returned error is indicated for each state
+ *.
+ * | Function / GNSS state  | UNINITIALIZED  | READY  | ACTIVE  | DISABLED |
+ *| ----------------------------- | --------------------------- | -----------------------------| --------------------------- | --------------------------- |
+ *| le_gnss_Start() | LE_NOT_PERMITTED | LE_OK or error code | LE_DUPLICATE | LE_NOT_PERMITTED |
+ *| le_gnss_Stop() | LE_NOT_PERMITTED | LE_DUPLICATE | LE_OK or error code | LE_NOT_PERMITTED |
+ *| le_gnss_ForceHotRestart() | LE_NOT_PERMITTED | LE_NOT_PERMITTED | LE_OK or error code | LE_NOT_PERMITTED |
+ *| le_gnss_ForceWarmRestart() | LE_NOT_PERMITTED | LE_NOT_PERMITTED | LE_OK or error code | LE_NOT_PERMITTED |
+ *| le_gnss_ForceColdRestart() | LE_NOT_PERMITTED | LE_NOT_PERMITTED | LE_OK or error code | LE_NOT_PERMITTED |
+ *| le_gnss_ForceFactoryRestart() | LE_NOT_PERMITTED | LE_NOT_PERMITTED | LE_OK or error code | LE_NOT_PERMITTED |
+ *| le_gnss_Disable() | LE_NOT_PERMITTED | LE_OK or error code | LE_NOT_PERMITTED | LE_DUPLICATE |
+ *| le_gnss_Enable() | LE_NOT_PERMITTED | LE_DUPLICATE | LE_DUPLICATE | LE_OK or error code |
+ *| le_gnss_SetConstellation() | LE_NOT_PERMITTED |  LE_OK or error code | LE_NOT_PERMITTED | LE_NOT_PERMITTED |
+ *| le_gnss_GetTtff() | LE_NOT_PERMITTED |  LE_OK or error code | LE_OK or error code | LE_NOT_PERMITTED |
+ *
+ * Also see @ref howToGNSS.
  *
  *
  * <HR>
@@ -303,6 +354,8 @@ FUNCTION le_result_t DisableExtendedEphemerisFile
  * This function must be called to load an 'Extended Ephemeris' file into the GNSS device.
  *
  * @return LE_FAULT         The function failed to inject the 'Extended Ephemeris' file.
+ * @return LE_TIMEOUT       A time-out occurred.
+ * @return LE_FORMAT_ERROR  'Extended Ephemeris' file format error.
  * @return LE_OK            The function succeeded.
  *
  */
@@ -323,8 +376,8 @@ FUNCTION le_result_t LoadExtendedEphemerisFile
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetExtendedEphemerisValidity
 (
-    le_clk_Time_t startTimePtr OUT,     ///< Start time
-    le_clk_Time_t stopTimePtr OUT       ///< Stop time
+    le_clk_Time_t startTime OUT,     ///< Start time
+    le_clk_Time_t stopTime OUT       ///< Stop time
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -359,15 +412,73 @@ FUNCTION le_result_t Stop
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function clears ephemeris, position and time data before performing a restart.
+ * This function performs a "HOT" restart of the GNSS device.
  *
  * @return LE_FAULT         The function failed.
+ * @return LE_NOT_PERMITTED If the GNSS device is not enabled or not started.
+ * @return LE_OK            The function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t ForceHotRestart
+(
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function performs a "WARM" restart of the GNSS device.
+ *
+ * @return LE_FAULT         The function failed.
+ * @return LE_NOT_PERMITTED If the GNSS device is not enabled or not started.
+ * @return LE_OK            The function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t ForceWarmRestart
+(
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function performs a "COLD" restart of the GNSS device.
+ *
+ * @return LE_FAULT         The function failed.
+ * @return LE_NOT_PERMITTED If the GNSS device is not enabled or not started.
  * @return LE_OK            The function succeeded.
  *
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t ForceColdRestart
 (
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function performs a "FACTORY" restart of the GNSS device.
+ *
+ * @return LE_FAULT         The function failed.
+ * @return LE_NOT_PERMITTED If the GNSS device is not enabled or not started.
+ * @return LE_OK            The function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t ForceFactoryRestart
+(
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the TTFF in milliseconds
+ *
+ * @return LE_BUSY          The position is not fixed and TTFF can't be measured.
+ * @return LE_NOT_PERMITTED If the GNSS device is not enabled or not started.
+ * @return LE_OK            Function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetTtff
+(
+    uint32 ttff                     OUT ///< TTFF in milliseconds
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -445,7 +556,7 @@ FUNCTION le_result_t GetSuplAssistedMode
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetSuplServerUrl
 (
-    string  suplServerUrlPtr[MAX_SUPL_SERVER_URL_LEN]      IN  ///< SUPL server URL.
+    string  suplServerUrl[MAX_SUPL_SERVER_URL_LEN]      IN  ///< SUPL server URL.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -464,7 +575,7 @@ FUNCTION le_result_t InjectSuplCertificate
     uint8  suplCertificateId      IN,        ///< Certificate ID of the SUPL certificate.
                                              ///< Certificate ID range is 0 to 9
     uint16 suplCertificateLen     IN,        ///< SUPL certificate size in Bytes.
-    string  suplCertificatePtr[MAX_SUPL_CERTIFICATE_LEN]   IN  ///< SUPL certificate contents.
+    string  suplCertificate[MAX_SUPL_CERTIFICATE_LEN]   IN  ///< SUPL certificate contents.
 );
 
 //--------------------------------------------------------------------------------------------------

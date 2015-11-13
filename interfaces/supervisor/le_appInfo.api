@@ -63,6 +63,14 @@ ENUM ProcState
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Length of an MD5 hash string.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MD5_STR_LEN = 32;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Gets the state of the specified application.  The state of unknown applications is STOPPED.
  *
  * @return
@@ -71,7 +79,7 @@ ENUM ProcState
 //--------------------------------------------------------------------------------------------------
 FUNCTION State GetState
 (
-    string appName[le_limit.APP_NAME_LEN] IN        ///< Name of the application.
+    string appName[le_limit.APP_NAME_LEN] IN        ///< Application name.
 );
 
 
@@ -86,8 +94,8 @@ FUNCTION State GetState
 // -------------------------------------------------------------------------------------------------
 FUNCTION ProcState GetProcState
 (
-    string appName[le_limit.APP_NAME_LEN] IN,       ///< Name of the application.
-    string procName[le_limit.PROC_NAME_LEN] IN      ///< Name of the process.
+    string appName[le_limit.APP_NAME_LEN] IN,       ///< Application name.
+    string procName[le_limit.PROC_NAME_LEN] IN      ///< Process name.
 );
 
 
@@ -105,6 +113,24 @@ FUNCTION ProcState GetProcState
 FUNCTION le_result_t GetName
 (
     int32 pid IN,                               ///< PID of the process.
-    string appName[le_limit.APP_NAME_LEN] OUT   ///< Application name
+    string appName[le_limit.APP_NAME_LEN] OUT   ///< Application name.
 );
 
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * Gets the application hash as a hexidecimal string.  The application hash is a unique hash of the
+ * current version of the application.
+ *
+ * @return
+ *      LE_OK if the application has was successfully retrieved.
+ *      LE_OVERFLOW if the application hash could not fit in the provided buffer.
+ *      LE_NOT_FOUND if the application is not installed.
+ *      LE_FAULT if there was an error.
+ */
+//-------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetHash
+(
+    string appName[le_limit.APP_NAME_LEN] IN,   ///< Application name.
+    string hashStr[MD5_STR_LEN] OUT             ///< Hash string.
+);

@@ -1,8 +1,25 @@
 #!/bin/bash
+copyright="
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+"
 
-# Script to encrypt data.
-# Customer need to fill this script.
-# $1=path to file
+. "$(dirname "${BASH_SOURCE[0]}")/shlib"
+
+help_short_desc="Encrypts the application package"
+
+help_usage=(
+"APP_FILE"
+)
+
+help_long_description=(
+"This tool encrypts a given application package. The default security-pack"
+"script renames the received file without encrypting it. Customers have to"
+"rewrite this script as per their requirement. Secure installation also"
+"requires a corresponding security-unpack tool on the device to decrypt the"
+"received image."
+)
+
+CheckForHelp $@
 
 # Here, do nothing but rename the file what it receive.
 cp "$1" "$1.sec"

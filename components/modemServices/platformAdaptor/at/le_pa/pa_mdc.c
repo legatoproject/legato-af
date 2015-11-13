@@ -646,14 +646,11 @@ le_result_t pa_mdc_StartSessionIPV4
 
     if ( (result = EstablishConnection(profileIndex)) != LE_OK )
     {
+        SetCurrentDataSessionIndex(INVALID_PROFILE_INDEX);
         return LE_FAULT;
     }
 
-    if (result==LE_OK) {
-        SetCurrentDataSessionIndex(profileIndex);
-    } else {
-        SetCurrentDataSessionIndex(INVALID_PROFILE_INDEX);
-    }
+    SetCurrentDataSessionIndex(profileIndex);
 
     return result;
 }
@@ -965,6 +962,24 @@ le_result_t pa_mdc_GetGatewayAddress
     return result;
 }
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Reject a MT-PDP data session for the given profile
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_BAD_PARAMETER if the input parameter is not valid
+ *      - LE_FAULT for other failures
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_mdc_RejectMtPdpSession
+(
+    uint32_t profileIndex
+)
+{
+    return LE_FAULT;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**

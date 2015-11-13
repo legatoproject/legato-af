@@ -226,14 +226,37 @@ static void AddExecutables
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Iterate over a "provides:" section process subsections.  Pointers to "api:" subsections will be
- * added to a provided list for later processing.
+ * Iterate over a section containing a list of extern API interfaces, and add pointers to those
+ * extern API interface items to the list provided.
+ */
+//--------------------------------------------------------------------------------------------------
+static void AddExternApiInterfaces
+(
+    std::list<const parseTree::ExternApiInterface_t*>& interfaces, ///< [OUT] List of extern items.
+    const parseTree::ComplexSection_t* sectionPtr
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // Iterate over its contents.
+    for (auto itemPtr : sectionPtr->Contents())
+    {
+        // Each item in the section is an ExternApiInterface_t.
+        // Add each to the list of extern API interfaces to be processed later.
+        interfaces.push_back(dynamic_cast<parseTree::ExternApiInterface_t*>(itemPtr));
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Model a "provides:" section in a .adef file.  Any "provided APIs" will be added to the list
+ * of extern API interfaces to be processed later.
  */
 //--------------------------------------------------------------------------------------------------
 static void AddProvidedItems
 (
     model::App_t* appPtr,
-    std::list<const parseTree::CompoundItem_t*>& apiSubsections, ///< [OUT] List of api subsections.
+    std::list<const parseTree::ExternApiInterface_t*>& interfaces, ///< [OUT] List of extern items.
     const parseTree::Content_t* sectionPtr
 )
 //--------------------------------------------------------------------------------------------------
@@ -244,7 +267,12 @@ static void AddProvidedItems
 
         if (subsectionName == "api")
         {
-            apiSubsections.push_back(subsectionPtr);
+            // The "api" section is a complex section.
+            auto apiSectionPtr = ToComplexSectionPtr(subsectionPtr);
+
+            // Add all the items in this section to the list of extern API interfaces to be
+            // processed later.
+            AddExternApiInterfaces(interfaces, apiSectionPtr);
         }
         else
         {
@@ -271,6 +299,7 @@ static void AddConfigTree
 
     model::Permissions_t permissions;
     const parseTree::Token_t* treeNameTokenPtr;
+    std::string fileName;
 
     // Check for optional FILE_PERMISSIONS token.
     if (contents[0]->type == parseTree::Token_t::FILE_PERMISSIONS)
@@ -284,28 +313,39 @@ static void AddConfigTree
         treeNameTokenPtr = contents[0];
     }
 
-    // Check for duplicates.
-    if (appPtr->configTrees.find(treeNameTokenPtr->text) != appPtr->configTrees.end())
+    // Replace the "DOT" with current application name.
+    if (treeNameTokenPtr->type == parseTree::Token_t::DOT)
     {
-        treeNameTokenPtr->ThrowException("Configuration tree '" + treeNameTokenPtr->text
+        fileName = appPtr->name;
+    }
+    else
+    {
+        fileName = treeNameTokenPtr->text;
+    }
+
+    // Check for duplicates.
+    if (appPtr->configTrees.find(fileName) != appPtr->configTrees.end())
+    {
+        treeNameTokenPtr->ThrowException("Configuration tree '" + fileName
                                          + "' appears in application more than once.");
     }
 
     // Add config tree access permissions to the app.
-    appPtr->configTrees[treeNameTokenPtr->text] = permissions;
+    appPtr->configTrees[fileName] = permissions;
 }
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Iterate over a "requires:" section process subsections.  Pointers to "api:" subsections will be
- * added to a provided list for later processing.
+ * Model a "requires:" section.  Any "required APIs" will be added to the provided list of
+ * extern API interfaces for later processing.  Everything else is added to the app model
+ * immediately.
  */
 //--------------------------------------------------------------------------------------------------
 static void AddRequiredItems
 (
     model::App_t* appPtr,
-    std::list<const parseTree::CompoundItem_t*>& apiSubsections, ///< [OUT] List of api subsections.
+    std::list<const parseTree::ExternApiInterface_t*>& interfaces, ///< [OUT] List of extern items.
     const parseTree::Content_t* sectionPtr
 )
 //--------------------------------------------------------------------------------------------------
@@ -316,7 +356,9 @@ static void AddRequiredItems
 
         if (subsectionName == "api")
         {
-            apiSubsections.push_back(subsectionPtr);
+            // Add all the items in this section to the list of extern API interfaces to be
+            // processed later.
+            AddExternApiInterfaces(interfaces, ToComplexSectionPtr(subsectionPtr));
         }
         else if (subsectionName == "file")
         {
@@ -568,110 +610,51 @@ static void AddProcessesSections
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Mark server-side interface instances as exported for other apps to use, as specified in a
- * given list of "api" subsections from one or more "provides" sections.
+ * Mark API interface instances as externally visible to other apps.
  */
 //--------------------------------------------------------------------------------------------------
-static void ExportInterfaces
+static void MakeInterfacesExternal
 (
     model::App_t* appPtr,
-    const std::list<const parseTree::CompoundItem_t*>& apiSections
+    const std::list<const parseTree::ExternApiInterface_t*>& interfaces
 )
 //--------------------------------------------------------------------------------------------------
 {
     // Set of external interface names used to check for duplicates.
     std::set<std::string> externalNames;
 
-    for (auto sectionPtr : apiSections)
+    for (auto ifPtr : interfaces)
     {
-        // Each item in a section is a token list.
-        for (auto itemPtr : ToComplexSectionPtr(sectionPtr)->Contents())
+        // Each interface spec is a token list.
+        auto tokens = ToTokenListPtr(ifPtr)->Contents();
+        model::ApiInterfaceInstance_t* ifInstancePtr;
+        const parseTree::Token_t* nameTokenPtr;
+
+        // If there are 4 content tokens, the first token is the external name
+        // to be used to identify the interface, and the remaining three tokens are the
+        // exe, component, and interface names of the interface instance.
+        if (tokens.size() == 4)
         {
-            auto tokens = ToTokenListPtr(itemPtr)->Contents();
-            model::ApiServerInterfaceInstance_t* ifInstancePtr;
-            const parseTree::Token_t* nameTokenPtr;
-
-            // If there are 4 content tokens, the first token is the external name
-            // to be used to identify the interface, and the remaining three tokens are the
-            // exe, component, and interface names of the interface instance.
-            if (tokens.size() == 4)
-            {
-                ifInstancePtr = appPtr->FindServerInterface(tokens[1], tokens[2], tokens[3]);
-                nameTokenPtr = tokens[0];
-            }
-            // Otherwise, there are 3 content tokens and the interface is exported using the
-            // internal name of the interface on the component.
-            else
-            {
-                ifInstancePtr = appPtr->FindServerInterface(tokens[0], tokens[1], tokens[2]);
-                nameTokenPtr = tokens[2];
-            }
-            ifInstancePtr->isExternal = true;
-            ifInstancePtr->name = nameTokenPtr->text;
-
-            // Check that there are no duplicates.
-            if (externalNames.find(ifInstancePtr->name) != externalNames.end())
-            {
-                nameTokenPtr->ThrowException("Duplicate server-side (provided) external interface"
-                                             " name: '" + ifInstancePtr->name + "'.");
-            }
-            externalNames.insert(ifInstancePtr->name);
+            ifInstancePtr = appPtr->FindInterface(tokens[1], tokens[2], tokens[3]);
+            nameTokenPtr = tokens[0];
         }
-    }
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Mark client-side interface instances as imported from other apps, as specified in a
- * given list of "api" subsections from one or more "provides" sections.
- */
-//--------------------------------------------------------------------------------------------------
-static void ImportInterfaces
-(
-    model::App_t* appPtr,
-    const std::list<const parseTree::CompoundItem_t*>& apiSections
-)
-//--------------------------------------------------------------------------------------------------
-{
-    // Set of external interface names used to check for duplicates.
-    std::set<std::string> externalNames;
-
-    for (auto sectionPtr : apiSections)
-    {
-        // Each item in a section is a token list.
-        for (auto itemPtr : ToComplexSectionPtr(sectionPtr)->Contents())
+        // Otherwise, there are 3 content tokens and the interface is exported using the
+        // internal name of the interface on the component.
+        else
         {
-            auto tokens = ToTokenListPtr(itemPtr)->Contents();
-            model::ApiClientInterfaceInstance_t* ifInstancePtr;
-            const parseTree::Token_t* nameTokenPtr;
-
-            // If there are 4 content tokens, the first token is the external name
-            // to be used to identify the interface, and the remaining three tokens are the
-            // exe, component, and interface names of the interface instance.
-            if (tokens.size() == 4)
-            {
-                ifInstancePtr = appPtr->FindClientInterface(tokens[1], tokens[2], tokens[3]);
-                nameTokenPtr = tokens[0];
-            }
-            // Otherwise, there are 3 content tokens and the interface is exported using the
-            // internal name of the interface on the component.
-            else
-            {
-                ifInstancePtr = appPtr->FindClientInterface(tokens[0], tokens[1], tokens[2]);
-                nameTokenPtr = tokens[2];
-            }
-            ifInstancePtr->isExternal = true;
-            ifInstancePtr->name = nameTokenPtr->text;
-
-            // Check that there are no duplicates.
-            if (externalNames.find(ifInstancePtr->name) != externalNames.end())
-            {
-                nameTokenPtr->ThrowException("Duplicate client-side (required) external interface"
-                                             " name: '" + ifInstancePtr->name + "'.");
-            }
-            externalNames.insert(ifInstancePtr->name);
+            ifInstancePtr = appPtr->FindInterface(tokens[0], tokens[1], tokens[2]);
+            nameTokenPtr = tokens[2];
         }
+        ifInstancePtr->isExternal = true;
+        ifInstancePtr->name = nameTokenPtr->text;
+
+        // Check that there are no duplicates.
+        if (externalNames.find(ifInstancePtr->name) != externalNames.end())
+        {
+            nameTokenPtr->ThrowException("Duplicate external interface name :"
+                                         " '" + ifInstancePtr->name + "'.");
+        }
+        externalNames.insert(ifInstancePtr->name);
     }
 }
 
@@ -975,6 +958,7 @@ void PrintSummary
         }
 
         std::cout << "  Has the following limits:" << std::endl;
+        std::cout << "    maxSecureStorageBytes: " << appPtr->maxSecureStorageBytes.Get() << std::endl;
         std::cout << "    maxThreads: " << appPtr->maxThreads.Get() << std::endl;
         std::cout << "    maxMQueueBytes: " << appPtr->maxMQueueBytes.Get() << std::endl;
         std::cout << "    maxQueuedSignals: " << appPtr->maxQueuedSignals.Get() << std::endl;
@@ -1133,6 +1117,8 @@ void PrintSummary
     std::list<const model::ApiServerInterfaceInstance_t*> serverIfs;
     for (auto exePtr : appPtr->executables)
     {
+        std::cout << "  Executable '" << exePtr->name << "':" << std::endl;
+
         for (auto componentInstancePtr : exePtr->componentInstances)
         {
             for (auto ifInstancePtr : componentInstancePtr->clientApis)
@@ -1153,22 +1139,22 @@ void PrintSummary
         }
         if (!(serverIfs.empty()))
         {
-            std::cout << "  Serves the following IPC API interfaces:" << std::endl;
+            std::cout << "    Serves the following IPC API interfaces:" << std::endl;
         }
         for (auto ifPtr : serverIfs)
         {
-            std::cout << "    '" << ifPtr->name << "'" << std::endl
-                      << "      API defined in: '" << ifPtr->ifPtr->apiFilePtr->path << "'"
+            std::cout << "      '" << ifPtr->name << "'" << std::endl
+                      << "        API defined in: '" << ifPtr->ifPtr->apiFilePtr->path << "'"
                       << std::endl;
         }
         if (!(requiredClientIfs.empty()) || !(boundClientIfs.empty()))
         {
-            std::cout << "  Has the following client-side IPC API interfaces:" << std::endl;
+            std::cout << "    Has the following client-side IPC API interfaces:" << std::endl;
 
             for (auto ifPtr : boundClientIfs)
             {
-                std::cout << "    '" << ifPtr->name
-                          << "' -> bound to: '" << ifPtr->bindingPtr->serverIfName << "'";
+                std::cout << "      '" << ifPtr->name
+                          << "' -> bound to service '" << ifPtr->bindingPtr->serverIfName << "'";
                 switch (ifPtr->bindingPtr->serverType)
                 {
                     case model::Binding_t::INTERNAL:
@@ -1184,14 +1170,14 @@ void PrintSummary
                         break;
                 }
                 std::cout << std::endl
-                          << "      API defined in: '" << ifPtr->ifPtr->apiFilePtr->path << "'"
+                          << "        API defined in: '" << ifPtr->ifPtr->apiFilePtr->path << "'"
                           << std::endl;
             }
 
             for (auto ifPtr : requiredClientIfs)
             {
-                std::cout << "    '" << ifPtr->name << "' -> UNBOUND." << std::endl
-                          << "      API defined in: '" << ifPtr->ifPtr->apiFilePtr->path << "'"
+                std::cout << "      '" << ifPtr->name << "' -> UNBOUND." << std::endl
+                          << "        API defined in: '" << ifPtr->ifPtr->apiFilePtr->path << "'"
                           << std::endl;
             }
         }
@@ -1348,11 +1334,10 @@ model::App_t* GetApp
                   << "  defined in: '" << adefFilePtr->path << "'" << std::endl;
     }
 
-    // Lists of sections that need to be modelled near the end.
+    // Lists of things that need to be modelled near the end.
     std::list<const parseTree::CompoundItem_t*> processesSections;
     std::list<const parseTree::CompoundItem_t*> bindingsSections;
-    std::list<const parseTree::CompoundItem_t*> requiredApiSections;
-    std::list<const parseTree::CompoundItem_t*> providedApiSections;
+    std::list<const parseTree::ExternApiInterface_t*> externApiInterfaces;
 
     // Iterate over the .adef file's list of sections, processing content items.
     for (auto sectionPtr : adefFilePtr->sections)
@@ -1376,6 +1361,10 @@ model::App_t* GetApp
         else if (sectionName == "executables")
         {
             AddExecutables(appPtr, sectionPtr, buildParams);
+        }
+        else if (sectionName == "extern")
+        {
+            AddExternApiInterfaces(externApiInterfaces, ToComplexSectionPtr(sectionPtr));
         }
         else if (sectionName == "groups")
         {
@@ -1401,17 +1390,21 @@ model::App_t* GetApp
         {
             appPtr->maxThreads = GetPositiveInt(ToSimpleSectionPtr(sectionPtr));
         }
+        else if (sectionName == "maxSecureStorageBytes")
+        {
+            appPtr->maxSecureStorageBytes = GetNonNegativeInt(ToSimpleSectionPtr(sectionPtr));
+        }
         else if (sectionName == "processes")
         {
             processesSections.push_back(sectionPtr);
         }
         else if (sectionName == "provides")
         {
-            AddProvidedItems(appPtr, providedApiSections, sectionPtr);
+            AddProvidedItems(appPtr, externApiInterfaces, sectionPtr);
         }
         else if (sectionName == "requires")
         {
-            AddRequiredItems(appPtr, requiredApiSections, sectionPtr);
+            AddRequiredItems(appPtr, externApiInterfaces, sectionPtr);
         }
         else if (sectionName == "sandboxed")
         {
@@ -1443,11 +1436,12 @@ model::App_t* GetApp
     // Model all process environments and processes.
     AddProcessesSections(appPtr, processesSections);
 
-    // Process IPC API exports and imports.
-    ExportInterfaces(appPtr, providedApiSections);
-    ImportInterfaces(appPtr, requiredApiSections);
+    // Process IPC API externs.  This must be done after all components and executables have
+    // been modelled.
+    MakeInterfacesExternal(appPtr, externApiInterfaces);
 
-    // Process bindings.
+    // Process bindings.  This must be done after all the components and executables have been
+    // modelled and all the external API interfaces have been processed.
     AddBindings(appPtr, bindingsSections);
 
     // Ensure that all processes have a PATH environment variable.

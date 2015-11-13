@@ -27,6 +27,11 @@ struct CompoundItem_t : public Content_t
         firstTokenPtr->ThrowException(msg);
     }
 
+    void PrintWarning(const std::string& msg) const
+    {
+        firstTokenPtr->PrintWarning(msg);
+    }
+
     virtual ~CompoundItem_t() {}
 
 protected:
@@ -179,23 +184,12 @@ struct RequiredConfigTree_t : TokenList_t
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Represents a single entry in an "api:" subsection of a "provides:" section of a .adef file.
+ * Represents a single entry in an "extern:" section of a .adef file.
  */
 //--------------------------------------------------------------------------------------------------
-struct ExportedApi_t : TokenList_t
+struct ExternApiInterface_t : TokenList_t
 {
-    ExportedApi_t(Token_t* firstTokenPtr): TokenList_t(EXPORTED_API, firstTokenPtr) {}
-};
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Represents a single entry in an "api:" subsection of a "requires:" section of a .adef file.
- */
-//--------------------------------------------------------------------------------------------------
-struct ImportedApi_t : TokenList_t
-{
-    ImportedApi_t(Token_t* firstTokenPtr): TokenList_t(IMPORTED_API, firstTokenPtr) {}
+    ExternApiInterface_t(Token_t* firstTokenPtr): TokenList_t(EXTERN_API_INTERFACE, firstTokenPtr) {}
 };
 
 

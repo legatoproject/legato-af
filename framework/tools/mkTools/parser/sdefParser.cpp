@@ -47,7 +47,8 @@ static parseTree::CompoundItem_t* ParseAppOverride
         || (sectionName == "maxMQueueBytes")
         || (sectionName == "maxQueuedSignals")
         || (sectionName == "watchdogTimeout")
-        || (sectionName == "maxThreads") )
+        || (sectionName == "maxThreads")
+        || (sectionName == "maxSecureStorageBytes") )
     {
         return ParseSimpleSection(lexer, sectionNameTokenPtr, parseTree::Token_t::INTEGER);
     }

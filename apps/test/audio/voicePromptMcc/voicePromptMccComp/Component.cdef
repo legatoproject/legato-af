@@ -12,4 +12,9 @@ requires:
         le_audio.api
         le_mcc.api
     }
+
+    lib:
+    {
+        opencore-amrnb
+    }
 }

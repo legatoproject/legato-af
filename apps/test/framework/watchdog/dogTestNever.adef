@@ -1,3 +1,5 @@
+start: manual
+
 watchdogTimeout: never
 
 executables:

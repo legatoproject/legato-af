@@ -2,7 +2,7 @@
 
 
 # The log file should either indicate that the list is incomplete, or the list is complete with the correct end of list.
-# If neither of those is satisfied, then race condition might have occured. 
+# If neither of those is satisfied, then race condition might have occured.
 
 
 if [ $# -gt 2 ]
@@ -52,8 +52,8 @@ detectRace()
         fi
 
         # List declared incomplete
-        # If the list is declared incomplete, and the second last line is a subpool, and 
-        # if that subpool has alloc number (5th column) being 0, that means the subpool that's 
+        # If the list is declared incomplete, and the second last line is a subpool, and
+        # if that subpool has alloc number (5th column) being 0, that means the subpool that's
         # released back to the free list is wrongly reported.
         if grep -q "$IncompleteListLine" "$file" &&
            tail -n 2 "$file" | head -n 1 | grep -q "Subpool" &&
@@ -62,7 +62,7 @@ detectRace()
             echo "Race Condition: declared incomplete list and the last item reported is wrong [$file]"
         fi
 
-        # similar to the above, but the Inspect tool prints the last subpool correctly. 
+        # similar to the above, but the Inspect tool prints the last subpool correctly.
 #        if grep -q "$IncompleteListLine" "$file" &&
 #           tail -n 2 "$file" | head -n 1 | grep -q "Subpool" &&
 #           ! tail -n 3 "$file" | head -n 1 | grep -q "Subpool" &&
@@ -76,7 +76,7 @@ detectRace()
            ! grep -q "$IncompleteListLine" "$file"
         then
             echo "No declaration of list completion - something is wrong [$file]"
-        fi 
+        fi
     done
 
     echo "DONE `date`"
@@ -102,7 +102,7 @@ reportRaceConditionCloseEncounters()
         then
             #echo "[$file]"
             occurCount=$((occurCount+1))
-        fi 
+        fi
 
         fileCount=$((fileCount+1))
     done

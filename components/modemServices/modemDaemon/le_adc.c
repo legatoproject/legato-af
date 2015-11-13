@@ -14,17 +14,17 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Read values from the ADC channels 
+ * Read values from the ADC channels
  *
  * @return
  *      - LE_OK            The function succeeded.
- *      - LE_FAULT         The function failed to get the thresholds.
+ *      - LE_FAULT         The function failed.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_adc_ReadValue
 (
-    uint8_t  adcChannel, ///< [IN] channel to sample
-    int32_t* adcValuePtr ///< [OUT] sample value
+    le_adc_AdcChannelInput_t  adcChannel, ///< [IN] channel to sample
+    int32_t*                  adcValuePtr ///< [OUT] sample value
 
 )
 {

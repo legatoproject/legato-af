@@ -1,7 +1,7 @@
  /**
   * This module is for unit testing the le_clock module in the legato
   * runtime library.
-  * 
+  *
   * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
   *
   * TODO:
@@ -53,7 +53,7 @@ char GetUserResponse(char* msgStr)
         printf("%s (y/n) ", msgStr);
         answer = getchar();
 
-        if ( answer == EOF ) 
+        if ( answer == EOF )
         {
             fprintf(stderr, "\nERROR: got EOF\n");
             exit(EXIT_FAILURE);
@@ -80,7 +80,7 @@ void VerifyTest(char* msgStr)
 {
     PrintLine("-");
     printf("%s\n", msgStr);
-    
+
     // Don't wait for user input in non-interactive mode.
     if ( !IsInteractive )
     {
@@ -92,13 +92,13 @@ void VerifyTest(char* msgStr)
 
         answer = GetUserResponse("Pass?");
 
-        if ( answer == 'y' ) 
+        if ( answer == 'y' )
             CU_PASS_MSG(msgStr)
         else
             CU_FAIL_MSG(msgStr);
     }
 }
-    
+
 
 void TestClockBatch(void)
 {
@@ -109,7 +109,7 @@ void TestClockBatch(void)
     printf("\n");  // for better formatted test output
 
     /*
-     * Clock related tests 
+     * Clock related tests
      */
 
     // This will abort on error
@@ -216,7 +216,7 @@ void TestClockBatch(void)
     CU_ASSERT_EQUAL(result, LE_OVERFLOW);
     CU_ASSERT_EQUAL(numChars, 0);
 
-    
+
 }
 
 
@@ -259,13 +259,13 @@ void TestClockInteractive(void)
 int main(int argc, char *argv[])
 {
     // Init the test case / test suite data structures
-    
+
     CU_TestInfo testBatch[] =
     {
         { "Batch clock tests",               TestClockBatch },
         CU_TEST_INFO_NULL,
     };
-    
+
     CU_TestInfo testInteractive[] =
     {
         { "Interactive clock tests",         TestClockInteractive },
@@ -296,18 +296,18 @@ int main(int argc, char *argv[])
         }
     }
 
-    
-	// Initialize the CUnit test registry and register the test suite
-	if (CUE_SUCCESS != CU_initialize_registry())
-		return CU_get_error();
+
+    // Initialize the CUnit test registry and register the test suite
+    if (CUE_SUCCESS != CU_initialize_registry())
+        return CU_get_error();
 
     if ( CUE_SUCCESS != CU_register_suites(suites))
     {
         CU_cleanup_registry();
-		return CU_get_error();
+        return CU_get_error();
     }
 
-    
+
     // Run either interactive or backgroud; default is background
     if ( IsInteractive )
     {
@@ -335,7 +335,7 @@ int main(int argc, char *argv[])
     }
 
     CU_cleanup_registry();
-	return CU_get_error();
+    return CU_get_error();
 }
 
 

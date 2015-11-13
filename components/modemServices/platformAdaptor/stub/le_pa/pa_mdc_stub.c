@@ -382,6 +382,24 @@ le_result_t pa_mdc_StopSession
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Reject a MT-PDP data session for the given profile
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_BAD_PARAMETER if the input parameter is not valid
+ *      - LE_FAULT for other failures
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_mdc_RejectMtPdpSession
+(
+    uint32_t profileIndex
+)
+{
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Get the primary/secondary DNS addresses for the given profile, if the data session is connected.
  *
  * @return

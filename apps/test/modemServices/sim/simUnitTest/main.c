@@ -322,7 +322,7 @@ static void CheckSimStates
  *
  */
 //--------------------------------------------------------------------------------------------------
-void TestSim_Initialisation
+void TestSim_AddHandlers
 (
     void
 )
@@ -346,7 +346,7 @@ void TestSim_Initialisation
         le_thread_Start(AppCtx[i].appThreadRef);
     }
 
-    // Wait that the tasks have started before following the test
+    // Wait that the tasks have started before continuing the test
     SynchTest();
 
     // Sim is absent in this test
@@ -869,8 +869,8 @@ int main(int argc, char *argv[])
     // Init le_sim
     le_sim_Init();
 
-    // Test initialisation
-    TestSim_Initialisation();
+    // Handlers addition test
+    TestSim_AddHandlers();
 
     // Test PIN/PUK
     TestSim_PinPuk();

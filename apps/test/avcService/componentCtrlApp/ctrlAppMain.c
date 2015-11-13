@@ -91,6 +91,20 @@ static void DownloadAndInstall
             LE_ASSERT( le_avc_DeferInstall(3) == LE_FAULT );
             break;
 
+        case LE_AVC_INSTALL_IN_PROGRESS:
+            LE_INFO("Install in progress.");
+            LE_INFO("Install progress = %d%%", progress);
+            break;
+
+        case LE_AVC_INSTALL_COMPLETE:
+            LE_INFO("Install completed successfully.");
+            LE_INFO("Install progress = %d%%", progress);
+            break;
+
+        case LE_AVC_INSTALL_FAILED:
+            LE_INFO("Install failed.");
+            break;
+
         default:
             LE_WARN("Update status %i not handled", updateStatus);
     }
@@ -172,7 +186,7 @@ static void DeferThenDownloadAndInstall
 //--------------------------------------------------------------------------------------------------
 /**
  * Test case 4: Download and Install any pending updates (simple version)
- * 
+ *
  * This is similar to test case 1, but without the extra testing and verification
  */
 //--------------------------------------------------------------------------------------------------
@@ -206,6 +220,11 @@ static void SimpleDownloadAndInstall
         case LE_AVC_INSTALL_PENDING:
             LE_WARN("Accept install");
             LE_ASSERT( le_avc_AcceptInstall() == LE_OK );
+            break;
+
+        case LE_AVC_UNINSTALL_PENDING:
+            LE_WARN("Accept uninstall");
+            LE_ASSERT( le_avc_AcceptUninstall() == LE_OK );
             break;
 
         default:
@@ -267,11 +286,96 @@ static void SimpleDownloadAndDeferInstall
             }
             break;
 
+        case LE_AVC_UNINSTALL_PENDING:
+            LE_WARN("Accept uninstall");
+            LE_ASSERT( le_avc_AcceptUninstall() == LE_OK );
+            break;
+
         default:
             LE_WARN("Update status %i not handled", updateStatus);
     }
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test case 6: Download, defer uninstall for few minutes then install
+ */
+//--------------------------------------------------------------------------------------------------
+static void SimpleDownloadDeferUninstall
+(
+    le_avc_Status_t updateStatus
+)
+{
+    // Use a count instead of a bool flag, so we could defer multiple times, if we want
+    static int count=0;
+
+    le_avc_UpdateType_t updateType;
+
+    if ( le_avc_GetUpdateType(&updateType) == LE_OK )
+    {
+        LE_INFO("Update type is %i", updateType);
+    }
+    else
+    {
+        LE_INFO("Update type is not available");
+    }
+
+    switch ( updateStatus )
+    {
+        case LE_AVC_NO_UPDATE:
+            LE_WARN("No action");
+            break;
+
+        case LE_AVC_DOWNLOAD_PENDING:
+            if ( le_avc_GetUpdateType(&updateType) == LE_OK )
+            {
+                LE_INFO("Update type is %i", updateType);
+            }
+            else
+            {
+                LE_INFO("Update type is not available");
+            }
+
+            LE_WARN("Accept download");
+            LE_ASSERT( le_avc_AcceptDownload() == LE_OK );
+            break;
+
+        case LE_AVC_UNINSTALL_PENDING:
+            if ( count < 1 )
+            {
+                LE_WARN("Defer uninstall");
+                LE_ASSERT( le_avc_DeferUninstall(1) == LE_OK );
+
+                count++;
+            }
+            else
+            {
+                LE_WARN("Accept uninstall");
+                LE_ASSERT( le_avc_AcceptUninstall() == LE_OK );
+            }
+            break;
+
+        case LE_AVC_UNINSTALL_IN_PROGRESS:
+            LE_WARN("Uninstall in Progress");
+            break;
+
+        case LE_AVC_UNINSTALL_COMPLETE:
+            LE_WARN("Uninstall completed.");
+            break;
+
+        case LE_AVC_UNINSTALL_FAILED:
+            LE_WARN("Uninstall failed");
+            break;
+
+        case LE_AVC_INSTALL_PENDING:
+            LE_WARN("Accept install");
+            LE_ASSERT( le_avc_AcceptInstall() == LE_OK );
+            break;
+
+        default:
+            LE_WARN("Update status %i not handled", updateStatus);
+    }
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -310,6 +414,10 @@ static void StatusHandler
 
         case 5:
             SimpleDownloadAndDeferInstall(updateStatus);
+            break;
+
+        case 6:
+            SimpleDownloadDeferUninstall(updateStatus);
             break;
 
         default:

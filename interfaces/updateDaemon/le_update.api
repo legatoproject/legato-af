@@ -10,8 +10,8 @@
  * package is combination of manifest and update data. Manifest contains metadata about the update
  * task and all the update data are appended behind manifest. Update data means installation files
  * (most likely tar ball), firmware files etc. Update package can be pictorially viewed as follows:
- @verbatim
-
+ *
+@code
                                  ++++++++++++++++++++++
                                  +                    +
                                  +   Manifest         +
@@ -44,10 +44,10 @@
                                  +                    +
                                  ++++++++++++++++++++++
 
- @endverbatim
+@endcode
  *
  * Update service provider follows the following state machine while doing an update:
- @verbatim
+ *@code
                        ------------------
              Create()  |                |            Delete()
              --------->|     NEW        |--------------------------------|
@@ -85,9 +85,8 @@
                        |    SUCCESS     |
                        |                |
                        ------------------
-
- *Error:  Any kind of error occurred during update.
- @endverbatim
+ Error:  Any kind of error occurred during update.
+@endcode
  *
  * @section API_Usage_Guideline API Usage Guideline
  * This is the typical sequence of calling update API:

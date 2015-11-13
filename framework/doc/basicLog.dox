@@ -1,4 +1,4 @@
-/** @page basicLog	Logging
+/** @page basicLog    Logging
 
 Logging is a critical part of any embedded development framework. Most devices can't
 display error or warning messages and don't have a human user monitoring them.

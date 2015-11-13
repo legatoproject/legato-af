@@ -12,6 +12,25 @@
 $treeview
 $search
 $mathjax
+<script type="text/javascript">
+//<![CDATA[
+    // Detect if doc is served by eclipse
+    if( ( (window.location.hostname == "127.0.0.1") || (window.location.hostname == "localhost") ) &&
+        ( (window.location.port != "") && (window.location.port != 80) && (window.location.port != 443) ) )
+    {
+        // Inhibit init function from navtree
+        initNavTree = function(toroot,relpath) {}
+        $(document).ready(function(){
+            navTree = document.getElementById("side-nav");
+            if(navTree)
+            {
+                navTree.parentElement.removeChild(navTree);
+            }
+            $("#doc-content").css('margin-left',10);
+        });
+    }
+//]]>
+</script>
 <link rel="icon" type="image/png" href="$relpath$favicon.ico" />
 </head>
 <body>
@@ -24,7 +43,9 @@ $mathjax
  <tr style="height: 56px;">
   <!--BEGIN PROJECT_LOGO-->
   <td id="projectlogo">
-    <img alt="Logo" src="$relpath$$projectlogo"/>
+    <a href="index.html" title="Legato">
+      <img alt="Logo" src="$relpath$$projectlogo"/>
+    </a>
     <!--BEGIN PROJECT_BRIEF--><div id="projectbrief">$projectbrief</div><!--END PROJECT_BRIEF-->
   </td>
   <!--END PROJECT_LOGO-->

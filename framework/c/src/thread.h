@@ -48,7 +48,7 @@ typedef struct
     pthread_t               threadHandle;   ///< The pthreads thread handle.
     le_thread_Ref_t         safeRef;        ///< Safe reference for this object.
     timer_ThreadRec_t       timerRec;       ///< The thread's timer record.
-    le_dls_Link_t           link;           ///< Link for exposure to the Inpsect tool. 
+    le_dls_Link_t           link;           ///< Link for exposure to the Inpsect tool.
 }
 ThreadObj_t;
 

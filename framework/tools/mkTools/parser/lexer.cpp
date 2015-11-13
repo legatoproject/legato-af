@@ -99,6 +99,7 @@ static inline bool IsFileNameChar
             || (character == ':')
             || (character == ';')
             || (character == '+')
+            || (character == '=')
             || (character == '?') );
 }
 

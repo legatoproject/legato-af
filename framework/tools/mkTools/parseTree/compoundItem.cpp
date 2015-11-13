@@ -153,11 +153,8 @@ TokenList_t* CreateTokenList
         case Content_t::REQUIRED_CONFIG_TREE:
             return new RequiredConfigTree_t(firstTokenPtr);
 
-        case Content_t::EXPORTED_API:
-            return new ExportedApi_t(firstTokenPtr);
-
-        case Content_t::IMPORTED_API:
-            return new ImportedApi_t(firstTokenPtr);
+        case Content_t::EXTERN_API_INTERFACE:
+            return new ExternApiInterface_t(firstTokenPtr);
 
         case Content_t::BINDING:
             return new Binding_t(firstTokenPtr);
@@ -319,8 +316,7 @@ const TokenList_t* ToTokenListPtr
         case Content_t::PROVIDED_API:
         case Content_t::REQUIRED_API:
         case Content_t::REQUIRED_CONFIG_TREE:
-        case Content_t::EXPORTED_API:
-        case Content_t::IMPORTED_API:
+        case Content_t::EXTERN_API_INTERFACE:
         case Content_t::BINDING:
         case Content_t::EXECUTABLE:
         case Content_t::RUN_PROCESS:
@@ -388,8 +384,7 @@ const CompoundItemList_t* ToCompoundItemListPtr
         case Content_t::PROVIDED_API:
         case Content_t::REQUIRED_API:
         case Content_t::REQUIRED_CONFIG_TREE:
-        case Content_t::EXPORTED_API:
-        case Content_t::IMPORTED_API:
+        case Content_t::EXTERN_API_INTERFACE:
         case Content_t::BINDING:
         case Content_t::EXECUTABLE:
         case Content_t::RUN_PROCESS:

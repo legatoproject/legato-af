@@ -15,7 +15,7 @@ device type (e.g., @c wp85 or @c ar7):
 Legato $ cd apps/sample/helloWorld
 Legato $ mkapp -t ${TARGET_TYPE} helloWorld.adef
 Legato $ update-pack ${TARGET_TYPE} –ai helloWorld.${TARGET_TYPE} –o helloWorld.update
-Legato $ av-pack –f helloWorld.${TARGET_TYPE} <type name> _build_helloWorld/${TARGET_TYPE}
+Legato $ av-pack –f helloWorld.update ${TARGET_TYPE} <type name> _build_helloWorld/${TARGET_TYPE}
 @endverbatim
  
 Where "<type name>" must be a globally-unique app type identifier, unique among all apps in all
@@ -23,7 +23,7 @@ companies anywhere on AirVantage. It should include company name, or user name i
 sample app. It should look like this:
 
 @verbatim
- av-pack -f helloWorld.wp85 abcCo.jsmith.helloWorld _build_helloWorld/wp85
+ av-pack -f helloWorld.update abcCo.jsmith.helloWorld _build_helloWorld/wp85
 @endverbatim
 
 @section appInstallAirVantage_usingAv Using AirVantage Platform 

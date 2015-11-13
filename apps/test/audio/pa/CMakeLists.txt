@@ -18,6 +18,7 @@ if(LEGATO_COMPONENTS_AUDIO MATCHES "ar7")
           --ldflags=-lqmi_cci
           --ldflags=-lqmiservices
           --ldflags=${TARGET_SYSROOT}/usr/lib/libsierra_qcsi.a
+          --ldflags=${TARGET_SYSROOT}/usr/lib/libsierra_sd_client.a
         DEPENDS
             legato
             paAudioAr7TestComp/Component.cdef

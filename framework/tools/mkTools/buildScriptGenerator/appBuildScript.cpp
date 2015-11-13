@@ -462,7 +462,8 @@ void Generate
     script << "rule MakeDir\n"
               "  command = mkdir -p $out\n\n";
     script << "rule PackApp\n"
-              "  command = mkinfo $stagingDir && tar cjf $out -C $stagingDir .\n\n";
+              "  command = mkinfo $stagingDir " << appPtr->name << " " << appPtr->version <<
+              " && tar cjf $out -C $stagingDir .\n\n";
 
     if (!buildParams.codeGenOnly)
     {

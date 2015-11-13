@@ -1,0 +1,20 @@
+/** @page sampleApps_AV AirVantage Control
+
+This sample demonstrates an LWM2M Control app communicating with AirVantage.
+It has an @c .adef file with executables, processes, and bindings sections, and @ .cdef file
+with requires and sources sections.
+
+Run this to install the sample app:
+@verbatim
+$ cd apps/sample/lwm2mAirVantageControl
+$ make wp85
+$ instapp lwm2mAirVantageControl.wp85 <ip address>
+@endverbatim
+
+@ref sampleApps_startApp
+
+<HR>
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/

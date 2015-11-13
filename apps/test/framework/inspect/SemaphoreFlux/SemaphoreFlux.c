@@ -1,6 +1,6 @@
 /*
  * This app creates and deletes semaphores...
- * 
+ *
  */
 
 #include "legato.h"
@@ -23,8 +23,8 @@ typedef struct
 }
 SemRef_t;
 
-//static le_sem_Ref_t* SemRefArray; // array storing references to the semaphores. 
-static SemRef_t* SemRefArray; // array storing references to the semaphores. 
+//static le_sem_Ref_t* SemRefArray; // array storing references to the semaphores.
+static SemRef_t* SemRefArray; // array storing references to the semaphores.
 static long SemCreateIdx = 0; // the index of the SemRefArray at which the last sempahore creation has ended at.
 
 le_mutex_Ref_t SemIndexMutexRef; // for accessing "SemCreateIdx"
@@ -88,7 +88,7 @@ void testTraceable
 
 /////////////////////////////////////////////
 /*
- * Functions relevant to waiting and posting semas 
+ * Functions relevant to waiting and posting semas
  */
 /////////////////////////////////////////////
 
@@ -129,14 +129,14 @@ static void* ThreadCreateSem
 }
 
 
-// Create all semaphores for the specified number of threads. Since there's no semaphore list, 
+// Create all semaphores for the specified number of threads. Since there's no semaphore list,
 // one semaphore is created per thread.
 void createAllSemaphores
 (
     void
 )
 {
-    char threadNameBuffer[MAX_THREAD_NAME_SIZE] = {0}; 
+    char threadNameBuffer[MAX_THREAD_NAME_SIZE] = {0};
 
     long threadCnt = 0;
     while (threadCnt < ThreadNum)
@@ -261,7 +261,7 @@ static void TestTypeArgHandler
     {
         le_arg_AddPositionalCallback(DelInvArgHandler);
         le_arg_AddPositionalCallback(NumThreadArgHandler);
-    } 
+    }
     else if ((strcmp(arg, "Sem1stThread") == 0) ||
              (strcmp(arg, "SemMidThread") == 0) ||
              (strcmp(arg, "1stThread") == 0) ||

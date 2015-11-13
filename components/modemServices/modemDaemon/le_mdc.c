@@ -35,6 +35,13 @@
 //#define APN_FILE "/usr/local/share/apns.json"
 
 //--------------------------------------------------------------------------------------------------
+/**
+ * Maximum number of profile objects supported
+ */
+//--------------------------------------------------------------------------------------------------
+#define LE_MDC_MAX_PROFILE_INDEX            16
+
+//--------------------------------------------------------------------------------------------------
 // Data structures.
 //--------------------------------------------------------------------------------------------------
 
@@ -48,26 +55,22 @@ typedef struct le_mdc_Profile {
     le_event_Id_t sessionStateEvent;        ///< Event to report when session changes state
     pa_mdc_ProfileData_t modemData;         ///< Profile data that is written to the modem
     le_mdc_ProfileRef_t profileRef;         ///< Profile Safe Reference
-    le_mdc_ConState_t ConnectionStatus;     ///< Data session connection status.
+    le_mdc_ConState_t ConnectionStatus;     ///< Data session connection status
     le_mdc_DisconnectionReason_t disc;      ///< Disconnection reason
     int32_t  discCode;                      ///< Platform specific disconnection code
 }
 le_mdc_Profile_t;
 
 //--------------------------------------------------------------------------------------------------
-/**
- * Structure holding data related to a SessionState event handler.
- */
-//--------------------------------------------------------------------------------------------------
-typedef struct le_mdc_SessionStateHandler {
-    le_event_HandlerRef_t handlerRef;
-    le_mdc_ProfileRef_t profileRef;
-}
-le_mdc_SessionStateHandler_t;
-
-//--------------------------------------------------------------------------------------------------
 // Static declarations.
 //--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * MT-PDP change handler counter
+ */
+//--------------------------------------------------------------------------------------------------
+static uint8_t MtPdpStateChangeHandlerCounter;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -78,24 +81,19 @@ static le_mem_PoolRef_t DataProfilePool;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * The memory pool for the handlers objects
- */
-//--------------------------------------------------------------------------------------------------
-static le_mem_PoolRef_t HandlersPool;
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Safe Reference Map for data profile objects.
  */
 //--------------------------------------------------------------------------------------------------
 static le_ref_MapRef_t DataProfileRefMap;
 
+
 //--------------------------------------------------------------------------------------------------
 /**
- * Safe Reference Map for session state handler objects.
+ * Event IDs for MT-PDP notification.
+ *
  */
 //--------------------------------------------------------------------------------------------------
-static le_ref_MapRef_t StateHandlerRefMap;
+static le_event_Id_t MtPdpEventId;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -116,6 +114,7 @@ static le_log_TraceRef_t TraceRef;
 // =============================================
 //  PRIVATE FUNCTIONS
 // =============================================
+static le_mdc_ProfileRef_t CreateModemProfile( uint32_t index );
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -137,7 +136,7 @@ static le_mdc_Profile_t* SearchProfileInList
         {
             if ( IS_TRACE_ENABLED )
             {
-                LE_PRINT_VALUE("profile %d found", index);
+                LE_PRINT_VALUE("%d", index);
             }
 
             return profilePtr;
@@ -186,27 +185,70 @@ static void NewSessionStateHandler
     // Search the profile
     le_mdc_Profile_t* profilePtr = SearchProfileInList(sessionStatePtr->profileIndex);
 
-    if (profilePtr == NULL)
+    // All notifications except MT-PDP incoming
+    if(sessionStatePtr->newState != LE_MDC_INCOMING)
     {
-        LE_DEBUG("Reference not created");
-    }
-    else
-    {
-        LE_DEBUG("profileIndex %d ConnectionStatus %d", sessionStatePtr->profileIndex,
-                                                        profilePtr->ConnectionStatus);
-
-        if (profilePtr->ConnectionStatus != sessionStatePtr->newState)
+        if (profilePtr == NULL)
         {
-            // Report the event for the given profile
-            le_event_Report(profilePtr->sessionStateEvent, &profilePtr, sizeof(profilePtr));
-            profilePtr->ConnectionStatus = sessionStatePtr->newState;
+             LE_WARN("Reference not created");
+        }
+        else
+        {
+            LE_DEBUG("profileIndex %d ConnectionStatus %d", sessionStatePtr->profileIndex,
+                                                            profilePtr->ConnectionStatus);
+            // Event report
+            if (profilePtr->ConnectionStatus != sessionStatePtr->newState)
+            {
+                // Report the event for the given profile
+                le_event_Report(profilePtr->sessionStateEvent, &profilePtr, sizeof(profilePtr));
+                // Update Connection Status
+                profilePtr->ConnectionStatus = sessionStatePtr->newState;
+            }
+
+            // Get disconnection reason
+            if (sessionStatePtr->newState == LE_MDC_DISCONNECTED)
+            {
+                profilePtr->disc = sessionStatePtr->disc;
+                profilePtr->discCode = sessionStatePtr->discCode;
+            }
+        }
+    }
+    else // MT-PDP incoming notification
+    {
+        // Profile doesn't exist and should be created
+        if(profilePtr == NULL)
+        {
+            LE_DEBUG("MT-PDP profile created - index %d", sessionStatePtr->profileIndex);
+            le_mdc_ProfileRef_t profileRef = CreateModemProfile(sessionStatePtr->profileIndex);
+            profilePtr =  le_ref_Lookup(DataProfileRefMap, profileRef);
+
+        }
+        else
+        {
+            LE_DEBUG("MT-PDP profile found - index %d", sessionStatePtr->profileIndex);
         }
 
-        // Get disconnection reason
-        if (sessionStatePtr->newState == LE_MDC_DISCONNECTED)
+        // MT-PDP notification management
+        if(profilePtr != NULL)
         {
-            profilePtr->disc = sessionStatePtr->disc;
-            profilePtr->discCode = sessionStatePtr->discCode;
+            // Check if an handler has been subscribed by the application
+            if(!MtPdpStateChangeHandlerCounter)
+            {
+                LE_WARN("MT-PDP request automatically rejected");
+                pa_mdc_RejectMtPdpSession(sessionStatePtr->profileIndex);
+            }
+            else // Event report
+            {
+                // Update profile
+                profilePtr->sessionStateEvent= MtPdpEventId;
+                profilePtr->ConnectionStatus = sessionStatePtr->newState;
+                // Report the MT-PDP notification event with the given profile
+                le_event_Report(MtPdpEventId, &profilePtr, sizeof(profilePtr));
+            }
+        }
+        else
+        {
+            LE_ERROR("MT-PDP profile not found");
         }
     }
 
@@ -269,7 +311,6 @@ static le_mdc_ProfileRef_t CreateModemProfile
         if ( pa_mdc_ReadProfile(index, &profilePtr->modemData) != LE_OK )
         {
             le_mem_Release(profilePtr);
-
             return NULL;
         }
 
@@ -284,14 +325,11 @@ static le_mdc_ProfileRef_t CreateModemProfile
         profilePtr->disc = LE_MDC_DISC_UNDEFINED;
         profilePtr->discCode = 0;
 
-        if ( IS_TRACE_ENABLED )
-        {
-            LE_PRINT_VALUE("%u", index);
-        }
-
         // Create a Safe Reference for this data profile object.
         profilePtr->profileRef = le_ref_CreateRef(DataProfileRefMap, profilePtr);
     }
+
+        LE_DEBUG("profileRef %p created for index %d",  profilePtr->profileRef, index);
 
     return profilePtr->profileRef;
 }
@@ -410,18 +448,19 @@ void le_mdc_Init
     le_mem_ExpandPool(DataProfilePool, PA_MDC_MAX_PROFILE);
     le_mem_SetDestructor(DataProfilePool, DataProfileDestructor);
 
-    // Allocate the handlers pool, and set the max number of objects, since it is already known.
-    HandlersPool = le_mem_CreatePool("HandlersPool", sizeof(le_mdc_SessionStateHandler_t));
-    le_mem_ExpandPool(HandlersPool, PA_MDC_MAX_PROFILE);
-
     // Create the Safe Reference Map to use for data profile object Safe References.
     DataProfileRefMap = le_ref_CreateMap("DataProfileMap", PA_MDC_MAX_PROFILE);
 
-    // Create the Safe Reference Map to use for the session state handler object Safe References.
-    StateHandlerRefMap = le_ref_CreateMap("StateHandlerRefMap", PA_MDC_MAX_PROFILE);
 
     // Subscribe to the session state handler
     pa_mdc_AddSessionStateHandler(NewSessionStateHandler, NULL);
+
+    /* MT-PDP management */
+    // Create an event Id for MT-PDP notification
+    MtPdpEventId = le_event_CreateId("MtPdpNotif", sizeof(le_mdc_Profile_t*));
+
+    //  MT-PDP change handler counter initialization
+    MtPdpStateChangeHandlerCounter = 0;
 }
 
 // =============================================
@@ -645,6 +684,34 @@ le_result_t le_mdc_StopSession
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Reject MT-PDP profile data session.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_BAD_PARAMETER if the input parameter is not valid
+ *      - LE_FAULT for other failures
+ *
+ * @note
+ *      The process exits, if an invalid profile object is given
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mdc_RejectMtPdpSession
+(
+    le_mdc_ProfileRef_t profileRef     ///< [IN] Reject MT-PDP data session for this profile object
+)
+{
+    le_mdc_Profile_t* profilePtr = le_ref_Lookup(DataProfileRefMap, profileRef);
+    if (profilePtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) found!", profileRef);
+        return LE_BAD_PARAMETER;
+    }
+
+    return pa_mdc_RejectMtPdpSession(profilePtr->profileIndex);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Get the current data session state.
  *
  * @return
@@ -710,23 +777,60 @@ le_mdc_SessionStateHandlerRef_t le_mdc_AddSessionStateHandler
         return NULL;
     }
 
-    le_mdc_SessionStateHandler_t* sessionStateHandlerPtr = le_mem_ForceAlloc(HandlersPool);
-    sessionStateHandlerPtr->profileRef = profileRef;
-    sessionStateHandlerPtr->handlerRef = le_event_AddLayeredHandler("le_NewSessionStateHandler",
-                                                                  profilePtr->sessionStateEvent,
-                                                                  FirstLayerSessionStateChangeHandler,
-                                                                  (le_event_HandlerFunc_t)handler);
+    le_event_HandlerRef_t handlerRef =
+                                    le_event_AddLayeredHandler("le_NewSessionStateHandler",
+                                    profilePtr->sessionStateEvent,
+                                    FirstLayerSessionStateChangeHandler,
+                                    (le_event_HandlerFunc_t)handler);
 
-    le_event_SetContextPtr(sessionStateHandlerPtr->handlerRef, contextPtr);
+    le_event_SetContextPtr(handlerRef, contextPtr);
 
-    le_mdc_SessionStateHandlerRef_t HandlerRef = le_ref_CreateRef( StateHandlerRefMap,
-                                                                sessionStateHandlerPtr );
+    LE_DEBUG("handlerRef %p", handlerRef);
 
-    LE_DEBUG("%p %p", sessionStateHandlerPtr, HandlerRef);
-
-     return HandlerRef;
+     return (le_mdc_SessionStateHandlerRef_t) handlerRef;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Register a handler for MT-PDP session state changes.
+ *
+ * @return
+ *      - A handler reference, which is only needed for later removal of the handler.
+ *
+ * @note
+ *      Process exits on failure.
+ */
+//--------------------------------------------------------------------------------------------------
+le_mdc_MtPdpSessionStateHandlerRef_t le_mdc_AddMtPdpSessionStateHandler
+(
+    le_mdc_SessionStateHandlerFunc_t handler,   ///< [IN] Handler function
+    void* contextPtr                            ///< [IN] Context pointer
+)
+{
+
+    if (handler == NULL)
+    {
+        LE_KILL_CLIENT("Handler function is NULL !");
+        return NULL;
+    }
+
+    // Create Handler reference
+    le_event_HandlerRef_t handlerRef =
+                                le_event_AddLayeredHandler( "le_NewMtPdpSessionStateHandler",
+                                MtPdpEventId,
+                                FirstLayerSessionStateChangeHandler,
+                                (le_event_HandlerFunc_t)handler);
+
+    le_event_SetContextPtr(handlerRef, contextPtr);
+
+
+    LE_DEBUG("handlerRef %p", handlerRef);
+
+    //  Update MT-PDP change handler counter
+    MtPdpStateChangeHandlerCounter++;
+
+    return (le_mdc_MtPdpSessionStateHandlerRef_t) handlerRef;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -741,24 +845,29 @@ void le_mdc_RemoveSessionStateHandler
     le_mdc_SessionStateHandlerRef_t    sessionStateHandlerRef ///< [IN] The handler reference.
 )
 {
-    le_mdc_SessionStateHandler_t* sessionStateHandlerPtr = le_ref_Lookup(StateHandlerRefMap,
-                                                                         sessionStateHandlerRef);
-
-    if (!sessionStateHandlerPtr)
-    {
-        LE_KILL_CLIENT("Invalid parameter (%p) found!", sessionStateHandlerRef);
-        return;
-    }
-
-    le_event_RemoveHandler(sessionStateHandlerPtr->handlerRef);
-
-    /* Release the reference */
-    le_ref_DeleteRef(StateHandlerRefMap, sessionStateHandlerRef);
-
-    /* Release the handlerRef */
-    le_mem_Release(sessionStateHandlerPtr);
+    le_event_RemoveHandler((le_event_HandlerRef_t)sessionStateHandlerRef);
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Remove a handler for MT-PDP session state changes
+ *
+ * @note
+ *      The process exits on failure
+ */
+//--------------------------------------------------------------------------------------------------
+void le_mdc_RemoveMtPdpSessionStateHandler
+(
+    le_mdc_MtPdpSessionStateHandlerRef_t sessionStateHandlerRef ///< [IN] The handler reference.
+)
+{
+    LE_DEBUG("Handler counter %d", MtPdpStateChangeHandlerCounter);
+
+    //  Update MT-PDP change handler counter
+    MtPdpStateChangeHandlerCounter--;
+
+    le_event_RemoveHandler((le_event_HandlerRef_t)sessionStateHandlerRef);
+}
 
 //--------------------------------------------------------------------------------------------------
 /**

@@ -10,9 +10,9 @@
  * It is intentionally vague to support "information hiding".  Behind the
  * scenes, different implementations can use almost anything that fits into a pointer as a
  * "reference".  Often, they are indexes into arrays or actual pointers to memory objects.
- * When passing those references through an API to outside clients, the implementation 
+ * When passing those references through an API to outside clients, the implementation
  * becomes exposed to crash bugs when clients
- * pass those references back into the API damaged or stale ("stale" meaning 
+ * pass those references back into the API damaged or stale ("stale" meaning
  * something that has been deleted).
  *
  * <b> Safe References </b> are designed to help protect against damaged or stale references being
@@ -22,24 +22,24 @@
  *
  * Client calls an API's "Create" function:
  *  - "Create" function creates an object.
- *  - "Create" function creates a "Safe Reference" for the new object @c le_ref_CreateRef() 
+ *  - "Create" function creates a "Safe Reference" for the new object @c le_ref_CreateRef()
  *  - "Create" function returns the Safe Reference.
  *
  * @section c_safeRef_lookup Lookup Pointer
- * 
+ *
  * Followed by:
  *
  * Client calls another API function, passing in the Safe Reference:
- *  - API function translates the Safe Reference back into an object pointer @c le_ref_Lookup() 
+ *  - API function translates the Safe Reference back into an object pointer @c le_ref_Lookup()
  *  - API function acts on the object.
  *
  * @section c_safeRef_delete Delete Safe Reference
- * 
+ *
  * Finishing with:
  *
  * Client calls API's "Delete" function, passing in the Safe Reference:
  *  - "Delete" function translates the Safe Reference back into a pointer to its object.
- *  - "Delete" function invalidates the Safe Reference @c le_ref_DeleteRef() 
+ *  - "Delete" function invalidates the Safe Reference @c le_ref_DeleteRef()
  *  - "Delete" function deletes the object.
  *
  * At this point, if the Client calls an API function and passes that same (now invalid) Safe Reference
@@ -50,7 +50,7 @@
  * memory or some other object that's reusing the old object's memory.
  *
  * @section c_safeRef_map Create Referece Map
- * 
+ *
  * A <b> Reference Map </b> object can be used to create Safe References and keep track of the
  * mappings from Safe References to pointers.  At start-up, a Reference Map is
  * created by calling @c le_ref_CreateMap().  It takes a single argument, the maximum number

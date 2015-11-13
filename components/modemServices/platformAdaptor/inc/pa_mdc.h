@@ -343,6 +343,20 @@ LE_SHARED le_result_t pa_mdc_StopSession
     uint32_t profileIndex              ///< [IN] The profile to use
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Reject a MT-PDP data session for the given profile
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_BAD_PARAMETER if the input parameter is not valid
+ *      - LE_FAULT for other failures
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_mdc_RejectMtPdpSession
+(
+    uint32_t profileIndex             ///< [IN] The profile to use
+);
 
 //--------------------------------------------------------------------------------------------------
 /**

@@ -749,6 +749,44 @@ le_result_t pa_mdc_StopSession
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Reject a MT-PDP data session for the given profile
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_BAD_PARAMETER if the input parameter is not valid
+ *      - LE_FAULT for other failures
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_mdc_RejectMtPdpSession
+(
+    uint32_t profileIndex
+)
+{
+    MdcSimuProfile_t* profilePtr = GetProfile(profileIndex);
+
+    if (profilePtr->sessionStarted[LE_MDC_PDP_IPV4] || profilePtr->sessionStarted[LE_MDC_PDP_IPV6])
+    {
+        return LE_FAULT;
+    }
+    else
+    {
+        /* send the handler */
+        if (SessionStateHandler)
+        {
+            pa_mdc_SessionStateData_t* sessionStateDataPtr = le_mem_ForceAlloc(NewSessionStatePool);
+            sessionStateDataPtr->profileIndex = profilePtr->profileIndex;
+            sessionStateDataPtr->newState = LE_MDC_SUSPENDING;
+            sessionStateDataPtr->disc = LE_MDC_DISC_NO_SERVICE;
+            sessionStateDataPtr->discCode = 0;
+            SessionStateHandler(sessionStateDataPtr);
+        }
+        return LE_OK;
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Set the primary/secondary DNS addresses for the given profile
  *
  */

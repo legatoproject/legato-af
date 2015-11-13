@@ -2,7 +2,7 @@
 
 Legato definition files are used as input to the @ref buildTools tools @c mksys, @c mkapp,
 @c mkcomp, and @c mkexe (known collectively as the mk tools). The definition files, together
-with @ref languageIndependentAPIs, make it easier to develop
+with @ref interfaceDefLang, make it easier to develop
 component-based software, automatically generating a lot of boiler-plate code.
 
 Interfaces are defined using <c>.api</c> files. Implementations of those interfaces are constructed
@@ -86,6 +86,14 @@ without having to change that component or app.
 
 Most configuration settings can be overridden on the target device at runtime (although, some
 won't take effect until the app is restarted).
+
+@section defFilesOverview_unsandboxedApps Unsandboxed App Limits
+
+Although it's better for apps to be sandboxed, apps aren't limited to running inside a
+sandbox. We call these @e unsandboxed apps.
+
+Even though unsanboxed apps aren't constrained the same way sandboxed apps are constrained, the Supervisor will
+still enforce @ref defFilesAdef_cpuShare and @ref defFilesAdef_processMaxFileBytes limits.
 
 <HR>
 

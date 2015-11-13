@@ -46,6 +46,13 @@
  * When finished with the call object, call le_mcc_Delete() to free all the allocated resources
  * associated with the object.
  *
+ * Multi-threading/multi-application behaviour: the callRef is linked to a specific client
+ * (i.e. connection with the mcc service). Each client will have its own callRef for a same call.
+ * That is, if a call event handler is registered by one thread but le_mcc_Create() is called by
+ * another thread, they will each get different call references for the same call. So, when multiple
+ * threads are being used to work with the same call, a comparison of the call references themselves
+ * can't be used to tell whether or not they refer to the same call.
+ *
  * This code example uses @c CallAndPlay() to dial a phone number, and if successful, play
  * a sound file. Once the file has played, the call hangs up.
  *
@@ -257,7 +264,8 @@ ENUM Event
     EVENT_CONNECTED,   ///< Call has been established, and is media is active.
     EVENT_TERMINATED,  ///< Call has terminated.
     EVENT_ON_HOLD,     ///< Remote party has put the call on hold.
-    EVENT_TRANSFERED   ///< Remote party transferred or forwarded the call.
+    EVENT_TRANSFERED,  ///< Remote party transferred or forwarded the call.
+    EVENT_MAX          ///< Enumerate max value.
 };
 
 
@@ -475,6 +483,7 @@ FUNCTION le_result_t Answer
  * Disconnect, or hang up, the specifed call. Any active call handlers
  * will be notified.
  *
+ * @return LE_FAULT         The function failed.
  * @return LE_TIMEOUT       No response was received from the Modem.
  * @return LE_OK            Function succeeded.
  *

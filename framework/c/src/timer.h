@@ -99,6 +99,17 @@ int timer_GetClockType
     void
 );
 
-
+//--------------------------------------------------------------------------------------------------
+/**
+ * Destruct timer resources for a given thread.
+ *
+ * This function must be called exactly once at thread shutdown, and before the Thread object is
+ * deleted.
+ */
+//--------------------------------------------------------------------------------------------------
+void timer_DestructThread
+(
+    void
+);
 
 #endif /* LEGATO_SRC_TIMER_H_INCLUDE_GUARD */

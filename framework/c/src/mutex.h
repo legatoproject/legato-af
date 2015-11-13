@@ -1,8 +1,8 @@
 /** @file mutex.h
- * 
+ *
  * Mutex module's intra-framework header file.  This file exposes type definitions and function
  * interfaces to other modules inside the framework implementation.
- * 
+ *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
@@ -57,7 +57,7 @@ mutex_ThreadRec_t;
 //--------------------------------------------------------------------------------------------------
 /**
  * Initialize the Mutex module.
- * 
+ *
  * This function must be called exactly once at process start-up before any other mutex module
  * functions are called.
  */
@@ -71,7 +71,7 @@ void mutex_Init
 //--------------------------------------------------------------------------------------------------
 /**
  * Initialize the thread-specific parts of the mutex module.
- * 
+ *
  * This function must be called once by each thread when it starts, before any other mutex module
  * functions are called by that thread.
  */

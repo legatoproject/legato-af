@@ -49,7 +49,7 @@ FUNCTION Greet
 
 This will declare a function called @c Greet that takes no arguments and returns nothing.
 
-@section helloIPCCreatingTheServer Create Server Component
+@section basicAppsIPC_helloIPCCreateServer Create Server Component
 
 Next, create a server component called @c greetServer that offers a greeting service
 called "hello" to be accessed using our simple "greet" API.
@@ -133,7 +133,7 @@ the name @c hello before the @c = in the line @c hello @c = @c greet.api.
       the link stage will fail and complain that the symbol is unresolved. You'll know you
       missed a function, and you'll be able to see what the correct name of the function should be.
 
-@section helloIPCCreatingTheClient Create Client Component
+@section basicAppsIPC_helloIPCCreatingTheClient Create Client Component
 
 Now that we have a server, let's create a client to use its service.
 
@@ -190,8 +190,32 @@ server uses. This client one is specially generated  based on the contents of
 
 In the client, we use the component initializer to call @c hello_Greet() at start-up.
 
+You can add a message to the COMPONENT_INIT so the logs will show the client calling the
+server:
+@code
+ {
+    LE_INFO("greetClient is calling hello_Greet \n");
+    hello_Greet();
+}
+@endcode
 
-  <HR>
+@section basicAppsIPC_createIPCadef Declare IPC Bindings
+
+You can create an @ref defFilesAdef file with an @ref defFilesAdef_extern
+section to declare it's available for binding:
+
+@code
+
+extern:
+{
+    helloWorld.greetServer.greet.api
+}
+@endcode
+
+You only need to do this if you want to leave your interface unbound, and bind it later in the
+@ref defFilesSdef file @ref defFilesSdef_bindings section.
+
+<HR>
 
 Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 

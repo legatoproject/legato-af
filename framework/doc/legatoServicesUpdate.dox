@@ -1,0 +1,16 @@
+/** @page legatoServicesUpdate Update
+
+ Service                            | Description                                        | multi-app safe            |
+| ---------------------------------- | -------------------------------------------------- | :-----------------------: |
+| @subpage c_le_instStat        | App install/uninstall notification         | @image html green_dot.png |
+| @subpage c_fwupdate                | Firmware image updates                             |                           |
+| @subpage c_update                  | Control app and firmware updates                   |                           |
+
+ <br>
+
+<HR>
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/
+

@@ -30,7 +30,7 @@ typedef struct le_audio_Stream {
     le_dls_List_t    sessionRefList;                ///< Clients sessionRef list
     pa_audio_SampleAmrConfig_t  sampleAmrConfig;    ///< Sample AMR configuration
     le_audio_Format_t   encodingFormat;             ///< Audio encoding format
-
+    le_thread_Ref_t     amrThreadRef;               ///< AMR playback/capture thread reference
 } le_audio_Stream_t;
 
 #endif // LEGATO_LEAUDIOLOCAL_INCLUDE_GUARD

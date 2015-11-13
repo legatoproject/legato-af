@@ -1,6 +1,6 @@
 # This test script should be executed from the localhost/bin directory
 
-# Define LOG level before starting anything.  
+# Define LOG level before starting anything.
 # If legato is already running, this will not affect it.
 export LE_LOG_LEVEL=INFO
 
@@ -12,7 +12,7 @@ startlegato && config import /apps/testOne ${CMAKE_CURRENT_SOURCE_DIR}/asset_v2.
 
 # Separate LOG level for the test exe
 export LE_LOG_LEVEL=DEBUG
-tests/${TEST_EXE} 
+tests/${TEST_EXE}
 # Run the test in pass-through mode
 #tests/${TEST_EXE} -p
 echo "Tests failed:" $?

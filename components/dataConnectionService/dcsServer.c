@@ -97,10 +97,10 @@ ConnStateData_t;
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
-    char defaultGateway[LE_MDC_IPV6_ADDR_MAX_LEN];
+    char defaultGateway[LE_MDC_IPV6_ADDR_MAX_BYTES];
     char defaultInterface[20];
-    char newDnsIPv4[2][LE_MDC_IPV4_ADDR_MAX_LEN];
-    char newDnsIPv6[2][LE_MDC_IPV6_ADDR_MAX_LEN];
+    char newDnsIPv4[2][LE_MDC_IPV4_ADDR_MAX_BYTES];
+    char newDnsIPv6[2][LE_MDC_IPV6_ADDR_MAX_BYTES];
 }
 InterfaceDataBackup_t;
 
@@ -555,7 +555,7 @@ static char * ReadResolvConf
 )
 {
     int fd;
-    char * fileContent;
+    char * fileContent = NULL;
     size_t fileSz;
 
     fd = open("/etc/resolv.conf", O_RDONLY);
@@ -568,33 +568,32 @@ static char * ReadResolvConf
     fileSz = lseek(fd, 0, SEEK_END);
     LE_FATAL_IF( (fileSz < 0), "Unable to get resolv.conf size" );
 
-    if (fileSz == 0)
+    if (fileSz != 0)
     {
-        return NULL;
-    }
 
-    LE_DEBUG("Caching resolv.conf: size[%zu]", fileSz);
+        LE_DEBUG("Caching resolv.conf: size[%zu]", fileSz);
 
-    lseek(fd, 0, SEEK_SET);
+        lseek(fd, 0, SEEK_SET);
 
-    if (fileSz > (sizeof(ResolvConfBuffer)-1))
-    {
-        LE_ERROR("Buffer is too small (%zu), file will be truncated from %zu",
-                sizeof(ResolvConfBuffer), fileSz);
-        fileSz = sizeof(ResolvConfBuffer) - 1;
-    }
+        if (fileSz > (sizeof(ResolvConfBuffer)-1))
+        {
+            LE_ERROR("Buffer is too small (%zu), file will be truncated from %zu",
+                    sizeof(ResolvConfBuffer), fileSz);
+            fileSz = sizeof(ResolvConfBuffer) - 1;
+        }
 
-    fileContent = ResolvConfBuffer;
+        fileContent = ResolvConfBuffer;
 
-    if ( 0 > read(fd, fileContent, fileSz) )
-    {
-        LE_ERROR("Caching resolv.conf failed");
-        fileContent[0] = '\0';
-        fileSz = 0;
-    }
-    else
-    {
-        fileContent[fileSz] = '\0';
+        if ( 0 > read(fd, fileContent, fileSz) )
+        {
+            LE_ERROR("Caching resolv.conf failed");
+            fileContent[0] = '\0';
+            fileSz = 0;
+        }
+        else
+        {
+            fileContent[fileSz] = '\0';
+        }
     }
 
     if ( close(fd) != 0 )
@@ -602,7 +601,7 @@ static char * ReadResolvConf
         LE_FATAL("close failed");
     }
 
-    LE_FATAL_IF( strlen(fileContent) > fileSz,
+    LE_FATAL_IF( fileContent && (strlen(fileContent) > fileSz),
                     "Content size (%zu) and File size (%zu) differ",
                     strlen(fileContent), fileSz );
 
@@ -870,8 +869,8 @@ static le_result_t SetDnsConfiguration
     le_mdc_ProfileRef_t profileRef
 )
 {
-    char dns1Addr[LE_MDC_IPV6_ADDR_MAX_LEN] = {0};
-    char dns2Addr[LE_MDC_IPV6_ADDR_MAX_LEN] = {0};
+    char dns1Addr[LE_MDC_IPV6_ADDR_MAX_BYTES] = {0};
+    char dns2Addr[LE_MDC_IPV6_ADDR_MAX_BYTES] = {0};
 
     if ( le_mdc_IsIPv4(profileRef) )
     {

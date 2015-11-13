@@ -199,6 +199,15 @@ static pid_t PidToInspect = -1;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Indicating if the Inspect results are output as the JSON format or not. Currently false implies
+ * a human-readable format.
+ */
+//--------------------------------------------------------------------------------------------------
+static bool IsOutputJson = false;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Inspection type.
  **/
 //--------------------------------------------------------------------------------------------------
@@ -1183,6 +1192,9 @@ static void PrintHelp
         "    --interval=SECONDS\n"
         "        Prints updated information every SECONDS.\n"
         "\n"
+        "    --format=json\n"
+        "        Outputs the inspection results in JSON format.\n"
+        "\n"
         "    --help\n"
         "        Display this help and exit.\n"
         );
@@ -1691,38 +1703,159 @@ static ColumnInfo_t* GetNextColumn
 }
 
 
-// TODO: Factor all print header functions
 //--------------------------------------------------------------------------------------------------
 /**
- * Print memory pool information header.
+ * Print Inspect results header for human-readable format; and print global data for machine-
+ * readable format.
  *
  * @return
- *      The number of lines printed.
+ *      The number of lines printed, if outputting human-readable format.
  */
 //--------------------------------------------------------------------------------------------------
-static int PrintMemPoolHeaderInfo
+static int PrintInspectHeader
 (
-    pid_t pidToInspect  ///< [IN] PID of the process under inspection.
+    void
 )
 {
     int lineCount = 0;
+    ColumnInfo_t* table;
+    size_t tableSize;
 
-    printf("\n");
-    lineCount++;
+    // The size should accomodate the longest inspectTypeString.
+    #define inspectTypeStringSize 20
+    char inspectTypeString[inspectTypeStringSize];
+    switch (InspectType)
+    {
+        case INSPECT_INSP_TYPE_MEM_POOL:
+            strncpy(inspectTypeString, "Memory Pools", inspectTypeStringSize);
+            table = MemPoolTableInfo;
+            tableSize = MemPoolTableInfoSize;
+            break;
 
-    // Print title.
-    printf("Legato Memory Pools Inspector\n");
-    lineCount++;
-    printf("Inspecting process %d\n", pidToInspect);
-    lineCount++;
+        case INSPECT_INSP_TYPE_THREAD_OBJ:
+            strncpy(inspectTypeString, "Thread Objects", inspectTypeStringSize);
+            table = ThreadObjTableInfo;
+            tableSize = ThreadObjTableInfoSize;
+            break;
 
-    // Print column headers.
-    PrintHeader(MemPoolTableInfo, MemPoolTableInfoSize);
+        case INSPECT_INSP_TYPE_TIMER:
+            strncpy(inspectTypeString, "Timers", inspectTypeStringSize);
+            table = TimerTableInfo;
+            tableSize = TimerTableInfoSize;
+            break;
 
-    lineCount++;
+        case INSPECT_INSP_TYPE_MUTEX:
+            strncpy(inspectTypeString, "Mutexes", inspectTypeStringSize);
+            table = MutexTableInfo;
+            tableSize = MutexTableInfoSize;
+            break;
+
+        case INSPECT_INSP_TYPE_SEMAPHORE:
+            strncpy(inspectTypeString, "Semaphores", inspectTypeStringSize);
+            table = SemaphoreTableInfo;
+            tableSize = SemaphoreTableInfoSize;
+            break;
+
+        default:
+            INTERNAL_ERR("unexpected inspect type %d.", InspectType);
+    }
+
+    if (!IsOutputJson)
+    {
+        printf("\n");
+        lineCount++;
+
+        // Print title.
+        printf("Legato %s Inspector\n", inspectTypeString);
+        lineCount++;
+        printf("Inspecting process %d\n", PidToInspect);
+        lineCount++;
+
+        // Print column headers.
+        PrintHeader(table, tableSize);
+        lineCount++;
+    }
+    else
+    {
+        // The beginning curly brace of the "main" JSON object, and the beginning of the "Headers"
+        // data.
+        printf("{\"Headers\":[");
+
+        // Print the column headers.
+        int i;
+        for (i = 0; i < tableSize; i++)
+        {
+            printf("\"%s\"", table[i].colTitle);
+
+            // For the last item, print the closing square bracket and comma for "Headers".
+            // Otherwise print the comma separator.
+            printf((i == (tableSize - 1)) ? "]," : ",");
+        }
+
+        // Print the data of "InspectType", "PID", and the beginning of "Data".
+        printf("\"InspectType\":\"%s\",\"PID\":\"%d\",\"Data\":[", inspectTypeString, PidToInspect);
+    }
 
     return lineCount;
 }
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The FillColField and ExportJsonData macros are meant to be used in the various PrintXXXInfo
+ * functions. The macros process the data before they can be output.
+ *
+ * Since the "field" could be of various types, macros are used instead of X number of functions
+ * each for a possible type.
+ */
+//--------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------
+/**
+ * This macro fills the "colField" (Column field) of the supplied table. This prepares the table to
+ * be printed in a human-readable format by PrintInfo.
+ *
+ * Note that the following needs to be prepared prior to using this macro:
+ * - ColumnInfo_t* columnRef;
+ * - int index = 0;
+ */
+//--------------------------------------------------------------------------------------------------
+#define FillColField(field, table, tableSize) \
+        columnRef = GetNextColumn(table, tableSize, &index); \
+        snprintf(columnRef->colField, (columnRef->colWidth + 1), columnRef->fieldFormat, \
+                 columnRef->colWidth, field);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This macro prints the inspected results ("field") in the JSON format.
+ *
+ * Note that the following needs to be prepared prior to using this macro:
+ * - ColumnInfo_t* columnRef;
+ * - int index = 0;
+ * - bool isDataJsonArray = false;
+ *
+ * Sometimes there are multiple data in a "field". In that case, set isDataJsonArray to true and
+ * replace the string pointed to by "field" with another string that has these multiple data
+ * arranged in a JSON array. The thread names in the waiting lists of PrintMutexInfo and
+ * PrintSemaphoreInfo are examples.
+ */
+//--------------------------------------------------------------------------------------------------
+#define ExportJsonData(field, table, tableSize) \
+        columnRef = GetNextColumn(table, tableSize, &index); \
+        if (index == 1) printf("["); \
+        if ((columnRef->isString) && (!isDataJsonArray)) printf("\""); \
+        printf(columnRef->fieldFormat, 0, field); \
+        if ((columnRef->isString) && (!isDataJsonArray)) printf("\""); \
+        if (index == (tableSize)) printf("]"); else printf(",");
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * For outputting JSON format. If the node printed is not the first one, print a comma first to
+ * delimit from the last printed node.
+ */
+//--------------------------------------------------------------------------------------------------
+static bool IsPrintedNodeFirst = true;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -1751,61 +1884,52 @@ static int PrintMemPoolInfo
     INTERNAL_ERR_IF(le_mem_GetName(memPool, name, sizeof(name)) != LE_OK,
                     "Name buffer is too small.");
 
+    // Needed for the macros
     ColumnInfo_t* columnRef;
     int index = 0;
+    bool isDataJsonArray = false;
 
-    #define FillColField(field) \
-            columnRef = GetNextColumn(MemPoolTableInfo, MemPoolTableInfoSize, &index); \
-            snprintf(columnRef->colField, (columnRef->colWidth + 1), columnRef->fieldFormat, \
-                     columnRef->colWidth, field);
+    // NOTE that the order has to correspond to the column orders in the corresponding table. Since
+    // this order is "hardcoded" in a sense, one should avoid having multiple copies of these. The
+    // same applies to other PrintXXXInfo functions.
+    #define ProcessData \
+        P(le_mem_GetObjectCount(memPool),       MemPoolTableInfo, MemPoolTableInfoSize); \
+        P(poolStats.numBlocksInUse,             MemPoolTableInfo, MemPoolTableInfoSize); \
+        P(poolStats.maxNumBlocksUsed,           MemPoolTableInfo, MemPoolTableInfoSize); \
+        P(poolStats.numOverflows,               MemPoolTableInfo, MemPoolTableInfoSize); \
+        P(poolStats.numAllocs,                  MemPoolTableInfo, MemPoolTableInfoSize); \
+        P(blockSize,                            MemPoolTableInfo, MemPoolTableInfoSize); \
+        P(blockSize*(poolStats.numBlocksInUse), MemPoolTableInfo, MemPoolTableInfoSize); \
+        P(name,                                 MemPoolTableInfo, MemPoolTableInfoSize); \
+        P(subPoolStr,                           MemPoolTableInfo, MemPoolTableInfoSize);
 
-    FillColField(le_mem_GetObjectCount(memPool));
-    FillColField(poolStats.numBlocksInUse);
-    FillColField(poolStats.maxNumBlocksUsed);
-    FillColField(poolStats.numOverflows);
-    FillColField(poolStats.numAllocs);
-    FillColField(blockSize);
-    FillColField(blockSize*(poolStats.numBlocksInUse));
-    FillColField(name);
-    FillColField(subPoolStr);
-    #undef FillColField
+    if (!IsOutputJson)
+    {
+        #define P FillColField
+        ProcessData
+        #undef P
 
-    PrintInfo(MemPoolTableInfo, MemPoolTableInfoSize);
+        PrintInfo(MemPoolTableInfo, MemPoolTableInfoSize);
+        lineCount++;
+    }
+    else
+    {
+        // If it's not the first time, print a comma.
+        if (!IsPrintedNodeFirst)
+        {
+            printf(",");
+        }
+        else
+        {
+            IsPrintedNodeFirst = false;
+        }
 
-    lineCount++;
+        #define P ExportJsonData
+        ProcessData
+        #undef P
+    }
 
-    return lineCount;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Print thread obj information header.
- *
- * @return
- *      The number of lines printed.
- */
-//--------------------------------------------------------------------------------------------------
-static int PrintThreadObjHeaderInfo
-(
-    pid_t pidToInspect  ///< [IN] PID of the process under inspection.
-)
-{
-    int lineCount = 0;
-
-    printf("\n");
-    lineCount++;
-
-    // Print title.
-    printf("Legato Thread Objects Inspector\n");
-    lineCount++;
-    printf("Inspecting process %d\n", pidToInspect);
-    lineCount++;
-
-    // Print column headers.
-    PrintHeader(ThreadObjTableInfo, ThreadObjTableInfoSize);
-
-    lineCount++;
+    #undef ProcessData
 
     return lineCount;
 }
@@ -1876,61 +2000,48 @@ static int PrintThreadObjInfo
 
     ColumnInfo_t* columnRef;
     int index = 0;
+    bool isDataJsonArray = false;
 
-    #define FillColField(field) \
-            columnRef = GetNextColumn(ThreadObjTableInfo, ThreadObjTableInfoSize, &index); \
-            snprintf(columnRef->colField, (columnRef->colWidth + 1), columnRef->fieldFormat, \
-                     columnRef->colWidth, field);
+    #define ProcessData \
+        P(threadObjRef->name,        ThreadObjTableInfo, ThreadObjTableInfoSize); \
+        P(threadObjRef->isJoinable,  ThreadObjTableInfo, ThreadObjTableInfoSize); \
+        P(threadObjRef->isStarted,   ThreadObjTableInfo, ThreadObjTableInfoSize); \
+        P(detachStateStr,            ThreadObjTableInfo, ThreadObjTableInfoSize); \
+        P(schedPolicyStr,            ThreadObjTableInfo, ThreadObjTableInfoSize); \
+        P(schedParam.sched_priority, ThreadObjTableInfo, ThreadObjTableInfoSize); \
+        P(inheritSchedStr,           ThreadObjTableInfo, ThreadObjTableInfoSize); \
+        P(contentionScopeStr,        ThreadObjTableInfo, ThreadObjTableInfoSize); \
+        P(guardSize,                 ThreadObjTableInfo, ThreadObjTableInfoSize); \
+        P(stackAddr[0],              ThreadObjTableInfo, ThreadObjTableInfoSize); \
+        P(stackSize,                 ThreadObjTableInfo, ThreadObjTableInfoSize);
 
-    FillColField(threadObjRef->name);
-    FillColField(threadObjRef->isJoinable);
-    FillColField(threadObjRef->isStarted);
-    FillColField(detachStateStr);
-    FillColField(schedPolicyStr);
-    FillColField(schedParam.sched_priority);
-    FillColField(inheritSchedStr);
-    FillColField(contentionScopeStr);
-    FillColField(guardSize);
-    FillColField(stackAddr[0]);
-    FillColField(stackSize);
-    #undef FillColField
+    if (!IsOutputJson)
+    {
+        #define P FillColField
+        ProcessData
+        #undef P
 
-    PrintInfo(ThreadObjTableInfo, ThreadObjTableInfoSize);
+        PrintInfo(ThreadObjTableInfo, ThreadObjTableInfoSize);
+        lineCount++;
+    }
+    else
+    {
+        // If it's not the first time, print a comma.
+        if (!IsPrintedNodeFirst)
+        {
+            printf(",");
+        }
+        else
+        {
+            IsPrintedNodeFirst = false;
+        }
 
-    lineCount++;
+        #define P ExportJsonData
+        ProcessData
+        #undef P
+    }
 
-    return lineCount;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Print timer information header.
- *
- * @return
- *      The number of lines printed.
- */
-//--------------------------------------------------------------------------------------------------
-static int PrintTimerHeaderInfo
-(
-    pid_t pidToInspect  ///< [IN] PID of the process under inspection.
-)
-{
-    int lineCount = 0;
-
-    printf("\n");
-    lineCount++;
-
-    // Print title.
-    printf("Legato Timers Inspector\n");
-    lineCount++;
-    printf("Inspecting process %d\n", pidToInspect);
-    lineCount++;
-
-    // Print column headers.
-    PrintHeader(TimerTableInfo, TimerTableInfoSize);
-
-    lineCount++;
+    #undef ProcessData
 
     return lineCount;
 }
@@ -1953,56 +2064,43 @@ static int PrintTimerInfo
 
     ColumnInfo_t* columnRef;
     int index = 0;
+    bool isDataJsonArray = false;
 
-    #define FillColField(field) \
-            columnRef = GetNextColumn(TimerTableInfo, TimerTableInfoSize, &index); \
-            snprintf(columnRef->colField, (columnRef->colWidth + 1), columnRef->fieldFormat, \
-                     columnRef->colWidth, field);
+    #define ProcessData \
+        P(timerRef->name,        TimerTableInfo, TimerTableInfoSize); \
+        P(interval,              TimerTableInfo, TimerTableInfoSize); \
+        P(timerRef->repeatCount, TimerTableInfo, TimerTableInfoSize); \
+        P(timerRef->isActive,    TimerTableInfo, TimerTableInfoSize); \
+        P(expiryTime,            TimerTableInfo, TimerTableInfoSize); \
+        P(timerRef->expiryCount, TimerTableInfo, TimerTableInfoSize);
 
-    FillColField(timerRef->name);
-    FillColField(interval);
-    FillColField(timerRef->repeatCount);
-    FillColField(timerRef->isActive);
-    FillColField(expiryTime);
-    FillColField(timerRef->expiryCount);
-    #undef FillColField
+    if (!IsOutputJson)
+    {
+        #define P FillColField
+        ProcessData
+        #undef P
 
-    PrintInfo(TimerTableInfo, TimerTableInfoSize);
+        PrintInfo(TimerTableInfo, TimerTableInfoSize);
+        lineCount++;
+    }
+    else
+    {
+        // If it's not the first time, print a comma.
+        if (!IsPrintedNodeFirst)
+        {
+            printf(",");
+        }
+        else
+        {
+            IsPrintedNodeFirst = false;
+        }
 
-    lineCount++;
+        #define P ExportJsonData
+        ProcessData
+        #undef P
+    }
 
-    return lineCount;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Print mutex information header.
- *
- * @return
- *      The number of lines printed.
- */
-//--------------------------------------------------------------------------------------------------
-static int PrintMutexHeaderInfo
-(
-    pid_t pidToInspect  ///< [IN] PID of the process under inspection.
-)
-{
-    int lineCount = 0;
-
-    printf("\n");
-    lineCount++;
-
-    // Print title.
-    printf("Legato Mutexes Inspector\n");
-    lineCount++;
-    printf("Inspecting process %d\n", pidToInspect);
-    lineCount++;
-
-    // Print column headers.
-    PrintHeader(MutexTableInfo, MutexTableInfoSize);
-
-    lineCount++;
+    #undef ProcessData
 
     return lineCount;
 }
@@ -2081,11 +2179,11 @@ static le_dls_Link_t GetWaitingListLink
 //--------------------------------------------------------------------------------------------------
 static void GetWaitingListThreadNames
 (
-    InspType_t inspectType,     ///< [IN] What to inspect.
-    le_dls_List_t remoteWaitingList,    ///< [IN] Waiting list in the remote process.
-    char** waitingThreadNames,          ///< [OUT] Array of thread names on the waiting list.
-    size_t waitingThreadNamesNum,       ///< [IN] Max number of thread names the arra can contain.
-    int* threadNameNumPtr               ///< [OUT] Number of thread names written to the array.
+    InspType_t inspectType,          ///< [IN] What to inspect.
+    le_dls_List_t remoteWaitingList, ///< [IN] Waiting list in the remote process.
+    char** waitingThreadNames,       ///< [OUT] Array of thread names on the waiting list.
+    size_t waitingThreadNamesNum,    ///< [IN] Max number of thread names the array can contain.
+    int* threadNameNumPtr            ///< [OUT] Number of thread names written to the array.
 )
 {
     typedef void* (*GetThreadRecPtrFunc_t)(le_dls_Link_t* currNodeLinkPtr);
@@ -2134,6 +2232,9 @@ static void GetWaitingListThreadNames
 
     int fd = OpenProcMemFile(PidToInspect);
 
+    // Clear the thread name.
+    memset(localThreadObjCopy.name, 0, sizeof(localThreadObjCopy.name));
+
     int i = 0;
     while (currNodeLinkPtr != NULL)
     {
@@ -2155,7 +2256,7 @@ static void GetWaitingListThreadNames
             INTERNAL_ERR("Array too small to contain all thread names on the waiting list.");
         }
         // Add the thread name to the array of waiting thread names.
-        waitingThreadNames[i] = strdup(localThreadObjCopy.name);
+        waitingThreadNames[i] = strndup(localThreadObjCopy.name, sizeof(localThreadObjCopy.name));
         i++;
 
         // Get the ptr to the the next node link on the waiting list, by reading the thread record
@@ -2173,6 +2274,74 @@ static void GetWaitingListThreadNames
 
     fd_Close(fd);
     *threadNameNumPtr = i;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Given an array of strings, estimate the size needed for a string which is a JSON array consisting
+ * of all strings in the input array.
+ *
+ * @return
+ *      Estimated size of the JSON array.
+ */
+//--------------------------------------------------------------------------------------------------
+static int EstimateJsonArraySizeFromStrings
+(
+    char** stringArray, ///< [IN] Array of strings to construct the json array with.
+    int stringNum       ///< [IN] Number of strings in the above array.
+)
+{
+    int waitingThreadJsonArraySize = 0;
+    int i;
+
+    for (i = 0; i < stringNum; i++)
+    {
+        // Plus 3 for the double quotes and comma.
+        waitingThreadJsonArraySize += (strlen(stringArray[i]) + 3);
+    }
+    // For the comma of the last item.
+    waitingThreadJsonArraySize -= (stringNum > 0) ? 1 : 0;
+    // For the beginning and ending square brackets, and the null terminating char.
+    waitingThreadJsonArraySize += 3;
+
+    return waitingThreadJsonArraySize;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Given an array of strings, construct a string which is a JSON array consisting of all strings in
+ * the input array.
+ */
+//--------------------------------------------------------------------------------------------------
+static void ConstructJsonArrayFromStrings
+(
+    char** stringArray, ///< [IN] Array of strings to construct the json array with.
+    int stringNum,      ///< [IN] Number of strings in the above array.
+    char* waitingThreadJsonArray,  ///< [OUT] The resulting string which is a JSON array.
+    int waitingThreadJsonArraySize ///< [IN] Size of the resulting string.
+)
+{
+    int strIdx = 0;
+    int i;
+
+    strIdx += snprintf((waitingThreadJsonArray + strIdx),
+                       (waitingThreadJsonArraySize - strIdx), "[");
+
+    for (i = 0; i < stringNum; i++)
+    {
+        strIdx += snprintf((waitingThreadJsonArray + strIdx),
+                           (waitingThreadJsonArraySize - strIdx), "\"%s\",",
+                           stringArray[i]);
+    }
+
+    // Delete the last comma, if it exists.
+    int deleteComma = 0;
+    deleteComma = (stringNum > 0) ? 1 : 0;
+    strIdx -= deleteComma;
+    strIdx += snprintf((waitingThreadJsonArray + strIdx),
+                       (waitingThreadJsonArraySize - strIdx), "]");
 }
 
 
@@ -2196,62 +2365,58 @@ static int PrintMutexInfo
 
     ColumnInfo_t* columnRef;
     int index = 0;
+    bool isDataJsonArray = false;
 
-    #define FillColField(field) \
-            columnRef = GetNextColumn(MutexTableInfo, MutexTableInfoSize, &index); \
-            snprintf(columnRef->colField, (columnRef->colWidth + 1), columnRef->fieldFormat, \
-                     columnRef->colWidth, field);
+    #define ProcessData \
+        P(mutexRef->name,        MutexTableInfo, MutexTableInfoSize); \
+        P(mutexRef->lockCount,   MutexTableInfo, MutexTableInfoSize); \
+        P(mutexRef->isRecursive, MutexTableInfo, MutexTableInfoSize); \
+        P(mutexRef->isTraceable, MutexTableInfo, MutexTableInfoSize); \
+        isDataJsonArray = true; \
+        P(waitingThreadNames[0], MutexTableInfo, MutexTableInfoSize);
 
-    FillColField(mutexRef->name);
-    FillColField(mutexRef->lockCount);
-    FillColField(mutexRef->isRecursive);
-    FillColField(mutexRef->isTraceable);
-    FillColField(waitingThreadNames[0]);
-    #undef FillColField
-
-    PrintInfo(MutexTableInfo, MutexTableInfoSize);
-
-    lineCount++;
-
-    int j;
-    for (j = 1; j < i; j++)
+    if (!IsOutputJson)
     {
-        PrintUnderColumn("WAITING LIST", MutexTableInfo, MutexTableInfoSize, waitingThreadNames[j]);
+        #define P FillColField
+        ProcessData
+        #undef P
+
+        PrintInfo(MutexTableInfo, MutexTableInfoSize);
         lineCount++;
+
+        int j;
+        for (j = 1; j < i; j++)
+        {
+            PrintUnderColumn("WAITING LIST", MutexTableInfo, MutexTableInfoSize,
+                             waitingThreadNames[j]);
+            lineCount++;
+        }
+    }
+    else
+    {
+        int waitingThreadJsonArraySize = EstimateJsonArraySizeFromStrings(waitingThreadNames, i);
+        char waitingThreadJsonArray[waitingThreadJsonArraySize];
+        ConstructJsonArrayFromStrings(waitingThreadNames, i, waitingThreadJsonArray,
+                                      waitingThreadJsonArraySize);
+
+        // If it's not the first time, print a comma.
+        if (!IsPrintedNodeFirst)
+        {
+            printf(",");
+        }
+        else
+        {
+            IsPrintedNodeFirst = false;
+        }
+
+        #define P ExportJsonData
+        #define waitingThreadNames &waitingThreadJsonArray
+        ProcessData
+        #undef waitingThreadNames
+        #undef P
     }
 
-    return lineCount;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Print semaphore information header.
- *
- * @return
- *      The number of lines printed.
- */
-//--------------------------------------------------------------------------------------------------
-static int PrintSemaphoreHeaderInfo
-(
-    pid_t pidToInspect  ///< [IN] PID of the process under inspection.
-)
-{
-    int lineCount = 0;
-
-    printf("\n");
-    lineCount++;
-
-    // Print title.
-    printf("Legato semaphores Inspector\n");
-    lineCount++;
-    printf("Inspecting process %d\n", pidToInspect);
-    lineCount++;
-
-    // Print column headers.
-    PrintHeader(SemaphoreTableInfo, SemaphoreTableInfoSize);
-
-    lineCount++;
+    #undef ProcessData
 
     return lineCount;
 }
@@ -2277,28 +2442,56 @@ static int PrintSemaphoreInfo
 
     ColumnInfo_t* columnRef;
     int index = 0;
+    bool isDataJsonArray = false;
 
-    #define FillColField(field) \
-            columnRef = GetNextColumn(SemaphoreTableInfo, SemaphoreTableInfoSize, &index); \
-            snprintf(columnRef->colField, (columnRef->colWidth + 1), columnRef->fieldFormat, \
-                     columnRef->colWidth, field);
+    #define ProcessData \
+        P(semaphoreRef->nameStr,     SemaphoreTableInfo, SemaphoreTableInfoSize); \
+        P(semaphoreRef->isTraceable, SemaphoreTableInfo, SemaphoreTableInfoSize); \
+        isDataJsonArray = true; \
+        P(waitingThreadNames[0],     SemaphoreTableInfo, SemaphoreTableInfoSize);
 
-    FillColField(semaphoreRef->nameStr);
-    FillColField(semaphoreRef->isTraceable);
-    FillColField(waitingThreadNames[0]);
-    #undef FillColField
-
-    PrintInfo(SemaphoreTableInfo, SemaphoreTableInfoSize);
-
-    lineCount++;
-
-    int j;
-    for (j = 1; j < i; j++)
+    if (!IsOutputJson)
     {
-        PrintUnderColumn("WAITING LIST", SemaphoreTableInfo, SemaphoreTableInfoSize,
-                         waitingThreadNames[j]);
+        #define P FillColField
+        ProcessData
+        #undef P
+
+        PrintInfo(SemaphoreTableInfo, SemaphoreTableInfoSize);
         lineCount++;
+
+        int j;
+        for (j = 1; j < i; j++)
+        {
+            PrintUnderColumn("WAITING LIST", SemaphoreTableInfo, SemaphoreTableInfoSize,
+                             waitingThreadNames[j]);
+            lineCount++;
+        }
     }
+    else
+    {
+        int waitingThreadJsonArraySize = EstimateJsonArraySizeFromStrings(waitingThreadNames, i);
+        char waitingThreadJsonArray[waitingThreadJsonArraySize];
+        ConstructJsonArrayFromStrings(waitingThreadNames, i, waitingThreadJsonArray,
+                                      waitingThreadJsonArraySize);
+
+        // If it's not the first time, print a comma.
+        if (!IsPrintedNodeFirst)
+        {
+            printf(",");
+        }
+        else
+        {
+            IsPrintedNodeFirst = false;
+        }
+
+        #define P ExportJsonData
+        #define waitingThreadNames &waitingThreadJsonArray
+        ProcessData
+        #undef waitingThreadNames
+        #undef P
+    }
+
+    #undef ProcessData
 
     return lineCount;
 }
@@ -2327,10 +2520,30 @@ static int InspectEndHandling
 {
     int lineCount = 0;
 
-    if (endStatus == INSPECT_INTERRUPTED)
+    if (!IsOutputJson)
     {
-        printf(">>> Detected list changes. Stopping inspection. <<<\n");
-        lineCount++;
+        if (endStatus == INSPECT_INTERRUPTED)
+        {
+            printf(">>> Detected list changes. Stopping inspection. <<<\n");
+            lineCount++;
+        }
+    }
+    else
+    {
+        // Print the end of "Data".
+        printf("],");
+
+        if (endStatus == INSPECT_INTERRUPTED)
+        {
+            printf("\"Interrupted\":true");
+        }
+        else
+        {
+            printf("\"Interrupted\":false");
+        }
+
+        // Print the end of the "main" JSON object.
+        printf("}\n");
     }
 
     // The last line of the current run of inspection has finished, so it's a good place to
@@ -2342,6 +2555,9 @@ static int InspectEndHandling
     // If Inspect is set to repeat periodically, configure the repeat interval.
     if (IsFollowing)
     {
+        // Reset this boolean for the next round.
+        IsPrintedNodeFirst = true;
+
         le_clk_Time_t refreshInterval;
 
         switch (endStatus)
@@ -2399,15 +2615,12 @@ static void InspectFunc
     typedef void (*DeleteIterFunc_t)(void* iterRef);
     // Function prototype for the PrintXXXInfo family.
     typedef int (*PrintNodeInfoFunc_t)(void* nodeRef);
-    // Function prototype for the PrintXXXHeaderInfo family.
-    typedef int (*PrintNodeHeaderInfoFunc_t)(pid_t pid);
 
     CreateIterFunc_t createIterFunc;
     GetListChgCntFunc_t getListChgCntFunc;
     GetNextNodeFunc_t getNextNodeFunc;
     DeleteIterFunc_t deleteIterFunc;
     PrintNodeInfoFunc_t printNodeInfoFunc;
-    PrintNodeHeaderInfoFunc_t printNodeHeaderInfoFunc;
 
     // assigns the appropriate set of functions according to the inspection type.
     switch (inspectType)
@@ -2418,7 +2631,6 @@ static void InspectFunc
             getNextNodeFunc         = (GetNextNodeFunc_t)        GetNextMemPool;
             deleteIterFunc          = (DeleteIterFunc_t)         DeleteMemPoolIter;
             printNodeInfoFunc       = (PrintNodeInfoFunc_t)      PrintMemPoolInfo;
-            printNodeHeaderInfoFunc = (PrintNodeHeaderInfoFunc_t)PrintMemPoolHeaderInfo;
             break;
 
         case INSPECT_INSP_TYPE_THREAD_OBJ:
@@ -2427,7 +2639,6 @@ static void InspectFunc
             getNextNodeFunc         = (GetNextNodeFunc_t)        GetNextThreadObj;
             deleteIterFunc          = (DeleteIterFunc_t)         DeleteThreadObjIter;
             printNodeInfoFunc       = (PrintNodeInfoFunc_t)      PrintThreadObjInfo;
-            printNodeHeaderInfoFunc = (PrintNodeHeaderInfoFunc_t)PrintThreadObjHeaderInfo;
             break;
 
         case INSPECT_INSP_TYPE_TIMER:
@@ -2436,7 +2647,6 @@ static void InspectFunc
             getNextNodeFunc         = (GetNextNodeFunc_t)        GetNextTimer;
             deleteIterFunc          = (DeleteIterFunc_t)         DeleteTimerIter;
             printNodeInfoFunc       = (PrintNodeInfoFunc_t)      PrintTimerInfo;
-            printNodeHeaderInfoFunc = (PrintNodeHeaderInfoFunc_t)PrintTimerHeaderInfo;
             break;
 
         case INSPECT_INSP_TYPE_MUTEX:
@@ -2445,7 +2655,6 @@ static void InspectFunc
             getNextNodeFunc         = (GetNextNodeFunc_t)        GetNextMutex;
             deleteIterFunc          = (DeleteIterFunc_t)         DeleteMutexIter;
             printNodeInfoFunc       = (PrintNodeInfoFunc_t)      PrintMutexInfo;
-            printNodeHeaderInfoFunc = (PrintNodeHeaderInfoFunc_t)PrintMutexHeaderInfo;
             break;
 
         case INSPECT_INSP_TYPE_SEMAPHORE:
@@ -2454,7 +2663,6 @@ static void InspectFunc
             getNextNodeFunc         = (GetNextNodeFunc_t)        GetNextSemaphore;
             deleteIterFunc          = (DeleteIterFunc_t)         DeleteSemaphoreIter;
             printNodeInfoFunc       = (PrintNodeInfoFunc_t)      PrintSemaphoreInfo;
-            printNodeHeaderInfoFunc = (PrintNodeHeaderInfoFunc_t)PrintSemaphoreHeaderInfo;
             break;
 
         default:
@@ -2464,14 +2672,18 @@ static void InspectFunc
     // Create an iterator.
     void* iterRef = createIterFunc(pid);
 
-    // Print header information.
     static int lineCount = 0;
 
-    printf("%c[1G", ESCAPE_CHAR);             // Move cursor to the column 1.
-    printf("%c[%dA", ESCAPE_CHAR, lineCount); // Move cursor up to the top of the table.
-    printf("%c[0J", ESCAPE_CHAR);             // Clear Screen.
+    // Print header information.
+    if (!IsOutputJson)
+    {
+        printf("%c[1G", ESCAPE_CHAR);             // Move cursor to the column 1.
+        printf("%c[%dA", ESCAPE_CHAR, lineCount); // Move cursor up to the top of the table.
+        printf("%c[0J", ESCAPE_CHAR);             // Clear Screen.
+    }
 
-    lineCount += printNodeHeaderInfoFunc(pid);
+    lineCount += PrintInspectHeader();
+
 
     // Iterate through the list of nodes.
     size_t initialChangeCount = getListChgCntFunc(iterRef);
@@ -2615,6 +2827,28 @@ static void FollowOptionCallback
 
 
 //--------------------------------------------------------------------------------------------------
+/**
+ * Function called by command line argument scanner when the --format= option is given.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void FormatOptionCallback
+(
+    const char* format
+)
+{
+    if (strcmp(format, "json") == 0)
+    {
+        IsOutputJson = true;
+    }
+    else
+    {
+        fprintf(stderr, "Bad format specifier, '%s'.\n", format);
+        exit(EXIT_FAILURE);
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
     // Create a memory pool for iterators.
@@ -2636,6 +2870,9 @@ COMPONENT_INIT
 
     // --interval=N option specifies the update period (implies -f).
     le_arg_SetIntCallback(FollowOptionCallback, NULL, "interval");
+
+    // --format=json option outputs data to the specified file in JSON format.
+    le_arg_SetStringCallback(FormatOptionCallback, NULL, "format");
 
     le_arg_Scan();
 

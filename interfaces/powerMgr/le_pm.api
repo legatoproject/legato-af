@@ -18,7 +18,7 @@
  *
  * @section le_pm_binding IPC interfaces binding
  *
- * All the functions of this API are provided by the @b powerMgr foundation service.
+ * All the functions of this API are provided by the @b powerMgr service.
  *
  * Here's a code sample binding to Power Manager services:
  * @verbatim

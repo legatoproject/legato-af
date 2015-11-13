@@ -26,7 +26,7 @@ sudo apt-get install devstudio-legato
 To get the latest Legato version, open Developer Studio, go to the Package Manager perspective,
 and install it from the official Sierra Wireless repository.
 
-@section getstartedDSlinuxIDE_choice	Native or Docker Version
+@section getstartedDSlinuxIDE_choice    Native or Docker Version
 
 You have the choice between two Legato versions:
 

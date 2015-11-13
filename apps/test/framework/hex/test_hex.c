@@ -10,7 +10,7 @@
  */
 int init_suite(void)
 {
-	return 0;
+    return 0;
 }
 
 /* The suite cleanup function.
@@ -20,16 +20,25 @@ int init_suite(void)
 int clean_suite(void)
 {
 
-	return 0;
+    return 0;
 }
 
 
 void test_le_hex_StringToBinary(void)
 {
     uint32_t res,i;
-    const char*     hexString = "0123456789ABCDEF";
+    const char*     hexString = "0123456789AbcDEF";
     const uint8_t  binString[] = {0x01,0x23,0x45,0x67,0x89,0xAB,0xCD,0xEF};
     uint8_t binResult[8];
+
+    res = le_hex_StringToBinary("010x02",strlen("010x02"),binResult,sizeof(binResult));
+    CU_ASSERT_EQUAL(res,-1);
+
+    res = le_hex_StringToBinary("010X02",strlen("010X02"),binResult,sizeof(binResult));
+    CU_ASSERT_EQUAL(res,-1);
+
+    res = le_hex_StringToBinary("01002",strlen("01002")+2,binResult,sizeof(binResult));
+    CU_ASSERT_EQUAL(res,-1);
 
     res = le_hex_StringToBinary(hexString,strlen(hexString),binResult,sizeof(binResult));
     CU_ASSERT_EQUAL(res,8);
@@ -71,8 +80,8 @@ COMPONENT_INIT
     CU_SUITE_INFO_NULL,
     };
 
-	/* initialize the CUnit test registry */
-	if (CUE_SUCCESS != CU_initialize_registry())
+    /* initialize the CUnit test registry */
+    if (CUE_SUCCESS != CU_initialize_registry())
         exit(CU_get_error());
 
     if ( CUE_SUCCESS != CU_register_suites(suites))
@@ -81,7 +90,7 @@ COMPONENT_INIT
         exit(CU_get_error());
     }
 
-	/* Run all tests using the CUnit Basic interface */
+    /* Run all tests using the CUnit Basic interface */
     CU_basic_set_mode(CU_BRM_VERBOSE);
     CU_basic_run_tests();
 
@@ -93,6 +102,6 @@ COMPONENT_INIT
         fprintf(stdout,"\n [STOP]List of Failure\n");
     }
 
-	CU_cleanup_registry();
+    CU_cleanup_registry();
     exit(CU_get_error());
 }

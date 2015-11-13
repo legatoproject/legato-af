@@ -1,6 +1,8 @@
-/** @page howToPortLegacyGen Port Legacy Apps General
+/** @page howToPortLegacyGen Port Legacy Apps
 
 This topic provides general info on porting legacy apps to Legato.
+
+There's also specific info available to @subpage howToPortLegacyC.
 
 @section howToPortLegacyGen_Sandboxed Sandboxed App
 
@@ -11,12 +13,12 @@ High-level steps for <b>porting your app to Legato</b>:
 - Leave the @c executables: section in <c> .adef </c> empty (or omit that section entirely).
 - Include files to be installed as part of the app (executables, libraries, configuration files,
 devices, etc.) in the @c files: subsection of the @ref defFilesAdef_bundles "bundles: section of the .adef file".
-- Use the @ref defFilesAdef_requiresFile "requires: section of the .adef file" to include files and directories that need to
+- Use the @ref defFilesAdef_requiresFile "extern: section of the .adef file" to include files and directories that need to
 be imported into the sandbox from the target’s file system.
 - Add @ref defFilesAdef_processRun "run: lines in the @c processes: section in the .adef" to define processes that should run in the app.
-- Run @ref buildToolsmkapp on the <c> .adef </c> file to create the app bundle (e.g., .wp85 or .ar7 file) to be installed on the target.
+- Run @ref buildToolsmkapp on the <c> .adef </c> file to create the app bundle (e.g., .wp85 or .wp7 file) to be installed on the target.
 
-An app bundle produced this way can be installed the same way as any other Legato app bundle.
+An app bundle produced like this can be installed exactly the same as any other Legato app bundle.
 
 Detailed info:
 

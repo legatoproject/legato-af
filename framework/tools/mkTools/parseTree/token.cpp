@@ -169,5 +169,25 @@ const
 
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Prints a warning message containing the file path, line number, and column number, in the same
+ * style as a compiler would.
+ */
+//--------------------------------------------------------------------------------------------------
+void Token_t::PrintWarning
+(
+    const std::string& message
+)
+const
+//--------------------------------------------------------------------------------------------------
+{
+    std::cerr << "** WARNING: " << std::endl
+              << filePtr->path << ":" << line << ":" << column << ": warning: " << message
+              << std::endl;
+}
+
+
+
 
 } // namespace parseTree

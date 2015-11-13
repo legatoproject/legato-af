@@ -237,6 +237,7 @@
 #include "cgroups.h"
 #include "smack.h"
 #include "appSmack.h"
+#include "properties.h"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -1473,6 +1474,79 @@ le_result_t le_appInfo_GetName
 )
 {
     return appSmack_GetName(pid, appName, appNameNumElements);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets the application hash as a hexidecimal string.  The application hash is a unique hash of the
+ * current version of the application.
+ *
+ * @return
+ *      LE_OK if the application has was successfully retrieved.
+ *      LE_OVERFLOW if the application hash could not fit in the provided buffer.
+ *      LE_NOT_FOUND if the application is not installed.
+ *      LE_FAULT if there was an error.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_appInfo_GetHash
+(
+    const char* appName,
+        ///< [IN]
+        ///< Application name.
+
+    char* hashStr,
+        ///< [OUT]
+        ///< Hash string.
+
+    size_t hashStrNumElements
+        ///< [IN]
+)
+{
+#define APPS_INSTALL_DIR                    "/opt/legato/apps"
+#define APP_INFO_FILE                       "info.properties"
+#define KEY_STR_MD5                         "app.md5"
+
+
+    // Get the path to the app's info file.
+    char infoFilePath[LIMIT_MAX_PATH_BYTES] = APPS_INSTALL_DIR;
+    LE_ERROR_IF(le_path_Concat("/",
+                               infoFilePath,
+                               sizeof(infoFilePath),
+                               appName,
+                               APP_INFO_FILE,
+                               NULL) != LE_OK,
+                "Path to app %s's %s is too long.", appName, APP_INFO_FILE);
+
+    // Check if the file exists.
+    struct stat statBuf;
+
+    if (stat(infoFilePath, &statBuf) == -1)
+    {
+        if (errno == ENOENT)
+        {
+            return LE_NOT_FOUND;
+        }
+
+        LE_ERROR("Could not stat file '%s'.  %m.", infoFilePath);
+        return LE_FAULT;
+    }
+
+    // Get the md5 hash for the app's info.properties file.
+    le_result_t result = properties_GetValueForKey(infoFilePath,
+                                                   KEY_STR_MD5,
+                                                   hashStr,
+                                                   hashStrNumElements);
+
+    switch(result)
+    {
+        case LE_OK:
+        case LE_OVERFLOW:
+            return result;
+
+        default:
+            return LE_FAULT;
+    }
 }
 
 

@@ -7,7 +7,7 @@
 Used to describe collections of information (fields) that can be exchanged with cloud
 services like AirVantage.
 
-The assets section can hold multiple assets, each asset is given a name. 
+The assets section can hold multiple assets, each asset is given a name.
 
 An asset can be:
 
@@ -302,7 +302,7 @@ API function has a return value, that return value is sent to the client through
 of the @c Respond function.  Any output parameters defined in the API function are also passed
 as parameters to the @c Respond function.
 
-See @ref languageIndependentAPIs for more information, or try it and have a look at the generated
+See @ref interfaceDefLang for more information, or try it and have a look at the generated
 header files.
 
 @section defFilesCdef_requires Requires

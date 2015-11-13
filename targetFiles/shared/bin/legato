@@ -64,7 +64,6 @@ ACTION=$1
 # Make sure /usr/local/bin and /sbin is in the path.
 PATH=/usr/local/bin:/sbin:$PATH
 
-
 # Check if ps supports arguments.  If so, we need to run "ps aux" to be able
 # to see the supervisor process if it is running.  Otherwise, we just run "ps".
 PS='ps aux'
@@ -149,13 +148,18 @@ StartLegato()
     if [ -f $POSTBOOTCHECK ]
     then
         postbootAction=$(cat $POSTBOOTCHECK)
-        if  [ $postbootAction = "update" ] 
+        if  [ $postbootAction = "update" ]
         then
             APPS_OPTION="--start-apps=none"
         fi
     fi
 
-    echo "Starting Legato with option $APPS_OPTION"
+    if [ "$APPS_OPTION" ]
+    then
+        echo "Starting Legato with option $APPS_OPTION"
+    else
+        echo "Starting Legato without options."
+    fi
 
     # Make sure the configTree's configuration directory exists.
     mkdir -p $CONFIG_DIR &&
@@ -363,7 +367,7 @@ RunApps()
 }
 
 
-UpdateAndRunApps()
+UpdateApps()
 {
     # Get the new app list
     APP_LIST=`ls /usr/local/bin/apps`
@@ -391,14 +395,12 @@ UpdateAndRunApps()
 
     # Touch a file to mark that installation is complete
     touch $APPINSTALLCOMPLETE
-
-    RunApps
 }
 
 InstallApps()
 {
     AddBindings &&
-    UpdateAndRunApps
+    UpdateApps
 
     if [ -x $SCRIPTS_DIR/legato-post-update-hook ]
     then
@@ -477,8 +479,10 @@ WriteLegatoFromFlash()
     rm -f CACHED_LIB_SOURCE
 
     echo "*** Initializing new Legato version ***"
-    # Copy over built in legato to /mnt/flash/
-    cp -a /mnt/legato/opt /mnt/flash/
+    # Copy over built in legato to /mnt/flash/ without the opt/legato/version
+    # delayed until the installation is completed
+    echo "opt/legato/version" >/tmp/exclude
+    tar -cf - opt -C /mnt/legato -X /tmp/exclude | tar -C /mnt/flash -xpf -
 
     echo -n "Installing new startup defaults..."
     if [ -d /mnt/flash/startupDefaults ]
@@ -588,6 +592,12 @@ RunStartupScripts()
 # version has been installed in /mnt/legato. It will then set it up
 BootCheck()
 {
+    if ! [ -x `dirname $POSTBOOTCHECK` ] && [ -f $INSTALLED_VERSION ]
+    then
+        # In this case, we assume that the installation was not completed
+        echo "Not completed installation detected!"
+        rm -f $INSTALLED_VERSION
+    fi
 
     if ! [ -f $INSTALLED_VERSION ] # no (good) version of legato is installed
     then
@@ -645,7 +655,12 @@ PostBootCheck()
     then
         rm $APPINSTALLCOMPLETE
         cp $BUILTIN_VERSION $INSTALLED_BUILTIN_VERSION
+        # Copy the opt/legato/version. The installation is now completed
+        cp $BUILTIN_VERSION $INSTALLED_VERSION
     fi
+
+    # Start all the applications
+    RunApps
 }
 
 # To see if it is already bind mounted
@@ -742,6 +757,8 @@ InstallLegato()
     RunStartupScripts &&
 
     InstallApps &&
+
+    RunApps &&
 
     # Remove the app package files for the bundled applications to save space in flash.
     rm -rf /usr/local/bin/apps

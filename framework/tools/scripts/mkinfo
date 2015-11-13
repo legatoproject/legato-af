@@ -6,38 +6,58 @@
 # Arg 1 is the staging directory of the app build.
 StagingDir=$1
 
+# Arg 2 is the name of the app.
+AppName=$2
+
+# Arg 3 is the app's version string, which could contain spaces or could be completely empty.
+AppVersion="$3"
+
 # Generates a file called info.properties in the app's staging directory.
 InfoFile="$1/info.properties"
 
 if [ -z $StagingDir ]
     then
-        echo "No Staging Dir specified"
+        echo "No Staging Dir specified." >&2
         exit 1
 fi
 
 if ! [ -d $StagingDir ]
     then
-        echo "No such directory $StagingDir"
+        echo "No such directory '$StagingDir'" >&2
         exit 1
 fi
 
-rm -f $InfoFile
-
-# app checksum
-md5=$(find $StagingDir -type f | xargs cat | md5sum)
-md5=${md5%% *}
-echo "app.md5=$md5" > $InfoFile
-
-# app version
-app_version=$(grep '\` \+"version"' ${StagingDir}/root.cfg | sed -e 's/[ ]*\"\([^\"]*\)\"[ ]*\"\([^\"]*\)\".*/\2/')
-if [ "$app_version" != "" ]
+if [ -z $AppName ]
     then
-        echo app.version=$app_version >> $InfoFile
+        echo "No app name specified." >&2
+        exit 1
 fi
 
-# app build time
+# Clear the way.
+rm -f $InfoFile
+
+# Create file containing app name.
+echo "app.name=$AppName" > $InfoFile
+
+# Add app checksum
+md5=$(find $StagingDir -type f | xargs cat | md5sum)
+md5=${md5%% *}
+echo "app.md5=$md5" >> $InfoFile
+
+# Add app version, if there is one.
+if [ "$AppVersion" != "" ]
+    then
+        echo "app.version=$AppVersion" >> $InfoFile
+fi
+
+# Add app build time
 printf "app.buildTime=%s\n" "$(date)" >> $InfoFile
 
-#framework version
+# Add framework version
+if ! [ -f $LEGATO_ROOT/version ]
+    then
+        echo "Legato application framework version file ($LEGATO_ROOT/version) not found!" >&2
+        exit 1
+fi
 legato_version=$(cat $LEGATO_ROOT/version)
-echo legato.version=$legato_version >> $InfoFile
+echo "legato.version=$legato_version" >> $InfoFile

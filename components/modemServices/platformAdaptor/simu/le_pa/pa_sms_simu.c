@@ -372,9 +372,9 @@ le_result_t pa_sms_ChangeMessageStatus
 /**
  * This function must be called to get the SMS center.
  *
- * @return LE_NOT_POSSIBLE The function failed.
- * @return LE_TIMEOUT      No response was received from the Modem.
- * @return LE_OK           The function succeeded.
+ * @return
+ *   - LE_FAULT        The function failed.
+ *   - LE_OK           The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_sms_GetSmsc
@@ -418,7 +418,7 @@ static void SmsMemPoolDestructor
 
     LE_ASSERT(smsMsgPtr != NULL);
 
-    smsMsgPtr->pduContent.status = LE_SMS_FORMAT_UNKNOWN;
+    smsMsgPtr->pduContent.status = LE_SMS_STATUS_UNKNOWN;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -532,7 +532,7 @@ static le_result_t SmsServerHandleLocalMessage
             return LE_NOT_POSSIBLE;
         }
 
-        if(decodedMessage.type != PA_SMS_SMS_SUBMIT)
+        if(decodedMessage.type != PA_SMS_SUBMIT)
         {
             LE_ERROR("Unexpected type of PDU message.");
             return LE_NOT_POSSIBLE;
@@ -579,7 +579,7 @@ static le_result_t SmsServerHandleLocalMessage
                     decodedMessage.smsSubmit.dataLen,
                     decodedMessage.smsSubmit.da,
                     encoding,
-                    PA_SMS_SMS_DELIVER,
+                    PA_SMS_DELIVER,
                     &pdu);
 
             if(res != LE_OK)

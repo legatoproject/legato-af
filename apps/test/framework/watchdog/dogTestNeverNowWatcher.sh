@@ -1,6 +1,6 @@
 # dogTestNeverNow
 # This script watches the output of the dogTestNeverNow.
-# If the TIMEOUT_NEVER runs for close to a minute and the 
+# If the TIMEOUT_NEVER runs for close to a minute and the
 # TIMEOUT_NOW causes an immediate timeout then all is well.
 # (Due to the granularity of 'date' I leave a second of slack
 # in the comparisons)

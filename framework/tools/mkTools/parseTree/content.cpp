@@ -65,11 +65,8 @@ std::string Content_t::TypeName
         case REQUIRED_CONFIG_TREE:
             return "required configuration tree";
 
-        case EXPORTED_API:
-            return "exported API";
-
-        case IMPORTED_API:
-            return "imported API";
+        case EXTERN_API_INTERFACE:
+            return "external API interface";
 
         case BINDING:
             return "binding";

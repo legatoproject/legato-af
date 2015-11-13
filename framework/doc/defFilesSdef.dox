@@ -48,6 +48,7 @@ the .adef setting for all processes in that app:
 @ref defFilesSdef_maxPriority  <br>
 @ref defFilesAdef_maxQueuedSignals  <br>
 @ref defFilesAdef_maxThreads  <br>
+@ref defFilesAdef_maxSecureStorageBytes  <br>
 @ref defFilesAdef_pools  <br>
 @ref defFilesAdef_sandboxed <br>
 @ref defFilesAdef_start  <br>
@@ -79,11 +80,11 @@ apps:
 Another process in the same .adef configured to start at low priority
 will still start at low priority.
 
-@section defFilesSdef_Bindings Bindings
+@section defFilesSdef_bindings Bindings
 
-Lists IPC @c bindings that connect apps’ external IPC interfaces. They're listed in the @c requires and @c provides sections of their
-@c .adef files.  Each binding connects one client-side (required) interface to one server-side
-(provided) interface.
+Lists IPC @c bindings that connect apps’ external IPC interfaces. They're listed in the
+@ref defFilesAdef_extern "extern section of their @c .adef files".
+Each binding connects one client-side interface to one server-side interface.
 
 Interfaces use the app name and the interface name,
 separated by a period (‘.’).  The two bound-together interfaces are separated by an arrow ("->").
@@ -119,8 +120,8 @@ bindings:
 For security reasons, binding between apps is never performed unless explicitly
 specified in the @c .sdef or @c .adef files.
 
-Beware that if an app's required interface instance is left unbound, the process or processes
-that require that interface may not be able to run.
+Beware that if an app's client-side extern interface instance is left unbound, the process
+or processes that require that interface may not be able to run.
 
 <HR>
 

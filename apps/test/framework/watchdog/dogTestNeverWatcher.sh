@@ -1,7 +1,7 @@
 # dogTestNever
 # This script watches the output of the dogTestNever.
 # We can't realistically wait forever but ...
-# If the TIMEOUT_NEVER runs for close to a minute then 
+# If the TIMEOUT_NEVER runs for close to a minute then
 # it has exceeded the default timeout of 30 seconds.
 # Assume that the "never" value was correctly read and is
 # being honoured.

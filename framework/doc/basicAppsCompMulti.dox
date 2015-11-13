@@ -34,7 +34,7 @@ bindings:
 Now we can run @c mkapp to build the application.
 
 @code
-$ mkapp helloWorld.adef -t wp7
+$ mkapp helloWorld.adef -t wp85
 @endcode
 
 <HR>

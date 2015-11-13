@@ -711,6 +711,8 @@ le_result_t le_mrc_SetAutomaticRegisterMode
  *  - LE_FAULT  Function failed.
  *  - LE_OK     Function succeeded.
  *
+ * @note If one code is too long (max LE_MRC_MCC_LEN/LE_MRC_MNC_LEN digits), it's a fatal error,
+ *       the function won't return.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_mrc_SetManualRegisterMode
@@ -1080,9 +1082,13 @@ le_result_t le_mrc_GetTdScdmaBandPreferences
  * Add a preferred operator by specifying the MCC/MNC and the Radio Access Technology.
  *
  * @return
+ *  - LE_NOT_FOUND     User Preferred operator list is not available.
  *  - LE_FAULT         Function failed.
- *  - LE_OUT_OF_RANGE  RAT mask is out of range.
+ *  - LE_BAD_PARAMETER RAT mask is invalid.
  *  - LE_OK            Function succeeded.
+ *
+ * @note If one code is too long (max LE_MRC_MCC_LEN/LE_MRC_MNC_LEN digits), it's a fatal error,
+ *       the function won't return.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_mrc_AddPreferredOperator
@@ -1101,6 +1107,7 @@ le_result_t le_mrc_AddPreferredOperator
 )
 {
     le_dls_List_t preferredOperatorsList = LE_DLS_LIST_INIT;
+    int32_t nbEntries;
 
     if (mcc == NULL)
     {
@@ -1126,15 +1133,30 @@ le_result_t le_mrc_AddPreferredOperator
         return LE_FAULT;
     }
 
-    if(ratMask > (LE_MRC_BITMASK_RAT_MAX-1))
+    /*
+     * RATs allowed:
+     *   [ LE_MRC_BITMASK_RAT_ALL ]
+     * or
+     *   [   <LE_MRC_BITMASK_RAT_GSM>  + <LE_MRC_BITMASK_RAT_UMTS>
+     *     + <LE_MRC_BITMASK_RAT_LTE>  + <LE_MRC_BITMASK_RAT_CDMA> ]
+     */
+    if((!ratMask) || (ratMask > LE_MRC_BITMASK_RAT_ALL))
     {
-        LE_ERROR("RAT mask is out of range");
-        return LE_OUT_OF_RANGE;
+        LE_ERROR("RAT mask is invalid");
+        return LE_BAD_PARAMETER;
     }
 
-    if (pa_mrc_GetPreferredOperatorsList(&preferredOperatorsList, false, true) <= 0)
+    nbEntries = pa_mrc_GetPreferredOperatorsList(&preferredOperatorsList, false, true);
+
+    if (nbEntries < 0)
     {
-        LE_WARN("No preferred Operator present in modem!");
+        LE_ERROR("No preferred Operator list available!!");
+        return LE_NOT_FOUND;
+    }
+
+    if (nbEntries == 0)
+    {
+        LE_WARN("Preferred PLMN Operator list is empty!");
     }
 
     if ( pa_mrc_AddPreferredOperators(&preferredOperatorsList, mcc, mnc, ratMask) != LE_OK )
@@ -1151,6 +1173,7 @@ le_result_t le_mrc_AddPreferredOperator
         return LE_FAULT;
     }
 
+    pa_mrc_DeletePreferredOperatorsList(&preferredOperatorsList);
     return LE_OK;
 }
 
@@ -1159,11 +1182,12 @@ le_result_t le_mrc_AddPreferredOperator
  * Remove a preferred operator by specifying the MCC/MNC.
  *
  * @return
- *  - LE_FAULT  Function failed.
- *  - LE_OK     Function succeeded.
+ *  - LE_NOT_FOUND  User Preferred operator list is not available.
+ *  - LE_FAULT      Function failed.
+ *  - LE_OK         Function succeeded.
  *
- * @note If one code is too long (max 3 digits), it is a fatal error, the
- *       function will not return.
+ * @note If one code is too long (max LE_MRC_MCC_LEN/LE_MRC_MNC_LEN digits), it's a fatal error,
+ *       the function won't return.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_mrc_RemovePreferredOperator
@@ -1206,7 +1230,7 @@ le_result_t le_mrc_RemovePreferredOperator
     if (pa_mrc_GetPreferredOperatorsList(&preferredOperatorsList, false, true) <= 0)
     {
         LE_ERROR("No preferred Operator present in modem!");
-        return LE_FAULT;
+        return LE_NOT_FOUND;
     }
 
     if ( pa_mrc_RemovePreferredOperators(&preferredOperatorsList, mcc, mnc) != LE_OK )
@@ -1233,7 +1257,7 @@ le_result_t le_mrc_RemovePreferredOperator
  *
  * @return
  * - Reference    to the List object.
- * - Null pointer if there is no preferences.
+ * - Null pointer if there is no preferences list.
  */
 //--------------------------------------------------------------------------------------------------
 le_mrc_PreferredOperatorListRef_t le_mrc_GetPreferredOperatorsList
@@ -1849,9 +1873,8 @@ le_result_t le_mrc_GetCurrentNetworkMccMnc
  * @return LE_BAD_PARAMETER A bad parameter was passed.
  * @return LE_OK            The function succeeded.
  *
- * @note If one code is too long (max 3 digits), it is a fatal error, the
- *       function will not return.
- *
+ * @note If one code is too long (max LE_MRC_MCC_LEN/LE_MRC_MNC_LEN digits), it's a fatal error,
+ *       the function won't return.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_mrc_RegisterCellularNetwork
@@ -3026,5 +3049,55 @@ void le_mrc_RemoveSignalStrengthChangeHandler
 )
 {
    le_event_RemoveHandler((le_event_HandlerRef_t)handlerRef);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the serving cell Identifier.
+ *
+ * @return The Cell Identifier. 0xFFFFFFFF value is returned if the value is not available.
+ */
+//--------------------------------------------------------------------------------------------------
+uint32_t le_mrc_GetServingCellId
+(
+    void
+)
+{
+    uint32_t cellId;
+
+    if (pa_mrc_GetServingCellId(&cellId) == LE_OK)
+    {
+        return cellId;
+    }
+    else
+    {
+        LE_ERROR("Cannot retrieve the serving cell Identifier!");
+        return 0xFFFFFFFF;
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the Location Area Code of the serving cell.
+ *
+ * @return The Location Area Code. 0xFFFFFFFF value is returned if the value is not available.
+ */
+//--------------------------------------------------------------------------------------------------
+uint32_t le_mrc_GetServingCellLocAreaCode
+(
+    void
+)
+{
+    uint32_t lac;
+
+    if (pa_mrc_GetServingCellLocAreaCode(&lac) == LE_OK)
+    {
+        return lac;
+    }
+    else
+    {
+        LE_ERROR("Cannot retrieve the serving cell Identifier!");
+        return 0xFFFFFFFF;
+    }
 }
 

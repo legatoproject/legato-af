@@ -1,3 +1,10 @@
+/**
+ * This module implements the unit tests for MDC API.
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ *
+ */
+
 #include "legato.h"
 #include "interfaces.h"
 #include "le_mdc_local.h"
@@ -670,6 +677,8 @@ int main(int argc, char *argv[])
     /* init the pa_simu */
     pa_simSimu_Init();
 
+    LE_INFO("======== Start UnitTest of MDC API ========");
+
     /* Test configuration */
     TestMdc_Configuration();
 
@@ -685,7 +694,7 @@ int main(int argc, char *argv[])
     /* Test statistics */
     TestMdc_Stat();
 
-    LE_INFO("Tests MDC passed");
+    LE_INFO("======== UnitTest of MDC API ends with SUCCESS ========");
 
     return 0;
 }

@@ -42,10 +42,10 @@ It then starts one instance of @c myServer and one instance of @c myClient, and 
 Then run @c mkapp to build everything and package it up into an app.
 
 @verbatim
-$ mkapp helloWorld.adef -t wp7
+$ mkapp helloWorld.adef -t wp85
 @endverbatim
 
-You'll now have a file called "helloWorld.wp7" that contains your app.
+You'll now have a file called "helloWorld.wp85" that contains your app.
 
 You can install and run it using instapp, see @ref basicAppsCreate_instTarget for details.
 

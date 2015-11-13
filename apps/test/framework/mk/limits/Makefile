@@ -4,5 +4,5 @@ all:
 	mkapp mkappTest.adef -v -w build/localhost
 
 clean:
-	rm -rf build foo mkappTest.localhost
+	rm -rf build mkappTest.localhost
 

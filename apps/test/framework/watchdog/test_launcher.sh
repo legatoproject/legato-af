@@ -5,7 +5,7 @@
 # waits for the log watcher to finish with a result or kill it if it's taking too long
 # report the result of the log watcher
 
-# expects TARGET_IP_ADDR to be exported and that it is the IP address of the target machine 
+# expects TARGET_IP_ADDR to be exported and that it is the IP address of the target machine
 
 target_test_name=$1
 log_watcher=$2
@@ -46,7 +46,7 @@ ssh_pid=$!
 
 bash ${log_watcher} < ${pipe_name} &
 on_fail "-${log_watcher} failed to start"
-watcher_pid=$! 
+watcher_pid=$!
 
 # start the test app
 ssh root@${TARGET_IP_ADDR} "/usr/local/bin/app start ${target_test_name}"

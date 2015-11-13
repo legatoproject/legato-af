@@ -1,7 +1,7 @@
 /** @page platformConstraintsAudio Audio
 
-Audio functions are constrained by the following platform limitations.
- 
+Audio functions are constrained by the following platform limitations for AR755x, AR8652, and WP8548.
+
 This table lists possible audio connections:
 
 | Input\Output stream | Spkr | USB Tx | PCM Tx | I2S Tx | Mdm Tx | Rec |
@@ -38,7 +38,7 @@ EC = Echo Canceller  <br>
 IIR = Infinite Impulse Response filter <br>
 FIR = Finite Impulse Response filter <br>
 AGC = Automatic Gain Control
- 
+
 <b>Playback and recording</b>
 
 File playback supports these file types:

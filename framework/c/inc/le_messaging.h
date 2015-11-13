@@ -49,9 +49,12 @@
  *
  * @section c_messagingAddressing Addressing
  *
- * Servers advertise their services by name, and clients open those services using those names.
- * These names should be unique to ensure that clients don't mistakenly open sessions with the
- * wrong servers.
+ * Servers and clients have interfaces that can been connected to each other via bindings.  Both
+ * client-side and server-side interfaces are identified by name, but the names don't have to match
+ * for them to be bound to each other.  The binding determines which server-side interface will
+ * be connected to when a client opens a session.
+ *
+ * Server-side interfaces are also known as "services".
  *
  * When a session is opened by a client, a session reference is provided to both the client
  * and the server.  Messages are then sent within the session using the session reference.
@@ -97,13 +100,14 @@
  * Clients that want to use a service do the following:
  *  -# Get a reference to the protocol they want to use by calling @c le_msg_GetProtocolRef().
  *  -# Create a session using @c le_msg_CreateSession(), passing in the protocol reference and
- *     the service name.
+ *     the client's interface name.
  *  -# Optionally register a message receive callback using @c le_msg_SetSessionRecvHandler().
- *  -# Open the session using @c le_msg_OpenSession() @c or le_msg_OpenSessionSync().
+ *  -# Open the session using le_msg_OpenSession(), le_msg_OpenSessionSync(), or
+ *     le_msg_TryOpenSessionSync().
  *
  * @code
  *     protocolRef = le_msg_GetProtocolRef(PROTOCOL_ID, sizeof(myproto_Msg_t));
- *     sessionRef = le_msg_CreateSession(protocolRef, PROTOCOL_SERVICE_NAME);
+ *     sessionRef = le_msg_CreateSession(protocolRef, MY_INTERFACE_NAME);
  *     le_msg_SetSessionRecvHandler(sessionRef, NotifyMsgHandlerFunc, NULL);
  *     le_msg_OpenSession(sessionRef, SessionOpenHandlerFunc, NULL);
  * @endcode
@@ -117,6 +121,12 @@
  * le_msg_OpenSessionSync() is a synchronous alternative to le_msg_OpenSession(). The difference
  * is that le_msg_OpenSessionSync() will not return until the session has opened or failed to
  * open (most likely due to permissions settings).
+ *
+ * le_msg_TryOpenSessionSync() is like le_msg_OpenSessionSync() except that it will not wait
+ * for a server session to become available if it is not already available at the time of the
+ * call.  That is, if the client's interface is not bound to any service, or if the service that
+ * it is bound to is not currently advertised by the server, then le_msg_TryOpenSessionSync()
+ * will return an error code.
  *
  * @subsection c_messagingClientSending Sending a Message
  *
@@ -210,7 +220,7 @@
  *     le_msg_SessionRef_t sessionRef;
  *
  *     protocolRef = le_msg_GetProtocolRef(PROTOCOL_ID, sizeof(myproto_Msg_t));
- *     sessionRef = le_msg_CreateSession(protocolRef, PROTOCOL_SERVICE_NAME);
+ *     sessionRef = le_msg_CreateSession(protocolRef, MY_INTERFACE_NAME);
  *     le_msg_SetSessionRecvHandler(sessionRef, NotifyHandlerFunc, NULL);
  *     le_msg_OpenSession(sessionRef, SessionOpenHandlerFunc, NULL);
  * }
@@ -342,7 +352,7 @@
  *
  *     // Open a session.
  *     protocolRef = le_msg_GetProtocolRef(PROTOCOL_ID, sizeof(myproto_Msg_t));
- *     sessionRef = le_msg_CreateSession(protocolRef, PROTOCOL_SERVICE_NAME);
+ *     sessionRef = le_msg_CreateSession(protocolRef, MY_INTERFACE_NAME);
  *     le_msg_SetSessionRecvHandler(sessionRef, NotifyHandlerFunc, NULL);
  *     le_msg_OpenSession(sessionRef, SessionOpenHandlerFunc, NULL);
  * }
@@ -367,7 +377,7 @@
  *
  * @code
  *     protocolRef = le_msg_GetProtocolRef(PROTOCOL_ID, sizeof(myproto_Msg_t));
- *     serviceRef = le_msg_CreateService(protocolRef, PROTOCOL_SERVICE_NAME);
+ *     serviceRef = le_msg_CreateService(protocolRef, SERVER_INTERFACE_NAME);
  *     le_msg_SetServiceRecvHandler(serviceRef, RequestMsgHandlerFunc, NULL);
  *     le_msg_AdvertiseService(serviceRef);
  * @endcode
@@ -398,7 +408,7 @@
  *
  *     // Create my service and advertise it.
  *     protocolRef = le_msg_GetProtocolRef(PROTOCOL_ID, sizeof(myproto_Msg_t));
- *     serviceRef = le_msg_CreateService(protocolRef, PROTOCOL_SERVICE_NAME);
+ *     serviceRef = le_msg_CreateService(protocolRef, SERVER_INTERFACE_NAME);
  *     le_msg_AddServiceOpenHandler(serviceRef, SessionOpenHandlerFunc, NULL);
  *     le_msg_AdvertiseService(serviceRef);
  * }
@@ -534,14 +544,11 @@
  *
  *     // Create my service and advertise it.
  *     protocolRef = le_msg_GetProtocolRef(PROTOCOL_ID, sizeof(myproto_Msg_t));
- *     serviceRef = le_msg_CreateService(protocolRef, PROTOCOL_SERVICE_NAME);
+ *     serviceRef = le_msg_CreateService(protocolRef, SERVER_INTERFACE_NAME);
  *     le_msg_AddServiceOpenHandler(serviceRef, SessionOpenHandlerFunc, NULL);
  *     le_msg_AdvertiseService(serviceRef);
  * }
  * @endcode
- *
- * @todo    Should we allow servers to call le_msg_RequestResponse()?  Of course, this
- *          would mean that clients would need to use le_msg_Respond() too.
  *
  * @subsection c_messagingServerCleanUp Cleaning up when Sessions Close
  *
@@ -613,7 +620,7 @@
  *              // Unexpected message type!
  *              LE_ERROR("Received unexpected message type %d from session %s.",
  *                       msgPtr->type,
- *                       le_msg_GetServiceName(le_msg_GetSessionService(le_msg_GetSession(msgRef))));
+ *                       le_msg_GetInterfaceName(le_msg_GetSessionInterface(le_msg_GetSession(msgRef))));
  *              le_msg_ReleaseMsg(msgRef);
  *     }
  * }
@@ -625,7 +632,7 @@
  *
  *     // Create my service and advertise it.
  *     protocolRef = le_msg_GetProtocolRef(PROTOCOL_ID, sizeof(myproto_Msg_t));
- *     serviceRef = le_msg_CreateService(protocolRef, PROTOCOL_SERVICE_NAME);
+ *     serviceRef = le_msg_CreateService(protocolRef, SERVER_INTERFACE_NAME);
  *     le_msg_SetServiceRecvHandler(serviceRef, RequestMsgHandlerFunc, NULL);
  *     le_msg_AdvertiseService(serviceRef);
  * }
@@ -676,16 +683,18 @@
  *
  * Security is provided in the form of authentication and access control.
  *
- * By default, only processes sharing the same UID as the server are allowed to open sessions
- * with that server's services.  However, it is possible to configure an access control list (ACL)
- * for a service, thereby explicitly allowing clients running under other UIDs to have access
- * to that service.
+ * Clients cannot open sessions with servers until their client-side interface is "bound" to a
+ * server-side interface (service).  The binding thereby provides configuration of both routing and
+ * access control.
  *
- * Furthermore, clients won't see services advertised by processes running under other UIDs,
- * unless explicitly configured to allow it.  So, servers can't masquerade as other servers running
- * under other UIDs.
+ * Neither the client-side nor the server-side IPC sockets are named.  Therefore, no process other
+ * than the Service Directory has access to these sockets.  The Service Directory passes client
+ * connections to the appropriate server based on the binding configuration of the client's interface.
  *
- * @todo Specify how messaging ACLs are configured.
+ * The binding configuration is kept in the "system" configuration tree, so clients that do not
+ * have write access to the "system" configuration tree have no control over their own binding
+ * configuration.  By default, sandboxed apps do not have any access (read or write) to the
+ * "system" configuration tree.
  *
  * @section c_messagingClientUserIdChecking Client User ID Checking
  *
@@ -799,10 +808,24 @@ typedef struct le_msg_Protocol* le_msg_ProtocolRef_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Reference to an interface's service instance.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct le_msg_Interface* le_msg_InterfaceRef_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Reference to a server's service instance.
  */
 //--------------------------------------------------------------------------------------------------
 typedef struct le_msg_Service* le_msg_ServiceRef_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Reference to a client's service instance.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct le_msg_ClientInterface* le_msg_ClientInterfaceRef_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -820,7 +843,8 @@ typedef struct le_msg_Message* le_msg_MessageRef_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Reference returned by the add services functions and used by the remove services functions
+ * Reference to a handler (call-back) function for events that can occur on a service (such as
+ * opening and closing of sessions and receipt of messages).
  */
 //--------------------------------------------------------------------------------------------------
 typedef struct le_msg_SessionEventHandler* le_msg_SessionEventHandlerRef_t;
@@ -829,7 +853,7 @@ typedef struct le_msg_SessionEventHandler* le_msg_SessionEventHandlerRef_t;
 /**
  * Handler function prototype for handlers that take session references as their arguments.
  *
- * See le_msg_AddSessionCloseHandler(), le_msg_AddServiceOpenHandler(), and
+ * See le_msg_SetSessionCloseHandler(), le_msg_AddServiceOpenHandler(), and
  * le_msg_AddServiceCloseHandler().
  *
  * @param sessionRef [in] Reference to the session that experienced the event.
@@ -891,8 +915,6 @@ typedef void (* le_msg_ResponseCallback_t)
 /**
  * Gets a reference to refer to a particular version of a particular protocol.
  *
- * Used to help match clients with services that use the same protocol.
- *
  * @return  Protocol reference.
  */
 //--------------------------------------------------------------------------------------------------
@@ -935,7 +957,8 @@ size_t le_msg_GetProtocolMaxMsgSize
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Creates a session that will make use of a protocol to talk to a given service.
+ * Creates a session that will make use of a protocol to talk to a service on a given client
+ * interface.
  *
  * @note    This does not actually attempt to open the session.  It just creates the session
  *          object, allowing the client the opportunity to register handlers for the session
@@ -947,7 +970,7 @@ size_t le_msg_GetProtocolMaxMsgSize
 le_msg_SessionRef_t le_msg_CreateSession
 (
     le_msg_ProtocolRef_t    protocolRef,    ///< [in] Reference to the protocol to be used.
-    const char*             serviceName     ///< [in] Name of the service instance.
+    const char*             interfaceName   ///< [in] Name of the client-side interface.
 );
 
 
@@ -983,7 +1006,7 @@ void* le_msg_GetSessionContextPtr
 //--------------------------------------------------------------------------------------------------
 /**
  * Deletes a session.  This will end the session and free up any resources associated
- * with it.  Any pending request-response transactions in this sesssion will be terminated.
+ * with it.  Any pending request-response transactions in this session will be terminated.
  * If the far end has registered a session close handler callback, it will be called.
  *
  * @note    Function is only used by clients.  On the server side, sessions are automatically
@@ -1006,8 +1029,6 @@ void le_msg_DeleteSession
  *
  * @note    This is a client-only function.  Servers are expected to use
  *          le_msg_SetServiceRecvHandler() instead.
- *
- * @todo    Should we allow servers to use le_msg_SetSessionRecvHandler() too?
  */
 //--------------------------------------------------------------------------------------------------
 void le_msg_SetSessionRecvHandler
@@ -1032,8 +1053,6 @@ void le_msg_SetSessionRecvHandler
  *   if the session is terminated by the server.
  * - This is a client-only function.  Servers are expected to use le_msg_AddServiceCloseHandler()
  *   instead.
- *
- * @todo    Should we allow servers to use le_msg_SetSessionCloseHandler() too?
  */
 //--------------------------------------------------------------------------------------------------
 void le_msg_SetSessionCloseHandler
@@ -1053,8 +1072,7 @@ void le_msg_SetSessionCloseHandler
  *          with them.
  *
  * @warning If the client and server don't agree on the maximum message size for the protocol,
- *          an attempt to open a session between that client and server will result in a fatal
- *          error being logged and the client process being killed.
+ *          a fatal error will be logged and the client process will be killed.
  */
 //--------------------------------------------------------------------------------------------------
 void le_msg_OpenSession
@@ -1068,20 +1086,50 @@ void le_msg_OpenSession
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Synchronously open a session with a service.  Blocks until the session is open or the attempt
- * is rejected.
+ * Synchronously open a session with a service.  Blocks until the session is open.
  *
  * This function logs a fatal error and terminates the calling process if unsuccessful.
+ *
+ * @note    Only clients open sessions.  Servers must patiently wait for clients to open sessions
+ *          with them.
+ *
+ * @warning If the client and server do not agree on the maximum message size for the protocol,
+ *          a fatal error will be logged and the client process will be killed.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_msg_OpenSessionSync
+(
+    le_msg_SessionRef_t             sessionRef      ///< [in] Reference to the session.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Synchronously open a session with a service.  Does not wait for the session to become available
+ * if not available..
+ *
+ * le_msg_TryOpenSessionSync() differs from le_msg_OpenSessionSync() in that
+ * le_msg_TryOpenSessionSync() will not wait for a server session to become available if it is
+ * not already available at the time of the call.  That is, if the client's interface is not
+ * bound to any service, or if the service that it is bound to is not currently advertised
+ * by the server, then le_msg_TryOpenSessionSync() will return an error code, while
+ * le_msg_OpenSessionSync() will wait until the binding is created or the server advertises
+ * the service (or both).
+ *
+ * @return
+ *  - LE_OK if the session was successfully opened.
+ *  - LE_NOT_FOUND if the server is not currently offering the service to which the client is bound.
+ *  - LE_NOT_PERMITTED if the client interface is not bound to any service (doesn't have a binding).
+ *  - LE_COMM_ERROR if the Service Directory cannot be reached.
  *
  * @note    Only clients open sessions.  Servers' must patiently wait for clients to open sessions
  *          with them.
  *
  * @warning If the client and server do not agree on the maximum message size for the protocol,
- *          then an attempt to open a session between that client and server will result in a fatal
- *          error being logged and the client process being killed.
+ *          a fatal error will be logged and the client process will be killed.
  */
 //--------------------------------------------------------------------------------------------------
-void le_msg_OpenSessionSync
+le_result_t le_msg_TryOpenSessionSync
 (
     le_msg_SessionRef_t             sessionRef      ///< [in] Reference to the session.
 );
@@ -1113,12 +1161,12 @@ le_msg_ProtocolRef_t le_msg_GetSessionProtocol
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Fetches a reference to the service that is associated with a given session.
+ * Fetches a reference to the interface that is associated with a given session.
  *
- * @return Reference to the service.
+ * @return Reference to the interface.
  */
 //--------------------------------------------------------------------------------------------------
-le_msg_ServiceRef_t le_msg_GetSessionService
+le_msg_InterfaceRef_t le_msg_GetSessionInterface
 (
     le_msg_SessionRef_t sessionRef  ///< [in] Reference to the session.
 );
@@ -1138,6 +1186,7 @@ le_result_t le_msg_GetClientUserId
     le_msg_SessionRef_t sessionRef, ///< [in] Reference to the session.
     uid_t*              userIdPtr   ///< [out] Ptr to where the result is to be stored on success.
 );
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Fetches the user PID of the client at the far end of a given IPC session.
@@ -1156,7 +1205,7 @@ le_result_t le_msg_GetClientProcessId
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Fetches the user creds of the client at the far end of a given IPC session.
+ * Fetches the user credentials of the client at the far end of a given IPC session.
  *
  * @warning This function can only be called for the server-side of a session.
  *
@@ -1395,7 +1444,7 @@ void le_msg_Respond
 
 
 // =======================================
-//  SERVICE FUNCTIONS
+//  INTERFACE FUNCTIONS
 // =======================================
 
 //--------------------------------------------------------------------------------------------------
@@ -1408,7 +1457,7 @@ void le_msg_Respond
 le_msg_ServiceRef_t le_msg_CreateService
 (
     le_msg_ProtocolRef_t    protocolRef,    ///< [in] Reference to the protocol to be used.
-    const char*             serviceName     ///< [in] Service instance name.
+    const char*             interfaceName   ///< [in] Server-side interface name.
 );
 
 
@@ -1543,31 +1592,32 @@ void le_msg_HideService
     le_msg_ServiceRef_t serviceRef  ///< [in] Reference to the service.
 );
 
+
 //--------------------------------------------------------------------------------------------------
 /**
- * Fetches a pointer to the name of a service.
+ * Fetches a pointer to the name of an interface.
  *
  * @return Pointer to a null-terminated string.
  *
- * @warning Pointer returned will only remain valid until the service is deleted.
+ * @warning Pointer returned will remain valid only until the interface is deleted.
  */
 //--------------------------------------------------------------------------------------------------
-const char* le_msg_GetServiceName
+const char* le_msg_GetInterfaceName
 (
-    le_msg_ServiceRef_t serviceRef  ///< [in] Reference to the service.
+    le_msg_InterfaceRef_t interfaceRef  ///< [in] Reference to the interface.
 );
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Fetches a reference to the protocol supported by a specified Service.
+ * Fetches a reference to the protocol supported by a specified interface.
  *
  * @return  Protocol reference.
  */
 //--------------------------------------------------------------------------------------------------
-le_msg_ProtocolRef_t le_msg_GetServiceProtocol
+le_msg_ProtocolRef_t le_msg_GetInterfaceProtocol
 (
-    le_msg_ServiceRef_t serviceRef  ///< [in] Reference to the service.
+    le_msg_InterfaceRef_t interfaceRef  ///< [in] Reference to the interface.
 );
 
 

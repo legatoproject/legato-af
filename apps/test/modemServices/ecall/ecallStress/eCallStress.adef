@@ -1,0 +1,19 @@
+executables:
+{
+    eCallStress = ( eCallStress )
+}
+
+processes:
+{
+    envVars:
+    {
+        LE_LOG_LEVEL = DEBUG
+    }
+}
+
+start: manual
+
+bindings:
+{
+    eCallStress.eCallStress.le_ecall -> modemService.le_ecall
+}

@@ -9,15 +9,33 @@ if ! [ $LEGATO_ROOT ]; then echo "Run bin/legs first" >&2; exit 1; fi
 help_short_desc="release legato project"
 
 help_usage=(
-""
+"[OPTIONS]"
 )
 
 help_long_description=(
-"Once Legato has been built for all targets, this script stages files"
+"Once Legato has been built for selected targets, this script stages files"
 "and produces a tarball."
+""
+"Options:"
+" - -t [TARGETS]: comma-separated list of targets the package should be generated for (eg 'ar7,wp85')"
 )
 
+TARGETS="ar7,ar86,wp7,wp85"
+
 CheckForHelp $@
+
+while getopts ":t:" arg
+do
+    case $arg in
+    t)
+        TARGETS=$OPTARG
+        ;;
+    ?)
+        echo "$0: invalid option -$OPTARG"
+        usage_and_exit 1
+        ;;
+    esac
+done
 
 EXCLUDE_PATTERN='proprietary|qmi/le_pa|mdm9x15/le_pa|test/.*/qmi|jenkins-build|.gitreview|.gitmodules|sonar.sh'
 
@@ -42,13 +60,17 @@ do
 done
 
 # Copy PA binaries
-stage_pa_component() {
+StagePaComponent() {
     local apps_folder=$1
     local service=$2
     local comp_folder=$3
     local pa_name=$4
 
     for target in "${@:5}"; do
+        if ! echo "$TARGETS" | grep $target > /dev/null; then
+            continue
+        fi
+
         src="build/$target/platformServices/apps/$apps_folder/_build_$service.$target/staging/lib/libComponent_$pa_name.so"
         dst="components/$comp_folder/platformAdaptor/pre-built/$target/$pa_name/"
 
@@ -88,13 +110,13 @@ stage_pa_component() {
     done
 }
 
-stage_pa_component audio          audioService        audio           le_pa_audio     ar7 ar86 wp7 wp85
-stage_pa_component modem          modemService        modemServices   le_pa           ar7 ar86 wp7 wp85
-stage_pa_component modem          modemService        modemServices   le_pa_ecall     ar7 ar86
-stage_pa_component positioning    positioningService  positioning     le_pa_gnss      ar7 ar86 wp7 wp85
-stage_pa_component airVantage     avcService          airVantage      le_pa_avc       ar7 ar86 wp7 wp85
-stage_pa_component secureStorage  secStore            secStore        le_pa_secStore  ar7 ar86 wp7 wp85
-stage_pa_component fwupdate       fwupdateService     fwupdate        le_pa_fwupdate  ar7 ar86 wp7 wp85
+StagePaComponent audio          audioService        audio           le_pa_audio     ar7 ar86 wp7 wp85
+StagePaComponent modem          modemService        modemServices   le_pa           ar7 ar86 wp7 wp85
+StagePaComponent modem          modemService        modemServices   le_pa_ecall     ar7 ar86
+StagePaComponent positioning    positioningService  positioning     le_pa_gnss      ar7 ar86 wp7 wp85
+StagePaComponent airVantage     avcService          airVantage      le_pa_avc       ar7 ar86 wp7 wp85
+StagePaComponent secureStorage  secStore            secStore        le_pa_secStore  ar7 ar86 wp7 wp85
+StagePaComponent fwupdate       fwupdateService     fwupdate        le_pa_fwupdate  ar7 ar86 wp7 wp85
 
 cp version $STAGE_DIR
 cp package.properties $STAGE_DIR
@@ -105,6 +127,9 @@ for gitdir in $(find $STAGE_DIR -name ".git"); do
     rm -rf $gitdir
 done
 
+# Update default RELEASE_TARGETS
+sed -i "s/RELEASE_TARGETS := .*/RELEASE_TARGETS := $(echo $TARGETS | tr ',' ' ')/" $RELEASE_DIR/Makefile
+
 echo "Creating release package $RELEASE_DIR/$PKG_NAME"
 rm -f $RELEASE_DIR/$PKG_NAME
 cd $RELEASE_DIR && tar jcf $PKG_NAME $STAGE_NAME
@@ -114,7 +139,7 @@ rm -f $RELEASE_DIR/$PKG_NAME_LINK
 ln -s $PKG_NAME $RELEASE_DIR/$PKG_NAME_LINK
 
 # Copy images
-copy_images() {
+CopyImages() {
     local target=$1
 
     for file in $(find build/$target -maxdepth 1 -regextype sed -regex '.*legato.*\.\(cwe\|yaffs2\|ubi\)'); do
@@ -135,6 +160,6 @@ copy_images() {
 }
 
 cd $LEGATO_ROOT
-for target in ar7 ar86 wp7 wp85; do
-    copy_images $target
+for target in $(echo $TARGETS | tr ',' ' '); do
+    CopyImages $target
 done

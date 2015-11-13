@@ -31,9 +31,6 @@
  * - le_riPin_TakeRingSignal() function takes control of the Ring Indicator signal.
  * - le_riPin_ReleaseRingSignal() function releases control of the Ring Indicator signal.
  *
- * @warning Your platform may require a reboot to take into account this change. Please refer to
- * your platform documentation for further details.
- *
  * - le_riPin_PulseRingSignal() function sets the ring signal high for configurable duration of time
  *   before lowering it.
  *

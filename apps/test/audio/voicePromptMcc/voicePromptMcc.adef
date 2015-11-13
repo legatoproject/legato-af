@@ -11,10 +11,22 @@ bundles:
 {
     file:
     {
-        [r]     audio/SwiDialingMono.wav         /usr/share/sounds/
-        [r]     audio/SwiECallCanceledMono.wav   /usr/share/sounds/
-        [r]     audio/SwiECallStartMono.wav      /usr/share/sounds/
-        [r]     audio/SwiRingBackToneFrMono.wav  /usr/share/sounds/
+        [r]     audio/SwiDialingMono.wav                            /usr/share/sounds/
+        [r]     audio/SwiECallCanceledMono.wav                      /usr/share/sounds/
+        [r]     audio/SwiECallStartMono.wav                         /usr/share/sounds/
+        [r]     audio/SwiRingBackToneFrMono.wav                     /usr/share/sounds/
+        [r]     audio/SwiDialingMono.amr                            /usr/share/sounds/
+        [r]     audio/SwiECallCanceledMono.amr                      /usr/share/sounds/
+        [r]     audio/SwiECallStartMono.amr                         /usr/share/sounds/
+        [r]     audio/SwiRingBackToneFrMono.amr                     /usr/share/sounds/
+    }
+}
+
+requires:
+{
+    file:
+    {
+        "/usr/lib/libopencore-amrnb.so.0.0.3" /lib/libopencore-amrnb.so.0
     }
 }
 
@@ -33,6 +45,6 @@ start: manual
 bindings:
 {
     voicePromptMcc.voicePromptMccComp.le_audio -> audioService.le_audio
-    voicePromptMcc.voicePromptMccComp.le_mcc -> audioService.le_mcc
+    voicePromptMcc.voicePromptMccComp.le_mcc -> modemService.le_mcc
 }
 

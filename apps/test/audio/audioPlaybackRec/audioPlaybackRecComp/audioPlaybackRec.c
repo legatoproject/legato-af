@@ -670,6 +670,13 @@ static void MyMediaEventHandler
         case LE_AUDIO_MEDIA_ERROR:
             LE_INFO("File event is LE_AUDIO_MEDIA_ERROR.");
         break;
+
+        case LE_AUDIO_MEDIA_NO_MORE_SAMPLES:
+            LE_INFO("File event is LE_AUDIO_MEDIA_NO_MORE_SAMPLES.");
+        break;
+        default:
+            LE_INFO("File event is %d.", event);
+        break;
     }
 
     if (GainTimerRef)

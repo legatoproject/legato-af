@@ -10,7 +10,7 @@
  *
  * @section le_info_binding IPC interfaces binding
  *
- * All the functions of this API are provided by the @b modemService foundation service.
+ * All the functions of this API are provided by the @b modemService.
  *
  * Here's a code sample binding to modem services:
  * @verbatim
@@ -404,7 +404,7 @@ FUNCTION le_result_t GetPrlVersion
  *
  * @return
  *      - LE_OK            The function succeeded.
- *      - LE_NOT_FOUND	   The information is not availble.
+ *      - LE_NOT_FOUND     The information is not availble.
  *      - LE_FAULT         The function failed to get the value.
  */
 //--------------------------------------------------------------------------------------------------

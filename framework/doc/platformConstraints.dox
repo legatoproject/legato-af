@@ -1,6 +1,9 @@
 /** @page platformConstraints Platform Constraints
 
-@subpage platformConstraintsAudio
+The AR755x, AR8652, and WP8548 platforms have the following limitations:
+
+@subpage platformConstraintsAudio <br>
+@subpage platformConstraintsSecStorage
 
 <HR>
 
