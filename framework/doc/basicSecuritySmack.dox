@@ -24,7 +24,7 @@ a process as @a privileged)
 SMACK policies are set by the Legato startup scripts, the Legato Installer
 and the Legato Supervisor.
 
-Here's @subpage basicSecuritySmackAdvanced info.
+Here's @ref howToSecuritySmack.
 
 <HR>
 

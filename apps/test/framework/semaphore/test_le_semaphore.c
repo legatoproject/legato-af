@@ -37,7 +37,7 @@ void testCreateDestroy(void)
     semPtr     = le_sem_Create( "SEMAPHORE-1", 10);
     CU_ASSERT_PTR_NOT_EQUAL(semPtr, NULL);
 
-    semPtr2    = le_sem_CreateTraceable( "SEMAPHORE-2", 1);
+    semPtr2    = le_sem_Create( "SEMAPHORE-2", 1);
     CU_ASSERT_PTR_NOT_EQUAL(semPtr2, NULL);
 
 

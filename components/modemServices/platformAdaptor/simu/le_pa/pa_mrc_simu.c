@@ -11,7 +11,21 @@
 
 #include "pa_simu.h"
 
-le_mrc_Rat_t   Rat = LE_MRC_RAT_GSM;
+//--------------------------------------------------------------------------------------------------
+/**
+ * The internal current RAT setting
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mrc_Rat_t   Rat = LE_MRC_RAT_GSM;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The internal current BAND settings
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mrc_BandBitMask_t CurrentBand = LE_MRC_BITMASK_BAND_GSM_DCS_1800;
+static le_mrc_LteBandBitMask_t CurrentLteBand = LE_MRC_BITMASK_LTE_BAND_E_UTRA_OP_BAND_11;
+static le_mrc_TdScdmaBandBitMask_t CurrentTdScdmaBand = LE_MRC_BITMASK_TDSCDMA_BAND_C;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -43,6 +57,16 @@ static le_mem_PoolRef_t ScanInformationPool;
 //--------------------------------------------------------------------------------------------------
 static le_onoff_t RadioPower = LE_ON;
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * The internal manual section mode status
+ */
+//--------------------------------------------------------------------------------------------------
+static bool IsManual = false;
+
+
+static char CurentMccStr[4];
+static char CurentMncStr[4];
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -290,6 +314,7 @@ le_result_t pa_mrc_GetNetworkRegState
     le_mrc_NetRegState_t* statePtr  ///< [OUT] The network registration state.
 )
 {
+    *statePtr = LE_MRC_REG_HOME;
     return LE_OK;
 }
 
@@ -355,14 +380,14 @@ le_result_t pa_mrc_GetCurrentNetwork
 
     if (mccStr != NULL)
     {
-        res = le_utf8_Copy(mccStr, PA_SIMU_MRC_DEFAULT_MCC, mccStrNumElements, NULL);
+        res = le_utf8_Copy(mccStr, CurentMccStr, mccStrNumElements, NULL);
         if (res != LE_OK)
             return res;
     }
 
     if (mncStr != NULL)
     {
-        res = le_utf8_Copy(mncStr, PA_SIMU_MRC_DEFAULT_MNC, mncStrNumElements, NULL);
+        res = le_utf8_Copy(mncStr, CurentMncStr, mncStrNumElements, NULL);
     }
 
     return res;
@@ -575,7 +600,13 @@ le_result_t pa_mrc_RegisterNetwork
     const char *mncPtr    ///< [IN] Mobile Network Code
 )
 {
-    return LE_NOT_POSSIBLE;
+
+    IsManual = true;
+
+    le_utf8_Copy(CurentMccStr, mccPtr, sizeof(CurentMccStr), NULL);
+    le_utf8_Copy(CurentMncStr, mncPtr, sizeof(CurentMncStr), NULL);
+
+    return LE_OK;
 }
 
 
@@ -593,7 +624,12 @@ le_result_t pa_mrc_SetAutomaticNetworkRegistration
     void
 )
 {
-    return LE_FAULT;
+    IsManual = false;
+
+    le_utf8_Copy(CurentMccStr, PA_SIMU_MRC_DEFAULT_MCC, sizeof(CurentMccStr), NULL);
+    le_utf8_Copy(CurentMncStr, PA_SIMU_MRC_DEFAULT_MNC, sizeof(CurentMncStr), NULL);
+
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -695,8 +731,8 @@ le_result_t pa_mrc_SetBandPreferences
     le_mrc_BandBitMask_t bands ///< [IN] A bit mask to set the Band preferences.
 )
 {
-    // TODO: implement this function
-    return LE_FAULT;
+    CurrentBand = bands;
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -713,9 +749,10 @@ le_result_t pa_mrc_GetBandPreferences
     le_mrc_BandBitMask_t* bandsPtr ///< [OUT] A bit mask to get the Band preferences.
 )
 {
-    // TODO: implement this function
-    return LE_FAULT;
+    *bandsPtr = CurrentBand;
+    return LE_OK;
 }
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -731,8 +768,9 @@ le_result_t pa_mrc_SetLteBandPreferences
     le_mrc_LteBandBitMask_t bands ///< [IN] A bit mask to set the LTE Band preferences.
 )
 {
-    // TODO: implement this function
-    return LE_FAULT;
+
+    CurrentLteBand = bands;
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -749,9 +787,8 @@ le_result_t pa_mrc_GetLteBandPreferences
     le_mrc_LteBandBitMask_t* bandsPtr ///< [OUT] A bit mask to get the LTE Band preferences.
 )
 {
-    // TODO: implement this function
-
-    return LE_FAULT;
+    *bandsPtr = CurrentLteBand;
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -768,9 +805,8 @@ le_result_t pa_mrc_SetTdScdmaBandPreferences
     le_mrc_TdScdmaBandBitMask_t bands ///< [IN] A bit mask to set the TD-SCDMA Band Preferences.
 )
 {
-    // TODO: implement this function
-
-    return LE_FAULT;
+    CurrentTdScdmaBand = bands;
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -788,9 +824,8 @@ le_result_t pa_mrc_GetTdScdmaBandPreferences
                                           ///<  preferences.
 )
 {
-    // TODO: implement this function
-
-    return LE_FAULT;
+    *bandsPtr = CurrentTdScdmaBand;
+    return LE_OK;
 }
 //--------------------------------------------------------------------------------------------------
 /**
@@ -842,7 +877,13 @@ le_result_t pa_mrc_GetNetworkRegistrationMode
     size_t  mncPtrSize    ///< [IN] mncPtr buffer size
 )
 {
-    return LE_NOT_POSSIBLE;
+
+    le_utf8_Copy(mccPtr, CurentMccStr, mccPtrSize, NULL);
+    le_utf8_Copy(mncPtr, CurentMncStr, mncPtrSize, NULL);
+
+    *isManualPtr = IsManual;
+
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -955,6 +996,62 @@ le_result_t pa_mrc_GetServingCellLocAreaCode
     // TODO: implement this function
     return LE_FAULT;
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Band capabilities
+ *
+ * @return
+ * - LE_OK              on success
+ * - LE_FAULT           on failure
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_mrc_GetBandCapabilities
+(
+    le_mrc_BandBitMask_t* bandsPtr ///< [OUT] A bit mask to get the Band capabilities.
+)
+{
+    *bandsPtr = LE_MRC_BITMASK_BAND_CLASS_1_ALL_BLOCKS | LE_MRC_BITMASK_BAND_GSM_DCS_1800;
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the LTE Band capabilities
+ *
+ * @return
+ * - LE_OK              on success
+ * - LE_FAULT           on failure
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_mrc_GetLteBandCapabilities
+(
+    le_mrc_LteBandBitMask_t* bandsPtr ///< [OUT] Bit mask to get the LTE Band capabilities.
+)
+{
+    *bandsPtr = LE_MRC_BITMASK_LTE_BAND_E_UTRA_OP_BAND_3 | LE_MRC_BITMASK_LTE_BAND_E_UTRA_OP_BAND_7;
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the TD-SCDMA Band capabilities
+ *
+ * @return
+ * - LE_OK              on success
+ * - LE_FAULT           on failure
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_mrc_GetTdScdmaBandCapabilities
+(
+    le_mrc_TdScdmaBandBitMask_t* bandsPtr ///< [OUT] Bit mask to get the TD-SCDMA Band capabilities.
+)
+{
+    *bandsPtr = LE_MRC_BITMASK_TDSCDMA_BAND_A | LE_MRC_BITMASK_TDSCDMA_BAND_C;
+    return LE_OK;
+}
+
 
 /**
  * MRC Stub initialization.

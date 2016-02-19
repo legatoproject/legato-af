@@ -67,6 +67,38 @@ static void Field_settingStringOne_Handler
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Handler function for server execute on commandOne field
+ */
+//--------------------------------------------------------------------------------------------------
+static void Field_executeCommandOne_Handler
+(
+    le_avdata_AssetInstanceRef_t instRef,
+    const char* fieldName,
+    void* contextPtr
+)
+{
+    LE_INFO("Registered handler called for %s", fieldName);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler function for server execute on commandTwo field
+ */
+//--------------------------------------------------------------------------------------------------
+static void Field_executeCommandTwo_Handler
+(
+    le_avdata_AssetInstanceRef_t instRef,
+    const char* fieldName,
+    void* contextPtr
+)
+{
+    LE_INFO("Registered handler called for %s", fieldName);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Init the component
  */
 //--------------------------------------------------------------------------------------------------
@@ -138,5 +170,17 @@ COMPONENT_INIT
     le_avdata_AddFieldEventHandler(instZeroRef,
                                    "settingStringOne",
                                    Field_settingStringOne_Handler,
+                                   NULL);
+
+    // Register a handler which will be called when there is a execute request for the field
+    le_avdata_AddFieldEventHandler(instZeroRef,
+                                   "commandOne",
+                                   Field_executeCommandOne_Handler,
+                                   NULL);
+
+    // Register a handler which will be called when there is a execute request for the field
+    le_avdata_AddFieldEventHandler(instZeroRef,
+                                   "commandTwo",
+                                   Field_executeCommandTwo_Handler,
                                    NULL);
 }

@@ -21,16 +21,6 @@
  *    - A single per-process list of all semaphores keeps track of this (the Semaphore List).
  *  -# What threads, if any, are currently waiting on a given semaphore?
  *    - Each Semaphore object has a list of Per-Thread Semaphore Records for this.
- *  -# What type of semaphore is a given semaphore? (traceable?)
- *    - These are stored in each Semaphore object as boolean flags.
- *
- * The command-line tools communicate with the semaphore module using IPC datagram messages.
- * This file implements handling functions for those messages and sends back responses.
- *
- * @todo Implement the command-line diagnostic tools and the IPC messaging between them and
- *       the semaphore module.
- *
- * @todo Implement the traceable semaphores.
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
@@ -106,49 +96,6 @@ LE_ASSERT(pthread_mutex_lock(&(semaphorePtr)->waitingListMutex) == 0)
 /// Unlock a semaphore's Waiting List Mutex.
 #define UNLOCK_WAITING_LIST(semaphorePtr) \
 LE_ASSERT(pthread_mutex_unlock(&(semaphorePtr)->waitingListMutex) == 0)
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Creates a semaphore.
- *
- * @return  Returns a reference to the semaphore.
- *
- * @note Terminates the process on failure, so no need to check the return value for errors.
- */
-//--------------------------------------------------------------------------------------------------
-le_sem_Ref_t CreateSemaphore
-(
-    const char* nameStr,
-    int         initialCount,
-    bool        isTraceable
-)
-//--------------------------------------------------------------------------------------------------
-{
-    // Allocate a semaphore object and initialize it.
-    Semaphore_t* semaphorePtr = le_mem_ForceAlloc(SemaphorePoolRef);
-    semaphorePtr->semaphoreListLink = LE_DLS_LINK_INIT;
-    semaphorePtr->waitingList = LE_DLS_LIST_INIT;
-    pthread_mutex_init(&semaphorePtr->waitingListMutex, NULL);  // Default attributes = Fast mutex.
-    semaphorePtr->isTraceable = isTraceable;
-    if (le_utf8_Copy(semaphorePtr->nameStr, nameStr, sizeof(semaphorePtr->nameStr), NULL) == LE_OVERFLOW)
-    {
-        LE_WARN("Semaphore name '%s' truncated to '%s'.", nameStr, semaphorePtr->nameStr);
-    }
-
-    // Initialize the underlying POSIX semaphore shared between thread.
-    int result = sem_init(&semaphorePtr->semaphore,0, initialCount);
-    if (result != 0)
-    {
-        LE_FATAL("Failed to set the semaphore . errno = %d (%m).", errno);
-    }
-
-    // Add the semaphore to the process's Semaphore List.
-    LOCK_SEMAPHORE_LIST();
-    le_dls_Queue(&SemaphoreList, &semaphorePtr->semaphoreListLink);
-    UNLOCK_SEMAPHORE_LIST();
-
-    return semaphorePtr;
-}
 
 
 //--------------------------------------------------------------------------------------------------
@@ -257,26 +204,29 @@ le_sem_Ref_t le_sem_Create
     int32_t         initialCount        ///< [IN] initial number of semaphore
 )
 {
-    return CreateSemaphore(name,initialCount, false);
-}
+    // Allocate a semaphore object and initialize it.
+    Semaphore_t* semaphorePtr = le_mem_ForceAlloc(SemaphorePoolRef);
+    semaphorePtr->semaphoreListLink = LE_DLS_LINK_INIT;
+    semaphorePtr->waitingList = LE_DLS_LIST_INIT;
+    pthread_mutex_init(&semaphorePtr->waitingListMutex, NULL);  // Default attributes = Fast mutex.
+    if (le_utf8_Copy(semaphorePtr->nameStr, name, sizeof(semaphorePtr->nameStr), NULL) == LE_OVERFLOW)
+    {
+        LE_WARN("Semaphore name '%s' truncated to '%s'.", name, semaphorePtr->nameStr);
+    }
 
-//--------------------------------------------------------------------------------------------------
-/**
- * Create a traceable semaphore shared by threads within the same process
- *
- * @return Upon successful completion, it shall return reference to the semaphore, otherwise,
- * assert with LE_FATAL and log.
- */
-//--------------------------------------------------------------------------------------------------
-le_sem_Ref_t le_sem_CreateTraceable
-(
-    const char*     name,               ///< [IN] Name of the semaphore
-    int32_t         initialCount        ///< [IN] initial number of semaphore
-)
-{
-    return CreateSemaphore(name,initialCount, true);
+    // Initialize the underlying POSIX semaphore shared between thread.
+    int result = sem_init(&semaphorePtr->semaphore,0, initialCount);
+    if (result != 0)
+    {
+        LE_FATAL("Failed to set the semaphore . errno = %d (%m).", errno);
+    }
 
-    // TODO: Implement tracing.
+    // Add the semaphore to the process's Semaphore List.
+    LOCK_SEMAPHORE_LIST();
+    le_dls_Queue(&SemaphoreList, &semaphorePtr->semaphoreListLink);
+    UNLOCK_SEMAPHORE_LIST();
+
+    return semaphorePtr;
 }
 
 
@@ -291,8 +241,6 @@ void le_sem_Delete
     le_sem_Ref_t    semaphorePtr   ///< [IN] Pointer to the semaphore
 )
 {
-    // TODO: Implement traceable semaphore deletion.
-
     // Remove the Semaphore object from the Semaphore List.
     LOCK_SEMAPHORE_LIST();
     le_dls_Remove(&SemaphoreList, &semaphorePtr->semaphoreListLink);
@@ -353,31 +301,24 @@ void le_sem_Wait
     le_sem_Ref_t    semaphorePtr   ///< [IN] Pointer to the semaphore
 )
 {
-//     TODO: Implement this:
-//     if (semaphorePtr->isTraceable)
-//     {
-//     }
-//     else
-    {
-        int result;
+    int result;
 
-        sem_ThreadRec_t* perThreadRecPtr = thread_GetSemaphoreRecPtr();
+    sem_ThreadRec_t* perThreadRecPtr = thread_GetSemaphoreRecPtr();
 
-        ListOfSemaphoresChgCnt++;
-        perThreadRecPtr->waitingOnSemaphore = semaphorePtr;
-        AddToWaitingList(semaphorePtr, perThreadRecPtr);
+    ListOfSemaphoresChgCnt++;
+    perThreadRecPtr->waitingOnSemaphore = semaphorePtr;
+    AddToWaitingList(semaphorePtr, perThreadRecPtr);
 
-        result = sem_wait(&semaphorePtr->semaphore);
+    result = sem_wait(&semaphorePtr->semaphore);
 
-        RemoveFromWaitingList(semaphorePtr, perThreadRecPtr);
-        ListOfSemaphoresChgCnt++;
-        perThreadRecPtr->waitingOnSemaphore = NULL;
+    RemoveFromWaitingList(semaphorePtr, perThreadRecPtr);
+    ListOfSemaphoresChgCnt++;
+    perThreadRecPtr->waitingOnSemaphore = NULL;
 
-        LE_FATAL_IF( (result!=0), "Thread '%s' failed to wait on semaphore '%s'. Error code %d (%m).",
-                    le_thread_GetMyName(),
-                    semaphorePtr->nameStr,
-                    result);
-    }
+    LE_FATAL_IF( (result!=0), "Thread '%s' failed to wait on semaphore '%s'. Error code %d (%m).",
+                le_thread_GetMyName(),
+                semaphorePtr->nameStr,
+                result);
 }
 
 
@@ -397,26 +338,19 @@ le_result_t le_sem_TryWait
     le_sem_Ref_t    semaphorePtr   ///< [IN] Pointer to the semaphore
 )
 {
-//     TODO: Implement this.
-//     if (semaphorePtr->isTraceable)
-//     {
-//     }
-//     else
+    int result;
+
+    result = sem_trywait(&semaphorePtr->semaphore);
+
+    if (result != 0)
     {
-        int result;
-
-        result = sem_trywait(&semaphorePtr->semaphore);
-
-        if (result != 0)
-        {
-            if ( errno == EAGAIN ) {
-                return LE_WOULD_BLOCK;
-            } else {
-                LE_FATAL("Thread '%s' failed to trywait on semaphore '%s'. Error code %d (%m).",
-                        le_thread_GetMyName(),
-                        semaphorePtr->nameStr,
-                        result);
-            }
+        if ( errno == EAGAIN ) {
+            return LE_WOULD_BLOCK;
+        } else {
+            LE_FATAL("Thread '%s' failed to trywait on semaphore '%s'. Error code %d (%m).",
+                    le_thread_GetMyName(),
+                    semaphorePtr->nameStr,
+                    result);
         }
     }
 
@@ -440,45 +374,38 @@ le_result_t le_sem_WaitWithTimeOut
     le_clk_Time_t   timeToWait      ///< [IN] Time to wait
 )
 {
-//     TODO: Implement this.
-//     if (semaphorePtr->isTraceable)
-//     {
-//     }
-//     else
+    struct timespec timeOut;
+    int result;
+
+    // Prepare the timer
+    le_clk_Time_t currentUtcTime = le_clk_GetAbsoluteTime();
+    le_clk_Time_t wakeUpTime = le_clk_Add(currentUtcTime,timeToWait);
+    timeOut.tv_sec = wakeUpTime.sec;
+    timeOut.tv_nsec = wakeUpTime.usec;
+
+    // Retrieve reference thread
+    sem_ThreadRec_t* perThreadRecPtr = thread_GetSemaphoreRecPtr();
+    // Save into waiting list
+    ListOfSemaphoresChgCnt++;
+    perThreadRecPtr->waitingOnSemaphore = semaphorePtr;
+    AddToWaitingList(semaphorePtr, perThreadRecPtr);
+
+    result = sem_timedwait(&semaphorePtr->semaphore,&timeOut);
+
+    // Remove from waiting list
+    RemoveFromWaitingList(semaphorePtr, perThreadRecPtr);
+    ListOfSemaphoresChgCnt++;
+    perThreadRecPtr->waitingOnSemaphore = NULL;
+
+    if (result != 0)
     {
-        struct timespec timeOut;
-        int result;
-
-        // Prepare the timer
-        le_clk_Time_t currentUtcTime = le_clk_GetAbsoluteTime();
-        le_clk_Time_t wakeUpTime = le_clk_Add(currentUtcTime,timeToWait);
-        timeOut.tv_sec = wakeUpTime.sec;
-        timeOut.tv_nsec = wakeUpTime.usec;
-
-        // Retrieve reference thread
-        sem_ThreadRec_t* perThreadRecPtr = thread_GetSemaphoreRecPtr();
-        // Save into waiting list
-        ListOfSemaphoresChgCnt++;
-        perThreadRecPtr->waitingOnSemaphore = semaphorePtr;
-        AddToWaitingList(semaphorePtr, perThreadRecPtr);
-
-        result = sem_timedwait(&semaphorePtr->semaphore,&timeOut);
-
-        // Remove from waiting list
-        RemoveFromWaitingList(semaphorePtr, perThreadRecPtr);
-        ListOfSemaphoresChgCnt++;
-        perThreadRecPtr->waitingOnSemaphore = NULL;
-
-        if (result != 0)
-        {
-            if ( errno == ETIMEDOUT ) {
-                return LE_TIMEOUT;
-            } else {
-                LE_FATAL("Thread '%s' failed to wait on semaphore '%s'. Error code %d (%m).",
-                        le_thread_GetMyName(),
-                        semaphorePtr->nameStr,
-                        result);
-            }
+        if ( errno == ETIMEDOUT ) {
+            return LE_TIMEOUT;
+        } else {
+            LE_FATAL("Thread '%s' failed to wait on semaphore '%s'. Error code %d (%m).",
+                    le_thread_GetMyName(),
+                    semaphorePtr->nameStr,
+                    result);
         }
     }
 
@@ -497,20 +424,13 @@ void le_sem_Post
     le_sem_Ref_t    semaphorePtr      ///< [IN] Pointer to the semaphore
 )
 {
-    //     TODO: Implement this.
-    //     if (semaphorePtr->isTraceable)
-    //     {
-    //     }
-    //     else
-    {
-        int result;
+    int result;
 
-        result = sem_post (&semaphorePtr->semaphore);
+    result = sem_post (&semaphorePtr->semaphore);
 
-        LE_FATAL_IF((result!=0),"Failed to post on semaphore '%s'. Errno = %d (%m).",
-                    semaphorePtr->nameStr,
-                    result);
-    }
+    LE_FATAL_IF((result!=0),"Failed to post on semaphore '%s'. Errno = %d (%m).",
+                semaphorePtr->nameStr,
+                result);
 }
 
 //--------------------------------------------------------------------------------------------------

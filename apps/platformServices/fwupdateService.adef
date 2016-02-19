@@ -1,0 +1,23 @@
+
+sandboxed: false
+
+executables:
+{
+    fwupdateDaemon = ( $LEGATO_ROOT/components/fwupdate/fwupdateDaemon )
+}
+
+processes:
+{
+    run:
+    {
+        (fwupdateDaemon)
+    }
+
+    faultAction: restart
+}
+
+extern:
+{
+    fwupdateDaemon.fwupdateDaemon.le_fwupdate
+}
+

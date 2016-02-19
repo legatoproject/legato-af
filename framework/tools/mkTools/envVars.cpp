@@ -103,6 +103,17 @@ void SetTargetSpecific
         throw mk::Exception_t("Failed to set LEGATO_BUILD environment variable to '"
                                    + path + "'.");
     }
+
+    auto sysRoot = ninja::GetSysRootPath(ninja::GetCCompilerPath(target));
+    if (sysRoot.empty())
+    {
+        throw mk::Exception_t("Failed to determine sysroot for target '" + target + "'.");
+    }
+    if (setenv("LEGATO_SYSROOT", sysRoot.c_str(), true /* overwrite existing */) != 0)
+    {
+        throw mk::Exception_t("Failed to set LEGATO_SYSROOT environment variable to '"
+                                   + sysRoot + "'.");
+    }
 }
 
 

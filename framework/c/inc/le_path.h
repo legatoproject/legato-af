@@ -107,7 +107,6 @@ char* le_path_GetBasenamePtr
  *      LE_OVERFLOW if there was not enough buffer space in pathPtr for all segments.
  */
 //--------------------------------------------------------------------------------------------------
-
 le_result_t le_path_Concat
 (
     const char* separatorPtr,       ///< [IN] Separator string.
@@ -118,6 +117,49 @@ le_result_t le_path_Concat
                                     ///       must be terminated by (char*)NULL.
 )
 __attribute__((__sentinel__));
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Checks if path2 is a subpath of path1.  That is path2 has the same starting nodes as path2.  For
+ * example, path2 is a subpath of path1 if:
+ *
+ * path1 = /a/b/c
+ * path2 = /a/b/c/d/e
+ *
+ * @return
+ *      true if path2 is a subpath of path1.
+ *      false otherwise.
+ */
+//--------------------------------------------------------------------------------------------------
+bool le_path_IsSubpath
+(
+    const char* path1Ptr,           ///< [IN] Path 1 string.
+    const char* path2Ptr,           ///< [IN] Path 2 string.
+    const char* separatorPtr        ///< [IN] Separator string.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Checks if path1 and path2 are equivalent, ignoring trailing separators.  For example, all the
+ * following paths are equivalent.
+ *
+ * /a/b/c
+ * /a/b/c/
+ * /a/b/c///
+ *
+ * @return
+ *      true if path1 is equivalent to path2.
+ *      false otherwise.
+ */
+//--------------------------------------------------------------------------------------------------
+bool le_path_IsEquivalent
+(
+    const char* path1Ptr,           ///< [IN] Path 1 string.
+    const char* path2Ptr,           ///< [IN] Path 2 string.
+    const char* separatorPtr        ///< [IN] Separator string.
+);
 
 
 #endif // LEGATO_PATH_INCLUDE_GUARD

@@ -38,7 +38,7 @@ static le_event_HandlerRef_t CallEventHandlerRef = NULL;
  *
  **/
 //--------------------------------------------------------------------------------------------------
-void mcc_simu_Init
+le_result_t mcc_simu_Init
 (
     void
 )
@@ -46,6 +46,8 @@ void mcc_simu_Init
     // Create the event for signaling user handlers.
     CallEventId = le_event_CreateIdWithRefCounting("CallEvent");
     CallEventDataPool = le_mem_CreatePool("CallEventDataPool", sizeof(pa_mcc_CallEventData_t));
+
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -155,10 +157,11 @@ void pa_mcc_ClearCallEventHandler
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_mcc_VoiceDial
 (
-    const char*    pn,        ///< [IN] The phone number.
-    pa_mcc_clir_t  clir,      ///< [IN] The CLIR supplementary service subscription.
-    pa_mcc_cug_t   cug,       ///< [IN] The CUG supplementary service information.
-    uint8_t*       callIdPtr  ///< [OUT] The outgoing call ID.
+    const char*    pn,                      ///< [IN] The phone number.
+    pa_mcc_clir_t  clir,                    ///< [IN] The CLIR supplementary service subscription.
+    pa_mcc_cug_t   cug,                     ///< [IN] The CUG supplementary service information.
+    uint8_t*       callIdPtr,               ///< [OUT] The outgoing call ID.
+    le_mcc_TerminationReason_t*  errorPtr   ///< [OUT] Call termination error.
 )
 {
     *callIdPtr = CURRENT_CALL_ID;
@@ -178,7 +181,7 @@ le_result_t pa_mcc_VoiceDial
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_mcc_Answer
 (
-    void
+    uint8_t  callId     ///< [IN] The call ID to answer
 )
 {
     return LE_OK;
@@ -197,7 +200,7 @@ le_result_t pa_mcc_Answer
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_mcc_HangUp
 (
-    void
+    uint8_t  callId     ///< [IN] The call ID to hangup
 )
 {
     return LE_OK;

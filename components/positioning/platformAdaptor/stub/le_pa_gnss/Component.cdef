@@ -2,3 +2,9 @@ sources:
 {
     gnss_stub.c
 }
+
+cflags:
+{
+    -I$LEGATO_ROOT/components/positioning/platformAdaptor/inc
+}
+

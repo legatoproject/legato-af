@@ -15,6 +15,20 @@ namespace modeller
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Get a conceptual model for a system whose .sdef file can be found at a given path.
+ *
+ * @return Pointer to the system object.
+ */
+//--------------------------------------------------------------------------------------------------
+model::System_t* GetSystem
+(
+    const std::string& sdefPath,    ///< Path to the application's .sdef file.
+    const mk::BuildParams_t& buildParams
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Get a conceptual model for a single application whose .adef file can be found at a given path.
  *
  * @return Pointer to the application object.
@@ -55,6 +69,20 @@ void AddComponentInstance
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Verifies that all client-side interfaces of all applications in a system have been bound
+ * to something.  Will auto-bind any unbound le_cfg or le_wdog interfaces it finds.
+ *
+ * @throw mk::Exception_t if any client-side interface is unbound.
+ */
+//--------------------------------------------------------------------------------------------------
+void EnsureClientInterfacesBound
+(
+    model::System_t* systemPtr
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Verifies that all client-side interfaces of an application have either been bound to something
  * or marked as an external interface to be bound at the system level.  Will auto-bind any unbound
  * le_cfg or le_wdog interfaces it finds.
@@ -77,6 +105,18 @@ void PrintSummary
 (
     model::App_t* appPtr
 );
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Print a summary of a system object.
+ **/
+//--------------------------------------------------------------------------------------------------
+void PrintSummary
+(
+    model::System_t* systemPtr
+);
+
 
 
 } // namespace modeller

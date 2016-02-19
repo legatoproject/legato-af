@@ -5,19 +5,18 @@
 /Documentation*
 /releases
 /version
+/sources.md5
 /delivery
 doxygen.*.log
 doxygen.*.err
 _build_*
+system.sdef
 
 # ... per target
 *.localhost
 *.ar7
-*.wp7
 *.ar86
 *.wp85
-*.ar6
-*.raspi
 *.virt
 *.update
 *.uinst
@@ -41,3 +40,6 @@ wmnew.opt
 
 # Target files backup
 targetFiles/*/backup_*
+
+# Injected target defs
+targetDefs.extra

@@ -143,7 +143,7 @@ void app_Stop
 //--------------------------------------------------------------------------------------------------
 app_State_t app_GetState
 (
-    app_Ref_t appRef                    ///< [IN] Reference to the application to stop.
+    app_Ref_t appRef                    ///< [IN] Reference to the application.
 );
 
 
@@ -157,8 +157,27 @@ app_State_t app_GetState
 //--------------------------------------------------------------------------------------------------
 app_ProcState_t app_GetProcState
 (
-    app_Ref_t appRef,                   ///< [IN] Reference to the application to stop.
+    app_Ref_t appRef,                   ///< [IN] Reference to the application.
     const char* procName                ///< [IN] Name of the process.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Checks if a given app is running a top-level process with given PID.
+ *
+ * An app's top-level processes are those that are started by the Supervisor directly.
+ * If the Supervisor starts a process and that process starts another process, this function
+ * will not find that second process.
+ *
+ * @return
+ *      true if the process is one of this app's top-level processes, false if not.
+ */
+//--------------------------------------------------------------------------------------------------
+bool app_HasTopLevelProc
+(
+    app_Ref_t appRef,
+    pid_t pid
 );
 
 
@@ -220,13 +239,27 @@ bool app_GetIsSandboxed
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Gets an application's installation directory path.
+ * Gets the directory path for an app's installation directory in the current running system.
  *
  * @return
- *      The application's install directory path.
+ *      The absolute directory path.
  */
 //--------------------------------------------------------------------------------------------------
 const char* app_GetInstallDirPath
+(
+    app_Ref_t appRef                    ///< [IN] The application reference.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets the directory path for an app's writeable files in the current running system.
+ *
+ * @return
+ *      The absolute directory path.
+ */
+//--------------------------------------------------------------------------------------------------
+const char* app_GetWriteableFilesDirPath
 (
     app_Ref_t appRef                    ///< [IN] The application reference.
 );

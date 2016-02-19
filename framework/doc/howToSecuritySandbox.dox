@@ -1,0 +1,85 @@
+/** @page howToSecuritySandbox Config Sandbox
+
+To understand how Legato sandboxes are implemented, see @ref basicSecuritySandbox basics.
+
+@section howToSecuritySandbox_oveview Overview
+
+Sandboxes are configured through the @ref defFiles : 
+- @ref defFilesAdef
+- @ref defFilesSdef 
+
+This is what a sandboxed app @ref howToConfigTreeSchema looks like.
+
+@section howToSecuritySandbox_probs Common Problems
+
+Often, when sandbox problems occur, it's because either:
+- the permissions are set incorrectly: check the @c .sdef bundles section to ensure permissions are
+valid.
+- there's a file missing from the file system within the sandbox: check that the @c def files'
+requires sections include all required files.
+
+@section howToSecuritySandbox_sampleApps Sandbox Sample Apps
+
+Legato provides sample apps that use sandboxes: <br>
+@ref sampleApps_shellPiping <br>
+@ref sampleApps_commandLine
+
+@subsection howToSecuritySandbox_sampleAppsCode Sample Code
+
+This is the @ref sampleApps_shellPiping sample app's @c .adef file:
+
+@verbatim
+start: manual
+
+bundles:
+{
+    file:
+    {
+        // Bundling the script into the sandbox with the permissions needed to run it.
+        [rx] utilPipes    /
+    }
+}
+
+requires:
+{
+    file:
+    {
+        // Adding sh (shell), ls, grep and echo utilities into the sandbox.
+        /bin/sh     /usr/local/bin/
+        /bin/ls     /usr/local/bin/
+        /bin/grep   /usr/local/bin/
+        /bin/echo   /usr/local/bin/
+    }
+}
+
+processes:
+{
+    run:
+    {
+        // Run sh (shell) and pass it the script for it to run.
+        (sh utilPipes)
+    }
+}
+@endverbatim
+
+@section howToSandbox_servicesOutside Access Services Outside
+
+A Legato sandboxed app can access services outside its sandbox.
+All available services are advertised by the Service Directory. Apps connect to services
+through a request to the Service Directory. The Service Directory grants access only if the
+app has been explicitly bound to a service (using the @c .adef and @c .sdef @c bindings section).
+
+If you want to allow direct access to bind mount objects from the file system (e.g., files, directories,
+named sockets and pipes, etc.), explicitly allow it through app configuration
+in the @c .adef and @c .cdef files @c requires section.
+
+@section howToSandbox_unsandbox Unsandbox
+
+Although it's not recommended, you can turn-off sandboxing by setting @ref defFilesAdef_sandboxed
+to @c false.
+ 
+<HR>
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/

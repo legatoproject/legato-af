@@ -1,3 +1,5 @@
+sandboxed: false
+
 executables:
 {
     mdcTest = ( mdcTestComp )
@@ -11,6 +13,11 @@ processes:
     {
         LE_LOG_LEVEL = DEBUG
     }
+
+    run:
+    {
+        ( mdcTest )
+    }
 }
 
 start: manual
@@ -19,4 +26,5 @@ bindings:
 {
     mdcTest.mdcTestComp.le_mdc -> modemService.le_mdc
 }
+
 

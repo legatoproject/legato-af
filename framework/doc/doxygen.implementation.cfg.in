@@ -128,7 +128,7 @@ FULL_PATH_NAMES        = YES
 # If left blank the directory from which doxygen is run is used as the
 # path to strip.
 
-STRIP_FROM_PATH        = "@LEGATO_SOURCE_DIR@"
+STRIP_FROM_PATH        = "@LEGATO_ROOT@"
 
 # The STRIP_FROM_INC_PATH tag can be used to strip a user-defined part of
 # the path mentioned in the documentation of a class, which tells
@@ -648,12 +648,12 @@ WARN_LOGFILE           =
 # directories like "/usr/src/myproject". Separate the files or directories
 # with spaces.
 
-INPUT                  = "@LEGATO_SOURCE_DIR@/framework" \
-                         "@LEGATO_SOURCE_DIR@/build/localhost/interfaces" \
-                         "@LEGATO_SOURCE_DIR@/components/modemServices/platformAdaptor/inc" \
-                         "@LEGATO_SOURCE_DIR@/components/positioning/platformAdaptor/inc" \
-                         "@LEGATO_SOURCE_DIR@/buildTools" \
-                         "@LEGATO_BINARY_DIR@/framework/doc/generated"
+INPUT                  = "@LEGATO_ROOT@/framework" \
+                         "@LEGATO_ROOT@/build/localhost/interfaces" \
+                         "@LEGATO_ROOT@/components/modemServices/platformAdaptor/inc" \
+                         "@LEGATO_ROOT@/components/positioning/platformAdaptor/inc" \
+                         "@LEGATO_ROOT@/buildTools" \
+                         "@LEGATO_BUILD@/framework/doc/generated"
 
 # This tag can be used to specify the character encoding of the source files
 # that doxygen parses. Internally doxygen uses the UTF-8 encoding, which is
@@ -713,7 +713,7 @@ EXCLUDE_SYMBOLS        = *_Hide
 # directories that contain example code fragments that are included (see
 # the \include command).
 
-EXAMPLE_PATH           = "@LEGATO_SOURCE_DIR@"
+EXAMPLE_PATH           = "@LEGATO_ROOT@"
 
 # If the value of the EXAMPLE_PATH tag contains directories, you can use the
 # EXAMPLE_PATTERNS tag to specify one or more wildcard pattern (like *.cpp
@@ -733,7 +733,7 @@ EXAMPLE_RECURSIVE      = NO
 # directories that contain image that are included in the documentation (see
 # the \image command).
 
-IMAGE_PATH             = "@LEGATO_SOURCE_DIR@/framework/doc/img"
+IMAGE_PATH             = "@LEGATO_ROOT@/framework/doc/img"
 
 # The INPUT_FILTER tag can be used to specify a program that doxygen should
 # invoke to filter for each input file. Doxygen will invoke the filter program

@@ -1,0 +1,11 @@
+/** @page apiGuidesMain API Guides
+
+These API guides are available:
+| Section                            | Description                                        |
+| ---------------------------------- | -------------------------------------------------- |
+| @subpage legatoServices            | pre-built services                                  |
+| @subpage c_APIs                          | C Language library                              |
+
+<HR>
+
+**/

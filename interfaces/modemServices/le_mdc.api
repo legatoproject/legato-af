@@ -27,84 +27,111 @@
  * @section le_mdc_profile Data Profiles
  *
  * If a pre-defined data profile has been configured then this profile can
- * be loaded using @ref le_mdc_GetProfile.
+ * be loaded using le_mdc_GetProfile().
+ * le_mdc_GetProfile() must be called with @c LE_MDC_DEFAULT_PROFILE to retrieve the default index
+ * used by the modem for data connection.
+ * le_mdc_GetProfile() must be called with @c LE_MDC_SIMTOOLKIT_BIP_DEFAULT_PROFILE to retrieve the
+ * default index used by the modem for Bearer Independent Protocol (BIP).
  * The maximum number of data profiles supported is modem dependent and can be retrieved with
- * @ref le_mdc_NumProfiles.
- * A pre-defined data profile can also be retrieved using @ref le_mdc_GetProfileFromApn thanks to its APN.
+ * le_mdc_NumProfiles().
+ * A pre-defined data profile can also be retrieved using le_mdc_GetProfileFromApn() thanks to its
+ * APN.
  *
  * @warning Ensure to check the list of supported data profiles for your specific platform.
  *
  * The following data profile parameters can be retrieved:
- *  - Packet Data Protocol using @ref le_mdc_GetPDP.
- *  - Access Point Name using @ref le_mdc_GetAPN.
- *  - Authentication settings using @ref le_mdc_GetAuthentication.
+ *  - Packet Data Protocol using le_mdc_GetPDP().
+ *  - Access Point Name using le_mdc_GetAPN().
+ *  - Authentication settings using le_mdc_GetAuthentication().
  *
  * The following data profile parameters can be set:
- *  - Packet Data Protocol using @ref le_mdc_SetPDP.
- *  - Access Point Name using @ref le_mdc_SetAPN.
- *  - Authentication settings using @ref le_mdc_SetAuthentication.
+ *  - Packet Data Protocol using le_mdc_SetPDP().
+ *  - Access Point Name using le_mdc_SetAPN().
+ *  - Authentication settings using le_mdc_SetAuthentication().
  *
- * @todo
- *  - Other profile parameters will be configurable in a future version.
+ *  A sample code can be seen in the following page:
+ * - @subpage c_mdcDataProfiles
  *
  * @section le_mdc_session Data Sessions
  *
  * @subsection le_mdc_session_MO Mobile Originated (MO-PDP context activation)
- * A data session can be started using @ref le_mdc_StartSession. To start a data session, a
+ * A data session can be started using le_mdc_StartSession(). To start a data session, a
  * data profile must be created and written to the modem, or  an existing data profile
- * can be used. A data session can be stopped using @ref le_mdc_StopSession. The number of
+ * can be used. A data session can be stopped using le_mdc_StopSession(). The number of
  * simultaneous data sessions supported is dependent on the modem, but cannot be more than the
  * maximum number of supported profiles.
  *
- * The current state of a data session can be queried using @ref le_mdc_GetSessionState. An application
+ * The current state of a data session can be queried using le_mdc_GetSessionState(). An application
  * can also a register handler to be notified when the session state changes. The handler
- * can be managed using @ref le_mdc_AddSessionStateHandler and @ref le_mdc_RemoveSessionStateHandler.
+ * can be managed using le_mdc_AddSessionStateHandler() and le_mdc_RemoveSessionStateHandler().
  *
  * @subsection le_mdc_session_MT Mobile Terminated (MT-PDP context activation)
  * To be notified by the MT-PDP context request, the application has to subscribe to the state
- * handler using @ref le_mdc_AddMtPdpSessionStateHandler.
+ * handler using le_mdc_AddMtPdpSessionStateHandler().
  * When the incoming MT-PDP context request is notified,
  * the application takes responsibility to trigger the data session for that MT PDP request using
- * @ref le_mdc_StartSession. That data session can be stopped using @ref le_mdc_StopSession.
+ * le_mdc_StartSession. That data session can be stopped using le_mdc_StopSession().
  *
  * The network interface settings of that MT-PDP context can be retrieved using the provided
  * Data Profile.
  * Please refer to @ref le_mdc_session_networkItf.
  *
- * A data session can be rejected using @ref le_mdc_RejectMtPdpSession.
+ * A data session can be rejected using le_mdc_RejectMtPdpSession().
  * The number of simultaneous data sessions supported is dependent on the modem,
  * but cannot be more than the maximum number of supported profiles.
  *
- * The handler can be released using @ref le_mdc_RemoveMtPdpSessionStateHandler.
+ * The handler can be released using le_mdc_RemoveMtPdpSessionStateHandler().
  *
  * @subsection le_mdc_session_networkItf Network interface settings
  * Once a data session starts, a Linux network interface is created.  It's the application's
  * responsibility to configure the network interface, usually through a DHCP client. Query the
- * interface name using @ref le_mdc_GetInterfaceName. The IP Preference can be checked with
- * @ref le_mdc_IsIPv4 or @ref le_mdc_IsIPv6 when the profile is connected. The IP address for the
+ * interface name using le_mdc_GetInterfaceName(). The IP Preference can be checked with
+ * le_mdc_IsIPv4() or le_mdc_IsIPv6() when the profile is connected. The IP address for the
  * current data session
- * can be retreived by  @ref le_mdc_GetIPv4Address or @ref le_mdc_GetIPv6Address. The Gateway and
+ * can be retreived by  le_mdc_GetIPv4Address() or le_mdc_GetIPv6Address(). The Gateway and
  * DNS
- * addresses can be retrieved using @ref le_mdc_GetIPv4GatewayAddress, @ref
- * le_mdc_GetIPv4DNSAddresses or @ref le_mdc_GetIPv6GatewayAddress, @ref le_mdc_GetIPv6DNSAddresses.
- * The Access Point Name can be retrieved by @ref le_mdc_GetAPN. The Data bearer
- * Technology can be retreived by @ref le_mdc_GetDataBearerTechnology.
+ * addresses can be retrieved using le_mdc_GetIPv4GatewayAddress(),
+ * le_mdc_GetIPv4DNSAddresses() or le_mdc_GetIPv6GatewayAddress(), le_mdc_GetIPv6DNSAddresses().
+ * The Access Point Name can be retrieved by le_mdc_GetAPN(). The Data bearer
+ * Technology can be retreived by le_mdc_GetDataBearerTechnology().
  * When the data session is stopped, the disconnection reason can be known using
  * le_mdc_GetDisconnectionReason() or le_mdc_GetPlatformSpecificDisconnectionCode() (refer
  * to your platform documentation for further details).
  *
+ * A sample code can be seen in the following page:
+ * - @subpage c_mdcDataSessions
+ *
  * @section le_mdc_dataStatistics Data Statistics
  *
- * Data bytes received/transmitted can be access through @ref le_mdc_GetBytesCounters.
+ * Data bytes received/transmitted can be access through le_mdc_GetBytesCounters().
  * These values correspond to the number of bytes received/transmitted since the last software reset
- * or the last @ref le_mdc_ResetBytesCounter called.
+ * or the last le_mdc_ResetBytesCounter() called.
  * Making these value persistent after a software reboot is the client responsibility.
+ *
+ * A sample code can be seen in the following page:
+ * - @subpage c_mdcDataStatistics
  *
  * <HR>
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 //--------------------------------------------------------------------------------------------------
+
+/**
+ * @page c_mdcDataProfiles Sample code for Data Profiles
+ *
+ * @snippet "apps/test/modemServices/mdc/mdcIntegrationTest/mdcTestComp/mdcTest.c" Profiles
+ */
+/**
+ * @page c_mdcDataSessions Sample code for network interface settings
+ *
+ * @snippet "apps/test/modemServices/mdc/mdcIntegrationTest/mdcTestComp/mdcTest.c" Sessions
+ */
+/**
+ * @page c_mdcDataStatistics Sample code for Data Statistics
+ *
+ * @snippet "apps/test/modemServices/mdc/mdcIntegrationTest/mdcTestComp/mdcTest.c" Statistics
+ */
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -122,7 +149,7 @@
 /**
  * Maximum number of bytes in a interface name (not including the null-terminator).
  */
-DEFINE  INTERFACE_NAME_MAX_LEN = 10;
+DEFINE  INTERFACE_NAME_MAX_LEN = 20;
 
 /**
  * Maximum number of bytes in a profile name (including the null-terminator).
@@ -184,6 +211,10 @@ DEFINE  PASSWORD_NAME_MAX_BYTES  = (PASSWORD_NAME_MAX_LEN + 1);
  */
 DEFINE DEFAULT_PROFILE = -1;
 
+/**
+ * Default profile definition for Bearer Independent Protocol (BIP).
+ */
+DEFINE SIMTOOLKIT_BIP_DEFAULT_PROFILE = -2;
 
 //--------------------------------------------------------------------------------------------------
 /**

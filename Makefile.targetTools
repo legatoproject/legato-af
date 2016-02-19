@@ -1,0 +1,141 @@
+# --------------------------------------------------------------------------------------------------
+# Makefile used to build the Legato framework on-target tools.
+#
+# Build output is placed under $(LEGATO_ROOT)/build/$(TARGET)/framework/bin (and lib).
+#
+# This Makefile is intended to run as part of a larger build system.  The following variables
+# should be set by that system:
+#
+# - TARGET = e.g., localhost, ar7, wp85, raspi, etc.
+# - TARGET_CC = path to the appropriate C compiler for the target.
+# - TARGET_SANDBOX_IMPORT = selector for which set of files to import into sandboxes on the target.
+#
+# Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+# --------------------------------------------------------------------------------------------------
+
+BUILD_PRODUCTS = 	config		\
+					execInApp	\
+					log		\
+					sdir	\
+					gdbCfg	\
+					straceCfg	\
+					inspect	\
+					xattr	\
+					appCtrl \
+					update \
+					scripts
+
+.PHONY: all $(BUILD_PRODUCTS)
+all: $(BUILD_PRODUCTS)
+
+# Make sure required variables are set.
+ifndef TARGET
+  $(error TARGET is not set)
+endif
+ifndef TARGET_CC
+  $(error TARGET_CC is not set)
+endif
+ifndef TARGET_SANDBOX_IMPORT
+  $(error TARGET_SANDBOX_IMPORT is not set)
+endif
+
+export LEGATO_ROOT ?= $(CURDIR)
+export LEGATO_TARGET := $(TARGET)
+
+BUILD_DIR := $(LEGATO_ROOT)/build/$(TARGET)/framework
+BIN_DIR := $(BUILD_DIR)/bin
+LIB_DIR := $(BUILD_DIR)/lib
+
+MKEXE_FLAGS = -w $(BUILD_DIR)/tools/$@ -l $(LIB_DIR) -t $(TARGET)
+
+# Do not be verbose by default.
+VERBOSE ?= 0
+ifeq ($(VERBOSE),1)
+  MKEXE_FLAGS += -v
+endif
+
+# Do not use clang by default.
+USE_CLANG ?= 0
+
+# Add the framework's bin directory to the PATH environment variable.
+export PATH := $(PATH):$(LEGATO_ROOT)/bin
+
+JANSSON_INC_DIR = $(LEGATO_ROOT)/build/$(TARGET)/framework/libjansson/include/
+TOOLS_SRC_DIR = $(LEGATO_ROOT)/framework/tools
+FRAMEWORK_SRC_DIR = $(LEGATO_ROOT)/framework/c/src
+LEGATO_INTERFACES_DIR = $(LEGATO_ROOT)/interfaces
+
+config:
+	mkexe -o $(BIN_DIR)/$@ $(TOOLS_SRC_DIR)/config \
+			-i $(JANSSON_INC_DIR) \
+			-i $(LEGATO_ROOT)/framework/c/src \
+			--ldflags=-L$(LIB_DIR) \
+			--ldflags=-ljansson \
+			$(MKEXE_FLAGS)
+
+execInApp:
+	mkexe -o $(BIN_DIR)/$@ $(TOOLS_SRC_DIR)/execInApp \
+			--cflags=-DNO_LOG_CONTROL \
+			--cflags=-DLEGATO_FRAMEWORK_NICE_LEVEL=$(LEGATO_FRAMEWORK_NICE_LEVEL) \
+			--cflags=-DLE_RUNTIME_DIR='"$(LE_RUNTIME_DIR)"' \
+			--cflags=-DLE_SVCDIR_SERVER_SOCKET_NAME="$(LE_SVCDIR_SERVER_SOCKET_NAME)" \
+			--cflags=-DLE_SVCDIR_CLIENT_SOCKET_NAME="$(LE_SVCDIR_CLIENT_SOCKET_NAME)" \
+			--cflags=-D$(TARGET_SANDBOX_IMPORT) \
+			-i $(FRAMEWORK_SRC_DIR) \
+			-i $(LEGATO_INTERFACES_DIR)/supervisor \
+			-i $(FRAMEWORK_SRC_DIR)/serviceDirectory \
+			-s $(FRAMEWORK_SRC_DIR) \
+			$(MKEXE_FLAGS)
+
+log:
+	mkexe -o $(BIN_DIR)/$@ \
+			$(TOOLS_SRC_DIR)/logTool/logTool.c \
+			-i $(FRAMEWORK_SRC_DIR) \
+			-i $(FRAMEWORK_SRC_DIR)/logDaemon \
+			$(MKEXE_FLAGS)
+
+sdir:
+	mkexe -o $(BIN_DIR)/$@ \
+			$(TOOLS_SRC_DIR)/sdirTool \
+			-i $(FRAMEWORK_SRC_DIR) \
+			-i $(FRAMEWORK_SRC_DIR)/serviceDirectory \
+			$(MKEXE_FLAGS)
+
+gdbCfg:
+	mkexe -o $(BIN_DIR)/$@ \
+			$(TOOLS_SRC_DIR)/$@ \
+			-i $(FRAMEWORK_SRC_DIR) \
+			-c $(FRAMEWORK_SRC_DIR) \
+			appConfig \
+			-i $(FRAMEWORK_SRC_DIR)/appConfig \
+			$(MKEXE_FLAGS)
+
+straceCfg:
+	ln -sf gdbCfg $(BIN_DIR)/straceCfg
+
+inspect:
+	mkexe -o $(BIN_DIR)/$@ \
+			$(TOOLS_SRC_DIR)/inspect/inspect.c \
+			-i $(FRAMEWORK_SRC_DIR) \
+			$(MKEXE_FLAGS)
+
+xattr:
+	mkexe -o $(BIN_DIR)/$@ \
+			$(TOOLS_SRC_DIR)/xattr/xattr.c \
+			-i $(FRAMEWORK_SRC_DIR) \
+			$(MKEXE_FLAGS)
+
+appCtrl:
+	mkexe -o $(BIN_DIR)/$@ \
+			$(TOOLS_SRC_DIR)/$@ \
+			-i $(LEGATO_INTERFACES_DIR)/supervisor \
+			-i $(FRAMEWORK_SRC_DIR) \
+			$(MKEXE_FLAGS)
+
+update:
+	mkexe -o $(BIN_DIR)/$@ \
+			$(TOOLS_SRC_DIR)/$@ \
+			$(MKEXE_FLAGS)
+
+scripts:
+	cp -u -P --preserve=all $(wildcard targetFiles/shared/bin/*) $(BIN_DIR)

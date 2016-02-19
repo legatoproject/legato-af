@@ -1,3 +1,5 @@
+#!/bin/bash
+
 # Get setup for cross-building for Sierra Wireless ARXxxx and WPXxxx target devices.
 
 # Note: they all currently use the same toolchain. In future that may not be true
@@ -40,7 +42,7 @@ set_toolchain_dir ()
     return 0
 }
 
-for t in ar7 wp7 ar86 wp85
+for t in ar7 ar86 wp85
 do
     set_toolchain_dir $t
 done

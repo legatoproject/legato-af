@@ -10,9 +10,9 @@ provides:
 {
     api:
     {
-        le_gnss.api
-        le_pos.api
-        le_posCtrl.api
+        positioning/le_gnss.api
+        positioning/le_pos.api
+        positioning/le_posCtrl.api
     }
 }
 
@@ -20,6 +20,12 @@ sources:
 {
     le_gnss.c
     le_pos.c
+}
+
+cflags:
+{
+    -I$LEGATO_ROOT/components/positioning/platformAdaptor/inc
+    -I$LEGATO_ROOT/components/cfgEntries
 }
 
 requires:

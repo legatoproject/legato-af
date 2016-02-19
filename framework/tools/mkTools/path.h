@@ -130,7 +130,7 @@ std::string MakeCanonical
 
 //--------------------------------------------------------------------------------------------------
 /**
- * @return The path of the directory containing this path.
+ * @return The path of the directory containing this path ("." if the path contains no slashes).
  *
  * @throw mk::Exception_t on error.
  */
@@ -176,6 +176,20 @@ std::string HasSuffix
 (
     const std::string& path,
     const std::list<std::string>& suffixList
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Checks whether a given path has a given suffix.
+ *
+ * @return  true if it has that suffix.
+ */
+//--------------------------------------------------------------------------------------------------
+bool HasSuffix
+(
+    const std::string& path,
+    const std::string& suffix
 );
 
 
@@ -304,6 +318,7 @@ struct Path_t
     Path_t operator+(const std::string& add) const;
     Path_t& operator+=(const std::string& add);
 
+    Path_t(const char* s): str(s) {}
     Path_t(const std::string& s): str(s) {}
     Path_t(std::string&& s): str(std::move(s)) {}
 };

@@ -777,6 +777,12 @@ le_result_t le_mrc_GetRegisterMode
     char mcc[LE_MRC_MCC_BYTES] = {0};
     char mnc[LE_MRC_MNC_BYTES] = {0};
 
+    if (isManualPtr == NULL)
+    {
+        LE_KILL_CLIENT("isManualPtr is NULL !");
+        return LE_FAULT;
+    }
+
     le_result_t res = pa_mrc_GetNetworkRegistrationMode(isManualPtr,
                     mcc, LE_MRC_MCC_BYTES, mnc,  LE_MRC_MNC_BYTES);
 
@@ -1863,42 +1869,6 @@ le_result_t le_mrc_GetCurrentNetworkMccMnc
 
     }
 }
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This function must be called to register on a cellular network [mcc;mnc]
- *
- * @return LE_FAULT         The function failed to register on the network.
- * @return LE_BAD_PARAMETER A bad parameter was passed.
- * @return LE_OK            The function succeeded.
- *
- * @note If one code is too long (max LE_MRC_MCC_LEN/LE_MRC_MNC_LEN digits), it's a fatal error,
- *       the function won't return.
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t le_mrc_RegisterCellularNetwork
-(
-    const char *mccPtr,   ///< [IN] Mobile Country Code
-    const char *mncPtr    ///< [IN] Mobile Network Code
-
-)
-{
-    if(strlen(mccPtr) > LE_MRC_MCC_LEN)
-    {
-        LE_KILL_CLIENT("strlen(mcc) > %d", LE_MRC_MCC_LEN);
-        return LE_BAD_PARAMETER;
-    }
-
-    if(strlen(mncPtr) > LE_MRC_MNC_LEN)
-    {
-        LE_KILL_CLIENT("strlen(mnc) > %d", LE_MRC_MNC_LEN);
-        return LE_BAD_PARAMETER;
-    }
-
-    return pa_mrc_RegisterNetwork(mccPtr,mncPtr);
-}
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -3101,3 +3071,95 @@ uint32_t le_mrc_GetServingCellLocAreaCode
     }
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Bit mask for 2G/3G Band capabilities.
+ *
+ * @return
+ *  - LE_FAULT  Function failed.
+ *  - LE_OK     Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mrc_GetBandCapabilities
+(
+    le_mrc_BandBitMask_t* bandMaskPtr ///< [OUT] Bit mask for 2G/3G Band capabilities.
+)
+{
+    if (bandMaskPtr == NULL)
+    {
+        LE_KILL_CLIENT("bandMaskPtr is NULL !");
+        return LE_FAULT;
+    }
+
+    if ( pa_mrc_GetBandCapabilities(bandMaskPtr) != LE_OK )
+    {
+        LE_ERROR("Unable to get 2G/3G band capabilities.");
+        return LE_FAULT;
+    }
+    else
+    {
+        return LE_OK;
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Bit mask for LTE Band capabilities.
+ *
+ * @return
+ *  - LE_FAULT  Function failed.
+ *  - LE_OK     Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mrc_GetLteBandCapabilities
+(
+    le_mrc_LteBandBitMask_t* bandMaskPtr ///< [OUT] Bit mask for LTE Band capabilities.
+)
+{
+    if (bandMaskPtr == NULL)
+    {
+        LE_KILL_CLIENT("bandMaskPtr is NULL !");
+        return LE_FAULT;
+    }
+
+    if ( pa_mrc_GetLteBandCapabilities(bandMaskPtr) != LE_OK )
+    {
+        LE_ERROR("Unable to get LTE band capabilities.");
+        return LE_FAULT;
+    }
+    else
+    {
+        return LE_OK;
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Bit mask for TD-SCDMA Band capabilities.
+ *
+ * @return
+ *  - LE_FAULT  Function failed.
+ *  - LE_OK     Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mrc_GetTdScdmaBandCapabilities
+(
+    le_mrc_TdScdmaBandBitMask_t* bandMaskPtr ///< [OUT] Bit mask for TD-SCDMA Band capabilities.
+)
+{
+    if (bandMaskPtr == NULL)
+    {
+        LE_KILL_CLIENT("bandMaskPtr is NULL !");
+        return LE_FAULT;
+    }
+
+    if ( pa_mrc_GetTdScdmaBandCapabilities(bandMaskPtr) != LE_OK )
+    {
+        LE_ERROR("Unable to get TD-SCDMA band capabilities.");
+        return LE_FAULT;
+    }
+    else
+    {
+        return LE_OK;
+    }
+}

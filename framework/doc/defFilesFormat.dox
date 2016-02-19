@@ -119,8 +119,9 @@ requires:
 Some useful environment variables:
 
  - @c LEGATO_ROOT = path to where the Legato framework sources are located
- - @c TARGET = build target (e.g., ar7, wp7, localhost)
+ - @c LEGATO_TARGET = build target (e.g., wp85, localhost)
  - @c LEGATO_BUILD = shorthand for <c>$LEGATO_ROOT/build/$TARGET</c>
+ - @c LEGATO_SYSROOT = path of the directory containing the target device's system files
 
 
 @section defFileFormatWhitespace Whitespace

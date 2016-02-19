@@ -12,6 +12,11 @@ sources:
     fwupdateServer.c
 }
 
+cflags:
+{
+    -I$LEGATO_ROOT/components/fwupdate/platformAdaptor/inc
+}
+
 requires:
 {
     component:

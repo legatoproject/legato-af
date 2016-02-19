@@ -6,12 +6,11 @@
 #*******************************************************************************
 
 mkapp(installStatusTest.adef
-      -i ${LEGATO_ROOT}/interfaces/updateDaemon
       DEPENDS
             ## TODO: Remove all this when the mk tools do dependency checking.
             ../*
             installNotify/*
-            ${LEGATO_ROOT}/interfaces/updateDaemon/*
+            ${LEGATO_ROOT}/interfaces/*
             installStatusTest.adef )
 
 mkapp(testApp1.adef)

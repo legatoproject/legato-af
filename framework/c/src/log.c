@@ -9,7 +9,7 @@
 
 #include "legato.h"
 #include "log.h"
-#include "logDaemon.h"
+#include "logDaemon/logDaemon.h"
 #include "limit.h"
 #include "messagingSession.h"
 
@@ -1102,13 +1102,14 @@ void _le_log_Send
 
     va_end(varParams);
 
-    // Write the message out to the log.
+    // If running on an embedded target, write the message out to the log.
 #ifdef LEGATO_EMBEDDED
 
     syslog(ConvertToSyslogLevel(level), "%s | %s[%d]/%s T=%s | %s %s() %d | %s\n",
            levelPtr, procNamePtr, getpid(), compNamePtr, threadNamePtr, baseFileNamePtr,
            functionNamePtr, lineNumber, msg);
 
+    // If running on a PC, write the message to standard error with a timestamp added.
 #else
 
     time_t now;
@@ -1124,8 +1125,8 @@ void _le_log_Send
     }
 
     fprintf(stderr, "%s : %s | %s[%d]/%s T=%s | %s %s() %d | %s\n",
-            timeStampPtr, levelPtr, procNamePtr, getpid(), compNamePtr, threadNamePtr, baseFileNamePtr,
-            functionNamePtr, lineNumber, msg);
+            timeStampPtr, levelPtr, procNamePtr, getpid(), compNamePtr, threadNamePtr,
+            baseFileNamePtr, functionNamePtr, lineNumber, msg);
 
 #endif
 }
@@ -1194,6 +1195,8 @@ const char* _le_log_GetResultCodeString
             return "LE_NOT_IMPLEMENTED";
         case LE_UNAVAILABLE:
             return "LE_UNAVAILABLE";
+        case LE_TERMINATED:
+            return "LE_TERMINATED";
     }
     LE_ERROR("Result code %d out of range.", resultCode);
     return "(unknown)";

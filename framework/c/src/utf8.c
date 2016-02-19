@@ -10,49 +10,11 @@
 //--------------------------------------------------------------------------------------------------
 // Local definitions.
 //--------------------------------------------------------------------------------------------------
-// Checks that there is a high-order '10'.
-#define IS_CONTINUATION_BYTE(cByte)             ( (cByte & 0xC0) == 0x80 )
-
 // Checks the size of the char by looking at the lead byte.
 #define IS_SINGLE_BYTE_CHAR(leadByte)           ( (leadByte & 0x80) == 0x00 )
 #define IS_TWO_BYTE_CHAR(leadByte)              ( (leadByte & 0xE0) == 0xC0 )
 #define IS_THREE_BYTE_CHAR(leadByte)            ( (leadByte & 0xF0) == 0xE0 )
 #define IS_FOUR_BYTE_CHAR(leadByte)             ( (leadByte & 0xF8) == 0xF0 )
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Looks at the lead byte of a UTF-8 character and determines the number of bytes in
- * the character including the lead character.
- *
- * @return
- *      The number of bytes if succesful.
- *      LE_FORMAT_ERROR if the formatting of the first byte is incorrect.
- */
-//--------------------------------------------------------------------------------------------------
-static inline int_fast8_t NumBytesInChar(char leadByte)
-{
-    if ( IS_SINGLE_BYTE_CHAR(leadByte) )
-    {
-        return 1;
-    }
-    else if ( IS_TWO_BYTE_CHAR(leadByte) )
-    {
-        return 2;
-    }
-    else if ( IS_THREE_BYTE_CHAR(leadByte) )
-    {
-        return 3;
-    }
-    else if ( IS_FOUR_BYTE_CHAR(leadByte) )
-    {
-        return 4;
-    }
-    else
-    {
-        return LE_FORMAT_ERROR;
-    }
-}
 
 
 //--------------------------------------------------------------------------------------------------
@@ -72,8 +34,8 @@ ssize_t le_utf8_NumChars
     const char* string      ///< [IN] Pointer to the string.
 )
 {
-    uint_fast8_t i;
-    int_fast8_t numBytes = 0;
+    size_t i;
+    size_t numBytes;
     size_t strIndex = 0;
     size_t numChars = 0;
 
@@ -85,9 +47,9 @@ ssize_t le_utf8_NumChars
 
     while (string[strIndex] != '\0')
     {
-        numBytes = NumBytesInChar(string[strIndex]);
+        numBytes = le_utf8_NumBytesInChar(string[strIndex]);
 
-        if (numBytes < 0)
+        if (numBytes == 0)
         {
             return LE_FORMAT_ERROR;
         }
@@ -95,7 +57,7 @@ ssize_t le_utf8_NumChars
         // Go through the bytes in this character to make sure all bytes are formatted correctly.
         for (i = 1; i < numBytes; i++)
         {
-            if ( !IS_CONTINUATION_BYTE(string[++strIndex]) )
+            if ( !le_utf8_IsContinuationByte(string[++strIndex]) )
             {
                 return LE_FORMAT_ERROR;
             }
@@ -132,6 +94,43 @@ size_t le_utf8_NumBytes
     }
 
     return strlen(string);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Returns the number of bytes in the character that starts with a given byte.
+ *
+ * @return
+ *      Number of bytes in the character, or 0 if the byte provided is not a valid starting byte.
+ */
+//--------------------------------------------------------------------------------------------------
+size_t le_utf8_NumBytesInChar
+(
+    const char firstByte    ///< [IN] The first byte in the character.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    if ( IS_SINGLE_BYTE_CHAR(firstByte) )
+    {
+        return 1;
+    }
+    else if ( IS_TWO_BYTE_CHAR(firstByte) )
+    {
+        return 2;
+    }
+    else if ( IS_THREE_BYTE_CHAR(firstByte) )
+    {
+        return 3;
+    }
+    else if ( IS_FOUR_BYTE_CHAR(firstByte) )
+    {
+        return 4;
+    }
+    else
+    {
+        return 0;
+    }
 }
 
 
@@ -192,9 +191,9 @@ le_result_t le_utf8_Copy
         }
         else
         {
-            int_fast8_t charLength = NumBytesInChar(srcStr[i]);
+            size_t charLength = le_utf8_NumBytesInChar(srcStr[i]);
 
-            if (charLength < 0)
+            if (charLength == 0)
             {
                 // This is an error in the string format.  Zero out the destStr and return.
                 destStr[0] = '\0';
@@ -335,9 +334,9 @@ le_result_t le_utf8_CopyUpToSubStr
         }
         else
         {
-            int_fast8_t charLength = NumBytesInChar(srcStr[i]);
+            size_t charLength = le_utf8_NumBytesInChar(srcStr[i]);
 
-            if (charLength < 0)
+            if (charLength == 0)
             {
                 // This is an error in the string format.  Zero out the destStr and return.
                 destStr[0] = '\0';
@@ -404,8 +403,8 @@ bool le_utf8_IsFormatCorrect
     const char* string      ///< [IN] The string.
 )
 {
-    uint8_t i;
-    int8_t numBytes = 0;
+    size_t i;
+    size_t numBytes = 0;
     size_t strIndex = 0;
 
     // Check parameters.
@@ -416,9 +415,9 @@ bool le_utf8_IsFormatCorrect
 
     while (string[strIndex] != '\0')
     {
-        numBytes = NumBytesInChar(string[strIndex]);
+        numBytes = le_utf8_NumBytesInChar(string[strIndex]);
 
-        if (numBytes < 0)
+        if (numBytes == 0)
         {
             return false;
         }
@@ -426,7 +425,7 @@ bool le_utf8_IsFormatCorrect
         // Go through the bytes in this character to make sure all bytes are formatted correctly.
         for (i = 1; i < numBytes; i++)
         {
-            if ( !IS_CONTINUATION_BYTE(string[++strIndex]) )
+            if ( !le_utf8_IsContinuationByte(string[++strIndex]) )
             {
                 return false;
             }
@@ -487,105 +486,4 @@ le_result_t le_utf8_ParseInt
     }
 
     return LE_OK;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Gets the next string in the monotonic order.
- *
- * Calling this function multiple times will produce an ordered set of strings in monotonic order.
- * Each string is guaranteed to be unique.
- *
- * If an empty string is given as the currentStr then the first string in this order is returned.
- * Otherwise, only strings generated by this function should be used as the currentStr in this
- * function.
- *
- * The strings generated by this function can be used as identifiers where the meaning of the
- * strings is unimportant but the strings must be unique.  All generated strings are NULL-terminated
- * ASCII strings.
- *
- * @return
- *      LE_OK if successful.
- *      LE_OVERFLOW if the next string will not fit in the buffer.
- *      LE_FAULT if the currentStr and/or buffer is invalid.
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t le_utf8_GetMonotonicString
-(
-    const char* currentStr,                 ///< [IN] The current string.
-    char* bufPtr,                           ///< [OUT] Buffer to store the next string.
-    size_t bufSize                          ///< [IN] Buffer size.
-)
-{
-    // Check parameters.
-    if ( (bufPtr == NULL) || (bufSize < 2) || (currentStr == NULL) )
-    {
-        return LE_FAULT;
-    }
-
-    // Handle the initial string.
-    if (currentStr[0] == '\0')
-    {
-        bufPtr[0] = '0';
-        bufPtr[1] = '\0';
-
-        return LE_OK;
-    }
-
-    // Copy the current string into the user buffer
-    size_t currLen;
-    if (le_utf8_Copy(bufPtr, currentStr, bufSize, &currLen) != LE_OK)
-    {
-        return LE_OVERFLOW;
-    }
-
-    // Get the next string.
-    size_t i = 0;
-
-    for (i = 0; i < currLen; i++)
-    {
-        // We only deal with alpha numeric characters.
-        if (isalnum(bufPtr[i]) == 0)
-        {
-            return LE_FAULT;
-        }
-
-        if ( ((int)bufPtr[i] < (int)'9') ||
-             ( ((int)bufPtr[i] >= (int)'A') && ((int)bufPtr[i] < (int)'Z') ) ||
-             ( ((int)bufPtr[i] >= (int)'a') && ((int)bufPtr[i] < (int)'z') ) )
-        {
-            // Increment the current character.
-            bufPtr[i] = (int)bufPtr[i] + 1;
-            return LE_OK;
-        }
-
-        if ((int)bufPtr[i] == (int)'9')
-        {
-            // Increment the current character.
-            bufPtr[i] = 'A';
-            return LE_OK;
-        }
-
-        if ((int)bufPtr[i] == (int)'Z')
-        {
-            // Increment the current character.
-            bufPtr[i] = 'a';
-            return LE_OK;
-        }
-
-        // The current character must be 'z'.  Reset the character to '0' and go on to the next char.
-        bufPtr[i] = '0';
-    }
-
-    // We've reached the end of the current string.  Try to add another character.
-    if (bufSize > currLen + 1)
-    {
-        bufPtr[currLen] = '0';
-        bufPtr[currLen + 1] = '\0';
-
-        return LE_OK;
-    }
-
-    return LE_OVERFLOW;
 }

@@ -23,11 +23,13 @@ App_t::App_t
 )
 //--------------------------------------------------------------------------------------------------
 :   defFilePtr(filePtr),
+    parseTreePtr(NULL),
     dir(path::MakeAbsolute(path::GetContainingDir(filePtr->path))),
     name(path::GetIdentifierSafeName(path::RemoveSuffix(path::GetLastNode(filePtr->path), ".adef"))),
     workingDir("app/" + name),
     isSandboxed(true),
     startTrigger(AUTO),
+    isPreloaded(false),
     cpuShare(1024),
     maxFileSystemBytes(128 * 1024),   // 128 KB
     maxMemoryBytes(40000 * 1024), // 40 MB
@@ -43,7 +45,52 @@ App_t::App_t
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Find the client interface instance object associated with a given internal interface
+ * Find the component instance object associated with a given exe name and component name.
+ *
+ * @return Pointer to the object.
+ *
+ * @throw mk::Exception_t if not found.
+ */
+//--------------------------------------------------------------------------------------------------
+ComponentInstance_t* App_t::FindComponentInstance
+(
+    const parseTree::Token_t* exeTokenPtr,
+    const parseTree::Token_t* componentTokenPtr
+)
+//--------------------------------------------------------------------------------------------------
+{
+    const std::string& exeName = exeTokenPtr->text;
+    const std::string& componentName = componentTokenPtr->text;
+
+    // Find the executable in the app,
+    for (auto exePtr : executables)
+    {
+        if (exePtr->name == exeName)
+        {
+            // Find the component instance in the executable,
+            for (auto componentInstancePtr : exePtr->componentInstances)
+            {
+                if (componentInstancePtr->componentPtr->name == componentName)
+                {
+                    return componentInstancePtr;
+                }
+            }
+
+            componentTokenPtr->ThrowException("Component '" + componentName + "'"
+                                              " not found in executable "
+                                              "'" + exeName + "'.");
+        }
+    }
+
+    exeTokenPtr->ThrowException("Executable '" + exeName + "' not defined in application.");
+
+    return NULL;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Find the server interface instance object associated with a given internal interface
  * specification.
  *
  * @return Pointer to the object.
@@ -59,34 +106,24 @@ ApiServerInterfaceInstance_t* App_t::FindServerInterface
 )
 //--------------------------------------------------------------------------------------------------
 {
-    for (auto exePtr : executables)
+    const std::string& exeName = exeTokenPtr->text;
+    const std::string& componentName = componentTokenPtr->text;
+    const std::string& interfaceName = interfaceTokenPtr->text;
+
+    // Find the component instance specified.
+    auto componentInstancePtr = FindComponentInstance(exeTokenPtr, componentTokenPtr);
+
+    // Find the interface in the component instance's list of server interfaces,
+    auto ifInstancePtr = componentInstancePtr->FindServerInterface(interfaceName);
+
+    if (ifInstancePtr == NULL)
     {
-        if (exePtr->name == exeTokenPtr->text)
-        {
-            for (auto componentInstancePtr : exePtr->componentInstances)
-            {
-                if (componentInstancePtr->componentPtr->name == componentTokenPtr->text)
-                {
-                    for (auto ifInstancePtr : componentInstancePtr->serverApis)
-                    {
-                        if (ifInstancePtr->ifPtr->internalName == interfaceTokenPtr->text)
-                        {
-                            return ifInstancePtr;
-                        }
-                    }
-                    interfaceTokenPtr->ThrowException("Server interface '" + interfaceTokenPtr->text
-                                                      + "' not found in component '"
-                                                      + componentInstancePtr->componentPtr->name
-                                                      + "' in executable '" + exePtr->name + "'.");
-                }
-            }
-            componentTokenPtr->ThrowException("Component '" + componentTokenPtr->text + "'"
-                                              " not found in executable '" + exePtr->name + "'.");
-        }
+        interfaceTokenPtr->ThrowException("Server interface '" + interfaceName + "'"
+                                          " not found in component '" + componentName + "'"
+                                          " in executable '" + exeName + "'.");
     }
-    exeTokenPtr->ThrowException("Executable '" + exeTokenPtr->text
-                                + "' not defined in application.");
-    return NULL;
+
+    return ifInstancePtr;
 }
 
 
@@ -108,34 +145,53 @@ ApiClientInterfaceInstance_t* App_t::FindClientInterface
 )
 //--------------------------------------------------------------------------------------------------
 {
-    for (auto exePtr : executables)
+    const std::string& exeName = exeTokenPtr->text;
+    const std::string& componentName = componentTokenPtr->text;
+    const std::string& interfaceName = interfaceTokenPtr->text;
+
+    // Find the component instance specified.
+    auto componentInstancePtr = FindComponentInstance(exeTokenPtr, componentTokenPtr);
+
+    // Find the interface in the component instance's list of client interfaces,
+    auto ifInstancePtr = componentInstancePtr->FindClientInterface(interfaceName);
+
+    if (ifInstancePtr == NULL)
     {
-        if (exePtr->name == exeTokenPtr->text)
-        {
-            for (auto componentInstancePtr : exePtr->componentInstances)
-            {
-                if (componentInstancePtr->componentPtr->name == componentTokenPtr->text)
-                {
-                    for (auto ifInstancePtr : componentInstancePtr->clientApis)
-                    {
-                        if (ifInstancePtr->ifPtr->internalName == interfaceTokenPtr->text)
-                        {
-                            return ifInstancePtr;
-                        }
-                    }
-                    interfaceTokenPtr->ThrowException("Client interface '" + interfaceTokenPtr->text
-                                                      + "' not found in component '"
-                                                      + componentInstancePtr->componentPtr->name
-                                                      + "' in executable '" + exePtr->name + "'.");
-                }
-            }
-            componentTokenPtr->ThrowException("Component '" + componentTokenPtr->text + "'"
-                                              " not found in executable '" + exePtr->name + "'.");
-        }
+        interfaceTokenPtr->ThrowException("Client interface '" + interfaceName + "'"
+                                          " not found in component '" + componentName + "'"
+                                          " in executable '" + exeName + "'.");
     }
-    exeTokenPtr->ThrowException("Executable '" + exeTokenPtr->text
-                                + "' not defined in application.");
-    return NULL;
+
+    return ifInstancePtr;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Find the client interface instance object associated with a given external interface name.
+ *
+ * @return Pointer to the object.
+ *
+ * @throw mk::Exception_t if not found.
+ */
+//--------------------------------------------------------------------------------------------------
+ApiClientInterfaceInstance_t* App_t::FindClientInterface
+(
+    const parseTree::Token_t* interfaceTokenPtr
+)
+//--------------------------------------------------------------------------------------------------
+{
+    const std::string& interfaceName = interfaceTokenPtr->text;
+
+    auto i = externClientInterfaces.find(interfaceName);
+
+    if (i == externClientInterfaces.end())
+    {
+        interfaceTokenPtr->ThrowException("App '" + name + "' has no external client-side interface"
+                                          " named '" + interfaceName + "'");
+    }
+
+    return i->second;
 }
 
 
@@ -194,6 +250,7 @@ ApiInterfaceInstance_t* App_t::FindInterface
                                 + "' not defined in application.");
     return NULL;
 }
+
 
 
 } // namespace modeller

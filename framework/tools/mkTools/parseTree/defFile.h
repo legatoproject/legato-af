@@ -1,6 +1,8 @@
 //--------------------------------------------------------------------------------------------------
 /**
  * @file defFile.h
+ *
+ * Copyright (C) Sierra Wireless Inc.  Use of this work is subject to license.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -25,6 +27,8 @@ struct DefFile_t
     Type_t type;        ///< The type of file.
 
     std::string path;   ///< The file system path to the file.
+
+    std::string pathMd5;///< MD5 hash of the file system path to the file.
 
     size_t version;     ///< File format version number (0 = unknown, 1 = first version).
 

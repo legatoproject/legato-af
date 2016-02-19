@@ -3,6 +3,13 @@ sources:
     secStoreServer.c
 }
 
+cflags:
+{
+    -I$LEGATO_ROOT/components/secStore/platformAdaptor/inc
+    -I$LEGATO_ROOT/framework/c/src/appCfg
+    -I$LEGATO_ROOT/framework/c/src/
+}
+
 requires:
 {
     component:
@@ -13,8 +20,8 @@ requires:
 
     api:
     {
-        le_appInfo.api
-        le_instStat.api
+        supervisor/le_appInfo.api
+        le_update.api
     }
 }
 
@@ -23,5 +30,6 @@ provides:
     api:
     {
         le_secStore.api
+        secureStorage/secStoreAdmin.api
     }
 }

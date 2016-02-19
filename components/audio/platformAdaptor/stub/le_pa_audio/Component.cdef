@@ -1,7 +1,14 @@
 sources:
 {
     pa_audio.c
-    pa_media.c
+    pa_amr.c
+    pa_pcm.c
+}
+
+cflags:
+{
+    -I$LEGATO_ROOT/components/audio
+    -I$LEGATO_ROOT/components/audio/platformAdaptor/inc
 }
 
 requires:

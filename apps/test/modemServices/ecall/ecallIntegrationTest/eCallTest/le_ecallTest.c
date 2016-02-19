@@ -66,7 +66,10 @@ static void MyECallEventHandler
     void*               contextPtr
 )
 {
+
     LE_INFO("eCall TEST: New eCall state: %d for eCall ref.%p", state, eCallRef);
+
+    LE_INFO("eCall state from get function %d", le_ecall_GetState(eCallRef));
 
     switch(state)
     {
@@ -403,11 +406,8 @@ void Testle_ecall_StartTest
 )
 {
     le_ecall_State_t                   state = LE_ECALL_STATE_UNKNOWN;
-    le_ecall_StateChangeHandlerRef_t   stateChangeHandlerRef = 0x00;
 
     LE_INFO("Start Testle_ecall_StartTest");
-
-    LE_ASSERT((stateChangeHandlerRef = le_ecall_AddStateChangeHandler(MyECallEventHandler, NULL)) != NULL);
 
     LE_ASSERT(le_ecall_SetPsapNumber(PsapNumber) == LE_OK);
 
@@ -424,7 +424,6 @@ void Testle_ecall_StartTest
     LE_ASSERT(le_ecall_StartManual(LastTestECallRef) == LE_BUSY);
     LE_ASSERT(le_ecall_StartAutomatic(LastTestECallRef) == LE_BUSY);
 
-    state=le_ecall_GetState(LastTestECallRef);
     LE_ASSERT(((state>=LE_ECALL_STATE_STARTED) && (state<=LE_ECALL_STATE_FAILED)));
 }
 
@@ -442,6 +441,29 @@ static void SigHandler
     le_ecall_End(LastTestECallRef);
     le_ecall_Delete(LastTestECallRef);
     exit(EXIT_SUCCESS);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test: Add State Change Handler
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void* Test_thread(void* context)
+{
+
+    le_ecall_StateChangeHandlerRef_t   stateChangeHandlerRef = 0x00;
+
+    le_ecall_ConnectService();
+
+
+    LE_INFO("Add State Change Handler");
+    LE_ASSERT((stateChangeHandlerRef = le_ecall_AddStateChangeHandler(MyECallEventHandler, NULL)) != NULL);
+
+    LE_INFO("No event loop");
+    le_event_RunLoop();
+
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -493,6 +515,9 @@ COMPONENT_INIT
         PsapNumber = le_arg_GetArg(0);
         LE_INFO("======== Start eCall Modem Services implementation Test with PSAP.%s========",
                 PsapNumber);
+
+        // Add State Change Handler
+        le_thread_Start(le_thread_Create("TestThread",Test_thread,NULL));
 
         // Get system standard
         le_cfg_IteratorRef_t eCallCfg = le_cfg_CreateReadTxn(configPath);

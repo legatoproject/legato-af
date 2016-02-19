@@ -1,0 +1,24 @@
+/** @page basicUpdate Updates
+
+The Legato application framework is designed to solve many difficult problems surrounding
+updating software on devices that are operating in the field:
+- Atomic update of libraries, executables, resource files, and configuration settings.
+- Autonomous recovery from failed update attempts (e.g., due to power loss or connection loss).
+- Autonomous roll-back when newly updated software fails.
+- Reduce flash consumption by sharing read-only app files that are the same in different software
+  versions.
+
+Software updates are primarily carried out by the Update Daemon but, the Supervisor and
+start-up code also have a role to play in rolling-back when updates fail.
+
+See 
+
+@ref legatoServicesUpdate <br>
+@ref legatoServicesUpdatePack <br>
+@ref c_update <br>
+@ref toolsTarget_update target tool
+
+<HR>
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+*/

@@ -2,7 +2,7 @@
 
 Legato definition files are used as input to the @ref buildTools tools @c mksys, @c mkapp,
 @c mkcomp, and @c mkexe (known collectively as the mk tools). The definition files, together
-with @ref interfaceDefLang, make it easier to develop
+with @ref apiFiles, make it easier to develop
 component-based software, automatically generating a lot of boiler-plate code.
 
 Interfaces are defined using <c>.api</c> files. Implementations of those interfaces are constructed
@@ -32,7 +32,7 @@ Each application has a <c>.adef</c> file that describes:
  - limits on the app at runtime (e.g., cpu limits, memory limits, etc.)
  - overrides for memory pool sizes and configuration settings for components in the app (future)
  - IPC bindings between components within the app
- - IPC interfaces will be made visible to other apps
+ - IPC interfaces made visible to other apps
 
 @section defFilesOverview_cdef .cdef Files
 

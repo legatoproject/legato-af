@@ -17,7 +17,13 @@ gid_t Gid, AppGid;
 static void TestUserCreation(void)
 {
     LE_ASSERT(user_Create(USER_NAME, &Uid, &Gid) == LE_OK);
-    LE_ASSERT(user_Create(USER_NAME, &Uid, &Gid) == LE_DUPLICATE);
+
+    uid_t myUid;
+    gid_t myGid;
+
+    LE_ASSERT(user_Create(USER_NAME, &myUid, &myGid) == LE_DUPLICATE);
+    LE_ASSERT( (myUid == Uid) && (myGid == Gid) );
+
     LE_ASSERT(user_Create(APP_USER_NAME, &AppUid, &AppGid) == LE_OK);
 }
 

@@ -1,0 +1,146 @@
+/** @page howToSoftwareUpdate Use Software Update
+
+This topic describes how to use Legato's software update feature and provides some backgaround info.
+
+<HR>
+
+The Legato application framework is designed to solve difficult problems surrounding updating
+software on devices operating in the field:
+- Atomic update of libraries, executables, resource files, and configuration settings.
+- Autonomous recovery from failed update attempts (e.g., due to power loss or connection loss).
+- Autonomous roll-back when newly updated software fails.
+- Reduce flash consumption by sharing read-only app files that are the same in different software
+  versions.
+
+@section howToSoftwareUpdate_processOverview Process Overview
+
+The software @ref legatoServicesUpdate updates the target including the Legato framework.
+
+While a system is being installed, it's kept in an @e unpack directory (/legato/systems/unpack).
+
+The process handles everything needed to update the system including managing try counts and
+ensuring the system stays running for a probation period before the Update Daemon marks it as @e good
+(or a request marks it as @e good).
+
+Functions are also provided that protect against updates during critical operation periods (e.g.,
+performing an emergency call in response to a vehicle collision).
+
+Security is handled by Update Daemon hooks. Legato start-up code also supports using a full
+@e golden system found in a read-only file system mounted at /mnt/legato. See
+@ref legatoServicesUpdate for details.
+
+@ref legatoServicesUpdatePack "Update packs" are created and then fed to the Update Daemon through
+either the @ref c_update API or the target @ref toolsTarget_update tool.
+
+@section howToSoftwareUpdate_buildSystem Build Your System
+
+It's best to use Legato's software update to build your own system (i.e., don't change the
+@e default system or there will be maintenance problems when new Legato versions are released).
+
+You need to copy @c system.sdef to your own directory. You can rename it, but keep the @c .sdef extension
+(e.g., pumpMonitor.sdef).
+
+Then customize the .sdef to your needs (see @ref defFilesSdef).
+
+Here's a sample .sdef file using numerous platform services:
+
+@code
+apps:
+{
+    // Platform services.
+    $LEGATO_ROOT/apps/platformServices/airVantage/avcService
+    $LEGATO_ROOT/apps/platformServices/audioService
+    $LEGATO_ROOT/apps/platformServices/cellNetService
+    $LEGATO_ROOT/apps/platformServices/dataConnectionService
+    $LEGATO_ROOT/apps/platformServices/fwupdateService
+    $LEGATO_ROOT/apps/platformServices/modemService
+    $LEGATO_ROOT/apps/platformServices/positioningService
+    $LEGATO_ROOT/apps/platformServices/powerMgr
+    $LEGATO_ROOT/apps/platformServices/secStore
+    $LEGATO_ROOT/apps/platformServices/smsInboxService
+    $LEGATO_ROOT/apps/platformServices/voiceCallService
+    $LEGATO_ROOT/apps/platformServices/gpioService
+
+    // Command-line tools.
+    $LEGATO_ROOT/apps/tools/tools
+}
+
+commands:
+{
+    cm = tools:/bin/cm
+    fwupdate = tools:/bin/fwupdate
+    secstore = tools:/bin/secstore
+}
+@endcode
+
+@subsection howToSoftwareUpdate_buildSystem_preserve Preserve App Between Systems
+
+To preserve an app between systems, ensure the app is included in the @ref defFilesSdef_apps section
+of the @c .sdef file.
+
+@section howToSystemUpdate_maintainConfig Maintain Config Settings
+
+This is how to maintain system config settings outside of the /apps and /users branches of the
+config tree:
+
+- Copy old system configuration into new system.
+- Import application configuration settings into “/apps” node (which destroys old apps config).
+- Import system bindings configuration into “/users” node (which destroys old system bindings).
+
+See @ref howToConfigTreeImportExport for info on how to create a script for this.
+
+@section howToSoftwareUpdage_changeApp Change Apps Process
+
+When an app is installed, removed, or updated individually, it essentially creates a new @e modified
+system that's the same as the old system, but now with the change to the app applied.
+
+Because changing an individual app doesn't touch the framework, changing an individual app doesn't
+require the whole system to be restarted. Instead, a snapshot of the running system is taken before
+it's modified to ensure fall back in case the modifications fail. Then, the modifications are
+applied to the running system.
+
+@note If you update apps invidually, two or more apps that depend on each other can't be
+updated at the same time during one atomic (all or nothing) update. Also, the system was created
+on the target so there insn't a copy in your dev environment.
+
+Changing an individual app in a running @e good system flows like this:
+
+- snapshot of the current system is taken.
+- current system's @c status file is set to @e tried @e 1.
+- empty file /legato/systems/current/modified is created.
+- string _modified is appended to the contents of the version file in the new system.
+- MD5 hash of the new system is removed from the current system's info.properties file,
+- changes to the app are applied to the running (current) system.
+- current system's index is incremented (in the "index" file).
+- probation timer is started.
+- if this process gets interrupted, it can be detected at startup because the index file of the
+current system will be the same as the index of a snapshot. The current system is deleted and the
+snapshot is made the current system.
+
+Modifiying an already modified @e good system flows like this:
+
+- a snapshot of the current system is taken.
+- current system's @c status file is set to @e tried @e 1.
+- changes to the app are applied to the running (current) system.
+- current system's index is incremented (in the "index" file).
+- probation timer is started.
+- snapshot isn't taken of the current system if it is not yet @e good. This saves space while
+preserving the latest @e good system to fall back.
+
+Modifying a @e tried (probation) system flows like this:
+
+- current system's @c status file is set to @e tried @e 1.
+- changes to the app are applied to the running (current) system.
+- probation timer is restarted.
+
+<HR>
+
+See detailed topics
+
+@ref legatoServicesUpdate process <br>
+@ref legatoServicesUpdatePack <br>
+@ref c_update API
+
+<HR>
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+*/

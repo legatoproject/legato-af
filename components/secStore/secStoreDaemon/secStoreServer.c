@@ -20,10 +20,536 @@
 
 #include "legato.h"
 #include "interfaces.h"
-#include "../appCfg/appCfg.h"
+#include "appCfg.h"
 #include "pa_secStore.h"
 #include "limit.h"
 #include "user.h"
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Number bytes in a md5 string.
+ */
+//--------------------------------------------------------------------------------------------------
+#define MD5_STR_BYTES       LE_LIMIT_MD5_STR_LEN + 1
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Path in secure storage to store data for non-app users.
+ */
+//--------------------------------------------------------------------------------------------------
+#define USERS_PATH          "/user"
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Path in secure storage to store data for systems.
+ */
+//--------------------------------------------------------------------------------------------------
+#define SYS_PATH            "/sys"
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Current system path.
+ */
+//--------------------------------------------------------------------------------------------------
+static char CurrSysPath[LIMIT_MAX_PATH_BYTES] = "";
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Flag that indicates that there is a valid current system path.
+ */
+//--------------------------------------------------------------------------------------------------
+static bool IsCurrSysPathValid = false;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * List of system indices in secure storage.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_sls_List_t SecStoreSystems = LE_SLS_LIST_INIT;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * List of framework system indices.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_sls_List_t FrameworkSystems = LE_SLS_LIST_INIT;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Pool of system indices.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mem_PoolRef_t SystemIndexPool = NULL;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * A systems index object.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    int index;                              ///< System index value.
+    le_sls_Link_t link;                     ///< Link in systems list.
+}
+SystemsIndex_t;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Entries iterator object.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    le_sls_List_t entryList;        ///< List of entries for this iterator.
+    le_sls_Link_t* currEntryPtr;    ///< Current entry for the interator.
+    le_msg_SessionRef_t sessionRef; ///< Session reference for this iterator.
+}
+EntryIter_t;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Pool of entry iterators.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mem_PoolRef_t EntryIterPool = NULL;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Safe reference map of entry iterators to help validate external accesses to this API.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_ref_MapRef_t EntryIterMap = NULL;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * An entry object.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    char path[SECSTOREADMIN_MAX_PATH_SIZE]; ///< Entry name.
+    bool isDir;                             ///< true if the entry is a directory, otherwise the
+                                            ///  entry is a file.
+    le_sls_Link_t link;                     ///< Link in entries iterator.
+}
+Entry_t;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Pool of entry objects.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mem_PoolRef_t EntryPool = NULL;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Checks if the specified system index is in the list.
+ *
+ * @return
+ *      true if the index exists.
+ *      false otherwise.
+ */
+//--------------------------------------------------------------------------------------------------
+static bool IsSystemInList
+(
+    int index,                      ///< [IN] Index to check.
+    le_sls_List_t* listPtr          ///< [IN] List to check.
+)
+{
+    le_sls_Link_t* linkPtr = le_sls_Peek(listPtr);
+
+    while (linkPtr != NULL)
+    {
+        SystemsIndex_t* indexPtr = CONTAINER_OF(linkPtr, SystemsIndex_t, link);
+
+        if (indexPtr->index == index)
+        {
+            return true;
+        }
+
+        linkPtr = le_sls_PeekNext(listPtr, linkPtr);
+    }
+
+    return false;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Checks if the list is empty.
+ *
+ * @return
+ *      true if the list is empty.
+ *      false otherwise.
+ */
+//--------------------------------------------------------------------------------------------------
+static bool IsEmpty
+(
+    le_sls_List_t* listPtr          ///< [IN] List to check.
+)
+{
+    return (le_sls_Peek(listPtr) == NULL);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Adds a system index into the list of secure storage system indices.
+ */
+//--------------------------------------------------------------------------------------------------
+static void AddSystemToList
+(
+    const char* indexStr,           ///< [IN] System index as a string.
+    bool isDir,                     ///< [IN] true if the entry is a directory, otherwise entry is a
+                                    ///       file.
+    void* contextPtr                ///< [IN] Contains the list to add the index too.
+)
+{
+    le_sls_List_t* listPtr = (le_sls_List_t*)contextPtr;
+
+    int index;
+
+    if (le_utf8_ParseInt(&index, indexStr) == LE_OK)
+    {
+        // Do not add duplicates.
+        if (!IsSystemInList(index, listPtr))
+        {
+            SystemsIndex_t* sysIndexPtr = le_mem_ForceAlloc(SystemIndexPool);
+
+            sysIndexPtr->index = index;
+            sysIndexPtr->link = LE_SLS_LINK_INIT;
+
+            le_sls_Queue(listPtr, &(sysIndexPtr->link));
+        }
+    }
+    else
+    {
+        LE_ERROR("Unexpected system index '%s' in secure storage.", indexStr);
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Clear system index list.
+ */
+//--------------------------------------------------------------------------------------------------
+static void ClearSystemList
+(
+    le_sls_List_t* listPtr          ///< [IN] List to clear.
+)
+{
+    le_sls_Link_t* linkPtr = le_sls_Pop(listPtr);
+
+    while (linkPtr != NULL)
+    {
+        SystemsIndex_t* indexPtr = CONTAINER_OF(linkPtr, SystemsIndex_t, link);
+
+        le_mem_Release(indexPtr);
+
+        linkPtr = le_sls_Pop(listPtr);
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Find the specified system index's ancestor.  This is the largest index value that is smaller than
+ * the specified index.
+ *
+ * @return
+ *      Index of the ancestor.
+ *      -1 if no ancestor can be found.
+ */
+//--------------------------------------------------------------------------------------------------
+static int FindAncestorSys
+(
+    int index,                      ///< [IN] Index to check.
+    le_sls_List_t* listPtr          ///< [IN] List to check.
+)
+{
+    int ancestorIndex = -1;
+
+    le_sls_Link_t* linkPtr = le_sls_Peek(listPtr);
+
+    while (linkPtr != NULL)
+    {
+        SystemsIndex_t* indexPtr = CONTAINER_OF(linkPtr, SystemsIndex_t, link);
+
+        if ( (indexPtr->index <= index) && (indexPtr->index > ancestorIndex) )
+        {
+            ancestorIndex = indexPtr->index;
+        }
+
+        linkPtr = le_sls_PeekNext(listPtr, linkPtr);
+    }
+
+    return ancestorIndex;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets the current system for secure storage.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_UNAVAILABLE if the secure storage is currently unavailable.
+ *      LE_FAULT if there was some other error.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t SetCurrSystem
+(
+    int currIndex                   ///< [IN] Index to use as the current system.
+)
+{
+    // Set the current system's secure store path.
+    LE_FATAL_IF(snprintf(CurrSysPath,
+                         sizeof(CurrSysPath),
+                         "%s/%d/apps",
+                         SYS_PATH,
+                         currIndex) >= sizeof(CurrSysPath),
+                "Secure storage path '%s...' is too long.", CurrSysPath);
+
+    // Get the path to the current system's secure storage hash.
+    char secSysHashPath[LIMIT_MAX_PATH_BYTES] = "";
+    LE_FATAL_IF(snprintf(secSysHashPath,
+                         sizeof(secSysHashPath),
+                         "%s/%d/hash",
+                         SYS_PATH,
+                         currIndex) >= sizeof(secSysHashPath),
+                "Secure storage path '%s...' is too long.", secSysHashPath);
+
+    // Get the current system's hash.
+    char currHash[MD5_STR_BYTES];
+    le_result_t result = le_update_GetSystemHash(currIndex, currHash, sizeof(currHash));
+
+    LE_FATAL_IF(result != LE_OK,
+                "Could not get the current system's hash.  %s.",
+                LE_RESULT_TXT(result));
+
+    if (IsSystemInList(currIndex, &SecStoreSystems))
+    {
+        // Get the secure storage system's hash.
+        char secSysHash[MD5_STR_BYTES];
+        size_t hashLen = sizeof(secSysHash);
+
+        result = pa_secStore_Read(secSysHashPath, (uint8_t*)secSysHash, &hashLen);
+
+        LE_FATAL_IF(result == LE_OVERFLOW, "Hash value from '%s' is too long.", secSysHashPath);
+
+        if ( (result != LE_OK) && (result != LE_NOT_FOUND) )
+        {
+            return result;
+        }
+
+        if (result == LE_OK)
+        {
+            // Compare the hashes.
+            if (strncmp(currHash, secSysHash, sizeof(currHash)) == 0)
+            {
+                return LE_OK;
+            }
+        }
+
+        // This system is invalid and needs to be deleted.
+        result = pa_secStore_Delete(CurrSysPath);
+
+        LE_FATAL_IF(result == LE_NOT_FOUND, "Could not find entry '%s'.", CurrSysPath);
+    }
+
+    // Find the ancestor index to create the system from.
+    int ancestorIndex = FindAncestorSys(currIndex, &SecStoreSystems);
+
+    if (ancestorIndex != -1)
+    {
+        // Copy all the files from the ancestor to our current system.
+        char ancestorPath[LIMIT_MAX_PATH_BYTES];
+
+        LE_FATAL_IF(snprintf(ancestorPath,
+                             sizeof(ancestorPath),
+                             "%s/%d/apps",
+                             SYS_PATH,
+                             ancestorIndex) >= sizeof(ancestorPath),
+                    "Secure storage path '%s...' is too long.",
+                    ancestorPath);
+
+        if (IsEmpty(&FrameworkSystems))
+        {
+            // If there is only one system then we can just do a move instead of a copy.
+            LE_INFO("Creating current system from system index %d.", ancestorIndex);
+            result = pa_secStore_Move(CurrSysPath, ancestorPath);
+        }
+        else
+        {
+            LE_INFO("Copying system index %d to current system.", ancestorIndex);
+            result = pa_secStore_Copy(CurrSysPath, ancestorPath);
+        }
+    }
+    else
+    {
+        // No ancestor so start fresh.
+        result = LE_OK;
+    }
+
+    // Store the hash value for this system.
+    pa_secStore_Write(secSysHashPath, (uint8_t*)currHash, strlen(currHash) + 1);
+
+    return result;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Removes old, unused systems from secure storage.
+ */
+//--------------------------------------------------------------------------------------------------
+static void RemoveOldSystems
+(
+    int currIndex                   ///< [IN] Index of the current system.
+)
+{
+    int ancestorIndex = -1;
+
+    if (!IsEmpty(&FrameworkSystems))
+    {
+        // We need to keep the ancestor system otherwise a rollback may leave us with nothing to go
+        // back to.
+        ancestorIndex = FindAncestorSys(currIndex, &SecStoreSystems);
+        LE_INFO("Retaining system index %d for later use.", ancestorIndex);
+    }
+
+    // Delete all secure storage systems not in the systems list.
+    le_sls_Link_t* secLinkPtr = le_sls_Peek(&SecStoreSystems);
+
+    while (secLinkPtr != NULL)
+    {
+        SystemsIndex_t* secIndexPtr = CONTAINER_OF(secLinkPtr, SystemsIndex_t, link);
+
+        if ( (secIndexPtr->index != currIndex) &&
+             (secIndexPtr->index != ancestorIndex) &&
+             (!IsSystemInList(secIndexPtr->index, &FrameworkSystems)) )
+        {
+            // Delete this system from sec store.
+            char path[LIMIT_MAX_PATH_BYTES];
+
+            LE_FATAL_IF(snprintf(path, sizeof(path), "%s/%d", SYS_PATH, secIndexPtr->index) >= sizeof(path),
+                        "Secure storage path '%s...' is too long.", path);
+
+            le_result_t result = pa_secStore_Delete(path);
+
+            if (result != LE_OK)
+            {
+                LE_ERROR("Could not delete old systems.");
+            }
+        }
+
+        secLinkPtr = le_sls_PeekNext(&SecStoreSystems, secLinkPtr);
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Initialize the secure storage to use the current system of apps.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_UNAVAILABLE if the secure storage is currently unavailable.
+ *      LE_FAULT if there was some other error.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t InitSystems
+(
+    void
+)
+{
+    // Get the current system index.
+    int currIndex = le_update_GetCurrentSysIndex();
+
+    // Get a list of system indices.
+    int index = currIndex;
+
+    while ((index = le_update_GetPreviousSystemIndex(index)) != -1)
+    {
+        SystemsIndex_t* indexPtr = le_mem_ForceAlloc(SystemIndexPool);
+
+        indexPtr->index = index;
+        indexPtr->link = LE_SLS_LINK_INIT;
+
+        le_sls_Queue(&FrameworkSystems, &(indexPtr->link));
+    }
+
+    // Get a list of all the systems in secure storage right now.
+    le_result_t result = pa_secStore_GetEntries(SYS_PATH, AddSystemToList, &SecStoreSystems);
+
+    if (result != LE_OK)
+    {
+        return result;
+    }
+
+    // Set the current system.
+    result = SetCurrSystem(currIndex);
+
+    if (result != LE_OK)
+    {
+        return result;
+    }
+
+    // Removed old systems.
+    RemoveOldSystems(currIndex);
+
+    // Delete the list of systems.
+    ClearSystemList(&SecStoreSystems);
+    ClearSystemList(&FrameworkSystems);
+
+    IsCurrSysPathValid = true;
+
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Given an iterator safe reference, find the original object pointer.  If this cannot be done
+ * attempt to kill the client.
+ */
+//--------------------------------------------------------------------------------------------------
+static EntryIter_t* GetEntryIterPtr
+(
+    secStoreAdmin_IterRef_t iterRef  ///< [IN] The ref to translate to a pointer.
+)
+{
+    EntryIter_t* iterPtr = le_ref_Lookup(EntryIterMap, iterRef);
+
+    if (iterPtr == NULL)
+    {
+        LE_KILL_CLIENT("Iterator reference, <%p> is invalid.", iterRef);
+    }
+
+    // Ensure that the reference indeed belongs to this client.
+    if (iterPtr->sessionRef != secStoreAdmin_GetClientSessionRef())
+    {
+        LE_KILL_CLIENT("Iterator reference, <%p> does not belong to this client.", iterRef);
+    }
+
+    return iterPtr;
+}
 
 
 //--------------------------------------------------------------------------------------------------
@@ -40,7 +566,7 @@
  *
  * @return
  *      LE_OK if successful.
- *      LE_FAULT if there was an error.  In this case the client will be killed.
+ *      LE_FAULT if there was an error.
  */
 //--------------------------------------------------------------------------------------------------
 static le_result_t GetClientName
@@ -56,7 +582,7 @@ static le_result_t GetClientName
 
     if (le_msg_GetClientUserCreds(le_secStore_GetClientSessionRef(), &uid, &pid) != LE_OK)
     {
-        LE_KILL_CLIENT("Could not get credentials for the client.");
+        LE_CRIT("Could not get credentials for the client.");
         return LE_FAULT;
     }
 
@@ -83,7 +609,7 @@ static le_result_t GetClientName
     LE_FATAL_IF(result == LE_OVERFLOW, "Buffer too small to contain the user name.");
 
     // Could not get the user name.
-    LE_KILL_CLIENT("Could not get user name for pid %d (uid %d).", pid, uid);
+    LE_CRIT("Could not get user name for pid %d (uid %d).", pid, uid);
 
     return LE_FAULT;
 }
@@ -110,12 +636,12 @@ static void GetClientPath
 
     if (isApp)
     {
-        LE_FATAL_IF(le_path_Concat("/", bufPtr, bufSize, "/app", clientNamePtr, NULL) != LE_OK,
+        LE_FATAL_IF(le_path_Concat("/", bufPtr, bufSize, CurrSysPath, clientNamePtr, NULL) != LE_OK,
                     "Buffer too small for secure storage path for app %s.", clientNamePtr);
     }
     else
     {
-        LE_FATAL_IF(le_path_Concat("/", bufPtr, bufSize, clientNamePtr, NULL) != LE_OK,
+        LE_FATAL_IF(le_path_Concat("/", bufPtr, bufSize, USERS_PATH, clientNamePtr, NULL) != LE_OK,
                     "Buffer too small for secure storage path for user %s.", clientNamePtr);
     }
 }
@@ -129,6 +655,7 @@ static void GetClientPath
  * @return
  *      LE_OK if the item would fit in the client's area of secure storage.
  *      LE_NO_MEMORY if there is not enough memory to store the item.
+ *      LE_UNAVAILABLE if the secure storage is currently unavailable.
  *      LE_FAULT if there was an error.
  */
 //--------------------------------------------------------------------------------------------------
@@ -149,13 +676,13 @@ static le_result_t CheckClientLimit
     size_t usedSpace = 0;
     le_result_t result = pa_secStore_GetSize(clientPathPtr, &usedSpace);
 
-    if ( (result == LE_UNAVAILABLE) || (result == LE_FAULT) )
+    if ( (result != LE_OK) && (result != LE_NOT_FOUND) )
     {
-        return LE_FAULT;
+        return result;
     }
 
     // Get the size of the item in the secure storage if it already exists.
-    char itemPath[LIMIT_MAX_PATH_BYTES] = "";
+    char itemPath[SECSTOREADMIN_MAX_PATH_SIZE] = "";
 
     LE_FATAL_IF(le_path_Concat("/", itemPath, sizeof(itemPath), clientPathPtr, itemNamePtr, NULL) != LE_OK,
                 "Client %s's path for item %s is too long.", clientNamePtr, itemNamePtr);
@@ -163,9 +690,9 @@ static le_result_t CheckClientLimit
     size_t origItemSize = 0;
     result = pa_secStore_GetSize(itemPath, &origItemSize);
 
-    if ( (result == LE_UNAVAILABLE) || (result == LE_FAULT) )
+    if ( (result != LE_OK) && (result != LE_NOT_FOUND) )
     {
-        return LE_FAULT;
+        return result;
     }
 
     // Calculate if replacing the item would fit within the limit.
@@ -177,6 +704,48 @@ static le_result_t CheckClientLimit
     return LE_NO_MEMORY;
 }
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Check that item names are valid.
+ *
+ * @return
+ *      true if the item name is valid.
+ *      false otherwise.
+ */
+//--------------------------------------------------------------------------------------------------
+static bool IsValidName
+(
+    const char* namePtr             ///< [IN] Name of the secure storage item.
+)
+{
+    if (namePtr == NULL)
+    {
+        return false;
+    }
+
+    int nameLen = strlen(namePtr);
+
+    if (nameLen == 0)
+    {
+        LE_ERROR("Name cannot be empty.");
+        return false;
+    }
+
+    if (nameLen > LE_SECSTORE_MAX_NAME_SIZE)
+    {
+        LE_ERROR("Name is too long.");
+        return false;
+    }
+
+    if (namePtr[nameLen-1] == '/')
+    {
+        LE_ERROR("Name cannot end with a separator '/'.");
+        return false;
+    }
+
+    return true;
+}
 
 
 //--------------------------------------------------------------------------------------------------
@@ -199,7 +768,7 @@ le_result_t le_secStore_Write
 )
 {
     // Check parameters.
-    if ( (name == NULL) || (!isalnum(name[0])) )
+    if (!IsValidName(name))
     {
         LE_KILL_CLIENT("Item name is invalid.");
         return LE_FAULT;
@@ -211,34 +780,51 @@ le_result_t le_secStore_Write
         return LE_FAULT;
     }
 
+    // Make sure systems are initialized.
+    if (!IsCurrSysPathValid)
+    {
+        le_result_t r = InitSystems();
+
+        if (r != LE_OK)
+        {
+            return r;
+        }
+    }
+
     // Get the client's name and see if it is an app.
     bool isApp;
     char clientName[LIMIT_MAX_USER_NAME_BYTES];
 
     if (GetClientName(clientName, sizeof(clientName), &isApp) != LE_OK)
     {
+        LE_KILL_CLIENT("Could not get the client's name.");
         return LE_FAULT;
     }
 
     // Get the path to the client's secure storage area.
-    char path[LIMIT_MAX_PATH_BYTES];
+    char path[SECSTOREADMIN_MAX_PATH_SIZE];
     GetClientPath(clientName, isApp, path, sizeof(path));
 
     // Check the available limit for the client.
     le_result_t result = CheckClientLimit(clientName, path, name, bufNumElements);
+
     if (result != LE_OK)
     {
         return result;
     }
 
     // Write the item to the secure storage.
-    if (le_path_Concat("/", path, sizeof(path), name, NULL) != LE_OK)
+    LE_FATAL_IF(le_path_Concat("/", path, sizeof(path), name, NULL) != LE_OK,
+                "Client %s's path for item %s is too long.", clientName, name);
+
+    result = pa_secStore_Write(path, bufPtr, bufNumElements);
+
+    if (result == LE_BAD_PARAMETER)
     {
-        LE_ERROR("Client %s's path for item %s is too long.", clientName, name);
         return LE_FAULT;
     }
 
-    return pa_secStore_Write(path, bufPtr, bufNumElements);
+    return result;
 }
 
 
@@ -252,6 +838,7 @@ le_result_t le_secStore_Write
  *                  the buffer in this case.
  *      LE_NOT_FOUND if the item does not exist.
  *      LE_UNAVAILABLE if the secure storage is currently unavailable.
+ *      LE_FAULT if there was some other error.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_secStore_Read
@@ -262,7 +849,7 @@ le_result_t le_secStore_Read
 )
 {
     // Check parameters.
-    if ( (name == NULL) || (!isalnum(name[0])) )
+    if (!IsValidName(name))
     {
         LE_KILL_CLIENT("Item name is invalid.");
         return LE_FAULT;
@@ -274,25 +861,34 @@ le_result_t le_secStore_Read
         return LE_FAULT;
     }
 
+    // Make sure systems are initialized.
+    if (!IsCurrSysPathValid)
+    {
+        le_result_t r = InitSystems();
+
+        if (r != LE_OK)
+        {
+            return r;
+        }
+    }
+
     // Get the client's name and see if it is an app.
     bool isApp;
     char clientName[LIMIT_MAX_USER_NAME_BYTES];
 
     if (GetClientName(clientName, sizeof(clientName), &isApp) != LE_OK)
     {
+        LE_KILL_CLIENT("Could not get the client's name.");
         return LE_FAULT;
     }
 
     // Get the path to the client's secure storage area.
-    char path[LIMIT_MAX_PATH_BYTES];
+    char path[SECSTOREADMIN_MAX_PATH_SIZE];
     GetClientPath(clientName, isApp, path, sizeof(path));
 
     // Read the item from the secure storage.
-    if (le_path_Concat("/", path, sizeof(path), name, NULL) != LE_OK)
-    {
-        LE_ERROR("Client %s's path for item %s is too long.", clientName, name);
-        return LE_FAULT;
-    }
+    LE_FATAL_IF(le_path_Concat("/", path, sizeof(path), name, NULL) != LE_OK,
+                "Client %s's path for item %s is too long.", clientName, name);
 
     return pa_secStore_Read(path, bufPtr, bufNumElementsPtr);
 }
@@ -306,6 +902,7 @@ le_result_t le_secStore_Read
  *      LE_OK if successful.
  *      LE_NOT_FOUND if the item does not exist.
  *      LE_UNAVAILABLE if the secure storage is currently unavailable.
+ *      LE_FAULT if there was some other error.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_secStore_Delete
@@ -314,10 +911,21 @@ le_result_t le_secStore_Delete
 )
 {
     // Check parameters.
-    if ( (name == NULL) || (!isalnum(name[0])) )
+    if (!IsValidName(name))
     {
         LE_KILL_CLIENT("Item name is invalid.");
         return LE_FAULT;
+    }
+
+    // Make sure systems are initialized.
+    if (!IsCurrSysPathValid)
+    {
+        le_result_t r = InitSystems();
+
+        if (r != LE_OK)
+        {
+            return r;
+        }
     }
 
     // Get the client's name and see if it is an app.
@@ -326,19 +934,17 @@ le_result_t le_secStore_Delete
 
     if (GetClientName(clientName, sizeof(clientName), &isApp) != LE_OK)
     {
+        LE_KILL_CLIENT("Could not get the client's name.");
         return LE_FAULT;
     }
 
     // Get the path to the client's secure storage area.
-    char path[LIMIT_MAX_PATH_BYTES];
+    char path[SECSTOREADMIN_MAX_PATH_SIZE];
     GetClientPath(clientName, isApp, path, sizeof(path));
 
     // Delete the item from the secure storage.
-    if (le_path_Concat("/", path, sizeof(path), name, NULL) != LE_OK)
-    {
-        LE_ERROR("Client %s's path for item %s is too long.", clientName, name);
-        return LE_FAULT;
-    }
+    LE_FATAL_IF(le_path_Concat("/", path, sizeof(path), name, NULL) != LE_OK,
+                "Client %s's path for item %s is too long.", clientName, name);
 
     return pa_secStore_Delete(path);
 }
@@ -346,27 +952,554 @@ le_result_t le_secStore_Delete
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Deletes all items for an application.  This handler gets called when an application is
- * uninstalled.
+ * Checks whether an entry is already in an entry list.
  *
- * @note
- *      We do not get notified when users are removed so users that store data in secure storage
- *      need to clean up after themselves.
+ * @return
+ *      true if the entry is already in the the list.
+ *      false otherwise.
  */
 //--------------------------------------------------------------------------------------------------
-static void DeleteAppItems
+static bool IsInEntryList
 (
-    const char* appNamePtr,             ///< [IN] Name of the application.
-    void* contextPtr                    ///< [IN] Not used.
+    const char* entry,                  ///< [IN] Entry.
+    le_sls_List_t* entryListPtr         ///< [IN] Entry list.
 )
 {
-    // Get the path to the client's secure storage area.
-    char path[LIMIT_MAX_PATH_BYTES];
-    GetClientPath(appNamePtr, true, path, sizeof(path));
+    le_sls_Link_t* linkPtr = le_sls_Peek(entryListPtr);
 
-    // Delete the path from the secure storage.  Can't do anything if there is an error so no need
-    // check the return code.
-    pa_secStore_Delete(path);
+    while (linkPtr != NULL)
+    {
+        Entry_t* entryPtr = CONTAINER_OF(linkPtr, Entry_t, link);
+
+        if (strncmp(entryPtr->path, entry, SECSTOREADMIN_MAX_PATH_SIZE) == 0)
+        {
+            return true;
+        }
+
+        linkPtr = le_sls_PeekNext(entryListPtr, linkPtr);
+    }
+
+    return false;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Check a secure storage path is valid.
+ *
+ * @return
+ *      true if the item name is valid.
+ *      false otherwise.
+ */
+//--------------------------------------------------------------------------------------------------
+static bool IsValidPath
+(
+    const char* pathPtr,            ///< [IN] Path in secure storage.
+    bool mustBeFile                 ///< [IN] If true the path must not end with a separator, else
+                                    ///       the path may end with a separator.
+)
+{
+    if (pathPtr == NULL)
+    {
+        return false;
+    }
+
+    int pathLen = strlen(pathPtr);
+
+    if (pathLen == 0)
+    {
+        LE_ERROR("Path cannot be empty.");
+        return false;
+    }
+
+    if (pathLen >= SECSTOREADMIN_MAX_PATH_SIZE)
+    {
+        LE_ERROR("Path is too long.");
+        return false;
+    }
+
+    if (pathPtr[0] != '/')
+    {
+        LE_ERROR("Path is not absolute.");
+        return false;
+    }
+
+    if ( (mustBeFile) && (pathPtr[pathLen-1] == '/') )
+    {
+        LE_ERROR("Path cannot end with a separator '/'.");
+        return false;
+    }
+
+    return true;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Deletes an iterator.
+ */
+//--------------------------------------------------------------------------------------------------
+static void DeleteIter
+(
+    EntryIter_t* iterPtr            ///< [IN] Iterator to delete.
+)
+{
+    // Free each entry in the list.
+    le_sls_Link_t* entryLinkPtr = le_sls_Pop(&(iterPtr->entryList));
+
+    while (entryLinkPtr != NULL)
+    {
+        Entry_t* entryPtr = CONTAINER_OF(entryLinkPtr, Entry_t, link);
+
+        le_mem_Release(entryPtr);
+
+        entryLinkPtr = le_sls_Pop(&(iterPtr->entryList));
+    }
+
+    // Free the list.
+    le_mem_Release(iterPtr);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Cleans up all of the iterator data for a specific session.
+ */
+//--------------------------------------------------------------------------------------------------
+static void CleanupClientIterators
+(
+    le_msg_SessionRef_t sessionRef,
+    void*               contextPtr
+)
+{
+    // Iterate over the safe references and delete all iterator objects for this session reference.
+    le_ref_IterRef_t safeRefIter = le_ref_GetIterator(EntryIterMap);
+
+    le_result_t result;
+
+    while ((result = le_ref_NextNode(safeRefIter)) == LE_OK)
+    {
+        EntryIter_t* entryListPtr = (EntryIter_t*)le_ref_GetValue(safeRefIter);
+
+        if (entryListPtr->sessionRef == sessionRef)
+        {
+            // Delete the safe reference.
+            le_ref_DeleteRef(EntryIterMap, (void*)le_ref_GetSafeRef(safeRefIter));
+
+            DeleteIter(entryListPtr);
+        }
+    }
+
+    LE_FATAL_IF(result == LE_FAULT, "Error iterating over safe reference.");
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Create an iterator for listing entries in secure storage under the specified path.
+ *
+ * @return
+ *      An iterator reference if successful.
+ *      NULL if there is an error.
+ */
+//--------------------------------------------------------------------------------------------------
+static void StoreEntry
+(
+    const char* entryNamePtr,       ///< [IN] Entry name.
+    bool isDir,                     ///< [IN] true if the entry is a directory, otherwise entry is a
+                                    ///       file.
+    void* contextPtr                ///< [IN] Pointer to the context supplied to pa_secStore_GetEntries()
+)
+{
+    EntryIter_t* iterPtr = contextPtr;
+
+    // Do not add duplicates.
+    if (!IsInEntryList(entryNamePtr, &(iterPtr->entryList)))
+    {
+        // Add the entry to the iterator.
+        Entry_t* entryPtr = le_mem_ForceAlloc(EntryPool);
+        entryPtr->link = LE_SLS_LINK_INIT;
+
+        LE_ASSERT(le_utf8_Copy(entryPtr->path,
+                               entryNamePtr,
+                               SECSTOREADMIN_MAX_PATH_SIZE,
+                               NULL) == LE_OK);
+        entryPtr->isDir = isDir;
+
+        le_sls_Queue(&(iterPtr->entryList), &(entryPtr->link));
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Create an iterator for listing entries in secure storage under the specified path.
+ *
+ * @return
+ *      An iterator reference if successful.
+ *      NULL if there is an error.
+ */
+//--------------------------------------------------------------------------------------------------
+secStoreAdmin_IterRef_t secStoreAdmin_CreateIter
+(
+    const char* path
+        ///< [IN]
+        ///< Path to iterate over.
+)
+{
+    // Check parameters.
+    if (!IsValidPath(path, false))
+    {
+        LE_KILL_CLIENT("Path is invalid.");
+        return NULL;
+    }
+
+    // Create a snap shot of the entire list of entries for this path now so we don't need to worry
+    // about concurrency issues.
+    EntryIter_t* iterPtr = le_mem_ForceAlloc(EntryIterPool);
+    iterPtr->entryList = LE_SLS_LIST_INIT;
+    iterPtr->currEntryPtr = NULL;
+
+    if (pa_secStore_GetEntries(path, StoreEntry, iterPtr) != LE_OK)
+    {
+        le_mem_Release(iterPtr);
+        return NULL;
+    }
+
+    // Store the client's session reference.
+    iterPtr->sessionRef = secStoreAdmin_GetClientSessionRef();
+
+    // Create the saference for this iterator.
+    return le_ref_CreateRef(EntryIterMap, iterPtr);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Deletes an iterator.
+ */
+//--------------------------------------------------------------------------------------------------
+void secStoreAdmin_DeleteIter
+(
+    secStoreAdmin_IterRef_t iterRef
+        ///< [IN]
+        ///< Iterator reference.
+)
+{
+    // Get the iterator from the safe reference.
+    EntryIter_t* iterPtr = GetEntryIterPtr(iterRef);
+
+    if (iterPtr == NULL)
+    {
+        // Already killed client, just need to return from this function.
+        return;
+    }
+
+    // Delete the safe reference.
+    le_ref_DeleteRef(EntryIterMap, iterRef);
+
+    DeleteIter(iterPtr);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Go to the next entry in the iterator.  This should be called at least once before accessing the
+ * entry.  After the first time this function is called successfully on an iterator the first entry
+ * will be available.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_NOT_FOUND if there are no more entries available.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t secStoreAdmin_Next
+(
+    secStoreAdmin_IterRef_t iterRef
+        ///< [IN]
+        ///< Iterator reference.
+)
+{
+    // Get the iterator from the safe reference.
+    EntryIter_t* iterPtr = GetEntryIterPtr(iterRef);
+
+    if (iterPtr == NULL)
+    {
+        // Already killed client, just need to return from this function.
+        return LE_FAULT;
+    }
+
+    // Get the next entry.
+    if (iterPtr->currEntryPtr == NULL)
+    {
+        iterPtr->currEntryPtr = le_sls_Peek(&(iterPtr->entryList));
+    }
+    else
+    {
+        iterPtr->currEntryPtr = le_sls_PeekNext(&(iterPtr->entryList), iterPtr->currEntryPtr);
+    }
+
+    if (iterPtr->currEntryPtr == NULL)
+    {
+        return LE_NOT_FOUND;
+    }
+
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the current entry's name.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_OVERFLOW if the buffer is too small to hold the entry name.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t secStoreAdmin_GetEntry
+(
+    secStoreAdmin_IterRef_t iterRef,
+        ///< [IN]
+        ///< Iterator reference.
+
+    char* name,
+        ///< [OUT]
+        ///< Buffer to store the entry name.
+
+    size_t nameNumElements,
+        ///< [IN]
+
+    bool *isDir
+        ///< [OUT]
+        ///< True if the entry is a directory, false otherwise.
+)
+{
+    // Get the iterator from the safe reference.
+    EntryIter_t* iterPtr = GetEntryIterPtr(iterRef);
+
+    if (iterPtr == NULL)
+    {
+        // Already killed client, just need to return from this function.
+        return LE_FAULT;
+    }
+
+    // Check if there is a current entry.
+    if (iterPtr->currEntryPtr == NULL)
+    {
+        LE_KILL_CLIENT("No current entry in iterator.");
+    }
+
+    // Get the entry name.
+    Entry_t* entryPtr = CONTAINER_OF(iterPtr->currEntryPtr, Entry_t, link);
+
+    *isDir = entryPtr->isDir;
+
+    return le_utf8_Copy(name, entryPtr->path, nameNumElements, NULL);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Writes a buffer of data into the specified path in secure storage.  If the item already exists,
+ * it'll be overwritten with the new value. If the item doesn't already exist, it'll be created.
+ *
+ * @note
+ *      The specified path must be an absolute path.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_NO_MEMORY if there isn't enough memory to store the item.
+ *      LE_UNAVAILABLE if the secure storage is currently unavailable.
+ *      LE_BAD_PARAMETER if the path cannot be written to because it is a directory or ot would
+ *                       result in an invalid path.
+ *      LE_FAULT if there was some other error.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t secStoreAdmin_Write
+(
+    const char* path,
+        ///< [IN]
+        ///< Path of the secure storage item.
+
+    const uint8_t* bufPtr,
+        ///< [IN]
+        ///< Buffer containing the data to store.
+
+    size_t bufNumElements
+        ///< [IN]
+)
+{
+    // Check parameters.
+    if (!IsValidPath(path, true))
+    {
+        LE_KILL_CLIENT("Path is invalid.");
+        return LE_FAULT;
+    }
+
+    if (bufPtr == NULL)
+    {
+        LE_KILL_CLIENT("Client buffer should not be NULL.");
+        return LE_FAULT;
+    }
+
+    // Write the item to the secure storage.
+    return pa_secStore_Write(path, bufPtr, bufNumElements);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Reads an item from secure storage.
+ *
+ * @note
+ *      The specified path must be an absolute path.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_OVERFLOW if the buffer is too small to hold the entire item. No data will be written to
+ *                  the buffer in this case.
+ *      LE_NOT_FOUND if the item doesn't exist.
+ *      LE_UNAVAILABLE if the secure storage is currently unavailable.
+ *      LE_FAULT if there was some other error.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t secStoreAdmin_Read
+(
+    const char* path,
+        ///< [IN]
+        ///< Path of the secure storage item.
+
+    uint8_t* bufPtr,
+        ///< [OUT]
+        ///< Buffer to store the data in.
+
+    size_t* bufNumElementsPtr
+        ///< [INOUT]
+)
+{
+    // Check parameters.
+    if (!IsValidPath(path, true))
+    {
+        LE_KILL_CLIENT("Path is invalid.");
+        return LE_FAULT;
+    }
+
+    if (bufPtr == NULL)
+    {
+        LE_KILL_CLIENT("Client buffer should not be NULL.");
+        return LE_FAULT;
+    }
+
+    // Read the item from the secure storage.
+    return pa_secStore_Read(path, bufPtr, bufNumElementsPtr);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Recursively deletes all items under the specified path and the specified path from secure
+ * storage.
+ *
+ * @note
+ *      The specified path must be an absolute path.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_NOT_FOUND if the path doesn't exist.
+ *      LE_UNAVAILABLE if the secure storage is currently unavailable.
+ *      LE_FAULT if there was some other error.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t secStoreAdmin_Delete
+(
+    const char* path
+        ///< [IN]
+        ///< Path of the secure storage item.
+)
+{
+    // Check parameters.
+    if (!IsValidPath(path, false))
+    {
+        LE_KILL_CLIENT("Path is invalid.");
+        return LE_FAULT;
+    }
+
+    // Delete the item from the secure storage.
+    return pa_secStore_Delete(path);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets the size, in bytes, of all items under the specified path.
+ *
+ * @note
+ *      The specified path must be an absolute path.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_NOT_FOUND if the path doesn't exist.
+ *      LE_UNAVAILABLE if the secure storage is currently unavailable.
+ *      LE_FAULT if there was some other error.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t secStoreAdmin_GetSize
+(
+    const char* path,
+        ///< [IN]
+        ///< Path of the secure storage item.
+
+    uint64_t* sizePtr
+        ///< [OUT]
+        ///< Size in bytes of all items in the path.
+)
+{
+    // Check parameters.
+    if (!IsValidPath(path, false))
+    {
+        LE_KILL_CLIENT("Path is invalid.");
+        return LE_FAULT;
+    }
+
+    // Delete the item from the secure storage.
+    size_t size;
+    le_result_t result = pa_secStore_GetSize(path, &size);
+
+    *sizePtr = size;
+
+    return result;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets the total space and the available free space in secure storage.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_UNAVAILABLE if the secure storage is currently unavailable.
+ *      LE_FAULT if there was some other error.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t secStoreAdmin_GetTotalSpace
+(
+    uint64_t* totalSizePtr,
+        ///< [OUT]
+        ///< Total size, in bytes, of secure storage.
+
+    uint64_t* freeSizePtr
+        ///< [OUT]
+        ///< Free space, in bytes, in secure storage.
+)
+{
+    size_t totalSize, freeSize;
+    le_result_t result = pa_secStore_GetTotalSpace(&totalSize, &freeSize);
+
+    *totalSizePtr = totalSize;
+    *freeSizePtr = freeSize;
+
+    return result;
 }
 
 
@@ -377,6 +1510,15 @@ static void DeleteAppItems
 //--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
-    // Register a handler to be called when ever any apps are uninstalled.
-    le_instStat_AddAppUninstallEventHandler(DeleteAppItems, NULL);
+    EntryIterMap = le_ref_CreateMap("EntryIterMap", 1);
+
+    EntryIterPool = le_mem_CreatePool("EntryIterPool", sizeof(EntryIter_t));
+    EntryPool = le_mem_CreatePool("EntryPool", sizeof(Entry_t));
+
+    SystemIndexPool = le_mem_CreatePool("SystemIndexPool", sizeof(SystemsIndex_t));
+
+    // Register a handler that will clean up client specific data when clients disconnect.
+    le_msg_AddServiceCloseHandler(secStoreAdmin_GetServiceRef(),
+                                  CleanupClientIterators,
+                                  NULL);
 }

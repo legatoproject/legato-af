@@ -48,6 +48,7 @@
 #include "treePath.h"
 #include "treeDb.h"
 #include "treeIterator.h"
+#include "sysPaths.h"
 
 
 

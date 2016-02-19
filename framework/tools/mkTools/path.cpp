@@ -459,7 +459,7 @@ std::string MakeCanonical
 
 //--------------------------------------------------------------------------------------------------
 /**
- * @return The path of the directory containing this path.
+ * @return The path of the directory containing this path ("." if the path contains no slashes).
  *
  * @throw mk::Exception_t on error.
  */
@@ -584,18 +584,41 @@ std::string HasSuffix
 {
     for (auto suffix: suffixList)
     {
-        auto pos = path.rfind(suffix);
-
-        if (pos != std::string::npos)
+        if (HasSuffix(path, suffix))
         {
-            if (pos == path.size() - suffix.size())
-            {
-                return suffix;
-            }
+            return suffix;
         }
     }
 
     return "";
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Checks whether a given path has a given suffix.
+ *
+ * @return  true if it has that suffix.
+ */
+//--------------------------------------------------------------------------------------------------
+bool HasSuffix
+(
+    const std::string& path,
+    const std::string& suffix
+)
+//--------------------------------------------------------------------------------------------------
+{
+    auto pos = path.rfind(suffix);
+
+    if (pos != std::string::npos)
+    {
+        if (pos == path.size() - suffix.size())
+        {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 
@@ -615,7 +638,7 @@ std::string RemoveSuffix
 )
 //--------------------------------------------------------------------------------------------------
 {
-    if (path::HasSuffix(path, { suffix }) == "")
+    if (!path::HasSuffix(path, suffix))
     {
         throw mk::Exception_t("Path '" + path + "' does not end in '" + suffix + "'.");
     }
@@ -682,10 +705,11 @@ bool IsLibrary
 )
 //--------------------------------------------------------------------------------------------------
 {
-    // If it ends in ".a" or a ".so" then it's a library.
+    // If it ends in ".a" or a ".so" or ".so.*" then it's a library.
     static const std::list<std::string> suffixes = { ".a", ".so" };
 
-    return (HasSuffix(path, suffixes) != "");
+    return (   (HasSuffix(path, suffixes) != "")
+            || (path.find(".so.") != std::string::npos) );
 }
 
 
@@ -742,6 +766,13 @@ std::string GetLibShortName
         return name.substr(0, name.length() - 3);
     }
 
+    // If it ends in ".so.*" (e.g., "libfoo.so.2"),
+    auto pos = name.find(".so.");
+    if (pos != std::string::npos)
+    {
+        return name.substr(0, pos);
+    }
+
     // If it ends in ".a",
     if ( (name.length() > 2) && (name.substr(name.length() - 2).compare(".a") == 0) )
     {
@@ -749,7 +780,7 @@ std::string GetLibShortName
     }
 
     throw mk::Exception_t("Library file path '" + path
-                               + "' does not end in either '.a' or '.so'.");
+                          + "' does not appear to be either '.a' or '.so'.");
 }
 
 

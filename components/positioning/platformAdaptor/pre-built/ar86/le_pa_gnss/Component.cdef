@@ -6,15 +6,15 @@ bundles:
     }
 }
 
-ldflags:
-{
-    -lComponent_le_pa_gnss
-}
-
 requires:
 {
     component:
     {
-        ${LEGATO_MODEM_PA}
+        $LEGATO_UTIL_PA
+    }
+
+    lib:
+    {
+        libComponent_le_pa_gnss.so
     }
 }

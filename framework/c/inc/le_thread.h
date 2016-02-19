@@ -61,6 +61,12 @@
  * is finished.  See 'man 7 pthreads' for more information on cancellation
  * and cancellation points.
  *
+ * To prevent cancellation during a critical section (e.g., when a mutex lock is held),
+ * pthread_setcancelstate() can be called.  If a cancellation request is made (by calling
+ * le_thread_Cancel() or <c>pthread_cancel()</c>), it will be blocked and remain in a pending state
+ * until cancellation is unblocked (also using pthread_setcancelstate()), at which time the thread
+ * will be immediately cancelled.
+ *
  *
  * @section threadJoining Joining
  *
@@ -114,13 +120,18 @@
  * the same way (e.g., if it might be canceled by another thread or exit in several places due
  * to error detection code), then a clean-up function (destructor) is probably needed.
  *
- * Legato threads use @c le_thread_AddDestructor() for clean-up functions.
- *  It registers a function to be called by a specified thread just
- * before it terminates.  A parent thread can also call @c le_thread_AddChildDestructor() to register
+ * A Legato thread can use @c le_thread_AddDestructor() to register a function to be called
+ * by that thread just before it terminates.
+ *
+ * A parent thread can also call @c le_thread_AddChildDestructor() to register
  * a destructor for a child thread before it starts the child thread.
  *
  * Multiple destructors can be registered for the same thread.  They will be called in reverse
  * order of registration (i.e, the last destructor to be registered will be called first).
+ *
+ * A Legato thread can also use le_thread_RemoveDestructor() to remove its own destructor
+ * function that it no longer wants called in the event of its death.  (There is no way to remove
+ * destructors from other threads.)
  *
  *
  * @section threadLegatoizing Using Legato APIs from Non-Legato Threads
@@ -440,15 +451,25 @@ typedef void (* le_thread_Destructor_t)
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Reference to a registered destructor function.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct le_thread_Destructor* le_thread_DestructorRef_t;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Registers a destructor function for the calling thread.  The destructor will be called by that
  * thread just before it terminates.
  *
- * A thread can register its own destructor functions any time.
+ * A thread can register (or remove) its own destructor functions any time.
+ *
+ * @return Reference to the destructor that can be passed to le_thread_RemoveDestructor().
  *
  * See @ref threadDestructors for more information on destructors.
  */
 //--------------------------------------------------------------------------------------------------
-void le_thread_AddDestructor
+le_thread_DestructorRef_t le_thread_AddDestructor
 (
     le_thread_Destructor_t  destructor, ///< [IN] Function to be called.
     void*                   context     ///< [IN] Parameter to pass to the destructor.
@@ -484,6 +505,17 @@ void le_thread_AddChildDestructor
     le_thread_Ref_t         thread,     ///< [IN] Thread to attach the destructor to.
     le_thread_Destructor_t  destructor, ///< [IN] Function to be called.
     void*                   context     ///< [IN] Parameter to pass to the destructor.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Removes a destructor function from the calling thread's list of destructors.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_thread_RemoveDestructor
+(
+    le_thread_DestructorRef_t  destructor ///< [in] Reference to the destructor to remove.
 );
 
 

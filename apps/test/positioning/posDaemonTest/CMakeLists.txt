@@ -1,11 +1,7 @@
 #*******************************************************************************
 # Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
-#
-# Contributors:
-#     Sierra Wireless - initial API and implementation
 #*******************************************************************************
 
-find_package(Legato REQUIRED)
 find_package(CUnit REQUIRED)
 
 set(APP_TARGET testPosDaemon)
@@ -32,35 +28,8 @@ if(${LEGATO_TARGET} STREQUAL "localhost")
             )
             set_tests_properties(${APP_TARGET} PROPERTIES TIMEOUT 120)
 
-            set(PA_FILES    ${LEGATO_GNSS_PA}/gnss_at.c
-                            ${LEGATO_GNSS_PA}/Component.cdef
-                        )
         endif()
     endif()
-endif()
-
-if(LEGATO_COMPONENTS_GNSS MATCHES "QMI")
-    set(INCLUDE_DIRECTORIES -i ${LEGATO_ROOT}/proprietary/qct/inc/framework
-                            -i ${LEGATO_ROOT}/proprietary/qct/inc/services
-                            -i ${LEGATO_ROOT}/components/modemServices/platformAdaptor/qmi/le_pa
-        )
-
-    set (LINK_LIBRARIES
-                            --ldflags=-lqmi_cci
-                            --ldflags=-lqmiservices
-                            --ldflags=-lloc_api
-                            --ldflags=${TARGET_SYSROOT}/usr/lib/libsierra_qapi.a
-        )
-
-    set (FLAGS
-                            --cflags="-DSIERRA"
-        )
-
-elseif(LEGATO_COMPONENTS_GNSS MATCHES "simu")
-
-    set(INCLUDE_DIRECTORIES     -i ${LEGATO_ROOT}/components/
-                                -i ${LEGATO_ROOT}/components/modemServices/modemDaemon/
-        )
 endif()
 
 mkexe(  ${APP_TARGET}
@@ -71,19 +40,9 @@ mkexe(  ${APP_TARGET}
             -i ${LEGATO_ROOT}/interfaces/positioning
             -i ${LEGATO_ROOT}/components/cfgEntries
             -i ${LEGATO_ROOT}/interfaces/modemServices
-            -i ${LEGATO_ROOT}/interfaces/audio
             -i ${LEGATO_ROOT}/components/modemServices/platformAdaptor/inc
             -i ${LEGATO_ROOT}/components/positioning/platformAdaptor/inc
             -i ${LEGATO_ROOT}/components
-            ${INCLUDE_DIRECTORIES}
-            ${LINK_LIBRARIES}
-            ${FLAGS}
-        DEPENDS
-            legato
-            le_posTest.c
-            main.c
-            Component.cdef
-            ${PA_FILES}
     )
 
 if(NOT ${LEGATO_TARGET} STREQUAL "localhost")

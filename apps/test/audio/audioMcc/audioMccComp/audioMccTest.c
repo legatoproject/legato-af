@@ -1,5 +1,5 @@
 /**
- * This module is for unit testing of the Audio service component.
+ * This module is for testing of the Audio service component.
  *
  * On the target, you must issue the following commands:
  * $ app start audioMccTest
@@ -654,7 +654,6 @@ static void MyCallEventHandler
     else if (callEvent == LE_MCC_EVENT_CONNECTED)
     {
         LE_INFO("Call event is LE_MCC_EVENT_CONNECTED.");
-        ConnectAudio();
     }
     else if (callEvent == LE_MCC_EVENT_TERMINATED)
     {
@@ -698,12 +697,9 @@ static void MyCallEventHandler
     else if (callEvent == LE_MCC_EVENT_INCOMING)
     {
         LE_INFO("Call event is LE_MCC_EVENT_INCOMING.");
+
         res = le_mcc_Answer(callRef);
-        if (res == LE_OK)
-        {
-            ConnectAudio();
-        }
-        else
+        if (res != LE_OK)
         {
             LE_INFO("Failed to answer the call.");
         }
@@ -791,6 +787,9 @@ COMPONENT_INIT
         }
 
         le_mcc_AddCallEventHandler( MyCallEventHandler, NULL);
+
+        // Configure the audio
+        ConnectAudio();
 
         TestCallRef = le_mcc_Create(DestinationNumber);
         le_mcc_Start(TestCallRef);

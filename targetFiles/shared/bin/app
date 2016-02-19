@@ -1,14 +1,6 @@
 #!/bin/sh
 
-# Starts, stops, restarts, installs and uninstalls Legato applications.
-
-LEGATO_ROOT=/opt/legato
-
-APPS_ROOT=$LEGATO_ROOT/apps
-APPS_BACKUP_ROOT=$LEGATO_ROOT/appsBackup
-APPS_SYS_CFG_BACKUP=sysCfgBack
-APPS_CFG_BACKUP=cfgBack
-SANDBOX_ROOT=/tmp/legato/sandboxes
+# Starts, stops, restarts, gets info/status, and removes Legato applications.
 
 ACTION=$1
 APP_NAME=$(basename "$2" | sed 's/\.[^.]*$//')
@@ -18,8 +10,9 @@ exitCode=0
 # used to carry the result of GetAppStatus
 appStatus="unknown"
 
-# Make sure /usr/local/bin is in the path.
-export PATH=/usr/local/bin:$PATH
+# Make sure system bin is in the path.
+# Search installed system bin first. Fallback to MTD3 if necessary.
+export PATH=/legato/systems/current/bin:/mnt/legato/system/bin:$PATH
 
 
 # Check if ps supports arguments.  If so, we need to run "ps aux" to be able
@@ -37,16 +30,12 @@ PrintUsage()
     echo "USAGE: `basename $0` [start|stop|restart|remove|status|version|info] APP_NAME [ APP_NAME ... ]"
     echo "   or: `basename $0` [start|stop|restart|remove|status|version|info] '*'"
     echo "   or: `basename $0` [list|status|info]"
-    echo "   or: `basename $0` install APP_NAME"
     echo
     echo "In the first form, names of one or more applications are given."
     echo
     echo "In the second form, all installed applications will be acted upon."
     echo
     echo "In the third form, no application names are given."
-    echo
-    echo "In the fourth form, one application name is given and the application file must be"
-    echo "provided on stdin."
     echo
 }
 
@@ -159,117 +148,36 @@ StopApp()
 }
 
 
-InstallApp()
-# Takes a single application name as its only argument.
-{
-    echo "Installing app '$1'..."
-
-    (
-        # Create the directory to install into.
-        mkdir -p "$APPS_ROOT/$1" &&
-
-        # Unpack the app into the app's install directory.
-        if ! which bsdtar > /dev/null 2>&1
-        then
-            tar xj -C "$APPS_ROOT/$1"
-        else
-            bsdtar xjop -f - -C "$APPS_ROOT/$1"
-        fi
-
-    )
-
-    if [ $? -ne 0 ]
-    then
-        rm -r "$APPS_ROOT/$1"
-        echo "Failed to unpack the application."
-        return 1
-    fi
-
-    (
-        # Fix up the permissions.
-        (
-            if ! which bsdtar > /dev/null 2>&1
-            then
-                chown -R root:root "$APPS_ROOT/$1"
-            fi
-        ) &&
-        ( find "$APPS_ROOT/$1" -type d | xargs chmod a+x-ws ) &&
-        ( find "$APPS_ROOT/$1" ! -type d | xargs chmod a-xws ) &&
-        (
-            if [ -d "$APPS_ROOT/$1/bin" ]
-            then
-                chmod -R a+x "$APPS_ROOT/$1/bin"
-            fi
-        ) &&
-
-        # Install the application's configuration into the root user's configuration tree.
-        ( appCfgInstall "$1" ) &&
-
-        # Create a user account for the app.
-        ( appUserAdd "$1" ) &&
-
-        # Set the permissions for the app.
-        ( appSetFilePermissions "$1" ) &&
-
-        # Load the latest IPC binding configuration into the Service Directory.
-        ( sdir load )
-    )
-
-    if [ $? -ne 0 ]
-    then
-        rm -r "$APPS_ROOT/$1"
-        echo "Failed to install the unpacked application"
-        return 1
-    else
-        echo "DONE"
-    fi
-}
-
-
 RemoveApp()
 # Takes a list of applications as arguments.
 {
+    # loop through the list giving each app individual treatment
+    # preserve any non-zero exit code
     while [ $# -ge 1 ]
     do
         echo "Removing app '$1'..."
 
-        rm -rf "$APPS_ROOT/$1"
+        # NOTE: update --remove will make sure the app is stopped first.
+        /legato/systems/current/bin/update --remove "$1"
 
         if [ $? -ne 0 ]
         then
             exitCode=1
-            echo "Couldn't remove installation directory."
-        fi
-
-        # In case an earlier removal process was interrupted or someone manually deleted
-        # the app's install directory, even if it doesn't look like it's installed,
-        # delete the app's configuration and user account.
-        appCfgRemove "$1"
-        if [ $? -ne 0 ]
-        then
-            exitCode=1
-            echo "Couldn't remove configuration data."
-        fi
-
-        appUserRemove "$1"
-        if [ $? -ne 0 ]
-        then
-            exitCode=1
-            echo "Couldn't remove user account."
-        fi
-
-
-        # Load the latest IPC binding configuration into the Service Directory.
-        sdir load
-        if [ $? -ne 0 ]
-        then
-            exitCode=1
-            echo "Couldn't update Service Directory's IPC bindings."
+            echo "***Error: Couldn't remove app '$1'." 1>&2
         fi
 
         shift
     done
+
+    # Load the latest IPC binding configuration into the Service Directory.
+    sdir load
+    if [ $? -ne 0 ]
+    then
+        exitCode=1
+        echo "Couldn't update Service Directory's IPC bindings."
+    fi
 }
+
 
 # Before we do any work, see if the framework is running.
 $PS | grep supervisor | grep -v grep > /dev/null
@@ -310,96 +218,11 @@ CheckAppNameAvail()
     fi
 }
 
-# Back up the specified app.  Takes a single application name as its only argument.
-BackupApp()
-{
-    appName=$1
-
-    # Delete what's in the back up app directory first.
-    RemoveBackupApp $appName
-
-    # Move the install directory of the app into the back up directory.
-    ( mv $APPS_ROOT/$appName $APPS_BACKUP_ROOT/$appName ) &&
-
-    # Back up the app's system config.
-    ( config export apps/$appName $APPS_BACKUP_ROOT/$appName/$APPS_SYS_CFG_BACKUP ) &&
-
-    # Back up the app's config.
-    config export $appName:/ $APPS_BACKUP_ROOT/$appName/$APPS_CFG_BACKUP
-
-    if [ $? -ne 0 ]
-    then
-        echo "FAILED to create back-up of app $appName"
-    fi
-}
-
-# Removes the back-up version of the specified app if it exists.  Takes a single application name as
-# its only argument.
-RemoveBackupApp()
-{
-    appName=$1
-
-    rm -fr $APPS_BACKUP_ROOT/$appName > /dev/null 2>&1
-}
-
-# Restores the back-up version of the specified app if it exists.  Takes a single application name
-# as its only argument.
-RestoreBackupApp()
-{
-    appName=$1
-
-    if [ -d "$APPS_BACKUP_ROOT/$appName" ]
-    then
-        echo "Restoring original version of app."
-
-        # Delete what's in the app directory first.
-        ( rm -rf $APPS_ROOT/$appName > /dev/null 2>&1 ) &&
-
-        # Move the install directory of the app back into the app directory.
-        ( mv $APPS_BACKUP_ROOT/$appName $APPS_ROOT/$appName ) &&
-
-        # Restore the config settings.
-        ( config import apps/$appName $APPS_ROOT/$appName/$APPS_SYS_CFG_BACKUP ) &&
-        ( config import $appName:/ $APPS_ROOT/$appName/$APPS_CFG_BACKUP ) &&
-
-        # Delete the the config backups.
-        ( rm $APPS_ROOT/$appName/$APPS_SYS_CFG_BACKUP ) &&
-        ( rm $APPS_ROOT/$appName/$APPS_CFG_BACKUP ) &&
-
-        # Create a user account for the app.
-        ( appUserAdd $appName ) &&
-
-        # Load the latest IPC binding configuration into the Service Directory.
-        ( sdir load ) &&
-
-        ( RemoveBackupApp $appName)
-    fi
-
-    if [ $? -ne 0 ]
-    then
-        echo "FAILED to restore original version of app $appName"
-        return 1
-    fi
-}
-
-
 # Check if they are asking for help.
 if [ "$1" = "-h" -o "$1" = "help" -o "$1" = "--help" ]
 then
     PrintUsage
     exit 0
-fi
-
-# Check that the application root directory exists.
-if ! [ -d "$APPS_ROOT" ]
-then
-    mkdir -p "$APPS_ROOT"
-fi
-
-# Check that the application backup root directory exists.
-if ! [ -d "$APPS_BACKUP_ROOT" ]
-then
-    mkdir -p "$APPS_BACKUP_ROOT"
 fi
 
 # Build the list of applications to operate on.
@@ -440,83 +263,10 @@ restart)
     StartApp $APP_LIST
     ;;
 
-install)
-    CheckAppNameAvail
-
-    # Only one, specific application name allowed.
-    if [ "$APP_NAME" = "*" ]
-    then
-        echo "***ERROR: One specific application name must be provided for install."
-        PrintUsage
-        exit 1
-    fi
-
-    # In case it's already installed, stop it and remove it first.
-    GetAppStatus $APP_NAME
-
-    if [[ $appStatus == "running" ]]
-    then
-        StopApp $APP_NAME
-        appStatus='stopped'
-    fi
-
-    if [[ $appStatus == "stopped" ]]
-    then
-        BackupApp $APP_NAME
-        RemoveApp $APP_NAME
-        appStatus='not_installed'
-    fi
-
-    if [[ $appStatus == "not_installed" ]]
-    then
-        InstallApp $APP_NAME
-
-        installStatus=$?
-
-        if [ $installStatus -eq 0 ]
-        then
-            RemoveBackupApp $APP_NAME
-        else
-            RestoreBackupApp $APP_NAME
-        fi
-
-        exit $installStatus
-    else
-        echo "Install $APP_NAME failed. Unknown error."
-        # in the future we may use different return codes for different errors
-        exitCode=1
-    fi
-
-    ;;
-
 remove)
     CheckAppNameAvail
-
-    # loop through the list giving each app individual treatment
-    # preserve any non-zero exit code
-    for APP_NAME in $APP_LIST
-    do
-        GetAppStatus $APP_NAME
-
-        if [[ $appStatus == "running" ]]
-        then
-            StopApp $APP_NAME
-            appStatus='stopped'
-        fi
-
-        if [[ $appStatus == "stopped" ]]
-        then
-            RemoveApp $APP_NAME
-        elif [[ $appStatus == "not_installed" ]]
-        then
-            echo "$APP_NAME is not installed. Cannot remove"
-            exitCode=1
-        else
-            echo "Remove $APP_NAME failed. Unknown error."
-            # in the future we may use different return codes for different errors
-            exitCode=1
-        fi
-    done
+    # NOTE: RemoveApp will make sure each app is stopped first.
+    RemoveApp $APP_LIST
     ;;
 
 status)

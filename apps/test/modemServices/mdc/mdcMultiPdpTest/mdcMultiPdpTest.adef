@@ -1,0 +1,22 @@
+executables:
+{
+    mdcMultiPdpTest = ( mdcMultiPdpComp )
+}
+
+maxFileSystemBytes: 256K
+
+processes:
+{
+    envVars:
+    {
+        LE_LOG_LEVEL = DEBUG
+    }
+}
+
+start: manual
+
+bindings:
+{
+    mdcMultiPdpTest.mdcMultiPdpComp.le_mdc -> modemService.le_mdc
+}
+

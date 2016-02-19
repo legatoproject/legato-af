@@ -1,0 +1,217 @@
+//--------------------------------------------------------------------------------------------------
+/**
+ * @page c_secStoreAdmin Secure Storage Admin
+ *
+ * @ref secStoreAdmin_interface.h "API Reference" <br>
+ * @ref c_secStore API
+ *
+ * <HR>
+ *
+ * This API provides administrative control for secure storage.
+ *
+ * @caution It should only be used by privileged users.
+ *
+ * Secure storage is used to store sensitive info like passwords, keys, certificates,
+ * etc. All data in the secure storage is in an encrypted format.
+ *
+ * This API allows an administrator to provision secure storage data and debug stored data issues.
+ *
+ * <HR>
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ */
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * @file secStoreAdmin_interface.h
+ *
+ * Legato @ref c_secStoreAdmin API
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ */
+//--------------------------------------------------------------------------------------------------
+
+
+USETYPES le_secStore.api;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum number of characters permitted for a secure storage path.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_PATH_SIZE = 511;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Iterator to list entries in secure storage.
+ */
+//--------------------------------------------------------------------------------------------------
+REFERENCE Iter;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Create an iterator for listing entries in secure storage under the specified path.
+ *
+ * @return
+ *      An iterator reference if successful.
+ *      NULL if the secure storage is currently unavailable.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION Iter CreateIter
+(
+    string path[MAX_PATH_SIZE] IN       ///< Path to iterate over.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Deletes an iterator.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION DeleteIter
+(
+    Iter iterRef IN                     ///< Iterator reference.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Go to the next entry in the iterator.  This should be called at least once before accessing the
+ * entry.  After the first time this function is called successfully on an iterator the first entry
+ * will be available.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_NOT_FOUND if there are no more entries available.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Next
+(
+    Iter iterRef IN                     ///< Iterator reference.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the current entry's name.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_OVERFLOW if the buffer is too small to hold the entry name.
+ *      LE_UNAVAILABLE if the secure storage is currently unavailable.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetEntry
+(
+    Iter iterRef IN,                    ///< Iterator reference.
+    string name[MAX_PATH_SIZE] OUT,     ///< Buffer to store the entry name.
+    bool isDir OUT                      ///< True if the entry is a directory, false otherwise.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Writes a buffer of data into the specified path in secure storage.  If the item already exists,
+ * it'll be overwritten with the new value. If the item doesn't already exist, it'll be created.
+ *
+ * @note
+ *      The specified path must be an absolute path.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_NO_MEMORY if there isn't enough memory to store the item.
+ *      LE_UNAVAILABLE if the secure storage is currently unavailable.
+ *      LE_FAULT if there was some other error.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Write
+(
+    string path[MAX_PATH_SIZE] IN,              ///< Path of the secure storage item.
+    uint8 buf[le_secStore.MAX_ITEM_SIZE] IN     ///< Buffer containing the data to store.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Reads an item from secure storage.
+ *
+ * @note
+ *      The specified path must be an absolute path.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_OVERFLOW if the buffer is too small to hold the entire item. No data will be written to
+ *                  the buffer in this case.
+ *      LE_NOT_FOUND if the item doesn't exist.
+ *      LE_UNAVAILABLE if the secure storage is currently unavailable.
+ *      LE_FAULT if there was some other error.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Read
+(
+    string path[MAX_PATH_SIZE] IN,              ///< Path of the secure storage item.
+    uint8 buf[le_secStore.MAX_ITEM_SIZE] OUT    ///< Buffer to store the data in.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Recursively deletes all items under the specified path and the specified path from secure
+ * storage.
+ *
+ * @note
+ *      The specified path must be an absolute path.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_NOT_FOUND if the path doesn't exist.
+ *      LE_UNAVAILABLE if the secure storage is currently unavailable.
+ *      LE_FAULT if there was some other error.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Delete
+(
+    string path[MAX_PATH_SIZE] IN               ///< Path of the secure storage item.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets the size, in bytes, of all items under the specified path.
+ *
+ * @note
+ *      The specified path must be an absolute path.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_NOT_FOUND if the path doesn't exist.
+ *      LE_UNAVAILABLE if the secure storage is currently unavailable.
+ *      LE_FAULT if there was some other error.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetSize
+(
+    string path[MAX_PATH_SIZE] IN,              ///< Path of the secure storage item.
+    uint64 size OUT                             ///< Size in bytes of all items in the path.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets the total space and the available free space in secure storage.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_UNAVAILABLE if the secure storage is currently unavailable.
+ *      LE_FAULT if there was some other error.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetTotalSpace
+(
+    uint64 totalSize OUT,                       ///< Total size, in bytes, of secure storage.
+    uint64 freeSize OUT                         ///< Free space, in bytes, in secure storage.
+);

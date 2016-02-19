@@ -18,6 +18,12 @@ sources:
     pa_riPin_simu.c
 }
 
+cflags:
+{
+    -I$LEGATO_ROOT/components/modemServices/platformAdaptor/inc
+    -I$LEGATO_ROOT/components/modemServices/modemDaemon
+}
+
 requires:
 {
     api:

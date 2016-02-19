@@ -24,7 +24,6 @@ typedef struct le_mutex
     le_dls_Link_t       lockedByThreadLink; ///< Used to link onto the thread's locked mutexes list.
     le_dls_List_t       waitingList;        ///< List of threads waiting for this mutex.
     pthread_mutex_t     waitingListMutex;   ///< Pthreads mutex used to protect the waiting list.
-    bool                isTraceable;        ///< true if traceable, false otherwise.
     bool                isRecursive;        ///< true if recursive, false otherwise.
     int                 lockCount;      ///< Number of lock calls not yet matched by unlock calls.
     pthread_mutex_t     mutex;          ///< Pthreads mutex that does the real work. :)

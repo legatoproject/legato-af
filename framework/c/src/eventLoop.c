@@ -86,7 +86,7 @@
  *
  * Everything can be shared between multiple threads, and therefore must be protected from
  * multithreaded race conditions.  A Mutex is provided for that purpose, and it can be locked
- * and unlocked using the macros LOCK and UNLOCK.
+ * and unlocked using the functions Lock() and Unlock().
  *
  * ----
  *
@@ -98,6 +98,7 @@
 #include "thread.h"
 #include "fdMonitor.h"
 #include "limit.h"
+#include "fileDescriptor.h"
 
 #include <pthread.h>
 #include <sys/eventfd.h>
@@ -333,11 +334,50 @@ static le_ref_MapRef_t HandlerRefMap;
 //--------------------------------------------------------------------------------------------------
 static pthread_mutex_t Mutex = PTHREAD_MUTEX_INITIALIZER;   // POSIX "Fast" mutex.
 
-/// Locks the mutex.
-#define LOCK    LE_ASSERT(pthread_mutex_lock(&Mutex) == 0);
 
-/// Unlocks the mutex.
-#define UNLOCK  LE_ASSERT(pthread_mutex_unlock(&Mutex) == 0);
+//--------------------------------------------------------------------------------------------------
+/**
+ * Guards against thread cancellation and locks the mutex.
+ *
+ * @return Old state of cancelability.
+ **/
+//--------------------------------------------------------------------------------------------------
+static int Lock
+(
+    void
+)
+//--------------------------------------------------------------------------------------------------
+{
+    int oldState;
+
+    int err = pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &oldState);
+
+    LE_FATAL_IF(err != 0, "pthread_setcancelstate() failed (%s)", strerror(err));
+
+    LE_ASSERT(pthread_mutex_lock(&Mutex) == 0);
+
+    return oldState;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Unlocks the mutex and releases the thread cancellation guard created by Lock().
+ **/
+//--------------------------------------------------------------------------------------------------
+static void Unlock
+(
+    int restoreTo   ///< Old state of cancellability to be restored.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    int junk;
+
+    LE_ASSERT(pthread_mutex_unlock(&Mutex) == 0);
+
+    int err = pthread_setcancelstate(restoreTo, &junk);
+    LE_FATAL_IF(err != 0, "pthread_setcancelstate() failed (%s)", strerror(err));
+}
 
 
 //--------------------------------------------------------------------------------------------------
@@ -410,7 +450,7 @@ static Event_t* CreateEvent
     // the EventPool, but that is thread-safe.  But, now we need to touch the Safe Reference Map
     // and the Event List, and those are shared by other threads.  So, it's time to lock the Mutex.
 
-    LOCK
+    int oldState = Lock();
 
     // Create a Safe Reference to be used as the Event ID.
     eventPtr->id = le_ref_CreateRef(EventRefMap, eventPtr);
@@ -418,7 +458,7 @@ static Event_t* CreateEvent
     // Add the Event object to the Event List.
     le_sls_Queue(&EventList, &eventPtr->link);
 
-    UNLOCK
+    Unlock(oldState);
 
     return eventPtr;
 }
@@ -537,12 +577,12 @@ static void ProcessOneEventReport
     Report_t* reportObjPtr;
     Handler_t* handlerPtr;
 
-    LOCK
+    int oldState = Lock();
 
     // Pop an Event Report off the head of the Event Queue (inside a critical section).
     linkPtr = le_sls_Pop(&perThreadRecPtr->eventQueue);
 
-    UNLOCK
+    Unlock(oldState);
 
     if (linkPtr == NULL)
     {
@@ -572,14 +612,14 @@ static void ProcessOneEventReport
         PubSubEventReport_t* pubSubReportPtr;
         pubSubReportPtr = CONTAINER_OF(reportObjPtr, PubSubEventReport_t, baseClass);
 
-        LOCK
+        oldState = Lock();
 
         // Get a pointer to the Handler object for this Event Report; unless it has been removed.
         handlerPtr = le_ref_Lookup(HandlerRefMap, pubSubReportPtr->handlerRef);
         if (handlerPtr == NULL)
         {
             // The handler has been removed, so this report should be discarded.
-            UNLOCK
+            Unlock(oldState);
 
             // If its payload is a pointer to a reference-counted memory pool object,
             // then that has to be released.
@@ -609,8 +649,8 @@ static void ProcessOneEventReport
                 reportPtr = pubSubReportPtr->payload;
             }
 
-            UNLOCK  // Unlock the mutex before calling the handler function.
-                    // Don't access the Handler object anymore after this.
+            Unlock(oldState);  // Unlock the mutex before calling the handler function.
+                               // Don't access the Handler object anymore after this.
 
             firstLayerFunc(reportPtr, secondLayerFunc);
         }
@@ -677,6 +717,8 @@ static void PubSubHandlerFunc
 /**
  * Queue a function onto a specific thread's Event Queue (could belong to the calling thread or
  * could belong to some other thread).
+ *
+ * @warning Assumes the mutex is locked and the thread is protected from cancellation.
  */
 //--------------------------------------------------------------------------------------------------
 static void QueueFunction
@@ -698,15 +740,11 @@ static void QueueFunction
     reportPtr->param1Ptr = param1Ptr;
     reportPtr->param2Ptr = param2Ptr;
 
-    LOCK
-
     // Queue it to the Event Queue.
     le_sls_Queue(&perThreadRecPtr->eventQueue, &reportPtr->baseClass.link);
 
     // Write to the eventfd to notify the Event Loop that there is something on the queue.
     WriteEventFd(perThreadRecPtr);
-
-    UNLOCK
 }
 
 
@@ -883,7 +921,7 @@ void event_DestructThread
     // Some other thread could be accessing the Event List or structures under it, and we need
     // to access those to remove all of this thread's Handlers from all Events objects'
     // Handler Lists.
-    LOCK
+    int oldState = Lock();
 
     // Mark the Event Loop as "destructed".  If anyone tries to add something to the Event Queue
     // now, it's a fatal error.
@@ -902,7 +940,7 @@ void event_DestructThread
     // tries to use another thread to queue something directly to this thread's Event Queue after
     // this thread has started shutting down).  Barring the aforementioned stupid actions,
     // it is now safe to unlock the mutex and allow other threads to run.
-    UNLOCK
+    Unlock(oldState);
 
     // Delete all the FD Monitors for this thread.
     fdMon_DestructThread(perThreadRecPtr);
@@ -926,34 +964,10 @@ void event_DestructThread
     }
 
     // Close the epoll file descriptor.
-    for (;;)
-    {
-        int result = close(perThreadRecPtr->epollFd);
-        if (result == 0)
-        {
-            break;
-        }
-        else if (errno != EINTR)
-        {
-            LE_CRIT("Failed to close epoll fd. errno = %d (%m).", errno);
-            break;
-        }
-    }
+    fd_Close(perThreadRecPtr->epollFd);
 
     // Close the eventfd for the Event Queue.
-    for (;;)
-    {
-        int result = close(perThreadRecPtr->eventQueueFd);
-        if (result == 0)
-        {
-            break;
-        }
-        else if (errno != EINTR)
-        {
-            LE_CRIT("Failed to close eventfd. errno = %d (%m).", errno);
-            break;
-        }
-    }
+    fd_Close(perThreadRecPtr->eventQueueFd);
 }
 
 
@@ -1077,11 +1091,11 @@ le_event_HandlerRef_t le_event_AddLayeredHandler
 )
 //--------------------------------------------------------------------------------------------------
 {
-    LOCK
+    int oldState = Lock();
 
     Event_t* eventPtr = le_ref_Lookup(EventRefMap, eventId);
 
-    UNLOCK
+    Unlock(oldState);
 
     LE_ASSERT(eventPtr != NULL);
 
@@ -1110,7 +1124,7 @@ le_event_HandlerRef_t le_event_AddLayeredHandler
     // NOTE: We are about to access structures that are shared by multiple threads.
     // Protect this critical section using the mutex.
 
-    LOCK
+    oldState = Lock();
 
     // Put it on the Event's Handler List.
     le_dls_Queue(&eventPtr->handlerList, &handlerPtr->eventLink);
@@ -1119,7 +1133,7 @@ le_event_HandlerRef_t le_event_AddLayeredHandler
     le_event_HandlerRef_t handlerRef = le_ref_CreateRef(HandlerRefMap, handlerPtr);
     handlerPtr->safeRef = handlerRef;
 
-    UNLOCK
+    Unlock(oldState);
 
     return handlerRef;
 }
@@ -1138,7 +1152,7 @@ void le_event_RemoveHandler
 )
 //--------------------------------------------------------------------------------------------------
 {
-    LOCK
+    int oldState = Lock();
 
     Handler_t* handlerPtr = le_ref_Lookup(HandlerRefMap, handlerRef);
     LE_FATAL_IF(handlerPtr == NULL, "Handler %p not found.", handlerPtr);
@@ -1150,7 +1164,7 @@ void le_event_RemoveHandler
 
     DeleteHandler(handlerPtr);
 
-    UNLOCK
+    Unlock(oldState);
 }
 
 
@@ -1172,7 +1186,7 @@ void le_event_Report
 )
 //--------------------------------------------------------------------------------------------------
 {
-    LOCK
+    int oldState = Lock();
 
     Event_t* eventPtr = le_ref_Lookup(EventRefMap, eventId);
 
@@ -1216,7 +1230,7 @@ void le_event_Report
         linkPtr = le_dls_PeekNext(&eventPtr->handlerList, linkPtr);
     }
 
-    UNLOCK
+    Unlock(oldState);
 }
 
 
@@ -1239,7 +1253,7 @@ void le_event_ReportWithRefCounting
 )
 //--------------------------------------------------------------------------------------------------
 {
-    LOCK
+    int oldState = Lock();
 
     Event_t* eventPtr = le_ref_Lookup(EventRefMap, eventId);
 
@@ -1277,7 +1291,7 @@ void le_event_ReportWithRefCounting
         linkPtr = le_dls_PeekNext(&eventPtr->handlerList, linkPtr);
     }
 
-    UNLOCK
+    Unlock(oldState);
 
     // Release our original reference that the caller passed us.
     // Note: It's best to do this outside the critical section so that we don't accidentally
@@ -1302,14 +1316,14 @@ void le_event_SetContextPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
-    LOCK
+    int oldState = Lock();
 
     Handler_t* handlerPtr = le_ref_Lookup(HandlerRefMap, handlerRef);
     LE_FATAL_IF(handlerPtr == NULL, "Handler %p not found.", handlerPtr);
 
     handlerPtr->contextPtr = contextPtr;
 
-    UNLOCK
+    Unlock(oldState);
 }
 
 
@@ -1352,7 +1366,11 @@ void le_event_QueueFunction
 )
 //--------------------------------------------------------------------------------------------------
 {
+    int oldState = Lock();
+
     QueueFunction(thread_GetEventRecPtr(), func, param1Ptr, param2Ptr);
+
+    Unlock(oldState);
 }
 
 
@@ -1371,7 +1389,11 @@ void le_event_QueueFunctionToThread
 )
 //--------------------------------------------------------------------------------------------------
 {
+    int oldState = Lock();
+
     QueueFunction(thread_GetOtherEventRecPtr(thread), func, param1Ptr, param2Ptr);
+
+    Unlock(oldState);
 }
 
 
@@ -1567,15 +1589,15 @@ le_result_t le_event_ServiceLoop
     (void)ReadEventFd(perThreadRecPtr);
 
     // If there is something on the Event Queue, process one thing.
-    LOCK
+    int oldState = Lock();
 
     if (!le_sls_IsEmpty(&perThreadRecPtr->eventQueue))
     {
-        UNLOCK
+        Unlock(oldState);
 
         ProcessOneEventReport(perThreadRecPtr); // This function assumes the mutex is NOT locked.
 
-        LOCK
+        oldState = Lock();
     }
 
     // The caller needs to know if there is more stuff waiting on the Event Queue.
@@ -1585,7 +1607,7 @@ le_result_t le_event_ServiceLoop
         returnCode = LE_WOULD_BLOCK;
     }
 
-    UNLOCK
+    Unlock(oldState);
 
     return returnCode;
 }

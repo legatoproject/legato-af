@@ -20,10 +20,142 @@ namespace modeller
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Binds a client-side interface to a service provided by the root user.
+ */
+//--------------------------------------------------------------------------------------------------
+static void BindToRootService
+(
+    model::App_t* appPtr,       ///< App the interface belongs to.
+    model::ApiClientInterfaceInstance_t* ifInstancePtr,    ///< Interface to be bound.
+    const std::string& serviceName                   ///< Name of server-side interface to bind to.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    auto bindingPtr = new model::Binding_t(NULL);
+    bindingPtr->clientType = model::Binding_t::INTERNAL;
+    bindingPtr->clientAgentName = appPtr->name;
+    bindingPtr->clientIfName = ifInstancePtr->name;
+    bindingPtr->serverType = model::Binding_t::EXTERNAL_USER;
+    bindingPtr->serverAgentName = "root";
+    bindingPtr->serverIfName = serviceName;
+    ifInstancePtr->bindingPtr = bindingPtr;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Checks the validity of a binding's target.
+ *
+ * @throw mk::Exception_t if the binding is definitely invalid.
+ **/
+//--------------------------------------------------------------------------------------------------
+void CheckBindingTarget
+(
+    model::System_t* systemPtr,
+    model::Binding_t* bindingPtr
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // We can only check if it's a binding to an app.  We don't know what
+    // non-app users are going to exist on the system.
+    // Also, note that we don't have to check internal bindings, because
+    // they will have been checked when the binding was created.
+    if (bindingPtr->serverType == model::Binding_t::EXTERNAL_APP)
+    {
+        auto appMapIter = systemPtr->apps.find(bindingPtr->serverAgentName);
+        if (appMapIter == systemPtr->apps.end())
+        {
+            bindingPtr->parseTreePtr->ThrowException("Binding to non-existent server app '"
+                                                     + bindingPtr->serverAgentName + "'.");
+        }
+        auto appPtr = appMapIter->second;
+
+        auto ifMapIter = appPtr->externServerInterfaces.find(bindingPtr->serverIfName);
+        if (ifMapIter == appPtr->externServerInterfaces.end())
+        {
+            bindingPtr->parseTreePtr->ThrowException("Binding to non-existent server interface '"
+                                                     + bindingPtr->serverIfName + "' on "
+                                                     "app '" + bindingPtr->serverAgentName + "'.");
+        }
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Verifies that all client-side interfaces of all applications in a system have been bound
+ * to something.  Will auto-bind any unbound le_cfg or le_wdog interfaces it finds.
+ *
+ * @throw mk::Exception_t if any client-side interface is unbound.
+ */
+//--------------------------------------------------------------------------------------------------
+void EnsureClientInterfacesBound
+(
+    model::System_t* systemPtr
+)
+//--------------------------------------------------------------------------------------------------
+{
+    for (auto appMapEntry : systemPtr->apps)
+    {
+        auto appPtr = appMapEntry.second;
+
+        for (auto exePtr : appPtr->executables)
+        {
+            for (auto componentInstancePtr : exePtr->componentInstances)
+            {
+                for (auto ifInstancePtr : componentInstancePtr->clientApis)
+                {
+                    if (ifInstancePtr->bindingPtr == NULL)
+                    {
+                        // If le_cfg API, then bind it to the one served by the root user.
+                        if (ifInstancePtr->ifPtr->internalName == "le_cfg")
+                        {
+                            BindToRootService(appPtr, ifInstancePtr, "le_cfg");
+                        }
+                        // If le_wdog API, then bind it to the one served by the root user.
+                        else if (ifInstancePtr->ifPtr->internalName == "le_wdog")
+                        {
+                            BindToRootService(appPtr, ifInstancePtr, "le_wdog");
+                        }
+                        // At this point, we know it's an error, just need to figure out which
+                        // type of error message to report (depending on whether the interface
+                        // has been marked "extern" or not).
+                        else if (ifInstancePtr->externMarkPtr != NULL)
+                        {
+                            throw mk::Exception_t("Client interface '"
+                                                  + appPtr->name + "."
+                                                  + ifInstancePtr->name + "' (aka '"
+                                                  + appPtr->name + "."
+                                                  + exePtr->name + "."
+                                                  + componentInstancePtr->componentPtr->name + "."
+                                                  + ifInstancePtr->ifPtr->internalName
+                                                  + "') is not bound to anything.");
+                        }
+                        else
+                        {
+                            throw mk::Exception_t("Client interface '"
+                                                  + appPtr->name + "."
+                                                  + ifInstancePtr->name
+                                                  + "' is not bound to anything.");
+                        }
+                    }
+                    else
+                    {
+                        // It has a binding, but is it a good binding?
+                        CheckBindingTarget(systemPtr, ifInstancePtr->bindingPtr);
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Verifies that all client-side interfaces of an application have either been bound to something
  * or marked as an external interface to be bound at the system level.  Will auto-bind any unbound
- * le_cfg or le_wdog interfaces it finds.  Also checks that client and server side of bindings
- * implement the same API.
+ * le_cfg or le_wdog interfaces it finds.
  *
  * @throw mk::Exception_t if any client-side interface is found to be unsatisfied.
  */
@@ -40,28 +172,16 @@ void EnsureClientInterfacesSatisfied
         {
             for (auto ifInstancePtr : componentInstancePtr->clientApis)
             {
-                if ((ifInstancePtr->bindingPtr == NULL) && (ifInstancePtr->isExternal == false))
+                if ((ifInstancePtr->bindingPtr == NULL) && (ifInstancePtr->externMarkPtr == NULL))
                 {
                     // If this is an le_cfg API, then bind it to the one offered by the root user.
                     if (ifInstancePtr->ifPtr->internalName == "le_cfg")
                     {
-                        auto bindingPtr = new model::Binding_t();
-                        bindingPtr->serverType = model::Binding_t::EXTERNAL_USER;
-                        bindingPtr->clientIfName = ifInstancePtr->name;
-                        bindingPtr->serverAgentName = "root";
-                        bindingPtr->serverIfName = "le_cfg";
-                        ifInstancePtr->bindingPtr = bindingPtr;
-                        appPtr->bindings.push_back(bindingPtr);
+                        BindToRootService(appPtr, ifInstancePtr, "le_cfg");
                     }
                     else if (ifInstancePtr->ifPtr->internalName == "le_wdog")
                     {
-                        auto bindingPtr = new model::Binding_t();
-                        bindingPtr->serverType = model::Binding_t::EXTERNAL_USER;
-                        bindingPtr->clientIfName = ifInstancePtr->name;
-                        bindingPtr->serverAgentName = "root";
-                        bindingPtr->serverIfName = "le_wdog";
-                        ifInstancePtr->bindingPtr = bindingPtr;
-                        appPtr->bindings.push_back(bindingPtr);
+                        BindToRootService(appPtr, ifInstancePtr, "le_wdog");
                     }
                     else
                     {
@@ -76,11 +196,6 @@ void EnsureClientInterfacesSatisfied
                                                    " or be bound to a server side interface"
                                                    " (in the \"bindings:\" section of the .adef).");
                     }
-                }
-                else if (ifInstancePtr->bindingPtr != NULL)
-                {
-                    /// @todo When possible, double check that the client and server are using the
-                    ///       same .api file.
                 }
             }
         }
@@ -381,6 +496,125 @@ void PrintPermissions
         std::cout << " execute";
     }
 }
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function to remove angle brackets from around a non-app user name specification in an IPC_AGENT
+ * token's text.
+ *
+ * E.g., if the agentName is "<root>", then "root" will be returned.
+ *
+ * @return The user name, without the angle brackets.
+ */
+//--------------------------------------------------------------------------------------------------
+std::string RemoveAngleBrackets
+(
+    const std::string& agentName    ///< The user name with angle brackets around it.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    return agentName.substr(1, agentName.length() - 2);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Makes the application a member of groups listed in a given "groups" section in the parse tree.
+ */
+//--------------------------------------------------------------------------------------------------
+void AddGroups
+(
+    model::App_t* appPtr,
+    const parseTree::TokenListSection_t* sectionPtr
+)
+//--------------------------------------------------------------------------------------------------
+{
+    for (auto tokenPtr : sectionPtr->Contents())
+    {
+        appPtr->groups.insert(tokenPtr->text);
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets whether the Supervisor will start the application automatically at system start-up,
+ * or only when asked to do so, based on the contents of a "start:" section in the parse tree.
+ */
+//--------------------------------------------------------------------------------------------------
+void SetStart
+(
+    model::App_t* appPtr,
+    const parseTree::SimpleSection_t* sectionPtr
+)
+//--------------------------------------------------------------------------------------------------
+{
+    auto& mode = sectionPtr->Text();
+
+    if (mode == "auto")
+    {
+        appPtr->startTrigger = model::App_t::AUTO;
+    }
+    else if (mode == "manual")
+    {
+        appPtr->startTrigger = model::App_t::MANUAL;
+    }
+    else
+    {
+        sectionPtr->Contents()[0]->ThrowException("Internal error: unexpected startup option.");
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the app-level watchdog action setting.
+ */
+//--------------------------------------------------------------------------------------------------
+void SetWatchdogAction
+(
+    model::App_t* appPtr,
+    const parseTree::SimpleSection_t* sectionPtr  ///< Ptr to section in parse tree.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    if (appPtr->watchdogAction.IsSet())
+    {
+        sectionPtr->ThrowException("Only one watchdogAction section allowed.");
+    }
+    appPtr->watchdogAction = sectionPtr->Text();
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the app-level watchdog timeout setting.
+ */
+//--------------------------------------------------------------------------------------------------
+void SetWatchdogTimeout
+(
+    model::App_t* appPtr,
+    const parseTree::SimpleSection_t* sectionPtr  ///< Ptr to section in parse tree.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    if (appPtr->watchdogTimeout.IsSet())
+    {
+        sectionPtr->ThrowException("Only one watchdogTimeout section allowed.");
+    }
+
+    auto tokenPtr = sectionPtr->Contents()[0];
+    if (tokenPtr->type == parseTree::Token_t::NAME)
+    {
+        appPtr->watchdogTimeout = -1;   // Never timeout (watchdog disabled).
+    }
+    else
+    {
+        appPtr->watchdogTimeout = GetInt(sectionPtr);
+    }
+}
+
 
 
 

@@ -31,8 +31,6 @@ case $TARGET_MODEL in
         echo ar86;;
     WP85*)
         echo wp85;;
-    WP71*)
-        echo wp7;;
     VIRT*)
         echo virt;;
     *)

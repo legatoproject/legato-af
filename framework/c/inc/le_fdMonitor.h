@@ -80,42 +80,42 @@
  * Pipe fd events indicate two conditions for reading from a pipe and two conditions for writing to
  * a pipe.
  *
- * |                                            |  Event      |   Condition      |
- * | ---------------------------------- | -------------------------------------------------- | ----------------------- |
- * | READING from a pipe | POLLHUP | No DATA in the pipe and the WRITE-END is closed |
- * |                                         | POLLIN     | DATA in the pipe and the WRITE_END is open |
- * |                                         | POLLIN or POLLHUP| DATA in the pipe BUT the WRITE-END is closed |
- * | WRITING to the pipe   | POLLERR | No SPACE in the pipe and the READ-END is closed |
- * |                                         | POLLOUT |SPACE in the pipe and the READ-END is open |
- * |                                         | POLLOUT or POLLERR | SPACE in the pipe BUT the READ-END is closed |
+ * |                      |  Event            |   Condition                                     |
+ * | ---------------------| ----------------- | ----------------------------------------------- |
+ * | READING from a pipe  | POLLHUP           | NO DATA in the pipe and the WRITE END is closed |
+ * |                      | POLLIN            | DATA in the pipe and the WRITE END is open      |
+ * |                      | POLLIN + POLLHUP  | DATA in the pipe BUT the WRITE END is closed    |
+ * | WRITING to the pipe  | POLLERR           | NO SPACE in the pipe and the READ END is closed |
+ * |                      | POLLOUT           | SPACE in the pipe and the READ END is open      |
+ * |                      | POLLOUT + POLLERR | SPACE in the pipe BUT the READ END is closed    |
  *
  * @subsection c_fdTypes_sockets Sockets
  *
  * Socket activity (establishing/closing) is monitored for connection-orientated sockets including
  * SOCK_STREAM and SOCK_SEQPACKET. Input and output data availability for all socket types is
  * monitored.
- * | Event | Condition |
- * |                |                   |
- * | POLLIN | Input is available from the socket |
- * | POLLOUT | Possible to send data on the socket |
- * | POLLIN | Incoming connection being established on the listen port |
- * | POLLPRI | Out of band data received only on TCP |
- * | POLLIN or POLLOUT or POLLRDHUP | Peer closed the connection in a connection-orientated socket |
+ * | Event                        | Condition                                                    |
+ * | ---------------------------- | ------------------------------------------------------------ |
+ * | POLLIN                       | Input is available from the socket                           |
+ * | POLLOUT                      | Possible to send data on the socket                          |
+ * | POLLIN                       | Incoming connection being established on the listen port     |
+ * | POLLPRI                      | Out of band data received only on TCP                        |
+ * | POLLIN + POLLOUT + POLLRDHUP | Peer closed the connection in a connection-orientated socket |
  *
  *
- * @subsection c_fdTypes_terminals Terminals and Pseud-terminals
+ * @subsection c_fdTypes_terminals Terminals and Pseudo-Terminals
  *
  * Terminals and pseudo-terminals operate in pairs. When one terminal pair closes, an event is
  * generated to indicate the closure. POLLIN, POLLOUT and POLLPRI are the event indicators related
  * to terminal status.
  *
- * | Event | Condition |
- * |                |                   |
- * | POLLIN | Ready to receive data |
- * | POLLOUT | Ready to send data |
+ * | Event   | Condition             |
+ * | ------- | --------------------- |
+ * | POLLIN  | Ready to receive data |
+ * | POLLOUT | Ready to send data    |
  * | POLLPRI | Master/pseudo terminal detects slave state has changed (in packet mode only). |
  * | POLLHUP | Either half of the terminal pair has closed. |
-
+ *
  *
  * @section c_fdMonitorHandlers Handler Functions
  *
@@ -472,6 +472,19 @@ void le_fdMonitor_SetContextPtr
 void* le_fdMonitor_GetContextPtr
 (
     void
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets the file descriptor that an FD Monitor object is monitoring.
+ *
+ * @return  The fd.
+ */
+//--------------------------------------------------------------------------------------------------
+int le_fdMonitor_GetFd
+(
+    le_fdMonitor_Ref_t  monitorRef  ///< [in] Reference to the File Descriptor Monitor.
 );
 
 

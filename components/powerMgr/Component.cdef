@@ -3,10 +3,14 @@ provides:
     api:
     {
         le_pm.api
+        le_ulpm.api
+        le_bootReason.api
     }
 }
 
 sources:
 {
     le_pm.c
+    le_ulpm.c
+    le_bootReason.c
 }

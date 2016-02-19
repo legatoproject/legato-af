@@ -7,6 +7,6 @@ provides:
 {
     api:
     {
-        logFd.api
+        logDaemon/logFd.api
     }
 }

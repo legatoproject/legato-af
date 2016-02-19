@@ -1,0 +1,17 @@
+# --------------------------------------------------------------------------------------------------
+# Definitions specific to Sierra Wireless modules that are based on the Qualcomm MDM9x15 chipset
+# family.
+#
+# Copyright (C), Sierra Wireless Inc.  Use of this work is subject to license.
+# --------------------------------------------------------------------------------------------------
+
+# Configure appropriate QMI platform adaptor build variables.
+#   Sources:
+ifndef LEGATO_PROPRIETARY_QCT_DIR
+  export LEGATO_PROPRIETARY_QCT_DIR := $(LEGATO_ROOT)/proprietary/qct/mdm9x15
+endif
+
+export LEGATO_QMI_AUDIO_PA_SRC := $(AUDIO_PA_DIR)/mdm9x15/le_pa_audio
+
+include targetDefs.mdm9xxx
+

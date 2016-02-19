@@ -11,6 +11,8 @@
 #include "pa_simu.h"
 #include "pa_sim_simu.h"
 #include "pa_mdc_simu.h"
+#include "pa_mcc_simu.h"
+#include "pa_ips_simu.h"
 #include "pa_temp.h"
 #include "pa_antenna.h"
 
@@ -38,6 +40,9 @@ void le_pa_Init
     res = mrc_simu_Init();
     LE_FATAL_IF(res != LE_OK, "PA MRC Init Failed");
 
+    res = mcc_simu_Init();
+    LE_FATAL_IF(res != LE_OK, "PA MCC Init Failed");
+
     res = pa_simSimu_Init();
     LE_FATAL_IF(res != LE_OK, "PA SIM Init Failed");
 
@@ -52,6 +57,9 @@ void le_pa_Init
 
     res = pa_temp_Init();
     LE_FATAL_IF(res != LE_OK, "PA Temperature Failed");
+
+    res = pa_ipsSimu_Init();
+    LE_FATAL_IF(res != LE_OK, "PA Input Power Supply Failed");
 
     res = pa_antenna_Init();
     LE_FATAL_IF(res != LE_OK, "PA Antenna Failed");

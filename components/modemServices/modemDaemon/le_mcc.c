@@ -329,7 +329,7 @@ static SessionCtxNode_t* CreateSessionCtx
 
     le_dls_Queue(&SessionCtxList, &(sessionCtxPtr->link));
 
-    LE_DEBUG("Context for sessionRef %p created", sessionCtxPtr->sessionRef);
+    LE_DEBUG("Context for sessionRef %p created at %p", sessionCtxPtr->sessionRef, sessionCtxPtr);
 
     return sessionCtxPtr;
 }
@@ -440,7 +440,50 @@ static le_mcc_CallRef_t GetCallRefFromSessionCtx
         }
     }
 
-    LE_DEBUG("Call ref found for callPtr %p and session %p", callPtr, sessionCtxPtr );
+    LE_DEBUG("Call ref not found for callPtr %p and session %p", callPtr, sessionCtxPtr );
+    return NULL;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the session context from the callRef.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static SessionCtxNode_t* GetSessionCtxFromCallRef
+(
+    le_mcc_CallRef_t callRef
+)
+{
+    le_dls_Link_t* linkPtr = le_dls_Peek(&SessionCtxList);
+
+    // For all sessions, search the callRef
+    while ( linkPtr )
+    {
+        SessionCtxNode_t* sessionCtxPtr = CONTAINER_OF(linkPtr,
+                                                        SessionCtxNode_t,
+                                                        link);
+
+        linkPtr = le_dls_PeekNext(&SessionCtxList, linkPtr);
+
+        le_dls_Link_t* linkSessionCtxPtr = le_dls_Peek(&(sessionCtxPtr->callRefList));
+
+        while( linkSessionCtxPtr )
+        {
+            CallRefNode_t* callRefNodePtr = CONTAINER_OF(linkSessionCtxPtr,
+                                                        CallRefNode_t,
+                                                        link);
+
+            linkSessionCtxPtr = le_dls_PeekNext(&(sessionCtxPtr->callRefList), linkSessionCtxPtr);
+
+            if ( callRefNodePtr->callRef == callRef )
+            {
+                LE_DEBUG("sessionCtx %p found for callRef %p",sessionCtxPtr, callRef);
+                return sessionCtxPtr;
+            }
+        }
+    }
+
     return NULL;
 }
 
@@ -480,11 +523,11 @@ static le_mcc_CallRef_t SetCallRefForSessionCtx
 //--------------------------------------------------------------------------------------------------
 static void CallHandlers
 (
-    le_mcc_Call_t* callPtr
+    le_mcc_Call_t* callPtr,
+    bool newCall
 )
 {
     le_dls_Link_t* linkPtr = le_dls_PeekTail(&SessionCtxList);
-    bool firstCallRefLinkedDone = false;
 
     // For all sessions, call all handlers
     while ( linkPtr )
@@ -512,18 +555,16 @@ static void CallHandlers
             {
                 // callRef doesn't exist for this session => create it
                 callRef = SetCallRefForSessionCtx(callPtr, sessionCtxPtr);
-                bool addRef = true;
 
-                // for incoming call (i.e. creator list is empty), the first callRef is not
-                // associated to any session. so we can use it directly.
+                // for incoming call (i.e. callPtr created into NewCallEventHandler), the first
+                // callRef is not associated to a session. so we can use it (no addRef needed
+                // in this case).
                 // for other callRef created, we need to add a reference on the call context
-                if ((le_dls_NumLinks(&callPtr->creatorList) == 0 ) && (!firstCallRefLinkedDone))
+                if (newCall)
                 {
-                    addRef = false;
-                    firstCallRefLinkedDone = true;
+                    newCall = false;
                 }
-
-                if (addRef)
+                else
                 {
                     callPtr->refCount++;
                     le_mem_AddRef(callPtr);
@@ -550,14 +591,13 @@ static void CallHandlers
                     linkHandlerPtr = le_dls_PeekPrev(&sessionCtxPtr->handlerList, linkHandlerPtr);
 
                     // Call the handler
-                    LE_DEBUG("call handler for sessionRef %p, callRef %p event.%d",
-                             sessionCtxPtr->sessionRef,
-                             callRef,
-                             callPtr->event);
+                    LE_DEBUG("call handler for sessionRef %p, callRef %p",
+                                            sessionCtxPtr->sessionRef,
+                                            callRef);
 
-                    handlerCtxPtr->handlerFuncPtr(callRef,
-                                                  callPtr->event,
-                                                  handlerCtxPtr->userContext);
+                    handlerCtxPtr->handlerFuncPtr( callRef,
+                                                   callPtr->event,
+                                                   handlerCtxPtr->userContext );
                 }
             }
             else
@@ -635,6 +675,37 @@ static void RemoveCallRefFromSessionCtx
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Count the number of ongoing call
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static uint32_t CountOngoingCall
+(
+    void
+)
+{
+    le_dls_Link_t* linkPtr = le_dls_Peek(&CallList);
+    uint32_t counter = 0;
+
+    while ( linkPtr )
+    {
+        le_mcc_Call_t* callPtr = CONTAINER_OF( linkPtr,
+                                               le_mcc_Call_t,
+                                               link);
+
+        linkPtr = le_dls_PeekNext(&CallList, linkPtr);
+
+        if ( callPtr->event != LE_MCC_EVENT_TERMINATED )
+        {
+            counter++;
+        }
+    }
+
+    return counter;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Internal Call event Handler.
  *
  */
@@ -645,14 +716,16 @@ static void NewCallEventHandler
 )
 {
     le_mcc_Call_t* callPtr = NULL;
+    bool newCall = false;
+
+    LE_DEBUG("call id %d, event %d", dataPtr->callId, dataPtr->event);
 
     // Acquire wakeup source on first indication of call
-    if (LE_MCC_EVENT_SETUP == dataPtr->event ||
+    if ((LE_MCC_EVENT_SETUP == dataPtr->event ||
         LE_MCC_EVENT_ORIGINATING == dataPtr->event ||
-        LE_MCC_EVENT_INCOMING == dataPtr->event)
+        LE_MCC_EVENT_INCOMING == dataPtr->event) &&
+        ( CountOngoingCall() == 0 ))
     {
-        // Note: 3GPP calls have both SETUP and INCOMING states, so
-        // this will warn on INCOMING state as a second "stay awake"
         le_pm_StayAwake(WakeupSource);
     }
 
@@ -672,12 +745,29 @@ static void NewCallEventHandler
                                         dataPtr->event,
                                         dataPtr->terminationEvent,
                                         dataPtr->terminationCode);
+
+            newCall = true;
         }
 
         callPtr->inProgress = true;
     }
     else
     {
+        if (callPtr->event == dataPtr->event)
+        {
+            // Get Phone number on the secondary Incoming event for CDMA incoming Call if available.
+            if (dataPtr->event == LE_MCC_EVENT_INCOMING)
+            {
+                le_utf8_Copy(callPtr->telNumber, dataPtr->phoneNumber,
+                    sizeof(callPtr->telNumber), NULL);
+                LE_DEBUG("Phone number %s", callPtr->telNumber);
+            }
+            else
+            {
+                LE_DEBUG("Discard event %d for callPtr %p", callPtr->event, callPtr);
+            }
+            return;
+        }
         callPtr->event = dataPtr->event;
         callPtr->termination = dataPtr->terminationEvent;
         callPtr->terminationCode = dataPtr->terminationCode;
@@ -688,7 +778,10 @@ static void NewCallEventHandler
     {
          case LE_MCC_EVENT_TERMINATED:
             // Release wakeup source once call termination is processed
-            le_pm_Relax(WakeupSource);
+            if (CountOngoingCall() == 0)
+            {
+                le_pm_Relax(WakeupSource);
+            }
             callPtr->inProgress = false;
         break;
         default:
@@ -696,7 +789,7 @@ static void NewCallEventHandler
     }
 
     // Call the clients' handlers
-    CallHandlers(callPtr);
+    CallHandlers(callPtr, newCall);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -956,28 +1049,27 @@ le_result_t le_mcc_Delete
     }
     else
     {
-        // Remove corresponding node from the creatorList
-        RemoveCreatorFromCall(callPtr, le_mcc_GetClientSessionRef());
+        SessionCtxNode_t* sessionCtxPtr = GetSessionCtxFromCallRef(callRef);
 
-        // Find the callRef in the session context
-        SessionCtxNode_t* sessionCtxPtr = GetSessionCtx(le_mcc_GetClientSessionRef());
-
-        if (sessionCtxPtr)
+        if ( !sessionCtxPtr )
         {
-            RemoveCallRefFromSessionCtx(sessionCtxPtr, callRef);
-
-            if ( ( le_dls_NumLinks(&sessionCtxPtr->handlerList) == 0 ) &&
-                 ( le_dls_NumLinks(&sessionCtxPtr->callRefList) == 0 ) )
-            {
-                LE_DEBUG("Remove sessionCtxPtr %p", sessionCtxPtr);
-                // delete the session context as it is not used anymore
-                le_dls_Remove(&SessionCtxList, &(sessionCtxPtr->link));
-                le_mem_Release(sessionCtxPtr);
-            }
+            LE_ERROR("No sessionCtx found for callRef %p !!!", callRef);
+            return LE_FAULT;
         }
-        else
+
+        // Remove corresponding node from the creatorList
+        RemoveCreatorFromCall(callPtr, sessionCtxPtr->sessionRef);
+
+        // Remove the callRef from the sessionCtx
+        RemoveCallRefFromSessionCtx(sessionCtxPtr, callRef);
+
+        if ( ( le_dls_NumLinks(&sessionCtxPtr->handlerList) == 0 ) &&
+                 ( le_dls_NumLinks(&sessionCtxPtr->callRefList) == 0 ) )
         {
-            LE_ERROR("No sessionCtx found !!!");
+            LE_DEBUG("Remove sessionCtxPtr %p", sessionCtxPtr);
+            // delete the session context as it is not used anymore
+            le_dls_Remove(&SessionCtxList, &(sessionCtxPtr->link));
+            le_mem_Release(sessionCtxPtr);
         }
 
         callPtr->refCount--;
@@ -1026,10 +1118,11 @@ le_result_t le_mcc_Start
         return LE_NOT_FOUND;
     }
 
-    res =pa_mcc_VoiceDial(callPtr->telNumber,
+    res = pa_mcc_VoiceDial(callPtr->telNumber,
                           callPtr->clirStatus,
                           PA_MCC_ACTIVATE_CUG,
-                          &callId);
+                          &callId,
+                          &callPtr->termination);
 
     callPtr->callId = (int16_t)callId;
     callPtr->inProgress = true;
@@ -1187,7 +1280,7 @@ le_result_t le_mcc_Answer
         return LE_NOT_FOUND;
     }
 
-    return pa_mcc_Answer();
+    return pa_mcc_Answer(callPtr->callId);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1218,7 +1311,7 @@ le_result_t le_mcc_HangUp
 
     if (callPtr->inProgress)
     {
-        return (pa_mcc_HangUp());
+        return (pa_mcc_HangUp(callPtr->callId));
     }
     else
     {

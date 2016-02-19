@@ -128,7 +128,8 @@ typedef void (*pa_avc_AVMSMessageHandlerFunc_t)
     le_avc_Status_t updateStatus,
     le_avc_UpdateType_t updateType,
     int32_t totalNumBytes,
-    int32_t dloadProgress
+    int32_t dloadProgress,
+    le_avc_ErrorCode_t errorCode
 );
 
 

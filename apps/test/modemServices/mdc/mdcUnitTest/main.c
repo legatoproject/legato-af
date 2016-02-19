@@ -18,8 +18,6 @@
 #define NB_PROFILE  5
 #define IP_STR_SIZE     16
 
-le_log_SessionRef_t LE_LOG_SESSION;
-le_log_Level_t* LE_LOG_LEVEL_FILTER_PTR;
 static le_sem_Ref_t    ThreadSemaphore;
 static le_mdc_ProfileRef_t ProfileRef[NB_PROFILE];
 static le_mdc_SessionStateHandlerRef_t SessionStateHandler[NB_PROFILE];
@@ -662,11 +660,10 @@ void TestMdc_Stat
  *
  */
 //--------------------------------------------------------------------------------------------------
-int main(int argc, char *argv[])
+COMPONENT_INIT
 {
-    LE_LOG_SESSION = log_RegComponent( "mdc", &LE_LOG_LEVEL_FILTER_PTR);
-
-    arg_SetArgs(argc,argv);
+    // To reactivate for all DEBUG logs
+    // le_log_SetFilterLevel(LE_LOG_DEBUG);
 
     // pa simu init */
     pa_mdcSimu_Init();
@@ -696,7 +693,7 @@ int main(int argc, char *argv[])
 
     LE_INFO("======== UnitTest of MDC API ends with SUCCESS ========");
 
-    return 0;
+    exit(0);
 }
 
 

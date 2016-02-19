@@ -1,0 +1,138 @@
+//--------------------------------------------------------------------------------------------------
+/**
+ * @page c_ulpm Ultra Low Power Mode
+ *
+ * @ref le_ulpm_interface.h "API Reference"
+ *
+ * <HR>
+ * Some Sierra Wireless modules can use ultra low power mode by shutting down major components
+ * (e.g. app processor, modem, etc.) while keeping an ultra low power component alive. This ultra low
+ * power component is used to monitor boot (or wakeup) sources that are set before switching to ultra
+ * low power mode. 
+ *
+ * This API is used to set the boot sources and switch the device to ultra low
+ * power state.
+ *
+ * @section API_Usage_usage Typical Usage
+ *
+ * Typically, this API is used like this:
+ *
+ *   - Boot sources are set by calling le_ulpm_BootOnGpio()/le_ulpm_BootOnTimer(). If multiple
+ *      boot sources are configured, the module will boot if any of the boot sources are triggered.
+ *
+ *   - After configuring boot source, le_ulpm_ShutDown() can be called to initiate shutdown
+ *      (i.e. shutt down all major components like the app processor, modem, etc.).
+ *
+ * @section ulpm_example Sample Code
+ *
+ * This C code sample calls low power manager API to switch low power mode:
+ *
+ *  @code
+ *
+ *  void SwitchToLowPowerMode
+ *  (
+ *      void
+ *  )
+ *  {
+ *      // Boot after 1000 second of shutdown.
+ *      LE_ERROR_IF(le_ulpm_BootOnTimer(1000) != LE_OK, "Can't set timer as boot source");
+ *
+ *      // Boot if GPIO36 voltage level is high.
+ *      LE_ERROR_IF(le_ulpm_BootOnGpio(36, LE_LPM_GPIO_HIGH) != LE_OK, "Can't set gpio36 as boot source");
+ *
+ *      // Boot if GPIO38 voltage level is low.
+ *      LE_ERROR_IF(le_ulpm_BootOnGpio(38, LE_LPM_GPIO_LOW) != LE_OK, "Can't set gpio38 as boot source");
+ *
+ *      // Initiate shutdown.
+ *      LE_ERROR_IF(le_ulpm_ShutDown() != LE_OK, "Can't initiate shutdown");
+ *  }
+ *
+ *  @endcode
+ *
+ * <HR>
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ */
+//--------------------------------------------------------------------------------------------------
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * @file le_ulpm_interface.h
+ *
+ * Legato @ref c_ulpm include file.
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ */
+//--------------------------------------------------------------------------------------------------
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum timeout value to stay in ultra low power mode.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_TIMEOUT_VAL = 2*24*3600;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * State of gpio pin. This state will be used to exit from low power state.
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM GpioState
+{
+    GPIO_HIGH,             ///< Gpio voltage level high.
+    GPIO_LOW,              ///< Gpio voltage level low.
+};
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Boot on changing of a gpio state. Gpio number is specified as parameter.
+ *
+ * @return
+ *      - LE_OK if specified gpio is configured as boot source.
+ *      - LE_FAULT if failed to configure.
+ *
+ * @note The process exits if invalid gpio number is passed.  Check corresponding device documents
+ * for valid list of gpio.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t BootOnGpio
+(
+    uint32 gpioNum IN,       ///< Gpio number to boot.
+    GpioState state IN       ///< State which should cause boot.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Boot after expiration of timer interval.
+ *
+ * @return
+ *      - LE_OK if specified timer is configured as boot source.
+ *      - LE_FAULT if failed to configure.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t BootOnTimer
+(
+    uint32 expiryVal IN       ///< Expiration time(in second) to boot. This is relative time from
+                              ///< modem/app processor shutdown.
+);
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Initiate shutting down of app processor/modem etc.
+ *
+ * @return
+ *      - LE_OK if entry to ultra low power mode initiates properly.
+ *      - LE_NOT_POSSIBLE if shutting is not possible now. Try again.
+ *      - LE_FAULT if failed to initiate.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t ShutDown();

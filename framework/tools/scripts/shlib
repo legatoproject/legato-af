@@ -2,6 +2,8 @@
 # source this for functions only
 # Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 
+BIN_PATH="/legato/systems/current/bin"
+
 # if SSH_PORT is defined add the port option to ssh
 SSH_PORT=${SSH_PORT:=22}
 SSH_OPTS="-p $SSH_PORT"
@@ -223,7 +225,7 @@ ScpFromTarget()
         exit 1
     fi
     ParseScpArgs $@
-    scp $SCP_OPTS $SCP_PASSED_ARGS "root@[$TARGET_IP]:$SCP_SOURCE_FILE" "$SCP_DEST_FILE" >/dev/null
+    scp $SCP_OPTS $FAST_SSH_OPTS $SCP_PASSED_ARGS "root@[$TARGET_IP]:$SCP_SOURCE_FILE" "$SCP_DEST_FILE" >/dev/null
 }
 
 ScpToTarget()
@@ -233,7 +235,7 @@ ScpToTarget()
         exit 1
     fi
     ParseScpArgs $@
-    scp $SCP_OPTS $SCP_PASSED_ARGS "$SCP_SOURCE_FILE" "root@[$TARGET_IP]:$SCP_DEST_FILE" >/dev/null
+    scp $SCP_OPTS $FAST_SSH_OPTS $SCP_PASSED_ARGS "$SCP_SOURCE_FILE" "root@[$TARGET_IP]:$SCP_DEST_FILE" >/dev/null
 }
 
 SshToTarget ()
@@ -243,7 +245,7 @@ SshToTarget ()
         exit 1
     fi
 
-    ssh $SSH_OPTS root@$TARGET_IP "$@"
+    ssh $SSH_OPTS $FAST_SSH_OPTS root@$TARGET_IP "$@"
 }
 
 # Shared (Master) ssh
@@ -258,6 +260,7 @@ StartFastSsh()
 # more checking should be done for fail of this call and see if there is a stale ControlPath
 # from a bad close, e.g.
     SSHSOCKET=~/.ssh/root@${TARGET_IP}_legato_tools
+    FAST_SSH_OPTS="-o ControlPath=$SSHSOCKET"
     ssh $SSH_OPTS -M -f -N -o ControlPath=$SSHSOCKET root@$TARGET_IP
 }
 
@@ -276,4 +279,19 @@ EndFastSsh()
 {
 #   redirect stderr to /dev/null as -q doesn't seem to work
     ssh -S $SSHSOCKET -q -O exit root@${TARGET_IP}_legato_tools 2>/dev/null
+    SSHSOCKET=""
+    FAST_SSH_OPTS=""
 }
+
+cleanup()
+{
+    exit_code=$?
+    # I could call out to a local cleanup function if it exists.
+    # For now I'll just clean up any ssh master sockets that may be lying around.
+    if [ -n "$SSHSOCKET" ]; then
+        EndFastSsh
+    fi
+    return $exit_code
+}
+
+trap cleanup EXIT

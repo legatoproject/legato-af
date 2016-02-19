@@ -206,7 +206,7 @@ le_result_t pa_sim_GetCardIdentification
 //--------------------------------------------------------------------------------------------------
 void pa_simSimu_SetIMSI
 (
-    pa_sim_Imsi_t imsi   ///< [OUT] IMSI value
+    pa_sim_Imsi_t imsi   ///< [IN] IMSI value
 )
 {
     strncpy(Imsi, imsi, sizeof(pa_sim_Imsi_t));

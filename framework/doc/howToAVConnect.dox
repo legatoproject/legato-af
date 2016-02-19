@@ -1,6 +1,6 @@
 /** @page howToAVConnect Connect to AirVantage
 
-Also see @subpage appInstallAirVantage
+Also see @ref howToAVInstallApp
 
 <HR>
 
@@ -13,7 +13,7 @@ Detailed AirVantage documentation:
 
 After you connect to your AirVantage account, you can create system and app.
 
- @section connectingAirVantage_createSys Create System
+ @section howToAVConnect_createSys Create System
 
 Create a new System in AirVantage Server:
 - From the `Inventory menu`, choose `Systems`.
@@ -28,13 +28,13 @@ model is an XML file defining the communication contract between AirVantage and 
 - Select "I want to activate my system after creating it".
 - Click `Create`.
 
-@section connectingAirVantage_lwm2m LWM2M
+@section howToAVConnect_lwm2m LWM2M
 
 Legato provides LWM2M support to connect to AirVantage.
 
 See @ref c_le_avc, @ref c_le_avdata and @ref defFilesCdef_assets for details.
 
-@section connectingAirVantage_checkDeviceStatus Device Status
+@section howToAVConnect_checkDeviceStatus Device Status
 
 Check device status on the AirVantage Server:
 

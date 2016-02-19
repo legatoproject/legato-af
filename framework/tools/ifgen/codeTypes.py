@@ -776,6 +776,16 @@ class FunctionData(BaseFunctionData):
                     if hasattr(p, 'minSize'):
                         sizeParm.minValue = p.minSize
 
+                        # After unpacking the value, range check and limit the value on the server
+                        # side, in case the client passed in a value larger than specified, which
+                        # is actually a valid thing to do.
+                        sizeParm.handlerUnpack +=  """
+if ( {parm.unpackName} > {parm.minValue} )
+{{
+    LE_DEBUG("Adjusting {parm.unpackName} from %zd to {parm.minValue}", {parm.unpackName});
+    {parm.unpackName} = {parm.minValue};
+}}\
+"""
 
                     # Add the parameter to the appropriate lists.  Note that it goes into both
                     # the IN and OUT lists, since it is an INOUT parameter.

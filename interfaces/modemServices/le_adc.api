@@ -50,17 +50,9 @@
 //--------------------------------------------------------------------------------------------------
 ENUM AdcChannelInput
 {
-    VBATT,
-    VCOIN,
-    PA_THERM,
-    PMIC_THERM,
-    XO_THERM,
     EXT_ADC1,
     EXT_ADC2,
-    PRI_ANT,
-    SEC_ANT,
-    GNSS_ANT,
-    END_OF_INPUTS
+    MAX
 };
 
 

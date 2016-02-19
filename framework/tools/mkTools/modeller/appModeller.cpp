@@ -132,8 +132,8 @@ static void AddExecutable
         appPtr->components.insert(componentPtr);
 
         // Remember if this component has sources.
-        if (   (componentPtr->cSources.empty() == false)
-            || (componentPtr->cxxSources.empty() == false)  )
+        if (   (componentPtr->cObjectFiles.empty() == false)
+            || (componentPtr->cxxObjectFiles.empty() == false)  )
         {
             hasSources = true;
         }
@@ -175,7 +175,9 @@ static void AddExecutables
 
             // Compute the path to the executable, relative to the app's working directory
             // and create an object for this exe.
-            auto exePtr = new model::Exe_t("staging/bin/" + exeName);
+            auto exePtr = new model::Exe_t("staging/read-only/bin/" + exeName,
+                                           appPtr,
+                                           buildParams.workingDir);
             exePtr->exeDefPtr = itemPtr;
 
             // Iterate over the list of contents of the executable specification in the parse
@@ -183,14 +185,16 @@ static void AddExecutables
             for (auto token : itemPtr->Contents())
             {
                 // Resolve the path to the component.
-                std::string componentPath = envVars::DoSubstitution(token->text);
+                std::string componentPath = path::Unquote(envVars::DoSubstitution(token->text));
 
                 // Skip if environment variable substitution resulted in an empty string.
                 if (!componentPath.empty())
                 {
-                    componentPath = path::Unquote(componentPath);
-
-                    auto resolvedPath = file::FindComponent(componentPath, buildParams.sourceDirs);
+                    auto resolvedPath = file::FindComponent(componentPath, { appPtr->dir });
+                    if (resolvedPath.empty())
+                    {
+                        resolvedPath = file::FindComponent(componentPath, buildParams.sourceDirs);
+                    }
                     if (resolvedPath.empty())
                     {
                         token->ThrowException("Couldn't find component '" + componentPath + "'.");
@@ -408,55 +412,6 @@ static void AddRequiredItems
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Makes the application a member of groups listed in a given "groups" section in the parse tree.
- */
-//--------------------------------------------------------------------------------------------------
-static void AddGroups
-(
-    model::App_t* appPtr,
-    const parseTree::TokenListSection_t* sectionPtr
-)
-//--------------------------------------------------------------------------------------------------
-{
-    for (auto tokenPtr : sectionPtr->Contents())
-    {
-        appPtr->groups.insert(tokenPtr->text);
-    }
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Sets whether the Supervisor will start the application automatically at system start-up,
- * or only when asked to do so, based on the contents of a "start:" section in the parse tree.
- */
-//--------------------------------------------------------------------------------------------------
-static void SetStart
-(
-    model::App_t* appPtr,
-    const parseTree::SimpleSection_t* sectionPtr
-)
-//--------------------------------------------------------------------------------------------------
-{
-    auto& mode = sectionPtr->Text();
-
-    if (mode == "auto")
-    {
-        appPtr->startTrigger = model::App_t::AUTO;
-    }
-    else if (mode == "manual")
-    {
-        appPtr->startTrigger = model::App_t::MANUAL;
-    }
-    else
-    {
-        sectionPtr->Contents()[0]->ThrowException("Internal error: unexpected startup option.");
-    }
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Add processes to a process environment, based on the contents of a given run section in
  * the parse tree.
  */
@@ -608,6 +563,92 @@ static void AddProcessesSections
 }
 
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Mark an interface instance as externally visible for binding at the system level.
+ */
+//--------------------------------------------------------------------------------------------------
+static void MarkInterfaceExternal
+(
+    model::App_t* appPtr,
+    model::ApiInterfaceInstance_t* ifInstancePtr, ///< Ptr to the interface instance object.
+    const parseTree::Token_t* nameTokenPtr    ///< Ptr to token containing name to use outside app.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // If the interface is already marked external, this is a duplicate.
+    if (ifInstancePtr->externMarkPtr != NULL)
+    {
+        std::stringstream msg;
+        msg << "Same interface marked 'extern' more than once. Previously done at line "
+            << ifInstancePtr->externMarkPtr->line
+            << ".";
+        nameTokenPtr->ThrowException(msg.str());
+    }
+
+    // Mark it external and assign it the external name.
+    ifInstancePtr->externMarkPtr = nameTokenPtr;
+    ifInstancePtr->name = nameTokenPtr->text;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Mark a single API interface instance as externally visible to other apps.
+ */
+//--------------------------------------------------------------------------------------------------
+static void MakeInterfaceExternal
+(
+    model::App_t* appPtr,
+    const parseTree::Token_t* nameTokenPtr,
+    const parseTree::Token_t* exeTokenPtr,
+    const parseTree::Token_t* componentTokenPtr,
+    const parseTree::Token_t* interfaceTokenPtr
+)
+//--------------------------------------------------------------------------------------------------
+{
+    const auto& exeName = exeTokenPtr->text;
+    const auto& componentName = componentTokenPtr->text;
+    const auto& interfaceName = interfaceTokenPtr->text;
+
+    // Check that there are no other external interfaces using the same name already.
+    const auto& name = nameTokenPtr->text;
+    if (   (appPtr->externServerInterfaces.find(name) != appPtr->externServerInterfaces.end())
+        || (appPtr->externClientInterfaces.find(name) != appPtr->externClientInterfaces.end()) )
+    {
+        nameTokenPtr->ThrowException("Duplicate external interface name: '" + name + "'.");
+    }
+
+    // Find the component instance.
+    auto componentInstancePtr = appPtr->FindComponentInstance(exeTokenPtr, componentTokenPtr);
+
+    // Find the interface (look in both the client and server interface lists.
+    auto serverIfPtr = componentInstancePtr->FindServerInterface(interfaceTokenPtr->text);
+    auto clientIfPtr = componentInstancePtr->FindClientInterface(interfaceTokenPtr->text);
+
+    if ((clientIfPtr == NULL) && (serverIfPtr == NULL))
+    {
+        nameTokenPtr->ThrowException("Interface '" + interfaceName + "' not found in component "
+                                     "'" + componentName + "' in executable '" + exeName + "'.");
+    }
+
+    // Mark the interface "external", and add it to the appropriate list of external interfaces.
+    if (clientIfPtr != NULL)
+    {
+        MarkInterfaceExternal(appPtr, clientIfPtr, nameTokenPtr);
+
+        appPtr->externClientInterfaces[name] = clientIfPtr;
+    }
+    else
+    {
+        MarkInterfaceExternal(appPtr, serverIfPtr, nameTokenPtr);
+
+        appPtr->externServerInterfaces[name] = serverIfPtr;
+    }
+}
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Mark API interface instances as externally visible to other apps.
@@ -620,41 +661,24 @@ static void MakeInterfacesExternal
 )
 //--------------------------------------------------------------------------------------------------
 {
-    // Set of external interface names used to check for duplicates.
-    std::set<std::string> externalNames;
-
     for (auto ifPtr : interfaces)
     {
         // Each interface spec is a token list.
-        auto tokens = ToTokenListPtr(ifPtr)->Contents();
-        model::ApiInterfaceInstance_t* ifInstancePtr;
-        const parseTree::Token_t* nameTokenPtr;
+        auto tokens = dynamic_cast<const parseTree::TokenList_t*>(ifPtr)->Contents();
 
         // If there are 4 content tokens, the first token is the external name
         // to be used to identify the interface, and the remaining three tokens are the
         // exe, component, and interface names of the interface instance.
         if (tokens.size() == 4)
         {
-            ifInstancePtr = appPtr->FindInterface(tokens[1], tokens[2], tokens[3]);
-            nameTokenPtr = tokens[0];
+            MakeInterfaceExternal(appPtr, tokens[0], tokens[1], tokens[2], tokens[3]);
         }
         // Otherwise, there are 3 content tokens and the interface is exported using the
         // internal name of the interface on the component.
         else
         {
-            ifInstancePtr = appPtr->FindInterface(tokens[0], tokens[1], tokens[2]);
-            nameTokenPtr = tokens[2];
+            MakeInterfaceExternal(appPtr, tokens[2], tokens[0], tokens[1], tokens[2]);
         }
-        ifInstancePtr->isExternal = true;
-        ifInstancePtr->name = nameTokenPtr->text;
-
-        // Check that there are no duplicates.
-        if (externalNames.find(ifInstancePtr->name) != externalNames.end())
-        {
-            nameTokenPtr->ThrowException("Duplicate external interface name :"
-                                         " '" + ifInstancePtr->name + "'.");
-        }
-        externalNames.insert(ifInstancePtr->name);
     }
 }
 
@@ -673,13 +697,6 @@ static void GetBindingServerSide
 )
 //--------------------------------------------------------------------------------------------------
 {
-    // Function to remove angle brackets from a non-app user name specification in an IPC_AGENT
-    // token's text.
-    auto removeAngleBrackets = [](const std::string& agentName)
-        {
-            return agentName.substr(1, agentName.length() - 2);
-        };
-
     // startIndex   startIndex + 1  startIndex + 2
     // NAME         NAME            NAME            = internal binding
     // IPC_AGENT    NAME                            = external binding
@@ -693,7 +710,7 @@ static void GetBindingServerSide
         if (serverAgentName[0] == '<')  // non-app user?
         {
             bindingPtr->serverType = model::Binding_t::EXTERNAL_USER;
-            bindingPtr->serverAgentName = removeAngleBrackets(serverAgentName);
+            bindingPtr->serverAgentName = RemoveAngleBrackets(serverAgentName);
         }
         else // app
         {
@@ -728,17 +745,21 @@ static void AddBindings
 )
 //--------------------------------------------------------------------------------------------------
 {
-    // The bindings section is a complex section.
+    // The bindings section is a list of compound items.
     auto sectionPtr = ToCompoundItemListPtr(bindingsSectionPtr);
 
     for (auto itemPtr : sectionPtr->Contents())
     {
-        auto bindingPtr = new model::Binding_t();
-
         // Each binding specification inside the bindings section is a token list.
-        auto bindingSpecPtr = ToTokenListPtr(itemPtr);
-        bindingPtr->parseTreePtr = static_cast<const parseTree::Binding_t*>(bindingSpecPtr);
+        auto bindingSpecPtr = dynamic_cast<const parseTree::Binding_t*>(itemPtr);
         auto tokens = bindingSpecPtr->Contents();
+
+        // Create a new Binding object for the model.
+        auto bindingPtr = new model::Binding_t(bindingSpecPtr);
+
+        // Bindings in .adef files are always for that app's client-side internal interfaces.
+        bindingPtr->clientType = model::Binding_t::INTERNAL;
+        bindingPtr->clientAgentName = appPtr->name;
 
         // Is this a "wildcard binding" of all unspecified client interfaces with a given name?
         if (tokens[0]->type == parseTree::Token_t::STAR)
@@ -777,8 +798,6 @@ static void AddBindings
             // Record the binding in the client-side interface object.
             clientIfPtr->bindingPtr = bindingPtr;
         }
-
-        appPtr->bindings.push_back(bindingPtr);
     }
 }
 
@@ -804,49 +823,32 @@ static void AddBindings
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Set the app-level watchdog action setting.
- */
+ * Print to standard out a description of a given IPC binding.
+ **/
 //--------------------------------------------------------------------------------------------------
-static void SetWatchdogAction
+static void PrintBindingSummary
 (
-    model::App_t* appPtr,
-    const parseTree::SimpleSection_t* sectionPtr  ///< Ptr to section in parse tree.
+    const std::string& indent,
+    const std::string& clientIfName,
+    const model::Binding_t* bindingPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
-    if (appPtr->watchdogAction.IsSet())
+    std::cout << indent << "'" << clientIfName
+              << "' -> bound to service '" << bindingPtr->serverIfName << "'";
+    switch (bindingPtr->serverType)
     {
-        sectionPtr->ThrowException("Only one watchdogAction section allowed.");
-    }
-    appPtr->watchdogAction = sectionPtr->Text();
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Set the app-level watchdog timeout setting.
- */
-//--------------------------------------------------------------------------------------------------
-static void SetWatchdogTimeout
-(
-    model::App_t* appPtr,
-    const parseTree::SimpleSection_t* sectionPtr  ///< Ptr to section in parse tree.
-)
-//--------------------------------------------------------------------------------------------------
-{
-    if (appPtr->watchdogTimeout.IsSet())
-    {
-        sectionPtr->ThrowException("Only one watchdogTimeout section allowed.");
-    }
-
-    auto tokenPtr = sectionPtr->Contents()[0];
-    if (tokenPtr->type == parseTree::Token_t::NAME)
-    {
-        appPtr->watchdogTimeout = -1;   // Never timeout (watchdog disabled).
-    }
-    else
-    {
-        appPtr->watchdogTimeout = GetInt(sectionPtr);
+        case model::Binding_t::INTERNAL:
+            std::cout << " on another exe inside the same app.";
+            break;
+        case model::Binding_t::EXTERNAL_APP:
+            std::cout << " served by app '"
+                      << bindingPtr->serverAgentName << "'.";
+            break;
+        case model::Binding_t::EXTERNAL_USER:
+            std::cout << " served by user <"
+                      << bindingPtr->serverAgentName << ">.";
+            break;
     }
 }
 
@@ -1153,22 +1155,8 @@ void PrintSummary
 
             for (auto ifPtr : boundClientIfs)
             {
-                std::cout << "      '" << ifPtr->name
-                          << "' -> bound to service '" << ifPtr->bindingPtr->serverIfName << "'";
-                switch (ifPtr->bindingPtr->serverType)
-                {
-                    case model::Binding_t::INTERNAL:
-                        std::cout << " on another exe inside the same app.";
-                        break;
-                    case model::Binding_t::EXTERNAL_APP:
-                        std::cout << " served by app '"
-                                  << ifPtr->bindingPtr->serverAgentName << "'.";
-                        break;
-                    case model::Binding_t::EXTERNAL_USER:
-                        std::cout << " served by user <"
-                                  << ifPtr->bindingPtr->serverAgentName << ">.";
-                        break;
-                }
+                PrintBindingSummary("      ", ifPtr->name, ifPtr->bindingPtr);
+
                 std::cout << std::endl
                           << "        API defined in: '" << ifPtr->ifPtr->apiFilePtr->path << "'"
                           << std::endl;
@@ -1180,6 +1168,15 @@ void PrintSummary
                           << "        API defined in: '" << ifPtr->ifPtr->apiFilePtr->path << "'"
                           << std::endl;
             }
+        }
+    }
+    if (!appPtr->wildcardBindings.empty())
+    {
+        std::cout << "  Has the following \"wildcard\" interface bindings:" << std::endl;
+
+        for (const auto& mapEntry: appPtr->wildcardBindings)
+        {
+            PrintBindingSummary("    ", mapEntry.first, mapEntry.second);
         }
     }
 
@@ -1281,7 +1278,7 @@ static void EnsurePathIsSet
     std::string defaultPath = "/usr/local/bin:/usr/bin:/bin";
     if (appPtr->isSandboxed == false)
     {
-        defaultPath = "/opt/legato/apps/" + appPtr->name + "/bin:" + defaultPath;
+        defaultPath = "/legato/systems/current/apps/" + appPtr->name + "/read-only/bin:" + defaultPath;
     }
 
     // Check all process environments and add the default PATH to any that don't have a PATH

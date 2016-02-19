@@ -26,7 +26,7 @@ echo "Using legato framework found under '$LEGATO_ROOT'"
 # Start a sub-shell and tell it to change to the legato root, source the file that sets up
 # the legato environment, and start interpreting stdin interactively.
 bash -i <<EOF
-export PATH=$LEGATO_ROOT/bin:$PATH:$LEGATO_ROOT/build/localhost/bin
+export PATH=$LEGATO_ROOT/bin:$PATH:$LEGATO_ROOT/build/localhost/framework/bin
 source $LEGATO_ROOT/framework/tools/scripts/configToolchainDirEnvVars
 exec <> /dev/tty
 EOF

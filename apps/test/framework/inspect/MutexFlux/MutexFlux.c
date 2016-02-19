@@ -138,33 +138,6 @@ void testRecursive
 }
 
 
-// This is testing Traceable Recursive Mutex.
-// The expected result is the same as "testRecursive", except "traceable" should also be true (1).
-void testTraceableRecursive
-(
-    void
-)
-{
-    le_mutex_Ref_t mutex1Ref = le_mutex_CreateTraceableRecursive("TracRecurMutex1");
-
-    le_mutex_Ref_t mutexRefArray1[3] = {mutex1Ref, mutex1Ref, mutex1Ref};
-
-    MutexRefArray_t mra1 = {NUM_ARRAY_MEMBERS(mutexRefArray1), mutexRefArray1};
-
-    le_thread_Ref_t thread1Ref = le_thread_Create("Thread1", LockMutex, (void*)&mra1);
-
-    le_thread_Start(thread1Ref);
-
-    le_sem_Wait(SemaRef);
-
-    // Keep the function around so that mutex refs are available.
-    le_sem_Wait(SemaRef);
-
-    LE_INFO("++++++++++++++++++  END OF testTraceableRecursive (shouldn't get here) +++++++++++++++++++++");
-}
-
-
-
 /////////////////////////////////////////////
 /*
  * Functions relevant to create and delete mutexes
@@ -360,7 +333,7 @@ static void PrintHelp
     void
 )
 {
-    LE_ERROR("Usage: MutexFlux [TestWaitingList | TestRecursive | TestTraceableRecursive]");
+    LE_ERROR("Usage: MutexFlux [TestWaitingList | TestRecursive]");
     LE_ERROR("       MutexFlux [1toN-1 | AllMutexes1stThread | AllMutexesMidThread | 1stThread | MidThread | None] [delete interval] [number of mutexes] [number of threads]");
     exit(EXIT_FAILURE);
 }
@@ -397,8 +370,7 @@ static void TestTypeArgHandler
     TestType = arg;
 
     if ((strcmp(arg, "TestWaitingList") == 0) ||
-        (strcmp(arg, "TestRecursive") == 0) ||
-        (strcmp(arg, "TestTraceableRecursive") == 0))
+        (strcmp(arg, "TestRecursive") == 0))
     {
         // do nothing
     }
@@ -449,10 +421,6 @@ static void RunTests
     else if (strcmp(TestType, "TestRecursive") == 0)
     {
         testRecursive();
-    }
-    else if (strcmp(TestType, "TestTraceableRecursive") == 0)
-    {
-        testTraceableRecursive();
     }
     else if (strcmp(TestType, "1toN-1") == 0)
     {

@@ -23,6 +23,7 @@
 #include "smack.h"
 #include "killProc.h"
 #include "interfaces.h"
+#include "system.h"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -181,6 +182,17 @@ EnvVar_t;
 //--------------------------------------------------------------------------------------------------
 #define READ_PIPE       0
 #define WRITE_PIPE      1
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The fault limits.
+ *
+ * @todo Put in the config tree so that it can be configured.
+ */
+//--------------------------------------------------------------------------------------------------
+#define FAULT_LIMIT_INTERVAL_RESTART                10   // in seconds
+#define FAULT_LIMIT_INTERVAL_RESTART_APP            10   // in seconds
 
 
 //--------------------------------------------------------------------------------------------------
@@ -571,8 +583,10 @@ static void ConfigNonSandboxedProcess
 )
 {
     // Set the working directory for this process.
-    LE_FATAL_IF(chdir(workingDirPtr) != 0,
-                "Could not change working directory to '%s'.  %m", workingDirPtr);
+    if (chdir(workingDirPtr) != 0)
+    {
+        LE_FATAL("Could not change working directory to '%s'.  %m", workingDirPtr);
+    }
 
     // NOTE: For now, at least, we run all unsandboxed apps as root to prevent major permissions
     //       issues when trying to perform system operations, such as changing routing tables.
@@ -838,7 +852,7 @@ static inline le_result_t StartProc
         kill_Hard(procRef->pid);
     }
 
-    LE_INFO("Starting process %s with pid %d", procRef->name, procRef->pid);
+    LE_INFO("Starting process '%s' with pid %d", procRef->name, procRef->pid);
 
     // Unblock the child process.
     fd_Close(syncPipeFd[WRITE_PIPE]);
@@ -1089,19 +1103,6 @@ static proc_FaultAction_t GetFaultAction
     proc_Ref_t procRef              ///< [IN] The process reference.
 )
 {
-    if (procRef->cmdKill)
-    {
-        // The cmdKill flag was set which means the process died because we killed it so
-        // it was not a fault.  Reset the cmdKill flag so that if this process is restarted
-        // faults will still be caught.
-        procRef->cmdKill = false;
-
-        return PROC_FAULT_ACTION_NO_FAULT;
-    }
-
-    // Record the fault time.
-    procRef->faultTime = (le_clk_GetAbsoluteTime()).sec;
-
     // Read the process's fault action from the config tree.
     le_cfg_IteratorRef_t procCfg = le_cfg_CreateReadTxn(procRef->cfgPathRoot);
 
@@ -1114,7 +1115,7 @@ static proc_FaultAction_t GetFaultAction
     // Set the fault action based on the fault action string.
     if (result != LE_OK)
     {
-        LE_CRIT("Fault action string for process '%s' is too long.  Assume fault action is 'ignore'.",
+        LE_CRIT("Fault action string for process '%s' is too long.  Assume 'ignore'.",
                 procRef->name);
         return PROC_FAULT_ACTION_IGNORE;
     }
@@ -1144,7 +1145,15 @@ static proc_FaultAction_t GetFaultAction
         return PROC_FAULT_ACTION_IGNORE;
     }
 
-    LE_WARN("Unrecognized fault action for process '%s'.  Assume fault action is 'ignore'.",
+    if (faultActionStr[0] == '\0')  // If no fault action is specified,
+    {
+        LE_INFO("No fault action specified for process '%s'. Assuming 'ignore'.",
+                procRef->name);
+
+        return PROC_FAULT_ACTION_IGNORE;
+    }
+
+    LE_WARN("Unrecognized fault action for process '%s'.  Assume 'ignore'.",
             procRef->name);
     return PROC_FAULT_ACTION_IGNORE;
 }
@@ -1167,7 +1176,7 @@ static void CaptureDebugData
     char command[LIMIT_MAX_PATH_BYTES];
     int s = snprintf(command,
                      sizeof(command),
-                     "saveLogs %s %s %s %s",
+                     "/legato/systems/current/bin/saveLogs %s %s %s %s",
                      app_GetIsSandboxed(procRef->appRef) ? "SANDBOXED" : "NOTSANDBOXED",
                      app_GetName(procRef->appRef),
                      procRef->name,
@@ -1183,9 +1192,9 @@ static void CaptureDebugData
 
     int r = system(command);
 
-    if (!WIFEXITED(r))
+    if (!WIFEXITED(r) || (WEXITSTATUS(r) != EXIT_SUCCESS))
     {
-        LE_ERROR("Could not backup core files.");
+        LE_ERROR("Could not save log and core file.");
     }
 }
 
@@ -1245,6 +1254,51 @@ wdog_action_WatchdogAction_t proc_GetWatchdogAction
     return watchdogAction;
 }
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Checks to see if the fault limit for this process has been reached.  The fault limit is reached
+ * when there is more than one fault within the fault limit interval.
+ *
+ * @return
+ *      true if the fault limit has been reached.
+ *      false if the fault limit has not been reached.
+ */
+//--------------------------------------------------------------------------------------------------
+static bool ReachedFaultLimit
+(
+    proc_Ref_t procRef,                 ///< [IN] The process reference.
+    proc_FaultAction_t currFaultAction, ///< [IN] The process's current fault action.
+    time_t prevFaultTime                ///< [IN] Time of the previous fault.
+)
+{
+    switch (currFaultAction)
+    {
+        case PROC_FAULT_ACTION_RESTART:
+            if ( (procRef->faultTime != 0) &&
+                 (procRef->faultTime - prevFaultTime <= FAULT_LIMIT_INTERVAL_RESTART) )
+            {
+                return true;
+            }
+            break;
+
+        case PROC_FAULT_ACTION_RESTART_APP:
+            if ( (procRef->faultTime != 0) &&
+                 (procRef->faultTime - prevFaultTime <= FAULT_LIMIT_INTERVAL_RESTART_APP) )
+            {
+                return true;
+            }
+            break;
+
+        default:
+            // Fault limits do not apply to the other fault actions.
+            return false;
+    }
+
+    return false;
+}
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * This handler must be called when a SIGCHILD is received for the specified process.
@@ -1273,9 +1327,26 @@ proc_FaultAction_t proc_SigChildHandler
 
         LE_INFO("Process '%s' (PID: %d) has been continued.", procRef->name, procRef->pid);
     }
-    else
+    else  // The process died.
     {
-        // The process died.
+        if (procRef->cmdKill)
+        {
+            // The cmdKill flag was set which means the process died because we killed it so
+            // it was not a fault.  Reset the cmdKill flag so that if this process is restarted
+            // faults will still be caught.
+            procRef->cmdKill = false;
+
+            // Remember that this process is dead.
+            procRef->pid = -1;
+
+            return PROC_FAULT_ACTION_NO_FAULT;
+        }
+
+        // Remember the previous fault time.
+        time_t prevFaultTime = procRef->faultTime;
+
+        // Record the fault time.
+        procRef->faultTime = (le_clk_GetAbsoluteTime()).sec;
 
         if (WIFEXITED(procExitStatus))
         {
@@ -1299,18 +1370,40 @@ proc_FaultAction_t proc_SigChildHandler
             faultAction = GetFaultAction(procRef);
         }
 
-        // Check the fault action.  If it indicates that the process stopped due to an error, save
-        // all relevant data for future diagnosis.
+        // Record the fact that the process is dead.
+        procRef->pid = -1;
+        procRef->paused = false;
+
+        // If the process has reached its fault limit, take action to stop
+        // the apparently futile attempts to start this thing.
+        if (ReachedFaultLimit(procRef, faultAction, prevFaultTime))
+        {
+            if (system_IsGood())
+            {
+                LE_CRIT("Process '%s' reached the fault limit (in a 'good' system) "
+                         "and will be stopped.",
+                         procRef->name);
+
+                faultAction = PROC_FAULT_ACTION_STOP_APP;
+            }
+            else
+            {
+                LE_EMERG("Process '%s' reached fault limit while system in probation. "
+                         "Device will be rebooted.",
+                         procRef->name);
+
+                faultAction = PROC_FAULT_ACTION_REBOOT;
+            }
+        }
+
+        // If the process stopped due to an error, save all relevant data for future diagnosis.
         if (faultAction != PROC_FAULT_ACTION_NO_FAULT)
         {
             // Check if we're rebooting.  If we are, this data needs to be saved in a more permanent
             // location.
-            bool isRebooting = faultAction == PROC_FAULT_ACTION_REBOOT;
+            bool isRebooting = (faultAction == PROC_FAULT_ACTION_REBOOT);
             CaptureDebugData(procRef, isRebooting);
         }
-
-        procRef->pid = -1;
-        procRef->paused = false;
     }
 
     return faultAction;

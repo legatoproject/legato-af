@@ -91,10 +91,10 @@
 //--------------------------------------------------------------------------------------------------
 
 #include "legato.h"
-#include "limit.h"
+#include "../limit.h"
 #include "interfaces.h"
-#include "user.h"
-#include "fileDescriptor.h"
+#include "../user.h"
+#include "../fileDescriptor.h"
 
 
 

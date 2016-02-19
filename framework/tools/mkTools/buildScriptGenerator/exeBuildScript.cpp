@@ -12,6 +12,7 @@
 
 #include "mkTools.h"
 #include "buildScriptCommon.h"
+#include "exeBuildScript.h"
 #include "componentBuildScript.h"
 
 namespace ninja
@@ -51,7 +52,7 @@ static std::string GetLinkRule
 )
 //--------------------------------------------------------------------------------------------------
 {
-    if (exePtr->cxxSources.empty())
+    if (exePtr->cxxObjectFiles.empty())
     {
         return "LinkCExe";
     }
@@ -118,52 +119,83 @@ static void GenerateBuildStatement
         exePath = "$builddir/" + exePath;
     }
     script << "build " << exePath << ": " << GetLinkRule(exePtr) <<
-              " $builddir/" << exePtr->mainObjectFile;
+              " $builddir/" << exePtr->mainObjectFile.path;
 
     // Link in all the .o files for C/C++ sources.
-    for (auto sourceFile : exePtr->cSources)
+    for (auto objFilePtr : exePtr->cObjectFiles)
     {
-        script << " " << GetObjectFile(sourceFile);
+        script << " $builddir/" << objFilePtr->path;
     }
-    for (auto sourceFile : exePtr->cxxSources)
+    for (auto objFilePtr : exePtr->cxxObjectFiles)
     {
-        script << " " << GetObjectFile(sourceFile);
+        script << " $builddir/" << objFilePtr->path;
     }
 
-    // Declare the exe's (implicit) dependencies on all the components' shared libraries.
+    // Declare the exe's (implicit) dependencies, including all the components' shared libraries
+    // and liblegato.  Collect a set of static libraries needed by the components, while we are
+    // looking at them.
+    std::set<std::string> staticLibs;
+    script << " |";
     if (!exePtr->componentInstances.empty())
     {
-        script << " |";
-
         for (auto componentInstancePtr : exePtr->componentInstances)
         {
-            script << " " << componentInstancePtr->componentPtr->lib;
+            auto componentPtr = componentInstancePtr->componentPtr;
+            script << " " << componentPtr->lib;
+
+            for (const auto& dependency : componentPtr->implicitDependencies)
+            {
+                script << " " << dependency;
+            }
+
+            for (const auto& lib : componentPtr->staticLibs)
+            {
+                staticLibs.insert(lib);
+            }
         }
     }
-
+    script << " " << path::Combine(envVars::Get("LEGATO_ROOT"),
+                                   "build/$target/framework/lib/liblegato.so");
     script << "\n";
 
     // Define an exe-specific ldFlags variable that adds all the components' and interfaces'
     // shared libraries to the linker command line.
-    script << "  ldFlags ="
+    script << "  ldFlags =";
 
     // Make the executable able to export symbols to dynamic shared libraries that get loaded.
     // This is needed so the executable can define executable-specific interface name variables
     // for component libraries to use.
-              " -rdynamic"
-
-    // Add the library output directory to the list of places to search for libraries to link with.
-              " -L" << buildParams.libOutputDir;
+    script << " -rdynamic";
 
     // Set the DT_RUNPATH variable inside the executable's ELF headers to include the expected
     // on-target runtime locations of the libraries needed.
     GenerateRunPathLdFlags(script, buildParams.target);
 
-    // Includes a list of -l directives for all the libraries the executable needs.
+    // Link with all the static libraries that the components need.
+    for (const auto& lib : staticLibs)
+    {
+        script << " " << lib;
+    }
+
+    // Add the library output directory to the list of places to search for libraries to link with.
+    script << " -L" << buildParams.libOutputDir;
+
+    // Include a list of -l directives for all the libraries the executable needs.
+    GetDependentLibLdFlags(script, exePtr);
+
+    // Link again with all the static libraries that the components need, in case there are
+    // dynamic libraries that need symbols from them, or in case there are interdependencies
+    // between them.
+    for (const auto& lib : staticLibs)
+    {
+        script << " " << lib;
+    }
+
+    // Include another list of -l directives for all the libraries the executable needs.
     GetDependentLibLdFlags(script, exePtr);
 
     // Link with the standard runtime libs.
-    script << " \"-L$$LEGATO_BUILD/bin/lib\" -llegato -lpthread -lrt -ldl -lm";
+    script << " \"-L$$LEGATO_BUILD/framework/lib\" -llegato -lpthread -lrt -ldl -lm";
 
     // Add ldFlags from earlier definition.
     script << " $ldFlags\n"
@@ -202,7 +234,7 @@ static void GenerateIpcBuildStatements
 //--------------------------------------------------------------------------------------------------
 /**
  * Print to a given build script the contents that are common to both cFlags and cxxFlags variable
- * definitions for a given executable's .o file build rules.
+ * definitions for a given executable's .o file build statements.
  **/
 //--------------------------------------------------------------------------------------------------
 static void GenerateCandCxxFlags
@@ -215,12 +247,13 @@ static void GenerateCandCxxFlags
 {
     // Define the component name, log session variable, and log filter variable.
     std::string componentName = exePtr->name + "_exe";
-    script << " -DLEGATO_COMPONENT=" << componentName;
+    script << " -DLE_COMPONENT_NAME=" << componentName;
     script << " -DLE_LOG_SESSION=" << componentName << "_LogSession ";
     script << " -DLE_LOG_LEVEL_FILTER_PTR=" << componentName << "_LogLevelFilterPtr ";
 
     // Define the COMPONENT_INIT.
-    script << " \"-DCOMPONENT_INIT=LE_CI_LINKAGE LE_SHARED void _" << componentName << "_COMPONENT_INIT()\"";
+    script << " \"-DCOMPONENT_INIT=LE_CI_LINKAGE LE_SHARED"
+              " void _" << componentName << "_COMPONENT_INIT()\"";
 }
 
 
@@ -238,20 +271,19 @@ void GenerateBuildStatements
 )
 //--------------------------------------------------------------------------------------------------
 {
-    // Add build statements for all the .o files to be built from C/C++ sources listed on the
-    // mkexe command-line.
-    for (auto sourceFile : exePtr->cSources)
+    // Add build statements for all the .o files to be built from C/C++ sources.
+    for (auto objFilePtr : exePtr->cObjectFiles)
     {
-        script << "build " << GetObjectFile(sourceFile) << ":"
-                  " CompileC " << path::MakeAbsolute(sourceFile) << "\n"
+        script << "build $builddir/" << objFilePtr->path << ":"
+                  " CompileC " << objFilePtr->sourceFilePath << "\n"
                   "  cFlags = $cFlags ";
         GenerateCandCxxFlags(script, exePtr, buildParams);
         script << "\n\n";
     }
-    for (auto sourceFile : exePtr->cxxSources)
+    for (auto objFilePtr : exePtr->cxxObjectFiles)
     {
-        script << "build " << GetObjectFile(sourceFile) << ":"
-                  " CompileCxx " << path::MakeAbsolute(sourceFile) << "\n"
+        script << "build $builddir/" << objFilePtr->path << ":"
+                  " CompileCxx " << objFilePtr->sourceFilePath << "\n"
                   "  cxxFlags = $cxxFlags ";
         GenerateCandCxxFlags(script, exePtr, buildParams);
         script << "\n\n";
@@ -259,11 +291,11 @@ void GenerateBuildStatements
 
     // Add a build statement for the executable's _main.c.o file.
     std::string defaultComponentName = exePtr->name + "_exe";
-    script << "build $builddir/" << exePtr->mainObjectFile << ":"
-              " CompileC $builddir/" << exePtr->mainCSourceFile << "\n"
+    script << "build $builddir/" << exePtr->mainObjectFile.path << ":"
+              " CompileC " << exePtr->mainObjectFile.sourceFilePath << "\n"
               // Define the component name, log session variable, and log filter variable.
               "  cFlags = $cFlags"
-              " -DLEGATO_COMPONENT=" << defaultComponentName <<
+              " -DLE_COMPONENT_NAME=" << defaultComponentName <<
               " -DLE_LOG_SESSION=" << defaultComponentName << "_LogSession"
               " -DLE_LOG_LEVEL_FILTER_PTR=" << defaultComponentName << "_LogLevelFilterPtr "
               "\n\n";
@@ -324,6 +356,8 @@ static void GenerateNinjaScriptBuildStatement
             dependencies.insert(apiFilePtr->path);
         }
     }
+    // It also depends on changes to the mk tools.
+    dependencies.insert(path::Combine(envVars::Get("LEGATO_ROOT"), "build/tools/mk"));
 
     // Write the dependencies to the script.
     for (auto dep : dependencies)
@@ -368,6 +402,7 @@ void Generate
     script << "cFlags = " << buildParams.cFlags << includes << "\n\n";
     script << "cxxFlags = " << buildParams.cxxFlags << includes << "\n\n";
     script << "ldFlags = " << buildParams.ldFlags << "\n\n";
+    script << "target = " << buildParams.target << "\n\n";
     GenerateIfgenFlagsDef(script, buildParams.interfaceDirs);
     GenerateBuildRules(script, buildParams.target, argc, argv);
 

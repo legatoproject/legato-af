@@ -1,0 +1,15 @@
+executables:
+{
+    ipsTest = ( ipsTest )
+}
+
+processes:
+{
+}
+
+start: manual
+
+bindings:
+{
+    ipsTest.ipsTest.le_ips -> modemService.le_ips
+}

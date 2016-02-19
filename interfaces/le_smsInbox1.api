@@ -1,0 +1,465 @@
+//--------------------------------------------------------------------------------------------------
+/**
+ * @page c_smsInbox SMS Inbox Service
+ *
+ * @ref le_smsInbox1_interface.h "API Reference"
+ *
+ * <HR>
+ *
+ * 3rd-party customer applications need to access to SMS messages at anytime without worrying how
+ * the resources are managed.
+ *
+ * Legato provides an SMS Inbox service to allow apps to receive SMS messages through their own,
+ * private message box, without:
+ * - having to manage SIM or modem memory;
+ * - conflicting with other applications that also receive SMS messages;
+ * - missing messages while being updated or restarted.
+ *
+ *
+ * The SMS Inbox Service handles the resource arbitration for the user app: the message
+ * reception is always guaranteed, for example the user app doesn't have to worried about freeing
+ * space in the SIM (or device's storage area) when it is full.
+ *
+ * In fact, at device's startup or when a SIM is inserted, the SIM content is copied into the "Inbox
+ * Message Storage" folder allocated in the root file system of the device. Then, the process frees
+ * automatically the SIM content.
+ * Moreover, every new received SMS message is automatically copied into the "Inbox
+ * Message Storage" folder and deleted from the SIM.
+ * This mechanism keeps the SIM always empty in order to guarantee the reception of SMS messages.
+ *
+ * This process is the same when the SMS message storage is the device's storage area (ME - Mobile
+ * Equipment).
+ *
+ * The message box is a persistent storage area. All files are saved into the file system in the
+ * directory /mnt/flash/smsInbox.
+ *
+ * The creation of SMS inboxes is done based on the message box configuration settings
+ * (cf. @subpage le_smsInbox_configdb section). This way, the message box contents will be kept up
+ * to date automatically by the SMS Inbox Service, even when the user app is slow to start, is
+ * stopped while it is being updated, or is being restarted to recover from a fault.
+ *
+ * A message box works as a circular buffer, when the message box is filled, the older messages
+ * are deleted to free space for new messages. But, the application can also explicitly delete
+ * messages if it doesn't need them anymore.
+ *
+ * @section le_smsInbox_binding IPC interfaces binding
+ *
+ * All the functions of this API are provided by the @b smsInboxService application service.
+ *
+ * Here's a code sample binding to SMS Inbox services:
+ * @verbatim
+   bindings:
+   {
+      clientExe.clientComponent.le_smsInbox1 -> smsInboxService.le_smsInbox1
+   }
+   @endverbatim
+ *
+ * @note By default, smsInboxService starts manually. To start it automatically, the user can remove
+ * the option from the smsInboxService.adef file.
+ *
+ * A second message box (named le_smsInbox2) can be used by another application. These 2 message
+ * boxes are used independently. All functions of this second message box are prefixed by
+ * le_smsInbox2 (instead of le_msmInbox1).
+ * The user can implement other message boxes based on le_smsInbox1 and le_smsInbox2 model.
+ *
+ * @section le_smsInbox_init Initialise a message box
+ * Use the API le_smsInbox1_Open() to open a message box for access.
+ *
+ * @section le_smsInbox_receiving Receiving a message
+ * To receive messages, register a handler function to obtain incoming
+ * messages. Use le_smsInbox1_AddRxMessageHandler() to register that handler.
+ *
+ * The handler must satisfy the following prototype:
+ *  @code
+ * typedef void (*le_smsInbox1_RxMessageHandlerFunc_t)
+ * (
+ *   uint32_t msgId,
+ *   void*    contextPtr
+ * )
+ * @endcode
+ *
+ * If a succession of messages is received, a new Message reference is created for each, and
+ * the handler is called for each new message.
+ *
+ * Uninstall the handler function by calling le_smsInbox1_RemoveRxMessageHandler().
+ *
+ * @note le_smsInbox1_RemoveRxMessageHandler() function does not delete the Message Object.
+ *       The caller has to delete it with le_smsInbox1_DeleteMsg().
+ *
+ * Use the following APIs to retrieve message information and data from the message object:
+ * - le_smsInbox1_GetImsi() - get the IMSI of the message receiver SIM if it applies.
+ * - le_smsInbox1_GetFormat() - determine if it is a binary or a text message.
+ * - le_smsInbox1_GetSenderTel() - get the sender's Telephone number.
+ * - le_smsInbox1_GetTimeStamp() - get the timestamp sets by the Service Center.
+ * - le_smsInbox1_GetMsgLen() - get the message content length.
+ * - le_smsInbox1_GetText() - get the message text.
+ * - le_smsInbox1_GetBinary() - get the message binary content.
+ * - le_smsInbox1_GetPdu() - get the PDU message content.
+ *
+ * @note For incoming SMS Inbox, format returned by le_smsInbox1_GetFormat() is never
+ * LE_SMSINBOX1_FORMAT_PDU.
+ *
+ * @section le_smsInbox_listing Getting received messages
+ *
+ * Call le_smsInbox1_GetFirst() to get the first message from the inbox folder, and then call
+ * le_smsInbox1_GetNext() to get the next message.
+ *
+ * Call le_smsInbox1_IsUnread() to know whether the message has been read or not. The message is
+ * marked as "read" when one of those APIs is called: le_smsInbox1_GetImsi(),
+ * le_smsInbox1_GetFormat(), le_smsInbox1_GetSenderTel(), le_smsInbox1_GetTimeStamp(),
+ * le_smsInbox1_GetMsgLen(), le_smsInbox1_GetText(), le_smsInbox1_GetBinary(), le_smsInbox1_GetPdu().
+ *
+ * To finish, you can also modify the received status of a message with le_smsInbox1_MarkRead() and
+ * le_smsInbox1_MarkUnread().
+ *
+ * @note The message status is tied to the client app.
+ *
+ * @section le_smsInbox1_deleting Deleting a message
+ *
+ * le_smsInbox1_DeleteMsg() deletes the message from the folder. Message is identified with
+ * le_smsInbox1_MsgRef_t object. The function returns an error if the message is not found.
+ *
+ * @section le_smsInbox_end Close a message box
+ * Use the API le_smsInbox1_Close() to close a message box (the message box is still exist and can be
+ * re-opened and retrieve later all the messages).
+ *
+ * @section le_smsInbox_configdb Configuration tree
+ * @copydoc le_smsInbox_configdbPage_Hide
+ *
+ * <HR>
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ */
+//--------------------------------------------------------------------------------------------------
+
+/**
+ * @interface le_smsInbox_configdbPage_Hide
+ *
+ * The configuration database path for the SMS Inbox Service is:
+ * @verbatim
+   /
+       smsInbox/
+           apps/
+               appA<uint> = <# of messages>
+               appB<uint> = <# of messages>
+   @endverbatim
+ *
+ * Each app have its own inbox, containing its own list of messages. The maximum number of
+ * messages is specified for each inbox. If the message box is not configured, a default number
+ * of 10 messages is applied (only for message boxes configured in le_smsInbox_mboxName[]
+ * area).
+ *
+ * The application name is given by the API name provided into the Components.cdef, both must be the
+ * same.
+ *
+ * @todo: Give an indication of memory consumption for 1 message, including the file system overhead
+ * (inode, directory entry, etc...).
+ *
+ *
+ */
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * @file le_smsInbox1_interface.h
+ *
+ * Legato @ref c_smsInbox include file.
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ */
+//--------------------------------------------------------------------------------------------------
+
+USETYPES le_mdmDefs.api;
+USETYPES le_sim.api;
+USETYPES le_sms.api;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Reference type for referring to open message box sessions.
+ */
+//--------------------------------------------------------------------------------------------------
+REFERENCE Session;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Define unknown format
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE FORMAT_UNKNOWN = (-1);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Define the name of length of the message box name
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_MBOX_NAME_LEN = 12;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Open a message box.
+ *
+ * @return
+ * Reference on the opened message box session
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION Session Open
+(
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Close a previously open message box.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION Close
+(
+    Session sessionRef IN ///< Mailbox session reference.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler for New Message.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+HANDLER RxMessageHandler
+(
+    uint32_t msgId          ///< Message identifier.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This event provides information on new received messages.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+EVENT RxMessage
+(
+    handler RxMessageHandler
+);
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * Delete a Message.
+ *
+ * @note It is valid to delete a non-existent message.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION DeleteMsg
+(
+    uint32_t msgId      IN  ///< Message identifier.
+);
+
+ //--------------------------------------------------------------------------------------------------
+/**
+ * Retrieves the IMSI of the message receiver SIM if it applies.
+ *
+ * @return
+ *  - LE_NOT_FOUND     The message item is not tied to a SIM card, the imsi string is empty.
+ *  - LE_OVERFLOW      The imsiPtr buffer was too small for the IMSI.
+ *  - LE_BAD_PARAMETER The message reference is invalid.
+ *  - LE_FAULT         The function failed.
+ *  - LE_OK            The function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetImsi
+(
+    uint32_t msgId                   IN,   ///< Message identifier.
+    string   imsi[le_sim.IMSI_LEN]   OUT   ///< IMSI.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the message format (text, binary or PDU).
+ *
+ * @return
+ *  - Message format.
+ *  - FORMAT_UNKNOWN when the message format cannot be identified or the message reference is
+ *    invalid.
+ * @note For incoming SMS Inbox, format returned by le_smsInbox1_GetFormat() is never
+ * LE_SMSINBOX1_FORMAT_PDU.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_sms.Format GetFormat
+(
+    uint32_t msgId                   IN    ///< Message identifier.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Sender Identifier.
+ *
+ * @return
+ *  - LE_BAD_PARAMETER The message reference is invalid.
+ *  - LE_OVERFLOW      Identifier length exceed the maximum length.
+ *  - LE_OK            Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetSenderTel
+(
+    uint32_t msgId                             IN,   ///< Message identifier.
+    string   tel[le_mdmDefs.PHONE_NUM_MAX_LEN] OUT   ///< Identifier string.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Message Time Stamp string (it does not apply for PDU message).
+ *
+ * @return
+ *  - LE_BAD_PARAMETER The message reference is invalid.
+ *  - LE_NOT_FOUND     The message is a PDU message.
+ *  - LE_OVERFLOW      Timestamp number length exceed the maximum length.
+ *  - LE_OK            Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetTimeStamp
+(
+    uint32_t msgId                               IN, ///< Message identifier.
+    string   timestamp[le_sms.TIMESTAMP_MAX_LEN] OUT ///< Message time stamp (for text or binary
+                                                     ///<  messages). String format:
+                                                   ///< "yy/MM/dd,hh:mm:ss+/-zz"
+                                                   ///< (Year/Month/Day,Hour:Min:Seconds+/-TimeZone)
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the message Length value.
+ *
+ * @return Number of characters for text messages, or the length of the data in bytes for raw
+ *         binary and PDU messages.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION size_t GetMsgLen
+(
+    uint32_t msgId                              IN  ///< Message identifier.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the text Message.
+ *
+ *
+ * @return
+ *  - LE_BAD_PARAMETER The message reference is invalid.
+ *  - LE_FORMAT_ERROR  Message is not in text format.
+ *  - LE_OVERFLOW      Message length exceed the maximum length.
+ *  - LE_OK            Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetText
+(
+    uint32_t msgId                     IN,  ///< Message identifier.
+    string   text[le_sms.TEXT_MAX_LEN] OUT  ///< Message text.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the binary Message.
+ *
+ *
+ * @return
+ *  - LE_BAD_PARAMETER The message reference is invalid.
+ *  - LE_FORMAT_ERROR  Message is not in binary format.
+ *  - LE_OVERFLOW      Message length exceed the maximum length.
+ *  - LE_OK            Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetBinary
+(
+    uint32_t msgId                        IN,  ///< Message identifier.
+    uint8    bin[le_sms.BINARY_MAX_BYTES] OUT  ///< Binary message.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the PDU message.
+ *
+ * Output parameters are updated with the PDU message content and the length of the PDU message
+ * in bytes.
+ *
+ * @return
+ *  - LE_BAD_PARAMETER The message reference is invalid.
+ *  - LE_FORMAT_ERROR  Unable to encode the message in PDU.
+ *  - LE_OVERFLOW      Message length exceed the maximum length.
+ *  - LE_OK            Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetPdu
+(
+    uint32_t msgId                     IN,  ///< Message identifier.
+    uint8    pdu[le_sms.PDU_MAX_BYTES] OUT  ///< PDU message.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the first Message object reference in the inbox message.
+ *
+ * @return
+ *  - 0 No message found (message box parsing is over).
+ *  - Message identifier.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION uint32_t GetFirst
+(
+    Session sessionRef IN ///< Mailbox session reference.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the next Message object reference in the inbox message.
+ *
+ * @return
+ *  - 0 No message found (message box parsing is over).
+ *  - Message identifier.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION uint32_t GetNext
+(
+    Session sessionRef IN ///< Mailbox session reference.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * allow to know whether the message has been read or not. The message status is tied to the client
+ * app.
+ *
+ * @return True if the message is unread, false otherwise.
+ *
+ * @note If the caller is passing a bad message reference into this function, it is a fatal error,
+ *        the function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION bool IsUnread
+(
+    uint32_t msgId      IN   ///< Message identifier.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Mark a message as 'read'.
+ *
+ * @note If the caller is passing a bad message reference into this function, it is a fatal error,
+ *        the function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION void MarkRead
+(
+    uint32_t msgId      IN   ///< Message identifier.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Mark a message as 'unread'.
+ *
+ * @note If the caller is passing a bad message reference into this function, it is a fatal error,
+ *        the function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION void MarkUnread
+(
+    uint32_t msgId      IN   ///< Message identifier.
+);
+
+

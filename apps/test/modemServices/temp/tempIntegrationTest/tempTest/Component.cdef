@@ -1,0 +1,12 @@
+sources:
+{
+    tempTest.c
+}
+
+requires:
+{
+    api:
+    {
+        modemServices/le_temp.api
+    }
+}

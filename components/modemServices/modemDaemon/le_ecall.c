@@ -172,6 +172,8 @@ typedef struct
     le_mcc_TerminationReason_t termination;                             ///< Call termination reason
     int32_t                 specificTerm;                               ///< specific call
                                                                         ///< termination reason
+    bool                    llackOrT5OrT7Received;                      ///< LL-ACK or T5 timeout or
+                                                                        ///< T7 timeout received
 }
 ECall_t;
 
@@ -375,8 +377,8 @@ static void IntervalTimerHandler
         }
         else
         {
-            LE_WARN("[ERA-GLONASS] All the %d tries of %d attempts have been dialed or Dial duration"
-             "has expired, stop dialing...",
+            LE_WARN("[ERA-GLONASS] All the %d tries of %d attempts have been dialed or Dial "
+                    "duration has expired, stop dialing...",
                     ECallObj.eraGlonass.dialAttempts,
                     ECallObj.eraGlonass.dialAttempts);
 
@@ -419,17 +421,26 @@ static void StopTimers
     if(ECallObj.intervalTimer)
     {
         LE_DEBUG("Stop the Interval timer");
-        le_timer_Stop(ECallObj.intervalTimer);
+        if (le_timer_IsRunning(ECallObj.intervalTimer))
+        {
+            le_timer_Stop(ECallObj.intervalTimer);
+        }
     }
     if(ECallObj.panEur.remainingDialDurationTimer)
     {
         LE_DEBUG("Stop the PAN-European RemainingDialDuration timer");
-        le_timer_Stop(ECallObj.panEur.remainingDialDurationTimer);
+        if (le_timer_IsRunning(ECallObj.panEur.remainingDialDurationTimer))
+        {
+            le_timer_Stop(ECallObj.panEur.remainingDialDurationTimer);
+        }
     }
     if(ECallObj.eraGlonass.dialDurationTimer)
     {
         LE_DEBUG("Stop the ERA-GLONASS DialDuration timer");
-        le_timer_Stop(ECallObj.eraGlonass.dialDurationTimer);
+        if (le_timer_IsRunning(ECallObj.eraGlonass.dialDurationTimer))
+        {
+            le_timer_Stop(ECallObj.eraGlonass.dialDurationTimer);
+        }
     }
 }
 
@@ -901,6 +912,7 @@ static void ECallStateHandler
 {
     LE_DEBUG("Handler Function called with state %d", *statePtr);
 
+    // Update eCall state
     ECallObj.state = *statePtr;
 
     switch (*statePtr)
@@ -912,6 +924,17 @@ static void ECallStateHandler
             ECallObj.startTentativeTime = le_clk_GetRelativeTime();
             ECallObj.termination = LE_MCC_TERM_UNDEFINED;
             ECallObj.specificTerm = 0;
+            LE_DEBUG("Start dialing...");
+            if (SystemStandard == PA_ECALL_ERA_GLONASS)
+            {
+                if (!le_timer_IsRunning(ECallObj.eraGlonass.dialDurationTimer))
+                {
+                    LE_DEBUG("Start Dial Duration timer for ERA-GLONASS");
+                    // Re-arm Dial Duration timer
+                    LE_WARN_IF((le_timer_Start(ECallObj.eraGlonass.dialDurationTimer) != LE_OK),
+                                "Cannot start the Dial Duration timer for ERA-GLONASS");
+                }
+            }
             break;
         }
 
@@ -924,6 +947,17 @@ static void ECallStateHandler
                     LE_ERROR("Connection with PSAP has dropped!");
 
                     ECallObj.wasConnected = false;
+
+                    // cf N16062:2014 7.9
+                    if (ECallObj.llackOrT5OrT7Received &&
+                        (ECallObj.termination == LE_MCC_TERM_REMOTE_ENDED))
+                    {
+                        // treatment will be done in the callEventHandler
+                        LE_DEBUG("Call ended and llack or T5 or T7 received");
+                        break;
+                    }
+
+
                     if (SystemStandard == PA_ECALL_ERA_GLONASS)
                     {
                         // ERA-GLONASS
@@ -942,11 +976,10 @@ static void ECallStateHandler
                                 }
                             }
 
-                            LE_INFO(
-                            "[ERA-GLONASS] Interval duration expires! Start attempts #%d of %d",
-                            (ECallObj.eraGlonass.dialAttempts
-                            - ECallObj.eraGlonass.dialAttemptsCount + 1),
-                            ECallObj.eraGlonass.dialAttempts);
+                            LE_INFO("[ERA-GLONASS] Start attempts #%d of %d",
+                                    (ECallObj.eraGlonass.dialAttempts
+                                    - ECallObj.eraGlonass.dialAttemptsCount + 1),
+                                    ECallObj.eraGlonass.dialAttempts);
                             if(pa_ecall_Start(ECallObj.startType, &ECallObj.callId) == LE_OK)
                             {
                                 ECallObj.eraGlonass.dialAttemptsCount--;
@@ -1017,15 +1050,16 @@ static void ECallStateHandler
         case LE_ECALL_STATE_CONNECTED: /* Emergency call is established */
         {
             ECallObj.wasConnected = true;
-            if(ECallObj.panEur.remainingDialDurationTimer)
+            StopTimers();
+            switch(ECallObj.startType)
             {
-                LE_DEBUG("Stop the RemainingDialDuration timer");
-                le_timer_Stop(ECallObj.panEur.remainingDialDurationTimer);
-            }
-            if(ECallObj.intervalTimer)
-            {
-                LE_DEBUG("Stop the Interval timer");
-                le_timer_Stop(ECallObj.intervalTimer);
+                case PA_ECALL_START_AUTO:
+                    ECallObj.eraGlonass.dialAttemptsCount = ECallObj.eraGlonass.autoDialAttempts;
+                    break;
+                case PA_ECALL_START_MANUAL:
+                case PA_ECALL_START_TEST:
+                    ECallObj.eraGlonass.dialAttemptsCount = ECallObj.eraGlonass.manualDialAttempts;
+                    break;
             }
             break;
         }
@@ -1072,7 +1106,6 @@ static void ECallStateHandler
         case LE_ECALL_STATE_WAITING_PSAP_START_IND: /* Waiting for PSAP start indication */
         case LE_ECALL_STATE_PSAP_START_IND_RECEIVED: /* PSAP start indication received */
         case LE_ECALL_STATE_LLNACK_RECEIVED: /* LL-NACK received */
-        case LE_ECALL_STATE_LLACK_RECEIVED: /* LL-ACK received */
         case LE_ECALL_STATE_ALACK_RECEIVED_CLEAR_DOWN: /* AL-ACK clear-down received */
         case LE_ECALL_STATE_MSD_TX_COMPLETED: /* MSD transmission is complete */
         case LE_ECALL_STATE_RESET: /* eCall session has lost synchronization and starts over */
@@ -1082,7 +1115,13 @@ static void ECallStateHandler
             // Nothing to do, just report the event
              break;
         }
-
+        case LE_ECALL_STATE_LLACK_RECEIVED: /* LL-ACK received */
+        case LE_ECALL_STATE_TIMEOUT_T5: /* timeout for T5 */
+        case LE_ECALL_STATE_TIMEOUT_T7: /* timeout for T7 */
+        {
+            ECallObj.llackOrT5OrT7Received = true;
+            break;
+        }
         case LE_ECALL_STATE_UNKNOWN: /* Unknown state */
         default:
         {
@@ -1145,6 +1184,31 @@ static void CallEventHandler
             ReportState(LE_ECALL_STATE_DISCONNECTED);
 
             eCallPtr->isStarted = false;
+
+            LE_DEBUG("termination: %d, llackOrT5OrT7Received %d", eCallPtr->termination,
+                     eCallPtr->llackOrT5OrT7Received);
+
+            if (eCallPtr->llackOrT5OrT7Received &&
+               (eCallPtr->termination == LE_MCC_TERM_REMOTE_ENDED))
+            {
+                StopTimers();
+
+                if (SystemStandard == PA_ECALL_PAN_EUROPEAN)
+                {
+                    eCallPtr->panEur.stopDialing = true;
+                }
+                else // ERAGLONASS
+                {
+                    eCallPtr->eraGlonass.dialAttemptsCount = 0;
+                }
+
+                ReportState(LE_ECALL_STATE_END_OF_REDIAL_PERIOD);
+
+                eCallPtr->isSessionStopped = true;
+
+                // Stop any eCall tentative on going, the stop event will be notified by the Modem
+                pa_ecall_Stop();
+            }
         }
     }
 }
@@ -1228,6 +1292,16 @@ le_result_t le_ecall_Init
     ECallObj.eraGlonass.dialDurationTimer = le_timer_Create("DialDuration");
     ECallObj.eraGlonass.pullModeSwitch = false;
 
+    le_clk_Time_t interval;
+    interval.sec = ECallObj.eraGlonass.dialDuration;
+    interval.usec = 0;
+
+    LE_WARN_IF( ((le_timer_SetInterval(ECallObj.eraGlonass.dialDurationTimer,
+                                        interval) != LE_OK) ||
+                (le_timer_SetHandler(ECallObj.eraGlonass.dialDurationTimer,
+                                    DialDurationTimerHandler) != LE_OK) ),
+                "Cannot set the DialDuration timer for ERA-GLONASS!");
+
     // Add a config tree handler for eCall settings update.
     le_cfg_AddChangeHandler(CFG_MODEMSERVICE_ECALL_PATH, SettingsUpdate, NULL);
 
@@ -1247,7 +1321,7 @@ le_result_t le_ecall_Init
     ECallObj.msd.msdMsg.msdStruct.control.positionCanBeTrusted = false;
     ECallObj.msd.msdMsg.msdStruct.numberOfPassengersPres = false;
     ECallObj.msd.msdMsg.msdStruct.numberOfPassengers = 0;
-    ECallObj.state = LE_ECALL_STATE_COMPLETED;
+    ECallObj.state = LE_ECALL_STATE_STOPPED;
     memset(ECallObj.builtMsd, 0, sizeof(ECallObj.builtMsd));
     ECallObj.builtMsdSize = 0;
     ECallObj.isMsdImported = false;
@@ -1425,7 +1499,7 @@ void le_ecall_Delete
  * @return
  *      - LE_OK on success
  *      - LE_DUPLICATE an MSD has been already imported
- *      - LE_BAD_PARAMETER bad eCall reference
+ *      - LE_BAD_PARAMETER bad input parameter
  *      - LE_FAULT on other failures
  *
  * @note The process exits, if an invalid eCall reference is given
@@ -1435,10 +1509,17 @@ le_result_t le_ecall_SetMsdPosition
 (
     le_ecall_CallRef_t  ecallRef,   ///< [IN] eCall reference
     bool                isTrusted,  ///< [IN] True if the position can be trusted, false otherwise
-    int32_t             latitude,   ///< [IN] The latitude in degrees with 6 decimal places
-    int32_t             longitude,  ///< [IN] The longitude in degrees with 6 decimal places
-    int32_t             direction   ///< [IN] The direction of the vehicle in degrees (where 0 is
-                                    ///       True North).
+    int32_t             latitude,   ///< [IN] The latitude in degrees with 6 decimal places,
+                                    ///       positive North. Maximum value is +90 degrees
+                                    ///       (+90000000), minimum value is -90 degrees (-90000000).
+    int32_t             longitude,  ///< [IN] The longitude in degrees with 6 decimal places,
+                                    ///       positive East. Maximum value is +180 degrees
+                                    ///       (+180000000), minimum value is -180 degrees
+                                    ///       (-180000000).
+    int32_t             direction   ///< [IN] The direction of the vehicle from magnetic north (0
+                                    ///       to 358, clockwise) in 2-degrees unit. Valid range is
+                                    ///       0 to 179. If direction of travel is invalid or
+                                    ///       unknown, the value 0xFF shall be used.
 )
 {
     ECall_t*   eCallPtr = le_ref_Lookup(ECallRefMap, ecallRef);
@@ -1452,6 +1533,22 @@ le_result_t le_ecall_SetMsdPosition
     {
         LE_ERROR("An MSD has been already imported!");
         return LE_DUPLICATE;
+    }
+
+    if ((latitude > 90000000) || (latitude < -90000000))
+    {
+        LE_ERROR("Maximum latitude value is +90000000, minimum latitude value is -90000000!");
+        return LE_BAD_PARAMETER;
+    }
+    if ((longitude > 180000000) || (longitude < -180000000))
+    {
+        LE_ERROR("Maximum longitude value is +180000000, minimum longitude value is -180000000!");
+        return LE_BAD_PARAMETER;
+    }
+    if ((direction > 179) && (direction != 0xFF))
+    {
+        LE_ERROR("The direction of the vehicle must be in 2°-degrees steps, maximum value is 178!");
+        return LE_BAD_PARAMETER;
     }
 
     eCallPtr->msd.msdMsg.msdStruct.control.positionCanBeTrusted = isTrusted;
@@ -1692,6 +1789,10 @@ le_result_t le_ecall_StartAutomatic
         ECallObj.eraGlonass.dialAttemptsCount = ECallObj.eraGlonass.autoDialAttempts;
         ECallObj.eraGlonass.pullModeSwitch = false;
     }
+    else
+    {
+        ECallObj.panEur.stopDialing = false;
+    }
 
     // Update eCall start type
     ECallObj.startType = PA_ECALL_START_AUTO;
@@ -1713,20 +1814,6 @@ le_result_t le_ecall_StartAutomatic
         // Manage redial policy for ERA-GLONASS
         if (SystemStandard == PA_ECALL_ERA_GLONASS)
         {
-            if (ECallObj.eraGlonass.dialAttemptsCount == ECallObj.eraGlonass.dialAttempts)
-            {
-                // If it's the 1st tentative, I arm the Dial Duration timer
-                le_clk_Time_t interval;
-                interval.sec = ECallObj.eraGlonass.dialDuration;
-                interval.usec = 0;
-
-                LE_ERROR_IF( ((le_timer_SetInterval(ECallObj.eraGlonass.dialDurationTimer,
-                                                    interval) != LE_OK) ||
-                            (le_timer_SetHandler(ECallObj.eraGlonass.dialDurationTimer,
-                                                DialDurationTimerHandler) != LE_OK) ||
-                            (le_timer_Start(ECallObj.eraGlonass.dialDurationTimer) != LE_OK)),
-                            "Cannot start the DialDuration timer!");
-            }
             ECallObj.eraGlonass.dialAttemptsCount--;
         }
         result = LE_OK;
@@ -1798,6 +1885,10 @@ le_result_t le_ecall_StartManual
         ECallObj.eraGlonass.dialAttemptsCount = ECallObj.eraGlonass.manualDialAttempts;
         ECallObj.eraGlonass.pullModeSwitch = false;
     }
+    else
+    {
+        ECallObj.panEur.stopDialing = false;
+    }
 
     // Update eCall start type
     ECallObj.startType = PA_ECALL_START_MANUAL;
@@ -1819,20 +1910,6 @@ le_result_t le_ecall_StartManual
         // Manage redial policy for ERA-GLONASS
         if (SystemStandard == PA_ECALL_ERA_GLONASS)
         {
-            if (ECallObj.eraGlonass.dialAttemptsCount == ECallObj.eraGlonass.dialAttempts)
-            {
-                // If it's the 1st tentative, I arm the Dial Duration timer
-                le_clk_Time_t interval;
-                interval.sec = ECallObj.eraGlonass.dialDuration;
-                interval.usec = 0;
-
-                LE_ERROR_IF( ((le_timer_SetInterval(ECallObj.eraGlonass.dialDurationTimer,
-                                                    interval) != LE_OK) ||
-                            (le_timer_SetHandler(ECallObj.eraGlonass.dialDurationTimer,
-                                                DialDurationTimerHandler) != LE_OK) ||
-                            (le_timer_Start(ECallObj.eraGlonass.dialDurationTimer) != LE_OK)),
-                            "Cannot start the DialDuration timer!");
-            }
             ECallObj.eraGlonass.dialAttemptsCount--;
         }
         result = LE_OK;
@@ -1904,6 +1981,10 @@ le_result_t le_ecall_StartTest
         ECallObj.eraGlonass.dialAttemptsCount = ECallObj.eraGlonass.manualDialAttempts;
         ECallObj.eraGlonass.pullModeSwitch = false;
     }
+    else
+    {
+        ECallObj.panEur.stopDialing = false;
+    }
 
     // Update eCall start type
     ECallObj.startType = PA_ECALL_START_TEST;
@@ -1925,20 +2006,6 @@ le_result_t le_ecall_StartTest
         // Manage redial policy for ERA-GLONASS
         if (SystemStandard == PA_ECALL_ERA_GLONASS)
         {
-            if (ECallObj.eraGlonass.dialAttemptsCount == ECallObj.eraGlonass.dialAttempts)
-            {
-                // If it's the 1st tentative, I arm the Dial Duration timer
-                le_clk_Time_t interval;
-                interval.sec = ECallObj.eraGlonass.dialDuration;
-                interval.usec = 0;
-
-                LE_ERROR_IF( ((le_timer_SetInterval(ECallObj.eraGlonass.dialDurationTimer,
-                                                    interval) != LE_OK) ||
-                            (le_timer_SetHandler(ECallObj.eraGlonass.dialDurationTimer,
-                                                DialDurationTimerHandler) != LE_OK) ||
-                            (le_timer_Start(ECallObj.eraGlonass.dialDurationTimer) != LE_OK)),
-                            "Cannot start the DialDuration timer!");
-            }
             ECallObj.eraGlonass.dialAttemptsCount--;
         }
         result = LE_OK;
@@ -2061,7 +2128,10 @@ void le_ecall_RemoveStateChangeHandler
 /**
  * Set the Public Safely Answering Point telephone number.
  *
- * @note Important! This function doesn't modify the U/SIM content.
+ * @note That PSAP number is not applied to Manually or Automatically initiated eCall. For those
+ *       modes, an emergency call is launched.
+ *
+ * @warning This function doesn't modified the U/SIM content.
  *
  * @return
  *  - LE_OK on success
@@ -2119,7 +2189,10 @@ le_result_t le_ecall_SetPsapNumber
  * Get the Public Safely Answering Point telephone number set with le_ecall_SetPsapNumber()
  * function.
  *
- * @warning Important! This function doesn't read the U/SIM content.
+ * @note That PSAP number is not applied to Manually or Automatically initiated eCall. For those
+ *       modes, an emergency call is launched.
+ *
+ * @warning This function doesn't read the U/SIM content.
  *
  * @return
  *  - LE_OK on success
@@ -2345,8 +2418,20 @@ le_result_t le_ecall_SetEraGlonassDialDuration
     uint16_t    duration   ///< [IN] ECALL_DIAL_DURATION time value (in seconds)
 )
 {
+    le_clk_Time_t interval;
+    interval.sec = duration;
+    interval.usec = 0;
+
     ECallObj.eraGlonass.dialDuration = duration;
-    return LE_OK;
+    if (le_timer_SetInterval(ECallObj.eraGlonass.dialDurationTimer, interval) != LE_OK)
+    {
+        LE_ERROR("Cannot start the DialDuration timer!");
+        return LE_FAULT;
+    }
+    else
+    {
+        return LE_OK;
+    }
 }
 
 //--------------------------------------------------------------------------------------------------

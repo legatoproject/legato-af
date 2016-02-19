@@ -9,7 +9,7 @@ they read and write the same data inside their shared address space.
 Threads running inside two different processes can't access each
 other's data; they need IPC to communicate.
 
-Legato's @ref c_messaging and @ref interfaceDefLang provide IPC services without
+Legato's @ref c_messaging and @ref apiFiles provide IPC services without
 all the coding, packing/unpacking, and security headaches that come
 with using other methods directly (e.g., network sockets or named pipes).
 
@@ -19,18 +19,27 @@ is automatically handled with the @ref buildToolsifgen tool and the @ref buildTo
 By default, each app runs in its own sandbox. When an app is constructed,
 all the IPC services it needs are declared. At runtime, the Supervisor
 and the Service Directory enforce that only those approved IPC services are
-accessed by the app.
+accessed by the app.  Approval is specified through "bindings".
+
+Client-side interfaces are "bound" to server-side interfaces through system configuration files.
+This allows reconfiguration of systems into new systems just by rerouting bindings, without having
+to modify the client or server software.  Bindings make code more reusable.  For example, if
+an app controls an LED, but the LED is connected to a different GPIO pin on different target
+devices, that same app can be used on both devices, with its LED control interface bound to
+different GPIO pin control services in each device.
 
 Using language-independent IPC makes components inherently more reusable,
 creates opportunities for function isolation in different processes or different app
-sandboxes, and automatically creates debugging trace points.
+sandboxes, and automatically creates potential debugging trace points.
 
-Another approach Legato uses for IPC is through low-level messaging APIs:  @ref c_APIs.
-This let's you custom build IPC to suit your needs.
+Another approach Legato provides for IPC is low-level messaging APIs:  @ref c_APIs.
+This let's you custom build IPC to suit your needs, but may make it harder to interact with
+code written in other languages.
 
 Related info
 
-@ref interfaceDefLang <br>
+@ref basicInterfaces <br>
+@ref apiFiles <br>
 @ref basicAppsIPC <br>
 @ref defFiles <br>
 @ref legatoServices

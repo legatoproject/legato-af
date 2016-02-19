@@ -492,7 +492,7 @@ def ProcessHandlerFunc(tokens):
 def MakeHandlerExpr():
 
     # The expressions are checked in the given order, so the order must not be changed.
-    allParameters = StringParm | SimpleParm
+    allParameters = StringParm | FileParm | SimpleParm
 
     body = MakeListExpr(allParameters)
     all = ( pyparsing.Optional(pyparsing.cStyleComment)("comment")
@@ -711,6 +711,27 @@ def GetImportList(codeDefn):
     result = importExpr.searchString(codeDefn)
     result = [ r[0].name for r in result ]
     return result
+
+
+
+#
+# Get a hashable version of the given text. This will have all comments and whitespace removed.
+#
+
+# Take the regex from pyparsing, since it already has it defined
+CommentRegEx = re.compile(pyparsing.cppStyleComment.pattern)
+
+# Have a separate regex just for whitespace
+WhitespaceRegEx = re.compile('\s')
+
+def GetHashText(codeDefn):
+    # Remove all comments and then all spaces.  This is done in two steps, since the comment
+    # regex is already complicated enough as it is.
+    codeDefn = CommentRegEx.sub('', codeDefn)
+    codeDefn = WhitespaceRegEx.sub('', codeDefn)
+
+    return codeDefn
+
 
 
 def ParseCode(codeDefn, filename):

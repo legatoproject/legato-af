@@ -2,7 +2,7 @@ localhost:
 	mkapp -v -t $@ app.adef
 
 clean:
-	rm -rf _build_app app.localhost
+	rm -rf _build_app *.update
 
 run: localhost
 	stoplegato ; startlegato && \

@@ -37,7 +37,7 @@ instapp zeroFileSysSize.$targetType $targetAddr
 CheckRet
 
 # Stop all other apps.
-ssh root@$targetAddr "/usr/local/bin/app stop \"*\""
+ssh root@$targetAddr "$BIN_PATH/app stop \"*\""
 sleep 1
 
 # Clear the logs.
@@ -46,9 +46,9 @@ ssh root@$targetAddr "killall syslogd"
 ssh root@$targetAddr "/mnt/flash/startup/fg_02_RestartSyslogd"
 
 # Run the apps.
-ssh root@$targetAddr  "/usr/local/bin/app start limitsTest"
-ssh root@$targetAddr  "/usr/local/bin/app start largeValuesTest"
-ssh root@$targetAddr  "/usr/local/bin/app start zeroFileSysSize"
+ssh root@$targetAddr  "$BIN_PATH/app start limitsTest"
+ssh root@$targetAddr  "$BIN_PATH/app start largeValuesTest"
+ssh root@$targetAddr  "$BIN_PATH/app start zeroFileSysSize"
 
 # Wait for all the apps to finish running.
 sleep 2

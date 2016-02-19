@@ -11,6 +11,7 @@
 #include "fileDescriptor.h"
 #include "user.h"
 #include "cgroups.h"
+#include "sysPaths.h"
 
 /// @todo Use the appCfg component instead of reading from the config directly.
 
@@ -21,14 +22,6 @@ static const char* AppNamePtr = NULL;
 
 /// Address of the command function to be executed.
 static void (*CommandFunc)(void);
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * The location where all applications are installed.
- */
-//--------------------------------------------------------------------------------------------------
-#define APPS_INSTALL_DIR                                "/opt/legato/apps"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -154,6 +147,7 @@ static void PrintHelp
         "    appCtrl start APP_NAME\n"
         "    appCtrl stop APP_NAME\n"
         "    appCtrl stopLegato\n"
+        "    appCtrl restartLegato\n"
         "    appCtrl list\n"
         "    appCtrl status [APP_NAME]\n"
         "    appCtrl version APP_NAME\n"
@@ -171,6 +165,9 @@ static void PrintHelp
         "\n"
         "    appCtrl stopLegato\n"
         "       Stops the Legato framework.\n"
+        "\n"
+        "    appCtrl restartLegato\n"
+        "       Restarts the Legato framework.\n"
         "\n"
         "    appCtrl list\n"
         "       List all installed applications.\n"
@@ -278,7 +275,36 @@ static void StopLegato
         case LE_OK:
             exit(EXIT_SUCCESS);
 
-        case LE_NOT_FOUND:
+        case LE_DUPLICATE:
+            printf("Legato is being stopped by someone else.\n");
+            exit(EXIT_SUCCESS);
+
+        default:
+            INTERNAL_ERR("Unexpected response, %d, from the Supervisor.", result);
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Requests the Supervisor to restart the Legato framework.
+ *
+ * @note This function does not return.
+ */
+//--------------------------------------------------------------------------------------------------
+static void RestartLegato
+(
+    void
+)
+{
+    le_sup_ctrl_ConnectService();
+    le_result_t result = le_sup_ctrl_RestartLegato(true);
+    switch (result)
+    {
+        case LE_OK:
+            exit(EXIT_SUCCESS);
+
+        case LE_DUPLICATE:
             printf("Legato is being stopped by someone else.\n");
             exit(EXIT_SUCCESS);
 
@@ -1054,6 +1080,10 @@ static void CommandArgHandler
     else if (strcmp(command, "stopLegato") == 0)
     {
         CommandFunc = StopLegato;
+    }
+    else if (strcmp(command, "restartLegato") == 0)
+    {
+        CommandFunc = RestartLegato;
     }
     else if (strcmp(command, "list") == 0)
     {

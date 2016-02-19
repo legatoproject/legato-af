@@ -3,8 +3,8 @@ provides:
 {
     api:
     {
-        le_avc.api
-        le_avdata.api
+        airVantage/le_avc.api
+        airVantage/le_avdata.api
     }
 }
 
@@ -16,12 +16,18 @@ sources:
     avcServer.c
 }
 
+cflags:
+{
+    -I${LEGATO_ROOT}/components/airVantage/platformAdaptor/inc
+    -I${LEGATO_ROOT}/framework/c/src    // TODO: Remove this encapsulation breakage.
+}
+
 requires:
 {
     api:
     {
         le_cfg.api
-        le_appInfo.api
+        supervisor/le_appInfo.api
     }
 
     component:

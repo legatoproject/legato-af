@@ -3,23 +3,13 @@ version: 2
 executables:
 {
     exe = (server)
-    exe2 = (exe2.c stuff.c)
+    exe2 = (exe2)
 }
 
-provides:
+extern:
 {
-    api:
-    {
-        server = exe.server.bar
-    }
-}
-
-requires:
-{
-    api:
-    {
-        client = exe.server.le_cfg
-    }
+    server = exe.server.bar
+    client = exe.server.le_cfg
 }
 
 groups:

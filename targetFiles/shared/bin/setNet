@@ -260,11 +260,11 @@ fi
 awk 'function writeStatic (mac, addr, mask, gway) {
         print "iface eth0 inet static"
         if (mac) {print "\thwaddress ether " mac}
-        print "\taddress " addr
-        print "\tnetmask " mask
-        print "\tgateway " gway
+        if (addr) {print "\taddress " addr}
+        if (mask) {print "\tnetmask " mask}
+        if (gway) {print "\tgateway " gway}
 # write nameserver entries
-        print "\tnameserver " nameserver
+        if (nameserver) {print "\tnameserver " nameserver}
     }
     function writeDhcp (mac) {
         print "iface eth0 inet dhcp"

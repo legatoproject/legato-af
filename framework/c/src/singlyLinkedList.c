@@ -192,6 +192,24 @@ le_sls_Link_t* le_sls_Peek
 
 //------------------------------------------------------------------------------------------------------------
 /**
+ * Returns the link at the tail of the list without removing it from the list.
+ *
+ * @return
+ *      A pointer to the tail link if successful.
+ *      NULL if the list is empty.
+ */
+//------------------------------------------------------------------------------------------------------------
+le_sls_Link_t* le_sls_PeekTail
+(
+    const le_sls_List_t* listPtr            ///< [IN] The list.
+)
+{
+    return listPtr->tailLinkPtr;
+}
+
+
+//------------------------------------------------------------------------------------------------------------
+/**
  * Returns the link next to currentLinkPtr (ie. the link beside currentLinkPtr that is closer to the tail)
  * without removing it from the list.  The user must ensure that currentLinkPtr is in the list otherwise
  * the behaviour of this function is undefined.

@@ -3,13 +3,7 @@
 #************************************************************************************
 
 # Samples
-add_subdirectory(sample EXCLUDE_FROM_ALL)
-
-# Tools
-add_subdirectory(tools)
-
-# Tests
-enable_testing()
+add_subdirectory(sample)
 
 # UTs
 add_subdirectory(test)

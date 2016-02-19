@@ -1,0 +1,34 @@
+sources:
+{
+    appInfo.c
+}
+
+assets:
+{
+    Application_Info =
+    {
+        variables:
+        {
+            string Name
+            string Status
+            string PID
+            string Memory_Used
+            string CPU
+        }
+    }
+}
+
+requires:
+{
+    api:
+    {
+        airVantage/le_avdata.api
+        le_cfg.api
+        supervisor/le_appInfo.api
+    }
+}
+
+cflags:
+{
+    -I${LEGATO_ROOT}/framework/c/src
+}

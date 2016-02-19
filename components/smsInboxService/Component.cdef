@@ -7,6 +7,12 @@ provides:
     }
 }
 
+cflags:
+{
+    -I$LEGATO_ROOT/components/cfgEntries
+    -I$LEGATO_BUILD/framework/libjansson/include
+}
+
 requires:
 {
     api:
@@ -15,6 +21,11 @@ requires:
         le_sms.api
         le_cfg.api
     }
+}
+
+ldflags:
+{
+    -ljansson
 }
 
 sources:

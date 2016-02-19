@@ -1,0 +1,76 @@
+# --------------------------------------------------------------------------------------------------
+# Makefile used to build the Legato framework development host tools.
+#
+# Tools build output is placed under $(LEGATO_ROOT)/build/tools
+#
+# The tools get installed in $(LEGATO_ROOT)/bin
+#
+# This Makefile is intended to run as part of a larger build system.
+#
+# Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+# --------------------------------------------------------------------------------------------------
+
+export LEGATO_ROOT ?= $(CURDIR)
+
+BUILD_DIR := $(LEGATO_ROOT)/build/tools
+NINJA_SCRIPT := $(BUILD_DIR)/build.ninja
+NINJA_FLAGS =
+
+# Add the framework's bin directory to the PATH environment variable.
+export PATH := $(PATH):$(LEGATO_ROOT)/bin
+
+# Do not use clang by default.
+USE_CLANG ?= 0
+
+# Do not be verbose by default.
+VERBOSE ?= 0
+ifeq ($(VERBOSE),1)
+  NINJA_FLAGS += -v
+endif
+
+HOST_ARCH := $(shell uname -m)
+TOOLS_ARCH ?= $(HOST_ARCH)
+
+# NOTE: Ninja is used to build the mk tools.
+.PHONY: tools
+tools: ninja $(NINJA_SCRIPT) symlinks
+	ninja $(NINJA_FLAGS) -f $(NINJA_SCRIPT)
+
+# Generate the ninja build script.
+$(NINJA_SCRIPT): framework/tools/mkTools/ninja-generator $(BUILD_DIR)
+	export TOOLS_ARCH=$(TOOLS_ARCH) && \
+	export HOST_ARCH=$(HOST_ARCH) && \
+		framework/tools/mkTools/ninja-generator
+
+# ninja is called ninja-build on some distros (e.g., Fedora).  Make sure ninja appears in the
+# path as "ninja" by adding a symlink to the framework's bin directory if necessary.
+.PHONY: ninja
+ninja: bin
+	@echo -n "Using ninja installed at: " ;\
+	if ! which ninja ;\
+	then \
+		if which ninja-build ;\
+		then \
+			ln -s `which ninja-build` $(LEGATO_ROOT)/bin/ninja ;\
+		else \
+			echo "***ERROR: Ninja build tool not found." 1>&2 ;\
+			exit 1;\
+		fi;\
+	fi
+
+SCRIPTS := $(wildcard framework/tools/scripts/*)
+
+# Create a bunch of symlinks from the bin directory to the tools.
+.PHONY: symlinks
+symlinks: bin
+	ln -sf ../build/tools/mk bin/mk
+	ln -sf mk bin/mkcomp
+	ln -sf mk bin/mkexe
+	ln -sf mk bin/mkapp
+	ln -sf mk bin/mksys
+	ln -sf $(foreach script,$(SCRIPTS),../$(script)) bin/
+	ln -sf ../framework/tools/ifgen/ifgen bin/
+
+# Rule for creating directories.
+$(BUILD_DIR) bin:
+	mkdir -p $@

@@ -6,6 +6,11 @@ These topics describe how to use AirVantage for remote administration of your Le
 @subpage howToAVInstallApp <br>
 @subpage howToAVData
 
+Sample AirVantage apps:
+
+@ref sampleApps_avAppsInfo <br>
+@ref sampleApps_avSystemInfo
+
 <HR>
 
 Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.

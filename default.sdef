@@ -1,0 +1,39 @@
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sample system definition that includes essential modem and positioning services.
+ *
+ * Copyright (C) Sierra Wireless Inc.  Use of this work is subject to license.
+ */
+//--------------------------------------------------------------------------------------------------
+
+apps:
+{
+    // Platform services.
+    $LEGATO_ROOT/apps/platformServices/airVantage/avcService
+    $LEGATO_ROOT/apps/platformServices/audioService
+    $LEGATO_ROOT/apps/platformServices/cellNetService
+    $LEGATO_ROOT/apps/platformServices/dataConnectionService
+    $LEGATO_ROOT/apps/platformServices/fwupdateService
+    $LEGATO_ROOT/apps/platformServices/modemService
+    $LEGATO_ROOT/apps/platformServices/positioningService
+    $LEGATO_ROOT/apps/platformServices/powerMgr
+    $LEGATO_ROOT/apps/platformServices/secStore
+    $LEGATO_ROOT/apps/platformServices/smsInboxService
+    $LEGATO_ROOT/apps/platformServices/voiceCallService
+    $LEGATO_ROOT/apps/platformServices/gpioService
+
+    // Command-line tools.
+    $LEGATO_ROOT/apps/tools/tools
+}
+
+commands:
+{
+    cm = tools:/bin/cm
+    fwupdate = tools:/bin/fwupdate
+    secstore = tools:/bin/secstore
+}
+
+bindings:
+{
+    <root>.le_fwupdate -> fwupdateService.le_fwupdate
+}

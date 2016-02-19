@@ -44,31 +44,6 @@ void CloseFile
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Get the absolute path to a given C or C++ source code file belonging to a given component.
- *
- * @return the absolute path.
- **/
-//--------------------------------------------------------------------------------------------------
-std::string GetAbsoluteSourcePath
-(
-    const std::string& sourceFile,  ///< Path (possibly relative) to the source code file.
-    const model::Component_t* componentPtr  ///< The component that the source code belongs to.
-);
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Get the object code file for a given C or C++ source code file.
- **/
-//--------------------------------------------------------------------------------------------------
-std::string GetObjectFile
-(
-    const std::string& sourceFile   ///< Path to the source code file.
-);
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Print to a given build script the ifgenFlags variable definition.
  **/
 //--------------------------------------------------------------------------------------------------
@@ -120,6 +95,20 @@ void GenerateIpcBuildStatements
     const mk::BuildParams_t& buildParams,
     std::set<std::string>& generatedSet ///< Paths to files that already have build statements.
 );
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Write to a given build script the build statements for all the IPC client and server
+ * header files, source code files, and object files needed by all components in the model.
+ **/
+//--------------------------------------------------------------------------------------------------
+void GenerateIpcBuildStatements
+(
+    std::ofstream& script,
+    const mk::BuildParams_t& buildParams
+);
+
 
 
 } // namespace ninja

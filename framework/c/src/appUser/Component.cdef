@@ -1,0 +1,20 @@
+//
+//  Application User Adder/Remover.
+//
+//  This component knows how to add and remove user accounts for applications.
+//
+//  Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+//
+
+sources:
+{
+    appUser.c
+}
+
+requires:
+{
+    api:
+    {
+        le_cfg.api      [manual-start]  // Manual start because it's only needed for adding a user.
+    }
+}

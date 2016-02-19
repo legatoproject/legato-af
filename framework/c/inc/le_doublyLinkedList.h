@@ -142,6 +142,8 @@
  *
  * - @c le_dls_IsEmpty() - Checks if a given list is empty.
  * - @c le_dls_IsInList() - Checks if a specified link is in the list.
+ * - @c le_dls_IsHead() - Checks if a specified link is at the head of the list.
+ * - @c le_dls_IsTail() - Checks if a specified link is at the tail of the list.
  * - @c le_dls_NumLinks() - Checks the number of links currently in the list.
  * - @c le_dls_IsListCorrupted() - Checks if the list is corrupted.
  *
@@ -439,6 +441,44 @@ bool le_dls_IsInList
     const le_dls_List_t* listPtr,    ///< [IN] List to check.
     const le_dls_Link_t* linkPtr     ///< [IN] Check if this link is in the list.
 );
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Checks if a link is at the head of the list (next to be popped).
+ *
+ * @return
+ *    - true if the link is at the head of the list.
+ *    - false if not.
+ */
+//--------------------------------------------------------------------------------------------------
+static inline bool le_dls_IsHead
+(
+    const le_dls_List_t* listPtr,    ///< [IN] List to check.
+    const le_dls_Link_t* linkPtr     ///< [IN] Check if this link is at the head of the list.
+)
+{
+    return (le_dls_Peek(listPtr) == linkPtr);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Checks if a link is at the tail of the list (last to be popped).
+ *
+ * @return
+ *    - true if the link is at the tail of the list.
+ *    - false if not.
+ */
+//--------------------------------------------------------------------------------------------------
+static inline bool le_dls_IsTail
+(
+    const le_dls_List_t* listPtr,    ///< [IN] List to check.
+    const le_dls_Link_t* linkPtr     ///< [IN] Check if this link is at the tail of the list.
+)
+{
+    return (le_dls_PeekTail(listPtr) == linkPtr);
+}
 
 
 //--------------------------------------------------------------------------------------------------

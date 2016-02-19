@@ -16,7 +16,7 @@
  * @note This limit must match the SMACK limit.  It must not be changed arbitrarily.
  */
 //--------------------------------------------------------------------------------------------------
-#define LIMIT_MAX_SMACK_LABEL_LEN               23
+#define LIMIT_MAX_SMACK_LABEL_LEN               255
 #define LIMIT_MAX_SMACK_LABEL_BYTES             (LIMIT_MAX_SMACK_LABEL_LEN + 1)
 
 
@@ -235,6 +235,14 @@
  **/
 //--------------------------------------------------------------------------------------------------
 #define LIMIT_MAX_EVENT_NAME_BYTES              LIMIT_MAX_EVENT_HANDLER_NAME_BYTES + 15
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Size of a MD5 string.
+ **/
+//--------------------------------------------------------------------------------------------------
+#define LIMIT_MD5_STR_BYTES       (33)
 
 
 #endif // LE_SRC_LIMITS_INCLUDE_GUARD

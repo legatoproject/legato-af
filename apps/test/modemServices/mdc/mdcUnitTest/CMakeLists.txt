@@ -1,17 +1,15 @@
 #*******************************************************************************
 # Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
-#
-# Contributors:
-#     Sierra Wireless - initial API and implementation
 #*******************************************************************************
 
-set(TEST_EXEC mdcUnitTest)
+set(APP_COMPONENT mdcTest)
+set(APP_TARGET mdcUnitTest)
 
-set(JANSSON_INC_DIR "${CMAKE_BINARY_DIR}/3rdParty/jansson-2.6/include/")
+set(JANSSON_INC_DIR "${CMAKE_BINARY_DIR}/framework/libjansson/include/")
 set(INTERFACES_MODEM_SERVICES "${LEGATO_ROOT}/interfaces/modemServices/")
 set(LEGATO_MODEM_SERVICES "${LEGATO_ROOT}/components/modemServices/")
 set(PA_SIMU_MODEM_SERVICES "${LEGATO_MODEM_SERVICES}/platformAdaptor/simu/le_pa/")
-set (TEST "apps/test/modemServices/mdc/${TEST_EXEC}")
+set (TEST "apps/test/modemServices/mdc/${APP_TARGET}")
 set (LEGATO_BUILD "${LEGATO_ROOT}/build/${LEGATO_TARGET}")
 set(APNFILE "${LEGATO_ROOT}/components/modemServices/modemDaemon/apns-full-conf.json")
 
@@ -32,16 +30,20 @@ include_directories(    ${LEGATO_ROOT}/framework/c/inc
                         ${LEGATO_ROOT}/components/cfgEntries
                         ${JANSSON_INC_DIR}  )
 
-add_executable(${TEST_EXEC} main.c
-                            ${LEGATO_MODEM_SERVICES}/modemDaemon/le_mdc.c
-                            ${LEGATO_MODEM_SERVICES}/modemDaemon/le_mrc.c
-                            ${LEGATO_MODEM_SERVICES}/modemDaemon/le_sim.c
-                            ${PA_SIMU_MODEM_SERVICES}/pa_mrc_simu.c
-                            ${PA_SIMU_MODEM_SERVICES}/pa_mdc_simu.c
-                            ${PA_SIMU_MODEM_SERVICES}/pa_sim_simu.c
-                            )
+set(APP_SOURCES
+    ${LEGATO_ROOT}/${TEST}/main.c
+    ${LEGATO_MODEM_SERVICES}/modemDaemon/le_mdc.c
+    ${LEGATO_MODEM_SERVICES}/modemDaemon/le_mrc.c
+    ${LEGATO_MODEM_SERVICES}/modemDaemon/le_sim.c
+    ${PA_SIMU_MODEM_SERVICES}/pa_mrc_simu.c
+    ${PA_SIMU_MODEM_SERVICES}/pa_mdc_simu.c
+    ${PA_SIMU_MODEM_SERVICES}/pa_sim_simu.c
+)
 
+set_legato_component(${APP_COMPONENT})
 
-target_link_libraries(${TEST_EXEC} legato jansson)
+add_legato_executable(${APP_TARGET} ${APP_SOURCES})
 
-add_test(${TEST_EXEC} ${EXECUTABLE_OUTPUT_PATH}/${TEST_EXEC} ${APNFILE} )
+target_link_libraries(${APP_TARGET} -ljansson)
+
+add_test(${APP_TARGET} ${EXECUTABLE_OUTPUT_PATH}/${APP_TARGET} ${APNFILE} )

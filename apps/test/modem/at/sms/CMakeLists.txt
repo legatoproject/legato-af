@@ -1,11 +1,7 @@
 #*******************************************************************************
 # Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
-#
-# Contributors:
-#     Sierra Wireless - initial API and implementation
 #*******************************************************************************
 
-find_package(Legato REQUIRED)
 find_package(CUnit REQUIRED)
 
 if(${LEGATO_TARGET} STREQUAL "localhost")
@@ -28,10 +24,6 @@ if(${LEGATO_TARGET} STREQUAL "localhost")
                     -i ${LEGATO_ROOT}/components/atManager/src
                     -i ${LEGATO_ROOT}/components
                     -i ${LEGATO_ROOT}/interfaces/modemServices
-                DEPENDS
-                    legato
-                    Component.cdef
-                    test_at_sms.c
                  )
 
         set(SCRIPT_PATH       ${LEGATO_ROOT}/apps/test/modem/at/testLeAT.sh)

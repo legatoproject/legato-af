@@ -5,7 +5,6 @@
  *
  */
 
-//#include "legato.h"
 #include "interfaces.h"
 
 #include "log.h"
@@ -21,7 +20,6 @@
 #include "main.h"
 
 
-le_log_SessionRef_t LE_LOG_SESSION;
 le_log_Level_t* LE_LOG_LEVEL_FILTER_PTR;
 
 #define DUMPSIZE 132
@@ -62,19 +60,13 @@ void DumpPdu
  *
  */
 //--------------------------------------------------------------------------------------------------
-int main
-(
-    int argc,
-    char *argv[]
-)
+COMPONENT_INIT
 {
-    LE_LOG_SESSION = log_RegComponent( "sms", &LE_LOG_LEVEL_FILTER_PTR);
-
-    arg_SetArgs(argc,argv);
-
     le_log_TraceRef_t traceRef = le_log_GetTraceRef( "smsPdu" );
 
-    le_log_SetFilterLevel(LE_LOG_DEBUG);
+    // To reactivate for all DEBUG logs
+  //  le_log_SetFilterLevel(LE_LOG_DEBUG);
+
     le_log_EnableTrace(traceRef);
 
     // Init the test case / test suite data structures
@@ -108,7 +100,7 @@ int main
 
     LE_INFO("======== UnitTest of SMS API ends with SUCCESS ========");
 
-    return 0;
+    exit(0);
 }
 
 

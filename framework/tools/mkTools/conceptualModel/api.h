@@ -151,11 +151,14 @@ struct ApiInterfaceInstance_t
 
     std::string name;   ///< Name used to identify this interface to the service directory.
 
-    bool isExternal;    ///< true if the interface is one of the app's external interfaces.
+    const parseTree::Token_t* externMarkPtr; ///< Ptr to the name token in the parse tree where
+                                             /// this was marked "extern".  NULL if not extern.
 
 protected:
 
     ApiInterfaceInstance_t(ComponentInstance_t* cInstPtr, const std::string& internalName);
+
+    virtual ~ApiInterfaceInstance_t() {}
 };
 
 

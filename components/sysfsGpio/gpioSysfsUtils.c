@@ -1,0 +1,1182 @@
+/**
+ * @file gpioSysfsUtils.c
+ *
+ * Utility functions for working with the GPIO sysfs in Linux. Some features
+ * of the generic Legato GPIO API are not available and hence not implemented.
+ *
+ * <HR>
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ */
+
+#include "legato.h"
+#include "interfaces.h"
+#include "gpioSysfs.h"
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * GPIO signals have paths like /sys/class/gpio/gpio42/ (for GPIO #42)
+ */
+//--------------------------------------------------------------------------------------------------
+#define SYSFS_GPIO_PATH    "/sys/class/gpio"
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Max and Min Pin Numbers
+ */
+//--------------------------------------------------------------------------------------------------
+#define MAX_PIN_NUMBER 64
+#define MIN_PIN_NUMBER 1
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Check if sysfs gpio path exists.
+ * @return
+ * - true: gpio path exists
+ * - false: gpio path does not exist
+ */
+//--------------------------------------------------------------------------------------------------
+static bool CheckGpioPathExist
+(
+    const char *path
+)
+{
+    DIR* dir;
+
+    dir = opendir(path);
+    if (dir)
+    {
+        /* Directory exists. */
+        closedir(dir);
+    }
+    else if (ENOENT == errno)
+    {
+        return false;
+    }
+
+    return true;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Export a GPIO in the sysfs.
+ * @return
+ * - LE_OK if exporting was successful
+ * - LE_IO_ERROR if it failed
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t ExportGpio
+(
+    const gpioSysfs_GpioRef_t gpioRefPtr
+)
+{
+    char path[128];
+    char export[128];
+    char gpioStr[8];
+    FILE *fp = NULL;
+
+    // First check if the GPIO has already been exported
+    snprintf(path, sizeof(path), "%s/%s", SYSFS_GPIO_PATH, gpioRefPtr->gpioName);
+    if (CheckGpioPathExist(path))
+    {
+        return LE_OK;
+    }
+
+    // Write the GPIO number to the export file
+    snprintf(export, sizeof(export), "%s/%s", SYSFS_GPIO_PATH, "export");
+    snprintf(gpioStr, sizeof(gpioStr), "%d", gpioRefPtr->pinNum);
+    do
+    {
+        fp = fopen(export, "w");
+    }
+    while ((fp == NULL) && (errno == EINTR));
+
+    if(!fp) {
+        LE_ERROR("Error opening file %s for writing.\n", export);
+        return LE_IO_ERROR;
+    }
+
+    ssize_t written = fwrite(gpioStr, 1, strlen(gpioStr), fp);
+    fflush(fp);
+
+    int file_err = ferror(fp);
+    fclose(fp);
+    if (file_err != 0)
+    {
+        LE_EMERG("Failed to export GPIO %s. Error %s", gpioStr, strerror(file_err));
+        return LE_IO_ERROR;
+    }
+
+    if (written < strlen(gpioStr))
+    {
+        LE_EMERG("Data truncated while exporting GPIO %s.", gpioStr);
+        return LE_IO_ERROR;
+    }
+
+    // Now check again that it has been exported
+    if (CheckGpioPathExist(path))
+    {
+        return LE_OK;
+    }
+    LE_EMERG("Failed to export GPIO %s.", gpioStr);
+    return LE_IO_ERROR;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set sysfs GPIO signals attributes
+ *
+ * GPIO signals have paths like /sys/class/gpio/gpioN/
+ * and have the following read/write attributes:
+ * - "direction"
+ * - "value"
+ * - "edge"
+ * - "active_low"
+ * - "pull"
+ *
+ * @return
+ * - LE_IO_ERROR: write sysfs gpio error
+ * - LE_OK: successfully
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t WriteSysGpioSignalAttr
+(
+    const char *path,        ///< [IN] path to sysfs gpio signal
+    const char *attr         ///< [IN] GPIO signal write attribute
+)
+{
+    FILE *fp = NULL;
+
+    if (!CheckGpioPathExist(path))
+    {
+        LE_KILL_CLIENT("GPIO %s does not exist (probably not exported)", path);
+        return LE_BAD_PARAMETER;
+    }
+
+    do
+    {
+        fp = fopen(path, "w");
+    }
+    while ((fp == NULL) && (errno == EINTR));
+
+    if(!fp) {
+        LE_ERROR("Error opening file %s for writing.\n", path);
+        return LE_IO_ERROR;
+    }
+
+    ssize_t written = fwrite(attr, 1, strlen(attr), fp);
+    fflush(fp);
+
+    int file_err = ferror(fp);
+    if (file_err != 0)
+    {
+        LE_EMERG("Failed to write %s to GPIO config %s. Error %s", attr, path, strerror(file_err));
+        fclose(fp);
+        return LE_IO_ERROR;
+    }
+
+    if (written < strlen(attr))
+    {
+        LE_EMERG("Data truncated while writing %s to GPIO config %s.", path, attr);
+        fclose(fp);
+        return LE_IO_ERROR;
+    }
+    fclose(fp);
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get sysfs GPIO attribute
+ *
+ * GPIO signals have paths like /sys/class/gpio/gpioN/
+ * and have the following read/write attributes:
+ * - "direction"
+ * - "value"
+ * - "edge"
+ * - "active_low"
+ * - "pull"
+ *
+ * @return
+ * - -1: write sysfs gpio error
+ * -  0: successfully
+ */
+//--------------------------------------------------------------------------------------------------
+static int ReadSysGpioSignalAttr
+(
+    const char *path,        ///< [IN] path to sysfs gpio
+    int attr_size,           ///< [IN] the size of attribute content
+    char *attr               ///< [OUT] GPIO signal read attribute content
+)
+{
+    int i;
+    char c;
+    FILE *fp = NULL;
+    char *result = attr;
+
+    if (!CheckGpioPathExist(path))
+    {
+        LE_KILL_CLIENT("File %s does not exist", path);
+        return LE_BAD_PARAMETER;
+    }
+
+    do
+    {
+        fp = fopen(path, "r");
+    }
+    while ((fp == NULL) && (errno == EINTR));
+
+    if(!fp) {
+        LE_ERROR("Error opening file %s for reading.\n", path);
+        return LE_IO_ERROR;
+    }
+
+    i = 0;
+    while (((c = fgetc(fp)) != EOF) && (i < (attr_size - 1))) {
+        result[i] = c;
+        i++;
+    }
+    result[i] = '\0';
+    fclose (fp);
+
+    LE_DEBUG("Read result: %s from %s", result, path);
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * write value to GPIO output, low or high
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t WriteOutputValue
+(
+    gpioSysfs_GpioRef_t gpioRefPtr,           ///< [IN] gpio object reference
+    gpioSysfs_Value_t level                   ///< [IN] High or low
+)
+{
+    char path[64];
+    char attr[16];
+
+    if (!gpioRefPtr || gpioRefPtr->pinNum == 0)
+    {
+        LE_ERROR("gpioRefPtr is NULL or gpio not initialized");
+        return LE_BAD_PARAMETER;
+    }
+
+    snprintf(path, sizeof(path), "%s/%s/%s", SYSFS_GPIO_PATH, gpioRefPtr->gpioName, "value");
+    snprintf(attr, sizeof(attr), "%d", level);
+    LE_DEBUG("path:%s, attr:%s", path, attr);
+
+    return WriteSysGpioSignalAttr(path, attr);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Rising or Falling of Edge sensitivity
+ *
+ * "edge" ... reads as either "none", "rising", "falling", or
+ * "both". Write these strings to select the signal edge(s)
+ * that will make poll(2) on the "value" file return.
+
+ * This file exists only if the pin can be configured as an
+ * interrupt generating input pin.
+
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t SetEdgeSense
+(
+    gpioSysfs_GpioRef_t gpioRefPtr,           ///< [IN] gpio object reference
+    gpioSysfs_EdgeSensivityMode_t edge        ///< [IN] The mode of GPIO Edge Sensivity.
+)
+{
+    char path[64];
+    char attr[16];
+
+    if (!gpioRefPtr || gpioRefPtr->pinNum == 0)
+    {
+        LE_ERROR("gpioRefPtr is NULL or object not initialized");
+        return LE_BAD_PARAMETER;
+    }
+
+    snprintf(path, sizeof(path), "%s/%s/%s", SYSFS_GPIO_PATH, gpioRefPtr->gpioName, "edge");
+
+    switch(edge)
+    {
+        case SYSFS_EDGE_SENSE_RISING:
+            snprintf(attr, 15, "rising");
+            break;
+        case SYSFS_EDGE_SENSE_FALLING:
+            snprintf(attr, 15, "falling");
+            break;
+        case SYSFS_EDGE_SENSE_BOTH:
+            snprintf(attr, 15, "both");
+            break;
+        default:
+            snprintf(attr, 15, "none");
+            break;
+    }
+    LE_DEBUG("path:%s, attr:%s", path, attr);
+
+    return WriteSysGpioSignalAttr(path, attr);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * setup GPIO Direction INPUT or OUTPUT mode.
+ *
+ * "direction" ... reads as either "in" or "out". This value may
+ *        normally be written. Writing as "out" defaults to
+ *        initializing the value as low. To ensure glitch free
+ *        operation, values "low" and "high" may be written to
+ *        configure the GPIO as an output with that initial value
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t SetDirection
+(
+    gpioSysfs_GpioRef_t gpioRefPtr,    ///< [IN] gpio reference
+    gpioSysfs_PinMode_t mode           ///< [IN] gpio direction input/output mode
+)
+{
+    char path[64];
+    char attr[16];
+
+    if (!gpioRefPtr || gpioRefPtr->pinNum == 0)
+    {
+        LE_ERROR("gpioRefPtr is NULL or object not initialized");
+        return LE_BAD_PARAMETER;
+    }
+
+    snprintf(path, sizeof(path), "%s/%s/%s", SYSFS_GPIO_PATH, gpioRefPtr->gpioName, "direction");
+    snprintf(attr, sizeof(attr), "%s", (mode == SYSFS_PIN_MODE_OUTPUT) ? "out": "in");
+    LE_DEBUG("path:%s, attribute:%s", path, attr);
+
+    return WriteSysGpioSignalAttr(path, attr);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * setup GPIO pullup or pulldown disable/enable.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t gpioSysfs_SetPullUpDown
+(
+    gpioSysfs_GpioRef_t gpioRefPtr,    ///< [IN] gpio object reference
+    gpioSysfs_PullUpDownType_t pud     ///< [IN] pull up, pull down type
+)
+{
+    char path[64];
+    char attr[16];
+
+    if (!gpioRefPtr || gpioRefPtr->pinNum == 0)
+    {
+        LE_ERROR("gpioRefPtr is NULL or object not initialized");
+        return LE_BAD_PARAMETER;
+    }
+
+    // It is not possible to disable the resistors
+    if (pud == SYSFS_PULLUPDOWN_TYPE_OFF)
+    {
+        LE_ERROR("Disabling the resistors is not supported");
+        return LE_NOT_IMPLEMENTED;
+    }
+
+    snprintf(path, sizeof(path), "%s/%s/%s", SYSFS_GPIO_PATH, gpioRefPtr->gpioName, "pull");
+    snprintf(attr, sizeof(attr), "%s", (pud == SYSFS_PULLUPDOWN_TYPE_DOWN) ? "down": "up");
+    LE_DEBUG("path:%s, attr:%s", path, attr);
+
+    return WriteSysGpioSignalAttr(path, attr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set up PushPull Output.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t gpioSysfs_SetPushPullOutput
+(
+    gpioSysfs_GpioRef_t gpioRef,
+    gpioSysfs_ActiveType_t polarity,
+    bool value
+)
+{
+    le_result_t res = LE_OK;
+
+    res = SetDirection(gpioRef, SYSFS_PIN_MODE_OUTPUT);
+    if (LE_OK != res)
+    {
+        LE_DEBUG("Unable to set GPIO %s as output", gpioRef->gpioName);
+        return res;
+    }
+
+    res = gpioSysfs_SetPolarity(gpioRef, polarity);
+    if (LE_OK != res)
+    {
+        LE_DEBUG("Unable to set GPIO %s polarity", gpioRef->gpioName);
+        return res;
+    }
+
+    return WriteOutputValue(gpioRef, value ? SYSFS_VALUE_HIGH : SYSFS_VALUE_LOW);
+
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * setup GPIO OpenDrain.
+ *
+ * Enables open drain operation for each output-configured IO.
+ *
+ * Output pins can be driven in two different modes:
+ * - Regular push-pull operation: A transistor connects to high, and a transistor connects to low
+ *   (only one is operated at a time)
+ * - Open drain operation:  A transistor connects to low and nothing else
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t gpioSysfs_SetOpenDrain
+(
+    gpioSysfs_GpioRef_t gpioRefPtr,       ///< [IN] gpio object reference
+    gpioSysfs_ActiveType_t polarity,      ///< [IN] Active-high or active-low
+    bool value                            ///< [IN] Initial value to drive
+)
+{
+    LE_WARN("Open Drain API not implemented in sysfs GPIO");
+    return LE_NOT_IMPLEMENTED;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Configure the pin as a tri-state output pin.
+ *
+ * @note The initial state will be high-impedance.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t gpioSysfs_SetTriState
+(
+    gpioSysfs_GpioRef_t gpioRef,       ///< [IN] GPIO module object reference
+    gpioSysfs_ActiveType_t polarity    ///< [IN] Active-high or active-low
+)
+{
+    LE_WARN("Tri-State API not implemented in sysfs GPIO");
+    return LE_NOT_IMPLEMENTED;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Configure the pin as an input pin.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t gpioSysfs_SetInput
+(
+    gpioSysfs_GpioRef_t gpioRef,         ///< [IN] GPIO module object reference
+    gpioSysfs_ActiveType_t polarity      ///< [IN] Active-high or active-low.
+)
+{
+    le_result_t res = LE_OK;
+
+    res = SetDirection(gpioRef, SYSFS_PIN_MODE_INPUT);
+
+    if (LE_OK != res)
+    {
+        LE_DEBUG("Unable to set GPIO %s as input", gpioRef->gpioName);
+        return res;
+    }
+
+    return gpioSysfs_SetPolarity(gpioRef, polarity);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set output pin to high impedance state.
+ *
+ * @warning Only valid for tri-state or open-drain output pins.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t gpioSysfs_SetHighZ
+(
+    gpioSysfs_GpioRef_t gpioRef       ///< [IN] GPIO module object reference
+)
+{
+    LE_WARN("SetHighZ API not implemented in sysfs GPIO");
+    return LE_NOT_IMPLEMENTED;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * setup GPIO polarity.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t gpioSysfs_SetPolarity
+(
+    gpioSysfs_GpioRef_t gpioRefPtr,           ///< [IN] gpio object reference
+    gpioSysfs_ActiveType_t level              ///< [IN] Active-high or active-low
+)
+{
+    char path[64];
+    char attr[16];
+
+    if (!gpioRefPtr || gpioRefPtr->pinNum == 0)
+    {
+        LE_ERROR("gpioRefPtr is NULL or gpio not initialized");
+        return LE_BAD_PARAMETER;
+    }
+
+    snprintf(path, sizeof(path), "%s/%s/%s", SYSFS_GPIO_PATH, gpioRefPtr->gpioName, "active_low");
+    snprintf(attr, sizeof(attr), "%d", level);
+    LE_DEBUG("path:%s, attr:%s", path, attr);
+
+    return WriteSysGpioSignalAttr(path, attr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set a change callback on a particular pin
+ *
+ * @return This will return a reference
+ */
+//--------------------------------------------------------------------------------------------------
+void* gpioSysfs_SetChangeCallback
+(
+    gpioSysfs_GpioRef_t gpioRef,                  ///< [IN] GPIO object reference
+    le_fdMonitor_HandlerFunc_t fdMonFunc,         ///< [IN] The fd monitor function
+    gpioSysfs_EdgeSensivityMode_t edge,           ///< [IN] Edge detection mode.
+    gpioSysfs_ChangeCallbackFunc_t handlerPtr,    ///< [IN]
+    void* contextPtr,                             ///< [IN]
+    int32_t sampleMs                              ///< [IN] If not interrupt capable, sample this often.
+)
+{
+    char monFile[128];
+    int monFd = 0;
+
+    // Only one handler is allowed here
+    if (gpioRef->fdMonitor != NULL)
+    {
+        LE_KILL_CLIENT("Only one change handler can be registered");
+        return NULL;
+    }
+
+    // Set the edge detection mode
+    if (LE_OK != SetEdgeSense(gpioRef, edge))
+    {
+        LE_KILL_CLIENT("Unable to set edge detection correctly");
+        return NULL;
+    }
+
+    // Store the callback function and context pointer
+    gpioRef->handlerPtr = handlerPtr;
+    gpioRef->callbackContextPtr = contextPtr;
+
+    // Start monitoring the fd for the correct GPIO
+    snprintf(monFile, sizeof(monFile), "%s/%s/%s", SYSFS_GPIO_PATH, gpioRef->gpioName, "value");
+
+    do
+    {
+        monFd = open(monFile, O_RDONLY);
+    }
+    while ((monFd == 0) && (errno == EINTR));
+
+    if (monFd == 0)
+    {
+        LE_KILL_CLIENT("Unable to open GPIO file for monitoring");
+        return NULL;
+    }
+
+    LE_DEBUG("Setting up file monitor for fd %d and pin %s", monFd, gpioRef->gpioName);
+    gpioRef->fdMonitor = le_fdMonitor_Create (gpioRef->gpioName, monFd, fdMonFunc, POLLPRI);
+    gpioRef->monitorFd = monFd;
+
+    return &(gpioRef->gpioName);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Remove a change callback on a particular pin
+ *
+ * @return Returns nothing.
+ */
+//--------------------------------------------------------------------------------------------------
+void gpioSysfs_RemoveChangeCallback
+(
+    gpioSysfs_GpioRef_t gpioRef,       ///< [IN] GPIO object reference
+    void * addHandlerRef               ///< [IN] The reference from when the handler was added
+)
+{
+    // We should check the reference here, but only one handler is allowed
+    // so it isn't that important
+
+    // If there is an fd monitor then stop it
+    if (gpioRef->fdMonitor != NULL)
+    {
+        le_fdMonitor_Delete(gpioRef->fdMonitor);
+        gpioRef->fdMonitor = NULL;
+    }
+
+    // If there is a callback registered then forget it
+    gpioRef->callbackContextPtr = NULL;
+    gpioRef->handlerPtr = NULL;
+    return;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Turn off edge detection. This function does not require a handler to be
+ * registered as it disables interrupts.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t gpioSysfs_DisableEdgeSense
+(
+    gpioSysfs_GpioRef_t gpioRef         ///< [IN] GPIO object reference
+)
+{
+    return SetEdgeSense(gpioRef, SYSFS_EDGE_SENSE_NONE);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * read value from GPIO input mode.
+ *
+ *
+ * "value" ... reads as either 0 (low) or 1 (high). If the GPIO
+ *        is configured as an output, this value may be written;
+ *        any nonzero value is treated as high.
+ *
+ * @return
+ *      An active type, the status of pin: HIGH or LOW
+ */
+//--------------------------------------------------------------------------------------------------
+gpioSysfs_Value_t gpioSysfs_ReadValue
+(
+    gpioSysfs_GpioRef_t gpioRefPtr            ///< [IN] gpio object reference
+)
+{
+    char path[64];
+    char result[17];
+    gpioSysfs_Value_t type;
+
+    if (!gpioRefPtr || gpioRefPtr->pinNum == 0)
+    {
+        LE_ERROR("gpioRefPtr is NULL or object not initialized");
+        return -1;
+    }
+
+    snprintf(path, sizeof(path), "%s/%s/%s", SYSFS_GPIO_PATH, gpioRefPtr->gpioName, "value");
+    ReadSysGpioSignalAttr(path, sizeof(result), result);
+    type = atoi(result);
+    LE_DEBUG("result:%s Value:%s", result, (type==1) ? "high": "low");
+
+    return type;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set an output pin to active state.
+ *
+ * @warning Only valid for output pins.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t gpioSysfs_Activate
+(
+    gpioSysfs_GpioRef_t gpioRefPtr
+)
+{
+    if (LE_OK != SetDirection(gpioRefPtr, SYSFS_PIN_MODE_OUTPUT))
+    {
+        LE_ERROR("Failed to set Direction on GPIO %s", gpioRefPtr->gpioName);
+        return LE_IO_ERROR;
+    }
+
+    if (LE_OK != WriteOutputValue(gpioRefPtr, SYSFS_VALUE_HIGH))
+    {
+        LE_ERROR("Failed to set GPIO %s to high", gpioRefPtr->gpioName);
+        return LE_IO_ERROR;
+    }
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set output pin to inactive state.
+ *
+ * @warning Only valid for output pins.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t gpioSysfs_Deactivate
+(
+    gpioSysfs_GpioRef_t gpioRefPtr
+)
+{
+    if (LE_OK != SetDirection(gpioRefPtr, SYSFS_PIN_MODE_OUTPUT))
+    {
+        LE_ERROR("Failed to set Direction on GPIO %s", gpioRefPtr->gpioName);
+        return LE_IO_ERROR;
+    }
+
+    if (LE_OK != WriteOutputValue(gpioRefPtr, SYSFS_VALUE_LOW))
+    {
+        LE_ERROR("Failed to set GPIO %s to low", gpioRefPtr->gpioName);
+        return LE_IO_ERROR;
+    }
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Check if the pin is currently active. Returns true is a read of "value" returns 1
+ *
+ * @return true = active, false = inactive.
+ *
+ * @note this function can only be used on output pins
+ */
+//--------------------------------------------------------------------------------------------------
+bool gpioSysfs_IsActive
+(
+    gpioSysfs_GpioRef_t gpioRef         ///< [IN] GPIO object reference
+)
+{
+    if (gpioSysfs_IsInput(gpioRef))
+    {
+        LE_WARN("Attempt to check if an input is active");
+        return false;
+    }
+
+    return (gpioSysfs_ReadValue(gpioRef) == SYSFS_VALUE_HIGH);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Check if the pin is configured as an input.
+ *
+ * @return true = input, false = output.
+ */
+//--------------------------------------------------------------------------------------------------
+bool gpioSysfs_IsInput
+(
+    gpioSysfs_GpioRef_t gpioRef         ///< [IN] GPIO object reference
+)
+{
+    char path[64];
+    char result[9];
+
+    if (!gpioRef || gpioRef->pinNum == 0)
+    {
+        LE_KILL_CLIENT("gpioRefPtr is NULL or object not initialized");
+        return false;
+    }
+
+    snprintf(path, sizeof(path), "%s/%s/%s", SYSFS_GPIO_PATH, gpioRef->gpioName, "direction");
+    ReadSysGpioSignalAttr(path, sizeof(result), result);
+    LE_DEBUG("Read direction - result:%s", result);
+
+    return (strncmp(result, "in", 2) == 0);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Check if the pin is configured as an output.
+ *
+ * @return true = output, false = input.
+ */
+//--------------------------------------------------------------------------------------------------
+bool gpioSysfs_IsOutput
+(
+    gpioSysfs_GpioRef_t gpioRef         ///< [IN] GPIO object reference
+)
+{
+    return (!gpioSysfs_IsInput(gpioRef));
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the current value of pull up and down resistors.
+ *
+ * @return The current configured value
+ */
+//--------------------------------------------------------------------------------------------------
+gpioSysfs_PullUpDownType_t gpioSysfs_GetPullUpDown
+(
+    gpioSysfs_GpioRef_t gpioRef         ///< [IN] GPIO object reference
+)
+{
+    char path[64];
+    char result[9];
+
+    if (!gpioRef || gpioRef->pinNum == 0)
+    {
+        LE_KILL_CLIENT("gpioRefPtr is NULL or object not initialized");
+        return SYSFS_PULLUPDOWN_TYPE_OFF;
+    }
+
+    snprintf(path, sizeof(path), "%s/%s/%s", SYSFS_GPIO_PATH, gpioRef->gpioName, "pull");
+    ReadSysGpioSignalAttr(path, sizeof(result), result);
+    LE_DEBUG("Read pull up/down - result:%s", result);
+
+    gpioSysfs_PullUpDownType_t pud = SYSFS_PULLUPDOWN_TYPE_OFF;
+
+    if (strncmp(result, "down", 4) == 0)
+    {
+        LE_DEBUG("Detected pull up/down as down");
+        pud = SYSFS_PULLUPDOWN_TYPE_DOWN;
+    }
+    else if (strncmp(result, "up", 2) == 0)
+    {
+        LE_DEBUG("Detected pull up/down as up");
+        pud = SYSFS_PULLUPDOWN_TYPE_UP;
+    }
+
+    return pud;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the current value the pin polarity.
+ *
+ * @return The current configured value
+ */
+//--------------------------------------------------------------------------------------------------
+gpioSysfs_ActiveType_t gpioSysfs_GetPolarity
+(
+    gpioSysfs_GpioRef_t gpioRef         ///< [IN] GPIO object reference
+)
+{
+    char path[64];
+    char result[17];
+    gpioSysfs_ActiveType_t type;
+
+    if (!gpioRef || gpioRef->pinNum == 0)
+    {
+        LE_ERROR("gpioRefPtr is NULL or object not initialized");
+        return -1;
+    }
+
+    snprintf(path, sizeof(path), "%s/%s/%s", SYSFS_GPIO_PATH, gpioRef->gpioName, "active_low");
+    ReadSysGpioSignalAttr(path, sizeof(result), result);
+    type = atoi(result);
+    LE_DEBUG("result:%s", result);
+
+    if (type == 0)
+    {
+        return SYSFS_ACTIVE_TYPE_HIGH;
+    }
+
+    return SYSFS_ACTIVE_TYPE_LOW;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the current value of edge sensing.
+ *
+ * @return The current configured value
+ *
+ * @note it is invalid to read the edge sense of an output
+ */
+//--------------------------------------------------------------------------------------------------
+gpioSysfs_EdgeSensivityMode_t gpioSysfs_GetEdgeSense
+(
+    gpioSysfs_GpioRef_t gpioRef         ///< [IN] GPIO object reference
+)
+{
+    char path[64];
+    char result[9];
+
+    if (!gpioRef || gpioRef->pinNum == 0)
+    {
+        LE_KILL_CLIENT("gpioRefPtr is NULL or object not initialized");
+        return SYSFS_EDGE_SENSE_NONE;
+    }
+
+    if (gpioSysfs_IsOutput(gpioRef))
+    {
+        LE_WARN("Attempt to read edge sense on an output");
+        return SYSFS_EDGE_SENSE_NONE;
+    }
+
+    snprintf(path, sizeof(path), "%s/%s/%s", SYSFS_GPIO_PATH, gpioRef->gpioName, "edge");
+    ReadSysGpioSignalAttr(path, sizeof(result), result);
+    LE_DEBUG("Read edge - result:%s", result);
+
+    gpioSysfs_EdgeSensivityMode_t edge = SYSFS_EDGE_SENSE_NONE;
+
+    if (strncmp(result, "rising", 6) == 0)
+    {
+        LE_DEBUG("Detected edge as rising");
+        edge = SYSFS_EDGE_SENSE_RISING;
+    }
+    else if (strncmp(result, "falling", 7) == 0)
+    {
+        LE_DEBUG("Detected edge as rising");
+        edge = SYSFS_EDGE_SENSE_FALLING;
+    }
+    else if (strncmp(result, "both", 4) == 0)
+    {
+        LE_DEBUG("Detected edge as both");
+        edge = SYSFS_EDGE_SENSE_BOTH;
+    }
+
+    return edge;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the edge sense value. In order to call this there must be a callback registered for
+ * interrupts. Otherwise this would just generate interrupts without them being handled.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t gpioSysfs_SetEdgeSense
+(
+    gpioSysfs_GpioRef_t gpioRefPtr,           ///< [IN] gpio object reference
+    gpioSysfs_EdgeSensivityMode_t edge        ///< [IN] The mode of GPIO Edge Sensivity.
+)
+{
+    if (gpioRefPtr->handlerPtr == NULL)
+    {
+        LE_ERROR("Attempt to change edge sense value without a registered handler");
+        return LE_FAULT;
+    }
+
+    return SetEdgeSense(gpioRefPtr, edge);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function will be called when there is a state change on a GPIO
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void gpioSysfs_InputMonitorHandlerFunc
+(
+    const gpioSysfs_GpioRef_t gpioRefPtr,
+    int fd,
+    short events
+)
+{
+    //We're reading a single character
+    char buf[1];
+
+    LE_DEBUG("Input handler called for %s", gpioRefPtr->gpioName);
+
+    // Make sure the pin is in use and this isn't a spurious interrupt
+    if (!gpioRefPtr->inUse)
+    {
+        LE_WARN("Spurious interrupt handled - ignoring");
+        return;
+    }
+
+    // Seek to the start of the file - this is required to prevent
+    // repeated triggers - see https://www.kernel.org/doc/Documentation/gpio/sysfs.txt
+    LE_DEBUG("Seek to start of file %d", fd);
+    lseek(fd, 0, SEEK_SET);
+
+    if (read(fd, buf, 1) != 1)
+    {
+        LE_ERROR("Unable to read value for GPIO %s", gpioRefPtr->gpioName);
+        return;
+    }
+
+    LE_DEBUG("Read value %c from value file for callback", buf[0]);
+
+    // Look up the callback function
+    gpioSysfs_ChangeCallbackFunc_t handlerPtr = (gpioSysfs_ChangeCallbackFunc_t)gpioRefPtr->handlerPtr;
+
+    if (handlerPtr != NULL)
+    {
+        LE_DEBUG("Calling change callback for %s", gpioRefPtr->gpioName);
+        handlerPtr(buf[0]=='1', gpioRefPtr->callbackContextPtr);
+    }
+    else
+    {
+        LE_WARN("No callback registered for pin %s", gpioRefPtr->gpioName);
+    }
+
+    return;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function will be called when the client-server session opens. This allows the relationship
+ * between the session and the GPIO reference to be created.
+ * A service using this module to interact with the sysfs should register this function
+ * with the low-level messaging API using le_msg_AddServiceOpenHandler.
+ */
+//--------------------------------------------------------------------------------------------------
+void gpioSysfs_SessionOpenHandlerFunc
+(
+    le_msg_SessionRef_t  sessionRef,  ///<[IN] Client session reference.
+    void*                contextPtr   ///<[IN] Client context pointer.
+)
+{
+    gpioSysfs_GpioRef_t gpioRefPtr = (gpioSysfs_GpioRef_t)contextPtr;
+
+    if (NULL == gpioRefPtr)
+    {
+        LE_KILL_CLIENT("Unable to match context to pin");
+        return;
+    }
+
+    if (gpioRefPtr == NULL)
+    {
+        LE_KILL_CLIENT("Unable to look up GPIO");
+        return;
+    }
+
+    // Make sure the GPIO is not already in use
+    if (gpioRefPtr->inUse)
+    {
+        uid_t user = 0;
+        pid_t pid = 0;
+        le_msg_GetClientUserCreds(sessionRef, &user, &pid);
+
+        LE_WARN("Attempt to use a GPIO that is already in use by uid %d with pid %d",
+                user,
+                pid
+                );
+
+        le_msg_CloseSession(sessionRef);
+        return;
+    }
+
+    // Export the pin in sysfs to make it available for use
+    if (LE_OK != ExportGpio(gpioRefPtr))
+    {
+        LE_KILL_CLIENT("Unable to export GPIO for use");
+        return;
+    }
+
+    // Mark the PIN as in use
+    LE_INFO("Assigning GPIO %d", gpioRefPtr->pinNum);
+    gpioRefPtr->inUse = true;
+
+    // Store the current, valid session ref
+    gpioRefPtr->currentSession = sessionRef;
+
+    LE_DEBUG("gpio pin:%d, GPIO Name:%s", gpioRefPtr->pinNum, gpioRefPtr->gpioName);
+    return;
+
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function will be called when the client-server session closes.
+ */
+//--------------------------------------------------------------------------------------------------
+void gpioSysfs_SessionCloseHandlerFunc
+(
+    le_msg_SessionRef_t  sessionRef,  ///<[IN] Client session reference.
+    void*                contextPtr   ///<[IN] Client context pointer.
+)
+{
+    gpioSysfs_GpioRef_t gpioRefPtr = (gpioSysfs_GpioRef_t)contextPtr;
+
+    // Make sure this is the valid session. If we have rejected a connection
+    // then no clean up should be done as this will mess up the real session
+    if (gpioRefPtr->currentSession != sessionRef)
+    {
+        LE_DEBUG("No clean up required. This is a rejected session");
+        return;
+    }
+
+    if (gpioRefPtr == NULL)
+    {
+        LE_WARN("Unable to look up GPIO PIN for closing session");
+    }
+    else
+    {
+        // Mark the pin as not in use
+        LE_INFO("Releasing GPIO %d", gpioRefPtr->pinNum);
+        gpioRefPtr->inUse = false;
+
+        // If there is an fd monitor then stop it
+        if (gpioRefPtr->fdMonitor != NULL)
+        {
+            LE_DEBUG("Stopping fd monitor");
+            le_fdMonitor_Delete(gpioRefPtr->fdMonitor);
+            gpioRefPtr->fdMonitor = NULL;
+            int ret = 0;
+            do
+            {
+                ret = close(gpioRefPtr->monitorFd);
+            }
+            while ((ret != 0) && (errno == EINTR));
+            gpioRefPtr->monitorFd = -1;
+        }
+
+        LE_DEBUG("Removing callback references");
+        // If there is a callback registered then forget it
+        gpioRefPtr->callbackContextPtr = NULL;
+        gpioRefPtr->handlerPtr = NULL;
+        gpioRefPtr->currentSession = NULL;
+    }
+    return;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Determine if a GPIO PIn is available for use. This is done by reading the value of
+ * /sys/class/gpio/gpiochip1/mask (on our platforms). The sysfs doc describes this as follows...
+ *
+ * GPIO controllers have paths like /sys/class/gpio/gpiochip42/ (for the
+ * controller implementing GPIOs starting at #42) and have the following
+ * read-only attributes:
+ *
+ *  /sys/class/gpio/gpiochipN/
+ */
+//--------------------------------------------------------------------------------------------------
+bool gpioSysfs_IsPinAvailable
+(
+    int pinNum         ///< [IN] GPIO object reference
+)
+{
+    char path[64];
+    char result[33];
+
+    if ((pinNum < MIN_PIN_NUMBER) || (pinNum > MAX_PIN_NUMBER))
+    {
+        LE_WARN("Pin number %d is out of range", pinNum);
+        return false;
+    }
+
+    snprintf(path, sizeof(path), "%s/%s/%s", SYSFS_GPIO_PATH, "gpiochip1", "mask");
+    ReadSysGpioSignalAttr(path, sizeof(result), result);
+    LE_DEBUG("Mask read as:%s", result);
+
+    // The mask is 64 bits long
+    // The format of the string is 0xnnnnnnnnnnnnnnnn. Each "n" represents 4 pins, starting
+    // with pin 1-4 on the far right. So we can calculate where to look based on the pin number
+    // e.g. 1-4 = index 17, 5-8 = index 16 etc.
+    int index = 17 - (pinNum / 4);
+    int bitInMask = (pinNum) % 4;
+
+    // Multiples of 4 have no remainder, and end up at the wrong index with that calculation
+    // Need to move them back one bit, which is one character to the right, and 4 bits left
+    if (bitInMask == 0)
+    {
+        bitInMask = 4;
+        index ++;
+    }
+
+    // Convert the mask to a number from a hex string
+    LE_DEBUG("Mask calculated for %d as bit %d at index %d", pinNum, bitInMask, index);
+
+    // Convert the entry in the mask from a hex character to a number
+    int check = 0;
+    if (isdigit(result[index]))
+    {
+        check = result[index] - '0';
+    }
+    else
+    {
+        check = toupper(result[index]) - 'A' + 10;
+    }
+
+    LE_DEBUG("About to compare %d and %d", check, (1 << (bitInMask -1)));
+    return (check & (1 << (bitInMask -1)));
+}
+
+
+
+

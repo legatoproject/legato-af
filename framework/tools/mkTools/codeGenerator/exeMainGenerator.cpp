@@ -33,7 +33,7 @@ void GenerateExeMain
     std::string initFuncName = "_" + defaultCompName + "_COMPONENT_INIT";
 
     // Compute the path to the file to be generated.
-    auto sourceFile = path::Combine(buildParams.workingDir, exePtr->mainCSourceFile);
+    auto& sourceFile = exePtr->mainObjectFile.sourceFilePath;
 
     if (buildParams.beVerbose)
     {
@@ -102,7 +102,7 @@ void GenerateExeMain
 
     // Generate forward declaration of the default component's COMPONENT_INIT function.
     // If there are C/C++ source files other than the _main.c file,
-    if ((!exePtr->cSources.empty()) || (!exePtr->cxxSources.empty()))
+    if ((!exePtr->cObjectFiles.empty()) || (!exePtr->cxxObjectFiles.empty()))
     {
         outputFile << "// Declare default component's COMPONENT_INIT function.\n"
                       "void " << initFuncName << "(void);\n"
@@ -177,7 +177,7 @@ void GenerateExeMain
     outputFile << "\n";
 
     // If there are C/C++ source files other than the _main.c file,
-    if ((!exePtr->cSources.empty()) || (!exePtr->cxxSources.empty()))
+    if ((!exePtr->cObjectFiles.empty()) || (!exePtr->cxxObjectFiles.empty()))
     {
         outputFile << "// Queue the default component's COMPONENT_INIT to Event Loop.\n"
                       "    event_QueueComponentInit(" << initFuncName << ");\n";

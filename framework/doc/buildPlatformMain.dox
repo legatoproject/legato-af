@@ -1,0 +1,12 @@
+/** @page buildPlatformMain Build Platform 
+
+| Section                            | Description                                        |
+| ---------------------------------- | -------------------------------------------------- |
+| @subpage platformConstraints                       | platform constraints  |
+| @subpage yoctoMain                              |  Yocto dist info |
+
+<HR>
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/

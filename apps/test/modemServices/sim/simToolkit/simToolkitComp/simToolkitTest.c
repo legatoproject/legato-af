@@ -4,7 +4,7 @@
 * You must issue the following commands:
 * @verbatim
   $ app start simToolkit
-  $ execInApp simToolkit simToolkit <accept/reject/none>
+  $ execInApp simToolkit simToolkit <accept/reject/none> [<APN> <UserName> <Password>]
  @endverbatim
 * Copyright (C) Sierra Wireless, Inc. Use of this work is subject to license.
 *
@@ -95,7 +95,7 @@ static void PrintUsage
     const char * usagePtr[] =
     {
             "Usage of the simToolkit app is:",
-            "   execInApp simToolkit simToolkit <accept/reject/none>",
+            "   execInApp simToolkit simToolkit <accept/reject/none> [<APN> <UserName> <Password>]",
     };
 
     for(idx = 0; idx < NUM_ARRAY_MEMBERS(usagePtr); idx++)
@@ -119,12 +119,34 @@ static void PrintUsage
 //--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
-    if (le_arg_NumArgs() == 1)
+    if ((le_arg_NumArgs() >= 1) && (le_arg_NumArgs() <= 4))
     {
         // Register a signal event handler for SIGINT when user interrupts/terminates process
         signal(SIGINT, SigHandler);
 
         LE_INFO("======== Start SIM Toolkit Test ========");
+
+        if ( le_arg_NumArgs() == 4 )
+        {
+            const char*         apnArg = le_arg_GetArg(1);
+            const char*         userNameArg = le_arg_GetArg(2);
+            const char*         pwdArg = le_arg_GetArg(3);
+            le_mdc_ProfileRef_t profileRef;
+            uint32_t            defaultIndex;
+
+            profileRef = le_mdc_GetProfile(LE_MDC_SIMTOOLKIT_BIP_DEFAULT_PROFILE);
+            defaultIndex = le_mdc_GetProfileIndex(profileRef);
+            LE_ASSERT(le_mdc_SetAPN(profileRef, apnArg) == LE_OK);
+            LE_ASSERT(le_mdc_SetAuthentication(profileRef,
+                                               LE_MDC_AUTH_PAP,
+                                               userNameArg,
+                                               pwdArg) == LE_OK);
+            LE_INFO("BIP default profile uses index.%d", defaultIndex);
+        }
+        else
+        {
+            LE_INFO("NO profile defined for OPEN_CHANNEL command.");
+        }
 
         AcceptCmdArg = le_arg_GetArg(0);
         if( strncmp(AcceptCmdArg, "accept", strlen("accept")) == 0 )

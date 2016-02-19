@@ -3,6 +3,11 @@ sources:
     pa_ecall_stub.c
 }
 
+cflags:
+{
+    -I$LEGATO_ROOT/components/modemServices/platformAdaptor/inc
+}
+
 requires:
 {
     api:

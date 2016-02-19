@@ -1,0 +1,13 @@
+/** @page getStartedQuick App Dev Quick Start
+
+If you just want to develop apps, you can run a Legato Application Development Kit (ADK) on a these host
+PCs:
+
+@subpage getStartedQuick_linuxADK <br>
+@subpage getStartedQuick_windowsADK
+
+<HR>
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/

@@ -2,27 +2,37 @@
 
 After you've installed the source files, you build the Legato framework for your host and target.
 
-@section getstartedCLbuild_makeLegato Make Legato
+@section getstartedCLbuild_makeLegato Make Legato on localhost
 
 @b cd to your Legato directory
 
-@b Run @c make.
+@b Run @c make
 
-These are @subpage getstartedHostDirs installed.<br>
+These are @subpage getstartedHostDirs installed.
+
+This will build a @ref legatoServicesUpdatePack "system update pack" for the target, located under
+the build directory for your target (e.g., build/localhost/system.localhost.update).
 
 @section getstartedCLbuild_binlegs bin/legs
 
-To set the your Legato environment, you must run @c bin/legs @a every time you open a new shell:
+To set up your shell environment to use the Legato command-line tools, run @c bin/legs @a every
+time you open a new shell:
 
-@b Run <c>$ bin/legs </c>
+@b Run <c>$ bin/legs</c>
+
+(You can run @c exit at any time to terminate @c legs and restore your shell's environment.)
 
 @section getstartedCLbuild_makeTarget Make for Target
 
-@b Run @c make to build the framework and AirVantage agent for the target (substitute @c ar7 or @c wp7 if building those targets):
+@b Run @c make to build the framework for the target:
 @code $ make wp85 @endcode
 
-Or run this to build the framework for the target without the AirVantage agent:
-@code $ make wp85 INCLUDE_AIRVANTAGE=0 @endcode
+Substitute @c wp85 for other target names : @c ar7 or @c ar86.
+ 
+This will build a @ref legatoServicesUpdatePack "system update pack" for the target, located under the build
+directory for your target  (e.g., build/wp85/system.wp85.update).
+
+Ensure you run @ref getstartedCLbuild_binlegs "bin/legs" every time you open a new shell.
 
 <HR>
 

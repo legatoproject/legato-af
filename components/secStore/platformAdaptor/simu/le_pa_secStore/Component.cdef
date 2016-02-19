@@ -9,3 +9,7 @@ sources:
     pa_secStore_simu.c
 }
 
+cflags:
+{
+    -I$LEGATO_ROOT/components/secStore/platformAdaptor/inc
+}

@@ -26,7 +26,7 @@ fi
 echo "******** Supervisor Test Starting ***********"
 
 echo "Make sure Legato is running."
-ssh root@$targetAddr "/usr/local/bin/legato start"
+ssh root@$targetAddr "$BIN_PATH/legato start"
 CheckRet
 
 echo "Install all the apps."
@@ -44,35 +44,35 @@ instapp ForkChildApp.$targetType $targetAddr
 instapp NonSandboxedForkChildApp.$targetType $targetAddr
 
 echo "Stop all other apps."
-ssh root@$targetAddr "/usr/local/bin/app stop \"*\""
+ssh root@$targetAddr "$BIN_PATH/app stop \"*\""
 sleep 1
 
 echo "Testing handling of forked child in sandbox apps."
 
-ssh root@$targetAddr  "/usr/local/bin/app start ForkChildApp"
+ssh root@$targetAddr  "$BIN_PATH/app start ForkChildApp"
 CheckRet
 
-ssh root@$targetAddr  "/usr/local/bin/app stop ForkChildApp"
+ssh root@$targetAddr  "$BIN_PATH/app stop ForkChildApp"
 CheckRet
 
-ssh root@$targetAddr  "/usr/local/bin/app start ForkChildApp"
+ssh root@$targetAddr  "$BIN_PATH/app start ForkChildApp"
 CheckRet
 
-ssh root@$targetAddr  "/usr/local/bin/app stop ForkChildApp"
+ssh root@$targetAddr  "$BIN_PATH/app stop ForkChildApp"
 CheckRet
 
 echo "Testing handling of forked child in nonsandbox apps."
 
-ssh root@$targetAddr  "/usr/local/bin/app start NonSandboxedForkChildApp"
+ssh root@$targetAddr  "$BIN_PATH/app start NonSandboxedForkChildApp"
 CheckRet
 
-ssh root@$targetAddr  "/usr/local/bin/app stop NonSandboxedForkChildApp"
+ssh root@$targetAddr  "$BIN_PATH/app stop NonSandboxedForkChildApp"
 CheckRet
 
-ssh root@$targetAddr  "/usr/local/bin/app start NonSandboxedForkChildApp"
+ssh root@$targetAddr  "$BIN_PATH/app start NonSandboxedForkChildApp"
 CheckRet
 
-ssh root@$targetAddr  "/usr/local/bin/app stop NonSandboxedForkChildApp"
+ssh root@$targetAddr  "$BIN_PATH/app stop NonSandboxedForkChildApp"
 CheckRet
 
 echo "Clear the logs."
@@ -86,7 +86,7 @@ CheckRet
 echo "Run the apps."
 for app in $appsList
 do
-    ssh root@$targetAddr  "/usr/local/bin/app start $app"
+    ssh root@$targetAddr  "$BIN_PATH/app start $app"
     CheckRet
 done
 
@@ -94,7 +94,7 @@ done
 sleep 3
 
 echo "Uninstall all apps."
-ssh root@$targetAddr  "/usr/local/bin/app stop \"*\""
+ssh root@$targetAddr  "$BIN_PATH/app stop \"*\""
 
 echo "Grepping the logs to check the results."
 CheckLogStr "==" 1 "======== Start 'FaultApp/noExit' Test ========"

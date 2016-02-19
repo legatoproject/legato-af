@@ -25,7 +25,8 @@ DefFile_t::DefFile_t
 )
 //--------------------------------------------------------------------------------------------------
 :   type(fileType),
-    path(filePath),
+    path(path::MakeAbsolute(filePath)),
+    pathMd5(md5(path::MakeCanonical(path))),
     version(0),
     firstTokenPtr(NULL),
     lastTokenPtr(NULL)

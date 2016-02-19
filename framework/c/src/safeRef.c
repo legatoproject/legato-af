@@ -249,8 +249,7 @@ le_ref_IterRef_t le_ref_GetIterator
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Moves the iterator to the next key/value pair in the map.  If the hashmap is modified during
- * iteration then this function will return an error.
+ * Moves the iterator to the next key/value pair in the map.
  *
  * @return  Returns LE_OK unless you go past the end of the map, then returns LE_NOT_FOUND.
  *          If the iterator has been invalidated by the map changing or you have previously

@@ -35,22 +35,31 @@
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
+    le_dls_Link_t           link;           ///< Link for exposure to the Inpsect tool.
     char    name[MAX_THREAD_NAME_SIZE];     ///< The name of the thread.
     pthread_attr_t          attr;           ///< The thread's attributes.
     bool                    isJoinable;     ///< true = the thread is joinable, false = detached.
-    bool                    isStarted;      ///< true = the thread has been started.
+
+    /// Thread state.
+    enum
+    {
+        THREAD_STATE_NEW,       ///< Not yet started.
+        THREAD_STATE_RUNNING,   ///< Has been started.
+        THREAD_STATE_DYING      ///< Is in the process of cleaning up.
+    }
+    state;
+
     le_thread_MainFunc_t    mainFunc;       ///< The main function for the thread.
     void*                   context;        ///< Context value to be passed to mainFunc.
-    le_sls_List_t           destructorList; ///< The destructor list for this thread.
+    le_dls_List_t           destructorList; ///< The destructor list for this thread.
     mutex_ThreadRec_t       mutexRec;       ///< The thread's mutex record.
     sem_ThreadRec_t         semaphoreRec;   ///< the thread's semaphore record.
     event_PerThreadRec_t    eventRec;       ///< The thread's event record.
     pthread_t               threadHandle;   ///< The pthreads thread handle.
     le_thread_Ref_t         safeRef;        ///< Safe reference for this object.
     timer_ThreadRec_t       timerRec;       ///< The thread's timer record.
-    le_dls_Link_t           link;           ///< Link for exposure to the Inpsect tool.
 }
-ThreadObj_t;
+thread_Obj_t;
 
 
 //--------------------------------------------------------------------------------------------------

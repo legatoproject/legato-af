@@ -1,0 +1,12 @@
+/** @page learnMain Learn
+
+| Section                            | Description                                        |
+| ---------------------------------- | -------------------------------------------------- |
+| @subpage basicMain                     | essentials to get developing                        |
+| @subpage howToMain                     | frequently needed tasks                        |
+| @subpage defFiles                             | reusable external interfaces & internal content |
+| @subpage apiFiles                             | language-independent interfaces  |
+
+<HR>
+
+**/

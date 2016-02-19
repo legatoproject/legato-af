@@ -1,0 +1,12 @@
+requires:
+{
+    api:
+    {
+        secureStorage/secStoreAdmin.api
+    }
+}
+
+sources:
+{
+    secStoreTool.c
+}

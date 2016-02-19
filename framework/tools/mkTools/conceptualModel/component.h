@@ -29,8 +29,10 @@ struct Component_t
 
     std::string initFuncName;   ///< Real name of the COMPONENT_INIT function ("" if no lib).
 
-    std::list<std::string> cSources;    ///< List of C source code files.
-    std::list<std::string> cxxSources;  ///< List of C++ source code files.
+    std::list<ObjectFile_t*> cObjectFiles;  ///< List of .o files to build from C source files.
+    std::list<ObjectFile_t*> cxxObjectFiles;///< List of .o files to build from C++ source files.
+
+    std::set<std::string> staticLibs;   ///< Static library files to be linked with the exe.
 
     std::list<std::string> ldFlags;     ///< List of linker options.
     std::list<std::string> cFlags;      ///< List of options to pass to the C compiler.
@@ -52,6 +54,8 @@ struct Component_t
     std::set<const ApiFile_t*> clientUsetypesApis; ///< .api files imported by client-side APIs.
     std::set<const ApiFile_t*> serverUsetypesApis; ///< .api files imported by server-side APIs.
 
+    std::set<std::string> implicitDependencies; ///< Changes to these files triggers a re-link.
+
     std::list<Asset_t*> assets;  ///< Asset data that this component can sync with AirVantage.
 
     // Get a pre-existing Component object for the component found at a given directory path.
@@ -71,6 +75,10 @@ protected:
     /// This is used to keep a single, unique component object for each unique component directory
     /// path. The key is the cannonical path to the directory.  The value is a pointer to an object.
     static std::map<std::string, Component_t*> ComponentMap;
+
+public:
+
+    static const std::map<std::string, Component_t*>& GetComponentMap() { return ComponentMap; }
 };
 
 
@@ -92,6 +100,9 @@ struct ComponentInstance_t
     std::list<ApiClientInterfaceInstance_t*> clientApis; ///< Client-side interface instances.
 
     ComponentInstance_t(Exe_t* ePtr, Component_t* cPtr);
+
+    ApiServerInterfaceInstance_t* FindServerInterface(const std::string& name);
+    ApiClientInterfaceInstance_t* FindClientInterface(const std::string& name);
 };
 
 

@@ -1,16 +1,14 @@
 #*******************************************************************************
 # Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
-#
-# Contributors:
-#     Sierra Wireless - initial API and implementation
 #*******************************************************************************
 
-set(TEST_EXEC simUnitTest)
+set(APP_COMPONENT simTest)
+set(APP_TARGET simUnitTest)
 
 set(INTERFACES_MODEM_SERVICES "${LEGATO_ROOT}/interfaces/modemServices/")
 set(LEGATO_MODEM_SERVICES "${LEGATO_ROOT}/components/modemServices/")
 set(PA_SIMU_MODEM_SERVICES "${LEGATO_MODEM_SERVICES}/platformAdaptor/simu/le_pa/")
-set (TEST "apps/test/modemServices/sim/${TEST_EXEC}")
+set (TEST "apps/test/modemServices/sim/${APP_TARGET}")
 set (LEGATO_BUILD "${LEGATO_ROOT}/build/${LEGATO_TARGET}")
 
 #generate API interfaces
@@ -28,12 +26,14 @@ include_directories(    ${LEGATO_ROOT}/framework/c/inc
                         ${LEGATO_ROOT}/${TEST}
                         ${LEGATO_ROOT}/components/cfgEntries )
 
-add_executable(${TEST_EXEC} main.c
-                            ${LEGATO_MODEM_SERVICES}/modemDaemon/le_sim.c
-                            ${PA_SIMU_MODEM_SERVICES}/pa_sim_simu.c
-                            )
 
+set(APP_SOURCES
+    ${LEGATO_ROOT}/${TEST}/main.c
+    ${LEGATO_MODEM_SERVICES}/modemDaemon/le_sim.c
+    ${PA_SIMU_MODEM_SERVICES}/pa_sim_simu.c
+)
 
-target_link_libraries(${TEST_EXEC} legato)
+set_legato_component(${APP_COMPONENT})
+add_legato_executable(${APP_TARGET} ${APP_SOURCES})
 
-add_test(${TEST_EXEC} ${EXECUTABLE_OUTPUT_PATH}/${TEST_EXEC})
+add_test(${APP_TARGET} ${EXECUTABLE_OUTPUT_PATH}/${APP_TARGET})

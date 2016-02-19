@@ -1,0 +1,14 @@
+/** @page legatoServicesSecStoreMain Secure Storage
+
+| Service                            | Description                                        | multi-app safe            |
+| ---------------------------------- | -------------------------------------------------- | :-----------------------: |
+| @subpage c_secStore                     | secure storage access                        |  @image html green_dot.png  |
+| @subpage c_secStoreAdmin         | secure storage admin control                                 |   @image html green_dot.png     |
+
+ <br>
+
+<HR>
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/

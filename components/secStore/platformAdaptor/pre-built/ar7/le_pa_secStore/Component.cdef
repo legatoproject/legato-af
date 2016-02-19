@@ -6,12 +6,15 @@ bundles:
     }
 }
 
-ldflags:
-{
-    -lComponent_le_pa_secStore
-}
-
 requires:
 {
-    component: { $LEGATO_MODEM_PA }
+    component:
+    {
+        $LEGATO_UTIL_PA
+    }
+
+    lib:
+    {
+        libComponent_le_pa_secStore.so
+    }
 }

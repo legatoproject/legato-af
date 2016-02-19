@@ -14,14 +14,13 @@ multiple apps can share the same resources.
 | @subpage legatoServicesConfigTree  | Target configuration database                      | @image html green_dot.png |
 | @subpage c_le_data                 | Request data connection                            | @image html green_dot.png |
 | @subpage c_gpio                    | Configure general purpose input/output             |                           |
-| @subpage c_limit                   | Limits for APIs                                    |                           |
 | @subpage legatoServicesModem       | modem services                                     | @image html yellow_dot.png|
 | @subpage legatoServicesPositioning | posititioning services                             | @image html yellow_dot.png|
-| @subpage c_pm                      | Device power management                            |                           |
-| @subpage c_secStore                | Secure storage for sensitive data                  | @image html green_dot.png |
+| @subpage legatoServicesPowerMain          | Device power management                            |                           |
+| @subpage legatoServicesSecStoreMain    | Secure storage for sensitive data           | @image html green_dot.png |
 | @subpage legatoServicesSMS         | SMS and SMS Inbox                                  | @image html green_dot.png |
 | @subpage legatoServicesSupervisor  | Control framework and apps                         | @image html yellow_dot.png|
-| @subpage legatoServicesUpdate      | update modem firmware and apps                     | @image html yellow_dot.png|
+| @subpage legatoServicesUpdateMain  | update modem firmware and apps                     | @image html yellow_dot.png|
 | @subpage c_le_voicecall            | Voice communications                               | @image html green_dot.png |
 
  <br>

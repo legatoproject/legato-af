@@ -1,0 +1,92 @@
+
+sandboxed: false
+start: auto
+
+executables:
+{
+    gpioService = ( $LEGATO_ROOT/components/sysfsGpio )
+}
+
+processes:
+{
+    run:
+    {
+        ( gpioService )
+    }
+}
+
+requires:
+{
+    configTree:
+    {
+        gpioService
+    }
+}
+
+extern:
+{
+    gpioService.sysfsGpio.le_gpioPin1
+    gpioService.sysfsGpio.le_gpioPin2
+    gpioService.sysfsGpio.le_gpioPin3
+    gpioService.sysfsGpio.le_gpioPin4
+    gpioService.sysfsGpio.le_gpioPin5
+    gpioService.sysfsGpio.le_gpioPin6
+    gpioService.sysfsGpio.le_gpioPin7
+    gpioService.sysfsGpio.le_gpioPin8
+    gpioService.sysfsGpio.le_gpioPin9
+    gpioService.sysfsGpio.le_gpioPin10
+    gpioService.sysfsGpio.le_gpioPin11
+    gpioService.sysfsGpio.le_gpioPin12
+    gpioService.sysfsGpio.le_gpioPin13
+    gpioService.sysfsGpio.le_gpioPin14
+    gpioService.sysfsGpio.le_gpioPin15
+    gpioService.sysfsGpio.le_gpioPin16
+    gpioService.sysfsGpio.le_gpioPin17
+    gpioService.sysfsGpio.le_gpioPin18
+    gpioService.sysfsGpio.le_gpioPin19
+    gpioService.sysfsGpio.le_gpioPin20
+    gpioService.sysfsGpio.le_gpioPin21
+    gpioService.sysfsGpio.le_gpioPin22
+    gpioService.sysfsGpio.le_gpioPin23
+    gpioService.sysfsGpio.le_gpioPin24
+    gpioService.sysfsGpio.le_gpioPin25
+    gpioService.sysfsGpio.le_gpioPin26
+    gpioService.sysfsGpio.le_gpioPin27
+    gpioService.sysfsGpio.le_gpioPin28
+    gpioService.sysfsGpio.le_gpioPin29
+    gpioService.sysfsGpio.le_gpioPin30
+    gpioService.sysfsGpio.le_gpioPin31
+    gpioService.sysfsGpio.le_gpioPin32
+    gpioService.sysfsGpio.le_gpioPin33
+    gpioService.sysfsGpio.le_gpioPin34
+    gpioService.sysfsGpio.le_gpioPin35
+    gpioService.sysfsGpio.le_gpioPin36
+    gpioService.sysfsGpio.le_gpioPin37
+    gpioService.sysfsGpio.le_gpioPin38
+    gpioService.sysfsGpio.le_gpioPin39
+    gpioService.sysfsGpio.le_gpioPin40
+    gpioService.sysfsGpio.le_gpioPin41
+    gpioService.sysfsGpio.le_gpioPin42
+    gpioService.sysfsGpio.le_gpioPin43
+    gpioService.sysfsGpio.le_gpioPin44
+    gpioService.sysfsGpio.le_gpioPin45
+    gpioService.sysfsGpio.le_gpioPin46
+    gpioService.sysfsGpio.le_gpioPin47
+    gpioService.sysfsGpio.le_gpioPin48
+    gpioService.sysfsGpio.le_gpioPin49
+    gpioService.sysfsGpio.le_gpioPin50
+    gpioService.sysfsGpio.le_gpioPin51
+    gpioService.sysfsGpio.le_gpioPin52
+    gpioService.sysfsGpio.le_gpioPin53
+    gpioService.sysfsGpio.le_gpioPin54
+    gpioService.sysfsGpio.le_gpioPin55
+    gpioService.sysfsGpio.le_gpioPin56
+    gpioService.sysfsGpio.le_gpioPin57
+    gpioService.sysfsGpio.le_gpioPin58
+    gpioService.sysfsGpio.le_gpioPin59
+    gpioService.sysfsGpio.le_gpioPin60
+    gpioService.sysfsGpio.le_gpioPin61
+    gpioService.sysfsGpio.le_gpioPin62
+    gpioService.sysfsGpio.le_gpioPin63
+    gpioService.sysfsGpio.le_gpioPin64
+}

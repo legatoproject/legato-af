@@ -123,6 +123,72 @@ void PrintPermissions
 );
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function to remove angle brackets from around a non-app user name specification in an IPC_AGENT
+ * token's text.
+ *
+ * E.g., if the agentName is "<root>", then "root" will be returned.
+ *
+ * @return The user name, without the angle brackets.
+ */
+//--------------------------------------------------------------------------------------------------
+std::string RemoveAngleBrackets
+(
+    const std::string& agentName    ///< The user name with angle brackets around it.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Makes the application a member of groups listed in a given "groups" section in the parse tree.
+ */
+//--------------------------------------------------------------------------------------------------
+void AddGroups
+(
+    model::App_t* appPtr,
+    const parseTree::TokenListSection_t* sectionPtr
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets whether the Supervisor will start the application automatically at system start-up,
+ * or only when asked to do so, based on the contents of a "start:" section in the parse tree.
+ */
+//--------------------------------------------------------------------------------------------------
+void SetStart
+(
+    model::App_t* appPtr,
+    const parseTree::SimpleSection_t* sectionPtr
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the app-level watchdog action setting.
+ */
+//--------------------------------------------------------------------------------------------------
+void SetWatchdogAction
+(
+    model::App_t* appPtr,
+    const parseTree::SimpleSection_t* sectionPtr  ///< Ptr to section in parse tree.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the app-level watchdog timeout setting.
+ */
+//--------------------------------------------------------------------------------------------------
+void SetWatchdogTimeout
+(
+    model::App_t* appPtr,
+    const parseTree::SimpleSection_t* sectionPtr  ///< Ptr to section in parse tree.
+);
+
+
+
 } // namespace modeller
 
 #endif // LEGATO_MKTOOLS_MODELLER_COMMON_H_INCLUDE_GUARD

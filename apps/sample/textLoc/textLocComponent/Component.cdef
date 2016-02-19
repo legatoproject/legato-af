@@ -1,0 +1,17 @@
+requires:
+{
+    api:
+    {
+        modemServices/le_mrc.api
+        modemServices/le_sms.api
+        positioning/le_posCtrl.api
+        positioning/le_pos.api
+        le_ulpm.api
+        le_bootReason.api
+    }
+}
+
+sources:
+{
+    textLoc.c
+}

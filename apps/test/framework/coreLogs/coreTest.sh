@@ -73,11 +73,11 @@ function testApp
 
 
 echo "Make sure Legato is running."
-ssh root@$targetAddr "/usr/local/bin/legato start"
+ssh root@$targetAddr "$BIN_PATH/legato start"
 CheckRet
 
 echo "Stop all other apps."
-ssh root@$targetAddr "/usr/local/bin/app stop \"*\""
+ssh root@$targetAddr "$BIN_PATH/app stop \"*\""
 sleep 1
 
 echo "Clear the logs."

@@ -11,7 +11,6 @@
 
 #include "legato.h"
 #include "interfaces.h"
-
 #include "pa_avc.h"
 #include "avcServer.h"
 #include "assetData.h"
@@ -162,14 +161,21 @@ static avcServer_UninstallHandlerFunc_t QueryUninstallHandlerRef = NULL;
  * Timer used for deferring app install.
  */
 //--------------------------------------------------------------------------------------------------
-static le_timer_Ref_t installDeferTimer;
+static le_timer_Ref_t InstallDeferTimer;
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Timer used for deferring app uninstall.
  */
 //--------------------------------------------------------------------------------------------------
-static le_timer_Ref_t uninstallDeferTimer;
+static le_timer_Ref_t UninstallDeferTimer;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Error occurred during update via airvantage.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_avc_ErrorCode_t AvcErrorCode = LE_AVC_ERR_NONE;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -256,9 +262,12 @@ static void UpdateHandler
     le_avc_Status_t updateStatus,
     le_avc_UpdateType_t updateType,
     int32_t totalNumBytes,
-    int32_t dloadProgress
+    int32_t dloadProgress,
+    le_avc_ErrorCode_t errorCode
 )
 {
+    le_avc_Status_t reportStatus = LE_AVC_NO_UPDATE;
+
     // Keep track of the state of any pending downloads or installs.
     switch ( updateStatus )
     {
@@ -298,10 +307,15 @@ static void UpdateHandler
             break;
 
         case LE_AVC_NO_UPDATE:
-        case LE_AVC_DOWNLOAD_FAILED:
-        case LE_AVC_INSTALL_FAILED:
         case LE_AVC_INSTALL_COMPLETE:
             // There is no longer any current update, so go back to idle
+            CurrentState = AVC_IDLE;
+            break;
+
+        case LE_AVC_DOWNLOAD_FAILED:
+        case LE_AVC_INSTALL_FAILED:
+            // There is no longer any current update, so go back to idle
+            AvcErrorCode = errorCode;
             CurrentState = AVC_IDLE;
             break;
 
@@ -310,8 +324,7 @@ static void UpdateHandler
             break;
 
         case LE_AVC_SESSION_STOPPED:
-            // Since the session is ended, there's no longer any current update, so go back to idle
-            CurrentState = AVC_IDLE;
+            // Retain CurrentState when session stops.
             break;
     }
 
@@ -327,8 +340,39 @@ static void UpdateHandler
                           totalNumBytes,
                           dloadProgress,
                           StatusHandlerContextPtr);
-    }
 
+        // After a session is successfully started, if we are in one of the pending states,
+        // notify the user for acceptance.
+        if ( updateStatus == LE_AVC_SESSION_STARTED )
+        {
+            // The currentState is really the previous state in case of session start, as we don't
+            // do a state change.
+            switch ( CurrentState )
+            {
+                case AVC_DOWNLOAD_PENDING:
+                    reportStatus = LE_AVC_DOWNLOAD_PENDING;
+                    break;
+                case AVC_INSTALL_PENDING:
+                    reportStatus = LE_AVC_INSTALL_PENDING;
+                    break;
+                case AVC_UNINSTALL_PENDING:
+                    reportStatus = LE_AVC_UNINSTALL_PENDING;
+                    break;
+                default:
+                    break;
+            }
+
+            // Notify pending state to registered control app for user acceptance.
+            if ( reportStatus != LE_AVC_NO_UPDATE )
+            {
+                LE_DEBUG("Reporting status  %d,", reportStatus);
+                StatusHandlerRef(reportStatus,
+                                 -1,
+                                 -1,
+                                 StatusHandlerContextPtr);
+            }
+        }
+    }
     else if ( IsControlAppInstalled )
     {
         // There is a control app installed, but the handler is not yet registered.  Defer
@@ -486,8 +530,8 @@ static le_result_t QueryInstall
         // Try the install later
         le_clk_Time_t interval = { .sec = BLOCKED_DEFER_TIME*60 };
 
-        le_timer_SetInterval(installDeferTimer, interval);
-        le_timer_Start(installDeferTimer);
+        le_timer_SetInterval(InstallDeferTimer, interval);
+        le_timer_Start(InstallDeferTimer);
     }
 
     else
@@ -510,8 +554,8 @@ static le_result_t QueryInstall
             // Try the install later
             le_clk_Time_t interval = { .sec = BLOCKED_DEFER_TIME*60 };
 
-            le_timer_SetInterval(installDeferTimer, interval);
-            le_timer_Start(installDeferTimer);
+            le_timer_SetInterval(InstallDeferTimer, interval);
+            le_timer_Start(InstallDeferTimer);
         }
     }
 
@@ -557,8 +601,8 @@ static le_result_t QueryUninstall
         // Try the uninstall later
         le_clk_Time_t interval = { .sec = BLOCKED_DEFER_TIME*60 };
 
-        le_timer_SetInterval(uninstallDeferTimer, interval);
-        le_timer_Start(uninstallDeferTimer);
+        le_timer_SetInterval(UninstallDeferTimer, interval);
+        le_timer_Start(UninstallDeferTimer);
     }
 
     else
@@ -581,8 +625,8 @@ static le_result_t QueryUninstall
             // Try the uninstall later
             le_clk_Time_t interval = { .sec = BLOCKED_DEFER_TIME*60 };
 
-            le_timer_SetInterval(uninstallDeferTimer, interval);
-            le_timer_Start(uninstallDeferTimer);
+            le_timer_SetInterval(UninstallDeferTimer, interval);
+            le_timer_Start(UninstallDeferTimer);
         }
     }
 
@@ -731,7 +775,8 @@ le_result_t avcServer_QueryUninstall
 void avcServer_ReportInstallProgress
 (
     le_avc_Status_t updateStatus,
-    uint installProgress
+    uint installProgress,
+    le_avc_ErrorCode_t errorCode
 )
 {
     if (StatusHandlerRef != NULL)
@@ -747,6 +792,11 @@ void avcServer_ReportInstallProgress
     else
     {
         LE_DEBUG("No handler registered to receive install progress.");
+    }
+
+    if (updateStatus == LE_AVC_INSTALL_FAILED)
+    {
+        AvcErrorCode = errorCode;
     }
 }
 
@@ -788,9 +838,9 @@ le_avc_StatusEventHandlerRef_t le_avc_AddStatusEventHandler
         RegisteredControlAppRef = le_avc_GetClientSessionRef();
 
         // Register our local handler with the PA, and this handler will in turn call the user
-        // specified handler. Although UpdateHandler is registered in the COMPONENT_INIT, we
-        // re-register it here, to ensure callbacks will be performed in the event loop of the
-        // current thread; we use the PA to keep track of this for us.
+        // specified handler.  If there is no installed control app at the time this daemon starts,
+        // then this registration happens in the COMPONENT_INIT. If a control app is later installed,
+        // and registers a handler, there is no harm with re-registering with the PA.
         pa_avc_SetAVMSMessageHandler(UpdateHandler);
 
         // We only check at startup if the control app is installed, so this flag could be false
@@ -802,7 +852,7 @@ le_avc_StatusEventHandlerRef_t le_avc_AddStatusEventHandler
     }
     else
     {
-        LE_ERROR("Handler already registered");
+        LE_KILL_CLIENT("Handler already registered");
         return NULL;
     }
 }
@@ -821,7 +871,18 @@ void le_avc_RemoveStatusEventHandler
 {
     if ( addHandlerRef != REGISTERED_HANDLER_REF )
     {
-        LE_KILL_CLIENT("Invalid ref = %p", addHandlerRef);
+        if ( addHandlerRef == NULL )
+        {
+            // If le_avc_AddStatusEventHandler() returns NULL, the value is still stored by the
+            // generated code and cleaned up when the client dies, thus this check is necessary.
+            // TODO: Fix the generated code.
+            LE_ERROR("NULL ref ignored");
+            return;
+        }
+        else
+        {
+            LE_KILL_CLIENT("Invalid ref = %p", addHandlerRef);
+        }
     }
 
     if ( StatusHandlerRef == NULL )
@@ -904,6 +965,9 @@ le_result_t le_avc_AcceptDownload
         LE_ERROR("Expected AVC_DOWNLOAD_PENDING state; current state is %i", CurrentState);
         return LE_FAULT;
     }
+
+    // Clear the error code.
+    AvcErrorCode = LE_AVC_ERR_NONE;
 
     le_result_t result = pa_avc_SendSelection(PA_AVC_ACCEPT, 0);
 
@@ -1028,8 +1092,8 @@ static le_result_t AcceptInstallApplication
         // Try the install later
         le_clk_Time_t interval = { .sec = BLOCKED_DEFER_TIME*60 };
 
-        le_timer_SetInterval(installDeferTimer, interval);
-        le_timer_Start(installDeferTimer);
+        le_timer_SetInterval(InstallDeferTimer, interval);
+        le_timer_Start(InstallDeferTimer);
     }
     else
     {
@@ -1066,8 +1130,8 @@ static le_result_t AcceptUninstallApplication
         // Try the install later
         le_clk_Time_t interval = { .sec = BLOCKED_DEFER_TIME*60 };
 
-        le_timer_SetInterval(uninstallDeferTimer, interval);
-        le_timer_Start(uninstallDeferTimer);
+        le_timer_SetInterval(UninstallDeferTimer, interval);
+        le_timer_Start(UninstallDeferTimer);
     }
     else
     {
@@ -1105,6 +1169,9 @@ le_result_t le_avc_AcceptInstall
         LE_ERROR("Expected AVC_INSTALL_PENDING state; current state is %i", CurrentState);
         return LE_FAULT;
     }
+
+    // Clear the error code.
+    AvcErrorCode = LE_AVC_ERR_NONE;
 
     if ( CurrentUpdateType == LE_AVC_FIRMWARE_UPDATE )
     {
@@ -1160,8 +1227,8 @@ le_result_t le_avc_DeferInstall
         // Try the install later
         le_clk_Time_t interval = { .sec = (deferMinutes*60) };
 
-        le_timer_SetInterval(installDeferTimer, interval);
-        le_timer_Start(installDeferTimer);
+        le_timer_SetInterval(InstallDeferTimer, interval);
+        le_timer_Start(InstallDeferTimer);
 
         return LE_OK;
     }
@@ -1235,11 +1302,29 @@ le_result_t le_avc_DeferUninstall
     // Try the uninstall later
     le_clk_Time_t interval = { .sec = (deferMinutes*60) };
 
-    le_timer_SetInterval(uninstallDeferTimer, interval);
-    le_timer_Start(uninstallDeferTimer);
+    le_timer_SetInterval(UninstallDeferTimer, interval);
+    le_timer_Start(UninstallDeferTimer);
 
     return LE_OK;
 }
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the error code of the current update.
+ */
+//--------------------------------------------------------------------------------------------------
+le_avc_ErrorCode_t le_avc_GetErrorCode
+(
+    void
+)
+{
+    if ( ! IsValidControlAppClient() )
+        return LE_FAULT;
+
+    return AvcErrorCode;
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1269,6 +1354,7 @@ le_result_t le_avc_GetUpdateType
     return LE_OK;
 }
 
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Set the update type of the currently pending update
@@ -1282,6 +1368,7 @@ void avcServer_SetUpdateType
 {
     CurrentUpdateType = updateType;
 }
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1365,10 +1452,6 @@ void le_avc_UnblockInstall
 //--------------------------------------------------------------------------------------------------
 /**
  * Sends a registration update to the server.
- *
- * ToDo: Remove this function after block transfer is implemented. This function is a temporary
- * solution to force a registration update and sync object 9 contents with firmware. If block
- * transfer is implemented, there is no need for firmware to have its own copy of obj9.
  */
 //--------------------------------------------------------------------------------------------------
 void avcServer_RegistrationUpdate
@@ -1376,13 +1459,7 @@ void avcServer_RegistrationUpdate
     void
 )
 {
-    // This size must be the same as OBJ_PATH_MAX_LEN_V01 in qapi_lwm2m_v01.h
-    char assetList[4032];
-    int listSize;
-    int numAssets;
-
-    assetData_GetAssetList(assetList, sizeof(assetList), &listSize, &numAssets);
-    pa_avc_RegistrationUpdate(assetList, listSize, numAssets);
+    lwm2m_RegistrationUpdate();
 }
 
 
@@ -1393,10 +1470,6 @@ void avcServer_RegistrationUpdate
 //--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
-    // Register for status updates even if no user function is registered.  This is necessary
-    // to ensure that automatic actions are performed, and the state is properly tracked.
-    pa_avc_SetAVMSMessageHandler(UpdateHandler);
-
     // Create safe reference map for block references. The size of the map should be based on
     // the expected number of simultaneous block requests, so take a reasonable guess.
     BlockRefMap = le_ref_CreateMap("BlockRef", 5);
@@ -1405,11 +1478,11 @@ COMPONENT_INIT
     le_msg_AddServiceCloseHandler( le_avc_GetServiceRef(), ClientCloseSessionHandler, NULL );
 
     // Init shared timer for deferring app install
-    installDeferTimer = le_timer_Create("install defer timer");
-    le_timer_SetHandler(installDeferTimer, InstallTimerExpiryHandler);
+    InstallDeferTimer = le_timer_Create("install defer timer");
+    le_timer_SetHandler(InstallDeferTimer, InstallTimerExpiryHandler);
 
-    uninstallDeferTimer = le_timer_Create("uninstall defer timer");
-    le_timer_SetHandler(uninstallDeferTimer, UninstallTimerExpiryHandler);
+    UninstallDeferTimer = le_timer_Create("uninstall defer timer");
+    le_timer_SetHandler(UninstallDeferTimer, UninstallTimerExpiryHandler);
 
     // Initialize the sub-components
     assetData_Init();
@@ -1426,5 +1499,13 @@ COMPONENT_INIT
     // Check to see if le_avc is bound, which means there is an installed control app.
     IsControlAppInstalled = IsAvcBound();
     LE_INFO("Is control app installed? %i", IsControlAppInstalled);
+
+    // If there is no installed control app, then register for indications with the PA. This is
+    // necessary to ensure that automatic actions are performed.  If there's an installed control
+    // app, the registration with the PA will happen when the control app registers a handler.
+    if ( ! IsControlAppInstalled )
+    {
+        pa_avc_SetAVMSMessageHandler(UpdateHandler);
+    }
 }
 

@@ -1,4 +1,4 @@
-TARGETS := localhost ar7 wp7
+TARGETS := localhost ar7 wp85
 
 .PHONY: all $(TARGETS) clean
 
@@ -12,5 +12,5 @@ $(TARGETS): %: %_test
 	mkapp test.adef $(VERBOSE) -t $*
 
 clean:
-	rm -rf _build_* $(foreach target,$(TARGETS),*.$(target))
+	rm -rf _build_* *.update
 

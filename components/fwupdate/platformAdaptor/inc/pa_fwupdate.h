@@ -71,4 +71,41 @@ LE_SHARED le_result_t pa_fwupdate_Read
     int* fdPtr         ///< [OUT] File descriptor for the image, ready for reading.
 );
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the firmware version string
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_NOT_FOUND if the version string is not available
+ *      - LE_OVERFLOW if version string to big to fit in provided buffer
+ *      - LE_FAULT for any other errors
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_fwupdate_GetFirmwareVersion
+(
+    char* versionPtr,        ///< [OUT] Firmware version string
+    size_t versionSize       ///< [IN] Size of version buffer
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the bootloader version string
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_NOT_FOUND if the version string is not available
+ *      - LE_OVERFLOW if version string to big to fit in provided buffer
+ *      - LE_FAULT for any other errors
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_fwupdate_GetBootloaderVersion
+(
+    char* versionPtr,        ///< [OUT] Firmware version string
+    size_t versionSize       ///< [IN] Size of version buffer
+);
+
+
 #endif // LEGATO_PA_FWUPDATE_INCLUDE_GUARD

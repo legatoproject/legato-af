@@ -1,31 +1,33 @@
 #*******************************************************************************
 # Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
-#
-# Contributors:
-#     Sierra Wireless - initial API and implementation
 #*******************************************************************************
 
 set(LEGATO_INCLUDE_DIRS)
-set(LEGATO_INCLUDE_DIRS_PRIV) #TODO: Handle "Private" option
+set(LEGATO_INCLUDE_DIRS_PRIV) #TODO: Remove this.
 
-# Build targets & defines
-set(LEGATO_FRAMEWORK_TARGET                 legato)
-set(LEGATO_ROOT                             ${LEGATO_SOURCE_DIR})
-set(LEGATO_FRAMEWORK_DIR                    ${LEGATO_SOURCE_DIR}/framework/c)
-set(LEGATO_LIBRARIES                        ${LIBRARY_OUTPUT_PATH}/liblegato.so -lpthread -lrt)
+if(NOT DEFINED LEGATO_ROOT)
+    message(FATAL_ERROR "LEGATO_ROOT is not defined.  Set to path of Legato framework directory.")
+endif()
+if(NOT DEFINED LEGATO_TARGET)
+    message(FATAL_ERROR "LEGATO_TARGET is not defined.  Set to target device type (e.g., wp85).")
+endif()
+
+# Defines
+set(LEGATO_FRAMEWORK_DIR    "${LEGATO_ROOT}/framework/c")
+set(LEGATO_BUILD            "${LEGATO_ROOT}/build/${LEGATO_TARGET}")
+set(LEGATO_BINARY_DIR       "${LEGATO_BUILD}")  # TODO: Remove this.
 
 # Tools
-set(LEGATO_TOOL_IFGEN                       ${LEGATO_SOURCE_DIR}/bin/ifgen)
-set(LEGATO_TOOL_MKAPP                       ${LEGATO_SOURCE_DIR}/bin/mkapp)
-set(LEGATO_TOOL_MKEXE                       ${LEGATO_SOURCE_DIR}/bin/mkexe)
-set(LEGATO_TOOL_MKCOMP                      ${LEGATO_SOURCE_DIR}/bin/mkcomp)
-set(LEGATO_TOOL_MKSYS                       ${LEGATO_SOURCE_DIR}/bin/mksys)
-set(LEGATO_TOOL_MKDOC                       ${LEGATO_SOURCE_DIR}/bin/mkdoc)
+set(LEGATO_TOOL_IFGEN       "${LEGATO_ROOT}/bin/ifgen")
+set(LEGATO_TOOL_MKAPP       "${LEGATO_ROOT}/bin/mkapp")
+set(LEGATO_TOOL_MKEXE       "${LEGATO_ROOT}/bin/mkexe")
+set(LEGATO_TOOL_MKCOMP      "${LEGATO_ROOT}/bin/mkcomp")
+set(LEGATO_TOOL_MKSYS       "${LEGATO_ROOT}/bin/mksys")
+set(LEGATO_TOOL_MKDOC       "${LEGATO_ROOT}/bin/mkdoc")
 
 # C Framework
-set(LEGATO_INCLUDE_DIRS ${LEGATO_INCLUDE_DIRS}
-    ${LEGATO_FRAMEWORK_DIR}/inc
-)
+set(LEGATO_INCLUDE_DIRS ${LEGATO_INCLUDE_DIRS} ${LEGATO_FRAMEWORK_DIR}/inc)
+set(LEGATO_LIBRARY_PATH ${LEGATO_ROOT}/build/${LEGATO_TARGET}/framework/lib/liblegato.so)
 
 # Low-Level Interfaces
 # TODO: Get rid of this.
@@ -60,7 +62,7 @@ function(add_compile_flags COMPILE_TARGET)
 endfunction()
 
 function(set_legato_component APP_COMPONENT)
-    message("WARNING: Deprecated CMake function used (set_legato_component).")
+    message("WARNING: (${APP_COMPONENT}) Deprecated CMake function used (set_legato_component).")
     # Log Configuration
     add_definitions(-DLE_COMPONENT_NAME=${APP_COMPONENT})
     add_definitions(-DLE_LOG_SESSION=${APP_COMPONENT}_LogSession)
@@ -68,17 +70,12 @@ function(set_legato_component APP_COMPONENT)
 endfunction()
 
 function(clear_legato_component APP_COMPONENT)
-    message("WARNING: Deprecated CMake function used (clear_legato_component).")
+    message("WARNING: (${APP_COMPONENT}) Deprecated CMake function used (clear_legato_component).")
     remove_definitions(-DLE_COMPONENT_NAME=${APP_COMPONENT})
     remove_definitions(-DLE_LOG_SESSION=${APP_COMPONENT}_LogSession)
     remove_definitions(-DLE_LOG_LEVEL_FILTER_PTR=${APP_COMPONENT}_LogLevelFilterPtr)
 endfunction()
 
-
-# If embedded, need to build C/C++ code with LEGATO_EMBEDDED defined.
-if(LEGATO_EMBEDDED)
-    set (LEGATO_EMBEDDED_OPTION --cflags=-DLEGATO_EMBEDDED)
-endif()
 
 if(AUTOMOTIVE_TARGET)
     set (LEGATO_AUTOMOTIVE_TARGET_OPTION --cflags=-DAUTOMOTIVE_TARGET)
@@ -91,30 +88,29 @@ endif()
 # Any subsequent parameters will be passed as-is to mkexe on its command line.
 function(mkexe EXE_NAME)
 
-    add_custom_command(
-            OUTPUT ${EXECUTABLE_OUTPUT_PATH}/${EXE_NAME}
+    if (NOT DEFINED EXECUTABLE_OUTPUT_PATH)
+        message(FATAL_ERROR "EXECUTABLE_OUTPUT_PATH not set when building exe '${EXE_NAME}'")
+    elseif (EXECUTABLE_OUTPUT_PATH STREQUAL "")
+        message(FATAL_ERROR "EXECUTABLE_OUTPUT_PATH empty when building exe '${EXE_NAME}'")
+    endif()
+    if (NOT DEFINED LIBRARY_OUTPUT_PATH)
+        message(FATAL_ERROR "LIBRARY_OUTPUT_PATH not set when building exe '${EXECUTABLE_OUTPUT_PATH}'")
+    elseif (LIBRARY_OUTPUT_PATH STREQUAL "")
+        message(FATAL_ERROR "LIBRARY_OUTPUT_PATH empty when building exe '${EXECUTABLE_OUTPUT_PATH}'")
+    endif()
+
+    add_custom_target(${EXE_NAME} ALL
             COMMAND ${LEGATO_TOOL_MKEXE}
                           -o ${EXECUTABLE_OUTPUT_PATH}/${EXE_NAME}
-                          -w ${CMAKE_CURRENT_BINARY_DIR}
-                          -c ${CMAKE_CURRENT_BINARY_DIR}
+                          -w ${CMAKE_CURRENT_BINARY_DIR}/_build_${EXE_NAME}
                           -i ${CMAKE_CURRENT_SOURCE_DIR}
                           -l ${LIBRARY_OUTPUT_PATH}
                           -t ${LEGATO_TARGET}
-                          ${LEGATO_EMBEDDED_OPTION}
                           ${LEGATO_AUTOMOTIVE_TARGET_OPTION}
-                          -v
                           ${ARGN}
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
             COMMENT "mkexe '${EXE_NAME}': ${EXECUTABLE_OUTPUT_PATH}/${EXE_NAME}"
     )
-
-    add_custom_target(${EXE_NAME}
-            ALL
-            DEPENDS ${EXECUTABLE_OUTPUT_PATH}/${EXE_NAME}
-    )
-
-    # Dependencies
-    add_dependencies(${EXE_NAME} ${LEGATO_FRAMEWORK_TARGET})
 
 endfunction()
 
@@ -123,15 +119,20 @@ endfunction()
 # Any subsequent parameters will be passed as-is to mkapp on its command line.
 function(mkapp ADEF)
 
+    if (NOT DEFINED APP_OUTPUT_PATH)
+        message(FATAL_ERROR "APP_OUTPUT_PATH not set when building '${ADEF}'")
+    elseif (APP_OUTPUT_PATH STREQUAL "")
+        message(FATAL_ERROR "APP_OUTPUT_PATH empty when building '${ADEF}'")
+    endif()
+
     get_filename_component(APP_NAME ${ADEF} NAME_WE)
     set(APP_PKG "${APP_OUTPUT_PATH}/${APP_NAME}.${LEGATO_TARGET}")
 
     message("mkapp : ${APP_NAME} = ${APP_PKG}")
 
-    add_custom_command(
-            OUTPUT ${APP_PKG}
+    add_custom_target(${APP_NAME} ALL
             COMMAND
-                PATH=${LEGATO_SOURCE_DIR}/bin:$ENV{PATH}
+                PATH=${LEGATO_ROOT}/bin:$ENV{PATH}
                 ${LEGATO_TOOL_MKAPP}
                         ${ADEF}
                         -t ${LEGATO_TARGET}
@@ -139,23 +140,11 @@ function(mkapp ADEF)
                         -i ${CMAKE_CURRENT_SOURCE_DIR}
                         -c ${CMAKE_CURRENT_SOURCE_DIR}
                         -o ${APP_OUTPUT_PATH}
-                        ${LEGATO_EMBEDDED_OPTION}
                         ${LEGATO_AUTOMOTIVE_TARGET_OPTION}
-                        -v
                         ${ARGN}
-            COMMAND
-            DEPENDS ${ADEF}
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
             COMMENT "mkapp '${APP_NAME}': ${APP_PKG}"
     )
-
-    add_custom_target(${APP_NAME}
-            ALL
-            DEPENDS ${APP_PKG}
-    )
-
-    # Dependencies
-    add_dependencies(${APP_NAME} ${LEGATO_FRAMEWORK_TARGET})
 
 endfunction()
 
@@ -164,15 +153,20 @@ endfunction()
 # Any subsequent parameters will be passed as-is to mkapp on its command line.
 function(mkcomp COMP_PATH)
 
+    if (NOT DEFINED LIBRARY_OUTPUT_PATH)
+        message(FATAL_ERROR "LIBRARY_OUTPUT_PATH not set when building component '${COMP_PATH}'")
+    elseif (LIBRARY_OUTPUT_PATH STREQUAL "")
+        message(FATAL_ERROR "LIBRARY_OUTPUT_PATH empty when building component '${COMP_PATH}'")
+    endif()
+
     get_filename_component(COMP_NAME ${COMP_PATH} NAME_WE)
     set(COMPONENT_LIB "${LIBRARY_OUTPUT_PATH}/lib${COMP_NAME}.so")
 
     message("mkcomp: ${COMP_NAME} = ${COMPONENT_LIB} (from ${COMP_PATH})")
 
-    add_custom_command(
-            OUTPUT ${COMPONENT_LIB}
+    add_custom_target(${COMP_NAME} ALL
             COMMAND
-                PATH=${LEGATO_SOURCE_DIR}/bin:$ENV{PATH}
+                PATH=${LEGATO_ROOT}/bin:$ENV{PATH}
                 ${LEGATO_TOOL_MKCOMP}
                         ${COMP_PATH}
                         -o ${COMPONENT_LIB}
@@ -181,22 +175,11 @@ function(mkcomp COMP_PATH)
                         -i ${CMAKE_CURRENT_SOURCE_DIR}
                         -c ${CMAKE_CURRENT_SOURCE_DIR}
                         -l ${LIBRARY_OUTPUT_PATH}
-                        ${LEGATO_EMBEDDED_OPTION}
                         ${LEGATO_AUTOMOTIVE_TARGET_OPTION}
-                        -v
                         ${ARGN}
-            DEPENDS ${COMP_PATH}/Component.cdef
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
             COMMENT "mkcomp '${COMP_NAME}': ${COMPONENT_LIB}"
     )
-
-    add_custom_target(${COMP_NAME}
-            ALL
-            DEPENDS ${COMPONENT_LIB}
-    )
-
-    # Dependencies
-    add_dependencies(${COMP_NAME} ${LEGATO_FRAMEWORK_TARGET})
 
 endfunction()
 
@@ -204,7 +187,7 @@ endfunction()
 # Function to compile applications
 function(add_legato_executable EXE_TARGET)
 
-    message("WARNING: Deprecated CMake function used (add_legato_executable).  Consider changing to mkexe.")
+    message("WARNING: (${EXE_TARGET}) Deprecated CMake function used (add_legato_executable).  Consider changing to mkexe.")
 
     # Other arguments are sources
     set(EXE_SOURCES ${ARGN})
@@ -214,17 +197,12 @@ function(add_legato_executable EXE_TARGET)
 
     # Compile
     add_executable(${EXE_TARGET}
-        ${LEGATO_SOURCE_DIR}/framework/c/codegen/_le_main.c
+        ${LEGATO_ROOT}/framework/c/codegen/_le_main.c
         ${EXE_SOURCES}
    )
 
     # Link
-    target_link_libraries(${EXE_TARGET}
-        ${LEGATO_LIBRARIES}
-    )
-
-    # Dependencies
-    add_dependencies(${EXE_TARGET} ${LEGATO_FRAMEWORK_TARGET} )
+    target_link_libraries(${EXE_TARGET} ${LEGATO_LIBRARY_PATH} -lpthread -lrt)
 
     # Compile flags
     add_compile_flags(${EXE_TARGET} "-DLE_EXECUTABLE_NAME=${EXE_TARGET}")
@@ -232,14 +210,14 @@ function(add_legato_executable EXE_TARGET)
 endfunction()
 
 # Function to compile internal applications
-function(add_legato_internal_executable)
+function(add_legato_internal_executable EXE_TARGET)
 
-    message("WARNING: Deprecated CMake function used (add_legato_internal_executable).  Consider changing to mkexe.")
+    message("WARNING: (${EXE_TARGET}) Deprecated CMake function used (add_legato_internal_executable).  Consider changing to mkexe.")
 
     # Legato Private Includes
     include_directories(${LEGATO_INCLUDE_DIRS_PRIV})
 
-    add_legato_executable(${ARGN})
+    add_legato_executable(${EXE_TARGET} ${ARGN})
 
 endfunction()
 
@@ -259,7 +237,7 @@ function(generate_header API_FILE)
                         --import-dir ${CMAKE_CURRENT_SOURCE_DIR}
                         ${ARGN}
                         COMMENT "ifgen '${API_FILE}': ${HEADER_PATH}"
-                        DEPENDS ${API_FILE} legato
+                        DEPENDS ${API_FILE}
                         )
 
     add_custom_target(  ${API_NAME}_if

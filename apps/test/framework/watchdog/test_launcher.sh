@@ -22,7 +22,7 @@ function cleanup
             rm "${pipe_name}"
     fi
 # Make sure the app is stopped
-    ssh root@${TARGET_IP_ADDR} "/usr/local/bin/app stop ${target_test_name}"
+    ssh root@${TARGET_IP_ADDR} "$BIN_PATH/app stop ${target_test_name}"
 }
 
 function on_fail ()
@@ -49,7 +49,7 @@ on_fail "-${log_watcher} failed to start"
 watcher_pid=$!
 
 # start the test app
-ssh root@${TARGET_IP_ADDR} "/usr/local/bin/app start ${target_test_name}"
+ssh root@${TARGET_IP_ADDR} "$BIN_PATH/app start ${target_test_name}"
 on_fail "-ssh couldn't start ${target_test_name} on ${TARGET_IP_ADDR}"
 
 elapsed_time=0

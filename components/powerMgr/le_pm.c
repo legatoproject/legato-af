@@ -10,6 +10,7 @@
 
 #include "legato.h"
 #include "interfaces.h"
+#include "pm.h"
 
 #define DEBUG
 
@@ -409,4 +410,40 @@ void le_pm_Relax(le_pm_WakeupSourceRef_t w)
     entry->taken = LE_OFF;
 
     return;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Checks whether any process is holding a wakelock.
+ *
+ * @return true if any process is holding a wakelock, false otherwise.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+bool pm_CheckWakeLock
+(
+    void
+)
+{
+    WakeupSource_t *wakeSrc;
+    le_hashmap_It_Ref_t iter;
+    bool wakelockHeld = false;
+
+    //Traverse all wakeup sources and check for wakelocks.
+    iter = le_hashmap_GetIterator(PowerManager.locks);
+    while (le_hashmap_NextNode(iter) == LE_OK) {
+        wakeSrc = (WakeupSource_t*)le_hashmap_GetValue(iter);
+
+        if (wakeSrc->taken) {
+            // Wakelock held
+            LE_DEBUG("Wakelock held(Pid: %d, Wake Source Name: %s)",
+                     wakeSrc->pid,
+                     wakeSrc->name);
+            wakelockHeld = true;
+            break;
+        }
+    }
+
+    return wakelockHeld;
 }

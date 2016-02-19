@@ -18,7 +18,6 @@ namespace cli
 {
 
 
-
 /// Object that stores build parameters that we gather.
 static mk::BuildParams_t BuildParams;
 
@@ -253,14 +252,16 @@ static void VerifyAtLeastOneSourceFile
 )
 //--------------------------------------------------------------------------------------------------
 {
-    if (ExePtr->cSources.empty() && ExePtr->cxxSources.empty())
+    // Check for C or C++ source files being built directly into the exe (outside of components).
+    if (ExePtr->cObjectFiles.empty() && ExePtr->cxxObjectFiles.empty())
     {
+        // Check all the components instantiated in this exe.
         for (auto componentInstancePtr : ExePtr->componentInstances)
         {
             auto componentPtr = componentInstancePtr->componentPtr;
 
-            if (   (componentPtr->cSources.empty() == false)
-                || (componentPtr->cxxSources.empty() == false)  )
+            if (   (componentPtr->cObjectFiles.empty() == false)
+                || (componentPtr->cxxObjectFiles.empty() == false)  )
             {
                 return;
             }
@@ -285,7 +286,7 @@ static void ConstructObjectModel
     bool errorFound = false;
     std::string componentPath;
 
-    ExePtr = new model::Exe_t(ExePath);
+    ExePtr = new model::Exe_t(ExePath, NULL, BuildParams.workingDir);
 
     if (BuildParams.beVerbose)
     {
@@ -310,7 +311,18 @@ static void ConstructObjectModel
             {
                 throw mk::Exception_t("Can't find file: '" + contentName + "'.");
             }
-            ExePtr->cSources.push_back(sourceFilePath);
+            sourceFilePath = path::MakeAbsolute(sourceFilePath);
+
+            // Compute the relative directory
+            auto objFilePath = "obj/" + md5(path::MakeCanonical(sourceFilePath)) + ".o";
+
+            // Create an object file object for this source file.
+            auto objFilePtr = new model::ObjectFile_t(objFilePath,
+                                                      model::ProgramLang_t::LANG_C,
+                                                      sourceFilePath);
+
+            // Add the object file to the exe's list of C object files.
+            ExePtr->cObjectFiles.push_back(objFilePtr);
         }
         // Is it a C++ source code file path?
         else if (path::IsCxxSource(contentName))
@@ -326,8 +338,18 @@ static void ConstructObjectModel
             {
                 throw mk::Exception_t("Can't find file: '" + contentName + "'.");
             }
+            sourceFilePath = path::MakeAbsolute(sourceFilePath);
 
-            ExePtr->cxxSources.push_back(sourceFilePath);
+            // Compute the relative directory
+            auto objFilePath = "obj/" + md5(path::MakeCanonical(sourceFilePath)) + ".o";
+
+            // Create an object file object for this source file.
+            auto objFilePtr = new model::ObjectFile_t(objFilePath,
+                                                      model::ProgramLang_t::LANG_CXX,
+                                                      sourceFilePath);
+
+            // Add the object file to the exe's list of C++ object files.
+            ExePtr->cxxObjectFiles.push_back(objFilePtr);
         }
         // Is it a library file path?
         else if (path::IsLibrary(contentName))

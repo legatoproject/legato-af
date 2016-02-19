@@ -1,4 +1,4 @@
-/** @page sampleApps_modemDemo modem Demo
+/** @page sampleApps_modemDemo Modem Demo
 
 This sample app demonstrates a modem app. It uses modem services with @c .adef bindings
 and related @ .cdef requires provides, and sources sections.
@@ -12,12 +12,12 @@ Run this to install the sample app:
 @verbatim
 $ cd apps/sample/modemDemo
 $ make wp85
-$ instapp modemDemo.wp85 <ip address>
+$ instapp modemDemo.wp85.update <ip address>
 @endverbatim
 
 where <i>ip address</i> is the address of your target device.
 
-If you're using an AR7 or WP7 module in your target, substitute @c ar7 or @c wp7 for @c wp85.
+If you're using an AR7 module in your target, substitute @c ar7 for @c wp85.
 
 @ref sampleApps_startApp
 

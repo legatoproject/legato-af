@@ -32,7 +32,6 @@
 #define REQUEST_CALL_COMMAND        1
 #define END_CALL_COMMAND            2
 #define ANSWER_CALL_COMMAND         3
-#define DELETE_CALL_COMMAND         4
 
 
 //--------------------------------------------------------------------------------------------------
@@ -41,6 +40,13 @@
  */
 //--------------------------------------------------------------------------------------------------
 static le_event_Id_t ConnStateEvent;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Event for sending Voice call command
+ */
+//--------------------------------------------------------------------------------------------------
 static le_event_Id_t CommandEvent;
 
 
@@ -54,7 +60,6 @@ typedef struct
 {
         le_mcc_CallRef_t                    callRef;
 } MccContext_t;
-
 
 
 //--------------------------------------------------------------------------------------------------
@@ -81,7 +86,6 @@ typedef struct
 } VoiceCallContext_t;
 
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Voice call command structure.
@@ -94,7 +98,6 @@ typedef struct
         char                               destination[MAX_DESTINATION_LEN_BYTE];
         VoiceCallContext_t                 *callCtxPtr;
 } CmdRequest_t;
-
 
 
 //--------------------------------------------------------------------------------------------------
@@ -110,6 +113,7 @@ typedef struct
         le_voicecall_Event_t    callEvent;
         void*                   ptr;
 } VoiceCallState_t;
+
 
 
 //--------------------------------------------------------------------------------------------------
@@ -133,14 +137,20 @@ static le_mem_PoolRef_t VoiceCallPool = NULL;
 //--------------------------------------------------------------------------------------------------
 static le_hashmap_Ref_t VoiceCallCtxMap;
 
-
 //--------------------------------------------------------------------------------------------------
 /**
- * Safe Reference for Mcc Call Handler reference and counter.
+ * Safe Reference for Mcc Call Handler reference.
  */
 //--------------------------------------------------------------------------------------------------
 static le_mcc_CallEventHandlerRef_t MccCallEventHandlerRef;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Counter of Mcc Call Handler references.
+ */
+//--------------------------------------------------------------------------------------------------
 static uint32_t MccCallEventHandlerRefCount;
+
 
 
 //--------------------------------------------------------------------------------------------------
@@ -165,7 +175,6 @@ static void SendConnStateEvent
 }
 
 
-
 // -------------------------------------------------------------------------------------------------
 /**
  *  Retrieve voice call context from a call ObjRef reference.
@@ -176,7 +185,6 @@ static void SendConnStateEvent
  *       function will not return.
  */
 // -------------------------------------------------------------------------------------------------
-
 static VoiceCallContext_t * GetCallContextFromCallref
 (
     le_mcc_CallRef_t callRef
@@ -184,11 +192,10 @@ static VoiceCallContext_t * GetCallContextFromCallref
 {
     VoiceCallContext_t * ctxPtr = le_hashmap_Get(VoiceCallCtxMap, callRef);
 
-    LE_FATAL_IF(!ctxPtr, "Could not retrieve VoiceCall context from reference %p", callRef);
+    LE_WARN_IF(!ctxPtr, "Could not retrieve VoiceCall context from reference %p", callRef);
 
     return ctxPtr;
 }
-
 
 
 // -------------------------------------------------------------------------------------------------
@@ -210,24 +217,27 @@ static void VoiceSessionStateHandler
             VoiceCallContext_t * ctxPtr = GetCallContextFromCallref(callRef);
 
             LE_DEBUG("Call event is LE_MCC_EVENT_ALERTING.");
-            // Send the state event to applications
-            ctxPtr->lastEvent = LE_VOICECALL_EVENT_ALERTING;
-            SendConnStateEvent(ctxPtr, ctxPtr->lastEvent);
+            if (ctxPtr)
+            {
+                // Send the state event to applications
+                ctxPtr->lastEvent = LE_VOICECALL_EVENT_ALERTING;
+                SendConnStateEvent(ctxPtr, ctxPtr->lastEvent);
+            }
         }
         break;
 
         case LE_MCC_EVENT_INCOMING:
         {
-            LE_DEBUG("Call event is LE_MCC_EVENT_INCOMING.");
-
-            // Create a new voice call object.
             VoiceCallContext_t * newCtxPtr;
+
+            LE_DEBUG("Call event is LE_MCC_EVENT_INCOMING.");
+            // Create a new voice call object.
             newCtxPtr = (VoiceCallContext_t *) le_mem_TryAlloc(VoiceCallPool);
-            memset(newCtxPtr, 0, sizeof(VoiceCallContext_t));
 
             // Resource available to create a new voice call context.
             if (newCtxPtr)
             {
+                memset(newCtxPtr, 0, sizeof(VoiceCallContext_t));
                 // Need to return a unique reference that will be used by
                 // le_voicecall_GetTerminationReason() or le_voicecall_End().
                 newCtxPtr->callObjRef = le_ref_CreateRef(VoiceCallRefMap, (void*) newCtxPtr);
@@ -271,9 +281,11 @@ static void VoiceSessionStateHandler
             VoiceCallContext_t * ctxPtr = GetCallContextFromCallref(callRef);
 
             LE_DEBUG("Call event is LE_MCC_EVENT_CONNECTED.");
-
-            ctxPtr->lastEvent = LE_VOICECALL_EVENT_CONNECTED;
-            SendConnStateEvent(ctxPtr, ctxPtr->lastEvent );
+            if (ctxPtr)
+            {
+                ctxPtr->lastEvent = LE_VOICECALL_EVENT_CONNECTED;
+                SendConnStateEvent(ctxPtr, ctxPtr->lastEvent );
+            }
         }
         break;
 
@@ -287,65 +299,73 @@ static void VoiceSessionStateHandler
         {
             VoiceCallContext_t * ctxPtr = GetCallContextFromCallref(callRef);
 
-            le_mcc_TerminationReason_t term = le_mcc_GetTerminationReason(
-                            ctxPtr->mcc.callRef);
-
-            ctxPtr->lastEvent = LE_VOICECALL_EVENT_TERMINATED;
-
-            switch (term)
+            if (ctxPtr)
             {
-                case LE_MCC_TERM_NETWORK_FAIL:
-                {
-                    LE_DEBUG("Termination reason is LE_MCC_TERM_NETWORK_FAIL");
-                    ctxPtr->lastTerminationReason = LE_VOICECALL_TERM_NETWORK_FAIL;
-                }
-                break;
+                le_mcc_TerminationReason_t term = le_mcc_GetTerminationReason(
+                    ctxPtr->mcc.callRef);
 
-                case LE_MCC_TERM_UNASSIGNED_NUMBER:
-                {
-                    LE_DEBUG("Termination reason is LE_MCC_TERM_UNASSIGNED_NUMBER");
-                    ctxPtr->lastTerminationReason = LE_VOICECALL_TERM_BAD_ADDRESS;
-                }
-                break;
+                ctxPtr->lastEvent = LE_VOICECALL_EVENT_TERMINATED;
 
-                case LE_MCC_TERM_USER_BUSY:
+                switch (term)
                 {
-                    LE_DEBUG("Termination reason is LE_MCC_TERM_USER_BUSY");
-                    ctxPtr->lastTerminationReason = LE_VOICECALL_TERM_BUSY;
-                }
-                break;
+                    case LE_MCC_TERM_NETWORK_FAIL:
+                    {
+                        LE_DEBUG("Termination reason is LE_MCC_TERM_NETWORK_FAIL");
+                        ctxPtr->lastTerminationReason = LE_VOICECALL_TERM_NETWORK_FAIL;
+                    }
+                    break;
 
-                case LE_MCC_TERM_LOCAL_ENDED:
-                {
-                    LE_DEBUG("Termination reason is LE_MCC_TERM_LOCAL_ENDED");
-                    ctxPtr->lastTerminationReason = LE_VOICECALL_TERM_LOCAL_ENDED;
-                }
-                break;
+                    case LE_MCC_TERM_UNASSIGNED_NUMBER:
+                    {
+                        LE_DEBUG("Termination reason is LE_MCC_TERM_UNASSIGNED_NUMBER");
+                        ctxPtr->lastTerminationReason = LE_VOICECALL_TERM_BAD_ADDRESS;
+                    }
+                    break;
 
-                case LE_MCC_TERM_REMOTE_ENDED:
-                {
-                    LE_DEBUG("Termination reason is LE_MCC_TERM_REMOTE_ENDED");
-                    ctxPtr->lastTerminationReason = LE_VOICECALL_TERM_REMOTE_ENDED;
-                }
-                break;
+                    case LE_MCC_TERM_USER_BUSY:
+                    {
+                        LE_DEBUG("Termination reason is LE_MCC_TERM_USER_BUSY");
+                        ctxPtr->lastTerminationReason = LE_VOICECALL_TERM_BUSY;
+                    }
+                    break;
 
-                case LE_MCC_TERM_UNDEFINED:
-                {
-                    LE_DEBUG("Termination reason is LE_MCC_TERM_UNDEFINED");
-                    ctxPtr->lastTerminationReason = LE_VOICECALL_TERM_UNDEFINED;
-                }
-                break;
+                    case LE_MCC_TERM_LOCAL_ENDED:
+                    {
+                        LE_DEBUG("Termination reason is LE_MCC_TERM_LOCAL_ENDED");
+                        ctxPtr->lastTerminationReason = LE_VOICECALL_TERM_LOCAL_ENDED;
+                    }
+                    break;
 
-                default:
-                {
-                    LE_DEBUG("Termination reason is %d", term);
-                    ctxPtr->lastTerminationReason = LE_VOICECALL_TERM_UNDEFINED;
+                    case LE_MCC_TERM_REMOTE_ENDED:
+                    {
+                        LE_DEBUG("Termination reason is LE_MCC_TERM_REMOTE_ENDED");
+                        ctxPtr->lastTerminationReason = LE_VOICECALL_TERM_REMOTE_ENDED;
+                    }
+                    break;
+
+                    case LE_MCC_TERM_UNDEFINED:
+                    {
+                        LE_DEBUG("Termination reason is LE_MCC_TERM_UNDEFINED");
+                        ctxPtr->lastTerminationReason = LE_VOICECALL_TERM_UNDEFINED;
+                    }
+                    break;
+
+                    default:
+                    {
+                        LE_DEBUG("Termination reason is %d", term);
+                        ctxPtr->lastTerminationReason = LE_VOICECALL_TERM_UNDEFINED;
+                    }
+                    break;
                 }
-                break;
+
+                le_mcc_Delete(ctxPtr->mcc.callRef);
+                // Send LE_VOICECALL_EVENT_TERMINATED event to application with the reason.
+                SendConnStateEvent(ctxPtr, ctxPtr->lastEvent);
             }
-
-            // Send LE_VOICECALL_EVENT_TERMINATED event to application with the reason.
-            SendConnStateEvent(ctxPtr, ctxPtr->lastEvent);
+            else
+            {
+                le_mcc_Delete(callRef);
+            }
         }
         break;
 
@@ -356,6 +376,7 @@ static void VoiceSessionStateHandler
         break;
     }
 }
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -370,6 +391,7 @@ static le_result_t AnswerVoiceSession
     return le_mcc_Answer(ctxPtr->mcc.callRef);
 }
 
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Start voice session
@@ -383,12 +405,10 @@ static le_result_t StartVoiceSession
     ctxPtr->mcc.callRef = le_mcc_Create(ctxPtr->destination);
 
     le_hashmap_Put(VoiceCallCtxMap, ctxPtr->mcc.callRef, ctxPtr);
-
     LE_DEBUG(" le_hashmap_Put callRef 0x%p , ctxPtr 0x%p",ctxPtr->mcc.callRef, ctxPtr);
 
     return le_mcc_Start(ctxPtr->mcc.callRef);
 }
-
 
 
 //--------------------------------------------------------------------------------------------------
@@ -396,30 +416,13 @@ static le_result_t StartVoiceSession
  * Disconnect the audio path and end voice call
  */
 //--------------------------------------------------------------------------------------------------
-static void StopVoiceSession
+static le_result_t StopVoiceSession
 (
     VoiceCallContext_t * ctxPtr
 )
 {
-    le_mcc_HangUp(ctxPtr->mcc.callRef);
+    return le_mcc_HangUp(ctxPtr->mcc.callRef);
 }
-
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Close voice call session and release session context
- */
-//--------------------------------------------------------------------------------------------------
-static void DeleteVoiceSession
-(
-    VoiceCallContext_t * ctxPtr
-)
-{
-    le_mcc_Delete(ctxPtr->mcc.callRef);
-    le_mem_Release(ctxPtr);
-}
-
 
 
 //--------------------------------------------------------------------------------------------------
@@ -453,7 +456,11 @@ static void ProcessCommand
         case END_CALL_COMMAND:
         {
             LE_DEBUG("VoiceCallProcessCommand END_CALL_COMMAND");
-            StopVoiceSession(call_ctx);
+            le_result_t res = StopVoiceSession(call_ctx);
+            if (res != LE_OK)
+            {
+                SendConnStateEvent(call_ctx, LE_VOICECALL_EVENT_CALL_END_FAILED);
+            }
         }
         break;
 
@@ -463,19 +470,8 @@ static void ProcessCommand
             le_result_t res = AnswerVoiceSession(call_ctx);
             if (res != LE_OK)
             {
-                SendConnStateEvent(call_ctx, LE_VOICECALL_EVENT_RESOURCE_BUSY);
+                SendConnStateEvent(call_ctx, LE_VOICECALL_EVENT_CALL_ANSWER_FAILED);
             }
-        }
-        break;
-
-        case DELETE_CALL_COMMAND:
-        {
-            LE_DEBUG("VoiceCallProcessCommand DELETE_CALL_COMMAND");
-            if (call_ctx->lastEvent != LE_VOICECALL_EVENT_TERMINATED)
-            {
-                StopVoiceSession(call_ctx);
-            }
-            DeleteVoiceSession(call_ctx);
         }
         break;
 
@@ -486,31 +482,6 @@ static void ProcessCommand
         break;
     }
 }
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This thread does the actual work of starting/stopping a voice connection
- */
-//--------------------------------------------------------------------------------------------------
-static void* VoiceCallThread
-(
-    void* contextPtr
-)
-{
-    LE_INFO("Voice Call Thread started");
-
-    // Connect to the services required by this thread
-    le_mcc_ConnectService();
-
-    // Register for command events
-    le_event_AddHandler("VoiceCallProcessCommand", CommandEvent, ProcessCommand);
-
-    // Run the event loop
-    le_event_RunLoop();
-    return NULL;
-}
-
 
 
 //--------------------------------------------------------------------------------------------------
@@ -533,7 +504,6 @@ static void FirstLayerStateHandler
 }
 
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Destructor function to release hashmap reference and delete object reference
@@ -552,8 +522,6 @@ static void VoiceCallPoolDestructor
     le_ref_DeleteRef(VoiceCallRefMap, ctxPtr->callObjRef);
     le_hashmap_Remove(VoiceCallCtxMap, ctxPtr->mcc.callRef);
 }
-
-
 
 
 //--------------------------------------------------------------------------------------------------
@@ -696,7 +664,6 @@ le_result_t le_voicecall_End
         CmdRequest_t msgCommand;
         msgCommand.command = END_CALL_COMMAND;
         msgCommand.callCtxPtr = ctxPtr;
-
         le_event_Report(CommandEvent, &msgCommand, sizeof(msgCommand));
     }
 
@@ -743,7 +710,6 @@ le_result_t le_voicecall_Answer
 
     return result;
 }
-
 
 
 //--------------------------------------------------------------------------------------------------
@@ -795,13 +761,13 @@ le_result_t le_voicecall_GetTerminationReason
 }
 
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Delete voice call object reference create by le_voicecall_Start() or an incoming voice call.
  *
  * @return
  *      - LE_OK if the delete of voice call can be processed.
+ *      - LE_FAULT if the voice call is not terminated.
  *      - LE_NOT_FOUND if the voice call object reference is not found.
  */
 //--------------------------------------------------------------------------------------------------
@@ -818,23 +784,27 @@ le_result_t le_voicecall_Delete
     // Otherwise, send the answer command to the voice thread.
     VoiceCallContext_t * ctxPtr = le_ref_Lookup(VoiceCallRefMap, (void*) reference);
 
-    if ( (ctxPtr == NULL) || (reference != ctxPtr->callObjRef))
+    if ((ctxPtr == NULL) || (reference != ctxPtr->callObjRef))
     {
         LE_ERROR("Invalid voice call reference %p", reference);
         result = LE_NOT_FOUND;
     }
     else
     {
-        CmdRequest_t msgCommand;
-        msgCommand.command = DELETE_CALL_COMMAND;
-        msgCommand.callCtxPtr = ctxPtr;
-        le_event_Report(CommandEvent, &msgCommand, sizeof(msgCommand));
-        result = LE_OK;
+        if (ctxPtr->lastEvent == LE_VOICECALL_EVENT_TERMINATED)
+        {
+            le_mem_Release(ctxPtr);
+            result = LE_OK;
+        }
+        else
+        {
+            LE_ERROR("The voice call is not terminated");
+            result = LE_FAULT;
+        }
     }
 
     return result;
 }
-
 
 
 //--------------------------------------------------------------------------------------------------
@@ -856,7 +826,7 @@ le_audio_StreamRef_t le_voicecall_GetRxAudioStream
     // Otherwise, delete the reference and send the release command to the voice thread.
     VoiceCallContext_t * ctxPtr = le_ref_Lookup(VoiceCallRefMap, (void*) reference);
 
-    if ( (ctxPtr == NULL) || (reference != ctxPtr->callObjRef))
+    if ((ctxPtr == NULL) || (reference != ctxPtr->callObjRef))
     {
         LE_ERROR("Invalid voice call reference %p", reference);
         return NULL;
@@ -874,7 +844,6 @@ le_audio_StreamRef_t le_voicecall_GetRxAudioStream
 
     return ctxPtr->rxStream;
 }
-
 
 
 //--------------------------------------------------------------------------------------------------
@@ -896,7 +865,7 @@ le_audio_StreamRef_t le_voicecall_GetTxAudioStream
     // Otherwise, delete the reference and send the release command to the voice thread.
     VoiceCallContext_t * ctxPtr = le_ref_Lookup(VoiceCallRefMap, (void*) reference);
 
-    if ( (ctxPtr == NULL) || (reference != ctxPtr->callObjRef))
+    if ((ctxPtr == NULL) || (reference != ctxPtr->callObjRef))
     {
         LE_ERROR("Invalid voice call reference %p", reference);
         return NULL;
@@ -948,8 +917,8 @@ COMPONENT_INIT
     // the expected number of simultaneous voice call requests.
     VoiceCallRefMap = le_ref_CreateMap("voiceRequests", MAX_VOICECALL_PROFILE*2);
 
-    // Start the voice call thread
-    le_thread_Start(le_thread_Create("Voice Call Thread", VoiceCallThread, NULL));
+    // Register for command events
+    le_event_AddHandler("VoiceCallProcessCommand", CommandEvent, ProcessCommand);
 
     LE_INFO("Voice Call Service is ready");
 }

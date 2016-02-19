@@ -14,14 +14,7 @@
 #include "sandbox.h"
 #include "smack.h"
 #include "interfaces.h"
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * The location where all applications are installed.
- */
-//--------------------------------------------------------------------------------------------------
-#define APPS_INSTALL_DIR                                "/opt/legato/apps"
+#include "sysPaths.h"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -139,7 +132,7 @@ static le_mem_PoolRef_t ProcObjPool;
  * application fault the applications and process names are stored here.
  */
 //--------------------------------------------------------------------------------------------------
-#define REBOOT_FAULT_RECORD                 "/opt/legato/appRebootFault"
+#define REBOOT_FAULT_RECORD                 "/legato/systems/current/appRebootFault"
 
 
 //--------------------------------------------------------------------------------------------------

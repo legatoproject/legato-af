@@ -13,7 +13,7 @@ function CheckAppIsRunning
 {
     appName=$1
 
-    numMatches=$(ssh root@$targetAddr "/usr/local/bin/app status $appName | grep -c \"running\"")
+    numMatches=$(ssh root@$targetAddr "$BIN_PATH/app status $appName | grep -c \"running\"")
 
     if [ $numMatches -eq 0 ]
     then
@@ -36,7 +36,7 @@ fi
 echo "******** App Info Test Starting ***********"
 
 echo "Make sure Legato is running."
-ssh root@$targetAddr "/usr/local/bin/legato start"
+ssh root@$targetAddr "$BIN_PATH/legato start"
 CheckRet
 
 appDir="$LEGATO_ROOT/build/$targetType/bin/tests"
@@ -44,21 +44,21 @@ cd "$appDir"
 CheckRet
 
 echo "Stop all other apps."
-ssh root@$targetAddr "/usr/local/bin/app stop \"*\""
+ssh root@$targetAddr "$BIN_PATH/app stop \"*\""
 sleep 1
 
 echo "Install the testAppInfo app."
 instapp testAppInfo.$targetType $targetAddr
 CheckRet
 
-ssh root@$targetAddr  "/usr/local/bin/app start testAppInfo"
+ssh root@$targetAddr  "$BIN_PATH/app start testAppInfo"
 CheckRet
 
 sleep 1
 
 CheckAppIsRunning testAppInfo
 
-ssh root@$targetAddr  "/usr/local/bin/app remove testAppInfo"
+ssh root@$targetAddr  "$BIN_PATH/app remove testAppInfo"
 CheckRet
 
 echo "App Info Test Passed!"

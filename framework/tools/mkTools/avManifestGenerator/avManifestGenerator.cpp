@@ -162,7 +162,8 @@ void GenerateManifest
 //--------------------------------------------------------------------------------------------------
 {
     // Generate the file path.
-    std::string filePath = path::Combine(buildParams.workingDir, "manifest.app");
+    std::string filePath = path::Combine(path::Combine(buildParams.workingDir, appPtr->workingDir),
+                                         "manifest.app");
 
     // Get the application's version.
     std::string versionStr = appPtr->version;

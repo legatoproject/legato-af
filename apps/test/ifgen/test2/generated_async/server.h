@@ -146,6 +146,7 @@ typedef void (*BugTestHandlerFunc_t)
  *
  * @param data
  * @param name
+ * @param dataFile
  * @param contextPtr
  */
 //--------------------------------------------------------------------------------------------------
@@ -153,6 +154,7 @@ typedef void (*CallbackTestHandlerFunc_t)
 (
     uint32_t data,
     const char* name,
+    int dataFile,
     void* contextPtr
 );
 

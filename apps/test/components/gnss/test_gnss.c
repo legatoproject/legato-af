@@ -43,7 +43,7 @@ COMPONENT_INIT
 
     pa_gnss_Init();
 
-    pa_gnss_SetAcquisitionRate(5);
+    pa_gnss_SetAcquisitionRate(5000);
 
     pa_gnss_Start();
 
@@ -58,7 +58,7 @@ COMPONENT_INIT
             fprintf(stdout,"\t longitude %d\n",position.longitude);
             fprintf(stdout,"\t altitude %d\n",position.altitude);
             fprintf(stdout,"\t hSpeed %d\n",position.hSpeed);
-            fprintf(stdout,"\t track %d\n",position.track);
+            fprintf(stdout,"\t dimension %d\n",position.dimension);
             fprintf(stdout,"\t hdop %d\n",position.hdop);
             fprintf(stdout,"\t vdop %d\n",position.vdop);
             fprintf(stdout,"\t Time: \n");

@@ -273,7 +273,7 @@ static void InitPool
     size_t nameSize = snprintf(pool->name, sizeof(pool->name), "%s.%s", componentName, name);
     if (nameSize >= sizeof(pool->name))
     {
-        LE_WARN("Memory pool name '%s.%s' is truncated to '%s'", componentName, name, pool->name);
+        LE_DEBUG("Memory pool name '%s.%s' is truncated to '%s'", componentName, name, pool->name);
     }
 
     // Compute the total block size.
@@ -458,8 +458,8 @@ static void VerifyUniquenessOfName
 
         if ((strcmp(newPool->name, memPoolPtr->name) == 0) && (newPool != memPoolPtr))
         {
-            LE_ERROR("Multiple memory pools share the same name '%s'."
-                     " This will become illegal in future releases.\n", memPoolPtr->name);
+            LE_WARN("Multiple memory pools share the same name '%s'."
+                    " This will become illegal in future releases.\n", memPoolPtr->name);
             break;
         }
 

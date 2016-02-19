@@ -1,23 +1,21 @@
 #*******************************************************************************
 # Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
-#
-# Contributors:
-#     Sierra Wireless - initial API and implementation
 #*******************************************************************************
 
-set(TEST_EXEC mccUnitTest)
+set(APP_COMPONENT mccTest)
+set(APP_TARGET mccUnitTest)
 
 set(INTERFACES "${LEGATO_ROOT}/interfaces")
 set(INTERFACES_MODEM_SERVICES "${LEGATO_ROOT}/interfaces/modemServices/")
 set(LEGATO_MODEM_SERVICES "${LEGATO_ROOT}/components/modemServices/")
 set(PA_SIMU_MODEM_SERVICES "${LEGATO_MODEM_SERVICES}/platformAdaptor/simu/le_pa/")
-set (TEST "apps/test/modemServices/mcc/${TEST_EXEC}")
+set (TEST "apps/test/modemServices/mcc/${APP_TARGET}")
 set (LEGATO_BUILD "${LEGATO_ROOT}/build/${LEGATO_TARGET}")
 
 #generate API interfaces
 execute_process (COMMAND ifgen --gen-interface ${INTERFACES_MODEM_SERVICES}/le_mcc.api
                  COMMAND ifgen --gen-interface ${INTERFACES_MODEM_SERVICES}/le_mdmDefs.api
-                 COMMAND ifgen --gen-interface ${INTERFACES}/powerMgr/le_pm.api
+                 COMMAND ifgen --gen-interface ${INTERFACES}/le_pm.api
                  WORKING_DIRECTORY ${LEGATO_BUILD}/${TEST})
 
 include_directories(    ${LEGATO_ROOT}/framework/c/inc
@@ -31,12 +29,13 @@ include_directories(    ${LEGATO_ROOT}/framework/c/inc
 
 SET(CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -Dle_msg_AddServiceCloseHandler=le_msgSimu_AddServiceCloseHandler")
 
-add_executable(${TEST_EXEC} main.c
-               ${LEGATO_MODEM_SERVICES}/modemDaemon/le_mcc.c
-               ${PA_SIMU_MODEM_SERVICES}/pa_mcc_simu.c
-              )
+set(APP_SOURCES
+    ${LEGATO_ROOT}/${TEST}/main.c
+    ${LEGATO_MODEM_SERVICES}/modemDaemon/le_mcc.c
+    ${PA_SIMU_MODEM_SERVICES}/pa_mcc_simu.c
+)
 
-target_link_libraries(${TEST_EXEC} legato)
+set_legato_component(${APP_COMPONENT})
+add_legato_executable(${APP_TARGET} ${APP_SOURCES})
 
-
-add_test(${TEST_EXEC} ${EXECUTABLE_OUTPUT_PATH}/${TEST_EXEC} )
+add_test(${APP_TARGET} ${EXECUTABLE_OUTPUT_PATH}/${APP_TARGET})

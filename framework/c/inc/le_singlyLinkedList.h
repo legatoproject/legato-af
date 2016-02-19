@@ -122,16 +122,19 @@
  *
  * - @c le_sls_Peek() - Returns the link at the head of the list without removing it.
  * - @c le_sls_PeekNext() - Returns the link next to a specified link without removing it.
+ * - @c le_sls_PeekTail() - Returns the link at the tail of the list without removing it.
  *
  *
  * @section sls_query Querying List Status
  *
  * The following functions can be used to query a list's current status:
  *
- * - le_sls_IsEmpty() - Checks if a given list is empty or not.
- * - le_sls_IsInList() - Checks if a specified link is in the list.
- * - le_sls_NumLinks() - Checks the number of links currently in the list.
- * - le_sls_IsListCorrupted() - Checks if the list is corrupted.
+ * - @c le_sls_IsEmpty() - Checks if a given list is empty or not.
+ * - @c le_sls_IsInList() - Checks if a specified link is in the list.
+ * - @c le_sls_IsHead() - Checks if a specified link is at the head of the list.
+ * - @c le_sls_IsTail() - Checks if a specified link is at the tail of the list.
+ * - @c le_sls_NumLinks() - Checks the number of links currently in the list.
+ * - @c le_sls_IsListCorrupted() - Checks if the list is corrupted.
  *
  *
  * @section sls_fifo Queues and Stacks
@@ -304,6 +307,21 @@ le_sls_Link_t* le_sls_Peek
 );
 
 
+//------------------------------------------------------------------------------------------------------------
+/**
+ * Returns the link at the tail of the list without removing it from the list.
+ *
+ * @return
+ *      A pointer to the tail link if successful.
+ *      NULL if the list is empty.
+ */
+//------------------------------------------------------------------------------------------------------------
+le_sls_Link_t* le_sls_PeekTail
+(
+    const le_sls_List_t* listPtr            ///< [IN] The list.
+);
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Returns the link next to currentLinkPtr (i.e., the link beside currentLinkPtr that's closer to the
@@ -346,8 +364,8 @@ static inline bool le_sls_IsEmpty
  * Checks if a link is in the list.
  *
  * @return
- *      true if the link is in the list.
- *      false if the link is not in the list.
+ *    - true if the link is in the list.
+ *    - false if the link is not in the list.
  */
 //--------------------------------------------------------------------------------------------------
 bool le_sls_IsInList
@@ -355,6 +373,44 @@ bool le_sls_IsInList
     const le_sls_List_t* listPtr,    ///< [IN] List to check.
     const le_sls_Link_t* linkPtr     ///< [IN] Check if this link is in the list.
 );
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Checks if a link is at the head of the list (next to be popped).
+ *
+ * @return
+ *    - true if the link is at the head of the list.
+ *    - false if not.
+ */
+//--------------------------------------------------------------------------------------------------
+static inline bool le_sls_IsHead
+(
+    const le_sls_List_t* listPtr,    ///< [IN] List to check.
+    const le_sls_Link_t* linkPtr     ///< [IN] Check if this link is at the head of the list.
+)
+{
+    return (le_sls_Peek(listPtr) == linkPtr);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Checks if a link is at the tail of the list (last to be popped).
+ *
+ * @return
+ *    - true if the link is at the tail of the list.
+ *    - false if not.
+ */
+//--------------------------------------------------------------------------------------------------
+static inline bool le_sls_IsTail
+(
+    const le_sls_List_t* listPtr,    ///< [IN] List to check.
+    const le_sls_Link_t* linkPtr     ///< [IN] Check if this link is at the tail of the list.
+)
+{
+    return (le_sls_PeekTail(listPtr) == linkPtr);
+}
 
 
 //--------------------------------------------------------------------------------------------------

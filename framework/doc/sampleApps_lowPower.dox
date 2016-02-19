@@ -1,0 +1,28 @@
+/** @page sampleApps_lowPower Low Power
+
+This sample app demonstrates using the @ref c_ulpm API. The app reads the current GPS
+location, sends it to a destination cell phone number, and then enters into ultra low power mode.
+It has a @c .adef sandboxed, version, processes, and bindings sections with related @c .cdef
+requires and sources sections.
+
+This app expects a destination cell number to be specified in the @c envVars subsection
+of the processes section in the @c .adef file. If a value isn't specified in envVars,
+a message will be sent to a non-existent phone number.
+
+Run this to install the sample app:
+
+@verbatim
+$ cd apps/sample/textLoc
+$ make wp85
+$ instapp textLoc.wp85.update <ip address>
+@endverbatim
+
+If you're using an AR7 module in your target, substitute @c ar7 for @c wp85.
+
+@ref sampleApps_startApp
+ 
+<HR>
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/

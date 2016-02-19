@@ -63,10 +63,10 @@
  */
 
 #include "legato.h"
-#include "log.h"
+#include "../log.h"
 #include "logDaemon.h"
-#include "limit.h"
-#include "fileDescriptor.h"
+#include "../limit.h"
+#include "../fileDescriptor.h"
 
 
 //--------------------------------------------------------------------------------------------------

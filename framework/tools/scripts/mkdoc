@@ -18,11 +18,8 @@ echo "Building docs in $OUTPUT_DIR"
 
 mkdir -p $OUTPUT_DIR
 
-for file in $(find $TOOLS_DIR -type f -executable); do
+for file in $(find -L $TOOLS_DIR -type f -executable | sort); do
     if [[ $file = *legs ]]; then
-        echo "Skipping - $file"
-    elif [[ $file = *update-pack ]]; then
-        # update-pack is not a user run tool. It will become a part of build.
         echo "Skipping - $file"
     elif [[ $file = *findtoolchain ]]; then
         # update-pack is not a user run tool. It will become a part of build.

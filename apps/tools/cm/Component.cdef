@@ -1,0 +1,32 @@
+requires:
+{
+    api:
+    {
+        le_cfg.api
+        le_data.api [manual-start]
+        modemServices/le_mrc.api
+        modemServices/le_mdc.api
+        modemServices/le_sim.api
+        modemServices/le_sms.api
+        modemServices/le_info.api
+        modemServices/le_adc.api
+        modemServices/le_temp.api
+        modemServices/le_ips.api
+        modemServices/le_rtc.api
+    }
+}
+
+sources:
+{
+    cmodem.c
+    cm_mrc.c
+    cm_sim.c
+    cm_data.c
+    cm_sms.c
+    cm_info.c
+    cm_temp.c
+    cm_adc.c
+    cm_ips.c
+    cm_common.c
+    cm_rtc.c
+}

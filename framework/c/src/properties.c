@@ -327,3 +327,103 @@ le_result_t properties_GetValueForKey
     }
 }
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets the value for a specified key in the specified .properties file.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_OVERFLOW if fileNamePtr was too long.
+ *      LE_BAD_PARAMETER if fileNamePtr was formatted poorly.
+ *      LE_FAULT if there was an error.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t properties_SetValueForKey
+(
+    const char* fileNamePtr,                ///< [IN] File name of the .properties file.
+    const char* keyPtr,                     ///< [IN] Key to get the value for.
+    const char* valuePtr                    ///< [IN] New property value string to write.
+)
+{
+    // Create a temporary file path for writing.
+    char tempFileName[LIMIT_MAX_PATH_BYTES] = "";
+
+    int count = snprintf(tempFileName, sizeof(tempFileName), "%s.tmp", fileNamePtr);
+
+    if (count > sizeof(tempFileName))
+    {
+        return LE_NO_MEMORY;
+    }
+    else if (count == -1)
+    {
+        return LE_BAD_PARAMETER;
+    }
+
+    // Try to open the original property file.
+    properties_Iter_Ref_t iteratorRef = properties_CreateIter(fileNamePtr);
+
+    // Now create our temp file for writing.
+    FILE* outputFilePtr = NULL;
+    do
+    {
+        outputFilePtr = fopen(tempFileName, "w");
+    }
+    while ( (outputFilePtr == NULL) && (errno == EINTR) );
+
+    if (outputFilePtr == NULL)
+    {
+        LE_ERROR("File '%s' could not be opened.  %m.", tempFileName);
+        return LE_FAULT;
+    }
+
+    // Now, iterate through the original property file and copy out the keys and values.  If our
+    // key is found, then write out the new value.  Otherwise, simply write out the original value.
+    size_t keySize = strlen(keyPtr);
+    bool found = false;
+
+    if (iteratorRef != NULL)
+    {
+        while (properties_NextNode(iteratorRef) == LE_OK)
+        {
+            const char* nextKey = properties_GetKey(iteratorRef);
+
+            if (strncmp(nextKey, keyPtr, keySize) == 0)
+            {
+                found = true;
+            }
+
+            const char* nextValue = (found == true) ? valuePtr
+                                                    : properties_GetValue(iteratorRef);
+
+            fprintf(outputFilePtr, "%s=%s\n", nextKey, nextValue);
+        }
+    }
+
+    // If the key in question was never found, then write it and it's new value to the end of the
+    // file.
+    if (found == false)
+    {
+        fprintf(outputFilePtr, "%s=%s\n", keyPtr, valuePtr);
+    }
+
+    if (iteratorRef != NULL)
+    {
+        properties_DeleteIter(iteratorRef);
+    }
+
+    fclose(outputFilePtr);
+
+    // Finally, replace the original file with our new replacement.
+    unlink(fileNamePtr);
+
+    if (rename(tempFileName, fileNamePtr) != 0)
+    {
+        LE_EMERG("Failed to rename temporary property file '%s' to '%s'.",
+                 tempFileName,
+                 fileNamePtr);
+        return LE_FAULT;
+    }
+
+    return LE_OK;
+}

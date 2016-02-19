@@ -1,8 +1,0 @@
-#!/bin/sh
-
-# This script will be called prior to a framework update.
-# If you have any specific housekeeping you need to do before the old legato framework
-# (and non-whitelisted apps) are uninstalled do it here.
-# The old Legato is still running at this time so you can make use of Legato tools.
-
-echo "`basename $0` called."

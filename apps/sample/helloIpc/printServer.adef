@@ -11,11 +11,8 @@ processes:
     }
 }
 
-provides:
+extern:
 {
-    api:
-    {
-        printer = server.printServer.printer
-    }
+    printer = server.printServer.printer
 }
 

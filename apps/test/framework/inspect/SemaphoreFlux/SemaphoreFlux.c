@@ -75,17 +75,6 @@ void testWaitingList
 }
 
 
-void testTraceable
-(
-    void
-)
-{
-    le_sem_Ref_t sema1Ref = le_sem_CreateTraceable("TracSema1", 0);
-    le_thread_Ref_t thread1Ref = le_thread_Create("Thread1", WaitOnSem, (void*)sema1Ref);
-    le_thread_Start(thread1Ref);
-}
-
-
 /////////////////////////////////////////////
 /*
  * Functions relevant to waiting and posting semas
@@ -206,13 +195,11 @@ static void PrintHelp
     void
 )
 {
-    LE_ERROR("Usage: SemaphoreFlux [TestWaitingList | TestTraceable]");
+    LE_ERROR("Usage: SemaphoreFlux TestWaitingList");
     LE_ERROR("       SemaphoreFlux [1toN-1Threads | Sem1toN-1Threads] [delete interval] [number of threads]");
     LE_ERROR("       SemaphoreFlux [Sem1stThread | SemMidThread | 1stThread | MidThread | None] [number of threads]");
     LE_ERROR(" ");
     LE_ERROR("       [TestWaitingList] create a scenario to display the waiting list");
-    LE_ERROR(" ");
-    LE_ERROR("       [TestTraceable] create a traceable sema");
     LE_ERROR(" ");
     LE_ERROR("       The following options create N threads, each of which waits on a sema, and then...");
     LE_ERROR("       [1toN-1Threads] cancels threads from 1st to N-1th");
@@ -251,8 +238,7 @@ static void TestTypeArgHandler
 {
     TestType = arg;
 
-    if ((strcmp(arg, "TestWaitingList") == 0) ||
-        (strcmp(arg, "TestTraceable") == 0))
+    if (strcmp(arg, "TestWaitingList") == 0)
     {
         // do nothing
     }
@@ -302,10 +288,6 @@ static void RunTests
     if (strcmp(TestType, "TestWaitingList") == 0)
     {
         testWaitingList();
-    }
-    else if (strcmp(TestType, "TestTraceable") == 0)
-    {
-        testTraceable();
     }
     else if (strcmp(TestType, "1toN-1Threads") == 0)
     {

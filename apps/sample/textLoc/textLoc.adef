@@ -1,0 +1,35 @@
+sandboxed: false
+
+version: 1.0.0
+maxFileSystemBytes: 512K
+	executables:
+	{
+			textloc = ( textLocComponent )
+	}
+
+processes:
+{
+		envVars:
+		{
+			LE_LOG_LEVEL = DEBUG
+			// This is a non-existent fictitious phone number. Change it to a valid phone number.
+			DEST_CELL_NO = 8005550101
+		}
+		run:
+		{
+			( textloc )
+		}
+		maxCoreDumpFileBytes: 512K
+		maxFileBytes: 512K
+
+}
+
+bindings:
+{
+    textloc.textLocComponent.le_mrc -> modemService.le_mrc
+    textloc.textLocComponent.le_posCtrl -> positioningService.le_posCtrl
+    textloc.textLocComponent.le_pos -> positioningService.le_pos
+    textloc.textLocComponent.le_sms -> modemService.le_sms
+    textloc.textLocComponent.le_ulpm -> powerMgr.le_ulpm
+    textloc.textLocComponent.le_bootReason -> powerMgr.le_bootReason
+}

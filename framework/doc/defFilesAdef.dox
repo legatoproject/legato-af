@@ -139,7 +139,8 @@ If the path doesn't end in a '/', it's a full destination object path. The desti
 could have a different name than the source object.
 
 @note  If the app is running unsandboxed, the bundled files and directories can be found
-        in their installation location under @c /opt/legato/apps/xxxx, where xxxx is replaced by
+        in their installation location under @c /legato/systems/current/apps/xxxx, (if the system
+        is running else current is replaced by the newest system index) where xxxx is replaced by
         the app name.
 
 <b>Quoting Paths</b>

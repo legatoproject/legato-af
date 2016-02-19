@@ -1,15 +1,7 @@
 #*******************************************************************************
-# Copyright (C) 2014, Sierra Wireless Inc.
-#
+# Copyright (C) Sierra Wireless Inc.  Use of this work is subject to license.
 #*******************************************************************************
-
-find_package(Legato REQUIRED)
 
 mkapp( simToolkit.adef
        -i ${LEGATO_ROOT}/interfaces/modemServices
-       DEPENDS
-           legato
-           ## TODO: Remove this when the mk tools do dependency checking.
-           simToolkitComp/Component.cdef
-           simToolkitComp/simToolkitTest.c
 )

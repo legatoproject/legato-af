@@ -1,0 +1,21 @@
+version: 1.0
+sandboxed: false
+start: manual
+
+executables:
+{
+    avSystemInfo = (avSystemInfoComponent)
+}
+
+processes:
+{
+    run:
+    {
+        (avSystemInfo)
+    }
+}
+
+bindings:
+{
+    avSystemInfo.avSystemInfoComponent.le_avdata -> avcService.le_avdata
+}

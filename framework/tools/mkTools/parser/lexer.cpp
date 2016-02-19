@@ -1,6 +1,6 @@
 //--------------------------------------------------------------------------------------------------
 /**
- * @page mkTools_lexer Lexical Analyzer (Lexer) for the mk* tools.
+ * @file lexer.cpp Lexical Analyzer (Lexer) for the mk* tools.
  *
  * @warning Don't use isalpha() or isalnum() in this file, because their results are
             locale-dependent.

@@ -58,6 +58,11 @@
  *
  * See @ref c_eventLoop for details on running the event loop of a thread.
  *
+ * @section le_timer_suspend Suspend Support
+ * 
+ * The timer runs even when system is suspended. <br>
+ * If the timer expires while the system is suspended, it will wake up the system.
+ * 
  * @section timer_errors Fatal Errors
  *
  * The process will exit under any of the following conditions:
@@ -167,7 +172,7 @@ void le_timer_Delete
 le_result_t le_timer_SetHandler
 (
     le_timer_Ref_t timerRef,                ///< [IN] Set expiry handler for this timer object.
-    le_timer_ExpiryHandler_t handlerRef     ///< [IN] Handler function to call on expiry.
+    le_timer_ExpiryHandler_t handlerFunc    ///< [IN] Handler function to call on expiry.
 );
 
 
@@ -194,6 +199,27 @@ le_result_t le_timer_SetInterval
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Set the timer interval using milliseconds.
+ *
+ * Timer will expire after the interval has elapsed.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_BUSY if the timer is currently running
+ *
+ * @note
+ *      If an invalid timer object is given, the process exits.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_timer_SetMsInterval
+(
+    le_timer_Ref_t timerRef,    ///< [IN] Set interval for this timer object.
+    size_t interval             ///< [IN] Timer interval in milliseconds.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Set how many times the timer will repeat.
  *
  * Timer will repeat the given number of times.  A value of 0 means repeat indefinitely.
@@ -210,7 +236,7 @@ le_result_t le_timer_SetInterval
 le_result_t le_timer_SetRepeat
 (
     le_timer_Ref_t timerRef,     ///< [IN] Set interval for this timer object.
-    uint32_t repeatCount         ///< [IN] Number of times the timer will repeat.
+    uint32_t repeatCount         ///< [IN] Number of times the timer will repeat (0 = forever).
 );
 
 

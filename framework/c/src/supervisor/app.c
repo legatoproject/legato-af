@@ -20,14 +20,8 @@
 #include "cgroups.h"
 #include "killProc.h"
 #include "interfaces.h"
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * The location where all applications are installed.
- */
-//--------------------------------------------------------------------------------------------------
-#define APPS_INSTALL_DIR                                "/opt/legato/apps"
+#include "sysPaths.h"
+#include "devSmack.h"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -70,6 +64,31 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * The name of the node in the config tree that contains the list of required files and directories.
+ */
+//--------------------------------------------------------------------------------------------------
+#define CFG_NODE_REQUIRES                               "requires"
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The name of the node in the config tree that contains the list of import directives for
+ * devices that an application needs.
+ */
+//--------------------------------------------------------------------------------------------------
+#define CFG_NODE_DEVICES                                "devices"
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum number of bytes in a permission string for devices.
+ */
+//--------------------------------------------------------------------------------------------------
+#define MAX_DEVICE_PERM_STR_BYTES                       3
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Timeout value for killing processes in an app.
  */
 //--------------------------------------------------------------------------------------------------
@@ -89,8 +108,9 @@ typedef struct app_Ref
     char*           name;                               // The name of the application.
     char            cfgPathRoot[LIMIT_MAX_PATH_BYTES];  // Our path in the config tree.
     bool            sandboxed;                          // true if this is a sandboxed app.
-    char            installPath[LIMIT_MAX_PATH_BYTES];  // The app's install directory path.
-    char            sandboxPath[LIMIT_MAX_PATH_BYTES];  // The app's sandbox path.
+    char            installDirPath[LIMIT_MAX_PATH_BYTES]; // Abs path to install files dir.
+    char            writableFilesDirPath[LIMIT_MAX_PATH_BYTES]; // Abs path to writable files dir.
+    char            sandboxPath[LIMIT_MAX_PATH_BYTES];  // The app's sandbox dir path (absolute).
     uid_t           uid;                // The user ID for this application.
     gid_t           gid;                // The group ID for this application.
     gid_t           supplementGids[LIMIT_MAX_NUM_SUPPLEMENTARY_GROUPS];  // List of supplementary
@@ -152,27 +172,6 @@ static le_mem_PoolRef_t ProcObjPool;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * The file that stores the application reboot fault record.  When the system reboots due to an
- * application fault the applications and process names are stored here.
- */
-//--------------------------------------------------------------------------------------------------
-#define REBOOT_FAULT_RECORD                 "/opt/legato/appRebootFault"
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * The fault limits.
- *
- * @todo Put in the config tree so that it can be configured.
- */
-//--------------------------------------------------------------------------------------------------
-#define FAULT_LIMIT_INTERVAL_RESTART                10   // in seconds
-#define FAULT_LIMIT_INTERVAL_RESTART_APP            10   // in seconds
-#define FAULT_LIMIT_INTERVAL_REBOOT                 120  // in seconds
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Application kill type.
  */
 //--------------------------------------------------------------------------------------------------
@@ -182,28 +181,6 @@ typedef enum
     KILL_HARD           ///< Kills the application ASAP.
 }
 KillType_t;
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * The reboot fault timer handler.  When this expires we delete the reboot fault record so that
- * reboot faults will reach the fault limit only if there is a fault that reboots the system before
- * this timer expires.
- */
-//--------------------------------------------------------------------------------------------------
-static void RebootFaultTimerHandler
-(
-    le_timer_Ref_t timerRef
-)
-{
-    if ( (unlink(REBOOT_FAULT_RECORD) == -1) && (errno != ENOENT) )
-    {
-        LE_ERROR("Could not delete reboot fault record.  %m.  This could result in the fault limit \
-being reached incorrectly when a process faults and resets the system.");
-    }
-
-    le_timer_Delete(timerRef);
-}
 
 
 //--------------------------------------------------------------------------------------------------
@@ -218,18 +195,6 @@ void app_Init
 {
     AppPool = le_mem_CreatePool("Apps", sizeof(App_t));
     ProcObjPool = le_mem_CreatePool("ProcObj", sizeof(ProcObj_t));
-
-    // Start the reboot fault timer.
-    le_timer_Ref_t rebootFaultTimer = le_timer_Create("RebootFault");
-    le_clk_Time_t rebootFaultInterval = {.sec = FAULT_LIMIT_INTERVAL_REBOOT};
-
-    if ( (le_timer_SetHandler(rebootFaultTimer, RebootFaultTimerHandler) != LE_OK) ||
-         (le_timer_SetInterval(rebootFaultTimer, rebootFaultInterval) != LE_OK) ||
-         (le_timer_Start(rebootFaultTimer) != LE_OK) )
-    {
-        LE_ERROR("Could not start the reboot fault timer.  This could result in the fault limit \
-being reached incorrectly when a process faults and resets the system.");
-    }
 
     proc_Init();
 }
@@ -378,7 +343,8 @@ app_Ref_t app_Create
     App_t* appPtr = le_mem_ForceAlloc(AppPool);
 
     // Save the config path.
-    if (le_utf8_Copy(appPtr->cfgPathRoot, cfgPathRootPtr, sizeof(appPtr->cfgPathRoot), NULL) != LE_OK)
+    if (   le_utf8_Copy(appPtr->cfgPathRoot, cfgPathRootPtr, sizeof(appPtr->cfgPathRoot), NULL)
+        != LE_OK)
     {
         LE_ERROR("Config path '%s' is too long.", cfgPathRootPtr);
 
@@ -406,40 +372,48 @@ app_Ref_t app_Create
     //        moved to the app installer.
     if (CreateUserAndGroups(appPtr) != LE_OK)
     {
-        le_mem_Release(appPtr);
-        le_cfg_CancelTxn(cfgIterator);
-        return NULL;
+        goto failed;
     }
 
-    // Get the app's install directory path.
-    appPtr->installPath[0] = '\0';
+    // Get the app's install and writeable files' directory paths.
+    appPtr->installDirPath[0] = '\0';
     if (LE_OK != le_path_Concat("/",
-                                appPtr->installPath,
-                                sizeof(appPtr->installPath),
+                                appPtr->installDirPath,
+                                sizeof(appPtr->installDirPath),
                                 APPS_INSTALL_DIR,
                                 appPtr->name,
                                 NULL))
     {
-        LE_ERROR("Install directory path '%s' is too long.  Application '%s' cannot be started.",
-                 appPtr->installPath,
+        LE_ERROR("Install directory path '%s' is too long.  App '%s' cannot be started.",
+                 appPtr->installDirPath,
                  appPtr->name);
-
-        le_mem_Release(appPtr);
-        le_cfg_CancelTxn(cfgIterator);
-        return NULL;
+        goto failed;
+    }
+    appPtr->writableFilesDirPath[0] = '\0';
+    if (LE_OK != le_path_Concat("/",
+                                appPtr->writableFilesDirPath,
+                                sizeof(appPtr->writableFilesDirPath),
+                                CURRENT_SYSTEM_PATH,
+                                "appsWriteable",
+                                appPtr->name,
+                                NULL))
+    {
+        LE_ERROR("Writeable files directory path '%s' is too long.  App '%s' cannot be started.",
+                 appPtr->writableFilesDirPath,
+                 appPtr->name);
+        goto failed;
     }
 
     // Get the app's sandbox path.
     if (appPtr->sandboxed)
     {
-        if (sandbox_GetPath(appPtr->name, appPtr->sandboxPath, sizeof(appPtr->sandboxPath)) != LE_OK)
+        if (   sandbox_GetPath(appPtr->name, appPtr->sandboxPath, sizeof(appPtr->sandboxPath))
+            != LE_OK)
         {
-            LE_ERROR("The application's sandbox path '%s' is too long.  Application '%s' cannot be started.",
-                     appPtr->sandboxPath, appPtr->name);
-
-            le_mem_Release(appPtr);
-            le_cfg_CancelTxn(cfgIterator);
-            return NULL;
+            LE_ERROR("The app's sandbox path '%s' is too long. App '%s' cannot be started.",
+                     appPtr->sandboxPath,
+                     appPtr->name);
+            goto failed;
         }
     }
     else
@@ -461,9 +435,7 @@ app_Ref_t app_Create
             if (le_cfg_GetPath(cfgIterator, "", procCfgPath, sizeof(procCfgPath)) == LE_OVERFLOW)
             {
                 LE_ERROR("Internal path buffer too small.");
-                app_Delete(appPtr);
-                le_cfg_CancelTxn(cfgIterator);
-                return NULL;
+                goto failed;
             }
 
             // Strip off the trailing '/'.
@@ -478,9 +450,7 @@ app_Ref_t app_Create
             proc_Ref_t procPtr;
             if ((procPtr = proc_Create(procCfgPath, appPtr)) == NULL)
             {
-                app_Delete(appPtr);
-                le_cfg_CancelTxn(cfgIterator);
-                return NULL;
+                goto failed;
             }
 
             // Add the process to the app's process list.
@@ -497,6 +467,12 @@ app_Ref_t app_Create
     le_cfg_CancelTxn(cfgIterator);
 
     return appPtr;
+
+failed:
+
+    app_Delete(appPtr);
+    le_cfg_CancelTxn(cfgIterator);
+    return NULL;
 }
 
 
@@ -538,14 +514,206 @@ void app_Delete
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Sets SMACK rules for an application based on its bindings.
+ * Gets the device ID of a device file.
  *
  * @return
  *      LE_OK if successful.
  *      LE_FAULT if there was an error.
  */
 //--------------------------------------------------------------------------------------------------
-static le_result_t SetSmackRulesForBindings
+static le_result_t GetDevID
+(
+    const char* fileNamePtr,        ///< [IN] Absolute path of the file.
+    dev_t* idPtr                    ///< [OUT] Device ID.
+)
+{
+    struct stat fileStat;
+
+    if (stat(fileNamePtr, &fileStat) != 0)
+    {
+        LE_ERROR("Could not get file info for '%s'.  %m.", fileNamePtr);
+        return LE_FAULT;
+    }
+
+    if (!S_ISCHR(fileStat.st_mode) && !S_ISBLK(fileStat.st_mode))
+    {
+        LE_ERROR("'%s' is not a device file.  %m.", fileNamePtr);
+        return LE_FAULT;
+    }
+
+    *idPtr = fileStat.st_rdev;
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the configured permissions for a device.  The permissions will be returned in the provided
+ * buffer as a string (either "r", "w" or "rw").  The provided buffer must be greater than or equal
+ * to MAX_DEVICE_PERM_STR_BYTES bytes long.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void GetCfgPermissions
+(
+    le_cfg_IteratorRef_t cfgIter,       ///< [IN] Config iterator pointing to the device file.
+    char* bufPtr,                       ///< [OUT] Buffer to hold the permission string.
+    size_t bufSize                      ///< [IN] Size of the buffer.
+)
+{
+    LE_FATAL_IF(bufSize < MAX_DEVICE_PERM_STR_BYTES,
+                "Buffer size for permission string too small.");
+
+    int i = 0;
+
+    if (le_cfg_GetBool(cfgIter, "isReadable", false))
+    {
+        bufPtr[i++] = 'r';
+    }
+
+    if (le_cfg_GetBool(cfgIter, "isWritable", false))
+    {
+        bufPtr[i++] = 'w';
+    }
+
+    bufPtr[i] = '\0';
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the source path for the device file at the current node in the config iterator.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_FAULT if there was an error.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t GetDevSrcPath
+(
+    app_Ref_t appRef,                   ///< [IN] Reference to the application object.
+    le_cfg_IteratorRef_t cfgIter,       ///< [IN] Config iterator for the import.
+    char* bufPtr,                       ///< [OUT] Buffer to store the source path.
+    size_t bufSize                      ///< [IN] Size of the buffer.
+)
+{
+    char srcPath[LIMIT_MAX_PATH_BYTES] = "";
+
+    if (le_cfg_GetString(cfgIter, "src", srcPath, sizeof(srcPath), "") != LE_OK)
+    {
+        LE_ERROR("Source file path '%s...' for app '%s' is too long.", srcPath, app_GetName(appRef));
+        return LE_FAULT;
+    }
+
+    if (strlen(srcPath) == 0)
+    {
+        LE_ERROR("Empty source file path supplied for app %s.", app_GetName(appRef));
+        return LE_FAULT;
+    }
+
+    if (le_utf8_Copy(bufPtr, srcPath, bufSize, NULL) != LE_OK)
+    {
+        LE_ERROR("Source file path '%s...' for app '%s' is too long.", srcPath, app_GetName(appRef));
+        return LE_FAULT;
+    }
+
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets DAC and SMACK permissions for device files needed by this app.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_FAULT if there was an error.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t SetDevicePermissions
+(
+    app_Ref_t appRef                ///< [IN] The application.
+)
+{
+    // Create an iterator for the app.
+    le_cfg_IteratorRef_t appCfg = le_cfg_CreateReadTxn(app_GetConfigPath(appRef));
+
+    // Get the list of device files.
+    le_cfg_GoToNode(appCfg, CFG_NODE_REQUIRES);
+    le_cfg_GoToNode(appCfg, CFG_NODE_DEVICES);
+
+    if (le_cfg_GoToFirstChild(appCfg) == LE_OK)
+    {
+        do
+        {
+            // Get source path.
+            char srcPath[LIMIT_MAX_PATH_BYTES];
+            if (GetDevSrcPath(appRef, appCfg, srcPath, sizeof(srcPath)) != LE_OK)
+            {
+                le_cfg_CancelTxn(appCfg);
+                return LE_FAULT;
+            }
+
+            // Check that the source is a device file.
+            dev_t devId;
+
+            if (GetDevID(srcPath, &devId) != LE_OK)
+            {
+                le_cfg_CancelTxn(appCfg);
+                return LE_FAULT;
+            }
+
+            // TODO: Disallow device files that are security risks, such as block flash devices.
+
+            // Assign a SMACK label to the device file.
+            char devLabel[LIMIT_MAX_SMACK_LABEL_BYTES];
+            le_result_t result = devSmack_GetLabel(devId, devLabel, sizeof(devLabel));
+
+            LE_FATAL_IF(result == LE_OVERFLOW, "Smack label '%s...' too long.", devLabel);
+
+            if (result != LE_OK)
+            {
+                le_cfg_CancelTxn(appCfg);
+                return LE_FAULT;
+            }
+
+            if (smack_SetLabel(srcPath, devLabel) != LE_OK)
+            {
+                le_cfg_CancelTxn(appCfg);
+                return LE_FAULT;
+            }
+
+            // Get the app's SMACK label.
+            char appLabel[LIMIT_MAX_SMACK_LABEL_BYTES];
+            appSmack_GetLabel(app_GetName(appRef), appLabel, sizeof(appLabel));
+
+            // Get the required permissions for the device.
+            char permStr[MAX_DEVICE_PERM_STR_BYTES];
+            GetCfgPermissions(appCfg, permStr, sizeof(permStr));
+
+            // Set the SMACK rule to allow the app to access the device.
+            smack_SetRule(appLabel, permStr, devLabel);
+
+            // Set the DAC permissions to be permissive.
+            LE_FATAL_IF(chmod(srcPath, S_IROTH | S_IWOTH) == -1,
+                        "Could not set permissions for file '%s'.  %m.", srcPath);
+        }
+        while (le_cfg_GoToNextSibling(appCfg) == LE_OK);
+
+        le_cfg_GoToParent(appCfg);
+    }
+
+    le_cfg_CancelTxn(appCfg);
+
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets SMACK rules for an application based on its bindings.
+ */
+//--------------------------------------------------------------------------------------------------
+static void SetSmackRulesForBindings
 (
     app_Ref_t appRef,                   ///< [IN] Reference to the application.
     const char* appLabelPtr             ///< [IN] Smack label for the app.
@@ -560,7 +728,6 @@ static le_result_t SetSmackRulesForBindings
     {
         // No bindings.
         le_cfg_CancelTxn(bindCfg);
-        return LE_OK;
     }
 
     do
@@ -581,21 +748,15 @@ static le_result_t SetSmackRulesForBindings
     } while (le_cfg_GoToNextSibling(bindCfg) == LE_OK);
 
     le_cfg_CancelTxn(bindCfg);
-
-    return LE_OK;
 }
 
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Sets SMACK rules for an application and its folders.
- *
- * @return
- *      LE_OK if successful.
- *      LE_FAULT if there was an error.
  */
 //--------------------------------------------------------------------------------------------------
-static le_result_t SetDefaultSmackRules
+static void SetDefaultSmackRules
 (
     const char* appNamePtr,             ///< [IN] App name.
     const char* appLabelPtr             ///< [IN] Smack label for the app.
@@ -638,8 +799,24 @@ static le_result_t SetDefaultSmackRules
 
     // Set default permissions to allow the app to access the syslog.
     smack_SetRule(appLabelPtr, "w", "syslog");
+}
 
-    return LE_OK;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Cleans up all SMACK permissions for a given app.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void CleanupAppSmackSettings
+(
+    app_Ref_t appRef                    ///< [IN] The application reference.
+)
+{
+    // Clean up SMACK rules.
+    char appLabel[LIMIT_MAX_SMACK_LABEL_BYTES];
+    appSmack_GetLabel(appRef->name, appLabel, sizeof(appLabel));
+
+    smack_RevokeSubject(appLabel);
 }
 
 
@@ -657,16 +834,19 @@ static le_result_t SetSmackRules
     app_Ref_t appRef                    ///< [IN] Reference to the application.
 )
 {
+    // Clear out any residual SMACK rules from a previous incarnation of the Legato framework,
+    // in case it wasn't shut down cleanly.
+    CleanupAppSmackSettings(appRef);
+
     // Get the app label.
     char appLabel[LIMIT_MAX_SMACK_LABEL_BYTES];
     appSmack_GetLabel(appRef->name, appLabel, sizeof(appLabel));
 
-    if (SetDefaultSmackRules(appRef->name, appLabel) != LE_OK)
-    {
-        return LE_FAULT;
-    }
+    SetDefaultSmackRules(appRef->name, appLabel);
 
-    return SetSmackRulesForBindings(appRef, appLabel);
+    SetSmackRulesForBindings(appRef, appLabel);
+
+    return SetDevicePermissions(appRef);
 }
 
 
@@ -699,7 +879,7 @@ static le_result_t StartProc
     }
     else
     {
-        result = proc_Start(procRef, appRef->installPath);
+        result = proc_Start(procRef, appRef->installDirPath);
     }
 
     return result;
@@ -748,7 +928,7 @@ le_result_t app_Start
         return LE_FAULT;
     }
 
-    // Set default SMACK rules for this app.
+    // Set SMACK rules for this app.
     if (SetSmackRules(appRef) != LE_OK)
     {
         return LE_FAULT;
@@ -875,11 +1055,7 @@ static void CleanupApp
     app_Ref_t appRef                    ///< [IN] The application reference.
 )
 {
-    // Clean up SMACK rules.
-    char appLabel[LIMIT_MAX_SMACK_LABEL_BYTES];
-    appSmack_GetLabel(appRef->name, appLabel, sizeof(appLabel));
-
-    smack_RevokeSubject(appLabel);
+    CleanupAppSmackSettings(appRef);
 
     // Remove the sanbox.
     if (appRef->sandboxed)
@@ -926,6 +1102,8 @@ void app_Stop
     app_Ref_t appRef                    ///< [IN] Reference to the application to stop.
 )
 {
+    LE_INFO("Stopping app '%s'", appRef->name);
+
     if (appRef->state == APP_STATE_STOPPED)
     {
         LE_ERROR("Application '%s' is already stopped.", appRef->name);
@@ -1033,6 +1211,62 @@ app_ProcState_t app_GetProcState
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Finds a process object for the app.
+ *
+ * @return
+ *      The process object reference if successful.
+ *      NULL if the process could not be found.
+ */
+//--------------------------------------------------------------------------------------------------
+static ProcObjRef_t FindProcObjectRef
+(
+    app_Ref_t appRef,               ///< [IN] The application to search in.
+    pid_t pid                       ///< [IN] The pid to search for.
+)
+{
+    // Find the process in the app's list.
+    le_dls_Link_t* procLinkPtr = le_dls_Peek(&(appRef->procs));
+
+    while (procLinkPtr != NULL)
+    {
+        ProcObj_t* procObjPtr = CONTAINER_OF(procLinkPtr, ProcObj_t, link);
+
+        if (proc_GetPID(procObjPtr->procRef) == pid)
+        {
+            return procObjPtr;
+        }
+
+        procLinkPtr = le_dls_PeekNext(&(appRef->procs), procLinkPtr);
+    }
+
+    return NULL;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Checks if a given app is running a top-level process with given PID.
+ *
+ * An app's top-level processes are those that are started by the Supervisor directly.
+ * If the Supervisor starts a process and that process starts another process, this function
+ * will not find that second process.
+ *
+ * @return
+ *      true if the process is one of this app's top-level processes, false if not.
+ */
+//--------------------------------------------------------------------------------------------------
+bool app_HasTopLevelProc
+(
+    app_Ref_t appRef,
+    pid_t pid
+)
+{
+    return (FindProcObjectRef(appRef, pid) != NULL);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Gets an application's name.
  *
  * @return
@@ -1101,18 +1335,37 @@ bool app_GetIsSandboxed
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Gets an application's installation directory path.
+ * Gets the directory path for an app's installation directory in the current running system.
  *
  * @return
- *      The application's install directory path.
+ *      The absolute directory path.
  */
 //--------------------------------------------------------------------------------------------------
 const char* app_GetInstallDirPath
 (
     app_Ref_t appRef                    ///< [IN] The application reference.
 )
+//--------------------------------------------------------------------------------------------------
 {
-    return (const char*)appRef->installPath;
+    return (const char*)appRef->installDirPath;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets the directory path for an app's writeable files in the current running system.
+ *
+ * @return
+ *      The absolute directory path.
+ */
+//--------------------------------------------------------------------------------------------------
+const char* app_GetWriteableFilesDirPath
+(
+    app_Ref_t appRef                    ///< [IN] The application reference.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    return (const char*)appRef->writableFilesDirPath;
 }
 
 
@@ -1147,208 +1400,6 @@ const char* app_GetConfigPath
 )
 {
     return (const char*)appRef->cfgPathRoot;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Finds a process object for the app.
- *
- * @return
- *      The process object reference if successful.
- *      NULL if the process could not be found.
- */
-//--------------------------------------------------------------------------------------------------
-static ProcObjRef_t FindProcObjectRef
-(
-    app_Ref_t appRef,               ///< [IN] The application to search in.
-    pid_t pid                       ///< [IN] The pid to search for.
-)
-{
-    // Find the process in the app's list.
-    le_dls_Link_t* procLinkPtr = le_dls_Peek(&(appRef->procs));
-
-    while (procLinkPtr != NULL)
-    {
-        ProcObj_t* procObjPtr = CONTAINER_OF(procLinkPtr, ProcObj_t, link);
-
-        if (proc_GetPID(procObjPtr->procRef) == pid)
-        {
-            return procObjPtr;
-        }
-
-        procLinkPtr = le_dls_PeekNext(&(appRef->procs), procLinkPtr);
-    }
-
-    return NULL;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Write the reboot fault record for the application/process that experienced the fault and requires
- * a system reboot.
- *
- * @todo Write the record fault into the config tree when it is available.  This is just a temporary
- *       solution because the current config tree is non-persistent.
- */
-//--------------------------------------------------------------------------------------------------
-static void WriteRebootFaultRec
-(
-    app_Ref_t appRef,                   ///< [IN] The application reference.
-    proc_Ref_t procRef                  ///< [IN] The process reference.
-)
-{
-    // @note Don't really need to lock this file as no-one else really uses.  Using the le_flock
-    //       API just cause it's easier to use then open() and this is a temporary location for the
-    //       record fault anyways.
-    int fd = le_flock_Create(REBOOT_FAULT_RECORD, LE_FLOCK_WRITE, LE_FLOCK_REPLACE_IF_EXIST, S_IRWXU);
-
-    if (fd < 0)
-    {
-        LE_ERROR("Could not create reboot fault record.  The reboot fault limit will not \
-be enforced correctly.");
-        return;
-    }
-
-    char faultStr[LIMIT_MAX_PATH_BYTES];
-
-    int faultStrSize = snprintf(faultStr, sizeof(faultStr), "%s/%s", appRef->name,
-                                proc_GetName(procRef)) + 1;
-    LE_ASSERT(faultStrSize <= sizeof(faultStr));
-
-    int result;
-    do
-    {
-        result = write(fd, faultStr, faultStrSize);
-    }
-    while ( (result == -1) && (errno == EINTR) );
-
-    if (result == -1)
-    {
-        LE_ERROR("Could not write reboot fault record.  %m.");
-    }
-    else if (result != faultStrSize)
-    {
-        LE_ERROR("Could not write reboot fault record.  The reboot fault limit will not \
-be enforced correctly.");
-    }
-
-    le_flock_Close(fd);
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Check if the reboot fault record was created by the specified application/process.
- *
- * @return
- *      true if the reboot fault record was created by the specified app/process.
- *      false otherwise.
- */
-//--------------------------------------------------------------------------------------------------
-static bool isRebootFaultRecFor
-(
-    app_Ref_t appRef,                   ///< [IN] The application reference.
-    proc_Ref_t procRef                  ///< [IN] The process reference.
-)
-{
-    // This file does not really need to be locked as no one else uses it.  Also this should go into
-    // the config tree when the config tree is available.
-    int fd = le_flock_Open(REBOOT_FAULT_RECORD, LE_FLOCK_READ);
-
-    if (fd == LE_NOT_FOUND)
-    {
-        return false;
-    }
-    else if (fd == LE_FAULT)
-    {
-        LE_ERROR("Could not open reboot fault record.  The reboot fault limit will not \
-be enforced correctly.");
-        return false;
-    }
-
-    // Read the record.
-    char faultRec[LIMIT_MAX_PATH_BYTES] = {0};
-    ssize_t count = read(fd, faultRec, sizeof(faultRec));
-
-    le_flock_Close(fd);
-
-    if (count == -1)
-    {
-        LE_ERROR("Could not read reboot fault record.  %m.  The reboot fault limit will not \
-be enforced correctly.");
-    }
-    else if (count >= sizeof(faultRec))
-    {
-        LE_ERROR("Could not read reboot fault record.  The reboot fault limit will not \
-be enforced correctly.");
-    }
-    else
-    {
-        // Add a null to the string read.
-        faultRec[count] = '\0';
-
-        // See if the reboot record is for this app/process.
-        char faultStr[LIMIT_MAX_PATH_BYTES];
-        LE_ASSERT(snprintf(faultStr, sizeof(faultStr), "%s/%s", appRef->name, proc_GetName(procRef)) <
-                  sizeof(faultStr));
-
-        if (strcmp(faultRec, faultStr) == 0)
-        {
-            return true;
-        }
-    }
-
-    return false;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Checks to see if the fault limit for this process has been reached.  The fault limit is reached
- * when there is more than one fault within the fault limit interval.
- *
- * @return
- *      true if the fault limit has been reached.
- *      false if the fault limit has not been reached.
- */
-//--------------------------------------------------------------------------------------------------
-static bool ReachedFaultLimit
-(
-    app_Ref_t appRef,                   ///< [IN] The application reference.
-    proc_Ref_t procRef,                 ///< [IN] The process reference.
-    proc_FaultAction_t currFaultAction, ///< [IN] The process's current fault action.
-    time_t prevFaultTime                ///< [IN] Time of the previous fault.
-)
-{
-    switch (currFaultAction)
-    {
-        case PROC_FAULT_ACTION_RESTART:
-            if ( (proc_GetFaultTime(procRef) != 0) &&
-                 (proc_GetFaultTime(procRef) - prevFaultTime <= FAULT_LIMIT_INTERVAL_RESTART) )
-            {
-                return true;
-            }
-            break;
-
-        case PROC_FAULT_ACTION_RESTART_APP:
-            if ( (proc_GetFaultTime(procRef) != 0) &&
-                 (proc_GetFaultTime(procRef) - prevFaultTime <= FAULT_LIMIT_INTERVAL_RESTART_APP) )
-            {
-                return true;
-            }
-            break;
-
-        case PROC_FAULT_ACTION_REBOOT:
-            return isRebootFaultRecFor(appRef, procRef);
-
-        default:
-            // Fault limits do not apply to the other fault actions.
-            return false;
-    }
-
-    return false;
 }
 
 
@@ -1561,88 +1612,80 @@ void app_SigChildHandler
     {
         proc_Ref_t procRef = procObjRef->procRef;
 
-        // Remember the previous fault time.
-        time_t prevFaultTime = proc_GetFaultTime(procRef);
-
-        // Get the current process fault action.
+        // Tell the "proc" module to handle the signal.
+        // It will tell us what it wants us to do about it, based on the process's faultAction
+        // configuration.
         proc_FaultAction_t procFaultAction = proc_SigChildHandler(procRef, procExitStatus);
 
-        // Determine the fault action for the application.
-        if (ReachedFaultLimit(appRef, procRef, procFaultAction, prevFaultTime))
+        switch (procFaultAction)
         {
-            LE_CRIT("The process '%s' in application '%s' has reached the fault limit so the \
-application will be stopped instead of performing the configured fault action.",
-                    proc_GetName(procRef), appRef->name);
-
-            *faultActionPtr = APP_FAULT_ACTION_STOP_APP;
-        }
-        else
-        {
-            switch (procFaultAction)
-            {
-                case PROC_FAULT_ACTION_NO_FAULT:
-                    // This is something that happens if we have deliberately killed the proc or if we
-                    // paused or resumed the proc. If the wdog stopped it then we may get here with a
-                    // stop handler attached ( to call StartProc).
-                    if (procObjRef->stopHandler)
+            case PROC_FAULT_ACTION_NO_FAULT:
+                // This is something that happens if we have deliberately killed the proc or if we
+                // paused or resumed the proc. If the wdog stopped it then we may get here with a
+                // stop handler attached ( to call StartProc).
+                if (procObjRef->stopHandler)
+                {
+                    if (procObjRef->stopHandler(appRef, procRef) != LE_OK)
                     {
-                        if (procObjRef->stopHandler(appRef, procRef) != LE_OK)
-                        {
-                            LE_ERROR("Watchdog could not restart process '%s' in application '%s'.",
-                                    proc_GetName(procRef), appRef->name);
-
-                            *faultActionPtr = APP_FAULT_ACTION_STOP_APP;
-                        }
-                    }
-                    break;
-
-                case PROC_FAULT_ACTION_IGNORE:
-                    LE_CRIT("The process '%s' in app '%s' has faulted and will be ignored in \
-accordance with its fault policy.", proc_GetName(procRef), appRef->name);
-                    break;
-
-                case PROC_FAULT_ACTION_RESTART:
-                    LE_CRIT("The process '%s' in app '%s' has faulted and will be restarted in \
-accordance with its fault policy.", proc_GetName(procRef), appRef->name);
-
-                    // Restart the process now.
-                    if (StartProc(appRef, procRef) != LE_OK)
-                    {
-                        LE_ERROR("Could not restart process '%s' in application '%s'.",
-                                 proc_GetName(procRef), appRef->name);
+                        LE_ERROR("Watchdog could not restart process '%s' in app '%s'.",
+                                proc_GetName(procRef), appRef->name);
 
                         *faultActionPtr = APP_FAULT_ACTION_STOP_APP;
                     }
-                    break;
+                }
+                break;
 
-                case PROC_FAULT_ACTION_RESTART_APP:
-                    LE_CRIT("The process '%s' in app '%s' has faulted and the app will be restarted \
-in accordance with its fault policy.", proc_GetName(procRef), appRef->name);
+            case PROC_FAULT_ACTION_IGNORE:
+                LE_WARN("Process '%s' in app '%s' faulted: Ignored.",
+                        proc_GetName(procRef),
+                        appRef->name);
+                break;
 
-                    *faultActionPtr = APP_FAULT_ACTION_RESTART_APP;
-                    break;
+            case PROC_FAULT_ACTION_RESTART:
+                LE_CRIT("Process '%s' in app '%s' faulted: Restarting process.",
+                        proc_GetName(procRef),
+                        appRef->name);
 
-                case PROC_FAULT_ACTION_STOP_APP:
-                    LE_CRIT("The process '%s' in app '%s' has faulted and the app will be stopped \
-in accordance with its fault policy.", proc_GetName(procRef), appRef->name);
+                // Restart the process now.
+                if (StartProc(appRef, procRef) != LE_OK)
+                {
+                    LE_ERROR("Could not restart process '%s' in app '%s'.",
+                             proc_GetName(procRef), appRef->name);
 
                     *faultActionPtr = APP_FAULT_ACTION_STOP_APP;
-                    break;
+                }
+                break;
 
-                case PROC_FAULT_ACTION_REBOOT:
-                    LE_EMERG("The process '%s' in app '%s' has faulted and the system will now be \
-rebooted in accordance with its fault policy.", proc_GetName(procRef), appRef->name);
+            case PROC_FAULT_ACTION_RESTART_APP:
+                LE_CRIT("Process '%s' in app '%s' faulted: Restarting app.",
+                        proc_GetName(procRef),
+                        appRef->name);
 
-                    WriteRebootFaultRec(appRef, procRef);
+                *faultActionPtr = APP_FAULT_ACTION_RESTART_APP;
+                break;
 
-                    *faultActionPtr = APP_FAULT_ACTION_REBOOT;
-                    break;
-            }
+            case PROC_FAULT_ACTION_STOP_APP:
+                LE_CRIT("Process '%s' in app '%s' faulted: Stopping app.",
+                        proc_GetName(procRef),
+                        appRef->name);
+
+                *faultActionPtr = APP_FAULT_ACTION_STOP_APP;
+                break;
+
+            case PROC_FAULT_ACTION_REBOOT:
+                LE_EMERG("Process '%s' in app '%s' faulted: Rebooting system.",
+                         proc_GetName(procRef),
+                         appRef->name);
+
+                *faultActionPtr = APP_FAULT_ACTION_REBOOT;
+                break;
         }
     }
 
+    // If all the processes in the app have now died,
     if (!HasRunningProc(appRef))
     {
+        // If we've been trying to kill this thing, then we can stop the time-out timer now.
         if (appRef->killTimer != NULL)
         {
             le_timer_Stop(appRef->killTimer);
@@ -1657,4 +1700,3 @@ rebooted in accordance with its fault policy.", proc_GetName(procRef), appRef->n
         appRef->state = APP_STATE_STOPPED;
     }
 }
-

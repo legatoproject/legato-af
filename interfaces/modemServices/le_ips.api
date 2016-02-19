@@ -6,7 +6,8 @@
  *
  * <HR>
  *
- * The IPS API is used to get monitoring information related to the platform voltage input.
+ * The IPS API is used to get monitoring information related to the platform voltage input and set
+ *  warning and critical thresholds.
  *
  * @section le_ips_binding IPC interfaces binding
  *
@@ -22,11 +23,41 @@
  *
  * @section Input Power Supply Monitoring
  *
- * This functionality allows to retrieve the Platform voltage input in [mV], so that the
- *  application can use the information to diagnose should the modem isn't fully functioning.
+ * This functionality allows to retrieve the Platform input voltage in [mV], so that the
+ *  application can use the information to diagnose why the modem isn't fully functioning.
  *
  * le_ips_GetInputVoltage() API allows the application to retrieve the Platform voltage input.
  *
+ * @section Platform Input voltage Thresholds
+ *
+ * @warning When a Critical event occurs, some platform may automatically switch off.
+ *
+ * @warning On some platforms, the thresholds parameters are persistent and a Platform reboot is
+ *  required for thresholds change takes effect.
+ *
+ * Four Thresholds are set to decide the state:
+ *  the critical, warning, the normal and the high critical Platform input voltage thresholds.
+ *
+ * if the Platform input voltage decreases below the:
+ *  - "High Critical Threshold - 1 " but still higher than "Warning Threshold",
+ * @c LE_IPS_VOLTAGE_NORMAL event occurs.
+ *  - "Warning Threshold" but still higher than "Critical Threshold",
+ * @c LE_IPS_VOLTAGE_WARNING event occurs.
+ *  - "Critical Threshold", a @c LE_IPS_VOLTAGE_CRITICAL event occurs.
+ *
+ * if the Platform input voltage goes up and it reaches the :
+ *  - "Normal threshold", a @c LE_IPS_VOLTAGE_NORMAL event occurs.
+ *  - "High critical thresholds", a @c LE_IPS_HI_VOLTAGE_CRITICAL event occurs.
+ *
+ * @note The threshold values range is platform dependent.
+ *
+ * - le_ips_SetVoltageThresholds() API allows the application to set Platform input voltage
+ *  thresholds.
+ * - le_ips_GetVoltageThresholds() API allows the application to get Platform input voltage
+ * thresholds.
+ * - le_ips_AddThresholdEventHandler() API adds a handler to notify when the Platform input voltage
+ *  threshold is reached.
+ * - le_ips_RemoveThresholdEventHandler() API removes the Platform input voltage handler.
  * <HR>
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
@@ -43,9 +74,47 @@
  */
 //--------------------------------------------------------------------------------------------------
 
+
 //--------------------------------------------------------------------------------------------------
 /**
- * Get the Platform voltage input in [mV].
+ * Platform input voltage event type.
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM ThresholdStatus
+{
+    VOLTAGE_HI_CRITICAL, ///< High Critical input voltage threshold is reached.
+    VOLTAGE_NORMAL,      ///< Normal input voltage threshold is reached.
+    VOLTAGE_WARNING,     ///< Warning input voltage threshold is reached.
+    VOLTAGE_CRITICAL     ///< Critical input voltage threshold is reached.
+};
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler for Platform input voltage event.
+ */
+//--------------------------------------------------------------------------------------------------
+HANDLER ThresholdEventHandler
+(
+   ThresholdStatus event IN        ///< Input voltage threshold event reached.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This event provides information on Threshold reached.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+EVENT ThresholdEvent
+(
+    handler ThresholdEventHandler
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Platform input voltage in [mV].
  *
  * @return
  *      - LE_OK            The function succeeded.
@@ -55,4 +124,47 @@
 FUNCTION le_result_t GetInputVoltage
 (
     uint32   inputVoltage    OUT ///< [OUT] The input voltage in [mV]
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the Platform warning and critical input voltage thresholds in [mV].
+ *  When thresholds input voltage are reached, a input voltage event is triggered.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_BAD_PARAMETER The hiCriticalVolt threshold is equal or lower than the (normalVolt+1)
+ *                           threshold.
+ *                         The warningVolt threshold is equal to or higher than the normalVolt
+ *                           threshold.
+ *                         The warningVolt threshold is equal to or lower than the criticalVolt
+ *                           threshold.
+ *      - LE_FAULT         The function failed to set the thresholds.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetVoltageThresholds
+(
+   uint16   criticalVolt   IN, ///< [IN] The critical input voltage threshold in [mV].
+   uint16   warningVolt    IN, ///< [IN] The warning input voltage threshold in [mV].
+   uint16   normalVolt     IN, ///< [IN] The normal input voltage threshold in [mV].
+   uint16   hiCriticalVolt IN  ///< [IN] The high critical input voltage threshold in [mV].
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Platform warning and critical input voltage thresholds in [mV].
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to get the thresholds.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetVoltageThresholds
+(
+   uint16   criticalVolt   OUT, ///< [OUT] The critical input voltage threshold in [mV].
+   uint16   warningVolt    OUT, ///< [OUT] The warning input voltage threshold in [mV].
+   uint16   normalVolt     OUT, ///< [OUT] The normal input voltage threshold in [mV].
+   uint16   hiCriticalVolt OUT  ///< [IN] The high critical input voltage threshold in [mV].
 );

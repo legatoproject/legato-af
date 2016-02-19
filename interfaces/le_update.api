@@ -1,0 +1,322 @@
+//--------------------------------------------------------------------------------------------------
+/**
+ * @page c_update Software Update
+ *
+ * @ref le_update_interface.h "API Reference" <br>
+ * @subpage legatoServicesUpdate <br>
+ * @subpage legatoServicesUpdatePack <br>
+ * @ref howToSoftwareUpdate
+ *
+ * <HR>
+ *
+ * This API uses @ref legatoServicesUpdatePack to update a target device software/firmware.
+ *
+ * Update packs can contain one or more @e tasks to be performed by the
+ * @ref basicRuntimeArch_updateDaemon.
+ *
+ * From the client view, the update service follows this state machine
+ * while doing an update:
+ *
+ *@code
+                       Start() |
+                               |
+                               |
+           +-------------+     |
+           |             |     |
+  ALL_ITEMS_UNPACKED=NO  V     V
+           |           ------------------
+           |           |                |   End()/Error*
+           +-----------|   UNPACKING    |-------------------------+
+                       |                |                         |
+                       ------------------                         V
+                               |                          ------------------
+                               |                          |                |
+                       ALL_ITEMS_UNPACKED = YES           |     FAILED     |
+                               |                          |                |
+                               V                          ------------------
+                       ------------------                         ^
+                       |                |   End()/Error*          |
+                 +---->|    APPLYING    |-------------------------+
+                 |     |                |
+  ALL_ITEMS_DONE = NO  ------------------
+                 |         |    |
+                 +---------+    |
+                                |
+                           ALL_ITEMS_DONE = YES
+                                |
+                                V
+                       ------------------
+                       |                |
+                       |    SUCCESS     |
+                       |                |
+                       ------------------
+* Error:  Any kind of error during update.
+@endcode
+ *
+ * @section API_Usage_Guideline API Usage Guidelines
+ *
+ * Typically, the API is used like this:
+ *
+ * 1. Client calls le_update_Start() providing a file descriptor for the update service to
+ *    read the update pack and a notification callback function to call with updates.
+ *
+ * 2. Progress reports are sent to the client periodically through the notification function.
+ *
+ * 3. If the update fails, le_update_GetErrorCode() can be used to find out more info.
+ *
+ * 4. When the client is finished with the update, the client MUST call le_update_End() to
+ *    deallocate resources.
+ *
+ * To cancel an update before it finishes, call le_update_End().
+ *
+ * If the client disconnects before ending the update session, the session will automatically end.
+ * If the update is still in progress, it may be cancelled (if it's not too late).
+ *
+ *
+ * @section update_example Sample Code
+ *
+ * This C code sample calls an update service provider API to perform an update:
+ *
+ * @code
+ *
+ * void SoftwareUpdate(void)
+ * {
+ *     int fd = 0;  // Update data coming via STDIN
+ *
+ *     le_result_t result = le_update_Start(fd, UpdateProgressHandler, NULL);
+ *     if (result != LE_OK)
+ *     {
+ *          fprintf(stderr, "Update refused by server.  Try again later.\n");
+ *
+ *          // NOTE: It's okay to not delete the update here because we are exiting, so the handle
+ *          //       will be deleted automatically.
+ *
+ *          exit(EXIT_FAILURE);
+ *     }
+ * }
+ *
+ *
+ * // Sample callback function implementation.
+ * static void UpdateProgressHandler
+ * (
+ *     le_update_State_t updateState,   ///< Current state of the update.
+ *     uint percentDone,                ///< Percent done for current state.
+ *     void* contextPtr                 ///< Context pointer (NULL).
+ * )
+ * {
+ *     switch(updateState)
+ *     {
+ *         case LE_UPDATE_STATE_NEW:
+ *             // New update. Print this information.
+ *             fprintf(stdout, "New update started\n");
+ *             break;
+ *
+ *         case LE_UPDATE_STATE_UNPACKING:
+ *             fprintf(stdout, "Unpacking: %d%% \n", percentDone);
+ *             break;
+ *
+ *         case LE_UPDATE_STATE_APPLYING:
+ *             fprintf(stdout, "Applying: %d%% \n", percentDone);
+ *             break;
+ *
+ *         case LE_UPDATE_STATE_SUCCESS:
+ *             fprintf(stdout, "\nSUCCESS\n");
+ *             exit(EXIT_SUCCESS);
+ *
+ *         case LE_UPDATE_STATE_FAILED:
+ *             fprintf(stderr, "\nFAILED: error code %d\n", le_update_GetErrorCode());
+ *             exit(EXIT_FAILURE);
+ *     }
+ * }
+ *
+ * @endcode
+ *
+ * @section Update_API_System_Info Installed System Information
+ *
+ * It is possible to get the index and hash for all of the currently installed systems.  The
+ * following is an example of how one would list all installed systems and their hashes.
+ *
+ * @code
+ *
+ * int32_t systemIndex = le_update_GetCurrentSysIndex();
+ *
+ * do
+ * {
+ *     char hashBuffer[LE_LIMIT_MD5_STR_LEN + 1];
+ *
+ *     if (le_update_GetSystemHash(systemIndex, hashBuffer, sizeof(hashBuffer)) == LE_OK)
+ *     {
+ *         LE_INFO("System: %d -- %s", systemIndex, hashBuffer);
+ *     }
+ *     else
+ *     {
+ *         LE_ERROR("System: %d -- NOT FOUND", systemIndex);
+ *     }
+ * }
+ * while ((systemIndex = le_update_GetPreviousSystemIndex(systemIndex)) != -1);
+ *
+ * @endcode
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ */
+// -------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * @file le_update_interface.h
+ *
+ * Legato @ref c_update include file.
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ */
+//--------------------------------------------------------------------------------------------------
+
+
+USETYPES le_limit.api;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Different states in the update state machine. The state machine is maintained to track the
+ * update task underway.
+ *
+ * Example:
+ *     for successful installation task, state transitions look like:
+ *
+ *@verbatim
+    --> UNPACKING --> APPLYING --> SUCCESS.
+            |            |
+            +------------+-------> FAILED.
+@endverbatim
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM State
+{
+    STATE_UNPACKING,            ///< Unpacking update data.
+    STATE_APPLYING,             ///< Applying update(i.e. installation/removal operation going on).
+    STATE_SUCCESS,              ///< Successfully completed all update task.
+    STATE_FAILED                ///< Update failed due to some error or deletion request.
+};
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Error code used to provide diagnostic information after a failed update.
+ *
+ * @note
+ *     Additional information may also be available in the target device's system log.
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM ErrorCode
+{
+    ERR_NONE,                     ///< No error.
+    ERR_BAD_PACKAGE,              ///< Encountered bad update package. Check logs.
+    ERR_INTERNAL_ERROR,           ///< Something failed while doing update.  Check logs.
+    ERR_SECURITY_FAILURE          ///< Error while doing security check of the package.
+};
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The client callback function (handler) passed to le_update_Start() must look like this.
+ */
+//--------------------------------------------------------------------------------------------------
+HANDLER ProgressHandler
+(
+    State updateState       IN,  ///< Current state of update.
+
+    uint  percentDone       IN   ///< Percent done for current state. For example, in state
+                                 ///< UNPACKING, a percentDone of 80 means that 80% of the update
+                                 ///< data has been unpacked.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Register for notification of the progress of a given update.
+ */
+//--------------------------------------------------------------------------------------------------
+EVENT Progress
+(
+    handler ProgressHandler       ///< Progress handler
+);
+
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * Starts an update.
+ *
+ * Progress is reported via the progress handler callback.
+ *
+ * @return
+ *      - LE_OK if accepted.
+ *      - LE_BUSY if another update is in progress.
+ *      - LE_UNAVAILABLE if the system is still in "probation" (not marked "good" yet).
+ */
+//-------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Start
+(
+    file fd                 IN  ///< Open file descriptor from which the update can be read.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Ends an update session.  If the update isn't finished yet, cancels it.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION void End();
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function to get error code when update fails.
+ *
+ * @return
+ *      - Error code of encountered error.
+ *      - ERR_NONE if update is in any other state.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION ErrorCode GetErrorCode();
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the index of the currently running system.
+ *
+ * @return The index of the running system.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION int32 GetCurrentSysIndex();
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets the hash ID for a given system.
+ *
+ * @return
+ *      - LE_OK if no problems are encountered.
+ *      - LE_NOT_FOUND if the given index does not correspond to an available system.
+ *      - LE_OVERFLOW if the supplied buffer is too small.
+ *      - LE_FORMAT_ERROR if there are problems reading the hash for the system.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetSystemHash
+(
+    int32 systemIndex                    IN,  ///< The system to read the hash for.
+    string hashStr[le_limit.MD5_STR_LEN] OUT  ///< Buffer to hold the system hash string.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the index for the previous system in the chain, using the current system as a starting point.
+ *
+ * @return The index to the system that's previous to the given system.  -1 is returned if the
+ *         previous system was not found.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION int32 GetPreviousSystemIndex
+(
+    int32 systemIndex IN  ///< Get the system that's older than this system.
+);

@@ -1,0 +1,9 @@
+sources:
+{
+    dorothy.c
+}
+
+requires:
+{
+    component:{wwow}
+}

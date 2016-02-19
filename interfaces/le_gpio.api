@@ -1,30 +1,31 @@
 //--------------------------------------------------------------------------------------------------
 /**
- * @page c_gpio GPIO API
+ * @page c_gpio GPIO
  *
- * @ref le_gpio_interface.h "API Reference"
+ * @ref le_gpio_interface.h "API Reference" <br>
+ * @ref sampleApps_gpioCf3 "GPIO sample app"
  *
  * <HR>
  *
- * Used by apps to control general-purpose digital input/output pins.
+ * This API is used by apps to control general-purpose digital input/output pins.
  *
  * A GPIO pin typically has one or more of the following features:
- * - Can be configured as an input pin or an output pin.
- * - Can have an internal pull-up resistor or pull-down resistor enabled, or neither.
- * - If an output, can be push-pull or open-drain.
- * - If an input, can trigger an "interrupt" (asynchronous notification of state change).
+ * - configured as an input pin or an output pin.
+ * - have an internal pull-up resistor or pull-down resistor enabled, or neither.
+ * - if an output, can be push-pull or open-drain.
+ * - if an input, can trigger an @e interrupt (asynchronous notification of state change).
  *
- * Output pins can be driven in three different modes:
- * - Push-pull: A transistor connects to the supply and another transistor connects to ground
+ * Output pins can be driven in three modes:
+ * - <b>push-pull</b> one transistor connects to the supply and another transistor connects to ground
  *   (only one is operated at a time)
- * - Tri-state: Same as push-pull, with an added high-impedance (high Z) state, in which the pin
- *              is essentially disconnected from both ground and supply.
- * - Open drain: A transistor connects to ground and nothing else.  Can only be used to pull low.
+ * - <b>tri-state</b> same as push-pull with an added high-impedance (high Z) state to disconnect
+ *    pin from both ground and supply.
+ * - <b>open drain</b> transistor connects only to ground. Can only be used to pull low.
  *
- * In addition, pins have a "polarity".
- * - An <b> active-high </b> polarity pin is read/written as a digital 1 (true) when its voltage is
+ * Pins also have a @e polarity mode:
+ * - <b> active-high </b> polarity pin is read/written as a digital 1 (true) when its voltage is
  *  "high" and 0 (false) when its voltage is "low" (grounded).
- * - An <b> active-low </b> pin is read/written as a digital 1 (true) when its voltage is
+ * - <b> active-low </b> pin is read/written as a digital 1 (true) when its voltage is
  *  "low" (grounded) and 0 (false) when its voltage is "high".
  *
  * The following functions are used to configure the GPIO pin:
@@ -35,28 +36,57 @@
  * - EnablePullUp() - Enables the internal pull-up resistor (and disables the pull-down).
  * - EnablePullDown() - Enables the internal pull-down resistor (and disables the pull-up).
  * - DisableResistors() - Disables the internal pull-up/down resistors.
+ * - SetEdgeSense() - Set the edge sensing on an input pin (only works if you have an EventHandler)
  *
  * To set the level of an output pin, call Activate(), Deactivate(), or SetHighZ().
  *
  * To poll the value of an input pin, call Read().
  *
- * Use SetChangeCallback() to register a notification callback function to be called when the
- * state of an input pin changes.
+ * Use the ChangeEvent to register a notification callback function to be called when the
+ * state of an input pin changes. Thje type of edge detection can then be modified by calling
+ * SetEdgeSense() or DisbleEdgeSense()
+ * @note Only one handler can be registered per pin. Subsequent attempts to register a handler
+ * will result in the client being killed.
+ *
+ * The following functions can be used to read the current setting for a GPIO Pin. In a Linux
+ * environment these values are read from the sysfs and reflect the actual value at the time
+ * the function is called.
+ * - IsOutput() - Is the pin currently an output?
+ * - IsInput() - Is the pin currently an input?
+ * - IsActive() - Is an output pin currently being driven? (corresponds to the value file in sysfs)
+ * - GetPolarity() - Retrieve the current polarity i.e. active-low or active-high
+ * - GetEdgeSense() - What edge sensing has been enabled on an input pin?
+ * - GetPullUpDown() - What pull-up or pull-down has been enabled?
  *
  * Each GPIO pin is accessed through a single IPC service.  This makes it possible to use bindings
  * to control which GPIO pins each app is allowed to access.  It also simplifies the API by removing
  * the need to specify which pin is desired and allows the pins to be named differently in the
- * client and the server, so the client can be more portable.
+ * client and the server, so the client can be more portable. Only one client can connect to pin.
  *
  * Binding example:
  *
  * @verbatim
 bindings:
 {
-    ui.frontPanel.powerLed -> cf3.pin22
+    ui.frontPanel.powerLed -> gpioService.le_gpio22
 }
 @endverbatim
  *
+ * @section gpioConfig Configuring available GPIOs
+ *
+ * The GPIOs which are available for use are advertised in the sysfs at
+ * @verbatim /sys/class/gpio/gpiochip1/mask @endverbatim
+ * For each entry in this bitmask, a service will be advertised to allow use of the pin.
+ * However, if a pin needs to be disabled form being accessed, e.g. it carries out some system function
+ * that should not be available to apps, then it can be disabled by adding an entry to the config tree.
+ *
+ * For example, to disable pin 6 from being used, add the entry
+ * @verbatim gpioService:/pins/disabled/n @endverbatim
+ * where n is the GPIO number. The value should be set to true to disable that service. If the value is
+ * either false or absent then the service will run. Entries can be added using the config tool, for example
+ * @verbatim config set gpioService:/pins/disabled/13 true bool@endverbatim
+ * will disable the service for pin 13. Note that specifying the type as bool is vital as the config tool
+ * defaults to the string type, and hence any value set will default to false.
  * <HR>
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
@@ -232,6 +262,9 @@ ENUM Edge
  *
  * If the pin is not capable of interrupt-driven operation, then it will be sampled every
  * sampleMs milliseconds.  Otherwise, sampleMs will be ignored.
+ *
+ * If this fails, either because the handler cannot be registered, or setting the
+ * edge detection fails, then it will return a NULL reference.
  */
 //--------------------------------------------------------------------------------------------------
 EVENT ChangeEvent
@@ -241,3 +274,90 @@ EVENT ChangeEvent
     int32 sampleMs          ///< If not interrupt capable, sample the input this often (ms).
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the edge detection mode. This function can only be used when a handler is registered
+ * in order to prevent interrupts being generated and not handled
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetEdgeSense
+(
+    Edge trigger IN        ///< Change(s) that should trigger the callback to be called.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Turn off edge detection
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t DisableEdgeSense ();
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Check if the pin is configured as an output.
+ *
+ * @return true = output, false = input.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION bool IsOutput();
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Check if the pin is configured as an input.
+ *
+ * @return true = input, false = output.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION bool IsInput();
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the current value of edge sensing.
+ *
+ * @return The current configured value
+ *
+ * @note it is invalid to read the edge sense of an output
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION Edge GetEdgeSense();
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the current value the pin polarity.
+ *
+ * @return The current configured value
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION Polarity GetPolarity();
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Check if the pin is currently active.
+ *
+ * @return true = active, false = inactive.
+ *
+ * @note this function can only be used on output pins
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION bool IsActive();
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Pull up or down.
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM PullUpDown
+{
+    PULL_OFF,     ///< Neither resistor is enabled
+    PULL_DOWN,    ///< Pulldown resistor is enabled
+    PULL_UP       ///< Pullup resistor is enabled
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the current value of pull up and down resistors.
+ *
+ * @return The current configured value
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION PullUpDown GetPullUpDown();

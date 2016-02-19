@@ -2,7 +2,6 @@
 # Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 #*******************************************************************************
 
-find_package(Legato REQUIRED)
 find_package(CUnit REQUIRED)
 
 message("CUNIT_INCLUDE_DIRS: ${CUNIT_INCLUDE_DIRS}")
@@ -21,10 +20,6 @@ mkexe(${APP_TARGET}
             -i ${LEGATO_ROOT}/components/atManager/devices/uart/inc
             -i ${LEGATO_ROOT}/components/atManager/src
             -i ${LEGATO_ROOT}/components
-        DEPENDS
-            legato
-            Component.cdef
-            ${APP_SOURCES}
          )
 
 add_test(${APP_TARGET} ${EXECUTABLE_OUTPUT_PATH}/${APP_TARGET})

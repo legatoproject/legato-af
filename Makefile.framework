@@ -1,0 +1,165 @@
+# --------------------------------------------------------------------------------------------------
+# Makefile used to build the Legato application framework.
+#
+# This Makefile is intended to run as part of a larger build system.  The following variables
+# must be set by that system:
+#
+# - TARGET = e.g., localhost, ar7, wp85, raspi, etc.
+# - TARGET_CC = path to the appropriate C compiler for the target.
+# - TARGET_SANDBOX_IMPORT = selector for which set of files to import into sandboxes on the target.
+# - LEGATO_FRAMEWORK_NICE_LEVEL = The "nice" level to run framework daemons at.
+# - LE_SVCDIR_SERVER_SOCKET_NAME = File system path of the Service Directory's IPC server socket.
+# - LE_SVCDIR_CLIENT_SOCKET_NAME = File system path of the Service Directory's IPC client socket.
+#
+# Framework build output is placed under $(LEGATO_ROOT)/build/$(TARGET)/framework
+#
+# Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+# --------------------------------------------------------------------------------------------------
+
+# Make sure required variables are set.
+ifndef TARGET
+  $(error TARGET is not set)
+endif
+ifndef TARGET_CC
+  $(error TARGET_CC is not set)
+endif
+ifndef TARGET_SANDBOX_IMPORT
+  $(error TARGET_SANDBOX_IMPORT is not set)
+endif
+ifndef LEGATO_FRAMEWORK_NICE_LEVEL
+  $(error LEGATO_FRAMEWORK_NICE_LEVEL is not set)
+endif
+ifndef LE_SVCDIR_SERVER_SOCKET_NAME
+  $(error LE_SVCDIR_SERVER_SOCKET_NAME is not set)
+endif
+ifndef LE_SVCDIR_CLIENT_SOCKET_NAME
+  $(error LE_SVCDIR_CLIENT_SOCKET_NAME is not set)
+endif
+
+export LEGATO_ROOT ?= $(CURDIR)
+export LEGATO_TARGET := $(TARGET)
+
+VERSION := $(shell cat $(LEGATO_ROOT)/version)
+
+BUILD_DIR := $(LEGATO_ROOT)/build/$(TARGET)/framework
+BIN_DIR := $(BUILD_DIR)/bin
+LIB_DIR := $(BUILD_DIR)/lib
+SRC_DIR := $(LEGATO_ROOT)/framework/c/src
+
+LIBJANSSON = $(LIB_DIR)/libjansson.so
+
+# The liblegato build is done by this ninja build script.
+NINJA_SCRIPT := $(BUILD_DIR)/build.ninja
+NINJA_FLAGS =
+
+# The daemons are built using mkexe.
+MKEXE_FLAGS = -o $(BIN_DIR)/$@ -t $(TARGET) -w $(BUILD_DIR)/$@ -l $(LIB_DIR)
+
+# Do not be verbose by default.
+VERBOSE ?= 0
+ifeq ($(VERBOSE),1)
+  NINJA_FLAGS += -v
+  MKEXE_FLAGS += -v
+endif
+
+.PHONY: all
+all: liblegato daemons targetTools
+	# Computing MD5 hash for contents of framework bin and lib directories.
+	md5=` ( find $(BIN_DIR) && \
+			find $(BIN_DIR) -type f | xargs cat && \
+			find $(BIN_DIR) -type l | xargs -r -n 1 readlink && \
+			find $(LIB_DIR) && \
+			find $(LIB_DIR) -type f | xargs cat && \
+			find $(LIB_DIR) -type l | xargs -r -n 1 readlink \
+		  ) | md5sum` && \
+	md5=$${md5%% *} && \
+	echo "$$md5" > $(BUILD_DIR)/md5
+
+.PHONY: targetTools
+targetTools: $(LIBJANSSON) liblegato
+	$(MAKE) -f Makefile.targetTools
+
+.PHONY: liblegato
+liblegato: $(LIB_DIR) $(NINJA_SCRIPT)
+	ninja $(NINJA_FLAGS) -f $(NINJA_SCRIPT)
+
+.PHONY: daemons
+daemons: start supervisor serviceDirectory logCtrlDaemon configTree watchdog updateDaemon
+
+.PHONY: start
+start: liblegato $(BIN_DIR)
+	$(TARGET_CC) -o $(BIN_DIR)/startSystem $(SRC_DIR)/start/start.c \
+		-Wall -Werror \
+		-I$(LEGATO_ROOT)/framework/c/inc \
+		-DVERSION=\"$(VERSION)\" \
+		-Wl,--enable-new-dtags,-rpath="\$$ORIGIN/../lib" \
+		-L$(LIB_DIR) -llegato
+
+.PHONY: supervisor
+supervisor: liblegato $(BIN_DIR)
+	mkexe $(MKEXE_FLAGS) \
+		$(SRC_DIR)/supervisor \
+		-i $(LEGATO_ROOT)/interfaces/supervisor \
+		-i $(SRC_DIR) \
+		-s $(SRC_DIR)/supervisor \
+		--cflags=-DNO_LOG_CONTROL \
+		--cflags=-DLEGATO_FRAMEWORK_NICE_LEVEL=$(LEGATO_FRAMEWORK_NICE_LEVEL) \
+		--cflags=-D$(TARGET_SANDBOX_IMPORT)
+
+.PHONY: serviceDirectory
+serviceDirectory: liblegato $(BIN_DIR)
+	mkexe $(MKEXE_FLAGS) \
+		$(SRC_DIR)/serviceDirectory/serviceDirectory.c \
+		--cflags=-DNO_LOG_CONTROL \
+		--cflags=-DLE_RUNTIME_DIR="$(LE_RUNTIME_DIR)/" \
+		--cflags=-DLE_SVCDIR_SERVER_SOCKET_NAME="$(LE_SVCDIR_SERVER_SOCKET_NAME)" \
+		--cflags=-DLE_SVCDIR_CLIENT_SOCKET_NAME="$(LE_SVCDIR_CLIENT_SOCKET_NAME)"
+
+.PHONY: logCtrlDaemon
+logCtrlDaemon: liblegato $(BIN_DIR)
+	mkexe $(MKEXE_FLAGS) \
+		$(SRC_DIR)/logDaemon \
+		--cflags=-DNO_LOG_CONTROL \
+		-i $(LEGATO_ROOT)/interfaces/supervisor
+
+.PHONY: configTree
+configTree: liblegato $(BIN_DIR)
+	mkexe $(MKEXE_FLAGS) \
+		$(SRC_DIR)/configTree \
+		-i $(SRC_DIR) \
+		--cflags=-std=c99
+
+.PHONY: watchdog
+watchdog: liblegato $(BIN_DIR)
+	mkexe $(MKEXE_FLAGS) \
+		$(SRC_DIR)/watchdog
+
+.PHONY: updateDaemon
+updateDaemon: liblegato $(BIN_DIR)
+	mkexe $(MKEXE_FLAGS) \
+		$(SRC_DIR)/updateDaemon \
+		-i $(LEGATO_ROOT)/interfaces/updateDaemon \
+		-i $(SRC_DIR)/appCfg \
+		-i $(SRC_DIR) \
+		-s $(SRC_DIR) \
+		-s $(SRC_DIR)/updateDaemon \
+		--ldflags=-L$(LIB_DIR)
+
+# If the ninja script doesn't exist, we generate it using the ninja-generator script.
+$(NINJA_SCRIPT): $(BUILD_DIR)
+	framework/c/src/ninja-generator
+
+# Currently, the framework depends on libjansson, which is built using CMake.
+$(LIBJANSSON): $(LIB_DIR)
+	export TARGET_CC && \
+		mkdir -p $(BUILD_DIR)/libjansson
+		cd $(BUILD_DIR)/libjansson && \
+		cmake $(LEGATO_ROOT)/3rdParty/jansson-2.6 \
+			-DCMAKE_TOOLCHAIN_FILE=$(LEGATO_ROOT)/cmake/toolchain.yocto.cmake \
+			-DCMAKE_LIBRARY_OUTPUT_DIRECTORY=$(LIB_DIR) \
+			-DUSE_CLANG=$(USE_CLANG)
+	make -C $(BUILD_DIR)/libjansson
+
+# Rules for creating directories.
+$(BUILD_DIR) $(LIB_DIR) $(BIN_DIR):
+	mkdir -p $@

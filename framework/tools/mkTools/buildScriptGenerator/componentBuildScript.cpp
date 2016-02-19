@@ -47,8 +47,7 @@ static void GenerateCommentHeader
 static void GenerateCommonCAndCxxFlags
 (
     std::ofstream& script,  ///< Build script to write the variable definition to.
-    const model::Component_t* componentPtr,
-    const mk::BuildParams_t& buildParams
+    const model::Component_t* componentPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -90,7 +89,7 @@ static void GenerateCommonCAndCxxFlags
     }
 
     // Define the component name, log session variable, and log filter variable.
-    script << " -DLEGATO_COMPONENT=" << componentPtr->name;
+    script << " -DLE_COMPONENT_NAME=" << componentPtr->name;
     script << " -DLE_LOG_SESSION=" << componentPtr->name << "_LogSession ";
     script << " -DLE_LOG_LEVEL_FILTER_PTR=" << componentPtr->name << "_LogLevelFilterPtr ";
 
@@ -101,19 +100,25 @@ static void GenerateCommonCAndCxxFlags
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Add to a given string the list of sub-component library (.so) files that a given component's
- * library depends on.  If any of these files changes, the component's library must be re-linked.
+ * Write to a given script the list of implicit dependencies for a given component's library.
+ * If any of these files change, the component library must be re-linked.
  *
  * @note This is recursive if the component depends on any other components.
  **/
 //--------------------------------------------------------------------------------------------------
-static void GetSubComponentLibs
+static void GetImplicitDependencies
 (
-    std::stringstream& result,  ///< Stream to write the variable definition to.
+    std::ofstream& script,  ///< Build script to write to.
     const model::Component_t* componentPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
+    // For each
+    for (const auto& dependency : componentPtr->implicitDependencies)
+    {
+        script << " " << dependency;
+    }
+
     // For each sub-component,
     for (auto subComponentPtr : componentPtr->subComponents)
     {
@@ -121,7 +126,7 @@ static void GetSubComponentLibs
         // on that sub-component library.
         if (subComponentPtr->lib != "")
         {
-            result << " " << subComponentPtr->lib;
+            script << " " << subComponentPtr->lib;
         }
 
         // Component also depends on whatever the sub-component depends on.
@@ -129,7 +134,7 @@ static void GetSubComponentLibs
         //       because the sub-component library will depend on those other things, so depending
         //       on the sub-component library is sufficient to imply an indirect dependency on
         //       those other things.
-        GetSubComponentLibs(result, subComponentPtr);
+        GetImplicitDependencies(script, subComponentPtr);
     }
 }
 
@@ -187,7 +192,10 @@ static void GenerateLdFlagsDef
     }
 
     // Add the library output directory to the list of places to search for libraries to link with.
-    script << " -L" << buildParams.libOutputDir;
+    if (!buildParams.libOutputDir.empty())
+    {
+        script << " -L" << buildParams.libOutputDir;
+    }
 
     // Set the DT_RUNPATH variable inside the executable's ELF headers to include the expected
     // on-target runtime locations of the libraries needed.
@@ -197,7 +205,7 @@ static void GenerateLdFlagsDef
     GetDependentLibLdFlags(script, componentPtr);
 
     // Link with the standard runtime libs.
-    script << " \"-L$$LEGATO_BUILD/bin/lib\" -llegato -lpthread -lrt -lm\n";
+    script << " \"-L$$LEGATO_BUILD/framework/lib\" -llegato -lpthread -lrt -lm\n";
 }
 
 
@@ -210,8 +218,7 @@ static void GenerateLdFlagsDef
 static void GetInterfaceHeaders
 (
     std::string& result,   ///< String to populate.
-    const model::Component_t* componentPtr,
-    const mk::BuildParams_t& buildParams
+    const model::Component_t* componentPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -246,7 +253,7 @@ static void GetInterfaceHeaders
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Print to a given build script a rule for building a given component's library.
+ * Print to a given build script a build statement for building a given component's library.
  **/
 //--------------------------------------------------------------------------------------------------
 static void GenerateComponentLibBuildStatement
@@ -260,11 +267,11 @@ static void GenerateComponentLibBuildStatement
     std::string rule;
 
     // Determine which rules should be used for building the component.
-    if (!componentPtr->cxxSources.empty())
+    if (!componentPtr->cxxObjectFiles.empty())
     {
         rule = "LinkCxxLib";
     }
-    else if (!componentPtr->cSources.empty())
+    else if (!componentPtr->cObjectFiles.empty())
     {
         rule = "LinkCLib";
     }
@@ -278,13 +285,13 @@ static void GenerateComponentLibBuildStatement
     script << "build " << componentPtr->lib << ": " << rule;
 
     // Includes object files compiled from the component's C/C++ source files.
-    for (auto sourceFile : componentPtr->cSources)
+    for (auto objFilePtr : componentPtr->cObjectFiles)
     {
-        script << " " << GetObjectFile(sourceFile);
+        script << " $builddir/" << objFilePtr->path;
     }
-    for (auto sourceFile : componentPtr->cxxSources)
+    for (auto objFilePtr : componentPtr->cxxObjectFiles)
     {
-        script << " " << GetObjectFile(sourceFile);
+        script << " $builddir/" << objFilePtr->path;
     }
 
     // Also includes all the object files for the auto-generated IPC API client and server
@@ -302,12 +309,8 @@ static void GenerateComponentLibBuildStatement
     script << " $builddir/" << componentPtr->workingDir << "/obj/_componentMain.c.o";
 
     // Add implicit dependencies.
-    std::stringstream implicitDependencies;
-    GetSubComponentLibs(implicitDependencies, componentPtr);
-    if (!implicitDependencies.str().empty())
-    {
-        script << " |" << implicitDependencies.str();
-    }
+    script << " |";
+    GetImplicitDependencies(script, componentPtr);
     script << "\n";
 
     // Define the ldFlags variable.
@@ -319,7 +322,7 @@ static void GenerateComponentLibBuildStatement
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Print to a given build script a rule for building a given C source code file's object file.
+ * Print to a given script a build statement for building a given C source code file's object file.
  *
  * The source file path can be absolute, relative to the component's source directory, or
  * begin with "$builddir/" to make it relative to the root of the working directory tree.
@@ -329,15 +332,14 @@ static void GenerateCSourceBuildStatement
 (
     std::ofstream& script,  ///< Build script to write to.
     const model::Component_t* componentPtr,
-    const std::string& sourceFile,  ///< Path to the source file.
-    const std::string& apiHeaders,///< String containing IPC API .h files needed by component.
-    const mk::BuildParams_t& buildParams
+    const model::ObjectFile_t* objFilePtr,  ///< The object file to build.
+    const std::string& apiHeaders ///< String containing IPC API .h files needed by component.
 )
 //--------------------------------------------------------------------------------------------------
 {
     // Create the build statement.
-    script << "build " << GetObjectFile(sourceFile) << ":"
-              " CompileC " << GetAbsoluteSourcePath(sourceFile, componentPtr);
+    script << "build $builddir/" << objFilePtr->path << ":"
+              " CompileC " << objFilePtr->sourceFilePath;
 
     // Add order-only dependencies for all the generated .h files that will be needed by the
     // component.  This ensures that the .c files won't be compiled until all the .h files are
@@ -350,7 +352,7 @@ static void GenerateCSourceBuildStatement
 
     // Define the cFlags variable.
     script << "  cFlags = $cFlags";
-    GenerateCommonCAndCxxFlags(script, componentPtr, buildParams);
+    GenerateCommonCAndCxxFlags(script, componentPtr);
     for (auto& arg : componentPtr->cFlags)
     {
         script << " " << arg;
@@ -361,7 +363,7 @@ static void GenerateCSourceBuildStatement
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Print to a given build script a rule for building a given C++ source code file's object file.
+ * Print to a given build script a statement for building a given C++ source code file's object file.
  *
  * The source file path can be absolute, relative to the component's source directory, or
  * begin with "$builddir/" to make it relative to the root of the working directory tree.
@@ -371,15 +373,14 @@ static void GenerateCxxSourceBuildStatement
 (
     std::ofstream& script,  ///< Build script to write to.
     const model::Component_t* componentPtr,
-    const std::string& sourceFile,  ///< Path to the source file.
-    const std::string& apiHeaders,///< String containing IPC API .h files needed by component.
-    const mk::BuildParams_t& buildParams
+    const model::ObjectFile_t* objFilePtr,  ///< The object file to build.
+    const std::string& apiHeaders ///< String containing IPC API .h files needed by component.
 )
 //--------------------------------------------------------------------------------------------------
 {
     // Create the build statement.
-    script << "build " << GetObjectFile(sourceFile) << ":"
-              " CompileCxx " << GetAbsoluteSourcePath(sourceFile, componentPtr);
+    script << "build $builddir/" << objFilePtr->path << ":"
+              " CompileCxx " << objFilePtr->sourceFilePath;
 
     // Add order-only dependencies for all the generated .h files that will be needed by the
     // component.  This ensures that the .c files won't be compiled until all the .h files are
@@ -392,7 +393,7 @@ static void GenerateCxxSourceBuildStatement
 
     // Define the cxxFlags variable.
     script << "  cxxFlags = $cxxFlags";
-    GenerateCommonCAndCxxFlags(script, componentPtr, buildParams);
+    GenerateCommonCAndCxxFlags(script, componentPtr);
     for (auto& arg : componentPtr->cxxFlags)
     {
         script << " " << arg;
@@ -420,31 +421,23 @@ void GenerateBuildStatements
 
     // Create a set of header files that need to be generated for all IPC API interfaces.
     std::string interfaceHeaders;
-    GetInterfaceHeaders(interfaceHeaders, componentPtr, buildParams);
+    GetInterfaceHeaders(interfaceHeaders, componentPtr);
 
     // Add build statements for all the component's object files.
-    for (auto cSourceFile : componentPtr->cSources)
+    for (auto objFilePtr : componentPtr->cObjectFiles)
     {
-        GenerateCSourceBuildStatement(script,
-                                      componentPtr,
-                                      cSourceFile,
-                                      interfaceHeaders,
-                                      buildParams);
+        GenerateCSourceBuildStatement(script, componentPtr, objFilePtr, interfaceHeaders);
     }
-    for (auto cxxSourceFile : componentPtr->cxxSources)
+    for (auto objFilePtr : componentPtr->cxxObjectFiles)
     {
-        GenerateCxxSourceBuildStatement(script,
-                                        componentPtr,
-                                        cxxSourceFile,
-                                        interfaceHeaders,
-                                        buildParams);
+        GenerateCxxSourceBuildStatement(script, componentPtr, objFilePtr, interfaceHeaders);
     }
 
     // Add a build statement for the generated component-specific code.
     script << "build $builddir/" << componentPtr->workingDir + "/obj/_componentMain.c.o" << ":"
               " CompileC $builddir/" << componentPtr->workingDir + "/src/_componentMain.c" << "\n";
     script << "  cFlags = $cFlags";
-    GenerateCommonCAndCxxFlags(script, componentPtr, buildParams);
+    GenerateCommonCAndCxxFlags(script, componentPtr);
     script << "\n\n";
 }
 
@@ -644,6 +637,7 @@ void Generate
     script << "cFlags =" << buildParams.cFlags << includes << "\n\n";
     script << "cxxFlags =" << buildParams.cxxFlags << includes << "\n\n";
     script << "ldFlags =" << buildParams.ldFlags << "\n\n";
+    script << "target = " << buildParams.target << "\n\n";
     GenerateIfgenFlagsDef(script, buildParams.interfaceDirs);
     GenerateBuildRules(script, buildParams.target, argc, argv);
 

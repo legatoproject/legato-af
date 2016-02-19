@@ -122,7 +122,7 @@ static void GainTimerHandler
     le_timer_Ref_t timerRef
 )
 {
-    static uint32_t vol = 0, getVol = 0;
+    static int32_t vol = 0, getVol = 0;
     static bool increase = true;
     le_result_t result;
 
@@ -753,6 +753,8 @@ static void ConnectAudioToFileLocalPlay
     FileAudioRef = le_audio_OpenPlayer();
     LE_ERROR_IF((FileAudioRef==NULL), "OpenFilePlayback returns NULL!");
 
+    le_audio_Unmute(FileAudioRef);
+
     MediaHandlerRef = le_audio_AddMediaHandler(FileAudioRef, MyMediaEventHandler, NULL);
 
     if (FileAudioRef && AudioOutputConnectorRef)
@@ -805,6 +807,9 @@ static void ConnectAudioToFileLocalRec
 )
 {
     le_result_t res;
+
+    LE_ASSERT(le_audio_SetGain( FeInRef, 0x5000 ) == LE_OK);
+
     if ((AudioFileFd=open(AudioFilePath, O_WRONLY | O_CREAT | O_TRUNC)) == -1)
     {
         LE_ERROR("Open file %s failure: errno.%d (%s)",  AudioFilePath, errno, strerror(errno));
@@ -883,6 +888,12 @@ static void ConnectAudioToFileLocalRec
             {
                 LE_INFO("File is now recording.");
             }
+
+            sleep(1);
+
+            LE_INFO("Try again to record");
+
+            LE_ASSERT(le_audio_RecordFile(FileAudioRef, LE_AUDIO_NO_FD) != LE_OK);
 
             ExecuteNextOption();
         }

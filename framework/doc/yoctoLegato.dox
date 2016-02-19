@@ -1,31 +1,55 @@
 /** @page yoctoLegato Yocto Legato Builds
 
+This topic provides info about working with Legato and Yocto.
+
 The Yocto Project is an open source collaboration project that provides templates,
 tools and methods to help you create custom Linux-based systems for embedded
 products regardless of the hardware architecture.
 
-Legato is compatible with Yocto 1.6.1
+Legato is compatible with Yocto 1.7.2
 
 @section getstartedYoctoLinux_yoctoDirectories Yocto Linux Directories
 
-Untar the file @b Legato-Dist-Source-mdm9x15-15.05.tar.bz2 to a directory:
+Untar the @b Legato Distribution file to a directory
+(available at <a href="http://source.sierrawireless.com/resources/legato/legatolinuxdist/">Legato Downloads</a>):
 @code
 $ cd <some directory>
-$ tar xvjf Legato-Linux-Dist-mdm9x15-15.05.tar.bz2
+$ tar xvjf [Legato-Dist-Source file]
 @endcode
 
 These file/directories will be extracted:
-- <b>linux-yocto-3.4.git</b>  -  Linux kernel - 14.1.0.Beta.rc2
-- <b>Legato-Yocto1_6</b> -  Sierra Wireless specific layers
+- <b>downloads</b>  -  Linux kernel
+- <b>kernel</b> -  Sierra Wireless specific layers
 - <b>meta-swi</b> -  Hardware adaptations
 - <b>meta-swi-extras</b> -  Build scripts and proprietary code
 
 Yocto uses a layered model for its build system. In Legato, device-specific layers are
  @c meta-swi-[target] and @c meta-swi-bin.
 
-Yocto 1.6.1 and poky environment documentation is available at
+Yocto 1.7.2 and poky environment documentation is available at
 <a href ="https://www.yoctoproject.org/documentation/archived?keys=&field_version_tid=45">
 Yocto docs</a>
+
+@section yoctoWP85 WP85 and Yocto
+
+The following table lists details about Yocto support for the WP85 module.
+
+@warning @c legato-image.wp85.ubi requires fakeroot 1.10.2 for generation.
+
+| File Type | Partition | Filename | Def. | Description |
+| ------------- | --------- | ------------- | ------- | -------------- |
+| bootloader image | mtd0 | appsboot.mbn | * | LK (little-kernel), provides fastboot |
+| kernel image | mtd1 | boot-yocto-mdm9x15.2k.img | * | kernel (uncompressed) + mdm9x15-image-initramfs |
+| rootfs image | mtd2 | mdm9x15-image-minimal-swi-mdm9x15.2k.ubi | * | rootfs as ubi (actual rootfs filesystem is squashfs, read-only) |
+|       |       | mdm9x15-image-minimal-swi-mdm9x15.2k.yaffs2 |   | rootfs as yaffs2 format (not working) |
+| legato image | mtd3 | legato-image.wp85.ubi | * | legato as ubi (actual filesystem is squashfs, require fakeroot > 1.10.2 for generation) |
+|       |       | legato-image.wp85.yaffs2 |  | legato as yaffs2 (not working) |
+| packages |  | boot_wp85.cwe |  | package with bootloader |
+|       |       | boot-yocto_wp85.cwe |  | package with bootloader + yocto (= kernel + rootfs) |
+|       |       | boot-yocto-legato_wp85.cwe | | package with bootloader + yocto (= kernel + rootfs) + legato |
+|       |       | legato-image.wp85.cwe |  | package with legato |
+|       |       | yocto_wp85.cwe |  | package with yocto (= kernel + rootfs) |
+|       |       | yocto-legato_wp85.cwe |  | package with yocto (= kernel + rootfs) + legato |
 
 @section getstartedYoctoLinux_prebuiltYoctoImages Pre-built Yocto Image
 

@@ -133,6 +133,7 @@
 #include "treeDb.h"
 #include "treeUser.h"
 #include "nodeIterator.h"
+#include "sysPaths.h"
 
 
 
@@ -2599,12 +2600,10 @@ static void DeleteTreeFile
 {
     LE_DEBUG("** Deleting tree file, '%s'.", filePathPtr);
 
-    if (unlink(filePathPtr) >= 0)
+    if (unlink(filePathPtr) != 0)
     {
-        return;
+        LE_ERROR("File delete failure, '%s', reason '%m'.", filePathPtr);
     }
-
-    LE_ERROR("File delete failure, '%s', reason '%s'.", filePathPtr, strerror(errno));
 }
 
 
@@ -3154,8 +3153,9 @@ void tdb_MergeTree
 
     if (fileRef == -1)
     {
+        LE_EMERG("Failed to open config file '%s' (%m).", filePath);
         LE_EMERG("Changes have been merged in memory, however they could not be committed to the "
-                 "filesystem!!  Reason: %s", strerror(errno));
+                 "filesystem!!");
         return;
     }
 

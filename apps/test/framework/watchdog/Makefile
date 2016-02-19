@@ -9,4 +9,4 @@ test.$(targ): dogTest.$(targ) dogTestRevertAfterTimeout.$(targ) dogTestNeverNow.
 
 clean:
 	rm -rf _build_*
-	rm -f *.{ar{7,86},wp{7,85},localhost}
+	rm -f *.update

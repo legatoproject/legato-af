@@ -795,7 +795,10 @@ void Save
     // Write each arg as a line in the file.
     for (int i = 0; i < argc; i++)
     {
-        argsFile << argv[i] << '\n';
+        if (strcmp(argv[i], "--dont-run-ninja") != 0) // But skip '--dont-run-ninja'.
+        {
+            argsFile << argv[i] << '\n';
+        }
 
         if (argsFile.fail())
         {
@@ -882,6 +885,24 @@ different:
     if (buildParams.beVerbose)
     {
         std::cout << "Command-line arguments are different this time." << std::endl;
+        std::cout << "-- Last time (" << filePath << ") --" << std::endl;
+        argsFile.clear();
+        argsFile.seekg(0);
+        if (!argsFile.good())
+        {
+            throw mk::Exception_t("Error reading from file '" + filePath + "'.");
+        }
+        while (!argsFile.eof())
+        {
+            argsFile.getline(lineBuff, sizeof(lineBuff));
+            std::cout << lineBuff << " ";
+        }
+        std::cout << std::endl << "-- This time --" << std::endl;
+        for (i = 0; i < argc; i++)
+        {
+            std::cout << argv[i] << " ";
+        }
+        std::cout << std::endl;
     }
     return false;
 }

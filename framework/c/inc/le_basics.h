@@ -29,7 +29,7 @@
  *
  * @note All error codes are negative integers. They allow functions with signed
  *       integers to return non-negative values when successful or standard error codes on failure.
- * @deprecated the result code LE_NOT_POSSIBLE is scheduled to be removed before 15.04
+ * @deprecated the result code LE_NOT_POSSIBLE is scheduled to be removed.
  */
 //--------------------------------------------------------------------------------------------------
 typedef enum
@@ -55,7 +55,8 @@ typedef enum
     LE_UNSUPPORTED = -18,       ///< The underlying resource does not support this operation.
     LE_IO_ERROR = -19,          ///< An IO operation failed.
     LE_NOT_IMPLEMENTED = -20,   ///< Unimplemented functionality.
-    LE_UNAVAILABLE = -21        ///< A transient or temporary loss of a service or resource.
+    LE_UNAVAILABLE = -21,       ///< A transient or temporary loss of a service or resource.
+    LE_TERMINATED = -22,        ///< The process, operation, data stream, session, etc. has stopped.
 }
 le_result_t;
 

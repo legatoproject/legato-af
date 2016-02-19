@@ -33,7 +33,7 @@ OnExit() {
 function runApps
 {
     echo "##########  Stopping all other apps on device '$targetAddr'."
-    ssh root@$targetAddr "/usr/local/bin/app stop \"*\""
+    ssh root@$targetAddr "$BIN_PATH/app stop \"*\""
     sleep 1
 
     echo "##########  Clear the logs."
@@ -46,7 +46,7 @@ function runApps
     echo "##########  Run all the apps."
     for app in $appList
     do
-        ssh root@$targetAddr "/usr/local/bin/app start $app"
+        ssh root@$targetAddr "$BIN_PATH/app start $app"
         CheckRet
     done
 }
@@ -59,7 +59,7 @@ function runApps
 #---------------------------------------------------------------------------------------------------
 function rconfigset
 {
-    ssh root@$targetAddr "/usr/local/bin/config set $1 $2"
+    ssh root@$targetAddr "$BIN_PATH/config set $1 $2"
 }
 
 
@@ -73,7 +73,7 @@ function rconfigset
 echo "*****************  configTree ACL Tests started.  *****************"
 
 echo "##########  Make sure Legato is running on device '$targetAddr'."
-ssh root@$targetAddr "/usr/local/bin/legato start"
+ssh root@$targetAddr "$BIN_PATH/legato start"
 CheckRet
 
 

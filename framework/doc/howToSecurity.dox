@@ -1,0 +1,23 @@
+/** @page howToSecurity Configure Security
+
+
+Legato @ref basicSecuritySandbox "sandboxes" provide a security mechanism to separate running apps
+in the same system.
+
+By default, the Supervisor automatically creates (and destroys) sandboxes for each app (with all the
+files and IPC services needed). At runtime, only these @e approved files and IPC services can be
+accessed by the app.
+
+You @subpage howToSecuritySandbox "configure" Legato sandboxes through @ref defFiles.
+
+<HR>
+
+Legato also supports
+@subpage howToSecuritySmack 
+
+
+<HR>
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/

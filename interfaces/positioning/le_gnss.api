@@ -2,7 +2,8 @@
 /**
  * @page c_gnss GNSS
  *
- * @ref le_gnss_interface.h "API Reference" <br>
+ * @ref le_gnss_interface.h "API Reference"
+ *
  * @ref howToGNSS
  *
  * <HR>
@@ -25,27 +26,29 @@
    }
    @endverbatim
  *
- * @section le_gnss_EnableDisable Enable/Disable GNSS device
+ * @section le_gnss_ControlApi GNSS Control API
+ *
+ * @subsection le_gnss_EnableDisable Enable/Disable GNSS device
  *
  * The application can enable/disable the GNSS device with the le_gnss_Enable()
  * / le_gnss_Disable() functions.
  * By default the GNSS device is enabled for the positioningService application service.
  * Also see @ref howToGNSS.
  *
- * @section le_gnss_StartStop Start/Stop GNSS device
+ * @subsection le_gnss_StartStop Start/Stop GNSS device
  *
  * The application can start/stop the GNSS device with the le_gnss_Start() / le_gnss_Stop()
  * functions.
  * The default "HOT" start condition is applied and all assistance data are used.
  * Also see @ref howToGNSS.
  *
- * @section le_gnss_StartingMode Starting mode
+ * @subsubsection le_gnss_StartingMode Starting mode
  *
  * Starting modes are used only for test purposes and allow start performance measurement.
  * @note For more information about start performances, please refer to your specific
  * platform documentation.
  *
- * @subsection le_gnss_Data GNSS data
+ * @subsubsection le_gnss_Data GNSS data
  * The following table describes the <b>minimum</b> required data for those starting modes:
  *
  * | GNSS Data / Starting mode  | HOT  | WARM  | COLD  | FACTORY |
@@ -66,32 +69,39 @@
  * The Extended Ephemeris could be loaded again using the le_gnss_LoadExtendedEphemerisFile()
  * function.
  *
- * @subsection le_gnss_TTFF Time To First Fix (TTFF)
+ * @subsubsection le_gnss_TTFF Time To First Fix (TTFF)
  * The le_gnss_GetTtff() function provides the TTFF (first between 2-Dimensional or 3-Dimensional
- * Position Fix) of the last position fix.
+ * position fix) of the last position fix.
  * Please refer to @ref le_gnss_APIcallsRequirements. Also see @ref howToGNSS.
  *
- * @subsection le_gnss_ForceHotRestart Force HOT restart
+ * @subsubsection le_gnss_ForceHotRestart Force HOT restart
  * The le_gnss_ForceHotRestart() function performs a "HOT" restart of the GNSS device. The current
  * GNSS session is stopped, then started using the available @ref le_gnss_Data.
  * Please refer to @ref le_gnss_APIcallsRequirements. Also see @ref howToGNSS.
  *
- * @subsection le_gnss_ForceWarmRestart Force WARM restart
+ * @subsubsection le_gnss_ForceWarmRestart Force WARM restart
  * The le_gnss_ForceWarmRestart() function performs a "WARM" restart of the GNSS device. The current
  * GNSS session is stopped, then started using the available @ref le_gnss_Data.
  * Please refer to @ref le_gnss_APIcallsRequirements. Also see @ref howToGNSS.
  *
- * @subsection le_gnss_ForceColdRestart Force COLD restart
+ * @subsubsection le_gnss_ForceColdRestart Force COLD restart
  * The le_gnss_ForceColdRestart() function performs a "COLD" restart of the GNSS device. The current
  * GNSS session is stopped, then started using the available @ref le_gnss_Data.
  * Please refer to @ref le_gnss_APIcallsRequirements. Also see @ref howToGNSS.
  *
- * @subsection le_gnss_ForceFactoryRestart Force FACTORY restart
+ * @subsubsection le_gnss_ForceFactoryRestart Force FACTORY restart
  * The le_gnss_ForceFactoryRestart() function performs a "FACTORY" restart of the GNSS device.
  * The current GNSS session is stopped, then started using the available @ref le_gnss_Data.
  * Please refer to @ref le_gnss_APIcallsRequirements. Also see @ref howToGNSS.
  *
- * @section le_gnss_SetGetConstellation GNSS constellation selection
+ * @subsection le_gnss_AcquisitionRate Acquisition rate
+ * The GNSS position is computed and delivered each acquisition rate. Default value is 1 second
+ * The application can configure/retreive the GNSS device acquisition rate with the
+ * le_gnss_SetAcquisitionRate() / le_gnss_GetAcquisitionRate() functions.
+ *
+ * Please refer to @ref le_gnss_APIcallsRequirements.
+ *
+ * @subsection le_gnss_SetGetConstellation GNSS constellation selection
  *
  * The le_gnss_SetConstellation() function selects the GNSS constellation(s) used in solution.
  * If all GNSS constellations are disabled, the GNSS engine is disabled.
@@ -107,9 +117,76 @@
  * The le_gnss_GetConstellation() function gets the GNSS constellation(s) enabled to be used
  * in solution.
  *
+ * @subsection le_gnss_APIcallsRequirements API calls Requirements
+ * The following table shows the pre-requisites when using the GNSS service API function set.
+ * ''LE_OK or error code'' means the function is authorized in the corresponding state, the request
+ * is performed and the result is returned; otherwise the returned error is indicated for each state
+ *.
+ * | Function / GNSS state  | UNINITIALIZED  | READY  | ACTIVE  | DISABLED |
+ *| ----------------------------- | --------------------------- | -----------------------------| --------------------------- | --------------------------- |
+ *| le_gnss_Start() | LE_NOT_PERMITTED | LE_OK or error code | LE_DUPLICATE | LE_NOT_PERMITTED |
+ *| le_gnss_Stop() | LE_NOT_PERMITTED | LE_DUPLICATE | LE_OK or error code | LE_NOT_PERMITTED |
+ *| le_gnss_ForceHotRestart() | LE_NOT_PERMITTED | LE_NOT_PERMITTED | LE_OK or error code | LE_NOT_PERMITTED |
+ *| le_gnss_ForceWarmRestart() | LE_NOT_PERMITTED | LE_NOT_PERMITTED | LE_OK or error code | LE_NOT_PERMITTED |
+ *| le_gnss_ForceColdRestart() | LE_NOT_PERMITTED | LE_NOT_PERMITTED | LE_OK or error code | LE_NOT_PERMITTED |
+ *| le_gnss_ForceFactoryRestart() | LE_NOT_PERMITTED | LE_NOT_PERMITTED | LE_OK or error code | LE_NOT_PERMITTED |
+ *| le_gnss_Disable() | LE_NOT_PERMITTED | LE_OK or error code | LE_NOT_PERMITTED | LE_DUPLICATE |
+ *| le_gnss_Enable() | LE_NOT_PERMITTED | LE_DUPLICATE | LE_DUPLICATE | LE_OK or error code |
+ *| le_gnss_SetConstellation() | LE_NOT_PERMITTED |  LE_OK or error code | LE_NOT_PERMITTED | LE_NOT_PERMITTED |
+ *| le_gnss_GetConstellation() | LE_NOT_PERMITTED |  LE_OK or error code | LE_NOT_PERMITTED | LE_NOT_PERMITTED |
+ *| le_gnss_GetTtff() | LE_NOT_PERMITTED |  LE_OK or error code | LE_OK or error code | LE_NOT_PERMITTED |
+ *| le_gnss_SetAcquisitionRate() | LE_NOT_PERMITTED | LE_OK or error code | LE_NOT_PERMITTED | LE_NOT_PERMITTED |
+ *| le_gnss_GetAcquisitionRate() | LE_NOT_PERMITTED | LE_OK or error code | LE_NOT_PERMITTED | LE_NOT_PERMITTED |
+ *
+ * Also see @ref howToGNSS.
+ *
+ * @section le_gnss_Information GNSS position information
+ * @ref le_gnss_NMEA
+ *
+ * @ref le_gnss_GetInfo
+ *
+ * @subsection le_gnss_NMEA NMEA Flow
+ * The National Marine Electronics Association (NMEA) standard defines an electrical interface
+ * and data protocol for communications between marine instrumentation.
+ *
+ * The NMEA-0183, scope of this document, defines a set of frame prefixed by
+ * $GP (concerning Global Positioning System),
+ * $GL (concerning GLONASS)
+ * and $GN (concerning combination of navigation systems).
+ * For more details about NMEA standards, please refer to http://www.nmea.org/.
+ *
+ * That NMEA frames flow can be retrieved from the "/dev/nmea" device folder, using for example
+ * the shell command $<EM> cat /dev/nmea | grep '$G'</EM>
+ *
+ * @subsection le_gnss_GetInfo Get position information
+ * The position information is referenced to a position sample object.
+ *
+ * An application can register a handler to be notified of the
+ * updated position each @ref le_gnss_AcquisitionRate, returning a position sample object.
+ *
+ * The GNSS information commonly used such as
+ * position, time and date and accuracy
+ * can be queried using the following functions:
+ * - le_gnss_GetPositionState()
+ * - le_gnss_GetLocation()
+ * - le_gnss_GetAltitude()
+ * - le_gnss_GetDate()
+ * - le_gnss_GetTime()
+ * - le_gnss_GetHorizontalSpeed()
+ * - le_gnss_GetVerticalSpeed()
+ * - le_gnss_GetDirection()
+ * - le_gnss_GetDop()
+ *
+ * The handler can be managed using le_gnss_AddPositionHandler()
+ * and le_gnss_RemovePositionHandler().
+ * When a position is computed, the handler is called.
+ *
+ * The application has to release each position sample object received by the handler,
+ * using the le_gnss_ReleaseSampleRef().
+ *
  * @section le_gnss_Assisted_GNSS Assisted GNSS
  *
- * @ref le_gnss_Assisted_GNSS_EE <br>
+ * @ref le_gnss_Assisted_GNSS_EE
  * @ref le_gnss_Assisted_GNSS_UP
  *
  * @subsection le_gnss_Assisted_GNSS_EE Server based Extended Ephemeris
@@ -125,7 +202,9 @@
  * Extended Ephemeris.
  *
  * You can enable/disable the use of the 'Extended Ephemeris' file into the GNSS device with
- * le_gnss_EnableExtendedEphemerisFile()/le_gnss_DisableExtendedEphemerisFile() functions.
+ * le_gnss_EnableExtendedEphemerisFile() / le_gnss_DisableExtendedEphemerisFile() functions.
+ * @warning Ensure to check configuration capabilities for your specific platform.
+ * A reboot must be required if your platform doesn't allow run-time configuration.
  *
  * Example:
  *
@@ -216,26 +295,6 @@
  * le_gnss_InjectSuplCertificate() function and deleted through the le_gnss_DeleteSuplCertificate()
  * function.
  *
- * @section le_gnss_APIcallsRequirements API calls Requirements
- * The following table shows the pre-requisites when using the GNSS service API function set.
- * ''LE_OK or error code'' means the function is authorized in the corresponding state, the request
- * is performed and the result is returned; otherwise the returned error is indicated for each state
- *.
- * | Function / GNSS state  | UNINITIALIZED  | READY  | ACTIVE  | DISABLED |
- *| ----------------------------- | --------------------------- | -----------------------------| --------------------------- | --------------------------- |
- *| le_gnss_Start() | LE_NOT_PERMITTED | LE_OK or error code | LE_DUPLICATE | LE_NOT_PERMITTED |
- *| le_gnss_Stop() | LE_NOT_PERMITTED | LE_DUPLICATE | LE_OK or error code | LE_NOT_PERMITTED |
- *| le_gnss_ForceHotRestart() | LE_NOT_PERMITTED | LE_NOT_PERMITTED | LE_OK or error code | LE_NOT_PERMITTED |
- *| le_gnss_ForceWarmRestart() | LE_NOT_PERMITTED | LE_NOT_PERMITTED | LE_OK or error code | LE_NOT_PERMITTED |
- *| le_gnss_ForceColdRestart() | LE_NOT_PERMITTED | LE_NOT_PERMITTED | LE_OK or error code | LE_NOT_PERMITTED |
- *| le_gnss_ForceFactoryRestart() | LE_NOT_PERMITTED | LE_NOT_PERMITTED | LE_OK or error code | LE_NOT_PERMITTED |
- *| le_gnss_Disable() | LE_NOT_PERMITTED | LE_OK or error code | LE_NOT_PERMITTED | LE_DUPLICATE |
- *| le_gnss_Enable() | LE_NOT_PERMITTED | LE_DUPLICATE | LE_DUPLICATE | LE_OK or error code |
- *| le_gnss_SetConstellation() | LE_NOT_PERMITTED |  LE_OK or error code | LE_NOT_PERMITTED | LE_NOT_PERMITTED |
- *| le_gnss_GetTtff() | LE_NOT_PERMITTED |  LE_OK or error code | LE_OK or error code | LE_NOT_PERMITTED |
- *
- * Also see @ref howToGNSS.
- *
  *
  * <HR>
  *
@@ -255,6 +314,13 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ *  Reference type for dealing with GNSS position samples.
+ */
+//--------------------------------------------------------------------------------------------------
+REFERENCE Sample;
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Maximum length of the SUP Server URL string.
  */
 //--------------------------------------------------------------------------------------------------
@@ -267,6 +333,25 @@ DEFINE MAX_SUPL_SERVER_URL_LEN   = 256;
 //--------------------------------------------------------------------------------------------------
 DEFINE MAX_SUPL_CERTIFICATE_LEN   = 2000;
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Define the maximum length of the Satellites Vehicle information list
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_SV_INFO_NUMBER = 80;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  GNSS fix position states.
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM FixState
+{
+    STATE_FIX_NO_POS,          ///< The GNSS fix position is not fixed.
+    STATE_FIX_2D,              ///< 2-Dimensional position fix.
+    STATE_FIX_3D,              ///< 3-Dimensional position fix.
+    STATE_FIX_ESTIMATED        ///< Estimated (i.e. forward predicted) position fix.
+};
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -279,7 +364,6 @@ ENUM AssistedMode
     MS_BASED_MODE,           ///< MS-Based mode.
     MS_ASSISTED_MODE         ///< MS-Assisted mode.
 };
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -298,10 +382,11 @@ BITMASK ConstellationBitMask
 /**
  * Set the GNSS constellation bit mask
  *
- * @return LE_FAULT         The function failed.
- * @return LE_UNSUPPORTED   If the request is not supported.
- * @return LE_NOT_PERMITTED If the GNSS device is not initialized, disabled or active.
- * @return LE_OK            The function succeeded.
+ * @return
+ *  - LE_FAULT         The function failed.
+ *  - LE_UNSUPPORTED   If the request is not supported.
+ *  - LE_NOT_PERMITTED If the GNSS device is not initialized, disabled or active.
+ *  - LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetConstellation
@@ -313,9 +398,9 @@ FUNCTION le_result_t SetConstellation
 /**
  * Get the GNSS constellation bit mask
  *
-* @return
-*  - LE_OK on success
-*  - LE_FAULT on failure
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT on failure
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetConstellation
@@ -327,8 +412,9 @@ FUNCTION le_result_t GetConstellation
 /**
  * This function enables the use of the 'Extended Ephemeris' file into the GNSS device.
  *
- * @return LE_FAULT         The function failed.
- * @return LE_OK            The function succeeded.
+ * @return
+ *  - LE_FAULT         The function failed.
+ *  - LE_OK            The function succeeded.
  *
  */
 //--------------------------------------------------------------------------------------------------
@@ -340,8 +426,9 @@ FUNCTION le_result_t EnableExtendedEphemerisFile
 /**
  * This function disables the use of the 'Extended Ephemeris' file into the GNSS device.
  *
- * @return LE_FAULT         The function failed.
- * @return LE_OK            The function succeeded.
+ * @return
+ *  - LE_FAULT         The function failed.
+ *  - LE_OK            The function succeeded.
  *
  */
 //--------------------------------------------------------------------------------------------------
@@ -353,10 +440,11 @@ FUNCTION le_result_t DisableExtendedEphemerisFile
 /**
  * This function must be called to load an 'Extended Ephemeris' file into the GNSS device.
  *
- * @return LE_FAULT         The function failed to inject the 'Extended Ephemeris' file.
- * @return LE_TIMEOUT       A time-out occurred.
- * @return LE_FORMAT_ERROR  'Extended Ephemeris' file format error.
- * @return LE_OK            The function succeeded.
+ * @return
+ *  - LE_FAULT         The function failed to inject the 'Extended Ephemeris' file.
+ *  - LE_TIMEOUT       A time-out occurred.
+ *  - LE_FORMAT_ERROR  'Extended Ephemeris' file format error.
+ *  - LE_OK            The function succeeded.
  *
  */
 //--------------------------------------------------------------------------------------------------
@@ -369,8 +457,9 @@ FUNCTION le_result_t LoadExtendedEphemerisFile
 /**
  * This function must be called to get the validity of the last injected Extended Ephemeris.
  *
- * @return LE_FAULT         The function failed to get the validity
- * @return LE_OK            The function succeeded.
+ * @return
+ *  - LE_FAULT         The function failed to get the validity
+ *  - LE_OK            The function succeeded.
  *
  */
 //--------------------------------------------------------------------------------------------------
@@ -384,10 +473,11 @@ FUNCTION le_result_t GetExtendedEphemerisValidity
 /**
  * This function starts the GNSS device.
  *
- * @return LE_FAULT         The function failed.
- * @return LE_DUPLICATE     If the GNSS device is already started.
- * @return LE_NOT_PERMITTED If the GNSS device is not initialized or disabled.
- * @return LE_OK            The function succeeded.
+ * @return
+ *  - LE_FAULT         The function failed.
+ *  - LE_DUPLICATE     If the GNSS device is already started.
+ *  - LE_NOT_PERMITTED If the GNSS device is not initialized or disabled.
+ *  - LE_OK            The function succeeded.
  *
  */
 //--------------------------------------------------------------------------------------------------
@@ -399,10 +489,11 @@ FUNCTION le_result_t Start
 /**
  * This function stops the GNSS device.
  *
- * @return LE_FAULT         The function failed.
- * @return LE_DUPLICATE     If the GNSS device is already stopped.
- * @return LE_NOT_PERMITTED If the GNSS device is not initialized or disabled.
- * @return LE_OK            The function succeeded.
+ * @return
+ *  - LE_FAULT         The function failed.
+ *  - LE_DUPLICATE     If the GNSS device is already stopped.
+ *  - LE_NOT_PERMITTED If the GNSS device is not initialized or disabled.
+ *  - LE_OK            The function succeeded.
  *
  */
 //--------------------------------------------------------------------------------------------------
@@ -414,9 +505,10 @@ FUNCTION le_result_t Stop
 /**
  * This function performs a "HOT" restart of the GNSS device.
  *
- * @return LE_FAULT         The function failed.
- * @return LE_NOT_PERMITTED If the GNSS device is not enabled or not started.
- * @return LE_OK            The function succeeded.
+ * @return
+ *  - LE_FAULT         The function failed.
+ *  - LE_NOT_PERMITTED If the GNSS device is not enabled or not started.
+ *  - LE_OK            The function succeeded.
  *
  */
 //--------------------------------------------------------------------------------------------------
@@ -428,9 +520,10 @@ FUNCTION le_result_t ForceHotRestart
 /**
  * This function performs a "WARM" restart of the GNSS device.
  *
- * @return LE_FAULT         The function failed.
- * @return LE_NOT_PERMITTED If the GNSS device is not enabled or not started.
- * @return LE_OK            The function succeeded.
+ * @return
+ *  - LE_FAULT         The function failed.
+ *  - LE_NOT_PERMITTED If the GNSS device is not enabled or not started.
+ *  - LE_OK            The function succeeded.
  *
  */
 //--------------------------------------------------------------------------------------------------
@@ -442,9 +535,10 @@ FUNCTION le_result_t ForceWarmRestart
 /**
  * This function performs a "COLD" restart of the GNSS device.
  *
- * @return LE_FAULT         The function failed.
- * @return LE_NOT_PERMITTED If the GNSS device is not enabled or not started.
- * @return LE_OK            The function succeeded.
+ * @return
+ *  - LE_FAULT         The function failed.
+ *  - LE_NOT_PERMITTED If the GNSS device is not enabled or not started.
+ *  - LE_OK            The function succeeded.
  *
  */
 //--------------------------------------------------------------------------------------------------
@@ -456,9 +550,10 @@ FUNCTION le_result_t ForceColdRestart
 /**
  * This function performs a "FACTORY" restart of the GNSS device.
  *
- * @return LE_FAULT         The function failed.
- * @return LE_NOT_PERMITTED If the GNSS device is not enabled or not started.
- * @return LE_OK            The function succeeded.
+ * @return
+ *  - LE_FAULT         The function failed.
+ *  - LE_NOT_PERMITTED If the GNSS device is not enabled or not started.
+ *  - LE_OK            The function succeeded.
  *
  */
 //--------------------------------------------------------------------------------------------------
@@ -470,9 +565,10 @@ FUNCTION le_result_t ForceFactoryRestart
 /**
  * Get the TTFF in milliseconds
  *
- * @return LE_BUSY          The position is not fixed and TTFF can't be measured.
- * @return LE_NOT_PERMITTED If the GNSS device is not enabled or not started.
- * @return LE_OK            Function succeeded.
+ * @return
+ *  - LE_BUSY          The position is not fixed and TTFF can't be measured.
+ *  - LE_NOT_PERMITTED If the GNSS device is not enabled or not started.
+ *  - LE_OK            Function succeeded.
  *
  */
 //--------------------------------------------------------------------------------------------------
@@ -485,10 +581,11 @@ FUNCTION le_result_t GetTtff
 /**
  * This function enables the GNSS device.
  *
- * @return LE_FAULT         The function failed.
- * @return LE_DUPLICATE     If the GNSS device is already enabled.
- * @return LE_NOT_PERMITTED If the GNSS device is not initialized.
- * @return LE_OK            The function succeeded.
+ * @return
+ *  - LE_FAULT         The function failed.
+ *  - LE_DUPLICATE     If the GNSS device is already enabled.
+ *  - LE_NOT_PERMITTED If the GNSS device is not initialized.
+ *  - LE_OK            The function succeeded.
  *
  */
 //--------------------------------------------------------------------------------------------------
@@ -500,15 +597,301 @@ FUNCTION le_result_t Enable
 /**
  * This function disables the GNSS device.
  *
- * @return LE_FAULT         The function failed.
- * @return LE_DUPLICATE     If the GNSS device is already disabled.
- * @return LE_NOT_PERMITTED If the GNSS device is not initialized or started.
- * @return LE_OK            The function succeeded.
+ * @return
+ *  - LE_FAULT         The function failed.
+ *  - LE_DUPLICATE     If the GNSS device is already disabled.
+ *  - LE_NOT_PERMITTED If the GNSS device is not initialized or started.
+ *  - LE_OK            The function succeeded.
  *
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t Disable
 (
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function sets the GNSS device acquisition rate.
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT on failure
+ *  - LE_UNSUPPORTED request not supported
+ *  - LE_TIMEOUT a time-out occurred
+ *  - LE_NOT_PERMITTED If the GNSS device is not in "ready" state.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetAcquisitionRate
+(
+    uint32  rate      IN  ///< Acquisition rate in milliseconds.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function gets the GNSS device acquisition rate.
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT on failure
+ *  - LE_NOT_PERMITTED If the GNSS device is not in "ready" state.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetAcquisitionRate
+(
+    uint32 rate      OUT  ///< Acquisition rate in milliseconds.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler for position information.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+HANDLER PositionHandler
+(
+    Sample positionSampleRef ///< Position's sample reference
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This event provides information on position.
+ *
+ *  - A handler reference, which is only needed for later removal of the handler.
+ *
+ * @note Doesn't return on failure, so there's no need to check the return value for errors.
+ */
+//--------------------------------------------------------------------------------------------------
+EVENT Position
+(
+    handler PositionHandler
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function gets the position sample's fix state
+ *
+ *  - LE_OK on success
+ *  - LE_FAULT on failure
+ *
+ * @note If the caller is passing an invalid Position sample reference into this function,
+ *       it is a fatal error, the function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetPositionState
+(
+    Sample   positionSampleRef IN,          ///< Position sample's reference.
+    FixState state OUT                      ///< Position fix state.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the location's data (Latitude, Longitude, Horizontal accuracy).
+ *
+ * @return
+ *  - LE_FAULT         Function failed to get the location's data
+ *  - LE_OUT_OF_RANGE  One of the retrieved parameter is invalid (set to INT32_MAX).
+ *  - LE_OK            Function succeeded.
+ *
+ * @note latitudePtr, longitudePtr, hAccuracyPtr, altitudePtr, vAccuracyPtr can be set to NULL
+ *       if not needed.
+ *
+ * @note: The latitude and longitude values are based on the WGS84 standard coordinate system.
+ *
+ * @note The latitude and longitude are given in degrees with 6 decimal places like:
+ *    Latitude +48858300 = 48.858300 degrees North
+ *    Longitude +2294400 = 2.294400 degrees East
+ *
+ * @note Altitude is in metres, above Mean Sea Level, with 3 decimal places (3047 = 3.047 metres).
+ *
+ * @note If the caller is passing an invalid Position sample reference into this function,
+ *       it is a fatal error, the function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetLocation
+(
+    Sample positionSampleRef IN, ///< Position sample's reference.
+    int32 latitude OUT,          ///< WGS84 Latitude in degrees, positive North [resolution 1e-6].
+    int32 longitude OUT,         ///< WGS84 Longitude in degrees, positive East [resolution 1e-6].
+    int32 hAccuracy OUT          ///< Horizontal position's accuracy in metres [resolution 1e-2].
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the position sample's altitude.
+ *
+ * @return
+ *  - LE_FAULT         Function failed to get the altitude.
+ *  - LE_OUT_OF_RANGE  One of the retrieved parameter is invalid (set to INT32_MAX).
+ *  - LE_OK            Function succeeded.
+ *
+ * @note Altitude is in metres, above Mean Sea Level, with 3 decimal places (3047 = 3.047 metres).
+ *
+ * @note For a 2D position fix, the altitude will be indicated as invalid and set to INT32_MAX
+ *
+ * @note If the caller is passing an invalid Position reference into this function,
+ *       it is a fatal error, the function will not return.
+ *
+ * @note altitudePtr, altitudeAccuracyPtr can be set to NULL if not needed.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetAltitude
+(
+    Sample positionSampleRef  IN,   ///< Position sample's reference.
+    int32 altitude OUT,             ///< Altitude in metres, above Mean Sea Level [resolution 1e-3].
+    int32 vAccuracy OUT             ///< Vertical position's accuracy in metres [resolution 1e-1].
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the position sample's time.
+ *
+ * @return
+ *  - LE_FAULT         Function failed to get the time.
+ *  - LE_OUT_OF_RANGE  The retrieved time is invalid (all fields are set to 0).
+ *  - LE_OK            Function succeeded.
+ *
+ * @note If the caller is passing an invalid Position sample reference into this function,
+ *       it is a fatal error, the function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetTime
+(
+    Sample positionSampleRef  IN, ///< Position sample's reference.
+    uint16 hours OUT,             ///< UTC Hours into the day [range 0..23].
+    uint16 minutes OUT,           ///< UTC Minutes into the hour [range 0..59].
+    uint16 seconds OUT,           ///< UTC Seconds into the minute [range 0..59].
+    uint16 milliseconds OUT       ///< UTC Milliseconds into the second [range 0..999].
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the position sample's date.
+ *
+ * @return
+ *  - LE_FAULT         Function failed to get the date.
+ *  - LE_OUT_OF_RANGE  The retrieved date is invalid (all fields are set to 0).
+ *  - LE_OK            Function succeeded.
+ *
+ * @note If the caller is passing an invalid Position sample reference into this function,
+ *       it is a fatal error, the function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetDate
+(
+    Sample positionSampleRef IN, ///< Position sample's reference.
+    uint16 year OUT,             ///< UTC Year A.D. [e.g. 2014].
+    uint16 month OUT,            ///< UTC Month into the year [range 1...12].
+    uint16 day OUT               ///< UTC Days into the month [range 1...31].
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the position sample's horizontal speed.
+ *
+ *  - LE_FAULT         Function failed to find the positionSample.
+ *  - LE_OUT_OF_RANGE  One of the retrieved parameter is invalid (set to UINT32_MAX).
+ *  - LE_OK            Function succeeded.
+ *
+ * @note hSpeedPtr, hSpeedAccuracyPtr can be set to NULL if not needed.
+ *
+ * @note If the caller is passing an invalid Position sample reference into this function,
+ *       it is a fatal error, the function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetHorizontalSpeed
+(
+    Sample positionSampleRef IN,        ///< Position sample's reference.
+    uint32 hspeed OUT,                  ///< Horizontal speed in meters/second [resolution 1e-2].
+    uint32 hspeedAccuracy OUT           ///< Horizontal speed's accuracy estimate
+                                        ///< in meters/second [resolution 1e-1].
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the position sample's vertical speed.
+ *
+ * @return
+ *  - LE_FAULT         The function failed to find the positionSample.
+ *  - LE_OUT_OF_RANGE  One of the retrieved parameter is not valid (set to INT32_MAX).
+ *  - LE_OK            The function succeeded.
+ *
+ * @note vSpeedPtr, vSpeedAccuracyPtr can be set to NULL if not needed.
+ *
+ * @note For a 2D position Fix, the vertical speed will be indicated as invalid
+ * and set to INT32_MAX.
+ *
+ * @note If the caller is passing an invalid Position sample reference into this function,
+ *       it is a fatal error, the function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetVerticalSpeed
+(
+    Sample positionSampleRef IN,         ///< Position sample's reference.
+    int32  vspeed OUT,                   ///< Vertical speed in meters/second [resolution 1e-2].
+    int32  vspeedAccuracy OUT            ///< Vertical speed's accuracy estimate
+                                        ///< in meters/second [resolution 1e-1].
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the position sample's direction. Direction of movement is the
+ * direction that the vehicle/person is actually moving.
+ *
+ * @return
+ *  - LE_FAULT         Function failed to find the positionSample.
+ *  - LE_OUT_OF_RANGE  One of the retrieved parameter is invalid (set to INT32_MAX).
+ *  - LE_OK            Function succeeded.
+ *
+ * @note directionPtr, directionAccuracyPtr can be set to NULL if not needed.
+ *
+ * @note If the caller is passing an invalid Position sample reference into this function,
+ *       it is a fatal error, the function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetDirection
+(
+    Sample positionSampleRef IN,        ///< Position sample's reference.
+    int32  direction OUT,               ///< Direction in degrees [resolution 1e-1].
+                                        ///< (where 0 is True North)
+    int32  directionAccuracy OUT        ///< Direction's accuracy estimate
+                                        ///< in degrees [resolution 1e-1].
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the DOP parameters (Dilution Of Precision) for the fixed position.
+ *
+ * @return
+ *  - LE_FAULT         Function failed to find the positionSample.
+ *  - LE_OUT_OF_RANGE  One of the retrieved parameter is invalid (set to INT16_MAX).
+ *  - LE_OK            Function succeeded.
+ *
+ * @note The DOP values are given with 3 decimal places like: DOP value 2200 = 2.20
+ *
+ * @note If the caller is passing an invalid Position sample reference into this function,
+ *       it is a fatal error, the function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetDop
+(
+    Sample positionSampleRef,           ///< Position sample's reference.
+    uint16 hdop OUT,                    ///< Horizontal Dilution of Precision [resolution 1e-3].
+    uint16 vdop OUT,                    ///< Vertical Dilution of Precision [resolution 1e-3].
+    uint16 pdop OUT                     ///< Position Dilution of Precision [resolution 1e-3].
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to release the position sample.
+ *
+ * @note If the caller is passing an invalid Position sample reference into this function,
+ *       it is a fatal error, the function will not return.
+ */
+ //--------------------------------------------------------------------------------------------------
+FUNCTION ReleaseSampleRef
+(
+    Sample positionSampleRef IN        ///< Position sample's reference.
 );
 
 //--------------------------------------------------------------------------------------------------

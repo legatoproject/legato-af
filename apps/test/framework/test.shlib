@@ -3,6 +3,10 @@
 # This file contains a few functions that are used in multiple test scripts.
 # Source this file to use the functions
 
+# This is the path to the utilities on the target. It is not part of the
+# defined path on ssh log in.
+BIN_PATH="/legato/systems/current/bin"
+
 OnExit () {
     # override OnExit to do your cleanup (on fail OR success)
     :

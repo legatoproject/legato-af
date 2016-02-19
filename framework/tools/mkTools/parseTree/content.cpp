@@ -71,6 +71,9 @@ std::string Content_t::TypeName
         case BINDING:
             return "binding";
 
+        case COMMAND:
+            return "command";
+
         case EXECUTABLE:
             return "executable";
 

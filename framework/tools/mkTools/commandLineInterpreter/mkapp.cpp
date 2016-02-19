@@ -43,11 +43,8 @@ static std::string AdefFilePath;
 /// The application's name.
 static std::string AppName;
 
-/// Pointer to the application object.
-static model::App_t* AppPtr;
-
-// true if the build.ninja file should be ignored and everything should be regenerated, including
-// a new build.ninja.
+/// true if the build.ninja file should be ignored and everything should be regenerated, including
+/// a new build.ninja.
 static bool DontRunNinja = false;
 
 
@@ -230,8 +227,8 @@ static void GetCommandLineArgs
         BuildParams.workingDir = "./_build_" + AppName + "/" + BuildParams.target;
     }
 
-    // Generated libraries should be put under '/lib' under the staging directory.
-    BuildParams.libOutputDir = path::Combine(BuildParams.workingDir, "staging/lib");
+    // Generated libraries should be put under '/read-only/lib' under the staging directory.
+    BuildParams.libOutputDir = path::Combine(BuildParams.workingDir, "staging/read-only/lib");
 
     // Add the directory containing the .adef file to the list of source search directories
     // and the list of interface search directories.
@@ -273,63 +270,37 @@ void MakeApp
     }
 
     // Construct a model of the application.
-    AppPtr = modeller::GetApp(AdefFilePath, BuildParams);
-    if (AppPtr->version.empty())
-    {
-        AppPtr->version = VersionSuffix;
-    }
+    model::App_t* appPtr = modeller::GetApp(AdefFilePath, BuildParams);
 
     // Append a "." and the VersionSuffix if the user provides a
-    // "--append or -a" argument in the command line
+    // "--append or -a" argument in the command line.
+    if (appPtr->version.empty())
+    {
+        appPtr->version = VersionSuffix;
+    }
     else if (VersionSuffix.empty() == false)
     {
-        AppPtr->version += '.' + VersionSuffix;
+        appPtr->version += '.' + VersionSuffix;
     }
 
     // Ensure that all client-side interfaces have either been bound to something or declared
     // external.
-    modeller::EnsureClientInterfacesSatisfied(AppPtr);
+    modeller::EnsureClientInterfacesSatisfied(appPtr);
 
+    // If verbose mode is on, print a summary of the application model.
     if (BuildParams.beVerbose)
     {
-        modeller::PrintSummary(AppPtr);
+        modeller::PrintSummary(appPtr);
     }
 
-    // Since this app is the only app, it won't be under the "apps" subdirectory,
-    // reset the application's relative working directory path.
-    AppPtr->workingDir = "";
+    // Generate app-specific code and configuration files.
+    GenerateCode(appPtr, BuildParams);
 
-    // Create the working directory, if it doesn't already exist.
-    file::MakeDir(BuildParams.workingDir);
-
-    // Generate the configuration data file.
-    config::Generate(AppPtr, BuildParams);
+    // Generate code for all the components in the app.
+    GenerateCode(appPtr->components, BuildParams);
 
     // Generate the build script for the application.
-    ninja::Generate(AppPtr, BuildParams, OutputDir, argc, argv);
-
-    // For each executable in the application,
-    for (auto exePtr : AppPtr->executables)
-    {
-        // Generate _main.c.
-        code::GenerateExeMain(exePtr, BuildParams);
-    }
-
-    // For each component in the application,
-    for (auto componentPtr : AppPtr->components)
-    {
-        // Create a working directory to build the component in.
-        file::MakeDir(path::Combine(BuildParams.workingDir, componentPtr->workingDir));
-
-        // Generate a custom "interfaces.h" file for this component.
-        code::GenerateInterfacesHeader(componentPtr, BuildParams);
-
-        // Generate a custom "_componentMain.c" file for this component.
-        code::GenerateComponentMainFile(componentPtr, BuildParams, false);
-    }
-
-    // Generate the manifest.app file for Air Vantage.
-    airVantage::GenerateManifest(AppPtr, BuildParams);
+    ninja::Generate(appPtr, BuildParams, OutputDir, argc, argv);
 
     // If we haven't been asked not to run ninja,
     if (!DontRunNinja)

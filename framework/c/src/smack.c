@@ -29,7 +29,7 @@
  * Location of the SMACK file system.
  */
 //--------------------------------------------------------------------------------------------------
-#define SMACK_FS_DIR                        "/opt/legato/smack"
+#define SMACK_FS_DIR                        "/legato/smack"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -37,7 +37,7 @@
  * SMACK load file location.
  */
 //--------------------------------------------------------------------------------------------------
-#define SMACK_LOAD_FILE                     SMACK_FS_DIR "/load"
+#define SMACK_LOAD_FILE                     SMACK_FS_DIR "/load2"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -45,7 +45,7 @@
  * SMACK access file location.
  */
 //--------------------------------------------------------------------------------------------------
-#define SMACK_ACCESS_FILE                   SMACK_FS_DIR "/access"
+#define SMACK_ACCESS_FILE                   SMACK_FS_DIR "/access2"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -254,7 +254,7 @@ static void MakeRuleStr
     MakeSmackModeStr(accessModePtr, modeStr, sizeof(modeStr));
 
     // Create the SMACK rule.
-    int n = snprintf(bufPtr, bufSize, "%-23s %-23s %5s", subjectLabelPtr, objectLabelPtr, modeStr);
+    int n = snprintf(bufPtr, bufSize, "%s %s %s", subjectLabelPtr, objectLabelPtr, modeStr);
 
     LE_FATAL_IF(n >= bufSize, "SMACK rule buffer is too small.");
 }

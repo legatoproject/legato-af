@@ -45,13 +45,11 @@ static parseTree::Binding_t* ParseBinding
     {
         auto starPtr = lexer.Pull(parseTree::Token_t::STAR);
         bindingPtr = new parseTree::Binding_t(starPtr);
-        bindingPtr->AddContent(starPtr);
     }
     else
     {
         auto exeNamePtr = lexer.Pull(parseTree::Token_t::NAME);
         bindingPtr = new parseTree::Binding_t(exeNamePtr);
-        bindingPtr->AddContent(exeNamePtr);
         (void)lexer.Pull(parseTree::Token_t::DOT);
         bindingPtr->AddContent(lexer.Pull(parseTree::Token_t::NAME));
     }

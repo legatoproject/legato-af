@@ -1,5 +1,5 @@
  /**
-  * This module implements the le_simRef's unit tests.
+  * This module implements the le_sim's tests.
   *
   *
   * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
@@ -8,20 +8,21 @@
 
 #include "main.h"
 
-// TODO: retrieve PIN and PUK from configuration in automatic mode
 #define PIN_TEMP            "0123"
 #define PIN_TEST1           "1111"
 #define PIN_TEST2           "2222"
-#define NEW_PIN_TEST        "5678"
-#define FAIL_PIN_TEST       "4321"
 #define PIN_TOO_LONG_TEST   "123456789"
 #define PIN_TOO_SHORT_TEST  "12"
 #define PUK_TEST1           "11111111"
 #define PUK_TEST2           "22222222"
-#define FAIL_PUK_TEST       "87654321"
 #define PUK_BAD_LENGTH_TEST "12"
+//! [Define]
+#define NEW_PIN_TEST        "5678"
+#define FAIL_PIN_TEST       "4321"
+#define FAIL_PUK_TEST       "87654321"
+//! [Define]
 
-
+//! [State handler]
 //--------------------------------------------------------------------------------------------------
 /**
  * Handler function for SIM States Notifications.
@@ -73,7 +74,9 @@ static void TestSimStateHandler
         LE_ERROR("-TEST- Check le_sim_GetState failure !");
     }
 }
+//! [State handler]
 
+//! [Display]
 //--------------------------------------------------------------------------------------------------
 /**
  * This function display the SIM state.
@@ -117,7 +120,7 @@ static void DisplaySimState
 
     Print(string);
 }
-
+//! [Display]
 
 void StateHandlerFunc
 (
@@ -133,6 +136,7 @@ void StateHandlerFunc
 //                                       Test Functions
 //--------------------------------------------------------------------------------------------------
 
+//! [Identification]
 //--------------------------------------------------------------------------------------------------
 /**
  * Test: Creation & information retrieving.
@@ -168,6 +172,7 @@ void simTest_Create
     presence = le_sim_IsPresent(simId);
     LE_ASSERT(presence);
 }
+//! [Identification]
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -243,6 +248,7 @@ void simTest_Lock
     }
 }
 
+//! [Authentication]
 //--------------------------------------------------------------------------------------------------
 /**
  * Test: Authentication (pin/puk).
@@ -319,6 +325,7 @@ void simTest_Authentication
 
     Print("End simTest_Authentication");
 }
+//! [Authentication]
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -360,6 +367,7 @@ void simTest_SimAbsent
     LE_ASSERT((res == LE_NOT_FOUND) || (res == LE_FAULT));
 }
 
+//! [Select]
 //--------------------------------------------------------------------------------------------------
 /**
  * Test: SIM selection.
@@ -386,7 +394,9 @@ void simTest_SimSelect
     simId = le_sim_GetSelectedCard();
     LE_ASSERT(simId == LE_SIM_EXTERNAL_SLOT_1);
 }
+//! [Select]
 
+//! [State]
 //--------------------------------------------------------------------------------------------------
 /**
  * Test: SIM State.
@@ -430,7 +440,7 @@ void simTest_State
     testHdlrRef = le_sim_AddNewStateHandler(TestSimStateHandler, NULL);
     LE_ASSERT(testHdlrRef != NULL);
 }
-
+//! [State]
 
 //--------------------------------------------------------------------------------------------------
 /**

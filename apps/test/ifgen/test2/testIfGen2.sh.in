@@ -1,4 +1,4 @@
-# This test script should be executed from the localhost/bin directory
+# This test script should be executed from the localhost/tests/bin directory
 
 # Enable debug messages
 export LE_LOG_LEVEL=DEBUG
@@ -11,8 +11,8 @@ config set users/$USER/bindings/example/user $USER
 config set users/$USER/bindings/example/interface example
 sdir load
 
-tests/${TEST_SERVER} &
+./${TEST_SERVER} &
 sleep 0.5
 
-tests/${TEST_CLIENT}
+./${TEST_CLIENT}
 

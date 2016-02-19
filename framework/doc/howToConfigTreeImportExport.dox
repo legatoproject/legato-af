@@ -45,7 +45,7 @@ function cfg
 
 
 cfg export
-instapp $APP_NAME.ar7 $DEVICE_IP
+instapp $APP_NAME.wp85.update $DEVICE_IP
 cfg import
 
 @endcode

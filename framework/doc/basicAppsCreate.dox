@@ -157,14 +157,14 @@ Sierra Wireless WP85 module:
 $ mkapp -t wp85 helloWorld.adef
 @endverbatim
 
-@note If you're building an AR7 or WP7 app, substitute @c ar7 or @c wp7 in the mkapp run command.
+@note If you're building an AR7, substitute @c ar7 in the mkapp run command.
 
 @section basicAppsCreate_instTarget Install App to Target
 
 @c 6. Use @c instapp to install the app on your target:
 
 @verbatim
-$ instapp helloWorld.wp85 <ip addr>
+$ instapp helloWorld.wp85.update <ip addr>
 @endverbatim
 
 The second argument is the target device's IP address where to install the app.

@@ -1,16 +1,21 @@
 #*******************************************************************************
 # Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
-#
-# Contributors:
-#     Sierra Wireless - initial API and implementation
 #*******************************************************************************
 
 cmake_minimum_required(VERSION 2.8)
 
+project(LegatoTests C CXX)
+
+# CMake Extension
+set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
+include("${CMAKE_MODULE_PATH}/Helpers.cmake")
+set(Legato_DIR ${PROJECT_SOURCE_DIR}/cmake)
+
+# Get Legato info.
+find_package(Legato REQUIRED)
+
 # Variables changing internal behavior:
-# - LEGATO_TARGET: Target to build (default to 'localhost')
-#
-# Advanced:
+# - LEGATO_TARGET: Target device type to build for.
 # - TEST_COVERAGE: Provide support for GCov
 
 # Target Platform
@@ -19,15 +24,15 @@ if(NOT DEFINED LEGATO_TARGET)
         message("Legato target found in environement: $ENV{LEGATO_TARGET}")
         set(LEGATO_TARGET $ENV{LEGATO_TARGET})
     else()
-        message("Legato Target is not selected, default to localhost")
-        set(LEGATO_TARGET "localhost" CACHE STRING "Defines global target of the Legato library")
+        message(FATAL_ERROR "Legato Target is not selected")
     endif()
 endif()
 
-message("Building Legato for target ${LEGATO_TARGET}")
-
 # Import platform adapter environment variables.
 set(LEGATO_AUDIO_PA $ENV{LEGATO_AUDIO_PA})
+set(LEGATO_AUDIO_PA_PCM $ENV{LEGATO_AUDIO_PA_PCM})
+set(LEGATO_AUDIO_PA_AMR $ENV{LEGATO_AUDIO_PA_AMR})
+set(LEGATO_UTIL_PA $ENV{LEGATO_UTIL_PA})
 set(LEGATO_MODEM_PA $ENV{LEGATO_MODEM_PA})
 set(LEGATO_MODEM_PA_ECALL $ENV{LEGATO_MODEM_PA_ECALL})
 set(LEGATO_GNSS_PA $ENV{LEGATO_GNSS_PA})
@@ -36,7 +41,6 @@ set(LEGATO_SECSTORE_PA $ENV{LEGATO_SECSTORE_PA})
 set(LEGATO_FWUPDATE_PA $ENV{LEGATO_FWUPDATE_PA})
 
 # Default Target configuration
-set(LEGATO_EMBEDDED CACHE BOOL TRUE "Target is an embedded device")
 set(LEGATO_COMPONENTS_MODEM "AT" CACHE STRING "Legato Modem Platform-Adapter to build")
 set(LEGATO_COMPONENTS_GNSS "AT" CACHE STRING "Legato Gnss Platform-Adapter to build")
 set(LEGATO_COMPONENTS_AUDIO "STUB" CACHE STRING "Legato Audio Platform-Adapter to build")
@@ -46,16 +50,15 @@ set(LEGATO_COMPONENTS_FWUPDATE "AT" CACHE STRING "Legato FwUpdate Platform-Adapt
 
 if(INCLUDE_ECALL EQUAL 1)
     add_definitions(-DINCLUDE_ECALL)
-    message("Including eCall to target ${LEGATO_TARGET}")
+    message("Including eCall for target ${LEGATO_TARGET}")
 else()
     message("Excluding eCall from target ${LEGATO_TARGET}")
 endif()
 
-# Target: ar6
-if(LEGATO_TARGET MATCHES "ar6")
+set(LEGATO_PROPRIETARY_QCT_DIR $ENV{LEGATO_PROPRIETARY_QCT_DIR})
 
 # Target: ar7
-elseif(LEGATO_TARGET MATCHES "ar7")
+if(LEGATO_TARGET MATCHES "ar7")
     set(LEGATO_COMPONENTS_MODEM "QMI")
     set(LEGATO_COMPONENTS_GNSS "QMI")
     set(LEGATO_COMPONENTS_AUDIO "ar7")
@@ -72,15 +75,6 @@ elseif(LEGATO_TARGET MATCHES "ar86")
     set(LEGATO_COMPONENTS_SECSTORE "QMI")
     set(LEGATO_COMPONENTS_FWUPDATE "QMI")
 
-# Target: wp7
-elseif(LEGATO_TARGET MATCHES "wp7")
-    set(LEGATO_COMPONENTS_MODEM "QMI")
-    set(LEGATO_COMPONENTS_GNSS "QMI")
-    set(LEGATO_COMPONENTS_AUDIO "wp7")
-    set(LEGATO_COMPONENTS_AVC "QMI")
-    set(LEGATO_COMPONENTS_SECSTORE "QMI")
-    set(LEGATO_COMPONENTS_FWUPDATE "QMI")
-
 # Target: wp85
 elseif(LEGATO_TARGET MATCHES "wp85")
     set(LEGATO_COMPONENTS_MODEM "QMI")
@@ -88,9 +82,6 @@ elseif(LEGATO_TARGET MATCHES "wp85")
     set(LEGATO_COMPONENTS_AVC "QMI")
     set(LEGATO_COMPONENTS_SECSTORE "QMI")
     set(LEGATO_COMPONENTS_FWUPDATE "QMI")
-
-# Target: raspi
-elseif(LEGATO_TARGET MATCHES "raspi")
 
 # Target: virt
 elseif(LEGATO_TARGET MATCHES "virt")
@@ -103,23 +94,10 @@ elseif(LEGATO_TARGET MATCHES "virt")
 
 # Target: localhost
 elseif(LEGATO_TARGET MATCHES "localhost")
-    set(LEGATO_EMBEDDED FALSE)
-    add_definitions(-DLEGATO_DEBUG)
-
-    if(USE_CLANG EQUAL 1)
-        set(CMAKE_C_COMPILER clang)
-        set(CMAKE_CXX_COMPILER clang++)
-    endif()
 
 # Target: Unknown
 else()
-    message(FATAL_ERROR "Invalid Target")
-endif()
-
-# Target is embedded device
-if(LEGATO_EMBEDDED)
-    add_definitions(-DLEGATO_EMBEDDED)
-    add_definitions(-DLEGATO_DEBUG)
+    message(FATAL_ERROR "Invalid Target: ${LEGATO_TARGET}")
 endif()
 
 # Target is an automotive platform
@@ -127,27 +105,12 @@ if(AUTOMOTIVE_TARGET)
     add_definitions(-DAUTOMOTIVE_TARGET)
 endif()
 
-project(LEGATO C CXX)
-
-# CMake Extension
-set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
-include("${CMAKE_MODULE_PATH}/Helpers.cmake")
-set(Legato_DIR ${PROJECT_SOURCE_DIR}/cmake)
-
 ## Output
-set(EXECUTABLE_OUTPUT_PATH      ${PROJECT_BINARY_DIR}/bin)
-set(LIBRARY_OUTPUT_PATH         ${PROJECT_BINARY_DIR}/bin/lib)
-set(APP_OUTPUT_PATH             ${PROJECT_BINARY_DIR}/bin/apps)
-set(DOCUMENTATION_OUTPUT_PATH   ${PROJECT_BINARY_DIR}/bin/doc)
-set(READYAGENT_OUTPUT_PATH      ${PROJECT_BINARY_DIR}/bin/readyagent)
+set(DOCUMENTATION_OUTPUT_PATH   ${LEGATO_ROOT}/build/doc)
 
 ## 3rd Party
-set(CUnit_DIR ${PROJECT_SOURCE_DIR}/3rdParty/CUnit/)
-
-## Configuration
-
-# Global definitions
-find_package(Legato REQUIRED)
+set(CUNIT_INSTALL "${LEGATO_ROOT}/build/${LEGATO_TARGET}/CUnit")
+set(LIBJANSSON_INCLUDE_DIR "${LEGATO_BUILD}/framework/libjansson/include")
 
 # Version
 file(READ version LEGATO_VERSION)
@@ -162,20 +125,8 @@ else()
     add_definitions(-g -O0)
 endif()
 
-# All warnings and treat warnings as errors.
+# Turn on all warnings and treat warnings as errors.
 add_definitions(-Wall -Werror)
-
-# Target is x86_64 or x86 ?
-get_filename_component(COMPILER_NAME ${CMAKE_C_COMPILER} NAME_WE)
-if(COMPILER_NAME STREQUAL "x86_64-poky-linux-gcc")
-    set(CFLAGS_TARGET_IMPORTS "--cflags=-DTARGET_IMPORTS_X86_64")
-elseif(COMPILER_NAME STREQUAL "i586-poky-linux-gcc")
-    set(CFLAGS_TARGET_IMPORTS "--cflags=-DTARGET_IMPORTS_X86")
-endif()
-message(STATUS "Compiler Name: ${COMPILER_NAME} ${CFLAGS_TARGET_IMPORTS}")
-
-# Target sysroot
-get_compiler_target_sysroot(${CMAKE_C_COMPILER} TARGET_SYSROOT)
 
 # Coverage
 if(TEST_COVERAGE)
@@ -195,9 +146,9 @@ if(TEST_COVERAGE)
         COMMAND mkdir -p coverage_out
         COMMAND genhtml -o coverage_out coverage.info
         COMMAND echo
-        COMMAND echo \"Report in ${LEGATO_BINARY_DIR}/coverage_out/\"
-        COMMENT "Coverage report will be available in ${LEGATO_BINARY_DIR}/coverage_out/"
-        WORKING_DIRECTORY ${LEGATO_BINARY_DIR}
+        COMMAND echo \"Report in ${LEGATO_BUILD}/coverage_out/\"
+        COMMENT "Coverage report will be available in ${LEGATO_BUILD}/coverage_out/"
+        WORKING_DIRECTORY ${LEGATO_BUILD}
     )
 
 else()
@@ -216,35 +167,19 @@ if(${LEGATO_COMPONENTS_GNSS} MATCHES "QMI" AND NOT EXISTS ${LEGATO_COMPONENTS_GN
 endif()
 
 ## Paths to AT Manager include files needed by various platform adapters that use it.
-### TODO: Move the Platform Adapters together under their own subdirectory.
 set (LEGATO_COMPONENTS_AT_MANAGER_INCLUDE_DIRS
         modemServices/platformAdaptor/at/atManager/inc
         modemServices/platformAdaptor/at/atManager/devices/adapter_layer/inc
         modemServices/platformAdaptor/at/atManager/devices/uart/inc
         )
 
+# Documentation
 add_custom_target(api_headers)
-
-## Building
-
-# Build Documentation
 add_subdirectory(interfaces)
 add_subdirectory(framework/doc)
 
-# Build 3rd party libs.
-add_subdirectory(3rdParty/jansson-2.6)
-
-# Build C Framework
-add_subdirectory(framework/c)
-add_subdirectory(framework/tools)
-
-# Build Platform Services (modem, positioning, audio, etc. services).
-add_subdirectory(platformServices)
-
-# Build Applications
-add_subdirectory(apps)
-
-## Testing
-
 # Tests with ctest
 enable_testing()
+
+# Sample and Test Applications
+add_subdirectory(apps)

@@ -6,19 +6,15 @@
  *
  * This app take as an argument the destination phone number to call. To set the destination
  * number, you must issue the folllowing command:
- * config set /apps/audioCallPbRecApp/procs/audioCallPbRecApp/args/1 <destination number>
+ * @verbatim
+    $ app start audioCallPbRecApp
+    $ execInApp audioCallPbRecApp audioCallPbRecApp <tel number>
+ *  @endverbatim
  *
  * Once you have started the app with 'app start audioCallPbRecApp', the app will automatically
  * calls the destination number. When the remote party answers the call, the app starts the audio
- * file playback. The remote party will be able to hear the audio file.
- *
- * After the initial outgoing call, the app simply waits for an incoming call. You can now call
- * your target. The target will automatically answer and start the recording of the remote end
- * (actually your voice!).
- * The resulted audio file can be found here:
- * /tmp/legato/sandboxes/audioCallPbRecApp/record/remote.wav
- *
- * Note that this app uses the I2S interface.
+ * file recording.
+ * When the call is disconnected, the recorded audio is played on local interface (Speaker).
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
@@ -46,55 +42,57 @@ static le_audio_StreamRef_t    FeOutRef = NULL;
 static le_audio_StreamRef_t    FileAudioRef = NULL;
 static le_audio_ConnectorRef_t AudioInputConnectorRef = NULL;
 static le_audio_ConnectorRef_t AudioOutputConnectorRef = NULL;
+static le_audio_MediaHandlerRef_t MediaHandlerRef = NULL;
 
-//--------------------------------------------------------------------------------------------------
-/**
- * Destination number for outgoing calls
- */
-//--------------------------------------------------------------------------------------------------
-static const char* DestinationNumber;
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Audio file path used for audio playback
- */
-//--------------------------------------------------------------------------------------------------
-static const char  AudioFilePbPath[] = "/usr/share/sounds/male.wav";
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Audio file path used for audio recording
- */
-//--------------------------------------------------------------------------------------------------
 static const char  AudioFileRecPath[] = "/record/remote.wav";
 
-//--------------------------------------------------------------------------------------------------
-/**
- * Audio file descriptor
- */
-//--------------------------------------------------------------------------------------------------
 static int  AudioFileFd = -1;
 
-//--------------------------------------------------------------------------------------------------
-/**
- * Flag specifying the call direction
- */
-//--------------------------------------------------------------------------------------------------
-static bool IsAnOutgoingCall = false;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Connect the audio for audio file recording of the remote end.
+ * Handler function for Media Event Notifications.
  *
  */
 //--------------------------------------------------------------------------------------------------
-static void ConnectAudioToFileRemoteRec
+static void MyMediaEventHandler
+(
+    le_audio_StreamRef_t          streamRef,
+    le_audio_MediaEvent_t          event,
+    void*                         contextPtr
+)
+{
+    switch(event)
+    {
+        case LE_AUDIO_MEDIA_ENDED:
+            LE_INFO("File event is LE_AUDIO_MEDIA_ENDED.");
+            break;
+
+        case LE_AUDIO_MEDIA_ERROR:
+            LE_INFO("File event is LE_AUDIO_MEDIA_ERROR.");
+            break;
+        case LE_AUDIO_MEDIA_NO_MORE_SAMPLES:
+            LE_INFO("File event is LE_AUDIO_MEDIA_NO_MORE_SAMPLES.");
+            break;
+        default:
+            LE_INFO("File event is %d", event);
+            break;
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Enable File local playback.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void ConnectAudioToFileLocalPlay
 (
     void
 )
 {
     le_result_t res;
-    if ((AudioFileFd=open(AudioFileRecPath, O_WRONLY | O_CREAT | O_TRUNC)) == -1)
+    if ((AudioFileFd=open(AudioFileRecPath, O_RDWR)) == -1)
     {
         LE_ERROR("Open file %s failure: errno.%d (%s)",  AudioFileRecPath, errno, strerror(errno));
     }
@@ -103,71 +101,19 @@ static void ConnectAudioToFileRemoteRec
         LE_INFO("Open file %s with AudioFileFd.%d",  AudioFileRecPath, AudioFileFd);
     }
 
-    if (fchmod(AudioFileFd, 0666) == -1)
-    {
-        LE_WARN("Cannot set rights to file %s: errno.%d (%s)",  AudioFileRecPath, errno, strerror(errno));
-    }
+    // Play local on output connector.
+    FileAudioRef = le_audio_OpenPlayer();
+    LE_ERROR_IF((FileAudioRef==NULL), "OpenFilePlayback returns NULL!");
 
-
-    // Capture Remote on output connector.
-    FileAudioRef = le_audio_OpenRecorder();
-    LE_ERROR_IF((FileAudioRef==NULL), "OpenFileRecording returns NULL!");
+    MediaHandlerRef = le_audio_AddMediaHandler(FileAudioRef, MyMediaEventHandler, NULL);
+    LE_ERROR_IF((MediaHandlerRef==NULL), "AddMediaHandler returns NULL!");
 
     if (FileAudioRef && AudioOutputConnectorRef)
     {
         res = le_audio_Connect(AudioOutputConnectorRef, FileAudioRef);
         if(res!=LE_OK)
         {
-            LE_ERROR("Failed to connect FileRecording on output connector!");
-            return;
-        }
-
-        LE_INFO("Recorder is now connected.");
-        res = le_audio_RecordFile(FileAudioRef, AudioFileFd);
-
-        if(res!=LE_OK)
-        {
-            LE_ERROR("Failed to record the file");
-        }
-        else
-        {
-            LE_INFO("File is now recording.");
-        }
-    }
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Connect the audio for audio file playback on remote party.
- *
- */
-//--------------------------------------------------------------------------------------------------
-static void ConnectAudioToFileRemotePlay
-(
-    void
-)
-{
-    le_result_t res;
-
-    if ((AudioFileFd=open(AudioFilePbPath, O_RDONLY)) == -1)
-    {
-        LE_ERROR("Open file %s failure: errno.%d (%s)",  AudioFilePbPath, errno, strerror(errno));
-    }
-    else
-    {
-        LE_INFO("Open file %s with AudioFileFd.%d",  AudioFilePbPath, AudioFileFd);
-    }
-
-    // Play Remote on input connector.
-    FileAudioRef = le_audio_OpenPlayer();
-    LE_ERROR_IF((FileAudioRef==NULL), "OpenFilePlayback returns NULL!");
-
-    if (FileAudioRef && AudioInputConnectorRef)
-    {
-        res = le_audio_Connect(AudioInputConnectorRef, FileAudioRef);
-        if(res!=LE_OK)
-        {
-            LE_ERROR("Failed to connect FilePlayback on input connector!");
+            LE_ERROR("Failed to connect FilePlayback on output connector!");
             return;
         }
 
@@ -187,11 +133,65 @@ static void ConnectAudioToFileRemotePlay
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Connect the main Audio path (I2S).
+ * Connect the audio for audio file recording of the local and remote end.
  *
  */
 //--------------------------------------------------------------------------------------------------
-static void ConnectAudioToI2s
+static void ConnectAudioToFileRec
+(
+    void
+)
+{
+    le_result_t res;
+    if ((AudioFileFd=open(AudioFileRecPath, O_RDWR | O_CREAT | O_TRUNC)) == -1)
+    {
+        LE_ERROR("Open file %s failure: errno.%d (%s)",  AudioFileRecPath, errno, strerror(errno));
+    }
+    else
+    {
+        LE_INFO("Open file %s with AudioFileFd.%d",  AudioFileRecPath, AudioFileFd);
+    }
+
+    // Capture Remote on output connector.
+    FileAudioRef = le_audio_OpenRecorder();
+    LE_ERROR_IF((FileAudioRef==NULL), "OpenFileRecording returns NULL!");
+
+    if (FileAudioRef && AudioOutputConnectorRef)
+    {
+        res = le_audio_Connect(AudioOutputConnectorRef, FileAudioRef);
+        if(res!=LE_OK)
+        {
+            LE_ERROR("Failed to connect FileRecording on output connector!");
+            return;
+        }
+        res = le_audio_Connect(AudioInputConnectorRef, FileAudioRef);
+        if(res!=LE_OK)
+        {
+            LE_ERROR("Failed to connect FileRecording on input connector!");
+            return;
+        }
+
+        LE_INFO("Recorder is now connected.");
+        res = le_audio_RecordFile(FileAudioRef, AudioFileFd);
+
+        if(res!=LE_OK)
+        {
+            LE_ERROR("Failed to record the file");
+        }
+        else
+        {
+            LE_INFO("File is now recording.");
+        }
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Connect the main Audio path (Analog).
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void ConnectAudioToAnalog
 (
     void
 )
@@ -203,13 +203,13 @@ static void ConnectAudioToI2s
     MdmTxAudioRef = le_audio_OpenModemVoiceTx();
     LE_ERROR_IF((MdmTxAudioRef==NULL), "GetTxAudioStream returns NULL!");
 
-    // Redirect audio to the I2S interface.
-    FeOutRef = le_audio_OpenI2sTx(LE_AUDIO_I2S_STEREO);
-    LE_ERROR_IF((FeOutRef==NULL), "OpenI2sTx returns NULL!");
-    FeInRef = le_audio_OpenI2sRx(LE_AUDIO_I2S_STEREO);
-    LE_ERROR_IF((FeInRef==NULL), "OpenI2sRx returns NULL!");
+    // Redirect audio to the in-built Microphone and Speaker.
+    FeOutRef = le_audio_OpenSpeaker();
+    LE_ERROR_IF((FeOutRef==NULL), "OpenSpeaker returns NULL!");
+    FeInRef = le_audio_OpenMic();
+    LE_ERROR_IF((FeInRef==NULL), "OpenMic returns NULL!");
 
-    LE_INFO("Open I2s: FeInRef.%p FeOutRef.%p", FeInRef, FeOutRef);
+    LE_INFO("Open Analog: FeInRef.%p FeOutRef.%p", FeInRef, FeOutRef);
 
     AudioInputConnectorRef = le_audio_CreateConnector();
     LE_ERROR_IF((AudioInputConnectorRef==NULL), "AudioInputConnectorRef is NULL!");
@@ -220,51 +220,15 @@ static void ConnectAudioToI2s
         AudioInputConnectorRef && AudioOutputConnectorRef)
     {
         res = le_audio_Connect(AudioInputConnectorRef, FeInRef);
-        LE_ERROR_IF((res!=LE_OK), "Failed to connect I2S RX on Input connector!");
+        LE_ERROR_IF((res!=LE_OK), "Failed to connect Mic on Input connector!");
         res = le_audio_Connect(AudioInputConnectorRef, MdmTxAudioRef);
         LE_ERROR_IF((res!=LE_OK), "Failed to connect mdmTx on Input connector!");
         res = le_audio_Connect(AudioOutputConnectorRef, FeOutRef);
-        LE_ERROR_IF((res!=LE_OK), "Failed to connect I2S TX on Output connector!");
+        LE_ERROR_IF((res!=LE_OK), "Failed to connect Speaker on Output connector!");
         res = le_audio_Connect(AudioOutputConnectorRef, MdmRxAudioRef);
         LE_ERROR_IF((res!=LE_OK), "Failed to connect mdmRx on Output connector!");
     }
-    LE_INFO("Open I2s: FeInRef.%p FeOutRef.%p", FeInRef, FeOutRef);
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Connect the main Audio path and the audio file playback.
- *
- */
-//--------------------------------------------------------------------------------------------------
-static void ConnectAudioWithPlayback
-(
-    void
-)
-{
-    LE_INFO("Connect I2S");
-    ConnectAudioToI2s();
-
-    LE_INFO("Connect Remote Play");
-    ConnectAudioToFileRemotePlay();
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Connect the main Audio path and the audio file recording.
- *
- */
-//--------------------------------------------------------------------------------------------------
-static void ConnectAudioWithRecording
-(
-    void
-)
-{
-    LE_INFO("Connect I2S");
-    ConnectAudioToI2s();
-
-    LE_INFO("Connect Remote Rec");
-    ConnectAudioToFileRemoteRec();
+    LE_INFO("Open Analog: FeInRef.%p FeOutRef.%p", FeInRef, FeOutRef);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -352,6 +316,12 @@ static void DisconnectAllAudio
         FeOutRef = NULL;
     }
 
+    if(MediaHandlerRef)
+    {
+        le_audio_RemoveMediaHandler(MediaHandlerRef);
+        MediaHandlerRef = NULL;
+    }
+
     close(AudioFileFd);
 }
 
@@ -371,19 +341,12 @@ static void MyCallEventHandler
     if (callEvent == LE_MCC_EVENT_ALERTING)
     {
         LE_INFO("Call event is LE_MCC_EVENT_ALERTING.");
-        IsAnOutgoingCall =true;
     }
     else if (callEvent == LE_MCC_EVENT_CONNECTED)
     {
         LE_INFO("Call event is LE_MCC_EVENT_CONNECTED.");
-        if (IsAnOutgoingCall)
-        {
-            ConnectAudioWithPlayback();
-        }
-        else
-        {
-            ConnectAudioWithRecording();
-        }
+        LE_INFO("Connect Remote Rec");
+        ConnectAudioToFileRec();
     }
     else if (callEvent == LE_MCC_EVENT_TERMINATED)
     {
@@ -420,11 +383,18 @@ static void MyCallEventHandler
                 break;
         }
 
-        DisconnectAllAudio();
+        le_audio_Stop(FileAudioRef);
+        le_audio_Disconnect(AudioOutputConnectorRef, FileAudioRef);
+        le_audio_Disconnect(AudioInputConnectorRef, FileAudioRef);
+
+        le_audio_Close(FileAudioRef);
+
+        // 2-second pause: workaround to step over possible pcm_open error on AR8 platforms
+        sleep(2);
+
+        ConnectAudioToFileLocalPlay();
 
         le_mcc_Delete(callRef);
-
-        IsAnOutgoingCall = false;
     }
     else if (callEvent == LE_MCC_EVENT_INCOMING)
     {
@@ -433,9 +403,7 @@ static void MyCallEventHandler
     }
     else
     {
-        LE_ERROR("Unknowm Call event.");
-        close(AudioFileFd);
-        exit(EXIT_FAILURE);
+        LE_INFO("Other Call event.%d", callEvent);
     }
 }
 
@@ -470,6 +438,23 @@ static void PrintUsage()
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * The signal event handler function for SIGINT when process dies.
+ */
+//--------------------------------------------------------------------------------------------------
+static void SigHandler
+(
+    int sigNum
+)
+{
+    LE_INFO("End audioCallPbRecApp test");
+    DisconnectAllAudio();
+    le_mcc_HangUpAll();
+
+    exit(EXIT_SUCCESS);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * App init.
  *
  */
@@ -477,14 +462,18 @@ static void PrintUsage()
 COMPONENT_INIT
 {
     LE_INFO("Start audioCallPbRecApp app.");
-    IsAnOutgoingCall = false;
+
+    // Register a signal event handler for SIGINT when user interrupts/terminates process
+    signal(SIGINT, SigHandler);
 
     if (le_arg_NumArgs() == 1)
     {
-        DestinationNumber = le_arg_GetArg(0);
+        ConnectAudioToAnalog();
+
+        const char* destinationNumber = le_arg_GetArg(0);
 
         le_mcc_AddCallEventHandler(MyCallEventHandler, NULL);
-        CallRef=le_mcc_Create(DestinationNumber);
+        CallRef=le_mcc_Create(destinationNumber);
         le_mcc_Start(CallRef);
     }
     else

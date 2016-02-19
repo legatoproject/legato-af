@@ -3,7 +3,7 @@
  * @page c_rtc User Timebase
  *
  * @ref le_rtc_interface.h "API Reference" <br>
- * @ref howToSetUserTimebase
+ * @ref howToSetUserTimebase how-to
  * <HR>
  *
  * This API provides definitions to read and set the @e user timebase for a target's real time clock (RTC).
@@ -19,19 +19,21 @@
  *
  * @section c_rtc_disableDaemon Disable Time Daemon
 
- * If you need to set the system time from a saved user timebase value, you should disable the time
+ * If you need to set the system time from a saved user timebase value, first disable the time
  * daemon by commenting out the
  * @c TIME_SERVICES="qcom_time" line in @c /etc/time_service.conf to prevent the system time from being
  * updated if the modem receives a new time from a cellular network.
  *
- * @note The time stored in the user timebase is incremented on a millisecond basis;
- * Unix time is incremented by the second. When storing Unix time in the user timebase, it
- * must be multiplied by 1000, and, conversely, must be divided by 1000 when retrieved.
- *
  * @section c_rtc_getSet Get/Set Time Value
  *
- * Use le_rtc_GetUserTime() to read the current RTC time, and le_rtc_SetUserTime()
+ * You use le_rtc_GetUserTime() to read the current RTC time, and le_rtc_SetUserTime()
  * to set the user timebase adjustment (plus/minus in milliseconds).
+ *
+ * The time stored in the user timebase is incremented on a millisecond basis;
+ * Unix time is incremented by the second. When storing Unix time in the user timebase, it
+ * must be multiplied by 1000, and must be divided by 1000 when retrieved.
+ *
+ * Typically, it's sufficient to use Unix epoch time x 1000 as the time base.
  *
  * <HR>
  *

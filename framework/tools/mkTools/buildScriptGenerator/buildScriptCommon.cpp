@@ -13,9 +13,9 @@
 #include "mkTools.h"
 #include "buildScriptCommon.h"
 
+
 namespace ninja
 {
-
 
 
 //--------------------------------------------------------------------------------------------------
@@ -68,54 +68,6 @@ void CloseFile
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Get the absolute path to a given C or C++ source code file belonging to a given component.
- *
- * @return the absolute path.
- **/
-//--------------------------------------------------------------------------------------------------
-std::string GetAbsoluteSourcePath
-(
-    const std::string& sourceFile,  ///< Path (possibly relative) to the source code file.
-    const model::Component_t* componentPtr  ///< The component that the source code belongs to.
-)
-//--------------------------------------------------------------------------------------------------
-{
-    // If the source file path is absolute, then use it as-is.  Otherwise, we need to prefix
-    // it with the component's directory path, because it's relative to that.
-    if (path::IsAbsolute(sourceFile))
-    {
-        return sourceFile;
-    }
-    else
-    {
-        return path::Combine(componentPtr->dir, sourceFile);
-    }
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Get the object code file for a given C or C++ source code file.
- **/
-//--------------------------------------------------------------------------------------------------
-std::string GetObjectFile
-(
-    const std::string& sourceFile   ///< Path to the source code file.
-)
-//--------------------------------------------------------------------------------------------------
-{
-    // The object file directory is named after an MD5 hash of the source code file path.
-    // This ensures different source code files that share the same name don't end up
-    // sharing the same object file path.
-
-    auto sourceFileName = path::GetLastNode(sourceFile);
-
-    return "$builddir/" + path::Combine("obj", md5(sourceFile)) + "/" + sourceFileName + ".o";
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Print to a given build script the ifgenFlags variable definition.
  **/
 //--------------------------------------------------------------------------------------------------
@@ -157,60 +109,90 @@ void GenerateBuildRules
 
     // Generate rule for compiling a C source code file.
     script << "rule CompileC\n"
+              "  description = Compiling C source\n"
               "  depfile = $out.d\n" // Tell ninja where gcc will put the dependencies.
               "  command = " << cCompilerPath << " -MMD -MF $out.d -c $in -o $out"
               " -Wall" // Enable all warnings.
               " -fPIC" // Compile to position-independent code for linking into a shared library.
               " -Werror" // Treat all warnings as errors.
               " -fvisibility=hidden" // Prevent exporting of symbols by default.
-              " -DMK_TOOLS_BUILD" // Indicate build is being done by the mk tools.
-              " $cFlags" // Include user-provided CFLAGS last so other settings can be overridden.
+              " -DMK_TOOLS_BUILD"; // Indicate build is being done by the mk tools.
+    if (target != "localhost")
+    {
+        script << "  -DLEGATO_EMBEDDED";    // Indicate target is an embedded device (not a PC).
+    }
+    script << " $cFlags" // Include user-provided CFLAGS last so other settings can be overridden.
               "\n\n";
 
     // Generate rule for compiling a C++ source code file.
     script << "rule CompileCxx\n"
+              "  description = Compiling C++ source\n"
               "  depfile = $out.d\n" // Tell ninja where gcc will put the dependencies.
               "  command = " << cxxCompilerPath << " -MMD -MF $out.d -c $in -o $out"
               " -Wall" // Enable all warnings.
               " -fPIC" // Compile to position-independent code for linking into a shared library.
               " -Werror" // Treat all warnings as errors.
               " -fvisibility=hidden " // Prevent exporting of symbols by default.
-              " -DMK_TOOLS_BUILD" // Indicate build is being done by the mk tools.
-              " $cxxFlags" // Include user-provided CXXFLAGS last so other settings can be overridden.
+              " -DMK_TOOLS_BUILD"; // Indicate build is being done by the mk tools.
+    if (target != "localhost")
+    {
+        script << "  -DLEGATO_EMBEDDED";    // Indicate target is an embedded device (not a PC).
+    }
+    script << " $cxxFlags"// Include user-provided CXXFLAGS last so other settings can be overridden
               "\n\n";
 
     // Generate rules for linking C and C++ object code files into shared libraries.
     script << "rule LinkCLib\n"
+              "  description = Linking C library\n"
               "  command = " << cCompilerPath << " -shared -o $out $in $ldFlags\n"
               "\n";
 
     script << "rule LinkCxxLib\n"
+              "  description = Linking C++ library\n"
               "  command = " << cxxCompilerPath << " -shared -o $out $in $ldFlags\n"
               "\n";
 
     script << "rule LinkCExe\n"
+              "  description = Linking C executable\n"
               "  command = " << cCompilerPath << " -o $out $in $ldFlags\n"
               "\n";
 
     script << "rule LinkCxxExe\n"
+              "  description = Linking C++ executable\n"
               "  command = " << cxxCompilerPath << " -o $out $in $ldFlags\n"
               "\n";
 
     // Generate a rule for running ifgen.
     script << "rule GenInterfaceCode\n"
-              "  command = mkdir -p $outputDir && ifgen --output-dir $outputDir $ifgenFlags $in"
-              "\n"
+              "  description = Generating IPC interface code\n"
+              "  command = mkdir -p $outputDir && ifgen --output-dir $outputDir $ifgenFlags $in\n"
+              "\n";
+
+    // Generate a rule for creating a directory.
+    script << "rule MakeDir\n"
+              "  description = Creating directory\n"
+              "  command = mkdir -p $out\n\n";
+
+    // Generate a rule for creating a hard link.
+    script << "rule HardLink\n"
+              "  description = Creating hard link\n"
+              "  command = ln -T -f $in $out\n"
               "\n";
 
     // Generate a rule for re-building the build.ninja script when it is out of date.
     script << "rule RegenNinjaScript\n"
+              "  description = Regenerating build script\n"
               "  generator = 1\n"
               "  command = " << argv[0] << " --dont-run-ninja";
     for (int i = 1; i < argc; i++)
     {
-        script << " \"" << argv[i] << '"';
+        if (strcmp(argv[i], "--dont-run-ninja") != 0)
+        {
+            script << " \"" << argv[i] << '"';
+        }
     }
-    script << "\n\n";
+    script << "\n"
+              "\n";
 }
 
 
@@ -236,7 +218,7 @@ void GenerateRunPathLdFlags
     // When building for execution on the build host, add the localhost bin/lib directory.
     if (target == "localhost")
     {
-        script << ":$$LEGATO_BUILD/bin/lib";
+        script << ":$$LEGATO_BUILD/framework/lib";
     }
 
     script << "\"";
@@ -268,7 +250,7 @@ static void GetIncludedApis
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Print to a given build script a rule for building the interface header file for a given
+ * Print to a given script a build statement for building the interface header file for a given
  * .api file that has been referred to by a USETYPES statement in another .api file used by
  * a client-side interface.
  **/
@@ -301,7 +283,7 @@ static void GenerateClientUsetypesHFileBuildStatement
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Print to a given build script a rule for building the interface header file for a given
+ * Print to a given script a build statement for building the interface header file for a given
  * .api file that has been referred to by a USETYPES statement in another .api file used by
  * a server-side interface.
  **/
@@ -334,7 +316,7 @@ static void GenerateServerUsetypesHFileBuildStatement
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Print to a given build script a rule for building the header file for a given types-only
+ * Print to a given script a build statement for building the header file for a given types-only
  * included API interface.
  **/
 //--------------------------------------------------------------------------------------------------
@@ -366,8 +348,8 @@ static void GenerateBuildStatement
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Print to a given build script a rule for building the object file for a given client-side API
- * interface.
+ * Print to a given script a build statement for building the object file for a given client-side
+ * API interface.
  **/
 //--------------------------------------------------------------------------------------------------
 static void GenerateBuildStatement
@@ -457,8 +439,8 @@ static void GenerateBuildStatement
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Print to a given build script a rule for building the object file for a given server-side API
- * interface.
+ * Print to a given script a build statement for building the object file for a given server-side
+ * API interface.
  **/
 //--------------------------------------------------------------------------------------------------
 static void GenerateBuildStatement
@@ -589,6 +571,33 @@ void GenerateIpcBuildStatements
     for (auto serverApi : componentPtr->serverApis)
     {
         GenerateBuildStatement(script, serverApi, buildParams, generatedSet);
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Write to a given build script the build statements for all the IPC client and server
+ * header files, source code files, and object files needed by all components in the model.
+ **/
+//--------------------------------------------------------------------------------------------------
+void GenerateIpcBuildStatements
+(
+    std::ofstream& script,
+    const mk::BuildParams_t& buildParams
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // It's possible that multiple components in the same system will share the same interface.
+    // To prevent the generation of multiple build statements (which would cause ninja to fail),
+    // we use a set containing the output file paths to keep track of what build statements we've
+    // already generated.
+
+    std::set<std::string> generatedSet;
+
+    for (auto& mapEntry : model::Component_t::GetComponentMap())
+    {
+        GenerateIpcBuildStatements(script, mapEntry.second, buildParams, generatedSet);
     }
 }
 

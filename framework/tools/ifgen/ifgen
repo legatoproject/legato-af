@@ -9,6 +9,7 @@ import os
 import sys
 import argparse
 import collections
+import hashlib
 
 import codeTypes
 import interfaceParser
@@ -209,9 +210,6 @@ def ProcessImportList(importList):
         fullname = os.path.basename(path)
         name = os.path.splitext(fullname)[0]
 
-        # NOTE: Don't remove this.  The mk tools depend on it.
-        print "importing", fullname
-
         data = open(path, 'r').read()
 
         # In the current .api file, the imported types will be referenced using "name.",
@@ -225,6 +223,24 @@ def ProcessImportList(importList):
         importedCodeList += codeList
 
     return importedCodeList
+
+
+
+#
+# Calculate the hash, based on the hash text for the currently processed file, as well as all
+# the imported files.
+#
+def CalcHash(codeText, importList):
+    hashTextList = [ interfaceParser.GetHashText( open(path, 'r').read() ) for path in importList ]
+    hashTextList += interfaceParser.GetHashText(codeText)
+
+    hashText = ''.join(hashTextList)
+    
+    h = hashlib.md5()
+    h.update( hashText )
+    hashValue = h.hexdigest()
+    
+    return hashValue, hashText
 
 
 
@@ -246,6 +262,18 @@ def Main():
         print '\n'.join(importList)
         sys.exit(0)
 
+    # Calculate the hashValue, as it is always needed
+    hashValue, hashText = CalcHash(data, importList)
+
+    # Handle the --hash argument here.  No need to generate any code
+    if args.hash:
+        if args.dump:
+            # Print out the text used for generating the hash
+            print hashText
+        else:
+            print hashValue
+        sys.exit(0)
+
     # Process all the imported files first.
     importedCodeList = ProcessImportList(importList)
 
@@ -260,24 +288,12 @@ def Main():
 
     # Dump info on the parsed file.  No need to generate any code.
     if args.dump:
-        if args.hash:
-            # Print out the text used for generating the hash
-            print codeTypes.GetHashString(allCodeList)
-        else:
-            # Print out info on all the types, functions and handlers
-            codeTypes.PrintCode(allCodeList)
+        # Print out info on all the types, functions and handlers
+        codeTypes.PrintCode(allCodeList)
 
-            # Print out the type dictionary.
-            print '='*40 + '\n'
-            codeTypes.PrintDefinedTypes()
-        sys.exit(0)
-
-    # Calculate the hashValue, as it is always needed
-    hashValue = codeTypes.GetHash(allCodeList)
-
-    # Handle the --hash argument here.  No need to generate any code
-    if args.hash:
-        print hashValue
+        # Print out the type dictionary.
+        print '='*40 + '\n'
+        codeTypes.PrintDefinedTypes()
         sys.exit(0)
 
     # Pass 'args' so that the function can determine what needs to be output

@@ -7,10 +7,7 @@ executables:
     exe = (client)
 }
 
-requires:
+extern:
 {
-    api:
-    {
-        client = exe.client.foo
-    }
+    client = exe.client.foo
 }

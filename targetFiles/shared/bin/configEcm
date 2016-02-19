@@ -1,10 +1,8 @@
 #! /bin/sh
 
 ecm_conf=/etc/legato/ecm.conf
-usbmode=/etc/legato/usbmode
 dhcp_conf=/etc/dnsmasq.conf
 ecm_dhcp_conf=/etc/dnsmasq.ecm.conf
-legato_bringup_ecm=/mnt/flash/startup/fg_05_BringUpDeveloperInterface
 
 command_name=$(basename $0)
 usage()
@@ -28,9 +26,11 @@ cat << END_HELP
                 netmask: ipV4 netmask for the connection
 
             If no values are given the default configuration is:
-                target: 192.168.1.2
-                host: 192.168.1.3
+                target: 192.168.2.2
+                host: 192.168.2.3
                 netmask: 255.255.255.0
+
+        $command_name default - set default ecm parameters only
 
             If the given address and netmask (or the defaults if no parameters are given) conflicts
             with an existing network connection, no change will be made.
@@ -126,7 +126,6 @@ unconfig_dhcp()
 
 restart_ecm()
 {
-    host_addr=$1
     /etc/init.d/usb restart
 # we need to clean out the leases database ourselves and it seems we
 # need to delete the file completely!! Just clearing the entry doesn't work and
@@ -169,7 +168,6 @@ check_no_conflicts()
     ecm_mask=$2
 
     inet_list=$(ip -f inet addr | awk '/\d*:/,/inet/{ if (/\d*:/){a=$2}; if (/inet/){b=$2; print a b}}')
-    inet_list="lo:127.0.0.1/8 eth0:10.1.28.211/24 usb0:192.168.1.2/24"
     for item in $inet_list; do
         case $item in
             lo:*|usb0:*)
@@ -201,25 +199,20 @@ write_config()
     echo "netmask.ipV4: $3" >> $ecm_conf
 }
 
-setup_usbmode()
+ecm_enabled()
 {
-    if [ -f $usbmode ]; then
-        cp -f $usbmode $usbmode.bak
-        if ! grep ecm $usbmode; then
-            echo "ecm" >>$usbmode
+    local gadget_mode=/sys/class/android_usb/android0/functions
+
+    if [ -f $gadget_mode ]; then
+        ecm=`cat ${gadget_mode} | sed -e 's/,/\n/g' | egrep -x "e[ce]m"`
+        if [ -z "$ecm" ] ; then
+            return 1
         fi
     else
-        echo "ecm" > $usbmode
+        return 1
     fi
-}
 
-revert_usbmode()
-{
-    if [ -f $usbmode.bak ];then
-        cp -f $usbmode.bak $usbmode
-    else
-        rm -f $usbmode
-    fi
+    return 0
 }
 
 create_conf()
@@ -243,14 +236,19 @@ create_conf()
         shift
     done
 
+    if ! ecm_enabled; then
+        echo "ecm not enabled"
+        return 1
+    fi
+
     if [ -z $targ_addr ]; then
         if [ -f $ecm_conf ]; then
             echo "No target address. Exiting without changes."
             return 1
         else
             echo "No target address. Using defaults."
-            targ_addr="192.168.1.2"
-            host_addr="192.168.1.3"
+            targ_addr="192.168.2.2"
+            host_addr="192.168.2.3"
             mask="255.255.255.0"
         fi
     fi
@@ -266,6 +264,23 @@ create_conf()
     return 0
 }
 
+bringdown_ecm()
+{
+    ifconfig usb0 down
+}
+
+bringup_ecm()
+{
+    local target=$(get_param target.ipV4)
+    local netmask=$(get_param netmask.ipV4)
+
+    if [ -z "$netmask" ]; then
+        netmask=255.255.255.0
+    fi
+
+    ifconfig usb0 $target netmask $netmask up
+}
+
 case $1 in
     show)
         if [ -f $ecm_conf ]; then
@@ -276,28 +291,34 @@ case $1 in
         fi
         ;;
     off)
-        local host=$(get_param host.ipV4)
         unconfig_dhcp
-        revert_usbmode
-        restart_ecm $host >/dev/null
+        bringdown_ecm
         ;;
     on)
         # on requires some arguments else it will do default
         echo ""
         if create_conf $@; then
-            setup_usbmode
             local host=$(get_param host.ipV4)
             config_dhcp $host
-            restart_ecm >/dev/null
-            if [ -f $legato_bringup_ecm ]; then
-                echo bringing up interface
-                $legato_bringup_ecm
-            fi
+            restart_ecm > /dev/null
+            bringup_ecm
         else
             echo "Could not create ecm configuration"
             exit 1
         fi
         ;;
+    default)
+	# configure default ecm parameters, but don't start interface
+	if create_conf ; then
+            local host=$(get_param host.ipV4)
+            config_dhcp $host
+            restart_ecm > /dev/null
+        else
+            echo "Could not create ecm configuration"
+            exit 1
+        fi
+        ;;
+
     -h|--help|*)
         usage
         ;;

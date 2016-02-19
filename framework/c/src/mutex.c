@@ -25,16 +25,8 @@
  *    - Each Mutex object has a single thread reference for this (NULL if no one holds the lock).
  *  -# What is a given mutex's lock count?
  *    - Each Mutex object keeps track of its lock count.
- *  -# What type of mutex is a given mutex? (recursive? traceable?)
- *    - These are stored in each Mutex object as boolean flags.
- *
- * The command-line tools communicate with the mutex module using IPC datagram messages.
- * This file implements handling functions for those messages and sends back responses.
- *
- * @todo Implement the command-line diagnostic tools and the IPC messaging between them and
- *       the mutex module.
- *
- * @todo Implement the traceable mutexes.
+ *  -# What type of mutex is a given mutex? (recursive?)
+ *    - Stored in each Mutex object as a boolean flag.
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
@@ -126,8 +118,7 @@ static pthread_mutex_t MutexListMutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
 le_mutex_Ref_t CreateMutex
 (
     const char* nameStr,
-    bool        isRecursive,
-    bool        isTraceable
+    bool        isRecursive
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -138,7 +129,6 @@ le_mutex_Ref_t CreateMutex
     mutexPtr->lockedByThreadLink = LE_DLS_LINK_INIT;
     mutexPtr->waitingList = LE_DLS_LIST_INIT;
     pthread_mutex_init(&mutexPtr->waitingListMutex, NULL);  // Default attributes = Fast mutex.
-    mutexPtr->isTraceable = isTraceable;
     mutexPtr->isRecursive = isRecursive;
     mutexPtr->lockCount = 0;
     if (le_utf8_Copy(mutexPtr->name, nameStr, sizeof(mutexPtr->name), NULL) == LE_OVERFLOW)
@@ -187,6 +177,8 @@ static void AddToWaitingList
 )
 //--------------------------------------------------------------------------------------------------
 {
+    perThreadRecPtr->waitingOnMutex = mutexPtr;
+
     LOCK_WAITING_LIST(mutexPtr);
 
     le_dls_Queue(&mutexPtr->waitingList, &perThreadRecPtr->waitingListLink);
@@ -212,6 +204,8 @@ static void RemoveFromWaitingList
     le_dls_Remove(&mutexPtr->waitingList, &perThreadRecPtr->waitingListLink);
 
     UNLOCK_WAITING_LIST(mutexPtr);
+
+    perThreadRecPtr->waitingOnMutex = NULL;
 }
 
 
@@ -266,11 +260,44 @@ static void MarkUnlocked
 
     ListOfMutexesChgCnt++;
     // Remove it the calling thread's list of locked mutexes.
-    // TODO: Should we warn if mutexes are not unlocked in the reverse order of being locked?
     le_dls_Remove(&perThreadRecPtr->lockedMutexList, &mutexPtr->lockedByThreadLink);
 
     // Record in the Mutex object that no thread currently holds the lock.
     mutexPtr->lockingThreadRef = NULL;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The thread is dying.  Make sure no mutexes are held by it and clean up thread-specific data.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void ThreadDeathCleanUp
+(
+    void* contextPtr
+)
+//--------------------------------------------------------------------------------------------------
+{
+    mutex_ThreadRec_t* perThreadRecPtr = contextPtr;
+
+    if (le_dls_IsEmpty(&perThreadRecPtr->lockedMutexList) == false)
+    {
+        le_dls_Link_t* linkPtr = le_dls_Peek(&perThreadRecPtr->lockedMutexList);
+        while (linkPtr != NULL)
+        {
+            Mutex_t* mutexPtr = CONTAINER_OF(linkPtr, Mutex_t, lockedByThreadLink);
+
+            LE_EMERG("Thread died while holding mutex '%s'.", mutexPtr->name);
+
+            linkPtr = le_dls_PeekNext(&perThreadRecPtr->lockedMutexList, linkPtr);
+        }
+        LE_FATAL("Killing process to prevent future deadlock.");
+    }
+
+    if (perThreadRecPtr->waitingOnMutex != NULL)
+    {
+        RemoveFromWaitingList(perThreadRecPtr->waitingOnMutex, perThreadRecPtr);
+    }
 }
 
 
@@ -320,8 +347,8 @@ void mutex_ThreadInit
     perThreadRecPtr->lockedMutexList = LE_DLS_LIST_INIT;
     perThreadRecPtr->waitingListLink = LE_DLS_LINK_INIT;
 
-    // TODO: Register a thread destructor function to check that everything has been cleaned up
-    //       properly.  (Is it possible to release mutexes inside the thread destructors?)
+    // Register a thread destructor function to check that everything has been cleaned up properly.
+    (void)le_thread_AddDestructor(ThreadDeathCleanUp, perThreadRecPtr);
 }
 
 
@@ -344,7 +371,7 @@ le_mutex_Ref_t le_mutex_CreateRecursive
 )
 //--------------------------------------------------------------------------------------------------
 {
-    return CreateMutex(nameStr, true, false);
+    return CreateMutex(nameStr, true);
 }
 
 
@@ -363,57 +390,13 @@ le_mutex_Ref_t le_mutex_CreateNonRecursive
 )
 //--------------------------------------------------------------------------------------------------
 {
-    return CreateMutex(nameStr, false, false);
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Create a Traceable, Recursive mutex
- *
- * @return  Returns a reference to the mutex.
- *
- * @note Terminates the process on failure, so no need to check the return value for errors.
- */
-//--------------------------------------------------------------------------------------------------
-le_mutex_Ref_t le_mutex_CreateTraceableRecursive
-(
-    const char* nameStr     ///< [in] Name of the mutex
-)
-//--------------------------------------------------------------------------------------------------
-{
-    return CreateMutex(nameStr, true, true);
-
-    // TODO: Implement tracing.
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Create a Traceable, Non-Recursive mutex
- *
- * @return  Returns a reference to the mutex.
- *
- * @note Terminates the process on failure, so no need to check the return value for errors.
- */
-//--------------------------------------------------------------------------------------------------
-le_mutex_Ref_t le_mutex_CreateTraceableNonRecursive
-(
-    const char* nameStr     ///< [in] Name of the mutex
-)
-//--------------------------------------------------------------------------------------------------
-{
-    return CreateMutex(nameStr, false, true);
-
-    // TODO: Implement tracing.
+    return CreateMutex(nameStr, false);
 }
 
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Delete a mutex
- *
- * @return  Nothing.
  */
 //--------------------------------------------------------------------------------------------------
 void le_mutex_Delete
@@ -422,8 +405,6 @@ void le_mutex_Delete
 )
 //--------------------------------------------------------------------------------------------------
 {
-    // TODO: Implement traceable mutex deletion.
-
     // Remove the Mutex object from the Mutex List.
     LOCK_MUTEX_LIST();
     le_dls_Remove(&MutexList, &mutexRef->mutexListLink);
@@ -449,8 +430,6 @@ void le_mutex_Delete
 //--------------------------------------------------------------------------------------------------
 /**
  * Lock a mutex
- *
- * @return  Nothing.
  */
 //--------------------------------------------------------------------------------------------------
 void le_mutex_Lock
@@ -459,58 +438,47 @@ void le_mutex_Lock
 )
 //--------------------------------------------------------------------------------------------------
 {
-    /* TODO: Implement this:
-    if (mutexRef->isTraceable)
+    int result;
+
+    mutex_ThreadRec_t* perThreadRecPtr = thread_GetMutexRecPtr();
+
+    AddToWaitingList(mutexRef, perThreadRecPtr);
+
+    result = pthread_mutex_lock(&mutexRef->mutex);
+
+    RemoveFromWaitingList(mutexRef, perThreadRecPtr);
+
+    if (result == 0)
     {
-        LockTraceable(mutexRef);
+        // Got the lock!
+
+        // NOTE: the lock count is protected by the mutex itself.  That is, it can never be
+        //       updated by anyone who doesn't hold the lock on the mutex.
+
+        // If the mutex wasn't already locked by this thread before, we need to update
+        // the data structures to indicate that it now holds the lock.
+        if (mutexRef->lockCount == 0)
+        {
+            MarkLocked(perThreadRecPtr, mutexRef);
+        }
+
+        // Update the lock count.
+        mutexRef->lockCount++;
     }
     else
-    */
     {
-        int result;
-
-        mutex_ThreadRec_t* perThreadRecPtr = thread_GetMutexRecPtr();
-
-        perThreadRecPtr->waitingOnMutex = mutexRef;
-        AddToWaitingList(mutexRef, perThreadRecPtr);
-
-        result = pthread_mutex_lock(&mutexRef->mutex);
-
-        RemoveFromWaitingList(mutexRef, perThreadRecPtr);
-        perThreadRecPtr->waitingOnMutex = NULL;
-
-        if (result == 0)
+        if (result == EDEADLK)
         {
-            // Got the lock!
-
-            // NOTE: the lock count is protected by the mutex itself.  That is, it can never be
-            //       updated by anyone who doesn't hold the lock on the mutex.
-
-            // If the mutex wasn't already locked by this thread before, we need to update
-            // the data structures to indicate that it now holds the lock.
-            if (mutexRef->lockCount == 0)
-            {
-                MarkLocked(perThreadRecPtr, mutexRef);
-            }
-
-            // Update the lock count.
-            mutexRef->lockCount++;
+            LE_FATAL("DEADLOCK DETECTED! Thread '%s' attempting to re-lock mutex '%s'.",
+                     le_thread_GetMyName(),
+                     mutexRef->name);
         }
         else
         {
-            if (result == EDEADLK)
-            {
-                LE_FATAL("DEADLOCK DETECTED! Thread '%s' attempting to re-lock mutex '%s'.",
-                         le_thread_GetMyName(),
-                         mutexRef->name);
-            }
-            else
-            {
-                LE_FATAL("Thread '%s' failed to lock mutex '%s'. Error code %d (%m).",
-                         le_thread_GetMyName(),
-                         mutexRef->name,
-                         result );
-            }
+            LE_FATAL("Thread '%s' failed to lock mutex '%s'. Error code %d (%m).",
+                     le_thread_GetMyName(),
+                     mutexRef->name,
+                     result );
         }
     }
 }
@@ -533,56 +501,45 @@ le_result_t le_mutex_TryLock
 )
 //--------------------------------------------------------------------------------------------------
 {
-    /* TODO: Implement this.
-    if (mutexRef->isTraceable)
+    int result = pthread_mutex_trylock(&mutexRef->mutex);
+
+    if (result == 0)
     {
-        return TryLockTraceable(mutexRef);
+        // Got the lock!
+
+        // NOTE: the lock count is protected by the mutex itself.  That is, it can never be
+        //       updated by anyone who doesn't hold the lock on the mutex.
+
+        // If the mutex wasn't already locked by this thread before, we need to update
+        // the data structures to indicate that it now holds the lock.
+        if (mutexRef->lockCount == 0)
+        {
+            MarkLocked(thread_GetMutexRecPtr(), mutexRef);
+        }
+
+        // Update the lock count.
+        mutexRef->lockCount++;
+    }
+    else if (result == EBUSY)
+    {
+        // The mutex is already held by someone else.
+        return LE_WOULD_BLOCK;
     }
     else
-    */
     {
-        int result = pthread_mutex_trylock(&mutexRef->mutex);
-
-        if (result == 0)
-        {
-            // Got the lock!
-
-            // NOTE: the lock count is protected by the mutex itself.  That is, it can never be
-            //       updated by anyone who doesn't hold the lock on the mutex.
-
-            // If the mutex wasn't already locked by this thread before, we need to update
-            // the data structures to indicate that it now holds the lock.
-            if (mutexRef->lockCount == 0)
-            {
-                MarkLocked(thread_GetMutexRecPtr(), mutexRef);
-            }
-
-            // Update the lock count.
-            mutexRef->lockCount++;
-        }
-        else if (result == EBUSY)
-        {
-            // The mutex is already held by someone else.
-            return LE_WOULD_BLOCK;
-        }
-        else
-        {
-            LE_FATAL("Thread '%s' failed to trylock mutex '%s'. Error code %d (%m).",
-                     le_thread_GetMyName(),
-                     mutexRef->name,
-                     result );
-        }
-
-        return LE_OK;
+        LE_FATAL("Thread '%s' failed to trylock mutex '%s'. Error code %d (%m).",
+                 le_thread_GetMyName(),
+                 mutexRef->name,
+                 result );
     }
+
+    return LE_OK;
 }
 
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Unlock a mutex
- *
- * @return  Nothing.
  */
 //--------------------------------------------------------------------------------------------------
 void le_mutex_Unlock
@@ -591,55 +548,46 @@ void le_mutex_Unlock
 )
 //--------------------------------------------------------------------------------------------------
 {
-    /* TODO: Implement this.
-    if (mutexRef->isTraceable)
+    int result;
+
+    le_thread_Ref_t lockingThread = mutexRef->lockingThreadRef;
+    le_thread_Ref_t currentThread = le_thread_GetCurrent();
+
+    // Make sure that the lock count is at least 1.
+    LE_FATAL_IF(mutexRef->lockCount <= 0,
+                "Mutex '%s' unlocked too many times!",
+                mutexRef->name);
+
+    // Make sure that the current thread is the one holding the mutex lock.
+    if (lockingThread != currentThread)
     {
-        UnlockTraceable(mutexRef);
+        char threadName[LIMIT_MAX_THREAD_NAME_BYTES];
+        le_thread_GetName(lockingThread, threadName, sizeof(threadName));
+        LE_FATAL("Attempt to unlock mutex '%s' held by other thread '%s'.",
+                 mutexRef->name,
+                 threadName);
     }
-    else
-    */
+
+    // Update the lock count.
+    // NOTE: the lock count is protected by the mutex itself.  That is, it can never be
+    //       updated by anyone who doesn't hold the lock on the mutex.
+    mutexRef->lockCount--;
+
+    // If we have now reached a lock count of zero, the mutex is about to be unlocked, so
+    // Update the data structures to reflect that the current thread no longer holds the
+    // mutex.
+    if (mutexRef->lockCount == 0)
     {
-        int result;
+        MarkUnlocked(mutexRef);
+    }
 
-        le_thread_Ref_t lockingThread = mutexRef->lockingThreadRef;
-        le_thread_Ref_t currentThread = le_thread_GetCurrent();
-
-        // Make sure that the lock count is at least 1.
-        LE_FATAL_IF(mutexRef->lockCount <= 0,
-                    "Mutex '%s' unlocked too many times!",
-                    mutexRef->name);
-
-        // Make sure that the current thread is the one holding the mutex lock.
-        if (lockingThread != currentThread)
-        {
-            char threadName[LIMIT_MAX_THREAD_NAME_BYTES];
-            le_thread_GetName(lockingThread, threadName, sizeof(threadName));
-            LE_FATAL("Attempt to unlock mutex '%s' held by other thread '%s'.",
-                     mutexRef->name,
-                     threadName);
-        }
-
-        // Update the lock count.
-        // NOTE: the lock count is protected by the mutex itself.  That is, it can never be
-        //       updated by anyone who doesn't hold the lock on the mutex.
-        mutexRef->lockCount--;
-
-        // If we have now reached a lock count of zero, the mutex is about to be unlocked, so
-        // Update the data structures to reflect that the current thread no longer holds the
-        // mutex.
-        if (mutexRef->lockCount == 0)
-        {
-            MarkUnlocked(mutexRef);
-        }
-
-        // Warning!  If the lock count is now zero, then as soon as we call this function another
-        // thread may grab the lock.
-        result = pthread_mutex_unlock(&mutexRef->mutex);
-        if (result != 0)
-        {
-            LE_FATAL("Failed to unlock mutex '%s'. Errno = %d (%m).",
-                     mutexRef->name,
-                     result );
-        }
+    // Warning!  If the lock count is now zero, then as soon as we call this function another
+    // thread may grab the lock.
+    result = pthread_mutex_unlock(&mutexRef->mutex);
+    if (result != 0)
+    {
+        LE_FATAL("Failed to unlock mutex '%s'. Errno = %d (%m).",
+                 mutexRef->name,
+                 result );
     }
 }

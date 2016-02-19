@@ -1,0 +1,22 @@
+requires:
+{
+    api:
+    {
+        modemServices/le_ecall.api      [types-only]
+        modemServices/le_mcc.api        [types-only]
+        le_cfg.api              [types-only]
+        le_cfgAdmin.api         [types-only]
+        le_pm.api               [types-only]
+    }
+}
+
+sources:
+{
+    main.c
+    ${LEGATO_ROOT}/components/modemServices/modemDaemon/le_ecall.c
+    ${LEGATO_ROOT}/components/modemServices/modemDaemon/asn1Msd.c
+    ${LEGATO_ROOT}/components/modemServices/modemDaemon/le_mcc.c
+    ${LEGATO_ROOT}/components/modemServices/platformAdaptor/simu/le_pa/pa_ecall_simu.c
+    ${LEGATO_ROOT}/components/modemServices/platformAdaptor/simu/le_pa/pa_mcc_simu.c
+    simu/le_cfg_simu.c
+}

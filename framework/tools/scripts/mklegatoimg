@@ -19,7 +19,7 @@ help_long_description=(
 " - -d [STAGING_DIR]: staging directory for that platform"
 " - -o [OUTPUT_DIR]: output directory where the image will be stored"
 ""
-"For ar7/ar86/wp7/ap85 targets:"
+"For ar7/ar86/wp85 targets:"
 ""
 "   This creates a partition that you can use with fwupdate or airvantage"
 "   to update the legato within your target."
@@ -158,67 +158,20 @@ GenerateUbinizeCfg() {
     echo "vol_name=legato" >> $UBINIZE_CFG_PATH
 }
 
-CreateImg_mdm9x15() {
+CreateImgFs() {
     IMG_TYPE=${1:-yaffs2}
+
+    echo "$TARGET: Generating the framework image ($IMG_TYPE)"
 
     if [ -z "$TOOLCHAIN_DIR" ]; then
         echo "Unable to find toolchain"
         exit 1
     fi
 
-    FindTool "hdrcnv" HDRCNV
-    CheckRet
-
-    FindTool "cwezip" CWEZIP
-    CheckRet
-
-    PAGE_SIZE=4096
-    OOB_SIZE=160
-    PEB_SIZE=256KiB
-    COMPAT_BYTE=00000001
-
-    case $TARGET in
-        ar7)    PID='A911' ;;
-        ar86)   PID='A911' ;;
-        wp7)    PID='9X15' ;;
-        wp85)   PID='Y912'
-                PAGE_SIZE=2048
-                OOB_SIZE=64
-                PEB_SIZE=128KiB ;;
-        *)
-            echo "Unknown product '$TARGET'"
-            exit 1
-        ;;
-    esac
-
-    echo "$TARGET: Generating the framework image ($IMG_TYPE)"
     LEGATO_IMG="$OUTPUT_DIR/legato.$IMG_TYPE"
 
     TEMP_DIR="$OUTPUT_DIR/legatoimg/$IMG_TYPE"
     mkdir -p $TEMP_DIR
-
-    if [ $(id -u) -eq 0 ] && [[ "$IMG_TYPE" == "ubi" ]]; then
-        FindTool "setfattr" SETFATTR
-        if [ $? -ne 0 ]; then
-            echo "Warning: Unable to produce ubi image: setfattr needed"
-            return 1
-        fi
-
-        $SETFATTR --name security.SMACK64EXEC --value admin $STAGING_DIR/usr/local/bin/supervisor
-        CheckRet
-
-        $SETFATTR --name security.SMACK64EXEC --value admin $STAGING_DIR/usr/local/bin/appSetFilePermissions
-        CheckRet
-    elif [[ "$IMG_TYPE" == "ubi" ]]; then
-        echo "Warning: Unable to produce ubi image: fakeroot version >= 1.20.2 needed"
-        if grep "ID=ubuntu" /etc/os-release > /dev/null 2>&1; then
-            echo "         You can install fakeroot from ppa:cor-fr/fakeroot-backports"
-            echo "         $ sudo -E add-apt-repository ppa:cor-fr/fakeroot-backports && sudo apt-get update && sudo apt-get install fakeroot"
-            echo "         or"
-        fi
-        echo "         You can build fakeroot using sources from http://http.debian.net/debian/pool/main/f/fakeroot/fakeroot_1.20.2.orig.tar.bz2 ."
-        return 1
-    fi
 
     cd $TEMP_DIR
 
@@ -239,7 +192,7 @@ CreateImg_mdm9x15() {
 
             SQUASHFS_IMG="$OUTPUT_DIR/legato.squashfs"
 
-            $MKSQUASHFS "$STAGING_DIR" "$SQUASHFS_IMG" -noappend > squashfs.log
+            $MKSQUASHFS "$STAGING_DIR" "$SQUASHFS_IMG" -noappend -all-root > squashfs.log
             CheckRet
 
             FindTool "ubinize" UBINIZE
@@ -258,8 +211,18 @@ CreateImg_mdm9x15() {
             exit 1
             ;;
     esac
+}
+
+GenerateCwe() {
+    IMG_TYPE=${1:-yaffs2}
 
     echo "$TARGET: Generating the framework cwe"
+
+    FindTool "hdrcnv" HDRCNV
+    CheckRet
+
+    FindTool "cwezip" CWEZIP
+    CheckRet
 
     TMPMBN=$TEMP_DIR/temp.mbn
     if [ -f ${TMPMBN}.hdr ] ; then rm -f ${TMPMBN}.hdr; fi
@@ -270,7 +233,7 @@ CreateImg_mdm9x15() {
     if [ -f legatoz.cwe ] ; then rm -f legatoz.cwe; fi
     if [ -f legatoz.hdr ] ; then rm -f legatoz.hdr; fi
 
-    $HDRCNV ${LEGATO_IMG} -OH ${TMPMBN}.hdr -IT USER -PT 9X15 -V "$VERSION" -B $COMPAT_BYTE > hdrcnv-tmp.log
+    $HDRCNV ${LEGATO_IMG} -OH ${TMPMBN}.hdr -IT USER -PT $PLATFORM -V "$VERSION" -B $COMPAT_BYTE > hdrcnv-tmp.log
     CheckRet
 
     cat ${TMPMBN}.hdr ${LEGATO_IMG} > ${TMPMBN}.cwe
@@ -294,6 +257,43 @@ CreateImg_mdm9x15() {
     CheckRet
 }
 
+CreateImg_mdm9x15() {
+    IMG_TYPE=${1:-yaffs2}
+
+    PAGE_SIZE=4096
+    OOB_SIZE=160
+    PEB_SIZE=256KiB
+    COMPAT_BYTE=00000001
+    PLATFORM=9X15
+
+    case $TARGET in
+        ar7)    PID='A911' ;;
+        ar86)   PID='A911' ;;
+        wp85)   PID='Y912'
+                PAGE_SIZE=2048
+                OOB_SIZE=64
+                PEB_SIZE=128KiB ;;
+        *)
+            echo "Unknown product '$TARGET'"
+            exit 1
+        ;;
+    esac
+
+    CreateImgFs $IMG_TYPE
+    GenerateCwe $IMG_TYPE
+}
+
+DefaultImg() {
+    IMG_TYPE=${1:-yaffs2}
+
+    ln -sf legato.${IMG_TYPE} $OUTPUT_DIR/legato.default
+
+    if [ -e "$OUTPUT_DIR/legato-${IMG_TYPE}.cwe" ]; then
+        ln -sf legato-${IMG_TYPE}.cwe $OUTPUT_DIR/legato.cwe
+        ln -sf legatoz-${IMG_TYPE}.cwe $OUTPUT_DIR/legatoz.cwe
+    fi
+}
+
 DefaultImg_mdm9x15() {
     IMG_TYPE=yaffs2
 
@@ -307,14 +307,11 @@ DefaultImg_mdm9x15() {
         fi
     fi
 
-    ln -sf legato.${IMG_TYPE} $OUTPUT_DIR/legato.default
-
-    ln -sf legato-${IMG_TYPE}.cwe $OUTPUT_DIR/legato.cwe
-    ln -sf legatoz-${IMG_TYPE}.cwe $OUTPUT_DIR/legatoz.cwe
+    DefaultImg $IMG_TYPE
 }
 
 case $TARGET in
-    ar7 | wp7 | wp85 | ar86)
+    ar7 | ar86 | wp85)
         CreateImg_mdm9x15 yaffs2
         CreateImg_mdm9x15 ubi
         DefaultImg_mdm9x15

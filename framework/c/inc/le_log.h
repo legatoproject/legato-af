@@ -116,6 +116,10 @@
  *  - @ref LE_ASSERT(condition) \n
  *    If the condition is true, does nothing. If the condition is false, logs the source
  *    code text of the condition at EMERGENCY level and kills the calling process.
+ *  - @ref LE_ASSERT_OK(condition) \n
+ *    If the condition is LE_OK (0), does nothing. If the condition is anything else, logs the
+ *    a message at EMERGENCY level, containing the source code text of the condition, indicating
+ *    that it did not evaluate to LE_OK, and kills the calling process.
  *
  * For example,
  * @code
@@ -498,22 +502,22 @@ LE_SHARED le_log_Level_t* LE_LOG_LEVEL_FILTER_PTR;
 //--------------------------------------------------------------------------------------------------
 
 /** @ref LE_DEBUG if condition is met. */
-#define LE_DEBUG_IF(condition, formatString, ...)                                                   \
+#define LE_DEBUG_IF(condition, formatString, ...) \
         if (condition) { _LE_LOG_MSG(LE_LOG_DEBUG, formatString, ##__VA_ARGS__); }
 /** @ref LE_INFO if condition is met. */
-#define LE_INFO_IF(condition, formatString, ...)                                                    \
+#define LE_INFO_IF(condition, formatString, ...) \
         if (condition) { _LE_LOG_MSG(LE_LOG_INFO, formatString, ##__VA_ARGS__); }
 /** @ref LE_WARN if condition is met. */
-#define LE_WARN_IF(condition, formatString, ...)                                                    \
+#define LE_WARN_IF(condition, formatString, ...) \
         if (condition) { _LE_LOG_MSG(LE_LOG_WARN, formatString, ##__VA_ARGS__); }
 /** @ref LE_ERROR if condition is met. */
-#define LE_ERROR_IF(condition, formatString, ...)                                                   \
+#define LE_ERROR_IF(condition, formatString, ...) \
         if (condition) { _LE_LOG_MSG(LE_LOG_ERR, formatString, ##__VA_ARGS__); }
 /** @ref LE_CRIT if condition is met. */
-#define LE_CRIT_IF(condition, formatString, ...)                                                    \
+#define LE_CRIT_IF(condition, formatString, ...) \
         if (condition) { _LE_LOG_MSG(LE_LOG_CRIT, formatString, ##__VA_ARGS__); }
 /** @ref LE_EMERG if condition is met. */
-#define LE_EMERG_IF(condition, formatString, ...)                                                   \
+#define LE_EMERG_IF(condition, formatString, ...) \
         if (condition) { _LE_LOG_MSG(LE_LOG_EMERG, formatString, ##__VA_ARGS__); }
 
 
@@ -526,7 +530,7 @@ LE_SHARED le_log_Level_t* LE_LOG_LEVEL_FILTER_PTR;
  * to be printed (depending on the contents of the format string).
  */
 //--------------------------------------------------------------------------------------------------
-#define LE_FATAL(formatString, ...)                                                                 \
+#define LE_FATAL(formatString, ...) \
         { LE_EMERG(formatString, ##__VA_ARGS__); exit(EXIT_FAILURE); }
 
 
@@ -539,7 +543,7 @@ LE_SHARED le_log_Level_t* LE_LOG_LEVEL_FILTER_PTR;
  * to be printed (depending on the contents of the format string).
  */
 //--------------------------------------------------------------------------------------------------
-#define LE_FATAL_IF(condition, formatString, ...)                                                   \
+#define LE_FATAL_IF(condition, formatString, ...) \
         if (condition) { LE_FATAL(formatString, ##__VA_ARGS__) }
 
 
@@ -549,8 +553,18 @@ LE_SHARED le_log_Level_t* LE_LOG_LEVEL_FILTER_PTR;
  * a message at EMERGENCY level and then kills the calling process.
  */
 //--------------------------------------------------------------------------------------------------
-#define LE_ASSERT(condition)                                                                        \
+#define LE_ASSERT(condition) \
         if (!(condition)) { LE_FATAL("Assert Failed: '%s'", #condition) }
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This macro does nothing if the condition is LE_OK (0), otherwise it logs that the expression did
+ * not evaluate to LE_OK (0) in a message at EMERGENCY level and then kills the calling process.
+ */
+//--------------------------------------------------------------------------------------------------
+#define LE_ASSERT_OK(condition) \
+        if ((condition) != LE_OK) { LE_FATAL("Assert Failed: '%s' is not LE_OK (0)", #condition) }
 
 
 //--------------------------------------------------------------------------------------------------
@@ -591,17 +605,17 @@ const char* _le_log_GetResultCodeString
  * Logs the string if the keyword has been enabled by a runtime tool or configuration setting.
  */
 //--------------------------------------------------------------------------------------------------
-#define LE_TRACE(traceRef, string, ...)                                                             \
-        if (le_log_IsTraceEnabled(traceRef))                                                        \
-        {                                                                                           \
-            _le_log_Send((le_log_Level_t)-1,                                                        \
-                    traceRef,                                                                       \
-                    LE_LOG_SESSION,                                                                 \
-                    __FILE__,                                                                       \
-                    __func__,                                                                       \
-                    __LINE__,                                                                       \
-                    string,                                                                         \
-                    ##__VA_ARGS__);                                                                 \
+#define LE_TRACE(traceRef, string, ...)         \
+        if (le_log_IsTraceEnabled(traceRef))    \
+        {                                       \
+            _le_log_Send((le_log_Level_t)-1,    \
+                    traceRef,                   \
+                    LE_LOG_SESSION,             \
+                    __FILE__,                   \
+                    __func__,                   \
+                    __LINE__,                   \
+                    string,                     \
+                    ##__VA_ARGS__);             \
         }
 
 

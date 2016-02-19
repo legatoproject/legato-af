@@ -39,6 +39,10 @@ static std::string SdefFilePath;
 /// The system's name.
 static std::string SystemName;
 
+/// true if the build.ninja file should be ignored and everything should be regenerated, including
+/// a new build.ninja.
+static bool DontRunNinja = false;
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -141,6 +145,15 @@ static void GetCommandLineArgs
                             "executables.",
                             ldFlagsPush);
 
+    args::AddOptionalFlag(&DontRunNinja,
+                           'n',
+                           "dont-run-ninja",
+                           "Even if a build.ninja file exists, ignore it, delete the staging area,"
+                           " parse all inputs, and generate all output files, including a new copy"
+                           " of the build.ninja, then exit without running ninja.  This is used by"
+                           " the build.ninja to to regenerate itself and any other files that need"
+                           " to be regenerated when the build.ninja finds itself out of date.");
+
     args::AddOptionalFlag(&BuildParams.codeGenOnly,
                           'g',
                           "generate-code",
@@ -198,10 +211,63 @@ void MakeSystem
     // Set the target-specific environment variables (e.g., LEGATO_TARGET).
     envVars::SetTargetSpecific(BuildParams.target);
 
-    // Parse the .sdef file.
-    parser::sdef::Parse(SdefFilePath, BuildParams.beVerbose);
+    // Compute the staging directory path.
+    auto stagingDir = path::Combine(BuildParams.workingDir, "staging");
 
-    // Check that all client-side interfaces have been bound to something.
+    // If we have been asked not to run Ninja, then delete the staging area because it probably
+    // will contain some of the wrong files now that .Xdef file have changed.
+    if (DontRunNinja)
+    {
+        file::DeleteDir(stagingDir);
+    }
+    // If we have not been asked to ignore any already existing build.ninja, and the command-line
+    // arguments and environment variables we were given are the same as last time, just run ninja.
+    else if (args::MatchesSaved(BuildParams, argc, argv) && envVars::MatchesSaved(BuildParams))
+    {
+        RunNinja(BuildParams);
+        // NOTE: If build.ninja exists, RunNinja() will not return.  If it doesn't it will.
+    }
+
+    // Construct a model of the system.
+    model::System_t* systemPtr = modeller::GetSystem(SdefFilePath, BuildParams);
+
+    // If verbose mode is on, print a summary of the system model.
+    if (BuildParams.beVerbose)
+    {
+//        modeller::PrintSummary(systemPtr);
+    }
+
+    // Create the working directory and the staging directory, if they don't already exist.
+    file::MakeDir(stagingDir);
+
+    // Generate code for all the components in the system.
+    GenerateCode(model::Component_t::GetComponentMap(), BuildParams);
+
+    // Generate code and configuration files for all the apps in the system.
+    for (auto appMapEntry : systemPtr->apps)
+    {
+        GenerateCode(appMapEntry.second, BuildParams);
+    }
+
+    // Generate the configuration files for the system.
+    config::Generate(systemPtr, BuildParams);
+
+    // Generate the build script for the system.
+    ninja::Generate(systemPtr, BuildParams, OutputDir, argc, argv);
+
+    // If we haven't been asked not to run ninja,
+    if (!DontRunNinja)
+    {
+        // Save the command-line arguments and environment variables for future comparison.
+        // Note: we don't need to do this if we have been asked not to run ninja, because
+        // that only happens when ninja is already running and asking us to regenerate its
+        // script for us, and that only happens if we just saved the args and env vars and
+        // ran ninja.
+        args::Save(BuildParams, argc, argv);
+        envVars::Save(BuildParams);
+
+        RunNinja(BuildParams);
+    }
 }
 
 

@@ -6,9 +6,9 @@ directory.
 The default version accessed from Legato.io is the most recent Legato docs.
 
 To access previous versions:
-- you can search Google (e.g., "Legato 14.10")
+- you can search Google (e.g., "Legato 15.10")
 - you can enter the version number in the URL (e.g., change
-http://www.legato.io/legato-docs/<b>15_05</b>/ to http://www.legato.io/legato-docs/<b>14_10</b>/).
+http://www.legato.io/legato-docs/<b>16_01</b>/ to http://www.legato.io/legato-docs/<b>15_10</b>/).
 
 <HR>
 Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.

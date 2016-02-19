@@ -6,7 +6,7 @@ These are the top level Legato Dev Host directories installed:
 CUnit system used for automated unit testing.
 
 <b>apps </b> -
-sample applications and test applications.
+apps, including audio, data, modem and positioning services, samples and test apps.
 
 <b>bin </b> -
 created by build system and populated with executable files run on the
@@ -28,9 +28,6 @@ source code for the Legato framework.
 
 <b>interfaces </b> -
 pre-built audio, data, modem and positioning interfaces.
-
-<b>platformServices </b>
-pre-built app definition files for audio, data, modem and positioning services.
 
 <b>targetFiles </b> -
 files for installation on target devices.

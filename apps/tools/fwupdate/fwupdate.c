@@ -12,6 +12,12 @@
 
 #include <sys/utsname.h>
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum length of the version string.
+ */
+//--------------------------------------------------------------------------------------------------
+#define MAX_VERS_BYTES  257
 
 
 //--------------------------------------------------------------------------------------------------
@@ -183,20 +189,20 @@ static void QueryVersion
     void
 )
 {
-    TryConnect(le_info_ConnectService, "modemService");
+    TryConnect(le_fwupdate_ConnectService, "fwupdateService");
 
     // Connected to service so continue
     le_result_t result;
-    char version[LE_INFO_MAX_VERS_BYTES];
+    char version[MAX_VERS_BYTES];
     struct utsname linuxInfo;
 
-    result = le_info_GetFirmwareVersion(version, sizeof(version));
+    result = le_fwupdate_GetFirmwareVersion(version, sizeof(version));
     if ( result == LE_OK )
     {
         printf("Firmware Version: %s\n", version);
     }
 
-    result = le_info_GetBootloaderVersion(version, sizeof(version));
+    result = le_fwupdate_GetBootloaderVersion(version, sizeof(version));
     if ( result == LE_OK )
     {
         printf("Bootloader Version: %s\n", version);

@@ -3,8 +3,8 @@ requires:
 {
     api:
     {
-        le_gpioPin21 = ${LEGATO_ROOT}/interfaces/le_gpio.api
-        le_gpioPin22 = ${LEGATO_ROOT}/interfaces/le_gpio.api
+        le_gpioPin21 = le_gpio.api
+        le_gpioPin22 = le_gpio.api
     }
 }
 

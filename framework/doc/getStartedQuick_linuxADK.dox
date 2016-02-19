@@ -1,0 +1,15 @@
+/** @page getStartedQuick_linuxADK Linux ADK
+
+You can develop apps quickly on these Linux hosts:
+
+<a href="http://source.sierrawireless.com/resources/airprime/software/legato_application_development_kit_linux/#cmdline">Command-line</a>
+&mdash; use command line tools to develop Legato apps.
+
+<a href="http://source.sierrawireless.com/resources/airprime/software/legato_application_development_kit_linux/#ide">Developer Studio</a>
+&mdash;  use Developer Studio to develop Legato apps.
+
+<HR>
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/

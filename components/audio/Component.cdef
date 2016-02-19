@@ -12,7 +12,15 @@ sources:
     le_media.c
 }
 
+cflags:
+{
+    -I$LEGATO_ROOT/components/audio
+    -I$LEGATO_ROOT/components/audio/platformAdaptor/inc
+}
+
 requires:
 {
     component: { $LEGATO_AUDIO_PA }
+    component: { $LEGATO_AUDIO_PA_PCM }
+    component: { $LEGATO_AUDIO_PA_AMR }
 }

@@ -2167,6 +2167,9 @@ le_sms_MsgRef_t le_sms_SendPdu
  * @return LE_BAD_PARAMETER The text message length is equal to zero.
  * @return LE_OK            The function succeeded.
  *
+ * @note Text Message is encoded in ASCII format (ISO8859-15) and characters have to exist in
+ *  the GSM 23.038 7 bit alphabet.
+ *
  * @note If message is too long (max LE_SMS_TEXT_MAX_LEN digits), it is a fatal error, the
  *       function will not return.
  *
@@ -2363,9 +2366,9 @@ le_result_t le_sms_SetPDU
 /**
  * This function must be called to get the text Message.
  *
- * The output parameter is updated with the text string. If the text string exceed the
- * value of 'len' parameter, a LE_OVERFLOW error code is returned and 'text' is filled until
- * 'len-1' characters and a null-character is implicitly appended at the end of 'text'.
+ * Output parameter is updated with the text string encoded in ASCII format. If the text string
+ * exceeds the value of 'len' parameter, LE_OVERFLOW error code is returned and 'text' is filled
+ * until 'len-1' characters and a null-character is implicitly appended at the end of 'text'.
  *
  * @return LE_OVERFLOW      The message length exceed the maximum length.
  * @return LE_OK            The function succeeded.

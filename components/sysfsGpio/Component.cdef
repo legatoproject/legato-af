@@ -1,0 +1,87 @@
+sources:
+{
+    gpioSysfs.c
+    gpioSysfsUtils.c
+}
+
+requires:
+{
+    api:
+    {
+        le_cfg.api
+    }
+}
+
+// Each of the services provided will only be started if the pin is
+// available for export, and it hasn't been disabled in the config tree
+provides:
+{
+    api:
+    {
+        le_gpioPin1 = ${LEGATO_ROOT}/interfaces/le_gpio.api [manual-start]
+        le_gpioPin2 = ${LEGATO_ROOT}/interfaces/le_gpio.api [manual-start]
+        le_gpioPin3 = ${LEGATO_ROOT}/interfaces/le_gpio.api [manual-start]
+        le_gpioPin4 = ${LEGATO_ROOT}/interfaces/le_gpio.api [manual-start]
+        le_gpioPin5 = ${LEGATO_ROOT}/interfaces/le_gpio.api [manual-start]
+        le_gpioPin6 = ${LEGATO_ROOT}/interfaces/le_gpio.api [manual-start]
+        le_gpioPin7 = ${LEGATO_ROOT}/interfaces/le_gpio.api [manual-start]
+        le_gpioPin8 = ${LEGATO_ROOT}/interfaces/le_gpio.api [manual-start]
+        le_gpioPin9 = ${LEGATO_ROOT}/interfaces/le_gpio.api [manual-start]
+        le_gpioPin10 = ${LEGATO_ROOT}/interfaces/le_gpio.api [manual-start]
+        le_gpioPin11 = ${LEGATO_ROOT}/interfaces/le_gpio.api [manual-start]
+        le_gpioPin12 = ${LEGATO_ROOT}/interfaces/le_gpio.api [manual-start]
+        le_gpioPin13 = ${LEGATO_ROOT}/interfaces/le_gpio.api [manual-start]
+        le_gpioPin14 = ${LEGATO_ROOT}/interfaces/le_gpio.api [manual-start]
+        le_gpioPin15 = ${LEGATO_ROOT}/interfaces/le_gpio.api [manual-start]
+        le_gpioPin16 = ${LEGATO_ROOT}/interfaces/le_gpio.api [manual-start]
+        le_gpioPin17 = ${LEGATO_ROOT}/interfaces/le_gpio.api [manual-start]
+        le_gpioPin18 = ${LEGATO_ROOT}/interfaces/le_gpio.api [manual-start]
+        le_gpioPin19 = ${LEGATO_ROOT}/interfaces/le_gpio.api [manual-start]
+        le_gpioPin20 = ${LEGATO_ROOT}/interfaces/le_gpio.api [manual-start]
+        le_gpioPin21 = ${LEGATO_ROOT}/interfaces/le_gpio.api [manual-start]
+        le_gpioPin22 = ${LEGATO_ROOT}/interfaces/le_gpio.api [manual-start]
+        le_gpioPin23 = ${LEGATO_ROOT}/interfaces/le_gpio.api [manual-start]
+        le_gpioPin24 = ${LEGATO_ROOT}/interfaces/le_gpio.api [manual-start]
+        le_gpioPin25 = ${LEGATO_ROOT}/interfaces/le_gpio.api [manual-start]
+        le_gpioPin26 = ${LEGATO_ROOT}/interfaces/le_gpio.api [manual-start]
+        le_gpioPin27 = ${LEGATO_ROOT}/interfaces/le_gpio.api [manual-start]
+        le_gpioPin28 = ${LEGATO_ROOT}/interfaces/le_gpio.api [manual-start]
+        le_gpioPin29 = ${LEGATO_ROOT}/interfaces/le_gpio.api [manual-start]
+        le_gpioPin30 = ${LEGATO_ROOT}/interfaces/le_gpio.api [manual-start]
+        le_gpioPin31 = ${LEGATO_ROOT}/interfaces/le_gpio.api [manual-start]
+        le_gpioPin32 = ${LEGATO_ROOT}/interfaces/le_gpio.api [manual-start]
+        le_gpioPin33 = ${LEGATO_ROOT}/interfaces/le_gpio.api [manual-start]
+        le_gpioPin34 = ${LEGATO_ROOT}/interfaces/le_gpio.api [manual-start]
+        le_gpioPin35 = ${LEGATO_ROOT}/interfaces/le_gpio.api [manual-start]
+        le_gpioPin36 = ${LEGATO_ROOT}/interfaces/le_gpio.api [manual-start]
+        le_gpioPin37 = ${LEGATO_ROOT}/interfaces/le_gpio.api [manual-start]
+        le_gpioPin38 = ${LEGATO_ROOT}/interfaces/le_gpio.api [manual-start]
+        le_gpioPin39 = ${LEGATO_ROOT}/interfaces/le_gpio.api [manual-start]
+        le_gpioPin40 = ${LEGATO_ROOT}/interfaces/le_gpio.api [manual-start]
+        le_gpioPin41 = ${LEGATO_ROOT}/interfaces/le_gpio.api [manual-start]
+        le_gpioPin42 = ${LEGATO_ROOT}/interfaces/le_gpio.api [manual-start]
+        le_gpioPin43 = ${LEGATO_ROOT}/interfaces/le_gpio.api [manual-start]
+        le_gpioPin44 = ${LEGATO_ROOT}/interfaces/le_gpio.api [manual-start]
+        le_gpioPin45 = ${LEGATO_ROOT}/interfaces/le_gpio.api [manual-start]
+        le_gpioPin46 = ${LEGATO_ROOT}/interfaces/le_gpio.api [manual-start]
+        le_gpioPin47 = ${LEGATO_ROOT}/interfaces/le_gpio.api [manual-start]
+        le_gpioPin48 = ${LEGATO_ROOT}/interfaces/le_gpio.api [manual-start]
+        le_gpioPin49 = ${LEGATO_ROOT}/interfaces/le_gpio.api [manual-start]
+        le_gpioPin50 = ${LEGATO_ROOT}/interfaces/le_gpio.api [manual-start]
+        le_gpioPin51 = ${LEGATO_ROOT}/interfaces/le_gpio.api [manual-start]
+        le_gpioPin52 = ${LEGATO_ROOT}/interfaces/le_gpio.api [manual-start]
+        le_gpioPin53 = ${LEGATO_ROOT}/interfaces/le_gpio.api [manual-start]
+        le_gpioPin54 = ${LEGATO_ROOT}/interfaces/le_gpio.api [manual-start]
+        le_gpioPin55 = ${LEGATO_ROOT}/interfaces/le_gpio.api [manual-start]
+        le_gpioPin56 = ${LEGATO_ROOT}/interfaces/le_gpio.api [manual-start]
+        le_gpioPin57 = ${LEGATO_ROOT}/interfaces/le_gpio.api [manual-start]
+        le_gpioPin58 = ${LEGATO_ROOT}/interfaces/le_gpio.api [manual-start]
+        le_gpioPin59 = ${LEGATO_ROOT}/interfaces/le_gpio.api [manual-start]
+        le_gpioPin60 = ${LEGATO_ROOT}/interfaces/le_gpio.api [manual-start]
+        le_gpioPin61 = ${LEGATO_ROOT}/interfaces/le_gpio.api [manual-start]
+        le_gpioPin62 = ${LEGATO_ROOT}/interfaces/le_gpio.api [manual-start]
+        le_gpioPin63 = ${LEGATO_ROOT}/interfaces/le_gpio.api [manual-start]
+        le_gpioPin64 = ${LEGATO_ROOT}/interfaces/le_gpio.api [manual-start]
+    }
+}
+

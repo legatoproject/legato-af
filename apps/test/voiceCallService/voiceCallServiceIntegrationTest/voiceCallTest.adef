@@ -1,0 +1,20 @@
+executables:
+{
+    voiceCallTest = ( voiceCallTest)
+}
+
+processes:
+{
+    envVars:
+    {
+        LE_LOG_LEVEL = DEBUG
+    }
+}
+
+start: manual
+
+bindings:
+{
+    voiceCallTest.voiceCallTest.le_voicecall -> voiceCallService.le_voicecall
+    voiceCallTest.voiceCallTest.le_audio -> audioService.le_audio
+}

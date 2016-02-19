@@ -7,8 +7,6 @@
 
 project(LEGATO_ATMGR C)
 
-find_package(Legato REQUIRED)
-
 set(LEGATO_COMPONENTS_AT_MANAGER_TARGET  le_mdm_atmgr)
 
 if(LEGATO_COMPONENTS_MODEM MATCHES "AT")
@@ -17,20 +15,6 @@ if(LEGATO_COMPONENTS_MODEM MATCHES "AT")
                 -i devices/uart/inc
                 -i devices/adapter_layer/inc
                 -v
-            DEPENDS
-                devices/uart/src/le_uart.c
-                src/init.c
-                src/atCmdSync.c
-                src/atMachineCommand.c
-                src/atMachineDevice.c
-                src/atMachineManager.c
-                src/atMachineMgr.c
-                src/atMachineMgrItf.c
-                src/atMachineParser.c
-                src/atMachineString.c
-                src/atMachineUnsolicited.c
-                src/atPorts.c
-                legato
             )
 
 endif()

@@ -1,0 +1,267 @@
+//--------------------------------------------------------------------------------------------------
+/**
+ * @page c_le_voicecall Voice Call Service
+ *
+ * @ref le_voicecall_interface.h "API Reference"
+ *
+ * <HR>
+ *
+ * A voice call is needed for applications that want to establish a voice communication with
+ *  a remote party.  The voice call can be over a mobile network, or over VoIP.
+ *
+ * @section le_voicecall_binding IPC interfaces binding
+ *
+ * All the functions of this API are provided by the @b voiceCallService application service.
+ *
+ * Here's a code sample binding to Voice Call services:
+ * @verbatim
+   bindings:
+   {
+      clientExe.clientComponent.le_voicecall -> voiceCallService.le_voicecall
+   }
+   @endverbatim
+ *
+ * @section c_le_voicecall_outgoing Starting a Voice call
+ *
+ * A voice call can be started using le_voicecall_Start() with the destination identifier passed as
+ *  a parameter.
+ *
+ * @note Available interfaces depend on used platform.
+ *
+ * Before the voice call is started, an application registers a state handler using
+ * le_voicecall_AddStateHandler(). Once the voice call is established, the handler will be called
+ *  indicating it's now connected. If the state of the voice call changes, then the handler will be
+ *  called with the new state. To release a voice call, an application can use le_voicecall_End().
+ * Application must use le_voicecall_Delete() to release @ref le_voicecall_CallRef_t voice call
+ *  reference object when it is no more used.
+ *
+ * If le_voicecall_End() failed a @ref LE_VOICECALL_EVENT_END_FAILED event will be sent.
+ *
+ * If a voice call is already started when le_voicecall_Start() is called(), a
+ * new voice call will not be established. Instead, @ref LE_VOICECALL_EVENT_RESOURCE_BUSY event
+ *  will be sent. This event means call was not processed, while a
+ *  @ref LE_VOICECALL_EVENT_TERMINATED event means that the call was not processed and then
+ *  terminated or failed.
+ *
+ * Once an application makes a voice call request, it should monitor the establishment state
+ * reported to the registered state handler.
+ *
+ * Once the @ref LE_VOICECALL_EVENT_CONNECTED voice call event is received by the application, it
+ *  must get the Rx and Tx audio streams with le_voicecall_GetRxAudioStream() and
+ *  le_voicecall_GetTxAudioStream() functions in order to set up the audio path. The audio path
+ *  can be set up thanks to the audio API (cf. @ref c_audio).
+ *
+ * If a @ref LE_VOICECALL_EVENT_TERMINATED event is received, application can get the termination
+ *  reason by using le_voicecall_GetTerminationReason().
+ *
+ * @note The voice call use the mobile network. VoIP is not yet supported.
+ *
+ * @section c_le_voicecall_incoming Answering a Voice call
+ *
+ * An Incoming voice call will be notified by an @ref LE_VOICECALL_EVENT_INCOMING event on state
+ *  handler with a Call reference le_voicecall_CallRef_t().
+ *
+ * Application can answer the call by using le_voicecall_Answer() or reject the call by using
+ *  le_voicecall_End() passing the call reference @ref le_voicecall_CallRef_t.
+ *
+ * If le_voicecall_End() failed a @ref LE_VOICECALL_EVENT_END_FAILED event will be sent. If
+ *  le_voicecall_Answer() failed a @ref LE_VOICECALL_EVENT_ANSWER_FAILED event will be sent.
+ *
+ * Application have to use le_voicecall_Delete() to release @ref le_voicecall_CallRef_t voice call
+ *  reference object when it is no more used.
+ *
+ * <HR>
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ */
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * @file le_voicecall_interface.h
+ *
+ * Legato @ref c_le_voicecall include file.
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ */
+//--------------------------------------------------------------------------------------------------
+
+USETYPES le_mdmDefs.api;
+USETYPES le_audio.api;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Reference returned by Start function and used by End function
+ */
+//--------------------------------------------------------------------------------------------------
+REFERENCE Call;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Voice call establishment states.
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM Event
+{
+    EVENT_ALERTING,          ///< Voice call establishment in progress.
+                             ///< Far end is now alerting its user (outgoing call).
+    EVENT_CONNECTED,         ///< Call has been established, and is media is active.
+    EVENT_TERMINATED,        ///< Call has terminated.
+    EVENT_OFFLINE,           ///< NO Service available to try establish a voice call.
+    EVENT_BUSY,              ///< Remote party (callee) is busy.
+    EVENT_RESOURCE_BUSY,     ///< All local connection resources (lines/channels) are in use.
+    EVENT_CALL_END_FAILED,   ///< Call ending failed.
+    EVENT_CALL_ANSWER_FAILED,///< Call answering failed.
+    EVENT_INCOMING           ///< Incoming voice call in progress.
+};
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Voice call termination reason.
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM TerminationReason
+{
+    TERM_NETWORK_FAIL,  ///< Network could not complete the call.
+    TERM_BAD_ADDRESS,   ///< Remote address could not be resolved.
+    TERM_BUSY,          ///< Caller is currently busy and cannot take the call.
+    TERM_LOCAL_ENDED,   ///< Local party ended the call.
+    TERM_REMOTE_ENDED,  ///< Remote party ended the call.
+    TERM_UNDEFINED      ///< Undefined reason.
+};
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler for voice call state changes.
+ */
+//--------------------------------------------------------------------------------------------------
+HANDLER StateHandler
+(
+    Call reference IN,                                  ///< Event voice call object reference.
+    string identifier[le_mdmDefs.PHONE_NUM_MAX_LEN] IN, ///< Identifier of the remote party
+                                                        ///  associated with the call.
+    Event event IN                                      ///< Voice call event.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This event provides information on voice call state changes
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+EVENT State
+(
+    handler StateHandler
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Start a voice call.
+ *
+ * @return
+ *      - Reference to the voice call (to be used later for releasing the voice call)
+ *      - NULL if the voice call could not be processed
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION Call Start
+(
+    string DestinationID[le_mdmDefs.PHONE_NUM_MAX_LEN] IN ///< Destination identifier for the voice
+                                                          ///  call establishment.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Release a voice call.
+ *
+ * @return
+ *      - LE_OK if the end of voice call can be processed.
+ *      - LE_NOT_FOUND if the voice call object reference is not found.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t End
+(
+    Call reference IN                  ///< Voice call object reference to hang-up.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Delete voice call object reference create by le_voicecall_Start() or an incoming voice call.
+ *
+ * @return
+ *      - LE_OK if the delete of voice call can be processed.
+ *      - LE_FAULT if the voice call is not terminated.
+ *      - LE_NOT_FOUND if the voice call object reference is not found.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Delete
+(
+    Call reference IN                  ///< Voice call object reference to delete.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Answer to incoming voice call.
+ *
+ * @return
+ *      - LE_OK if the incoming voice call can be answered
+ *      - LE_NOT_FOUND if the incoming voice call object reference is not found.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Answer
+(
+    Call reference IN                  ///< Incoming voice call object reference to answer.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the termination reason of a voice call reference.
+ *
+ * @return
+ *      - LE_OK if the termination reason is got
+ *      - LE_NOT_FOUND if the incoming voice call object reference is not found.
+ *      - LE_FAULT if the voice call is not terminated.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetTerminationReason
+(
+    Call reference IN,                  ///< Voice call object reference to read from.
+    TerminationReason reason OUT       ///< Termination reason of the voice call.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Called to get the transmitted audio stream. All audio generated on this
+ * end of the call is sent on this stream.
+ *
+ * @return Transmitted audio stream reference.
+  */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_audio_StreamRef_t GetTxAudioStream
+(
+    Call reference IN                  ///< Voice call object reference to read from.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Called to get the received audio stream. All audio received from the
+ * other end of the call is received on this stream.
+ *
+ * @return Received audio stream reference.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_audio_StreamRef_t GetRxAudioStream
+(
+    Call reference IN                  ///< Voice call object reference to read from.
+);
+

@@ -13,11 +13,8 @@ processes:
     }
 }
 
-provides:
+extern:
 {
-    api:
-    {
-        filePasser = server.fileServer.filePasser
-    }
+    filePasser = server.fileServer.filePasser
 }
 

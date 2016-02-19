@@ -1,0 +1,161 @@
+/** @page legatoServicesUpdatePack Update Pack Format
+
+This page describes the format of update pack files. 
+
+See @ref legatoServicesUpdate for more info on tools available for creating update packs.
+
+The Update Daemon accepts <b>update pack</b> files that contain software/firmware update 
+instructions and associated data (e.g., libraries, executables, resource files).
+
+Update packs can have multiple @b sections. Each @b section starts with a JSON @b description.
+Optionally, a @b payload can follow.
+
+If the section has payload, it's expected to start immediately after the last byte of JSON data
+(no padding or alignment bytes between). If there's no payload, but there's another
+section, the next byte after the task's description will be the next section's description.
+
+@section updatePack_jsonData JSON Data
+
+http://www.json.org/
+
+The JSON data for a section is contained within a single UTF-8 encoded JSON @e object,
+beginning with an open brace { character and ending with a close brace } character.
+
+Each section type has a different description structure, but they all have a @e command field
+indicating which section type it is:
+- @ref updatePack_updateSystem
+- @ref updatePack_updateApp
+- @ref updatePack_removeApp
+- @ref updatePack_updateFirmware
+
+@subsection updatePack_updateSystem Update System
+
+Atomically updates the collection of apps and the app framework on the system.
+
+The payload contains the framework and app files.
+
+@note Delta updates are not yet supported.  More description fields will be added later to
+      support that (such as "deltaFromMd5").
+
+System update description fields are:
+
+@verbatim
+Field   = Description
+----------------------------------------------------------------------------------------------------
+command = string = "updateSystem"
+md5     = string = MD5 hash of system's build staging area (excluding <c>info.properties</c> file).
+size    = integer = Number of bytes of payload associated.
+@endverbatim
+
+Code sample:
+
+@verbatim
+{
+    "command":"updateSystem",
+    "md5":"098843325eef6af82cdc15a294c39824",
+    "size":335534
+}
+@endverbatim
+
+@subsection updatePack_updateApp Update App
+
+Updates an app in the target system. If an app with the same name doesn't already exist in the
+system, install the app.
+
+The payload is the new app.
+
+@note Delta updates aren't supported yet. New description fields will be added later to
+      support (e.g., deltaFromMd5).
+
+Description fields are:
+
+@verbatim
+Field   = Description
+----------------------------------------------------------------------------------------------------
+command = string = "updateApp"
+name    = string = App's name.
+version = string = App's human-readable version string.
+md5     = string = MD5 hash of the app's build staging area (excluding info.properties file).
+size    = integer = Number of bytes of payload associated with this task.
+@endverbatim
+
+Code sample:
+
+@verbatim
+{
+    "command":"updateApp",
+    "name":"helloWorld",
+    "version":"0.8c",
+    "md5":"098843325eef6af82cdc15a294c39824",
+    "size":5534
+}
+@endverbatim
+
+@subsection updatePack_removeApp Remove App
+
+Removes an app from the system.
+
+Carries no payload.
+
+The only description field other than the command is the app's name.
+
+@verbatim
+Field   = Description
+----------------------------------------------------------------------------------------------------
+command = string = "removeApp"
+name    = string = App's name.
+@endverbatim
+
+Code sample:
+
+@verbatim
+{
+    "command":"removeApp",
+    "name":"helloWorld"
+}
+@endverbatim
+
+@subsection updatePack_updateFirmware Update Firmware
+
+Updates firmware in the module. The task payload is a firmware update file that is to be
+passed to @ref toolsTarget_fwUpdate.
+
+The only description field other than the command is the payload (firmware file) size:
+
+@verbatim
+Field   = Description
+----------------------------------------------------------------------------------------------------
+command = string = "updateFirmware"
+size    = unsigned integer = Number of bytes of payload associated with this task.
+@endverbatim
+
+Code sample:
+
+@verbatim
+{
+    "command":"updateFirmware",
+    "size":42043458
+}
+@endverbatim
+
+@section updatePack_Concatenation App Updates Concatenation
+
+App removal and app install update packs can be combined together by concatenating their
+files together into a single file.
+
+Code sample:
+
+@code
+$ cat app1.remove.update app2.wp85.update app3.wp85.update > myMultiAppChanges.update
+@endcode
+
+It's @b strongly recommended that system updates be used instead of concatenated app
+changes. System updates are applied atomically preventing problems that can result from
+a multi-app update being interrupted before all the changes could be applied (e.g., by a power
+loss, reset, or loss of connectivity.
+
+<HR>
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/

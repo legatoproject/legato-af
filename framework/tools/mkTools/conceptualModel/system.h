@@ -17,11 +17,24 @@
 //--------------------------------------------------------------------------------------------------
 struct System_t
 {
-    System_t(parseTree::AdefFile_t* filePtr): defFilePtr(filePtr) {}
+    System_t(parseTree::SdefFile_t* filePtr);
 
-    parseTree::AdefFile_t* defFilePtr;  ///< Pointer to root of parse tree for the .adef file.
+    parseTree::SdefFile_t* defFilePtr;  ///< Pointer to root of parse tree for the .sdef file.
 
-    std::list<App_t*> apps;  ///< List of apps in this system.
+    std::string dir;    ///< Absolute path to the directory containing the .sdef file.
+
+    std::string name;   ///< Name of the system.
+
+    std::map<std::string, App_t*> apps;  ///< Map of apps in this system (key is app name).
+
+    std::map<std::string, User_t*> users; ///< Map of non-app users (key is user name).
+
+    std::map<std::string, Command_t*> commands; ///< Map of commands (key is command name).
+
+    App_t* FindApp(const parseTree::Token_t* appTokenPtr);
+
+    ApiServerInterfaceInstance_t* FindServerInterface(const parseTree::Token_t* appTokenPtr,
+                                                      const parseTree::Token_t* interfaceTokenPtr);
 };
 
 

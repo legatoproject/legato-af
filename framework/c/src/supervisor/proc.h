@@ -210,20 +210,6 @@ const char* proc_GetAppName
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Get the process's previous fault time.
- *
- * @return
- *      The process's name.
- */
-//--------------------------------------------------------------------------------------------------
-time_t proc_GetFaultTime
-(
-    proc_Ref_t procRef             ///< [IN] The process reference.
-);
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Get the process's config path.
  *
  * @return

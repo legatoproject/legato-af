@@ -64,7 +64,8 @@ static std::string FindSourceFile
 static model::ApiFile_t* GetApiFilePtr
 (
     const std::string& apiFile,
-    const std::list<std::string>& searchList    ///< List of dirs to search for .api files.
+    const std::list<std::string>& searchList,   ///< List of dirs to search for .api files.
+    const parseTree::Token_t* tokenPtr  ///< Token to use to throw error exceptions.
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -76,19 +77,35 @@ static model::ApiFile_t* GetApiFilePtr
 
         // Handler function that gets called for each USETYPES in the .api file.
         // Finds that .api file and adds it to this .api file's list of includes.
-        auto handler = [&apiFilePtr, &searchList](std::string&& dependency)
+        auto handler = [&apiFilePtr, &searchList, &tokenPtr](std::string&& dependency)
         {
-            std::string includedFilePath = file::FindFile(dependency, searchList);
-            if (includedFilePath == "")
+            // First look in the same directory as the .api file that is doing the including.
+            auto dir = path::GetContainingDir(apiFilePtr->path);
+            std::string includedFilePath = file::FindFile(dependency, { dir });
+
+            // If not found there, look through the search directory list.
+            if (includedFilePath.empty())
             {
-                throw mk::Exception_t("Can't find dependent .api file: '" + dependency + "'.");
+                includedFilePath = file::FindFile(dependency, searchList);
+                if (includedFilePath.empty())
+                {
+                    tokenPtr->ThrowException("Can't find dependent .api file: "
+                                             "'" + dependency + "'.");
+                }
             }
-            model::ApiFile_t* includedFilePtr = GetApiFilePtr(includedFilePath, searchList);
+
+            // Get the API File object for the included file.
+            auto includedFilePtr = GetApiFilePtr(includedFilePath, searchList, tokenPtr);
+
+            // Mark the included file "included".
             includedFilePtr->isIncluded = true;
+
+            // Add the included file to the list of files included by the including file.
             apiFilePtr->includes.push_back(includedFilePtr);
         };
 
-        // Parse the .api file to figure out what it depends on.
+        // Parse the .api file to figure out what it depends on.  Call the handler function
+        // for each .api file that is included.
         parser::api::GetDependencies(apiFile, handler);
     }
 
@@ -113,19 +130,31 @@ static void AddSources
 
     for (auto contentPtr: tokenListPtr->Contents())
     {
+        // Find the file (returns an absolute path or "" if not found).
         auto filePath = FindSourceFile(componentPtr, contentPtr, buildParams);
 
         // If the environment variable substitution resulted in an empty string, then just
         // skip this file.
         if (!filePath.empty())
         {
+            auto objFilePath = path::Combine(componentPtr->workingDir, "obj/")
+                             + md5(path::MakeCanonical(filePath)) + ".o";
+
             if (path::IsCSource(filePath))
             {
-                componentPtr->cSources.push_back(filePath);
+                auto objFilePtr = new model::ObjectFile_t(objFilePath,
+                                                          model::ProgramLang_t::LANG_C,
+                                                          filePath);
+
+                componentPtr->cObjectFiles.push_back(objFilePtr);
             }
             else if (path::IsCxxSource(filePath))
             {
-                componentPtr->cxxSources.push_back(filePath);
+                auto objFilePtr = new model::ObjectFile_t(objFilePath,
+                                                          model::ProgramLang_t::LANG_CXX,
+                                                          filePath);
+
+                componentPtr->cxxObjectFiles.push_back(objFilePtr);
             }
             else
             {
@@ -379,7 +408,7 @@ static void GetProvidedApi
     }
 
     // Get a pointer to the .api file object.
-    auto apiFilePtr = GetApiFilePtr(apiFilePath, buildParams.interfaceDirs);
+    auto apiFilePtr = GetApiFilePtr(apiFilePath, buildParams.interfaceDirs, contentList[0]);
 
     // If no internal alias was specified, then use the .api file's default prefix.
     if (internalName.empty())
@@ -504,7 +533,7 @@ static void GetRequiredApi
     }
 
     // Get a pointer to the .api file object.
-    auto apiFilePtr = GetApiFilePtr(apiFilePath, buildParams.interfaceDirs);
+    auto apiFilePtr = GetApiFilePtr(apiFilePath, buildParams.interfaceDirs, contentList[0]);
 
     // If no internal alias was specified, then use the .api file's default prefix.
     if (internalName.empty())
@@ -531,6 +560,62 @@ static void GetRequiredApi
     // If the .api has any USETYPES statements in it, add those to the component's list
     // of server-side USETYPES included .api files.
     GetUsetypesApis(componentPtr->clientUsetypesApis, apiFilePtr);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Processes an item from the "lib:" subsection of the "requires:" section.
+ */
+//--------------------------------------------------------------------------------------------------
+static void AddRequiredLib
+(
+    model::Component_t* componentPtr,
+    const parseTree::Token_t* tokenPtr,
+    const mk::BuildParams_t& buildParams
+)
+//--------------------------------------------------------------------------------------------------
+{
+    auto lib = envVars::DoSubstitution(tokenPtr->text);
+    // Skip if environment variable substitution resulted in an empty string.
+    if (!lib.empty())
+    {
+        // If the library specifier ends in a .a extension,
+        // it is a static library, which may not be compiled with position-independent code,
+        // so this has to be linked with the executable at the last linking stage.
+        if (path::HasSuffix(lib, ".a"))
+        {
+            componentPtr->staticLibs.insert(lib);
+        }
+        // If it's not a .a file,
+        else
+        {
+            // If the library specifier contains a ".so" extension,
+            if (lib.find(".so") != std::string::npos)
+            {
+                // Try to find it relative to the component directory or the library output
+                // directory.
+                std::list<std::string> searchDirs = { componentPtr->dir, buildParams.libOutputDir };
+                auto libPath = file::FindFile(lib, searchDirs);
+
+                // If found,
+                if (!libPath.empty())
+                {
+                    // Add the library to the list of the component's implicit dependencies.
+                    componentPtr->implicitDependencies.insert(libPath);
+
+                    // Add a -L ldflag for the directory that the library is in.
+                    componentPtr->ldFlags.push_back("-L" + path::GetContainingDir(libPath));
+
+                    // Compute the short name for this library.
+                    lib = path::GetLibShortName(lib);
+                }
+            }
+
+            // Add a -l option to the component's LDFLAGS.
+            componentPtr->ldFlags.push_back("-l" + lib);
+        }
+    }
 }
 
 
@@ -621,14 +706,7 @@ static void AddRequiredItems
             auto subsectionPtr = parseTree::ToTokenListPtr(memberPtr);
             for (auto itemPtr : subsectionPtr->Contents())
             {
-                auto libShortName = envVars::DoSubstitution(itemPtr->text);
-
-                // Skip if environment variable substitution resulted in an empty string.
-                if (!libShortName.empty())
-                {
-                    // Add a -llibShortName to the component's LDFLAGS.
-                    componentPtr->ldFlags.push_back("-l" + libShortName);
-                }
+                AddRequiredLib(componentPtr, itemPtr, buildParams);
             }
         }
         else
@@ -769,23 +847,23 @@ static void PrintSummary
     {
         std::cout << "  Component library: '" << componentPtr->lib << "'" << std::endl;
 
-        if (!componentPtr->cSources.empty())
+        if (!componentPtr->cObjectFiles.empty())
         {
             std::cout << "  C sources:" << std::endl;
 
-            for (auto sourceFile : componentPtr->cSources)
+            for (auto objFilePtr : componentPtr->cObjectFiles)
             {
-                std::cout << "    '" << sourceFile << "'" << std::endl;
+                std::cout << "    '" << objFilePtr->sourceFilePath << "'" << std::endl;
             }
         }
 
-        if (!componentPtr->cxxSources.empty())
+        if (!componentPtr->cxxObjectFiles.empty())
         {
             std::cout << "  C++ sources:" << std::endl;
 
-            for (auto sourceFile : componentPtr->cxxSources)
+            for (auto objFilePtr : componentPtr->cxxObjectFiles)
             {
-                std::cout << "    '" << sourceFile << "'" << std::endl;
+                std::cout << "    '" << objFilePtr->sourceFilePath << "'" << std::endl;
             }
         }
     }
@@ -1028,16 +1106,32 @@ model::Component_t* GetComponent
         }
     }
 
-    // If there are C sources or C++ sources,
-    if ((!componentPtr->cSources.empty()) || (!componentPtr->cxxSources.empty()))
+    // If there are C sources or C++ sources, a library will be built for this component.
+    if ((!componentPtr->cObjectFiles.empty()) || (!componentPtr->cxxObjectFiles.empty()))
     {
-        // A library will be built for this component.
-        componentPtr->lib = path::Combine(buildParams.libOutputDir,
-                                          "libComponent_" + componentPtr->name + ".so");
+        // If the library output directory has not been specified, then put each component's
+        // library file under its own working directory.
+        if (buildParams.libOutputDir.empty())
+        {
+            componentPtr->lib = path::Combine(path::Combine(buildParams.workingDir,
+                                                            componentPtr->workingDir),
+                                              "obj/libComponent_" + componentPtr->name + ".so");
+        }
+        // Otherwise, put the component library directly into the library output directory.
+        else
+        {
+            componentPtr->lib = path::Combine(buildParams.libOutputDir,
+                                              "libComponent_" + componentPtr->name + ".so");
+        }
 
         // It will have an init function that will need to be executed (unless it is built
         // "stand-alone").
         componentPtr->initFuncName = "_" + componentPtr->name + "_COMPONENT_INIT";
+
+        // Changes to liblegato should trigger re-linking of the component library.
+        auto liblegatoPath = path::Combine(envVars::Get("LEGATO_ROOT"),
+                                     "build/" + buildParams.target + "/framework/lib/liblegato.so");
+        componentPtr->implicitDependencies.insert(liblegatoPath);
     }
 
     if (buildParams.beVerbose)
@@ -1063,9 +1157,9 @@ void AddComponentInstance
 {
     // If there is already an instance of this component in this executable, ignore this.
     // Someday we may support multiple instances of the same component, but not today.
-    for (auto iPtr : exePtr->componentInstances)
+    for (auto instancePtr : exePtr->componentInstances)
     {
-        if (iPtr->componentPtr == componentPtr)
+        if (instancePtr->componentPtr == componentPtr)
         {
             return;
         }

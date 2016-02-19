@@ -9,7 +9,7 @@
 #include "legato.h"
 #include "interfaces.h"
 #include "limit.h"
-#include "configInstaller.h"
+#include "appConfig.h"
 
 
 //--------------------------------------------------------------------------------------------------

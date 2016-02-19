@@ -89,16 +89,16 @@ Here's an example using the tree named 'foo' instead of the default tree:
 @subsection configtoolsTarget_config_TreeLocation Tree location
 
 The trees themselves are stored in the file system at:
-@verbatim /opt/legato/configTree @endverbatim
+@verbatim /legato/systems/current/configTree @endverbatim
 
 The configTree cycles through the extensions, .rock, .paper, and .scissors to differentiate
 between versions of the tree file. The base file name is the same as the tree.
 
-A listing for /opt/legato/configTree where the system tree and the user trees are foo and bar looks
+A listing for /legato/systems/current/configTree where the system tree and the user trees are foo and bar looks
 like this:
 
 @verbatim
-$ ls /opt/legato/configTree/ -l
+$ ls /legato/systems/current/configTree/ -l
 total 32
 -rw------- 1 user user  3456 May 12 11:02 bar.rock
 -rw------- 1 user user  3456 May  9 11:04 foo.scissors

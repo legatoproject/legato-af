@@ -13,6 +13,7 @@ Legato has these tools to run on the target:
 @subpage toolsTarget_log <br>
 @subpage toolsTarget_sdir <br>
 @subpage toolsTarget_setNet <br>
+@subpage toolsTarget_update <br>
 
 <HR>
 

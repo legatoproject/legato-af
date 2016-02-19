@@ -9,10 +9,8 @@ Run this to install the sample app:
 @verbatim
 $ cd apps/sample/gpioCf3Demo
 $ make wp85
-$ instapp gpioCf3Demo.wp85 <ip address>
+$ instapp gpioCf3Demo.wp85.update <ip address>
 @endverbatim
-
-If you're using an AR7 or WP7 module in your target, substitute @c ar7 or @c wp7 for @c wp85.
 
 @ref sampleApps_startApp
 

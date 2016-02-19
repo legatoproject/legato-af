@@ -6,34 +6,15 @@
  * This API provides standard semaphore functionality, but with added diagnostic capabilities.
  * These semaphores can only be shared by threads within the same process.
  *
- * Two kinds of semaphore are supported by Legato:
- *  - @b Normal
- *  - @b Traceable
+ * Semaphores can wait (decrease value by one) and post (increase value by one).
  *
- * Normal semaphores are faster than traceable semaphores and consume less memory, but still offer
- * some diagnosic capabilities. Traceable semaphores generally behave the same as Normal
- * sempahores, but can also log their activities.
- *
- * All semaphores can wait (decrease value by one) and post (increase value by one).
- * The same wait, post, and delete functions work for all the semaphores,
- * regardless of what type they are.  This means that a semaphore can be changed from Normal to
- * Traceable or vice versa just by changing the function you use to create it.
- * This helps when troubleshooting race conditions or deadlocks because it's
- * easy to switch one semaphore or a select few semaphores to Traceable, without suffering the
- * runtime cost of switching @e all semaphores to the slower Traceable semaphores.
- *
+ * In Legato, semaphores are dynamically allocated objects.
  *
  * @section create_semaphore Creating a Semaphore
  *
- * In Legato, semaphores are dynamically allocated objects. Functions that create
- * them return references to them (of type le_sem_Ref_t).
- * The functions for creating semaphores are:
- *  - le_sem_Create() - creates a @b normal, @b semaphore.
- *  - le_sem_CreateTraceable() - creates a @b traceable, @b semaphore.
+ * le_sem_Create() creates a semaphore, returning a reference to it (of type le_sem_Ref_t).
  *
- * @todo add into semaphore API function le_sem_OpenShared() for semaphore shared between process.
- *
- * Note that all semaphores have names.  This is required for diagnostic purposes.  See
+ * All semaphores have names.  This is required for diagnostic purposes.  See
  * @ref diagnostics_semaphore below.
  *
  * @section use_semaphore Using a Semaphore
@@ -44,11 +25,8 @@
  *  - @c le_sem_TryWait()
  *  - @c le_sem_WaitWithTimeOut()
  *
- * Function to get semaphores values is:
+ * Function to get a semaphore's current value is:
  *  - @c le_sem_GetValue()
- *
- * It doesn't matter what type of semaphore you are using,
- * you still use the same functions for increasing, decreasing, getting value your semaphore.
  *
  * @section delete_semaphore Deleting a Semaphore
  *
@@ -59,20 +37,10 @@
  *
  * @section diagnostics_semaphore Diagnostics
  *
- * Both Normal and Traceable semaphores have some diagnostics capabilities.
- *
- * The command-line diagnostic tool lssemaphore can be used to list the
+ * The command-line @ref toolsTarget_inspect tool can be used to list the
  * semaphores that currently exist inside a given process.
  * The state of each semaphore can be seen, including a list of any threads that
  * might be waiting for that semaphore.
- *
- * The tool threadlook will show if a given thread is currently
- * waiting for a semaphore, and will name that semaphore.
- *
- * If there are Traceable semaphores in a process, then it will be possible to use the
- * log tool to enable or disable tracing on that semaphore.
- * The trace keyword name is the name of the process, the name of the component,
- * and the name of the semaphore, separated by slashes (e.g., "process/component/semaphore").
  *
  * <HR>
  *
@@ -107,19 +75,6 @@ typedef struct le_sem_t* le_sem_Ref_t;
  */
 //--------------------------------------------------------------------------------------------------
 le_sem_Ref_t le_sem_Create
-(
-    const char*     name,               ///< [IN] Name of the semaphore.
-    int32_t         initialCount        ///< [IN] Initial number of semaphore.
-);
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Create a traceable semaphore shared by threads within the same process.
- *
- * @note Terminates the process on failure, no need to check the return value for errors.
- */
-//--------------------------------------------------------------------------------------------------
-le_sem_Ref_t le_sem_CreateTraceable
 (
     const char*     name,               ///< [IN] Name of the semaphore.
     int32_t         initialCount        ///< [IN] Initial number of semaphore.

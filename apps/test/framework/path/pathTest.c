@@ -215,6 +215,89 @@ static void TestConcatenation(void)
 }
 
 
+static void TestSubPaths(void)
+{
+    {
+        char path[] = "a/b/c";
+        char subpath[] = "a/b/c/d";
+
+        LE_TEST(le_path_IsSubpath(path, subpath, "/"));
+        LE_TEST(!le_path_IsSubpath(subpath, path, "/"));
+    }
+
+    {
+        char path[] = "a/b/c";
+        char subpath[] = "a/b/c/";
+
+        LE_TEST(!le_path_IsSubpath(path, subpath, "/"));
+        LE_TEST(!le_path_IsSubpath(subpath, path, "/"));
+    }
+
+    {
+        char path[] = "a/b/c/";
+        char subpath[] = "a/b/c/d/";
+
+        LE_TEST(le_path_IsSubpath(path, subpath, "/"));
+        LE_TEST(!le_path_IsSubpath(subpath, path, "/"));
+    }
+
+    {
+        char path[] = "a/b/c/";
+        char subpath[] = "a/b/cd";
+
+        LE_TEST(!le_path_IsSubpath(path, subpath, "/"));
+        LE_TEST(!le_path_IsSubpath(subpath, path, "/"));
+    }
+
+    {
+        char path[] = "/app/sec";
+        char subpath[] = "/app/secStoreTest1";
+
+        LE_TEST(!le_path_IsSubpath(path, subpath, "/"));
+        LE_TEST(!le_path_IsSubpath(subpath, path, "/"));
+    }
+}
+
+
+static void TestPathEquivalence(void)
+{
+    {
+        char path1[] = "a/b/c";
+        char path2[] = "a/b/c/d";
+
+        LE_TEST(!le_path_IsEquivalent(path1, path2, "/"));
+    }
+
+    {
+        char path1[] = "a/b/c///";
+        char path2[] = "a/b/c/";
+
+        LE_TEST(le_path_IsEquivalent(path1, path2, "/"));
+    }
+
+    {
+        char path1[] = "a/b/c";
+        char path2[] = "a/b/c//";
+
+        LE_TEST(le_path_IsEquivalent(path1, path2, "/"));
+    }
+
+    {
+        char path1[] = "/";
+        char path2[] = "///";
+
+        LE_TEST(le_path_IsEquivalent(path1, path2, "/"));
+    }
+
+    {
+        char path1[] = "/a";
+        char path2[] = "///";
+
+        LE_TEST(!le_path_IsEquivalent(path1, path2, "/"));
+    }
+}
+
+
 static void IteratePath
 (
     le_pathIter_Ref_t iteratorRef,
@@ -618,6 +701,8 @@ COMPONENT_INIT
     TestGetBasenamePtr();
     TestGetDir();
     TestConcatenation();
+    TestSubPaths();
+    TestPathEquivalence();
 
 
     LE_INFO("======== Begin Path Iterator API Test ========");

@@ -20,3 +20,8 @@ sources:
 {
     cellNetServiceServer.c
 }
+
+cflags:
+{
+    -I${LEGATO_ROOT}/components/cfgEntries
+}

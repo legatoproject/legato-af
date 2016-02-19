@@ -13,7 +13,7 @@ function IsAppRunning
 {
     appName=$1
 
-    numMatches=$(ssh root@$targetAddr "/usr/local/bin/app status $appName | grep -c \"running\"")
+    numMatches=$(ssh root@$targetAddr "$BIN_PATH/app status $appName | grep -c \"running\"")
 
     if [ $numMatches -eq 0 ]
     then
@@ -39,7 +39,7 @@ fi
 echo "******** Secure Storage Test Starting ***********"
 
 echo "Make sure Legato is running."
-ssh root@$targetAddr "/usr/local/bin/legato start"
+ssh root@$targetAddr "$BIN_PATH/legato start"
 CheckRet
 
 appDir="$LEGATO_ROOT/build/$targetType/bin/tests"
@@ -54,10 +54,10 @@ echo "Install Secure Storage Daemon in case it's removed by other tests."
 instapp $LEGATO_ROOT/build/$targetType/bin/apps/secStore.$targetType $targetAddr
 
 echo "Stop all other apps."
-ssh root@$targetAddr "/usr/local/bin/app stop \"*\""
+ssh root@$targetAddr "$BIN_PATH/app stop \"*\""
 
 echo "Make sure the Secure Storage Daemon is running."
-ssh root@$targetAddr  "/usr/local/bin/app start secStore"
+ssh root@$targetAddr  "$BIN_PATH/app start secStore"
 CheckRet
 
 echo "Clear the logs."
@@ -69,7 +69,7 @@ ssh root@$targetAddr "/mnt/flash/startup/fg_02_RestartSyslogd"
 CheckRet
 
 echo "Starting secStoreTest1."
-ssh root@$targetAddr  "/usr/local/bin/app start secStoreTest1"
+ssh root@$targetAddr  "$BIN_PATH/app start secStoreTest1"
 CheckRet
 
 # Wait for app to finish
@@ -79,17 +79,17 @@ while [ $? -eq 0 ]; do
 done
 
 echo "Starting secStoreTest2."
-ssh root@$targetAddr  "/usr/local/bin/app start secStoreTest2"
+ssh root@$targetAddr  "$BIN_PATH/app start secStoreTest2"
 CheckRet
 
 echo "Re-install secStoreTest1."
-ssh root@$targetAddr  "/usr/local/bin/app remove secStoreTest1"
+ssh root@$targetAddr  "$BIN_PATH/app remove secStoreTest1"
 CheckRet
 instapp secStoreTest1.$targetType $targetAddr
 CheckRet
 
 echo "Starting secStoreTest1 again."
-ssh root@$targetAddr  "/usr/local/bin/app start secStoreTest1"
+ssh root@$targetAddr  "$BIN_PATH/app start secStoreTest1"
 CheckRet
 
 # Wait for app to finish
@@ -99,8 +99,8 @@ while [ $? -eq 0 ]; do
 done
 
 echo "Uninstall all apps."
-ssh root@$targetAddr  "/usr/local/bin/app remove secStoreTest1"
-ssh root@$targetAddr  "/usr/local/bin/app remove secStoreTest2"
+ssh root@$targetAddr  "$BIN_PATH/app remove secStoreTest1"
+ssh root@$targetAddr  "$BIN_PATH/app remove secStoreTest2"
 
 echo "Grepping the logs to check the results."
 CheckLogStr "==" 2 "============ SecStoreTest1 PASSED ============="

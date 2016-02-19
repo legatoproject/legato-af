@@ -34,7 +34,14 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Connect the client to the service
+ *
+ * Connect the current client thread to the service providing this API.
+ *
+ * This function must be called before any other functions in this API. Normally, it's automatically
+ * called for the main thread, but must be explicitly called for other threads. For details, see
+ * @ref apiFilesC_client.
+ *
+ * This function is created automatically.
  */
 //--------------------------------------------------------------------------------------------------
 void ConnectService
@@ -44,7 +51,14 @@ void ConnectService
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Disconnect the client from the service
+ *
+ * Disconnect the current client thread from the service providing this API.
+ *
+ * Normally, this function doesn't need to be called. After this function is called, there's no
+ * longer a connection to the service, and the functions in this API can't be used. For details, see
+ * @ref apiFilesC_client.
+ *
+ * This function is created automatically.
  */
 //--------------------------------------------------------------------------------------------------
 void DisconnectService
@@ -142,6 +156,7 @@ typedef void (*BugTestHandlerFunc_t)
  *
  * @param data
  * @param name
+ * @param dataFile
  * @param contextPtr
  */
 //--------------------------------------------------------------------------------------------------
@@ -149,6 +164,7 @@ typedef void (*CallbackTestHandlerFunc_t)
 (
     uint32_t data,
     const char* name,
+    int dataFile,
     void* contextPtr
 );
 

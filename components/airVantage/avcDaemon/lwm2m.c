@@ -311,10 +311,11 @@ static void OperationHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Handler function for receiving UpdateRequired indication
+ * Sends a registration update to the server and also used as a handler to receive
+ * UpdateRequired indication.
  */
 //--------------------------------------------------------------------------------------------------
-static void UpdateRequiredHandler
+void lwm2m_RegistrationUpdate
 (
     void
 )
@@ -341,7 +342,7 @@ static void RegUpdateTimerHandler
 {
     LE_INFO("RegUpdate timer expired; reporting REG_UPDATE");
 
-    UpdateRequiredHandler();
+    lwm2m_RegistrationUpdate();
 }
 
 
@@ -414,7 +415,7 @@ le_result_t lwm2m_Init
 {
     // Register handlers for Operation and UpdateRequired indications
     pa_avc_SetLWM2MOperationHandler(OperationHandler);
-    pa_avc_SetLWM2MUpdateRequiredHandler(UpdateRequiredHandler);
+    pa_avc_SetLWM2MUpdateRequiredHandler(lwm2m_RegistrationUpdate);
 
     // Get instance creation or deletion events for any asset
     assetData_server_SetAllAssetActionHandler(AssetActionHandler, NULL);

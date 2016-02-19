@@ -10,6 +10,6 @@ ar7:
 	$(MAKE) -C ../libexternal
 
 clean:
-	rm -rf work staging obj bin lib build mix fromSource fromComponents mkappTest.ar7 mkappTest.localhost
+	rm -rf work staging obj bin lib build mix fromSource fromComponents *.update
 	$(MAKE) -C ../libexternal clean
 

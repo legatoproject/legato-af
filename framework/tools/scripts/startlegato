@@ -62,14 +62,18 @@ else
 fi
 
 
+# Directory where framework binaries can be found.
+BIN_DIR="$LEGATO_ROOT/build/$TARGET/framework/bin"
+
+
 # If the Service Directory isn't already running, start it.
 if ! pgrep serviceDir > /dev/null
 then
     if [ "$LOG_FILE" != "" ]
     then
-        $LEGATO_ROOT/build/$TARGET/bin/serviceDirectory 2>> "$LOG_FILE" &
+        $BIN_DIR/serviceDirectory 2>> "$LOG_FILE" &
     else
-        $LEGATO_ROOT/build/$TARGET/bin/serviceDirectory &
+        $BIN_DIR/serviceDirectory &
     fi
 
     SERVICE_DIRECTORY_PID=$!
@@ -94,9 +98,9 @@ if ! pgrep logCtrlDaemon > /dev/null
 then
     if [ "$LOG_FILE" != "" ]
     then
-        $LEGATO_ROOT/build/$TARGET/bin/logCtrlDaemon 2>> "$LOG_FILE" &
+        $BIN_DIR/logCtrlDaemon 2>> "$LOG_FILE" &
     else
-        $LEGATO_ROOT/build/$TARGET/bin/logCtrlDaemon &
+        $BIN_DIR/logCtrlDaemon &
     fi
 
     LOG_CONTROL_DAEMON_PID=$!
@@ -120,9 +124,9 @@ if ! pgrep configTree > /dev/null
 then
     if [ "$LOG_FILE" != "" ]
     then
-        $LEGATO_ROOT/build/$TARGET/bin/configTree 2>> "$LOG_FILE" &
+        $BIN_DIR/configTree 2>> "$LOG_FILE" &
     else
-        $LEGATO_ROOT/build/$TARGET/bin/configTree &
+        $BIN_DIR/configTree &
     fi
 
     CONFIG_TREE_PID=$!

@@ -8,7 +8,7 @@
  */
 
 
-#include "local.h"
+#include "messages.h"
 #include "interface.h"
 
 
@@ -70,10 +70,11 @@ __attribute__((unused)) static void* UnpackString(void* msgBufPtr, const char** 
 __attribute__((unused)) static void* UnpackDataString(void* msgBufPtr, void* dataPtr, size_t dataSize)
 {
     // Number of bytes copied from msg buffer, not including null terminator
-    size_t numBytes;
+    size_t numBytes = strlen(msgBufPtr);
 
     // todo: For now, assume the string will always fit in the buffer. This may not always be true.
-    le_utf8_Copy( dataPtr, msgBufPtr, dataSize, &numBytes );
+    memcpy(dataPtr, msgBufPtr, dataSize);
+    ((char*)dataPtr)[dataSize-1] = 0;
     return ( msgBufPtr + (numBytes + 1) );
 }
 
@@ -300,7 +301,14 @@ static void InitCommonData(void)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Connect the client to the service
+ *
+ * Connect the current client thread to the service providing this API.
+ *
+ * This function must be called before any other functions in this API. Normally, it's automatically
+ * called for the main thread, but must be explicitly called for other threads. For details, see
+ * @ref apiFilesC_client.
+ *
+ * This function is created automatically.
  */
 //--------------------------------------------------------------------------------------------------
 void ConnectService
@@ -336,7 +344,14 @@ void ConnectService
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Disconnect the client from the service
+ *
+ * Disconnect the current client thread from the service providing this API.
+ *
+ * Normally, this function doesn't need to be called. After this function is called, there's no
+ * longer a connection to the service, and the functions in this API can't be used. For details, see
+ * @ref apiFilesC_client.
+ *
+ * This function is created automatically.
  */
 //--------------------------------------------------------------------------------------------------
 void DisconnectService
@@ -1011,11 +1026,14 @@ static void _Handle_TestCallback
     const char* name;
     _msgBufPtr = UnpackString( _msgBufPtr, &name );
 
+    int dataFile;
+    dataFile = le_msg_GetFd(_msgRef);
+
 
     // Call the registered handler
     if ( _handlerRef_TestCallback != NULL )
     {
-        _handlerRef_TestCallback( data, name, contextPtr );
+        _handlerRef_TestCallback( data, name, dataFile, contextPtr );
     }
     else
     {

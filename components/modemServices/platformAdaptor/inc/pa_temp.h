@@ -43,14 +43,14 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Prototype for handler functions used to report the Radio Access Technology change.
+ * Prototype for handler functions used to report the temperature change.
  *
- * @param ratPtr The Radio Access Technology.
+ * @param thresholdEventPtr The temperature threshold reached.
  */
 //--------------------------------------------------------------------------------------------------
 typedef void (*pa_temp_ThresholdInd_HandlerFunc_t)
 (
-                le_temp_ThresholdStatus_t* thresholdEventPtr
+    le_temp_ThresholdStatus_t* thresholdEventPtr
 );
 
 //--------------------------------------------------------------------------------------------------

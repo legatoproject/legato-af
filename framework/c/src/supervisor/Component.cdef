@@ -8,6 +8,7 @@ sources:
     watchdogAction.c
     frameworkDaemons.c
     devSmack.c
+    system.c
 }
 
 provides:
@@ -26,7 +27,7 @@ requires:
     api:
     {
         le_cfg.api              [manual-start]
-        logFd.api               [manual-start]
+        logDaemon/logFd.api     [manual-start]
     }
 }
 

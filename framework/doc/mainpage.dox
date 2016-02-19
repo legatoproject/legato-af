@@ -1,39 +1,8 @@
-/** @mainpage Reference
+/** @mainpage Docs
 
-<h2>Welcome</h2>
-
-<a href="http://www.sierrawireless.com/productsandservices/airprime_wireless_modules/smart_modules/legato/">Legato</a>
-is an open source embedded platform built on Linux designed to simplify embedded IoT development.
-
-This is how the docs are organized:
-| Section                            | Description                                        |
-| ---------------------------------- | -------------------------------------------------- |
-| @subpage getstartedMain                     | installation and setup info                        |
-| @subpage basicMain                     | essentials to get developing                        |
-| @subpage tools                            | target, host, & build tools
-| @subpage howToMain                     | frequently needed tasks                        |
-| @subpage defFiles                             | reusable external interfaces & internal content |
-| @subpage legatoServices            |   pre-built services                                |
-| @subpage c_APIs                          | C Language library                              |
-| @subpage otherInfo                       | platform constraints & Yocto dist info |
-| @subpage aboutMain                  | version info, docs tips, glossary                    |
-
-<h2>Overview</h2>
-
-Legato has everything you need to connect the IoT fast:
-
-Programming language APIs &mdash; dev tools and APIs to easily write software
-components and specify how apps will use them.
-
-Target runtime environment &mdash; set of daemon processes cooperatively implement
-execution sandboxes, secure IPC, fault monitoring.
-
-Development and build tools &mdash; target, host, and build tools to create apps ready for deployment
-to your devices.
-
-Documentation and automated tests &mdash; a raft of @ref aboutDocs "docs" and automated tests
-ready to use. The Legato online docs are also available in a
-<a href= "http://source.sierrawireless.com/Resources/Resources/Legato/referencemanual.aspx">PDF doc</a>.
+@subpage buildAppsMain <br>
+@subpage buildPlatformMain <br>
+@subpage aboutMain
 
 <HR>
 

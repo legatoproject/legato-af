@@ -23,7 +23,7 @@ COMPONENT_INIT
     LE_FATAL_IF(setuid(uid) == -1, "Could not set the user ID.  %m.");
 
     // Attempt to access installed app file.
-    LE_FATAL_IF(open("/opt/legato/apps/fileClient/root.cfg", O_RDONLY) == 0,
+    LE_FATAL_IF(open("/legato/systems/current/apps/fileClient/root.cfg", O_RDONLY) == 0,
                 "Rogue process accessed installed file.");
 
     LE_INFO("Success: Rogue process could not access installed file.  %m.");
@@ -35,13 +35,13 @@ COMPONENT_INIT
     LE_INFO("Success: Rogue process could not access sandboxed file.  %m.");
 
     // Attempt to access config file.
-    LE_FATAL_IF(open("/opt/legato/configTree/system.rock", O_RDONLY) == 0,
+    LE_FATAL_IF(open("/legato/systems/current/configTree/system.rock", O_RDONLY) == 0,
                 "Rogue process accessed sandboxed file.");
 
-    LE_FATAL_IF(open("/opt/legato/configTree/system.paper", O_RDONLY) == 0,
+    LE_FATAL_IF(open("/legato/systems/current/configTree/system.paper", O_RDONLY) == 0,
                 "Rogue process accessed sandboxed file.");
 
-    LE_FATAL_IF(open("/opt/legato/configTree/system.scissors", O_RDONLY) == 0,
+    LE_FATAL_IF(open("/legato/systems/current/configTree/system.scissors", O_RDONLY) == 0,
                 "Rogue process accessed sandboxed file.");
 
     LE_INFO("Success: Rogue process could not access config file.  %m.");

@@ -36,6 +36,9 @@
  * @note: It is recommended to wait for a SIM handler notification after a new SIM selection before
  * calling le_sim API functions.
  *
+ * A sample code can be seen in the following page:
+ * - @subpage c_simTestSelect
+ *
  * @section le_sim_id SIM identification information
  * \b ICCID:
  * Each SIM is internationally identified by its integrated circuit card identifier (ICCID). ICCIDs
@@ -79,6 +82,9 @@
  * - le_sim_GetHomeNetworkMccMnc()function retrieves the Home Network MCC (Mobile Country Code)
  *      and MNC (Mobile Network Code).
  *
+ * A sample code can be seen in the following page:
+ * - @subpage c_simTestIdentification
+ *
  * @section le_sim_auth SIM Authentication
  * le_sim_EnterPIN() enters the PIN (Personal Identification Number) code that's
  * required before any Mobile equipment functionality can be used.
@@ -106,7 +112,8 @@
  * attempts to enter the PIN. le_sim_Unblock() requires the PUK (Personal Unblocking) code
  * to set a new PIN code.
  *
- * Using this API selects the requested SIM.
+ * A sample code can be seen in the following page:
+ * - @subpage c_simTestAuthentication
  *
  * @section le_sim_state SIM states
  * le_sim_IsPresent() API advises the SIM is inserted (and locked) or removed.
@@ -132,7 +139,7 @@
  * le_sim_AddNewStateHandler() API allows the User to register that handler.
  *
  * The handler must satisfy the following prototype:
- * typedef void(*le_sim_NewStateHandlerFunc_t)(le_sim_Id_t simId, le_sim_States_t simState);
+ * typedef void(*le_sim_NewStateHandlerFunc_t)(@ref le_sim_Id_t simId, @c le_sim_States_t simState);
  *
  * When a new SIM's state is notified, the handler is called.
  *
@@ -142,6 +149,9 @@
  * will all receive it and will be passed the same SIM.
  *
  * The application can uninstall the handler function by calling le_sim_RemoveNewStateHandler() API.
+ *
+ * A sample code can be seen in the following page:
+ * - @subpage c_simTestStates
  *
  * @section le_sim_profile_switch Local SIM profile switch
  *
@@ -167,9 +177,12 @@
  * The User's application can install an handler with le_sim_AddNewStateHandler() to receive eUICC's
  * state notifications.
  *
- * @warning If you use a Giesecke & Devrient (G&D) card, be sure that your platform has disabled
- * security restrictions for channel management APDU commands, otherwise local SIM profile switch
- * could not work.
+ * @warning
+ * - If you use a Morpho or Oberthur card, the SIM_REFRESH PRO-ACTIVE command must be accepted with
+ *   le_sim_AcceptSimToolkitCommand() in order to complete the profile swap procedure.
+ * - If you use a Giesecke & Devrient (G&D) card, be sure that your platform has disabled
+ *   security restrictions for channel management APDU commands, otherwise local SIM profile switch
+ *   could not work.
  *
  * The le_sim_IsEmergencyCallSubscriptionSelected() function must be called to get the current
  * subscription.
@@ -177,6 +190,9 @@
  * @warning There is no standard method to interrogate the current selected subscription. The
  * returned value of this function is based on the last executed local swap command. This means
  * that this function will always return LE_NOT_FOUND error at Legato startup.
+ *
+ * A sample code can be seen in the following page:
+ * - @subpage c_simTestProfileSwitch
  *
  * @section le_sim_stk SIM Toolkit
  *
@@ -202,6 +218,9 @@
  *
  * The le_sim_RejectSimToolkitCommand() forbids the device to accept the last SIM Toolkit command.
  *
+ * A sample code can be seen in the following page:
+ * - @subpage c_simTestSimToolkit
+ *
  * <HR>
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
@@ -217,6 +236,47 @@
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 //--------------------------------------------------------------------------------------------------
+
+/**
+ * @page c_simTestProfileSwitch Sample code for Local SIM profile switch
+ *
+ * @include "apps/test/modemServices/sim/simProfileSwap/simTestComp/simTest.c"
+ */
+
+/**
+ * @page c_simTestSimToolkit Sample code for Local SIM Toolkit
+ *
+ * @include "apps/test/modemServices/sim/simToolkit/simToolkitComp/simToolkitTest.c"
+ */
+
+/**
+ * @page c_simTestAuthentication Sample code for SIM Authentication
+ *
+ * @snippet "apps/test/modemServices/sim/simIntegrationTest/simTestComp/simTest.c" Define
+ * @snippet "apps/test/modemServices/sim/simIntegrationTest/simTestComp/main.c" Print
+ * @snippet "apps/test/modemServices/sim/simIntegrationTest/simTestComp/simTest.c" Authentication
+ */
+
+/**
+ * @page c_simTestIdentification Sample code for SIM Identification
+
+ * @snippet "apps/test/modemServices/sim/simIntegrationTest/simTestComp/main.c" Print
+ * @snippet "apps/test/modemServices/sim/simIntegrationTest/simTestComp/simTest.c" Identification
+ */
+
+/**
+ * @page c_simTestSelect Sample code for SIM Select
+ * @snippet "apps/test/modemServices/sim/simIntegrationTest/simTestComp/simTest.c" Select
+ */
+
+/**
+ * @page c_simTestStates Sample code for SIM States
+ *
+ * @snippet "apps/test/modemServices/sim/simIntegrationTest/simTestComp/main.c" Print
+ * @snippet "apps/test/modemServices/sim/simIntegrationTest/simTestComp/simTest.c" Display
+ * @snippet "apps/test/modemServices/sim/simIntegrationTest/simTestComp/simTest.c" State handler
+ * @snippet "apps/test/modemServices/sim/simIntegrationTest/simTestComp/simTest.c" State
+ */
 
 USETYPES le_mdmDefs.api;
 
@@ -710,6 +770,10 @@ FUNCTION le_result_t GetHomeNetworkMccMnc
  *      - LE_BAD_PARAMETER invalid SIM identifier
  *      - LE_BUSY when a profile swap is already in progress
  *      - LE_FAULT for unexpected error
+ *
+ * @warning If you use a Morpho or Oberthur card, the SIM_REFRESH PRO-ACTIVE command must be
+ *          accepted with le_sim_AcceptSimToolkitCommand() in order to complete the profile swap
+ *          procedure.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t LocalSwapToEmergencyCallSubscription
@@ -730,6 +794,10 @@ FUNCTION le_result_t LocalSwapToEmergencyCallSubscription
  *      - LE_BAD_PARAMETER invalid SIM identifier
  *      - LE_BUSY when a profile swap is already in progress
  *      - LE_FAULT for unexpected error
+ *
+ * @warning If you use a Morpho or Oberthur card, the SIM_REFRESH PRO-ACTIVE command must be
+ *          accepted with le_sim_AcceptSimToolkitCommand() in order to complete the profile swap
+ *          procedure.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t LocalSwapToCommercialSubscription

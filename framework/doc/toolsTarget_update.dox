@@ -1,0 +1,49 @@
+/** @page toolsTarget_update update
+
+The @c update tool can be used to install, update, and remove software on the target device.
+
+It mainly operates on @c update @c packs that are files containing install, update, and/or removal
+instructions and any files needed to carry out those instructions.
+
+Update packs are created on the development host using the @c mk tools (@c mkapp and @c mksys)
+and the @ref toolsHost_update-pack host tool. See @ref legatoServicesUpdate for more info.
+
+<h1>Usage</h1>
+
+@verbatim
+update [FILE_NAME]
+update -r APP_NAME
+update --remove APP_NAME
+update --help
+@endverbatim
+
+When run without any command-line arguments, or when run with @c FILE_NAME set to a dash -
+character, it takes an update pack file through standard in, and forwards it to the Update Daemon
+for processing.
+
+@verbatim update [FILE_NAME]@endverbatim
+> Opens the update pack and feeds it to the Update Daemon for processing.
+
+@verbatim
+--remove or -r
+@endverbatim
+> Removes the app specified in the @c APP_NAME argument.
+
+Here's a code sample:
+@verbatim update /tmp/myUpdatePack.update@endverbatim
+
+@warning
+Be careful not to accidentally remove system services apps you might need (e.g., modemService
+app).
+
+@verbatim
+--help
+@endverbatim
+ 
+> Prints help text to standard out and exits.
+
+<HR>
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/

@@ -1,6 +1,6 @@
 .PHONY: all clean
 
-TARGETS += localhost wp7 ar7
+TARGETS += localhost ar7 wp85
 
 $(TARGETS): export TARGET = $@
 
@@ -14,6 +14,6 @@ libexternal/libexternal.%.so:
 	$(MAKE) -C libexternal $*
 
 clean:
-	rm -rf build *.ar7 *.localhost
+	rm -rf build *.update
 	$(MAKE) -C libexternal clean
 

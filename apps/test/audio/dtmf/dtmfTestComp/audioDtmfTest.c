@@ -1,5 +1,5 @@
 /**
- * This module is for unit testing of the DTMF Audio service.
+ * This module is for testing of the DTMF Audio service.
  *
  * On the target, you must issue the following commands:
  * $ app start dtmfTest

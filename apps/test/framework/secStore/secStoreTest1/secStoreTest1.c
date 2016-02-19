@@ -70,6 +70,11 @@ COMPONENT_INIT
     LE_FATAL_IF(result != LE_NO_MEMORY,
                     "Should have failed due to a memory limit.  %s.", LE_RESULT_TXT(result));
 
+    // Delete item that does not exist.
+    result = le_secStore_Delete("NonExistence");
+    LE_FATAL_IF(result != LE_NOT_FOUND,
+                    "Should have failed to delete non-existent item.  %s.", LE_RESULT_TXT(result));
+
     LE_INFO("============ SecStoreTest1 PASSED =============");
 
     exit(EXIT_SUCCESS);

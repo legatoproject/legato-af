@@ -2,8 +2,7 @@
 
 You can setup a Linux Android host to upgrade or recover a device.
 
-Only a 64-bit Ubuntu 12.04 distribution is currently being tested. Other distributions are unknown at this time, but can be tried.
-If you intend to rebuild the Yocto images, don't use Ubuntu 13.10: it does not work.
+Only a 64-bit Ubuntu 15.04 distribution is currently being tested. Other distributions are unknown at this time, but can be tried.
 
 @section instLinuxAndroid Setup fastboot
 

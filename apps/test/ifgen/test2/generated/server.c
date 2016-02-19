@@ -8,7 +8,7 @@
  */
 
 
-#include "local.h"
+#include "messages.h"
 #include "server.h"
 
 
@@ -70,10 +70,11 @@ __attribute__((unused)) static void* UnpackString(void* msgBufPtr, const char** 
 __attribute__((unused)) static void* UnpackDataString(void* msgBufPtr, void* dataPtr, size_t dataSize)
 {
     // Number of bytes copied from msg buffer, not including null terminator
-    size_t numBytes;
+    size_t numBytes = strlen(msgBufPtr);
 
     // todo: For now, assume the string will always fit in the buffer. This may not always be true.
-    le_utf8_Copy( dataPtr, msgBufPtr, dataSize, &numBytes );
+    memcpy(dataPtr, msgBufPtr, dataSize);
+    ((char*)dataPtr)[dataSize-1] = 0;
     return ( msgBufPtr + (numBytes + 1) );
 }
 
@@ -196,6 +197,10 @@ static void CleanupClientData
     // the client session.
     _LOCK
 
+    // Store the client session ref so it can be retrieved by the server using the
+    // GetClientSessionRef() function, if it's needed inside handler removal functions.
+    _ClientSessionRef = sessionRef;
+
     le_ref_IterRef_t iterRef = le_ref_GetIterator(_HandlerRefMap);
     le_result_t result = le_ref_NextNode(iterRef);
     _ServerData_t const* serverDataPtr;
@@ -236,6 +241,9 @@ static void CleanupClientData
         // Get the next value in the reference mpa
         result = le_ref_NextNode(iterRef);
     }
+
+    // Clear the client session ref, since the event has now been processed.
+    _ClientSessionRef = 0;
 
     _UNLOCK
 }
@@ -531,6 +539,11 @@ static void Handle_allParameters
 
     size_t outputNumElements;
     _msgBufPtr = UnpackData( _msgBufPtr, &outputNumElements, sizeof(size_t) );
+    if ( outputNumElements > 10 )
+    {
+        LE_DEBUG("Adjusting outputNumElements from %zd to 10", outputNumElements);
+        outputNumElements = 10;
+    }
 
     const char* label;
     _msgBufPtr = UnpackString( _msgBufPtr, &label );
@@ -805,6 +818,7 @@ static void AsyncResponse_TestCallback
 (
     uint32_t data,
     const char* name,
+    int dataFile,
     void* contextPtr
 )
 {
@@ -834,6 +848,7 @@ static void AsyncResponse_TestCallback
     // Pack the input parameters
     _msgBufPtr = PackData( _msgBufPtr, &data, sizeof(uint32_t) );
     _msgBufPtr = PackString( _msgBufPtr, name );
+    le_msg_SetFd(_msgRef, dataFile);
 
     // Send the async response to the client
     LE_DEBUG("Sending message to client session %p : %ti bytes sent",

@@ -19,5 +19,6 @@ start: manual
 bindings:
 {
     simToolkit.simToolkitComp.le_sim -> modemService.le_sim
+    simToolkit.simToolkitComp.le_mdc -> modemService.le_mdc
 }
 

@@ -100,10 +100,6 @@
  *       and inherit permissions to files not intended for it. We must give a warning if an
  *       app is installed with a user name that already exists.
  *
- * @todo Currently the Supervisor attempts to create the user each time an app is started.
- *       This task should be moved to the installer so that users and groups are created only during
- *       installation.
- *
  *
  * @section c_sup_faultRecovery Fault Recovery
  *
@@ -142,6 +138,10 @@
  *
  * All app configuration settings are stored in the Legato Configuration Database.
  * See @ref frameworkDB.
+ *
+ * The Supervisor refers to the "apps" branch of the "system" config tree to determine what
+ * apps exist, how they should be started, and which ones should be started automatically when
+ * the framework comes up.
  *
  *
  * @section c_sup_smack SMACK
@@ -236,8 +236,9 @@
 #include "frameworkDaemons.h"
 #include "cgroups.h"
 #include "smack.h"
-#include "appSmack.h"
+#include "appSmack/appSmack.h"
 #include "properties.h"
+#include "sysPaths.h"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -342,10 +343,26 @@ static le_dls_List_t AppsList = LE_DLS_LIST_INIT;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Command reference for the Stop Legato command.
+ * Command reference for asynchronous le_sup_ctrl API commands (like le_sup_ctrl_StopLegato()).
  */
 //--------------------------------------------------------------------------------------------------
-static le_sup_ctrl_ServerCmdRef_t StopLegatoCmdRef = NULL;
+static le_sup_ctrl_ServerCmdRef_t AsyncApiCmdRef = NULL;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Operating states.
+ **/
+//--------------------------------------------------------------------------------------------------
+static enum
+{
+    STATE_STARTING,           ///< Starting the framework. No apps running yet.
+    STATE_NORMAL,             ///< Normal operation. Fully initialized. All framework daemons running.
+    STATE_STOPPING,           ///< Controlled shutdown of framework underway.
+    STATE_RESTARTING,         ///< Controlled shutdown and restart of framework underway.
+    STATE_RESTARTING_MANUAL,  ///< Manual shutdown and restart of framework underway.
+}
+State = STATE_STARTING;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -406,9 +423,14 @@ static void ParseCommandLine
 {
     bool printHelp = false;
     const char* appStartModeArgPtr = NULL;
+    bool noDaemonFlag = false;
 
     le_arg_SetStringVar(&appStartModeArgPtr, "a", "start-apps");
     le_arg_SetFlagVar(&printHelp, "h", "help");
+    // The following will set the given value but it's basically
+    // useless - it just prevents an error message on the parse.
+    // The flag will be "get" at a later time.
+    le_arg_SetFlagVar(&noDaemonFlag, "n", "no-daemonize");
 
     // Run the argument scanner.
     le_arg_Scan();
@@ -436,6 +458,44 @@ static void ParseCommandLine
         }
     }
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets up the supervisor process as session leader.
+ * Changes to / dir
+ * Closes stdout and redirects stderr
+ */
+//--------------------------------------------------------------------------------------------------
+void SetupSupervisorProcess
+(
+    void
+)
+{
+    // Start a new session and become the session leader, the process group leader which will free
+    // us from any controlling terminals.
+    LE_FATAL_IF(setsid() == -1, "Could not start a new session.  %m.");
+
+    // Reset the file mode mask.
+    umask(0);
+
+    // Change the current working directory to the root filesystem, to ensure that it doesn't tie
+    // up another filesystem and prevent it from being unmounted.
+    LE_FATAL_IF(chdir("/") < 0, "Failed to set supervisor's working directory to root.  %m.");
+
+    // Redirect standard fds to /dev/null except for stderr which goes to /dev/console.
+    if (freopen("/dev/console", "w", stderr) == NULL)
+    {
+        LE_WARN("Could not redirect stderr to /dev/console, redirecting it to /dev/null instead.");
+
+        LE_FATAL_IF(freopen("/dev/null", "w", stderr) == NULL,
+                    "Failed to redirect stderr to /dev/null.  %m.");
+    }
+
+    LE_FATAL_IF( (freopen("/dev/null", "w", stdout) == NULL) ||
+                 (freopen("/dev/null", "r", stdin) == NULL),
+                "Failed to redirect stdout and stdin to /dev/null.  %m.");
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -491,30 +551,6 @@ static int Daemonize(void)
 
     // The child does not need the read end of the pipe so close it.
     fd_Close(syncPipeFd[0]);
-
-    // Start a new session and become the session leader, the process group leader which will free
-    // us from any controlling terminals.
-    LE_FATAL_IF(setsid() == -1, "Could not start a new session.  %m.");
-
-    // Reset the file mode mask.
-    umask(0);
-
-    // Change the current working directory to the root filesystem, to ensure that it doesn't tie
-    // up another filesystem and prevent it from being unmounted.
-    LE_FATAL_IF(chdir("/") < 0, "Failed to set supervisor's working directory to root.  %m.");
-
-    // Redirect standard fds to /dev/null except for stderr which goes to /dev/console.
-    if (freopen("/dev/console", "w", stderr) == NULL)
-    {
-        LE_WARN("Could not redirect stderr to /dev/console, redirecting it to /dev/null instead.");
-
-        LE_FATAL_IF(freopen("/dev/null", "w", stderr) == NULL,
-                    "Failed to redirect stderr to /dev/null.  %m.");
-    }
-
-    LE_FATAL_IF( (freopen("/dev/null", "w", stdout) == NULL) ||
-                 (freopen("/dev/null", "r", stdin) == NULL),
-                "Failed to redirect stdout and stdin to /dev/null.  %m.");
 
     // Return the write end of the pipe to be closed when the framework is ready for use.
     return syncPipeFd[1];
@@ -643,6 +679,37 @@ static AppObj_t* GetApp
 }
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets a pointer to the app object for the app that has a process with a given PID.
+ *
+ * @return
+ *      A pointer to the app object, if successful.
+ *      NULL if the PID is not found.
+ */
+//--------------------------------------------------------------------------------------------------
+static AppObj_t* GetAppWithProc
+(
+    pid_t pid
+)
+{
+    le_dls_Link_t* appLinkPtr = le_dls_Peek(&AppsList);
+
+    while (appLinkPtr != NULL)
+    {
+        AppObj_t* appPtr = CONTAINER_OF(appLinkPtr, AppObj_t, link);
+
+        if (app_HasTopLevelProc(appPtr->appRef, pid))
+        {
+            return appPtr;
+        }
+
+        appLinkPtr = le_dls_PeekNext(&AppsList, appLinkPtr);
+    }
+
+    return NULL;
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -744,6 +811,7 @@ static void LaunchAllStartupApps
         LE_WARN("No applications installed.");
 
         le_cfg_CancelTxn(appCfg);
+
         return;
     }
 
@@ -788,10 +856,6 @@ static void StartFramework
     // Start all framework daemons.
     fwDaemons_Start();
 
-    // Close the synchronization pipe that is connected to the parent process.
-    // This signals to the parent process that it is now safe to start using the framework.
-    fd_Close(syncFd);
-
     LE_DEBUG("---- Initializing the configuration API ----");
     le_cfg_ConnectService();
     logFd_ConnectService();
@@ -801,8 +865,20 @@ static void StartFramework
     le_sup_wdog_AdvertiseService();
     le_appInfo_AdvertiseService();
 
-    // Initial sub-components that require other services.
+    // Close the synchronization pipe that is connected to the parent process.
+    // This signals to the parent process that it is now safe to start using the framework.
+    // NOTE: Do this after advertising services in case anyone uses a "Try" version of an
+    //       IPC connection function to connect to one of these services (which would report
+    //       that the service is unavailable if it is not yet advertised).
+    if (syncFd > 0)
+    {
+        fd_Close(syncFd);
+    }
+
+    // Initialize sub-components that require other services.
     appSmack_AdvertiseService();
+
+    State = STATE_NORMAL;
 
     if (AppStartMode == APP_START_AUTO)
     {
@@ -828,10 +904,29 @@ static void StopSupervisor
     void
 )
 {
-    LE_INFO("Legato framework shut down.");
+    if (State == STATE_RESTARTING)
+    {
+        LE_INFO("Legato framework shut down complete. Restarting...");
 
-    // Exit the Supervisor.
-    exit(EXIT_SUCCESS);
+        exit(2);
+    }
+    else if (State == STATE_RESTARTING_MANUAL)
+    {
+        LE_INFO("Legato framework manual shut down complete. Restarting...");
+
+        exit(3);
+    }
+    else if (State == STATE_STOPPING)
+    {
+        LE_INFO("Legato framework shut down.");
+
+        // Exit the Supervisor.
+        exit(EXIT_SUCCESS);
+    }
+    else
+    {
+        LE_FATAL("Unexpected state %d.", State);
+    }
 }
 
 
@@ -850,10 +945,22 @@ static void PrepareFullShutdown
     void
 )
 {
-    if (StopLegatoCmdRef != NULL)
+    if (AsyncApiCmdRef != NULL)
     {
-        // Respond to the requesting process to tell it that the Legato framework has stopped.
-        le_sup_ctrl_StopLegatoRespond(StopLegatoCmdRef, LE_OK);
+        if (State == STATE_STOPPING)
+        {
+            // Respond to the requesting process to tell it that the Legato framework has stopped.
+            le_sup_ctrl_StopLegatoRespond(AsyncApiCmdRef, LE_OK);
+        }
+        else if (State == STATE_RESTARTING || State == STATE_RESTARTING_MANUAL)
+        {
+            // Respond to the requesting process to tell it that the Legato framework has stopped.
+            le_sup_ctrl_RestartLegatoRespond(AsyncApiCmdRef, LE_OK);
+        }
+        else
+        {
+            LE_CRIT("Unexpected state %d.", State);
+        }
     }
 
     // Close services that we've advertised before the Service Directory dies.
@@ -925,25 +1032,7 @@ static void Reboot
     void
 )
 {
-#ifdef LEGATO_EMBEDDED
-
-    sync();
-
-    if (reboot(RB_AUTOBOOT) == -1);
-    {
-        LE_EMERG("Failed to reboot the system.  %m.  Attempting to shutdown Legato instead.");
-
-        // @todo gracefully shutdown the framework.
-
-        exit(EXIT_FAILURE);
-    }
-
-#else
-
-    // @todo Instead of just exiting we can shutdown and restart the entire framework.
-    LE_FATAL("Should reboot the system now but since this is not an embedded system just exit.");
-
-#endif
+    LE_FATAL("Supervisor going down to trigger reboot.");
 }
 
 
@@ -1072,6 +1161,29 @@ static void HandleAppFault
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Called to capture any extra data that may help indicate what contributed to the fault that
+ * caused the framework to fail.
+ *
+ * This function calls a shell script that will save a dump of the system log and any core files
+ * that have been generated into a known location.
+ */
+//--------------------------------------------------------------------------------------------------
+static void CaptureDebugData
+(
+    void
+)
+{
+    int r = system("/legato/systems/current/bin/saveLogs NOTSANDBOXED framework unknown REBOOT");
+
+    if (!WIFEXITED(r) || (WEXITSTATUS(r) != EXIT_SUCCESS))
+    {
+        LE_ERROR("Could not save log and core file.");
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * The signal event handler function for SIGCHLD called from the Legato event loop.
  */
 //--------------------------------------------------------------------------------------------------
@@ -1129,11 +1241,22 @@ static void SigChildHandler
 
                 if (r == LE_FAULT)
                 {
-                    // TODO: Should probably restart the framework.
+                    CaptureDebugData();
+                    Reboot();
                 }
                 else if (r == LE_NOT_FOUND)
                 {
-                    LE_ERROR("Unknown child process %d.", pid);
+                    // It's possible that we killed an app process before it had a chance to set
+                    // its own SMACK label.  So, search the apps for the PID.
+                    AppObj_t* appObjPtr = GetAppWithProc(pid);
+                    if (appObjPtr == NULL)
+                    {
+                        LE_CRIT("Unknown child process %d.", pid);
+                    }
+                    else
+                    {
+                        HandleAppFault(appObjPtr, pid, status);
+                    }
                 }
 
                 break;
@@ -1166,14 +1289,14 @@ static void SigChildHandler
 //--------------------------------------------------------------------------------------------------
 void le_sup_ctrl_StartApp
 (
-    le_sup_ctrl_ServerCmdRef_t _cmdRef, ///< [IN] Command reference that must be passed to this
+    le_sup_ctrl_ServerCmdRef_t cmdRef,  ///< [IN] Command reference that must be passed to this
                                         ///       command's response function.
     const char* appName                 ///< [IN] Name of the application to start.
 )
 {
     LE_DEBUG("Received request to start application '%s'.", appName);
 
-    le_sup_ctrl_StartAppRespond(_cmdRef, LaunchApp(appName));
+    le_sup_ctrl_StartAppRespond(cmdRef, LaunchApp(appName));
 }
 
 
@@ -1192,7 +1315,7 @@ void le_sup_ctrl_StartApp
 //--------------------------------------------------------------------------------------------------
 void le_sup_ctrl_StopApp
 (
-    le_sup_ctrl_ServerCmdRef_t _cmdRef, ///< [IN] Command reference that must be passed to this
+    le_sup_ctrl_ServerCmdRef_t cmdRef,  ///< [IN] Command reference that must be passed to this
                                         ///       command's response function.
     const char* appName                 ///< [IN] Name of the application to stop.
 )
@@ -1206,12 +1329,12 @@ void le_sup_ctrl_StopApp
     {
         LE_WARN("Application '%s' is not running and cannot be stopped.", appName);
 
-        le_sup_ctrl_StopAppRespond(_cmdRef, LE_NOT_FOUND);
+        le_sup_ctrl_StopAppRespond(cmdRef, LE_NOT_FOUND);
         return;
     }
 
     // Save this commands reference in this app.
-    appPtr->stopCmdRef = _cmdRef;
+    appPtr->stopCmdRef = cmdRef;
 
     // Set the handler to be called when this app stops.  This handler will also respond to the
     // process that requested this app be stopped.
@@ -1231,32 +1354,75 @@ void le_sup_ctrl_StopApp
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Stops the Legato framework. This function is called automatically by the event loop when a
- * separate process requests to stop the Legato framework.
+ * Stops the Legato framework.
+ *
+ * Async API function.  Calls le_sup_ctrl_StopLegatoRespond() to report results.
  */
 //--------------------------------------------------------------------------------------------------
 void le_sup_ctrl_StopLegato
 (
-    le_sup_ctrl_ServerCmdRef_t _cmdRef
+    le_sup_ctrl_ServerCmdRef_t cmdRef
 )
 {
     LE_DEBUG("Received request to stop Legato.");
 
-    if (StopLegatoCmdRef != NULL)
+    if (State != STATE_NORMAL)
     {
-        // Someone else has already requested that the framework should be stopped so we should just
-        // return right away.
-        le_sup_ctrl_StopLegatoRespond(_cmdRef, LE_DUPLICATE);
+        le_sup_ctrl_StopLegatoRespond(cmdRef, LE_DUPLICATE);
     }
     else
     {
         // Save the command reference to use in the response later.
-        StopLegatoCmdRef = _cmdRef;
+        AsyncApiCmdRef = cmdRef;
+
+        State = STATE_STOPPING;
 
         // Start the process of shutting down the framework.
         StopFramework();
     }
 }
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Restarts the Legato framework.
+ *
+ * Async API function.  Calls le_sup_ctrl_RestartLegatoRespond() to report results.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_sup_ctrl_RestartLegato
+(
+    le_sup_ctrl_ServerCmdRef_t cmdRef,
+    bool manualRestart
+)
+{
+    LE_DEBUG("Received request to restart Legato.");
+
+    if (State == STATE_NORMAL)
+    {
+        // Save the command reference to use in the response later.
+        AsyncApiCmdRef = cmdRef;
+
+        if (manualRestart)
+        {
+            State = STATE_RESTARTING_MANUAL;
+        }
+        else
+        {
+            State = STATE_RESTARTING;
+        }
+
+        // Start the process of shutting down the framework.
+        StopFramework();
+    }
+    else
+    {
+        LE_DEBUG("Ignoring request to restart Legato in state %d.", State);
+
+        le_sup_ctrl_RestartLegatoRespond(cmdRef, LE_DUPLICATE);
+    }
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1267,12 +1433,12 @@ void le_sup_ctrl_StopLegato
 //--------------------------------------------------------------------------------------------------
 void le_sup_wdog_WatchdogTimedOut
 (
-    le_sup_wdog_ServerCmdRef_t _cmdRef,
+    le_sup_wdog_ServerCmdRef_t cmdRef,
     uint32_t userId,
     uint32_t procId
 )
 {
-    le_sup_wdog_WatchdogTimedOutRespond(_cmdRef);
+    le_sup_wdog_WatchdogTimedOutRespond(cmdRef);
     LE_INFO("Handling watchdog expiry for: userId %d, procId %d", userId, procId);
 
     // Search for the process in the list of apps.
@@ -1503,7 +1669,6 @@ le_result_t le_appInfo_GetHash
         ///< [IN]
 )
 {
-#define APPS_INSTALL_DIR                    "/opt/legato/apps"
 #define APP_INFO_FILE                       "info.properties"
 #define KEY_STR_MD5                         "app.md5"
 
@@ -1568,8 +1733,15 @@ COMPONENT_INIT
     LE_FATAL_IF( (nice(LEGATO_FRAMEWORK_NICE_LEVEL) == -1) && (errno != 0),
                 "Could not set the nice level.  %m.");
 
-    // Daemonize ourself.
-    int syncFd = Daemonize();
+    int syncFd = -1;
+
+    // Check args to see if we should not daemonize
+    if (le_arg_GetFlagOption("n", "no-daemonize") != LE_OK)
+    {
+        // Daemonize ourself.
+        syncFd = Daemonize();
+    }
+    SetupSupervisorProcess();
 
     // Create the Legato runtime directory if it doesn't already exist.
     LE_ASSERT(le_dir_Make(STRINGIZE(LE_RUNTIME_DIR), S_IRWXU | S_IXOTH) != LE_FAULT);

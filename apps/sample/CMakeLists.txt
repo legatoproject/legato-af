@@ -6,8 +6,8 @@
 #*******************************************************************************
 
 # Output
-set(EXECUTABLE_OUTPUT_PATH ${EXECUTABLE_OUTPUT_PATH}/samples)
-set(APP_OUTPUT_PATH ${EXECUTABLE_OUTPUT_PATH})
+set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/samples/bin)
+set(APP_OUTPUT_PATH ${CMAKE_BINARY_DIR}/samples)
 file(MAKE_DIRECTORY ${EXECUTABLE_OUTPUT_PATH})
 
 add_custom_target(samples
@@ -45,4 +45,9 @@ if(LEGATO_TARGET MATCHES "wp85")
     add_subdirectory(gpioCf3Demo)
 endif()
 
+add_subdirectory(textLoc)
 
+# Two functioning tools that can be used with AirVantage to gather information about the system
+# and apps in the field.
+add_subdirectory(avAppsInfo)
+add_subdirectory(avSystemInfo)

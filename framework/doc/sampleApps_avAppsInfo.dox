@@ -1,0 +1,27 @@
+/** @page sampleApps_avAppsInfo AirVantage Apps Info
+
+This sample app demonstrates using @c assets to transfer @ref basicLWM2MData over AirVantage.
+It's also a working utility to provide info about apps running on a remote target.
+
+@section sampleApps_avAppsInfo_background Background info
+
+To use this app, you should understand how to @ref howToAVConnect. <br>
+You also need to understand how to @ref howToAVInstallApp over AirVantage. <br>
+There's more detailed info on @ref defFilesCdef_assets in the @c cdef docs available.<br>
+
+@section sampleApps_avAppsInfo_Desc Description
+
+The AirVantage sample apps aren't installed with the framework by default. Use AirVantage to install
+and start/stop the sample app: @ref howToAVInstallApp.
+
+The app presents the following info over AirVantage for each installed app:<br>
+ - App name <br>
+ - App status (whether it is running or stopped) <br>
+ - App Process ID (PID) (an App may actually have several processes; the PIDs will be listed separated by commas).
+ - Memory used by the process <br>
+ - CPU % used by the process (at this time only a single CPU/core is supported)<br>
+<HR>
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/

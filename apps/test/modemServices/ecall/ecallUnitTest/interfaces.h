@@ -25,4 +25,3 @@ le_msg_SessionRef_t le_mcc_GetClientSessionRef
 (
     void
 );
-

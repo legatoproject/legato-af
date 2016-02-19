@@ -6,7 +6,7 @@
 
 app_file_list=""
 app_installed_list=""
-bin_path="/usr/local/bin/"
+bin_path="/legato/systems/current/bin/"
 exit_code=0
 declare -A app_pids
 declare -A app_results
@@ -147,7 +147,7 @@ function config_args
 
 # make sure legato is running on target. If start fails maybe it's already running.
 #
-output=$(ssh root@${TARGET_ADDR} "/usr/local/bin/legato start")
+output=$(ssh root@${TARGET_ADDR} "${bin_path}legato start")
 on_fail "ssh root@target legato start failed"
 echo $output
 legato_start_match="already running|Starting the supervisor"

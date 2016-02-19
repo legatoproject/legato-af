@@ -11,6 +11,37 @@
 #include "interfaces.h"
 #include "pa_rtc.h"
 
+static le_result_t ReturnCode = LE_FAULT;
+static uint64_t MillisecondsPastGpsEpochPtr = 0;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the stub return code.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void pa_rtcSimu_SetReturnCode
+(
+    le_result_t res
+)
+{
+    ReturnCode = res;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Check the current time.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void pa_rtcSimu_CheckTime
+(
+    uint64_t  milliseconds
+)
+{
+    LE_ASSERT(MillisecondsPastGpsEpochPtr == milliseconds);
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -26,7 +57,12 @@ le_result_t pa_rtc_GetUserTime
     uint64_t*  millisecondsPastGpsEpochPtr ///< [OUT]
 )
 {
-    return LE_FAULT;
+    if (ReturnCode == LE_OK)
+    {
+        *millisecondsPastGpsEpochPtr = MillisecondsPastGpsEpochPtr;
+    }
+
+    return ReturnCode;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -43,7 +79,12 @@ le_result_t pa_rtc_SetUserTime
     uint64_t  millisecondsPastGpsEpoch ///< [IN]
 )
 {
-    return LE_FAULT;
+    if (ReturnCode == LE_OK)
+    {
+        MillisecondsPastGpsEpochPtr = millisecondsPastGpsEpoch;
+    }
+
+    return ReturnCode;
 }
 
 

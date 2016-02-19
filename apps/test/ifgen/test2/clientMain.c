@@ -19,6 +19,25 @@ void banner(char *testName)
 }
 
 
+void writeFdToLog(int fd)
+{
+    char buffer[1000];
+    ssize_t numRead;
+
+    numRead = read(fd, buffer, sizeof(buffer));
+    if (numRead == -1)
+    {
+        LE_INFO("Read error: %s", strerror(errno));
+    }
+    else
+    {
+        buffer[numRead] = '\0';
+        LE_PRINT_VALUE("%zd", numRead);
+        LE_PRINT_VALUE("%s", buffer);
+    }
+}
+
+
 void testFinal
 (
     void* unusedOnePtr,
@@ -58,12 +77,18 @@ void CallbackTestHandler
 (
     uint32_t data,
     const char* namePtr,
+    int dataFile,
     void* contextPtr
 )
 {
     LE_PRINT_VALUE("%d", data);
     LE_PRINT_VALUE("'%s'", namePtr);
     LE_PRINT_VALUE("%p", contextPtr);
+
+    LE_PRINT_VALUE("%i", dataFile);
+
+    // Read and print out whatever is read from the dataFile fd.
+    writeFdToLog(dataFile);
 
     // This should fail, because the callback can only be called once.
     LE_DEBUG("Triggering CallbackTest second time -- should FATAL");
@@ -188,8 +213,13 @@ void test1(void)
     LE_PRINT_VALUE("%s", response);
     LE_PRINT_VALUE("%s", more);
 
-    // Call again with a special value, so that nothing is returned for the 'response' and 'more'
-    // output parameters. This could happen in a typical function, if an error is detected.
+    // Call again with a special value, so that nothing is returned for the 'output', 'response'
+    // and 'more' output parameters. This could happen in a typical function, if an error is 
+    // detected.
+    
+    // Make 'length' larger than actually defined for the 'output' parameter to verify that
+    // only the maximum defined value is used on the server.
+    length = 20;
     allParameters(COMMON_ZERO,
                   &value,
                   data,
@@ -219,20 +249,7 @@ void test1(void)
     LE_PRINT_VALUE("%i", fdFromServer);
 
     // Read and print out whatever is read from the server fd
-    char buffer[1000];
-    ssize_t numRead;
-
-    numRead = read(fdFromServer, buffer, sizeof(buffer));
-    if (numRead == -1)
-    {
-        LE_INFO("Read error: %s", strerror(errno));
-    }
-    else
-    {
-        buffer[numRead] = '\0';
-        LE_PRINT_VALUE("%zd", numRead);
-        LE_PRINT_VALUE("%s", buffer);
-    }
+    writeFdToLog(fdFromServer);
 }
 
 

@@ -17,4 +17,4 @@ bindings:
     avcDataApp.componentDataApp.le_avdata -> avcService.le_avdata
 }
 
-version: 2.1
+version: 2.2

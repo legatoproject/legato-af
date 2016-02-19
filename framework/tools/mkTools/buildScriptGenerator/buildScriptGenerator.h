@@ -94,6 +94,7 @@ void Generate
 (
     const model::System_t* systemPtr,
     const mk::BuildParams_t& buildParams,
+    const std::string& outputDir,   ///< Path to the directory where the built system will be put.
     int argc,           ///< Count of the number of command line parameters.
     const char** argv   ///< Pointer to an array of pointers to command line argument strings.
 );

@@ -1,13 +1,13 @@
 /** @page toolsTarget_app app
 
-Use the Application tool for an easy method to run the most commonly needed target functions.
+The @c app tool can be used to list and control apps installed on the target device.
 
 <h1>Usage</h1>
 
 <b><c>app [start|stop|restart|remove|status|version|info] APP_NAME [ APP_NAME ... ] <br>
 app [start|stop|restart|remove|status|version|info] '*' <br>
 app [list|status|info] <br>
-app install APP_NAME <br>
+app help <br>
 </c></b>
 
 @verbatim app [start|stop|restart|remove|status|version|info] APP_NAME [ APP_NAME ... ]@endverbatim
@@ -29,8 +29,8 @@ app).
 @verbatim app info @endverbatim
 > Provides info on one or more apps' running state and processes' state (stopped or never started, running, paused).
 
-@verbatim app install APP_NAME @endverbatim
-> Install app. Specify one app name; must be provided on @c stdin.
+@verbatim app help @endverbatim
+> Prints help text to standard out and exits.
 
 <HR>
 

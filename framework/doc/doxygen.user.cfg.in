@@ -26,7 +26,7 @@ DOXYFILE_ENCODING      = UTF-8
 # identify the project. Note that if you do not use Doxywizard you need
 # to put quotes around the project name if it contains spaces.
 
-PROJECT_NAME           = "LEGATO"
+PROJECT_NAME           = " "
 
 # The PROJECT_NUMBER tag can be used to enter a project or revision number.
 # This could be handy for archiving the generated documentation or
@@ -119,7 +119,7 @@ INLINE_INHERITED_MEMB  = NO
 # path before files name in the file list and in the header files. If set
 # to NO the shortest path that makes the file name unique will be used.
 
-FULL_PATH_NAMES        = YES
+FULL_PATH_NAMES        = NO
 
 # If the FULL_PATH_NAMES tag is set to YES then the STRIP_FROM_PATH tag
 # can be used to strip a user-defined part of the path. Stripping is
@@ -128,7 +128,7 @@ FULL_PATH_NAMES        = YES
 # If left blank the directory from which doxygen is run is used as the
 # path to strip.
 
-STRIP_FROM_PATH        = "@LEGATO_SOURCE_DIR@"
+STRIP_FROM_PATH        = "@LEGATO_ROOT@"
 
 # The STRIP_FROM_INC_PATH tag can be used to strip a user-defined part of
 # the path mentioned in the documentation of a class, which tells
@@ -576,7 +576,7 @@ FILE_VERSION_FILTER    =
 # You can optionally specify a file name after the option, if omitted
 # DoxygenLayout.xml will be used as the name of the layout file.
 
-LAYOUT_FILE            = @LEGATO_SOURCE_DIR@/framework/doc/DoxygenLayout.xml
+LAYOUT_FILE            = @LEGATO_ROOT@/framework/doc/DoxygenLayout.xml
 
 # The CITE_BIB_FILES tag can be used to specify one or more bib files
 # containing the references data. This must be a list of .bib files. The
@@ -648,9 +648,9 @@ WARN_LOGFILE           =
 # directories like "/usr/src/myproject". Separate the files or directories
 # with spaces.
 
-INPUT                  = "@LEGATO_SOURCE_DIR@/framework/doc" \
-                         "@LEGATO_SOURCE_DIR@/framework/c/inc" \
-                         "@LEGATO_SOURCE_DIR@/apps/sample/eCallDemo/doc" \
+INPUT                  = "@LEGATO_ROOT@/framework/doc" \
+                         "@LEGATO_ROOT@/framework/c/inc" \
+                         "@LEGATO_ROOT@/apps/sample/eCallDemo/doc" \
                          "@LEGATO_BINARY_DIR@/interfaces" \
                          "@LEGATO_BINARY_DIR@/framework/doc/generated"
 
@@ -713,7 +713,7 @@ EXCLUDE_SYMBOLS        = *_Hide
 # directories that contain example code fragments that are included (see
 # the \include command).
 
-EXAMPLE_PATH           = "@LEGATO_SOURCE_DIR@"
+EXAMPLE_PATH           = "@LEGATO_ROOT@"
 
 # If the value of the EXAMPLE_PATH tag contains directories, you can use the
 # EXAMPLE_PATTERNS tag to specify one or more wildcard pattern (like *.cpp
@@ -733,7 +733,7 @@ EXAMPLE_RECURSIVE      = NO
 # directories that contain image that are included in the documentation (see
 # the \image command).
 
-IMAGE_PATH             = "@LEGATO_SOURCE_DIR@/framework/doc/img"
+IMAGE_PATH             = "@LEGATO_ROOT@/framework/doc/img"
 
 # The INPUT_FILTER tag can be used to specify a program that doxygen should
 # invoke to filter for each input file. Doxygen will invoke the filter program

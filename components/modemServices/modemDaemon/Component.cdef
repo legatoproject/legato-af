@@ -11,19 +11,19 @@ provides:
 {
     api:
     {
-        le_info.api
-        le_sms.api
-        le_mrc.api
-        le_sim.api
-        le_mdc.api
-        le_mcc.api
-        le_ecall.api
-        le_ips.api
-        le_temp.api
-        le_antenna.api
-        le_riPin.api
-        le_adc.api
-        le_rtc.api
+        modemServices/le_info.api
+        modemServices/le_sms.api
+        modemServices/le_mrc.api
+        modemServices/le_sim.api
+        modemServices/le_mdc.api
+        modemServices/le_mcc.api
+        modemServices/le_ecall.api
+        modemServices/le_ips.api
+        modemServices/le_temp.api
+        modemServices/le_antenna.api
+        modemServices/le_riPin.api
+        modemServices/le_adc.api
+        modemServices/le_rtc.api
     }
 }
 
@@ -46,6 +46,18 @@ sources:
     le_riPin.c
     le_adc.c
     le_rtc.c
+}
+
+cflags:
+{
+    -I$LEGATO_ROOT/components/modemServices/platformAdaptor/inc
+    -I$LEGATO_ROOT/components/cfgEntries
+    -I$LEGATO_BUILD/framework/libjansson/include
+}
+
+ldflags:
+{
+    -ljansson
 }
 
 requires:

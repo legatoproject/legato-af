@@ -2,10 +2,10 @@ requires:
 {
     api:
     {
-        le_sms.api
-        le_mrc.api
-        le_mdc.api
-        le_sim.api
+        modemServices/le_sms.api
+        modemServices/le_mrc.api
+        modemServices/le_mdc.api
+        modemServices/le_sim.api
         le_data.api
     }
 }

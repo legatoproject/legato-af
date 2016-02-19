@@ -1,11 +1,11 @@
 /** @page getstartedSetupHost Setup Dev Host PC
 
-Legato can be installed on a host PC using Sierra Wireless' Developer Studio or by working with
+Legato can be installed and run on a host PC using an ADK or source files from
 the command line:
 
-@subpage getstartedDSinstall &mdash; install and develop Legato with Developer Studio.
+@subpage getStartedQuick &mdash; develop apps quickly.
 
-@subpage getstartedCLinstallMain &mdash; install and develop Legato source files from the command-line.
+@subpage getstartedCLinstallMain &mdash; install the Legato source files and develop using the command-line.
 
 <HR>
 

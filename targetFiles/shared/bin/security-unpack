@@ -4,4 +4,4 @@
 # Exit with any non-zero exit code will be considered as failure.
 
 # Here, do nothing but cat what it receives via stdin.
-cat -
+exec cat -

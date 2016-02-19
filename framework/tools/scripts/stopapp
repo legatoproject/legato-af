@@ -31,4 +31,4 @@ SetTargetIP $2
 
 # Tell the device to stop the application.
 APP_NAME=$(basename "$APP_NAME" | sed 's/\.[^.]*$//')
-SshToTarget "/usr/local/bin/app stop '$APP_NAME'"
+SshToTarget "$BIN_PATH/app stop '$APP_NAME'"

@@ -458,6 +458,13 @@ void Testle_ecall_AddHandlers
     SimulateAndCheckState(LE_ECALL_STATE_ALACK_RECEIVED_POSITIVE);
     SimulateAndCheckState(LE_ECALL_STATE_COMPLETED);
     SimulateAndCheckState(LE_ECALL_STATE_RESET);
+    SimulateAndCheckState(LE_ECALL_STATE_TIMEOUT_T2);
+    SimulateAndCheckState(LE_ECALL_STATE_TIMEOUT_T3);
+    SimulateAndCheckState(LE_ECALL_STATE_TIMEOUT_T5);
+    SimulateAndCheckState(LE_ECALL_STATE_TIMEOUT_T6);
+    SimulateAndCheckState(LE_ECALL_STATE_TIMEOUT_T7);
+    SimulateAndCheckState(LE_ECALL_STATE_TIMEOUT_T9);
+    SimulateAndCheckState(LE_ECALL_STATE_TIMEOUT_T10);
 // TODO: will be completed once pa_mcc_simu will be ready
 // SimulateAndCheckState(LE_ECALL_STATE_DISCONNECTED);
 
@@ -765,15 +772,10 @@ static void* UnitTestInit
  *
  */
 //--------------------------------------------------------------------------------------------------
-int main
-(
-    int   argc,
-    char* argv[]
-)
+COMPONENT_INIT
 {
-    LE_LOG_SESSION = log_RegComponent("ecall", &LE_LOG_LEVEL_FILTER_PTR);
-
-    arg_SetArgs(argc, argv);
+    // To reactivate for all DEBUG logs
+    // le_log_SetFilterLevel(LE_LOG_DEBUG);
 
     // Create a semaphore to coordinate Initialization
     InitSemaphore = le_sem_Create("InitSem",0);
@@ -801,7 +803,7 @@ int main
 
     LE_INFO("======== UnitTest of eCall API ends with SUCCESS ========");
 
-    return 0;
+    exit(0);
 }
 
 

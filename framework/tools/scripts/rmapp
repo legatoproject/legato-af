@@ -30,4 +30,4 @@ SetTargetIP $2
 
 # Tell the device to stop the application and uninstall it.
 APP_NAME=$(basename "$APP_NAME" | sed 's/\.[^.]*$//')
-SshToTarget "/usr/local/bin/app remove '$APP_NAME'"
+SshToTarget "$BIN_PATH/app remove '$APP_NAME'"

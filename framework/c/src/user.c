@@ -758,7 +758,7 @@ static le_result_t CheckIfUserOrGroupExist
 
     if (result == LE_OK)
     {
-        LE_WARN("User '%s' already exists.", namePtr);
+        LE_DEBUG("User '%s' already exists.", namePtr);
         return LE_DUPLICATE;
     }
     else if (result == LE_FAULT)
@@ -773,7 +773,7 @@ static le_result_t CheckIfUserOrGroupExist
 
     if (result == LE_OK)
     {
-        LE_WARN("Group '%s' already exists.", namePtr);
+        LE_DEBUG("Group '%s' already exists.", namePtr);
         return LE_DUPLICATE;
     }
 
@@ -1045,11 +1045,13 @@ static le_result_t CreateUserAndGroup
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Creates a user account and home directory for a user with the specified name.
- * A group with the same name as the username will also be created and the group will be set as
- * the user's primary group.  If the user and group are successfully created the user ID and
- * group ID are stored at the location pointed to by uidPtr and gidPtr respectively.  If there
- * was an error the user is not created and the values at uidPtr and gidPtr are undefined.
+ * Creates a user account with the specified name.  A group with the same name as the username will
+ * also be created and the group will be set as the user's primary group.  If the user and group are
+ * successfully created the user ID and group ID are stored at the location pointed to by uidPtr and
+ * gidPtr respectively.  If the user account alread exists then LE_DUPLICATE will be returned and
+ * the user account's user ID and group ID are stored at the location pointed to by uidPtr and
+ * gidPtr respectively.  If there is an error then LE_FAULT will be returned and the values at
+ * uidPtr and gidPtr are undefined.
  *
  * @return
  *      LE_OK if successful.
@@ -1085,8 +1087,18 @@ le_result_t user_Create
 
     // Check if the user already exists.
     le_result_t result = CheckIfUserOrGroupExist(usernamePtr);
-    if (result != LE_NOT_FOUND)
+    if (result == LE_FAULT)
     {
+        goto cleanup;
+    }
+
+    if (result == LE_DUPLICATE)
+    {
+        if (GetIDs(usernamePtr, uidPtr, gidPtr) != LE_OK)
+        {
+            result = LE_FAULT;
+        }
+
         goto cleanup;
     }
 

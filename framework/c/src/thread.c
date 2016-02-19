@@ -4,7 +4,7 @@
  * are first created, then thread attributes are set, and finally the thread is started in a
  * seperate function call.
  *
- * When a thread is created a ThreadObj_t object is created for that thread and used to maintain
+ * When a thread is created a thread_Obj_t object is created for that thread and used to maintain
  * such things as the thread's name, attributes, destructor list, local data list, etc.  The thread
  * object is the implementation of the opaque thread reference le_thread_Ref_t given to the user.
  *
@@ -17,7 +17,7 @@
  *
  * Alternatively, if a thread is started using pthreads directly, or some other pthreads wrapper
  * (such as a Boost thread object), that thread can call le_thread_InitLegatoThreadData() to
- * create a ThreadObj_t for that thread and store a pointer to it as thread-specific data using
+ * create a thread_Obj_t for that thread and store a pointer to it as thread-specific data using
  * the appropriate key.  This allows Legato APIs, such as the event loop, timers, and IPC to
  * work in that thread.  Furthermore, if le_thread_InitLegatoThreadData() is called for a thread
  * and that thread is to die a long time before the process dies, to prevent memory leaks
@@ -69,7 +69,7 @@ static size_t* ListOfThreadObjsChgCntRef = &ListOfThreadObjsChgCnt;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Key under which the pointer to the Thread Object (ThreadObj_t) will be kept in thread-local
+ * Key under which the pointer to the Thread Object (thread_Obj_t) will be kept in thread-local
  * storage.  This allows a thread to quickly get a pointer to its own Thread Object.
  */
 //--------------------------------------------------------------------------------------------------
@@ -89,13 +89,14 @@ static le_mem_PoolRef_t ThreadPool;
  * The destructor object that can be added to a destructor list.  Used to hold user destructors.
  */
 //--------------------------------------------------------------------------------------------------
-typedef struct
+typedef struct le_thread_Destructor
 {
-    le_thread_Destructor_t destructor;      // The destructor function.
-    void* context;                          // The context to pass to the destructor function.
-    le_sls_Link_t link;                     // A link in the thread's list of destructors.
+    le_dls_Link_t link;                 ///< A link in the thread's list of destructors.
+    thread_Obj_t* threadPtr;            ///< Pointer to the thread this destructor is attached to.
+    le_thread_Destructor_t destructor;  ///< The destructor function.
+    void* context;                      ///< The context to pass to the destructor function.
 }
-DestructorObj_t;
+Destructor_t;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -103,7 +104,7 @@ DestructorObj_t;
  * A memory pool for the destructor objects.  This pool is shared amongst all threads.
  */
 //--------------------------------------------------------------------------------------------------
-static le_mem_PoolRef_t DestructorObjPool;
+static le_mem_PoolRef_t DestructorPool;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -150,26 +151,31 @@ static inline void Unlock
 //--------------------------------------------------------------------------------------------------
 /**
  * Adds destructor object to a given thread's Destructor List.
+ *
+ * @return Reference to the destructor that can be passed to le_thread_RemoveDestructor().
  */
 //--------------------------------------------------------------------------------------------------
-static void AddDestructor
+static le_thread_DestructorRef_t AddDestructor
 (
-    ThreadObj_t*            threadPtr,  ///< [in] Ptr to the Thread Object to add the destructor to.
+    thread_Obj_t*           threadPtr,  ///< [in] Ptr to the Thread Object to add the destructor to.
     le_thread_Destructor_t  destructor, ///< [in] The function to be called.
     void*                   context     ///< [in] Parameter to pass to the destructor function.
 )
 {
     // Create the destructor object.
-    DestructorObj_t* destructorObjPtr = le_mem_ForceAlloc(DestructorObjPool);
+    Destructor_t* destructorObjPtr = le_mem_ForceAlloc(DestructorPool);
 
     // Init the destructor object.
+    destructorObjPtr->link = LE_DLS_LINK_INIT;
+    destructorObjPtr->threadPtr = threadPtr;
     destructorObjPtr->destructor = destructor;
     destructorObjPtr->context = context;
-    destructorObjPtr->link = LE_SLS_LINK_INIT;
 
     // Get a pointer to the calling thread's Thread Object and
     // Add the destructor object to its list.
-    le_sls_Stack(&(threadPtr->destructorList), &(destructorObjPtr->link));
+    le_dls_Stack(&(threadPtr->destructorList), &(destructorObjPtr->link));
+
+    return destructorObjPtr;
 }
 
 
@@ -180,7 +186,7 @@ static void AddDestructor
 //--------------------------------------------------------------------------------------------------
 static void DeleteThread
 (
-    ThreadObj_t* threadPtr
+    thread_Obj_t* threadPtr
 )
 {
     // Destruct the thread attributes structure.
@@ -201,26 +207,26 @@ static void CleanupThread
     void* objPtr    ///< Pointer to the Thread object.
 )
 {
-    ThreadObj_t* threadObjPtr = objPtr;
+    thread_Obj_t* threadObjPtr = objPtr;
+
+    threadObjPtr->state = THREAD_STATE_DYING;
 
     // Call all destructors in the list.
-    le_sls_Link_t* destructorLinkPtr = le_sls_Pop(&(threadObjPtr->destructorList));
-
-    while (destructorLinkPtr != NULL)
+    le_dls_Link_t* destructorLinkPtr;
+    while ((destructorLinkPtr = le_dls_Pop(&threadObjPtr->destructorList)) != NULL)
     {
         // Get the destructor object
-        DestructorObj_t* destructorObjPtr = CONTAINER_OF(destructorLinkPtr, DestructorObj_t, link);
+        Destructor_t* destructorObjPtr = CONTAINER_OF(destructorLinkPtr, Destructor_t, link);
 
         // Call the destructor.
         if (destructorObjPtr->destructor != NULL)
         {
+            // WARNING: This may change the destructor list (by deleting a destructor).
             destructorObjPtr->destructor(destructorObjPtr->context);
         }
 
         // Free the destructor object.
         le_mem_Release(destructorObjPtr);
-
-        destructorLinkPtr = le_sls_Pop(&(threadObjPtr->destructorList));
     }
 
     // Destruct the event loop.
@@ -285,7 +291,7 @@ static void* PThreadStartRoutine
 )
 {
     void* returnValue;
-    ThreadObj_t* threadPtr = threadObjPtr;
+    thread_Obj_t* threadPtr = threadObjPtr;
 
     // WARNING: This code must be very carefully crafted to avoid the possibility of hitting
     //          a cancellation point before pthread_cleanup_push() is called.  Otherwise, it's
@@ -326,7 +332,7 @@ static void* PThreadStartRoutine
  *          main thread.  Keep that in mind when modifying this function.
  */
 //--------------------------------------------------------------------------------------------------
-static ThreadObj_t* CreateThread
+static thread_Obj_t* CreateThread
 (
     const char*             name,       ///< [in] Name of the thread.
     le_thread_MainFunc_t    mainFunc,   ///< [in] The thread's main function.
@@ -334,7 +340,7 @@ static ThreadObj_t* CreateThread
 )
 {
     // Create a new thread object.
-    ThreadObj_t* threadPtr = le_mem_ForceAlloc(ThreadPool);
+    thread_Obj_t* threadPtr = le_mem_ForceAlloc(ThreadPool);
 
     // Copy the name.  We will make the names unique by adding the thread ID later so we allow any
     // string as the name.
@@ -360,10 +366,10 @@ static ThreadObj_t* CreateThread
     }
 
     threadPtr->isJoinable = false;
-    threadPtr->isStarted = false;
+    threadPtr->state = THREAD_STATE_NEW;
     threadPtr->mainFunc = mainFunc;
     threadPtr->context = context;
-    threadPtr->destructorList = LE_SLS_LIST_INIT;
+    threadPtr->destructorList = LE_DLS_LIST_INIT;
     threadPtr->threadHandle = 0;
 
     memset(&threadPtr->mutexRec, 0, sizeof(threadPtr->mutexRec));
@@ -390,12 +396,12 @@ static ThreadObj_t* CreateThread
  * @return  Pointer to the thread's object.
  */
 //--------------------------------------------------------------------------------------------------
-static ThreadObj_t* GetCurrentThreadPtr
+static thread_Obj_t* GetCurrentThreadPtr
 (
     void
 )
 {
-    ThreadObj_t* threadPtr = pthread_getspecific(ThreadLocalDataKey);
+    thread_Obj_t* threadPtr = pthread_getspecific(ThreadLocalDataKey);
 
     LE_FATAL_IF(threadPtr == NULL, "Legato threading API used in non-Legato thread!");
 
@@ -422,7 +428,7 @@ void thread_Init
 )
 {
     // Create the thread memory pool.
-    ThreadPool = le_mem_CreatePool("Thread Pool", sizeof(ThreadObj_t));
+    ThreadPool = le_mem_CreatePool("Thread Pool", sizeof(thread_Obj_t));
     le_mem_ExpandPool(ThreadPool, THREAD_POOL_SIZE);
 
     // Create the Safe Reference Map for Thread References.
@@ -437,13 +443,15 @@ void thread_Init
     spy_SetListOfThreadObjsChgCntRef(&ListOfThreadObjsChgCntRef);
 
     // Create the destructor object pool.
-    DestructorObjPool = le_mem_CreatePool("DestructorObjs", sizeof(DestructorObj_t));
+    DestructorPool = le_mem_CreatePool("DestructorObjs", sizeof(Destructor_t));
 
     // Create the thread-local data key to be used to store a pointer to each thread object.
     LE_ASSERT(pthread_key_create(&ThreadLocalDataKey, NULL) == 0);
 
     // Create a Thread Object for the main thread (the thread running this function).
-    ThreadObj_t* threadPtr = CreateThread("main", NULL, NULL);
+    thread_Obj_t* threadPtr = CreateThread("main", NULL, NULL);
+    // It is obviously running
+    threadPtr->state = THREAD_STATE_RUNNING;
 
     // Store the Thread Object pointer in thread-local storage so GetCurrentThreadPtr() can
     // find it later.
@@ -504,7 +512,7 @@ event_PerThreadRec_t* thread_GetOtherEventRecPtr
 {
     Lock();
 
-    ThreadObj_t* threadPtr = le_ref_Lookup(ThreadRefMap, threadRef);
+    thread_Obj_t* threadPtr = le_ref_Lookup(ThreadRefMap, threadRef);
 
     Unlock();
 
@@ -548,7 +556,7 @@ le_thread_Ref_t le_thread_Create
 )
 {
     // Create a new thread object.
-    ThreadObj_t* threadPtr = CreateThread(name, mainFunc, context);
+    thread_Obj_t* threadPtr = CreateThread(name, mainFunc, context);
 
     return threadPtr->safeRef;
 }
@@ -573,7 +581,7 @@ le_result_t le_thread_SetPriority
 {
     Lock();
 
-    ThreadObj_t* threadPtr = le_ref_Lookup(ThreadRefMap, thread);
+    thread_Obj_t* threadPtr = le_ref_Lookup(ThreadRefMap, thread);
 
     Unlock();
 
@@ -651,7 +659,7 @@ le_result_t le_thread_SetStackSize
 {
     Lock();
 
-    ThreadObj_t* threadPtr = le_ref_Lookup(ThreadRefMap, thread);
+    thread_Obj_t* threadPtr = le_ref_Lookup(ThreadRefMap, thread);
 
     Unlock();
 
@@ -686,7 +694,7 @@ void le_thread_SetJoinable
 {
     Lock();
 
-    ThreadObj_t* threadPtr = le_ref_Lookup(ThreadRefMap, thread);
+    thread_Obj_t* threadPtr = le_ref_Lookup(ThreadRefMap, thread);
 
     Unlock();
 
@@ -710,16 +718,20 @@ void le_thread_Start
 {
     Lock();
 
-    ThreadObj_t* threadPtr = le_ref_Lookup(ThreadRefMap, thread);
+    thread_Obj_t* threadPtr = le_ref_Lookup(ThreadRefMap, thread);
 
     Unlock();
 
     LE_ASSERT(threadPtr != NULL);
 
+    LE_FATAL_IF(threadPtr->state != THREAD_STATE_NEW,
+                "Attempt to start an already started thread (%s).",
+                threadPtr->name);
+
     // Start the thread with the default function PThreadStartRoutine, passing the
     // PThreadStartRoutine the thread object.  PThreadStartRoutine will then start the user's main
     // function.
-    threadPtr->isStarted = true;
+    threadPtr->state = THREAD_STATE_RUNNING;
     int result = pthread_create(&(threadPtr->threadHandle),
                                 &(threadPtr->attr),
                                 PThreadStartRoutine,
@@ -776,7 +788,7 @@ le_result_t le_thread_Join
 
     Lock();
 
-    ThreadObj_t* threadPtr = le_ref_Lookup(ThreadRefMap, thread);
+    thread_Obj_t* threadPtr = le_ref_Lookup(ThreadRefMap, thread);
 
     if (threadPtr == NULL)
     {
@@ -864,7 +876,7 @@ le_result_t le_thread_Cancel
 
     Lock();
 
-    ThreadObj_t* threadPtr = le_ref_Lookup(ThreadRefMap, threadToCancel);
+    thread_Obj_t* threadPtr = le_ref_Lookup(ThreadRefMap, threadToCancel);
 
     if ((threadPtr == NULL) || (pthread_cancel(threadPtr->threadHandle) != 0))
     {
@@ -907,7 +919,7 @@ void le_thread_GetName
 {
     Lock();
 
-    ThreadObj_t* threadPtr = le_ref_Lookup(ThreadRefMap, threadRef);
+    thread_Obj_t* threadPtr = le_ref_Lookup(ThreadRefMap, threadRef);
 
     if (threadPtr == NULL)
     {
@@ -936,7 +948,7 @@ const char* le_thread_GetMyName
     void
 )
 {
-    ThreadObj_t* threadPtr = pthread_getspecific(ThreadLocalDataKey);
+    thread_Obj_t* threadPtr = pthread_getspecific(ThreadLocalDataKey);
 
     if (NULL == threadPtr) return "unknown";
 
@@ -949,18 +961,27 @@ const char* le_thread_GetMyName
  * Registers a destructor function for the calling thread.  The destructor will be called by that
  * thread just before it terminates.
  *
- * A thread can register its own destructor functions any time.
+ * A thread can register (or remove) its own destructor functions any time.
+ *
+ * @return Reference to the destructor that can be passed to le_thread_RemoveDestructor().
  *
  * See @ref threadDestructors for more information on destructors.
  */
 //--------------------------------------------------------------------------------------------------
-void le_thread_AddDestructor
+le_thread_DestructorRef_t le_thread_AddDestructor
 (
     le_thread_Destructor_t  destructor, ///< [in] The function to be called.
     void*                   context     ///< [in] Parameter to pass to the destructor.
 )
 {
-    AddDestructor(GetCurrentThreadPtr(), destructor, context);
+    thread_Obj_t* threadPtr = GetCurrentThreadPtr();
+
+    LE_FATAL_IF(threadPtr->state != THREAD_STATE_RUNNING,
+                "Dying thread attempted to add a destructor (%s). State is %d",
+                threadPtr->name,
+                threadPtr->state);
+
+    return AddDestructor(threadPtr, destructor, context);
 }
 
 
@@ -997,17 +1018,42 @@ void le_thread_AddChildDestructor
 {
     // Get a pointer to the thread's Thread Object.
     Lock();
-    ThreadObj_t* threadPtr = le_ref_Lookup(ThreadRefMap, thread);
+    thread_Obj_t* threadPtr = le_ref_Lookup(ThreadRefMap, thread);
     Unlock();
 
     LE_FATAL_IF(threadPtr == NULL, "Invalid thread reference %p provided!.", thread);
 
-    LE_FATAL_IF(threadPtr->isStarted,
+    LE_FATAL_IF(threadPtr->state != THREAD_STATE_NEW,
                 "Thread '%s' attempted to add destructor to other running thread '%s'!",
                 le_thread_GetMyName(),
                 threadPtr->name);
 
     AddDestructor(threadPtr, destructor, context);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Removes a destructor function from the calling thread's list of destructors.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_thread_RemoveDestructor
+(
+    le_thread_DestructorRef_t  destructor ///< [in] Reference to the destructor to remove.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    thread_Obj_t* threadPtr = GetCurrentThreadPtr();
+
+    // If the destructor is not in the list anymore, then its function must running right now
+    // and calling this function.  In that case, just return and let the thread clean-up function
+    // delete the destructor object when it is finished with it.
+    if (le_dls_IsInList(&(threadPtr->destructorList), &(destructor->link)))
+    {
+        le_dls_Remove(&(threadPtr->destructorList), &(destructor->link));
+
+        le_mem_Release(destructor);
+    }
 }
 
 
@@ -1034,10 +1080,10 @@ void le_thread_InitLegatoThreadData
                 "Legato thread-specific data initialized more than once!");
 
     // Create a Thread object for the calling thread.
-    ThreadObj_t* threadPtr = CreateThread(name, NULL, NULL);
+    thread_Obj_t* threadPtr = CreateThread(name, NULL, NULL);
 
     // Initialize the members of the Thread object according to the current pthreads attributes.
-    threadPtr->isStarted = true;
+    threadPtr->state = THREAD_STATE_RUNNING;
 
     // Store the Thread Object pointer in thread-specific storage so GetCurrentThreadPtr() can
     // find it later.
@@ -1067,7 +1113,7 @@ void le_thread_CleanupLegatoThreadData
 )
 //--------------------------------------------------------------------------------------------------
 {
-    ThreadObj_t* threadPtr = GetCurrentThreadPtr();
+    thread_Obj_t* threadPtr = GetCurrentThreadPtr();
 
     if (threadPtr->mainFunc != NULL)
     {

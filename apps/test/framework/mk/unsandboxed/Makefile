@@ -9,5 +9,5 @@ ar7:
 	mkapp unsandboxed.adef -v -t ar7
 
 clean:
-	rm -rf _build_* build_* *.ar7 *.localhost
+	rm -rf _build_* build_* *.update
 

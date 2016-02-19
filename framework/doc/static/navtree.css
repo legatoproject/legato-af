@@ -1,7 +1,7 @@
 #nav-tree .children_ul {
   margin:0px;
   padding:0px;
-  text-transform: uppercase;
+  text-transform: none;
 }
 
 #nav-tree ul {
@@ -58,19 +58,19 @@
 }
 
 #nav-tree .item:hover a {
-  color: #E53B30;
+  color: #f7781e;
 }
 
 #nav-tree .selected,
 #nav-tree .selected:hover {
-  border-color: #e73c31;
+  border-color: #f7781e;
 }
 
 #nav-tree .selected a,
 #nav-tree .selected:hover a {
   text-decoration:none;
   margin:0px;
-  color: #e73c31;
+  color: #f7781e;
 }
 
 #nav-tree .children_ul {
@@ -97,7 +97,7 @@
   display:block;
   position: absolute;
   left: 0px;
-  width: 300px;
+  width: 280px;
 }
 
 .ui-resizable .ui-resizable-handle {

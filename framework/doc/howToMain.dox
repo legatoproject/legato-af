@@ -1,7 +1,8 @@
 /** @page howToMain How To
 
-This section contains info about how to complete frequently needed tasks.
+This section contains info about frequently needed tasks.
 
+@subpage howToSecurity <br>
 @subpage howToCustomizeUART <br>
 @subpage howToCustomizeUSB <br>
 @subpage howToDebug <br>
@@ -13,7 +14,8 @@ This section contains info about how to complete frequently needed tasks.
 @subpage howToPortLegacyGen <br>
 @subpage howToSetUserTimebase <br>
 @subpage howToAV <br>
-@subpage howToLogs
+@subpage howToLogs <br>
+@subpage howToSoftwareUpdate
 
 <HR>
 

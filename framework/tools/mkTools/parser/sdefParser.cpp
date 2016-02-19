@@ -79,6 +79,10 @@ static parseTree::CompoundItem_t* ParseAppOverride
     {
         return ParseSimpleSection(lexer, sectionNameTokenPtr, parseTree::Token_t::NAME);
     }
+    else if (sectionName == "preloaded")
+    {
+        return ParseSimpleSection(lexer, sectionNameTokenPtr, parseTree::Token_t::BOOLEAN);
+    }
     else if (sectionName == "watchdogAction")
     {
         return ParseWatchdogAction(lexer, sectionNameTokenPtr);
@@ -162,28 +166,121 @@ static parseTree::Binding_t* ParseBinding
 {
     parseTree::Binding_t* bindingPtr;
 
-    // In a .sdef, the binding must be one of the following forms:
-    //      "clientApp.importedInterface -> serverApp.exportedInterface"
-    //      "clientApp.importedInterface -> <serverUser>.exportedInterface"
-    //      "<clientUser>.importedInterface -> serverApp.exportedInterface"
-    //      "<clientUser>.importedInterface -> <serverUser>.exportedInterface"
+    // Client side of the binding must be one of the following forms:
+    //      "clientApp.externalInterface
+    //      "clientApp.exe.component.internalInterface
+    //      "clientApp.*.internalInterface
+    //      "<clientUser>.externalInterface
 
-    // Client side first.
+    // The first part is always an IPC Agent token, followed by a '.'.
     bindingPtr = new parseTree::Binding_t(lexer.Pull(parseTree::Token_t::IPC_AGENT));
     (void)lexer.Pull(parseTree::Token_t::DOT);
-    bindingPtr->AddContent(lexer.Pull(parseTree::Token_t::NAME));
+
+    // If a '*' comes next, then it's a wildcard binding.
+    if (lexer.IsMatch(parseTree::Token_t::STAR))
+    {
+        // Check that the "IPC agent" is an app.
+        if (bindingPtr->firstTokenPtr->text[0] == '<')
+        {
+            lexer.ThrowException("Wildcard bindings not permitted for non-app users.");
+        }
+
+        // Expect a "*.interfaceName" to follow.
+        bindingPtr->AddContent(lexer.Pull(parseTree::Token_t::STAR));
+        (void)lexer.Pull(parseTree::Token_t::DOT);
+        bindingPtr->AddContent(lexer.Pull(parseTree::Token_t::NAME));
+    }
+    // If a '*' does not come next, expect a name.
+    else
+    {
+        bindingPtr->AddContent(lexer.Pull(parseTree::Token_t::NAME));
+
+        // If the next thing is a '.', then this must be an internal interface binding override.
+        // Otherwise, we are done the client-side part.
+        if (lexer.IsMatch(parseTree::Token_t::DOT))
+        {
+            // Check that the "IPC agent" is an app.
+            if (bindingPtr->firstTokenPtr->text[0] == '<')
+            {
+                lexer.ThrowException("Too many parts to client-side interface specification for"
+                                     " non-app user '" + bindingPtr->firstTokenPtr->text + "'."
+                                     " Can only override internal interface bindings for apps.");
+            }
+
+            // For the internal interface binding override, we have already pulled the token
+            // for the exe name.  Now we expect ".component.internalInterface".
+            (void)lexer.Pull(parseTree::Token_t::DOT);
+            bindingPtr->AddContent(lexer.Pull(parseTree::Token_t::NAME));
+            (void)lexer.Pull(parseTree::Token_t::DOT);
+            bindingPtr->AddContent(lexer.Pull(parseTree::Token_t::NAME));
+        }
+    }
 
     // ->
     SkipWhitespaceAndComments(lexer);
     (void)lexer.Pull(parseTree::Token_t::ARROW);
     SkipWhitespaceAndComments(lexer);
 
-    // Server side
+    // Server side of the binding must be one of the following forms:
+    //      serverApp.externalInterface"
+    //      <serverUser>.externalInterface"
     bindingPtr->AddContent(lexer.Pull(parseTree::Token_t::IPC_AGENT));
     (void)lexer.Pull(parseTree::Token_t::DOT);
+    // If a '*' comes next, then it's an (illegal) attempt to do a server-side wildcard binding.
+    if (lexer.IsMatch(parseTree::Token_t::STAR))
+    {
+        lexer.ThrowException("Wildcard bindings not permitted for server-side interfaces.");
+    }
     bindingPtr->AddContent(lexer.Pull(parseTree::Token_t::NAME));
 
+    // Expect closing curly to end section or whitespace to separate bindings.
+    // If there is another '.' here, the user probably is trying to bind to an internal
+    // interface on the server side.
+    if (lexer.IsMatch(parseTree::Token_t::DOT))
+    {
+        lexer.ThrowException("Too many parts to server-side interface specification."
+                             " Can only bind to external interfaces in .sdef files.");
+    }
+
     return bindingPtr;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Parse a command.
+ *
+ * @return Pointer to the item.
+ */
+//--------------------------------------------------------------------------------------------------
+static parseTree::Command_t* ParseCommand
+(
+    Lexer_t& lexer
+)
+//--------------------------------------------------------------------------------------------------
+{
+    parseTree::Command_t* commandPtr;
+
+    // The first part is always the command name.  Paths are not allowed.
+    commandPtr = new parseTree::Command_t(lexer.Pull(parseTree::Token_t::NAME));
+
+    // '='
+    SkipWhitespaceAndComments(lexer);
+    (void)lexer.Pull(parseTree::Token_t::EQUALS);
+    SkipWhitespaceAndComments(lexer);
+
+    // App name
+    commandPtr->AddContent(lexer.Pull(parseTree::Token_t::NAME));
+
+    // ':'
+    SkipWhitespaceAndComments(lexer);
+    lexer.Pull(parseTree::Token_t::COLON);
+    SkipWhitespaceAndComments(lexer);
+
+    // Path to executable within app.
+    commandPtr->AddContent(lexer.Pull(parseTree::Token_t::FILE_PATH));
+
+    return commandPtr;
 }
 
 
@@ -213,6 +310,10 @@ static parseTree::CompoundItem_t* ParseSection
     else if (sectionName == "bindings")
     {
         return ParseComplexSection(lexer, sectionNameTokenPtr, ParseBinding);
+    }
+    else if (sectionName == "commands")
+    {
+        return ParseComplexSection(lexer, sectionNameTokenPtr, ParseCommand);
     }
     else
     {

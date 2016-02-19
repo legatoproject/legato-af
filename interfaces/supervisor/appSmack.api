@@ -32,7 +32,7 @@ USETYPES le_limit.api;
  * Maximum length of SMACK labels.
  */
 //--------------------------------------------------------------------------------------------------
-DEFINE LABEL_LEN = 23;
+DEFINE MAX_LABEL_LEN = 255;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -54,12 +54,15 @@ BITMASK AccessFlags
  *
  * @note
  *      The app doesn't need to be installed for this function to succeed.
+ *
+ * @warning
+ *      This function will kill the client if there is an error.
  */
 //-------------------------------------------------------------------------------------------------
 FUNCTION GetLabel
 (
     string appName[le_limit.APP_NAME_LEN] IN,       ///< Application name
-    string label[LABEL_LEN] OUT                     ///< SMACK label for the application
+    string label[MAX_LABEL_LEN] OUT                 ///< SMACK label for the application
 );
 
 
@@ -72,13 +75,15 @@ FUNCTION GetLabel
  *
  * @note
  *      The application need not be installed for this function to succeed.
+ *
+ * @warning
+ *      This function will kill the client if there is an error.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION GetAccessLabel
 (
     string appName[le_limit.APP_NAME_LEN] IN,       ///< Application name
     AccessFlags accessMode IN,                      ///< Access mode flags
-    string label[LABEL_LEN] OUT                     ///< SMACK label for the application
+    string label[MAX_LABEL_LEN] OUT                 ///< SMACK label for the application
 );
-
 

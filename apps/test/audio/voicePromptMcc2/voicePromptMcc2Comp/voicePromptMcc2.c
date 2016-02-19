@@ -218,18 +218,10 @@ static void ConnectAudio
     MediaHandlerRef = le_audio_AddMediaHandler(PlayerRef, MyMediaEventHandler, NULL);
     LE_ERROR_IF((MediaHandlerRef==NULL), "AddMediaHandler returns NULL!");
 
-    // Set gains
-    LE_ERROR_IF((le_audio_SetGain(PlayerRef, 1) != LE_OK), "Cannot set multimedia gain");
-
-    LE_ERROR_IF((le_audio_SetGain(FeInRef, 1) != LE_OK), "Cannot set microphone gain");
-    LE_ERROR_IF((le_audio_SetGain(MdmRxAudioRef, 12) != LE_OK), "Cannot set MdmRxAudioRef gain");
-    LE_ERROR_IF((le_audio_SetGain(MdmTxAudioRef, 12) != LE_OK), "Cannot set MdmTxAudioRef gain");
-
-    // Set specific gains for AR7/AR8 (won't work on other platforms)
-    LE_ERROR_IF((le_audio_SetPlatformSpecificGain("D_AFE_GAIN_RX", 0x2000) != LE_OK),
-                "Cannot set \"D_AFE_GAIN_RX\" gain");
-    LE_ERROR_IF((le_audio_SetPlatformSpecificGain("D_AFE_GAIN_TX", 0x2000) != LE_OK),
-                "Cannot set \"D_AFE_GAIN_TX\" gain");
+    // Set profile and specific gains for AR7/AR8 (won't work on other platforms)
+    LE_ERROR_IF((le_audio_SetProfile(LE_AUDIO_HANDSET) != LE_OK), "Cannot set HandSet profile");
+    LE_ERROR_IF((le_audio_SetGain(PlayerRef, 0x300) != LE_OK), "Cannot set multimedia gain");
+    LE_ERROR_IF((le_audio_SetGain(MdmRxAudioRef, 5) != LE_OK), "Cannot set MdmRxAudioRef gain");
 }
 
 //--------------------------------------------------------------------------------------------------

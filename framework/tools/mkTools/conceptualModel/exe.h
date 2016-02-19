@@ -9,6 +9,7 @@
 #ifndef LEGATO_MKTOOLS_MODEL_EXE_H_INCLUDE_GUARD
 #define LEGATO_MKTOOLS_MODEL_EXE_H_INCLUDE_GUARD
 
+struct App_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -17,11 +18,13 @@
 //--------------------------------------------------------------------------------------------------
 struct Exe_t
 {
-    Exe_t(const std::string& exePath);
+    Exe_t(const std::string& exePath, App_t* appPtr, const std::string& workingDir);
 
     std::string path;   ///< Path to the executable file. If relative, relative to working dir.
 
     std::string name;   ///< Name of the executable.
+
+    App_t* appPtr;      ///< Pointer to the app that this exe is part of. NULL if created by mkexe.
 
     const parseTree::Executable_t* exeDefPtr;   ///< Pointer to exe definition in the parse tree.
                                                 ///< NULL if created by mkexe.
@@ -30,11 +33,10 @@ struct Exe_t
     /// other component instances that they depend on.
     std::list<ComponentInstance_t*> componentInstances;
 
-    std::list<std::string> cSources;  ///< C source code files built directly into this exe.
-    std::list<std::string> cxxSources;  ///< C++ source code files built directly into this exe.
+    std::list<ObjectFile_t*> cObjectFiles;  ///< .o files to build into exe from C sources.
+    std::list<ObjectFile_t*> cxxObjectFiles;///< .o files to build into exe from C++ sources.
 
-    std::string mainCSourceFile;    ///< _main.c file's path, relative to working directory root.
-    std::string mainObjectFile;     ///< _main.c.o file's path, relative to working directory root.
+    ObjectFile_t mainObjectFile;     ///< _main.c.o file.
 };
 
 

@@ -123,6 +123,7 @@ void le_temp_RemoveThresholdEventHandler
     if (addHandlerRef == NULL)
     {
         LE_KILL_CLIENT("addHandlerRef function is NULL !");
+        return;
     }
 
     le_event_RemoveHandler((le_event_HandlerRef_t) addHandlerRef);
@@ -338,7 +339,7 @@ le_result_t le_temp_GetPlatformThresholds
 
 //-------------------------------------------------------------------------------------------------
 /**
- * Initialization of the Legato Tempearture Monitoring Service
+ * Initialization of the Legato Temperature Monitoring Service
  */
 //--------------------------------------------------------------------------------------------------
 void le_temp_Init
@@ -349,6 +350,6 @@ void le_temp_Init
     // Create an event Id for temperature change notification
     TemperatureThresholdEventId = le_event_CreateIdWithRefCounting("TemperatureThresholdEvent");
 
-    // Register a handler function for new temparute Threshold Event
+    // Register a handler function for new temperature Threshold Event
     pa_temp_AddTempEventHandler (TemperatureChangeHandler);
 }

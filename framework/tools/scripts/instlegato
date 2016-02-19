@@ -6,30 +6,26 @@ Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 if ! [ $LEGATO_ROOT ]; then echo "Run bin/legs first" >&2; exit 1; fi
 . "$(dirname "${BASH_SOURCE[0]}")/shlib"
 
-# This script installs the Legato framework in /usr/local on a target device using SSH.
-# It will also install the startup scripts if they are not present or they are different
-# from the startup scripts in the $LEGATO_ROOT dir on host.
+# This script installs the system update pack from the $LEGATO_ROOT/build/$TARGET/ dir on the host.
+# This is really just a convenient wrapper around the 'update' tool.
 
-# Exit codes
-# 0 - Success
-# 1 - General error
-# 42 - Startup files were updated and the target must be rebooted before trying to run this script again.
-
-LEGATO_BIN=$LEGATO_ROOT/targetFiles/shared/bin
-
-help_short_desc="install legato on target"
+help_short_desc="install sample Legato system on target"
 
 help_usage=(
-"BUILD_DIR [TARGET_IP]"
+"BUILD_DIR [DEST_IP]"
 )
 
 help_long_description=(
-"Once Legato has been built, $commandName can be used to install it on"
-"the target at the IP address specified by TARGET_IP."
+"Once Legato has been built, $commandName can be used to install its"
+"sample 'system' on the target at the IP address specified by DEST_IP."
 "BUILD_DIR is the path to the directory to which Legato was built."
+""
 "If the target Legato directory is in the normal build location, i.e."
 "Inside \$LEGATO_ROOT/build, then you only need to specify the"
-"target platform, e.g. ar7, otherwise a full path is required."
+"target platform, e.g. 'wp85', otherwise a full path is required."
+""
+"If DEST_IP is not specified on the command line, the DEST_IP"
+"environment variable will be used, if it is set."
 )
 
 BUILD_DIR=$1
@@ -60,37 +56,18 @@ then
 fi
 
 # If the second argument is provided, use that as the target device IP address.
+# Otherwise, use $DEST_IP, if set. Otherwise report an error.
 SetTargetIP $2
 
-TAR_FILE="$BUILD_DIR/legato-runtime.tar"
+SYSTEM_FILE=`ls "$BUILD_DIR/"system.*.update`
 
-if ! [ -f "$TAR_FILE" ]
+if ! [ -f "$SYSTEM_FILE" ]
 then
-    ExitWithError "Runtime tarball '$TAR_FILE' not found." \
+    ExitWithError "System update pack '$SYSTEM_FILE' not found." \
         "Are you sure '$BUILD_DIR' is a target-specific Legato build directory and" \
         "the build has completed successfully?"
 fi
 
-echo "Installing Legato framework from: $BUILD_DIR"
+echo "Installing Legato system update pack $SYSTEM_FILE"
 
-# Copy the legato script onto the target.
-ScpToTarget -o ConnectTimeout=1 $LEGATO_BIN/legato /tmp/legatoInstaller &&
-if [ -f $LEGATO_BIN/whitelist ]
-then
-    ScpToTarget -o ConnectTimeout=1 $LEGATO_BIN/whitelist /tmp/whitelist
-fi
-if [ -f $LEGATO_BIN/legato-pre-update-hook ]
-then
-    ScpToTarget -o ConnectTimeout=1 $LEGATO_BIN/legato-pre-update-hook /tmp/legato-pre-update-hook
-fi
-if [ -f $LEGATO_BIN/legato-post-update-hook ]
-then
-    ScpToTarget -o ConnectTimeout=1 $LEGATO_BIN/legato-post-update-hook /tmp/legato-post-update-hook
-fi
-
-# Start the legato script on target and stream the tarball of the target device's staging to it.
-cat "$TAR_FILE" |
-ssh $SSH_OPTS -o ConnectTimeout=1 root@$TARGET_IP '
-    chmod u+x /tmp/legatoInstaller
-    /tmp/legatoInstaller install
-    '
+update "$SYSTEM_FILE" $TARGET_IP

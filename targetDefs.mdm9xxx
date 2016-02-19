@@ -1,0 +1,69 @@
+# --------------------------------------------------------------------------------------------------
+# Definitions specific to Sierra Wireless modules that are based on the Qualcomm MDM9xxx chipset
+# family.
+#
+# Copyright (C), Sierra Wireless Inc.  Use of this work is subject to license.
+# --------------------------------------------------------------------------------------------------
+
+PROPRIETARY_UTIL_DIR := $(LEGATO_ROOT)/components/proprietary
+
+#   Sources:
+export LEGATO_QMI_MODEM_PA_SRC := $(MODEM_PA_DIR)/qmi/le_pa
+export LEGATO_QMI_MODEM_PA_ECALL_SRC := $(MODEM_PA_DIR)/qmi/le_pa_ecall
+export LEGATO_QMI_GNSS_PA_SRC := $(GNSS_PA_DIR)/qmi/le_pa_gnss
+export LEGATO_QMI_AVC_PA_SRC := $(AVC_PA_DIR)/qmi/le_pa_avc
+export LEGATO_QMI_SECSTORE_PA_SRC := $(SECSTORE_PA_DIR)/qmi/le_pa_secStore
+export LEGATO_QMI_FWUPDATE_PA_SRC := $(FWUPDATE_PA_DIR)/qmi/le_pa_fwupdate
+export LEGATO_QMI_UTIL_SRC := $(PROPRIETARY_UTIL_DIR)/swiQmi
+
+#   Pre-built binaries:
+export LEGATO_QMI_AUDIO_PA_BIN = $(AUDIO_PA_DIR)/pre-built/$(TARGET)/le_pa_audio
+export LEGATO_QMI_MODEM_PA_BIN = $(MODEM_PA_DIR)/pre-built/$(TARGET)/le_pa
+export LEGATO_QMI_MODEM_PA_ECALL_BIN = $(MODEM_PA_DIR)/pre-built/$(TARGET)/le_pa_ecall
+export LEGATO_QMI_GNSS_PA_BIN = $(GNSS_PA_DIR)/pre-built/$(TARGET)/le_pa_gnss
+export LEGATO_QMI_AVC_PA_BIN = $(AVC_PA_DIR)/pre-built/$(TARGET)/le_pa_avc
+export LEGATO_QMI_SECSTORE_PA_BIN = $(SECSTORE_PA_DIR)/pre-built/$(TARGET)/le_pa_secStore
+export LEGATO_QMI_FWUPDATE_PA_BIN = $(FWUPDATE_PA_DIR)/pre-built/$(TARGET)/le_pa_fwupdate
+export LEGATO_QMI_UTIL_BIN = $(PROPRIETARY_UTIL_DIR)/pre-built/$(TARGET)/swiQmi
+
+#   If the QMI PA sources are not available, use the pre-built binaries.
+ifneq (,$(wildcard $(LEGATO_QMI_AUDIO_PA_SRC)/*))
+  export LEGATO_QMI_AUDIO_PA = $(LEGATO_QMI_AUDIO_PA_SRC)
+else
+  export LEGATO_QMI_AUDIO_PA = $(LEGATO_QMI_AUDIO_PA_BIN)
+endif
+ifneq (,$(wildcard $(LEGATO_QMI_MODEM_PA_SRC)/*))
+  export LEGATO_QMI_MODEM_PA = $(LEGATO_QMI_MODEM_PA_SRC)
+else
+  export LEGATO_QMI_MODEM_PA = $(LEGATO_QMI_MODEM_PA_BIN)
+endif
+ifneq (,$(wildcard $(LEGATO_QMI_MODEM_PA_ECALL_SRC)/*))
+  export LEGATO_QMI_MODEM_PA_ECALL = $(LEGATO_QMI_MODEM_PA_ECALL_SRC)
+else
+  export LEGATO_QMI_MODEM_PA_ECALL = $(LEGATO_QMI_MODEM_PA_ECALL_BIN)
+endif
+ifneq (,$(wildcard $(LEGATO_QMI_GNSS_PA_SRC)/*))
+  export LEGATO_QMI_GNSS_PA = $(LEGATO_QMI_GNSS_PA_SRC)
+else
+  export LEGATO_QMI_GNSS_PA = $(LEGATO_QMI_GNSS_PA_BIN)
+endif
+ifneq (,$(wildcard $(LEGATO_QMI_AVC_PA_SRC)/*))
+  export LEGATO_QMI_AVC_PA = $(LEGATO_QMI_AVC_PA_SRC)
+else
+  export LEGATO_QMI_AVC_PA = $(LEGATO_QMI_AVC_PA_BIN)
+endif
+ifneq (,$(wildcard $(LEGATO_QMI_SECSTORE_PA_SRC)/*))
+  export LEGATO_QMI_SECSTORE_PA = $(LEGATO_QMI_SECSTORE_PA_SRC)
+else
+  export LEGATO_QMI_SECSTORE_PA = $(LEGATO_QMI_SECSTORE_PA_BIN)
+endif
+ifneq (,$(wildcard $(LEGATO_QMI_FWUPDATE_PA_SRC)/*))
+  export LEGATO_QMI_FWUPDATE_PA = $(LEGATO_QMI_FWUPDATE_PA_SRC)
+else
+  export LEGATO_QMI_FWUPDATE_PA = $(LEGATO_QMI_FWUPDATE_PA_BIN)
+endif
+ifneq (,$(wildcard $(LEGATO_QMI_UTIL_SRC)/*))
+  export LEGATO_QMI_UTIL = $(LEGATO_QMI_UTIL_SRC)
+else
+  export LEGATO_QMI_UTIL = $(LEGATO_QMI_UTIL_BIN)
+endif

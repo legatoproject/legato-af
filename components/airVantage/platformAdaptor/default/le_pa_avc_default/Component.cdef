@@ -2,11 +2,16 @@ requires:
 {
     api:
     {
-        le_avc.api  [types-only]
+        airVantage/le_avc.api  [types-only]
     }
 }
 
 sources:
 {
     pa_avc_default.c
+}
+
+cflags:
+{
+    -I${LEGATO_ROOT}/components/airVantage/platformAdaptor/inc
 }

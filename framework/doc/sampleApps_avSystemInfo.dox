@@ -1,0 +1,34 @@
+/** @page sampleApps_avSystemInfo AirVantage System Info
+
+This sample app demonstrates using @c assets to transfer @ref basicLWM2MData over
+AirVantage. It's also a working utility to can provide info about a running remote target.
+
+@section sample_Apps_avSystemInfo_Ref references
+
+To use this app, you should understand how to @ref howToAVConnect. <br>
+You also need to understand how to @ref howToAVInstallApp over AirVantage. <br>
+There's more detailed info on @ref defFilesCdef_assets in the @c cdef docs.<br>
+
+@section sampleApps_avSystemInfo_Desc description
+
+The sample apps aren't installed with the framework by default. Use AirVantage to install
+and start/stop this app as described in @ref howToAVInstallApp.
+
+It provides the following info about a running system.
+
+For the system:
+ - Overall CPU load
+ - Free Memory
+
+For each flash partition:
+ - Device managing the partition.
+ - Name of the partition.
+ - Size of the partition.
+ - Whether the partition is mounted and with which file system.
+ - How much of the partition is used.
+
+<HR>
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/

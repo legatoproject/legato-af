@@ -8,6 +8,15 @@ including making and deploying your first target app.
 If you're new to Legato, checkout our
 <a href="http://www.sierrawireless.com/productsandservices/airprime_wireless_modules/smart_modules/legato/">product info</a>.
 
+If you want to start developing apps right now, see the @subpage getStartedQuick info.
+
+<HR>
+
+Each release, we publish the latest release and upgrade info:
+
+@subpage legatoRelNotesBeta <br>
+@subpage legatoUpgradeBeta
+
 <HR>
 
 There are two things to do before you can develop a Legato app:
@@ -17,15 +26,14 @@ There are two things to do before you can develop a Legato app:
 
 <HR>
 
-Each release, we publish:
-
-@subpage legatoRelNotesBeta <br>
-@subpage legatoUpgradeBeta
+After you've installed Legato, you can start immediately with our @subpage sampleApps.
 
 <HR>
 
 All Get Started info is also available in a
 <a href= "http://source.sierrawireless.com/Resources/Resources/Legato/GettingStarted.aspx">PDF doc</a>.
+
+And if you must, @subpage getstartedUninstall.
 
 <HR>
 

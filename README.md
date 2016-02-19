@@ -52,7 +52,6 @@ Target |  Description                    | Environment variable
 :------|---------------------------------|:-----------------------
   ar7  | Sierra Wireless AR7xxx module   | ```AR7_TOOLCHAIN_DIR```
   ar86 | Sierra Wireless AR86xx module   | ```AR86_TOOLCHAIN_DIR```
-  wp7  | Sierra Wireless WP7xxx module   | ```WP7_TOOLCHAIN_DIR```
   wp85 | Sierra Wireless WP85xx module   | ```WP85_TOOLCHAIN_DIR```
 
 #### Documentation
@@ -74,6 +73,8 @@ Target |  Description                    | Environment variable
 
  The top level directory structure is as follows:
 
+   ```./apps``` - contains source code for apps.
+
    ```./bin``` - created by build system and populated with executable files that run on the development
            host (the host that ran the build).
 
@@ -82,18 +83,11 @@ Target |  Description                    | Environment variable
    ```./build/tools``` - contains tools that are built and then used by the build system to build
                    other things.
 
-   ```./build/<target>``` - contains the output of a build for a specific target (e.g., ./build/wp7).
-
-   ```./build/<target>/staging``` - things in here get copied to the target system when instlegato
-                              is run.
+   ```./build/<target>``` - contains the output of a build for a specific target (e.g., ./build/wp85).
 
    ```./cmake``` - contains CMake scripts used by the build system.
 
    ```./framework``` - contains the source code for the Legato framework itself.
-
-   ```./platformServices``` - contains source code for apps, such as modemService
-                              and positioningService, that provide access to services offered
-                              by the platform.
 
    ```./targetFiles``` - contains files that are for installation on target devices.
 

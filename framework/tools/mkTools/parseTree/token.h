@@ -69,6 +69,9 @@ struct Token_t: public Content_t
     static std::string TypeName(Type_t type);
     std::string TypeName() { return TypeName(type); }
 
+    // Get a string containing a description of the location of the token (file, line, column).
+    std::string GetLocation() const;
+
     // Throw an exception with the file, line and column at the front.
     void ThrowException(const std::string& message) const __attribute__ ((noreturn));
 

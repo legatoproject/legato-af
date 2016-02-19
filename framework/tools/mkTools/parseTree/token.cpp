@@ -147,6 +147,31 @@ std::string Token_t::TypeName
 }
 
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get a string containing a description of the location of the content item.
+ *
+ * E.g., "/home/userName/workdir/myApp.adef:123:12"
+ *
+ * where "123" is the line number in the file, and "12" is the column.
+ */
+//--------------------------------------------------------------------------------------------------
+std::string Token_t::GetLocation
+(
+    void
+)
+const
+//--------------------------------------------------------------------------------------------------
+{
+    std::stringstream msg;
+
+    msg << filePtr->path + ":" << line << ":" << column;
+
+    return msg.str();
+}
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Throws an exception containing the file path, line number, and column number, in the same
@@ -160,11 +185,7 @@ void Token_t::ThrowException
 const
 //--------------------------------------------------------------------------------------------------
 {
-    std::stringstream msg;
-
-    msg << filePtr->path << ":" << line << ":" << column << ": error: " << message;
-
-    throw mk::Exception_t(msg.str());
+    throw mk::Exception_t(GetLocation() + ": error: " + message);
 }
 
 
@@ -183,7 +204,7 @@ const
 //--------------------------------------------------------------------------------------------------
 {
     std::cerr << "** WARNING: " << std::endl
-              << filePtr->path << ":" << line << ":" << column << ": warning: " << message
+              << GetLocation() << ": warning: " << message
               << std::endl;
 }
 

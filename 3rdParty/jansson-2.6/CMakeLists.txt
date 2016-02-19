@@ -57,8 +57,8 @@ OPTION (USE_WINDOWS_CRYPTOAPI "Use CryptGenRandom to seed the hash function." ON
 
 if (MSVC)
    # This option must match the settings used in your program, in particular if you
-	# are linking statically
-	OPTION( STATIC_CRT "Link the static CRT libraries" OFF )
+    # are linking statically
+    OPTION( STATIC_CRT "Link the static CRT libraries" OFF )
 endif ()
 
 # Set some nicer output dirs.

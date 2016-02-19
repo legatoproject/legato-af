@@ -19,8 +19,11 @@ struct App_t
 {
     App_t(parseTree::AdefFile_t* filePtr);
 
-    parseTree::AdefFile_t* defFilePtr;  ///< Pointer to root of parse tree for the .adef file.
-                                        ///< NULL if the app was created by mkexe.
+    const parseTree::AdefFile_t* defFilePtr;  ///< Pointer to root of parse tree for the .adef file.
+                                              ///< NULL if the app was created by mkexe.
+
+    const parseTree::App_t* parseTreePtr; ///< Ptr to the app section in the .sdef file parse tree.
+                                          ///< NULL if the app was created by mkapp.
 
     std::string dir;    ///< Absolute path to the directory containing the .adef file.
 
@@ -33,6 +36,8 @@ struct App_t
     bool isSandboxed;       ///< true if the application should be sandboxed.
 
     enum {AUTO, MANUAL} startTrigger;    ///< Start automatically or only when asked?
+
+    bool isPreloaded;   ///< true = exclude app update from system update (app pre-loaded on target)
 
     std::set<Component_t*> components;  ///< Set of components used in this app.
 
@@ -69,8 +74,15 @@ struct App_t
     // Set of "wildcard bindings" for this app, keyed by client interface name.
     std::map<std::string, Binding_t*> wildcardBindings;
 
-    // List of all bindings for this app's client-side interfaces.
-    std::list<Binding_t*> bindings;
+    // Map of server interfaces that external entities can bind to (key is external name).
+    std::map<std::string, ApiServerInterfaceInstance_t*> externServerInterfaces;
+
+    // Map of client interfaces marked for later binding to external services (key is external name)
+    std::map<std::string, ApiClientInterfaceInstance_t*> externClientInterfaces;
+
+    // Function for finding component instance.  Throw exception if not found.
+    ComponentInstance_t* FindComponentInstance(const parseTree::Token_t* exeTokenPtr,
+                                               const parseTree::Token_t* componentTokenPtr);
 
     // Functions for looking up interface instances.  Throw exception if not found.
     ApiServerInterfaceInstance_t* FindServerInterface(const parseTree::Token_t* exeTokenPtr,
@@ -79,6 +91,7 @@ struct App_t
     ApiClientInterfaceInstance_t* FindClientInterface(const parseTree::Token_t* exeTokenPtr,
                                                       const parseTree::Token_t* componentTokenPtr,
                                                       const parseTree::Token_t* interfaceTokenPtr);
+    ApiClientInterfaceInstance_t* FindClientInterface(const parseTree::Token_t* interfaceTokenPtr);
     ApiInterfaceInstance_t* FindInterface(const parseTree::Token_t* exeTokenPtr,
                                           const parseTree::Token_t* componentTokenPtr,
                                           const parseTree::Token_t* interfaceTokenPtr);

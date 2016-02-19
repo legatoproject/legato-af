@@ -9,10 +9,10 @@ Run this to install the sample app:
 @verbatim
 $ cd apps/sample/sms
 $ make wp85
-$ instapp sms.wp85 <ip address>
+$ instapp sms.wp85.update <ip address>
 @endverbatim
 
-If you're using an AR7 or WP7 module in your target, substitute @c ar7 or @c wp7 for @c wp85.
+If you're using an AR7 module in your target, substitute @c ar7 for @c wp85.
 
 @ref sampleApps_startApp
 

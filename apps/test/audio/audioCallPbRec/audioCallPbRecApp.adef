@@ -9,8 +9,7 @@ bundles:
 {
     file:
     {
-        [r]     audio/male.wav     /usr/share/sounds/
-        [w]     record/remote.wav  /record/
+        [rw]    record/remote.wav  /record/
     }
 }
 

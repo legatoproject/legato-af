@@ -1,0 +1,32 @@
+// Application that generates on-target tools.
+
+// None of these tools should actually be run if someone tells the supervisor to start the app.
+// So we don't have a "run:" section at all, and we can set it to manual start so the supervisor
+// doesn't waste time "starting" it.
+start: manual
+sandboxed: false
+
+executables:
+{
+    cm = (cm)
+    fwupdate = (fwupdate)
+    secstore = (secstore)
+}
+
+bindings:
+{
+    cm.cm.le_data -> dataConnectionService.le_data
+    cm.cm.le_mrc -> modemService.le_mrc
+    cm.cm.le_mdc -> modemService.le_mdc
+    cm.cm.le_sim -> modemService.le_sim
+    cm.cm.le_sms -> modemService.le_sms
+    cm.cm.le_info -> modemService.le_info
+    cm.cm.le_adc -> modemService.le_adc
+    cm.cm.le_temp -> modemService.le_temp
+    cm.cm.le_ips -> modemService.le_ips
+    cm.cm.le_rtc -> modemService.le_rtc
+
+    fwupdate.fwupdate.le_fwupdate -> fwupdateService.le_fwupdate
+
+    secstore.secstore.secStoreAdmin -> secStore.secStoreAdmin
+}

@@ -1,6 +1,7 @@
 /** @page getstartedAdvanced Advanced
 
 These topics have info on how to rebuild or customize your Legato target: <br>
+@subpage getstartedTargetIPv6 <br>
 @subpage getstartedRestoreUpgrade <br>
 @ref yoctoMain
 

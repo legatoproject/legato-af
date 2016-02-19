@@ -1,15 +1,12 @@
-localhost: app.localhost
 
-ar7: app.ar7
+TARGETS := ar7 ar86 wp85 localhost
 
-wp7: app.wp7
+.PHONY: all $(TARGETS)
+all: $(TARGETS)
 
-ar86: app.ar86
-
-wp85: app.wp85
-
-app.%:
-	mkapp gpioCf3Demo.adef -t $* -v -i $(LEGATO_ROOT)/platformServices/apps/gpioService
+$(TARGETS):
+	mkapp -v -t $@ \
+		gpioCf3Demo.adef
 
 clean:
-	rm -rf _build_* *.localhost *.ar7 *.wp7 *.ar8 *.wp85
+	rm -rf _build_* *.update

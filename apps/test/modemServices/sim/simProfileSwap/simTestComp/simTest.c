@@ -13,12 +13,41 @@
 #include "legato.h"
 #include "interfaces.h"
 
+static le_sim_SimToolkitEventHandlerRef_t   StkHandlerRef = NULL;
+static le_sim_NewStateHandlerRef_t          HandlerRef = NULL;
+static le_sim_Id_t                          SimIdSelect = LE_SIM_EXTERNAL_SLOT_1;
+static le_sim_Manufacturer_t                Manufacturer = LE_SIM_GEMALTO;
+static const char*                          Profile = NULL;
 
-static le_sim_NewStateHandlerRef_t  HandlerRef = NULL;
-static le_sim_Id_t                  SimIdSelect = LE_SIM_EXTERNAL_SLOT_1;
-static le_sim_Manufacturer_t        Manufacturer = LE_SIM_GEMALTO;
-static const char*                  Profile = NULL;
-
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler function for SIM Toolkit events.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void TestSimToolkitHandler
+(
+    le_sim_Id_t       simId,
+    le_sim_StkEvent_t stkEvent,
+    void*             contextPtr
+)
+{
+    switch(stkEvent)
+    {
+        case LE_SIM_OPEN_CHANNEL:
+            LE_INFO("-TEST- OPEN_CHANNEL SIM Toolkit event for SIM card.%d", simId);
+            break;
+        case LE_SIM_REFRESH:
+            LE_INFO("-TEST- REFRESH SIM Toolkit event for SIM card.%d", simId);
+            LE_ERROR_IF((le_sim_AcceptSimToolkitCommand(simId) != LE_OK),
+                        "Accept SIM Toolkit failure!");
+            break;
+        case LE_SIM_STK_EVENT_MAX:
+        default:
+            LE_INFO("-TEST- Unknown SIM Toolkit event %d for SIM card.%d", stkEvent, simId);
+            break;
+    }
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -134,6 +163,7 @@ static void SigHandler
     int sigNum
 )
 {
+    le_sim_RemoveSimToolkitEventHandler(StkHandlerRef);
     le_sim_RemoveNewStateHandler(HandlerRef);
 
     LE_INFO("EXIT SIM local Profile Swap Test");
@@ -252,6 +282,9 @@ COMPONENT_INIT
         GetArgs();
         Profile = le_arg_GetArg(2);
         LE_INFO("======== Start SIM local Profile Swap Test with Profile.%s========", Profile);
+
+        StkHandlerRef=le_sim_AddSimToolkitEventHandler(TestSimToolkitHandler, NULL);
+        LE_ASSERT(StkHandlerRef!=NULL);
 
         if( strncmp(Profile, "ecs", strlen("ecs")) == 0 )
         {

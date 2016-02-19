@@ -1,0 +1,260 @@
+#!/bin/sh
+# Copyright 2013 Sierra Wireless
+#
+# Provides a hook for legato into the init scripts
+# Is called by the start program just before starting the supervisor
+
+
+
+XATTR=system/bin/xattr
+SMACK_PATH=/legato/smack
+SYSTEM_BIN_PATH=/legato/systems/current/bin
+
+beginswith() { case $2 in $1*) true;; *) false;; esac; }
+
+# The following functions down to fg_00_BindMount support fg_00_BindMount
+
+
+# To see if it is already bind mounted
+CheckBindMount()
+{
+    local dir_path=$1
+    local mount_on=${2%$1}
+    local mounted_on=$(df $dir_path | grep -v Filesystem | awk '{print $6}')
+    if [ "$mounted_on" = "$mount_on" ]
+    then
+        return 0
+    fi
+    return 1
+}
+
+CreateMountpointsAndBind()
+{
+    local map=$1
+    local as=$2
+    echo "Remapping $map --> $as"
+    mkdir -p $map
+    mkdir -p $as
+    mount --bind $map $as
+}
+
+BindMount()
+{
+    local dir_path=$1
+    local mount_on=$3
+    if CheckBindMount $dir_path $mount_on 2>/dev/null
+    then
+        echo "Already mapped $mount_on --> $dir_path"
+    else
+        if ! mount | grep $dir_path >/dev/null
+        then
+            CreateMountpointsAndBind $mount_on $dir_path
+        else
+            # display current binding
+            echo "$dir_path map needs updating"
+            df $dir_path
+            umount "$dir_path" 2>/dev/null
+            CreateMountpointsAndBind $mount_on $dir_path
+        fi
+    fi
+}
+
+fg_00_BindMount()
+{
+    INSTALL_BASE=/mnt/flash
+    BUILTIN_BASE=/mnt/legato
+
+    CACHED_LIB_SOURCE=/etc/ld.so.cache.source
+
+    BindMount /home on $INSTALL_BASE/home
+
+    mkdir -p /home/root
+
+    # Make sure all the /etc/ mounted things below are unmounted
+    for mounted_etc in $(mount | grep /etc/ | awk '{print $3}')
+    do
+        umount "$mounted_etc"
+    done
+
+    # Make certain files in /etc/ writeable but not persistent (changes will be lost on reboot).
+    # We do this by copying these files from /etc into /var/run (RAM file system) and bind mounting
+    # them back into /etc.
+    for filename in profile
+    do
+        echo "Remapping /etc/$filename --> /var/run/$filename"
+        cp /etc/$filename /var/run/
+        mount --bind /var/run/$filename /etc/$filename
+    done
+
+    # Add $SYSTEM_BIN_PATH to PATH in /etc/profile
+    #echo "Adding $SYSTEM_BIN_PATH to PATH."
+    export PATH=$SYSTEM_BIN_PATH:$PATH
+    echo "Adding $SYSTEM_BIN_PATH to PATH."
+    echo "export PATH=$SYSTEM_BIN_PATH:\$PATH" >> /etc/profile
+
+}
+
+fg_01_ConfigureCore()
+{
+    # Configure the Kernel to dump core files in the format we want, "core-<Exe Name>-<Unix Time-stamp>"
+    # Where the Unix time-stamp is the count in seconds since the Epoch.
+    echo "core-%e-%t" > /proc/sys/kernel/core_pattern
+}
+
+fg_01_SetSmackLabels()
+{
+    # Set the SMACK label for /dev/null and /dev/zero to "*" so that any everyone can have access to them.
+    $XATTR set security.SMACK64 "*" /dev/null
+    $XATTR set security.SMACK64 "*" /dev/zero
+
+    # TODO: This section of code should be done earlier in the boot sequence so that syslogd will start
+    # earlier with the proper label.  Leaving it here for now until we have a hook into earlier stages
+    # of the boot system.  Another option is for Legato to build a log forwarding daemon that has the
+    # proper permissions.  In that case this code is not needed at all.
+
+    # Only allow the "framework" label to access the Legato directory.
+    $XATTR set security.SMACK64 "framework" /legato
+
+    # Give subjects with "_", "admin" and "framework" rw access to "syslog".
+    if [ -e "$SMACK_PATH/load2" ]
+    then
+        echo "_ syslog rw---" > $SMACK_PATH/load2
+        echo "admin syslog rw---" >$SMACK_PATH/load2
+        echo "framework syslog rw---" > $SMACK_PATH/load2
+    fi
+}
+
+fg_02_RestartSyslogd()
+{
+    # Restarting syslogd with the proper options and label.
+    /usr/bin/killall syslogd
+    local oldlabel=$(cat /proc/self/attr/current)
+    echo syslog >/proc/self/attr/current
+    /sbin/syslogd -C2000 &
+    echo $oldlabel >/proc/self/attr/current
+}
+
+fg_06_InitWM8940()
+{
+    # This initializes the WM8940 codec through the SPI (Sierra Wireless Dev Kit
+    # for AirPrime AR and WP Series)
+
+    # Do not attempt this initialisation if the file /mnt/userrw/PCONFIG is present
+    # Ref ticket 2383
+
+    if [ ! -f /mnt/userrw/PCONFIG ] && [ -e /usr/bin/wm8940_demo ]
+    then
+        /usr/bin/wm8940_demo --pcm > /dev/null
+    fi
+}
+
+fg_08_ConfigureQmiAccess()
+{
+    # Configures file system access permissions for modem and positioning services.
+    # TODO: Change to use group-based permissions and/or mandatory access control.
+
+    # This is the main QMI access mechanism.
+    # TODO: Setting the SMACK label to "*" is just a temporary measure until we have a way to specifiy
+    #       access to a file for a certain app.
+    chmod o+rw /var/qmux_connect_socket
+    $XATTR set security.SMACK64 "*" /var/qmux_connect_socket
+
+    # We know for sure that the QMI clients try to use these from time-to-time:
+    # TODO: Setting the SMACK label to "*" is just a temporary measure until we have a way to specifiy
+    #       access to a file for a certain app.
+    chmod o+rw /dev/diag
+    $XATTR set security.SMACK64 "*" /dev/diag
+    chmod o+rw /dev/smem_log
+    $XATTR set security.SMACK64 "*" /dev/smem_log
+
+    # These may or may not be used, but appear modem related.  TODO: Confirm.
+    chmod o+rw /dev/apr_apps2
+    chmod o+rw /dev/msm_*
+    chmod o+rw /dev/nmea
+    [ -e /dev/qmi0 ] && chmod o+rw /dev/qmi0
+    [ -e /dev/qmi1 ] && chmod o+rw /dev/qmi1
+    [ -e /dev/qmi2 ] && chmod o+rw /dev/qmi2
+    chmod o+rw /dev/smd*
+    chmod o+rw /dev/ramdump_*
+}
+
+fg_09_ConfigureCustom()
+{
+    if [ -f /mnt/userrw/PCONFIG -a -f /legato/systems/current/config/apps.cfg ]
+    then
+        # if the PCONFIG flag is set then update the config tree to pass the
+        # avcService and positioningService to manual start
+        cp /legato/systems/current/config/apps.cfg /tmp/apps.$$.cfg
+        awk '{ print; \
+               if ($1 == "\"avcService\"" || $1 == "\"positioningService\"") \
+                  { getline; print; print "  \"startManual\" !t" } \
+             }' /tmp/apps.$$.cfg > /legato/systems/current/config/apps.cfg
+    fi
+}
+
+fg_10_StartLegato()
+{
+    # Provide information about the device model
+    if [ ! -f "/tmp/deviceModel" ]
+    then
+        bsinfo -l | grep ' - '`bsinfo -t | cut -d ' ' -f 4` | sed 's/^BS//;s/ - .*$//' > /tmp/deviceModel
+    fi
+
+    # actual starting is done after we leave this script
+}
+
+bg_05_BringUpDeveloperInterface_get_param()
+{
+    local line=$( grep "$1" $ecm_conf 2>/dev/null )
+    echo ${line#*:}
+}
+
+bg_05_BringUpDeveloperInterface()
+{
+    gadget_mode=/sys/class/android_usb/android0/functions
+    ecm_conf=/etc/legato/ecm.conf
+
+    # If the PCONFIG flag is set then change the default IP address
+    if [ -f /mnt/userrw/PCONFIG ]
+    then
+        ecm_default_ip=192.168.200.1
+    else
+        ecm_default_ip=192.168.2.2
+    fi
+
+    # only do this if ecm or eem are part of usb composition
+    if [ -f $gadget_mode ]; then
+        ecm=`cat ${gadget_mode} | sed -e 's/,/\n/g' | egrep -x "e[ce]m"`
+        if [ ! -z "$ecm" ] ; then
+            # If the configuration file doesn't exists, create a default one
+            if [ ! -f /mnt/userrw/PCONFIG ] && [ ! -f $ecm_conf ]; then
+                $SYSTEM_BIN_PATH/configEcm default
+            fi
+            if [ -f $ecm_conf ] ; then
+                # Read configuration from the (now created) config file
+                ecm_netmask=$( bg_05_BringUpDeveloperInterface_get_param netmask.ipV4 )
+                ecm_target_ip4=$( bg_05_BringUpDeveloperInterface_get_param target.ipV4 )
+            else
+                # Config file doesn't exist.  Use defaults.
+                ecm_netmask=255.255.255.0
+                ecm_target_ip4=$ecm_default_ip
+            fi
+
+            ifconfig usb0 $ecm_target_ip4 netmask $ecm_netmask up
+
+        fi
+    fi
+}
+
+fg_00_BindMount
+fg_01_ConfigureCore
+fg_01_SetSmackLabels
+fg_02_RestartSyslogd
+fg_06_InitWM8940
+fg_08_ConfigureQmiAccess
+fg_09_ConfigureCustom
+fg_10_StartLegato
+bg_05_BringUpDeveloperInterface &
+
+echo Finished Legato Start/Stop Sequence
+

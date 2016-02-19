@@ -3,19 +3,18 @@ requires:
 {
     api:
     {
-        le_avc.api [types-only]
+        airVantage/le_avc.api [types-only]
 
         le_update.api
         le_instStat.api
-        le_sup_ctrl.api
-        le_appInfo.api
+        supervisor/le_sup_ctrl.api
+        supervisor/le_appInfo.api
 
         le_cfg.api
     }
 
     component:
     {
-        // avcDaemon
         $LEGATO_ROOT/components/airVantage/avcDaemon
         $LEGATO_ROOT/framework/c/src/appCfg
         $LEGATO_AVC_PA
@@ -24,7 +23,10 @@ requires:
 
 cflags:
 {
-    "-std=c99"
+    -std=c99
+    -I${LEGATO_ROOT}/components/airVantage/platformAdaptor/inc
+    -I${LEGATO_ROOT}/framework/c/src    // TODO: Remove this encapsulation breakage.
+    -I${LEGATO_ROOT}/framework/c/src/appCfg    // TODO: Remove this encapsulation breakage.
 }
 
 sources:

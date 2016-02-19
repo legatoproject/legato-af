@@ -6,16 +6,16 @@ bundles:
     }
 }
 
-ldflags:
-{
-    -lComponent_le_pa_avc
-}
-
 requires:
 {
     component:
     {
-        $LEGATO_MODEM_PA
+        $LEGATO_UTIL_PA
         $LEGATO_FWUPDATE_PA
+    }
+
+    lib:
+    {
+        libComponent_le_pa_avc.so
     }
 }

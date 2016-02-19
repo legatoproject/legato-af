@@ -273,19 +273,9 @@ static void MyCallEventHandler
             LE_INFO("Check MyCallEventHandler passed, event is LE_MCC_EVENT_SETUP.");
             break;
         }
-        case LE_MCC_EVENT_EARLY_MEDIA:
-        {
-            LE_INFO("Check MyECallEventHandler passed, state is LE_MCC_EVENT_EARLY_MEDIA.");
-            break;
-        }
         case LE_MCC_EVENT_ON_HOLD:
         {
             LE_INFO("Check MyECallEventHandler passed, state is LE_MCC_EVENT_ON_HOLD.");
-            break;
-        }
-        case LE_MCC_EVENT_TRANSFERED:
-        {
-            LE_INFO("Check MyECallEventHandler passed, state is LE_MCC_EVENT_TRANSFERED.");
             break;
         }
         default:
@@ -631,9 +621,8 @@ void Testle_mcc_AddHandlers
     SimulateAndCheckOutgoingCallEvent(LE_MCC_EVENT_SETUP);
     SimulateAndCheckOutgoingCallEvent(LE_MCC_EVENT_ORIGINATING);
     SimulateAndCheckOutgoingCallEvent(LE_MCC_EVENT_ALERTING);
-    SimulateAndCheckOutgoingCallEvent(LE_MCC_EVENT_EARLY_MEDIA);
     SimulateAndCheckOutgoingCallEvent(LE_MCC_EVENT_ON_HOLD);
-    SimulateAndCheckOutgoingCallEvent(LE_MCC_EVENT_TRANSFERED);
+    SimulateAndCheckOutgoingCallEvent(LE_MCC_EVENT_WAITING);
     SimulateAndCheckOutgoingCallEvent(LE_MCC_EVENT_CONNECTED);
     SimulateAndCheckOutgoingCallEvent(LE_MCC_EVENT_TERMINATED);
     _ClientSessionRef = (le_msg_SessionRef_t)(tempSessionRef);
@@ -718,6 +707,9 @@ void Testle_mcc_GetTerminationReason
     SimulateAndCheckTermination(LE_MCC_TERM_RECOVERY_ON_TIMER_EXPIRY, 0);
     SimulateAndCheckTermination(LE_MCC_TERM_PROTOCOL_ERROR_UNSPECIFIED, 0);
     SimulateAndCheckTermination(LE_MCC_TERM_INTERWORKING_UNSPECIFIED, 0);
+    SimulateAndCheckTermination(LE_MCC_TERM_NO_SERVICE, 0);
+    SimulateAndCheckTermination(LE_MCC_TERM_NOT_ALLOWED, 0);
+    SimulateAndCheckTermination(LE_MCC_TERM_FDN_ACTIVE, 0);
     SimulateAndCheckTermination(LE_MCC_TERM_PLATFORM_SPECIFIC, 0x5A);
     SimulateAndCheckTermination(LE_MCC_TERM_UNDEFINED, 0);
 
@@ -804,15 +796,10 @@ static void* UnitTestInit
  *
  */
 //--------------------------------------------------------------------------------------------------
-int main
-(
-    int   argc,
-    char* argv[]
-)
+COMPONENT_INIT
 {
-    LE_LOG_SESSION = log_RegComponent("mcc", &LE_LOG_LEVEL_FILTER_PTR);
-
-    arg_SetArgs(argc, argv);
+    // To reactivate for all DEBUG logs
+    // le_log_SetFilterLevel(LE_LOG_DEBUG);
 
     // Create a semaphore to coordinate Initialization
     InitSemaphore = le_sem_Create("InitSem",0);
@@ -832,7 +819,7 @@ int main
 
     LE_INFO("======== UnitTest of MCC API ends with SUCCESS ========");
 
-    return 0;
+    exit(0);
 }
 
 

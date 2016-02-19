@@ -2,7 +2,7 @@
 
 <c>.sdef</c> files can contain these sections:
 
-@section defFilesSdef_App App
+@section defFilesSdef_apps apps
 
 An <c>apps:</c> section declares one or more apps to be deployed to
 the target system.
@@ -45,7 +45,7 @@ the .adef setting for all processes in that app:
 @ref defFilesAdef_processMaxLockedMemoryBytes  <br>
 @ref defFilesAdef_maxMemoryBytes  <br>
 @ref defFilesAdef_maxMQueueBytes  <br>
-@ref defFilesSdef_maxPriority  <br>
+@ref defFilesSdef_appsMaxPriority  <br>
 @ref defFilesAdef_maxQueuedSignals  <br>
 @ref defFilesAdef_maxThreads  <br>
 @ref defFilesAdef_maxSecureStorageBytes  <br>
@@ -55,9 +55,9 @@ the .adef setting for all processes in that app:
 @ref defFilesAdef_watchdogAction <br>
 @ref defFilesAdef_watchdogTimeout <br>
 
-@subsection defFilesSdef_maxPriority Max Priority
+@subsection defFilesSdef_appsMaxPriority Max Priority
 
-Sets the maximum priority level for running the app.
+Sets the maximum priority level the app it permitted to use.
 
 Acts as a ceiling only. Lowers the priority level if an app would otherwise
 be allowed to use a higher priority. It won't raise the priority level for any processes
@@ -80,7 +80,51 @@ apps:
 Another process in the same .adef configured to start at low priority
 will still start at low priority.
 
-@section defFilesSdef_bindings Bindings
+@subsection defFilesSdef_appsPreloaded Preloaded
+
+Indicates whether or not an app must be preloaded onto the target device separately from the
+rest of the system.
+
+The legato AF supports being installed in a read-only partition, mounted as <c>/mnt/legato</c> in
+the target file system.  Writeable files will be kept in another file system mounted as
+<c>/legato</c> in the target file system.
+
+If the read-only partition must be updated, but there are other (possibly very large) apps in
+the writeable file system, it may be impossible to deliver an update containing the apps
+over-the-air at the same time that the read-only partition is updated.
+
+Usually, the read-only partition does not need to be updated, but in some cases, it may be
+desireable, and this feature can help.
+
+For example, a customer has a giant app containing pictures and audio files.
+In the factory, the framework and a few apps are loaded into the read-only `/mnt/legato`, and
+other apps, including the huge app, are installed in the writeable `/legato`.  Later, when the
+device is in the field, a change needs to be made to both the modem firmware and the Legato
+framework, and must be delivered together, as a single FOTA (firmware over the air) update.
+A new system is built using `mksys`.  But, the resulting system update file is too large to fit
+in the FOTA update image (and likely very expensive to deliver over the air to hundreds of
+thousands of devices).  Fortunately, the audio files don't need to be updated at the same time,
+and the audio app can be marked "preloaded" in the .sdef file to exclude it from the system update
+file.  After the FOTA update, the new system will use the audio file that already exists on
+the target's writeable file system.
+
+@code
+apps:
+{
+    modemService
+    audioService
+    dataConnectionService
+    controller
+    userInterface { preloaded: true }
+}
+@endcode
+
+If you are not sure whether or not you need this feature, you probably don't.  Use of this
+feature is intended for very specific use cases.  It is encouraged that delta updates of systems
+be used instead, whenever practical.
+
+
+@section defFilesSdef_bindings bindings
 
 Lists IPC @c bindings that connect apps’ external IPC interfaces. They're listed in the
 @ref defFilesAdef_extern "extern section of their @c .adef files".
@@ -89,7 +133,7 @@ Each binding connects one client-side interface to one server-side interface.
 Interfaces use the app name and the interface name,
 separated by a period (‘.’).  The two bound-together interfaces are separated by an arrow ("->").
 
-Here's a code sample:
+For example,
 
 @code
 apps:
@@ -120,8 +164,46 @@ bindings:
 For security reasons, binding between apps is never performed unless explicitly
 specified in the @c .sdef or @c .adef files.
 
-Beware that if an app's client-side extern interface instance is left unbound, the process
-or processes that require that interface may not be able to run.
+
+@section defFilesSdef_commands commands
+
+To make a command-line tool available to a root user who is logged-in to a shell on a target
+device tty (e.g., through secure shell [ssh] or a serial console):
+
+ 1. Build an app containing the executable.
+ 2. Add the executable to the "commands:" section of the .sdef file.
+
+Each entry in the commands section looks like this:
+
+@code
+commandName = appName:/path/to/exe
+@endcode
+
+The path to the executable must be an absolute path within the application's read-only installed
+files.  For example, if the executable is a script that was bundled into the app "myApp" to appear
+at "/usr/share/exe" inside the myApp's sandbox at runtime, then the command would be specified as
+
+@code
+commandName = myApp:/usr/share/exe
+@endcode
+
+If the executable is built using an "executables" section in a .adef file, then the executable
+will appear in the app's bin directory.  For example,
+
+@code
+apps:
+{
+    myTools // This app's .adef builds an exe called "led" that can be used to turn LEDs on and off.
+}
+
+commands:
+{
+    led = myTools:/bin/led  // When I login via ssh, I can run "led 1 on" to turn on LED 1.
+}
+@endcode
+
+@warning When the command runs, it runs with the full privileges of the user that runs it.
+         So, if you login as root and run a command, the command runs as root.
 
 <HR>
 

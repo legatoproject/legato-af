@@ -1,4 +1,4 @@
-/** @page sampleApps_commandLine command line
+/** @page sampleApps_commandLine Command Line
 
 This sample demonstrates a simple app running inside a sandbox that prints information about files
 or directories specified from the command line. It has an @c adef with an executables section, and
@@ -9,10 +9,10 @@ Run this to install the sample app:
 @verbatim
 $ cd apps/sample/commandLine
 $ make wp85
-$ instapp fileInfo.wp85 <ip address>
+$ instapp fileInfo.wp85.update <ip address>
 @endverbatim
 
-If you're using an AR7 or WP7 module in your target, substitute @c ar7 or @c wp7 for wp85.
+If you're using an AR7 module in your target, substitute @c ar7 for wp85.
 
 This sample app takes a command with a list of file/directory paths, and accepts additional options like
 @c -x or @c --max-count.

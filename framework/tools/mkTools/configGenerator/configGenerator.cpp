@@ -175,9 +175,9 @@ static void GenerateBundledObjectMappingConfig
     // target file system.  So, we have to change the source path to an on-target file system
     // path that is relative to the application's install directory.
 
-    // For example, if the app is installed under /opt/legato/apps/myApp/
-    // then the file /opt/legato/apps/myApp/usr/share/beep.wav would appear inside the sandbox
-    // under the directory /usr/share/.
+    // For example, if the app is installed under /legato/systems/current/apps/myApp/
+    // then the file /legato/systems/current/apps/myApp/usr/share/beep.wav would appear inside the
+    // sandbox under the directory /usr/share/.
 
     // The mapping object for such a thing would contain the build host path as the source
     // path (which could be anything) and the sandbox path as the destination path
@@ -575,9 +575,22 @@ static void GenerateBindingsConfig
     }
 
     // Add all the binds that were specified in the .adef file or .sdef file for this app.
-    for (const auto bindingPtr : appPtr->bindings)
+    for (const auto exePtr : appPtr->executables)
     {
-        GenerateBindingConfig(cfgStream, bindingPtr);
+        for (const auto componentInstancePtr : exePtr->componentInstances)
+        {
+            for (const auto interfacePtr : componentInstancePtr->clientApis)
+            {
+                if (interfacePtr->bindingPtr != NULL)
+                {
+                    GenerateBindingConfig(cfgStream, interfacePtr->bindingPtr);
+                }
+            }
+        }
+    }
+    for (const auto& mapEntry: appPtr->wildcardBindings)
+    {
+        GenerateBindingConfig(cfgStream, mapEntry.second);
     }
 
     cfgStream << "  }" << std::endl << std::endl;
@@ -878,6 +891,165 @@ void Generate
 
     cfgStream << "}" << std::endl;
 }
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Generate user binding configuration for non-app users in a file called config/users.cfg under
+ * the system's staging directory.
+ */
+//--------------------------------------------------------------------------------------------------
+static void GenerateUsersConfig
+(
+    model::System_t* systemPtr,
+    const mk::BuildParams_t& buildParams
+)
+//--------------------------------------------------------------------------------------------------
+{
+    std::string filePath = path::Combine(buildParams.workingDir, "staging/config/users.cfg");
+
+    if (buildParams.beVerbose)
+    {
+        std::cout << "Generating non-app users' binding configuration data in file "
+                     "'" << filePath << "'." << std::endl;
+    }
+
+    std::ofstream cfgStream(filePath, std::ofstream::trunc);
+
+    if (cfgStream.is_open() == false)
+    {
+        throw mk::Exception_t("Could not open, '" + filePath + ",' for writing.");
+    }
+
+    cfgStream << "{\n";
+
+    // For each user in the system's list of non-app users,
+    for (auto& mapEntry : systemPtr->users)
+    {
+        auto userPtr = mapEntry.second;
+
+        cfgStream << "  \"" << userPtr->name << "\"\n";
+        cfgStream << "  {\n";
+        cfgStream << "    \"bindings\"\n";
+        cfgStream << "    {\n";
+
+        // For each binding in the user's list of non-app user bindings,
+        for (auto mapEntry : userPtr->bindings)
+        {
+            GenerateBindingConfig(cfgStream, mapEntry.second);
+        }
+
+        cfgStream << "    }\n";
+        cfgStream << "  }\n";
+    }
+
+    cfgStream << "}\n";
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add a given app's configuration settings to a system configuration output stream.
+ *
+ * @throw mk::Exception_t if something goes wrong.
+ */
+//--------------------------------------------------------------------------------------------------
+static void AddAppConfig
+(
+    std::ofstream& cfgStream,    ///< The configuration file being written to.
+    model::App_t* appPtr,
+    const mk::BuildParams_t& buildParams
+)
+//--------------------------------------------------------------------------------------------------
+{
+    std::string filePath = path::Combine(buildParams.workingDir, appPtr->workingDir)
+                         + "/staging/root.cfg";
+
+    std::ifstream appCfgStream(filePath);
+
+    if (appCfgStream.is_open() == false)
+    {
+        throw mk::Exception_t("Could not open, '" + filePath + ",' for reading.");
+    }
+
+    char buffer[1024];
+
+    while (!appCfgStream.eof())
+    {
+        appCfgStream.read(buffer, sizeof(buffer));
+        cfgStream.write(buffer, appCfgStream.gcount());
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Generate the application configuration settings file "apps.cfg" in the "config" directory
+ * of the system's staging directory.
+ */
+//--------------------------------------------------------------------------------------------------
+static void GenerateAppsConfig
+(
+    model::System_t* systemPtr,     ///< The system to generate the configuration for.
+    const mk::BuildParams_t& buildParams
+)
+//--------------------------------------------------------------------------------------------------
+{
+    std::string filePath = path::Combine(buildParams.workingDir, "staging/config/apps.cfg");
+
+    if (buildParams.beVerbose)
+    {
+        std::cout << "Generating app configuration data in file "
+                     "'" << filePath << "'." << std::endl;
+    }
+
+    std::ofstream cfgStream(filePath, std::ofstream::trunc);
+
+    if (cfgStream.is_open() == false)
+    {
+        throw mk::Exception_t("Could not open, '" + filePath + ",' for writing.");
+    }
+
+    cfgStream << "{\n";
+
+    // For each app in the system,
+    for (auto& mapEntry : systemPtr->apps)
+    {
+        auto appPtr = mapEntry.second;
+
+        cfgStream << "  \"" << appPtr->name << "\"\n";
+        AddAppConfig(cfgStream, appPtr, buildParams);
+    }
+
+    cfgStream << "}\n";
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Generate the configuration that the framework needs for a given system.  This is the
+ * configuration that will be installed in the system configuration tree by the installer when
+ * the system starts for the first time on the target.  It will be output to two files called
+ * "apps.cfg" and "users.cfg" in the "config" directory under the system's staging directory.
+ *
+ * @note This assumes that the "root.cfg" config files for all the apps have already been
+ *       generated in the apps' staging directories.
+ **/
+//--------------------------------------------------------------------------------------------------
+void Generate
+(
+    model::System_t* systemPtr,     ///< The system to generate the configuration for.
+    const mk::BuildParams_t& buildParams
+)
+//--------------------------------------------------------------------------------------------------
+{
+    file::MakeDir(path::Combine(buildParams.workingDir, "staging/config"));
+
+    GenerateUsersConfig(systemPtr, buildParams);
+
+    GenerateAppsConfig(systemPtr, buildParams);
+}
+
 
 
 } // namespace config

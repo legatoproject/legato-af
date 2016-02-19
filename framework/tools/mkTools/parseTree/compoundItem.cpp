@@ -159,6 +159,9 @@ TokenList_t* CreateTokenList
         case Content_t::BINDING:
             return new Binding_t(firstTokenPtr);
 
+        case Content_t::COMMAND:
+            return new Command_t(firstTokenPtr);
+
         case Content_t::EXECUTABLE:
             return new Executable_t(firstTokenPtr);
 
@@ -318,6 +321,7 @@ const TokenList_t* ToTokenListPtr
         case Content_t::REQUIRED_CONFIG_TREE:
         case Content_t::EXTERN_API_INTERFACE:
         case Content_t::BINDING:
+        case Content_t::COMMAND:
         case Content_t::EXECUTABLE:
         case Content_t::RUN_PROCESS:
         case Content_t::ENV_VAR:
@@ -386,6 +390,7 @@ const CompoundItemList_t* ToCompoundItemListPtr
         case Content_t::REQUIRED_CONFIG_TREE:
         case Content_t::EXTERN_API_INTERFACE:
         case Content_t::BINDING:
+        case Content_t::COMMAND:
         case Content_t::EXECUTABLE:
         case Content_t::RUN_PROCESS:
         case Content_t::ENV_VAR:

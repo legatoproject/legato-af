@@ -1,5 +1,5 @@
  /**
-  * This module implements the le_mcc's unit tests.
+  * This module implements the le_mcc's tests.
   *
   *
   * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
@@ -138,6 +138,16 @@ static void MyCallEventHandler
                 LE_INFO("---!!!! PLEASE CREATE AN INCOMING CALL !!!!---");
                 break;
 
+            case LE_MCC_TERM_NO_SERVICE:
+                LE_INFO("Termination reason is LE_MCC_TERM_NO_SERVICE");
+                exit(EXIT_FAILURE);
+                break;
+
+            case LE_MCC_TERM_OPERATOR_DETERMINED_BARRING:
+                LE_INFO("Termination reason is LE_MCC_TERM_OPERATOR_DETERMINED_BARRING");
+                exit(EXIT_FAILURE);
+                break;
+
             case LE_MCC_TERM_UNDEFINED:
                 LE_ERROR("Termination reason is LE_MCC_TERM_UNDEFINED");
                 LE_ERROR("---!!!! PLEASE CREATE AN INCOMING CALL !!!!---");
@@ -221,6 +231,7 @@ static le_result_t Testle_mcc_Call
         LE_ERROR("Failed to set Caller Id Restriction");
         return res;
     }
+
     if (localClirStatus !=  ClirStatus)
     {
         LE_ERROR("CLIR status doesn't match with CLIR set");
@@ -230,7 +241,23 @@ static le_result_t Testle_mcc_Call
     res = le_mcc_Start(TestCallRef);
     if (res != LE_OK)
     {
-        return LE_FAULT;
+       le_mcc_TerminationReason_t reason = le_mcc_GetTerminationReason(TestCallRef);
+
+       switch(reason)
+       {
+           case LE_MCC_TERM_FDN_ACTIVE:
+               LE_ERROR("Term reason LE_MCC_TERM_FDN_ACTIVE");
+               break;
+           case LE_MCC_TERM_NOT_ALLOWED:
+               LE_ERROR("Term reason LE_MCC_TERM_NOT_ALLOWED");
+               break;
+           case LE_MCC_TERM_UNDEFINED:
+               LE_ERROR("Term reason LE_MCC_TERM_UNDEFINED");
+               break;
+           default:
+               LE_ERROR("Term reason %d", reason);
+       }
+       return LE_FAULT;
     }
 
     return LE_OK;

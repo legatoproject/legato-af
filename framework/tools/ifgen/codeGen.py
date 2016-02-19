@@ -1042,9 +1042,9 @@ def WriteLocalHeaderFile(pf, ph, hashValue, fileName, serviceName):
     #
     #       In the future, this size will be automatically calculated.
     #
-    if fileName.endswith("le_secStore_local.h"):
+    if fileName.endswith( ("le_secStore_messages.h", "secStoreAdmin_messages.h") ):
         maxMsgSize = 8500
-    elif fileName.endswith("le_cfg_local.h"):
+    elif fileName.endswith("le_cfg_messages.h"):
         maxMsgSize = 1600
     else:
         maxMsgSize = 1100
@@ -1515,6 +1515,10 @@ static void CleanupClientData
     // the client session.
     _LOCK
 
+    // Store the client session ref so it can be retrieved by the server using the
+    // GetClientSessionRef() function, if it's needed inside handler removal functions.
+    _ClientSessionRef = sessionRef;
+
     le_ref_IterRef_t iterRef = le_ref_GetIterator(_HandlerRefMap);
     le_result_t result = le_ref_NextNode(iterRef);
     _ServerData_t const* serverDataPtr;
@@ -1555,6 +1559,9 @@ static void CleanupClientData
         // Get the next value in the reference mpa
         result = le_ref_NextNode(iterRef);
     }
+
+    // Clear the client session ref, since the event has now been processed.
+    _ClientSessionRef = 0;
 
     _UNLOCK
 }
@@ -1740,7 +1747,7 @@ def WriteServerHeaderFile(pf,
 
 def GetOutputFileNames(prefix):
     # Define the default names
-    fileNames = [ "interface.h", "local.h", "client.c", "server.c", "server.h" ]
+    fileNames = [ "interface.h", "messages.h", "client.c", "server.c", "server.h" ]
 
     # If there is a file prefix, then make sure not to overwrite any existing files.
     # todo: Should we still check if the output file is getting overwritten.  This is
@@ -2009,14 +2016,30 @@ def WriteAllCode(commandArgs, parsedData, hashValue):
         "ConnectService",
         "void",
         [ codeTypes.VoidData() ],
-        FormatHeaderComment("Connect the client to the service")
+        FormatHeaderComment("""
+Connect the current client thread to the service providing this API.
+
+This function must be called before any other functions in this API. Normally, it's automatically
+called for the main thread, but must be explicitly called for other threads. For details, see
+@ref apiFilesC_client.
+
+This function is created automatically.
+""")
     )
 
     stopClientFunc = codeTypes.FunctionData(
         "DisconnectService",
         "void",
         [ codeTypes.VoidData() ],
-        FormatHeaderComment("Disconnect the client from the service")
+        FormatHeaderComment("""
+Disconnect the current client thread from the service providing this API.
+
+Normally, this function doesn't need to be called. After this function is called, there's no
+longer a connection to the service, and the functions in this API can't be used. For details, see
+@ref apiFilesC_client.
+
+This function is created automatically.
+""")
     )
 
     genericInterfaceFunctions = collections.OrderedDict( ( ('startClientFunc', startClientFunc),

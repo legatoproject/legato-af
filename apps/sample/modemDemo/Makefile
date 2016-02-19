@@ -1,14 +1,13 @@
-TARGETS := ar7 wp7 ar86 wp85 localhost
+
+TARGETS := ar7 ar86 wp85 localhost
 
 .PHONY: all $(TARGETS)
 all: $(TARGETS)
 
 $(TARGETS):
-	export TARGET=$@ ; \
 	mkapp -v -t $@ \
-		  -i $(LEGATO_ROOT)/interfaces/modemServices/ \
-		  -i $(LEGATO_ROOT)/interfaces/dataConnectionService/ \
-		  modemDemo.adef
+		-i $(LEGATO_ROOT)/interfaces/modemServices \
+		modemDemo.adef
 
 clean:
-	rm -rf _build_* *.ar7 *.wp7 *.ar86 *.wp85 *.localhost
+	rm -rf _build_* *.update

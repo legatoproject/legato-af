@@ -3,6 +3,12 @@ sources:
     gnss_at.c
 }
 
+cflags:
+{
+    -I$LEGATO_ROOT/components/positioning/platformAdaptor/inc
+    -I$LEGATO_ROOT/components
+}
+
 requires:
 {
     component: { $LEGATO_ROOT/components/atManager }

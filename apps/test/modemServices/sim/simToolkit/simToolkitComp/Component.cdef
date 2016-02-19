@@ -8,5 +8,6 @@ requires:
     api:
     {
         le_sim.api
+        le_mdc.api
     }
 }

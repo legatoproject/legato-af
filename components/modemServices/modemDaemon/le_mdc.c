@@ -27,7 +27,7 @@
  */
 //--------------------------------------------------------------------------------------------------
 #ifdef LEGATO_EMBEDDED
-#define APN_FILE "/opt/legato/apps/modemService/usr/local/share/apns.json"
+#define APN_FILE "/legato/systems/current/apps/modemService/read-only/usr/local/share/apns.json"
 #else
 #define APN_FILE le_arg_GetArg(0)
 #endif
@@ -50,7 +50,8 @@
  * Data Control Profile structure.
  */
 //--------------------------------------------------------------------------------------------------
-typedef struct le_mdc_Profile {
+typedef struct
+{
     uint32_t profileIndex;                  ///< Index of the profile on the modem
     le_event_Id_t sessionStateEvent;        ///< Event to report when session changes state
     pa_mdc_ProfileData_t modemData;         ///< Profile data that is written to the modem
@@ -488,6 +489,13 @@ le_mdc_ProfileRef_t le_mdc_GetProfile
             return NULL;
         }
     }
+    else if ( index == LE_MDC_SIMTOOLKIT_BIP_DEFAULT_PROFILE )
+    {
+        if (pa_mdc_GetBipDefaultProfileIndex(&index) != LE_OK)
+        {
+            return NULL;
+        }
+    }
 
     return CreateModemProfile(index);
 }
@@ -550,23 +558,17 @@ le_result_t le_mdc_GetProfileFromApn
     for (; profileIndex <= profileIndexMax; profileIndex++)
     {
         char tmpApn[LE_MDC_APN_NAME_MAX_LEN];
-        le_result_t res = LE_FAULT;
+        pa_mdc_ProfileData_t profileData;
 
         *profileRefPtr = NULL;
 
         memset(tmpApn, 0, LE_MDC_APN_NAME_MAX_LEN);
 
-        *profileRefPtr = le_mdc_GetProfile(profileIndex);
-
-        if (*profileRefPtr)
+        if ( pa_mdc_ReadProfile(profileIndex, &profileData) == LE_OK )
         {
-            res = le_mdc_GetAPN(*profileRefPtr, tmpApn, LE_MDC_APN_NAME_MAX_LEN);
-        }
-
-        if (res == LE_OK)
-        {
-            if ( strncmp(apnPtr, tmpApn, apnLen ) == 0 )
+            if ( strncmp(apnPtr, profileData.apn, apnLen ) == 0 )
             {
+                *profileRefPtr = le_mdc_GetProfile(profileIndex);
                 return LE_OK;
             }
         }

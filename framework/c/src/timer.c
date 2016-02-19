@@ -10,6 +10,7 @@
 #include "timer.h"
 #include "thread.h"
 #include "spy.h"
+#include "fileDescriptor.h"
 #include <sys/timerfd.h>
 #include "fileDescriptor.h"
 
@@ -740,6 +741,41 @@ le_result_t le_timer_SetInterval
     }
 
     timerRef->interval = interval;
+
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the timer interval using milliseconds.
+ *
+ * Timer will expire after the interval has elapsed.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_BUSY if the timer is currently running
+ *
+ * @note
+ *      If an invalid timer object is given, the process exits.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_timer_SetMsInterval
+(
+    le_timer_Ref_t timerRef,    ///< [IN] Set interval for this timer object.
+    size_t interval             ///< [IN] Timer interval in milliseconds.
+)
+{
+    LE_ASSERT(timerRef != NULL);
+
+    if ( timerRef->isActive )
+    {
+        return LE_BUSY;
+    }
+
+    time_t seconds = interval / 1000;
+    timerRef->interval.sec = seconds;
+    timerRef->interval.usec = (interval - (seconds * 1000)) * 1000;
 
     return LE_OK;
 }

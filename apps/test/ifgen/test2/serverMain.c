@@ -34,6 +34,8 @@ void allParameters
     // parameters.  This could happen in a typical function, if an error is detected.
     if ( a == COMMON_ZERO )
     {
+        LE_PRINT_VALUE("%zd", *outputNumElementsPtr);
+        LE_ASSERT( *outputNumElementsPtr <= 10 );
         LE_DEBUG("Returning right away");
         return;
     }
@@ -188,8 +190,16 @@ static void CallbackTestHandlerQueued
     void* contextPtr
 )
 {
+    // Test file descriptors passed back to client handler
+    int fdToClient;
+
+    // Open a file known to exist
+    fdToClient = open("/etc/group", O_RDONLY);
+
+    LE_PRINT_VALUE("%i", fdToClient);
+
     // Note that data, which is uint32_t, is just cast to void*, so cast it back.
-    CallbackTestHandlerRef( *((uint32_t*)dataPtr), "some name from server", contextPtr );
+    CallbackTestHandlerRef( *((uint32_t*)dataPtr), "some name from server", fdToClient, contextPtr );
 }
 
 

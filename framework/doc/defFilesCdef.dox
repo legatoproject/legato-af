@@ -124,8 +124,8 @@ If the path doesn't end in a '/', it's a full destination object path. The desti
 could have a different name than the source object.
 
 @note  If the app is running unsandboxed, the bundled files and directories can be found
-        in their installation location under @c /opt/legato/apps/xxxx, where xxxx is replaced by
-        the app name.
+        in their installation location under @c /legato/systems/current/apps/xxxx, where xxxx is
+        replaced by the app name.
 
 <b>Quoting Paths</b>
 
@@ -302,7 +302,7 @@ API function has a return value, that return value is sent to the client through
 of the @c Respond function.  Any output parameters defined in the API function are also passed
 as parameters to the @c Respond function.
 
-See @ref interfaceDefLang for more information, or try it and have a look at the generated
+See @ref apiFiles for more information, or try it and have a look at the generated
 header files.
 
 @section defFilesCdef_requires Requires
@@ -614,32 +614,41 @@ requires:
 
 @subsection defFilesCdef_requiresLib Lib
 
-The @c lib: subsection of the @c requires: section is used to add a required library to a Component.
+The @c lib: subsection of the @c requires: section is used to specify that a shared (dynamic)
+library is required by any executable that the component is part of.
 
-A required library is a library file that must exist in the target file system (outside
-the app's sandbox), and is needed by a component at runtime.
+The required library will be linked with executables that the component is a part of.
 
-The required library must be linked with the component that's part of the the executable.
-The library name is specified without the leading "lib" or the trailing ".so".
+Specifying a shared library file's path will result in "<c>-L<c>" and "<c>-l<c>" arguments being
+added to the linker's command line.
+
+This is useful when linking to libraries that are not part of the target's sysroot.
+(If the library is part of the target's sysroot, then the <c>ldflags:</c> section can
+be used instead.)
+
+On the target device at runtime, the dynamic linker will look for the library, so
+it must be made available inside the app sandbox, somewhere in the dynamic linker's
+library search path. (The dynamic linker will typically look in the <c>/lib</c> and <c>/usr/lib</c>
+directories for libraries at runtime.)
+
+The library file can be bundled as a part of the app using the <b><c>bundles:</c></b> section
+of the <c>.cdef</c> file.
 
 @code
-requires:
+bundles:
 {
-    lib:
+    file:
     {
-        foo    // I need access to libfoo.so
+        // Bundle the "foo" library as part of the app (in the app's /lib directory).
+        libfoo.so.3     /lib/
+        libfoo.so.3.1.1 /lib/
     }
 }
 @endcode
 
-This will result in `-lfoo` being passed to the linker when linking any executables that include
-this component. You will need a copy of this library where the linker can find
-it on the build host.
-
-Also, on the target device at runtime, the dynamic linker will look for the library so
-it must be made available inside the app sandbox, somewhere in the dynamic linker's
-library search path. This can be done using the <c>files:</c> or <c>dirs:</c> subsection of the
-<c>requires:</c> section of either the <c>.cdef</c> or <c>.adef</c> file.
+Or, if the library is already present on the target, then the <c>files:</c> or <c>dirs:</c>
+subsection of the <b><c>requires:</c></b> section of either the <c>.cdef</c> or <c>.adef</c> file
+can be used to make the library visible from inside the app sandbox.
 
 @code
 requires:
@@ -647,9 +656,33 @@ requires:
     file:
     {
         // Make the "foo" library available inside the app sandbox (in the app's /lib directory).
-        /usr/lib/libfoo.so.3     /lib/
-        /usr/lib/libfoo.so.3.1.1 /lib/
+        /usr/local/lib/libfoo.so.3     /lib/
+        /usr/local/lib/libfoo.so.3.1.1 /lib/
     }
+}
+@endcode
+
+For backward compatibility, it is also possible to specify the library name "xml" without the
+leading "lib" or the trailing ".so".  This will result in "<c>-lxml</c>" being passed to the linker
+when linking any executables that include this component, but will not add a '-L' option.
+
+@code
+requires:
+{
+    lib:
+    {
+        xml    // I need access to libxml.so which is expected to already be on the target.
+    }
+}
+@endcode
+
+This is equivalent to using the "ldflags:" section to add "-lxml" to the linker command-line
+arguments.
+
+@code
+ldflags:
+{
+    -lxml
 }
 @endcode
 

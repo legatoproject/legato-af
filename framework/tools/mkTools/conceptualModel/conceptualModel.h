@@ -12,6 +12,8 @@
 
 System --+--> Bindings --*--> Binding
          |
+         +--> Commands --*--> Command
+         |
          +--> Apps
                 |
                 +-*--> App
@@ -65,10 +67,10 @@ System --+--> Bindings --*--> Binding
                         +--> Process  ----*--> Process  ----> Process --*--> Process        |    |
                         |    Environments      Environment     List                         |    |
                         |                                                                   v    |
-                        +--> Wildcard --*--> Binding <------------------------------> Client API |
-                        |    Bindings            |                                    Instance   |
-                        ...                      |                                               |
-                                                 +------------------------------> Server API <---+
+                        +--> Users --*--> User --*--> Bindings --*--> Binding <------ Client API |
+                        |                                |                            Instance   |
+                        ...                              |                                       |
+                                                         +----------------------> Server API <---+
 @endverbatim                                                                      Instance
  *
  *  Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
@@ -81,10 +83,12 @@ System --+--> Bindings --*--> Binding
 namespace model
 {
 
+#include "programmingLanguage.h"
+#include "objectFile.h"
 #include "appLimit.h"
 #include "api.h"
 #include "binding.h"
-#include "programmingLanguage.h"
+#include "user.h"
 #include "permissions.h"
 #include "fileSystemObject.h"
 #include "assetField.h"
@@ -94,6 +98,7 @@ namespace model
 #include "process.h"
 #include "processEnvironment.h"
 #include "app.h"
+#include "command.h"
 #include "system.h"
 
 

@@ -3,7 +3,6 @@ sources:
     appCfg.c
 }
 
-
 requires:
 {
     api:

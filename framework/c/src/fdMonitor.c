@@ -324,17 +324,17 @@ static void StopMonitoringFd
     {
         if (errno == EBADF)
         {
-            LE_FATAL("epoll_ctl(DEL) resulted in EBADF.  Probably because fd %d was closed"
+            LE_CRIT("epoll_ctl(DEL) resulted in EBADF.  Probably because fd %d was closed"
                         " before deleting FD Monitor '%s'.",
-                     fdMonitorPtr->fd,
-                     fdMonitorPtr->name);
+                    fdMonitorPtr->fd,
+                    fdMonitorPtr->name);
         }
         else if (errno == ENOENT)
         {
-            LE_FATAL("epoll_ctl(DEL) resulted in ENOENT.  Probably because fd %d was closed"
+            LE_CRIT("epoll_ctl(DEL) resulted in ENOENT.  Probably because fd %d was closed"
                         " before deleting FD Monitor '%s'.",
-                     fdMonitorPtr->fd,
-                     fdMonitorPtr->name);
+                    fdMonitorPtr->fd,
+                    fdMonitorPtr->name);
         }
         else
         {
@@ -964,6 +964,29 @@ le_fdMonitor_Ref_t le_fdMonitor_GetMonitor
     LE_FATAL_IF(monitorPtr == NULL, "Not inside an fd event handler.");
 
     return monitorPtr->safeRef;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets the file descriptor that an FD Monitor object is monitoring.
+ *
+ * @return  The fd.
+ */
+//--------------------------------------------------------------------------------------------------
+int le_fdMonitor_GetFd
+(
+    le_fdMonitor_Ref_t  monitorRef  ///< [in] Reference to the File Descriptor Monitor.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    LOCK
+    FdMonitor_t* monitorPtr = le_ref_Lookup(FdMonitorRefMap, monitorRef);
+    UNLOCK
+
+    LE_FATAL_IF(monitorPtr == NULL, "File Descriptor Monitor %p doesn't exist!", monitorRef);
+
+    return monitorPtr->fd;
 }
 
 

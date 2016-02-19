@@ -34,18 +34,19 @@ struct Content_t
         PROVIDED_API,   ///< .cdef (TokenList_t), "powerLed = gpioOut.api [async]"
         REQUIRED_API,   ///< .cdef (TokenList_t), "powerLed = gpioOut.api [types-only]"
         REQUIRED_CONFIG_TREE,   ///< .adef (TokenList_t), "[w] treeName" or just "treeName"
-        EXTERN_API_INTERFACE,   ///< .adef (TokenList_t), "powerLed = serverExe.comp.api"
+        EXTERN_API_INTERFACE,   ///< .adef (TokenList_t), "externName = exe.comp.interface"
         BINDING,        ///< Binding (TokenList_t), "exe.component.api -> app.service"
+        COMMAND,        ///< Command (TokenList_t), "cmd = app:/path/to/exe"
         EXECUTABLE,     ///< Executable (TokenList_t), "exe = ( comp1 comp2 )"
         RUN_PROCESS,    ///< Process to run (TokenList_t), "proc = ( exe arg1 arg2 )"
         ENV_VAR,        ///< Environment variable (TokenList_t), "varName = value"
         POOL,           ///< Pool (TokenList_t), "poolName = 123"
         APP,            ///< Named item in .sdef 'apps:' section (CompoundItemList_t),
                         ///  "appPath", "appPath { }" or "appPath { overrides }".
-        ASSET,          ///< AirVantage asset definition.
-        ASSET_SETTING,  ///< AirVantage writable value.
-        ASSET_VARIABLE, ///< AirVantage readable value.
-        ASSET_COMMAND   ///< AirVantage executable value.
+        ASSET,          ///< AirVantage asset definition (Asset_t).
+        ASSET_SETTING,  ///< AirVantage writable value (AssetSetting_t).
+        ASSET_VARIABLE, ///< AirVantage readable value (AssetVariable_t).
+        ASSET_COMMAND   ///< AirVantage executable value (AssetCommand_t).
     };
 
     Type_t type;        ///< The type of content item.

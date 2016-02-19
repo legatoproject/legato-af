@@ -3,7 +3,6 @@ requires:
     api:
     {
         le_fwupdate.api  [manual-start]
-        le_info.api      [manual-start]
     }
 }
 

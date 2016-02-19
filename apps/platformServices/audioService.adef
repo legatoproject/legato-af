@@ -1,0 +1,23 @@
+sandboxed: false
+
+executables:
+{
+    audioDaemon = ( $LEGATO_ROOT/components/audio
+                  )
+}
+
+processes:
+{
+    run:
+    {
+        (audioDaemon)
+    }
+    maxFileBytes: 5000K
+    faultAction: restart
+    priority: medium
+}
+
+extern:
+{
+    audioDaemon.audio.le_audio
+}

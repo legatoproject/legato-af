@@ -30,6 +30,9 @@
  *
  * le_mrc_GetRadioPower() API displays radio module power state.
  *
+ * A sample code can be seen in the following page:
+ * - @subpage c_mrcRadioPower
+ *
  * @section le_mrc_configuration Radio Configuration preferences
  *
  * The following functions let you configure and retrieve the radio configuration preferences:
@@ -100,6 +103,23 @@
  * le_mrc_GetPreferredOperatorDetails() let you retrieve a list of the selected preferred
  * operators and get their details.
  *
+ * A sample code can be seen in the following page:
+ * - @subpage c_mrcRadioConfigurationPreferences
+ *
+ * @section le_mrc_capabilities Radio Capabilities
+ *
+ * le_mrc_GetBandCapabilities() let you get the 2G/3G band capabilities by retrieving a bit mask
+ * built with @c le_mrc_BandBitMask_t
+ *
+ * le_mrc_GetLteBandCapabilities() let you get the LTE band capabilities by retrieving a bit mask
+ * built with @c le_mrc_LteBandBitMask_t
+ *
+ * le_mrc_GetTdScdmaBandCapabilities() let you get the TD-SCDMA band capabilities by retrieving
+ * a bit mask built with @c le_mrc_TdScdmaBandBitMask_t
+ *
+ * A sample code can be seen in the following page:
+ * - @subpage c_mrcBandCapabilities
+ *
  * @section le_mrc_rat Radio Access Technology (RAT)
  * le_mrc_GetRadioAccessTechInUse() API retrieves the current active Radio Access Technology.
  *
@@ -121,6 +141,8 @@
  *
  * @note LE_MRC_BITMASK_RAT_ALL value can be used to select the RAT in automatic mode.
  *
+ * A sample code can be seen in the following page:
+ * - @subpage c_mrcRAT
  *
  * @section le_mrc_registration Network Registration
  * le_mrc_GetNetRegState() API retrieves the radio module network registration status.
@@ -130,11 +152,14 @@
  *
  * le_mrc_AddNetRegStateEventHandler() API installs a registration state handler.
  *
- * le_mrc_RemoveNetRegStateHandler() API uninstalls the handler function.
+ * le_mrc_RemoveNetRegStateEventHandler() API uninstalls the handler function.
  * @note If only one handler is registered, the le_mrc_RemoveNetRegStateHandler() API
  *       resets the registration mode to its original value before any handler functions were added.
  *
- * le_mrc_RegisterCellularNetwork() API registers on a cellular network.
+ * le_mrc_SetManualRegisterMode() API manually registers on a cellular network.
+ *
+ * A sample code can be seen in the following page:
+ * - @subpage c_mrcNetworkRegistration
  *
  * @section le_mrc_signal Signal Quality
  *
@@ -169,15 +194,24 @@
  *
  * le_mrc_RemoveSignalStrengthChangeHandler() API uninstalls the handler function.
  *
+ * A sample code can be seen in the following page:
+ * - @subpage c_mrcQuality
+ *
  * @section le_mrc_location Serving cell's location information
  *
  * le_mrc_GetServingCellId() retrieves the the serving Cell Identifier.
  *
  * le_mrc_GetServingCellLocAreaCode() retrieves the Location Area Code of the serving cell.
  *
+ * A sample code can be seen in the following page:
+ * - @subpage c_mrcLocationinformation
+ *
  * @section le_mrc_network_information Current Network Information
  * le_mrc_GetCurrentNetworkName() retrieves the Current Network Name.
  * le_mrc_GetCurrentNetworkMccMnc() retrieves the Current Network PLMN information.
+ *
+ * A sample code can be seen in the following page:
+ * - @subpage c_mrcGetCurrentNetwork
  *
  * @section le_mrc_networkScan Network Scan
  *
@@ -197,66 +231,8 @@
  *
  * le_mrc_DeleteCellularNetworkScan() should be called when you do not need the list anymore.
  *
- *
- * Usage example:
- * @code
- *
- *     le_mrc_ScanInformationListRef_t scanInformationList = NULL;
- *
- *     scanInformationList = le_mrc_PerformCellularNetworkScan(LE_MRC_BITMASK_RAT_ALL);
- *
- *     if (!scanInformationList)
- *     {
- *         fprintf(stdout, "Could not perform scan\n");
- *         return;
- *     }
- *
- *     le_mrc_ScanInformationRef_t cellRef;
- *
- *     for (cellRef=le_mrc_GetFirstCellularNetworkScan(scanInformationList);
- *          cellRef!=NULL;
- *          cellRef=le_mrc_GetNextCellularNetworkScan(scanInformationList))
- *     {
- *         le_mrc_Rat rat;
- *         char mcc[4],mnc[4];
- *         char name[100];
- *
- *         rat = le_mrc_GetCellularNetworkRat(cellRef);
- *
- *         fprintf(stdout, "Rat %d ",rat);
- *
- *         if (le_mrc_GetCellularNetworkMccMnc(cellRef,mcc,sizeof(mcc),mnc,sizeof(mnc))!=LE_OK)
- *         {
- *             fprintf(stdout, "Failed to get operator code.\n");
- *         }
- *         else
- *         {
- *             fprintf(stdout, "[%s-%s] ",mcc,mnc);
- *         }
- *
- *         if (le_mrc_GetCellularNetworkName(cellRef, name, sizeof(name)) != LE_OK)
- *         {
- *             fprintf(stdout, "Failed to get operator name.\n");
- *         }
- *         else
- *         {
- *             fprintf(stdout, "%-32s",name);
- *         }
- *
- *         fprintf(stdout,"%-15s,",le_mrc_IsCellularNetworkInUse(cellRef)?"Is used":"Is not used");
- *
- *         fprintf(stdout,"%-20s,",le_mrc_IsCellularNetworkAvailable(cellRef)?"Is available":"Is not available");
- *
- *         fprintf(stdout,"%-10s,",le_mrc_IsCellularNetworkHome(cellRef)?"Home":"Roaming");
- *
- *         fprintf(stdout,"%-10s]\n",le_mrc_IsCellularNetworkForbidden(cellRef)?"Forbidden":"Allowed");
- *
- *     }
- *
- *     le_mrc_DeleteCellularNetworkScan(scanInformationList);
- *
- * @endcode
- *
+ * A sample code can be seen in the following page:
+ * - @subpage c_mrcNetworkScan
  *
  * @section le_mrc_ngbr Neighboring Cells Information
  *
@@ -290,12 +266,86 @@
  * - le_mrc_GetNeighborCellLteInterFreq() gets the RSRP and RSRQ of the Interfrequency of the cell
  *   specified with the le_mrc_CellInfoRef_t parameter.
  *
+ * A sample code can be seen in the following page:
+ * - @subpage c_mrcNeighborCells
  *
+ *c_mrcNeighborCells
  * <HR>
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 //--------------------------------------------------------------------------------------------------
+
+/**
+ * @page c_mrcRadioPower Sample code for Radio Power Management
+ *
+ * @snippet "apps/test/modemServices/mrc/mrcIntegrationTest/mrcTest/le_mrcTest.c" Radio Power
+ */
+
+/**
+ * @page c_mrcRadioConfigurationPreferences Sample code for Radio Configuration Preferences
+ *
+ * @snippet "apps/test/modemServices/mrc/mrcIntegrationTest/mrcTest/le_mrcTest.c" Band Preferences
+ *
+ */
+
+/**
+ * @page c_mrcRAT Sample code for Radio Access Technology
+ *
+ * @snippet "apps/test/modemServices/mrc/mrcIntegrationTest/mrcTest/le_mrcTest.c" RAT in Use
+ * @snippet "apps/test/modemServices/mrc/mrcIntegrationTest/mrcTest/le_mrcTest.c" RAT Preferences
+ *
+ */
+
+/**
+ * @page c_mrcNetworkRegistration Sample code for Network Registration
+ *
+ * @snippet "apps/test/modemServices/mrc/mrcIntegrationTest/mrcTest/le_mrcTest.c" Register
+ *
+ */
+
+/**
+ * @page c_mrcQuality Sample code for Signal Quality
+ *
+ * @snippet "apps/test/modemServices/mrc/mrcIntegrationTest/mrcTest/le_mrcTest.c" Signal Quality
+ *
+ */
+
+/**
+ * @page c_mrcLocationinformation Sample code for Location information
+ *
+ * @snippet "apps/test/modemServices/mrc/mrcIntegrationTest/mrcTest/le_mrcTest.c" Loc information
+ *
+ */
+
+/**
+ * @page c_mrcBandCapabilities Sample code for Band Capabilities
+ *
+ * @snippet "apps/test/modemServices/mrc/mrcIntegrationTest/mrcTest/le_mrcTest.c" Band Capabilities
+ *
+ */
+
+/**
+ * @page c_mrcGetCurrentNetwork Sample code for Get Current Network Information
+ *
+ * @snippet "apps/test/modemServices/mrc/mrcIntegrationTest/mrcTest/le_mrcTest.c" Get Network
+ *
+ */
+
+/**
+ * @page c_mrcNetworkScan Sample code for Network Scan
+ *
+ * @snippet "apps/test/modemServices/mrc/mrcIntegrationTest/mrcTest/le_mrcTest.c" Network Scan
+ *
+ */
+
+/**
+ * @page c_mrcNeighborCells Sample code for Neighboring Cells Information
+ *
+ * @snippet "apps/test/modemServices/mrc/mrcIntegrationTest/mrcTest/le_mrcTest.c" Neighbor Cells
+ *
+ */
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -966,25 +1016,6 @@ FUNCTION le_result_t GetRadioPower
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function must be called to register on a cellular network [mcc;mnc]
- *
- * @return LE_FAULT         The function failed to register on the network.
- * @return LE_BAD_PARAMETER A bad parameter was passed.
- * @return LE_OK            The function succeeded.
- *
- * @note If one code is too long (max LE_MRC_MCC_LEN/LE_MRC_MNC_LEN digits), it's a fatal error,
- *       the function won't return.
- */
-//--------------------------------------------------------------------------------------------------
-FUNCTION le_result_t RegisterCellularNetwork
-(
-    string mcc[MCC_LEN] IN,   ///< Mobile Country Code
-    string mnc[MNC_LEN] IN    ///< Mobile Network Code
-);
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * This function must be called to perform a cellular network scan.
  *
  * @return
@@ -1555,3 +1586,46 @@ FUNCTION uint32 GetServingCellId
 FUNCTION uint32 GetServingCellLocAreaCode
 (
 );
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Bit mask for 2G/3G Band capabilities.
+ *
+ * @return
+ *  - LE_FAULT  Function failed.
+ *  - LE_OK     Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetBandCapabilities
+(
+    BandBitMask bandMaskPtr OUT ///< Bit mask for 2G/3G Band capabilities.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Bit mask for LTE Band capabilities.
+ *
+ * @return
+ *  - LE_FAULT  Function failed.
+ *  - LE_OK     Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetLteBandCapabilities
+(
+    LteBandBitMask bandMaskPtr OUT ///< Bit mask for LTE Band capabilities.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Bit mask for TD-SCDMA Band capabilities.
+ *
+ * @return
+ *  - LE_FAULT  Function failed.
+ *  - LE_OK     Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetTdScdmaBandCapabilities
+(
+    TdScdmaBandBitMask bandMaskPtr OUT ///< Bit mask for TD-SCDMA Band capabilities.
+);
+

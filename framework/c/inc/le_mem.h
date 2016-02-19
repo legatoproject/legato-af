@@ -400,8 +400,8 @@
 #ifndef LEGATO_MEM_INCLUDE_GUARD
 #define LEGATO_MEM_INCLUDE_GUARD
 
-#ifndef LEGATO_COMPONENT
-#define LEGATO_COMPONENT
+#ifndef LE_COMPONENT_NAME
+#define LE_COMPONENT_NAME
 #endif
 
 
@@ -532,7 +532,7 @@ static inline le_mem_PoolRef_t le_mem_CreatePool
                         /// (in bytes), e.g., sizeof(MyObject_t).
 )
 {
-    return _le_mem_CreatePool(STRINGIZE(LEGATO_COMPONENT), name, objSize);
+    return _le_mem_CreatePool(STRINGIZE(LE_COMPONENT_NAME), name, objSize);
 }
 
 
@@ -884,7 +884,7 @@ static inline le_mem_PoolRef_t le_mem_FindPool
     const char* name    ///< [IN] Name of the pool.
 )
 {
-    return _le_mem_FindPool(STRINGIZE(LEGATO_COMPONENT), name);
+    return _le_mem_FindPool(STRINGIZE(LE_COMPONENT_NAME), name);
 }
 
 
@@ -925,7 +925,7 @@ static inline le_mem_PoolRef_t le_mem_CreateSubPool
     size_t              numObjects  ///< [IN] Number of objects to take from the super-pool.
 )
 {
-    return _le_mem_CreateSubPool(superPool, STRINGIZE(LEGATO_COMPONENT), name, numObjects);
+    return _le_mem_CreateSubPool(superPool, STRINGIZE(LE_COMPONENT_NAME), name, numObjects);
 }
 
 

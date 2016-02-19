@@ -1,0 +1,26 @@
+requires:
+{
+    api:
+    {
+        le_audio.api    [types-only]
+    }
+}
+
+sources:
+{
+    pa_pcm_alsa.c
+}
+
+cflags:
+{
+    -I$LEGATO_ROOT/components/audio
+    -I$LEGATO_ROOT/components/audio/platformAdaptor/inc
+}
+
+requires:
+{
+    lib:
+    {
+        alsa_intf
+    }
+}

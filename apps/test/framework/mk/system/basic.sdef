@@ -5,13 +5,15 @@ apps:
 
 apps:
 {
-    app2.adef
+    app2
     {
         groups:
         {
             groupA
             groupB
         }
+
+        preloaded: false
     }
 }
 
@@ -25,4 +27,7 @@ bindings:
 
 bindings:
 {
+    app1.*.if -> <bar>.if
+//    app1.exe.client.foo -> <bar>.if
+    app2.client -> <baz>.server
 }

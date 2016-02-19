@@ -142,4 +142,21 @@ le_result_t properties_GetValueForKey
 );
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets the value for a specified key in the specified .properties file.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_FAULT if there was an error.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t properties_SetValueForKey
+(
+    const char* fileNamePtr,                ///< [IN] File name of the .properties file.
+    const char* keyPtr,                     ///< [IN] Key to get the value for.
+    const char* valuePtr                    ///< [IN] New property value string to write.
+);
+
+
 #endif // LEGATO_SRC_PROPERTIES_INCLUDE_GUARD

@@ -1,0 +1,119 @@
+//--------------------------------------------------------------------------------------------------
+/**
+ * @page c_fwupdate Modem Firmware Update
+ *
+ * @ref le_fwupdate_interface.h "API Reference"
+ *
+ * <HR>
+ *
+ * Firmware update allows the various firmware images to be updated from the application processor.
+ * This may include the modem bootloader, modem firmware, and linux image, where the linux image
+ * consists of the linux bootloader, linux kernel, and linux rootfs.
+ *
+ * Firmware update is useful when the image comes from an alternative source, rather than as an
+ * over-the-air update through the AirVantage service.
+ *
+ * @todo
+ *  - support resuming partial download
+ *  - support detailed update status
+ *
+ *
+ * @section le_fwupdate_binding IPC interfaces binding
+ *
+ * All the functions of this API are provided by the @b le_fwupdate service.
+ *
+ * Here's a code sample binding to the le_fwupdate service:
+ * @verbatim
+   bindings:
+   {
+      clientExe.clientComponent.le_fwupdate -> fwupdateService.le_fwupdate
+   }
+   @endverbatim
+ *
+ * @section le_fwupdate_image Update Firmware Image
+ *
+ * The firmware update process is started by calling le_fwupdate_Download().  This function takes
+ * a file descriptor, rather than a file, to provide flexibility in the source of the image.  In
+ * particular, this can be used to stream the image, rather than having to save it on the file
+ * system before doing the update.
+ *
+ * If the image is successfully downloaded, a reset will occur in order to apply
+ * the update. This will reset all processors.  After the application
+ * processor has restarted, the @ref le_info_version APIs can be used to determine whether
+ * the firmware has been updated to the new version.
+ *
+ * <HR>
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ */
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * @file le_fwupdate_interface.h
+ *
+ * Legato @ref c_fwupdate include file.
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ */
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum length of a version string, excluding any termination character.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_VERS_LEN   = 256;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Download the firmware image file.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_BAD_PARAMETER if an input parameter is not valid
+ *      - LE_FAULT on failure
+ *
+ * @note
+ *      The process exits, if an invalid file descriptor (e.g. negative) is given.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Download
+(
+    file fd IN     ///< File descriptor of the image, opened to the start of the image.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the firmware version string
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_NOT_FOUND if the version string is not available
+ *      - LE_OVERFLOW if version string to big to fit in provided buffer
+ *      - LE_FAULT for any other errors
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetFirmwareVersion
+(
+    string version[MAX_VERS_LEN] OUT     ///< Firmware version string
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the bootloader version string
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_NOT_FOUND if the version string is not available
+ *      - LE_OVERFLOW if version string to big to fit in provided buffer
+ *      - LE_FAULT for any other errors
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetBootloaderVersion
+(
+    string version[MAX_VERS_LEN] OUT     ///< Bootloader version string
+);
+

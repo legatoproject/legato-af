@@ -9,6 +9,7 @@
 #include "legato.h"
 
 #include "interfaces.h"
+#include "le_audio_local.h"
 #include "pa_audio.h"
 #include <alsa-intf/alsa_audio.h>
 
@@ -149,98 +150,6 @@ int ioControl(int d, int request, ...)
 //--------------------------------------------------------------------------------------------------
 
 
-
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Test:
- *
- * le_result_t pa_audio_SetDspAudioPath(pa_audio_If_t inputInterface,pa_audio_If_t outputInterface);
- *
- */
-//--------------------------------------------------------------------------------------------------
-void Test_pa_audio_SetDspAudioPath()
-{
-    le_result_t res;
-    int idxInput,idxOutput;
-
-    for(idxInput=0;idxInput<PA_AUDIO_NUM_INTERFACES+1;idxInput++)
-    {
-        for(idxOutput=0;idxOutput<PA_AUDIO_NUM_INTERFACES+1;idxOutput++)
-        {
-            res = pa_audio_SetDspAudioPath(idxInput,idxOutput);
-            LE_DEBUG("idxInput %d idxOutput %d",idxInput, idxOutput);
-
-            if (((idxInput==PA_AUDIO_IF_DSP_BACKEND_MODEM_VOICE_RX) && (idxOutput == PA_AUDIO_IF_DSP_FRONTEND_USB_TX))
-                ||
-                ((idxInput==PA_AUDIO_IF_DSP_BACKEND_MODEM_VOICE_RX) && (idxOutput == PA_AUDIO_IF_CODEC_SPEAKER))
-                ||
-                ((idxInput==PA_AUDIO_IF_DSP_FRONTEND_USB_RX) && (idxOutput == PA_AUDIO_IF_DSP_BACKEND_MODEM_VOICE_TX))
-                ||
-                ((idxInput==PA_AUDIO_IF_DSP_BACKEND_MODEM_VOICE_RX) && (idxOutput == PA_AUDIO_IF_DSP_FRONTEND_PCM_TX))
-                ||
-                ((idxInput==PA_AUDIO_IF_DSP_FRONTEND_PCM_RX) && (idxOutput == PA_AUDIO_IF_DSP_BACKEND_MODEM_VOICE_TX))
-                ||
-                ((idxInput==PA_AUDIO_IF_CODEC_MIC) && (idxOutput == PA_AUDIO_IF_DSP_BACKEND_MODEM_VOICE_TX))
-            )
-            {
-                LE_ASSERT(res==LE_OK);
-            }
-            else
-            {
-                LE_ASSERT(res==LE_FAULT);
-            }
-
-        }
-    }
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Test:
- *
- * le_result_t pa_audio_ResetDspAudioPath(pa_audio_If_t inputInterface,pa_audio_If_t outputInterface);
- *
- */
-//--------------------------------------------------------------------------------------------------
-void Test_pa_audio_ResetDspAudioPath()
-{
-    le_result_t res;
-    int idxInput,idxOutput;
-
-    for(idxInput=0;idxInput<PA_AUDIO_NUM_INTERFACES+1;idxInput++)
-    {
-        for(idxOutput=0;idxOutput<PA_AUDIO_NUM_INTERFACES+1;idxOutput++)
-        {
-            res = pa_audio_FlagForResetDspAudioPath(idxInput,idxOutput);
-            pa_audio_ResetDspAudioPath();
-            LE_DEBUG("idxInput %d idxOutput %d",idxInput, idxOutput);
-
-            if (((idxInput==PA_AUDIO_IF_DSP_BACKEND_MODEM_VOICE_RX) && (idxOutput == PA_AUDIO_IF_DSP_FRONTEND_USB_TX))
-                ||
-                ((idxInput==PA_AUDIO_IF_DSP_BACKEND_MODEM_VOICE_RX) && (idxOutput == PA_AUDIO_IF_CODEC_SPEAKER))
-                ||
-                ((idxInput==PA_AUDIO_IF_DSP_FRONTEND_USB_RX) && (idxOutput == PA_AUDIO_IF_DSP_BACKEND_MODEM_VOICE_TX))
-                ||
-                ((idxInput==PA_AUDIO_IF_DSP_BACKEND_MODEM_VOICE_RX) && (idxOutput == PA_AUDIO_IF_DSP_FRONTEND_PCM_TX))
-                ||
-                ((idxInput==PA_AUDIO_IF_DSP_FRONTEND_PCM_RX) && (idxOutput == PA_AUDIO_IF_DSP_BACKEND_MODEM_VOICE_TX))
-                ||
-                ((idxInput==PA_AUDIO_IF_CODEC_MIC) && (idxOutput == PA_AUDIO_IF_DSP_BACKEND_MODEM_VOICE_TX))
-            )
-            {
-                LE_ASSERT(res==LE_OK);
-            }
-            else
-            {
-                LE_ASSERT(res==LE_FAULT);
-            }
-
-        }
-    }
-}
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Test:
@@ -252,30 +161,44 @@ void Test_pa_audio_ResetDspAudioPath()
 void Test_pa_audio_SetGain()
 {
     uint32_t gain;
+    le_audio_Stream_t stream;
 
-    for(gain=0; gain<150;gain+=5) {
-        if (gain>100) {
-            LE_ASSERT(pa_audio_SetGain(PA_AUDIO_IF_CODEC_MIC,gain)==LE_OUT_OF_RANGE);
-            LE_ASSERT(pa_audio_SetGain(PA_AUDIO_IF_CODEC_SPEAKER,gain)==LE_OUT_OF_RANGE);
-            LE_ASSERT(pa_audio_SetGain(PA_AUDIO_IF_DSP_FRONTEND_USB_RX,gain)==LE_OUT_OF_RANGE);
-            LE_ASSERT(pa_audio_SetGain(PA_AUDIO_IF_DSP_FRONTEND_USB_TX,gain)==LE_OUT_OF_RANGE);
-            LE_ASSERT(pa_audio_SetGain(PA_AUDIO_IF_DSP_BACKEND_MODEM_VOICE_RX,gain)==LE_OUT_OF_RANGE);
-            LE_ASSERT(pa_audio_SetGain(PA_AUDIO_IF_DSP_BACKEND_MODEM_VOICE_TX,gain)==LE_OUT_OF_RANGE);
-            LE_ASSERT(pa_audio_SetGain(PA_AUDIO_NUM_INTERFACES,gain)==LE_OUT_OF_RANGE);
-        } else {
-            LE_ASSERT(pa_audio_SetGain(PA_AUDIO_IF_CODEC_MIC,gain)==LE_OK);
-            LE_ASSERT(pa_audio_SetGain(PA_AUDIO_IF_CODEC_SPEAKER,gain)==LE_OK);
-            LE_ASSERT(pa_audio_SetGain(PA_AUDIO_IF_DSP_FRONTEND_USB_RX,gain)==LE_OK);
-            LE_ASSERT(pa_audio_SetGain(PA_AUDIO_IF_DSP_FRONTEND_USB_TX,gain)==LE_OK);
-            LE_ASSERT(pa_audio_SetGain(PA_AUDIO_IF_DSP_BACKEND_MODEM_VOICE_RX,gain)==LE_OK);
-            LE_ASSERT(pa_audio_SetGain(PA_AUDIO_IF_DSP_FRONTEND_FILE_PLAY,gain)==LE_OK);
-   //         LE_ASSERT(pa_audio_SetGain(PA_AUDIO_IF_DSP_BACKEND_MODEM_VOICE_TX,gain)==LE_OK);
-            LE_ASSERT(pa_audio_SetGain(PA_AUDIO_NUM_INTERFACES,gain)==LE_FAULT);
-            LE_ASSERT(pa_audio_SetGain(PA_AUDIO_IF_DSP_FRONTEND_FILE_CAPTURE,gain)==LE_FAULT);
-        }
+    for(gain=0; gain<150;gain+=5)
+    {
+        stream.audioInterface = LE_AUDIO_IF_CODEC_MIC;
+        LE_ASSERT(pa_audio_SetGain(&stream,gain)==LE_OK);
+        stream.audioInterface = LE_AUDIO_IF_DSP_FRONTEND_USB_RX;
+        LE_ASSERT(pa_audio_SetGain(&stream,gain)==LE_OK);
+        stream.audioInterface = LE_AUDIO_IF_DSP_FRONTEND_USB_TX;
+        LE_ASSERT(pa_audio_SetGain(&stream,gain)==LE_OK);
+        stream.audioInterface = LE_AUDIO_IF_DSP_FRONTEND_FILE_PLAY;
+        LE_ASSERT(pa_audio_SetGain(&stream,gain)==LE_OK);
+        stream.audioInterface = LE_AUDIO_NUM_INTERFACES;
+        LE_ASSERT(pa_audio_SetGain(&stream,gain)==LE_FAULT);
+        stream.audioInterface = LE_AUDIO_IF_DSP_FRONTEND_FILE_CAPTURE;
+        LE_ASSERT(pa_audio_SetGain(&stream,gain)==LE_FAULT);
     }
 
+    for(gain=0; gain<9;gain++)
+    {
+        stream.audioInterface = LE_AUDIO_IF_DSP_BACKEND_MODEM_VOICE_RX;
+        LE_ASSERT(pa_audio_SetGain(&stream,gain)==LE_OK);
+    }
 
+    stream.audioInterface = LE_AUDIO_IF_CODEC_MIC;
+    LE_ASSERT(pa_audio_SetGain(&stream,0xFFFFFFFF)==LE_OUT_OF_RANGE);
+    stream.audioInterface = LE_AUDIO_IF_CODEC_SPEAKER;
+    LE_ASSERT(pa_audio_SetGain(&stream,0xFFFFFFFF)==LE_OUT_OF_RANGE);
+    stream.audioInterface = LE_AUDIO_IF_DSP_FRONTEND_USB_RX;
+    LE_ASSERT(pa_audio_SetGain(&stream,0xFFFFFFFF)==LE_OUT_OF_RANGE);
+    stream.audioInterface = LE_AUDIO_IF_DSP_FRONTEND_USB_TX;
+    LE_ASSERT(pa_audio_SetGain(&stream,0xFFFFFFFF)==LE_OUT_OF_RANGE);
+    stream.audioInterface = LE_AUDIO_IF_DSP_BACKEND_MODEM_VOICE_RX;
+    LE_ASSERT(pa_audio_SetGain(&stream,0xFFFFFFFF)==LE_OUT_OF_RANGE);
+    stream.audioInterface = LE_AUDIO_IF_DSP_BACKEND_MODEM_VOICE_TX;
+    LE_ASSERT(pa_audio_SetGain(&stream,0xFFFFFFFF)==LE_OUT_OF_RANGE);
+    stream.audioInterface = LE_AUDIO_NUM_INTERFACES;
+    LE_ASSERT(pa_audio_SetGain(&stream,0xFFFFFFFF)==LE_OUT_OF_RANGE);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -288,24 +211,28 @@ void Test_pa_audio_SetGain()
 //--------------------------------------------------------------------------------------------------
 void Test_pa_audio_GetGain()
 {
-    uint32_t gain;
+    int32_t gain;
+    le_audio_Stream_t stream;
 
-    LE_ASSERT(pa_audio_GetGain(PA_AUDIO_IF_CODEC_MIC,&gain)==LE_OK);
+    stream.audioInterface = LE_AUDIO_IF_CODEC_MIC;
+    LE_ASSERT(pa_audio_GetGain(&stream,&gain)==LE_OK);
     LE_ASSERT(gain==100);
-    LE_ASSERT(pa_audio_GetGain(PA_AUDIO_IF_CODEC_SPEAKER,&gain)==LE_OK);
+    stream.audioInterface = LE_AUDIO_IF_DSP_FRONTEND_USB_RX;
+    LE_ASSERT(pa_audio_GetGain(&stream,&gain)==LE_OK);
     LE_ASSERT(gain==100);
-    LE_ASSERT(pa_audio_GetGain(PA_AUDIO_IF_DSP_FRONTEND_USB_RX,&gain)==LE_OK);
+    stream.audioInterface = LE_AUDIO_IF_DSP_FRONTEND_USB_TX;
+    LE_ASSERT(pa_audio_GetGain(&stream,&gain)==LE_OK);
     LE_ASSERT(gain==100);
-    LE_ASSERT(pa_audio_GetGain(PA_AUDIO_IF_DSP_FRONTEND_USB_TX,&gain)==LE_OK);
+    stream.audioInterface = LE_AUDIO_IF_DSP_BACKEND_MODEM_VOICE_RX;
+    LE_ASSERT(pa_audio_GetGain(&stream,&gain)==LE_OK);
     LE_ASSERT(gain==100);
-    LE_ASSERT(pa_audio_GetGain(PA_AUDIO_IF_DSP_BACKEND_MODEM_VOICE_RX,&gain)==LE_OK);
+    stream.audioInterface = LE_AUDIO_IF_DSP_FRONTEND_FILE_PLAY;
+    LE_ASSERT(pa_audio_GetGain(&stream,&gain)==LE_OK);
     LE_ASSERT(gain==100);
-//    LE_ASSERT(pa_audio_GetGain(PA_AUDIO_IF_DSP_BACKEND_MODEM_VOICE_TX,&gain)==LE_OK);
-//    LE_ASSERT(gain==100);
-    LE_ASSERT(pa_audio_GetGain(PA_AUDIO_IF_DSP_FRONTEND_FILE_PLAY,&gain)==LE_OK);
-    LE_ASSERT(gain==100);
-    LE_ASSERT(pa_audio_GetGain(PA_AUDIO_NUM_INTERFACES,&gain)==LE_FAULT);
-    LE_ASSERT(pa_audio_GetGain(PA_AUDIO_IF_DSP_FRONTEND_FILE_CAPTURE,&gain)==LE_FAULT);
+    stream.audioInterface = LE_AUDIO_NUM_INTERFACES;
+    LE_ASSERT(pa_audio_GetGain(&stream,&gain)==LE_FAULT);
+    stream.audioInterface = LE_AUDIO_IF_DSP_FRONTEND_FILE_CAPTURE;
+    LE_ASSERT(pa_audio_GetGain(&stream,&gain)==LE_FAULT);
 }
 
 
@@ -317,10 +244,6 @@ void Test_pa_audio_GetGain()
 //--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
-    // pa_audio_SetDspAudioPath() and pa_audio_FlagForResetDspAudioPath() return LE_OK in all case
-    // To be checked if we should modify these functions, or delete the tests.
- //   Test_pa_audio_SetDspAudioPath();
- //   Test_pa_audio_ResetDspAudioPath();
     Test_pa_audio_SetGain();
     Test_pa_audio_GetGain();
 

@@ -200,7 +200,20 @@ struct ExternApiInterface_t : TokenList_t
 //--------------------------------------------------------------------------------------------------
 struct Binding_t : TokenList_t
 {
-    Binding_t(Token_t* firstTokenPtr): TokenList_t(BINDING, firstTokenPtr) {}
+    Binding_t(Token_t* firstTokenPtr): TokenList_t(BINDING, firstTokenPtr)
+                                                                    { AddContent(firstTokenPtr); }
+};
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Represents a single entry in a "commands:" section.
+ */
+//--------------------------------------------------------------------------------------------------
+struct Command_t : TokenList_t
+{
+    Command_t(Token_t* firstTokenPtr): TokenList_t(COMMAND, firstTokenPtr)
+                                                                    { AddContent(firstTokenPtr); }
 };
 
 

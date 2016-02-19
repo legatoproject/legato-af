@@ -8,11 +8,69 @@
 
 #include "pa_riPin.h"
 
-
+static le_result_t ReturnCode = LE_FAULT;
+static bool AmIOwner = false;
+uint32_t PulseRingSignalDuration = 0;
 
 //--------------------------------------------------------------------------------------------------
 //                                       Public declarations
 //--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the stub return code.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void pa_riPinSimu_SetReturnCode
+(
+    le_result_t res
+)
+{
+    ReturnCode = res;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the "AmIOwner" flag
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void pa_riPinSimu_SetAmIOwnerOfRingSignal
+(
+    bool amIOwner
+)
+{
+    AmIOwner = amIOwner;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the "AmIOwner" value
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void pa_riPinSimu_CheckAmIOwnerOfRingSignal
+(
+    bool amIOwner
+)
+{
+    LE_ASSERT(AmIOwner == amIOwner);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Check duration value
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void pa_riPinSimu_CheckPulseRingSignalDuration
+(
+    uint32_t duration
+)
+{
+    LE_ASSERT(PulseRingSignalDuration == duration);
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -46,7 +104,12 @@ le_result_t pa_riPin_AmIOwnerOfRingSignal
                       ///  false when modem core is the owner of the Ring Indicator signal.
 )
 {
-    return LE_FAULT;
+    if (ReturnCode == LE_OK)
+    {
+        *amIOwnerPtr = AmIOwner;
+    }
+
+    return ReturnCode;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -63,7 +126,12 @@ le_result_t pa_riPin_TakeRingSignal
     void
 )
 {
-    return LE_FAULT;
+    if(ReturnCode == LE_OK)
+    {
+        AmIOwner = true;
+    }
+
+    return ReturnCode;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -80,7 +148,12 @@ le_result_t pa_riPin_ReleaseRingSignal
     void
 )
 {
-    return LE_FAULT;
+    if(ReturnCode == LE_OK)
+    {
+        AmIOwner = false;
+    }
+
+    return ReturnCode;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -94,6 +167,8 @@ void pa_riPin_PulseRingSignal
     uint32_t duration ///< [IN] duration in ms
 )
 {
+    PulseRingSignalDuration = duration;
+
     return ;
 }
 

@@ -7,7 +7,7 @@ are used as input to build tools.
 The Definition Files' @subpage defFilesOverview has high-level info.
 
 <HR>
-@subpage interfaceDefLang <br>
+
 @subpage defFilesAdef <br>
 @subpage defFilesCdef <br>
 @subpage defFilesSdef

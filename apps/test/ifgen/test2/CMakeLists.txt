@@ -1,17 +1,12 @@
 #*******************************************************************************
 # Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
-#
-# Contributors:
-#     Sierra Wireless - initial API and implementation
 #*******************************************************************************
-
-find_package(Legato REQUIRED)
 
 set(TEST_NAME testIfGen2)
 set_legato_component(${TEST_NAME})
 
 # Set the path to the ifgen tool
-set(IFGEN_TOOL ${LEGATO_SOURCE_DIR}/bin/ifgen )
+set(IFGEN_TOOL ${LEGATO_ROOT}/bin/ifgen )
 
 # todo: There may be a better way to generate the imported file(s), as this is
 #       somewhat awkward to use.

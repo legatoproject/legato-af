@@ -9,6 +9,7 @@ requires:
         le_sms.api        [types-only]
         le_ecall.api      [types-only]
         le_info.api       [types-only]
+        le_ips.api        [types-only]
         le_temp.api       [types-only]
         le_antenna.api    [types-only]
         le_adc.api        [types-only]
@@ -33,6 +34,12 @@ sources:
     pa_riPin.c
     pa_adc.c
     pa_rtc.c
+}
+
+cflags:
+{
+    -I$LEGATO_ROOT/components/modemServices/platformAdaptor/inc
+    -I$LEGATO_ROOT/components
 }
 
 requires:

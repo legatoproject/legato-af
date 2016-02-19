@@ -1,5 +1,0 @@
-#!/bin/sh
-
-# Configure the Kernel to dump core files in the format we want, "core-<Exe Name>-<Unix Time-stamp>"
-# Where the Unix time-stamp is the count in seconds since the Epoch.
-echo "core-%e-%t" > /proc/sys/kernel/core_pattern

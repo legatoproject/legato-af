@@ -86,7 +86,7 @@ typedef struct ThreadObjIter
     pid_t pid;
     int procMemFd;
     RemoteListAccess_t threadObjList; ///< Thread object list in the remote process.
-    ThreadObj_t currThreadObj;        ///< Current thread object from the list.
+    thread_Obj_t currThreadObj;        ///< Current thread object from the list.
 }
 ThreadObjIter_t;
 
@@ -96,7 +96,7 @@ typedef struct TimerIter
     int procMemFd;
     RemoteListAccess_t threadObjList;
     RemoteListAccess_t timerList;     ///< Timer list for the current thread in the remote process.
-    ThreadObj_t currThreadObj;
+    thread_Obj_t currThreadObj;
     Timer_t currTimer;                ///< Current timer from the list.
 }
 TimerIter_t;
@@ -107,7 +107,7 @@ typedef struct MutexIter
     int procMemFd;
     RemoteListAccess_t threadObjList;
     RemoteListAccess_t mutexList;     ///< Mutexe list for the current thread in the remote process.
-    ThreadObj_t currThreadObj;
+    thread_Obj_t currThreadObj;
     Mutex_t currMutex;                ///< Current mutex from the list.
 }
 MutexIter_t;
@@ -118,7 +118,7 @@ typedef struct SemaphoreIter
     int procMemFd;
     RemoteListAccess_t threadObjList;
     RemoteListAccess_t semaphoreList; ///< This is a dummy, since there's no semaphore list.
-    ThreadObj_t currThreadObj;
+    thread_Obj_t currThreadObj;
     Semaphore_t currSemaphore;        ///< Current semaphore from the list.
 }
 SemaphoreIter_t;
@@ -131,7 +131,7 @@ typedef struct ThreadMemberObjIter
     int procMemFd;
     RemoteListAccess_t threadObjList;
     RemoteListAccess_t threadMemberObjList;
-    ThreadObj_t currThreadObj;
+    thread_Obj_t currThreadObj;
 }
 ThreadMemberObjIter_t;
 
@@ -769,7 +769,7 @@ static MemPool_t* GetNextMemPool
  *      A thread object from the iterator's list of thread objects.
  */
 //--------------------------------------------------------------------------------------------------
-static ThreadObj_t* GetNextThreadObj
+static thread_Obj_t* GetNextThreadObj
 (
     ThreadObjIter_Ref_t iterator ///< [IN] The iterator to get the next thread obj from.
 )
@@ -783,7 +783,7 @@ static ThreadObj_t* GetNextThreadObj
     }
 
     // Get the address of thread obj.
-    ThreadObj_t* threadObjPtr = CONTAINER_OF(linkPtr, ThreadObj_t, link);
+    thread_Obj_t* threadObjPtr = CONTAINER_OF(linkPtr, thread_Obj_t, link);
 
     // Read the thread obj into our own memory.
     if (fd_ReadFromOffset(iterator->procMemFd, (ssize_t)threadObjPtr, &(iterator->currThreadObj),
@@ -807,7 +807,7 @@ static ThreadObj_t* GetNextThreadObj
 static le_dls_Link_t* GetThreadMemberObjList
 (
     InspType_t memberObjType, ///< [IN] The type of the thread member object.
-    ThreadObj_t* threadObjRef         ///< [IN] Thread object ref.
+    thread_Obj_t* threadObjRef         ///< [IN] Thread object ref.
 )
 {
     switch (memberObjType)
@@ -865,7 +865,7 @@ static le_dls_Link_t* GetNextThreadMemberObjLinkPtr
     }
 
     // local references to the timer and thread objects.
-    ThreadObj_t* localThreadObjRef;
+    thread_Obj_t* localThreadObjRef;
     le_dls_Link_t* remThreadObjNextLinkPtr;
     le_dls_Link_t* remThreadMemberObjNextLinkPtr;
 
@@ -884,7 +884,7 @@ static le_dls_Link_t* GetNextThreadMemberObjLinkPtr
         }
 
         // Get the address of thread obj.
-        ThreadObj_t* remThreadObjPtr = CONTAINER_OF(remThreadObjNextLinkPtr, ThreadObj_t, link);
+        thread_Obj_t* remThreadObjPtr = CONTAINER_OF(remThreadObjNextLinkPtr, thread_Obj_t, link);
 
         // Read the thread obj into our own memory, and update the local reference
         if (fd_ReadFromOffset(threadMemberObjItrRef->procMemFd, (ssize_t)remThreadObjPtr,
@@ -1002,7 +1002,7 @@ static Semaphore_t* GetNextSemaphore
 )
 {
     Semaphore_t* remSemaphorePtr;
-    ThreadObj_t* currThreadObjRef;
+    thread_Obj_t* currThreadObjRef;
 
     // Create a local thread obj iterator based on the semaphore iterator that's passed in.
     ThreadObjIter_t threadObjIter;
@@ -1306,7 +1306,6 @@ static ColumnInfo_t MutexTableInfo[] =
     {"NAME",         "%*s", NULL, "%*s", MAX_NAME_BYTES,       true,  0},
     {"LOCK COUNT",   "%*s", NULL, "%*d", sizeof(int),          false, 0},
     {"RECURSIVE",    "%*s", NULL, "%*u", sizeof(bool),         false, 0},
-    {"TRACEABLE",    "%*s", NULL, "%*u", sizeof(bool),         false, 0},
     {"WAITING LIST", "%*s", NULL, "%*s", MAX_THREAD_NAME_SIZE, true,  0}
 };
 static size_t MutexTableInfoSize = NUM_ARRAY_MEMBERS(MutexTableInfo);
@@ -1314,7 +1313,6 @@ static size_t MutexTableInfoSize = NUM_ARRAY_MEMBERS(MutexTableInfo);
 static ColumnInfo_t SemaphoreTableInfo[] =
 {
     {"NAME",         "%*s", NULL, "%*s", LIMIT_MAX_SEMAPHORE_NAME_BYTES, true,  0},
-    {"TRACEABLE",    "%*s", NULL, "%*u", sizeof(bool),                   false, 0},
     {"WAITING LIST", "%*s", NULL, "%*s", MAX_THREAD_NAME_SIZE,           true,  0}
 };
 static size_t SemaphoreTableInfoSize = NUM_ARRAY_MEMBERS(SemaphoreTableInfo);
@@ -1942,7 +1940,7 @@ static int PrintMemPoolInfo
 //--------------------------------------------------------------------------------------------------
 static int PrintThreadObjInfo
 (
-    ThreadObj_t* threadObjRef   ///< [IN] ref to thread obj to be printed.
+    thread_Obj_t* threadObjRef   ///< [IN] ref to thread obj to be printed.
 )
 {
     int lineCount = 0;
@@ -2005,7 +2003,7 @@ static int PrintThreadObjInfo
     #define ProcessData \
         P(threadObjRef->name,        ThreadObjTableInfo, ThreadObjTableInfoSize); \
         P(threadObjRef->isJoinable,  ThreadObjTableInfo, ThreadObjTableInfoSize); \
-        P(threadObjRef->isStarted,   ThreadObjTableInfo, ThreadObjTableInfoSize); \
+        P((threadObjRef->state != THREAD_STATE_NEW), ThreadObjTableInfo, ThreadObjTableInfoSize); \
         P(detachStateStr,            ThreadObjTableInfo, ThreadObjTableInfoSize); \
         P(schedPolicyStr,            ThreadObjTableInfo, ThreadObjTableInfoSize); \
         P(schedParam.sched_priority, ThreadObjTableInfo, ThreadObjTableInfoSize); \
@@ -2121,12 +2119,12 @@ static mutex_ThreadRec_t* GetMutexThreadRecPtr
 }
 
 // Given a thread rec ptr, get a ptr to the thread obj
-static ThreadObj_t* GetThreadPtrFromMutexLink
+static thread_Obj_t* GetThreadPtrFromMutexLink
 (
     mutex_ThreadRec_t* currNodePtr  ///< [IN] thread record ptr.
 )
 {
-    return CONTAINER_OF(currNodePtr, ThreadObj_t, mutexRec);
+    return CONTAINER_OF(currNodePtr, thread_Obj_t, mutexRec);
 }
 
 // Given a waiting list link ptr, get a ptr to the thread record
@@ -2139,12 +2137,12 @@ static sem_ThreadRec_t* GetSemThreadRecPtr
 }
 
 // Given a thread rec ptr, get a ptr to the thread obj
-static ThreadObj_t* GetThreadPtrFromSemLink
+static thread_Obj_t* GetThreadPtrFromSemLink
 (
     sem_ThreadRec_t* currNodePtr    ///< [IN] thread record ptr.
 )
 {
-    return CONTAINER_OF(currNodePtr, ThreadObj_t, semaphoreRec);
+    return CONTAINER_OF(currNodePtr, thread_Obj_t, semaphoreRec);
 }
 
 // Retrieve the waiting list link from a mutex or semaphore thread record.
@@ -2187,7 +2185,7 @@ static void GetWaitingListThreadNames
 )
 {
     typedef void* (*GetThreadRecPtrFunc_t)(le_dls_Link_t* currNodeLinkPtr);
-    typedef ThreadObj_t* (*GetThreadPtrFromLinkFunc_t)(void* currNodePtr);
+    typedef thread_Obj_t* (*GetThreadPtrFromLinkFunc_t)(void* currNodePtr);
 
     GetThreadRecPtrFunc_t getThreadRecPtrFunc;
     GetThreadPtrFromLinkFunc_t getThreadPtrFromLinkFunc;
@@ -2225,10 +2223,10 @@ static void GetWaitingListThreadNames
     le_dls_Link_t* currNodeLinkPtr = GetNextLink(&waitingList, NULL);
 
     void* currNodePtr;
-    ThreadObj_t* currThreadPtr;
+    thread_Obj_t* currThreadPtr;
 
     ThreadRec_t localThreadRecCopy;
-    ThreadObj_t localThreadObjCopy;
+    thread_Obj_t localThreadObjCopy;
 
     int fd = OpenProcMemFile(PidToInspect);
 
@@ -2371,7 +2369,6 @@ static int PrintMutexInfo
         P(mutexRef->name,        MutexTableInfo, MutexTableInfoSize); \
         P(mutexRef->lockCount,   MutexTableInfo, MutexTableInfoSize); \
         P(mutexRef->isRecursive, MutexTableInfo, MutexTableInfoSize); \
-        P(mutexRef->isTraceable, MutexTableInfo, MutexTableInfoSize); \
         isDataJsonArray = true; \
         P(waitingThreadNames[0], MutexTableInfo, MutexTableInfoSize);
 
@@ -2446,7 +2443,6 @@ static int PrintSemaphoreInfo
 
     #define ProcessData \
         P(semaphoreRef->nameStr,     SemaphoreTableInfo, SemaphoreTableInfoSize); \
-        P(semaphoreRef->isTraceable, SemaphoreTableInfo, SemaphoreTableInfoSize); \
         isDataJsonArray = true; \
         P(waitingThreadNames[0],     SemaphoreTableInfo, SemaphoreTableInfoSize);
 

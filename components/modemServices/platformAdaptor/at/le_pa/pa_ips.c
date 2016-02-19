@@ -8,7 +8,7 @@
 
 #include "legato.h"
 #include "interfaces.h"
-#include "../inc/pa_ips.h"
+#include "pa_ips.h"
 
 //--------------------------------------------------------------------------------------------------
 //                                       Public declarations
@@ -16,7 +16,7 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Get the Platform voltage input in [mV].
+ * Get the Platform input voltage in [mV].
  *
  * @return
  *      - LE_OK            The function succeeded.
@@ -33,6 +33,86 @@ le_result_t pa_ips_GetInputVoltage
     return LE_FAULT;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ *
+ * This function is used to add an input voltage status notification handler
+ *
+ * @return A handler reference, which is only needed for later removal of the handler.
+ */
+//--------------------------------------------------------------------------------------------------
+le_event_HandlerRef_t* pa_ips_AddVoltageEventHandler
+(
+    pa_ips_ThresholdInd_HandlerFunc_t   msgHandler
+)
+{
+    return NULL;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the Platform warning and critical input voltage thresholds in [mV].
+ *  When thresholds input voltage are reached, a input voltage event is triggered.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_OUT_OF_RANGE  One or more thresholds are out of the range allowed by the platform.
+ *      - LE_FAULT         The function failed to set the thresholds.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_SetVoltageThresholds
+(
+    uint16_t criticalVolt,
+        ///< [IN]
+        ///< [IN] The critical input voltage threshold in [mV].
+
+    uint16_t warningVolt,
+        ///< [IN]
+        ///< [IN] The warning input voltage threshold in [mV].
+
+    uint16_t normalVolt,
+        ///< [IN]
+        ///< [IN] The normal input voltage threshold in [mV].
+
+    uint16_t hiCriticalVolt
+        ///< [IN]
+        ///< [IN] The high critical input voltage threshold in [mV].
+)
+{
+    return LE_FAULT;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Platform warning and critical input voltage thresholds in [mV].
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to get the thresholds.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_GetVoltageThresholds
+(
+    uint16_t* criticalVoltPtr,
+        ///< [OUT]
+        ///< [OUT] The critical input voltage threshold in [mV].
+
+    uint16_t* warningVoltPtr,
+        ///< [OUT]
+        ///< [OUT] The warning input voltage threshold in [mV].
+
+    uint16_t* normalVoltPtr,
+        ///< [OUT]
+        ///< [OUT] The normal input voltage threshold in [mV].
+
+    uint16_t* hiCriticalVoltPtr
+        ///< [OUT]
+        ///< [IN] The high critical input voltage threshold in [mV].
+)
+{
+    return LE_FAULT;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**

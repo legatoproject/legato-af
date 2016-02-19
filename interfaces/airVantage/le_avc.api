@@ -14,10 +14,10 @@
  *  - Allow a control app to contact the server for pending updates. If available,
  *    can select to download or install the update.
  *    <br>
- *  - Allow an app to block an update from being installed. An app may need this
- *    if it's performing a critical operation that can't be interrupted (e.g., eCall). This is necessary
+ *  - Allow an app to block an update from being installed. An app may need this if it's 
+ *    performing a critical operation that can't be interrupted (e.g., eCall). This is necessary
  *    as installing an update will cause the app to restart (either the app itself needs to restart
- *   or a firmware change causes the modem to reset).
+ *    or a firmware change causes the modem to reset).
  *
  * @subsection c_le_avc_update_control Update Control
  *
@@ -38,18 +38,11 @@
  * the app.
  *
  * If a download is pending, then le_avc_AcceptDownload() can be used to allow the update to be
- * downloaded. To defer the
- * decision, le_avc_DeferDownload() can be used to defer the download for the specified number
- * of minutes.  After the defer time has elapsed, the pending download notification will be
- * re-sent, to allow the control app to make a new decision, or again defer.
- *
- * If an uninstall is pending, then le_avc_AcceptUninstall() can be used to allow the uninstall to
- * proceed. To defer the decision, le_avc_DeferUninstall() can be used to defer the uninstall for
- * the specified number of minutes. In case of an upgrade, the existing application will not be
- * uninstalled after le_avc_AcceptUninstall() is called. le_avc_AcceptUninstall() is only used to
- * signal the server to start downloading the new application. During an upgrade process the
- * control app has to accept the uninstall of the existing version followed by accepting the
- * download and install of the new version.
+ * downloaded. If this API is called while no AirVantage session is active, calling this API will
+ * initiate an AirVantage session. To defer the decision, le_avc_DeferDownload() can be used 
+ * to defer the download for the specified number of minutes. After the defer time has elapsed, 
+ * the pending download notification will be re-sent, to allow the control app to make a
+ * new decision, or again defer.
  *
  * Once an update has been downloaded, a new notification will be received to indicate that an
  * install is pending. The control app can then use le_avc_AcceptInstall() to allow the
@@ -60,12 +53,29 @@
  * pending install notification will be re-sent to allow the control app to make a new
  * decision, or again defer.
  *
+ * If an uninstall is pending, then le_avc_AcceptUninstall() can be used to allow the uninstall to
+ * proceed. To defer the decision, le_avc_DeferUninstall() can be used to defer the uninstall for
+ * the specified number of minutes. In case of an upgrade, the existing application will not be
+ * uninstalled after le_avc_AcceptUninstall() is called. le_avc_AcceptUninstall() is only used to
+ * signal the server to start downloading the new application. During an upgrade process the
+ * control app has to accept the uninstall of the existing version followed by accepting the
+ * download and install of the new version. 
+ *
+ * Accepting an app install or uninstall will not initiate an AirVantage session if no session
+ * is active.  The control app should start an AirVantage session before accepting an app 
+ * install/uninstall, to ensure the process is completed, and the server is updated.
+ *
  * If a control app doesn't register for notifications using le_avc_AddStatusEventHandler(),
  * then any pending downloads and installs will happen automatically, subject to any restrictions
- * imposed by app using the @ref c_le_avc_update_app functions.  Only one control
- * app will be allowed to register for notifications.  Any subsequent attempts will be
- * rejected. Also, only the control app registered for notifications will be
- * allowed to use the other update control API functions.
+ * imposed by app using the @ref c_le_avc_update_app functions.  Also, only the control app
+ * registered for notifications will be allowed to use the other update control API functions.
+ * 
+ * Only one control app is allowed to register for notifications.  Any subsequent attempts by
+ * either the same app, or a different app is treated as a fatal error (i.e. non-recoverable)
+ * and will result in the client app being terminated.
+ *
+ * In case of any error incurred during app download/install, an error code will be set and the
+ * control app can retrieve it by calling le_avc_GetErrorCode().
  *
  * @subsection c_le_avc_update_app Application Blocking
  *
@@ -178,6 +188,24 @@ ENUM UpdateType
     FIRMWARE_UPDATE,
     FRAMEWORK_UPDATE,
     APPLICATION_UPDATE
+};
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Error code used to provide diagnostic information after a failure (includes both download and
+ * install failure).
+ *
+ * @note
+ *     Additional information may also be available in the target device's system log.
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM ErrorCode
+{
+    ERR_NONE,                       ///< No error.
+    ERR_BAD_PACKAGE,                ///< Encountered a bad package.
+    ERR_INTERNAL,                   ///< Something failed while doing install/download.
+    ERR_SECURITY_FAILURE            ///< Security check failure while installing the package.
 };
 
 
@@ -397,6 +425,20 @@ FUNCTION BlockRequest BlockInstall
 FUNCTION UnblockInstall
 (
     BlockRequest blockRef IN   ///< block request ref returned by le_avc_BlockInstall
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function to get error code when update fails.
+ *
+ * @return
+ *      - Error code of encountered error.
+ *      - ERR_NONE if update is in any other state.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION ErrorCode GetErrorCode
+(
 );
 
 

@@ -1,20 +1,13 @@
 #*******************************************************************************
-# Copyright (c) 2012-2013 Sierra Wireless and others.
-# All rights reserved. This program and the accompanying materials
-# are made available under the terms of the Eclipse Public License v1.0
-# which accompanies this distribution, and is available at
-# http://www.eclipse.org/legal/epl-v10.html
-#
-# Contributors:
-#     Sierra Wireless - initial API and implementation
+# Copyright (C) Sierra Wireless Inc.  Use of this work is subject to license.
 #*******************************************************************************
 
 # Include CUnit as a third party shipped with project
 
 set(CUNIT_ARCHIVE "CUnit-2.1-2-src.tar.bz2")
 set(CUNIT_ARCHIVE_MD5 "31c62bd7a65007737ba28b7aafc44d3a")
-set(CUNIT_INSTALL "${LEGATO_BINARY_DIR}/3rdParty/CUnit")
-set(CUNIT_SOURCE "${LEGATO_SOURCE_DIR}/3rdParty/CUnit/src")
+set(CUNIT_INSTALL "${PROJECT_SOURCE_DIR}/3rdParty/CUnit")
+set(CUNIT_SOURCE "${PROJECT_SOURCE_DIR}/3rdParty/CUnit/src")
 
 if(CMAKE_VERSION VERSION_GREATER 3.0)
     cmake_policy(SET CMP0045 OLD)
@@ -32,7 +25,7 @@ if(${CUNIT_TARGET} MATCHES "CUNIT_TARGET-NOTFOUND")
         get_compiler_target(gcc TARGET_HOST)
         set(CUNIT_CONFIGURE_ARGS    "--host=${TARGET_HOST}")
     endif()
-    
+
     configure_file(${CUNIT_SOURCE}/configure.sh.in ${CUNIT_INSTALL}/configure.sh)
 
     ExternalProject_Add(
@@ -47,13 +40,19 @@ if(${CUNIT_TARGET} MATCHES "CUNIT_TARGET-NOTFOUND")
         LOG_BUILD 1
         LOG_INSTALL 1
     )
-    
+
     ExternalProject_Add_Step(
         cunit comment
         COMMENT "CUnit: Building ${CUNIT_ARCHIVE}"
         DEPENDERS configure
     )
-    
+
+endif()
+
+if(NOT DEFINED CUNIT_INSTALL)
+    message(FATAL_ERROR "CUNIT_INSTALL not set.")
+elseif("${CUNIT_INSTALL}" STREQUAL "")
+    message(FATAL_ERROR "CUNIT_INSTALL is empty.")
 endif()
 
 set(CUNIT_INCLUDE_DIRS
@@ -61,7 +60,7 @@ set(CUNIT_INCLUDE_DIRS
     ${CUNIT_INSTALL}/include/CUnit
 )
 set(CUNIT_LIBRARIES ${CUNIT_INSTALL}/lib/libcunit.a)
-    
+
 find_package_handle_standard_args(
     CUnit
     DEFAULT_MSG

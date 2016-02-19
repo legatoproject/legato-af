@@ -968,6 +968,7 @@ static void CreateHardCodedBindings
     CreateBinding(uid, "le_cfg", uid, "le_cfg");
     CreateBinding(uid, "le_cfgAdmin", uid, "le_cfgAdmin");
     CreateBinding(uid, "le_update", uid, "le_update");
+    CreateBinding(uid, "le_appRemove", uid, "le_appRemove");
     CreateBinding(uid, "le_instStat", uid, "le_instStat");
     CreateBinding(uid, "le_appInfo", uid, "le_appInfo");
     CreateBinding(uid, "appSmack", uid, "appSmack");

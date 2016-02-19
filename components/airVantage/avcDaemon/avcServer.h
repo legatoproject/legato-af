@@ -73,19 +73,18 @@ LE_SHARED le_result_t avcServer_QueryInstall
 LE_SHARED void avcServer_ReportInstallProgress
 (
     le_avc_Status_t updateStatus,
-    uint installProgress           ///< [IN]  Percentage of install completed.
+    uint installProgress,          ///< [IN]  Percentage of install completed.
                                    ///        Applicable only when le_avc_Status_t is one of
                                    ///        LE_AVC_INSTALL_IN_PROGRESS, LE_AVC_INSTALL_COMPLETE
                                    ///        or LE_AVC_INSTALL_FAILED.
+    le_avc_ErrorCode_t errorCode   ///< [IN]  Error code if installation failed.
+                                   ///        Applicable only when le_avc_Status_t is
+                                   ///        LE_AVC_INSTALL_FAILED.
 );
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Sends a registration update to the server.
- *
- * ToDo: Remove this function after block transfer is implemented. This function is a temporary
- * solution to force a registration update and sync object 9 contents with firmware. If block
- * transfer is implemented, there is no need for firmware to have its own copy of obj9.
  */
 //--------------------------------------------------------------------------------------------------
 LE_SHARED void avcServer_RegistrationUpdate

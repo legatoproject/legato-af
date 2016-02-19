@@ -31,12 +31,6 @@
 #define CFG_TREE_DB_INCLUDE_GUARD
 
 
-
-
-/// Path to the config tree directory in the linux filesystem.
-#define CFG_TREE_PATH "/opt/legato/configTree"
-
-
 /// Reference to a configuration tree.
 typedef struct Tree* tdb_TreeRef_t;
 
@@ -99,7 +93,7 @@ void tdb_DeleteTree
 
 // -------------------------------------------------------------------------------------------------
 /**
- *  Called to get the poitner to the tree collection iterator.
+ *  Called to get the pointer to the tree collection iterator.
  *
  *  @return Reference to the tree collection iterator.
  */

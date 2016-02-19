@@ -54,6 +54,52 @@ le_result_t le_fwupdate_Download
     return pa_fwupdate_Download(fd);
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the firmware version string
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_NOT_FOUND if the version string is not available
+ *      - LE_FAULT for any other errors
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_fwupdate_GetFirmwareVersion
+(
+    char* version,
+        ///< [OUT]
+        ///< Firmware version string
+
+    size_t versionNumElements
+        ///< [IN]
+)
+{
+    return pa_fwupdate_GetFirmwareVersion(version, versionNumElements);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the bootloader version string
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_NOT_FOUND if the version string is not available
+ *      - LE_FAULT for any other errors
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_fwupdate_GetBootloaderVersion
+(
+    char* version,
+        ///< [OUT]
+        ///< Bootloader version string
+
+    size_t versionNumElements
+        ///< [IN]
+)
+{
+    return pa_fwupdate_GetBootloaderVersion(version, versionNumElements);
+}
 
 //--------------------------------------------------------------------------------------------------
 /**

@@ -5,17 +5,30 @@
 # is a valid goal for this Makefile.  For example, to build for the Sierra Wireless AR7xxx family
 # of modules, run "make ar7".
 #
+# Building a target will build the following:
+#  - host tools (needed to build the framework for the target)
+#  - liblegato
+#  - framework daemons and libs they require
+#  - on-target tools
+#  - a basic working system (see system.sdef)
+#
+# To build sample apps and tests for a target X, build tests_X (e.g., 'make tests_wp85').
+#
 # Other goals supported by this Makefile are:
 #
 #    clean = delete all build output.
 #
 #    docs = build the documentation.
 #
-#    tools = build the Legato-specific build tools.
+#    tools = just build the host tools.
 #
 #    release = build and package a release.
 #
+#    sdk = build and package a "software development kit" containing the build tools.
+#
 # To enable coverage testing, run make with "TEST_COVERAGE=1" on the command-line.
+#
+# To get more details from the build as it progresses, run make with "VERBOSE=1".
 #
 # Targets to be built for release can be selected with RELEASE_TARGETS.
 #
@@ -24,15 +37,17 @@
 
 # List of target devices needed by the release process:
 ifndef RELEASE_TARGETS
-  RELEASE_TARGETS := ar7 ar86 wp7 wp85
+  RELEASE_TARGETS := ar7 ar86 wp85
 endif
 
 # List of target devices supported:
-TARGETS := localhost $(RELEASE_TARGETS) ar6 raspi virt
+TARGETS := localhost $(RELEASE_TARGETS) virt
 
 # By default, build for the localhost and build the documentation.
 .PHONY: default
-default: localhost docs
+default:
+	$(MAKE) localhost
+	$(MAKE) docs
 
 # Define the LEGATO_ROOT environment variable.
 export LEGATO_ROOT := $(CURDIR)
@@ -47,6 +62,7 @@ export LE_SVCDIR_SERVER_SOCKET_NAME := $(LE_RUNTIME_DIR)serviceDirectoryServer
 export LE_SVCDIR_CLIENT_SOCKET_NAME := $(LE_RUNTIME_DIR)serviceDirectoryClient
 
 # Define paths to various platform adaptors' directories.
+AT_MANAGER_DIR := $(LEGATO_ROOT)/components/atManager
 AUDIO_PA_DIR := $(LEGATO_ROOT)/components/audio/platformAdaptor
 MODEM_PA_DIR := $(LEGATO_ROOT)/components/modemServices/platformAdaptor
 GNSS_PA_DIR := $(LEGATO_ROOT)/components/positioning/platformAdaptor
@@ -54,64 +70,9 @@ AVC_PA_DIR := $(LEGATO_ROOT)/components/airVantage/platformAdaptor
 SECSTORE_PA_DIR := $(LEGATO_ROOT)/components/secStore/platformAdaptor
 FWUPDATE_PA_DIR := $(LEGATO_ROOT)/components/fwupdate/platformAdaptor
 
-# Configure appropriate QMI platform adaptor build variables.
-#   Sources:
-export LEGATO_QMI_AUDIO_PA_SRC := $(AUDIO_PA_DIR)/mdm9x15/le_pa_audio
-export LEGATO_QMI_MODEM_PA_SRC := $(MODEM_PA_DIR)/qmi/le_pa
-export LEGATO_QMI_MODEM_PA_ECALL_SRC := $(MODEM_PA_DIR)/qmi/le_pa_ecall
-export LEGATO_QMI_GNSS_PA_SRC := $(GNSS_PA_DIR)/qmi/le_pa_gnss
-export LEGATO_QMI_AVC_PA_SRC := $(AVC_PA_DIR)/qmi/le_pa_avc
-export LEGATO_QMI_SECSTORE_PA_SRC := $(SECSTORE_PA_DIR)/qmi/le_pa_secStore
-export LEGATO_QMI_FWUPDATE_PA_SRC := $(FWUPDATE_PA_DIR)/qmi/le_pa_fwupdate
-
-#   Pre-built binaries:
-export LEGATO_QMI_AUDIO_PA_BIN = $(AUDIO_PA_DIR)/pre-built/$(TARGET)/le_pa_audio
-export LEGATO_QMI_MODEM_PA_BIN = $(MODEM_PA_DIR)/pre-built/$(TARGET)/le_pa
-export LEGATO_QMI_MODEM_PA_ECALL_BIN = $(MODEM_PA_DIR)/pre-built/$(TARGET)/le_pa_ecall
-export LEGATO_QMI_GNSS_PA_BIN = $(GNSS_PA_DIR)/pre-built/$(TARGET)/le_pa_gnss
-export LEGATO_QMI_AVC_PA_BIN = $(AVC_PA_DIR)/pre-built/$(TARGET)/le_pa_avc
-export LEGATO_QMI_SECSTORE_PA_BIN = $(SECSTORE_PA_DIR)/pre-built/$(TARGET)/le_pa_secStore
-export LEGATO_QMI_FWUPDATE_PA_BIN = $(FWUPDATE_PA_DIR)/pre-built/$(TARGET)/le_pa_fwupdate
-
-#   If the QMI PA sources are not available, use the pre-built binaries.
-ifneq (,$(wildcard $(LEGATO_QMI_AUDIO_PA_SRC)/*))
-  export LEGATO_QMI_AUDIO_PA = $(LEGATO_QMI_AUDIO_PA_SRC)
-else
-  export LEGATO_QMI_AUDIO_PA = $(LEGATO_QMI_AUDIO_PA_BIN)
-endif
-ifneq (,$(wildcard $(LEGATO_QMI_MODEM_PA_SRC)/*))
-  export LEGATO_QMI_MODEM_PA = $(LEGATO_QMI_MODEM_PA_SRC)
-else
-  export LEGATO_QMI_MODEM_PA = $(LEGATO_QMI_MODEM_PA_BIN)
-endif
-ifneq (,$(wildcard $(LEGATO_QMI_MODEM_PA_ECALL_SRC)/*))
-  export LEGATO_QMI_MODEM_PA_ECALL = $(LEGATO_QMI_MODEM_PA_ECALL_SRC)
-else
-  export LEGATO_QMI_MODEM_PA_ECALL = $(LEGATO_QMI_MODEM_PA_ECALL_BIN)
-endif
-ifneq (,$(wildcard $(LEGATO_QMI_GNSS_PA_SRC)/*))
-  export LEGATO_QMI_GNSS_PA = $(LEGATO_QMI_GNSS_PA_SRC)
-else
-  export LEGATO_QMI_GNSS_PA = $(LEGATO_QMI_GNSS_PA_BIN)
-endif
-ifneq (,$(wildcard $(LEGATO_QMI_AVC_PA_SRC)/*))
-  export LEGATO_QMI_AVC_PA = $(LEGATO_QMI_AVC_PA_SRC)
-else
-  export LEGATO_QMI_AVC_PA = $(LEGATO_QMI_AVC_PA_BIN)
-endif
-ifneq (,$(wildcard $(LEGATO_QMI_SECSTORE_PA_SRC)/*))
-  export LEGATO_QMI_SECSTORE_PA = $(LEGATO_QMI_SECSTORE_PA_SRC)
-else
-  export LEGATO_QMI_SECSTORE_PA = $(LEGATO_QMI_SECSTORE_PA_BIN)
-endif
-ifneq (,$(wildcard $(LEGATO_QMI_FWUPDATE_PA_SRC)/*))
-  export LEGATO_QMI_FWUPDATE_PA = $(LEGATO_QMI_FWUPDATE_PA_SRC)
-else
-  export LEGATO_QMI_FWUPDATE_PA = $(LEGATO_QMI_FWUPDATE_PA_BIN)
-endif
-
 # Define the default platform adaptors to use if not otherwise specified for a given target.
 export LEGATO_AUDIO_PA = $(AUDIO_PA_DIR)/stub/le_pa_audio
+export LEGATO_UTIL_PA = $(AT_MANAGER_DIR)
 export LEGATO_MODEM_PA = $(MODEM_PA_DIR)/at/le_pa
 export LEGATO_MODEM_PA_ECALL = $(MODEM_PA_DIR)/stub/le_pa_ecall
 export LEGATO_GNSS_PA = $(GNSS_PA_DIR)/at/le_pa_gnss
@@ -125,6 +86,9 @@ USE_CLANG ?= 0
 # Default eCall build to be ON
 INCLUDE_ECALL ?= 1
 
+# Do not be verbose by default.
+export VERBOSE ?= 0
+
 # In case of release, override parameters
 ifeq ($(MAKECMDGOALS),release)
   # We never build for coverage testing when building a release.
@@ -133,149 +97,22 @@ endif
 
 # ========== TARGET-SPECIFIC VARIABLES ============
 
-FINDTOOLCHAIN := framework/tools/scripts/findtoolchain
-
 # If the user specified a goal other than "clean", ensure that all required target-specific vars
 # are defined.
 ifneq ($(MAKECMDGOALS),clean)
 
   HOST_ARCH := $(shell uname -m)
   TOOLS_ARCH ?= $(HOST_ARCH)
+  FINDTOOLCHAIN := framework/tools/scripts/findtoolchain
 
-  # LOCALHOST
-  localhost: export TARGET := localhost
-  localhost: export COMPILER_DIR = /usr/bin
+  include targetDefs
 
-  # AR6
-  ifndef AR6_TOOLCHAIN_DIR
-    ifeq ($(MAKECMDGOALS),ar6)
-      ar6: $(warning AR6_TOOLCHAIN_DIR not defined.  Using default.)
-    endif
-    ar6: export AR6_TOOLCHAIN_DIR := $(shell $(FINDTOOLCHAIN) ar6)
+  ifeq ($(USE_CLANG),1)
+    export TARGET_CC = $(COMPILER_DIR)/$(TOOLCHAIN_PREFIX)clang
+  else
+    export TARGET_CC = $(COMPILER_DIR)/$(TOOLCHAIN_PREFIX)gcc
   endif
-  ar6: export COMPILER_DIR = $(AR6_TOOLCHAIN_DIR)
-  ar6: export TARGET := ar6
-  ar6: export CMAKE_CONFIG := -DCMAKE_TOOLCHAIN_FILE=$(LEGATO_ROOT)/cmake/toolchain.yocto.cmake
 
-  # AR7
-  ifndef AR7_TOOLCHAIN_DIR
-    ifeq ($(MAKECMDGOALS),ar7)
-      ar7: $(warning AR7_TOOLCHAIN_DIR not defined.  Using default.)
-    endif
-    export AR7_TOOLCHAIN_DIR := $(shell $(FINDTOOLCHAIN) ar7)
-  endif
-  export AR7_TOOLCHAIN_PREFIX = arm-poky-linux-gnueabi-
-  ar7: export COMPILER_DIR = $(AR7_TOOLCHAIN_DIR)
-  ar7: export TARGET := ar7
-  ar7: export LEGATO_AUDIO_PA = $(LEGATO_QMI_AUDIO_PA)
-  ar7: export LEGATO_MODEM_PA = $(LEGATO_QMI_MODEM_PA)
-  ifeq ($(INCLUDE_ECALL),1)
-    ar7: export LEGATO_MODEM_PA_ECALL = $(LEGATO_QMI_MODEM_PA_ECALL)
-  endif
-  ar7: export LEGATO_GNSS_PA = $(LEGATO_QMI_GNSS_PA)
-  ar7: export LEGATO_AVC_PA = $(LEGATO_QMI_AVC_PA)
-  ar7: export LEGATO_SECSTORE_PA = $(LEGATO_QMI_SECSTORE_PA)
-  ar7: export LEGATO_FWUPDATE_PA = $(LEGATO_QMI_FWUPDATE_PA)
-  ar7: export CMAKE_CONFIG := -DCMAKE_TOOLCHAIN_FILE=$(LEGATO_ROOT)/cmake/toolchain.yocto.cmake
-
-  # AR86
-  ifndef AR86_TOOLCHAIN_DIR
-    ifeq ($(MAKECMDGOALS),ar86)
-      ar86: $(warning AR86_TOOLCHAIN_DIR not defined.  Using default.)
-    endif
-    export AR86_TOOLCHAIN_DIR := $(shell $(FINDTOOLCHAIN) ar86)
-  endif
-  export AR86_TOOLCHAIN_PREFIX = arm-poky-linux-gnueabi-
-  ar86: export COMPILER_DIR = $(AR86_TOOLCHAIN_DIR)
-  ar86: export TARGET := ar86
-  ar86: export LEGATO_AUDIO_PA = $(LEGATO_QMI_AUDIO_PA)
-  ar86: export LEGATO_MODEM_PA = $(LEGATO_QMI_MODEM_PA)
-  ifeq ($(INCLUDE_ECALL),1)
-    ar86: export LEGATO_MODEM_PA_ECALL = $(LEGATO_QMI_MODEM_PA_ECALL)
-  endif
-  ar86: export LEGATO_GNSS_PA = $(LEGATO_QMI_GNSS_PA)
-  ar86: export LEGATO_AVC_PA = $(LEGATO_QMI_AVC_PA)
-  ar86: export LEGATO_SECSTORE_PA = $(LEGATO_QMI_SECSTORE_PA)
-  ar86: export LEGATO_FWUPDATE_PA = $(LEGATO_QMI_FWUPDATE_PA)
-  ar86: export CMAKE_CONFIG := -DCMAKE_TOOLCHAIN_FILE=$(LEGATO_ROOT)/cmake/toolchain.yocto.cmake
-
-  # WP7
-  ifndef WP7_TOOLCHAIN_DIR
-    ifeq ($(MAKECMDGOALS),wp7)
-      wp7: $(warning WP7_TOOLCHAIN_DIR not defined.  Using default.)
-    endif
-    export WP7_TOOLCHAIN_DIR := $(shell $(FINDTOOLCHAIN) wp7)
-  endif
-  export WP7_TOOLCHAIN_PREFIX = arm-poky-linux-gnueabi-
-  wp7: export COMPILER_DIR = $(WP7_TOOLCHAIN_DIR)
-  wp7: export TARGET := wp7
-  wp7: export LEGATO_AUDIO_PA = $(LEGATO_QMI_AUDIO_PA)
-  wp7: export LEGATO_MODEM_PA = $(LEGATO_QMI_MODEM_PA)
-  wp7: export LEGATO_GNSS_PA = $(LEGATO_QMI_GNSS_PA)
-  wp7: export LEGATO_AVC_PA = $(LEGATO_QMI_AVC_PA)
-  wp7: export LEGATO_SECSTORE_PA = $(LEGATO_QMI_SECSTORE_PA)
-  wp7: export LEGATO_FWUPDATE_PA = $(LEGATO_QMI_FWUPDATE_PA)
-  wp7: export CMAKE_CONFIG := -DCMAKE_TOOLCHAIN_FILE=$(LEGATO_ROOT)/cmake/toolchain.yocto.cmake
-
-  # WP85
-  ifndef WP85_TOOLCHAIN_DIR
-    ifeq ($(MAKECMDGOALS),wp85)
-      wp85: $(warning WP85_TOOLCHAIN_DIR not defined.  Using default.)
-    endif
-    export WP85_TOOLCHAIN_DIR := $(shell $(FINDTOOLCHAIN) wp85)
-  endif
-  wp85: export COMPILER_DIR = $(WP85_TOOLCHAIN_DIR)
-  wp85: export TARGET := wp85
-  wp85: export LEGATO_MODEM_PA = $(LEGATO_QMI_MODEM_PA)
-  wp85: export LEGATO_GNSS_PA = $(LEGATO_QMI_GNSS_PA)
-  wp85: export LEGATO_AVC_PA = $(LEGATO_QMI_AVC_PA)
-  wp85: export LEGATO_SECSTORE_PA = $(LEGATO_QMI_SECSTORE_PA)
-  wp85: export LEGATO_FWUPDATE_PA = $(LEGATO_QMI_FWUPDATE_PA)
-  wp85: export CMAKE_CONFIG := -DCMAKE_TOOLCHAIN_FILE=$(LEGATO_ROOT)/cmake/toolchain.yocto.cmake
-
-  # Raspberry Pi
-  ifndef RASPI_TOOLCHAIN_DIR
-    ifeq ($(MAKECMDGOALS),raspi)
-      raspi: $(error RASPI_TOOLCHAIN_DIR not defined.)
-    endif
-  endif
-  raspi: export COMPILER_DIR := $(RASPI_TOOLCHAIN_DIR)
-  raspi: export TARGET := raspi
-  raspi: export CMAKE_CONFIG := -DCMAKE_TOOLCHAIN_FILE=$(LEGATO_ROOT)/cmake/toolchain.yocto.cmake
-
-  # Virtual platform
-  ifeq ($(MAKECMDGOALS),virt)
-    ifndef VIRT_TARGET_ARCH
-      export VIRT_TARGET_ARCH := arm
-    endif
-
-    ifndef VIRT_TOOLCHAIN_DIR
-      virt: $(warning VIRT_TOOLCHAIN_DIR not defined.  Using default.)
-      export VIRT_TOOLCHAIN_DIR := $(shell $(FINDTOOLCHAIN) virt_${VIRT_TARGET_ARCH})
-    endif
-
-    ifndef TOOLCHAIN_PREFIX
-      ifeq ($(VIRT_TARGET_ARCH),x86)
-        export TOOLCHAIN_PREFIX := i586-poky-linux-
-      else
-        export TOOLCHAIN_PREFIX := arm-poky-linux-gnueabi-
-      endif
-    endif
-
-    ifndef VIRT_TOOLCHAIN_PREFIX
-      export VIRT_TOOLCHAIN_PREFIX := ${TOOLCHAIN_PREFIX}
-    endif
-  endif
-  virt: export CMAKE_CONFIG := -DCMAKE_TOOLCHAIN_FILE=$(LEGATO_ROOT)/cmake/toolchain.yocto.cmake -DTOOLCHAIN_PREFIX=$(TOOLCHAIN_PREFIX)
-  virt: export COMPILER_DIR := $(VIRT_TOOLCHAIN_DIR)
-  virt: export TARGET := virt
-  virt: export LEGATO_AUDIO_PA := $(AUDIO_PA_DIR)/simu/le_pa_audio
-  virt: export LEGATO_MODEM_PA := $(MODEM_PA_DIR)/simu/le_pa
-  virt: export LEGATO_GNSS_PA := $(GNSS_PA_DIR)/simu/le_pa_gnss
-  virt: export LEGATO_AVC_PA = $(AVC_PA_DIR)/simu/le_pa_avc
-  virt: export LEGATO_SECSTORE_PA = $(SECSTORE_PA_DIR)/simu/le_pa_secStore
-  virt: export LEGATO_FWUPDATE_PA = $(FWUPDATE_PA_DIR)/simu/le_pa_fwupdate
-  virt: export PLATFORM_SIMULATION := 1
 endif
 
 
@@ -284,243 +121,169 @@ endif
 # Tell make that the targets are not actual files.
 .PHONY: $(TARGETS)
 
-
-# The rule to make each target is: build it, stage it, and finally package it.
-$(TARGETS): %: build_% stage_% package_%
-
+# The rule to make each target is: build the system and stage for cwe image generation
+# in build/$TARGET/staging.
+# This will also cause the host tools, framework, and target tools to be built, since those things
+# depend on them.
+$(TARGETS): %: system_% stage_%
 
 # Cleaning rule.
 .PHONY: clean
 clean:
 	rm -rf build Documentation* bin doxygen.*.log doxygen.*.err
 	rm -f framework/doc/toolsHost.dox framework/doc/toolsHost_*.dox
-	rm -rf interfaces/config/c/configTypes.h \
-		   interfaces/configAdmin/c/configAdminTypes.h
+	rm -f sources.md5
 
 # Version related rules.
+ifndef LEGATO_VERSION
+  export LEGATO_VERSION := $(shell git describe --tags 2> /dev/null)
+endif
+
+# Source code directories and files to include in the MD5 sum in the version and package.properties.
+FRAMEWORK_SOURCES = framework \
+					components \
+					interfaces \
+					apps/platformServices \
+					apps/tools \
+					targetFiles \
+					$(wildcard Makefile*) \
+					$(wildcard targetDefs*) \
+					CMakeLists.txt
+
+.PHONY: sources.md5
+sources.md5:
+	# Generate an MD5 hash of everything in the source directories.
+	find $(FRAMEWORK_SOURCES) -type f | sort | while read filePath ; \
+	do \
+	  echo "$$filePath" && \
+	  cat "$$filePath" ; \
+	done | md5sum | awk '{ print $$1 }' > sources.md5
+
 .PHONY: version
 version:
-	$(eval GIT_VERSION := $(shell git describe --tags 2> /dev/null))
-	$(eval CURRENT_VERSION := $(shell cat version 2> /dev/null))
-	@if [ -n "$(GIT_VERSION)" ] ; then \
-		if test "$(GIT_VERSION)" != "$(CURRENT_VERSION)" ; then \
-			echo "Version: $(GIT_VERSION)" ; \
-			echo "$(GIT_VERSION)" > version  ; \
-		fi \
+	@if [ -n "$(LEGATO_VERSION)" ] ; then \
+		echo "$(LEGATO_VERSION)" > $@  ; \
 	elif ! [ -e version ] ; then \
-		echo "unknown" > version ; \
+		echo "unknown" > $@ ; \
 	fi
 
-package.properties: version
-	@echo "version=`cat version`" > package.properties
+package.properties: version sources.md5
+	@echo "version=`cat version`" > $@
+	@echo "md5=`cat sources.md5`" >> $@
+	@cat $@
 
 # Goal for building all documentation.
 .PHONY: docs user_docs implementation_docs
 docs: user_docs implementation_docs
 
-# When building the docs, use the "localhost" target device type.
-user_docs: TARGET := localhost
-implementation_docs: TARGET := localhost
-
 # Docs for people who don't want to be distracted by the internal implementation details.
-user_docs: localhost
+user_docs: localhost build/localhost/Makefile
 	$(MAKE) -C build/localhost user_docs
-	ln -sf build/localhost/bin/doc/user/html Documentation
+	ln -sf build/doc/user/html Documentation
 
-user_pdf: localhost
+user_pdf: localhost build/localhost/Makefile
 	$(MAKE) -C build/localhost user_pdf
 	ln -sf build/localhost/bin/doc/user/legato-user.pdf Documentation.pdf
 
 # Docs for people who want or need to know the internal implementation details.
-implementation_docs: localhost
+implementation_docs: localhost build/localhost/Makefile
 	$(MAKE) -C build/localhost implementation_docs
 
-implementation_pdf: localhost
+implementation_pdf: localhost build/localhost/Makefile
 	$(MAKE) -C build/localhost implementation_pdf
+
+# Rule building the unit test covergae report
+coverage_report:
+	$(MAKE) -C build/localhost coverage_report
 
 # Rule for how to build the build tools.
 .PHONY: tools
 tools: version
-	# Create the build/tools directory, run cmake in there to construct Makefiles, then run make.
-	mkdir -p build/tools && \
-		cd build/tools && \
-		cmake ../../framework/tools/mkTools \
-			-DUSE_CLANG=$(USE_CLANG) \
-			-DHOST_ARCH=$(HOST_ARCH) \
-			-DTOOLS_ARCH=$(TOOLS_ARCH) && \
-		make
-	# Create the ./bin directory and create symlinks to tools in there.
-	mkdir -p bin
-	ln -sf $(CURDIR)/build/tools/bin/mk* bin/
-	ln -sf mk bin/mkcomp
-	ln -sf mk bin/mkexe
-	ln -sf mk bin/mkapp
-	ln -sf mk bin/mksys
-	ln -sf $(CURDIR)/framework/tools/scripts/* bin/
-	ln -sf $(CURDIR)/framework/tools/ifgen/ifgen bin/
-    # ninja is called ninja-build on some distros (e.g., Fedora).
-	@echo -n "Using ninja installed at: " ;\
-	if ! which ninja ;\
-	then \
-		if which ninja-build ;\
-		then \
-			ln -s `which ninja-build` bin/ninja ;\
-		else \
-			echo "***ERROR: Ninja build tool not found." 1>&2 ;\
-			exit 1;\
-		fi;\
-	fi
+	$(MAKE) -f Makefile.hostTools
 
+# Rule to create a "software development kit" from the tools.
 .PHONY: sdk
 sdk: tools
 	createsdk
 
-# Rule for creating a build directory
-build/%/bin/apps build/%/bin/lib:
-	mkdir -p $@
+# Rule building the framework for a given target.
+FRAMEWORK_TARGETS = $(foreach target,$(TARGETS),framework_$(target))
+.PHONY: $(FRAMEWORK_TARGETS)
+$(FRAMEWORK_TARGETS): tools package.properties
+	$(MAKE) -f Makefile.framework
 
-# Rule for running the build for a given target using the Makefiles generated by CMake.
-# This depends on the build tools and the CMake-generated Makefile.
-build_%: tools version package.properties build/%/Makefile
-	make -C build/$(TARGET)
-	make -C build/$(TARGET) samples
+# Rule building the tests for a given target.
+TESTS_TARGETS = $(foreach target,$(TARGETS),tests_$(target))
+.PHONY: $(TESTS_TARGETS)
+$(TESTS_TARGETS):tests_%: % framework_% build/%/Makefile
+	$(MAKE) -C build/$(TARGET)
 
 # Rule for invoking CMake to generate the Makefiles inside the build directory.
 # Depends on the build directory being there.
-$(foreach target,$(TARGETS),build/$(target)/Makefile): build/%/Makefile: build/%/bin/apps \
-									 build/%/bin/lib
-	# Configure Legato
+# NOTE: CMake is only used to build tests and samples.
+$(foreach target,$(TARGETS),build/$(target)/Makefile):
 	export PATH=$(COMPILER_DIR):$(PATH) && \
 		cd `dirname $@` && \
 		cmake ../.. \
+			-DLEGATO_ROOT=$(LEGATO_ROOT) \
 			-DLEGATO_TARGET=$(TARGET) \
 			-DTEST_COVERAGE=$(TEST_COVERAGE) \
 			-DINCLUDE_ECALL=$(INCLUDE_ECALL) \
 			-DUSE_CLANG=$(USE_CLANG) \
 			-DPLATFORM_SIMULATION=$(PLATFORM_SIMULATION) \
-			$(CMAKE_CONFIG)
-
-
-# ========== STAGING AND PACKAGING RULES ============
-
-# "Staging" = constructing on the local host a copy of (a part of) the target device file system.
-# Each staging rule is named "stage_X", where the X is replaced with the name of the target.
-# For example, the staging rule for the ar7 target is "stage_ar7".
-
-# "Packaging" = constructing on the local host an installation package that can be given to the
-# on-target installer program to install the framework.
-# Each packaging rule is named "package_X", where the X is replaced with the name of the target.
-
-# ==== LOCALHOST ====
-
-# No staging is required for localhost builds at this time.
-.PHONY: stage_localhost
-stage_localhost:
-
-# No packaging is required for localhost builds at this time.
-.PHONY: package_localhost
-package_localhost:
-
-# ==== EMBEDDED ====
-
-# List of executables to install from the build's bin directory to the /usr/local/bin directory
-# on the target.
-BIN_INSTALL_LIST =  $(shell ls build/$(TARGET)/bin)
-
-# List of libraries to install from the build's bin/lib directory to the /usr/local/lib directory
-# on the target.
-LIB_INSTALL_LIST =  $(shell ls build/$(TARGET)/bin/lib)
-
-# List of applications to install from the build's bin/apps directory to the /usr/local/bin/apps
-# directory on the target.
-APP_INSTALL_LIST =  $(shell ls build/$(TARGET)/bin/apps --ignore='manifest-*.app')
+			-DTOOLCHAIN_PREFIX=$(TOOLCHAIN_PREFIX) \
+			-DCOMPILER_DIR=$(COMPILER_DIR) \
+			-DCMAKE_TOOLCHAIN_FILE=$(LEGATO_ROOT)/cmake/toolchain.yocto.cmake
 
 # Construct the staging directory with common files for embedded targets.
+# Staging directory will become /mnt/legato/ in cwe
 .PHONY: stage_embedded
 stage_embedded:
 	# Make sure the TARGET environment variable is set.
 	if [ -z "$(TARGET)" ]; then exit -1; fi
 	# Prep the staging area to make sure there are no leftover files from last build.
 	rm -rf build/$(TARGET)/staging
-	# Create the /opt/legato directory.
-	install -d build/$(TARGET)/staging/opt/legato
-	# Install binaries in /usr/local/bin.
-	install -d build/$(TARGET)/staging/usr/local/bin
-	install targetFiles/shared/bin/* -t build/$(TARGET)/staging/usr/local/bin
-	for executable in $(BIN_INSTALL_LIST) ; \
+	# Create the directory.
+	mkdir -p build/$(TARGET)/staging/apps
+	outputDir=build/$(TARGET)/staging && \
+	stagingDir="build/$(TARGET)/system/staging" && \
+	echo "Copying system staging directory '$$stagingDir' to '$$outputDir/system'." && \
+	cp -r -P $$stagingDir "$$outputDir/system" && \
+	echo "Adding apps to '$$outputDir'." && \
+	for appName in `ls "$$outputDir/system/apps/"` ; \
 	do \
-	    if [ -L "build/$(TARGET)/bin/$$executable" ]; then \
-	        cp -P build/$(TARGET)/bin/$$executable build/$(TARGET)/staging/usr/local/bin ; \
-	    else \
-	        install -p build/$(TARGET)/bin/$$executable -D build/$(TARGET)/staging/usr/local/bin ; \
-	    fi \
+		md5=`readlink "$$outputDir/system/apps/$$appName" | sed 's#^/legato/apps/##'` && \
+		if grep -e `printf '"md5":"%s"' $$md5` build/$(TARGET)/system.$(TARGET).update > /dev/null ; \
+		then \
+			echo "  $$appName ($$md5)" && \
+			cp -r -P build/$(TARGET)/system/app/$$appName/staging "$$outputDir"/apps/$$md5 ; \
+		else \
+			echo "  $$appName ($$md5) <-- EXCLUDED FROM .CWE (must be preloaded on target)" ; \
+		fi \
 	done
-	# Install libraries in /usr/local/lib.
-	mkdir -p build/$(TARGET)/staging/usr/local/lib
-	for library in $(LIB_INSTALL_LIST) ; \
-	do \
-	    cp -P build/$(TARGET)/bin/lib/$$library build/$(TARGET)/staging/usr/local/lib ; \
-	done
-	# Install bundled framework apps in /usr/local/bin/apps.
-	mkdir -p build/$(TARGET)/staging/usr/local/bin/apps
-	for app in $(APP_INSTALL_LIST) ; \
-	do \
-	    install build/$(TARGET)/bin/apps/$$app -D build/$(TARGET)/staging/usr/local/bin/apps ; \
-	done
-	# Install version file and the package.properties file.
-	install version build/$(TARGET)/staging/opt/legato
-	install package.properties build/$(TARGET)/staging/opt/legato
-	# Generate an MD5 hash of everything in the staging directory
-	# and add it to the version and package.properties files.
-	$(eval STAGING_DIR := build/$(TARGET)/staging)
-	$(eval VERSION_FILE := $(STAGING_DIR)/opt/legato/version)
-	$(eval PROPERTIES_FILE := $(STAGING_DIR)/opt/legato/package.properties)
-	$(eval VERSION := $(shell cat version))
-	echo "$(VERSION)"
-	find $(STAGING_DIR) -type f | sort | xargs cat | md5sum | awk '{ print $$1 }' > build/$(TARGET)/staging.md5
-	echo "$(VERSION)_$$(cat build/$(TARGET)/staging.md5)" > $(VERSION_FILE)
-	echo "md5=$$(cat build/$(TARGET)/staging.md5)" >> $(PROPERTIES_FILE)
-	cat $(PROPERTIES_FILE)
+	cp -r targetFiles/shared/bin build/$(TARGET)/staging/system/
+	# Print some diagnostic messages.
+	@echo "== built system's info.properties: =="
+	cat build/$(TARGET)/staging/system/info.properties
 
-# Construct the framework installation package.
-.PHONY: package_embedded
-package_embedded:
-	# Create a tarball containing everything in the staging area.
-	tar -C build/$(TARGET)/staging -cf build/$(TARGET)/legato-runtime.tar .
+.PHONY: stage_mklegatoimg
+stage_mklegatoimg:
+	mklegatoimg -t $(TARGET) -d build/$(TARGET)/staging -o build/$(TARGET)
 
-# ==== AR7, AR86 and WP7 (9x15-based Sierra Wireless modules) ====
+# ==== localhost needs no staging. Just a blank rule ====
 
-.PHONY: stage_ar7 stage_wp7 stage_ar86 stage_wp85
-stage_ar7 stage_wp7 stage_ar86 stage_wp85: stage_embedded stage_9x15
+.PHONY: stage_localhost
+stage_localhost:
+
+# ==== AR7, AR86 and WP85 (9x15-based Sierra Wireless modules) ====
 
 .PHONY: stage_9x15
 stage_9x15:
-	# Install default startup scripts.
-	install -d build/$(TARGET)/staging/mnt/flash/startupDefaults
-	install targetFiles/mdm-9x15/startup/* -t build/$(TARGET)/staging/mnt/flash/startupDefaults
+	install targetFiles/mdm9x15/startup/start build/$(TARGET)/staging
+	install targetFiles/mdm9x15/startup/startupScript build/$(TARGET)/staging
 
-.PHONY: package_ar7 package_wp7 package_ar86 package_wp85
-package_ar7 package_wp7 package_ar86 package_wp85: package_embedded package_9x15
-
-.PHONY: package_9x15
-package_9x15:
-	mklegatoimg -t $(TARGET) -d build/$(TARGET)/staging -o build/$(TARGET)
-
-# ==== AR6 (Ykem-based Sierra Wireless modules) ====
-
-.PHONY: stage_ar6
-stage_ar6: stage_embedded
-
-.PHONY: package_ar6
-package_ar6: package_embedded
-
-# ==== Raspberry Pi ====
-
-.PHONY: stage_raspi
-stage_raspi: stage_embedded
-
-.PHONY: package_raspi
-package_raspi: package_embedded
+.PHONY: stage_ar7 stage_ar86 stage_wp85
+stage_ar7 stage_ar86 stage_wp85: stage_embedded stage_9x15 stage_mklegatoimg
 
 # ==== Virtual ====
 
@@ -529,9 +292,6 @@ stage_virt: stage_embedded
 	# Install default startup scripts.
 	install -d build/$(TARGET)/staging/mnt/flash/startupDefaults
 	install targetFiles/virt/startup/* -t build/$(TARGET)/staging/mnt/flash/startupDefaults
-
-.PHONY: package_virt
-package_virt: package_embedded
 
 # ========== RELEASE ============
 
@@ -543,3 +303,23 @@ release: clean
 	for target in localhost $(RELEASE_TARGETS) docs; do set -e; make $$target; done
 	releaselegato -t "$(shell echo ${RELEASE_TARGETS} | tr ' ' ',')"
 
+# ========== PROTOTYPICAL SYSTEM ============
+
+MKSYS_FLAGS =
+
+ifeq ($(VERBOSE),1)
+  MKSYS_FLAGS += -v
+endif
+
+# Define the default sdef file to use
+SDEF_TO_USE ?= default.sdef
+
+SYSTEM_TARGETS = $(foreach target,$(TARGETS),system_$(target))
+.PHONY: $(SYSTEM_TARGETS)
+$(SYSTEM_TARGETS):system_%: framework_%
+	rm -f system.sdef
+	ln -s $(SDEF_TO_USE) system.sdef
+	mksys -t $(TARGET) -w build/$(TARGET)/system -o build/$(TARGET) system.sdef \
+			-i interfaces/modemServices \
+			-i interfaces/positioning \
+			$(MKSYS_FLAGS)

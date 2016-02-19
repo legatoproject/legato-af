@@ -20,9 +20,6 @@
  * - @c setting allows the AV server to set the value, and can be read by an app.
  * - @c command allows the AV server to invoke a command or function in the app.
  *
- * Currently, only variable and setting fields are supported; command fields will
- * be supported in the future.
- *
  * All fields have names. Variable and setting fields also have a type. The possible field types,
  * along with the default value are:
  * - string (empty string)
@@ -58,14 +55,20 @@
  * - @c setting called when the field has been updated by the AV server
  * with a new value. The app can use the appropriate get function to retrieve the new value.
  * - @c command called when the AV server wants to invoke a command. The
- * app should perform an appropriate action or call a function to execute this command. Currently,
- * registering a handler is only supported for setting fields; variable and command fields will be
- * added in the future.
+ * app should perform an appropriate action or call a function to execute this command. 
+ * 
+ * Currently, registering a handler is only supported for setting and command fields; 
+ * variable fields will be added in the future.
  *
  * Leaving it optional to register handlers for variable and setting fields allows an
  * app to decide how it wants to access variable and setting fields. It can decide to
  * only do something in response to the AV server, or it can work independently of the AV server
  * updating variables when it has a new value, and reading settings only when it needs the value.
+ *
+ * @section le_avdata_fatal Fatal Behavior
+ *
+ * An invalid asset name or field name is treated as a fatal error (i.e. non-recoverable)
+ * and will result in the client app being terminated.
  *
  * <HR>
  *

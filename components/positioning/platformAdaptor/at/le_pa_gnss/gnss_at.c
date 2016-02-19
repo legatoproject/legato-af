@@ -81,7 +81,8 @@ static void PrintNmea
 )
 {
     int i;
-    for (i=0;i<size;i++) {
+    for (i=0;i<size;i++)
+    {
         LE_DEBUG("L%d: >%s<",
                  i+1,
                  atcmd_GetLineParameter(txtPtr,i+1));
@@ -106,10 +107,12 @@ static bool NmeaLineParsParam
 
     while (LineSize)
     {
-        if ( linePtr[LineSize] == ',' ) {
+        if ( linePtr[LineSize] == ',' )
+        {
             linePtr[LineSize] = '\0';
             cpt++;
-        } else if ( linePtr[LineSize] == '*' ) {
+        } else if ( linePtr[LineSize] == '*' )
+        {
             linePtr[LineSize] = '\0';
             cpt++;
         }
@@ -158,7 +161,8 @@ static void ParseTime
     uint32_t timeSize = strlen(timeStringPtr);
     char tmp[4]={0};
 
-    if (timeSize>1) {
+    if (timeSize>1)
+     {
         tmp[0]= timeStringPtr[0];
         tmp[1]= timeStringPtr[1];
         tmp[2]='\0';
@@ -167,7 +171,8 @@ static void ParseTime
         timePtr->hours = 0;
     }
 
-    if (timeSize>3) {
+    if (timeSize>3)
+    {
         tmp[0]= timeStringPtr[2];
         tmp[1]= timeStringPtr[3];
         tmp[2]='\0';
@@ -176,7 +181,8 @@ static void ParseTime
         timePtr->minutes = 0;
     }
 
-    if (timeSize>5) {
+    if (timeSize>5)
+    {
         tmp[0]= timeStringPtr[4];
         tmp[1]= timeStringPtr[5];
         tmp[2]='\0';
@@ -185,7 +191,8 @@ static void ParseTime
         timePtr->seconds = 0;
     }
 
-    if (timeSize>6) {
+    if (timeSize>6)
+    {
         strncpy(tmp,&timeStringPtr[7],4);
         timePtr->milliseconds = (uint16_t) atoi(tmp);
     } else {
@@ -208,7 +215,8 @@ static void ParseDate
     uint32_t timeSize = strlen(dateStringPtr);
     char tmp[4]={0};
 
-    if (timeSize>1) {
+    if (timeSize>1)
+    {
         tmp[0]= dateStringPtr[0];
         tmp[1]= dateStringPtr[1];
         tmp[2]='\0';
@@ -217,7 +225,8 @@ static void ParseDate
         datePtr->day = 0;
     }
 
-    if (timeSize>3) {
+    if (timeSize>3)
+     {
         tmp[0]= dateStringPtr[2];
         tmp[1]= dateStringPtr[3];
         tmp[2]='\0';
@@ -226,7 +235,8 @@ static void ParseDate
         datePtr->month = 0;
     }
 
-    if (timeSize>5) {
+    if (timeSize>5)
+    {
         tmp[0]= dateStringPtr[4];
         tmp[1]= dateStringPtr[5];
         tmp[2]='\0';
@@ -246,17 +256,17 @@ static void ParseLatitude
 (
     const char*            latitudePtr,
     const char*            directionPtr,
-    pa_Gnss_Position_Ref_t posRef
+    pa_Gnss_Position_t*    posPtr
 )
 {
-    posRef->latitude = (int32_t) (10000*atof(latitudePtr));
+    posPtr->latitude = (int32_t) (10000*atof(latitudePtr));
 
     if ( strcmp (directionPtr,"S" )==0 )
     {
-        posRef->latitude = -posRef->latitude;
+        posPtr->latitude = -posPtr->latitude;
     }
 
-    posRef->latitudeValid = true;
+    posPtr->latitudeValid = true;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -269,17 +279,17 @@ static void ParseLongitude
 (
     const char*            longitudePtr,
     const char*            directionPtr,
-    pa_Gnss_Position_Ref_t posRef
+    pa_Gnss_Position_t* posPtr
 )
 {
-    posRef->longitude =  (int32_t) (10000*atof(longitudePtr));
+    posPtr->longitude =  (int32_t) (10000*atof(longitudePtr));
 
     if ( strcmp (directionPtr,"W" )==0 )
     {
-        posRef->longitude = -posRef->longitude;
+        posPtr->longitude = -posPtr->longitude;
     }
 
-    posRef->longitudeValid = true;
+    posPtr->longitudeValid = true;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -305,12 +315,12 @@ static uint16_t ParseDop
 static void ParseAltitude
 (
     const char*            altitudePtr,
-    pa_Gnss_Position_Ref_t posRef
+    pa_Gnss_Position_t* posPtr
 )
 {
-    posRef->altitude = (int32_t) (100*10*atof(altitudePtr));
+    posPtr->altitude = (int32_t) (100*10*atof(altitudePtr));
 
-    posRef->altitudeValid = true;
+    posPtr->altitudeValid = true;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -322,12 +332,12 @@ static void ParseAltitude
 static void ParseSpeed
 (
     const char*             speedPtr,
-    pa_Gnss_Position_Ref_t  posRef
+    pa_Gnss_Position_t*  posPtr
 )
 {
-    posRef->hSpeed = (uint32_t) (atof(speedPtr)*100);
+    posPtr->hSpeed = (uint32_t) (atof(speedPtr)*100);
 
-    posRef->hSpeedValid = true;
+    posPtr->hSpeedValid = true;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -339,12 +349,12 @@ static void ParseSpeed
 static void ParseTrack
 (
     const char*             trackPtr,
-    pa_Gnss_Position_Ref_t  posRef
+    pa_Gnss_Position_t*  posPtr
 )
 {
-    posRef->track = (uint32_t) (atof(trackPtr)*10);
+    posPtr->direction = (uint32_t) (atof(trackPtr)*10);
 
-    posRef->trackValid = true;
+    posPtr->directionValid = true;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -356,12 +366,12 @@ static void ParseTrack
 static void ParseHeading
 (
     const char*             headingPtr,
-    pa_Gnss_Position_Ref_t  posRef
+    pa_Gnss_Position_t*  posPtr
 )
 {
-    posRef->heading = (uint32_t) (atof(headingPtr)*10);
+    posPtr->heading = (uint32_t) (atof(headingPtr)*10);
 
-    posRef->headingValid = true;
+    posPtr->headingValid = true;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -374,10 +384,10 @@ static void ParseHorizontalUncertainty
 (
     const char*             huncertaintyStringPtr,
     const char*             huncertaintyValidityPtr,
-    pa_Gnss_Position_Ref_t  posRef
+    pa_Gnss_Position_t*  posPtr
 )
 {
-    posRef->hUncertainty = (uint32_t) (10*atof(huncertaintyStringPtr));
+    posPtr->hUncertainty = (uint32_t) (10*atof(huncertaintyStringPtr));
 
     switch (atoi(huncertaintyValidityPtr))
     {
@@ -386,12 +396,12 @@ static void ParseHorizontalUncertainty
         case 5:
         case 6:
         {
-            posRef->hUncertaintyValid = true;
+            posPtr->hUncertaintyValid = true;
             break;
         }
         default:
         {
-            posRef->hUncertaintyValid = false;
+            posPtr->hUncertaintyValid = false;
         }
     }
 }
@@ -406,24 +416,24 @@ static void ParseVerticalUncertainty
 (
     const char*             vuncertaintyStringPtr,
     const char*             vuncertaintyValidityPtr,
-    pa_Gnss_Position_Ref_t  posRef
+    pa_Gnss_Position_t*  posPtr
 )
 {
-    posRef->vUncertainty = (uint32_t) (10*atof(vuncertaintyStringPtr));
+    posPtr->vUncertainty = (uint32_t) (10*atof(vuncertaintyStringPtr));
 
     switch (atoi(vuncertaintyValidityPtr))
     {
         case 4:
         case 6:
         {
-            posRef->vUncertaintyValid = true;
+            posPtr->vUncertaintyValid = true;
             break;
         }
         case 3:
         case 5:
         default:
         {
-            posRef->vUncertaintyValid = false;
+            posPtr->vUncertaintyValid = false;
         }
     }
 }
@@ -441,32 +451,35 @@ static void ParseVerticalUncertainty
 static le_result_t ConvertGga
 (
     char*                  linePtr,
-    pa_Gnss_Position_Ref_t posRef
+    pa_Gnss_Position_t* posPtr
 )
 {
     uint32_t numParam=0;
 
     LE_DEBUG("Convert gga %s",linePtr);
 
-    if (NmeaLineParsParam(linePtr,&numParam)==true)
+    if (NmeaLineParsParam(linePtr,&numParam) == true)
     {
         PrintNmea(linePtr,numParam);
 
-        if ( numParam >= 4 ) {
+        if ( numParam >= 4 )
+        {
             ParseLatitude(atcmd_GetLineParameter(linePtr,3),
                           atcmd_GetLineParameter(linePtr,4),
-                          posRef);
+                          posPtr);
         }
 
-        if ( numParam >= 6 ) {
+        if ( numParam >= 6 )
+        {
             ParseLongitude(atcmd_GetLineParameter(linePtr,5),
                            atcmd_GetLineParameter(linePtr,6),
-                           posRef);
+                           posPtr);
         }
 
-        if ( numParam >= 10 ) {
+        if ( numParam >= 10 )
+        {
             ParseAltitude(atcmd_GetLineParameter(linePtr,10),
-                          posRef);
+                          posPtr);
         }
     }
     else
@@ -490,32 +503,34 @@ static le_result_t ConvertGga
 static le_result_t ConvertRmc
 (
     char*                   linePtr,
-    pa_Gnss_Position_Ref_t  posRef
+    pa_Gnss_Position_t*  posPtr
 )
 {
     uint32_t numParam=0;
 
     LE_DEBUG("Convert rmc %s",linePtr);
 
-    if (NmeaLineParsParam(linePtr,&numParam)==true)
+    if (NmeaLineParsParam(linePtr,&numParam) == true)
     {
         PrintNmea(linePtr,numParam);
 
-        if ( numParam >= 2) {
-            ParseTime(atcmd_GetLineParameter(linePtr,2),&(posRef->time));
-            posRef->timeValid = true;
+        if ( numParam >= 2)
+        {
+            ParseTime(atcmd_GetLineParameter(linePtr,2),&(posPtr->time));
+            posPtr->timeValid = true;
         }
 
-        if ( numParam >= 10 ) {
-            ParseDate(atcmd_GetLineParameter(linePtr,10),&(posRef->date));
-            posRef->dateValid = true;
+        if ( numParam >= 10 )
+        {
+            ParseDate(atcmd_GetLineParameter(linePtr,10),&(posPtr->date));
+            posPtr->dateValid = true;
         }
     }
     else
-        {
+    {
         LE_DEBUG("This pattern is not expected");
-            return LE_FAULT;
-        }
+        return LE_FAULT;
+    }
 
     return LE_OK;
 }
@@ -532,40 +547,42 @@ static le_result_t ConvertRmc
 static le_result_t ConvertGsa
 (
     char*                   linePtr,
-    pa_Gnss_Position_Ref_t  posRef
+    pa_Gnss_Position_t*  posPtr
 )
 {
     uint32_t numParam=0;
 
     LE_DEBUG("Convert gsa %s",linePtr);
 
-    if (NmeaLineParsParam(linePtr,&numParam)==true)
+    if (NmeaLineParsParam(linePtr,&numParam) == true)
     {
         PrintNmea(linePtr,numParam);
 
-        if ( numParam >= 17 ) {
-            posRef->hdop = ParseDop(atcmd_GetLineParameter(linePtr,17));
-            if (posRef->hdop!=0)
+        if ( numParam >= 17 )
+        {
+            posPtr->hdop = ParseDop(atcmd_GetLineParameter(linePtr,17));
+            if (posPtr->hdop!=0)
             {
-                posRef->hdopValid = true;
-        }
+                posPtr->hdopValid = true;
+            }
         }
 
-        if ( numParam >= 18 ) {
-            posRef->vdop = ParseDop(atcmd_GetLineParameter(linePtr,18));
-            if (posRef->vdop!=0)
+        if ( numParam >= 18 )
         {
-                posRef->vdopValid = true;
+            posPtr->vdop = ParseDop(atcmd_GetLineParameter(linePtr,18));
+            if (posPtr->vdop!=0)
+        {
+                posPtr->vdopValid = true;
         }
         }
 
         return LE_OK;
     }
     else
-        {
+    {
         LE_DEBUG("This pattern is not expected");
-            return LE_FAULT;
-        }
+        return LE_FAULT;
+    }
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -580,27 +597,30 @@ static le_result_t ConvertGsa
 static le_result_t ConvertVtg
 (
     char*                   linePtr,
-    pa_Gnss_Position_Ref_t  posRef
+    pa_Gnss_Position_t*  posPtr
 )
 {
     uint32_t numParam=0;
 
     LE_DEBUG("Convert vtg %s",linePtr);
 
-    if (NmeaLineParsParam(linePtr,&numParam)==true)
+    if (NmeaLineParsParam(linePtr,&numParam) == true)
     {
         PrintNmea(linePtr,numParam);
 
-        if ( numParam >= 2 ) {
-            ParseTrack(atcmd_GetLineParameter(linePtr,2),posRef);
+        if ( numParam >= 2 )
+        {
+            ParseTrack(atcmd_GetLineParameter(linePtr,2),posPtr);
         }
 
-        if ( numParam >= 4 ) {
-            ParseHeading(atcmd_GetLineParameter(linePtr,4),posRef);
+        if ( numParam >= 4 )
+        {
+            ParseHeading(atcmd_GetLineParameter(linePtr,4),posPtr);
         }
 
-        if ( numParam >= 8 ) {
-            ParseSpeed(atcmd_GetLineParameter(linePtr,8),posRef);
+        if ( numParam >= 8 )
+        {
+            ParseSpeed(atcmd_GetLineParameter(linePtr,8),posPtr);
         }
 
         return LE_OK;
@@ -624,27 +644,29 @@ static le_result_t ConvertVtg
 static le_result_t ConvertSwi
 (
     char*                   linePtr,
-    pa_Gnss_Position_Ref_t  posRef
+    pa_Gnss_Position_t*  posPtr
 )
 {
     uint32_t numParam=0;
 
     LE_DEBUG("Convert swi %s",linePtr);
 
-    if (NmeaLineParsParam(linePtr,&numParam)==true)
+    if (NmeaLineParsParam(linePtr,&numParam) == true)
     {
         PrintNmea(linePtr,numParam);
 
-        if ( numParam >= 6 ) {
+        if ( numParam >= 6 )
+        {
             ParseHorizontalUncertainty(atcmd_GetLineParameter(linePtr,6),
                                        atcmd_GetLineParameter(linePtr,4),
-                                       posRef);
+                                       posPtr);
         }
 
-        if ( numParam >= 7 ) {
+        if ( numParam >= 7 )
+        {
             ParseVerticalUncertainty(atcmd_GetLineParameter(linePtr,7),
                                      atcmd_GetLineParameter(linePtr,4),
-                                     posRef);
+                                     posPtr);
         }
         return LE_OK;
     }
@@ -666,26 +688,26 @@ static le_result_t ConvertSwi
 //--------------------------------------------------------------------------------------------------
 static le_result_t ConvertPosition
 (
-    pa_Gnss_Position_Ref_t posRef
+    pa_Gnss_Position_t* posPtr
 )
 {
-    if (posRef==NULL)
+    if (posPtr==NULL)
     {
         return LE_FAULT;
     }
 
-    memset(posRef,0,sizeof(*posRef));
+    memset(posPtr,0,sizeof(*posPtr));
 
     if  (
-        (ConvertGga(NmeaGga,posRef)!=LE_OK)
+        (ConvertGga(NmeaGga,posPtr)!=LE_OK)
             ||
-        (ConvertRmc(NmeaRmc,posRef)!=LE_OK)
+        (ConvertRmc(NmeaRmc,posPtr)!=LE_OK)
             ||
-        (ConvertGsa(NmeaGsa,posRef)!=LE_OK)
+        (ConvertGsa(NmeaGsa,posPtr)!=LE_OK)
             ||
-        (ConvertVtg(NmeaVtg,posRef)!=LE_OK)
+        (ConvertVtg(NmeaVtg,posPtr)!=LE_OK)
             ||
-        (ConvertSwi(NmeaSwi,posRef)!=LE_OK)
+        (ConvertSwi(NmeaSwi,posPtr)!=LE_OK)
         )
     {
         LE_DEBUG("Cannot convert position");
@@ -766,7 +788,7 @@ static void GNSSUnsolHandler
         }
         else
         {
-            pa_Gnss_Position_Ref_t lastPositionPtr = le_mem_ForceAlloc(GnssPosPoolRef);
+            pa_Gnss_Position_t* lastPositionPtr = le_mem_ForceAlloc(GnssPosPoolRef);
             memcpy(lastPositionPtr, &LastPosition,sizeof(LastPosition));
             le_event_ReportWithRefCounting(GnssEventId, lastPositionPtr);
         }
@@ -969,7 +991,8 @@ static le_result_t GnssInit
     void
 )
 {
-    if (atports_GetInterface(ATPORT_COMMAND)==NULL) {
+    if (atports_GetInterface(ATPORT_COMMAND)==NULL)
+    {
         LE_WARN("gnss Module is not initialize in this session");
         return LE_FAULT;
     }
@@ -1002,7 +1025,8 @@ le_result_t pa_gnss_Init
     void
 )
 {
-    if (NmeaPortRef) {
+    if (NmeaPortRef)
+    {
         LE_WARN("gnss by AT command is already initialized");
         return LE_OK;
     }
@@ -1068,7 +1092,8 @@ le_result_t pa_gnss_Release
     le_mem_Release(atReqRef);
     le_mem_Release(respPtr);
 
-    if (NmeaPortRef==NULL) {
+    if (NmeaPortRef==NULL)
+    {
         LE_WARN("gnss nmea was not initialized");
         return LE_FAULT;
     } else {
@@ -1212,16 +1237,18 @@ le_result_t pa_gnss_Stop
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function must be called to set the rate of gps fix reception
+ * This function sets the GNSS device acquisition rate.
  *
- * @return LE_FAULT         The function failed.
- * @return LE_TIMEOUT       No response was received.
- * @return LE_OK            The function succeeded.
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT on failure
+ *  - LE_UNSUPPORTED request not supported
+ *  - LE_TIMEOUT a time-out occurred
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_gnss_SetAcquisitionRate
 (
-    uint32_t rate     ///< [IN] rate in seconds
+    uint32_t rate     ///< [IN] rate in milliseconds
 )
 {
     atcmd_Ref_t atReqRef=NULL;
@@ -1230,7 +1257,7 @@ le_result_t pa_gnss_SetAcquisitionRate
     const char* finalKoPtr[] = { "ERROR","+GPS ERROR:","+CME ERROR:","+CMS ERROR","TIMEOUT",NULL};
     char gnss_at_cmd[ATCOMMAND_SIZE] ;
 
-    atcmdsync_PrepareString(gnss_at_cmd,ATCOMMAND_SIZE,"AT+GPSNMEA=1,%d,FFFF",rate);
+    atcmdsync_PrepareString(gnss_at_cmd,ATCOMMAND_SIZE,"AT+GPSNMEA=1,%d,FFFF",rate/1000);
     atReqRef = atcmdsync_PrepareStandardCommand(gnss_at_cmd,
                                                     NULL,
                                                     finalOkPtr,
@@ -1243,6 +1270,24 @@ le_result_t pa_gnss_SetAcquisitionRate
     le_mem_Release(atReqRef);
     le_mem_Release(respPtr);
     return result;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the rate of GNSS fix reception
+ *
+ *
+ * @return LE_FAULT         The function failed.
+ * @return LE_OK            The function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_gnss_GetAcquisitionRate
+(
+    uint32_t* ratePtr     ///< [IN] rate in milliseconds
+)
+{
+
+    return LE_FAULT;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1294,7 +1339,7 @@ void pa_gnss_RemovePositionDataHandler
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_gnss_GetLastPositionData
 (
-    pa_Gnss_Position_Ref_t  positionRef   ///< [OUT] Reference to a position struct
+    pa_Gnss_Position_t*  positionRef   ///< [OUT] Pointer to a position struct
 )
 {
     if (positionRef == NULL)

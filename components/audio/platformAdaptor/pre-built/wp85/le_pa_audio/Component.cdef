@@ -8,5 +8,22 @@ bundles:
 
 ldflags:
 {
-    -lComponent_le_pa_audio
+    -lqmi_cci
+    -lqmiservices
+    ${LEGATO_SYSROOT}/usr/lib/libsierra_qcsi.a
+    ${LEGATO_SYSROOT}/usr/lib/libsierra_sd_client.a
+
+}
+
+requires:
+{
+    component:
+    {
+        $LEGATO_UTIL_PA
+    }
+
+    lib:
+    {
+        libComponent_le_pa_audio.so
+    }
 }

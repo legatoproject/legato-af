@@ -17,14 +17,29 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Prototype for iteratively getting entries.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef void (*pa_secStore_GetEntry_t)
+(
+    const char* entryPtr,           ///< [IN] Entry name.
+    bool isDir,                     ///< [IN] true if the entry is a directory, otherwise entry is a
+                                    ///       file.
+    void* contextPtr                ///< [IN] Pointer to the context supplied to pa_secStore_GetEntries()
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Writes the data in the buffer to the specified path in secure storage replacing any previously
  * written data at the same path.
  *
  * @return
  *      LE_OK if successful.
- *      LE_NO_MEMORY if there is not enough memory to store the data.  No data will be written in
- *                   this case.
+ *      LE_NO_MEMORY if there is not enough memory to store the data.
  *      LE_UNAVAILABLE if the secure storage is currently unavailable.
+ *      LE_BAD_PARAMETER if the path cannot be written to because it is a directory or ot would
+ *                       result in an invalid path.
  *      LE_FAULT if there was some other error.
  */
 //--------------------------------------------------------------------------------------------------
@@ -38,7 +53,7 @@ LE_SHARED le_result_t pa_secStore_Write
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Reads an data from the specified path in secure storage.
+ * Reads data from the specified path in secure storage.
  *
  * @return
  *      LE_OK if successful.
@@ -53,7 +68,7 @@ LE_SHARED le_result_t pa_secStore_Read
 (
     const char* pathPtr,            ///< [IN] Path to read from.
     uint8_t* bufPtr,                ///< [OUT] Buffer to store the data in.
-    size_t* bufSize                 ///< [IN/OUT] Size of buffer when this function is called.
+    size_t* bufSizePtr              ///< [IN/OUT] Size of buffer when this function is called.
                                     ///          Number of bytes read when this function returns.
 );
 
@@ -90,6 +105,76 @@ LE_SHARED le_result_t pa_secStore_GetSize
 (
     const char* pathPtr,            ///< [IN] Path.
     size_t* sizePtr                 ///< [OUT] Size in bytes of all items in the path.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Iterates over all entries under the specified path (non-recursive), calling the supplied callback
+ * with each entry name.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_UNAVAILABLE if the secure storage is currently unavailable.
+ *      LE_FAULT if there was some other error.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_secStore_GetEntries
+(
+    const char* pathPtr,                    ///< [IN] Path.
+    pa_secStore_GetEntry_t getEntryFunc,    ///< [IN] Callback function to call with each entry.
+    void* contextPtr                        ///< [IN] Context to be supplied to the callback.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets the total space and the available free space in secure storage.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_UNAVAILABLE if the secure storage is currently unavailable.
+ *      LE_FAULT if there was some other error.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_secStore_GetTotalSpace
+(
+    size_t* totalSpacePtr,                  ///< [OUT] Total size, in bytes, of secure storage.
+    size_t* freeSizePtr                     ///< [OUT] Free space, in bytes, in secure storage.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Copies all the data from source path to destination path.  The destination path must be empty.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_UNAVAILABLE if the secure storage is currently unavailable.
+ *      LE_FAULT if there was some other error.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_secStore_Copy
+(
+    const char* destPathPtr,                ///< [IN] Destination path.
+    const char* srcPathPtr                  ///< [IN] Source path.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Moves all the data from source path to destination path.  The destination path must be empty.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_UNAVAILABLE if the secure storage is currently unavailable.
+ *      LE_FAULT if there was some other error.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_secStore_Move
+(
+    const char* destPathPtr,                ///< [IN] Destination path.
+    const char* srcPathPtr                  ///< [IN] Source path.
 );
 
 

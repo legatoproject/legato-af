@@ -1,4 +1,4 @@
-/** @page sampleApps_shellPiping shell Piping
+/** @page sampleApps_shellPiping Shell Piping
 
 This sample app demonstrates using a shell script and some common utilities within a
 sandboxed app. The script echos some messages out to the stdout and then calls 'ls' piping the

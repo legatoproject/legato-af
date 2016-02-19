@@ -20,7 +20,7 @@ help_long_description=(
 " - -t [TARGETS]: comma-separated list of targets the package should be generated for (eg 'ar7,wp85')"
 )
 
-TARGETS="ar7,ar86,wp7,wp85"
+TARGETS="ar7,ar86,wp85"
 
 CheckForHelp $@
 
@@ -37,7 +37,7 @@ do
     esac
 done
 
-EXCLUDE_PATTERN='proprietary|qmi/le_pa|mdm9x15/le_pa|test/.*/qmi|jenkins-build|.gitreview|.gitmodules|sonar.sh'
+EXCLUDE_PATTERN='^proprietary|proprietary/swiQmi|qmi/le_pa|mdm9x15/le_pa|test/.*/qmi|jenkins-build|.gitreview|.gitmodules|sonar.sh'
 
 RELEASE_DIR=$LEGATO_ROOT/releases
 VERSION=$(cat $LEGATO_ROOT/version)
@@ -56,23 +56,29 @@ mkdir -p $STAGE_DIR
 git ls-tree -r --name-only HEAD | egrep -v $EXCLUDE_PATTERN | while read LINE ;
 do
     echo "Copying $LINE"
-    install -D "$LINE" "$STAGE_DIR/$LINE"
+    if [ -L "$LINE" ]; then
+        cp -R --preserve=links $LINE $STAGE_DIR/$LINE
+    else
+        mkdir -p $(dirname $STAGE_DIR/$LINE)
+        cp $LINE $STAGE_DIR/$LINE
+    fi
 done
 
 # Copy PA binaries
-StagePaComponent() {
-    local apps_folder=$1
-    local service=$2
-    local comp_folder=$3
-    local pa_name=$4
+StageComponent() {
+    local comp_name=$1
+    local comp_src=$2
+    local comp_dst=$3
 
-    for target in "${@:5}"; do
-        if ! echo "$TARGETS" | grep $target > /dev/null; then
+    echo "Staging ${comp_name}:"
+
+    for target in "${@:4}"; do
+        if ! echo "$TARGETS" | grep -E $target'(,|$)' > /dev/null; then
             continue
         fi
 
-        src="build/$target/platformServices/apps/$apps_folder/_build_$service.$target/staging/lib/libComponent_$pa_name.so"
-        dst="components/$comp_folder/platformAdaptor/pre-built/$target/$pa_name/"
+        src="build/${target}/${comp_src}"
+        dst="${comp_dst}/${target}/${comp_name}/"
 
         if ! [ -e "$LEGATO_ROOT/$src" ]; then
             echo "$src doesn't exist"
@@ -93,30 +99,45 @@ StagePaComponent() {
         local toolchain_prefix_env="${target^^}_TOOLCHAIN_PREFIX"
         local toolchain_prefix="${!toolchain_prefix_env}"
         if [ -z "$toolchain_prefix" ]; then
-            toolchain_prefix="$(find $toolchain_dir -name "*gcc" |xargs basename |sed 's/gcc//g' 2> /dev/null)"
+            toolchain_prefix="$(find $toolchain_dir -name "*gcc" | xargs basename | sed 's/gcc//g' 2> /dev/null)"
         fi
 
-        echo "Staging $pa_name for $service (target $target)"
-        echo "  $src -> $dst"
+        echo "        (target $target) = $src -> $dst"
         install -D $LEGATO_ROOT/$src $STAGE_DIR/$dst
         if [ $? -ne 0 ]; then
             ExitWithError "Unable to copy '$src'"
         fi
 
-        $toolchain_dir/${toolchain_prefix}strip -s $STAGE_DIR/$dst/libComponent_$pa_name.so
+        $toolchain_dir/${toolchain_prefix}strip -s $STAGE_DIR/${dst}/libComponent_${comp_name}.so
         if [ $? -ne 0 ]; then
-            ExitWithError "Unable to strip '$STAGE_DIR/$dst/libComponent_$pa_name.so'"
+            ExitWithError "Unable to strip '$STAGE_DIR/${dst}/libComponent_${comp_name}.so'"
         fi
     done
 }
 
-StagePaComponent audio          audioService        audio           le_pa_audio     ar7 ar86 wp7 wp85
-StagePaComponent modem          modemService        modemServices   le_pa           ar7 ar86 wp7 wp85
-StagePaComponent modem          modemService        modemServices   le_pa_ecall     ar7 ar86
-StagePaComponent positioning    positioningService  positioning     le_pa_gnss      ar7 ar86 wp7 wp85
-StagePaComponent airVantage     avcService          airVantage      le_pa_avc       ar7 ar86 wp7 wp85
-StagePaComponent secureStorage  secStore            secStore        le_pa_secStore  ar7 ar86 wp7 wp85
-StagePaComponent fwupdate       fwupdateService     fwupdate        le_pa_fwupdate  ar7 ar86 wp7 wp85
+StagePaComponent() {
+    local comp_name=$1
+    local service=$2
+    local comp_folder=$3
+
+    comp_src="system/app/$service/staging/read-only/lib/libComponent_$comp_name.so"
+    comp_dst="components/$comp_folder/platformAdaptor/pre-built"
+
+    StageComponent $comp_name $comp_src $comp_dst "${@:4}"
+}
+
+StageComponent   swiQmi \
+                 "system/app/modemService/staging/read-only/lib/libComponent_swiQmi.so" \
+                 "components/proprietary/pre-built" \
+                 ar7 ar86 wp85
+
+StagePaComponent le_pa_audio     audioService        audio           ar7 ar86 wp85
+StagePaComponent le_pa           modemService        modemServices   ar7 ar86 wp85
+StagePaComponent le_pa_ecall     modemService        modemServices   ar7 ar86
+StagePaComponent le_pa_gnss      positioningService  positioning     ar7 ar86 wp85
+StagePaComponent le_pa_avc       avcService          airVantage      ar7 ar86 wp85
+StagePaComponent le_pa_secStore  secStore            secStore        ar7 ar86 wp85
+StagePaComponent le_pa_fwupdate  fwupdateService     fwupdate        ar7 ar86 wp85
 
 cp version $STAGE_DIR
 cp package.properties $STAGE_DIR
@@ -128,7 +149,7 @@ for gitdir in $(find $STAGE_DIR -name ".git"); do
 done
 
 # Update default RELEASE_TARGETS
-sed -i "s/RELEASE_TARGETS := .*/RELEASE_TARGETS := $(echo $TARGETS | tr ',' ' ')/" $RELEASE_DIR/Makefile
+sed -i "s/RELEASE_TARGETS := .*/RELEASE_TARGETS := $(echo $TARGETS | tr ',' ' ')/" $STAGE_DIR/Makefile
 
 echo "Creating release package $RELEASE_DIR/$PKG_NAME"
 rm -f $RELEASE_DIR/$PKG_NAME

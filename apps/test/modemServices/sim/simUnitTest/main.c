@@ -771,6 +771,9 @@ void TestSim_LocalSwap
     int i;
     int doItAgain = 2;
 
+    // Swap functions may generate an automatically accepted Refresh command
+    pa_simSimu_SetExpectedStkConfirmationCommand(true);
+
     while (doItAgain)
     {
         doItAgain--;
@@ -856,9 +859,10 @@ void TestSim_RemoveHandlers
  *
  */
 //--------------------------------------------------------------------------------------------------
-int main(int argc, char *argv[])
+COMPONENT_INIT
 {
-    arg_SetArgs(argc,argv);
+    // To reactivate for all DEBUG logs
+ //   le_log_SetFilterLevel(LE_LOG_DEBUG);
 
     // Init pa simu
     pa_simSimu_Init();
@@ -869,33 +873,32 @@ int main(int argc, char *argv[])
     // Init le_sim
     le_sim_Init();
 
-    // Handlers addition test
+    LE_INFO("======== Start UnitTest of SIM API ========");
+
+    LE_INFO("======== AddHandlers Test  ========");
     TestSim_AddHandlers();
 
-    // Test PIN/PUK
+    LE_INFO("======== PIN/PUK Test  ========");
     TestSim_PinPuk();
 
-    // Test lock/unlock/change pin
+    LE_INFO("======== lock/unlock/change pin Test  ========");
     TestSim_LockUnlockChange();
 
-    // Sim card information test
+    LE_INFO("======== Sim card information Test  ========");
     TestSim_SimCardInformation();
 
-    // Test home network API
+    LE_INFO("======== Home network Test  ========");
     TestSim_HomeNetwork();
 
-    // Sim toolkit test
+    LE_INFO("======== Sim toolkit Test  ========");
     TestSim_Stk();
 
-    // multi-profile test
+    LE_INFO("======== multi-profile Test  ========");
     TestSim_LocalSwap();
 
-    // Handlers removal test
+    LE_INFO("======== Handlers removal Test  ========");
     TestSim_RemoveHandlers();
 
-    LE_INFO("Tests SIM passed");
-
-    return 0;
+    LE_INFO("======== UnitTest of SIM API ends with SUCCESS ========");
+    exit(0);
 }
-
-

@@ -56,7 +56,7 @@ le_result_t pa_temp_GetPlatformTemperature
 //--------------------------------------------------------------------------------------------------
 /**
  *
- * This function is used to add a temperatire status notification handler
+ * This function is used to add a temperature status notification handler
  *
  * @return A handler reference, which is only needed for later removal of the handler.
  */

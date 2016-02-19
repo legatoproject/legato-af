@@ -74,6 +74,10 @@ static void DownloadAndInstall
             LE_INFO("Download progress = %d%%", progress);
             break;
 
+        case LE_AVC_DOWNLOAD_FAILED:
+            LE_ERROR("Download failed. ErrorCode: %d", le_avc_GetErrorCode());
+            break;
+
         case LE_AVC_DOWNLOAD_COMPLETE:
             LE_INFO("Download completed");
             LE_INFO("Total number of bytes to download = %d", totalNumBytes);
@@ -102,7 +106,7 @@ static void DownloadAndInstall
             break;
 
         case LE_AVC_INSTALL_FAILED:
-            LE_INFO("Install failed.");
+            LE_ERROR("Install failed. ErrorCode: %d", le_avc_GetErrorCode());
             break;
 
         default:

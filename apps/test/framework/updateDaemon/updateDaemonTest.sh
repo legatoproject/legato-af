@@ -28,19 +28,19 @@ do
 done
 
 echo "Make sure Legato is running."
-ssh root@$targetAddr "/usr/local/bin/legato start"
+ssh root@$targetAddr "$BIN_PATH/legato start"
 CheckRet
 
 echo "Install all the apps."
 for app in $appsList
 do
     echo "  Installing '$appDir/$app.update.sec'"
-    cat $app.update.sec| ssh root@$targetAddr "/usr/local/bin/update"
+    cat $app.update.sec| ssh root@$targetAddr "$BIN_PATH/update"
     CheckRet
 done
 
 echo "Stop all other apps."
-ssh root@$targetAddr "/usr/local/bin/app stop \"*\""
+ssh root@$targetAddr "$BIN_PATH/app stop \"*\""
 sleep 1
 
 echo "Clear the logs."
@@ -53,7 +53,7 @@ ssh root@$targetAddr "/mnt/flash/startup/fg_02_RestartSyslogd"
 echo "Run the apps."
 for app in $appsList
 do
-    ssh root@$targetAddr  "/usr/local/bin/app start $app"
+    ssh root@$targetAddr  "$BIN_PATH/app start $app"
     CheckRet
 done
 
@@ -67,7 +67,7 @@ echo "  Encrypting 'removeAll.uinst'"
 security-pack removeAll.uinst
 CheckRet
 echo "Uninstall all apps."
-cat removeAll.uinst.sec | ssh root@$targetAddr  "/usr/local/bin/update"
+cat removeAll.uinst.sec | ssh root@$targetAddr  "$BIN_PATH/update"
 CheckRet
 
 echo "Grepping the logs to check the results."

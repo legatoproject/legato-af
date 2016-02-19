@@ -1,16 +1,64 @@
-/** @page legatoServicesUpdate Update
+/** @page legatoServicesUpdate Update Process
 
- Service                            | Description                                        | multi-app safe            |
-| ---------------------------------- | -------------------------------------------------- | :-----------------------: |
-| @subpage c_le_instStat        | App install/uninstall notification         | @image html green_dot.png |
-| @subpage c_fwupdate                | Firmware image updates                             |                           |
-| @subpage c_update                  | Control app and firmware updates                   |                           |
+@ref legatoServicesUpdatePack <br>
+@ref c_update API <br>
+@ref howToSoftwareUpdate
 
- <br>
+<HR>
+
+This topic provides detailed info about the @ref c_update process.
+
+@section legatoServicesUpdate_summary Summary
+
+Software update is primarily carried out by the Update Daemon, but the Supervisor and
+the start-up code also affect rolling-back when updates fail.
+
+The Update Daemon accepts <b>update pack</b> files that contain software/firmware update
+instructions and associated data (e.g., libraries, executables, resource files).
+
+Update packs can be fed to the Update Daemon through the @ref c_update API or
+through the @ref toolsTarget_update tool.
+
+<b>System</b> update packs are created by @ref buildToolsmksys.
+
+<b>App</b> update packs are created by @ref buildToolsmkapp.
+
+<b>App removal</b> update packs can be created using @ref toolsHost_update-pack.
+
+<b>Firmware</b> update packs can be created from a firmware (.cwe) file using
+@ref toolsHost_update-pack.
+
+See the @ref legatoServicesUpdatePack file format info.
+
+@section legatoServicesSoftwareUpdate_security Security
+
+The Update Daemon includes hooks that allow update packs to be digitally signed and/or encrypted
+for security reasons. To use this feature, you must build your own signing/encryption tool and replace
+the file @c security-unpack in the framework with a program that knows how to check the signature
+and/or decrypt the signed/encrypted update pack.
+
+The signing/encryption tool must sign/encrypt a complete update pack file. This @e secure version of
+the update pack is then passed to the Update Daemon. The Update Daemon:
+1. launches the security-unpack program
+2. feeds the secure update pack through its standard input stream
+3. reads the decrypted update pack from the security-unpack process's standard output stream.
+
+If the security-unpack program detects anything wrong with the update pack, it must exit with a
+non-zero exit code. The Update Daemon responds by cancelling the update. The exit code
+@c EXIT_SUCCESS (1) is used to specifically indicate a security violation, such as a failed
+digital signature check.
+
+@section legatoServicesUpdate_goldenSys Golden System
+
+Legato start-up code also supports using a full @e golden system found in a read-only
+file system mounted at /mnt/legato. This /mnt/legato system has to be updated through some
+external mechanism (e.g., a modem firmware update (FOTA) or factory programming tool). The Legato
+start-up code recognizes that a new system has been placed in /mnt/legato. It will use that
+system assuming it's @e good (i.e.,  it will never roll-back from this system to an older system).
+Rolling-back past this point isn't possible because the previous @e good system may have
+included apps from the old (replaced) /mnt/legato image.
 
 <HR>
 
 Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
-
-**/
-
+*/

@@ -163,120 +163,6 @@ static ApduMsg_t CommercialSwapApduReq[LE_SIM_MANUFACTURER_MAX] =
     { 13, {0x80, 0xC2, 0x00, 0x00, 0x08, 0xCF, 0x06, 0x19, 0x01, 0x99, 0x5F, 0x01, 0x80} }
 };
 
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Define the pool size.
- */
-//--------------------------------------------------------------------------------------------------
-#define THREADS_CTX_DEFAULT_POOL_SIZE        1
-
-//--------------------------------------------------------------------------------------------------
-/**
- * The memory pool for threads's contexts
- */
-//--------------------------------------------------------------------------------------------------
-static le_mem_PoolRef_t LocalSwapThreadCtxPool;
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Handler function for SIM Refresh event.
- *
- */
-//--------------------------------------------------------------------------------------------------
-static void RefreshHandler
-(
-    pa_sim_StkEvent_t* eventPtr
-)
-{
-    if (eventPtr->stkEvent == LE_SIM_REFRESH)
-    {
-        le_sem_Ref_t* semRefPtr = le_event_GetContextPtr();
-        LE_DEBUG("LE_SIM_REFRESH event raised on SIM Id %d", eventPtr->simId);
-        le_sem_Post(*semRefPtr);
-    }
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * SIM structure.
- */
-//--------------------------------------------------------------------------------------------------
-typedef struct
-{
-    le_sim_Manufacturer_t manufacturer;   ///< card manufacturer.
-    uint8_t*              swapApduReqPtr; ///< swap APDU message.
-    uint32_t              swapApduLen;    ///< swap APDU message length in bytes.
-    le_event_HandlerRef_t handlerRef;     ///< RefreshHandler reference
-    le_sem_Ref_t          semRef;         ///< Semaphore to wait for PRO-ACTIVE REFRESH command
-}
-LocalSwapThreadCtx_t;
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This thread does the actual work of Pool and send a SMS
- */
-//--------------------------------------------------------------------------------------------------
-static void* LocalSwapThread
-(
-    void* contextPtr
-)
-{
-    LocalSwapThreadCtx_t* ctxPtr = (LocalSwapThreadCtx_t*)contextPtr;
-
-    ctxPtr->handlerRef = pa_sim_AddSimToolkitEventHandler(RefreshHandler, &(ctxPtr->semRef));
-    if (!ctxPtr->handlerRef)
-    {
-        LE_ERROR("Add PA SIM Toolkit handler failed");
-        // Unlock the semaphore to stop LocalSwapThread
-        le_sem_Post(ctxPtr->semRef);
-    }
-    else
-    {
-        if (pa_sim_SendApdu(ctxPtr->swapApduReqPtr,
-                            ctxPtr->swapApduLen,
-                            NULL, NULL) != LE_OK)
-        {
-            LE_ERROR("Cannot swap subscription!");
-            // Unlock the semaphore to stop LocalSwapThread
-            le_sem_Post(ctxPtr->semRef);
-        }
-    }
-
-    // Run the event loop
-    le_event_RunLoop();
-    return NULL;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- *  Play DTMF thread destructor.
- *
- */
-//--------------------------------------------------------------------------------------------------
-static void DestroyLocalSwapThread
-(
-    void *contextPtr
-)
-{
-    LocalSwapThreadCtx_t* ctxPtr = (LocalSwapThreadCtx_t*)contextPtr;
-
-    if(ctxPtr)
-    {
-        LE_DEBUG("Uninstall and reset SIM Refresh events behaviour");
-
-        if (pa_sim_RemoveSimToolkitEventHandler(ctxPtr->handlerRef) != LE_OK)
-        {
-            LE_ERROR("Cannot Remove SimToolkit Event Handler!");
-        }
-
-        le_sem_Delete(ctxPtr->semRef);
-
-        le_mem_Release(ctxPtr);
-    }
-}
-
 //--------------------------------------------------------------------------------------------------
 /**
  * This function must be called to request the multi-profile eUICC to swap to commercial or ECS
@@ -299,84 +185,54 @@ static le_result_t LocalSwap
 {
     uint8_t  channel = 0;
 
+
+    if (manufacturer == LE_SIM_G_AND_D)
+    {
+        uint8_t  pduReq[] = {0x00, 0xA4, 0x04, 0x00, 0x10, 0xD2, 0x76, 0x00,
+                             0x01, 0x18, 0x00, 0x02, 0xFF, 0x34, 0x10, 0x25,
+                             0x89, 0xC0, 0x02, 0x10, 0x01};
+
+        // APDU command to select the applet
+        if (pa_sim_OpenLogicalChannel(&channel) != LE_OK)
+        {
+            LE_ERROR("Cannot open Logical Channel!");
+            return LE_FAULT;
+        }
+        pduReq[0] = channel;
+        if (pa_sim_SendApdu(pduReq, sizeof(pduReq),
+                            NULL, NULL) != LE_OK)
+        {
+            LE_ERROR("Cannot send APDU message!");
+            return LE_FAULT;
+        }
+        swapApduReqPtr[0] = channel;
+    }
+
+    if (pa_sim_SendApdu(swapApduReqPtr,
+                        swapApduLen,
+                        NULL, NULL) != LE_OK)
+    {
+        LE_ERROR("Cannot swap subscription!");
+        return LE_FAULT;
+    }
+
+    if (manufacturer == LE_SIM_G_AND_D)
+    {
+        if (pa_sim_CloseLogicalChannel(channel) != LE_OK)
+        {
+            LE_ERROR("Cannot close Logical Channel!");
+            return LE_FAULT;
+        }
+    }
+
     if ((manufacturer == LE_SIM_OBERTHUR) || (manufacturer == LE_SIM_MORPHO))
     {
-        LocalSwapThreadCtx_t* threadCtxPtr;
-        le_clk_Time_t timer = { .sec=10, .usec=0 };
-
-        threadCtxPtr = le_mem_ForceAlloc(LocalSwapThreadCtxPool);
-        memset(threadCtxPtr, 0, sizeof(LocalSwapThreadCtx_t));
-
-        threadCtxPtr->semRef = le_sem_Create("SimRefreshSem", 0);
-        threadCtxPtr->manufacturer = manufacturer;
-        threadCtxPtr->swapApduReqPtr = swapApduReqPtr;
-        threadCtxPtr->swapApduLen = swapApduLen;
-
-        le_thread_Ref_t threadRef = le_thread_Create("LocalSwapThread",
-                                                     LocalSwapThread,
-                                                     threadCtxPtr);
-
-        le_thread_AddChildDestructor(threadRef,
-                                     DestroyLocalSwapThread,
-                                     threadCtxPtr);
-
-        le_thread_SetJoinable(threadRef);
-        le_thread_Start(threadRef);
-
-        if (le_sem_WaitWithTimeOut(threadCtxPtr->semRef, timer) == LE_TIMEOUT)
-        {
-            LE_ERROR("No PRO-ACTIVE REFRESH received, perform refresh anyway!");
-        }
-        else
-        {
-            LE_INFO("PRO-ACTIVE REFRESH received, perform refresh...");
-        }
-
-        le_thread_Cancel(threadRef);
+        return LE_OK;
     }
     else
     {
-        if (manufacturer == LE_SIM_G_AND_D)
-        {
-            uint8_t  pduReq[] = {0x00, 0xA4, 0x04, 0x00, 0x10, 0xD2, 0x76, 0x00,
-                                 0x01, 0x18, 0x00, 0x02, 0xFF, 0x34, 0x10, 0x25,
-                                 0x89, 0xC0, 0x02, 0x10, 0x01};
-
-            // APDU command to select the applet
-            if (pa_sim_OpenLogicalChannel(&channel) != LE_OK)
-            {
-                LE_ERROR("Cannot open Logical Channel!");
-                return LE_FAULT;
-            }
-            pduReq[0] = channel;
-            if (pa_sim_SendApdu(pduReq, sizeof(pduReq),
-                                NULL, NULL) != LE_OK)
-            {
-                LE_ERROR("Cannot send APDU message!");
-                return LE_FAULT;
-            }
-            swapApduReqPtr[0] = channel;
-        }
-
-        if (pa_sim_SendApdu(swapApduReqPtr,
-                            swapApduLen,
-                            NULL, NULL) != LE_OK)
-        {
-            LE_ERROR("Cannot swap subscription!");
-            return LE_FAULT;
-        }
-
-        if (manufacturer == LE_SIM_G_AND_D)
-        {
-            if (pa_sim_CloseLogicalChannel(channel) != LE_OK)
-            {
-                LE_ERROR("Cannot close Logical Channel!");
-                return LE_FAULT;
-            }
-        }
+        return pa_sim_Refresh();
     }
-
-    return pa_sim_Refresh();
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -592,9 +448,6 @@ le_result_t le_sim_Init
 )
 {
     int i;
-
-    LocalSwapThreadCtxPool = le_mem_CreatePool("LocalSwapThreadCtxPool", sizeof(LocalSwapThreadCtx_t));
-    le_mem_ExpandPool(LocalSwapThreadCtxPool, THREADS_CTX_DEFAULT_POOL_SIZE);
 
     // Initialize the SIM list
     for (i = 0; i < LE_SIM_ID_MAX; i++)
@@ -1602,6 +1455,10 @@ le_result_t le_sim_GetHomeNetworkOperator
  *      - LE_BAD_PARAMETER invalid SIM identifier
  *      - LE_BUSY when a profile swap is already in progress
  *      - LE_FAULT for unexpected error
+ *
+ * @warning If you use a Morpho or Oberthur card, the SIM_REFRESH PRO-ACTIVE command must be
+ *          accepted with le_sim_AcceptSimToolkitCommand() in order to complete the profile swap
+ *          procedure.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_sim_LocalSwapToEmergencyCallSubscription
@@ -1649,6 +1506,10 @@ le_result_t le_sim_LocalSwapToEmergencyCallSubscription
  *      - LE_BAD_PARAMETER invalid SIM identifier
  *      - LE_BUSY when a profile swap is already in progress
  *      - LE_FAULT for unexpected error
+ *
+ * @warning If you use a Morpho or Oberthur card, the SIM_REFRESH PRO-ACTIVE command must be
+ *          accepted with le_sim_AcceptSimToolkitCommand() in order to complete the profile swap
+ *          procedure.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_sim_LocalSwapToCommercialSubscription

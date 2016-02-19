@@ -1,0 +1,30 @@
+sandboxed: false
+
+executables:
+{
+    secStore = ( $LEGATO_ROOT/components/secStore/secStoreDaemon )
+}
+
+processes:
+{
+    run:
+    {
+        (secStore)
+    }
+
+    faultAction: restart
+}
+
+extern:
+{
+    secStore.secStoreDaemon.le_secStore
+    secStore.secStoreDaemon.secStoreAdmin
+}
+
+
+bindings:
+{
+    secStore.secStoreDaemon.le_appInfo -> <root>.le_appInfo
+    secStore.secStoreDaemon.le_update -> <root>.le_update
+}
+

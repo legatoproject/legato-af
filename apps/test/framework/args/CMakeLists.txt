@@ -1,11 +1,6 @@
 #*******************************************************************************
 # Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
-#
-# Contributors:
-#     Sierra Wireless - initial API and implementation
 #*******************************************************************************
-
-find_package(Legato REQUIRED)
 
 set(APP_COMPONENT argsTest)
 set(APP_TARGET testFwArgs)

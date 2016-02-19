@@ -8,48 +8,59 @@
 
 #include "legato.h"
 #include "interfaces.h"
+#include "le_audio_local.h"
 #include "pa_audio.h"
+#include "pa_audio_simu.h"
+#include "pa_pcm_simu.h"
+#include "pa_amr_simu.h"
 
 //--------------------------------------------------------------------------------------------------
 // Symbol and Enum definitions.
 //--------------------------------------------------------------------------------------------------
 
+#define IS_INPUT_STREAM(X) (X == LE_AUDIO_IF_CODEC_MIC) ? true :\
+                           ((X == LE_AUDIO_IF_DSP_FRONTEND_USB_RX) ? true :\
+                           ((X == LE_AUDIO_IF_DSP_BACKEND_MODEM_VOICE_RX) ? true :\
+                           ((X == LE_AUDIO_IF_DSP_FRONTEND_PCM_RX) ? true :\
+                           ((X == LE_AUDIO_IF_DSP_FRONTEND_I2S_RX) ? true :\
+                           ((X == LE_AUDIO_IF_DSP_FRONTEND_FILE_PLAY) ? true : false)))))
+
+#define IS_OUTPUT_STREAM(X) (X == LE_AUDIO_IF_CODEC_SPEAKER) ? true :\
+                           ((X == LE_AUDIO_IF_DSP_FRONTEND_USB_TX) ? true :\
+                           ((X == LE_AUDIO_IF_DSP_BACKEND_MODEM_VOICE_TX) ? true :\
+                           ((X == LE_AUDIO_IF_DSP_FRONTEND_PCM_TX) ? true :\
+                           ((X == LE_AUDIO_IF_DSP_FRONTEND_I2S_TX) ? true :\
+                           ((X == LE_AUDIO_IF_DSP_FRONTEND_FILE_CAPTURE) ? true : false)))))
+
+
 //--------------------------------------------------------------------------------------------------
 //                                       Static declarations
 //--------------------------------------------------------------------------------------------------
 
-
-//--------------------------------------------------------------------------------------------------
-/**
- * DTMF event ID used to report DTMFs to the registered event handlers.
- */
-//--------------------------------------------------------------------------------------------------
 static le_event_Id_t DtmfEvent;
+static char* DtmfPtr = NULL;
+static uint32_t DtmfDuration = 0;
+static uint32_t DtmfPause = 0;
+static int8_t BuildAudioPath[LE_AUDIO_NUM_INTERFACES][LE_AUDIO_NUM_INTERFACES];
+
 
 //--------------------------------------------------------------------------------------------------
 /**
- * The DTMF user's event handler reference.
- */
-//--------------------------------------------------------------------------------------------------
-static le_event_HandlerRef_t DtmfHandlerRef = NULL;
-
-//--------------------------------------------------------------------------------------------------
-/**
- * The first-layer DTMF Event Handler.
+ * The first-layer File Event Handler.
  *
  */
 //--------------------------------------------------------------------------------------------------
-static void FirstLayerDtmfRxHandler
+static void FirstDtmfLayeredHandler
 (
-    void* reportPtr,
-    void* secondLayerHandlerFunc
+    void*   reportPtr,
+    void*   secondLayerFunc
 )
 {
-    char*                      dtmfPtr = reportPtr;
-    pa_audio_DtmfHandlerFunc_t clientHandlerFunc = secondLayerHandlerFunc;
+    le_audio_StreamEvent_t*               streamEventPtr = reportPtr;
+    le_audio_DtmfStreamEventHandlerFunc_t dtmfStreamEventHandler =
+                                        (le_audio_DtmfStreamEventHandlerFunc_t) secondLayerFunc;
 
-    LE_DEBUG("[%c] DTMF detected!", *dtmfPtr);
-    clientHandlerFunc(*dtmfPtr);
+    dtmfStreamEventHandler( streamEventPtr, le_event_GetContextPtr() );
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -58,13 +69,35 @@ static void FirstLayerDtmfRxHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Simulate a reception of a dtmf. Send the dtmf report.
+ */
+//--------------------------------------------------------------------------------------------------
+void pa_audioSimu_ReceiveDtmf
+(
+    char dtmf
+)
+{
+    le_audio_StreamEvent_t streamEvent;
+
+    // Only one interface support the DTMF detection for now
+    streamEvent.streamEvent = LE_AUDIO_BITMASK_DTMF_DETECTION;
+    streamEvent.event.dtmf = dtmf;
+
+    le_event_Report(DtmfEvent, &streamEvent, sizeof(le_audio_StreamEvent_t));
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Component initializer.  Called automatically by the application framework at process start.
  */
 //--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
-    // Create the event for DTMF handlers.
-    DtmfEvent = le_event_CreateId("DtmfEvent", sizeof(char));
+    memset(BuildAudioPath,0,LE_AUDIO_NUM_INTERFACES*LE_AUDIO_NUM_INTERFACES*sizeof(uint8_t));
+    pa_amrSimu_Init();
+    pa_pcmSimu_Init();
+
+    DtmfEvent = le_event_CreateId("DtmfEventId", sizeof(le_audio_StreamEvent_t));
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -77,10 +110,96 @@ COMPONENT_INIT
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_audio_SetDspAudioPath
 (
-    pa_audio_If_t inputInterface,    ///< [IN] input audio interface
-    pa_audio_If_t outputInterface    ///< [IN] output audio interface
+    le_audio_Stream_t* inputStreamPtr,   ///< [IN] input audio stream
+    le_audio_Stream_t* outputStreamPtr   ///< [IN] output audio stream
 )
 {
+    le_audio_If_t inputInterface = inputStreamPtr->audioInterface;
+    le_audio_If_t outputInterface = outputStreamPtr->audioInterface;
+
+    LE_ASSERT( IS_INPUT_STREAM(inputInterface) == true );
+    LE_ASSERT( IS_OUTPUT_STREAM(outputInterface) == true );
+
+    BuildAudioPath[inputInterface][outputInterface] += 1;
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Check the audio path set.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_audioSimu_CheckAudioPathSet
+(
+    void
+)
+{
+    le_audio_If_t inItf;
+    le_audio_If_t outItf;
+
+    for (inItf = 0; inItf < LE_AUDIO_NUM_INTERFACES; inItf++)
+    {
+        for (outItf = 0; outItf < LE_AUDIO_NUM_INTERFACES; outItf++)
+        {
+            if ( inItf == outItf )
+            {
+                // audio path can't be built between a stream and the same stream
+                LE_ASSERT( BuildAudioPath[inItf][outItf] == 0 );
+            }
+            else if ( IS_OUTPUT_STREAM(inItf) )
+            {
+                // if the input stream is an output, it is not a valuable path
+                LE_ASSERT( BuildAudioPath[inItf][outItf] == 0 );
+            }
+            else if ( IS_INPUT_STREAM(inItf) )
+            {
+                if ( IS_OUTPUT_STREAM(outItf) )
+                {
+                    // this is an expected audio path. It should be set only once
+                    LE_ASSERT( BuildAudioPath[inItf][outItf] == 1 );
+                }
+                else if (IS_INPUT_STREAM(outItf))
+                {
+                    // if the output stream is an input, it is not a valuable path
+                    LE_ASSERT( BuildAudioPath[inItf][outItf] == 0 );
+                }
+                else
+                {
+                    LE_FATAL("Unknown audio path");
+                }
+            }
+            else
+            {
+                LE_FATAL("Unknown audio path");
+            }
+        }
+    }
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Check the reseted audio path.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_audioSimu_CheckAudioPathReseted
+(
+    void
+)
+{
+    le_audio_If_t inItf;
+    le_audio_If_t outItf;
+
+    for (inItf = 0; inItf < LE_AUDIO_NUM_INTERFACES; inItf++)
+    {
+        for (outItf = 0; outItf < LE_AUDIO_NUM_INTERFACES; outItf++)
+        {
+            LE_ASSERT( BuildAudioPath[inItf][outItf] == 0 );
+        }
+    }
+
     return LE_OK;
 }
 
@@ -92,29 +211,23 @@ le_result_t pa_audio_SetDspAudioPath
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_audio_FlagForResetDspAudioPath
+le_result_t pa_audio_ResetDspAudioPath
 (
-    pa_audio_If_t inputInterface,    ///< [IN] input audio interface
-    pa_audio_If_t outputInterface    ///< [IN] output audio interface
+    le_audio_Stream_t* inputStreamPtr,   ///< [IN] input audio stream
+    le_audio_Stream_t* outputStreamPtr   ///< [IN] output audio stream
 )
 {
-    return LE_OK;
-}
+    le_audio_If_t inputInterface = inputStreamPtr->audioInterface;
+    le_audio_If_t outputInterface = outputStreamPtr->audioInterface;
 
-//--------------------------------------------------------------------------------------------------
-/**
- * This function must be called to reset the DSP Audio path
- *
- * @return LE_FAULT         The function failed.
- * @return LE_OK            The function succeeded.
- */
-//--------------------------------------------------------------------------------------------------
-void pa_audio_ResetDspAudioPath
-(
-    void
-)
-{
-    return ;
+    LE_ASSERT( IS_INPUT_STREAM(inputInterface) == true );
+    LE_ASSERT( IS_OUTPUT_STREAM(outputInterface) == true );
+
+    BuildAudioPath[inputInterface][outputInterface] -= 1;
+
+    LE_ASSERT( BuildAudioPath[inputInterface][outputInterface] >= 0 );
+
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -125,9 +238,8 @@ void pa_audio_ResetDspAudioPath
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_audio_SetGain
 (
-    pa_audio_If_t interface,    ///< [IN] audio interface
-    uint32_t      gain          ///< [IN] gain value [0..100] (0 means 'muted', 100 is the
-                                ///       maximum gain value)
+    le_audio_Stream_t* streamPtr,   ///< [IN] input audio stream
+    int32_t            gain         ///< [IN] gain value
 )
 {
     return LE_OK;
@@ -143,9 +255,8 @@ le_result_t pa_audio_SetGain
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_audio_GetGain
 (
-    pa_audio_If_t interface,    ///< [IN] audio interface
-    uint32_t     *gainPtr       ///< [OUT] gain value [0..100] (0 means 'muted', 100 is the
-                                ///        maximum gain value)
+    le_audio_Stream_t* streamPtr,   ///< [IN] input audio stream
+    int32_t*           gainPtr      ///< [OUT] gain value
 )
 {
     return LE_OK;
@@ -161,8 +272,8 @@ le_result_t pa_audio_GetGain
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_audio_SetPcmTimeSlot
 (
-    pa_audio_If_t interface,
-    uint32_t      timeslot
+    le_audio_Stream_t* streamPtr,
+    uint32_t           timeslot
 )
 {
     return LE_OK;
@@ -178,7 +289,7 @@ le_result_t pa_audio_SetPcmTimeSlot
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_audio_SetMasterMode
 (
-    pa_audio_If_t interface
+    le_audio_Stream_t* streamPtr
 )
 {
     return LE_OK;
@@ -194,7 +305,7 @@ le_result_t pa_audio_SetMasterMode
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_audio_SetSlaveMode
 (
-    pa_audio_If_t interface
+    le_audio_Stream_t* streamPtr    ///< [IN] input audio stream
 )
 {
     return LE_OK;
@@ -210,116 +321,11 @@ le_result_t pa_audio_SetSlaveMode
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_audio_SetI2sChannelMode
 (
-    pa_audio_If_t           interface,
-    le_audio_I2SChannel_t   mode
+    le_audio_Stream_t*     streamPtr,    ///< [IN] input audio stream
+    le_audio_I2SChannel_t  mode
 )
 {
     return LE_OK;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This function is used to play audio samples.
- *
- * @return LE_OK            The thread is started
- * @return LE_BAD_PARAMETER The interface is not valid
- * @return LE_DUPLICATE     The thread is already started
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t pa_audio_PlaySamples
-(
-    pa_audio_If_t interface,                        ///< [IN] audio interface
-    int32_t       fd,                               ///< [IN] audio file descriptor
-    pa_audio_SamplePcmConfig_t* samplePcmConfigPtr  ///< [IN] Sample configuration
-)
-{
-    return LE_FAULT;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This function must be called to pause the playback/capture thread.
- *
- * @return LE_OK            The function is succeeded
- * @return LE_FAULT         The function is failed
- *
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t pa_audio_Pause
-(
-    pa_audio_If_t interface    ///< [IN] audio interface
-)
-{
-    return LE_FAULT;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This function must be called to resume the playback/capture thread.
- *
- * @return LE_OK            The function is succeeded
- * @return LE_FAULT         The function is failed
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t pa_audio_Resume
-(
-    pa_audio_If_t interface    ///< [IN] audio interface
-)
-{
-    return LE_FAULT;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This function must be called to stop an interface.
- *
- * @return LE_OK            The function is succeeded
- * @return LE_FAULT         The function is failed
- *
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t pa_audio_Stop
-(
-    pa_audio_If_t interface    ///< [IN] audio interface
-)
-{
-    return LE_FAULT;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This function must be called to flush the remaining audio samples.
- *
- * @return LE_OK            The function is succeeded
- * @return LE_FAULT         The function is failed
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t pa_audio_Flush
-(
-    pa_audio_If_t interface    ///< [IN] audio interface
-)
-{
-    return LE_FAULT;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This function is used to capture an audio stream.
- *
- * @return LE_OK            The thread is started
- * @return LE_BAD_PARAMETER The interface is not valid
- * @return LE_DUPLICATE     The thread is already started
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t pa_audio_Capture
-(
-    pa_audio_If_t interface,                        ///< [IN] audio interface
-    int32_t       fd,                               ///< [IN] audio file descriptor
-    pa_audio_SamplePcmConfig_t* samplePcmConfigPtr  ///< [IN] Sample configuration
-)
-{
-    return LE_FAULT;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -333,9 +339,11 @@ le_result_t pa_audio_Capture
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_audio_StartDtmfDecoder
 (
-    pa_audio_If_t interface    ///< [IN] audio interface
+    le_audio_Stream_t* streamPtr     ///< [IN] input audio stream
 )
 {
+    LE_ASSERT( streamPtr->audioInterface == LE_AUDIO_IF_DSP_BACKEND_MODEM_VOICE_RX );
+
     return LE_OK;
 }
 
@@ -350,33 +358,10 @@ le_result_t pa_audio_StartDtmfDecoder
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_audio_StopDtmfDecoder
 (
-    pa_audio_If_t interface    ///< [IN] audio interface
+    le_audio_Stream_t* streamPtr   ///< [IN] input audio stream
 )
 {
-    return LE_OK;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This function must be called to register a handler for DTMF notifications.
- *
- * @return LE_NOT_POSSIBLE  The function failed to register the handler.
- * @return LE_OK            The function succeeded.
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t pa_audio_SetDtmfDetectorHandler
-(
-    pa_audio_DtmfHandlerFunc_t   handlerFuncPtr ///< [IN] The event handler function.
-)
-{
-    LE_DEBUG("Set new Call Event handler.");
-
-    LE_FATAL_IF(handlerFuncPtr == NULL, "The DTMF handler function is NULL.");
-
-    DtmfHandlerRef = le_event_AddLayeredHandler("DtmfRxHandler",
-                                                DtmfEvent,
-                                                FirstLayerDtmfRxHandler,
-                                                (le_event_HandlerFunc_t)handlerFuncPtr);
+    LE_ASSERT( streamPtr->audioInterface == LE_AUDIO_IF_DSP_BACKEND_MODEM_VOICE_RX );
 
     return LE_OK;
 }
@@ -392,8 +377,8 @@ le_result_t pa_audio_SetDtmfDetectorHandler
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_audio_NoiseSuppressorSwitch
 (
-    pa_audio_If_t interface,    ///< [IN] audio interface
-    le_onoff_t    switchOnOff   ///< [IN] switch ON or OFF
+    le_audio_Stream_t* streamPtr,   ///< [IN] input audio stream
+    le_onoff_t         switchOnOff  ///< [IN] switch ON or OFF
 )
 {
     return LE_FAULT;
@@ -410,8 +395,8 @@ le_result_t pa_audio_NoiseSuppressorSwitch
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_audio_EchoCancellerSwitch
 (
-    pa_audio_If_t interface,    ///< [IN] audio interface
-    le_onoff_t    switchOnOff   ///< [IN] switch ON or OFF
+    le_audio_Stream_t* streamPtr,   ///< [IN] input audio stream
+    le_onoff_t         switchOnOff  ///< [IN] switch ON or OFF
 )
 {
     return LE_FAULT;
@@ -429,8 +414,8 @@ le_result_t pa_audio_EchoCancellerSwitch
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_audio_FirFilterSwitch
 (
-    pa_audio_If_t interface,    ///< [IN] audio interface
-    le_onoff_t    switchOnOff   ///< [IN] switch ON or OFF
+    le_audio_Stream_t* streamPtr,    ///< [IN] input audio stream
+    le_onoff_t         switchOnOff   ///< [IN] switch ON or OFF
 )
 {
     return LE_FAULT;
@@ -448,8 +433,8 @@ le_result_t pa_audio_FirFilterSwitch
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_audio_IirFilterSwitch
 (
-    pa_audio_If_t interface,    ///< [IN] audio interface
-    le_onoff_t    switchOnOff   ///< [IN] switch ON or OFF
+    le_audio_Stream_t* streamPtr,    ///< [IN] input audio stream
+    le_onoff_t         switchOnOff   ///< [IN] switch ON or OFF
 )
 {
     return LE_FAULT;
@@ -467,11 +452,48 @@ le_result_t pa_audio_IirFilterSwitch
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_audio_AutomaticGainControlSwitch
 (
-    pa_audio_If_t interface,    ///< [IN] audio interface
-    le_onoff_t    switchOnOff   ///< [IN] switch ON or OFF
+    le_audio_Stream_t* streamPtr,   ///< [IN] input audio stream
+    le_onoff_t         switchOnOff  ///< [IN] switch ON or OFF
 )
 {
     return LE_FAULT;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to register a handler for stream events notifications.
+ *
+ * @return an handler reference.
+ */
+//--------------------------------------------------------------------------------------------------
+le_audio_DtmfStreamEventHandlerRef_t pa_audio_AddDtmfStreamEventHandler
+(
+    le_audio_DtmfStreamEventHandlerFunc_t handlerFuncPtr, ///< [IN] The event handler function.
+    void*                                 contextPtr      ///< [IN] The handler's context.
+)
+{
+    le_event_HandlerRef_t handlerRef = le_event_AddLayeredHandler( "DtmfHander",
+                                                                    DtmfEvent,
+                                                                    FirstDtmfLayeredHandler,
+                                                                    handlerFuncPtr );
+
+    le_event_SetContextPtr(handlerRef, contextPtr);
+
+    return (le_audio_DtmfStreamEventHandlerRef_t) handlerRef;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to unregister the handler for audio stream events.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void pa_audio_RemoveDtmfStreamEventHandler
+(
+    le_audio_DtmfStreamEventHandlerRef_t addHandlerRef ///< [IN]
+)
+{
+
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -646,34 +668,19 @@ le_audio_Companding_t pa_audio_GetPcmCompanding
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function must be called to register a handler for stream events notifications.
- *
- * @return an handler reference.
+ * Set dtmf configuration.
  */
 //--------------------------------------------------------------------------------------------------
-pa_audio_StreamEventHandlerRef_t pa_audio_AddStreamEventHandler
+void pa_audioSimu_PlaySignallingDtmf
 (
-    pa_audio_StreamEventHandlerFunc_t handlerFuncPtr, ///< [IN] The event handler function.
-    void*                             contextPtr      ///< [IN] The handler's context.
+    char*          dtmfPtr,
+    uint32_t       duration,
+    uint32_t       pause
 )
 {
-    // TODO: implement this one
-    return NULL;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This function must be called to unregister the handler for audio stream events.
- *
- */
-//--------------------------------------------------------------------------------------------------
-void pa_audio_RemoveStreamEventHandler
-(
-    pa_audio_StreamEventHandlerRef_t addHandlerRef ///< [IN]
-)
-{
-    // TODO: implement this one
-    return;
+    DtmfPtr = dtmfPtr;
+    DtmfDuration = duration;
+    DtmfPause = pause;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -692,7 +699,9 @@ le_result_t pa_audio_PlaySignallingDtmf
     uint32_t             pause      ///< [IN] The pause duration between tones in milliseconds.
 )
 {
-    // TODO: implement this one
+    LE_ASSERT(strncmp(dtmfPtr, DtmfPtr, strlen(DtmfPtr))==0);
+    LE_ASSERT(duration == DtmfDuration);
+    LE_ASSERT(DtmfPause == pause);
     return LE_OK;
 }
 
@@ -708,7 +717,7 @@ bool pa_audio_IsCodecPresent
     void
 )
 {
-    return false;
+    return true;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -721,8 +730,8 @@ bool pa_audio_IsCodecPresent
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_audio_Mute
 (
-    pa_audio_If_t interface, ///< [IN] audio interface
-    bool          mute       ///< [IN] true to mute the interface, false to unmute
+    le_audio_Stream_t* streamPtr,   ///< [IN] input audio stream
+    bool          mute              ///< [IN] true to mute the interface, false to unmute
 )
 {
     // TODO: implement this one
@@ -742,8 +751,7 @@ le_result_t pa_audio_Mute
 le_result_t pa_audio_SetPlatformSpecificGain
 (
     const char*    gainNamePtr, ///< [IN] Name of the platform specific gain.
-    uint32_t       gain         ///< [IN] The gain value [0..100] (0 means 'muted', 100 is the
-                                ///       maximum gain value)
+    int32_t        gain         ///< [IN] The gain value
 )
 {
     // TODO: implement this one
@@ -762,10 +770,40 @@ le_result_t pa_audio_SetPlatformSpecificGain
 le_result_t pa_audio_GetPlatformSpecificGain
 (
     const char* gainNamePtr, ///< [IN] Name of the platform specific gain.
-    uint32_t*   gainPtr      ///< [OUT] gain value [0..100] (0 means 'muted', 100 is the
-                             ///        maximum gain value)
+    int32_t*    gainPtr      ///< [OUT] gain value
 )
 {
     // TODO: implement this one
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Release pa internal parameters.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void pa_audio_ReleasePaParameters
+(
+    le_audio_Stream_t* streamPtr
+)
+{
+    return;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Mute/Unmute the Call Waiting Tone.
+ *
+ * @return LE_FAULT         The function failed.
+ * @return LE_OK            The function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_audio_MuteCallWaitingTone
+(
+    bool    mute    ///< [IN] true to mute the Call Waiting tone, false otherwise.
+)
+{
     return LE_OK;
 }

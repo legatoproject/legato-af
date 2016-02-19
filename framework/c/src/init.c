@@ -20,6 +20,8 @@
 #include "pathIter.h"
 #include "killProc.h"
 #include "properties.h"
+#include "json.h"
+#include "pipeline.h"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -45,8 +47,11 @@ __attribute__((constructor)) void _legato_InitFramework
     arg_SetArgs((size_t)argc, (char**)argv);
 
     // The order of initialization is important.  Ideally, logging would be initialized first,
-    // because before that, any logging calls will report the wrong component.  However, the
-    // logging uses memory pools, so memory pools must be initialized before logging.
+    // because before that, any logging calls will report the wrong component, and pretty much
+    // everything uses logging.  However, the logging uses memory pools, so memory pools must be
+    // initialized before logging.  Fortunately, most logging macros work even if log_Init()
+    // hasn't been called yet.  Keep it that way.  Also, be careful when using logging inside
+    // the memory pool module, because there is the risk of creating infinite recursion.
 
     mem_Init();
     log_Init();        // Uses memory pools.
@@ -61,6 +66,8 @@ __attribute__((constructor)) void _legato_InitFramework
     msg_Init();        // Uses event loop.
     kill_Init();       // Uses memory pools and timers.
     properties_Init(); // Uses memory pools and safe references.
+    json_Init();       // Uses memory pools.
+    pipeline_Init();   // Uses memory pools and FD Monitors.
 
     // This must be called last, because it calls several subsystems to perform the
     // thread-specific initialization for the main thread.

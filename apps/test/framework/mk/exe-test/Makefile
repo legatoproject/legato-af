@@ -1,27 +1,63 @@
-.PHONY: all clean test1 ar7
+TARGETS = wp85 ar7 localhost
+.PHONY: $(TARGETS)
 
-all: test1
+.PHONY: all
+all: $(TARGETS)
 
-test1:  lib/libexternal.so
-	mkdir -p obj
-	mkdir -p lib
-	mkdir -p bin
-	mkexe -v -o bin/foo foo.c lib/libexternal.so -w obj -l lib
-	mkexe -v -o bin/munchkin munchkin -w obj -l lib
-	mkexe -v -o bin/fandm foo.c munchkin lib/libexternal.so -w obj -l lib
+ar7: TARGET := ar7
 
-lib/libexternal.so:
-	mkdir -p lib
-	gcc -fPIC -shared -o $@ libexternal.c
+wp85: TARGET := wp85
 
+localhost: TARGET := localhost
 
+$(TARGETS):%: munchkin_% wwow_% dorothy_%
+
+BIN_DIR = build/$@/$(TARGET)/bin
+LIB_DIR = build/$@/$(TARGET)/lib
+OBJ_DIR = build/$@/$(TARGET)/obj
+
+localhost: externalLibTests
+
+munchkin_%:
+	mkdir -p $(BIN_DIR)
+	mkdir -p $(LIB_DIR)
+	mkdir -p $(OBJ_DIR)
+	mkexe -v -t $(TARGET) -o $(BIN_DIR)/$@ munchkin -w $(OBJ_DIR) -l $(LIB_DIR)
+
+wwow_%:
+	mkdir -p build/$@/$(TARGET)/bin
+	mkdir -p build/$@/$(TARGET)/lib
+	mkdir -p build/$@/$(TARGET)/obj
+	mkexe -v -t $(TARGET) -o $(BIN_DIR)/$@ munchkin wwow -w $(OBJ_DIR) -l $(LIB_DIR)
+
+dorothy_%:
+	mkdir -p build/$@/$(TARGET)/bin
+	mkdir -p build/$@/$(TARGET)/lib
+	mkdir -p build/$@/$(TARGET)/obj
+	mkexe -v -t $(TARGET) -o $(BIN_DIR)/$@ munchkin dorothy -w $(OBJ_DIR) -l $(LIB_DIR)
+
+.PHONY: externalLibTests
+externalLibTests: foo fandm
+
+.PHONY: foo
+foo: build/libexternal/localhost/lib/libexternal.so
+	mkdir -p build/$@/$(TARGET)/bin
+	mkdir -p build/$@/$(TARGET)/lib
+	mkdir -p build/$@/$(TARGET)/obj
+	mkexe -v -t $(TARGET) -o $(BIN_DIR)/foo foo.c build/libexternal/$(TARGET)/lib/libexternal.so -w $(OBJ_DIR) -l $(LIB_DIR)
+
+.PHONY: fandm
+fandm: build/libexternal/localhost/lib/libexternal.so
+	mkdir -p build/$@/$(TARGET)/bin
+	mkdir -p build/$@/$(TARGET)/lib
+	mkdir -p build/$@/$(TARGET)/obj
+	mkexe -v -t $(TARGET) -o $(BIN_DIR)/fandm foo.c munchkin build/libexternal/$(TARGET)/lib/libexternal.so -w $(OBJ_DIR) -l $(LIB_DIR)
+
+build/libexternal/%/lib/libexternal.so:
+	mkdir -p $(dir $@)
+	$(CC) -fPIC -shared -o $@ libexternal.c
+
+.PHONY: clean
 clean:
-	rm -rf obj lib bin ar7
-
-
-ar7:
-	mkdir -p ar7/obj
-	mkdir -p ar7/lib
-	mkdir -p ar7/bin
-	mkexe -v -o ar7/bin/munchkin munchkin -w ar7/obj -l ar7/lib -t ar7
+	rm -rf build
 

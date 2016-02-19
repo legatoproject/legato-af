@@ -1,11 +1,6 @@
 #*******************************************************************************
 # Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
-#
-# Contributors:
-#     Sierra Wireless - initial API and implementation
 #*******************************************************************************
-
-find_package(Legato REQUIRED)
 
 set(APP_COMPONENT leatgnsstest)
 set(APP_TARGET testGnss)
@@ -23,7 +18,7 @@ target_link_libraries(${APP_TARGET}
 )
 
 set(SCRIPT_PATH       ${CMAKE_CURRENT_SOURCE_DIR}/testLeAT.sh)
-set(STUB_PATH         ${LEGATO_SOURCE_DIR}/apps/stub/modem/stub_gnss_nmea.pl)
+set(STUB_PATH         ${LEGATO_ROOT}/apps/stub/modem/stub_gnss_nmea.pl)
 set(TEST_APP_PATH     ${EXECUTABLE_OUTPUT_PATH}/${APP_TARGET})
 set(TEST_XML          ${CMAKE_CURRENT_SOURCE_DIR}/modem_gnss.xml)
 set(TEST_GNSS         ${CMAKE_CURRENT_SOURCE_DIR}/gnss_nmea.txt)

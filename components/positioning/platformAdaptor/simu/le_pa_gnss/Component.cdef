@@ -3,9 +3,18 @@ sources:
     pa_gnss_simu.c
 }
 
+cflags:
+{
+    -I$LEGATO_ROOT/components/positioning/platformAdaptor/inc
+}
+
 requires:
 {
-    component: { $LEGATO_MODEM_PA }
+    component:
+    {
+        $LEGATO_UTIL_PA
+    }
+
     api:
     {
         le_gnss.api    [types-only]

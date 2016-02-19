@@ -17,7 +17,7 @@ const pa_Gnss_Position_t StubPosition = {
         .longitude = +2294400,
         .altitude = 0,
         .hSpeed = 0,
-        .track = 0,
+        .dimension = 0,
         .hdop = 0,
         .vdop = 0,
         .timeInfo = {
@@ -137,20 +137,41 @@ le_result_t pa_gnss_Stop
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function must be called to set the rate of gps fix reception
+ * This function sets the GNSS device acquisition rate.
  *
- * @return LE_FAULT  The function failed.
- * @return LE_OK     The function succeed.
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT on failure
+ *  - LE_UNSUPPORTED request not supported
+ *  - LE_TIMEOUT a time-out occurred
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_gnss_SetAcquisitionRate
 (
-    uint32_t rate     ///< [IN] rate in seconds
+    uint32_t rate     ///< [IN] rate in milliseconds
 )
 {
 
 
     return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the rate of GNSS fix reception
+ *
+ *
+ * @return LE_FAULT         The function failed.
+ * @return LE_OK            The function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_gnss_GetAcquisitionRate
+(
+    uint32_t* ratePtr     ///< [IN] rate in milliseconds
+)
+{
+
+    return LE_FAULT;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -202,20 +223,20 @@ void pa_gnss_RemovePositionDataHandler
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_gnss_GetLastPositionData
 (
-    pa_Gnss_Position_Ref_t  positionRef   ///< [OUT] Reference to a position struct
+    pa_Gnss_Position_t* positionPtr   ///< [OUT] Pointer to a position struct
 )
 {
 
 #ifdef GNSS_STUB_FAKE_POSITION
 
-    if (positionRef == NULL)
+    if (positionPtr == NULL)
     {
         LE_WARN("positionRef is NULL");
         return LE_FAULT;
     }
     else
     {
-        memcpy(positionRef, &StubPosition, sizeof(pa_Gnss_Position_t));
+        memcpy(positionPtr, &StubPosition, sizeof(pa_Gnss_Position_t));
         return LE_OK;
     }
 

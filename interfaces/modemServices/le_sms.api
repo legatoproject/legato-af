@@ -66,6 +66,8 @@
  * returned, call le_sms_GetPlatformSpecificErrorCode() to retrieve the platform specific error
  * code.
  *
+ * Please refer to @ref c_smsSampleMO page to get an example of SMS message sending.
+ *
  * @section le_sms_ops_async_sending Sending asynchronously a message.
 
  * To send an asynchronous message, le_sms_SendAsync() API can be called instead of le_sms_Send()
@@ -93,29 +95,6 @@
  *
  * Message object is never deleted regardless of the sending result. Caller has to
  * delete it.
- *
- * @code
- *
- * [...]
- *
- * le_sms_MsgRef_t myTextMsg;
- *
- * // Create a Message Object
- * myTextMsg = le_sms_Create();
- *
- * // Set the telephone number
- * le_sms_SetDestination(myTextMsg, "+33606060708");
- *
- * // Set the message text
- * le_sms_SetText(myTextMsg, "Hello, this is a Legato SMS message");
- *
- * // Send the message
- * le_sms_Send(myTextMsg);
- *
- * // Delete the message
- * le_sms_Delete(myTextMsg);
- *
- * @endcode
  *
  * @section le_sms_ops_receiving Receiving a message
  * To receive SMS messages, register a handler function to obtain incoming
@@ -154,55 +133,7 @@
  * @note @c le_sms_RemoveRxMessageHandler() API does not delete the Message Object.
  *  The caller has to delete it.
  *
- * @code
- *
- *
- * [...]
- *
- * // Handler function for message reception
- * static void myMsgHandler
- * (
- *      le_sms_MsgRef_t msgRef,
- *      void*           contextPtr*
- * )
- * {
- *     char   tel[LE_SMS_TEL_NMBR_MAX_BYTES];
- *     char   text[LE_SMS_TEXT_MAX_BYTES];
- *
- *     if (le_sms_GetType(msgRef) == LE_SMS_TYPE_RX)
- *     {
- *         if (le_sms_GetFormat(msgRef) == LE_SMS_FORMAT_TEXT)
- *         {
- *             le_sms_GetSenderTel(msgRef, tel, sizeof(tel));
- *             le_sms_GetText(msgRef, text, sizeof(text));
- *
- *             LE_INFO(" A new text message has been received !");
- *             LE_INFO(" From tel.%s, text: \"%s\"", tel, text);
- *         }
- *         else
- *         {
- *             LE_INFO(" I support only text messages !");
- *         }
- *     }
- * }
- *
- *
- * [...]
- * // In the main function:
- *
- * le_sms_RxMessageHandlerRef_t HdlrRef;
- *
- * // Add an handler function to handle message reception
- * HdlrRef=le_sms_AddRxMessageHandler(myMsgHandler);
- *
- * [...]
- *
- * // Remove Handler entry
- * le_sms_RemoveRxMessageHandler(HdlrRef);
- *
- * [...]
- *
- * @endcode
+ * Please refer to @ref c_smsSampleMT page to get an example of SMS message reception handling.
  *
  * @section le_sms_ops_listing Listing  messages recorded in storage area
  *
@@ -268,6 +199,9 @@
  * @note - Format returned by le_sms_GetFormat is never LE_SMS_FORMAT_PDU.
  * @note - 16 bit UCS2 format is not supported
  *
+ * A sample code that implements a function for SMS Cell Broadcast reception can be found in
+ * \b smsCBTest.c file (please refer to @ref c_smsCbSample page).
+ *
  * @b Serial @b Number
  *
  * Cell Broadcast Serial Number parameter is a 16-bit integer which identifies a particular
@@ -301,60 +235,6 @@
  * These will be distinguished by the Serial Number.
  *
  * Message identifier meaning ranges are defined in the 3GPP 23.041 (9.4.1.2.2 Message Identifier).
- *
- * @code
- *
- * [...]
- *
- * static void myMsgHandler
- * (
- *     le_sms_MsgRef_t msgRef,
- *     void* contextPtr
- * )
- * {
- *     char text[LE_SMS_TEXT_MAX_BYTES];
- *     uin8_t binary[LE_SMS_BINARY_MAX_BYTES];
- *     uint16_t messageId;
- *
- *     if (le_sms_GetType(msgRef) == LE_SMS_TYPE_BROADCAST_RX)
- *     {
- *         if (le_sms_GetFormat(msgRef) == LE_SMS_FORMAT_TEXT)
- *         {
- *             // Get the message text
- *             le_sms_GetText(msgRef, text, LE_SMS_TEXT_MAX_BYTES);
- *         }
- *         else if (le_sms_GetFormat(msgRef) == LE_SMS_FORMAT_BINARY)
- *         {
- *             // Get the message binary
- *             le_sms_GetBinary(msgRef, binary, LE_SMS_BINARY_MAX_BYTES);
- *         }
- *
- *         // Get the message identifier to identify the message origin
- *         le_sms_GetCellBroadcastId(msgRef,&messageId);
- *
- *         // Delete the message
- *         le_sms_Delete(msgRef);
- *     }
- *     [...]
- * }
- *
- *
- * [...]
- * // In the main function:
- *
- * le_sms_RxMessageHandlerRef_t HdlrRef;
- *
- * // Add an handler function to handle message reception
- * HdlrRef=le_sms_AddRxMessageHandler(myMsgHandler);
- *
- * [...]
- *
- * // Remove Handler entry
- * le_sms_RemoveRxMessageHandler(HdlrRef);
- *
- * [...]
- *
- * @endcode
  *
  * @section le_sms_ops_broadcast_configuration SMS Cell Broadcast configuration
  *
@@ -425,6 +305,12 @@
  * @page c_smsSampleMT Sample code for Mobile Terminated SMS message
  *
  * @include "apps/sample/sms/smsClient/smsMT.c"
+ */
+
+/**
+ * @page c_smsCbSample Sample code for SMS Cell Broadcast reception
+ *
+ * @include "apps/test/modemServices/sms/smsIntegrationTest/smsCBTest/smsCBTest.c"
  */
 
 USETYPES le_mdmDefs.api;
@@ -850,6 +736,9 @@ FUNCTION le_result_t SetDestination
  * @return LE_BAD_PARAMETER Text message length is equal to zero.
  * @return LE_OK            Function succeeded.
  *
+ * @note Text Message is encoded in ASCII format (ISO8859-15) and characters have to exist in
+ *  the GSM 23.038 7 bit alphabet.
+ *
  * @note If message is too long (max LE_SMS_TEXT_MAX_LEN digits), it is a fatal error, the
  *       function will not return.
  *
@@ -1194,9 +1083,9 @@ FUNCTION size_t GetUserdataLen
 /**
  * Get the text Message.
  *
- * Output parameter is updated with the text string. If the text string exceedS the
- * value of 'len' parameter,  LE_OVERFLOW error code is returned and 'text' is filled until
- * 'len-1' characters and a null-character is implicitly appended at the end of 'text'.
+ * Output parameter is updated with the text string encoded in ASCII format. If the text string
+ * exceeds the value of 'len' parameter, LE_OVERFLOW error code is returned and 'text' is filled
+ * until 'len-1' characters and a null-character is implicitly appended at the end of 'text'.
  *
  * @return LE_OVERFLOW      Message length exceed the maximum length.
  * @return LE_OK            Function succeeded.

@@ -339,3 +339,134 @@ le_result_t le_path_Concat
 
     return result;
 }
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Checks if path has a trailing separator.
+ *
+ * @return
+ *      true if path ends with a separator.
+ *      false otherwise.
+ */
+//--------------------------------------------------------------------------------------------------
+static bool HasTrailingSeparator
+(
+    const char* pathPtr,
+    const char* separatorPtr
+)
+{
+    size_t sepStrLen = le_utf8_NumBytes(separatorPtr);
+
+    // Start at the end of the path.
+    size_t i = le_utf8_NumBytes(pathPtr) - sepStrLen;
+
+    if (strncmp(pathPtr + i, separatorPtr, sepStrLen) == 0)
+    {
+        return true;
+    }
+
+    return false;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Checks if path2 is a subpath of path1.  That is path2 has the same starting nodes as path2.  For
+ * example, path2 is a subpath of path1 if:
+ *
+ * path1 = /a/b/c
+ * path2 = /a/b/c/d/e
+ *
+ * @return
+ *      true if path2 is a subpath of path1.
+ *      false otherwise.
+ */
+//--------------------------------------------------------------------------------------------------
+bool le_path_IsSubpath
+(
+    const char* path1Ptr,           ///< [IN] Path 1 string.
+    const char* path2Ptr,           ///< [IN] Path 2 string.
+    const char* separatorPtr        ///< [IN] Separator string.
+)
+{
+    // Check parameters.
+    LE_ASSERT( (path1Ptr != NULL) && (path2Ptr != NULL) && (separatorPtr != NULL) );
+
+    // Check if path2 starts the same as path1.
+    if (strstr(path2Ptr, path1Ptr) == path2Ptr)
+    {
+        // Get a pointer to the portion of path2 after the path1 portion.
+        char* subPathPtr = (char*)&(path2Ptr[strlen(path1Ptr)]);
+
+        if (HasTrailingSeparator(path1Ptr, separatorPtr))
+        {
+            // Check that there are additional nodes in path2.
+            if (subPathPtr[FindNextPathCharIndex(subPathPtr, separatorPtr)] != '\0')
+            {
+                return true;
+            }
+        }
+        else
+        {
+            // Check that the subpath in path2 starts with a separator and contains additional nodes.
+            if ( (strstr(subPathPtr, separatorPtr) == subPathPtr) &&
+                 (subPathPtr[FindNextPathCharIndex(subPathPtr, separatorPtr)] != '\0') )
+            {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Checks if path1 and path2 are equivalent, ignoring trailing separators.  For example, all the
+ * following paths are equivalent.
+ *
+ * /a/b/c
+ * /a/b/c/
+ * /a/b/c///
+ *
+ * @return
+ *      true if path1 is equivalent to path2.
+ *      false otherwise.
+ */
+//--------------------------------------------------------------------------------------------------
+bool le_path_IsEquivalent
+(
+    const char* path1Ptr,           ///< [IN] Path 1 string.
+    const char* path2Ptr,           ///< [IN] Path 2 string.
+    const char* separatorPtr        ///< [IN] Separator string.
+)
+{
+    // Check parameters.
+    LE_ASSERT( (path1Ptr != NULL) && (path2Ptr != NULL) && (separatorPtr != NULL) );
+
+    // Check for empty strings.
+    if ( (path1Ptr[0] == '\0') || (path2Ptr[0] == '\0') )
+    {
+        return false;
+    }
+
+    // Get the path lengths not including trailing separators.
+    size_t len1 = FindTrailingSeparatorIndex(path1Ptr, separatorPtr);
+    size_t len2 = FindTrailingSeparatorIndex(path2Ptr, separatorPtr);
+
+    // Perform a quick check.
+    if (len1 != len2)
+    {
+        return false;
+    }
+
+    // Compare the two paths.
+    if (strncmp(path1Ptr, path2Ptr, len1) == 0)
+    {
+        return true;
+    }
+
+    return false;
+}

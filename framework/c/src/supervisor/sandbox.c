@@ -141,12 +141,11 @@
 #include "legato.h"
 #include "sandbox.h"
 #include "limit.h"
-#include "serviceDirectoryProtocol.h"
 #include "resourceLimits.h"
 #include "fileDescriptor.h"
 #include "smack.h"
 #include "interfaces.h"
-#include "devSmack.h"
+#include "dir.h"
 
 
 #if ! defined LE_RUNTIME_DIR
@@ -224,31 +223,6 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * The name of the node in the config tree that contains the source file to import to the sandbox.
- */
-//--------------------------------------------------------------------------------------------------
-#define CFG_NODE_SRC_FILE                               "src"
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * The name of the node in the config tree that contains the destination path to import to the
- * sandbox.
- */
-//--------------------------------------------------------------------------------------------------
-#define CFG_NODE_DEST_PATH                              "dest"
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Maximum number of bytes in a permission string for devices.
- */
-//--------------------------------------------------------------------------------------------------
-#define MAX_DEVICE_PERM_STR_BYTES                       3
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Import object.
  */
 //--------------------------------------------------------------------------------------------------
@@ -277,7 +251,7 @@ const ImportObj_t DefaultImportObjs[] = { {.src = STRINGIZE(LE_SVCDIR_SERVER_SOC
                                           {.src = "/dev/log", .dest = "/dev/"},
                                           {.src = "/dev/null", .dest = "/dev/"},
                                           {.src = "/dev/zero", .dest = "/dev/"},
-                                          {.src = "/usr/local/lib/liblegato.so", .dest = "/lib/"} };
+                                          {.src = "/legato/systems/current/lib/liblegato.so", .dest = "/lib/"} };
 
 #if defined(TARGET_IMPORTS_X86_64)
 
@@ -313,7 +287,7 @@ const ImportObj_t DefaultSystemImportObjs[] = {
                                           {.src = "/lib/libm.so.6", .dest = "/lib/"},
                                           {.src = "/usr/lib/libstdc++.so.6", .dest = "/lib/"} };
 
-#else
+#elif defined(TARGET_IMPORTS_ARMV7)
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -329,7 +303,8 @@ const ImportObj_t DefaultSystemImportObjs[] = {
                                           {.src = "/lib/libgcc_s.so.1", .dest = "/lib/"},
                                           {.src = "/lib/libm.so.6", .dest = "/lib/"},
                                           {.src = "/usr/lib/libstdc++.so.6", .dest = "/lib/"} };
-
+#else
+#error No "TARGET_IMPORTS_x" defined.
 #endif
 
 //--------------------------------------------------------------------------------------------------
@@ -665,7 +640,8 @@ static le_result_t ImportFile
 (
     const char* srcPathPtr,     ///< [IN] Source file to import.
     const char* destPathPtr,    ///< [IN] Relative location in the sandbox to import the file to.
-    const char* sandboxRoot     ///< [IN] Root directory of the sandbox to import the file into.
+    const char* sandboxRoot,    ///< [IN] Root directory of the sandbox to import the file into.
+    const char* smackLabelPtr   ///< [IN] SMACK label to use for any created directories.
 )
 {
     // Create the absolute destination path.
@@ -687,7 +663,9 @@ static le_result_t ImportFile
     }
 
     // Make the destination path.
-    if (le_dir_MakePath(destDir, S_IRUSR | S_IXUSR | S_IROTH | S_IXOTH) == LE_FAULT)
+    if (dir_MakePathSmack(destDir,
+                          S_IRUSR | S_IXUSR | S_IROTH | S_IXOTH,
+                          smackLabelPtr) == LE_FAULT)
     {
         return LE_FAULT;
     }
@@ -708,7 +686,7 @@ static le_result_t ImportFile
     // Bind mount file into the sandbox.
     if (mount(srcPathPtr, destPath, NULL, MS_BIND, NULL) != 0)
     {
-        LE_ERROR("Could not import '%s' into sandbox destination '%s'.  %m", srcPathPtr, destPath);
+        LE_ERROR("Couldn't import '%s' into sandbox at '%s'. %m", srcPathPtr, destPath);
         return LE_FAULT;
     }
 
@@ -731,7 +709,8 @@ static le_result_t ImportDir
 (
     const char* srcPathPtr,     ///< [IN] Source directory to import.
     const char* destPathPtr,    ///< [IN] Relative location in the sandbox to import to.
-    const char* sandboxRoot     ///< [IN] Root directory of the sandbox to import to.
+    const char* sandboxRoot,    ///< [IN] Root directory of the sandbox to import to.
+    const char* smackLabelPtr   ///< [IN] SMACK label to use for any created directories.
 )
 {
     // Create the absolute destination path.
@@ -744,7 +723,9 @@ static le_result_t ImportDir
     }
 
     // Make the destination path.
-    if (le_dir_MakePath(destPath, S_IRUSR | S_IXUSR | S_IROTH | S_IXOTH) == LE_FAULT)
+    if (dir_MakePathSmack(destPath,
+                          S_IRUSR | S_IXUSR | S_IROTH | S_IXOTH,
+                          smackLabelPtr) == LE_FAULT)
     {
         return LE_FAULT;
     }
@@ -774,7 +755,8 @@ static le_result_t ImportDir
 static le_result_t Import
 (
     le_dls_List_t* importListPtr,   ///< [IN] List of objects to be imported.
-    const char* sandboxRoot         ///< [IN] Root directory of the sandbox to import to.
+    const char* sandboxRoot,        ///< [IN] Root directory of the sandbox to import to.
+    const char* smackLabelPtr       ///< [IN] SMACK label to use for any created directories.
 )
 {
     le_result_t result;
@@ -790,11 +772,11 @@ static le_result_t Import
 
         if (le_dir_IsDir(srcPathPtr))
         {
-            result = ImportDir(srcPathPtr, destPathPtr, sandboxRoot);
+            result = ImportDir(srcPathPtr, destPathPtr, sandboxRoot, smackLabelPtr);
         }
         else
         {
-            result = ImportFile(srcPathPtr, destPathPtr, sandboxRoot);
+            result = ImportFile(srcPathPtr, destPathPtr, sandboxRoot, smackLabelPtr);
         }
 
         if (result != LE_OK)
@@ -843,14 +825,14 @@ static void ReleaseImportList
 static le_result_t GetImportSrcPath
 (
     app_Ref_t appRef,                   ///< [IN] Reference to the application object.
-    le_cfg_IteratorRef_t importCfg,     ///< [IN] Config iterator for the import.
+    le_cfg_IteratorRef_t cfgIter,       ///< [IN] Config iterator for the import.
     char* bufPtr,                       ///< [OUT] Buffer to store the source path.
     size_t bufSize                      ///< [IN] Size of the buffer.
 )
 {
     char srcPath[LIMIT_MAX_PATH_BYTES] = "";
 
-    if (le_cfg_GetString(importCfg, CFG_NODE_SRC_FILE, srcPath, sizeof(srcPath), "") != LE_OK)
+    if (le_cfg_GetString(cfgIter, "src", srcPath, sizeof(srcPath), "") != LE_OK)
     {
         LE_ERROR("Source file path '%s...' for app '%s' is too long.", srcPath, app_GetName(appRef));
         return LE_FAULT;
@@ -873,14 +855,35 @@ static le_result_t GetImportSrcPath
     }
     else
     {
-        // Convert the source file path to an absolute path.
+        // The source file path is relative to the app install directory.
+        // Convert it to a different absolute path depending on whether or not it is writeable.
         bufPtr[0] = '\0';
-
-        if (   le_path_Concat("/", bufPtr, bufSize, app_GetInstallDirPath(appRef), srcPath, NULL)
-            != LE_OK)
+        if (le_cfg_GetBool(cfgIter, "isWritable", false))
         {
-            LE_ERROR("Import source path '%s' for app '%s' is too long.", bufPtr, app_GetName(appRef));
-            return LE_FAULT;
+            if (LE_OK != le_path_Concat("/",
+                                        bufPtr,
+                                        bufSize,
+                                        app_GetWriteableFilesDirPath(appRef),
+                                        srcPath,
+                                        NULL) )
+            {
+                LE_ERROR("Import source path '%s' for app '%s' is too long.", bufPtr, app_GetName(appRef));
+                return LE_FAULT;
+            }
+        }
+        else
+        {
+            if (LE_OK != le_path_Concat("/",
+                                        bufPtr,
+                                        bufSize,
+                                        app_GetInstallDirPath(appRef),
+                                        "read-only",
+                                        srcPath,
+                                        NULL) )
+            {
+                LE_ERROR("Import source path '%s' for app '%s' is too long.", bufPtr, app_GetName(appRef));
+                return LE_FAULT;
+            }
         }
     }
 
@@ -901,12 +904,12 @@ static le_result_t GetImportSrcPath
 static le_result_t GetImportDestPath
 (
     const char* appNamePtr,             ///< [IN] App name.
-    le_cfg_IteratorRef_t importCfg,     ///< [IN] Config iterator for the import.
+    le_cfg_IteratorRef_t cfgIter,       ///< [IN] Config iterator for the import.
     char* bufPtr,                       ///< [OUT] Buffer to store the path.
     size_t bufSize                      ///< [IN] Size of the buffer.
 )
 {
-    if (le_cfg_GetString(importCfg, CFG_NODE_DEST_PATH, bufPtr, bufSize, "") != LE_OK)
+    if (le_cfg_GetString(cfgIter, "dest", bufPtr, bufSize, "") != LE_OK)
     {
         LE_ERROR("Destination path '%s...' for app '%s' is too long.", bufPtr, appNamePtr);
         return LE_FAULT;
@@ -1013,7 +1016,8 @@ static le_result_t AddCfgToImportList
 //--------------------------------------------------------------------------------------------------
 static le_result_t ImportAllFiles
 (
-    app_Ref_t appRef
+    app_Ref_t appRef,               ///< [IN] Application reference.
+    const char* smackLabelPtr       ///< [IN] SMACK label to use for any created directories.
 )
 {
     le_result_t result = LE_FAULT;
@@ -1029,7 +1033,7 @@ static le_result_t ImportAllFiles
 
     // Add the app's bin directory, if it exists.
     char pathBuff[LIMIT_MAX_PATH_BYTES] = "";
-    if (le_path_Concat("/", pathBuff, sizeof(pathBuff), app_GetInstallDirPath(appRef), "bin", NULL)
+    if (le_path_Concat("/", pathBuff, sizeof(pathBuff), app_GetInstallDirPath(appRef), "read-only/bin", NULL)
         != LE_OK)
     {
         LE_FATAL("App's install dir path too long!");
@@ -1049,7 +1053,7 @@ static le_result_t ImportAllFiles
 
     // Add the app's lib directory, if it exists.
     pathBuff[0] = '\0';
-    if (le_path_Concat("/", pathBuff, sizeof(pathBuff), app_GetInstallDirPath(appRef), "lib", NULL)
+    if (le_path_Concat("/", pathBuff, sizeof(pathBuff), app_GetInstallDirPath(appRef), "read-only/lib", NULL)
         != LE_OK)
     {
         LE_FATAL("App's install dir path too long!");
@@ -1117,7 +1121,7 @@ static le_result_t ImportAllFiles
         goto done;
     }
 
-    result = Import(&importList, sandboxPath);
+    result = Import(&importList, sandboxPath, smackLabelPtr);
 
 done:
 
@@ -1147,7 +1151,7 @@ static le_result_t SetupFileSystem
     int fileSysLimit = (int)resLim_GetSandboxedAppTmpfsLimit(appRef);
 
     // Make the mount options.
-    char opt[100];
+    char opt[LIMIT_MAX_APP_NAME_BYTES*2 + 100];
     if (snprintf(opt, sizeof(opt), "size=%d,mode=%.4o,uid=%d,gid=%d,smackfsdef=%s,smackfsroot=%s",
                  (int)fileSysLimit, S_IRWXO, 0, 0,
                  smackLabelPtr, smackLabelPtr) >= sizeof(opt))
@@ -1188,7 +1192,7 @@ static le_result_t MakeAppSandboxDir
     const char* sandboxPath = app_GetSandboxPath(appRef);
 
     // Make the directory
-    le_result_t r = le_dir_Make(sandboxPath, S_IRWXO);
+    le_result_t r = dir_MakeSmack(sandboxPath, S_IRWXO, smackLabelPtr);
 
     if (r == LE_FAULT)
     {
@@ -1204,14 +1208,13 @@ static le_result_t MakeAppSandboxDir
                 appName);
         sandbox_Remove(appRef);
 
-        if (le_dir_Make(sandboxPath, S_IRWXU) != LE_OK)
+        if (dir_MakeSmack(sandboxPath, S_IRWXU, smackLabelPtr) != LE_OK)
         {
             return LE_FAULT;
         }
     }
 
-    // Set the directory's SMACK label.
-    return smack_SetLabel(sandboxPath, smackLabelPtr);
+    return LE_OK;
 }
 
 
@@ -1241,167 +1244,7 @@ static le_result_t MakeAppTmpDir
         return LE_FAULT;
     }
 
-    if (le_dir_Make(tmpPath, S_IRWXO) != LE_OK)
-    {
-        return LE_FAULT;
-    }
-
-    // Set the directory's SMACK label.
-    return smack_SetLabel(tmpPath, smackLabelPtr);
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Gets the device ID of a device file.
- *
- * @return
- *      LE_OK if successful.
- *      LE_FAULT if there was an error.
- */
-//--------------------------------------------------------------------------------------------------
-static le_result_t GetDevID
-(
-    const char* fileNamePtr,        ///< [IN] Absolute path of the file.
-    dev_t* idPtr                    ///< [OUT] Device ID.
-)
-{
-    struct stat fileStat;
-
-    if (stat(fileNamePtr, &fileStat) != 0)
-    {
-        LE_ERROR("Could not get file info for '%s'.  %m.", fileNamePtr);
-        return LE_FAULT;
-    }
-
-    if (!S_ISCHR(fileStat.st_mode) && !S_ISBLK(fileStat.st_mode))
-    {
-        LE_ERROR("'%s' is not a device file.  %m.", fileNamePtr);
-        return LE_FAULT;
-    }
-
-    *idPtr = fileStat.st_rdev;
-    return LE_OK;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Get the configured permissions for a device.  The permissions will be returned in the provided
- * buffer as a string (either "r", "w" or "rw").  The provided buffer must be greater than or equal
- * to MAX_DEVICE_PERM_STR_BYTES bytes long.
- **/
-//--------------------------------------------------------------------------------------------------
-static void GetCfgPermissions
-(
-    le_cfg_IteratorRef_t cfgIter,       ///< [IN] Config iterator pointing to the device file.
-    char* bufPtr,                       ///< [OUT] Buffer to hold the permission string.
-    size_t bufSize                      ///< [IN] Size of the buffer.
-)
-{
-    LE_FATAL_IF(bufSize < MAX_DEVICE_PERM_STR_BYTES,
-                "Buffer size for permission string too small.");
-
-    int i = 0;
-
-    if (le_cfg_GetBool(cfgIter, "isReadable", false))
-    {
-        bufPtr[i++] = 'r';
-    }
-
-    if (le_cfg_GetBool(cfgIter, "isWritable", false))
-    {
-        bufPtr[i++] = 'w';
-    }
-
-    bufPtr[i] = '\0';
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Sets DAC and SMACK permissions for device files needed by this app.
- *
- * @return
- *      LE_OK if successful.
- *      LE_FAULT if there was an error.
- */
-//--------------------------------------------------------------------------------------------------
-static le_result_t SetDevicePermissions
-(
-    app_Ref_t appRef                ///< [IN] The application.
-)
-{
-    // Create an iterator for the app.
-    le_cfg_IteratorRef_t appCfg = le_cfg_CreateReadTxn(app_GetConfigPath(appRef));
-
-    // Get the list of device files.
-    le_cfg_GoToNode(appCfg, CFG_NODE_REQUIRES);
-    le_cfg_GoToNode(appCfg, CFG_NODE_DEVICES);
-
-    if (le_cfg_GoToFirstChild(appCfg) == LE_OK)
-    {
-        do
-        {
-            // Get source path.
-            char srcPath[LIMIT_MAX_PATH_BYTES];
-            if (GetImportSrcPath(appRef, appCfg, srcPath, sizeof(srcPath)) != LE_OK)
-            {
-                le_cfg_CancelTxn(appCfg);
-                return LE_FAULT;
-            }
-
-            // Check that the source is a device file.
-            dev_t devId;
-
-            if (GetDevID(srcPath, &devId) != LE_OK)
-            {
-                le_cfg_CancelTxn(appCfg);
-                return LE_FAULT;
-            }
-
-            // TODO: Disallow device files that are security risks, such as block flash devices.
-
-            // Assign a SMACK label to the device file.
-            char devLabel[LIMIT_MAX_SMACK_LABEL_BYTES];
-            le_result_t result = devSmack_GetLabel(devId, devLabel, sizeof(devLabel));
-
-            LE_FATAL_IF(result == LE_OVERFLOW, "Smack label '%s...' too long.", devLabel);
-
-            if (result != LE_OK)
-            {
-                le_cfg_CancelTxn(appCfg);
-                return LE_FAULT;
-            }
-
-            if (smack_SetLabel(srcPath, devLabel) != LE_OK)
-            {
-                le_cfg_CancelTxn(appCfg);
-                return LE_FAULT;
-            }
-
-            // Get the app's SMACK label.
-            char appLabel[LIMIT_MAX_SMACK_LABEL_BYTES];
-            appSmack_GetLabel(app_GetName(appRef), appLabel, sizeof(appLabel));
-
-            // Get the required permissions for the device.
-            char permStr[MAX_DEVICE_PERM_STR_BYTES];
-            GetCfgPermissions(appCfg, permStr, sizeof(permStr));
-
-            // Set the SMACK rule to allow the app to access the device.
-            smack_SetRule(appLabel, permStr, devLabel);
-
-            // Set the DAC permissions to be permissive.
-            LE_FATAL_IF(chmod(srcPath, S_IROTH | S_IWOTH) == -1,
-                        "Could not set permissions for file '%s'.  %m.", srcPath);
-        }
-        while (le_cfg_GoToNextSibling(appCfg) == LE_OK);
-
-        le_cfg_GoToParent(appCfg);
-    }
-
-    le_cfg_CancelTxn(appCfg);
-    return LE_OK;
+    return dir_MakeSmack(tmpPath, S_IRWXO, smackLabelPtr);
 }
 
 
@@ -1430,12 +1273,6 @@ le_result_t sandbox_Setup
         return LE_FAULT;
     }
 
-    // Set permissions for device files required by this app.
-    if (SetDevicePermissions(appRef) != LE_OK)
-    {
-        return LE_FAULT;
-    }
-
     // Get the SMACK label for the folders we create.
     char appDirLabel[LIMIT_MAX_SMACK_LABEL_BYTES];
     appSmack_GetAccessLabel(app_GetName(appRef),
@@ -1449,7 +1286,7 @@ le_result_t sandbox_Setup
     if ( (MakeAppSandboxDir(appRef, appDirLabel) != LE_OK) ||
          (SetupFileSystem(appRef, appDirLabel) != LE_OK)  ||
          (MakeAppTmpDir(appRef, appDirLabel) != LE_OK) ||
-         (ImportAllFiles(appRef) != LE_OK) )
+         (ImportAllFiles(appRef, appDirLabel) != LE_OK) )
     {
         // Clean up the sandbox if there was an error creating it.
         sandbox_Remove(appRef);

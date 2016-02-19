@@ -1,0 +1,12 @@
+sources:
+{
+    mdcMultiPdpTest.c
+}
+
+requires:
+{
+    api:
+    {
+        le_mdc.api
+    }
+}

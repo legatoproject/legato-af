@@ -15,23 +15,11 @@
  * out training and mentorship before attempting to work on multithreaded production code.
  *
  * Two kinds of mutex are supported by Legato:
- *  - @b Normal
- *  - @b Traceable
- *
- * Normal mutexes are faster than traceable mutexes and consume less memory, but still offer some
- * diagnosic capabilities.  Traceable mutexes generally behave the same as Normal mutexes, but
- * can also log their activities.
- *
- * In addition, both Normal and Traceable mutexes can be either
  *  - @b Recursive or
  *  - @b Non-Recursive
  *
  * All mutexes can be locked and unlocked. The same lock, unlock, and delete
- * functions work for all the mutexes, regardless of what type they are.  his means that a mutex
- * can be changed from Normal to Traceable (or vice versa) by changing the function you use
- * to create it. This helps to troubleshoot race conditions or deadlocks because it's
- * easy to switch one mutex or a select few mutexes to Traceable without suffering the
- * runtime cost of switching @e all mutexes to the slower Traceable mutexes.
+ * functions work for all the mutexes, regardless of what type they are.
  *
  * A recursive mutex can be locked again by the same thread that already has the lock, but
  * a non-recursive mutex can only be locked once before being unlocked.
@@ -45,75 +33,30 @@
  * decremented.  Only when the lock count reaches zero will the mutex actually unlock.
  *
  * There's a limit to the number of times the same recursive mutex can be locked by the same
- * thread without ever unlocking it, but that limit is so high (at least 2 billion), if that much recursion is
- *  going on, there are other, more serious problems with the program.
+ * thread without ever unlocking it, but that limit is so high (at least 2 billion), if that
+ * much recursion is going on, there are other, more serious problems with the program.
  *
  * @section c_mutex_create Creating a Mutex
  *
  * In Legato, mutexes are dynamically allocated objects.  Functions that create them
  * return references to them (of type le_mutex_Ref_t).
  *
- * These are the functions to create mutexes:
+ * Functions for creating mutexes:
  *  - @c le_mutex_CreateRecursive() - creates a @b normal, @b recursive mutex.
  *  - @c le_mutex_CreateNonRecursive() - creates a @b normal, @b non-recursive mutex.
- *  - @c le_mutex_CreateTraceableRecursive() - creates a @b traceable, @b recursive mutex.
- *  - @c le_mutex_CreateTraceableNonRecursive() - creates a @b traceable, @b non-recursive mutex.
  *
  * All mutexes have names, required for diagnostic purposes.  See
  * @ref c_mutex_diagnostics below.
  *
  * @section c_mutex_locking Using a Mutex
  *
- * These are the functions to lock and unlock mutexes:
+ * Functions for locking and unlocking mutexes:
  *  - @c le_mutex_Lock()
  *  - @c le_mutex_Unlock()
  *  - @c le_mutex_TryLock()
  *
  * It doesn't matter what type of mutex you are using, you
  * still use the same functions for locking and unlocking your mutex.
- *
- * @subsection c_mutex_locking_tips Tip
- *
- * @todo Do we really want this feature?
- *
- * A common case is often where a module has a single mutex  it uses for some data
- * structure that may get accessed by multiple threads. To make the locking and unlocking of that
- * mutex jump out at readers of the code (and to make coding a little easier too), the following
- * can be created in that module:
- *
- * @code
- * static le_mutex_Ref_t MyMutexRef;
- * static inline Lock(void) { le_mutex_Lock(MyMutexRef); }
- * static inline Unlock(void) { le_mutex_Unlock(MyMutexRef); }
- * @endcode
- *
- * This results in code that looks like this:
- *
- * @code
- * static void SetParam(int param)
- * {
- *     Lock();
- *
- *     MyObjPtr->param = param;
- *
- *     Unlock();
- * }
- * @endcode
- *
- * To make this easier, the Mutex API provides the LE_MUTEX_DECLARE_REF()
- * macro.  Using that macro, the three declaration lines
- *
- * @code
- * static le_mutex_Ref_t MyMutexRef;
- * static inline Lock(void) { le_mutex_Lock(MyMutexRef); }
- * static inline Unlock(void) { le_mutex_Unlock(MyMutexRef); }
- * @endcode
- *
- * can be replaced with one:
- *
- * @code
- * LE_MUTEX_DECLARE_REF(MyMutexRef);
- * @endcode
  *
  * @section c_mutex_delete Deleting a Mutex
  *
@@ -123,19 +66,9 @@
  *
  * @section c_mutex_diagnostics Diagnostics
  *
- * Both Normal and Traceable mutexes have some diagnostics capabilities.
- *
- * The command-line diagnostic tool lsmutex can be used to list the mutexes
+ * The command-line diagnostic tool @ref toolsTarget_inspect can be used to list the mutexes
  * that currently exist inside a given process.  The state of each mutex can be
  * seen, including a list of any threads that might be waiting for that mutex.
- *
- * The tool threadlook will report if a given thread is currently
- * holding the lock on a mutex or waiting for a mutex along with the mutex name.
- *
- * If there are Traceable mutexes in a process, it's possible to use the
- * log tool to enable or disable tracing on that mutex.  The trace keyword name is
- * the name of the process, the name of the component, and the name of the mutex, separated by
- * slashes (e.g., "process/component/mutex").
  *
  * <HR>
  *
@@ -186,34 +119,6 @@ le_mutex_Ref_t le_mutex_CreateRecursive
  */
 //--------------------------------------------------------------------------------------------------
 le_mutex_Ref_t le_mutex_CreateNonRecursive
-(
-    const char* nameStr     ///< [in] Name of the mutex
-);
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Create a Traceable, Recursive mutex.
- *
- * @return  Returns a reference to the mutex.
- *
- * @note Terminates the process on failure, no need to check the return value for errors.
- */
-//--------------------------------------------------------------------------------------------------
-le_mutex_Ref_t le_mutex_CreateTraceableRecursive
-(
-    const char* nameStr     ///< [in] Name of the mutex
-);
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Create a Traceable, Non-Recursive mutex.
- *
- * @return  Returns a reference to the mutex.
- *
- * @note Terminates the process on failure, no need to check the return value for errors.
- */
-//--------------------------------------------------------------------------------------------------
-le_mutex_Ref_t le_mutex_CreateTraceableNonRecursive
 (
     const char* nameStr     ///< [in] Name of the mutex
 );

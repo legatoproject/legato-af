@@ -13,4 +13,4 @@ exe-test:
 	mkexe -o bin/void-exe void
 
 clean:
-	rm -rf build_* *.localhost _build* bin
+	rm -rf build_* *.update _build* bin

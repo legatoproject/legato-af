@@ -830,4 +830,47 @@ LE_SHARED le_result_t pa_mrc_GetServingCellLocAreaCode
     uint32_t* lacPtr ///< [OUT] Location Area Code of the serving cell.
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Band capabilities
+ *
+ * @return
+ * - LE_OK              on success
+ * - LE_FAULT           on failure
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_mrc_GetBandCapabilities
+(
+    le_mrc_BandBitMask_t* bandsPtr ///< [OUT] A bit mask to get the Band capabilities.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the LTE Band capabilities
+ *
+ * @return
+ * - LE_OK              on success
+ * - LE_FAULT           on failure
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_mrc_GetLteBandCapabilities
+(
+    le_mrc_LteBandBitMask_t* bandsPtr ///< [OUT] Bit mask to get the LTE Band capabilities.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the TD-SCDMA Band capabilities
+ *
+ * @return
+ * - LE_OK              on success
+ * - LE_FAULT           on failure
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_mrc_GetTdScdmaBandCapabilities
+(
+    le_mrc_TdScdmaBandBitMask_t* bandsPtr ///< [OUT] Bit mask to get the TD-SCDMA Band capabilities.
+);
+
+
 #endif // LEGATO_PARC_INCLUDE_GUARD

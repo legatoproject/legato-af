@@ -486,6 +486,25 @@ le_result_t pa_mdc_GetDefaultProfileIndex
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Get the index of the default profile for Bearer Independent Protocol (link to the platform)
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT on failure
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_mdc_GetBipDefaultProfileIndex
+(
+    uint32_t* profileIndexPtr   ///< [OUT] index of the profile.
+)
+{
+    *profileIndexPtr = 2;
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Read the profile data for the given profile
  *
  * @return

@@ -27,7 +27,8 @@
  * le_mcc_Start() must still initiate the call when ready.
  *
  * The le_mcc_Start() function initiates a call attempt (it's asynchronous because it can take
- * time for a call to connect).
+ * time for a call to connect). If function failed, the le_mcc_GetTerminationReason() API can be
+ * used to retrieve the terminal reason.
  *
  * It's essential to register a handler function to get the call events. Use
  * le_mcc_AddCallEventHandler() API to install that handler function. The handler will be
@@ -53,82 +54,6 @@
  * threads are being used to work with the same call, a comparison of the call references themselves
  * can't be used to tell whether or not they refer to the same call.
  *
- * This code example uses @c CallAndPlay() to dial a phone number, and if successful, play
- * a sound file. Once the file has played, the call hangs up.
- *
- * @code
- *
- * typedef struct
- * {
- *     le_mcc_CallRef_t             callRef;
- *     char                         filePath[MAX_FILE_PATH_BYTES];
- *     le_mcc_CallEventHandlerRef_t eventHandlerRef;
- * }
- * PlayContext_t;
- *
- * void CallAndPlay
- * (
- *     const char* destinationTelPtr,
- *     const char* filePathPtr
- * )
- * {
- *     PlayContext_t* contextPtr = (PlayContext_t*)le_mem_ForceAlloc(PlayContextPoolRef);
- *
- *     le_str_Copy(contextPtr->filePath, filePathPtr, sizeof(contextPtr->filePath), NULL);
- *
- *     contextPtr->callRef = le_mcc_Create(destinationTelPtr);
- *
- *     contextPtr->eventHandlerRef = le_mcc_AddCallEventHandler(MyCallEventHandler,
- *                                                                   contextPtr);
- *
- *     le_mcc_Start(contextPtr->callRef);
- * }
- *
- *
- * static void MyCallEventHandler
- * (
- *     le_mcc_CallRef_t callRef,
- *     le_mcc_Event_t   event,
- *     void*            contextPtr
- * )
- * {
- *     PlayContext_t*      myContextPtr = (PlayContext_t*)contextPtr;
- *
- *     switch (event)
- *     {
- *         case LE_MCC_EVENT_CONNECTED:
- *             {
- *                  [...]
-                    le_audio_PlayFile(FileAudioRef, AudioFileFd);
-                    [...]
- *             }
- *             break;
- *
- *         case LE_MCC_EVENT_TERMINATED:
- *             le_mcc_Delete(callRef);
- *             // I don't release the Profile for further use
- *
- *             le_mcc_RemoveCallEventHandler(contextPtr->eventHandlerRef);
- *
- *             le_mem_Release(myContextPtr);
- *             break;
- *     }
- * }
- *
- *
- * static void MyAudioFinishedHandler
- * (
- *     le_audio_PlayComplete reason,
- *     void*                 contextPtr
- * )
- * {
- *     PlayContext_t* myContextPtr = (PlayContext_t*)contextPtr;
- *
- *     le_mcc_HangUp(myContextPtr->callRef);  // This will trigger a TERMINATED event.
- * }
- *
- *
- * @endcode
  *
  *
  * @section le_mcc_answering_a_call Answering a call
@@ -138,88 +63,14 @@
  *
  * To answer, call le_mcc_Answer(). To reject it, call le_mcc_HangUp().
  *
- * This code example uses InstallAutomaticAnswer() to install a call event handler
- * that  automatically answers incoming calls. The handler function verifies the incoming
- * call is permitted (through a predefined list), and then decides whether to answer or terminate
- * it.
- *
- * @code
- *
- * static le_audio_ConnectorRef_t AudioRxConnectorRef = NULL;
- * static le_audio_ConnectorRef_t AudioTxConnectorRef = NULL;
- * static le_audio_StreamRef_t MicRef = NULL;
- * static le_audio_StreamRef_t SpeakerRef = NULL;
- * static le_audio_StreamRef_t CallRxAudioRef = NULL;
- * static le_audio_StreamRef_t CallTxAudioRef = NULL;
- *
- * void InstallAutomaticAnswer
- * (
- *     void
- * )
- * {
- *     le_mcc_AddCallEventHandler(   MyVoiceCallEventHandler,
- *                                        contextPtr);
- * }
- *
- *
- * static void MyVoiceCallEventHandler
- * (
- *     le_mcc_CallRef_t callRef,
- *     le_mcc_Event_t   event,
- *     void*            contextPtr
- * )
- * {
- *     char                tel[TEL_NMBR_MAX_BYTES];
- *
- *     switch (event)
- *     {
- *         case LE_MCC_EVENT_INCOMING:
- *             {
- *                 le_mcc_GetRemoteTel(callRef, &tel, sizeof(tel));
- *                 if (IsAnAuthorizedIncomingCall(tel) == TRUE)
- *                 {
- *                     SpeakerRef = le_audio_OpenSpeaker();
- *                     CallRxAudioRef = le_audio_OpenModemVoiceRx();
- *                     MicRef = le_audio_OpenMic();
- *                     CallTxAudioRef = le_audio_OpenModemVoiceTx();
- *
- *                     AudioRxConnectorRef = le_audio_CreateConnector();
- *                     AudioTxConnectorRef = le_audio_CreateConnector();
- *
- *                     le_audio_Connect(AudioRxConnectorRef, speakerRef);
- *                     le_audio_Connect (AudioRxConnectorRef, callRxAudioRef);
- *
- *                     le_audio_Connect(AudioTxConnectorRef, micRef);
- *                     le_audio_Connect (AudioTxConnectorRef, callTxAudioRef);
- *
- *                     le_mcc_Answer(callRef);
- *                 }
- *                 else
- *                 {
- *                     // Reject the incoming call
- *                     le_mcc_HangUp(callRef);
- *                 }
- *              }
- *          break;
- *
- *          case LE_MCC_EVENT_TERMINATED:
- *              le_audio_Disconnect(micRef);
- *              le_audio_Disconnect(speakerRef);
- *              le_audio_Disconnect(AudioRxConnectorRef);
- *              le_audio_Disconnect(AudioTxConnectorRef);
- *              le_mcc_Delete(callRef);
- *          break;
- *      }
- *  }
- *
- * @endcode
- *
  *
  * @section le_mcc_ending_all_call Ending all calls
  *
  * A special function can be used to hang-up all the ongoing calls: le_mcc_HangUpAll().
  * This function can be used to hang-up any calls that have been initiated through another client
  * like AT commands.
+ *
+ *
  *
  * @section le_mcc_ss Supplementary service.
  *
@@ -228,7 +79,16 @@
  *  Status can be read with the le_mcc_GetCallerIdRestrict() API.
  * Default value is LE_OFF (Enable presentation of own phone number to remote).
  *
+ * Call waiting and call hold are not yet managed. The event Le_MCC_EVENT_WAITING warns the
+ * application for an incoming call, but there's no way to put the current call in hold.
+ *
  * @todo Other Supplementary services will be available in a future release. Create simpler examples.
+ *
+ *  @section le_mcc_samples Sample codes
+ *
+ * A sample code that implements a dialing call can be found in \b le_mccTest.c file (please refer
+ * to @ref c_mccTest page).
+ *
  *
  * <HR>
  *
@@ -246,6 +106,12 @@
  */
 //--------------------------------------------------------------------------------------------------
 
+/**
+ * @page c_mccTest Sample code of Modem Call control
+ *
+ * @include "apps/test/modemServices/mcc/mccIntegrationTest/mccTest/le_mccTest.c"
+ */
+
 USETYPES le_mdmDefs.api;
 
 //--------------------------------------------------------------------------------------------------
@@ -259,12 +125,10 @@ ENUM Event
     EVENT_INCOMING,    ///< Incoming call attempt (new call).
     EVENT_ORIGINATING, ///< Outgoing call attempt.
     EVENT_ALERTING,    ///< Far end is now alerting its user (outgoing call).
-    EVENT_EARLY_MEDIA, ///< Callee has not accepted the call, but a media stream
-                       ///< is available.
     EVENT_CONNECTED,   ///< Call has been established, and is media is active.
     EVENT_TERMINATED,  ///< Call has terminated.
+    EVENT_WAITING,     ///< Call is waiting
     EVENT_ON_HOLD,     ///< Remote party has put the call on hold.
-    EVENT_TRANSFERED,  ///< Remote party transferred or forwarded the call.
     EVENT_MAX          ///< Enumerate max value.
 };
 
@@ -326,6 +190,12 @@ ENUM TerminationReason
     TERM_RECOVERY_ON_TIMER_EXPIRY,                          ///< cf. 3GPP 24.008 Annex H
     TERM_PROTOCOL_ERROR_UNSPECIFIED,                        ///< cf. 3GPP 24.008 Annex H
     TERM_INTERWORKING_UNSPECIFIED,                          ///< cf. 3GPP 24.008 Annex H
+    TERM_SERVICE_TEMPORARILY_OUT_OF_ORDER,                  ///< cf. 3GPP 24.008 10.5.3.6
+    TERM_NOT_ALLOWED,                                       ///< Call operations not allowed
+                                                            ///<  (i.e. Radio off).
+    TERM_FDN_ACTIVE,                                        ///< FDN is active and number is not
+                                                            ///< in the FDN.
+    TERM_NO_SERVICE,                                        ///< No service or bad signal quality
     TERM_PLATFORM_SPECIFIC,                                 ///< Platform specific code.
     TERM_UNDEFINED                                          ///< Undefined reason.
 };

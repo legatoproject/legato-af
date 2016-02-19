@@ -6,13 +6,14 @@
 
 #include "legato.h"
 #include "limit.h"
+#include "smack.h"
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Creates a directory with permissions specified in mode.
+ * Creates a directory with the specified permissions and SMACK label.
  *
- * @note The actual permissions for the created directory will depend on the calling process' umask.
+ * @note Permissions for the created directory will depend on the calling process' umask.
  *
  * @return
  *      LE_OK if successful.
@@ -20,10 +21,11 @@
  *      LE_FAULT if there was an error.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_dir_Make
+le_result_t dir_MakeSmack
 (
-    const char* pathNamePtr,    ///< [IN] The path name to the directory to create.
-    mode_t mode                 ///< [IN] The permissions for the directory.
+    const char* pathNamePtr,    ///< [IN] Path name to the directory to create.
+    mode_t mode,                ///< [IN] Permissions for the directory.
+    const char* labelPtr        ///< [IN] SMACK label for the directory.  If NULL, no label is given.
 )
 {
     LE_ASSERT(pathNamePtr != NULL);
@@ -42,6 +44,11 @@ le_result_t le_dir_Make
         }
     }
 
+    if (labelPtr != NULL)
+    {
+        return smack_SetLabel(pathNamePtr, labelPtr);
+    }
+
     return LE_OK;
 }
 
@@ -49,8 +56,8 @@ le_result_t le_dir_Make
 //--------------------------------------------------------------------------------------------------
 /**
  * Creates all directories in the path.  If some (or all) directories in the path already exists
- * those directories are left as they are.  All created directories have the same permissions
- * (specified in mode).
+ * those directories are left as they are.  All created directories are given the specified
+ * permissions and SMACK label.
  *
  * @note The actual permissions for the created directories will depend on the calling process'
  *       umask.
@@ -60,10 +67,12 @@ le_result_t le_dir_Make
  *      LE_FAULT if there was an error.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_dir_MakePath
+le_result_t dir_MakePathSmack
 (
     const char* pathNamePtr,    ///< [IN] A path containing all the directories to create.
-    mode_t mode                 ///< [IN] The permissions for all created directories.
+    mode_t mode,                ///< [IN] The permissions for all created directories.
+    const char* labelPtr        ///< [IN] SMACK label for all created directories.  If NULL, no
+                                ///       label is given.
 )
 {
     // Make a copy of the path string.
@@ -93,7 +102,7 @@ le_result_t le_dir_MakePath
             dirStr[i] = '\0';
 
             // Make the directory.  If the directory already exists just move on to the next dir.
-            if (le_dir_Make(dirStr, mode) == LE_FAULT)
+            if (dir_MakeSmack(dirStr, mode, labelPtr) == LE_FAULT)
             {
                 LE_DEBUG("Make directory %s failed.", dirStr);
                 return LE_FAULT;
@@ -105,7 +114,7 @@ le_result_t le_dir_MakePath
     }
 
     // Make the last directory.
-    if (le_dir_Make(dirStr, mode) == LE_FAULT)
+    if (dir_MakeSmack(dirStr, mode, labelPtr) == LE_FAULT)
     {
         LE_DEBUG("Make directory %s failed.", dirStr);
         return LE_FAULT;
@@ -114,6 +123,52 @@ le_result_t le_dir_MakePath
     {
         return LE_OK;
     }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Creates a directory with permissions specified in mode.
+ *
+ * @note The actual permissions for the created directory will depend on the calling process' umask.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_DUPLICATE if the directory already exists.
+ *      LE_FAULT if there was an error.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_dir_Make
+(
+    const char* pathNamePtr,    ///< [IN] The path name to the directory to create.
+    mode_t mode                 ///< [IN] The permissions for the directory.
+)
+{
+    return dir_MakeSmack(pathNamePtr, mode, NULL);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Creates all directories in the path.  If some (or all) directories in the path already exists
+ * those directories are left as they are.  All created directories have the same permissions
+ * (specified in mode).
+ *
+ * @note The actual permissions for the created directories will depend on the calling process'
+ *       umask.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_FAULT if there was an error.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_dir_MakePath
+(
+    const char* pathNamePtr,    ///< [IN] A path containing all the directories to create.
+    mode_t mode                 ///< [IN] The permissions for all created directories.
+)
+{
+    return dir_MakePathSmack(pathNamePtr, mode, NULL);
 }
 
 
@@ -135,15 +190,38 @@ le_result_t le_dir_RemoveRecursive
     const char* pathNamePtr           ///< [IN] The path to the directory to remove.
 )
 {
-    // Attempt first to just delete the directory.
-    if ( (rmdir(pathNamePtr) == 0) || (errno == ENOENT) )
+    // Check to see if we're dealing with a single file or a symlink to a directory.  In either case
+    // we simply have to delete the link or file.
+    struct stat sourceStat;
+
+    if (lstat(pathNamePtr, &sourceStat) == -1)
     {
+        if (errno == ENOENT)
+        {
+            return LE_OK;
+        }
+        else
+        {
+            LE_CRIT("Error could not stat '%s'.  (%m)", pathNamePtr);
+            return LE_FAULT;
+        }
+    }
+    else if (   (S_ISLNK(sourceStat.st_mode))
+             || (S_ISREG(sourceStat.st_mode)))
+    {
+        if (unlink(pathNamePtr) == -1)
+        {
+            LE_CRIT("Error could not unlink '%s'. (%m)", pathNamePtr);
+            return LE_FAULT;
+        }
+
         return LE_OK;
     }
 
     // Open the directory tree to search.
     char* pathArrayPtr[] = {(char*)pathNamePtr, NULL};
 
+    errno = 0;
     FTS* ftsPtr = fts_open(pathArrayPtr, FTS_PHYSICAL | FTS_NOSTAT, NULL);
 
     if (ftsPtr == NULL)
@@ -163,6 +241,7 @@ le_result_t le_dir_RemoveRecursive
                 if (rmdir(entPtr->fts_accpath) != 0)
                 {
                     LE_ERROR("Could not remove directory '%s'.  %m", entPtr->fts_accpath);
+                    fts_close(ftsPtr);
                     return LE_FAULT;
                 }
                 break;
@@ -173,12 +252,16 @@ le_result_t le_dir_RemoveRecursive
                 if (remove(entPtr->fts_accpath) != 0)
                 {
                     LE_ERROR("Could not remove file '%s'.  %m", entPtr->fts_accpath);
+                    fts_close(ftsPtr);
                     return LE_FAULT;
                 }
         }
     }
 
-    if (errno != 0)
+    int lastErrno = errno;
+    fts_close(ftsPtr);
+
+    if (lastErrno != 0)
     {
         LE_ERROR("Could not find directory '%s'.  %m", pathNamePtr);
         return LE_FAULT;

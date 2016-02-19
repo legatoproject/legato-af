@@ -12,6 +12,7 @@
 #include "fileDescriptor.h"
 #include "killProc.h"
 #include "smack.h"
+#include "sysPaths.h"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -33,22 +34,35 @@ DaemonObj_t;
  * framework daemons.
  */
 //--------------------------------------------------------------------------------------------------
-#define KILL_TIMEOUT            3000
+#define KILL_TIMEOUT            1000
 
 
 //--------------------------------------------------------------------------------------------------
 /**
  * List of all framework daemons in the order that they must start.
  *
- * @note The Service Directory must be the first framework daemon in this list.  In fact the order
- *       of the entire list is important and should not be changed without careful consideration.
+ * @warning The order of the entire list is important and should not be changed without careful
+ *          consideration.
+ *
+ * - The Service Directory must be the first framework daemon in this list.  Everything else needs
+ *   it for IPC.
+ *
+ * - The Log Control Daemon is second because everything else uses logging.
+ *
+ * - The Config Tree must start before the Update Daemon, because the Update Daemon needs to use the
+ *   configuration tree.  Furthermore, the Update Daemon MUST have a chance to update the system
+ *   configuration data before anything else that uses that data starts.  This is because the
+ *   Update Daemon may need to finish a system update.
+ *
+ * - The Watchdog Daemon fetches watchdog settings from the system configuration tree.
  */
 //--------------------------------------------------------------------------------------------------
-static DaemonObj_t FrameworkDaemons[] = { {"/usr/local/bin/serviceDirectory", -1},
-                                          {"/usr/local/bin/logCtrlDaemon", -1},
-                                          {"/usr/local/bin/configTree", -1},
-                                          {"/usr/local/bin/watchdog", -1},
-                                          {"/usr/local/bin/updateDaemon", -1} };
+
+static DaemonObj_t FrameworkDaemons[] = { {SYSTEM_BIN_PATH "/serviceDirectory", -1},
+                                          {SYSTEM_BIN_PATH "/logCtrlDaemon", -1},
+                                          {SYSTEM_BIN_PATH "/configTree", -1},
+                                          {SYSTEM_BIN_PATH "/updateDaemon", -1},
+                                          {SYSTEM_BIN_PATH "/watchdog", -1} };
 
 
 //--------------------------------------------------------------------------------------------------
@@ -365,7 +379,7 @@ le_result_t fwDaemons_SigChildHandler
             // Check status of process and handle SIGCONT and SIGSTOP signals.
             if ( WIFSTOPPED(status) || WIFCONTINUED(status) )
             {
-                // The framework dameon was either stopped or continued which should not happen kill
+                // The framework daemon was either stopped or continued which should not happen kill
                 // the process now.
                 kill_Hard(pid);
 
@@ -395,9 +409,29 @@ le_result_t fwDaemons_SigChildHandler
     }
     else
     {
-        // This was an unexpected error from one of the framework daemons.
-        LE_EMERG("The framework daemon '%s' has experienced a problem.",
-                le_path_GetBasenamePtr(daemonObjPtr->path, "/"));
+        const char* daemonName = le_path_GetBasenamePtr(daemonObjPtr->path, "/");
+
+        if (WIFEXITED(status))
+        {
+            // This was an unexpected error from one of the framework daemons.
+            LE_EMERG("Framework daemon '%s' has exited with code %d.",
+                     daemonName,
+                     WEXITSTATUS(status));
+        }
+        else if (WIFSIGNALED(status))
+        {
+            // This was an unexpected error from one of the framework daemons.
+            LE_EMERG("Framework daemon '%s' has been killed by a signal: %d.",
+                     daemonName,
+                     WTERMSIG(status));
+        }
+        else
+        {
+            // This was an unexpected error from one of the framework daemons.
+            LE_EMERG("Framework daemon '%s' has died for an unknown reason (status = 0x%x).",
+                     daemonName,
+                     status);
+        }
 
         return LE_FAULT;
     }

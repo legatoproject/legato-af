@@ -11,7 +11,7 @@
 #include "legato.h"
 #include "appCfg.h"
 #include "interfaces.h"
-#include "limit.h"
+#include "../limit.h"
 
 
 //--------------------------------------------------------------------------------------------------

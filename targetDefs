@@ -1,0 +1,45 @@
+# --------------------------------------------------------------------------------------------------
+# Determines which target include file to include based on the goal passed to make on the
+# command-line.
+#
+# Copyright (C), Sierra Wireless Inc.  Use of this work is subject to license.
+# --------------------------------------------------------------------------------------------------
+
+ifeq ($(MAKECMDGOALS),localhost)
+  include targetDefs.localhost
+else ifeq ($(MAKECMDGOALS),tests_localhost)
+  include targetDefs.localhost
+
+else ifeq ($(MAKECMDGOALS),ar7)
+  include targetDefs.ar7
+else ifeq ($(MAKECMDGOALS),tests_ar7)
+  include targetDefs.ar7
+
+else ifeq ($(MAKECMDGOALS),ar86)
+  include targetDefs.ar86
+else ifeq ($(MAKECMDGOALS),tests_ar86)
+  include targetDefs.ar86
+
+else ifeq ($(MAKECMDGOALS),wp85)
+  include targetDefs.wp85
+else ifeq ($(MAKECMDGOALS),tests_wp85)
+  include targetDefs.wp85
+
+else ifeq ($(MAKECMDGOALS),virt)
+  include targetDefs.virt
+else ifeq ($(MAKECMDGOALS),tests_virt)
+  include targetDefs.virt
+
+else ifeq ($(MAKECMDGOALS),docs)
+  include targetDefs.localhost
+else ifeq ($(MAKECMDGOALS),user_docs)
+  include targetDefs.localhost
+else ifeq ($(MAKECMDGOALS),implementation_docs)
+  include targetDefs.localhost
+endif
+
+# Include an optional targetDefs file which can be included
+# to add extra defintions, or override default ones
+ifneq (, $(wildcard targetDefs.extra))
+  include targetDefs.extra
+endif

@@ -26,6 +26,8 @@ Legato supports networking, if that's what's needed, but it also has tools to im
 lighter-weight, language-independent communication between components that exist on the same
 host device or even running within the same process.
 
+@ref basicIPC
+
 @section functionCallAPIs Function Call APIs
 
 Virtually all programmers are familiar with function calls. While Legato
@@ -40,7 +42,7 @@ a different application (in a different sandbox), than the client code that uses
 Legato build system automatically generates the code needed to marshall parameters and
 return codes into messages, and send them over the IPC system.
 
-See @ref interfaceDefLang for more information.
+See @ref apiFiles for more information.
 
 <HR>
 

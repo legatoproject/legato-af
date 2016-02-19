@@ -26,11 +26,11 @@ do
 done
 
 echo "Make sure Legato is running."
-ssh root@$targetAddr "/usr/local/bin/legato start"
+ssh root@$targetAddr "$BIN_PATH/legato start"
 CheckRet
 
 echo "Stop all other apps."
-ssh root@$targetAddr "/usr/local/bin/app stop \"*\""
+ssh root@$targetAddr "$BIN_PATH/app stop \"*\""
 sleep 1
 
 echo "Clear the logs."
@@ -46,7 +46,7 @@ instapp fileClient.$targetType $targetAddr
 CheckRet
 
 echo "Run the fileClient app."
-ssh root@$targetAddr  "/usr/local/bin/app start fileClient"
+ssh root@$targetAddr  "$BIN_PATH/app start fileClient"
 CheckRet
 
 echo "Install the fileServer app."
@@ -54,7 +54,7 @@ instapp fileServer.$targetType $targetAddr
 CheckRet
 
 echo "Run the fileServer app."
-ssh root@$targetAddr  "/usr/local/bin/app start fileServer"
+ssh root@$targetAddr  "$BIN_PATH/app start fileServer"
 CheckRet
 
 # Wait for all the apps to finish running.
@@ -68,7 +68,7 @@ ssh root@$targetAddr "/tmp/rogue"
 CheckRet
 
 echo "Stop all apps."
-ssh root@$targetAddr  "/usr/local/bin/app stop \"*\""
+ssh root@$targetAddr  "$BIN_PATH/app stop \"*\""
 
 echo "Grepping the logs to check the results."
 CheckLogStr "==" 1 "File descriptor was passed correctly."

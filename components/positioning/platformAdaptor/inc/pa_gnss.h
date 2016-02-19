@@ -67,10 +67,29 @@ pa_Gnss_Date_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Satellite Vehicle information.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct {
+    uint16_t                satSVid;        ///< Satellites in View SV ID number [PRN].
+    bool                    satUsed;        ///< TRUE if satellite in View Used for Navigation.
+    uint8_t                 satSNR;         ///< Satellites in View Signal To Noise Ratio [dBHz].
+    uint16_t                satAzim;        ///< Satellites in View Azimuth [degrees].
+                                            ///< Range: 0 to 360
+    uint8_t                satElev;        ///< Satellites in View Elevation [degrees].
+                                            ///< Range: 0 to 90
+}
+Pa_Gnss_SvInfo_t;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Position structure.
  */
 //--------------------------------------------------------------------------------------------------
 typedef struct {
+    le_gnss_FixState_t fixState;      ///< Position Fix state
+
     bool               latitudeValid; ///< if true, latitude is set
     int32_t            latitude;  ///< The Latitude in degrees, positive North,
                                   ///  with 6 decimal places (+48858300  = 48.858300 degrees North).
@@ -91,9 +110,9 @@ typedef struct {
     uint32_t           vSpeed;    ///< The vertical Speed in m/sec, with 2 decimal places
                                   ///  (125 = 1.25m/sec).
 
-    bool               trackValid; ///< if true, Track is set
-    uint32_t           track;     ///< Track (direction) in degrees, where 0 is True North, with 1
-                                  ///  decimal place (308  = 30.8 degrees).
+    bool               directionValid;  ///< if true, direction is set
+    uint32_t           direction;       ///< Direction in degrees, where 0 is True North, with 1
+                                        ///  decimal place (308  = 30.8 degrees).
 
     bool               headingValid; ///< if true, heading is set
     uint32_t           heading;     ///< heading in degrees, where 0 is True North, with 1
@@ -101,6 +120,12 @@ typedef struct {
 
     bool               hdopValid; ///< if true, horizontal dilution is set
     uint16_t           hdop;      ///< The horizontal Dilution of Precision (DOP)
+
+    bool               pdopValid; ///< if true, position dilution is set
+    uint16_t           pdop;      ///< The Position dilution of precision (DOP)
+
+    bool               vdopValid; ///< if true, vertical dilition is set
+    uint16_t           vdop;      ///< The vertical Dilution of Precision (DOP)
 
     bool               hUncertaintyValid; ///< if true, horizontal uncertainty is set
     uint32_t           hUncertainty;  ///< The horizontal uncertainty in meters,
@@ -118,27 +143,33 @@ typedef struct {
     uint32_t           vSpeedUncertainty;  ///< The vertical speed uncertainty in m/sec,
                                            ///  with 1 decimal place
 
-    bool               headingUncertaintyValid; ///< if true, heading uncertainty is set
-    uint32_t           headingUncertainty;  ///< The heading uncertainty in degrees,
-                                            /// with 1 decimal place
+    bool               headingUncertaintyValid;     ///< if true, heading uncertainty is set
+    uint32_t           headingUncertainty;          ///< The heading uncertainty in degrees,
+                                                    /// with 1 decimal place
 
-    bool               trackUncertaintyValid; ///< if true, track uncertainty is set
-    uint32_t           trackUncertainty;  ///< The track uncertainty in degrees,
-                                          ///  with 1 decimal place
-
-    bool               vdopValid; ///< if true, vertical dilition is set
-    uint16_t           vdop;      ///< The vertical Dilution of Precision (DOP)
+    bool               directionUncertaintyValid;   ///< if true, direction uncertainty is set
+    uint32_t           directionUncertainty;        ///< The direction uncertainty in degrees,
+                                                    ///  with 1 decimal place
 
     bool               timeValid; ///< if true, time is set
     pa_Gnss_Time_t     time;  ///< The time of the fix
 
     bool               dateValid; ///< if true, date is set
     pa_Gnss_Date_t     date;  ///< The date of the fix
+
+    // Satellite Vehicles information
+    bool                satsInViewValid;    ///< if true, satsInView is set
+    uint8_t             satsInView;         ///< Satellites in View count.
+
+    bool                satsUsedValid;      ///< if true, satsUsed is set
+    uint8_t             satsUsed;           ///< Satellites in View used for Navigation.
+
+    bool                satInfoValid;       ///< if true, satInfo is set
+    Pa_Gnss_SvInfo_t    satInfo[LE_GNSS_MAX_SV_INFO_NUMBER];
+                                            ///< Satellite Vehicle information.
 }
 pa_Gnss_Position_t;
 
-/** Reference to a position structure. */
-typedef pa_Gnss_Position_t* pa_Gnss_Position_Ref_t;
 
 //--------------------------------------------------------------------------------------------------
 // APIs.
@@ -229,16 +260,32 @@ LE_SHARED le_result_t pa_gnss_Stop
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function must be called to set the rate of GNSS fix reception
+ * This function sets the GNSS device acquisition rate.
  *
- * @return LE_FAULT         The function failed.
- * @return LE_TIMEOUT       No response was received.
- * @return LE_OK            The function succeeded.
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT on failure
+ *  - LE_UNSUPPORTED request not supported
+ *  - LE_TIMEOUT a time-out occurred
  */
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t pa_gnss_SetAcquisitionRate
 (
-    uint32_t rate     ///< [IN] rate in seconds
+    uint32_t rate     ///< [IN] rate in milliseconds
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the rate of GNSS fix reception
+ *
+ *
+ * @return LE_FAULT         The function failed.
+ * @return LE_OK            The function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_gnss_GetAcquisitionRate
+(
+    uint32_t* ratePtr     ///< [IN] rate in milliseconds
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -248,7 +295,7 @@ LE_SHARED le_result_t pa_gnss_SetAcquisitionRate
  * @param position The new position.
  */
 //--------------------------------------------------------------------------------------------------
-typedef void(*pa_gnss_PositionDataHandlerFunc_t)(pa_Gnss_Position_Ref_t position);
+typedef void(*pa_gnss_PositionDataHandlerFunc_t)(pa_Gnss_Position_t* positionPtr);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -286,7 +333,7 @@ LE_SHARED void pa_gnss_RemovePositionDataHandler
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t pa_gnss_GetLastPositionData
 (
-    pa_Gnss_Position_Ref_t  positionRef   ///< [OUT] Reference to a position struct
+    pa_Gnss_Position_t* positionPtr   ///< [OUT] Pointer to a position struct
 );
 
 //--------------------------------------------------------------------------------------------------

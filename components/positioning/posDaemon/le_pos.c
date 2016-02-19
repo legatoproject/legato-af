@@ -450,7 +450,7 @@ static uint32_t ComputeCommonSmallestRate
 //--------------------------------------------------------------------------------------------------
 static void PosSampleHandlerfunc
 (
-    pa_Gnss_Position_Ref_t position
+    pa_Gnss_Position_t* positionPtr
 )
 {
     le_pos_SampleHandler_t* posSampleHandlerNodePtr;
@@ -462,7 +462,7 @@ static void PosSampleHandlerfunc
         return;
     }
 
-    LE_DEBUG("Handler Function called with pa_position %p", position);
+    LE_DEBUG("Handler Function called with pa_position %p", positionPtr);
 
     linkPtr = le_dls_Peek(&PosSampleHandlerList);
     if (linkPtr != NULL)
@@ -475,14 +475,14 @@ static void PosSampleHandlerfunc
 
             if (   (posSampleHandlerNodePtr->horizontalMagnitude != 0)
                 &&
-                   ( (!position->longitudeValid) || (!position->latitudeValid) )
+                   ( (!positionPtr->longitudeValid) || (!positionPtr->latitudeValid) )
                )
             {
                 LE_DEBUG("Longitude or Latitude are not relevant");
                 return;
             }
 
-            if (((posSampleHandlerNodePtr->verticalMagnitude != 0) && (!position->altitudeValid)))
+            if (((posSampleHandlerNodePtr->verticalMagnitude != 0) && (!positionPtr->altitudeValid)))
             {
                 LE_DEBUG("Altitude is not relevant");
                 return;
@@ -490,26 +490,28 @@ static void PosSampleHandlerfunc
 
             uint32_t horizontalMove = ComputeDistance(posSampleHandlerNodePtr->lastLat,
                                                       posSampleHandlerNodePtr->lastLong,
-                                                      position->latitude,
-                                                      position->longitude);
-            uint32_t verticalMove = abs(position->altitude-posSampleHandlerNodePtr->lastAlt);
+                                                      positionPtr->latitude,
+                                                      positionPtr->longitude);
+            uint32_t verticalMove = abs(positionPtr->altitude-posSampleHandlerNodePtr->lastAlt);
 
             LE_DEBUG("horizontalMove.%d, verticalMove.%d", horizontalMove, verticalMove);
 
-            if (!position->vUncertaintyValid) {
+            if (!positionPtr->vUncertaintyValid)
+            {
                 vflag = false;
             } else {
                 vflag = IsBeyondMagnitude(posSampleHandlerNodePtr->verticalMagnitude,
                                           verticalMove,
-                                          position->vUncertainty/10); // uncertainty in meters with 1 decimal place
+                                          positionPtr->vUncertainty/10); // uncertainty in meters with 1 decimal place
             }
 
-            if (!position->hUncertaintyValid) {
+            if (!positionPtr->hUncertaintyValid)
+            {
                 hflag = false;
             } else {
                 hflag = IsBeyondMagnitude(posSampleHandlerNodePtr->horizontalMagnitude,
                                           horizontalMove,
-                                          position->hUncertainty/10); // uncertainty in meters with 1 decimal place
+                                          positionPtr->hUncertainty/10); // uncertainty in meters with 1 decimal place
             }
 
             LE_DEBUG("Vertical IsBeyondMagnitude.%d", vflag);
@@ -522,41 +524,41 @@ static void PosSampleHandlerfunc
                 {
                     // Create the position sample node.
                     posSampleNodePtr = (le_pos_Sample_t*)le_mem_ForceAlloc(PosSamplePoolRef);
-                    posSampleNodePtr->latitudeValid = position->latitudeValid;
-                    posSampleNodePtr->latitude = position->latitude;
-                    posSampleNodePtr->longitudeValid = position->longitudeValid;
-                    posSampleNodePtr->longitude = position->longitude;
-                    posSampleNodePtr->hAccuracyValid = position->hUncertaintyValid;
-                    posSampleNodePtr->hAccuracy = position->hUncertainty;
-                    posSampleNodePtr->altitudeValid = position->altitudeValid;
-                    posSampleNodePtr->altitude = position->altitude;
-                    posSampleNodePtr->vAccuracyValid = position->vUncertaintyValid;
-                    posSampleNodePtr->vAccuracy = position->vUncertainty;
-                    posSampleNodePtr->hSpeedValid = position->hSpeedValid;
-                    posSampleNodePtr->hSpeed = position->hSpeed;
-                    posSampleNodePtr->hSpeedAccuracyValid = position->hSpeedUncertaintyValid;
-                    posSampleNodePtr->hSpeedAccuracy = position->hSpeedUncertainty;
-                    posSampleNodePtr->vSpeedValid = position->vSpeedValid;
-                    posSampleNodePtr->vSpeed = position->vSpeed;
-                    posSampleNodePtr->vSpeedAccuracyValid = position->vSpeedUncertaintyValid;
-                    posSampleNodePtr->vSpeedAccuracy = position->vSpeedUncertainty;
-                    posSampleNodePtr->headingValid = position->headingValid;
-                    posSampleNodePtr->heading = position->heading;
-                    posSampleNodePtr->headingAccuracyValid = position->headingUncertaintyValid;
-                    posSampleNodePtr->headingAccuracy = position->headingUncertainty;
-                    posSampleNodePtr->directionValid = position->trackValid;
-                    posSampleNodePtr->direction = position->track;
-                    posSampleNodePtr->directionAccuracyValid = position->trackUncertaintyValid;
-                    posSampleNodePtr->directionAccuracy = position->trackUncertainty;
-                    posSampleNodePtr->dateValid = position->dateValid;
-                    posSampleNodePtr->year = position->date.year;
-                    posSampleNodePtr->month = position->date.month;
-                    posSampleNodePtr->day = position->date.day;
-                    posSampleNodePtr->timeValid = position->timeValid;
-                    posSampleNodePtr->hours = position->time.hours;
-                    posSampleNodePtr->minutes = position->time.minutes;
-                    posSampleNodePtr->seconds = position->time.seconds;
-                    posSampleNodePtr->milliseconds = position->time.milliseconds;
+                    posSampleNodePtr->latitudeValid = positionPtr->latitudeValid;
+                    posSampleNodePtr->latitude = positionPtr->latitude;
+                    posSampleNodePtr->longitudeValid = positionPtr->longitudeValid;
+                    posSampleNodePtr->longitude = positionPtr->longitude;
+                    posSampleNodePtr->hAccuracyValid = positionPtr->hUncertaintyValid;
+                    posSampleNodePtr->hAccuracy = positionPtr->hUncertainty;
+                    posSampleNodePtr->altitudeValid = positionPtr->altitudeValid;
+                    posSampleNodePtr->altitude = positionPtr->altitude;
+                    posSampleNodePtr->vAccuracyValid = positionPtr->vUncertaintyValid;
+                    posSampleNodePtr->vAccuracy = positionPtr->vUncertainty;
+                    posSampleNodePtr->hSpeedValid = positionPtr->hSpeedValid;
+                    posSampleNodePtr->hSpeed = positionPtr->hSpeed;
+                    posSampleNodePtr->hSpeedAccuracyValid = positionPtr->hSpeedUncertaintyValid;
+                    posSampleNodePtr->hSpeedAccuracy = positionPtr->hSpeedUncertainty;
+                    posSampleNodePtr->vSpeedValid = positionPtr->vSpeedValid;
+                    posSampleNodePtr->vSpeed = positionPtr->vSpeed;
+                    posSampleNodePtr->vSpeedAccuracyValid = positionPtr->vSpeedUncertaintyValid;
+                    posSampleNodePtr->vSpeedAccuracy = positionPtr->vSpeedUncertainty;
+                    posSampleNodePtr->headingValid = positionPtr->headingValid;
+                    posSampleNodePtr->heading = positionPtr->heading;
+                    posSampleNodePtr->headingAccuracyValid = positionPtr->headingUncertaintyValid;
+                    posSampleNodePtr->headingAccuracy = positionPtr->headingUncertainty;
+                    posSampleNodePtr->directionValid = positionPtr->directionValid;
+                    posSampleNodePtr->direction = positionPtr->direction;
+                    posSampleNodePtr->directionAccuracyValid = positionPtr->directionUncertaintyValid;
+                    posSampleNodePtr->directionAccuracy = positionPtr->directionUncertainty;
+                    posSampleNodePtr->dateValid = positionPtr->dateValid;
+                    posSampleNodePtr->year = positionPtr->date.year;
+                    posSampleNodePtr->month = positionPtr->date.month;
+                    posSampleNodePtr->day = positionPtr->date.day;
+                    posSampleNodePtr->timeValid = positionPtr->timeValid;
+                    posSampleNodePtr->hours = positionPtr->time.hours;
+                    posSampleNodePtr->minutes = positionPtr->time.minutes;
+                    posSampleNodePtr->seconds = positionPtr->time.seconds;
+                    posSampleNodePtr->milliseconds = positionPtr->time.milliseconds;
                     posSampleNodePtr->link = LE_DLS_LINK_INIT;
 
                     // Add the node to the queue of the list by passing in the node's link.
@@ -564,9 +566,9 @@ static void PosSampleHandlerfunc
                 }
 
                 // Save the information reported to the handler function
-                posSampleHandlerNodePtr->lastLat = position->latitude;
-                posSampleHandlerNodePtr->lastLong = position->longitude;
-                posSampleHandlerNodePtr->lastAlt = position->altitude;
+                posSampleHandlerNodePtr->lastLat = positionPtr->latitude;
+                posSampleHandlerNodePtr->lastLong = positionPtr->longitude;
+                posSampleHandlerNodePtr->lastAlt = positionPtr->altitude;
 
                 LE_DEBUG("Report sample %p to the corresponding handler (handler %p)",
                          posSampleNodePtr,
@@ -579,8 +581,9 @@ static void PosSampleHandlerfunc
                 }
 
                 // Call the client's handler
-                posSampleHandlerNodePtr->handlerFuncPtr(le_ref_CreateRef(PosSampleMap, posSampleNodePtr),
-                                                        posSampleHandlerNodePtr->handlerContextPtr);
+                posSampleHandlerNodePtr->handlerFuncPtr(
+                                                le_ref_CreateRef(PosSampleMap, posSampleNodePtr),
+                                                posSampleHandlerNodePtr->handlerContextPtr);
             }
 
             // Move to the next node.
@@ -588,7 +591,7 @@ static void PosSampleHandlerfunc
         } while (linkPtr != NULL);
     }
 
-    le_mem_Release(position);
+    le_mem_Release(positionPtr);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -613,7 +616,7 @@ static void AcquitisionRateUpdate
     int32_t rate = le_cfg_GetInt(posCfg, CFG_NODE_RATE, DEFAULT_ACQUISITION_RATE);
 
     // Set the new value for acquitision rate
-    if (pa_gnss_SetAcquisitionRate(rate) != LE_OK)
+    if (le_gnss_SetAcquisitionRate(rate) != LE_OK)
     {
         LE_WARN("Failed to set GNSS's acquisition rate to %d seconds!",rate);
     }
@@ -641,7 +644,7 @@ static void LoadPositioningFromConfigDb
 
     LE_DEBUG("Set acquisition rate to value %d", rate);
     // TODO: how to stop/start device in order to limit power consumption?
-    LE_CRIT_IF((pa_gnss_SetAcquisitionRate(rate) != LE_OK),
+    LE_CRIT_IF((le_gnss_SetAcquisitionRate(rate) != LE_OK),
                 "Failed to set GNSS's acquisition rate!");
 
     // Add a configDb handler to check if the acquition rate change.
@@ -885,7 +888,7 @@ le_pos_MovementHandlerRef_t le_pos_AddMovementHandler
     posSampleHandlerNodePtr->horizontalMagnitude = horizontalMagnitude;
     posSampleHandlerNodePtr->verticalMagnitude = verticalMagnitude;
 
-    if (pa_gnss_SetAcquisitionRate(rate) != LE_OK)
+    if (le_gnss_SetAcquisitionRate(rate) != LE_OK)
     {
         LE_WARN("Failed to set GNSS's acquisition rate! Use the default one...");
     }
@@ -982,29 +985,36 @@ le_result_t le_pos_sample_Get2DLocation
     le_result_t result = LE_OK;
     le_pos_Sample_t* positionSamplePtr = le_ref_Lookup(PosSampleMap,positionSampleRef);
 
-    if ( positionSamplePtr == NULL) {
+    if ( positionSamplePtr == NULL)
+    {
         LE_KILL_CLIENT("Invalid reference (%p) provided!",positionSampleRef);
         return LE_FAULT;
     }
 
-    if (latitudePtr) {
-        if (positionSamplePtr->latitudeValid) {
+    if (latitudePtr)
+    {
+        if (positionSamplePtr->latitudeValid)
+        {
             *latitudePtr = positionSamplePtr->latitude;
         } else {
             *latitudePtr = INT32_MAX;
             result = LE_OUT_OF_RANGE;
         }
     }
-    if (longitudePtr) {
-        if (positionSamplePtr->longitudeValid) {
+    if (longitudePtr)
+    {
+        if (positionSamplePtr->longitudeValid)
+        {
             *longitudePtr = positionSamplePtr->longitude;
         } else {
             *longitudePtr = INT32_MAX;
             result = LE_OUT_OF_RANGE;
         }
     }
-    if (horizontalAccuracyPtr) {
-        if (positionSamplePtr->hAccuracyValid) {
+    if (horizontalAccuracyPtr)
+    {
+        if (positionSamplePtr->hAccuracyValid)
+        {
             *horizontalAccuracyPtr = positionSamplePtr->hAccuracy/10;
         } else {
             *horizontalAccuracyPtr = INT32_MAX;
@@ -1037,7 +1047,8 @@ le_result_t le_pos_sample_GetTime
     le_result_t result = LE_OK;
     le_pos_Sample_t* positionSamplePtr = le_ref_Lookup(PosSampleMap,positionSampleRef);
 
-    if ( positionSamplePtr == NULL) {
+    if ( positionSamplePtr == NULL)
+    {
         LE_KILL_CLIENT("Invalid reference (%p) provided!",positionSampleRef);
         return LE_FAULT;
     }
@@ -1108,7 +1119,8 @@ le_result_t le_pos_sample_GetDate
     le_result_t result = LE_OK;
     le_pos_Sample_t* positionSamplePtr = le_ref_Lookup(PosSampleMap,positionSampleRef);
 
-    if ( positionSamplePtr == NULL) {
+    if ( positionSamplePtr == NULL)
+    {
         LE_KILL_CLIENT("Invalid reference (%p) provided!",positionSampleRef);
         return LE_FAULT;
     }
@@ -1174,21 +1186,26 @@ le_result_t le_pos_sample_GetAltitude
     le_result_t result = LE_OK;
     le_pos_Sample_t* positionSamplePtr = le_ref_Lookup(PosSampleMap,positionSampleRef);
 
-    if ( positionSamplePtr == NULL) {
+    if ( positionSamplePtr == NULL)
+    {
         LE_KILL_CLIENT("Invalid reference (%p) provided!",positionSampleRef);
         return LE_FAULT;
     }
 
-    if (altitudePtr) {
-        if (positionSamplePtr->altitudeValid) {
+    if (altitudePtr)
+    {
+        if (positionSamplePtr->altitudeValid)
+    {
             *altitudePtr = positionSamplePtr->altitude;
         } else {
             *altitudePtr = INT32_MAX;
             result = LE_OUT_OF_RANGE;
         }
     }
-    if (altitudeAccuracyPtr) {
-        if (positionSamplePtr->vAccuracyValid) {
+    if (altitudeAccuracyPtr)
+    {
+        if (positionSamplePtr->vAccuracyValid)
+        {
             *altitudeAccuracyPtr = positionSamplePtr->vAccuracy;
         } else {
             *altitudeAccuracyPtr = INT32_MAX;
@@ -1222,21 +1239,26 @@ le_result_t le_pos_sample_GetHorizontalSpeed
     le_result_t result = LE_OK;
     le_pos_Sample_t* positionSamplePtr = le_ref_Lookup(PosSampleMap,positionSampleRef);
 
-    if ( positionSamplePtr == NULL) {
+    if ( positionSamplePtr == NULL)
+    {
         LE_KILL_CLIENT("Invalid reference (%p) provided!",positionSampleRef);
         return LE_FAULT;
     }
 
-    if (hSpeedPtr) {
-        if (positionSamplePtr->hSpeedValid) {
+    if (hSpeedPtr)
+    {
+        if (positionSamplePtr->hSpeedValid)
+        {
             *hSpeedPtr = positionSamplePtr->hSpeed;
         } else {
             *hSpeedPtr = UINT32_MAX;
             result = LE_OUT_OF_RANGE;
         }
     }
-    if (hSpeedAccuracyPtr) {
-        if (positionSamplePtr->hSpeedAccuracyValid) {
+    if (hSpeedAccuracyPtr)
+    {
+        if (positionSamplePtr->hSpeedAccuracyValid)
+        {
             *hSpeedAccuracyPtr = positionSamplePtr->hSpeedAccuracy;
         } else {
             *hSpeedAccuracyPtr = INT32_MAX;
@@ -1270,21 +1292,26 @@ le_result_t le_pos_sample_GetVerticalSpeed
     le_result_t result = LE_OK;
     le_pos_Sample_t* positionSamplePtr = le_ref_Lookup(PosSampleMap,positionSampleRef);
 
-    if ( positionSamplePtr == NULL) {
+    if ( positionSamplePtr == NULL)
+    {
         LE_KILL_CLIENT("Invalid reference (%p) provided!",positionSampleRef);
         return LE_FAULT;
     }
 
-    if (vSpeedPtr) {
-        if (positionSamplePtr->vSpeedValid) {
+    if (vSpeedPtr)
+    {
+        if (positionSamplePtr->vSpeedValid)
+        {
             *vSpeedPtr = positionSamplePtr->vSpeed;
         } else {
             *vSpeedPtr = INT32_MAX;
             result = LE_OUT_OF_RANGE;
         }
     }
-    if (vSpeedAccuracyPtr) {
-        if (positionSamplePtr->vSpeedAccuracyValid) {
+    if (vSpeedAccuracyPtr)
+    {
+        if (positionSamplePtr->vSpeedAccuracyValid)
+        {
             *vSpeedAccuracyPtr = positionSamplePtr->vSpeedAccuracy;
         } else {
             *vSpeedAccuracyPtr = INT32_MAX;
@@ -1319,21 +1346,26 @@ le_result_t le_pos_sample_GetHeading
     le_result_t result = LE_OK;
     le_pos_Sample_t* positionSamplePtr = le_ref_Lookup(PosSampleMap,positionSampleRef);
 
-    if ( positionSamplePtr == NULL) {
+    if ( positionSamplePtr == NULL)
+    {
         LE_KILL_CLIENT("Invalid reference (%p) provided!",positionSampleRef);
         return LE_FAULT;
     }
 
-    if (headingPtr) {
-        if (positionSamplePtr->headingValid) {
+    if (headingPtr)
+    {
+        if (positionSamplePtr->headingValid)
+        {
             *headingPtr = positionSamplePtr->heading;
         } else {
             *headingPtr = INT32_MAX;
             result = LE_OUT_OF_RANGE;
         }
     }
-    if (headingAccuracyPtr) {
-        if (positionSamplePtr->headingAccuracyValid) {
+    if (headingAccuracyPtr)
+    {
+        if (positionSamplePtr->headingAccuracyValid)
+        {
             *headingAccuracyPtr = positionSamplePtr->headingAccuracy;
         } else {
             *headingAccuracyPtr = INT32_MAX;
@@ -1368,21 +1400,26 @@ le_result_t le_pos_sample_GetDirection
     le_result_t result = LE_OK;
     le_pos_Sample_t* positionSamplePtr = le_ref_Lookup(PosSampleMap,positionSampleRef);
 
-    if ( positionSamplePtr == NULL) {
+    if ( positionSamplePtr == NULL)
+    {
         LE_KILL_CLIENT("Invalid reference (%p) provided!",positionSampleRef);
         return LE_FAULT;
     }
 
-    if (directionPtr) {
-        if (positionSamplePtr->directionValid) {
+    if (directionPtr)
+    {
+        if (positionSamplePtr->directionValid)
+        {
             *directionPtr = positionSamplePtr->direction;
         } else {
             *directionPtr = INT32_MAX;
             result = LE_OUT_OF_RANGE;
         }
     }
-    if (directionAccuracyPtr) {
-        if (positionSamplePtr->directionAccuracyValid) {
+    if (directionAccuracyPtr)
+    {
+        if (positionSamplePtr->directionAccuracyValid)
+        {
             *directionAccuracyPtr = positionSamplePtr->directionAccuracy;
         } else {
             *directionAccuracyPtr = INT32_MAX;
@@ -1407,7 +1444,8 @@ void le_pos_sample_Release
 {
     le_pos_Sample_t* positionSamplePtr = le_ref_Lookup(PosSampleMap,positionSampleRef);
 
-    if ( positionSamplePtr == NULL) {
+    if ( positionSamplePtr == NULL)
+    {
         LE_KILL_CLIENT("Invalid reference (%p) provided!",positionSampleRef);
         return;
     }
@@ -1444,24 +1482,30 @@ le_result_t le_pos_Get2DLocation
     else
     {
         le_result_t result = LE_OK;
-        if (latitudePtr) {
-            if (data.latitudeValid) {
+        if (latitudePtr)
+        {
+            if (data.latitudeValid)
+            {
                 *latitudePtr = data.latitude;
             } else {
                 *latitudePtr = INT32_MAX;
                 result = LE_OUT_OF_RANGE;
             }
         }
-        if (longitudePtr) {
-            if (data.longitudeValid) {
+        if (longitudePtr)
+        {
+            if (data.longitudeValid)
+            {
                 *longitudePtr = data.longitude;
             } else {
                 *longitudePtr = INT32_MAX;
                 result = LE_OUT_OF_RANGE;
             }
         }
-        if (hAccuracyPtr) {
-            if (data.hUncertaintyValid) {
+        if (hAccuracyPtr)
+        {
+            if (data.hUncertaintyValid)
+            {
                 *hAccuracyPtr = data.hUncertainty/10;
             } else {
                 *hAccuracyPtr = INT32_MAX;
@@ -1505,40 +1549,50 @@ le_result_t le_pos_Get3DLocation
     {
         le_result_t result = LE_OK;
 
-        if (latitudePtr) {
-            if (data.latitudeValid) {
+        if (latitudePtr)
+        {
+            if (data.latitudeValid)
+            {
                 *latitudePtr = data.latitude;
             } else {
                 *latitudePtr = INT32_MAX;
                 result = LE_OUT_OF_RANGE;
             }
         }
-        if (longitudePtr) {
-            if (data.longitudeValid) {
+        if (longitudePtr)
+        {
+            if (data.longitudeValid)
+    {
                 *longitudePtr = data.longitude;
             } else {
                 *longitudePtr = INT32_MAX;
                 result = LE_OUT_OF_RANGE;
             }
         }
-        if (hAccuracyPtr) {
-            if (data.hUncertaintyValid) {
+        if (hAccuracyPtr)
+        {
+            if (data.hUncertaintyValid)
+            {
                 *hAccuracyPtr = data.hUncertainty/10;
             } else {
                 *hAccuracyPtr = INT32_MAX;
                 result = LE_OUT_OF_RANGE;
             }
         }
-        if (altitudePtr) {
-            if (data.altitudeValid) {
+        if (altitudePtr)
+        {
+            if (data.altitudeValid)
+            {
                 *altitudePtr = data.altitude;
             } else {
                 *altitudePtr = INT32_MAX;
                 result = LE_OUT_OF_RANGE;
             }
         }
-        if (vAccuracyPtr) {
-            if (data.vUncertaintyValid) {
+        if (vAccuracyPtr)
+        {
+            if (data.vUncertaintyValid)
+            {
                 *vAccuracyPtr = data.vUncertainty/10;
             } else {
                 *vAccuracyPtr = INT32_MAX;
@@ -1718,32 +1772,40 @@ le_result_t le_pos_GetMotion
     {
         le_result_t result = LE_OK;
         // TODO Need speedometer to get these values !
-        if (hSpeedPtr) {
-            if (data.hSpeedValid) {
+        if (hSpeedPtr)
+        {
+            if (data.hSpeedValid)
+            {
                 *hSpeedPtr = data.hSpeed;
             } else {
                 *hSpeedPtr = UINT32_MAX;
                 result = LE_OUT_OF_RANGE;
             }
         }
-        if (hSpeedAccuracyPtr) {
-            if (data.hSpeedUncertaintyValid) {
+        if (hSpeedAccuracyPtr)
+        {
+            if (data.hSpeedUncertaintyValid)
+            {
                 *hSpeedAccuracyPtr = data.hSpeedUncertainty;
             } else {
                 *hSpeedAccuracyPtr = INT32_MAX;
                 result = LE_OUT_OF_RANGE;
             }
         }
-        if (vSpeedPtr) {
-            if (data.vSpeedValid) {
+        if (vSpeedPtr)
+        {
+            if (data.vSpeedValid)
+    {
                 *vSpeedPtr = data.vSpeed;
             } else {
                 *vSpeedPtr = INT32_MAX;
                 result = LE_OUT_OF_RANGE;
             }
         }
-        if (vSpeedAccuracyPtr) {
-            if (data.vSpeedUncertaintyValid) {
+        if (vSpeedAccuracyPtr)
+        {
+            if (data.vSpeedUncertaintyValid)
+            {
                 *vSpeedAccuracyPtr = data.vSpeedUncertainty;
             } else {
                 *vSpeedAccuracyPtr = INT32_MAX;
@@ -1782,16 +1844,20 @@ le_result_t le_pos_GetHeading
     {
         le_result_t result = LE_OK;
         // if no compass is available, the heading is the last computed direction
-        if (headingPtr) {
-            if (data.headingValid) {
+        if (headingPtr)
+        {
+            if (data.headingValid)
+            {
                 *headingPtr = data.heading;
             } else {
                 *headingPtr = INT32_MAX;
                 result = LE_OUT_OF_RANGE;
             }
         }
-        if (headingAccuracyPtr) {
-            if (data.headingUncertaintyValid) {
+        if (headingAccuracyPtr)
+        {
+            if (data.headingUncertaintyValid)
+            {
                 *headingAccuracyPtr = data.headingUncertainty;
             } else {
                 *headingAccuracyPtr = INT32_MAX;
@@ -1831,18 +1897,26 @@ le_result_t le_pos_GetDirection
     {
         le_result_t result = LE_OK;
 
-        if (directionPtr) {
-            if (data.trackValid) {
-                *directionPtr = data.track;
-            } else {
+        if (directionPtr)
+        {
+            if (data.directionValid)
+            {
+                *directionPtr = data.direction;
+            }
+            else
+            {
                 *directionPtr = INT32_MAX;
                 result = LE_OUT_OF_RANGE;
             }
         }
-        if (directionAccuracyPtr) {
-            if (data.trackUncertaintyValid) {
-                *directionAccuracyPtr = data.trackUncertainty;
-            } else {
+        if (directionAccuracyPtr)
+        {
+            if (data.directionUncertaintyValid)
+            {
+                *directionAccuracyPtr = data.directionUncertainty;
+            }
+            else
+            {
                 *directionAccuracyPtr = INT32_MAX;
                 result = LE_OUT_OF_RANGE;
             }

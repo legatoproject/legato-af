@@ -1,4 +1,4 @@
-/** @page sampleApps_helloIpc hello IPC
+/** @page sampleApps_helloIpc Hello IPC
 
 This sample app demonstrates target and host are communicating with a helloWorld app that uses IPC.
 It has @c .adef bindings and related @ .cdef requires and provides sections.
@@ -7,10 +7,10 @@ Run this to install the sample app:
 @verbatim
 $ cd apps/sample/helloIpc
 $ make wp85
-$ instapp helloIpc.wp85 <ip address>
+$ instapp helloIpc.wp85.update <ip address>
 @endverbatim
 
-If you're using an AR7 or WP7 module in your target, substitute @c ar7 or @c wp7 for @c wp85.
+If you're using an AR7 module in your target, substitute @c ar7 for @c wp85.
 
 @ref sampleApps_startApp
 

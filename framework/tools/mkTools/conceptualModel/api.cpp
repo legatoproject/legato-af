@@ -269,7 +269,7 @@ ApiClientInterface_t::ApiClientInterface_t
     std::string codeGenDir = path::Combine(apiFilePtr->codeGenDir, "client/");
 
     interfaceFile = codeGenDir + internalName + "_interface.h";
-    internalHFile = codeGenDir + internalName + "_local.h";
+    internalHFile = codeGenDir + internalName + "_messages.h";
     sourceFile = codeGenDir + internalName + "_client.c";
     objectFile = codeGenDir + internalName + "_client.c.o";
 }
@@ -305,7 +305,7 @@ ApiServerInterface_t::ApiServerInterface_t
     }
 
     interfaceFile = codeGenDir + internalName + "_server.h";
-    internalHFile = codeGenDir + internalName + "_local.h";
+    internalHFile = codeGenDir + internalName + "_messages.h";
     sourceFile = codeGenDir + internalName + "_server.c";
     objectFile = codeGenDir + internalName + "_server.o";
 }
@@ -323,7 +323,7 @@ ApiInterfaceInstance_t::ApiInterfaceInstance_t
 )
 //--------------------------------------------------------------------------------------------------
 :   componentInstancePtr(cInstPtr),
-    isExternal(false)
+    externMarkPtr(NULL)
 //--------------------------------------------------------------------------------------------------
 {
     name = componentInstancePtr->exePtr->name

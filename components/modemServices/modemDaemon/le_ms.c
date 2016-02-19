@@ -15,6 +15,7 @@
 #include "le_sms_local.h"
 #include "le_mdc_local.h"
 #include "le_mcc_local.h"
+#include "le_ips_local.h"
 #include "le_ecall_local.h"
 #include "le_temp_local.h"
 #include "le_antenna_local.h"
@@ -35,6 +36,7 @@ COMPONENT_INIT
     le_sms_Init();
     le_mdc_Init();
     le_mcc_Init();
+    le_ips_Init();
     le_temp_Init();
     le_antenna_Init();
     le_ecall_Init();

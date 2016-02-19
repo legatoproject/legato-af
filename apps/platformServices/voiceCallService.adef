@@ -1,0 +1,29 @@
+sandboxed: false
+
+executables:
+{
+    voiceCallService = ( $LEGATO_ROOT/components/voiceCallService )
+}
+
+start: manual
+
+processes:
+{
+    run:
+    {
+        (voiceCallService)
+    }
+
+    faultAction: restart
+}
+
+bindings:
+{
+    voiceCallService.voiceCallService.le_mcc -> modemService.le_mcc
+    voiceCallService.voiceCallService.le_audio -> audioService.le_audio
+}
+
+extern:
+{
+    voiceCallService.voiceCallService.le_voicecall
+}

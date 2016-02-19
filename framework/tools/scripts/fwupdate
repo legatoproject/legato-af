@@ -36,7 +36,7 @@ COMMAND=$1
 if [ "$COMMAND" = "query" ]
 then
     SetTargetIP $2
-    SshToTarget "/usr/local/bin/fwupdate query"
+    SshToTarget "$BIN_PATH/fwupdate query"
     exit 0
 fi
 
@@ -50,7 +50,7 @@ then
 
     SetTargetIP $3
 
-    cat "$FILE" | SshToTarget "/usr/local/bin/fwupdate download -"
+    cat "$FILE" | SshToTarget "$BIN_PATH/fwupdate download -"
     exit 0
 fi
 

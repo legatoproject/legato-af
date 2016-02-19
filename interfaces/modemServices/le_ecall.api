@@ -4,7 +4,8 @@
  *
  * @ref le_ecall_interface.h "API Reference" <br>
  * @ref howToEcall <br>
- * @ref sampleApps_eCall sample app
+ * @ref sampleApps_eCall sample app <br>
+ * @ref le_ecall_samples <br>
  *
  * <HR>
  *
@@ -261,36 +262,13 @@
  * The \b LE_ECALL_STATE_END_OF_REDIAL_PERIOD state event notifies the User of the redial period
  * end.
  *
- * @section le_ecall_samples Code sample
+ * @section le_ecall_samples Code samples
  *
- * The following code sample shows how an eCall session is used:
+ * A sample code that implements an eCall test session with a local voice prompt can be found in
+ * \b eCallWPrompt.c file (please refer to @ref c_ecallWPromptSample page).
  *
- * @code
- *
- * le_result_t TriggerAutomaticEcall
- * (
- *     uint32_t    paxCount,
- *     int32_t     latitude,
- *     int32_t     longitude,
- *     int32_t     direction
- * )
- * {
- *     // Create the eCall Session
- *     le_ecall_CallRef_t eCallRef = le_ecall_Create();
- *
- *     // Set the dynamic MSD values, the static values are retrieved from the config tree
- *     le_ecall_SetMsdPosition(eCallRef,
- *                             true,
- *                             latitude,
- *                             longitude,
- *                             direction);
- *     le_ecall_SetMsdPassengersCount(eCallRef, paxCount);
- *
- *     // Start the eCall session
- *     le_ecall_StartAutomatic(eCallRef);
- * }
- *
- * @endcode
+ * A sample code that implements an eCall test session with a voice call connection can be found in
+ * \b eCallWVoice.c file (please refer to @ref c_ecallWVoiceSample page).
  *
  * If you want to have a look at a more in-depth usage of these APIs, please refer to the
  * @subpage c_ecallAppMain .
@@ -304,7 +282,10 @@
  *  - le_ecall_SetPsapNumber()
  *  - le_ecall_GetPsapNumber()
  *
- * @note Important! These two functions don't modified the U/SIM content nor read the U/SIM content.
+ * @note That PSAP number is not applied to Manually or Automatically initiated eCall. For those
+ *       modes, an emergency call is launched.
+
+ * @warning These two functions don't modified the U/SIM content nor read the U/SIM content.
  *
  * le_ecall_UseUSimNumbers() function can be recalled to indicate the modem to read the number to
  * dial from the FDN/SDN of the U/SIM, depending upon the eCall operating mode.
@@ -423,6 +404,19 @@
  */
 //--------------------------------------------------------------------------------------------------
 
+/**
+ * @page c_ecallWPromptSample Sample code of an eCall test session with a local voice prompt
+ *
+ * @include "apps/test/modemServices/ecall/ecallWPrompt/eCallWPrompt/eCallWPrompt.c"
+ */
+
+/**
+ * @page c_ecallWVoiceSample Sample code an eCall test session with a voice call connection
+ *
+ * @include "apps/test/modemServices/ecall/ecallWVoice/eCallWVoice/eCallWVoice.c"
+ */
+
+
 USETYPES le_mdmDefs.api;
 USETYPES le_mcc.api;
 
@@ -489,7 +483,14 @@ ENUM State
                                       ///< the MSD transmission and received two AL-ACKs (positive).
                                       ///< Can now switch to voice path.
     STATE_FAILED,                     ///< Unsuccessful eCall session.
-    STATE_END_OF_REDIAL_PERIOD        ///< End of the redial period.
+    STATE_END_OF_REDIAL_PERIOD,       ///< End of the redial period.
+    STATE_TIMEOUT_T2,                 ///< Timeout for Timer T2 (see CEN-EN 16062, annex A)
+    STATE_TIMEOUT_T3,                 ///< Timeout for Timer T3 (see CEN-EN 16062, annex A)
+    STATE_TIMEOUT_T5,                 ///< Timeout for Timer T5 (see CEN-EN 16062, annex A)
+    STATE_TIMEOUT_T6,                 ///< Timeout for Timer T6 (see CEN-EN 16062, annex A)
+    STATE_TIMEOUT_T7,                 ///< Timeout for Timer T7 (see CEN-EN 16062, annex A)
+    STATE_TIMEOUT_T9,                 ///< Timeout for Timer T9 (see CEN-EN 16062, annex A)
+    STATE_TIMEOUT_T10                 ///< Timeout for Timer T10 (see CEN-EN 16062, annex A)
 };
 
 //--------------------------------------------------------------------------------------------------
@@ -730,7 +731,8 @@ FUNCTION le_result_t GetMsdTxMode
  * @return
  *      - LE_OK on success
  *      - LE_DUPLICATE an MSD has been already imported
- *      - LE_BAD_PARAMETER bad eCall reference
+ *      - LE_BAD_PARAMETER bad input parameter
+ *      - LE_FAULT on other failures
  *
  * @note The process exits, if an invalid eCall reference is given
  */
@@ -739,9 +741,15 @@ FUNCTION le_result_t SetMsdPosition
 (
     Call        ecallRef   IN, ///< eCall reference
     bool        isTrusted  IN, ///< true if the position is accurate, false otherwise
-    int32       latitude   IN, ///< latitude in degrees with 6 decimal places, positive North
-    int32       longitude  IN, ///< longitude in degrees with 6 decimal places, positive East
-    int32       direction  IN  ///< direction in degrees (where 0 is True North)
+    int32       latitude   IN, ///< latitude in degrees with 6 decimal places, positive North.
+                               ///< Maximum value is +90 degrees (+90000000), minimum value is -90
+                               ///< degrees (-90000000).
+    int32       longitude  IN, ///< longitude in degrees with 6 decimal places, positive East.
+                               ///< Maximum value is +180 degrees (+180000000), minimum value is
+                               ///< -180 degrees (-180000000).
+    int32       direction  IN  ///< direction of the vehicle from magnetic north (0 to 358, clockwise)
+                               ///< in 2-degrees unit. Valid range is 0 to 179. If direction of
+                               ///< travel is invalid or unknown, the value 0xFF shall be used.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -911,7 +919,10 @@ FUNCTION State GetState
 /**
  * Set the Public Safely Answering Point telephone number.
  *
- * @note Important! This function doesn't modified the U/SIM content.
+ * @note That PSAP number is not applied to Manually or Automatically initiated eCall. For those
+ *       modes, an emergency call is launched.
+ *
+ * @warning This function doesn't modified the U/SIM content.
  *
  * @return
  *  - LE_OK on success
@@ -931,7 +942,10 @@ FUNCTION State GetState
  * Get the Public Safely Answering Point telephone number set with le_ecall_SetPsapNumber()
  * function.
  *
- * @note Important! This function doesn't read the U/SIM content.
+ * @note That PSAP number is not applied to Manually or Automatically initiated eCall. For those
+ *       modes, an emergency call is launched.
+ *
+ * @warning This function doesn't read the U/SIM content.
  *
  * @return
  *  - LE_OK on success

@@ -3,6 +3,8 @@ provides:
     api:
     {
         le_update.api
+        le_appRemove.api
+        le_instStat.api
     }
 }
 
@@ -10,17 +12,31 @@ requires:
 {
     api:
     {
+        le_cfg.api
+        le_cfgAdmin.api
         le_fwupdate.api  [manual-start]
+        supervisor/le_sup_ctrl.api [manual-start]
+        supervisor/appSmack.api [manual-start]
     }
 
     component:
     {
-        instStat
+        appUser
+        appCfg
     }
+}
+
+cflags:
+{
+    -I$LEGATO_ROOT/framework/c/src/appUser
 }
 
 sources:
 {
     updateDaemon.c
-    manifest.c
+    updateUnpack.c
+    instStat.c
+    app.c
+    system.c
+    supCtrl.c
 }

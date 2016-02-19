@@ -387,10 +387,11 @@ void pa_mcc_ClearCallEventHandler
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_mcc_VoiceDial
 (
-    const char*    pn,        ///< [IN] The phone number.
-    pa_mcc_clir_t  clir,      ///< [IN] The CLIR supplementary service subscription.
-    pa_mcc_cug_t   cug,       ///< [IN] The CUG supplementary service information.
-    uint8_t*       callIdPtr  ///< [OUT] The outgoing call ID.
+    const char*    pn,                      ///< [IN] The phone number.
+    pa_mcc_clir_t  clir,                    ///< [IN] The CLIR supplementary service subscription.
+    pa_mcc_cug_t   cug,                     ///< [IN] The CUG supplementary service information.
+    uint8_t*       callIdPtr,               ///< [OUT] The outgoing call ID.
+    le_mcc_TerminationReason_t*  errorPtr   ///< [OUT] Call termination error.
 )
 {
     char atcommand[ATCOMMAND_SIZE];
@@ -452,7 +453,7 @@ le_result_t pa_mcc_VoiceDial
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_mcc_Answer
 (
-    void
+    uint8_t  callId     ///< [IN] The call ID to answer
 )
 {
     if (ATReqCallRef) {
@@ -493,7 +494,7 @@ le_result_t pa_mcc_Answer
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_mcc_HangUp
 (
-    void
+    uint8_t  callId     ///< [IN] The call ID to hangup
 )
 {
     UnregisterDial();

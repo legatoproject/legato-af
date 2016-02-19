@@ -1,6 +1,6 @@
 #!/bin/sh
 
-export PATH=$PATH:/usr/local/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin
+export PATH=$PATH:/legato/systems/current/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin
 
 Fail()
 {

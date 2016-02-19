@@ -22,5 +22,5 @@ CheckForHelp $@
 SetTargetIP $1
 
 # List the contents of the application install directory.
-SshToTarget "/usr/local/bin/app status \"*\""
+SshToTarget "$BIN_PATH/app status \"*\""
 

@@ -16,7 +16,12 @@ then
     APP_HOME="/tmp/legato/sandboxes/$APP_NAME"
 elif [ "$IS_SANDBOXED" = "NOTSANDBOXED" ]
 then
-    APP_HOME="/opt/legato/apps/$APP_NAME"
+    if [ "$APP_NAME" = "framework" ]
+    then
+        APP_HOME="/"
+    else
+        APP_HOME="/legato/systems/current/apps/$APP_NAME"
+    fi
 else
     echo "Bad sandbox flag." 1>&2
     exit 1
@@ -38,10 +43,7 @@ then
     rm -rf "$LOG_HOME/*"
 
     # Backup RAM-based logs to the flash-based location, only if they exist.
-    if [ -d "$RAM_LOC" ]
-    then
-        cp -r "$RAM_LOC" "$LOG_HOME"
-    fi
+    cp -r "$RAM_LOC/*" "$LOG_HOME" 2> /dev/null
 else
     LOG_HOME=$RAM_LOC
     mkdir -p "$LOG_HOME"

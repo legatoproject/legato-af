@@ -9,7 +9,7 @@
 #include "legato.h"
 #include "interfaces.h"
 #include "pa_temp.h"
-#include "pa_simu.h"
+#include "pa_temp_simu.h"
 
 //--------------------------------------------------------------------------------------------------
 //                                       Public declarations
@@ -68,6 +68,42 @@ static Thresholds_t Thresholds = {
     },
 };
 
+static le_result_t ReturnCode = LE_OK;
+static le_event_Id_t TemperatureThresholdEventId;
+static le_mem_PoolRef_t TemperatureThresholdEventPool;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the stub return code.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void pa_tempSimu_SetReturnCode
+(
+    le_result_t res
+)
+{
+    ReturnCode = res;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Trigger a temperature event report.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void pa_tempSimu_TriggerEventReport
+(
+    le_temp_ThresholdStatus_t status
+)
+{
+    le_temp_ThresholdStatus_t * tempEventPtr = le_mem_ForceAlloc(TemperatureThresholdEventPool);
+
+    *tempEventPtr = status;
+
+    le_event_ReportWithRefCounting(TemperatureThresholdEventId, tempEventPtr);
+}
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Get the Radio temperature level in degree celsius.
@@ -84,8 +120,12 @@ le_result_t pa_temp_GetRadioTemperature
         ///< [OUT] The Radio temperature level in degree celsius.
 )
 {
-    *radioTempPtr = PA_SIMU_TEMP_DEFAULT_RADIO_TEMP;
-    return LE_OK;
+    if (ReturnCode == LE_OK)
+    {
+        *radioTempPtr = PA_SIMU_TEMP_DEFAULT_RADIO_TEMP;
+    }
+
+    return ReturnCode;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -104,8 +144,11 @@ le_result_t pa_temp_GetPlatformTemperature
         ///< [OUT] The Platform temperature level in degree celsius.
 )
 {
-    *platformTempPtr = PA_SIMU_TEMP_DEFAULT_PLATFORM_TEMP;
-    return LE_OK;
+    if (ReturnCode == LE_OK)
+    {
+        *platformTempPtr = PA_SIMU_TEMP_DEFAULT_PLATFORM_TEMP;
+    }
+    return ReturnCode;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -129,9 +172,12 @@ le_result_t pa_temp_SetRadioThresholds
         ///< [IN] The high critical temperature threshold in degree celsius.
 )
 {
-    Thresholds.radio.hiWarningTemp = hiWarningTemp;
-    Thresholds.radio.hiCriticalTemp = hiCriticalTemp;
-    return LE_OK;
+    if (ReturnCode == LE_OK)
+    {
+        Thresholds.radio.hiWarningTemp = hiWarningTemp;
+        Thresholds.radio.hiCriticalTemp = hiCriticalTemp;
+    }
+    return ReturnCode;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -155,9 +201,12 @@ le_result_t pa_temp_GetRadioThresholds
         ///<  in degree celsius.
 )
 {
-    *hiWarningTempPtr = Thresholds.radio.hiWarningTemp;
-    *hiCriticalTempPtr = Thresholds.radio.hiCriticalTemp;
-    return LE_OK;
+    if (ReturnCode == LE_OK)
+    {
+        *hiWarningTempPtr = Thresholds.radio.hiWarningTemp;
+        *hiCriticalTempPtr = Thresholds.radio.hiCriticalTemp;
+    }
+    return ReturnCode;
 }
 
 
@@ -190,11 +239,14 @@ le_result_t pa_temp_SetPlatformThresholds
         ///< [IN] The high critical temperature threshold in degree celsius.
 )
 {
-    Thresholds.platform.lowWarningTemp = lowWarningTemp;
-    Thresholds.platform.hiWarningTemp = hiWarningTemp;
-    Thresholds.platform.lowCriticalTemp = lowCriticalTemp;
-    Thresholds.platform.hiCriticalTemp = hiCriticalTemp;
-    return LE_OK;
+    if (ReturnCode == LE_OK)
+    {
+        Thresholds.platform.lowWarningTemp = lowWarningTemp;
+        Thresholds.platform.hiWarningTemp = hiWarningTemp;
+        Thresholds.platform.lowCriticalTemp = lowCriticalTemp;
+        Thresholds.platform.hiCriticalTemp = hiCriticalTemp;
+    }
+    return ReturnCode;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -226,17 +278,20 @@ le_result_t pa_temp_GetPlatformThresholds
         ///<  in degree celsius.
 )
 {
-    *lowWarningTempPtr = Thresholds.platform.lowWarningTemp;
-    *hiWarningTempPtr = Thresholds.platform.hiWarningTemp;
-    *lowCriticalTempPtr = Thresholds.platform.lowCriticalTemp;
-    *hiCriticalTempPtr = Thresholds.platform.hiCriticalTemp;
-    return LE_OK;
+    if (ReturnCode == LE_OK)
+    {
+        *lowWarningTempPtr = Thresholds.platform.lowWarningTemp;
+        *hiWarningTempPtr = Thresholds.platform.hiWarningTemp;
+        *lowCriticalTempPtr = Thresholds.platform.lowCriticalTemp;
+        *hiCriticalTempPtr = Thresholds.platform.hiCriticalTemp;
+    }
+    return ReturnCode;
 }
 
 //--------------------------------------------------------------------------------------------------
 /**
  *
- * This function is used to add a temperatire status notification handler
+ * This function is used to add a temperature status notification handler
  *
  * @return A handler reference, which is only needed for later removal of the handler.
  */
@@ -246,7 +301,20 @@ le_event_HandlerRef_t* pa_temp_AddTempEventHandler
     pa_temp_ThresholdInd_HandlerFunc_t   msgHandler
 )
 {
-    return NULL;
+    le_event_HandlerRef_t  handlerRef = NULL;
+
+    if ( msgHandler != NULL )
+    {
+        handlerRef = le_event_AddHandler( "ThresholdStatushandler",
+                             TemperatureThresholdEventId,
+                            (le_event_HandlerFunc_t) msgHandler);
+    }
+    else
+    {
+        LE_ERROR("Null handler given in parameter");
+    }
+
+    return (le_event_HandlerRef_t*) handlerRef;
 }
 
 
@@ -265,5 +333,11 @@ le_result_t pa_temp_Init
     void
 )
 {
+    // Create the event for signaling user handlers.
+    TemperatureThresholdEventId = le_event_CreateIdWithRefCounting("TemperatureStatusEvent");
+
+    TemperatureThresholdEventPool = le_mem_CreatePool("TemperatureStatusEventPool",
+                    sizeof(le_temp_ThresholdStatus_t));
+
     return LE_OK;
 }
