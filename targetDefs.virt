@@ -1,0 +1,38 @@
+# --------------------------------------------------------------------------------------------------
+# make definitions specific to the virtual machine target.
+#
+# Copyright (C), Sierra Wireless Inc.  Use of this work is subject to license.
+# --------------------------------------------------------------------------------------------------
+
+VIRT_TARGET_ARCH ?= arm
+export VIRT_TARGET_ARCH
+
+ifndef VIRT_TOOLCHAIN_DIR
+  $(warning VIRT_TOOLCHAIN_DIR not defined.  Using default.)
+  export VIRT_TOOLCHAIN_DIR := $(shell $(FINDTOOLCHAIN) virt_${VIRT_TARGET_ARCH})
+endif
+
+ifndef TOOLCHAIN_PREFIX
+  ifeq ($(VIRT_TARGET_ARCH),x86)
+    export TOOLCHAIN_PREFIX := i586-poky-linux-
+    export TARGET_SANDBOX_IMPORT := TARGET_IMPORTS_X86
+  else
+    export TOOLCHAIN_PREFIX := arm-poky-linux-gnueabi-
+    export TARGET_SANDBOX_IMPORT := TARGET_IMPORTS_ARMV7
+  endif
+endif
+
+ifndef VIRT_TOOLCHAIN_PREFIX
+  export VIRT_TOOLCHAIN_PREFIX := ${TOOLCHAIN_PREFIX}
+endif
+
+export COMPILER_DIR := $(VIRT_TOOLCHAIN_DIR)
+export TARGET := virt
+export LEGATO_AUDIO_PA := $(AUDIO_PA_DIR)/simu/le_pa_audio
+export LEGATO_UTIL_PA = $(AT_MANAGER_DIR)
+export LEGATO_MODEM_PA := $(MODEM_PA_DIR)/simu/le_pa
+export LEGATO_GNSS_PA := $(GNSS_PA_DIR)/simu/le_pa_gnss
+export LEGATO_AVC_PA = $(AVC_PA_DIR)/simu/le_pa_avc
+export LEGATO_SECSTORE_PA = $(SECSTORE_PA_DIR)/simu/le_pa_secStore
+export LEGATO_FWUPDATE_PA = $(FWUPDATE_PA_DIR)/simu/le_pa_fwupdate
+export PLATFORM_SIMULATION := 1

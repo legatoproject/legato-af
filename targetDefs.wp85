@@ -1,0 +1,28 @@
+# --------------------------------------------------------------------------------------------------
+# make definitions specific to Sierra Wireless WP85xx modules.
+#
+# Copyright (C), Sierra Wireless Inc.  Use of this work is subject to license.
+# --------------------------------------------------------------------------------------------------
+
+include targetDefs.mdm9x15
+
+export TARGET := wp85
+
+ifndef WP85_TOOLCHAIN_DIR
+  $(warning WP85_TOOLCHAIN_DIR not defined.  Using default.)
+  export WP85_TOOLCHAIN_DIR := $(shell $(FINDTOOLCHAIN) wp85)
+endif
+export WP85_TOOLCHAIN_PREFIX = arm-poky-linux-gnueabi-
+export TOOLCHAIN_PREFIX = $(WP85_TOOLCHAIN_PREFIX)
+export COMPILER_DIR = $(WP85_TOOLCHAIN_DIR)
+
+export TARGET_SANDBOX_IMPORT := TARGET_IMPORTS_ARMV7
+export LEGATO_UTIL_PA = $(LEGATO_QMI_UTIL)
+export LEGATO_MODEM_PA = $(LEGATO_QMI_MODEM_PA)
+export LEGATO_GNSS_PA = $(LEGATO_QMI_GNSS_PA)
+export LEGATO_AVC_PA = $(LEGATO_QMI_AVC_PA)
+export LEGATO_SECSTORE_PA = $(LEGATO_QMI_SECSTORE_PA)
+export LEGATO_FWUPDATE_PA = $(LEGATO_QMI_FWUPDATE_PA)
+export LEGATO_AUDIO_PA = $(LEGATO_QMI_AUDIO_PA)
+export LEGATO_AUDIO_PA_PCM = $(AUDIO_PA_DIR)/pcm/alsa-intf
+export LEGATO_AUDIO_PA_AMR = $(AUDIO_PA_DIR)/amr/opencore-amr
