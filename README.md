@@ -14,7 +14,7 @@ Welcome to Legato!
         python-pysqlite2 quilt samba scons sed subversion texi2html texinfo \
         unzip wget ninja-build
 
-  - Cross toolchain(s).
+  - [Cross toolchain(s).](http://source.sierrawireless.com/resources/legato/downloads/) 
 
 #### Installation
 
