@@ -40,10 +40,10 @@ then
     mkdir -p "$LOG_HOME"
 
     # Remove the old logs in the flash-based location.
-    rm -rf "$LOG_HOME/*"
+    rm -rf "$LOG_HOME/"*
 
     # Backup RAM-based logs to the flash-based location, only if they exist.
-    cp -r "$RAM_LOC/*" "$LOG_HOME" 2> /dev/null
+    cp -r "$RAM_LOC/"* "$LOG_HOME" 2> /dev/null
 else
     LOG_HOME=$RAM_LOC
     mkdir -p "$LOG_HOME"
