@@ -1,8 +1,7 @@
-localhost:
-	mkapp -v -t $@ app.adef
+include ../common.mk
 
-clean:
-	rm -rf _build_app *.update
+$(TARGET):
+	mkapp -v -t $@ app.adef -w $(BUILD_DIR) -o $(BUILD_DIR)
 
 run: localhost
 	stoplegato ; startlegato && \

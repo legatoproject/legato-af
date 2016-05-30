@@ -1,11 +1,4 @@
-.PHONY: all ar7 clean
+include ../common.mk
 
-all:
-	mkapp ipc.adef -v -i interfaces/hello
-
-ar7:
-	mkapp ipc.adef -v -t ar7 -i interfaces/hello
-
-clean:
-	rm -rf work staging obj bin lib _build_* *.update build_ipc
-
+$(TARGET):
+	mkapp ipc.adef -v -t $@ -i interfaces/hello -w $(BUILD_DIR) -o $(BUILD_DIR)

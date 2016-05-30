@@ -1,15 +1,11 @@
-.PHONY: all ar7 clean
+include ../../common.mk
 
-all: ../libexternal/libexternal.so
-	mkapp mkappTest.adef -v -w build/localhost -i .. -c ..
+$(TARGET): %: "$(BUILD_DIR)/../libexternal/libexternal.%.so"
+	mkapp -c .. mkappTest.adef -i .. -v -t $@ -w $(BUILD_DIR) -o $(BUILD_DIR)
 
-ar7:
-	mkapp -c .. mkappTest.adef -i .. -v -t ar7 -o $(CURDIR)
-
-../libexternal/libexternal.so:
+"$(BUILD_DIR)/../libexternal/libexternal.%.so":
 	$(MAKE) -C ../libexternal
 
 clean:
-	rm -rf work staging obj bin lib build mix fromSource fromComponents *.update
+	rm -rf $(BUILD_DIR)
 	$(MAKE) -C ../libexternal clean
-

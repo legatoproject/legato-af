@@ -3,7 +3,7 @@ bundles:
     file:
     {
             ../files/xyz  /usr/share/files/
-        [r] ../libexternal/libexternal.so  /lib/
+        [r] ${BUILD_DIR}/../libexternal/libexternal.$TARGET.so  /lib/
     }
 }
 

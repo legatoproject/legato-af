@@ -1,19 +1,11 @@
-.PHONY: all clean
+include ../common.mk
 
-TARGETS += localhost ar7 wp85
+$(TARGET): %: "$(BUILD_DIR)/libexternal/libexternal.%.so"
+	mkapp mkappTest.adef -v -t $@ --cflags="'-g' -O0" --ldflags=-lrt -w $(BUILD_DIR) -o $(BUILD_DIR)
 
-$(TARGETS): export TARGET = $@
-
-all: $(TARGETS)
-
-.PHONY: $(TARGETS)
-$(TARGETS): %: libexternal/libexternal.%.so
-	mkapp mkappTest.adef -v -w build/$@ -t $@ -o $(CURDIR) --cflags="'-g' -O0" --ldflags=-lrt
-
-libexternal/libexternal.%.so:
-	$(MAKE) -C libexternal $*
+"$(BUILD_DIR)/libexternal/libexternal.%.so":
+	$(MAKE) -C libexternal
 
 clean:
-	rm -rf build *.update
+	rm -rf $(BUILD_DIR)
 	$(MAKE) -C libexternal clean
-

@@ -234,6 +234,7 @@ TESTS_TARGETS = $(foreach target,$(TARGETS),tests_$(target))
 .PHONY: $(TESTS_TARGETS)
 $(TESTS_TARGETS):tests_%: % framework_% build/%/Makefile
 	$(MAKE) -C build/$(TARGET)
+	$(MAKE) -C apps/test/framework/mk
 
 # Rule for invoking CMake to generate the Makefiles inside the build directory.
 # Depends on the build directory being there.

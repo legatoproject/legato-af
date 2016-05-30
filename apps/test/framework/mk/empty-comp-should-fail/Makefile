@@ -1,16 +1,14 @@
-.PHONY: all app-test exe-test clean
+include ../common.mk
 
-all:
-	$(MAKE) -k app-test || $(MAKE) -k exe-test
+.PHONY: app-test exe-test
+
+all: app-test exe-test
 
 app-test:
-	mkapp empty.adef
-	mkapp void.adef
+	mkapp empty.adef -t $(TARGET) -w $(BUILD_DIR) -o $(BUILD_DIR)
+	mkapp void.adef -t $(TARGET) -w $(BUILD_DIR) -o $(BUILD_DIR)   2>&1 | grep -q "Executable doesn't contain any components that have source code files." && echo "Correct error message caught."
 
 exe-test:
-	mkdir -p bin
-	mkexe -o bin/notMuch-exe void notMuch.c
-	mkexe -o bin/void-exe void
-
-clean:
-	rm -rf build_* *.update _build* bin
+	mkdir -p $(BUILD_DIR)/bin
+	mkexe -t $(TARGET) -o $(BUILD_DIR)/bin/notMuch-exe void notMuch.c -w $(BUILD_DIR)
+	mkexe -t $(TARGET) -o $(BUILD_DIR)/bin/void-exe void -w $(BUILD_DIR)  2>&1 | grep -q "Executable doesn't contain any source code files." && echo "Correct error message caught."

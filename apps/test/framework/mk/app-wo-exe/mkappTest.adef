@@ -4,7 +4,7 @@ bundles:
     {
         files/xyz  /usr/share/files/
         files/xyz  /usr/share/files/abc
-    [r] libexternal/libexternal.$TARGET.so  /lib/
+    [r] ${BUILD_DIR}/libexternal/libexternal.$TARGET.so  /lib/
     }
 
     dir:

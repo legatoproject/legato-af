@@ -1,13 +1,5 @@
-.PHONY: all ar7 clean
+include ../common.mk
 
-all:
-	mkapp sandboxed.adef -v
-	mkapp unsandboxed.adef -v
-
-ar7:
-	mkapp sandboxed.adef -v -t ar7
-	mkapp unsandboxed.adef -v -t ar7
-
-clean:
-	rm -rf _build_* build_* *.update
-
+$(TARGET):
+	mkapp sandboxed.adef $(VERBOSE) -t $@ -w $(BUILD_DIR) -o $(BUILD_DIR)
+	mkapp unsandboxed.adef $(VERBOSE) -t $@ -w $(BUILD_DIR) -o $(BUILD_DIR)

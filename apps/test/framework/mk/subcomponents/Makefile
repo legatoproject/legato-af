@@ -1,16 +1,7 @@
-TARGETS := localhost ar7 wp85
+include ../common.mk
 
-.PHONY: all $(TARGETS) clean
-
-VERBOSE := -v
-
-all: $(TARGETS)
-
-$(TARGETS): %: %_test
+$(TARGET): %: %_test
 
 %_test:
-	mkapp test.adef $(VERBOSE) -t $*
-
-clean:
-	rm -rf _build_* *.update
+	mkapp test.adef $(VERBOSE) -t $* -w $(BUILD_DIR) -o $(BUILD_DIR)
 

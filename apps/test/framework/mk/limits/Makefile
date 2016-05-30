@@ -1,8 +1,4 @@
-.PHONY: all clean
+include ../common.mk
 
 all:
-	mkapp mkappTest.adef -v -w build/localhost
-
-clean:
-	rm -rf build *.update
-
+	mkapp -t $(TARGET) mkappTest.adef -v -w $(BUILD_DIR) -o $(BUILD_DIR)
