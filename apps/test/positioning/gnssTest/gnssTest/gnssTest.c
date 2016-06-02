@@ -339,7 +339,7 @@ static void PositionHandlerFunction
     // Satellite Vehicle information
     for(i=0; i<satIdNumElements; i++)
     {
-        if((satIdPtr[i] != 0)&&(satIdPtr[i] != UINT8_MAX))
+        if((satIdPtr[i] != 0)&&(satIdPtr[i] != UINT16_MAX))
         {
             LE_INFO("[%02d] SVid %03d - C%01d - U%d - SNR%02d - Azim%03d - Elev%02d"
                     , i
@@ -349,6 +349,29 @@ static void PositionHandlerFunction
                     , satSnrPtr[i]
                     , satAzimPtr[i]
                     , satElevPtr[i]);
+        }
+    }
+
+    // Get satellites latency
+    int32_t latencyPtr[LE_GNSS_SV_INFO_MAX_LEN];
+    size_t latencyNumElements = sizeof(latencyPtr);
+    result = le_gnss_GetSatellitesLatency(positionSampleRef
+                                            , satIdPtr
+                                            , &satIdNumElements
+                                            , latencyPtr
+                                            , &latencyNumElements);
+
+    LE_ASSERT((result == LE_OK)||(result == LE_OUT_OF_RANGE));
+
+    // Satellite Vehicle information
+    for(i=0; i<latencyNumElements; i++)
+    {
+        if((satIdPtr[i] != 0)&&(satIdPtr[i] != UINT16_MAX))
+        {
+            LE_INFO("[%02d] SVid %03d - Latency %d"
+                    , i
+                    , satIdPtr[i]
+                    , latencyPtr[i]);
         }
     }
 

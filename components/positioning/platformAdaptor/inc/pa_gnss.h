@@ -82,6 +82,17 @@ typedef struct {
 }
 Pa_Gnss_SvInfo_t;
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Satellite Measurement information.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct {
+    uint16_t satId;          ///< Satellite in View ID number.
+    int32_t  satLatency;     ///< Satellite latency measurement (age of measurement)
+                             ///< Units: Milliseconds.
+}
+Pa_Gnss_SvMeasurement_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -164,6 +175,10 @@ typedef struct {
     bool            timeAccuracyValid;      ///< if true, timeAccuracy is set
     uint32_t        timeAccuracy;           ///< Estimated Accuracy for time in milliseconds
 
+    // Position measurement latency
+    bool            positionLatencyValid;   ///< if true, positionLatency is set
+    uint32_t        positionLatency;        ///< Position measurement latency in milliseconds
+
     // Satellite Vehicles information
     bool                satsInViewCountValid;    ///< if true, satsInView is set
     uint8_t             satsInViewCount;         ///< Satellites in View count.
@@ -175,6 +190,9 @@ typedef struct {
     bool                satInfoValid;       ///< if true, satInfo is set
     Pa_Gnss_SvInfo_t    satInfo[LE_GNSS_SV_INFO_MAX_LEN];
                                             ///< Satellite Vehicle information.
+    bool                    satMeasValid;   ///< if true, satInfo is set
+    Pa_Gnss_SvMeasurement_t satMeas[LE_GNSS_SV_INFO_MAX_LEN];
+                                            ///< Satellite measurement information.
 }
 pa_Gnss_Position_t;
 

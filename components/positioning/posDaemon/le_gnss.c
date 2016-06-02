@@ -62,6 +62,18 @@ le_gnss_SvInfo_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Satellite measurement information.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct {
+    uint16_t satId;          ///< Satellite in View ID number.
+    int32_t  satLatency;     ///< Satellite latency measurement (age of measurement)
+                             ///< Units: Milliseconds.
+}
+le_gnss_SvMeas_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Position Sample structure.
  *
  */
@@ -105,6 +117,8 @@ typedef struct le_gnss_PositionSample
     uint32_t        gpsTimeOfWeek;      ///< Amount of time in milliseconds into the GPS week.
     bool            timeAccuracyValid;  ///< if true, timeAccuracy is set
     uint32_t        timeAccuracy;       ///< Estimated Accuracy for time in milliseconds
+    bool            positionLatencyValid;   ///< if true, positionLatency is set
+    uint32_t        positionLatency;        ///< Position measurement latency in milliseconds
     bool            hdopValid;          ///< if true, horizontal dilution is set
     uint16_t        hdop;               ///< The horizontal Dilution of Precision (DOP)
     bool            vdopValid;          ///< if true, vertical dilition is set
@@ -121,6 +135,9 @@ typedef struct le_gnss_PositionSample
     bool                satInfoValid;       ///< if true, satInfo is set
     le_gnss_SvInfo_t    satInfo[LE_GNSS_SV_INFO_MAX_LEN];
                                             ///< Satellite Vehicle information.
+    bool                satMeasValid;       ///< if true, satMeas is set
+    le_gnss_SvMeas_t    satMeas[LE_GNSS_SV_INFO_MAX_LEN];
+                                            ///< Satellite Vehicle measurement information.
     le_dls_Link_t   link;               ///< Object node link
 }
 le_gnss_PositionSample_t;
@@ -432,6 +449,10 @@ static void PaPositionHandler
         positionSampleNodePtr->timeAccuracyValid = positionPtr->timeAccuracyValid;
         positionSampleNodePtr->timeAccuracy = positionPtr->timeAccuracy;
 
+        // Position measurement latency
+        positionSampleNodePtr->positionLatencyValid = positionPtr->positionLatencyValid;
+        positionSampleNodePtr->positionLatency = positionPtr->positionLatency;
+
         // DOP parameters
         positionSampleNodePtr->hdopValid = positionPtr->hdopValid;
         positionSampleNodePtr->hdop = positionPtr->hdop;
@@ -455,6 +476,14 @@ static void PaPositionHandler
             positionSampleNodePtr->satInfo[i].satSnr = positionPtr->satInfo[i].satSnr;
             positionSampleNodePtr->satInfo[i].satAzim = positionPtr->satInfo[i].satAzim;
             positionSampleNodePtr->satInfo[i].satElev = positionPtr->satInfo[i].satElev;
+        }
+
+        // Satellite latency measurement
+        positionSampleNodePtr->satMeasValid = positionPtr->satMeasValid;
+        for(i=0; i<LE_GNSS_SV_INFO_MAX_LEN; i++)
+        {
+            positionSampleNodePtr->satMeas[i].satId = positionPtr->satMeas[i].satId;
+            positionSampleNodePtr->satMeas[i].satLatency = positionPtr->satMeas[i].satLatency;
         }
 
         // Node Link
@@ -1722,6 +1751,101 @@ le_result_t le_gnss_GetDop
 
     return result;
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the satellites latency measures. That measure provides the time difference when the
+ * satellite measurement is obtained relative to the time the position's sample is
+ * provided. A positive value means the satellite measurement precedes the time reference of
+ * position report.
+ *
+ * @return
+ *  - LE_FAULT         Function failed to get the satellites latency measures.
+ *  - LE_OUT_OF_RANGE  One of the retrieved parameter is invalid (set to UINT16_MAX or INT32_MAX).
+ *  - LE_OK            Function succeeded.
+ *
+ * @note If the caller is passing an invalid Position sample reference into this function,
+ *       it is a fatal error, the function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_gnss_GetSatellitesLatency
+(
+    le_gnss_SampleRef_t positionSampleRef,
+        ///< [IN] Position sample's reference.
+
+    uint16_t* satIdPtr,
+        ///< [OUT] Satellites in View ID number, referring
+        ///<       to NMEA standard.
+
+    size_t* satIdNumElementsPtr,
+        ///< [INOUT]
+
+    int32_t* latencyPtr,
+        ///< [OUT] Satellites latency measure in milliseconds
+
+    size_t* latencyNumElementsPtr
+        ///< [INOUT]
+)
+{
+    le_result_t result = LE_OK;
+    le_gnss_PositionSample_t* positionSamplePtr
+                                            = le_ref_Lookup(PositionSampleMap,positionSampleRef);
+    int i;
+
+    // Check position sample's reference
+    if ( positionSamplePtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!",positionSampleRef);
+        return LE_FAULT;
+    }
+
+    // Check input pointers
+    if (latencyPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid pointer provided!");
+        return LE_FAULT;
+    }
+
+    if (satIdPtr)
+    {
+        if (positionSamplePtr->satMeasValid)
+        {
+            for(i=0; i<*satIdNumElementsPtr; i++)
+            {
+                satIdPtr[i] = positionSamplePtr->satMeas[i].satId;
+            }
+        }
+        else
+        {
+            for(i=0; i<*satIdNumElementsPtr; i++)
+            {
+                satIdPtr[i] = UINT16_MAX;
+            }
+            result = LE_OUT_OF_RANGE;
+        }
+    }
+
+    if (latencyPtr)
+    {
+        if (positionSamplePtr->satMeasValid)
+        {
+            for(i=0; i<*latencyNumElementsPtr; i++)
+            {
+                latencyPtr[i] = positionSamplePtr->satMeas[i].satLatency;
+            }
+        }
+        else
+        {
+            for(i=0; i<*latencyNumElementsPtr; i++)
+            {
+                latencyPtr[i] = INT32_MAX;
+            }
+            result = LE_OUT_OF_RANGE;
+        }
+    }
+    return result;
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**
